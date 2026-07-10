@@ -3,7 +3,7 @@ id: "feat-090"
 title: "Watch Event Collection & Session Tracking"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-30"
 duration: 10
 depends_on:
@@ -21,6 +21,8 @@ tags:
 ## Problem
 
 The recommendation system returns identical results for every user watching the same video — pure cosine similarity with no learning from behavior. Before any personalization model can be trained (FPMC for "watch next", Two-Tower for home page), interaction data must be collected. No watch event infrastructure exists today.
+
+Related signed-in progress brainstorm: `docs/brainstorms/2026-07-02-watch-signed-in-playback-progress-requirements.md`.
 
 ## Entry Points — Read These First
 

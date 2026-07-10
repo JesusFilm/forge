@@ -4,9 +4,16 @@ import Image from "next/image"
 import Link from "next/link"
 import { Play } from "lucide-react"
 
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+} from "@/lib/routes"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
 type Episode = NonNullable<Episodes[number]>
@@ -15,6 +22,7 @@ type SeriesEpisodeCardProps = {
   episode: Episode
   index: number
   languageSlug: string
+  parentSlug: string
   // Backdrop URL surfaced via data-backdrop-url so the parent grid can
   // delegate pointer/focus events at the container level instead of
   // attaching per-card handlers (avoids 20+ rerenders during keyboard
@@ -39,13 +47,16 @@ export function SeriesEpisodeCard({
   episode,
   index,
   languageSlug,
+  parentSlug,
   backdropUrl,
 }: SeriesEpisodeCardProps) {
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
+  const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
-  // Episodes link as standalone videos: canonical two-segment shape.
-  const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+  const href =
+    parent && slug && lang ? watchEpisodePath(parent, slug, lang) : undefined
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
+  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)
   // rather than being derived from a per-child dub list.
@@ -71,6 +82,11 @@ export function SeriesEpisodeCard({
       ) : (
         <div className="absolute inset-0 bg-stone-800" aria-hidden="true" />
       )}
+      <MuxHoverPreview
+        previewUrl={muxPreviewUrl}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
+        imageClassName="object-left-top"
+      />
 
       {/* Bottom-anchored scrim. Stronger at the bottom so the EPISODE
           label and title stay legible regardless of thumbnail luminance. */}
@@ -78,6 +94,7 @@ export function SeriesEpisodeCard({
         aria-hidden="true"
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"
       />
+      <WatchProgressBar videoId={episode.documentId} />
 
       {/* Top-right runtime pill. Icon-only when no duration is available
           (still affordant as a "play" hint) — the label collapses rather
@@ -88,7 +105,7 @@ export function SeriesEpisodeCard({
       </div>
 
       {/* Bottom-left text block — EPISODE eyebrow + episode title. */}
-      <div className="absolute right-3 bottom-3 left-3 flex flex-col gap-1">
+      <div className="absolute right-3 bottom-5 left-3 flex flex-col gap-1">
         <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-300/90 uppercase">
           {`Episode ${index + 1}`}
         </span>

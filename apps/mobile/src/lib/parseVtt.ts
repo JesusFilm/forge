@@ -22,11 +22,9 @@ function parseTimestamp(ts: string): number {
 }
 
 function stripVttTags(text: string): string {
-  // VTT cues can carry inline tags (<b>, <i>, <u>, <v Speaker>, <c.classname>,
-  // timing tags like <00:00:01.000>, etc.). Strip them for plain-text rendering.
-  // Loop until the string stabilises so a crafted nested tag (e.g.
-  // "<scr<script>ipt>") can't survive a single pass — a complete strip, not the
-  // one-shot replace CodeQL flags as incomplete multi-character sanitization.
+  // Strip VTT inline tags (<b>, <v Speaker>, timing tags, etc.) for plain text.
+  // Loop until stable so nested tags ("<scr<script>ipt>") can't survive one pass
+  // — a complete strip, not the one-shot replace CodeQL flags as incomplete.
   let out = text
   let prev: string
   do {

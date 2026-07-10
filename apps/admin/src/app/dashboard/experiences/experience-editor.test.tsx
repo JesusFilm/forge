@@ -4,10 +4,13 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import {
   ExperienceEditor,
+  buildPublishedWatchUrl,
   cleanLocaleCode,
   cleanRoutePart,
+  watchLanguageSlugForLocale,
 } from "./experience-editor"
 
 const { envState } = vi.hoisted(() => ({
@@ -29,20 +32,41 @@ vi.mock("@/config/env", () => ({
 }))
 
 const action = vi.fn(async () => ({ ok: true }))
+const defaultMediaLibrary: MediaLibraryBrowserData = {
+  rootLabel: "Library",
+  folders: [],
+  images: [
+    {
+      id: "asset-1",
+      displayName: "Managed hero",
+      altText: "Hero alt text",
+      mimeType: "image/webp",
+      byteSize: "12.0 KB",
+      previewUrl: "/api/media-assets/asset-1/preview",
+      updated: "2026-04-16T00:00:00.000Z",
+      folderId: null,
+      pathLabel: "Library",
+    },
+  ],
+}
+
 function renderEditorElement(
   blocks: unknown[],
   options: {
     isTemplate?: boolean
     saveAction?: typeof action
     publishAction?: typeof action
+    canPublish?: boolean
     hasPublishedVersion?: boolean
+    mediaLibrary?: MediaLibraryBrowserData
   } = {},
 ) {
   return (
     <ExperienceEditor
-      canPublish
+      canPublish={options.canPublish ?? true}
       hasPublishedVersion={options.hasPublishedVersion ?? false}
       calendarDate="2026-04-17"
+      watchOrigin="https://watch.jesusfilm.org"
       revisionEntries={[]}
       localeEntries={[
         {
@@ -71,19 +95,11 @@ function renderEditorElement(
           durationSeconds: 754,
           previewImageUrl: "https://example.com/image.jpg",
           previewStreamUrl: "https://example.com/video.mp4",
+          hasGrounding: true,
         },
       ]}
-      mediaLibrary={[
-        {
-          id: "asset-1",
-          displayName: "Managed hero",
-          altText: "Hero alt text",
-          mimeType: "image/webp",
-          byteSize: "12.0 KB",
-          previewUrl: "/api/media-assets/asset-1/preview",
-          updated: "2026-04-16T00:00:00.000Z",
-        },
-      ]}
+      mediaLibrary={options.mediaLibrary ?? defaultMediaLibrary}
+      canUploadImages
       initialValues={{
         localeId: "locale-1",
         title: "Experience title",
@@ -101,6 +117,7 @@ function renderEditorElement(
       publishAction={options.publishAction ?? action}
       createLocaleAction={action}
       restoreAction={action}
+      uploadImageAction={action}
     />
   )
 }
@@ -145,6 +162,24 @@ function findButtonByText(container: HTMLElement, label: string) {
   return button
 }
 
+function findButtonByAriaLabel(container: HTMLElement, label: string) {
+  const button = container.querySelector(`button[aria-label="${label}"]`)
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`Button not found: ${label}`)
+  }
+  return button
+}
+
+function findButtonByExactText(container: HTMLElement, label: string) {
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  )
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`Button not found: ${label}`)
+  }
+  return button
+}
+
 describe("ExperienceEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -178,6 +213,29 @@ describe("ExperienceEditor", () => {
     expect(cleanLocaleCode("  ES 419  ", true)).toBe("es-419")
     expect(cleanLocaleCode("pt_BR")).toBe("pt-br")
     expect(cleanLocaleCode("fr///CA")).toBe("frca")
+  })
+
+  it("maps editor locales to public watch audio language slugs", () => {
+    expect(watchLanguageSlugForLocale("en")).toBe("english")
+    expect(watchLanguageSlugForLocale("es")).toBe("spanish-castilian")
+    expect(watchLanguageSlugForLocale("zh-Hans")).toBe("chinese-simplified")
+    // Regional variants fall back to the primary subtag mapping.
+    expect(watchLanguageSlugForLocale("en-US")).toBe("english")
+    expect(watchLanguageSlugForLocale("xx")).toBeNull()
+    expect(watchLanguageSlugForLocale("")).toBeNull()
+  })
+
+  it("builds two-segment .html watch URLs for published previews", () => {
+    // jsdom runs on localhost, so the local watch base wins over the origin.
+    expect(
+      buildPublishedWatchUrl("christmas", "en", "https://watch.jesusfilm.org"),
+    ).toBe("http://localhost:3000/watch/christmas.html/english.html")
+    expect(
+      buildPublishedWatchUrl("christmas", "xx", "https://watch.jesusfilm.org"),
+    ).toBeNull()
+    expect(
+      buildPublishedWatchUrl("", "en", "https://watch.jesusfilm.org"),
+    ).toBeNull()
   })
 
   it("renders container layout as a visual responsive grid editor", () => {
@@ -531,6 +589,392 @@ describe("ExperienceEditor", () => {
     expect(html).not.toContain("Media URL")
   })
 
+  it("keeps image library browser results in a bounded scroll area", () => {
+    const html = renderEditor([
+      {
+        t: "card",
+        sectionKey: "card",
+        title: "Card title",
+        mediaUrl: "https://example.com/card.jpg",
+      },
+    ])
+
+    expect(html).toContain("flex min-h-0 min-w-0 flex-1 flex-col")
+    expect(html).toContain("flex min-h-0 flex-1 overflow-hidden")
+    expect(html).toContain('class="h-full min-h-0"')
+    expect(html).toContain("h-full overflow-x-hidden overflow-y-auto")
+  })
+
+  it("searches the full image library and writes selected image fields", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "section",
+          sectionKey: "story-section",
+          backgroundColor: "#26313f",
+          backgroundImageUrl: "",
+          content: [],
+        },
+      ],
+      {
+        mediaLibrary: {
+          rootLabel: "Library",
+          folders: [
+            {
+              id: "folder-campaigns",
+              label: "Campaigns",
+              count: 0,
+              directAssetCount: 0,
+              childFolderCount: 1,
+              parentId: null,
+              depth: 0,
+              pathLabel: "Library / Campaigns",
+            },
+            {
+              id: "folder-easter",
+              label: "Easter",
+              count: 1,
+              directAssetCount: 1,
+              childFolderCount: 0,
+              parentId: "folder-campaigns",
+              depth: 1,
+              pathLabel: "Library / Campaigns / Easter",
+            },
+          ],
+          images: [
+            {
+              id: "asset-root",
+              displayName: "Root hero",
+              altText: "Root hero alt",
+              mimeType: "image/webp",
+              byteSize: "10.0 KB",
+              previewUrl: "/api/media-assets/asset-root/preview",
+              updated: "2026-04-16T00:00:00.000Z",
+              folderId: null,
+              pathLabel: "Library",
+            },
+            {
+              id: "asset-easter",
+              displayName: "Easter sunrise",
+              altText: "Sunrise",
+              mimeType: "image/webp",
+              byteSize: "20.0 KB",
+              previewUrl: "/api/media-assets/asset-easter/preview",
+              updated: "2026-04-17T00:00:00.000Z",
+              folderId: "folder-easter",
+              pathLabel: "Library / Campaigns / Easter",
+            },
+          ],
+        },
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click()
+      })
+
+      expect(view.container.textContent).toContain("Library")
+      expect(view.container.textContent).toContain("Campaigns")
+      expect(view.container.textContent).toContain("Root hero")
+      expect(view.container.textContent).not.toContain("Easter sunrise")
+
+      const searchInput = view.container.querySelector(
+        'input[placeholder="Search all image assets"]',
+      )
+      if (!(searchInput instanceof HTMLInputElement)) {
+        throw new Error("Image search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(searchInput, "easter")
+        searchInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+
+      expect(view.container.textContent).toContain("Easter sunrise")
+      expect(view.container.textContent).toContain(
+        "Library / Campaigns / Easter",
+      )
+
+      const assetButton = findButtonByText(view.container, "Easter sunrise")
+      act(() => {
+        assetButton.click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocksBeforeSelect = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocksBeforeSelect[0]?.backgroundImageUrl).toBeUndefined()
+      expect(view.container.textContent).toContain("Selected: Easter sunrise")
+
+      const selectButton = findButtonByExactText(view.container, "Select")
+      act(() => {
+        selectButton.click()
+      })
+
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.backgroundImageUrl).toBeUndefined()
+      expect(blocks[0]?.backgroundImageAssetId).toBe("asset-easter")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("opens the picker on the currently selected asset folder", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "section",
+          sectionKey: "hero",
+          backgroundImageAssetId: "asset-easter",
+          content: [],
+        },
+      ],
+      {
+        mediaLibrary: {
+          rootLabel: "Library",
+          folders: [
+            {
+              id: "folder-easter",
+              label: "Easter",
+              count: 1,
+              directAssetCount: 1,
+              childFolderCount: 0,
+              parentId: null,
+              depth: 0,
+              pathLabel: "Library / Easter",
+            },
+          ],
+          images: [
+            {
+              id: "asset-root",
+              displayName: "Root hero",
+              altText: "Root hero alt",
+              mimeType: "image/webp",
+              byteSize: "10.0 KB",
+              previewUrl: "/api/media-assets/asset-root/preview",
+              updated: "2026-04-16T00:00:00.000Z",
+              folderId: null,
+              pathLabel: "Library",
+            },
+            {
+              id: "asset-easter",
+              displayName: "Easter sunrise",
+              altText: "Sunrise",
+              mimeType: "image/webp",
+              byteSize: "20.0 KB",
+              previewUrl: "/api/media-assets/asset-easter/preview",
+              updated: "2026-04-17T00:00:00.000Z",
+              folderId: "folder-easter",
+              pathLabel: "Library / Easter",
+            },
+          ],
+        },
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click()
+      })
+
+      expect(view.container.textContent).toContain("Easter sunrise")
+      expect(view.container.textContent).toContain("Selected: Easter sunrise")
+      expect(view.container.textContent).not.toContain("Root hero")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("reopens the last browsed folder when no image is selected", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "section",
+          sectionKey: "hero",
+          content: [],
+        },
+      ],
+      {
+        mediaLibrary: {
+          rootLabel: "Library",
+          folders: [
+            {
+              id: "folder-easter",
+              label: "Easter",
+              count: 1,
+              directAssetCount: 1,
+              childFolderCount: 0,
+              parentId: null,
+              depth: 0,
+              pathLabel: "Library / Easter",
+            },
+          ],
+          images: [
+            {
+              id: "asset-root",
+              displayName: "Root hero",
+              altText: "Root hero alt",
+              mimeType: "image/webp",
+              byteSize: "10.0 KB",
+              previewUrl: "/api/media-assets/asset-root/preview",
+              updated: "2026-04-16T00:00:00.000Z",
+              folderId: null,
+              pathLabel: "Library",
+            },
+            {
+              id: "asset-easter",
+              displayName: "Easter sunrise",
+              altText: "Sunrise",
+              mimeType: "image/webp",
+              byteSize: "20.0 KB",
+              previewUrl: "/api/media-assets/asset-easter/preview",
+              updated: "2026-04-17T00:00:00.000Z",
+              folderId: "folder-easter",
+              pathLabel: "Library / Easter",
+            },
+          ],
+        },
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click()
+      })
+
+      expect(view.container.textContent).toContain("Root hero")
+      expect(view.container.textContent).not.toContain("Easter sunrise")
+
+      const folderNav = view.container.querySelector(
+        'nav[aria-label="Image folders"]',
+      )
+      if (!(folderNav instanceof HTMLElement)) {
+        throw new Error("Image folder navigation not found")
+      }
+
+      act(() => {
+        findButtonByText(folderNav, "Easter").click()
+      })
+
+      expect(view.container.textContent).toContain("Easter sunrise")
+      expect(view.container.textContent).not.toContain("Root hero")
+
+      act(() => {
+        findButtonByExactText(view.container, "Cancel").click()
+      })
+
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click()
+      })
+
+      expect(view.container.textContent).toContain("Easter sunrise")
+      expect(view.container.textContent).not.toContain("Root hero")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("clears the current image from inside the picker dialog", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "section",
+          sectionKey: "hero",
+          backgroundImageAssetId: "asset-easter",
+          content: [],
+        },
+      ],
+      {
+        mediaLibrary: {
+          rootLabel: "Library",
+          folders: [
+            {
+              id: "folder-easter",
+              label: "Easter",
+              count: 1,
+              directAssetCount: 1,
+              childFolderCount: 0,
+              parentId: null,
+              depth: 0,
+              pathLabel: "Library / Easter",
+            },
+          ],
+          images: [
+            {
+              id: "asset-easter",
+              displayName: "Easter sunrise",
+              altText: "Sunrise",
+              mimeType: "image/webp",
+              byteSize: "20.0 KB",
+              previewUrl: "/api/media-assets/asset-easter/preview",
+              updated: "2026-04-17T00:00:00.000Z",
+              folderId: "folder-easter",
+              pathLabel: "Library / Easter",
+            },
+          ],
+        },
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click()
+      })
+
+      expect(view.container.textContent).toContain("Remove image")
+
+      act(() => {
+        findButtonByExactText(view.container, "Remove image").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.backgroundImageUrl).toBeUndefined()
+      expect(blocks[0]?.backgroundImageAssetId).toBeUndefined()
+      expect(view.container.textContent).not.toContain("Remove image")
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("uses selected video artwork for navigation destinations", () => {
     const html = renderEditor([
       {
@@ -687,13 +1131,47 @@ describe("ExperienceEditor", () => {
       })
 
       expect(openSpy).toHaveBeenCalledWith(
-        "http://localhost:3000/watch/experience-title/en",
+        "http://localhost:3000/watch/experience-title.html/english.html",
         "_blank",
         "noopener,noreferrer",
       )
     } finally {
       cleanup()
       openSpy.mockRestore()
+    }
+  })
+
+  it("allows publishing changed content over an existing published version", () => {
+    const { container, cleanup } = renderEditorDom([], {
+      hasPublishedVersion: true,
+    })
+
+    try {
+      expect(findButtonByText(container, "Preview").disabled).toBe(false)
+
+      const titleInput = container.querySelector(
+        'input[placeholder="Untitled Experience"]',
+      )
+      if (!(titleInput instanceof HTMLInputElement)) {
+        throw new Error("Title input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(titleInput, "Experience title updated")
+        titleInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+
+      const publishButton = findButtonByText(container, "Publish")
+      expect(publishButton.disabled).toBe(false)
+    } finally {
+      cleanup()
     }
   })
 

@@ -1,11 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock } = vi.hoisted(() => ({
+const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  unstableCacheCalls: [] as {
+    keyParts: unknown[]
+    options: { revalidate?: unknown; tags?: unknown }
+  }[],
 }))
 
 vi.mock("next/cache", () => ({
-  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(
+    fn: T,
+    keyParts: unknown[],
+    options?: { revalidate?: unknown; tags?: unknown },
+  ) => {
+    unstableCacheCalls.push({ keyParts, options: options ?? {} })
+    return fn
+  },
 }))
 
 vi.mock("react", async () => {
@@ -71,10 +82,103 @@ function makeAdminVideo(
   }
 }
 
+function makeAdminDub(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const video = makeAdminVideo()
+  const variant = (video.variants as Record<string, unknown>[])[0]!
+  return {
+    ...variant,
+    downloads: [],
+    muxVideo: { playbackId: "pb-1" },
+    videoEdition: { subtitles: [] },
+    ...overrides,
+  }
+}
+
+function makeRussianVariant(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    documentId: "variant-ru",
+    slug: "russian",
+    hls: "https://cdn.example/jesus-ru.m3u8",
+    published: true,
+    duration: 7674,
+    language: {
+      coreId: "3934",
+      bcp47: "ru",
+      slug: "russian",
+      name: "Russian",
+    },
+    ...overrides,
+  }
+}
+
+function makeRussianDub(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return makeAdminDub({
+    ...makeRussianVariant(),
+    downloads: [],
+    muxVideo: { playbackId: "pb-ru" },
+    videoEdition: { subtitles: [] },
+    ...overrides,
+  })
+}
+
 describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
+    unstableCacheCalls.length = 0
     vi.resetModules()
+  })
+
+  it("declares tags on every watch resolver cache", async () => {
+    await import("./content")
+
+    expect(unstableCacheCalls).toEqual(
+      expect.arrayContaining([
+        {
+          keyParts: ["watch-page", "v3-media-dominant-colors"],
+          options: {
+            revalidate: 60,
+            tags: [
+              "watch:home",
+              "watch:settings",
+              "watch:experience",
+              "watch:video",
+            ],
+          },
+        },
+        {
+          keyParts: ["watch-experience-page"],
+          options: { revalidate: 60, tags: ["watch:experience"] },
+        },
+        {
+          keyParts: ["watch-video"],
+          options: { revalidate: 60, tags: ["watch:video"] },
+        },
+        {
+          keyParts: ["video-child-dub-languages"],
+          options: {
+            revalidate: 3600,
+            tags: ["watch:child-dub-languages"],
+          },
+        },
+        {
+          keyParts: ["watch-video-route-snapshot"],
+          options: { revalidate: 60, tags: ["watch:video"] },
+        },
+        {
+          keyParts: ["watch-route-by-slug"],
+          options: {
+            revalidate: 60,
+            tags: ["watch:series", "watch:video"],
+          },
+        },
+      ]),
+    )
   })
 
   it("returns the homepage Experience from watchSetting", async () => {
@@ -127,7 +231,7 @@ describe("resolveWatchPage", () => {
     expect(result.error?.message).toBe("No experience found")
   })
 
-  it("prefers an explicit experience when the slug doesn't match the template slug", async () => {
+  it("falls back to an explicit experience when no route video exists", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
@@ -141,6 +245,11 @@ describe("resolveWatchPage", () => {
               title: "Single Video Template",
             },
           },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: null,
         },
       })
       .mockResolvedValueOnce({
@@ -158,7 +267,7 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "christmas")
 
-    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(queryMock).toHaveBeenCalledTimes(3)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
@@ -168,7 +277,7 @@ describe("resolveWatchPage", () => {
     })
   })
 
-  it("falls back to the default template for plain video slugs", async () => {
+  it("uses the default template for video slugs before same-slug experience lookup", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
@@ -186,19 +295,24 @@ describe("resolveWatchPage", () => {
       })
       .mockResolvedValueOnce({
         data: {
-          experienceBySlug: null,
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
           videoBySlug: makeAdminVideo({
+            locales: [],
+            exactLocales: [
+              {
+                documentId: "loc-1",
+                title: "Jesus",
+                description: "A full description",
+                snippet: "The story of Jesus",
+                imageAlt: "Jesus still",
+              },
+            ],
             children: [
               {
                 child: {
                   documentId: "child-1",
                   slug: "the-beginning",
                   label: "SEGMENT",
-                  locales: [{ documentId: "cl-1", title: "The Beginning" }],
+                  muxPlaybackId: "mux-child-1",
                   images: [
                     {
                       documentId: "img-c",
@@ -206,6 +320,9 @@ describe("resolveWatchPage", () => {
                     },
                   ],
                   dubs: [],
+                  exactLocales: [
+                    { documentId: "cl-1", title: "The Beginning" },
+                  ],
                 },
               },
               {
@@ -215,9 +332,8 @@ describe("resolveWatchPage", () => {
                   documentId: "video-1",
                   slug: "jesus",
                   label: null,
-                  locales: [{ documentId: "cl-2", title: "Jesus" }],
                   images: [],
-                  dubs: [],
+                  exactLocales: [{ documentId: "cl-2", title: "Jesus" }],
                 },
               },
             ],
@@ -229,6 +345,7 @@ describe("resolveWatchPage", () => {
 
     const result = await resolveWatchPage("en", "jesus")
 
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "video-template",
@@ -242,6 +359,7 @@ describe("resolveWatchPage", () => {
             title: "The Beginning",
             label: "SEGMENT",
             videoSlug: "the-beginning",
+            muxPlaybackId: "mux-child-1",
           },
         ],
       },
@@ -260,7 +378,9 @@ describe("resolveWatchPage", () => {
         },
       })
       .mockResolvedValueOnce({
-        data: { experienceBySlug: null },
+        data: {
+          videoBySlug: makeAdminVideo(),
+        },
       })
       .mockResolvedValueOnce({
         data: {
@@ -292,12 +412,16 @@ describe("resolveWatchPage", () => {
           },
         },
       })
-      .mockResolvedValueOnce({ data: { experienceBySlug: null } })
       .mockResolvedValueOnce({
         data: {
           // Empty variants — selectPlayableVariant returns null, so
           // normalizeRouteVideo returns null and the route bails.
           videoBySlug: makeAdminVideo({ variants: [] }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo(),
         },
       })
 
@@ -360,17 +484,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     vi.resetModules()
   })
 
-  it("re-fetches with locale='en' when the primary fetch returns empty locales for a non-en request", async () => {
+  it("uses the English alias when exact and broad copy are empty for a non-en request", async () => {
     queryMock
       .mockResolvedValueOnce({
         data: {
-          videoBySlug: makeAdminVideo({ locales: [] }),
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
           videoBySlug: makeAdminVideo({
-            locales: [
+            locales: [],
+            exactLocales: [],
+            broadLocales: [],
+            englishLocales: [
               {
                 documentId: "loc-en",
                 title: "Jesus (English fallback)",
@@ -379,7 +501,16 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 imageAlt: "Jesus still",
               },
             ],
+            studyQuestions: [],
+            exactStudyQuestions: [],
+            broadStudyQuestions: [],
+            englishStudyQuestions: [],
           }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub(),
         },
       })
 
@@ -388,15 +519,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     const result = await resolveWatchVideoBySlug("jesus", "fr")
 
     expect(queryMock).toHaveBeenCalledTimes(2)
-    const fallbackCall = queryMock.mock.calls[1][0] as {
+    const snapshotCall = queryMock.mock.calls[0][0] as {
       variables: {
         locale: string
         languageSlug: string | null
         videoSlug: string
       }
     }
-    expect(fallbackCall.variables).toEqual({
-      locale: "en",
+    expect(snapshotCall.variables).toEqual({
+      locale: "fr",
       languageSlug: null,
       videoSlug: "jesus",
     })
@@ -404,66 +535,83 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
   })
 
   it("does not re-fetch when the primary fetch already returns a locale row", async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        videoBySlug: makeAdminVideo({
-          studyQuestions: [
-            { documentId: "sq-fr", value: "Question?", order: 1 },
-          ],
-        }),
-      },
-    })
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo(),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            studyQuestions: [
+              { documentId: "sq-fr", value: "Question?", order: 1 },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub(),
+        },
+      })
 
     const { resolveWatchVideoBySlug } = await import("./content")
 
     const result = await resolveWatchVideoBySlug("jesus", "fr")
 
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(result?.video.title).toBe("Jesus")
   })
 
   it("queries admin content with BCP-47 when the watch URL uses an audio slug", async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        videoBySlug: makeAdminVideo({
-          locales: [
-            {
-              documentId: "loc-ru",
-              title: "Jesus RU",
-              description: "Russian description",
-              snippet: "Russian snippet",
-              imageAlt: "Russian still",
-            },
-          ],
-          studyQuestions: [
-            { documentId: "sq-ru", value: "Russian question?", order: 1 },
-          ],
-          variants: [
-            {
-              documentId: "variant-ru",
-              slug: "russian",
-              hls: "https://cdn.example/jesus-ru.m3u8",
-              published: true,
-              duration: 7674,
-              language: {
-                coreId: "3934",
-                bcp47: "ru",
-                slug: "russian",
-                name: "Russian",
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            variants: [makeRussianVariant()],
+            locales: [
+              {
+                documentId: "loc-ru",
+                title: "Jesus RU",
+                description: "Russian description",
+                snippet: "Russian snippet",
+                imageAlt: "Russian still",
               },
-              downloads: [],
-              muxVideo: { playbackId: "pb-ru" },
+            ],
+            studyQuestions: [
+              { documentId: "sq-ru", value: "Russian question?", order: 1 },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub({
+            language: {
+              coreId: "3934",
+              bcp47: "ru",
+              iso3: "rus",
+              slug: "russian",
+              name: "Russian",
             },
-          ],
-        }),
-      },
-    })
+            downloads: [
+              {
+                documentId: "download-ru-low",
+                height: 360,
+                quality: "low",
+                size: "1048576",
+              },
+            ],
+          }),
+        },
+      })
 
     const { resolveWatchVideoBySlug } = await import("./content")
 
     const result = await resolveWatchVideoBySlug("jesus", "russian")
 
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
     const primaryCall = queryMock.mock.calls[0][0] as {
       variables: {
         locale: string
@@ -478,6 +626,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     })
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.selectedVariant.language?.slug).toBe("russian")
+    expect(result?.selectedVariant.language?.iso3).toBe("rus")
+    expect(result?.selectedVariant.downloads).toEqual([
+      {
+        documentId: "download-ru-low",
+        height: 360,
+        quality: "low",
+        size: "1048576",
+      },
+    ])
   })
 
   it("uses broad BCP-47 content before English when exact languageSlug content is missing", async () => {
@@ -485,32 +642,10 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       .mockResolvedValueOnce({
         data: {
           videoBySlug: makeAdminVideo({
+            variants: [makeRussianVariant()],
             locales: [],
-            studyQuestions: [],
-            variants: [
-              {
-                documentId: "variant-ru",
-                slug: "russian",
-                hls: "https://cdn.example/jesus-ru.m3u8",
-                published: true,
-                duration: 7674,
-                language: {
-                  coreId: "3934",
-                  bcp47: "ru",
-                  slug: "russian",
-                  name: "Russian",
-                },
-                downloads: [],
-                muxVideo: { playbackId: "pb-ru" },
-              },
-            ],
-          }),
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videoBySlug: makeAdminVideo({
-            locales: [
+            exactLocales: [],
+            broadLocales: [
               {
                 documentId: "loc-ru-broad",
                 languageSlug: "russian-broad",
@@ -520,10 +655,17 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 imageAlt: "Russian broad still",
               },
             ],
-            studyQuestions: [
+            studyQuestions: [],
+            exactStudyQuestions: [],
+            broadStudyQuestions: [
               { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
             ],
           }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub(),
         },
       })
 
@@ -533,7 +675,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
-      { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU broad")
     expect(result?.video.studyQuestions).toEqual([
@@ -542,26 +684,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
   })
 
   it("uses broad BCP-47 content when exact child titles are missing", async () => {
-    const russianVariant = {
-      documentId: "variant-ru",
-      slug: "russian",
-      hls: "https://cdn.example/jesus-ru.m3u8",
-      published: true,
-      duration: 7674,
-      language: {
-        coreId: "3934",
-        bcp47: "ru",
-        slug: "russian",
-        name: "Russian",
-      },
-      downloads: [],
-      muxVideo: { playbackId: "pb-ru" },
-    }
-
     queryMock
       .mockResolvedValueOnce({
         data: {
           videoBySlug: makeAdminVideo({
+            label: "featureFilm",
             locales: [
               {
                 documentId: "loc-ru",
@@ -580,38 +707,26 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                   documentId: "child-1",
                   slug: "the-beginning",
                   label: "SEGMENT",
-                  locales: [],
                   images: [],
                   durationSeconds: 120,
-                },
-              },
-            ],
-            variants: [russianVariant],
-          }),
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videoBySlug: makeAdminVideo({
-            children: [
-              {
-                child: {
-                  documentId: "child-1",
-                  slug: "the-beginning",
-                  label: "SEGMENT",
-                  locales: [
+                  muxPlaybackId: "mux-child-1",
+                  exactLocales: [],
+                  broadLocales: [
                     {
                       documentId: "child-loc-ru",
                       title: "The Beginning RU",
                     },
                   ],
-                  images: [],
-                  durationSeconds: 120,
                 },
               },
             ],
-            variants: [russianVariant],
+            variants: [makeRussianVariant()],
           }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub(),
         },
       })
 
@@ -621,10 +736,11 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
-      { locale: "ru", languageSlug: null, videoSlug: "jesus" },
+      { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.video.children[0]?.title).toBe("The Beginning RU")
+    expect(result?.video.children[0]?.muxPlaybackId).toBe("mux-child-1")
   })
 
   it("falls back to English questions without losing localized title or dub selection", async () => {
@@ -632,6 +748,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       .mockResolvedValueOnce({
         data: {
           videoBySlug: makeAdminVideo({
+            variants: [makeRussianVariant()],
             locales: [
               {
                 documentId: "loc-ru",
@@ -641,31 +758,18 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 imageAlt: "Russian still",
               },
             ],
-            studyQuestions: [],
-            variants: [
+            exactLocales: [
               {
-                documentId: "variant-ru",
-                slug: "russian",
-                hls: "https://cdn.example/jesus-ru.m3u8",
-                published: true,
-                duration: 7674,
-                language: {
-                  coreId: "3934",
-                  bcp47: "ru",
-                  slug: "russian",
-                  name: "Russian",
-                },
-                downloads: [],
-                muxVideo: { playbackId: "pb-ru" },
+                documentId: "loc-ru",
+                title: "Jesus RU",
+                description: "Russian description",
+                snippet: "Russian snippet",
+                imageAlt: "Russian still",
               },
             ],
-          }),
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videoBySlug: makeAdminVideo({
-            locales: [
+            studyQuestions: [],
+            exactStudyQuestions: [],
+            broadLocales: [
               {
                 documentId: "loc-ru-broad",
                 title: "Jesus RU broad",
@@ -674,14 +778,8 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 imageAlt: "Russian broad still",
               },
             ],
-            studyQuestions: [],
-          }),
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          videoBySlug: makeAdminVideo({
-            locales: [
+            broadStudyQuestions: [],
+            englishLocales: [
               {
                 documentId: "loc-en",
                 title: "Jesus",
@@ -690,10 +788,15 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
                 imageAlt: "English still",
               },
             ],
-            studyQuestions: [
+            englishStudyQuestions: [
               { documentId: "sq-en", value: "English question?", order: 1 },
             ],
           }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeRussianDub(),
         },
       })
 
@@ -703,8 +806,7 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
 
     expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
       { locale: "ru", languageSlug: "russian", videoSlug: "jesus" },
-      { locale: "ru", languageSlug: null, videoSlug: "jesus" },
-      { locale: "en", languageSlug: null, videoSlug: "jesus" },
+      { id: "variant-ru" },
     ])
     expect(result?.video.title).toBe("Jesus RU")
     expect(result?.video.studyQuestions).toEqual([
@@ -714,16 +816,26 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
   })
 
   it("does not re-fetch when the request is already for locale='en'", async () => {
-    queryMock.mockResolvedValueOnce({
-      data: {
-        videoBySlug: makeAdminVideo({ locales: [] }),
-      },
-    })
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({ locales: [] }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub(),
+        },
+      })
 
     const { resolveWatchVideoBySlug } = await import("./content")
 
     await resolveWatchVideoBySlug("jesus", "en")
 
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(queryMock.mock.calls.map((call) => call[0].variables)).toEqual([
+      { locale: "en", languageSlug: null, videoSlug: "jesus" },
+      { id: "variant-1" },
+    ])
   })
 })

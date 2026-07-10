@@ -117,4 +117,20 @@ describe("instagram discovery artifact store", () => {
     expect(error).toBeInstanceOf(InstagramDiscoveryArtifactError)
     expect(error.code).toBe("invalid_artifact")
   })
+
+  it("persists every possible per-source failure for a full run", async () => {
+    const store = createInstagramDiscoveryArtifactStore(rootDir)
+    const report = sampleReport({
+      queryFailures: Array.from({ length: 70 }, (_, index) => ({
+        query: `source-${index}`,
+        code: "upstream_failed" as const,
+        message: "timed out",
+      })),
+      posts: [],
+    })
+
+    await expect(store.writeReport(report)).resolves.toEqual({
+      path: expect.stringContaining("run-123.json"),
+    })
+  })
 })

@@ -1,222 +1,239 @@
 {
   "ExperienceError": {
-    "empty": "No experience content available.",
-    "failedToLoad": "Failed to load experience: {message}",
-    "unexpected": "An unexpected error occurred.",
-    "notConfigured": "Content service is not configured.",
-    "noContent": "No content is available.",
-    "homepageMisconfigured": "The watch homepage is misconfigured.",
-    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
-    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+    "empty": "Nu este disponibil niciun conținut pentru experiență.",
+    "failedToLoad": "Experiența nu a putut fi încărcată: {message}",
+    "unexpected": "A apărut o eroare neașteptată.",
+    "notConfigured": "Serviciul de conținut nu este configurat.",
+    "noContent": "Nu este disponibil niciun conținut.",
+    "homepageMisconfigured": "Pagina principală Watch este configurată greșit.",
+    "defaultTemplateMisconfigured": "Șablonul implicit Watch este configurat greșit.",
+    "authFailed": "Autentificarea la serviciul de conținut nu a reușit. Te rugăm să contactezi asistența dacă problema persistă."
   },
   "VideosPage": {
-    "title": "All Videos",
-    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+    "title": "Toate videoclipurile",
+    "placeholder": "Răsfoirea catalogului va fi disponibilă în curând. Între timp, folosește căutarea sau un URL pentru un subiect anume."
   },
   "BibleQuotes": {
-    "title": "Bible Quotes",
-    "share": "Share",
-    "readMore": "Read more...",
-    "learnMore": "Learn more",
-    "freeResources": "Free Resources",
-    "promoHeading": "Want to understand the Bible more deeply?",
-    "joinBibleStudy": "Join our Bible study",
-    "previousQuote": "Previous Bible quote",
-    "nextQuote": "Next Bible quote"
+    "title": "Citate biblice",
+    "share": "Distribuie",
+    "readMore": "Citește mai mult...",
+    "learnMore": "Află mai mult",
+    "freeResources": "Resurse gratuite",
+    "promoHeading": "Vrei să înțelegi Biblia mai profund?",
+    "joinBibleStudy": "Alătură-te studiului nostru biblic",
+    "previousQuote": "Citat biblic anterior",
+    "nextQuote": "Citat biblic următor"
   },
   "DownloadButton": {
-    "checking": "Checking",
-    "download": "Download",
-    "sessionError": "Unable to check your session. Please try again.",
-    "saveVideo": "Save Video"
+    "checking": "Se verifică",
+    "download": "Descarcă",
+    "sessionError": "Sesiunea nu poate fi verificată. Te rugăm să încerci din nou.",
+    "saveVideo": "Salvează videoclipul"
   },
   "DownloadModal": {
-    "dialogTitle": "Download video",
-    "eyebrow": "Download Video",
-    "posterAlt": "Video poster",
-    "noDownloads": "No downloads are available for this video.",
-    "fileSizeLabel": "Select a file size",
-    "termsAgreementPrefix": "I agree to the ",
-    "termsOfUse": "Terms of Use",
+    "dialogTitle": "Descarcă videoclipul",
+    "eyebrow": "Descarcă videoclipul",
+    "posterAlt": "Poster video",
+    "noDownloads": "Nu există descărcări disponibile pentru acest videoclip.",
+    "fileSizeLabel": "Selectează dimensiunea fișierului",
+    "termsAgreementPrefix": "Sunt de acord cu ",
+    "termsOfUse": "Termenii de utilizare",
     "termsAgreementSuffix": "",
-    "close": "Close",
-    "download": "Download",
-    "checking": "Checking",
-    "closeTermsOfUse": "Close Terms of Use",
-    "cancel": "Cancel",
-    "accept": "Accept",
-    "errorSessionExpired": "Your session expired. Sign in again to download.",
-    "errorSessionUnavailable": "Unable to check your session. Please try again.",
-    "errorUnavailableSource": "Download unavailable from this source",
-    "tierHighest": "Highest",
-    "tierHigh": "High",
-    "tierLow": "Low"
+    "close": "Închide",
+    "download": "Descarcă",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
+    "checking": "Se verifică",
+    "closeTermsOfUse": "Închide Termenii de utilizare",
+    "cancel": "Anulează",
+    "accept": "Acceptă",
+    "errorSessionExpired": "Sesiunea ta a expirat. Autentifică-te din nou pentru a descărca.",
+    "errorSessionUnavailable": "Sesiunea nu poate fi verificată. Te rugăm să încerci din nou.",
+    "errorUnavailableSource": "Descărcarea nu este disponibilă din această sursă",
+    "tierHighest": "Cea mai mare",
+    "tierHigh": "Mare",
+    "tierLow": "Mică"
   },
   "HeroPlayerControls": {
-    "play": "Play",
-    "pause": "Pause",
-    "seek": "Seek",
-    "seekValue": "{current} of {total}",
-    "volume": "Volume",
-    "volumeValue": "{percent} percent",
-    "mute": "Mute",
-    "unmute": "Unmute",
-    "changeAudioLanguage": "Change audio language",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "play": "Redă",
+    "pause": "Pauză",
+    "seek": "Derulează",
+    "seekValue": "{current} din {total}",
+    "volume": "Volum",
+    "volumeValue": "{percent} la sută",
+    "mute": "Dezactivează sunetul",
+    "unmute": "Activează sunetul",
+    "changeAudioLanguage": "Schimbă limba audio",
+    "enterFullscreen": "Intră în ecran complet",
+    "exitFullscreen": "Ieși din ecran complet"
   },
   "LanguageCombobox": {
-    "selectLanguage": "Select language",
-    "searchPlaceholder": "Search languages…",
-    "languages": "Languages",
-    "noMatches": "No matches"
+    "selectLanguage": "Selectează limba",
+    "searchPlaceholder": "Caută limbi…",
+    "languages": "Limbi",
+    "noMatches": "Nicio potrivire"
   },
   "LanguagePickerModal": {
-    "dialogTitle": "Language",
-    "dialogTitleWithSubtitles": "Language & Subtitles",
-    "languageHeading": "Language",
-    "subtitlesHeading": "Subtitles",
-    "languageCount": "{count, plural, one {# language} other {# languages}}",
-    "requestSent": "Request sent",
-    "translateWithAi": "Translate with AI",
-    "noSubtitles": "No subtitles",
-    "toggleOn": "On",
-    "toggleOff": "Off",
-    "close": "Close",
-    "apply": "Apply"
+    "dialogTitle": "Limbă",
+    "dialogTitleWithSubtitles": "Limbă și subtitrări",
+    "languageHeading": "Limbă",
+    "subtitlesHeading": "Subtitrări",
+    "languageCount": "{count, plural, one {# limbă} other {# limbi}}",
+    "requestSent": "Cerere trimisă",
+    "translateWithAi": "Tradu cu AI",
+    "noSubtitles": "Fără subtitrări",
+    "toggleOn": "Activat",
+    "toggleOff": "Dezactivat",
+    "close": "Închide",
+    "apply": "Aplică",
+    "noLanguageSubtitles": "Fără subtitrări în {language}"
   },
   "SeriesPage": {
-    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
-    "seriesLabel": "SERIES · {episodes}",
-    "changeAudioLanguage": "Change audio language",
-    "share": "Share",
-    "languages": "Languages"
+    "episodeCount": "{count, plural, one {1 EPISOD} other {# EPISOADE}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Schimbă limba audio",
+    "share": "Distribuie",
+    "languages": "Limbi"
   },
   "WatchModal": {
-    "close": "Close"
+    "close": "Închide"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "If you could ask the creator of this video a question, what would it be?",
-    "fallbackBody": "Have a private discussion with someone who is ready to listen.",
-    "questionsShort": "Questions",
-    "questions": "Related Questions",
-    "askYours": "Ask your question",
-    "chatWithPerson": "Chat with a person",
-    "askBibleQuestion": "Ask a Bible question"
+    "placeholderQuestion": "Dacă ai putea să-i pui o întrebare creatorului acestui videoclip, care ar fi aceea?",
+    "fallbackBody": "Poartă o discuție privată cu cineva pregătit să te asculte.",
+    "questionsShort": "Întrebări",
+    "questions": "Întrebări conexe",
+    "askYours": "Pune întrebarea ta",
+    "chatWithPerson": "Vorbește cu o persoană",
+    "askBibleQuestion": "Pune o întrebare despre Biblie"
   },
   "WatchQuestionPanel": {
-    "messageType": "Message type",
-    "fieldLabel": "Ask a question about this video",
-    "send": "Send question",
+    "messageType": "Tip mesaj",
+    "fieldLabel": "Pune o întrebare despre acest videoclip",
+    "send": "Trimite întrebarea",
     "prompts": {
       "bibleQuestion": {
-        "label": "Ask a Bible question",
-        "description": "Instant answers from the Bible using AI search"
+        "label": "Pune o întrebare despre Biblie",
+        "description": "Răspunsuri instantanee din Biblie folosind căutarea AI"
       },
       "prayerRequest": {
-        "label": "Request a prayer",
-        "description": "Share what you want prayer for"
+        "label": "Cere rugăciune",
+        "description": "Spune pentru ce vrei să ne rugăm"
       },
       "comment": {
-        "label": "Leave a comment",
-        "description": "Send thoughts about this video"
+        "label": "Lasă un comentariu",
+        "description": "Trimite gânduri despre acest videoclip"
       },
       "personChat": {
-        "label": "Chat with a person",
-        "description": "Talk with someone now"
+        "label": "Vorbește cu o persoană",
+        "description": "Vorbește acum cu cineva"
       }
     }
   },
   "ShareModal": {
-    "dialogTitle": "Share video",
-    "heading": "Share this video",
-    "posterAlt": "Video poster",
-    "shareOnFacebook": "Share on Facebook",
-    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
-    "shareOnX": "Share on X",
-    "shareOnXUnavailable": "Share on X (unavailable on this build)",
-    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
-    "shareFormat": "Share format",
-    "shareLinkTab": "Share Link",
-    "embedCodeTab": "Embed Code",
-    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
-    "copyLink": "Copy Link",
-    "copyCode": "Copy Code",
-    "copied": "Copied",
-    "close": "Close"
+    "dialogTitle": "Distribuie videoclipul",
+    "heading": "Distribuie acest videoclip",
+    "posterAlt": "Poster video",
+    "shareOnFacebook": "Distribuie pe Facebook",
+    "shareOnFacebookUnavailable": "Distribuie pe Facebook (indisponibil în această versiune)",
+    "shareOnX": "Distribuie pe X",
+    "shareOnXUnavailable": "Distribuie pe X (indisponibil în această versiune)",
+    "shareDisabledHint": "Distribuirea necesită o pagină publicată — va funcționa după ce acest videoclip ajunge în producție.",
+    "shareFormat": "Format de distribuire",
+    "shareLinkTab": "Link de distribuire",
+    "embedCodeTab": "Cod de încorporare",
+    "copyFailed": "Copierea automată nu a reușit — selectează textul de mai jos și copiază-l manual.",
+    "copyLink": "Copiază linkul",
+    "copyCode": "Copiază codul",
+    "copied": "Copiat",
+    "close": "Închide"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
-    "subheading": "Tap any line to jump to that moment.",
-    "subtitleLanguage": "Subtitle language",
+    "heading": "Transcriere",
+    "subheading": "Atinge orice rând pentru a sări la acel moment.",
+    "subtitleLanguage": "Limba subtitrării",
     "aiSuffix": " · AI",
-    "loading": "Loading transcript…",
-    "unavailable": "Transcript unavailable for this subtitle track.",
-    "empty": "No transcript lines found."
+    "loading": "Se încarcă transcrierea…",
+    "unavailable": "Transcrierea nu este disponibilă pentru această pistă de subtitrare.",
+    "empty": "Nu s-au găsit rânduri în transcriere."
   },
   "FloatingSearch": {
-    "placeholder": "Search or browse topics…",
-    "openSearch": "Search videos",
-    "searchRegion": "Search videos",
-    "clearSearch": "Clear search",
-    "changeAudioLanguage": "Change audio language",
-    "home": "JesusFilm home"
+    "placeholder": "Caută sau răsfoiește subiecte…",
+    "openSearch": "Caută videoclipuri",
+    "searchRegion": "Caută videoclipuri",
+    "clearSearch": "Șterge căutarea",
+    "changeAudioLanguage": "Schimbă limba audio",
+    "home": "Pagina principală JesusFilm"
   },
   "SearchOverlay": {
-    "dialogLabel": "Search and browse videos",
-    "home": "JesusFilm home",
-    "placeholder": "Search or browse topics…",
-    "inputLabel": "Search videos by keyword",
-    "searchFailed": "Search failed. Please try again.",
-    "loadMoreFailed": "Failed to load more results.",
-    "searching": "Searching...",
-    "connectionHint": "Please check your connection and try again.",
-    "retrySearch": "Retry search",
-    "retry": "Retry",
-    "noResults": "No results for \"{query}\"",
-    "tryDifferentKeywords": "Try different keywords or browse categories",
-    "loading": "Loading...",
-    "loadMore": "Load more",
-    "categoryBibleStories": "Bible Stories",
-    "categoryParables": "Parables",
-    "categoryAnimated": "Animated",
-    "categoryStudy": "Study",
-    "categoryFamily": "Family",
-    "categoryChristmas": "Christmas"
+    "dialogLabel": "Caută și răsfoiește videoclipuri",
+    "home": "Pagina principală JesusFilm",
+    "placeholder": "Caută sau răsfoiește subiecte…",
+    "inputLabel": "Caută videoclipuri după cuvânt-cheie",
+    "searchFailed": "Căutarea a eșuat. Te rugăm să încerci din nou.",
+    "loadMoreFailed": "Nu s-au putut încărca mai multe rezultate.",
+    "searching": "Se caută...",
+    "connectionHint": "Verifică conexiunea și încearcă din nou.",
+    "retrySearch": "Reîncearcă căutarea",
+    "retry": "Reîncearcă",
+    "noResults": "Niciun rezultat pentru „{query}”",
+    "tryDifferentKeywords": "Încearcă alte cuvinte-cheie sau răsfoiește categoriile",
+    "loading": "Se încarcă...",
+    "loadMore": "Încarcă mai multe",
+    "categoryBibleStories": "Istorisiri biblice",
+    "categoryParables": "Pilde",
+    "categoryAnimated": "Animație",
+    "categoryStudy": "Studiu",
+    "categoryFamily": "Familie",
+    "categoryChristmas": "Crăciun",
+    "searchLanguageLabel": "Limba căutării",
+    "allLanguages": "Toate limbile",
+    "searchSuggestions": "Sugestii de căutare",
+    "languages": "Limbi",
+    "recommendedLanguage": "Limbă recomandată",
+    "searchSuggestion": "Caută {suggestion}",
+    "searchSuggestionWithLanguage": "Caută {suggestion} în {language}",
+    "inLanguage": "în {language}",
+    "browseByRegion": "Răsfoiește după regiune",
+    "clearLanguages": "Șterge",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Play with Sound",
-    "tapToUnmute": "Tap to Unmute"
+    "playWithSound": "Urmărește acum",
+    "tapToUnmute": "Atinge pentru sunet"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Loading content"
+    "loadingContent": "Se încarcă conținutul"
   },
   "VideoLabels": {
     "video": "Video",
     "segment": "Segment",
-    "episode": "Episode",
-    "featureFilm": "Feature Film",
-    "shortFilm": "Short Film",
-    "series": "Series",
-    "collection": "Collection",
+    "episode": "Episod",
+    "featureFilm": "Film artistic",
+    "shortFilm": "Scurtmetraj",
+    "series": "Serie",
+    "collection": "Colecție",
     "trailer": "Trailer",
-    "behindTheScenes": "Behind the Scenes"
+    "behindTheScenes": "Din culise"
   },
   "SiblingCarousel": {
-    "clipPosition": "Clip {current} of {total}",
-    "position": "{current} of {total}",
-    "chapterCount": "{count, plural, one {# chapter} other {# chapters}}",
-    "clipAriaLabel": "{title} · Clip {current} of {total}",
-    "chaptersAriaLabel": "{title} · {count, plural, one {# chapter} other {# chapters}}",
-    "chapter": "Chapter",
-    "noImage": "No image",
-    "playingNow": "Playing now",
-    "previousChapter": "Previous chapter",
-    "nextChapter": "Next chapter"
+    "clipPosition": "Clipul {current} din {total}",
+    "position": "{current} din {total}",
+    "chapterCount": "{count, plural, one {# capitol} other {# capitole}}",
+    "clipAriaLabel": "{title} · Clipul {current} din {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# capitol} other {# capitole}}",
+    "chapter": "Capitol",
+    "noImage": "Fără imagine",
+    "playingNow": "Se redă acum",
+    "previousChapter": "Capitolul anterior",
+    "nextChapter": "Capitolul următor"
   },
   "SearchResultCard": {
-    "experience": "Experience",
-    "episodeCount": "{count, plural, one {# episode} other {# episodes}}",
-    "thumbnailAlt": "Video thumbnail"
+    "experience": "Experiență",
+    "episodeCount": "{count, plural, one {# episod} other {# episoade}}",
+    "thumbnailAlt": "Miniatură video"
   }
 }

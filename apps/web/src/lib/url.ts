@@ -64,8 +64,29 @@ export function resolvePosterUrl(
     image?.thumbnail ??
     null
   if (editorial) return editorial
-  if (muxPlaybackId) {
-    return `https://image.mux.com/${muxPlaybackId}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop`
-  }
-  return null
+  return resolveMuxFrameThumbnailUrl(muxPlaybackId)
+}
+
+export function resolveMuxFrameThumbnailUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2`
+}
+
+export function resolveMuxAnimatedPreviewUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/animated.webp?start=2&end=6&width=448&fps=8`
+}
+
+export function resolveMuxHeroPosterUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.webp?time=2`
 }

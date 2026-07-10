@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:first-party-apps": "tsx src/scripts/seed-first-party-apps.ts"
+    "seed:first-party-apps": "tsx src/scripts/seed-first-party-apps.ts",
+    "mint:agent-handle": "tsx src/scripts/mint-agent-login-handle.ts"
   },
   "dependencies": {
     "@better-auth/oauth-provider": "1.6.2",

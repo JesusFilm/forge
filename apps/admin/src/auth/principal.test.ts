@@ -3,6 +3,7 @@ import {
   CONSUMER_BEARER_PRINCIPAL,
   isEditorOrAdmin,
   SYSTEM_PRINCIPAL,
+  VIDEO_MAPPER_PRINCIPAL,
   WORKFLOW_TRIGGER_PRINCIPAL,
   type Principal,
 } from "./principal"
@@ -24,6 +25,11 @@ describe("isEditorOrAdmin", () => {
     [
       "WORKFLOW_TRIGGER (bearer-key service account)",
       WORKFLOW_TRIGGER_PRINCIPAL,
+      false,
+    ],
+    [
+      "VIDEO_MAPPER (catalog-sync service account)",
+      VIDEO_MAPPER_PRINCIPAL,
       false,
     ],
     [

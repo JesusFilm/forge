@@ -226,6 +226,25 @@ describe("Rule 4: per-segment .html append → 307", () => {
     })
   })
 
+  it("keeps localized /videos indexes .html-free on the final segment", () => {
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american/videos" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american.html/videos.html" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+  })
+
   it("appends .html on 3-segment missing first + last (episode stays bare)", () => {
     expect(canonical({ rawPathname: "/jesus/the-beginning/english" })).toEqual({
       kind: "redirect",
@@ -418,6 +437,7 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/russian.html",
     "/portuguese-brazil.html",
     "/videos",
+    "/spanish-latin-american.html/videos",
   ]
 
   for (const url of canonicalUrls) {

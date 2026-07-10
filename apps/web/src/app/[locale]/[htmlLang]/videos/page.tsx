@@ -1,10 +1,17 @@
 import type { Metadata } from "next"
-import { getTranslations, setRequestLocale } from "next-intl/server"
+import { setRequestLocale } from "next-intl/server"
 
+import { LanguageInventoryPage } from "@/components/watch-language-inventory/LanguageInventoryPage"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
+import {
+  resolveWatchLanguageInventory,
+  watchLanguageInventorySeoDescription,
+  watchLanguageInventorySeoTitle,
+} from "@/lib/watch-language-inventory"
+import { resolveLanguageHomeSections } from "@/lib/watch-language-home-sections"
 
-export const revalidate = 60
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 
@@ -15,32 +22,54 @@ export function generateStaticParams(): Array<{
   return []
 }
 
-export const metadata: Metadata = {
-  title: "All Videos",
-  description: "Browse the full catalog of JesusFilm videos.",
-  alternates: {
-    canonical: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/videos`,
-  },
-}
-
 type PageProps = {
   params: Promise<{ locale: string; htmlLang: string }>
 }
 
-// Phase 2f MVP: route resolves 200 with a placeholder. Full paginated
-// listing (search-backed) lands in a follow-up — the contract this PR
-// satisfies is just that /videos is a recognized route, NOT subject to
-// the canonicalizer's single-segment-duplicate rule (excluded via
-// ONE_SEGMENT_EXEMPT in apps/web/src/lib/url-canonicalize.ts).
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { locale: rawLocale } = await params
+  const { locale } = resolveWatchLocaleIdentity(rawLocale)
+  const inventory = await resolveWatchLanguageInventory(locale, rawLocale)
+  const title = watchLanguageInventorySeoTitle(inventory.languageName)
+  const description = watchLanguageInventorySeoDescription(
+    inventory.languageName,
+  )
+  const canonical = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/videos`
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Jesus Film Project",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  }
+}
+
 export default async function VideosPage({ params }: PageProps) {
   const { locale: rawLocale } = await params
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
-  const t = await getTranslations("VideosPage")
+  const inventory = await resolveWatchLanguageInventory(locale, rawLocale)
+  const homeSections = await resolveLanguageHomeSections(
+    locale,
+    inventory.languageSlug,
+  )
+
   return (
-    <main className="min-h-screen bg-stone-900 px-6 py-24 text-stone-100">
-      <h1 className="text-3xl font-semibold">{t("title")}</h1>
-      <p className="mt-4 max-w-prose text-stone-300">{t("placeholder")}</p>
-    </main>
+    <LanguageInventoryPage inventory={inventory} homeSections={homeSections} />
   )
 }

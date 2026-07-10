@@ -1,7 +1,7 @@
 export const PRODUCTION_WATCH_CALLBACK_ORIGINS = [
   "https://jesusfilm.org",
   "https://www.jesusfilm.org",
-  "https://web.jesusfilm.org",
+  "https://watch.jesusfilm.org",
 ] as const
 
 export const LOCAL_WATCH_CALLBACK_ORIGINS = [

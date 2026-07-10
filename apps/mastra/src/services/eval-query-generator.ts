@@ -197,7 +197,7 @@ export function createEvalQueryGenerator(
   if (!apiKey) {
     throw new EvalQueryGeneratorError(
       "missing_credentials",
-      "OPENROUTER_API_KEY is required for locale-quality eval query generation",
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for locale-quality eval query generation",
     )
   }
   const model = options.model ?? "anthropic/claude-haiku-4-5"

@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Fechar",
     "download": "Baixar",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Verificando",
     "closeTermsOfUse": "Fechar Termos de uso",
     "cancel": "Cancelar",
@@ -83,7 +86,8 @@
     "toggleOn": "Sim",
     "toggleOff": "Não",
     "close": "Fechar",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "noLanguageSubtitles": "Sem legendas em {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISÓDIO} other {# EPISÓDIOS}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Tenha uma conversa privada com alguém disposto a ouvir.",
     "questionsShort": "Perguntas",
     "questions": "Perguntas relacionadas",
-    "askYours": "Faça sua pergunta",
+    "askYours": "Sua pergunta",
     "chatWithPerson": "Fale com alguém",
     "askBibleQuestion": "Fazer uma pergunta bíblica"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animações",
     "categoryStudy": "Estudo",
     "categoryFamily": "Família",
-    "categoryChristmas": "Natal"
+    "categoryChristmas": "Natal",
+    "searchLanguageLabel": "Idioma da busca",
+    "allLanguages": "Todos os idiomas",
+    "searchSuggestions": "Sugestões de busca",
+    "languages": "Idiomas",
+    "recommendedLanguage": "Idioma recomendado",
+    "searchSuggestion": "Buscar {suggestion}",
+    "searchSuggestionWithLanguage": "Buscar {suggestion} em {language}",
+    "inLanguage": "em {language}",
+    "browseByRegion": "Explorar por região",
+    "clearLanguages": "Limpar",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Reproduzir com som",
+    "playWithSound": "Assistir agora",
     "tapToUnmute": "Ativar som"
   },
   "ExperienceSkeleton": {

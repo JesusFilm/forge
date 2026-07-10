@@ -1,11 +1,7 @@
 /**
- * Pure seek/scrubber math for the video controls. No react-native imports, so
- * it is unit-testable without the RN runtime (the Scrubber component's gesture
- * handling is verified in-simulator).
- *
- * Every helper guards on a usable duration: on HLS via expo-video,
- * `player.duration` is 0 / NaN until `sourceLoad`, so an unguarded seek would
- * snap to 0 and progress math would render NaN.
+ * Pure seek/scrubber math, no react-native imports so it's unit-testable. Every
+ * helper guards on usable duration: expo-video HLS reports 0/NaN until
+ * `sourceLoad`, so an unguarded seek would snap to 0 and progress render NaN.
  */
 
 export function clamp(value: number, min: number, max: number): number {
@@ -20,7 +16,7 @@ export function hasUsableDuration(duration: number): boolean {
 
 /**
  * Seek target for a ±N second skip, clamped to [0, duration].
- * Returns null when duration is unknown (the caller should no-op the seek).
+ * Null when duration is unknown (caller should no-op the seek).
  */
 export function applySkip(
   currentTime: number,

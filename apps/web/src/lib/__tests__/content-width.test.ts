@@ -5,9 +5,19 @@ import {
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
   CONTENT_WIDTH_CLASSES,
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_PINNED_TOP_CLASS,
+  FLOATING_HEADER_TOP_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
   WATCH_PAGE_CONTENT_CLASSES,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 
 // Lockstep invariant: at every breakpoint, the negative bleed margin, the
@@ -97,7 +107,7 @@ describe("content-width.ts — bleed/padding lockstep", () => {
 
 describe("content-width.ts — watch page rail lockstep", () => {
   const rails = [
-    { padding: "px-10", left: "left-10" },
+    { padding: "px-5", left: "left-5" },
     { padding: "md:px-16", left: "md:left-16" },
     { padding: "xl:px-24", left: "xl:left-24" },
   ]
@@ -109,4 +119,28 @@ describe("content-width.ts — watch page rail lockstep", () => {
       expect(WATCH_PAGE_LEFT_RAIL_CLASSES).toContain(rail.left)
     })
   }
+
+  it("clamps fixed edge header chrome to the 1920px watch frame on wide screens", () => {
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+  })
+
+  it("keeps floating search header geometry available as one shared contract", () => {
+    expect(FLOATING_HEADER_TOP_CLASS).toContain(
+      "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
+    )
+    expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
+      "md:top-[calc(env(safe-area-inset-top,0px)+1rem)]",
+    )
+    expect(FLOATING_HEADER_HEIGHT_CLASS).toBe("h-[52px]")
+    expect(FLOATING_HEADER_GAP_CLASS).toContain("md:gap-5")
+    expect(FLOATING_HEADER_LOGO_SLOT_CLASS).toContain("md:w-12")
+    expect(FLOATING_HEADER_TRAILING_GROUP_CLASS).toContain("md:gap-2")
+    expect(FLOATING_HEADER_LANGUAGE_SLOT_CLASS).toContain("md:w-12")
+    expect(FLOATING_HEADER_TRAILING_SLOT_CLASS).toContain("md:w-12")
+  })
 })

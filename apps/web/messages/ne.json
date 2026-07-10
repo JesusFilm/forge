@@ -41,6 +41,9 @@
     "termsAgreementSuffix": " स्वीकार गर्छु",
     "close": "बन्द गर्नुहोस्",
     "download": "डाउनलोड गर्नुहोस्",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "जाँच गर्दै",
     "closeTermsOfUse": "प्रयोगका सर्तहरू बन्द गर्नुहोस्",
     "cancel": "रद्द गर्नुहोस्",
@@ -83,7 +86,8 @@
     "toggleOn": "अन",
     "toggleOff": "अफ",
     "close": "बन्द गर्नुहोस्",
-    "apply": "लागू गर्नुहोस्"
+    "apply": "लागू गर्नुहोस्",
+    "noLanguageSubtitles": "{language} उपशीर्षक छैन"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोडहरू}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "सुन्न तयार व्यक्तिसँग निजी कुराकानी सुरु गर्नुहोस्।",
     "questionsShort": "प्रश्नहरू",
     "questions": "सम्बन्धित प्रश्नहरू",
-    "askYours": "आफ्नो प्रश्न सोध्नुहोस्",
+    "askYours": "तपाईंको प्रश्न",
     "chatWithPerson": "कसैसँग कुरा गर्नुहोस्",
     "askBibleQuestion": "बाइबलबारे प्रश्न सोध्नुहोस्"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "एनिमेटेड",
     "categoryStudy": "अध्ययन",
     "categoryFamily": "परिवार",
-    "categoryChristmas": "क्रिसमस"
+    "categoryChristmas": "क्रिसमस",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "आवाजसहित चलाउनुहोस्",
+    "playWithSound": "अहिले हेर्नुहोस्",
     "tapToUnmute": "आवाज खोल्नुहोस्"
   },
   "ExperienceSkeleton": {

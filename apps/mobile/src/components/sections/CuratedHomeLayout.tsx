@@ -27,9 +27,16 @@ type FeedItem = {
   classification: "videoCard" | "standard"
 }
 
+type Props = {
+  // When true, suppresses the absolute HomeHeader (search/profile chrome).
+  // Use on routes that supply their own native navigation header (e.g.
+  // experience/[slug]) to avoid doubled safe-area offsets.
+  hideHeader?: boolean
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function CuratedHomeLayout() {
+export function CuratedHomeLayout({ hideHeader = false }: Props) {
   const { experience } = useExperienceContext()
   const { width: screenWidth } = useWindowDimensions()
   const heroHeight = screenWidth * 1.2
@@ -166,10 +173,12 @@ export function CuratedHomeLayout() {
         </View>
       )}
 
-      <HomeHeader
-        title={experience?.title ?? null}
-        titleOpacity={titleOpacity}
-      />
+      {!hideHeader && (
+        <HomeHeader
+          title={experience?.title ?? null}
+          titleOpacity={titleOpacity}
+        />
+      )}
 
       <FlashList
         data={feedItems}

@@ -1,3 +1,6 @@
+export const TERMS_OF_USE_CANONICAL_URL =
+  "https://www.jesusfilm.org/terms-of-use/"
+
 // Canonical source: https://www.jesusfilm.org/terms-of-use/
 // Last verified against the canonical source: 2026-05-20.
 // Mirrored here so the download modal's nested Terms-of-Use dialog can

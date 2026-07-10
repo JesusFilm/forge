@@ -26,19 +26,19 @@ Origin documents:
   validation, and safe health/smoke surfaces.
 - The transcript embedding workflow owns transcript chunk planning and embedding
   provider calls, then submits vectors to Admin's transcript ingest.
-- The scene embedding workflow owns scene description embedding provider calls,
-  retry/failure visibility, and Studio diagnostics, then submits vectors to
-  Admin's scene-specific ingest. Admin remains the owner of pgvector storage,
-  indexes, target resolution, public search contracts, and search retrieval.
 - The experience embedding workflow follows the same ownership split: Mastra
   generates and validates vectors, Admin stores them and serves retrieval.
+- The scene embedding workflow and Admin scene ingest endpoint are retired.
+  `/forge-scene-embeddings` exists only as a 410 tombstone; do not add a
+  scene vector writer or scene vector provider configuration. Manager
+  scene-analysis artifacts are a separate non-search concern.
 - The eval query generation workflow is offline only. It reads compact Admin
   trace/catalog context over authenticated HTTP, generates catalog-derived,
   locale-quality, and trace-sampled candidates, and stores staged candidates
   back in Admin. It must not enter the live search path or promote candidates
   into permanent regression gates.
-- Transcript, scene, and experience workflows share provider-result validation
-  for count alignment, finite vector values, and configured dimensions. Invalid
+- Transcript and experience workflows share provider-result validation for
+  count alignment, finite vector values, and configured dimensions. Invalid
   provider output must throw inside the workflow so Studio records a failed run.
 - AI Gateway content embeddings request the normal OpenAI-compatible embedding
   response and require the configured native dimensions before Admin ingest.
@@ -46,13 +46,51 @@ Origin documents:
   `dimensions` through LiteLLM and does not apply a client transform. Keep the
   shared 4096-to-1536 truncate/re-normalize helper for future gateway variants
   that truly return 4096.
-- Transcript, scene, and experience workflows share Admin ingest transport
-  behavior but keep separate Admin endpoints, local schemas, and type-specific
-  payload parsing. Do not replace them with a generic embedding blob route.
+- Transcript and experience workflows share Admin ingest transport behavior but
+  keep separate Admin endpoints, local schemas, and type-specific payload
+  parsing. Do not replace them with a generic embedding blob route.
 - Generation mode semantics are shared across embedding workflows: omitted means
   idempotent; explicit `repair`, `force`, and `model-upgrade` request rewrites.
+- Firecrawl web data access is Mastra-owned through bounded search/scrape
+  tools, `webResearchAgent`, the `firecrawl-web-data` workflow, and the
+  `/forge-firecrawl-web-data` service route. Keep direct Firecrawl credentials
+  and API calls out of Admin and Manager.
+- Subtitle enrichment execution is Mastra-owned through the
+  `/forge-subtitle-enrichment` service route. Mastra reads Manager transcript
+  artifacts, translates and retimes subtitles, writes
+  `{assetId}/subtitles-{lang}.vtt` and `{assetId}/translation-{lang}.json` to
+  shared artifact storage, and returns per-language results to Manager.
+- Gospel-aware subtitle translation prompt steering also belongs in this
+  runtime. Manager may send optional title, label, and Bible-reference context,
+  but Mastra owns scripture-context detection, prompt guidance for Christian
+  gospel/Bible-story content, and sanitized subtitle artifact provenance.
+- Subtitle scripture accuracy validation is Mastra-owned too. For translated
+  Bible-story subtitles it should run from model knowledge by default, upgrade
+  to a configured target-language Bible text source when available, and fall
+  back to `basis=model_knowledge` when that source is missing or fails. Store
+  only sanitized validation findings and provenance, never full external Bible
+  passage text.
+- Source transcript scripture correction judgment is Mastra-owned through
+  `/forge-transcript-scripture-correction`. It detects likely Bible-story
+  source transcripts, returns bounded correction candidates and flag-only
+  findings, and degrades provider/config failures to an unavailable correction
+  result. Manager owns deterministic exact-match application, raw artifact
+  preservation, canonical source artifact writes, and operator display.
 - Do not import from `apps/admin`, `apps/manager`, or `apps/auth`; workflow
-  contracts are HTTP payloads plus local Zod schemas.
+  contracts are HTTP payloads plus local Zod schemas. **Exception (consolidation
+  U1):** the LLM experience-draft _generation contract_ is single-sourced from
+  the shared `@forge/experience-schema` package (pure zod — `DraftExperienceSchema`,
+  `SkeletonSchema`, fill schemas, `coerce-draft`, `extract-json-object`), consumed
+  by BOTH the draft/chat generator here and admin's re-validator so the two sides
+  cannot drift. This is a _shared generation contract_, not a per-service _wire_
+  schema — the "local Zod schemas" rule still governs every `/forge-*` route's
+  request/response shape.
+- Experience draft-authoring + chat agents are Mastra-owned (consolidation
+  U3–U9): the draft/chat agents + `multi-step-draft`/`quick-draft` workflows +
+  repair run here; admin is a thin caller/proxy over authenticated HTTP. Admin
+  keeps candidate retrieval, exemplar selection, draft re-validation,
+  persistence/ABAC, chat history, and the 👍/👎 ratings store. See "Experience
+  draft & chat generation" below.
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
   validates explicit `/forge-*` service routes against
   `MASTRA_SERVICE_API_KEYS`; Studio's built-in `/api/workflows` routes must
@@ -70,58 +108,106 @@ pnpm --filter @forge/mastra typecheck
 pnpm --filter @forge/mastra lint
 ```
 
+### Why `dev` runs under `--import tsx`
+
+`mastra dev` externalizes workspace deps (e.g. `@forge/experience-schema`) and
+lets Node's loader resolve them at runtime. That package's `exports` point at
+raw `.ts` source whose `index.ts` re-exports siblings **extensionlessly**
+(`export * from "./experience-ai.schemas"`). Node's ESM resolver does not guess
+extensions, so the default loader throws
+`ERR_MODULE_NOT_FOUND … experience-ai.schemas` before the server can boot — it
+is the first multi-file raw-`.ts` workspace package this runtime loads. The
+`dev` script therefore sets `NODE_OPTIONS="--import tsx"` so tsx's loader (which
+does resolve extensionless `.ts`) handles those imports, on **both** the CLI
+analysis pass and the spawned dev server. Adding explicit `.ts` extensions to
+the shared package instead would force `allowImportingTsExtensions` (TS5097)
+into every consumer's tsconfig, and the repo's other packages all stay
+extensionless — so the fix lives here, dev-only. `build`/`start` are unaffected:
+the Rollup deployer transpiles the workspace package into the bundle.
+
 ## Environment
 
-| Variable                                  | Purpose                                                                                                                               |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                            | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                |
-| `MASTRA_SERVICE_API_KEYS`                 | CSV allowlist for service bearer calls. Required in production runtime.                                                               |
-| `MASTRA_NATIVE_EVAL_ENVIRONMENT`          | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                   |
-| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE` | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.                    |
-| `AI_GATEWAY_EMBEDDINGS_API_KEY`           | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.                         |
-| `AI_GATEWAY_EMBEDDINGS_BASE_URL`          | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                                  |
-| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`     | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                           |
-| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`        | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.                          |
-| `AI_GATEWAY_EMBEDDINGS_MODEL`             | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                           |
-| `AI_GATEWAY_EMBEDDINGS_PROVIDER`          | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                                    |
-| `MASTRA_STORAGE_DIR`                      | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway.            |
-| `MASTRA_STORAGE_BACKEND`                  | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production.                      |
-| `OPENROUTER_API_KEY`                      | OpenRouter key for locale-quality eval query generation and offline compare judging. Required for compare mode.                       |
-| `OPENROUTER_EMBEDDINGS_BASE_URL`          | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                                       |
-| `OPENAI_API_KEY`                          | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.              |
-| `OPENAI_EMBEDDINGS_BASE_URL`              | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                          |
-| `TRANSCRIPT_EMBEDDING_MODEL`              | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                                   |
-| `TRANSCRIPT_EMBEDDING_PROVIDER`           | Provider stamp for transcript embeddings. Defaults to `openai`.                                                                       |
-| `SCENE_EMBEDDING_MODEL`                   | Model stamp for scene embeddings. Defaults to `openai/text-embedding-3-small`.                                                        |
-| `SCENE_EMBEDDING_PROVIDER`                | Provider stamp for scene embeddings. Defaults to `openai`.                                                                            |
-| `EXPERIENCE_EMBEDDING_MODEL`              | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                                   |
-| `EXPERIENCE_EMBEDDING_PROVIDER`           | Provider stamp for experience embeddings. Defaults to `openai`.                                                                       |
-| `FIRECRAWL_API_KEY`                       | Firecrawl key for the Instagram AI/Christian discovery workflow. Optional; the workflow returns `config_missing` when absent.         |
-| `FIRECRAWL_API_BASE_URL`                  | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`.                                                                      |
-| `FIRECRAWL_SEARCH_TIMEOUT_MS`             | Per-request timeout for Firecrawl search in ms. Defaults to `60000`.                                                                  |
-| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`        | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                                 |
-| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`     | Optional website review-queue ingest endpoint. Both URL + token required to enable bot→site submission.                               |
-| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`   | Optional bearer token for the website ingest endpoint (must match the site's `ADMIN_REVIEW_TOKEN`).                                   |
-| `YOUTUBE_API_KEY`                         | YouTube Data API v3 key for the YouTube AI/Christian discovery workflow. Optional; the workflow returns `config_missing` when absent. |
-| `YOUTUBE_API_BASE_URL`                    | YouTube Data API base URL. Defaults to `https://www.googleapis.com/youtube/v3`.                                                       |
-| `YOUTUBE_SEARCH_TIMEOUT_MS`               | Per-request timeout for YouTube API calls in ms. Defaults to `30000`.                                                                 |
-| `EVAL_QUERY_GENERATION_MODEL`             | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.                       |
-| `ADMIN_TRANSCRIPT_INGEST_URL`             | Admin internal transcript ingest endpoint. Required in production runtime.                                                            |
-| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`  | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                                |
-| `ADMIN_SCENE_INGEST_URL`                  | Admin internal scene ingest endpoint. Required in production runtime.                                                                 |
-| `ADMIN_MASTRA_SCENE_INGEST_API_KEY`       | Bearer key Mastra presents to Admin scene ingest. Required in production runtime.                                                     |
-| `ADMIN_EXPERIENCE_INGEST_URL`             | Admin internal experience ingest endpoint. Required in production runtime.                                                            |
-| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`  | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                                |
-| `ADMIN_SEARCH_TRACE_SAMPLE_URL`           | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                             |
-| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`   | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.                  |
-| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`        | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.              |
-| `ADMIN_SEARCH_EVAL_SEARCH_URL`            | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.                |
-| `ADMIN_SEARCH_EVAL_API_KEY`               | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.                     |
-| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`         | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage.            |
-| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`    | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.                  |
-| `SEARCH_EVAL_JUDGE_MODEL`                 | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                                |
-| `PORT`                                    | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                     |
-| `MASTRA_STUDIO_PATH`                      | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                     |
+| Variable                                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `MASTRA_SERVICE_API_KEYS`                    | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                    |
+| `AI_GATEWAY_SEEKER_ENABLED`                  | Default-off gate that prepends the JesusFilm gateway chat model to the seeker agent's fallback chain (feat-237). Optional, **no default** — the seeker stays on the free-Gemma chain unless this is exactly `"true"` AND `AI_GATEWAY_CHAT_API_KEY` is set (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot. Coupling: `AI_GATEWAY_CHAT_MODEL` and `AI_GATEWAY_CHAT_BASE_URL` are SHARED with the experience surface — changing either while this flag is `"true"` swaps the seeker's model (or retargets its gateway endpoint) too, so re-run the feat-237 smoke checklist before deploying such a change. |
+| `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE`    | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `AI_GATEWAY_EMBEDDINGS_API_KEY`              | Mastra-owned Jesus Film AI Gateway embeddings key. Required when content provider mode resolves to `gateway`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `AI_GATEWAY_EMBEDDINGS_BASE_URL`             | OpenAI-compatible AI Gateway embeddings base URL. Defaults to `https://ai-gateway.jesusfilm.org/v1`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS`        | Production allowlist for gateway credential egress. Defaults to `ai-gateway.jesusfilm.org`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `AI_GATEWAY_EMBEDDINGS_USER_AGENT`           | Non-default user agent for AI Gateway embedding requests. Defaults to `forge-mastra-content-embeddings/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `AI_GATEWAY_EMBEDDINGS_MODEL`                | Model sent to the AI Gateway embeddings endpoint. Defaults to `embeddings`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `AI_GATEWAY_EMBEDDINGS_PROVIDER`             | Provider provenance label sent through Admin ingest metadata. Defaults to `jesus-film-ai-gateway`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `MASTRA_STORAGE_DIR`                         | Optional directory for Studio-visible observability/log files. Defaults to `$RAILWAY_VOLUME_MOUNT_PATH/mastra` on Railway.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `MASTRA_STORAGE_BACKEND`                     | Mastra runtime storage backend. Use `postgres` normally; `memory` is local/test-only and rejected in production. Omitting it for local Studio dev with no reachable Postgres crashes the server at boot (uncaught `MASTRA_STORAGE_PG_CREATE_TABLE_FAILED` / `ECONNREFUSED` on `mastra_threads`) _after_ it prints "ready" — set `memory` for any local run.                                                                                                                                                                                                                                                                                    |
+| `AI_CHAT_MEMORY_BACKEND`                     | Optional per-surface override for the ai-chat lane's Memory backend (feat-208). Unset → follows `MASTRA_STORAGE_BACKEND`. Unlike the runtime backend, `memory` here IS allowed in production — it is the documented kill-switch to revert seeker persistence without a code deploy. Kill-switch scope: it stops WRITES only — the retention purge keeps running over rows already stored in `ai_chat` (gated on `canAiChatDataPersist`, not this switch). Never required at boot. Setting `postgres` while `MASTRA_STORAGE_BACKEND=memory` locally makes the seeker's first turn hit an unreachable Postgres — set both or neither.            |
+| `OPENROUTER_API_PAID_KEY`                    | Preferred OpenRouter key for eval generation, offline judging, and legacy embedding mode.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `OPENROUTER_API_KEY`                         | Legacy OpenRouter fallback for those paths when `OPENROUTER_API_PAID_KEY` is absent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `OPENROUTER_EMBEDDINGS_BASE_URL`             | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `OPENAI_API_KEY`                             | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `OPENAI_EMBEDDINGS_BASE_URL`                 | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `TRANSCRIPT_EMBEDDING_MODEL`                 | Model stamp for transcript embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `TRANSCRIPT_EMBEDDING_PROVIDER`              | Provider stamp for transcript embeddings. Defaults to `openai`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `EXPERIENCE_EMBEDDING_MODEL`                 | Model stamp for experience embeddings. Defaults to `openai/text-embedding-3-small`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `EXPERIENCE_EMBEDDING_PROVIDER`              | Provider stamp for experience embeddings. Defaults to `openai`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `EVAL_QUERY_GENERATION_MODEL`                | OpenRouter chat model stamp for locale-quality eval query generation. Defaults to `anthropic/claude-haiku-4-5`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `SUBTITLE_ENRICHMENT_MODEL`                  | OpenRouter chat model stamp for subtitle translation/retiming. Defaults to `google/gemini-2.5-flash`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `SUBTITLE_ENRICHMENT_TIMEOUT_MS`             | Per-provider-call timeout for subtitle enrichment. Defaults to `120000`, max `300000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `SUBTITLE_ENRICHMENT_CONCURRENCY`            | Max concurrent target languages per subtitle enrichment run. Defaults to `10`, max `25`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL`      | OpenRouter chat model stamp for source transcript scripture correction. Defaults to `SUBTITLE_ENRICHMENT_MODEL`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS` | Per-provider-call timeout for source transcript scripture correction. Defaults to `120000`, max `300000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `SUBTITLE_VALIDATION_BIBLE_PROVIDER`         | Optional subtitle validation Bible text provider. Supported value: `api_bible`; unset keeps model-knowledge validation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `SUBTITLE_VALIDATION_BIBLE_MAP_JSON`         | Optional JSON map from target language code to provider Bible id, for example `{"en":"de4e12af7f28f599-02"}`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `API_BIBLE_API_KEY`                          | Optional API.Bible key used only when subtitle validation is configured to fetch target-language Bible passage text.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `API_BIBLE_BASE_URL`                         | Optional API.Bible-compatible base URL. Defaults to `https://api.scripture.api.bible/v1`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `API_BIBLE_ALLOWED_HOSTS`                    | Production allowlist for API.Bible credential egress. Defaults to `api.scripture.api.bible`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `RAILWAY_S3_ENDPOINT`                        | Railway Object Storage endpoint used for Manager-compatible subtitle artifacts when `RAILWAY_S3_BUCKET` is set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `RAILWAY_S3_REGION`                          | Railway Object Storage region. Defaults to `auto`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `RAILWAY_S3_BUCKET`                          | Shared artifact bucket. Required with access keys for production subtitle enrichment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `RAILWAY_S3_ACCESS_KEY_ID`                   | Shared artifact bucket access key for subtitle enrichment writes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `RAILWAY_S3_SECRET_ACCESS_KEY`               | Shared artifact bucket secret key for subtitle enrichment writes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `ADMIN_TRANSCRIPT_INGEST_URL`                | Admin internal transcript ingest endpoint. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY`     | Bearer key Mastra presents to Admin transcript ingest. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `ADMIN_EXPERIENCE_INGEST_URL`                | Admin internal experience ingest endpoint. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY`     | Bearer key Mastra presents to Admin experience ingest. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `ADMIN_SEARCH_TRACE_SAMPLE_URL`              | Admin internal trace sample endpoint for eval query generation. Required only when running that workflow.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL`      | Admin internal compact catalog context endpoint for eval query generation. Required only when running that workflow.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `ADMIN_SEARCH_EVAL_CANDIDATES_URL`           | Admin internal generated-candidate storage endpoint for eval query generation. Required only when running that workflow.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `ADMIN_SEARCH_EVAL_SEARCH_URL`               | Admin internal no-trace search endpoint for offline search eval. Required only when running the offline eval workflow.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `ADMIN_SEARCH_EVAL_API_KEY`                  | Bearer key Mastra presents to Admin search-eval routes. Must match Admin's dedicated sampling/eval key allowlist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `MASTRA_SEARCH_EVAL_ARTIFACT_DIR`            | Optional directory for Mastra-owned offline search eval baseline and report JSON artifacts. Defaults under Mastra storage.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT`       | Set to `true` only for an intentional production import override. Defaults to `false`; local imports do not need it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `SEARCH_EVAL_JUDGE_MODEL`                    | OpenRouter chat model stamp for offline search eval judging. Defaults to `anthropic/claude-haiku-4-5`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `SMART_CROP_PLAN_MODEL`                      | OpenRouter vision model for smart-crop plan intents. Defaults to `qwen/qwen2.5-vl-72b-instruct`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `SMART_CROP_QA_MODEL`                        | OpenRouter vision model for smart-crop preview QA. Defaults to `google/gemini-2.5-flash`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`         | CSV host allowlist for smart-crop frame URLs. Defaults to `image.mux.com`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `FIRECRAWL_API_KEY`                          | Firecrawl bearer key for Mastra-owned web search/scrape tools. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `FIRECRAWL_API_URL`                          | Firecrawl API base URL. Defaults to `https://api.firecrawl.dev`; production must use HTTPS and an allowlisted host.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `FIRECRAWL_ALLOWED_HOSTS`                    | CSV host allowlist for production Firecrawl egress. Defaults to `api.firecrawl.dev`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `FIRECRAWL_USER_AGENT`                       | Non-default user agent for Firecrawl requests. Defaults to `forge-mastra-firecrawl/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `FIRECRAWL_TIMEOUT_MS`                       | Default Firecrawl request timeout. Defaults to `60000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `FIRECRAWL_MAX_SEARCH_RESULTS`               | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `FIRECRAWL_MAX_MARKDOWN_CHARS`               | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`           | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`        | Optional website review-queue ingest endpoint. Both URL and token are required to enable bot-to-site submission.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`      | Optional bearer token for the website ingest endpoint; must match the website's `ADMIN_REVIEW_TOKEN`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `DISCOVERY_SOURCES_URL`                      | Optional website endpoint for saved trusted discovery sources. Reuses the ingest bearer and must use HTTPS.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `DISCOVERY_SITE_ALLOWED_HOSTS`               | CSV allowlist for website discovery endpoints. Required in production whenever an ingest or sources URL is set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `YOUTUBE_API_KEY`                            | Optional YouTube Data API key that enables YouTube discovery.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `YOUTUBE_API_BASE_URL`                       | YouTube API base URL. Defaults to `https://www.googleapis.com/youtube/v3`; production must use HTTPS and an allowlisted host when the key is set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `YOUTUBE_ALLOWED_HOSTS`                      | CSV host allowlist for production YouTube egress. Defaults to `www.googleapis.com`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `YOUTUBE_SEARCH_TIMEOUT_MS`                  | Single-attempt YouTube discovery API timeout. Defaults to `30000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `JESUSFILM_RAG_BASE_URL`                     | Base URL of the JesusFilm RAG retrieval service for the seeker agent. Optional — unset degrades the tool to an explicit `unavailable` result, never a boot failure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `JESUSFILM_RAG_API_KEY`                      | Per-consumer bearer token Mastra presents to the RAG. Optional; absent → tool returns `unavailable` (`config_missing`) at runtime. Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `JESUSFILM_RAG_ALLOWED_HOSTS`                | CSV host allowlist for the RAG base URL. No default. In production, a set base URL requires https AND its host in this list, else boot throws (fail-closed security guard).                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `JESUSFILM_RAG_TIMEOUT_MS`                   | Single-attempt RAG request timeout. Defaults to `5000`, schema-capped at `30000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `JESUSFILM_RAG_MAX_RESPONSE_BYTES`           | Byte-cap on the buffered RAG response body (feat-202), applied to both the success and error-path reads. Streamed byte counter aborts the stream past the cap → graceful `unavailable`. Optional, defaults to `2097152` (2 MiB), schema-capped at 16 MiB (`16777216`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                 |
+| `JESUSFILM_RAG_USER_AGENT`                   | User agent identifying this consumer in RAG access logs. Defaults to `forge-mastra-jesusfilm-rag/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Eval query generation
 
@@ -151,11 +237,21 @@ artifact.
 
 Keep this workflow Studio-friendly: the workflow and first step must expose a
 strict structured input schema, not `z.unknown()`. Defaults should let an
-operator run the seed baseline from Studio without hand-written JSON:
-`mode=capture-baseline`, `baselineName=seed-baseline`, all seeded locales,
-`searchLimit=20`, `searchMode=hybrid`, and `contentType=all`. Use explicit
-`all` options for filter enums when Studio should run both corpora; avoid
-nullable defaults because Studio renders them as awkward `OR` controls.
+operator run the public Watch seed baseline from Studio without hand-written
+JSON: `mode=capture-baseline`, `callerTrack=public-watch`, all seeded locales,
+`searchLimit=20`, and `contentType=all`. `baselineName` and `searchMode` may
+be omitted so the runner applies caller-track defaults:
+
+- `public-watch`: `baselineName=seed-baseline`, `searchMode=keyword-first`.
+- `ai-experience-generation`:
+  `baselineName=seed-baseline-ai-experience-generation`,
+  `searchMode=hybrid`.
+- `semantic-diagnostic`: `baselineName=seed-baseline-semantic-diagnostic`,
+  `searchMode=semantic-only`.
+
+Use explicit `all` options for filter enums when Studio should run both
+corpora; avoid nullable defaults because Studio renders them as awkward `OR`
+controls.
 
 Admin remains the live search authority. Mastra never queries Admin Postgres,
 never imports Admin code, never generates live query embeddings, and never
@@ -163,6 +259,11 @@ enters the public search request path. The Studio-facing offline eval workflow
 is seed-only for now. Generated candidates from the feat-138 staging table are
 not exposed as operator inputs, are not stored in baselines, and do not become
 regression gates.
+
+Search eval baselines and reports are caller-track aware. Legacy untracked
+artifacts are normalized to `public-watch`; new captures refuse to overwrite a
+baseline owned by a different `callerTrack`, and comparisons reject mismatched
+baseline/current caller tracks before Admin search or judge calls.
 
 ## Native search eval suite
 
@@ -181,11 +282,14 @@ into native Mastra Evaluation records:
   rows that are both `promotionStatus=promoted` and
   `sanitizationStatus=sanitized`.
 
-Native record names include the environment label, for example
-`search-eval:local:seed-baseline`, and native metadata carries stable keys for
-idempotent reruns. Re-running a report sync should update Dataset items by
-source key and reuse the existing report Experiment instead of duplicating
-records.
+Native record names include the environment label, caller track, and search
+mode, for example
+`search-eval:local:seed-baseline:public-watch:keyword-first`, and native
+metadata carries stable keys for idempotent reruns. Re-running a report sync
+should update Dataset items by source key and reuse the existing report
+Experiment instead of duplicating records. Report-derived source keys include
+both `track:<callerTrack>` and `mode:<searchMode>` so public, AI-agent, and
+semantic-diagnostic evidence cannot overwrite each other.
 
 For local Studio smoke without Postgres or Admin data, run Mastra with:
 
@@ -209,14 +313,17 @@ It is a thin coordinator over the existing search eval leaf workflows:
 `eval-query-generation`, `offline-search-eval`,
 `search-eval-candidate-review`, and `search-eval-native-suite`.
 
-Default `seed-baseline` mode captures the committed seed prompt baseline named
-`seed-baseline`, requires native report sync, rejects candidate generation,
-rejects seed-candidate submission, rejects promoted-candidate sync, and runs a
-readiness preflight before touching Admin search. Use explicit `full` mode for
-broader operator runs that coordinate generation/review/promoted-sync leaf
-workflows. `compare` mode compares current search against an existing baseline,
-and `release-gate` mode adds explicit pass/fail thresholds for losses, search
-failures, judge failures, judge disagreements, and calibration.
+Default `seed-baseline` mode captures the committed public Watch seed prompt
+baseline named `seed-baseline`, requires native report sync, rejects candidate
+generation, rejects seed-candidate submission, rejects promoted-candidate sync,
+and runs a readiness preflight before touching Admin search. Pass
+`callerTrack=ai-experience-generation` or `callerTrack=semantic-diagnostic` to
+capture or compare the caller-specific prompt suites and baseline names. Use
+explicit `full` mode for broader operator runs that coordinate
+generation/review/promoted-sync leaf workflows. `compare` mode compares current
+search against an existing baseline, and `release-gate` mode adds explicit
+pass/fail thresholds for losses, search failures, judge failures, judge
+disagreements, and calibration.
 `resumeReportId` skips offline search execution and retries native report sync
 for an existing report artifact.
 
@@ -252,7 +359,8 @@ explicit seed-only payload:
 {
   "mode": "seed-baseline",
   "baselineName": "prod-seed-baseline-YYYY-MM-DD",
-  "searchMode": "hybrid",
+  "callerTrack": "public-watch",
+  "searchMode": "keyword-first",
   "contentType": "all",
   "generateCandidates": false,
   "submitSeedCandidates": false,
@@ -260,6 +368,312 @@ explicit seed-only payload:
   "syncPromoted": false
 }
 ```
+
+## Smart crop workflows
+
+Smart crop (plan: `docs/plans/2026-06-09-002-feat-smart-crop-plan.md`) splits
+ownership across three apps; Mastra owns the AI decisions only. Manager owns
+job orchestration, artifact storage addressing, and Mux; crop-worker owns
+ffprobe/FFmpeg and S3 bytes. This runtime never touches S3 or Mux credentials —
+frames arrive as caller-provided, host-allowlisted https URLs
+(`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS`, default `image.mux.com`; https only,
+exact hostname match).
+
+**Production precondition for QA:** the `smart-crop-qa` route receives
+presigned Railway S3 URLs for preview frames, so production must extend
+`SMART_CROP_IMAGE_URL_ALLOWED_HOSTS` with the Railway S3 endpoint hostname
+(the host of manager's `RAILWAY_S3_ENDPOINT`) alongside `image.mux.com`.
+Without it the QA route rejects every frame with `frame_host_not_allowed`;
+manager degrades that to a skipped QA step rather than a failed job, but no
+QA report is produced.
+
+Three bounded synchronous workflows, each with a service route protected by
+`MASTRA_SERVICE_API_KEYS`:
+
+- `smart-crop-plan` / `POST /forge-smart-crop-plan` — one OpenRouter vision
+  call covering up to 8 shots (max 3 frame URLs each) produces per-shot crop
+  intents; the deterministic planner (`smart-crop-planner-v1`,
+  `src/services/smart-crop/planner.ts`) converts intents into 9:16 crop
+  keyframes (full source height, even crop width, 8% dead zone, 240 px/s max
+  pan scaled by source width, center fallback below confidence 0.5,
+  slide_aware stays static centered in MVP). When a primary human face/head is
+  visible, plan/repair intents carry `faceVisible: true` plus `faceCenter`; the
+  planner anchors horizontally on that face center before falling back to the
+  broader `subjectCenter`.
+- `smart-crop-align` / `POST /forge-smart-crop-align` — pure deterministic
+  alignment (`src/services/smart-crop/alignment.ts`) between canonical and
+  localized `smart-crop-fingerprint` artifacts: tier-1 identical-duration or
+  tier-2 monotonic shot-sequence matching (duration similarity + dhash
+  Hamming), plus confidence gates with stable failure literals. No model call.
+- `smart-crop-qa` / `POST /forge-smart-crop-qa` — one OpenRouter vision call
+  reviews up to 8 rendered preview frames against the plan summary and returns
+  `pass | needs_repair | fail` plus structured issues.
+
+Results use a discriminated `{ ok: true, ... } | { ok: false, reason,
+retryable, message, mastraRunId }` envelope with the shared reasons
+`invalid_input | provider_config_missing | provider_auth_failed |
+provider_failed | provider_invalid_output | frame_host_not_allowed`. The
+planner and alignment modules are pure functions — keep them free of I/O and
+env reads so they stay property-testable.
+
+## Firecrawl web data
+
+Firecrawl web data access is Mastra-owned. The runtime exposes:
+
+- `webResearchAgent`, with `firecrawlSearch` and `firecrawlScrape` tools.
+- `firecrawl-web-data`, a Studio-friendly workflow for either `search` or
+  `scrape` actions.
+- `POST /forge-firecrawl-web-data`, protected by `MASTRA_SERVICE_API_KEYS`, for
+  internal service callers that need bounded web data without direct Firecrawl
+  credentials.
+
+Default route payloads:
+
+```json
+{ "action": "search", "query": "firecrawl mastra tools", "limit": 5 }
+```
+
+```json
+{ "action": "scrape", "url": "https://docs.firecrawl.dev" }
+```
+
+The integration uses Firecrawl API v2 search and scrape over HTTPS, returns
+bounded markdown, and maps upstream failures into safe structured result
+objects. Keep direct Firecrawl calls out of Admin and Manager; those apps should
+use this runtime's tools/workflow/route if they need web data. Do not add
+Firecrawl MCP as the production path unless a later plan proves a real
+multi-tool MCP server need; MCP can be useful for local operator convenience but
+is not the deterministic product contract here.
+
+## Seeker agent
+
+`seekerAgent` (feat-198, feat-199) is the first conversational agent of the
+planned "Jesus Film AI Chat" system, **Studio-only**, proving the
+chat -> tool-call -> remembered-context shape: citation-disciplined
+instructions with a mandatory safety line, the `retrieveAnswer` tool backed by
+the JesusFilm RAG service (feat-199), and per-agent in-memory `Memory`. The tool
+returns ranked, cited **passages** (`{ status, sources, message? }`) and the
+agent's own LLM synthesizes the source-attributed answer — the tool generates
+nothing. When the RAG env vars are unset (or the service is unreachable), the
+tool returns an explicit `unavailable` status and the agent says it cannot
+ground an answer; retrieval is never required for the app to boot. Model is an
+env-gated fallback chain built by `buildSeekerModelList()` (feat-237). Default:
+the two free Gemma 4 OpenRouter models —
+`openrouter/google/gemma-4-31b-it:free` (primary, 1 retry) then
+`openrouter/google/gemma-4-26b-a4b-it:free` (feat-198 residual: the free tier
+errors intermittently). Opt-in: when `AI_GATEWAY_CHAT_API_KEY` is set AND
+`AI_GATEWAY_SEEKER_ENABLED="true"`, the self-hosted JesusFilm gateway chat
+model (`AI_GATEWAY_CHAT_MODEL ?? "coding"`, no per-entry retries — the Gemma
+chain is the retry, since Mastra's retry loop would also retry a timeout
+abort; chat-completions pinned via `.chat()`, per-attempt 55s fetch timeout
+strictly below the route's 90s `chatTurn` budget) is **prepended** with the
+Gemma chain kept as failover — any
+thrown gateway error lands on today's behavior, and unsetting the flag (or
+key) restores the Gemma-only chain with no code change. Deliberately a
+separate flag from the experience agents' `AI_GATEWAY_CHAT_ENABLED`: the two
+surfaces have different risk profiles and roll back independently. OpenRouter
+auto-reads `OPENROUTER_API_KEY`; the other agents stay on `openai/...`, so
+both keys are needed. Memory lives in
+`src/mastra/memory.ts`: the shared **ai-chat lane Memory** (feat-208) —
+Postgres-persisted in the dedicated `ai_chat` schema (backend-aware: the
+`memory` backend keeps an `InMemoryStore` for local dev/tests and as the
+production kill-switch via `AI_CHAT_MEMORY_BACKEND`). The section is mirrored
+— never imported — from admin (see that file's header for the why).
+
+### ai-chat memory, thread ownership + retention (feat-208)
+
+- **Schema isolation:** all ai-chat conversation data lives in the `ai_chat`
+  Postgres schema (same `DATABASE_URL`, separate from the `mastra` schema).
+  Future ai-chat agents share `getAiChatStorage()` so same-key threads are
+  shared by construction; cross-agent routing must be explicit per-call
+  `memory: { thread, resource }` — never `Agent.network()` delegation (it
+  auto-isolates subagent memory).
+- **Ownership gate:** Mastra enforces NO thread ownership on the message path
+  (verified in @mastra/core 1.36.0 dist — existing threads are silently
+  adopted). Every ai-chat route MUST call `authorizeAiChatThreadAccess`
+  (`src/mastra/ai-chat-thread-ownership.ts`) before streaming: wrong owner →
+  `thread_forbidden`; new thread over the 200-per-resource ceiling →
+  `thread_limit`. Resources are namespaced `user:<sub>` / `anon:<uuid>`
+  (chat-proxy contract) and prefix-checked only — never split on `:`.
+- **Fail-mode contract (pinned `@mastra/pg`):** the ownership fail-CLOSED
+  guarantee and the retention outage probe rest on a store outage making a
+  thread READ reject (never silently resolve null) — plan facts 5–7.
+  `ai-chat-pg-failmode-contract.test.ts` pins that fail-CLOSED direction
+  against the real `Memory`+`PostgresStore` surface (an unreachable-store
+  smoke); the post-init `listThreads` swallow + missing-id→null stay on the
+  real-Postgres smoke. **Re-verify on every `@mastra/*` bump** — a silent flip
+  of `getThreadById` to swallow/return-null is an ownership fail-OPEN, and the
+  guarantee also needs `@mastra/memory` to keep delegating these methods
+  without its own try/catch.
+- **Retention:** `src/mastra/ai-chat-retention.ts` purges threads by rolling
+  last-activity (`updatedAt` — bumped transactionally by saveMessages): 30
+  days for non-`user:` resources, 180 days for `user:*`. Boot drain + daily
+  timer (production runtime only — `NODE_ENV=production`): each run drains
+  the expired backlog in bounded sweeps (500/sweep, ≤20 sweeps/run, oldest-
+  first scan with early stop, recency re-check before every delete),
+  count-only logging. Gated on a postgres backend being configured at all
+  (`canAiChatDataPersist`) and runs directly over the persisted `ai_chat`
+  store — the kill-switch stops writes, never retention. Honest bound: the
+  purge caps total junk at ~one retention window of inflow; it does NOT bound
+  in-window growth (the ceiling only bounds a cooperative client) — inbound
+  auth + rate caps remain the real flood control. Single-instance assumption:
+  add a leader guard before scaling out.
+- **Operator deletion runbook** (subject-erasure requests, keyed by resource):
+  `DELETE FROM ai_chat.mastra_messages WHERE thread_id IN (SELECT id FROM
+ai_chat.mastra_threads WHERE "resourceId" = $1); DELETE FROM
+ai_chat.mastra_threads WHERE "resourceId" = $1;` (plus
+  `ai_chat.mastra_resources` if working memory ever lands). Self-serve
+  deletion is deferred follow-up.
+- Plan + verified package-behavior citations:
+  `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md`.
+
+### Local run
+
+The seeker agent's model routes through OpenRouter, so `OPENROUTER_API_KEY` must
+be set. Then:
+
+```bash
+MASTRA_STORAGE_BACKEND=memory pnpm --filter @forge/mastra dev
+```
+
+To exercise the gateway-first path (feat-237), also set a **chat-scoped**
+`AI_GATEWAY_CHAT_API_KEY` plus `AI_GATEWAY_SEEKER_ENABLED=true` — that prepends
+the JesusFilm gateway chat model ahead of the Gemma chain (watch the per-model
+failure log line to see failover engage); unset either to return to Gemma-only.
+
+Without `JESUSFILM_RAG_BASE_URL` + `JESUSFILM_RAG_API_KEY` set, `retrieveAnswer`
+returns `status: "unavailable"` and the agent tells the tester it cannot ground
+an answer (graceful degradation — no boot failure). With both configured (and,
+in production, the host allowlisted), open `/studio/agents/seekerAgent`: ask a
+factual question (watch `retrieveAnswer` fire and return real cited passages),
+then a follow-up to see thread recall. The agent must cite only source names and
+URLs present in the returned passages. Use a **distinct `threadId` per tester** —
+with `MASTRA_STORAGE_BACKEND=memory` the ai-chat memory is process-lifetime
+in-memory (wiped on restart); against Postgres it persists in `ai_chat`, so a
+shared thread leaks across testers durably.
+
+### Containment (read before exposing this anywhere)
+
+The agent is reachable on Mastra's built-in, code-unauthenticated `/api/agents/*`
+surface to anyone who can reach the Mastra endpoint. "Studio-only" is the
+`apps/mastra-gateway` + Railway **network** boundary, **NOT** the
+`seeker-route-isolation.test.ts` guard (which now pins the single
+default-off `/forge-seeker` exposure and that no OTHER route wires the agent in
+— see "Service route" below). The safety line bounds leaked-output blast radius; the
+`redactPromptBodies` processor blanks span `input`/`output` in traces. Do not
+expose to a public surface before the deferred guardrail gate AND a gateway
+access decision.
+
+### Service route (`POST /forge-seeker`, feat-204)
+
+Internal, server-to-server dogfooding route that streams the seeker over a
+stable bearer-gated contract (handler: `agents/seeker-route.ts`,
+`handleSeekerRouteRequest`). It mirrors `/forge-experience-chat` but adds
+per-session memory keying and `retrieveAnswer` `sources[]` extraction. Frames:
+`token_delta {text}` → terminal `result {text, sources, grounded, producedBy}`,
+or `error {reason}` (fixed-vocabulary reason only — no raw text on the wire).
+
+- **Default-off**: gated on `SEEKER_ROUTE_ENABLED === "true"`, checked FIRST →
+  404 when disabled (KTD7). It is **more** locked down than the built-in
+  `/api/agents/*` surface, not a replacement for the network boundary.
+- **Body**: `{ prompt, threadId }` required; `resourceId` optional + opaque.
+  The route ALWAYS supplies a memory `resource` (the caller's `resourceId` else
+  the constant `SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"`) because a
+  memory-configured agent throws `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime
+  when a `threadId` arrives without one. Isolation rides on `threadId` **plus**
+  (feat-208) the thread-ownership gate: an existing thread whose owner differs
+  from the caller's resource → in-stream `error { reason: "thread_forbidden" }`;
+  a new thread over the per-resource ceiling → `thread_limit`. The chat proxy
+  always sends a resolved resource; the dogfood fallback remains for other
+  internal callers and must never be listed by feat-209.
+- **Budget**: `TIME_BUDGET_MS.chatTurn` (90s) + `STEP_CAPS.toolCallingTurn` (8),
+  composed with the inbound request signal. No CORS, no `error.message` on wire.
+- Scope is `apps/mastra` only; chat-app wiring is feat-205. The
+  `seeker-route-isolation.test.ts` guard is re-pinned to this single route.
+
+### Routing convention — call `/forge-seeker`, never `/api/agents/seekerAgent` (feat-202)
+
+Apps and services that reach the seeker MUST call the bearer-gated
+`POST /forge-seeker` route — **never** Mastra's built-in
+`/api/agents/seekerAgent` surface, which is code-unauthenticated and carries no
+per-request budget (no wall-clock `chatTurn`, and only the constructor-default
+`maxSteps` floor feat-202 added — no route-composed step/time budget). `/forge-seeker`
+adds the default-off gate, per-session memory keying, fixed-vocabulary error
+frames, and the composed `chatTurn` + `toolCallingTurn` budget.
+
+This is an **honor-system convention, not enforcement.** It does not close the
+unauthenticated surface — the binding containment is and stays the
+network/gateway boundary (`apps/mastra-gateway` + Railway networking; see
+"Containment" above). The feat-202 constructor `maxSteps` floor is its
+defense-in-depth companion (it bounds the runaway-loop dimension on the direct
+path) but is overridable and not a substitute for routing through `/forge-seeker`.
+A CI grep asserting no first-party caller references `/api/agents/seekerAgent`
+could harden this into a real check later (deferred, not built).
+
+### Not wired yet (deferred)
+
+- **Full persona + safety guardrails** (a release gate) — fabrication/honesty,
+  AI-disclosure, doctrinal-uncertainty, and **crisis handling** (suicidal-
+  ideation / self-harm / acute distress -> route to human/helpline, never
+  improvise). `seeker-agent.ts` carries a single commented guardrail
+  attach-point breadcrumb marking where these hook.
+- **Public-facing web surface** — `apps/mastra` is internal/service-bearer-only.
+- **Agent evals** — faithfulness/groundedness once RAG lands; safety scoring
+  tied to the guardrail gate.
+
+(Postgres-persisted memory, formerly on this list, shipped in feat-208 — see
+"ai-chat memory, thread ownership + retention" above.)
+
+## Experience draft & chat generation
+
+Mastra owns the AI experience **draft-authoring** + **chat** generation
+(consolidation plan
+`docs/plans/2026-06-19-001-feat-mastra-admin-to-standalone-consolidation-plan.md`).
+Admin computes candidates + exemplar (its pgvector/embeddings), ships them over
+the wire, and persists/re-validates the result; Mastra is the LLM generator.
+
+- **Agents** (`src/mastra/agents/`): `experience-default-chat` (chat) +
+  `draft-experience` / `add-section` / `rewrite-copy` (chat-facing specialized)
+  - `experience-planner` / `experience-skeleton` / `experience-fill` /
+    `experience-critic` / `experience-reviser` (workflow-only, memory-less) +
+    `auto-enrich` (registered/Studio-invocable; no live dispatch). The chat-facing
+    agents carry HTTP-backed tool callbacks; the workflow agents stay TOOL-LESS
+    (candidates arrive pre-loaded in the workflow input, so they never tool-call).
+- **Workflows** (`src/mastra/workflows/multi-step-draft.ts`): `multi-step-draft`
+  (plan → skeleton → fill → critique → revise) and `quick-draft` (no revise) +
+  `repair-draft.ts` (re-runs `experience-reviser` on a normalize-shaped error,
+  decoupled from admin's normalize class via a local `NormalizationErrorLike`
+  shape).
+- **Memory**: `experience-chat` Postgres memory in `src/mastra/memory.ts`
+  (alongside the ai-chat lane's Postgres-persisted seeker memory), gated on the
+  gateway EMBEDDINGS key for semantic recall.
+- **Service routes** (all `MASTRA_SERVICE_API_KEYS`-gated):
+  - `POST /forge-experience-draft` — buffered; runs a draft workflow and
+    returns `{ ok:true, draft } | { ok:false, reason, retryable }`. Internal
+    `AbortSignal.timeout(TIME_BUDGET_MS.multiStepWorkflow)` (180s); admin's
+    caller budget is strictly larger.
+  - `POST /forge-experience-chat` — **streaming** (the only streaming `/forge-*`
+    route): `experience-default-chat.stream()` → SSE `token_delta` frames + a
+    terminal `result { text, producedBy }` (or `error { reason }`). An internal
+    `AbortSignal.timeout(chatTurn)` (90s) composed with the inbound request
+    signal + `reader.cancel()` on disconnect cancels the agent run, so a closed
+    editor tab stops generation through both legs.
+- **Agent tool callbacks** (`src/services/admin-agent-tools-client.ts`): the
+  chat agent's `searchVideos` / `lookupBibleVerse` / `fetchVideoImage` tools call
+  admin's bearer-gated `/api/internal/agent-tools/*` over HTTP (never admin
+  Prisma). `ADMIN_AGENT_TOOLS_URL` + `ADMIN_AGENT_TOOLS_API_KEY` (optional;
+  unset → the tool degrades to an empty result, never a boot/turn failure).
+
+| Variable                                  | Purpose                                                                                                                                                                                   |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AI_GATEWAY_CHAT_*`                       | JesusFilm gateway chat-model factory (opt-in via `AI_GATEWAY_CHAT_ENABLED="true"`).                                                                                                       |
+| `GOOGLE_GENERATIVE_AI_API_KEY`            | Default structured-chat provider (Gemini 3.5 Flash) when set.                                                                                                                             |
+| `MASTRA_DEFAULT_PROVIDER`                 | Default provider id (`openrouter` fallback).                                                                                                                                              |
+| `AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED` | Gates per-phase schema-constrained decoding (default `"false"`).                                                                                                                          |
+| `ADMIN_AGENT_TOOLS_URL`                   | Admin base URL for the chat agent's tool callbacks. Optional.                                                                                                                             |
+| `ADMIN_AGENT_TOOLS_API_KEY`               | Bearer admin holds in its `ADMIN_AGENT_TOOLS_API_KEYS` receiver CSV. Optional.                                                                                                            |
+| `ADMIN_AGENT_TOOLS_TIMEOUT_MS`            | Per-tool single-attempt timeout (default 10s, cap 30s — fits the 90s chatTurn).                                                                                                           |
+| `ADMIN_AGENT_TOOLS_ALLOWED_HOSTS`         | Optional SSRF allowlist (CSV) for the admin base host, checked before any call. Unset → operator-set host trusted (`redirect:"error"` still guards); set → enforced, else `ssrf_blocked`. |
 
 ## Search eval baseline portability
 
@@ -288,29 +702,16 @@ search work against the same seed snapshot without logging into production.
 The service route `POST /forge-instagram-discovery` is protected by
 `MASTRA_SERVICE_API_KEYS` and launches the `instagram-ai-christian-discovery`
 workflow. It discovers AI-generated Christian videos on Instagram using
-**Firecrawl web search** (`POST /v1/search`) — Instagram is heavily gated, so
-direct crawling is unreliable; search returns post/reel URLs plus title/snippet
-that the keyword heuristic acts on.
-
-Two source modes (like YouTube), both via Firecrawl search:
-
-- **Trusted handles** — `handles` (e.g. `["biblewithlife"]`); each becomes an
-  account-scoped search (`site:instagram.com/<handle>`) and is _trusted_: kept
-  unless it reads as commentary, no AI/Christian keyword requirement. Best-effort
-  — web search does NOT reliably surface an account's full feed (low yield; a
-  faithful feed would need a paid IG scraping API or cookie-based local scraping).
-- **Keyword search** — `queries`: full filter (must signal AI + Christian, not
-  commentary). Trusted handle hits are ordered first so they win dedup ties.
+the shared **Firecrawl web search** client (`POST /v2/search`) — Instagram is
+heavily gated, so direct crawling is unreliable; search returns post/reel URLs
+plus title/snippet that the keyword heuristic acts on.
 
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
-`handles` (default `[]`), `queries` (default `[]` — open web-search queries on
-Instagram return mostly news/commentary ABOUT AI + Christianity, e.g. Trump/Pope
-AI-image stories, not actual creations, so the daily run relies on the saved
-trusted `handles`; pass explicit `queries` for a one-off keyword sweep),
-`limitPerQuery` (10), `scrapeMetadata` (false — set true to
-scrape each hit for richer metadata, slower), `maxResults` (50), `persistArtifact`
-(true). The workflow searches each source (tolerant to per-source failures),
-parses Instagram
+`queries` (defaults to none; the daily run relies on saved trusted handles),
+`limitPerQuery` (10, max 50), `scrapeMetadata` (false — set true to request bounded
+markdown hydration for each search hit, slower), `maxResults` (10),
+`persistArtifact` (true). The
+workflow searches each query (tolerant to per-query failures), parses Instagram
 permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
 signal **both** AI-generation and Christian content **and** do not read as
 commentary/news/tutorial (a conservative `COMMENTARY_KEYWORDS` exclusion in
@@ -320,6 +721,18 @@ report's `totals.excludedCommentary` counts posts dropped by that filter.
 Results are returned in the response and, by default, written to a validated
 JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
 (`<storage>/instagram-discovery/reports/<runId>.json`).
+
+When `INSTAGRAM_DISCOVERY_SITE_INGEST_URL` and
+`INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN` are both set, qualified posts are also
+submitted best-effort to the website review queue. Website ingest failures are
+reported in the returned `reviewQueue` result and do not fail discovery; the
+website dedupes by Instagram shortcode. Redirects are rejected, and production
+requires the endpoint host to be explicitly allowlisted.
+
+When `DISCOVERY_SOURCES_URL` is configured, the workflow merges the website's
+saved Instagram handles with the Run-form input, dedupes them, and caps the
+combined list at 50. A saved-source outage with no other requested source
+returns `sources_unavailable` (503) rather than a successful empty run.
 
 Limitations to keep in mind:
 
@@ -332,73 +745,25 @@ Limitations to keep in mind:
   metadata includes it.
 
 Failure reasons: `invalid_input` (400), `config_missing` (503, when
-`FIRECRAWL_API_KEY` is unset), `all_queries_failed` (502, only when every query
-errors). Firecrawl is an opt-in tool — its env vars are optional and are not
-part of `assertMastraRuntimeEnv()`.
+`FIRECRAWL_API_KEY` is unset in a non-production/dev-style runtime),
+`all_queries_failed` (502, only when every query errors), `artifact_failed`
+(500, when report persistence fails), and `sources_unavailable` (503, when a
+configured saved-source request fails without any fallback input). Production already requires the shared
+Firecrawl env vars for Mastra's web-data surface.
 
-## YouTube AI/Christian discovery
+## YouTube and Pinterest AI/Christian discovery
 
-The service route `POST /forge-youtube-discovery` is protected by
-`MASTRA_SERVICE_API_KEYS` and launches the `youtube-ai-christian-discovery`
-workflow. It discovers AI-generated Christian videos on YouTube using the
-**official YouTube Data API v3** (key in `YOUTUBE_API_KEY`), in **two modes**:
+`POST /forge-youtube-discovery` searches configured YouTube channels,
+playlists, and keyword queries. It accepts stable channel IDs/handles and
+playlist IDs; saved full YouTube playlist URLs are normalized to their `list`
+value, while unsupported custom-channel URLs are skipped. The output cap is 10
+videos by default, each source list is capped at 50, and the response includes
+a best-effort `reviewQueue` outcome.
 
-- **Trusted channels** — `channels` accepts channel ids (`UC…`), `@handles`, or
-  youtube.com URLs; each is resolved to its uploads playlist (`limitPerChannel`).
-- **Trusted playlists** — `playlists` accepts playlist ids (`PL…` series, `UU…`/
-  `UUSH…` uploads) and is pulled directly via `playlistItems.list`
-  (`limitPerPlaylist`), no channel resolution. Use for curated multilingual
-  series (e.g. QBIBLE).
-- **Keyword discovery** — `queries` (creation-oriented defaults) run through
-  `search.list` (`limitPerQuery`).
-
-**Source-dependent filtering** (key behavior): items are tagged by origin and
-filtered differently:
-
-- **Trusted (channels + playlists):** kept as-is, dropping only obvious
-  commentary/reaction/news junk. No AI/Christian keyword requirement — so
-  non-English and "Bible animation" content from a curated list is kept (the
-  English keyword filter would otherwise wrongly drop it). You curated the
-  source; the website review queue is still the human gate.
-- **Keyword search:** full filter — must signal BOTH AI and Christian and not
-  read as commentary (the shared `services/discovery/classifier.ts`).
-
-Both feed one pipeline: parse (handling `search.list` and `playlistItems.list`
-shapes), dedupe by `videoId` (trusted items ordered first, so they win ties),
-apply the per-source rule. `totals.excludedCommentary` counts commentary drops.
-
-Qualified videos are written to a validated JSON artifact under
-`<storage>/youtube-discovery/reports/<runId>.json` and, when the site ingest env
-vars are set, submitted to the website review queue (best-effort, never fails the
-run) tagged with `platform: "youtube"` and a clickable channel author link. The
-site dedups by `(platform, externalId)`, so re-runs never duplicate.
-
-Failure reasons: `invalid_input` (400), `config_missing` (503, when
-`YOUTUBE_API_KEY` is unset), `all_sources_failed` (502, only when every channel
-and query errors). The YouTube key is opt-in — optional and not part of
-`assertMastraRuntimeEnv()`. The same `INSTAGRAM_DISCOVERY_SITE_INGEST_*` vars are
-reused as the shared website-ingest config for all discovery platforms.
-
-## Pinterest AI/Christian discovery
-
-The service route `POST /forge-pinterest-discovery` is protected by
-`MASTRA_SERVICE_API_KEYS` and launches the `pinterest-ai-christian-discovery`
-workflow. Pinterest exposes a **free public RSS feed** for any public board
-(`https://<host>/<user>/<board>.rss`) — no API key needed. Input: `boards`
-(board page URLs), `limitPerBoard` (15), `maxResults` (100), `persistArtifact`.
-
-Pinterest is **board-only** (RSS has no keyword search), and boards are curated
-trusted sources, so the rule is **trust-the-source**: every pin is kept except
-obvious commentary/reaction/news junk (the shared `services/discovery/classifier.ts`
-commentary list). No AI/Christian keyword requirement. Pins are parsed from the
-RSS items (pin id from the `/pin/<id>/` URL, image from the entity-encoded
-description, caption from the title), deduped by pin id, and submitted to the
-website review queue tagged `platform: "pinterest"` with board attribution. The
-website review queue stays the human gate.
-
-Failure reasons: `invalid_input` (400), `all_boards_failed` (502, only when every
-board errors — e.g. all private/404). No API key, so no `config_missing`. RSS
-parsing is a small tolerant regex parser (no XML dependency).
+`POST /forge-pinterest-discovery` reads public Pinterest board RSS feeds. Board
+URLs must be HTTPS `pinterest.com` hosts; query strings are removed before the
+`.rss` URL is constructed. Its default output cap is 10 pins and it applies the
+same saved-source cap and observable review-queue result.
 
 ## Railway Storage
 

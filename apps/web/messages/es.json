@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Cerrar",
     "download": "Descargar",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Comprobando",
     "closeTermsOfUse": "Cerrar Términos de uso",
     "cancel": "Cancelar",
@@ -83,7 +86,8 @@
     "toggleOn": "Sí",
     "toggleOff": "No",
     "close": "Cerrar",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "noLanguageSubtitles": "Sin subtítulos en {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODIO} other {# EPISODIOS}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Ten una conversación privada con alguien dispuesto a escuchar.",
     "questionsShort": "Preguntas",
     "questions": "Preguntas relacionadas",
-    "askYours": "Haz tu pregunta",
+    "askYours": "Tu pregunta",
     "chatWithPerson": "Habla con alguien",
     "askBibleQuestion": "Hacer una pregunta bíblica"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animados",
     "categoryStudy": "Estudio",
     "categoryFamily": "Familia",
-    "categoryChristmas": "Navidad"
+    "categoryChristmas": "Navidad",
+    "searchLanguageLabel": "Idioma de búsqueda",
+    "allLanguages": "Todos los idiomas",
+    "searchSuggestions": "Sugerencias de búsqueda",
+    "languages": "Idiomas",
+    "recommendedLanguage": "Idioma recomendado",
+    "searchSuggestion": "Buscar {suggestion}",
+    "searchSuggestionWithLanguage": "Buscar {suggestion} en {language}",
+    "inLanguage": "en {language}",
+    "browseByRegion": "Explorar por región",
+    "clearLanguages": "Borrar",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Reproducir con sonido",
+    "playWithSound": "Ver ahora",
     "tapToUnmute": "Activar sonido"
   },
   "ExperienceSkeleton": {

@@ -13,6 +13,16 @@ const ROUTE_RELEVANT_CORE_SYNC_PHASES = new Set([
   "video-dubs",
 ])
 
+const WATCH_RENDER_RELEVANT_CORE_SYNC_PHASES = new Set([
+  "languages",
+  "videos",
+  "video-images",
+  "video-editions",
+  "video-subtitles",
+  "video-dubs",
+  "video-dub-downloads",
+])
+
 export type WatchRouteManifestRefreshReason =
   | "core-sync"
   | "experience.archive"
@@ -43,6 +53,9 @@ export type WatchRouteManifestRefreshOutcome =
 
 type CoreSyncPhaseSummary = {
   phase: string
+  created?: number
+  updated?: number
+  softDeleted?: number
 }
 
 export function shouldRefreshWatchRouteManifestAfterCoreSync(
@@ -51,6 +64,43 @@ export function shouldRefreshWatchRouteManifestAfterCoreSync(
   return phases.some((phase) =>
     ROUTE_RELEVANT_CORE_SYNC_PHASES.has(phase.phase),
   )
+}
+
+export function shouldInvalidateWatchRenderDataAfterCoreSync(
+  phases: readonly CoreSyncPhaseSummary[],
+): boolean {
+  return phases.some(
+    (phase) =>
+      WATCH_RENDER_RELEVANT_CORE_SYNC_PHASES.has(phase.phase) &&
+      ((phase.created ?? 0) > 0 ||
+        (phase.updated ?? 0) > 0 ||
+        (phase.softDeleted ?? 0) > 0),
+  )
+}
+
+async function emitWatchRenderDataRevalidationAfterCoreSync({
+  phases,
+  emitWebhook,
+}: {
+  phases: readonly CoreSyncPhaseSummary[]
+  emitWebhook: typeof emitRevalidateWebhook
+}): Promise<void> {
+  if (!shouldInvalidateWatchRenderDataAfterCoreSync(phases)) return
+  try {
+    await emitWebhook({
+      model: "video",
+      slug: null,
+      locale: null,
+    })
+  } catch (error) {
+    console.warn(
+      JSON.stringify({
+        event: "watch_render_data.revalidate.failed",
+        detail:
+          error instanceof Error ? error.message.slice(0, 500) : String(error),
+      }),
+    )
+  }
 }
 
 export async function refreshWatchRouteManifest({
@@ -117,15 +167,23 @@ export async function refreshWatchRouteManifest({
 export async function refreshWatchRouteManifestAfterCoreSync({
   prisma,
   phases,
+  emitWebhook = emitRevalidateWebhook,
 }: {
   prisma: PrismaClient
   phases: readonly CoreSyncPhaseSummary[]
+  emitWebhook?: typeof emitRevalidateWebhook
 }): Promise<WatchRouteManifestRefreshOutcome> {
-  if (!shouldRefreshWatchRouteManifestAfterCoreSync(phases)) {
-    return {
-      status: "skipped",
-      reason: "no-route-relevant-core-sync-phases",
-    }
-  }
-  return refreshWatchRouteManifest({ prisma, reason: "core-sync" })
+  const outcome = shouldRefreshWatchRouteManifestAfterCoreSync(phases)
+    ? await refreshWatchRouteManifest({
+        prisma,
+        reason: "core-sync",
+        emitWebhook,
+      })
+    : ({
+        status: "skipped",
+        reason: "no-route-relevant-core-sync-phases",
+      } satisfies WatchRouteManifestRefreshOutcome)
+
+  await emitWatchRenderDataRevalidationAfterCoreSync({ phases, emitWebhook })
+  return outcome
 }

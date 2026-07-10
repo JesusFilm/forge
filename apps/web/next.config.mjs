@@ -5,6 +5,16 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 
 /** @type {import('next').NextConfig} */
 
+const datadogServerExternalPackages = [
+  "@datadog/native-appsec",
+  "@datadog/native-iast-rewriter",
+  "@datadog/native-iast-taint-tracking",
+  "@datadog/native-metrics",
+  "@datadog/pprof",
+  "@datadog/wasm-js-rewriter",
+  "dd-trace",
+]
+
 const additionalImageHosts = (
   process.env.NEXT_PUBLIC_ADDITIONAL_IMAGE_HOSTS ?? ""
 )
@@ -12,6 +22,28 @@ const additionalImageHosts = (
   .map((h) => h.trim())
   .filter(Boolean)
   .map((hostname) => ({ protocol: "https", hostname }))
+
+const adminMediaImageHost = (() => {
+  try {
+    const url = new URL(process.env.ADMIN_GRAPHQL_URL ?? "")
+    return [
+      {
+        protocol: url.protocol.replace(":", ""),
+        hostname: url.hostname,
+        port: url.port,
+        pathname: "/api/media-assets/**",
+      },
+      {
+        protocol: url.protocol.replace(":", ""),
+        hostname: url.hostname,
+        port: url.port,
+        pathname: "/api/public/media-assets/**",
+      },
+    ]
+  } catch {
+    return []
+  }
+})()
 
 const nextConfig = {
   basePath: WATCH_BASE_PATH,
@@ -23,6 +55,24 @@ const nextConfig = {
   compress: true,
   // typedRoutes moved to top-level in Next 16 (stable).
   typedRoutes: true,
+  // Datadog RUM source-map uploads need production browser maps available
+  // after `next build`; uploads stay opt-in via `pnpm datadog:sourcemaps`.
+  productionBrowserSourceMaps: true,
+  serverExternalPackages: datadogServerExternalPackages,
+  webpack(config, { isServer }) {
+    if (isServer) {
+      config.externals.push(...datadogServerExternalPackages)
+    } else {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "@/observability/datadog": false,
+        "@/observability/datadog-logs": false,
+        "dd-trace": false,
+      }
+    }
+
+    return config
+  },
   async rewrites() {
     return {
       beforeFiles: [
@@ -35,17 +85,44 @@ const nextConfig = {
     }
   },
   experimental: {
-    optimizePackageImports: [
-      "lucide-react",
-      "@mux/mux-player-react",
-      "@mux/mux-video-react",
-    ],
+    optimizePackageImports: ["lucide-react", "@mux/mux-video-react"],
   },
   images: {
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
     remotePatterns: [
       { protocol: "http", hostname: "localhost", pathname: "/uploads/**" },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3003",
+        pathname: "/api/media-assets/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3003",
+        pathname: "/api/public/media-assets/**",
+      },
       { protocol: "http", hostname: "127.0.0.1", pathname: "/uploads/**" },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "3003",
+        pathname: "/api/media-assets/**",
+      },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "3003",
+        pathname: "/api/public/media-assets/**",
+      },
+      ...adminMediaImageHost,
       { protocol: "https", hostname: "images.unsplash.com" },
+      {
+        protocol: "https",
+        hostname: "admin.jesusfilm.org",
+        pathname: "/api/public/media-assets/**",
+      },
       { protocol: "https", hostname: "imagedelivery.net" },
       { protocol: "https", hostname: "image.mux.com" },
       ...additionalImageHosts,

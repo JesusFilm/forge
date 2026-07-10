@@ -54,11 +54,11 @@ export const env = createEnv({
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
-    // /api/admin-embeds/{scene,transcript} which forward to admin's
-    // GraphQL trigger mutations using the bearer key below. Both vars
-    // are optional at boot so manager keeps starting in environments
-    // that don't have the proxy configured; the route handlers throw
-    // a clean 500 with a clear message if invoked without these set.
+    // /api/admin-embeds/transcript, which forwards to admin's GraphQL
+    // trigger mutation using the bearer key below. Both vars are optional
+    // at boot so manager keeps starting in environments that don't have the
+    // proxy configured; the route handler throws a clean 500 with a clear
+    // message if invoked without these set.
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
@@ -71,6 +71,32 @@ export const env = createEnv({
       .int()
       .positive()
       .default(120_000),
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(300_000),
+    MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+
+    // Smart Crop (plan 2026-06-09-002). All optional opt-in scaffolding —
+    // default deploys must not require these. The smart-crop job creation
+    // route returns 503 config_missing when invoked without them.
+    CROP_WORKER_BASE_URL: z.string().url().optional(),
+    CROP_WORKER_API_KEY: z.string().min(1).optional(),
+    MASTRA_SMART_CROP_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+
+    // Shorts Studio (plan 2026-06-11-002). Same opt-in scaffolding pattern
+    // as CROP_WORKER_*: optional at schema load so default deploys don't
+    // require them; the shorts job creation route returns 503 config_missing
+    // when invoked without them. SHORTS_WORKER_API_KEY must be a DISTINCT
+    // secret from CROP_WORKER_API_KEY (one worker's bearer must not
+    // authorize the other).
+    SHORTS_WORKER_BASE_URL: z.string().url().optional(),
+    SHORTS_WORKER_API_KEY: z.string().min(1).optional(),
 
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
@@ -139,6 +165,15 @@ export const env = createEnv({
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+    MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS:
+      process.env.MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS,
+    CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
+    CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
+    MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,
+    SHORTS_WORKER_BASE_URL: process.env.SHORTS_WORKER_BASE_URL,
+    SHORTS_WORKER_API_KEY: process.env.SHORTS_WORKER_API_KEY,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:

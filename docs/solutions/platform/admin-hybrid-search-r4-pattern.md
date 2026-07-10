@@ -92,23 +92,22 @@ silently reverts the query to Seq Scan.
   response maps `imageUrl: null` for experience results per cms
   parity. Upgrade lands after R8.
 
-## Post-R4 video semantic upgrade
+## Post-feat-192 video semantic upgrade
 
-`semantic-video` now mixes two primary evidence sources internally:
-
-- `video_scene_locale.embedding` for localized multimodal scene descriptions.
-- `video_transcript_chunk.embedding` for spoken transcript chunks.
-
-The retriever performs bounded scene and transcript vector scans, collapses to
-the best evidence per source per video, applies a small bounded agreement bonus
-when both sources support the same video, and returns one ranked semantic video
-candidate per video to RRF. The winning raw source owns the public-facing
-snippet/timecode and the service-internal `embeddingText` used by video dedup.
+`semantic-video` is still the video semantic RRF list, but its runtime evidence
+is now enriched transcript chunks. `searchVideoSemantic` reads
+`video_transcript_chunk.embedding` rows that match the accepted gateway
+provider/model/dimension provenance, collapses to the best transcript chunk per
+video, and returns one ranked semantic video candidate per video to RRF. The
+winning chunk owns the public-facing snippet/timecode and the service-internal
+`embeddingText` used by video dedup.
 
 This keeps the four-list RRF invariant intact. Do **not** add
 `semantic-transcript-video` as a separate RRF input unless the product decision
 changes explicitly; doing so double-counts semantic video evidence and changes
-debug/dilution semantics.
+debug/dilution semantics. Also do not re-enable scene embedding retrieval as a
+fallback; transcript relevance gaps should be fixed in the enriched transcript
+signal, ranking layer, or eval gates.
 
 ## What R4 establishes as admin-first patterns
 

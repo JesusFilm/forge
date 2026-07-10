@@ -15,8 +15,11 @@ import {
 
 const CONFIG: FirecrawlConfig = {
   apiKey: "fc-key",
-  baseUrl: "https://api.firecrawl.dev",
+  apiUrl: "https://api.firecrawl.dev",
   timeoutMs: 60_000,
+  userAgent: "forge-mastra-firecrawl/1.0",
+  maxSearchResults: 5,
+  maxMarkdownCharacters: 16_000,
 }
 
 function fakeStore(): InstagramDiscoveryArtifactStore & {
@@ -126,6 +129,28 @@ describe("runInstagramDiscovery — trusted handles", () => {
     expect(searchQuery.mock.calls[0]![0]).toBe("site:instagram.com/savedhandle")
   })
 
+  it("reports a saved-source outage when no handles or queries can run", async () => {
+    const result = await runInstagramDiscovery(
+      { handles: [], queries: [] },
+      {
+        runId: "run-sources-failed",
+        firecrawlConfig: CONFIG,
+        artifactStore: fakeStore(),
+        sourcesConfig: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchSources: (async () =>
+          new Response("down", { status: 500 })) as unknown as typeof fetch,
+      },
+    )
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "sources_unavailable",
+      retryable: true,
+    })
+  })
+
   it("still drops commentary from a trusted handle", async () => {
     const result = await runInstagramDiscovery(
       { handles: ["someone"], queries: [] },
@@ -144,6 +169,27 @@ describe("runInstagramDiscovery — trusted handles", () => {
 })
 
 describe("runInstagramDiscovery", () => {
+  it("honors Firecrawl result and markdown caps", async () => {
+    const searchQuery = vi.fn(async () => [])
+    await runInstagramDiscovery(
+      { queries: ["q"], limitPerQuery: 50 },
+      {
+        runId: "run-firecrawl-caps",
+        firecrawlConfig: CONFIG,
+        searchQuery,
+        artifactStore: fakeStore(),
+      },
+    )
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      "q",
+      expect.objectContaining({
+        limit: 5,
+        maxMarkdownCharacters: 16_000,
+      }),
+    )
+  })
+
   it("returns only qualifying posts and writes an artifact", async () => {
     const store = fakeStore()
     const searchQuery = vi.fn(async () => [
@@ -201,6 +247,12 @@ describe("runInstagramDiscovery", () => {
     const submitted = submitPosts.mock.calls[0]![0]
     expect(submitted).toHaveLength(1)
     expect(submitted[0]!.shortcode).toBe("ABC123")
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reviewQueue).toEqual({
+      status: "submitted",
+      inserted: 1,
+      skipped: 0,
+    })
   })
 
   it("does not submit when the site is not configured", async () => {
@@ -215,6 +267,27 @@ describe("runInstagramDiscovery", () => {
       },
     )
     expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reviewQueue).toEqual({ status: "not_configured" })
+  })
+
+  it("records a review-queue failure without discarding discovery results", async () => {
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-submit-failure",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: fakeStore(),
+        submitPosts: async () => {
+          throw new Error("site offline")
+        },
+      },
+    )
+    expect(result).toMatchObject({
+      ok: true,
+      reviewQueue: { status: "failed", reason: "upstream_failed" },
+    })
   })
 
   it("excludes commentary posts and counts them", async () => {
@@ -384,6 +457,7 @@ describe("handleInstagramDiscoveryRouteRequest", () => {
     },
     posts: [],
     queryFailures: [],
+    reviewQueue: { status: "empty" },
   }
 
   it("rejects requests without a valid bearer", async () => {

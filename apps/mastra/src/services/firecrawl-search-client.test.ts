@@ -72,6 +72,20 @@ describe("requestFirecrawlSearch", () => {
     })
   })
 
+  it("truncates returned markdown when a caller supplies a cap", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        data: [{ url: "https://example.com", markdown: "abcdefgh" }],
+      }),
+    )
+    const hits = await requestFirecrawlSearch("q", {
+      apiKey: "fc-key",
+      maxMarkdownCharacters: 3,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(hits[0]!.markdown).toBe("abc")
+  })
+
   it("throws config_missing before any fetch when apiKey is absent", async () => {
     const fetchImpl = vi.fn()
     await expect(

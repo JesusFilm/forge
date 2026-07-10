@@ -32,16 +32,34 @@ const amharicSubtitle: WatchSubtitle = {
   aiGenerated: true,
 }
 
+const englishSubtitle: WatchSubtitle = {
+  documentId: "subtitle-en",
+  language: {
+    slug: "english",
+    name: "English",
+    nativeName: null,
+    bcp47: "en",
+  },
+  vttSrc: "https://example.com/en.vtt",
+  primary: true,
+  aiGenerated: false,
+}
+
+const fetchMock = vi.fn()
+
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  fetchMock.mockReset()
+  vi.stubGlobal("fetch", fetchMock)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   act(() => {
     root.unmount()
   })
@@ -64,5 +82,27 @@ describe("SubtitleTranscript rendering", () => {
     expect(
       container.querySelector('[data-testid="watch-subtitle-transcript"]'),
     ).toBeNull()
+  })
+
+  it("renders server-provided cue text without waiting for client fetch", () => {
+    act(() => {
+      root.render(
+        <SubtitleTranscript
+          subtitles={[englishSubtitle]}
+          audioSlug="english"
+          playerRef={createRef<MuxPlayerRef | null>()}
+          initialTranscript={{
+            vttSrc: englishSubtitle.vttSrc,
+            cues: [{ start: 5, end: 8, text: "Server-rendered cue" }],
+          }}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-subtitle-cues"]')
+        ?.textContent,
+    ).toContain("Server-rendered cue")
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

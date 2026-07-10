@@ -31,6 +31,7 @@ import {
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
+import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { PlayerControls } from "./PlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
@@ -51,6 +52,10 @@ type VideoPlayerProps = {
   fullscreen?: boolean
   /** Toggle fullscreen (fired by the fullscreen control). */
   onToggleFullscreen?: () => void
+  /** Per-side horizontal inset the parent applies to the inline player, so the
+   *  16:9 height is computed from the reduced width (no letterbox). Ignored in
+   *  fullscreen. Default 0. */
+  horizontalInset?: number
 }
 
 export function VideoPlayer({
@@ -60,27 +65,26 @@ export function VideoPlayer({
   onPlayingChange,
   fullscreen = false,
   onToggleFullscreen,
+  horizontalInset = 0,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
   const [hasStarted, setHasStarted] = useState(false)
   const wasPlayingRef = useRef(false)
   const resolvedPoster = resolveImageUrl(posterUrl)
-  const playerHeight = Math.round(screenWidth * (9 / 16))
+  const playerHeight = Math.round(
+    (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
+  )
 
-  // The source passed to useVideoPlayer must be FROZEN. useVideoPlayer recreates
-  // (and releases) the player whenever this value changes — its dependency is
-  // JSON.stringify(source). Source swaps must go through replaceAsync on the
-  // SAME player instead; a changing creation source would release the player
-  // mid-replace (FunctionCallException) and strand a fresh, paused player on the
-  // new asset — the "black screen, stuck on language switch" bug.
+  // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
+  // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
+  // player; a changing source = "black screen, stuck on language switch" bug.
   const creationSource = useRef(streamingUrl).current
   const player = useVideoPlayer(creationSource, (p) => {
     p.muted = false
     p.loop = false
-    // Favor a fast first frame on cellular over a deep prebuffer — JFP's
-    // audience skews to low-bandwidth networks. (Android-only fields are
-    // ignored on iOS.)
+    // Favor a fast first frame over deep prebuffer — JFP audience skews to
+    // low-bandwidth networks. (Android-only fields are ignored on iOS.)
     p.bufferOptions = {
       minBufferForPlayback: 1,
       preferredForwardBufferDuration: 8,
@@ -95,20 +99,17 @@ export function VideoPlayer({
   useEffect(() => {
     if (!streamingUrl || streamingUrl === loadedUrlRef.current) return
 
-    // Decide swap vs no-swap by Mux playback ID, not raw URL string: the
-    // optimistic seed URL is rebuilt from a playbackId while the resolved
-    // variant carries the stored `hls`, so the same asset can have two
-    // different URL strings. Reloading the same asset would needlessly
-    // restart playback.
+    // Compare by Mux playback ID, not raw URL: the seed URL (rebuilt from
+    // playbackId) and resolved variant (stored `hls`) give one asset two URL
+    // strings; reloading the same asset would needlessly restart playback.
     const currentId = extractMuxPlaybackId(loadedUrlRef.current)
     const nextId = extractMuxPlaybackId(streamingUrl)
     loadedUrlRef.current = streamingUrl
     if (currentId != null && nextId != null && currentId === nextId) return
 
-    // Preserve playback across the swap: replace() does not carry the playing
-    // state to the new source, so a language switch mid-play would otherwise
-    // strand a paused frame. Resume once the new source has loaded if we were
-    // playing before.
+    // Preserve playback across the swap: replace() drops the playing state, so
+    // a mid-play language switch would strand a paused frame. Resume after load
+    // if we were playing.
     const wasPlaying = player.playing
     const resume = () => {
       if (!wasPlaying) return
@@ -134,12 +135,9 @@ export function VideoPlayer({
       })
   }, [streamingUrl, player])
 
-  // Disable Mux's auto-generated subtitle tracks from the HLS manifest.
-  // Admin CMS VTT subtitles are rendered by SubtitleOverlay instead.
-  // AVPlayer can auto-select a track at source load, tracks-available, or a
-  // device-locale match — these three signals cover every re-selection. (A
-  // fourth statusChange listener was dropped: it fired on every buffer/seek
-  // tick for the same effect the targeted events already cover.)
+  // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
+  // instead). These three events cover every AVPlayer auto-select; a fourth
+  // statusChange listener was dropped — it re-fired on every buffer/seek tick.
   useEffect(() => {
     const disable = () => {
       try {
@@ -161,10 +159,9 @@ export function VideoPlayer({
     isPlaying: player.playing,
   })
 
-  // Mirror isPlaying into a ref so the AppState listener can register once on
-  // [player] and read the current value, instead of tearing down and
-  // re-adding the subscription on every play/pause (which left a window where
-  // a background event could be missed).
+  // Mirror isPlaying into a ref so the AppState listener registers once on
+  // [player] and reads the current value — re-subscribing on every play/pause
+  // left a window where a background event could be missed.
   const isPlayingRef = useRef(isPlaying)
   useEffect(() => {
     isPlayingRef.current = isPlaying
@@ -209,10 +206,9 @@ export function VideoPlayer({
 
   const controls = useControlsVisibility(player)
 
-  // ── Tap disambiguation (U4) ─────────────────────────────────────────
-  // Single tap toggles chrome (reveal is immediate on press-in so it never
-  // lags, KTD3); a second tap within DOUBLE_TAP_MS seeks the tapped half ±10s
-  // and shows a brief indicator independent of chrome visibility.
+  // Tap disambiguation (U4): single tap toggles chrome (revealed on press-in
+  // so it never lags, KTD3); second tap within DOUBLE_TAP_MS seeks the tapped
+  // half ±10s with a brief indicator, independent of chrome visibility.
   const tapWidthRef = useRef(0)
   const wasVisibleRef = useRef(true)
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -294,14 +290,9 @@ export function VideoPlayer({
     [controls, doSideSeek],
   )
 
-  // Caption vertical offset:
-  //  - Inline: FIXED on the button row (never moves; the timeline z-layers over
-  //    it via the render order below).
-  //  - Fullscreen: lifts above the control bar when the chrome is visible (so a
-  //    tall 2-line caption never covers the timeline) and drops back to the
-  //    button row when the chrome hides — animated (only in fullscreen).
-  // Horizontal padding clears the mute/fullscreen icons (and the landscape
-  // side-notch); the text enlarges in fullscreen where the video fills the screen.
+  // Caption offset: inline = fixed on the button row; fullscreen = lifts above
+  // the control bar while chrome shows (so a 2-line caption never covers the
+  // timeline) and drops back when it hides (animated). Padding clears the icons.
   const insets = useSafeAreaInsets()
   const subtitleBottomOffset = fullscreen
     ? controls.controlsVisible
@@ -351,10 +342,9 @@ export function VideoPlayer({
         />
       )}
 
-      {/* Full-bleed tap target behind the chrome. A tap on the video body
-          toggles the controls (the controls layer is box-none and the
-          subtitle overlay is pointerEvents none, so empty-area taps fall
-          through to here); a double tap on a side seeks ±10s. */}
+      {/* Full-bleed tap target behind the chrome (controls layer is box-none,
+          subtitle overlay is pointerEvents none, so empty-area taps fall here).
+          Tap toggles controls; double tap on a side seeks ±10s. */}
       <Pressable
         style={StyleSheet.absoluteFill}
         onLayout={(e: LayoutChangeEvent) => {
@@ -404,13 +394,14 @@ export function VideoPlayer({
         </Animated.View>
       )}
 
-      {/* Captions sit on the button row, ABOVE the scrim but BELOW the controls
-          so the timeline always draws over a tall (2-line) caption and the
-          progress stays visible. Kept outside the fade wrapper so they stay
-          visible when the controls auto-hide. */}
+      {/* Captions sit ABOVE the scrim but BELOW the controls so the timeline
+          always draws over a tall caption. Outside the fade wrapper so they
+          stay visible when the controls auto-hide. Gated on hasStarted: captions
+          stay hidden until the first play (a cue covering t=0 would otherwise
+          paint over the un-started poster), then persist through pauses. */}
       <SubtitleOverlay
         player={player}
-        vttSrc={subtitleVttSrc}
+        vttSrc={hasStarted ? subtitleVttSrc : null}
         bottomOffset={subtitleBottomOffset}
         horizontalInset={subtitleHorizontalInset}
         fontSize={subtitleFontSize}

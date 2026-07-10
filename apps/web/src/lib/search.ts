@@ -1,5 +1,6 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
-import client from "@/lib/admin-client"
+import { semanticSearchAdminClient } from "@/lib/admin-client"
+import type { SearchLanguageResolution } from "./search-language"
 
 // Admin's `search(q, locale, type, limit, offset, mode, debug)` is the
 // hybrid (semantic + keyword) PUBLIC-tier search surface. Response shape
@@ -19,15 +20,18 @@ import client from "@/lib/admin-client"
 // keyring rotation documented at
 // docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md
 
-const SEARCH_QUERY = adminGraphql(`
+const WEB_SEARCH_MODE = "keyword-first"
+
+const searchVideosOperation = adminGraphql(`
   query Search(
     $q: String!
     $locale: String!
     $limit: Int
     $offset: Int
     $type: HybridSearchContentType
+    $mode: String
   ) {
-    search(q: $q, locale: $locale, limit: $limit, offset: $offset, type: $type) {
+    search(q: $q, locale: $locale, limit: $limit, offset: $offset, type: $type, mode: $mode) {
       hasMore
       query
       searchMode
@@ -37,6 +41,8 @@ const SEARCH_QUERY = adminGraphql(`
         title
         snippet
         imageUrl
+        imageBlurDataUrl
+        muxThumbnailBlurDataUrl
         playbackId
         startSeconds
         score
@@ -51,13 +57,13 @@ const SEARCH_QUERY = adminGraphql(`
 
 export type SearchContentType = "video" | "experience"
 
-// Derived from the gql.tada introspection of the actual SEARCH_QUERY
+// Derived from the gql.tada introspection of the actual search operation
 // result. When admin adds a new VideoLabel value and the package
 // regenerates `admin-graphql-env.d.ts`, this union widens automatically
 // — no hand-mirrored string list to drift out of sync with the SDL.
 export type AdminVideoLabel = NonNullable<
   NonNullable<
-    AdminResultOf<typeof SEARCH_QUERY>["search"]
+    AdminResultOf<typeof searchVideosOperation>["search"]
   >["results"][number]["label"]
 >
 
@@ -67,6 +73,8 @@ export type SearchResult = {
   slug: string
   title: string
   imageUrl: string | null
+  imageBlurDataUrl: string | null
+  muxThumbnailBlurDataUrl: string | null
   snippet: string
   startSeconds: number | null
   playbackId: string | null
@@ -81,6 +89,12 @@ export type SearchResult = {
    *  experiences; 0 when a video has no children. Drives the
    *  "{n} episodes" pill on series / collection cards. */
   childCount: number | null
+  /** Source adapter that produced this row. Omitted on legacy semantic rows. */
+  source?: "semantic" | "algolia"
+  /** Public Watch audio-language slug to prefer for result links. */
+  languageSlug?: string | null
+  /** Algolia/Core English language label, when the result came from a language-aware index. */
+  languageEnglishName?: string | null
 }
 
 export type SearchError = {
@@ -88,6 +102,34 @@ export type SearchError = {
   message: string
   retryAfterSeconds?: number
 }
+
+export type SearchResponse = {
+  results: SearchResult[]
+  hasMore: boolean
+  query: string
+  searchMode: string
+  latencyMs: number
+  nextOffset?: number
+}
+
+export type SearchActionResultSource = "semantic" | "algolia"
+
+export type SearchActionResult =
+  | (SearchResponse & {
+      ok: true
+      resultSource: SearchActionResultSource
+      resolvedLanguage: SearchLanguageResolution
+      languageFacets?: Record<string, number>
+    })
+  | (Omit<SearchResponse, "results" | "hasMore"> & {
+      ok: false
+      results: []
+      hasMore: false
+      resultSource: SearchActionResultSource
+      resolvedLanguage: SearchLanguageResolution
+      languageFacets?: Record<string, number>
+      error: SearchError
+    })
 
 const MAX_QUERY_LENGTH = 200
 
@@ -121,24 +163,20 @@ export async function searchVideos(
   limit = 20,
   offset = 0,
   type?: SearchContentType,
-): Promise<{
-  results: SearchResult[]
-  hasMore: boolean
-  query: string
-  searchMode: string
-  latencyMs: number
-}> {
+  locale = "en",
+): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
 
   const startedAt = performance.now()
-  const result = await client.query({
-    query: SEARCH_QUERY,
+  const result = await semanticSearchAdminClient.query({
+    query: searchVideosOperation,
     variables: {
       q: truncatedQuery,
-      locale: "en",
+      locale,
       limit,
       offset,
       type: toAdminContentType(type),
+      mode: WEB_SEARCH_MODE,
     },
     fetchPolicy: "no-cache",
   })
@@ -187,12 +225,15 @@ export async function searchVideos(
     title: row.title,
     snippet: row.snippet,
     imageUrl: row.imageUrl ?? null,
+    imageBlurDataUrl: row.imageBlurDataUrl ?? null,
+    muxThumbnailBlurDataUrl: row.muxThumbnailBlurDataUrl ?? null,
     startSeconds: row.startSeconds ?? null,
     playbackId: row.playbackId ?? null,
     score: row.score,
     label: row.label ?? null,
     durationSeconds: row.durationSeconds ?? null,
     childCount: row.childCount ?? null,
+    source: "semantic",
   }))
 
   return {
@@ -201,5 +242,6 @@ export async function searchVideos(
     query: data?.query ?? truncatedQuery,
     searchMode: normalizeSearchMode(data?.searchMode),
     latencyMs,
+    nextOffset: offset + results.length,
   }
 }

@@ -16,6 +16,7 @@ export type MastraTranscriptEmbeddingInput = {
     text: string
     segments?: TranscriptSegment[]
     artifactKey?: string
+    kind?: "manager-transcript"
     provider?: string
     generatedAt?: string
   }
@@ -205,6 +206,7 @@ export async function launchMastraTranscriptEmbeddings(
       segments: input.transcript.segments,
       artifactKey:
         input.transcript.artifactKey ?? `${input.assetId}/transcript.json`,
+      kind: input.transcript.kind ?? "manager-transcript",
       provider: input.transcript.provider,
       generatedAt: input.transcript.generatedAt,
     },

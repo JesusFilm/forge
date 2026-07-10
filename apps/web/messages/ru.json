@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Закрыть",
     "download": "Скачать",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Проверяем",
     "closeTermsOfUse": "Закрыть условия использования",
     "cancel": "Отмена",
@@ -83,7 +86,8 @@
     "toggleOn": "Вкл.",
     "toggleOff": "Выкл.",
     "close": "Закрыть",
-    "apply": "Применить"
+    "apply": "Применить",
+    "noLanguageSubtitles": "Нет субтитров на {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# СЕРИЯ} few {# СЕРИИ} many {# СЕРИЙ} other {# СЕРИИ}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Начните личный разговор с человеком, который готов выслушать.",
     "questionsShort": "Вопросы",
     "questions": "Вопросы по теме",
-    "askYours": "Задать свой вопрос",
+    "askYours": "Ваш вопрос",
     "chatWithPerson": "Поговорить с человеком",
     "askBibleQuestion": "Задать вопрос о Библии"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Анимация",
     "categoryStudy": "Изучение",
     "categoryFamily": "Семья",
-    "categoryChristmas": "Рождество"
+    "categoryChristmas": "Рождество",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Воспроизвести со звуком",
+    "playWithSound": "Смотреть",
     "tapToUnmute": "Включить звук"
   },
   "ExperienceSkeleton": {

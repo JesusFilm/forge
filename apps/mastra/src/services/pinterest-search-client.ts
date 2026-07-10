@@ -1,5 +1,7 @@
 import type { PinterestRawItem } from "./pinterest-discovery/types"
 
+import { sleepUnlessAborted } from "./abortable-sleep"
+
 /**
  * Pinterest exposes a free public RSS feed for any public board at
  * `https://<host>/<user>/<board>.rss`. This client fetches that feed and splits
@@ -34,18 +36,50 @@ export class PinterestSearchError extends Error {
 export type FetchBoardOptions = {
   timeoutMs?: number
   maxAttempts?: number
+  signal?: AbortSignal
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
 }
 
+function boardPageUrl(boardUrl: string): URL {
+  let url: URL
+  try {
+    url = new URL(boardUrl.trim())
+  } catch {
+    throw new PinterestSearchError(
+      "invalid_response",
+      "Pinterest board URL must be valid",
+    )
+  }
+
+  const hostname = url.hostname.toLowerCase()
+  if (
+    url.protocol !== "https:" ||
+    (hostname !== "pinterest.com" && !hostname.endsWith(".pinterest.com"))
+  ) {
+    throw new PinterestSearchError(
+      "invalid_response",
+      "Pinterest board URL must use HTTPS and a pinterest.com host",
+    )
+  }
+
+  url.search = ""
+  url.hash = ""
+  return url
+}
+
 /** Build the .rss feed URL for a board page URL. */
 export function boardFeedUrl(boardUrl: string): string {
-  return `${boardUrl.trim().replace(/\/+$/, "")}.rss`
+  const url = boardPageUrl(boardUrl)
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}.rss`
+  return url.toString()
 }
 
 /** Best-effort human board name from a board URL (`/user/board/`). */
 export function boardNameFromUrl(boardUrl: string): string | null {
-  const match = boardUrl.match(/pinterest\.[^/]+\/([^?#]+?)\/?$/i)
+  const match = boardPageUrl(boardUrl)
+    .toString()
+    .match(/pinterest\.[^/]+\/([^?#]+?)\/?$/i)
   return match ? decodeURIComponent(match[1]!) : null
 }
 
@@ -80,12 +114,16 @@ export async function fetchBoardFeed(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS
   const fetchImpl = options.fetchImpl ?? fetch
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs)
   const sleep =
     options.sleep ??
     ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
 
-  const feedUrl = boardFeedUrl(boardUrl)
-  const boardName = boardNameFromUrl(boardUrl)
+  const normalizedBoardUrl = boardPageUrl(boardUrl).toString()
+  const feedUrl = boardFeedUrl(normalizedBoardUrl)
+  const boardName = boardNameFromUrl(normalizedBoardUrl)
 
   let response: Response | null = null
   let lastTransportError: unknown
@@ -95,9 +133,18 @@ export async function fetchBoardFeed(
       response = await fetchImpl(feedUrl, {
         method: "GET",
         headers: { accept: "application/rss+xml, application/xml, text/xml" },
-        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "error",
+        signal,
       })
     } catch (cause) {
+      if (signal.aborted) {
+        throw new PinterestSearchError(
+          "upstream_failed",
+          "Pinterest feed request exceeded its deadline",
+          true,
+          cause,
+        )
+      }
       lastTransportError = cause
       if (attempt < maxAttempts) {
         await sleep(backoffMs(attempt))
@@ -113,7 +160,13 @@ export async function fetchBoardFeed(
       )
     }
     if (response.status >= 500 && attempt < maxAttempts) {
-      await sleep(backoffMs(attempt))
+      if (!(await sleepUnlessAborted(sleep, backoffMs(attempt), signal))) {
+        throw new PinterestSearchError(
+          "upstream_failed",
+          "Pinterest feed request exceeded its deadline",
+          true,
+        )
+      }
       continue
     }
     break
@@ -164,7 +217,7 @@ export async function fetchBoardFeed(
   return parseRssItems(xml).map((item) => ({
     ...item,
     boardName,
-    boardUrl: boardUrl.trim(),
+    boardUrl: normalizedBoardUrl,
   }))
 }
 

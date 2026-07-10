@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "إغلاق",
     "download": "تنزيل",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "جارٍ التحقق",
     "closeTermsOfUse": "إغلاق شروط الاستخدام",
     "cancel": "إلغاء",
@@ -83,7 +86,8 @@
     "toggleOn": "تشغيل",
     "toggleOff": "إيقاف",
     "close": "إغلاق",
-    "apply": "تطبيق"
+    "apply": "تطبيق",
+    "noLanguageSubtitles": "لا توجد ترجمات {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "ابدأ محادثة خاصة مع شخص مستعد للاستماع.",
     "questionsShort": "أسئلة",
     "questions": "أسئلة ذات صلة",
-    "askYours": "اطرح سؤالك",
+    "askYours": "سؤالك",
     "chatWithPerson": "تحدث مع شخص",
     "askBibleQuestion": "اطرح سؤالًا عن الكتاب المقدس"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "رسوم متحركة",
     "categoryStudy": "دراسة",
     "categoryFamily": "العائلة",
-    "categoryChristmas": "عيد الميلاد"
+    "categoryChristmas": "عيد الميلاد",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "تشغيل مع الصوت",
+    "playWithSound": "شاهد الآن",
     "tapToUnmute": "تشغيل الصوت"
   },
   "ExperienceSkeleton": {

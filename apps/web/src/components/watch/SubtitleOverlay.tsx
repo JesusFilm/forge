@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
+
 const CHROME_BAR_HEIGHT = 64
 
 function stripHtmlTags(text: string): string {
@@ -134,6 +136,7 @@ export function SubtitleOverlay({
         const t = el.textTracks[i]!
         if (
           (t.kind === "subtitles" || t.kind === "captions") &&
+          t.label === FORGE_SUBTITLE_TRACK_LABEL &&
           (t.mode === "showing" || t.mode === "hidden")
         ) {
           t.mode = "hidden"

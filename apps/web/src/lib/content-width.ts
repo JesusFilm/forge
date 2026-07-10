@@ -14,8 +14,26 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
  * Watch-page rail: aligns floating chrome, hero overlay text, carousel, and
  * body content on the same left edge.
  */
-export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-10 md:px-16 xl:px-24"
-export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-10 md:left-16 xl:left-24"
+export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-5 md:px-16 xl:px-24"
+export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-5 md:left-16 xl:left-24"
+export const WATCH_PAGE_LEFT_EDGE_CLASSES =
+  "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]"
+export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
+  "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]"
+export const FLOATING_HEADER_HEIGHT_CLASS = "h-[52px]"
+export const FLOATING_HEADER_GAP_CLASS = "gap-3 md:gap-5"
+export const FLOATING_HEADER_TOP_CLASS =
+  "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+export const FLOATING_HEADER_PINNED_TOP_CLASS =
+  "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+export const FLOATING_HEADER_LOGO_SLOT_CLASS =
+  "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
+export const FLOATING_HEADER_TRAILING_SLOT_CLASS =
+  "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
+export const FLOATING_HEADER_TRAILING_GROUP_CLASS =
+  "flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
+export const FLOATING_HEADER_LANGUAGE_SLOT_CLASS =
+  "h-11 w-11 md:h-[52px] md:w-12"
 export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATCH_PAGE_RAIL_PADDING_CLASSES}`
 
 /**

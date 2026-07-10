@@ -100,10 +100,9 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   return (
     <View style={styles.container}>
-      {/* Background layer: VideoView when stream is available, else thumbnail.
-          All layers use pointerEvents="none" so the TV focus engine
-          traverses past the native video surface — the silent-focus
-          target is the Pressable below. */}
+      {/* Background: VideoView when a stream exists, else thumbnail. All layers
+          use pointerEvents="none" so the TV focus engine traverses past the
+          native video surface to the silent-focus Pressable below. */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {hasValidStream ? (
           <VideoView
@@ -133,16 +132,9 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         />
       </View>
 
-      {/* Silent-focus target: full-bleed invisible Pressable that
-          catches D-pad UP from the first block below. Focus landing
-          here lets the containing ScrollView scroll the hero into
-          view. This is an *intentional* deviation from
-          apps/tv/CLAUDE.md's "visible focus ring" rule — the product
-          decision is that the hero should look static even when
-          focused. `onPress` is a no-op handler (rather than
-          undefined) so pressing Select on the focused hero doesn't
-          visually flash with no behaviour; `android_ripple={null}`
-          suppresses Android TV's default ripple animation on press. */}
+      {/* Silent-focus target: full-bleed invisible Pressable catching D-pad UP so the
+          ScrollView scrolls the hero into view. Intentional deviation from CLAUDE.md's
+          "visible focus ring" rule. `onPress` no-op (not undefined) so Select doesn't flash; `android_ripple={null}` kills Android TV ripple. */}
       <Pressable
         style={StyleSheet.absoluteFill}
         accessibilityLabel={heading ?? "Video hero"}

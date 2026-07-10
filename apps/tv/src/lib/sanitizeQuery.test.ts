@@ -6,22 +6,16 @@ describe("sanitizeQuery", () => {
   })
 
   it("preserves leading, internal, and trailing whitespace", () => {
-    // sanitizeQuery is a pure normalizer (NFKC + strip control /
-    // directional codepoints + cap). It runs on EVERY keystroke from
-    // the on-screen keyboard, so trimming would either eat the space
-    // a user just pressed (before they type the next letter) or
-    // collapse "hello world" → "helloworld" mid-typing. Empty-query
-    // gating happens at the firing site (runSearch / debounce effect)
-    // via .trim().length checks, not here.
+    // Pure normalizer runs per-keystroke, so trimming would eat the
+    // just-pressed space or collapse "hello world". Empty-query gating
+    // is the firing site's job (.trim().length checks), not here.
     expect(sanitizeQuery("   hello world   ")).toBe("   hello world   ")
   })
 
   it("preserves an internal space mid-typing (keyboard regression)", () => {
-    // The on-screen keyboard's space key fires onChange(value + " ")
-    // — if sanitizeQuery stripped the trailing space the user just
-    // pressed, the next letter would land directly after the prior
-    // word ("hellow") instead of starting a new word ("hello w").
-    // The previous .trim() implementation broke this exact path.
+    // Space key fires onChange(value + " "); stripping that trailing
+    // space lands the next letter as "hellow" not "hello w". The old
+    // .trim() implementation broke this exact path.
     expect(sanitizeQuery("hello world")).toBe("hello world")
     expect(sanitizeQuery("hello ")).toBe("hello ")
     expect(sanitizeQuery("hello w")).toBe("hello w")
@@ -71,9 +65,8 @@ describe("sanitizeQuery", () => {
   })
 
   it("preserves whitespace-only input verbatim (firing-site rejects it)", () => {
-    // Whitespace-only input is NOT empty per sanitizeQuery's contract;
-    // it's a string of preserved spaces. The firing site
-    // (useSemanticSearch.runSearch + the debounce effect) checks
+    // Whitespace-only is NOT empty per the contract; it's preserved
+    // spaces. The firing site (runSearch + debounce effect) checks
     // q.trim().length === 0 and skips the network call there.
     expect(sanitizeQuery("   ")).toBe("   ")
   })

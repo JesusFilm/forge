@@ -9,15 +9,25 @@ import {
   getYouTubeConfig,
   type YouTubeConfig,
 } from "../../config/env"
+import {
+  DISCOVERY_SOURCE_BUDGET_MS,
+  DISCOVERY_SOURCE_CONCURRENCY,
+  mapWithConcurrency,
+} from "../../services/discovery/bounded-parallel"
 import { classifyContent, qualifies } from "../../services/discovery/classifier"
 import type { DiscoveredVideo } from "../../services/discovery/candidate"
 import type { SourcesConfig } from "../../services/discovery/sources-client"
 import {
-  classifyYouTubeSource,
-  loadSavedSourceValues,
+  ReviewQueueOutcomeSchema,
+  type ReviewQueueOutcome,
+} from "../../services/discovery/review-queue-outcome"
+import {
+  loadSavedSourceValuesResult,
   mergeUnique,
+  normalizeYouTubeSource,
 } from "../../services/discovery/saved-sources"
 import {
+  SiteIngestError,
   submitCandidatesToSite,
   type SiteIngestConfig,
   type SiteIngestResult,
@@ -54,16 +64,18 @@ const DEFAULT_QUERIES = [
   "cinematic AI Jesus short film",
   "AI animated gospel story",
 ]
+const MAX_CHANNELS = 50
+const MAX_PLAYLISTS = 50
 
 export const YouTubeDiscoveryWorkflowInputSchema = z
   .object({
-    channels: z.array(z.string().min(1)).max(50).default([]),
-    playlists: z.array(z.string().min(1)).max(50).default([]),
+    channels: z.array(z.string().min(1)).max(MAX_CHANNELS).default([]),
+    playlists: z.array(z.string().min(1)).max(MAX_PLAYLISTS).default([]),
     queries: z.array(z.string().min(1)).max(20).default(DEFAULT_QUERIES),
     limitPerChannel: z.number().int().positive().max(50).default(10),
     limitPerPlaylist: z.number().int().positive().max(50).default(10),
     limitPerQuery: z.number().int().positive().max(50).default(10),
-    maxResults: z.number().int().positive().max(200).default(50),
+    maxResults: z.number().int().positive().max(200).default(10),
     persistArtifact: z.boolean().default(true),
   })
   .strict()
@@ -79,6 +91,7 @@ const WorkflowSuccessSchema = z
     totals: YouTubeDiscoveryTotalsSchema,
     videos: z.array(YouTubeVideoSchema),
     sourceFailures: z.array(DiscoverySourceFailureSchema),
+    reviewQueue: ReviewQueueOutcomeSchema,
     artifactPath: z.string().optional(),
   })
   .strict()
@@ -86,7 +99,12 @@ const WorkflowSuccessSchema = z
 const WorkflowFailureSchema = z
   .object({
     ok: z.literal(false),
-    reason: z.enum(["invalid_input", "config_missing", "all_sources_failed"]),
+    reason: z.enum([
+      "invalid_input",
+      "config_missing",
+      "sources_unavailable",
+      "all_sources_failed",
+    ]),
     retryable: z.boolean(),
     mastraRunId: z.string(),
     details: z.string().optional(),
@@ -147,24 +165,53 @@ export type YouTubeDiscoveryOptions = {
 /**
  * Merge the website's saved YouTube sources into the run input: each saved value
  * is classified as a channel or a playlist and added to the matching trusted
- * list (deduped). Best-effort — a fetch failure leaves the input unchanged.
+ * list (deduped). The caller surfaces a failed source request when no fallback
+ * input exists.
  */
 async function withSavedYouTubeSources(
   input: YouTubeDiscoveryWorkflowInput,
   options: { config?: SourcesConfig | null; fetchImpl?: typeof fetch },
-): Promise<YouTubeDiscoveryWorkflowInput> {
-  const values = await loadSavedSourceValues("youtube", options)
-  if (values.length === 0) return input
-  const channels: string[] = []
-  const playlists: string[] = []
-  for (const value of values) {
-    if (classifyYouTubeSource(value) === "playlist") playlists.push(value)
-    else channels.push(value)
+): Promise<{
+  input: YouTubeDiscoveryWorkflowInput
+  sourceLoadStatus: "not_configured" | "loaded" | "failed"
+}> {
+  const loaded = await loadSavedSourceValuesResult("youtube", options)
+  const savedChannels: string[] = []
+  const savedPlaylists: string[] = []
+  const inputChannels: string[] = []
+  const inputPlaylists: string[] = []
+
+  for (const value of input.channels) {
+    const trimmed = value.trim()
+    if (!/^https?:\/\//i.test(trimmed)) {
+      inputChannels.push(trimmed)
+      continue
+    }
+    const normalized = normalizeYouTubeSource(trimmed)
+    if (normalized?.kind === "channel") inputChannels.push(normalized.value)
   }
+  for (const value of input.playlists) {
+    const trimmed = value.trim()
+    if (!/^https?:\/\//i.test(trimmed)) {
+      inputPlaylists.push(trimmed)
+      continue
+    }
+    const normalized = normalizeYouTubeSource(trimmed)
+    if (normalized?.kind === "playlist") inputPlaylists.push(normalized.value)
+  }
+  for (const value of loaded.values) {
+    const normalized = normalizeYouTubeSource(value)
+    if (normalized?.kind === "playlist") savedPlaylists.push(normalized.value)
+    if (normalized?.kind === "channel") savedChannels.push(normalized.value)
+  }
+
   return {
-    ...input,
-    channels: mergeUnique(input.channels, channels),
-    playlists: mergeUnique(input.playlists, playlists),
+    input: {
+      ...input,
+      channels: mergeUnique(inputChannels, savedChannels, MAX_CHANNELS),
+      playlists: mergeUnique(inputPlaylists, savedPlaylists, MAX_PLAYLISTS),
+    },
+    sourceLoadStatus: loaded.status,
   }
 }
 
@@ -190,10 +237,11 @@ function toCandidate(video: YouTubeVideo): DiscoveredVideo {
 async function submitToReviewQueue(
   videos: readonly YouTubeVideo[],
   options: Pick<YouTubeDiscoveryOptions, "siteIngest" | "submitVideos">,
-): Promise<void> {
-  if (videos.length === 0) return
+): Promise<ReviewQueueOutcome> {
+  if (videos.length === 0) return { status: "empty" }
   const candidates = videos.map(toCandidate)
   const config = options.siteIngest ?? getDiscoverySiteIngestConfig()
+  if (!options.submitVideos && !config) return { status: "not_configured" }
   try {
     const result = options.submitVideos
       ? await options.submitVideos(candidates)
@@ -204,13 +252,23 @@ async function submitToReviewQueue(
       console.log(
         `[youtube-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
       )
+      return {
+        status: "submitted",
+        inserted: result.inserted,
+        skipped: result.skipped,
+      }
     }
+    return { status: "not_configured" }
   } catch (error) {
     console.error(
       `[youtube-discovery] event=site_ingest_failed message=${
         error instanceof Error ? error.message : String(error)
       }`,
     )
+    return {
+      status: "failed",
+      reason: error instanceof SiteIngestError ? error.code : "upstream_failed",
+    }
   }
 }
 
@@ -329,68 +387,79 @@ export async function collectYouTubeCandidates(
     apiKey: options.youtubeConfig.apiKey,
     baseUrl: options.youtubeConfig.baseUrl,
     timeoutMs: options.youtubeConfig.timeoutMs,
+    signal: AbortSignal.timeout(DISCOVERY_SOURCE_BUDGET_MS),
   }
-  // Trusted (curated) sources first so they win ties during dedup downstream.
+  // Trusted (curated) sources are ordered first so they win dedup ties even
+  // though the requests themselves are handled concurrently.
+  const sources: Array<{
+    source: string
+    kind: DiscoverySourceFailure["kind"]
+  }> = [
+    ...input.channels.map((source) => ({ source, kind: "channel" as const })),
+    ...input.playlists.map((source) => ({ source, kind: "playlist" as const })),
+    ...input.queries.map((source) => ({ source, kind: "query" as const })),
+  ]
+  const outcomes = await mapWithConcurrency(
+    sources,
+    DISCOVERY_SOURCE_CONCURRENCY,
+    async ({ source, kind }) => {
+      try {
+        if (requestOptions.signal.aborted) {
+          throw new YouTubeSearchError(
+            "upstream_failed",
+            "YouTube discovery source deadline exceeded",
+            true,
+          )
+        }
+        let rawItems: YouTubeRawItem[]
+        if (kind === "channel") {
+          const uploads = await options.client.resolveUploadsPlaylist(
+            source,
+            requestOptions,
+          )
+          rawItems = await options.client.listPlaylistVideos(uploads, {
+            ...requestOptions,
+            limit: input.limitPerChannel,
+          })
+        } else if (kind === "playlist") {
+          rawItems = await options.client.listPlaylistVideos(source, {
+            ...requestOptions,
+            limit: input.limitPerPlaylist,
+          })
+        } else {
+          rawItems = await options.client.searchVideos(source, {
+            ...requestOptions,
+            limit: input.limitPerQuery,
+          })
+        }
+        return {
+          items: rawItems.map((raw) => ({ raw, trusted: kind !== "query" })),
+          failure: null,
+          retryable: false,
+        }
+      } catch (error) {
+        const { failure: sourceFailure, retryable } = sourceFailureFrom(
+          source,
+          kind,
+          error,
+        )
+        return { items: [], failure: sourceFailure, retryable }
+      }
+    },
+  )
+
   const items: TaggedRawItem[] = []
   const sourceFailures: DiscoverySourceFailure[] = []
   let anyRetryable = false
-
-  for (const channel of input.channels) {
-    try {
-      const uploads = await options.client.resolveUploadsPlaylist(
-        channel,
-        requestOptions,
-      )
-      const channelItems = await options.client.listPlaylistVideos(uploads, {
-        ...requestOptions,
-        limit: input.limitPerChannel,
-      })
-      items.push(...channelItems.map((raw) => ({ raw, trusted: true })))
-    } catch (error) {
-      const { failure: f, retryable } = sourceFailureFrom(
-        channel,
-        "channel",
-        error,
-      )
-      if (retryable) anyRetryable = true
-      sourceFailures.push(f)
+  for (const outcome of outcomes) {
+    items.push(...outcome.items)
+    if (outcome.failure) {
+      sourceFailures.push(outcome.failure)
+      if (outcome.retryable) anyRetryable = true
     }
   }
 
-  for (const playlist of input.playlists) {
-    try {
-      const playlistItems = await options.client.listPlaylistVideos(playlist, {
-        ...requestOptions,
-        limit: input.limitPerPlaylist,
-      })
-      items.push(...playlistItems.map((raw) => ({ raw, trusted: true })))
-    } catch (error) {
-      const { failure: f, retryable } = sourceFailureFrom(
-        playlist,
-        "playlist",
-        error,
-      )
-      if (retryable) anyRetryable = true
-      sourceFailures.push(f)
-    }
-  }
-
-  for (const query of input.queries) {
-    try {
-      const queryItems = await options.client.searchVideos(query, {
-        ...requestOptions,
-        limit: input.limitPerQuery,
-      })
-      items.push(...queryItems.map((raw) => ({ raw, trusted: false })))
-    } catch (error) {
-      const { failure: f, retryable } = sourceFailureFrom(query, "query", error)
-      if (retryable) anyRetryable = true
-      sourceFailures.push(f)
-    }
-  }
-
-  const totalSources =
-    input.channels.length + input.playlists.length + input.queries.length
+  const totalSources = sources.length
   if (totalSources > 0 && sourceFailures.length === totalSources) {
     throwDiscoveryFailure(
       failure("all_sources_failed", {
@@ -518,10 +587,23 @@ export async function runYouTubeDiscovery(
   if (!parsedInput.success) {
     return failure("invalid_input", { mastraRunId, retryable: false })
   }
-  const input = await withSavedYouTubeSources(parsedInput.data, {
+  const savedSources = await withSavedYouTubeSources(parsedInput.data, {
     config: options.sourcesConfig,
     fetchImpl: options.fetchSources,
   })
+  const input = savedSources.input
+  if (
+    savedSources.sourceLoadStatus === "failed" &&
+    input.channels.length === 0 &&
+    input.playlists.length === 0 &&
+    input.queries.length === 0
+  ) {
+    return failure("sources_unavailable", {
+      mastraRunId,
+      retryable: true,
+      details: "saved YouTube sources could not be loaded",
+    })
+  }
 
   const startedAt = now().toISOString()
   try {
@@ -550,7 +632,7 @@ export async function runYouTubeDiscovery(
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(videos, options)
+    const reviewQueue = await submitToReviewQueue(videos, options)
 
     return {
       ok: true,
@@ -558,6 +640,7 @@ export async function runYouTubeDiscovery(
       totals,
       videos,
       sourceFailures,
+      reviewQueue,
       ...(artifactPath ? { artifactPath } : {}),
     } satisfies YouTubeDiscoveryWorkflowSuccess
   } catch (error) {
@@ -686,7 +769,7 @@ const reportStep = createStep({
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(inputData.videos, {})
+    const reviewQueue = await submitToReviewQueue(inputData.videos, {})
 
     return {
       ok: true as const,
@@ -694,6 +777,7 @@ const reportStep = createStep({
       totals: inputData.totals,
       videos: inputData.videos,
       sourceFailures: inputData.sourceFailures,
+      reviewQueue,
       ...(artifactPath ? { artifactPath } : {}),
     }
   },
@@ -723,14 +807,26 @@ export async function launchYouTubeDiscoveryWorkflow(
 
   // Route/Studio path: merge the website's saved sources into the input before
   // the workflow runs, so the daily scheduler can trigger with an empty body.
-  const inputData = await withSavedYouTubeSources(parsed.data, {
+  const savedSources = await withSavedYouTubeSources(parsed.data, {
     config: getDiscoverySourcesConfig(),
   })
+  if (
+    savedSources.sourceLoadStatus === "failed" &&
+    savedSources.input.channels.length === 0 &&
+    savedSources.input.playlists.length === 0 &&
+    savedSources.input.queries.length === 0
+  ) {
+    return failure("sources_unavailable", {
+      mastraRunId: runId,
+      retryable: true,
+      details: "saved YouTube sources could not be loaded",
+    })
+  }
 
   const run = await youtubeAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData })
+    result = await run.start({ inputData: savedSources.input })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??
@@ -764,7 +860,12 @@ export type YouTubeDiscoveryRouteOutcome = {
 function routeStatusForResult(result: YouTubeDiscoveryWorkflowResult): number {
   if (result.ok) return 200
   if (result.reason === "invalid_input") return 400
-  if (result.reason === "config_missing") return 503
+  if (
+    result.reason === "config_missing" ||
+    result.reason === "sources_unavailable"
+  ) {
+    return 503
+  }
   return 502
 }
 

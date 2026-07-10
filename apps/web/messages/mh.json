@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Close",
     "download": "Download",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Checking",
     "closeTermsOfUse": "Close Terms of Use",
     "cancel": "Cancel",
@@ -83,7 +86,8 @@
     "toggleOn": "On",
     "toggleOff": "Off",
     "close": "Close",
-    "apply": "Apply"
+    "apply": "Apply",
+    "noLanguageSubtitles": "No {language} Subtitles"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Have a private discussion with someone who is ready to listen.",
     "questionsShort": "Questions",
     "questions": "Related Questions",
-    "askYours": "Ask your question",
+    "askYours": "Ask yours",
     "chatWithPerson": "Chat with a person",
     "askBibleQuestion": "Ask a Bible question"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animated",
     "categoryStudy": "Study",
     "categoryFamily": "Family",
-    "categoryChristmas": "Christmas"
+    "categoryChristmas": "Christmas",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Play with Sound",
+    "playWithSound": "Watch now",
     "tapToUnmute": "Tap to Unmute"
   },
   "ExperienceSkeleton": {

@@ -23,6 +23,12 @@ const CONSUMER_BEARER: Principal = {
   rateLimitBucketKey: "consumer-bucket-key",
 }
 
+const VIDEO_RELATION_ORDER_BY = [
+  { order: { sort: "asc", nulls: "last" } },
+  { createdAt: "asc" },
+  { id: "asc" },
+]
+
 describe("videoLocalesFilter", () => {
   it("anonymous → PUBLISHED only", () => {
     expect(videoLocalesFilter({}, PUBLIC_USER)).toEqual({
@@ -183,6 +189,7 @@ describe("videoParentsFilter", () => {
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
+      orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
@@ -194,6 +201,7 @@ describe("videoParentsFilter", () => {
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
+      orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
@@ -205,15 +213,20 @@ describe("videoParentsFilter", () => {
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
+      orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
-  it("EDITOR → no filter (sees all parents, even unpublished)", () => {
-    expect(videoParentsFilter(EDITOR)).toEqual({})
+  it("EDITOR → no visibility filter but deterministic relation ordering", () => {
+    expect(videoParentsFilter(EDITOR)).toEqual({
+      orderBy: VIDEO_RELATION_ORDER_BY,
+    })
   })
 
-  it("ADMIN → no filter", () => {
-    expect(videoParentsFilter(ADMIN)).toEqual({})
+  it("ADMIN → no visibility filter but deterministic relation ordering", () => {
+    expect(videoParentsFilter(ADMIN)).toEqual({
+      orderBy: VIDEO_RELATION_ORDER_BY,
+    })
   })
 })
 
@@ -226,6 +239,7 @@ describe("videoChildrenFilter", () => {
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
+      orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
@@ -237,6 +251,7 @@ describe("videoChildrenFilter", () => {
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
+      orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
@@ -248,14 +263,19 @@ describe("videoChildrenFilter", () => {
           locales: { some: { status: "PUBLISHED", deletedAt: null } },
         },
       },
+      orderBy: VIDEO_RELATION_ORDER_BY,
     })
   })
 
-  it("EDITOR → no filter (sees all children, even unpublished)", () => {
-    expect(videoChildrenFilter(EDITOR)).toEqual({})
+  it("EDITOR → no visibility filter but deterministic relation ordering", () => {
+    expect(videoChildrenFilter(EDITOR)).toEqual({
+      orderBy: VIDEO_RELATION_ORDER_BY,
+    })
   })
 
-  it("ADMIN → no filter", () => {
-    expect(videoChildrenFilter(ADMIN)).toEqual({})
+  it("ADMIN → no visibility filter but deterministic relation ordering", () => {
+    expect(videoChildrenFilter(ADMIN)).toEqual({
+      orderBy: VIDEO_RELATION_ORDER_BY,
+    })
   })
 })

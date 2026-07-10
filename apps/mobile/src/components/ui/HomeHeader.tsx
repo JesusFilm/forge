@@ -17,11 +17,52 @@ import { HORIZONTAL_PADDING } from "../../styles/shared"
 type HomeHeaderProps = {
   title: string | null
   titleOpacity: number
+  /**
+   * Home-tab variant: search + profile grouped right, left slot empty. Default
+   * (Experience screens) keeps the original layout — search left, profile right.
+   */
+  homeVariant?: boolean
 }
 
-export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
+export function HomeHeader({
+  title,
+  titleOpacity,
+  homeVariant = false,
+}: HomeHeaderProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+
+  const searchButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Search"
+      onPress={() => router.navigate("/(tabs)/watch")}
+    >
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+      >
+        <Ionicons name="search" size={22} color={ACCENT} />
+      </GlassView>
+    </Pressable>
+  )
+
+  const profileButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Profile"
+      onPress={() => router.navigate("/(tabs)/profile")}
+    >
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+      >
+        <Ionicons name="person" size={16} color={ACCENT} />
+      </GlassView>
+    </Pressable>
+  )
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
@@ -30,19 +71,7 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Search"
-        onPress={() => router.navigate("/(tabs)/watch")}
-      >
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-        >
-          <Ionicons name="search" size={22} color={ACCENT} />
-        </GlassView>
-      </Pressable>
+      {homeVariant ? <View /> : searchButton}
 
       {title != null && titleOpacity > 0 && (
         <GlassView
@@ -56,19 +85,14 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
         </GlassView>
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Profile"
-        onPress={() => router.navigate("/(tabs)/profile")}
-      >
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-        >
-          <Ionicons name="person" size={16} color={ACCENT} />
-        </GlassView>
-      </Pressable>
+      {homeVariant ? (
+        <View style={styles.buttonRow}>
+          {searchButton}
+          {profileButton}
+        </View>
+      ) : (
+        profileButton
+      )}
     </View>
   )
 }
@@ -85,6 +109,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   glassPill: {
     flexShrink: 1,

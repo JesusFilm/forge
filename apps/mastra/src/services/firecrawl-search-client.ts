@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { sleepUnlessAborted } from "./abortable-sleep"
+
 const DEFAULT_FIRECRAWL_BASE_URL = "https://api.firecrawl.dev"
 const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
 const DEFAULT_MAX_ATTEMPTS = 3
@@ -40,10 +42,12 @@ export type RequestFirecrawlSearchOptions = {
   apiKey?: string
   baseUrl?: string
   limit?: number
+  maxMarkdownCharacters?: number
   timeoutMs?: number
   /** When true, ask Firecrawl to scrape each result for richer metadata. */
   scrape?: boolean
   maxAttempts?: number
+  signal?: AbortSignal
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
 }
@@ -107,6 +111,9 @@ export async function requestFirecrawlSearch(
   const limit = options.limit ?? 10
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS
   const fetchImpl = options.fetchImpl ?? fetch
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs)
   const sleep =
     options.sleep ??
     ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
@@ -131,9 +138,18 @@ export async function requestFirecrawlSearch(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "error",
+        signal,
       })
     } catch (cause) {
+      if (signal.aborted) {
+        throw new FirecrawlSearchError(
+          "upstream_failed",
+          "Firecrawl search request exceeded its deadline",
+          true,
+          cause,
+        )
+      }
       lastTransportError = cause
       if (attempt < maxAttempts) {
         await sleep(backoffMs(attempt))
@@ -153,7 +169,19 @@ export async function requestFirecrawlSearch(
       (response.status === 429 || response.status >= 500) &&
       attempt < maxAttempts
     ) {
-      await sleep(retryAfterMs(response, attempt))
+      if (
+        !(await sleepUnlessAborted(
+          sleep,
+          retryAfterMs(response, attempt),
+          signal,
+        ))
+      ) {
+        throw new FirecrawlSearchError(
+          "upstream_failed",
+          "Firecrawl search request exceeded its deadline",
+          true,
+        )
+      }
       continue
     }
     break
@@ -216,7 +244,7 @@ export async function requestFirecrawlSearch(
     url: result.url,
     title: result.title,
     description: result.description,
-    markdown: result.markdown,
+    markdown: result.markdown?.slice(0, options.maxMarkdownCharacters),
     metadata: result.metadata,
   }))
 }

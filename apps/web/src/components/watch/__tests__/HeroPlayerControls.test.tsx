@@ -21,12 +21,13 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
+import { WATCH_PLAYER_CHROME_REVEAL_EVENT } from "@/lib/watch-player-chrome-events"
 import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-production-overlays"
 
 let container: HTMLDivElement
 let root: Root
 
-function makePlayer(): MuxPlayerRef {
+function makePlayer(overrides: Partial<MuxPlayerRef> = {}): MuxPlayerRef {
   return {
     muted: false,
     currentTime: 0,
@@ -38,6 +39,7 @@ function makePlayer(): MuxPlayerRef {
     pause: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
+    ...overrides,
   } as unknown as MuxPlayerRef
 }
 
@@ -284,7 +286,179 @@ describe("HeroPlayerControls — portal target swap on fullscreen", () => {
   })
 })
 
+describe("HeroPlayerControls — fullscreen button behavior", () => {
+  function renderFullscreenFixture(player: MuxPlayerRef = makePlayer()) {
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: player,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+        />,
+      )
+    })
+
+    const fullscreenButton = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-fullscreen"]',
+    ) as HTMLButtonElement
+
+    return { fullscreenButton, overlayAnchor, wrapperEl }
+  }
+
+  it("requests fullscreen on the wrapper when the standard API is available", async () => {
+    const requestFullscreen = vi.fn(() => Promise.resolve())
+    const { fullscreenButton, wrapperEl } = renderFullscreenFixture()
+    Object.defineProperty(wrapperEl, "requestFullscreen", {
+      configurable: true,
+      value: requestFullscreen,
+    })
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not fall through to video fullscreen when a wrapper API returns void", async () => {
+    const videoEl = document.createElement("video") as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void
+    }
+    const webkitRequestFullscreen = vi.fn(() => undefined)
+    const webkitEnterFullscreen = vi.fn()
+    Object.defineProperty(videoEl, "webkitEnterFullscreen", {
+      configurable: true,
+      value: webkitEnterFullscreen,
+    })
+    const { fullscreenButton, wrapperEl } = renderFullscreenFixture(
+      videoEl as unknown as MuxPlayerRef,
+    )
+    Object.defineProperty(wrapperEl, "webkitRequestFullscreen", {
+      configurable: true,
+      value: webkitRequestFullscreen,
+    })
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(webkitRequestFullscreen).toHaveBeenCalledTimes(1)
+    expect(webkitEnterFullscreen).not.toHaveBeenCalled()
+  })
+
+  it("falls back to native WebKit video fullscreen when wrapper fullscreen is unavailable", async () => {
+    const videoEl = document.createElement("video") as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void
+    }
+    const webkitEnterFullscreen = vi.fn()
+    Object.defineProperty(videoEl, "webkitEnterFullscreen", {
+      configurable: true,
+      value: webkitEnterFullscreen,
+    })
+    const { fullscreenButton } = renderFullscreenFixture(
+      videoEl as unknown as MuxPlayerRef,
+    )
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(webkitEnterFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it("exits native WebKit video fullscreen when the video is already fullscreen", async () => {
+    const videoEl = document.createElement("video") as HTMLVideoElement & {
+      webkitDisplayingFullscreen?: boolean
+      webkitEnterFullscreen?: () => void
+      webkitExitFullscreen?: () => void
+    }
+    const webkitEnterFullscreen = vi.fn()
+    const webkitExitFullscreen = vi.fn()
+    Object.defineProperties(videoEl, {
+      webkitDisplayingFullscreen: {
+        configurable: true,
+        value: true,
+      },
+      webkitEnterFullscreen: {
+        configurable: true,
+        value: webkitEnterFullscreen,
+      },
+      webkitExitFullscreen: {
+        configurable: true,
+        value: webkitExitFullscreen,
+      },
+    })
+    const { fullscreenButton } = renderFullscreenFixture(
+      videoEl as unknown as MuxPlayerRef,
+    )
+
+    await act(async () => {
+      fullscreenButton.click()
+    })
+
+    expect(webkitExitFullscreen).toHaveBeenCalledTimes(1)
+    expect(webkitEnterFullscreen).not.toHaveBeenCalled()
+  })
+})
+
 describe("HeroPlayerControls — chrome layout", () => {
+  it("formats hour-plus playback time as h:mm:ss", () => {
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer({
+        currentTime: 3725,
+        duration: 7674,
+      }),
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+        />,
+      )
+    })
+
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-time"]')
+        ?.textContent,
+    ).toBe("1:02:05 / 2:07:54")
+    expect(
+      overlayAnchor
+        .querySelector('[data-testid="hero-chrome-timeline"]')
+        ?.getAttribute("aria-valuetext"),
+    ).toContain("1:02:05")
+  })
+
   it("lets the custom chrome span the full portal width", () => {
     const wrapperEl = document.createElement("div")
     const overlayAnchor = document.createElement("div")
@@ -346,12 +520,22 @@ describe("HeroPlayerControls — chrome layout", () => {
         overlayAnchor
           .querySelector(`[data-testid="${testId}"]`)
           ?.getAttribute("class"),
-      ).toContain("h-12")
+      ).toContain("h-10")
       expect(
         overlayAnchor
           .querySelector(`[data-testid="${testId}"]`)
           ?.getAttribute("class"),
-      ).toContain("w-12")
+      ).toContain("w-10")
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.getAttribute("class"),
+      ).toContain("md:h-12")
+      expect(
+        overlayAnchor
+          .querySelector(`[data-testid="${testId}"]`)
+          ?.getAttribute("class"),
+      ).toContain("md:w-12")
       expect(
         overlayAnchor
           .querySelector(`[data-testid="${testId}"]`)
@@ -391,8 +575,9 @@ describe("HeroPlayerControls — chrome layout", () => {
     expect(
       overlayAnchor
         .querySelector('[data-testid="hero-chrome-timeline"]')
+        ?.querySelector(".group-hover\\/timeline\\:bg-white\\/30")
         ?.getAttribute("class"),
-    ).toContain("hover:bg-white/30")
+    ).toContain("group-hover/timeline:bg-white/30")
     expect(
       overlayAnchor
         .querySelector('[data-testid="hero-chrome-volume-slider"]')
@@ -416,6 +601,10 @@ describe("HeroPlayerControls — chrome layout", () => {
     ) as HTMLDivElement
     expect(backdrop).not.toBeNull()
     expect(backdrop.getAttribute("class")).toContain("h-[28vh]")
+    expect(backdrop.getAttribute("class")).toContain("w-screen")
+    expect(backdrop.getAttribute("class")).toContain("left-1/2")
+    expect(backdrop.getAttribute("class")).toContain("-translate-x-1/2")
+    expect(backdrop.getAttribute("class")).not.toContain("inset-x-0")
     expect(backdrop.getAttribute("class")).toContain(
       "[background:var(--watch-player-controls-backdrop)]",
     )
@@ -426,7 +615,8 @@ describe("HeroPlayerControls — chrome layout", () => {
 })
 
 describe("HeroPlayerControls — visibility callback", () => {
-  it("reports the initial visible state", () => {
+  it("reports dimmed state, ignores pointer movement for 5s, and wakes dim after later video movement", async () => {
+    vi.useFakeTimers()
     const wrapperEl = document.createElement("div")
     const overlayAnchor = document.createElement("div")
     document.body.appendChild(wrapperEl)
@@ -443,18 +633,118 @@ describe("HeroPlayerControls — visibility callback", () => {
     })
     const onVisibilityChange = vi.fn()
 
-    act(() => {
-      root.render(
-        <HeroPlayerControls
-          player={playerRef.current}
-          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
-          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
-          overlayAnchor={overlayAnchor}
-          onVisibilityChange={onVisibilityChange}
-        />,
-      )
-    })
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayerControls
+            player={playerRef.current}
+            playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+            wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+            overlayAnchor={overlayAnchor}
+            onVisibilityChange={onVisibilityChange}
+          />,
+        )
+      })
 
-    expect(onVisibilityChange).toHaveBeenCalledWith(true)
+      expect(onVisibilityChange).toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+      onVisibilityChange.mockClear()
+
+      await act(async () => {
+        window.dispatchEvent(
+          new MouseEvent("pointermove", { clientX: 100, clientY: 100 }),
+        )
+        window.dispatchEvent(
+          new MouseEvent("pointermove", { clientX: 124, clientY: 100 }),
+        )
+      })
+
+      expect(onVisibilityChange).not.toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(5001)
+      })
+
+      expect(onVisibilityChange).toHaveBeenCalledWith({
+        visible: false,
+        opacity: 0,
+      })
+
+      await act(async () => {
+        window.dispatchEvent(
+          new MouseEvent("pointermove", { clientX: 100, clientY: 100 }),
+        )
+      })
+
+      expect(onVisibilityChange).toHaveBeenLastCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("ignores header reveal requests during the 5s lockout and accepts them after", async () => {
+    vi.useFakeTimers()
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer(),
+    })
+    const onVisibilityChange = vi.fn()
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayerControls
+            player={playerRef.current}
+            playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+            wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+            overlayAnchor={overlayAnchor}
+            onVisibilityChange={onVisibilityChange}
+          />,
+        )
+      })
+      onVisibilityChange.mockClear()
+
+      await act(async () => {
+        window.dispatchEvent(new Event(WATCH_PLAYER_CHROME_REVEAL_EVENT))
+      })
+
+      expect(onVisibilityChange).not.toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(5001)
+      })
+
+      await act(async () => {
+        window.dispatchEvent(new Event(WATCH_PLAYER_CHROME_REVEAL_EVENT))
+      })
+
+      expect(onVisibilityChange).toHaveBeenCalledWith({
+        visible: true,
+        opacity: 1,
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

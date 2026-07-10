@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "關閉",
     "download": "下載",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "正在檢查",
     "closeTermsOfUse": "關閉使用條款",
     "cancel": "取消",
@@ -83,7 +86,8 @@
     "toggleOn": "開",
     "toggleOff": "關",
     "close": "關閉",
-    "apply": "套用"
+    "apply": "套用",
+    "noLanguageSubtitles": "無{language}字幕"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "與願意傾聽的人開始一次私下交流。",
     "questionsShort": "問題",
     "questions": "相關問題",
-    "askYours": "提出你的問題",
+    "askYours": "提問",
     "chatWithPerson": "與真人聊天",
     "askBibleQuestion": "提出聖經問題"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "動畫",
     "categoryStudy": "學習",
     "categoryFamily": "家庭",
-    "categoryChristmas": "聖誕節"
+    "categoryChristmas": "聖誕節",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "開啟聲音播放",
+    "playWithSound": "立即觀看",
     "tapToUnmute": "取消靜音"
   },
   "ExperienceSkeleton": {

@@ -13,12 +13,19 @@ import {
   type LocaleStatus,
   type PrismaClient,
   type SourceTier,
+  type VideoDub,
   type VideoLabel,
   type VideoSource,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
+import {
+  getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxDominantColor,
+  getOrScheduleWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxDominantColor,
+} from "@/services/mux-image-derivative.service"
 import { ForbiddenError } from "./errors"
 
 /**
@@ -48,6 +55,72 @@ export type VideoForEnrichment = {
   subtitleUrl: string | null
 }
 
+export type VideoMapperCatalogMediaSourceType =
+  | "DOWNLOAD"
+  | "HLS"
+  | "DASH"
+  | "NONE"
+
+export const VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS = [
+  "dub_deleted",
+  "video_deleted",
+  "video_no_index",
+  "video_unpublished",
+  "dub_unpublished",
+  "language_missing",
+  "language_deleted",
+  "edition_deleted",
+  "media_missing",
+] as const
+
+export type VideoMapperCatalogNonIndexableReason =
+  (typeof VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS)[number]
+
+export type VideoMapperCatalogItem = {
+  coreId: string
+  sourceTitle: string
+  sourceTitleLocale: string | null
+  videoVariantId: string
+  adminVideoId: string
+  adminDubId: string
+  languageId: string | null
+  languageSlug: string | null
+  locale: string | null
+  editionCoreId: string | null
+  editionName: string | null
+  durationSeconds: number | null
+  lengthInMilliseconds: string | null
+  hlsUrl: string | null
+  dashUrl: string | null
+  // Diagnostic only in YTM-002: mapper MediaSourceType has no SHARE value.
+  shareUrl: string | null
+  downloadUrl: string | null
+  downloadQuality: string | null
+  downloadWidth: number | null
+  downloadHeight: number | null
+  mediaSourceType: VideoMapperCatalogMediaSourceType
+  mediaSourceUrl: string | null
+  videoPublished: boolean
+  dubPublished: boolean
+  videoNoIndex: boolean
+  videoDeleted: boolean
+  dubDeleted: boolean
+  deletedAt: string | null
+  indexable: boolean
+  nonIndexableReason: VideoMapperCatalogNonIndexableReason | null
+}
+
+export type VideoMapperCatalogPageInfo = {
+  startCursor: string | null
+  endCursor: string | null
+  hasNextPage: boolean
+}
+
+export type VideoMapperCatalogConnection = {
+  nodes: VideoMapperCatalogItem[]
+  pageInfo: VideoMapperCatalogPageInfo
+}
+
 export class VideoLookupValidationError extends Error {
   constructor(message: string) {
     super(message)
@@ -71,6 +144,196 @@ export type ChildDubLanguageRow = {
   bcp47: string | null
 }
 
+export type WatchLanguageInventoryAvailability = "AUDIO" | "SUBTITLE_ONLY"
+
+export type WatchLanguageInventoryLanguage = {
+  slug: string
+  name: Prisma.JsonValue | null
+  bcp47: string | null
+}
+
+export type WatchLanguageInventoryItem = {
+  id: string
+  coreId: string
+  slug: string
+  title: string
+  description: string | null
+  imageUrl: string | null
+  imageAlt: string | null
+  label: string | null
+  availability: WatchLanguageInventoryAvailability
+  watchLanguageSlug: string
+  parentSlug: string | null
+  parentTitle: string | null
+  parentOrder?: number | null
+  durationSeconds: number | null
+  childCount: number
+  publishedAt: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export type WatchLanguageInventoryCounts = {
+  audioCollections: number
+  audioVideos: number
+  subtitleOnlyVideos: number
+  total: number
+}
+
+export type WatchLanguageInventory = {
+  language: WatchLanguageInventoryLanguage | null
+  counts: WatchLanguageInventoryCounts
+  promoted: WatchLanguageInventoryItem[]
+  audioCollections: WatchLanguageInventoryItem[]
+  audioVideos: WatchLanguageInventoryItem[]
+  subtitleOnlyVideos: WatchLanguageInventoryItem[]
+}
+
+export type WatchRouteSnapshotImage = {
+  documentId: string
+  url: string | null
+  thumbnail: string | null
+  mobileCinematicHigh: string | null
+  mobileCinematicLow: string | null
+  dominantColor: string | null
+}
+
+export type WatchRouteSnapshotLanguage = {
+  coreId: string | null
+  bcp47: string | null
+  slug?: string | null
+  name?: Prisma.JsonValue | null
+}
+
+export type WatchRouteSnapshotLocale = {
+  documentId: string
+  languageSlug: string | null
+  title: string | null
+  description: string | null
+  snippet: string | null
+  imageAlt: string | null
+}
+
+export type WatchRouteSnapshotChild = {
+  documentId: string
+  slug: string | null
+  label: VideoLabel | null
+  images: WatchRouteSnapshotImage[]
+  exactLocales: WatchRouteSnapshotLocale[]
+  broadLocales: WatchRouteSnapshotLocale[]
+  englishLocales: WatchRouteSnapshotLocale[]
+  durationSeconds: number | null
+  muxPlaybackId: string | null
+  muxThumbnailBlurDataUrl: string | null
+  muxThumbnailDominantColor: string | null
+  muxHeroPosterBlurDataUrl: string | null
+  muxHeroPosterDominantColor: string | null
+}
+
+export type WatchRouteSnapshotChildRelation = {
+  child: WatchRouteSnapshotChild | null
+}
+
+export type WatchRouteSnapshotParent = {
+  documentId: string
+  slug: string | null
+  noIndex: boolean | null
+  label: VideoLabel | null
+  images: WatchRouteSnapshotImage[]
+  exactLocales: WatchRouteSnapshotLocale[]
+  broadLocales: WatchRouteSnapshotLocale[]
+  englishLocales: WatchRouteSnapshotLocale[]
+  children: WatchRouteSnapshotChildRelation[]
+}
+
+export type WatchRouteSnapshotParentRelation = {
+  parent: WatchRouteSnapshotParent | null
+}
+
+export type WatchRouteSnapshotBibleBook = {
+  documentId: string
+  name: Prisma.JsonValue | null
+}
+
+export type WatchRouteSnapshotBibleCitation = {
+  documentId: string
+  chapterStart: number | null
+  chapterEnd: number | null
+  verseStart: number | null
+  verseEnd: number | null
+  order: number | null
+  osisId: string | null
+  bibleBook: WatchRouteSnapshotBibleBook | null
+}
+
+export type WatchRouteSnapshotStudyQuestion = {
+  documentId: string
+  languageSlug: string | null
+  value: string | null
+  order: number | null
+}
+
+export type WatchRouteSnapshotPreferredVariant = {
+  documentId: string
+  slug: string | null
+  published: boolean | null
+  hls: string | null
+  duration: number | null
+  language: WatchRouteSnapshotLanguage | null
+  muxHeroPosterBlurDataUrl: string | null
+  muxHeroPosterDominantColor: string | null
+}
+
+export type WatchRouteSnapshot = {
+  documentId: string
+  slug: string | null
+  publishedAt: string | null
+  noIndex: boolean | null
+  label: VideoLabel | null
+  images: WatchRouteSnapshotImage[]
+  primaryLanguage: WatchRouteSnapshotLanguage | null
+  parents: WatchRouteSnapshotParentRelation[]
+  children: WatchRouteSnapshotChildRelation[]
+  bibleCitations: WatchRouteSnapshotBibleCitation[]
+  exactLocales: WatchRouteSnapshotLocale[]
+  broadLocales: WatchRouteSnapshotLocale[]
+  englishLocales: WatchRouteSnapshotLocale[]
+  exactStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  broadStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  englishStudyQuestions: WatchRouteSnapshotStudyQuestion[]
+  playableDubLanguageCount: number
+  preferredVariant: WatchRouteSnapshotPreferredVariant | null
+}
+
+type WatchRouteSnapshotMuxRow = {
+  videoId: string
+  muxVideoId: string | null
+  playbackId: string | null
+}
+
+type WatchRouteSnapshotDurationRow = {
+  videoId: string
+  duration: number | null
+}
+
+type WatchRouteSnapshotPreferredVariantRow = {
+  id: string
+  slug: string | null
+  published: boolean | null
+  hls: string | null
+  duration: number | null
+  languageCoreId: string | null
+  languageBcp47: string | null
+  languageSlug: string | null
+  languageName: Prisma.JsonValue | null
+  muxVideoId: string | null
+  playbackId: string | null
+}
+
+type WatchRouteSnapshotCountRow = {
+  count: number
+}
+
 /**
  * Maximum coreIds accepted in a single `getByCoreIds` call. Mirrors
  * the receiver-side cap in manager's `admin-trigger-route.ts` so the
@@ -80,6 +343,32 @@ export const VIDEOS_BY_CORE_IDS_MAX = 100
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS = 8_000
 const VIDEOS_BY_CORE_IDS_TRANSACTION_TIMEOUT_MS = 9_000
 const VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEOS_BY_CORE_IDS_STATEMENT_TIMEOUT_MS}ms'`
+export const VIDEO_MAPPER_CATALOG_DEFAULT_PAGE_SIZE = 100
+export const VIDEO_MAPPER_CATALOG_MAX_PAGE_SIZE = 250
+const VIDEO_MAPPER_CATALOG_CURSOR_PREFIX = "video-dub:"
+const VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_MS = 10_000
+const VIDEO_MAPPER_CATALOG_TRANSACTION_TIMEOUT_MS = 11_000
+const VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_MS}ms'`
+export const WATCH_LANGUAGE_INVENTORY_MAX_ITEMS_PER_BUCKET = 1_000
+const WATCH_LANGUAGE_INVENTORY_DEFAULT_ITEMS_PER_BUCKET =
+  WATCH_LANGUAGE_INVENTORY_MAX_ITEMS_PER_BUCKET
+const WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT = 12
+const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS = 10_000
+const WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS = 11_000
+const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS}ms'`
+
+const VIDEO_RELATION_ORDER_BY = [
+  { order: { sort: "asc" as const, nulls: "last" as const } },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
+
+const PLAYABLE_DUB_WHERE = {
+  deletedAt: null,
+  published: true,
+  AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+  video: { deletedAt: null },
+} satisfies Prisma.VideoDubWhereInput
 
 const VIDEO_LABEL_SEARCH_TOKENS = {
   COLLECTION: ["collection"],
@@ -386,7 +675,7 @@ function videoSearchWhere(rawSearch: string | null | undefined) {
               { mobileCinematicVeryLow: text },
               { thumbnail: text },
               { videoStill: text },
-              { blurhash: text },
+              { blurDataUrl: text },
               { kind: text },
               ...(sourceMatches ? [{ source: sourceMatches }] : []),
               ...(integer === null
@@ -493,8 +782,361 @@ function videoListOrderBy(
   return { updatedAt: "desc" }
 }
 
+function localeBucketsForSnapshot(
+  rows: Array<{
+    id: string
+    videoId: string
+    languageSlug: string | null
+    locale: string | null
+    title: string | null
+    description: string | null
+    snippet: string | null
+    imageAlt: string | null
+  }>,
+  videoId: string,
+  {
+    locale,
+    languageSlug,
+  }: {
+    locale: string
+    languageSlug: string | null
+  },
+) {
+  const forVideo = rows.filter((row) => row.videoId === videoId)
+  const mapRow = (row: (typeof rows)[number]): WatchRouteSnapshotLocale => ({
+    documentId: row.id,
+    languageSlug: row.languageSlug,
+    title: row.title,
+    description: row.description,
+    snippet: row.snippet,
+    imageAlt: row.imageAlt,
+  })
+
+  return {
+    exactLocales: forVideo
+      .filter(
+        (row) =>
+          row.locale === locale &&
+          (languageSlug == null || row.languageSlug === languageSlug),
+      )
+      .map(mapRow),
+    broadLocales: forVideo.filter((row) => row.locale === locale).map(mapRow),
+    englishLocales: forVideo.filter((row) => row.locale === "en").map(mapRow),
+  }
+}
+
+function studyQuestionBucketsForSnapshot(
+  rows: Array<{
+    id: string
+    languageSlug: string | null
+    locale: string | null
+    text: string
+    order: number | null
+  }>,
+  {
+    locale,
+    languageSlug,
+  }: {
+    locale: string
+    languageSlug: string | null
+  },
+) {
+  const mapRow = (
+    row: (typeof rows)[number],
+  ): WatchRouteSnapshotStudyQuestion => ({
+    documentId: row.id,
+    languageSlug: row.languageSlug,
+    value: row.text,
+    order: row.order,
+  })
+
+  return {
+    exactStudyQuestions: rows
+      .filter(
+        (row) =>
+          row.locale === locale &&
+          (languageSlug == null || row.languageSlug === languageSlug),
+      )
+      .map(mapRow),
+    broadStudyQuestions: rows
+      .filter((row) => row.locale === locale)
+      .map(mapRow),
+    englishStudyQuestions: rows
+      .filter((row) => row.locale === "en")
+      .map(mapRow),
+  }
+}
+
+function imageRowsForSnapshot(
+  rows: Array<{
+    id: string
+    videoId: string
+    url: string | null
+    thumbnail: string | null
+    mobileCinematicHigh: string | null
+    mobileCinematicLow: string | null
+    dominantColor: string | null
+  }>,
+  videoId: string,
+): WatchRouteSnapshotImage[] {
+  return rows
+    .filter((row) => row.videoId === videoId)
+    .map((row) => ({
+      documentId: row.id,
+      url: row.url,
+      thumbnail: row.thumbnail,
+      mobileCinematicHigh: row.mobileCinematicHigh,
+      mobileCinematicLow: row.mobileCinematicLow,
+      dominantColor: row.dominantColor,
+    }))
+}
+
+function firstByVideoId<T extends { videoId: string }>(rows: T[]) {
+  const byVideoId = new Map<string, T>()
+  for (const row of rows) {
+    if (!byVideoId.has(row.videoId)) byVideoId.set(row.videoId, row)
+  }
+  return byVideoId
+}
+
 export class VideoService {
   constructor(private prisma: PrismaClient) {}
+
+  private async findPreferredPlayableMuxRows(
+    videoIds: string[],
+  ): Promise<WatchRouteSnapshotMuxRow[]> {
+    if (videoIds.length === 0) return []
+
+    return this.prisma.$queryRaw<WatchRouteSnapshotMuxRow[]>`
+      SELECT
+        v.id AS "videoId",
+        COALESCE(primary_dub.mux_video_id, fallback_dub.mux_video_id) AS "muxVideoId",
+        COALESCE(primary_dub.playback_id, fallback_dub.playback_id) AS "playbackId"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT mv.id AS mux_video_id, mv.playback_id
+        FROM "video_dub" vd
+        JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.playback_id IS NOT NULL
+         AND mv.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND v.primary_language_id IS NOT NULL
+          AND vd.language_id = v.primary_language_id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) primary_dub ON true
+      LEFT JOIN LATERAL (
+        SELECT mv.id AS mux_video_id, mv.playback_id
+        FROM "video_dub" vd
+        JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.playback_id IS NOT NULL
+         AND mv.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) fallback_dub ON primary_dub.playback_id IS NULL
+      WHERE v.id IN (${Prisma.join(videoIds)})
+        AND v.deleted_at IS NULL
+    `
+  }
+
+  private async findExactLanguagePlayableMuxRows({
+    videoIds,
+    languageSlug,
+  }: {
+    videoIds: string[]
+    languageSlug: string | null
+  }): Promise<WatchRouteSnapshotMuxRow[]> {
+    if (videoIds.length === 0 || languageSlug == null) return []
+
+    return this.prisma.$queryRaw<WatchRouteSnapshotMuxRow[]>`
+      SELECT
+        v.id AS "videoId",
+        exact_dub.mux_video_id AS "muxVideoId",
+        exact_dub.playback_id AS "playbackId"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT mv.id AS mux_video_id, mv.playback_id
+        FROM "video_dub" vd
+        JOIN "language" l
+          ON l.id = vd.language_id
+         AND l.slug = ${languageSlug}
+         AND l.deleted_at IS NULL
+        JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.playback_id IS NOT NULL
+         AND mv.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) exact_dub ON true
+      WHERE v.id IN (${Prisma.join(videoIds)})
+        AND v.deleted_at IS NULL
+    `
+  }
+
+  private async findPreferredPlayableDurationRows(
+    videoIds: string[],
+  ): Promise<WatchRouteSnapshotDurationRow[]> {
+    if (videoIds.length === 0) return []
+
+    return this.prisma.$queryRaw<WatchRouteSnapshotDurationRow[]>`
+      SELECT
+        v.id AS "videoId",
+        COALESCE(primary_dub.duration, fallback_dub.duration) AS "duration"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT vd.duration
+        FROM "video_dub" vd
+        WHERE vd.video_id = v.id
+          AND v.primary_language_id IS NOT NULL
+          AND vd.language_id = v.primary_language_id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+          AND vd.duration > 0
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) primary_dub ON true
+      LEFT JOIN LATERAL (
+        SELECT vd.duration
+        FROM "video_dub" vd
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+          AND vd.duration > 0
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) fallback_dub ON true
+      WHERE v.id IN (${Prisma.join(videoIds)})
+        AND v.deleted_at IS NULL
+    `
+  }
+
+  private async findPreferredPlayableVariantRow(
+    videoId: string,
+  ): Promise<WatchRouteSnapshotPreferredVariantRow | null> {
+    const rows = await this.prisma.$queryRaw<
+      WatchRouteSnapshotPreferredVariantRow[]
+    >`
+      SELECT
+        COALESCE(primary_dub.id, fallback_dub.id) AS "id",
+        COALESCE(primary_dub.slug, fallback_dub.slug) AS "slug",
+        COALESCE(primary_dub.published, fallback_dub.published) AS "published",
+        COALESCE(primary_dub.hls, fallback_dub.hls) AS "hls",
+        COALESCE(primary_dub.duration, fallback_dub.duration) AS "duration",
+        COALESCE(primary_dub.language_core_id, fallback_dub.language_core_id) AS "languageCoreId",
+        COALESCE(primary_dub.language_bcp47, fallback_dub.language_bcp47) AS "languageBcp47",
+        COALESCE(primary_dub.language_slug, fallback_dub.language_slug) AS "languageSlug",
+        COALESCE(primary_dub.language_name, fallback_dub.language_name) AS "languageName",
+        COALESCE(primary_dub.mux_video_id, fallback_dub.mux_video_id) AS "muxVideoId",
+        COALESCE(primary_dub.playback_id, fallback_dub.playback_id) AS "playbackId"
+      FROM "video" v
+      LEFT JOIN LATERAL (
+        SELECT
+          vd.id,
+          vd.slug,
+          vd.published,
+          vd.hls,
+          vd.duration,
+          mv.id AS mux_video_id,
+          mv.playback_id,
+          l.core_id AS language_core_id,
+          l.bcp47 AS language_bcp47,
+          l.slug AS language_slug,
+          l.name AS language_name
+        FROM "video_dub" vd
+        LEFT JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.deleted_at IS NULL
+         AND mv.playback_id IS NOT NULL
+        LEFT JOIN "language" l
+          ON l.id = vd.language_id
+         AND l.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND v.primary_language_id IS NOT NULL
+          AND vd.language_id = v.primary_language_id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) primary_dub ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          vd.id,
+          vd.slug,
+          vd.published,
+          vd.hls,
+          vd.duration,
+          mv.id AS mux_video_id,
+          mv.playback_id,
+          l.core_id AS language_core_id,
+          l.bcp47 AS language_bcp47,
+          l.slug AS language_slug,
+          l.name AS language_name
+        FROM "video_dub" vd
+        LEFT JOIN "mux_video" mv
+          ON mv.id = vd.mux_video_id
+         AND mv.deleted_at IS NULL
+         AND mv.playback_id IS NOT NULL
+        LEFT JOIN "language" l
+          ON l.id = vd.language_id
+         AND l.deleted_at IS NULL
+        WHERE vd.video_id = v.id
+          AND vd.deleted_at IS NULL
+          AND vd.published = true
+          AND vd.hls IS NOT NULL
+          AND vd.hls <> ''
+        ORDER BY vd.duration DESC, vd.id ASC
+        LIMIT 1
+      ) fallback_dub ON primary_dub.id IS NULL
+      WHERE v.id = ${videoId}
+        AND v.deleted_at IS NULL
+      LIMIT 1
+    `
+
+    return rows[0]?.id == null ? null : rows[0]
+  }
+
+  private async countPlayableDubLanguagesForSnapshot(
+    videoId: string,
+  ): Promise<number> {
+    const rows = await this.prisma.$queryRaw<WatchRouteSnapshotCountRow[]>`
+      SELECT COUNT(DISTINCT vd.language_id)::int AS "count"
+      FROM "video_dub" vd
+      JOIN "language" l
+        ON l.id = vd.language_id
+       AND l.slug IS NOT NULL
+       AND l.deleted_at IS NULL
+      WHERE vd.video_id = ${videoId}
+        AND vd.language_id IS NOT NULL
+        AND vd.deleted_at IS NULL
+        AND vd.published = true
+        AND vd.hls IS NOT NULL
+        AND vd.hls <> ''
+    `
+
+    return rows[0]?.count ?? 0
+  }
 
   async list({ input: raw, query }: { input: VideoListInput; query: object }) {
     return this.prisma.video.findMany({
@@ -543,6 +1185,741 @@ export class VideoService {
     })
   }
 
+  async getPreferredPlayableDub({
+    videoId,
+    languageSlug,
+    query,
+  }: {
+    videoId: string
+    languageSlug?: string | null
+    query: object
+  }): Promise<VideoDub | null> {
+    const baseWhere = {
+      ...PLAYABLE_DUB_WHERE,
+      videoId,
+    } satisfies Prisma.VideoDubWhereInput
+
+    const normalizedLanguageSlug =
+      typeof languageSlug === "string" && languageSlug.length > 0
+        ? languageSlug
+        : null
+
+    if (normalizedLanguageSlug) {
+      const exact = await this.prisma.videoDub.findFirst({
+        ...query,
+        where: {
+          ...baseWhere,
+          language: {
+            deletedAt: null,
+            OR: [
+              { slug: normalizedLanguageSlug },
+              { bcp47: normalizedLanguageSlug },
+            ],
+          },
+        },
+        orderBy: [{ duration: "desc" }, { id: "asc" }],
+      })
+      if (exact) return exact
+    }
+
+    const video = await this.prisma.video.findFirst({
+      where: { id: videoId, deletedAt: null },
+      select: { primaryLanguageId: true },
+    })
+    if (video?.primaryLanguageId) {
+      const primary = await this.prisma.videoDub.findFirst({
+        ...query,
+        where: {
+          ...baseWhere,
+          languageId: video.primaryLanguageId,
+        },
+        orderBy: [{ duration: "desc" }, { id: "asc" }],
+      })
+      if (primary) return primary
+    }
+
+    return this.prisma.videoDub.findFirst({
+      ...query,
+      where: baseWhere,
+      orderBy: [{ duration: "desc" }, { id: "asc" }],
+    })
+  }
+
+  async countPlayableDubLanguages({
+    videoId,
+  }: {
+    videoId: string
+  }): Promise<number> {
+    const rows = await this.prisma.videoDub.findMany({
+      where: {
+        ...PLAYABLE_DUB_WHERE,
+        videoId,
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+      },
+      distinct: ["languageId"],
+      select: { languageId: true },
+    })
+
+    return rows.length
+  }
+
+  async getWatchRouteSnapshotBySlug({
+    slug,
+    locale,
+    languageSlug,
+    user,
+  }: {
+    slug: string
+    locale: string
+    languageSlug?: string | null
+    user: Principal | null
+  }): Promise<WatchRouteSnapshot | null> {
+    const normalizedLanguageSlug =
+      typeof languageSlug === "string" && languageSlug.length > 0
+        ? languageSlug
+        : null
+    const visibleVideo: Prisma.VideoWhereInput = isEditorOrAdmin(user)
+      ? { deletedAt: null }
+      : {
+          deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        }
+
+    const root = await this.prisma.video.findFirst({
+      where: { slug, deletedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        publishedAt: true,
+        noIndex: true,
+        label: true,
+        primaryLanguageId: true,
+        primaryLanguage: { select: { coreId: true, bcp47: true } },
+      },
+    })
+    if (!root) return null
+
+    const [parentRelations, childRelations, citations] = await Promise.all([
+      this.prisma.videoRelation.findMany({
+        where: { childId: root.id, parent: visibleVideo },
+        orderBy: VIDEO_RELATION_ORDER_BY,
+        select: {
+          id: true,
+          parentId: true,
+          parent: {
+            select: {
+              id: true,
+              slug: true,
+              noIndex: true,
+              label: true,
+              primaryLanguageId: true,
+            },
+          },
+        },
+      }),
+      this.prisma.videoRelation.findMany({
+        where: { parentId: root.id, child: visibleVideo },
+        orderBy: VIDEO_RELATION_ORDER_BY,
+        select: {
+          id: true,
+          childId: true,
+          child: {
+            select: {
+              id: true,
+              slug: true,
+              label: true,
+              primaryLanguageId: true,
+            },
+          },
+        },
+      }),
+      this.prisma.bibleCitation.findMany({
+        where: { videoId: root.id, deletedAt: null },
+        orderBy: [{ order: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          chapterStart: true,
+          chapterEnd: true,
+          verseStart: true,
+          verseEnd: true,
+          order: true,
+          osisId: true,
+          bibleBook: { select: { id: true, name: true } },
+        },
+      }),
+    ])
+
+    const parentIds = parentRelations.map((relation) => relation.parentId)
+    const rootChildIds = childRelations.map((relation) => relation.childId)
+    const parentChildRelations =
+      parentIds.length === 0
+        ? []
+        : await this.prisma.videoRelation.findMany({
+            where: { parentId: { in: parentIds }, child: visibleVideo },
+            orderBy: VIDEO_RELATION_ORDER_BY,
+            select: {
+              id: true,
+              parentId: true,
+              childId: true,
+              child: {
+                select: {
+                  id: true,
+                  slug: true,
+                  label: true,
+                  primaryLanguageId: true,
+                },
+              },
+            },
+          })
+
+    const relatedVideoIds = [
+      ...parentIds,
+      ...rootChildIds,
+      ...parentChildRelations.map((relation) => relation.childId),
+    ]
+    const allVideoIds = Array.from(new Set([root.id, ...relatedVideoIds]))
+
+    const [
+      imageRows,
+      localeRows,
+      studyQuestionRows,
+      exactMuxRows,
+      fallbackMuxRows,
+      durationRows,
+      playableDubLanguageCount,
+      preferredExact,
+      preferredFallback,
+    ] = await Promise.all([
+      this.prisma.videoImage.findMany({
+        where: { videoId: { in: allVideoIds }, deletedAt: null },
+        select: {
+          id: true,
+          videoId: true,
+          url: true,
+          thumbnail: true,
+          mobileCinematicHigh: true,
+          mobileCinematicLow: true,
+          dominantColor: true,
+        },
+      }),
+      this.prisma.videoLocale.findMany({
+        where: {
+          videoId: { in: allVideoIds },
+          deletedAt: null,
+          ...(isEditorOrAdmin(user) ? {} : { status: "PUBLISHED" as const }),
+          OR: [
+            { locale },
+            { locale: "en" },
+            ...(normalizedLanguageSlug == null
+              ? []
+              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+          ],
+        },
+        orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          videoId: true,
+          locale: true,
+          languageSlug: true,
+          title: true,
+          description: true,
+          snippet: true,
+          imageAlt: true,
+        },
+      }),
+      this.prisma.videoStudyQuestion.findMany({
+        where: {
+          videoId: root.id,
+          deletedAt: null,
+          OR: [
+            { locale },
+            { locale: "en" },
+            ...(normalizedLanguageSlug == null
+              ? []
+              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+          ],
+        },
+        orderBy: [{ order: "asc" }, { languageSlug: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          locale: true,
+          languageSlug: true,
+          text: true,
+          order: true,
+        },
+      }),
+      this.findExactLanguagePlayableMuxRows({
+        videoIds: relatedVideoIds,
+        languageSlug: normalizedLanguageSlug,
+      }),
+      this.findPreferredPlayableMuxRows(relatedVideoIds),
+      this.findPreferredPlayableDurationRows([root.id, ...rootChildIds]),
+      this.countPlayableDubLanguagesForSnapshot(root.id),
+      normalizedLanguageSlug == null
+        ? null
+        : this.prisma.videoDub.findFirst({
+            where: {
+              ...PLAYABLE_DUB_WHERE,
+              videoId: root.id,
+              language: {
+                deletedAt: null,
+                OR: [
+                  { slug: normalizedLanguageSlug },
+                  { bcp47: normalizedLanguageSlug },
+                ],
+              },
+            },
+            orderBy: [{ duration: "desc" }, { id: "asc" }],
+            select: {
+              id: true,
+              slug: true,
+              published: true,
+              hls: true,
+              duration: true,
+              muxVideoId: true,
+              muxVideo: {
+                select: {
+                  id: true,
+                  playbackId: true,
+                  deletedAt: true,
+                },
+              },
+              language: {
+                select: {
+                  coreId: true,
+                  bcp47: true,
+                  slug: true,
+                  name: true,
+                },
+              },
+            },
+          }),
+      this.findPreferredPlayableVariantRow(root.id),
+    ])
+
+    const localeArgs = { locale, languageSlug: normalizedLanguageSlug }
+    const exactMuxByVideoId = firstByVideoId(
+      exactMuxRows.filter((row) => row.playbackId != null),
+    )
+    const fallbackMuxByVideoId = new Map<
+      string,
+      WatchRouteSnapshotMuxRow | null
+    >()
+    for (const row of fallbackMuxRows) {
+      fallbackMuxByVideoId.set(row.videoId, row)
+    }
+    const durationByVideoId = new Map<string, number | null>()
+    for (const row of durationRows) {
+      durationByVideoId.set(row.videoId, row.duration)
+    }
+    const muxByVideoId = new Map<string, WatchRouteSnapshotMuxRow>()
+    for (const videoId of relatedVideoIds) {
+      const muxRow =
+        exactMuxByVideoId.get(videoId) ??
+        fallbackMuxByVideoId.get(videoId) ??
+        null
+      if (muxRow?.muxVideoId && muxRow.playbackId) {
+        muxByVideoId.set(videoId, muxRow)
+      }
+    }
+    const blurDataUrlByVideoId = new Map<string, string | null>()
+    const dominantColorByVideoId = new Map<string, string | null>()
+    const heroBlurDataUrlByVideoId = new Map<string, string | null>()
+    const heroDominantColorByVideoId = new Map<string, string | null>()
+    await Promise.all(
+      Array.from(muxByVideoId.entries()).map(([videoId, muxRow]) =>
+        (async () => {
+          if (!muxRow.muxVideoId || !muxRow.playbackId) return
+          const [
+            blurDataUrl,
+            dominantColor,
+            heroBlurDataUrl,
+            heroDominantColor,
+          ] = await Promise.all([
+            getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+            getOrScheduleWatchChapterCarouselMuxDominantColor({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+            getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+            getOrScheduleWatchHeroPosterMuxDominantColor({
+              prisma: this.prisma,
+              muxVideoId: muxRow.muxVideoId,
+              playbackId: muxRow.playbackId,
+            }),
+          ])
+          blurDataUrlByVideoId.set(videoId, blurDataUrl)
+          dominantColorByVideoId.set(videoId, dominantColor)
+          heroBlurDataUrlByVideoId.set(videoId, heroBlurDataUrl)
+          heroDominantColorByVideoId.set(videoId, heroDominantColor)
+        })(),
+      ),
+    )
+
+    const makeChild = (
+      child: {
+        id: string
+        slug: string | null
+        label: VideoLabel | null
+      } | null,
+      includeDuration: boolean,
+    ): WatchRouteSnapshotChild | null => {
+      if (!child) return null
+      const muxRow = muxByVideoId.get(child.id) ?? null
+      const playbackId = muxRow?.playbackId ?? null
+      return {
+        documentId: child.id,
+        slug: child.slug,
+        label: child.label,
+        images: imageRowsForSnapshot(imageRows, child.id),
+        ...localeBucketsForSnapshot(localeRows, child.id, localeArgs),
+        durationSeconds: includeDuration
+          ? (durationByVideoId.get(child.id) ?? null)
+          : null,
+        muxPlaybackId: playbackId,
+        muxThumbnailBlurDataUrl: blurDataUrlByVideoId.get(child.id) ?? null,
+        muxThumbnailDominantColor: dominantColorByVideoId.get(child.id) ?? null,
+        muxHeroPosterBlurDataUrl:
+          heroBlurDataUrlByVideoId.get(child.id) ?? null,
+        muxHeroPosterDominantColor:
+          heroDominantColorByVideoId.get(child.id) ?? null,
+      }
+    }
+
+    const parentChildrenByParentId = new Map<
+      string,
+      WatchRouteSnapshotChildRelation[]
+    >()
+    for (const relation of parentChildRelations) {
+      const child = makeChild(relation.child, false)
+      const children = parentChildrenByParentId.get(relation.parentId) ?? []
+      children.push({ child })
+      parentChildrenByParentId.set(relation.parentId, children)
+    }
+
+    const preferredVariant = preferredExact ?? preferredFallback
+    const preferredVariantLanguage =
+      preferredVariant == null
+        ? null
+        : "language" in preferredVariant
+          ? preferredVariant.language
+            ? {
+                coreId: preferredVariant.language.coreId,
+                bcp47: preferredVariant.language.bcp47,
+                slug: preferredVariant.language.slug,
+                name: preferredVariant.language.name,
+              }
+            : null
+          : preferredVariant.languageCoreId == null &&
+              preferredVariant.languageBcp47 == null &&
+              preferredVariant.languageSlug == null &&
+              preferredVariant.languageName == null
+            ? null
+            : {
+                coreId: preferredVariant.languageCoreId,
+                bcp47: preferredVariant.languageBcp47,
+                slug: preferredVariant.languageSlug,
+                name: preferredVariant.languageName,
+              }
+
+    const preferredVariantMux =
+      preferredVariant == null
+        ? null
+        : "playbackId" in preferredVariant
+          ? {
+              muxVideoId: preferredVariant.muxVideoId,
+              playbackId: preferredVariant.playbackId,
+            }
+          : preferredVariant.muxVideo?.deletedAt == null
+            ? {
+                muxVideoId: preferredVariant.muxVideoId,
+                playbackId: preferredVariant.muxVideo?.playbackId ?? null,
+              }
+            : null
+
+    const preferredVariantHeroBlurDataUrl =
+      preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId
+        ? await getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+            prisma: this.prisma,
+            muxVideoId: preferredVariantMux.muxVideoId,
+            playbackId: preferredVariantMux.playbackId,
+          })
+        : null
+    const preferredVariantHeroDominantColor =
+      preferredVariantMux?.muxVideoId && preferredVariantMux.playbackId
+        ? await getOrScheduleWatchHeroPosterMuxDominantColor({
+            prisma: this.prisma,
+            muxVideoId: preferredVariantMux.muxVideoId,
+            playbackId: preferredVariantMux.playbackId,
+          })
+        : null
+
+    return {
+      documentId: root.id,
+      slug: root.slug,
+      publishedAt: root.publishedAt?.toISOString() ?? null,
+      noIndex: root.noIndex,
+      label: root.label,
+      images: imageRowsForSnapshot(imageRows, root.id),
+      primaryLanguage: root.primaryLanguage
+        ? {
+            coreId: root.primaryLanguage.coreId,
+            bcp47: root.primaryLanguage.bcp47,
+          }
+        : null,
+      parents: parentRelations.map((relation) => ({
+        parent: relation.parent
+          ? {
+              documentId: relation.parent.id,
+              slug: relation.parent.slug,
+              noIndex: relation.parent.noIndex,
+              label: relation.parent.label,
+              images: imageRowsForSnapshot(imageRows, relation.parent.id),
+              ...localeBucketsForSnapshot(
+                localeRows,
+                relation.parent.id,
+                localeArgs,
+              ),
+              children: parentChildrenByParentId.get(relation.parent.id) ?? [],
+            }
+          : null,
+      })),
+      children: childRelations.map((relation) => ({
+        child: makeChild(relation.child, true),
+      })),
+      bibleCitations: citations.map((citation) => ({
+        documentId: citation.id,
+        chapterStart: citation.chapterStart,
+        chapterEnd: citation.chapterEnd,
+        verseStart: citation.verseStart,
+        verseEnd: citation.verseEnd,
+        order: citation.order,
+        osisId: citation.osisId,
+        bibleBook: citation.bibleBook
+          ? {
+              documentId: citation.bibleBook.id,
+              name: citation.bibleBook.name,
+            }
+          : null,
+      })),
+      ...localeBucketsForSnapshot(localeRows, root.id, localeArgs),
+      ...studyQuestionBucketsForSnapshot(studyQuestionRows, localeArgs),
+      playableDubLanguageCount,
+      preferredVariant: preferredVariant
+        ? {
+            documentId: preferredVariant.id,
+            slug: preferredVariant.slug,
+            published: preferredVariant.published,
+            hls: preferredVariant.hls,
+            duration: preferredVariant.duration,
+            language: preferredVariantLanguage,
+            muxHeroPosterBlurDataUrl: preferredVariantHeroBlurDataUrl,
+            muxHeroPosterDominantColor: preferredVariantHeroDominantColor,
+          }
+        : null,
+    }
+  }
+
+  async listMapperCatalogVariants({
+    first,
+    after,
+  }: {
+    first?: number | null
+    after?: string | null
+  }): Promise<VideoMapperCatalogConnection> {
+    const pageSize = normalizeMapperCatalogPageSize(first)
+    const afterId = decodeMapperCatalogCursor(after)
+    await this.assertMapperCatalogCursorExists(afterId)
+    const cursorFilter =
+      afterId == null ? Prisma.empty : Prisma.sql`WHERE d.id > ${afterId}::text`
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(VIDEO_MAPPER_CATALOG_STATEMENT_TIMEOUT_SQL)
+        return tx.$queryRaw<VideoMapperCatalogItem[]>`
+      WITH paged_dubs AS (
+        SELECT d.*
+        FROM video_dub d
+        ${cursorFilter}
+        ORDER BY d.id ASC
+        LIMIT ${pageSize + 1}
+      ),
+      paged_video_ids AS (
+        SELECT DISTINCT d.video_id
+        FROM paged_dubs d
+      ),
+      published_state_by_video AS (
+        SELECT
+          paged_video_ids.video_id,
+          EXISTS (
+            SELECT 1
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = paged_video_ids.video_id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
+          ) AS video_published
+        FROM paged_video_ids
+      ),
+      selected_title_by_video AS (
+        SELECT DISTINCT ON (locale.video_id)
+          locale.video_id,
+          locale.title,
+          locale.locale
+        FROM video_locale locale
+        JOIN paged_video_ids
+          ON paged_video_ids.video_id = locale.video_id
+        WHERE locale.deleted_at IS NULL
+          AND NULLIF(locale.title, '') IS NOT NULL
+        ORDER BY
+          locale.video_id ASC,
+          CASE WHEN locale.status = 'published' THEN 0 ELSE 1 END ASC,
+          CASE WHEN locale.locale = 'en' THEN 0 ELSE 1 END ASC,
+          locale.locale ASC NULLS LAST,
+          locale.id ASC
+      )
+      SELECT
+        v.core_id AS "coreId",
+        COALESCE(selected_title.title, v.slug, v.core_id) AS "sourceTitle",
+        selected_title.locale AS "sourceTitleLocale",
+        d.core_id AS "videoVariantId",
+        v.id AS "adminVideoId",
+        d.id AS "adminDubId",
+        language.core_id AS "languageId",
+        language.slug AS "languageSlug",
+        language.bcp47 AS "locale",
+        edition.core_id AS "editionCoreId",
+        edition.name AS "editionName",
+        d.duration AS "durationSeconds",
+        d.length_in_milliseconds::text AS "lengthInMilliseconds",
+        NULLIF(d.hls, '') AS "hlsUrl",
+        NULLIF(d.dash, '') AS "dashUrl",
+        NULLIF(d.share, '') AS "shareUrl",
+        selected_download.url AS "downloadUrl",
+        selected_download.quality AS "downloadQuality",
+        selected_download.width AS "downloadWidth",
+        selected_download.height AS "downloadHeight",
+        CASE
+          WHEN selected_download.url IS NOT NULL THEN 'DOWNLOAD'
+          WHEN NULLIF(d.hls, '') IS NOT NULL THEN 'HLS'
+          WHEN NULLIF(d.dash, '') IS NOT NULL THEN 'DASH'
+          ELSE 'NONE'
+        END AS "mediaSourceType",
+        COALESCE(
+          selected_download.url,
+          NULLIF(d.hls, ''),
+          NULLIF(d.dash, '')
+        ) AS "mediaSourceUrl",
+        COALESCE(published_state.video_published, FALSE) AS "videoPublished",
+        d.published AS "dubPublished",
+        v.no_index AS "videoNoIndex",
+        (v.deleted_at IS NOT NULL) AS "videoDeleted",
+        (d.deleted_at IS NOT NULL) AS "dubDeleted",
+        COALESCE(d.deleted_at, v.deleted_at)::text AS "deletedAt",
+        (
+          d.deleted_at IS NULL
+          AND v.deleted_at IS NULL
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+          AND language.id IS NOT NULL
+          AND language.deleted_at IS NULL
+          AND d.published = TRUE
+          AND v.no_index = FALSE
+          AND COALESCE(published_state.video_published, FALSE) = TRUE
+          AND (
+            selected_download.url IS NOT NULL
+            OR NULLIF(d.hls, '') IS NOT NULL
+            OR NULLIF(d.dash, '') IS NOT NULL
+          )
+        ) AS "indexable",
+        CASE
+          WHEN d.deleted_at IS NOT NULL THEN 'dub_deleted'
+          WHEN v.deleted_at IS NOT NULL THEN 'video_deleted'
+          WHEN v.no_index = TRUE THEN 'video_no_index'
+          WHEN COALESCE(published_state.video_published, FALSE) = FALSE
+            THEN 'video_unpublished'
+          WHEN d.published = FALSE THEN 'dub_unpublished'
+          WHEN language.id IS NULL THEN 'language_missing'
+          WHEN language.deleted_at IS NOT NULL THEN 'language_deleted'
+          WHEN edition.id IS NOT NULL AND edition.deleted_at IS NOT NULL
+            THEN 'edition_deleted'
+          WHEN selected_download.url IS NULL
+            AND NULLIF(d.hls, '') IS NULL
+            AND NULLIF(d.dash, '') IS NULL
+            THEN 'media_missing'
+          ELSE NULL
+        END AS "nonIndexableReason"
+      FROM paged_dubs d
+      JOIN video v
+        ON v.id = d.video_id
+      LEFT JOIN language
+        ON language.id = d.language_id
+      LEFT JOIN video_edition edition
+        ON edition.id = d.video_edition_id
+      LEFT JOIN published_state_by_video published_state
+        ON published_state.video_id = v.id
+      LEFT JOIN selected_title_by_video selected_title
+        ON selected_title.video_id = v.id
+      LEFT JOIN LATERAL (
+        SELECT
+          download.url,
+          download.quality,
+          download.width,
+          download.height
+        FROM video_dub_download download
+        WHERE download.video_dub_id = d.id
+          AND d.downloadable = TRUE
+          AND download.deleted_at IS NULL
+          AND NULLIF(download.url, '') IS NOT NULL
+          AND download.url ~* '^https?://'
+        ORDER BY
+          download.width DESC NULLS LAST,
+          download.height DESC NULLS LAST,
+          download.updated_at DESC
+        LIMIT 1
+      ) selected_download ON TRUE
+      ORDER BY d.id ASC
+    `
+      },
+      { timeout: VIDEO_MAPPER_CATALOG_TRANSACTION_TIMEOUT_MS },
+    )
+
+    const nodes = rows.slice(0, pageSize)
+    return {
+      nodes,
+      pageInfo: {
+        startCursor:
+          nodes.length === 0
+            ? null
+            : encodeMapperCatalogCursor(nodes[0].adminDubId),
+        endCursor:
+          nodes.length === 0
+            ? null
+            : encodeMapperCatalogCursor(nodes[nodes.length - 1].adminDubId),
+        hasNextPage: rows.length > pageSize,
+      },
+    }
+  }
+
+  private async assertMapperCatalogCursorExists(adminDubId: string | null) {
+    if (adminDubId == null) return
+
+    const row = await this.prisma.videoDub.findUnique({
+      where: { id: adminDubId },
+      select: { id: true },
+    })
+    if (row == null) {
+      throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+    }
+  }
+
   async getWatchHomeVideos({
     coreIds,
     query,
@@ -571,6 +1948,499 @@ export class VideoService {
       const row = rowByCoreId.get(coreId)
       return row == null ? [] : [row]
     })
+  }
+
+  async getWatchLanguageInventory({
+    languageSlug,
+    limit,
+  }: {
+    languageSlug: string
+    limit?: number | null
+  }): Promise<WatchLanguageInventory> {
+    const normalizedSlug = normalizeSearchValue(languageSlug)
+    if (!normalizedSlug) return emptyWatchLanguageInventory(null)
+
+    const languageRow = await this.prisma.language.findFirst({
+      where: { slug: normalizedSlug, deletedAt: null },
+      select: { slug: true, name: true, bcp47: true },
+    })
+    if (languageRow?.slug == null) return emptyWatchLanguageInventory(null)
+    const language: WatchLanguageInventoryLanguage = {
+      slug: languageRow.slug,
+      name: languageRow.name,
+      bcp47: languageRow.bcp47,
+    }
+
+    const pageSize = normalizeWatchLanguageInventoryLimit(limit)
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(
+          WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL,
+        )
+        return tx.$queryRaw<WatchLanguageInventoryRow[]>`
+      WITH inventory_language AS (
+        SELECT id, slug, bcp47, name
+        FROM language
+        WHERE slug = ${language.slug}
+          AND deleted_at IS NULL
+        LIMIT 1
+      ),
+      published_videos AS (
+        SELECT v.*
+        FROM video v
+        WHERE v.deleted_at IS NULL
+          AND v.no_index = FALSE
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = v.id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
+          )
+      ),
+      selected_locale AS (
+        SELECT DISTINCT ON (locale.video_id)
+          locale.video_id,
+          locale.title,
+          locale.description,
+          locale.snippet,
+          locale.image_alt
+        FROM video_locale locale
+        JOIN published_videos published_video
+          ON published_video.id = locale.video_id
+        LEFT JOIN inventory_language
+          ON TRUE
+        WHERE locale.deleted_at IS NULL
+          AND locale.status = 'published'
+        ORDER BY
+          locale.video_id ASC,
+          CASE
+            WHEN locale.language_id = inventory_language.id THEN 0
+            WHEN locale.language_slug = inventory_language.slug THEN 1
+            WHEN locale.language_slug = 'english' THEN 2
+            WHEN locale.locale = 'en' THEN 3
+            ELSE 4
+          END ASC,
+          locale.updated_at DESC,
+          locale.id ASC
+      ),
+      selected_image AS (
+        SELECT DISTINCT ON (image.video_id)
+          image.video_id,
+          COALESCE(
+            NULLIF(image.mobile_cinematic_high, ''),
+            NULLIF(image.video_still, ''),
+            NULLIF(image.thumbnail, ''),
+            NULLIF(image.url, '')
+          ) AS image_url
+        FROM video_image image
+        JOIN published_videos published_video
+          ON published_video.id = image.video_id
+        WHERE image.deleted_at IS NULL
+          AND COALESCE(
+            NULLIF(image.mobile_cinematic_high, ''),
+            NULLIF(image.video_still, ''),
+            NULLIF(image.thumbnail, ''),
+            NULLIF(image.url, '')
+          ) IS NOT NULL
+        ORDER BY
+          image.video_id ASC,
+          CASE
+            WHEN NULLIF(image.mobile_cinematic_high, '') IS NOT NULL THEN 0
+            WHEN NULLIF(image.video_still, '') IS NOT NULL THEN 1
+            WHEN NULLIF(image.thumbnail, '') IS NOT NULL THEN 2
+            ELSE 3
+          END ASC,
+          image.updated_at DESC,
+          image.id ASC
+      ),
+      audio_collection AS (
+        SELECT DISTINCT ON (parent.id)
+          'audio_collection' AS bucket,
+          parent.id,
+          parent.core_id AS "coreId",
+          parent.slug,
+          COALESCE(
+            NULLIF(selected_locale.title, ''),
+            NULLIF(parent.slug, ''),
+            parent.core_id,
+            parent.id
+          ) AS title,
+          COALESCE(
+            NULLIF(selected_locale.description, ''),
+            NULLIF(selected_locale.snippet, '')
+          ) AS description,
+          selected_image.image_url AS "imageUrl",
+          selected_locale.image_alt AS "imageAlt",
+          parent.label::text AS label,
+          'AUDIO' AS availability,
+          inventory_language.slug AS "watchLanguageSlug",
+          NULL::text AS "parentSlug",
+          NULL::text AS "parentTitle",
+          NULL::integer AS "parentOrder",
+          NULL::integer AS "durationSeconds",
+          COALESCE(child_counts.count, 0) AS "childCount",
+          parent.published_at::text AS "publishedAt",
+          parent.created_at::text AS "createdAt",
+          parent.updated_at::text AS "updatedAt",
+          GREATEST(
+            COALESCE(parent.published_at, parent.created_at),
+            COALESCE(parent.updated_at, parent.created_at),
+            parent.created_at,
+            child_recency.latest_child_at
+          ) AS "sortAt"
+        FROM published_videos parent
+        JOIN video_relation relation
+          ON relation.parent_id = parent.id
+        JOIN published_videos child
+          ON child.id = relation.child_id
+        JOIN video_dub dub
+          ON dub.video_id = child.id
+        JOIN inventory_language
+          ON inventory_language.id = dub.language_id
+        LEFT JOIN video_edition edition
+          ON edition.id = dub.video_edition_id
+        LEFT JOIN selected_locale
+          ON selected_locale.video_id = parent.id
+        LEFT JOIN selected_image
+          ON selected_image.video_id = parent.id
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS count
+          FROM video_relation child_relation
+          JOIN published_videos child_video
+            ON child_video.id = child_relation.child_id
+          WHERE child_relation.parent_id = parent.id
+        ) child_counts ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT MAX(
+            GREATEST(
+              COALESCE(child_video.published_at, child_video.created_at),
+              COALESCE(child_video.updated_at, child_video.created_at),
+              child_video.created_at
+            )
+          ) AS latest_child_at
+          FROM video_relation child_relation
+          JOIN published_videos child_video
+            ON child_video.id = child_relation.child_id
+          JOIN video_dub child_dub
+            ON child_dub.video_id = child_video.id
+          LEFT JOIN video_edition child_edition
+            ON child_edition.id = child_dub.video_edition_id
+          WHERE child_relation.parent_id = parent.id
+            AND child_dub.language_id = inventory_language.id
+            AND child_dub.deleted_at IS NULL
+            AND child_dub.published = TRUE
+            AND NULLIF(child_dub.hls, '') IS NOT NULL
+            AND (
+              child_edition.id IS NULL
+              OR child_edition.deleted_at IS NULL
+            )
+        ) child_recency ON TRUE
+        WHERE dub.deleted_at IS NULL
+          AND dub.published = TRUE
+          AND NULLIF(dub.hls, '') IS NOT NULL
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+        ORDER BY
+          parent.id ASC,
+          relation.order ASC NULLS LAST,
+          relation.created_at ASC
+      ),
+      audio_video AS (
+        SELECT DISTINCT ON (video.id)
+          'audio_video' AS bucket,
+          video.id,
+          video.core_id AS "coreId",
+          video.slug,
+          COALESCE(
+            NULLIF(selected_locale.title, ''),
+            NULLIF(video.slug, ''),
+            video.core_id,
+            video.id
+          ) AS title,
+          COALESCE(
+            NULLIF(selected_locale.description, ''),
+            NULLIF(selected_locale.snippet, '')
+          ) AS description,
+          selected_image.image_url AS "imageUrl",
+          selected_locale.image_alt AS "imageAlt",
+          video.label::text AS label,
+          'AUDIO' AS availability,
+          inventory_language.slug AS "watchLanguageSlug",
+          parent_ref.slug AS "parentSlug",
+          parent_ref.title AS "parentTitle",
+          parent_ref."parentOrder" AS "parentOrder",
+          dub.duration AS "durationSeconds",
+          0 AS "childCount",
+          video.published_at::text AS "publishedAt",
+          video.created_at::text AS "createdAt",
+          video.updated_at::text AS "updatedAt",
+          GREATEST(
+            COALESCE(video.published_at, video.created_at),
+            COALESCE(video.updated_at, video.created_at),
+            video.created_at
+          ) AS "sortAt"
+        FROM published_videos video
+        JOIN video_dub dub
+          ON dub.video_id = video.id
+        JOIN inventory_language
+          ON inventory_language.id = dub.language_id
+        LEFT JOIN video_edition edition
+          ON edition.id = dub.video_edition_id
+        LEFT JOIN selected_locale
+          ON selected_locale.video_id = video.id
+        LEFT JOIN selected_image
+          ON selected_image.video_id = video.id
+        LEFT JOIN LATERAL (
+          SELECT
+            parent.slug,
+            relation.order AS "parentOrder",
+            COALESCE(
+              NULLIF(parent_locale.title, ''),
+              NULLIF(parent.slug, ''),
+              parent.core_id,
+              parent.id
+            ) AS title
+          FROM video_relation relation
+          JOIN published_videos parent
+            ON parent.id = relation.parent_id
+          LEFT JOIN selected_locale parent_locale
+            ON parent_locale.video_id = parent.id
+          WHERE relation.child_id = video.id
+          ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
+          LIMIT 1
+        ) parent_ref ON TRUE
+        WHERE dub.deleted_at IS NULL
+          AND dub.published = TRUE
+          AND NULLIF(dub.hls, '') IS NOT NULL
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_relation child_relation
+            WHERE child_relation.parent_id = video.id
+          )
+        ORDER BY
+          video.id ASC,
+          dub.duration DESC NULLS LAST,
+          dub.updated_at DESC,
+          dub.id ASC
+      ),
+      subtitle_video AS (
+        SELECT DISTINCT ON (video.id)
+          'subtitle_video' AS bucket,
+          video.id,
+          video.core_id AS "coreId",
+          video.slug,
+          COALESCE(
+            NULLIF(selected_locale.title, ''),
+            NULLIF(video.slug, ''),
+            video.core_id,
+            video.id
+          ) AS title,
+          COALESCE(
+            NULLIF(selected_locale.description, ''),
+            NULLIF(selected_locale.snippet, '')
+          ) AS description,
+          selected_image.image_url AS "imageUrl",
+          selected_locale.image_alt AS "imageAlt",
+          video.label::text AS label,
+          'SUBTITLE_ONLY' AS availability,
+          fallback_dub.language_slug AS "watchLanguageSlug",
+          parent_ref.slug AS "parentSlug",
+          parent_ref.title AS "parentTitle",
+          parent_ref."parentOrder" AS "parentOrder",
+          fallback_dub.duration AS "durationSeconds",
+          0 AS "childCount",
+          video.published_at::text AS "publishedAt",
+          video.created_at::text AS "createdAt",
+          video.updated_at::text AS "updatedAt",
+          GREATEST(
+            COALESCE(video.published_at, video.created_at),
+            COALESCE(video.updated_at, video.created_at),
+            video.created_at
+          ) AS "sortAt"
+        FROM published_videos video
+        JOIN inventory_language
+          ON TRUE
+        JOIN video_subtitle subtitle
+          ON subtitle.deleted_at IS NULL
+         AND subtitle.language_id = inventory_language.id
+         AND (
+           subtitle.video_id = video.id
+           OR EXISTS (
+             SELECT 1
+             FROM video_dub edition_dub
+             WHERE edition_dub.video_id = video.id
+               AND edition_dub.video_edition_id = subtitle.video_edition_id
+           )
+         )
+        JOIN video_edition subtitle_edition
+          ON subtitle_edition.id = subtitle.video_edition_id
+         AND subtitle_edition.deleted_at IS NULL
+        JOIN LATERAL (
+          SELECT
+            fallback_language.slug AS language_slug,
+            fallback_dub.duration
+          FROM video_dub fallback_dub
+          JOIN language fallback_language
+            ON fallback_language.id = fallback_dub.language_id
+           AND fallback_language.deleted_at IS NULL
+           AND fallback_language.slug IS NOT NULL
+          LEFT JOIN video_edition fallback_edition
+            ON fallback_edition.id = fallback_dub.video_edition_id
+          WHERE fallback_dub.video_id = video.id
+            AND fallback_dub.deleted_at IS NULL
+            AND fallback_dub.published = TRUE
+            AND NULLIF(fallback_dub.hls, '') IS NOT NULL
+            AND (fallback_edition.id IS NULL OR fallback_edition.deleted_at IS NULL)
+          ORDER BY
+            CASE
+              WHEN video.primary_language_id = fallback_language.id THEN 0
+              WHEN fallback_language.slug = 'english' THEN 1
+              ELSE 2
+            END ASC,
+            fallback_dub.duration DESC NULLS LAST,
+            fallback_language.slug ASC,
+            fallback_dub.id ASC
+          LIMIT 1
+        ) fallback_dub ON TRUE
+        LEFT JOIN selected_locale
+          ON selected_locale.video_id = video.id
+        LEFT JOIN selected_image
+          ON selected_image.video_id = video.id
+        LEFT JOIN LATERAL (
+          SELECT
+            parent.slug,
+            relation.order AS "parentOrder",
+            COALESCE(
+              NULLIF(parent_locale.title, ''),
+              NULLIF(parent.slug, ''),
+              parent.core_id,
+              parent.id
+            ) AS title
+          FROM video_relation relation
+          JOIN published_videos parent
+            ON parent.id = relation.parent_id
+          LEFT JOIN selected_locale parent_locale
+            ON parent_locale.video_id = parent.id
+          WHERE relation.child_id = video.id
+          ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
+          LIMIT 1
+        ) parent_ref ON TRUE
+        WHERE (NULLIF(subtitle.vtt_src, '') IS NOT NULL OR NULLIF(subtitle.srt_src, '') IS NOT NULL)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_dub same_language_dub
+            LEFT JOIN video_edition same_language_edition
+              ON same_language_edition.id = same_language_dub.video_edition_id
+            WHERE same_language_dub.video_id = video.id
+              AND same_language_dub.language_id = inventory_language.id
+              AND same_language_dub.deleted_at IS NULL
+              AND same_language_dub.published = TRUE
+              AND NULLIF(same_language_dub.hls, '') IS NOT NULL
+              AND (
+                same_language_edition.id IS NULL
+                OR same_language_edition.deleted_at IS NULL
+              )
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_relation child_relation
+            WHERE child_relation.parent_id = video.id
+          )
+        ORDER BY
+          video.id ASC,
+          CASE WHEN subtitle.primary = TRUE THEN 0 ELSE 1 END ASC,
+          subtitle.updated_at DESC,
+          subtitle.id ASC
+      ),
+      inventory_rows AS (
+        SELECT * FROM audio_collection
+        UNION ALL
+        SELECT * FROM audio_video
+        UNION ALL
+        SELECT * FROM subtitle_video
+      ),
+      ranked_rows AS (
+        SELECT
+          inventory_rows.*,
+          COUNT(*) OVER (PARTITION BY bucket) AS "bucketTotal",
+          ROW_NUMBER() OVER (
+            PARTITION BY bucket
+            ORDER BY
+              "sortAt" DESC NULLS LAST,
+              title ASC,
+              id ASC
+          ) AS bucket_rank
+        FROM inventory_rows
+      )
+      SELECT
+        bucket,
+        id,
+        "coreId",
+        slug,
+        title,
+        description,
+        "imageUrl",
+        "imageAlt",
+        label,
+        availability,
+        "watchLanguageSlug",
+        "parentSlug",
+        "parentTitle",
+        "parentOrder",
+        "durationSeconds",
+        "childCount",
+        "publishedAt",
+        "createdAt",
+        "updatedAt",
+        "sortAt",
+        "bucketTotal"
+      FROM ranked_rows
+      WHERE bucket_rank <= ${pageSize}
+      ORDER BY
+        CASE
+          WHEN bucket = 'audio_collection' THEN 0
+          WHEN bucket = 'audio_video' THEN 1
+          ELSE 2
+        END ASC,
+        "sortAt" DESC NULLS LAST,
+        title ASC,
+        id ASC
+    `
+      },
+      { timeout: WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS },
+    )
+
+    const audioCollections = bucketItems(rows, "audio_collection")
+    const audioVideos = bucketItems(rows, "audio_video")
+    const subtitleOnlyVideos = bucketItems(rows, "subtitle_video")
+    const counts = {
+      audioCollections: bucketTotal(rows, "audio_collection"),
+      audioVideos: bucketTotal(rows, "audio_video"),
+      subtitleOnlyVideos: bucketTotal(rows, "subtitle_video"),
+      total: 0,
+    }
+    counts.total =
+      counts.audioCollections + counts.audioVideos + counts.subtitleOnlyVideos
+
+    const promoted = rows
+      .slice()
+      .sort(
+        (a, b) =>
+          rowRecencyScore(b) - rowRecencyScore(a) ||
+          a.title.localeCompare(b.title),
+      )
+      .slice(0, WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT)
+      .map(toWatchLanguageInventoryItem)
+
+    return {
+      language,
+      counts,
+      promoted,
+      audioCollections,
+      audioVideos,
+      subtitleOnlyVideos,
+    }
   }
 
   async getByCoreId({
@@ -811,7 +2681,130 @@ export class VideoService {
   }
 }
 
+type WatchLanguageInventoryBucket =
+  | "audio_collection"
+  | "audio_video"
+  | "subtitle_video"
+
+type WatchLanguageInventoryRow = WatchLanguageInventoryItem & {
+  bucket: WatchLanguageInventoryBucket
+  bucketTotal: number | bigint
+  sortAt: Date | string | null
+}
+
+function normalizeWatchLanguageInventoryLimit(
+  limit: number | null | undefined,
+) {
+  const parsed = Number.isFinite(limit ?? NaN)
+    ? Math.floor(Number(limit))
+    : WATCH_LANGUAGE_INVENTORY_DEFAULT_ITEMS_PER_BUCKET
+  if (parsed <= 0) return 1
+  return Math.min(parsed, WATCH_LANGUAGE_INVENTORY_MAX_ITEMS_PER_BUCKET)
+}
+
+function emptyWatchLanguageInventory(
+  language: WatchLanguageInventoryLanguage | null,
+): WatchLanguageInventory {
+  return {
+    language,
+    counts: {
+      audioCollections: 0,
+      audioVideos: 0,
+      subtitleOnlyVideos: 0,
+      total: 0,
+    },
+    promoted: [],
+    audioCollections: [],
+    audioVideos: [],
+    subtitleOnlyVideos: [],
+  }
+}
+
+function bucketItems(
+  rows: WatchLanguageInventoryRow[],
+  bucket: WatchLanguageInventoryBucket,
+): WatchLanguageInventoryItem[] {
+  return rows
+    .filter((row) => row.bucket === bucket)
+    .map(toWatchLanguageInventoryItem)
+}
+
+function bucketTotal(
+  rows: WatchLanguageInventoryRow[],
+  bucket: WatchLanguageInventoryBucket,
+): number {
+  const total = rows.find((row) => row.bucket === bucket)?.bucketTotal
+  if (typeof total === "bigint") return Number(total)
+  return total ?? 0
+}
+
+function toWatchLanguageInventoryItem({
+  bucket: _bucket,
+  bucketTotal: _bucketTotal,
+  sortAt: _sortAt,
+  ...item
+}: WatchLanguageInventoryRow): WatchLanguageInventoryItem {
+  return item
+}
+
+function timestampScore(value: Date | string | null | undefined): number {
+  if (!value) return 0
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(value)
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function recencyScore(item: WatchLanguageInventoryItem): number {
+  return Math.max(
+    timestampScore(item.publishedAt),
+    timestampScore(item.updatedAt),
+    timestampScore(item.createdAt),
+  )
+}
+
+function rowRecencyScore(row: WatchLanguageInventoryRow): number {
+  return timestampScore(row.sortAt) || recencyScore(row)
+}
+
 type VideoForEnrichmentRow = VideoForEnrichment
+
+function normalizeMapperCatalogPageSize(first: number | null | undefined) {
+  const value = first ?? VIDEO_MAPPER_CATALOG_DEFAULT_PAGE_SIZE
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new VideoLookupValidationError(
+      "videoMapperCatalog.first must be a positive integer",
+    )
+  }
+  return Math.min(value, VIDEO_MAPPER_CATALOG_MAX_PAGE_SIZE)
+}
+
+function encodeMapperCatalogCursor(adminDubId: string) {
+  return Buffer.from(
+    `${VIDEO_MAPPER_CATALOG_CURSOR_PREFIX}${adminDubId}`,
+    "utf8",
+  ).toString("base64url")
+}
+
+function decodeMapperCatalogCursor(cursor: string | null | undefined) {
+  const normalized = cursor?.trim()
+  if (!normalized) return null
+
+  let decoded: string
+  try {
+    decoded = Buffer.from(normalized, "base64url").toString("utf8")
+  } catch {
+    throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+  }
+
+  if (!decoded.startsWith(VIDEO_MAPPER_CATALOG_CURSOR_PREFIX)) {
+    throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+  }
+
+  const adminDubId = decoded.slice(VIDEO_MAPPER_CATALOG_CURSOR_PREFIX.length)
+  if (adminDubId.length === 0) {
+    throw new VideoLookupValidationError("Invalid videoMapperCatalog cursor")
+  }
+  return adminDubId
+}
 
 function withVideoCoreIdForOrdering(query: object): object {
   const prismaQuery = query as { select?: Record<string, unknown> }

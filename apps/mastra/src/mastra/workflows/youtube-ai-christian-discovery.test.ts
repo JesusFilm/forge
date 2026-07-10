@@ -281,6 +281,12 @@ describe("runYouTubeDiscovery", () => {
     expect(submitted[0]!.authorUrl).toBe(
       "https://www.youtube.com/channel/UC_grace",
     )
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reviewQueue).toEqual({
+      status: "submitted",
+      inserted: 1,
+      skipped: 0,
+    })
   })
 
   it("does not submit when the site is not configured", async () => {
@@ -295,6 +301,8 @@ describe("runYouTubeDiscovery", () => {
       },
     )
     expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reviewQueue).toEqual({ status: "not_configured" })
   })
 
   it("returns config_missing when no API key is configured", async () => {
@@ -387,7 +395,12 @@ describe("runYouTubeDiscovery", () => {
     const listPlaylistVideos = vi.fn(async () => [aiChristian])
     const sourcesJson = new Response(
       JSON.stringify({
-        sources: [{ value: "PLsaved123456", label: "QBIBLE" }],
+        sources: [
+          {
+            value: "https://www.youtube.com/playlist?list=PLsaved123456",
+            label: "QBIBLE",
+          },
+        ],
       }),
       { status: 200, headers: { "content-type": "application/json" } },
     )
@@ -413,6 +426,28 @@ describe("runYouTubeDiscovery", () => {
     )
   })
 
+  it("reports a saved-source outage when no source can run", async () => {
+    const result = await runYouTubeDiscovery(
+      { channels: [], playlists: [], queries: [] },
+      {
+        runId: "run-sources-failed",
+        youtubeConfig: CONFIG,
+        artifactStore: fakeStore(),
+        sourcesConfig: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchSources: (async () =>
+          new Response("down", { status: 500 })) as unknown as typeof fetch,
+      },
+    )
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "sources_unavailable",
+      retryable: true,
+    })
+  })
+
   it("returns invalid_input for an out-of-range limit", async () => {
     const result = await runYouTubeDiscovery(
       { queries: ["q"], limitPerQuery: 0 },
@@ -435,6 +470,7 @@ describe("handleYouTubeDiscoveryRouteRequest", () => {
     },
     videos: [],
     sourceFailures: [],
+    reviewQueue: { status: "empty" },
   }
 
   it("rejects requests without a valid bearer", async () => {

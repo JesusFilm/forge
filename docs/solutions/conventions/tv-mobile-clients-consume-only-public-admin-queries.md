@@ -1,6 +1,7 @@
 ---
 title: "TV/mobile clients consume only public admin GraphQL queries (never editor-gated experiences)"
 date: "2026-06-08"
+last_updated: "2026-06-12"
 category: "conventions"
 module: "apps/tv consumer client + admin GraphQL auth boundary"
 problem_type: "convention"
@@ -33,9 +34,9 @@ related_components: [apps/mobile, apps/web, packages/admin-graphql, apps/admin]
 
 ## Context
 
-`apps/tv` (and `apps/mobile`, `apps/web`) reads from admin via `@forge/admin-graphql`. These consumer apps run **unauthenticated** — they ship with no end-user admin bearer token. Admin's GraphQL surface is split by Pothos `authScopes`:
+`apps/tv` (and `apps/mobile`, `apps/web`) reads from admin via `@forge/admin-graphql`. These consumer apps run **unauthenticated** — they ship with no end-user admin bearer token. (One narrow carve-out exists since 2026-06-12: a zero-permission consumer bearer scoped to the `Search` operation only — see the Related entry on fleet-client bearers.) Admin's GraphQL surface is split by Pothos `authScopes`:
 
-- **Public** (`authScopes: { public: true }`): `experienceBySlug`, `watchSetting`, `videoBySlug`, `search`, and the other consumer-facing reads — anonymous callers see published content only.
+- **Public** (`authScopes: { public: true }`): `experienceBySlug`, `watchSetting`, `videoBySlug`, and the other consumer-facing reads — anonymous callers see published content only. `search` is public-shaped but **policy-gated**: once admin's `SEARCH_AUTH_REQUIRED` is active it rejects anonymous callers, so clients present the operation-scoped consumer bearer for it.
 - **Editor-gated** (`authScopes: { hasPermission: "read:experiences" }`, which resolves to the `VIEWER` tier and up): the list/by-id fields `Query.experiences` and `Query.experience(id:)`. These can surface unpublished/draft content, so they are intentionally not public.
 
 The TV home had diverged from the mobile/web pattern: instead of rendering a single curated homepage Experience, it listed _every_ Experience as a launcher grid via `LIST_EXPERIENCES` (`Query.experiences`), and `SearchBrowse` showed a "Popular experiences" rail backed by the same gated field. **There is no public list-all-experiences query by design.**
@@ -73,7 +74,7 @@ The TV home had diverged from the mobile/web pattern: instead of rendering a sin
 ## Why This Matters
 
 - **Admin's gate is deliberate, not a bug.** `experiences`/`experience(id:)` can return draft/unpublished content, so they require `VIEWER`+. `experienceBySlug` and `watchSetting` are `public: true` and only return published rows to anonymous callers — exactly what a consumer client should see. Calling the gated field from a public client is a correctly-rejected request, surfaced as `Not authorized to resolve Query.experiences`.
-- **A client binary cannot hold a secret.** `EXPO_PUBLIC_*` (and `NEXT_PUBLIC_*`) vars are baked into the shipped bundle; "just add a token" trades a correctness bug for an extractable-credential security hole.
+- **A client binary cannot hold a secret.** `EXPO_PUBLIC_*` (and `NEXT_PUBLIC_*`) vars are baked into the shipped bundle; "just add a token" trades a correctness bug for an extractable-credential security hole. The qualification (2026-06-12): a **zero-permission passport** (the `CONSUMER_BEARER` class) may ship in the binary because extraction yields rate-limit budget abuse, not data access — and even then only operation-scoped to the policy-gated `Search`, never globally (global attachment pools the whole fleet into one `consumer:<key>` rate-limit bucket), with production provisioning embargoed until admin lands fleet-aware bucketing. A _permission-bearing_ token in a client bundle remains categorically wrong.
 - **Parity is structural.** Mobile and web already do home = `watchSetting` → `experienceBySlug`. Converging TV onto the same path gives one cross-platform mental model, and the shared `ExperienceRenderer` enforces it so home and detail can't diverge again.
 
 ## When to Apply
@@ -85,11 +86,11 @@ The TV home had diverged from the mobile/web pattern: instead of rendering a sin
 
 What didn't work, and why each was rejected:
 
-| Rejected approach                                       | Why                                                                                                                                       |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Embed `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` in the client   | `EXPO_PUBLIC_*` ships in the binary — an extractable admin credential. Security hole.                                                     |
-| Ask admin to expose a public list-all-experiences query | Undoes an intentional editor gate (drafts/unpublished) and blocks on another owner. The gate is correct; the client was wrong to call it. |
-| Keep the "list every experience" launcher UX            | The launcher _inherently_ requires the gated query. The home should be a curated single Experience, like mobile/web.                      |
+| Rejected approach                                                                    | Why                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Embed `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` in the client _to reach gated editor fields_ | `EXPO_PUBLIC_*` ships in the binary — an extractable admin credential. Security hole. (Distinct from the 2026-06-12 Search carve-out: that token is a zero-permission passport scoped to one policy-gated operation, not a permission workaround.) |
+| Ask admin to expose a public list-all-experiences query                              | Undoes an intentional editor gate (drafts/unpublished) and blocks on another owner. The gate is correct; the client was wrong to call it.                                                                                                          |
+| Keep the "list every experience" launcher UX                                         | The launcher _inherently_ requires the gated query. The home should be a curated single Experience, like mobile/web.                                                                                                                               |
 
 **Regression guard** (`apps/tv/src/lib/queries.test.ts`) — serializes the home documents with graphql's `print` and asserts they use `watchSetting`/`experienceBySlug` and never reference the gated field:
 
@@ -101,6 +102,7 @@ it("does NOT touch the editor-gated Query.experiences", () => {
 
 ## Related
 
+- [Fleet-client bearer must be operation-scoped, never global](../architecture-patterns/fleet-client-bearer-must-be-operation-scoped-not-global.md) — the 2026-06-12 carve-out this convention now references: how mobile presents a zero-permission consumer bearer for the policy-gated `Search` operation without breaking the no-client-secret posture (and why `apps/tv` must adopt the same scoping before any token is provisioned for it).
 - [Pothos public-widening: multi-layer coordination](../graphql/pothos-public-widening-multi-layer-coordination-20260511.md) — the **server-side** source of truth for which admin resolvers are public (`INTENDED_PUBLIC_RESOLVERS` + its server-side regression test). This convention is the **client-side corollary**: server widens a field to public; clients must consume only those.
 - [Pothos relation ABAC filter required for nested types](../graphql/pothos-relation-abac-filter-required-for-nested-types.md) — why `experiences`/nested relations are ABAC/editor-gated (the gate this convention respects).
 - [Mobile admin data-layer cutover pattern](../architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md) — the mobile peer of the same tokenless admin-graphql client posture; this convention covers TV + mobile.

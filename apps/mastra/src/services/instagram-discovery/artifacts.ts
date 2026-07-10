@@ -11,7 +11,7 @@ import type { DiscoveryReport } from "./types"
 const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
 const MAX_POSTS = 200
 const MAX_QUERIES = 20
-const MAX_QUERY_FAILURES = 20
+const MAX_QUERY_FAILURES = 70
 const MAX_HASHTAGS = 30
 const MAX_SAFE_TEXT = 1024
 const MAX_URL = 512

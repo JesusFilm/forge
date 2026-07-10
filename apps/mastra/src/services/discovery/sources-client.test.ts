@@ -39,6 +39,7 @@ describe("fetchSavedSources", () => {
     expect((init.headers as Record<string, string>).authorization).toBe(
       "Bearer tok",
     )
+    expect(init.redirect).toBe("error")
   })
 
   it("returns an empty list when the site has no sources", async () => {
@@ -74,6 +75,18 @@ describe("fetchSavedSources", () => {
       fetchSavedSources("youtube", {
         url: "",
         token: "tok",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "config_missing" })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("rejects a non-HTTPS endpoint before it can receive the bearer", async () => {
+    const fetchImpl = vi.fn()
+    await expect(
+      fetchSavedSources("youtube", {
+        ...CONFIG,
+        url: "http://127.0.0.1/internal",
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),
     ).rejects.toMatchObject({ code: "config_missing" })

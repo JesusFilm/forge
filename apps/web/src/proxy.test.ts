@@ -263,11 +263,14 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
     expect(matcherRegex.test("/demo-recommendations/jesus/en")).toBe(false)
     expect(matcherRegex.test("/_next/data/build/x.json")).toBe(false)
     expect(matcherRegex.test("/.well-known/security.txt")).toBe(false)
+    expect(matcherRegex.test("/sitemap.xml")).toBe(false)
+    expect(matcherRegex.test("/sitemap/0.xml")).toBe(false)
   })
 
   it("does not exclude content routes that only start with a reserved word", async () => {
     expect(matcherRegex.test("/images-of-jesus.html/english.html")).toBe(true)
     expect(matcherRegex.test("/fonts-of-worship.html/english.html")).toBe(true)
+    expect(matcherRegex.test("/sitemap-of-jesus.html/english.html")).toBe(true)
   })
 })
 
@@ -326,12 +329,14 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }
   })
 
-  it("redirects deprecated /search into the root search modal without synthetic .html", async () => {
-    const response = await proxy(makeRequest("/search?q=forgiveness"))
+  it("redirects deprecated /search into the root surface without preserving q", async () => {
+    const response = await proxy(
+      makeRequest("/search?q=forgiveness&utm=campaign"),
+    )
     expect(response.status).toBe(307)
     const location = new URL(response.headers.get("location") ?? "")
     expect(location.pathname).toBe("/")
-    expect(location.search).toBe("?q=forgiveness")
+    expect(location.search).toBe("?utm=campaign")
     expect(rewritePath(response)).toBeNull()
   })
 
@@ -360,6 +365,20 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   it("rewrites one-segment public language homes with locale/htmlLang matching the slug", async () => {
     const response = await proxy(makeRequest("/spanish-castilian.html"))
     expect(rewritePath(response)).toBe("/es/es-ES/spanish-castilian.html")
+  })
+
+  it("rewrites localized videos indexes while preserving the raw language slug", async () => {
+    const response = await proxy(
+      makeRequest("/spanish-latin-american.html/videos"),
+    )
+    expect(rewritePath(response)).toBe(
+      "/es/es-419/videos/spanish-latin-american",
+    )
+  })
+
+  it("rewrites unsupported-language videos indexes with English chrome fallback", async () => {
+    const response = await proxy(makeRequest("/aari.html/videos"))
+    expect(rewritePath(response)).toBe("/en/en/videos/aari")
   })
 
   it("404s bcp47 catalog keys as one-segment public homes", async () => {

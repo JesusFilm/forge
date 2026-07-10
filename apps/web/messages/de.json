@@ -41,6 +41,9 @@
     "termsAgreementSuffix": " zu",
     "close": "Schließen",
     "download": "Herunterladen",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Wird geprüft",
     "closeTermsOfUse": "Nutzungsbedingungen schließen",
     "cancel": "Abbrechen",
@@ -83,7 +86,8 @@
     "toggleOn": "Ein",
     "toggleOff": "Aus",
     "close": "Schließen",
-    "apply": "Anwenden"
+    "apply": "Anwenden",
+    "noLanguageSubtitles": "Keine Untertitel für {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 FOLGE} other {# FOLGEN}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Führen Sie ein privates Gespräch mit jemandem, der bereit ist zuzuhören.",
     "questionsShort": "Fragen",
     "questions": "Verwandte Fragen",
-    "askYours": "Stellen Sie Ihre Frage",
+    "askYours": "Ihre Frage",
     "chatWithPerson": "Mit jemandem sprechen",
     "askBibleQuestion": "Eine Bibelfrage stellen"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animiert",
     "categoryStudy": "Studium",
     "categoryFamily": "Familie",
-    "categoryChristmas": "Weihnachten"
+    "categoryChristmas": "Weihnachten",
+    "searchLanguageLabel": "Suchsprache",
+    "allLanguages": "Alle Sprachen",
+    "searchSuggestions": "Suchvorschläge",
+    "languages": "Sprachen",
+    "recommendedLanguage": "Empfohlene Sprache",
+    "searchSuggestion": "{suggestion} suchen",
+    "searchSuggestionWithLanguage": "{suggestion} auf {language} suchen",
+    "inLanguage": "auf {language}",
+    "browseByRegion": "Nach Region stöbern",
+    "clearLanguages": "Zurücksetzen",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Mit Ton abspielen",
+    "playWithSound": "Jetzt ansehen",
     "tapToUnmute": "Ton einschalten"
   },
   "ExperienceSkeleton": {
@@ -215,7 +232,7 @@
     "nextChapter": "Nächstes Kapitel"
   },
   "SearchResultCard": {
-    "experience": "Experience",
+    "experience": "Erlebnis",
     "episodeCount": "{count, plural, one {# Folge} other {# Folgen}}",
     "thumbnailAlt": "Video-Miniaturbild"
   }

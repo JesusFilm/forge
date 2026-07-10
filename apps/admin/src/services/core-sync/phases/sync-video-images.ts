@@ -34,7 +34,6 @@ const VIDEOS_WITH_IMAGES_QUERY = `
         mobileCinematicVeryLow
         thumbnail
         videoStill
-        blurhash
       }
     }
   }
@@ -52,7 +51,6 @@ type CoreVideoWithImages = {
     mobileCinematicVeryLow: string | null
     thumbnail: string | null
     videoStill: string | null
-    blurhash: string | null
   }>
 }
 
@@ -170,7 +168,6 @@ export async function syncVideoImages({
               mobileCinematicVeryLow: image.mobileCinematicVeryLow,
               thumbnail: image.thumbnail,
               videoStill: image.videoStill,
-              blurhash: image.blurhash,
               syncedAt: new Date(),
             },
             update: {
@@ -182,7 +179,6 @@ export async function syncVideoImages({
               mobileCinematicVeryLow: image.mobileCinematicVeryLow,
               thumbnail: image.thumbnail,
               videoStill: image.videoStill,
-              blurhash: image.blurhash,
               syncedAt: new Date(),
               deletedAt: null,
             },

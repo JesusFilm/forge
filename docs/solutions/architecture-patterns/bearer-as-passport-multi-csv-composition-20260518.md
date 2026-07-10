@@ -1,6 +1,7 @@
 ---
 title: Bearer-as-passport multi-CSV composition pattern
 date: 2026-05-18
+last_updated: "2026-06-12"
 problem_type: best_practice
 category: architecture-patterns
 component: authentication
@@ -160,13 +161,22 @@ if (!authValid && env.SEARCH_AUTH_REQUIRED === "true") {
 
 ## Why this works
 
-- **Internal apps need NO code change.** apps/web SSR was already
-  sending `Authorization: Bearer <WEB_ADMIN_API_KEYS first entry>`
+- **Internal apps ALREADY SENDING a bearer need NO code change.**
+  apps/web SSR was already sending
+  `Authorization: Bearer <WEB_ADMIN_API_KEYS first entry>`
   (the consumer-bearer for graphql rate-limit identity). When admin
   added the search-passport check via `isAnyKnownBearer`, web's
   existing bearer began satisfying both the rate-limit identity AND
   the search passport — no migration, no new env var, no
-  coordinated deploy.
+  coordinated deploy. **This zero-migration property does NOT extend
+  to fleet clients that were fully anonymous** (apps/mobile,
+  apps/tv): they need bearer plumbing added explicitly, scoped to
+  the gated Search operation only — never globally, or the whole
+  fleet collapses into one `consumer:<key>` rate-limit bucket. The
+  mobile Discover outage of 2026-06-12 was exactly this gap: Unit 7
+  consumer plumbing never landed for mobile, so the auth flip broke
+  it. See
+  [`fleet-client-bearer-must-be-operation-scoped-not-global.md`](./fleet-client-bearer-must-be-operation-scoped-not-global.md).
 - **External partners get a dedicated slot.** `SEARCH_API_KEYS` is
   reserved for callers who don't already hold an internal bearer.
   Slack-DM + Doppler-paste is sufficient onboarding.
@@ -242,6 +252,11 @@ anonymous`) so operators can identify un-migrated callers
 
 ## Cross-references
 
+- **Fleet-client corollary:**
+  `docs/solutions/architecture-patterns/fleet-client-bearer-must-be-operation-scoped-not-global.md`
+  — what the passport rollout looks like from a device-fleet
+  consumer (mobile/TV): explicit operation-scoped plumbing, never a
+  global header.
 - **Sibling pattern (rate-limit identity):**
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
   — explains why consumer-bearer mints a principal AND surfaces a

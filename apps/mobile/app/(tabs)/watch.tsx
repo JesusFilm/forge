@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -9,6 +10,7 @@ import {
 } from "react-native"
 
 import { useRouter } from "expo-router"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
 import {
@@ -20,6 +22,7 @@ import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
+import { BrowseTopics } from "../../src/components/search/BrowseTopics"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
 import {
   ACCENT,
@@ -57,6 +60,16 @@ function parseSearchError(e: unknown): string {
     }
     if (code === "SERVICE_UNAVAILABLE") {
       return "Search is temporarily unavailable. Please try again."
+    }
+    // Admin rejected the search bearer (missing, or rotated out of the CSV).
+    // Retrying can't help — only a new token (dev) or app update (prod) can.
+    if (code === "UNAUTHENTICATED") {
+      if (__DEV__) {
+        console.warn(
+          "[search] UNAUTHENTICATED — set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN in .env.local and cold-restart Metro",
+        )
+      }
+      return "Search isn't available in this app version. Please update the app."
     }
   }
 
@@ -99,7 +112,11 @@ export default function DiscoverScreen() {
     (result: SearchResult) => {
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
-        router.navigate("/(tabs)")
+        // source=search tells the Experience screen to render the hero
+        // full-bleed (no native header) with a floating back button.
+        router.push(
+          `/experience/${encodeURIComponent(result.slug)}?source=search`,
+        )
         return
       }
       // Carry seed data forward so the detail screen paints instantly.
@@ -132,6 +149,9 @@ export default function DiscoverScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const [resultsKey, setResultsKey] = useState(0)
+  const browseAnim = useRef(new Animated.Value(0)).current
+  const browseScale = useRef(new Animated.Value(0.97)).current
+  const [browseMounted, setBrowseMounted] = useState(true)
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -140,6 +160,45 @@ export default function DiscoverScreen() {
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
     }
   }, [])
+
+  // Fade the browse grid in and out the same way the results animate: fade +
+  // slight scale in on enter, fade out then unmount on leave.
+  const showBrowse = !searched && !loading
+  useEffect(() => {
+    if (showBrowse) {
+      setBrowseMounted(true)
+      browseAnim.setValue(0)
+      browseScale.setValue(0.97)
+      Animated.parallel([
+        Animated.timing(browseAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(browseScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 9,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(browseAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(browseScale, {
+          toValue: 0.95,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setBrowseMounted(false)
+      })
+    }
+  }, [showBrowse, browseAnim, browseScale])
 
   const animateOut = useCallback((): Promise<void> => {
     if (results.length === 0) return Promise.resolve()
@@ -162,11 +221,16 @@ export default function DiscoverScreen() {
   const search = useCallback(
     async (q: string) => {
       const trimmed = q.trim().slice(0, MAX_QUERY_LENGTH)
+      // Bump first so an empty/clear query invalidates any in-flight search —
+      // otherwise a stale result lands over the browse grid after clearing, and
+      // its guarded finally never resets loading.
+      const thisRequest = ++requestIdRef.current
       if (!trimmed) {
         await animateOut()
         setResults([])
         setHasMore(false)
         setSearched(false)
+        setLoading(false)
         setError(null)
         setShowSkeleton(false)
         if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -174,8 +238,6 @@ export default function DiscoverScreen() {
         scaleAnim.setValue(1)
         return
       }
-
-      const thisRequest = ++requestIdRef.current
 
       // Animate out existing results before loading new ones
       if (results.length > 0) {
@@ -250,6 +312,22 @@ export default function DiscoverScreen() {
     timerRef.current = setTimeout(() => search(text), DEBOUNCE_MS)
   }
 
+  // Tapping a browse topic fills the bar and searches immediately, reusing the
+  // same stale-guarded search() — no debounce wait, no second fetch path.
+  function handleSelectTopic(term: string) {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setQuery(term)
+    void search(term)
+  }
+
+  // The search bar's clear (X) button: wipe the input and return to the browse
+  // bubbles immediately — search("") resets searched to false, no debounce.
+  function handleClear() {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setQuery("")
+    void search("")
+  }
+
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
 
@@ -306,92 +384,110 @@ export default function DiscoverScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={query}
-          onChangeText={handleChangeText}
-          placeholder="Search for videos about any topic..."
-          placeholderTextColor={TEXT_SECONDARY}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          selectionColor={ACCENT}
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={query}
+            onChangeText={handleChangeText}
+            placeholder="Search for videos about any topic..."
+            placeholderTextColor={TEXT_SECONDARY}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            selectionColor={ACCENT}
+          />
+          {query.length > 0 && (
+            <Pressable
+              style={styles.clearButton}
+              onPress={handleClear}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={20} color={TEXT_SECONDARY} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
-      {!searched && !loading && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            Search for videos about any topic
-          </Text>
-        </View>
-      )}
+      <View style={styles.contentArea}>
+        {browseMounted && (
+          <Animated.View
+            style={[
+              styles.browseLayer,
+              { opacity: browseAnim, transform: [{ scale: browseScale }] },
+            ]}
+          >
+            <BrowseTopics onSelect={handleSelectTopic} />
+          </Animated.View>
+        )}
 
-      {loading && showSkeleton && <SearchResultSkeleton />}
+        {loading && showSkeleton && <SearchResultSkeleton />}
 
-      {!loading && searched && results.length === 0 && !error && (
-        <View style={styles.emptyState}>
-          <Text style={styles.noResultsTitle}>
-            No results for &apos;{query.trim()}&apos;
-          </Text>
-          <Text style={styles.noResultsBody}>
-            Try different keywords or browse experiences
-          </Text>
-        </View>
-      )}
+        {!loading && searched && results.length === 0 && !error && (
+          <View style={styles.emptyState}>
+            <Text style={styles.noResultsTitle}>
+              No results for &apos;{query.trim()}&apos;
+            </Text>
+            <Text style={styles.noResultsBody}>
+              Try different keywords or browse experiences
+            </Text>
+          </View>
+        )}
 
-      {error && results.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Text style={styles.retryLink} onPress={() => search(query)}>
-            Retry
-          </Text>
-        </View>
-      )}
+        {error && results.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.retryLink} onPress={() => search(query)}>
+              Retry
+            </Text>
+          </View>
+        )}
 
-      {results.length > 0 && (
-        <Animated.View
-          style={{
-            flex: 1,
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          }}
-        >
-          <FlatList
-            key={resultsKey}
-            data={results}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            numColumns={2}
-            keyboardDismissMode="on-drag"
-            contentContainerStyle={styles.listContent}
-            columnWrapperStyle={styles.columnWrapper}
-            ListFooterComponent={
-              <>
-                {error && (
-                  <View style={styles.inlineError}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    <Text style={styles.retryLink} onPress={loadMore}>
-                      Retry
-                    </Text>
-                  </View>
-                )}
-                {hasMore && !error && (
-                  <View style={styles.loadMoreContainer}>
-                    <Text
-                      style={styles.loadMoreButton}
-                      onPress={loadMore}
-                      suppressHighlighting={loadingMore}
-                    >
-                      {loadingMore ? "Loading..." : "Load more"}
-                    </Text>
-                  </View>
-                )}
-              </>
-            }
-          />
-        </Animated.View>
-      )}
+        {results.length > 0 && (
+          <Animated.View
+            style={{
+              flex: 1,
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            }}
+          >
+            <FlatList
+              key={resultsKey}
+              data={results}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              numColumns={2}
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={styles.listContent}
+              columnWrapperStyle={styles.columnWrapper}
+              ListFooterComponent={
+                <>
+                  {error && (
+                    <View style={styles.inlineError}>
+                      <Text style={styles.errorText}>{error}</Text>
+                      <Text style={styles.retryLink} onPress={loadMore}>
+                        Retry
+                      </Text>
+                    </View>
+                  )}
+                  {hasMore && !error && (
+                    <View style={styles.loadMoreContainer}>
+                      <Text
+                        style={styles.loadMoreButton}
+                        onPress={loadMore}
+                        suppressHighlighting={loadingMore}
+                      >
+                        {loadingMore ? "Loading..." : "Load more"}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              }
+            />
+          </Animated.View>
+        )}
+      </View>
     </View>
   )
 }
@@ -401,6 +497,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG_COLOR,
   },
+  contentArea: {
+    flex: 1,
+  },
+  browseLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   inputContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -408,23 +510,29 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: SURFACE_COLOR,
     borderRadius: 24,
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 44,
     paddingVertical: 12,
     color: TEXT_PRIMARY,
     fontFamily: "System",
     fontSize: 15,
+  },
+  inputWrapper: {
+    justifyContent: "center",
+  },
+  clearButton: {
+    position: "absolute",
+    right: 6,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    paddingHorizontal: 8,
   },
   emptyState: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
-  },
-  emptyText: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontSize: 16,
-    textAlign: "center",
   },
   noResultsTitle: {
     color: TEXT_PRIMARY,

@@ -43,6 +43,7 @@ export type PermissionKey =
   | "read:experiences"
   | "read:videos"
   | "read:video-metadata"
+  | "read:video-mapper-catalog"
   | "read:media-assets"
   | "read:reference"
   | "access:manager"
@@ -51,9 +52,9 @@ export type PermissionKey =
   | "write:experiences"
   | "write:videos"
   | "write:media-assets"
-  | "write:scene-embeddings"
   | "write:transcript-embeddings"
   | "write:experience-embeddings"
+  | "write:watch-events"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
@@ -90,6 +91,11 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // gating happens via the `WORKFLOW_TRIGGER_PERMISSIONS` allowlist
   // below so manager's bearer call is the intended caller.
   "read:video-metadata": "VIEWER",
+  // YTM-002 — whole-catalog mapper sync projection, including media URLs.
+  // Human ADMINs may inspect it, and the dedicated VIDEO_MAPPER bearer role
+  // below may page it for sync. Do not reuse `read:video-metadata`: that key
+  // is VIEWER-tier and workflow-bearer-callable for manager lookups.
+  "read:video-mapper-catalog": "ADMIN",
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
@@ -102,8 +108,6 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // Core-sourced; only ADMIN may override (also flips source='manager').
   "write:videos": "ADMIN",
   "write:media-assets": "EDITOR",
-  // Derived-column trigger (scene-embedding backfill). ADMIN-only.
-  "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
   "write:transcript-embeddings": "ADMIN",
   // Experience-embedding backfill (admin-native). Enumerates
@@ -114,6 +118,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // a WORKFLOW_TRIGGER principal without standing up admin's full
   // session-cookie auth flow).
   "write:experience-embeddings": "ADMIN",
+  "write:watch-events": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -171,11 +176,15 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // MANAGER_BACKEND is gated by `MANAGER_BACKEND_PERMISSIONS`; it never
   // satisfies human panel access or editorial tier checks.
   if (role === "MANAGER_BACKEND") return false
+  // VIDEO_MAPPER is gated by `VIDEO_MAPPER_PERMISSIONS`; it never satisfies
+  // human panel access or editorial tier checks.
+  if (role === "VIDEO_MAPPER") return false
   // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
   // in `hasPermission` via early-return; it never satisfies tier-based
   // checks. The bearer's sole purpose is rate-limit bucketing, not
   // permission granting.
   if (role === "CONSUMER_BEARER") return false
+  if (role === "WEB_USER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -188,8 +197,8 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * allowed to satisfy. This role is minted by `createContext` when an
  * incoming request carries a valid bearer key matching
  * `WORKFLOW_API_KEYS`. It is intentionally narrower than ADMIN — the
- * bearer-auth path is for service-to-service trigger calls (apps/manager
- * → admin's embed-backfill mutations), NOT a generic admin session.
+ * bearer-auth path is for service-to-service trigger calls, NOT a
+ * generic admin session.
  *
  * **Adding a key here widens the bearer caller's blast radius.** It also
  * widens the manager proxy's reach: any user with the Strapi "Manager"
@@ -201,7 +210,6 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * editorial tier ladder is bypassed for this role.
  */
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
-  "write:scene-embeddings",
   "write:transcript-embeddings",
   // feat-119 PR2: the `pnpm trigger-enrichment` CLI authenticates
   // with `WORKFLOW_API_KEYS` (mints `WORKFLOW_TRIGGER`) when an
@@ -255,6 +263,14 @@ const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "write:manager-jobs",
 ])
 
+const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:video-mapper-catalog",
+])
+
+const WEB_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "write:watch-events",
+])
+
 const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "access:manager",
 ])
@@ -282,6 +298,12 @@ export function hasPermission(
   }
   if (role === "MANAGER_BACKEND") {
     return MANAGER_BACKEND_PERMISSIONS.has(key)
+  }
+  if (role === "VIDEO_MAPPER") {
+    return VIDEO_MAPPER_PERMISSIONS.has(key)
+  }
+  if (role === "WEB_USER") {
+    return WEB_USER_PERMISSIONS.has(key)
   }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a

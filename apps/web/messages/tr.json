@@ -41,6 +41,9 @@
     "termsAgreementSuffix": " kabul ediyorum",
     "close": "Kapat",
     "download": "İndir",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Kontrol ediliyor",
     "closeTermsOfUse": "Kullanım Şartlarını kapat",
     "cancel": "İptal",
@@ -83,7 +86,8 @@
     "toggleOn": "Açık",
     "toggleOff": "Kapalı",
     "close": "Kapat",
-    "apply": "Uygula"
+    "apply": "Uygula",
+    "noLanguageSubtitles": "{language} altyazısı yok"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# BÖLÜM} other {# BÖLÜM}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Dinlemeye hazır biriyle özel bir konuşma başlatın.",
     "questionsShort": "Sorular",
     "questions": "İlgili sorular",
-    "askYours": "Sorunuzu sorun",
+    "askYours": "Sorunuz",
     "chatWithPerson": "Biriyle sohbet edin",
     "askBibleQuestion": "Kutsal Kitap hakkında soru sorun"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animasyon",
     "categoryStudy": "Çalışma",
     "categoryFamily": "Aile",
-    "categoryChristmas": "Noel"
+    "categoryChristmas": "Noel",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Sesli oynat",
+    "playWithSound": "Şimdi izle",
     "tapToUnmute": "Sesi aç"
   },
   "ExperienceSkeleton": {

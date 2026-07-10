@@ -1,5 +1,4 @@
 import { getMuxSyncReport } from "@/lib/mux-sync-report"
-import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import type { JobRecord } from "@/types/job"
 import type {
   JobReviewContext,
@@ -196,7 +195,6 @@ export function buildReviewPlayerState({
               (comparison) => comparison.targetLanguage === language,
             )
           : undefined,
-      sceneEmbeddingSync: getSceneEmbeddingSyncReport(job.artifacts),
     },
   }
 }

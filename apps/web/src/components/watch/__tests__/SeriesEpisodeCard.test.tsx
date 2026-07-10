@@ -81,6 +81,8 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
       },
     ],
     durationSeconds: 120,
+    muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   }
   return { ...base, ...overrides }
 }
@@ -89,6 +91,7 @@ function renderCard(props: {
   episode: Episode
   index?: number
   languageSlug?: string
+  parentSlug?: string
 }) {
   act(() => {
     root.render(
@@ -96,6 +99,7 @@ function renderCard(props: {
         episode={props.episode}
         index={props.index ?? 0}
         languageSlug={props.languageSlug ?? "english"}
+        parentSlug={props.parentSlug ?? "lumo-the-gospel-of-john"}
       />,
     )
   })
@@ -266,14 +270,15 @@ describe("SeriesEpisodeCard — Episode N label", () => {
 })
 
 describe("SeriesEpisodeCard — href", () => {
-  it("routes to the canonical /{slug}.html/{locale}.html shape", () => {
+  it("routes to the contextual /{series}.html/{episode}/{locale}.html shape", () => {
     renderCard({
       episode: makeEpisode({ slug: "wedding-in-cana" }),
       languageSlug: "english",
+      parentSlug: "lumo-the-gospel-of-john",
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/wedding-in-cana.html/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
 
@@ -284,8 +289,19 @@ describe("SeriesEpisodeCard — href", () => {
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/the-birth-of-jesus.html/spanish-castilian.html",
+      "/lumo-the-gospel-of-john.html/the-birth-of-jesus/spanish-castilian.html",
     )
+  })
+
+  it("renders a plain div (no <a>) when the parent slug is malformed", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "wedding-in-cana" }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card?.tagName).toBe("DIV")
   })
 
   it("renders a plain div (no <a>) when the slug is malformed", () => {

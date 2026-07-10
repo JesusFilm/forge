@@ -6,23 +6,10 @@ import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
-import {
-  AI_GATEWAY_USER_AGENT,
-  DEFAULT_AI_GATEWAY_CHAT_BASE_URL,
-} from "@/mastra/gateway-constants"
 
 export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
 export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
-export const GATEWAY_EMBEDDING_MODEL = "embeddings"
-
-/**
- * Per-call embedding source. `"openrouter"` (the default) routes query
- * embedding through OpenRouter's Qwen3 Embedding 8B model at 1536
- * dimensions. `"gateway"` routes through the self-hosted JesusFilm AI
- * gateway so the admin AI experience generator can search the parallel
- * Qwen-embedded video vectors.
- */
-export type EmbeddingSource = "openrouter" | "gateway"
+const OPENROUTER_EMBEDDING_PROVIDER = "SiliconFlow"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -31,6 +18,8 @@ export type EmbeddingSource = "openrouter" | "gateway"
  * fans out across many scenes.
  */
 const EMBEDDING_REQUEST_TIMEOUT_MS = 30_000
+const SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS = 2_500
+const SINGLE_EMBEDDING_REQUEST_ATTEMPTS = 2
 
 const BLOCK_TEXT_IGNORE_KEY =
   /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
@@ -161,10 +150,6 @@ function collectBlockText(
   }
 }
 
-function embeddingEndpointFromBase(baseUrl: string): string {
-  return new URL("embeddings", `${baseUrl.replace(/\/$/, "")}/`).toString()
-}
-
 export function buildExperienceEmbeddingText(
   locale: ExperienceEmbeddingLocaleInput,
 ): string {
@@ -216,46 +201,149 @@ type EmbeddingProvider = {
   apiKey: string
   model: string
   url: string
-  /**
-   * Extra request headers merged into the fetch call alongside the
-   * standard authorization + content-type. The gateway provider sets a
-   * descriptive User-Agent here because Cloudflare fronts the gateway and
-   * 403s on missing/odd UAs.
-   */
-  headers?: Record<string, string>
   dimensions?: number
+  routing?: {
+    only: string[]
+    allow_fallbacks: boolean
+    require_parameters: boolean
+  }
 }
 
-function selectProvider(
-  source: EmbeddingSource = "openrouter",
-): EmbeddingProvider {
-  if (source === "gateway") {
-    if (!env.AI_GATEWAY_EMBEDDINGS_API_KEY) {
-      throw new EmbeddingsBatchError(
-        "missing_credentials",
-        "AI_GATEWAY_EMBEDDINGS_API_KEY is required for gateway embedding generation",
-      )
+type EmbeddingProviderResult =
+  | {
+      ok: true
+      body: unknown
     }
-    return {
-      apiKey: env.AI_GATEWAY_EMBEDDINGS_API_KEY,
-      model: env.AI_GATEWAY_EMBEDDINGS_MODEL ?? GATEWAY_EMBEDDING_MODEL,
-      url: embeddingEndpointFromBase(
-        env.AI_GATEWAY_EMBEDDINGS_BASE_URL ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL,
-      ),
-      headers: { "User-Agent": AI_GATEWAY_USER_AGENT },
+  | {
+      ok: false
+      status: number
     }
-  }
-  if (env.OPENROUTER_API_KEY) {
+
+function selectProvider(): EmbeddingProvider {
+  const openRouterApiKey = env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
+  if (openRouterApiKey) {
     return {
-      apiKey: env.OPENROUTER_API_KEY,
+      apiKey: openRouterApiKey,
       model: OPENROUTER_EMBEDDING_MODEL,
       url: "https://openrouter.ai/api/v1/embeddings",
       dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+      routing: {
+        only: [OPENROUTER_EMBEDDING_PROVIDER],
+        allow_fallbacks: false,
+        require_parameters: true,
+      },
     }
   }
   throw new EmbeddingsBatchError(
     "missing_credentials",
-    "OPENROUTER_API_KEY is required for embedding generation",
+    "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for embedding generation",
+  )
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError"
+}
+
+function embeddingTimeoutError(): Error {
+  const error = new Error("Embedding request timed out")
+  error.name = "AbortError"
+  return error
+}
+
+async function fetchEmbeddingResponse(
+  provider: EmbeddingProvider,
+  body: string,
+  signal: AbortSignal,
+): Promise<EmbeddingProviderResult> {
+  const response = await fetch(provider.url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${provider.apiKey}`,
+      "content-type": "application/json",
+    },
+    body,
+    signal,
+  })
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+    }
+  }
+
+  return {
+    ok: true,
+    body: await response.json(),
+  }
+}
+
+async function fetchEmbeddingResponseWithDeadline(
+  provider: EmbeddingProvider,
+  body: string,
+  timeoutMs: number,
+): Promise<EmbeddingProviderResult> {
+  const controller = new AbortController()
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      fetchEmbeddingResponse(provider, body, controller.signal),
+      new Promise<EmbeddingProviderResult>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => {
+          controller.abort()
+          reject(embeddingTimeoutError())
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
+  }
+}
+
+async function fetchSingleEmbeddingResponseWithRetry(
+  provider: EmbeddingProvider,
+  body: string,
+): Promise<EmbeddingProviderResult> {
+  let lastError: unknown
+
+  for (
+    let attempt = 0;
+    attempt < SINGLE_EMBEDDING_REQUEST_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      return await fetchEmbeddingResponseWithDeadline(
+        provider,
+        body,
+        SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS,
+      )
+    } catch (error) {
+      lastError = error
+      if (!isAbortError(error)) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError
+}
+
+async function fetchEmbeddingResponseWithTimeout(
+  provider: EmbeddingProvider,
+  body: string,
+  inputCount: number,
+): Promise<EmbeddingProviderResult> {
+  if (inputCount === 1) {
+    return fetchSingleEmbeddingResponseWithRetry(provider, body)
+  }
+
+  return fetchEmbeddingResponseWithDeadline(
+    provider,
+    body,
+    EMBEDDING_REQUEST_TIMEOUT_MS,
   )
 }
 
@@ -275,7 +363,6 @@ function selectProvider(
  */
 export async function generateExperienceEmbeddings(
   inputs: readonly string[],
-  opts?: { source?: EmbeddingSource },
 ): Promise<GeneratedEmbeddings> {
   if (inputs.length === 0) {
     throw new EmbeddingsBatchError(
@@ -296,35 +383,27 @@ export async function generateExperienceEmbeddings(
     normalized.push(line)
   }
 
-  const provider = selectProvider(opts?.source)
+  const provider = selectProvider()
 
-  const controller = new AbortController()
-  const timeoutHandle = setTimeout(
-    () => controller.abort(),
-    EMBEDDING_REQUEST_TIMEOUT_MS,
-  )
-  let response: Response
+  let response: EmbeddingProviderResult
+  const requestBody = JSON.stringify({
+    model: provider.model,
+    input: normalized,
+    encoding_format: "float",
+    ...(provider.dimensions ? { dimensions: provider.dimensions } : {}),
+    ...(provider.routing ? { provider: provider.routing } : {}),
+  })
   try {
-    response = await fetch(provider.url, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${provider.apiKey}`,
-        "content-type": "application/json",
-        ...provider.headers,
-      },
-      body: JSON.stringify({
-        model: provider.model,
-        input: normalized,
-        encoding_format: "float",
-        ...(provider.dimensions ? { dimensions: provider.dimensions } : {}),
-      }),
-      signal: controller.signal,
-    })
+    response = await fetchEmbeddingResponseWithTimeout(
+      provider,
+      requestBody,
+      normalized.length,
+    )
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
+    if (isAbortError(error)) {
       throw new EmbeddingsBatchError(
         "request_timed_out",
-        `Embedding request timed out after ${EMBEDDING_REQUEST_TIMEOUT_MS}ms`,
+        "Embedding request timed out",
         error,
       )
     }
@@ -333,8 +412,6 @@ export async function generateExperienceEmbeddings(
       "Embedding request failed before response",
       error,
     )
-  } finally {
-    clearTimeout(timeoutHandle)
   }
 
   if (!response.ok) {
@@ -346,7 +423,7 @@ export async function generateExperienceEmbeddings(
     )
   }
 
-  const parsed = EmbeddingResponseSchema.safeParse(await response.json())
+  const parsed = EmbeddingResponseSchema.safeParse(response.body)
   if (!parsed.success) {
     throw new EmbeddingsBatchError(
       "validation_failed",
@@ -389,15 +466,12 @@ export async function generateExperienceEmbeddings(
  */
 export async function generateExperienceEmbedding(
   text: string,
-  opts?: { source?: EmbeddingSource },
 ): Promise<GeneratedEmbedding> {
   const normalizedText = normalizeLine(text)
   if (!normalizedText) {
     throw new Error("Embedding input must not be empty")
   }
-  const result = await generateExperienceEmbeddings([normalizedText], {
-    source: opts?.source,
-  })
+  const result = await generateExperienceEmbeddings([normalizedText])
   return {
     model: result.model,
     dimensions: result.dimensions,

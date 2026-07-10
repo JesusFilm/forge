@@ -30,6 +30,16 @@
  * `MANAGER_BACKEND` is the request-bound service identity used by
  * apps/manager to call Admin-owned Manager read/job contracts. It never
  * grants human panel access.
+ *
+ * `VIDEO_MAPPER` is the request-bound service identity used by the
+ * yt-video-mapper backend to read the flat catalog sync projection. It is
+ * intentionally separate from `WORKFLOW_TRIGGER` so existing manager/workflow
+ * bearers do not inherit whole-catalog media URL access.
+ *
+ * `WEB_USER` is a request-bound human identity minted only after Admin
+ * introspects a user-delegated Auth access token issued to apps/web. It is
+ * intentionally narrower than editorial roles and exists for watch-event
+ * writes, not content reads or admin UI access.
  */
 export type Role =
   | "ADMIN"
@@ -39,6 +49,8 @@ export type Role =
   | "SYSTEM"
   | "WORKFLOW_TRIGGER"
   | "MANAGER_BACKEND"
+  | "VIDEO_MAPPER"
+  | "WEB_USER"
   | "CONSUMER_BEARER"
 
 export type Principal = {
@@ -87,6 +99,11 @@ export const MANAGER_BACKEND_PRINCIPAL = {
   role: "MANAGER_BACKEND",
 } as const satisfies Principal
 
+export const VIDEO_MAPPER_PRINCIPAL = {
+  id: null,
+  role: "VIDEO_MAPPER",
+} as const satisfies Principal
+
 /**
  * Factory for the request-bound consumer-bearer principal. Mints a
  * Principal carrying the matched bearer key so the rate-limit
@@ -111,10 +128,22 @@ export function CONSUMER_BEARER_PRINCIPAL({
   }
 }
 
+export function WEB_USER_PRINCIPAL({
+  subject,
+}: {
+  subject: string
+}): Principal {
+  return {
+    id: subject,
+    role: "WEB_USER",
+    rateLimitBucketKey: subject,
+  }
+}
+
 /**
  * Editorial-tier predicate: true only for EDITOR/ADMIN. PUBLIC, VIEWER,
- * SYSTEM, WORKFLOW_TRIGGER, MANAGER_BACKEND, CONSUMER_BEARER all return false — none
- * should see drafts via consumer-facing relation paths
+ * SYSTEM, WORKFLOW_TRIGGER, MANAGER_BACKEND, VIDEO_MAPPER, CONSUMER_BEARER all
+ * return false — none should see drafts via consumer-facing relation paths
  * (Experience.locales, Video.locales).
  */
 export function isEditorOrAdmin(user: Principal | null): boolean {

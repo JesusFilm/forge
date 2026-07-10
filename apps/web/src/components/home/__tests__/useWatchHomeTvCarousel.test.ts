@@ -5,10 +5,14 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
+  WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
   addWatchHomeTvPlayedId,
   firstUnplayedWatchHomeTvCarouselIndex,
   nextUnplayedWatchHomeTvCarouselIndex,
   readWatchHomeTvPlayedIds,
+  shouldAdvanceWatchHomeTvCarousel,
+  watchHomeTvAdvanceTargetSeconds,
+  watchHomeTvProgressPercent,
 } from "@/components/home/useWatchHomeTvCarousel"
 import type { WatchHomeTvCarouselSlide } from "@/components/home/useWatchHomeTvCarousel"
 
@@ -108,5 +112,22 @@ describe("watch home TV carousel browser storage sequencing", () => {
       ]),
     ).toBe(0)
     expect(readWatchHomeTvPlayedIds()).toEqual([])
+  })
+})
+
+describe("watch home TV carousel preview timing", () => {
+  it("caps long video previews at 30 seconds", () => {
+    expect(watchHomeTvAdvanceTargetSeconds(120)).toBe(
+      WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
+    )
+    expect(watchHomeTvProgressPercent(15, 120)).toBe(50)
+    expect(watchHomeTvProgressPercent(30, 120)).toBe(100)
+    expect(shouldAdvanceWatchHomeTvCarousel(100, 99)).toBe(true)
+  })
+
+  it("keeps short video previews near their natural end", () => {
+    expect(watchHomeTvAdvanceTargetSeconds(20)).toBe(19)
+    expect(watchHomeTvProgressPercent(9.5, 20)).toBe(50)
+    expect(watchHomeTvProgressPercent(19, 20)).toBe(100)
   })
 })

@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Tutup",
     "download": "Muat turun",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Menyemak",
     "closeTermsOfUse": "Tutup Terma Penggunaan",
     "cancel": "Batal",
@@ -83,7 +86,8 @@
     "toggleOn": "Hidup",
     "toggleOff": "Mati",
     "close": "Tutup",
-    "apply": "Guna"
+    "apply": "Guna",
+    "noLanguageSubtitles": "Tiada sari kata {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISOD} other {# EPISOD}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Mulakan perbualan peribadi dengan seseorang yang sedia mendengar.",
     "questionsShort": "Soalan",
     "questions": "Soalan berkaitan",
-    "askYours": "Ajukan soalan anda",
+    "askYours": "Soalan anda",
     "chatWithPerson": "Bercakap dengan seseorang",
     "askBibleQuestion": "Ajukan soalan tentang Alkitab"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animasi",
     "categoryStudy": "Kajian",
     "categoryFamily": "Keluarga",
-    "categoryChristmas": "Krismas"
+    "categoryChristmas": "Krismas",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Mainkan dengan bunyi",
+    "playWithSound": "Tonton sekarang",
     "tapToUnmute": "Nyahredam"
   },
   "ExperienceSkeleton": {

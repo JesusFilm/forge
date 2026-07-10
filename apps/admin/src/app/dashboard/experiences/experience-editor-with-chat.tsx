@@ -18,11 +18,17 @@ import {
   type ExperienceChatPanelActions,
 } from "@/app/dashboard/experiences/experience-editor/experience-chat-panel"
 import { getSuggestedPrompts } from "@/app/dashboard/experiences/experience-editor/experience-chat-suggested-prompts"
+import { PersonaVariantButton } from "@/app/dashboard/experiences/persona-variant-button"
+import type { GenerateVariantActionResult } from "@/app/dashboard/experiences/generate-variant-action"
 
 type ExperienceEditorProps = Parameters<typeof ExperienceEditor>[0]
 
 type ChatGenerateDraftAction = NonNullable<
   Parameters<typeof ExperienceChatPanel>[0]["generateDraftAction"]
+>
+
+type ChatGenerateSectionAction = NonNullable<
+  Parameters<typeof ExperienceChatPanel>[0]["generateSectionAction"]
 >
 
 export type ExperienceEditorWithChatProps = Omit<
@@ -42,6 +48,19 @@ export type ExperienceEditorWithChatProps = Omit<
    * in environments without the AI surface configured.
    */
   generateDraftAction?: ChatGenerateDraftAction
+  /**
+   * Video-anchored section generator surfaced as the chat panel's
+   * "Generate section from video" control. Optional, like generateDraftAction.
+   */
+  generateSectionAction?: ChatGenerateSectionAction
+  /**
+   * "Create persona version" — duplicates this experience as a new DRAFT
+   * re-toned for a chosen audience persona. Optional; the button only renders
+   * when the AI variant surface is wired.
+   */
+  generateVariantAction?: (input: {
+    personaId: string
+  }) => Promise<GenerateVariantActionResult>
 }
 
 function collectVideoIdsFromBlocks(blocks: readonly unknown[]): string[] {
@@ -70,6 +89,8 @@ export function ExperienceEditorWithChat({
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
   generateDraftAction,
+  generateSectionAction,
+  generateVariantAction,
   ...editorProps
 }: ExperienceEditorWithChatProps) {
   const controllerRef = useRef<ExperienceCanvasController | null>(null)
@@ -183,7 +204,14 @@ export function ExperienceEditorWithChat({
         canvasController={canvasController}
         actions={chatActions}
         suggestedPrompts={suggestedPrompts}
+        videoLibrary={videoLibrary}
         generateDraftAction={generateDraftAction}
+        generateSectionAction={generateSectionAction}
+        utilitySlot={
+          generateVariantAction ? (
+            <PersonaVariantButton action={generateVariantAction} />
+          ) : null
+        }
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <ExperienceEditor

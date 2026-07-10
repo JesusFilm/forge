@@ -1,4 +1,5 @@
 import type { Platform } from "./candidate"
+import { requireHttpsUrl } from "./secure-url"
 
 /**
  * Reads the website's saved trusted-source list for a platform
@@ -42,7 +43,7 @@ export type FetchSavedSourcesOptions = SourcesConfig & {
 }
 
 function sourcesEndpoint(baseUrl: string, platform: Platform): string {
-  const url = new URL(baseUrl)
+  const url = new URL(requireHttpsUrl(baseUrl, "discovery sources URL"))
   url.searchParams.set("platform", platform)
   return url.toString()
 }
@@ -65,19 +66,29 @@ export async function fetchSavedSources(
     )
   }
 
+  let endpoint: string
+  try {
+    endpoint = sourcesEndpoint(url, platform)
+  } catch (error) {
+    throw new SourcesFetchError(
+      "config_missing",
+      error instanceof Error
+        ? error.message
+        : "discovery sources URL must use HTTPS",
+    )
+  }
+
   let response: Response
   try {
-    response = await (options.fetchImpl ?? fetch)(
-      sourcesEndpoint(url, platform),
-      {
-        method: "GET",
-        headers: {
-          authorization: `Bearer ${token}`,
-          accept: "application/json",
-        },
-        signal: AbortSignal.timeout(options.timeoutMs ?? 20_000),
+    response = await (options.fetchImpl ?? fetch)(endpoint, {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: "application/json",
       },
-    )
+      redirect: "error",
+      signal: AbortSignal.timeout(options.timeoutMs ?? 20_000),
+    })
   } catch (cause) {
     throw new SourcesFetchError(
       "upstream_failed",

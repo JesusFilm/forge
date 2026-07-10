@@ -2,14 +2,14 @@
 // surface. Each test constructs a fixture POJO matching the Zod schema for
 // one block kind, runs the GraphQL union's `resolveType` callback, and
 // asserts the returned typename matches `T_TO_TYPENAME[t]`. The exhaustive
-// 19-kind sweep proves Pothos's union dispatch contract for every block we
+// 20-kind sweep proves Pothos's union dispatch contract for every block we
 // can persist; the union-dispatch happy path mixes kinds in one array to
 // catch any cross-block side effects in resolveType; edge cases cover the
 // "no blocks" and "unknown discriminator" boundaries.
 //
 // Structural drift between Zod and Pothos lives in `blocks.drift.test.ts`.
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   T_TO_TYPENAME,
   UnknownBlockKindError,
@@ -20,6 +20,7 @@ import {
   type GraphQLUnionType,
   type GraphQLObjectType,
   type GraphQLResolveInfo,
+  type GraphQLFieldResolver,
 } from "graphql"
 
 // -----------------------------------------------------------------------------
@@ -67,6 +68,21 @@ function resolveTypeName(unionName: string, value: unknown): string {
   throw new Error(
     `resolveType returned a non-typename value: ${String(resolved)}`,
   )
+}
+
+function fieldResolver(
+  typeName: string,
+  fieldName: string,
+): GraphQLFieldResolver<unknown, unknown> {
+  const type = schema.getType(typeName) as GraphQLObjectType | undefined
+  if (type == null) {
+    throw new Error(`Object type ${typeName} not registered on schema`)
+  }
+  const resolve = type.getFields()[fieldName]?.resolve
+  if (resolve == null) {
+    throw new Error(`${typeName}.${fieldName} has no resolver`)
+  }
+  return resolve as GraphQLFieldResolver<unknown, unknown>
 }
 
 // -----------------------------------------------------------------------------
@@ -170,6 +186,9 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
     t: "videoRecommendations",
     limit: 10,
   },
+  watchHomeHero: {
+    t: "watchHomeHero",
+  },
 }
 
 // Sanity guard so the fixture set stays in lockstep with the typed map.
@@ -254,6 +273,243 @@ describe("ContainerContentBlock union resolveType — per-kind dispatch", () => 
   }
 })
 
+describe("asset-backed block URL field resolvers", () => {
+  it("resolves public asset IDs before stale stored Admin preview URLs", async () => {
+    const findUnique = vi.fn().mockResolvedValue({
+      id: "asset-1",
+      backend: "S3",
+      status: "READY",
+      visibility: "PUBLIC",
+      objectKey: "media-assets/asset-1/original/hero.webp",
+      previewObjectKey: null,
+      muxPlaybackId: null,
+    })
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "imageOverrideUrl",
+    )(
+      {
+        imageOverrideAssetId: "asset-1",
+        imageOverrideUrl:
+          "http://0.0.0.0:8080/api/media-assets/asset-1/preview",
+      },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe(
+      "http://localhost:3003/api/public/media-assets/asset-1/preview",
+    )
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: "asset-1" } })
+  })
+
+  it("does not fall back to stale Admin preview URLs for private asset IDs", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "imageUrl")(
+      {
+        imageAssetId: "asset-1",
+        imageUrl:
+          "https://admin.jesusfilm.org/api/media-assets/asset-1/preview",
+      },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: {
+          mediaAsset: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: "asset-1",
+              backend: "S3",
+              status: "READY",
+              visibility: "PRIVATE",
+              objectKey: "media-assets/asset-1/original/hero.webp",
+              previewObjectKey: null,
+              muxPlaybackId: null,
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("preserves external URL fallbacks when no asset ID is stored", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "imageUrl")(
+      { imageUrl: "https://image.example.test/poster.jpg" },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique: vi.fn() } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("https://image.example.test/poster.jpg")
+  })
+
+  it("exposes media asset blur data for collection item overrides", async () => {
+    const findUnique = vi.fn().mockResolvedValue({
+      id: "asset-1",
+      backend: "S3",
+      status: "READY",
+      visibility: "PUBLIC",
+      objectKey: "media-assets/asset-1/original/hero.webp",
+      previewObjectKey: null,
+      muxPlaybackId: null,
+      blurDataUrl: "data:image/jpeg;base64,LQIP",
+    })
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "imageOverrideBlurDataUrl",
+    )(
+      { imageOverrideAssetId: "asset-1" },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("data:image/jpeg;base64,LQIP")
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: "asset-1" } })
+  })
+})
+
+describe("MediaCollectionItem videoSlug resolver", () => {
+  it("resolves compatibility coreId from the linked video", async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: "video-1",
+      coreId: "1_jf-0-0",
+      deletedAt: null,
+    })
+
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {
+        videoId: "video-1",
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("1_jf-0-0")
+    expect(load).toHaveBeenCalledWith("video-1")
+  })
+
+  it("does not expose compatibility coreId for deleted linked videos", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {
+        videoId: "video-1",
+      },
+      {},
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({
+              id: "video-1",
+              coreId: "1_jf-0-0",
+              deletedAt: new Date("2026-07-08T00:00:00.000Z"),
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null compatibility coreId for legacy items without videoId", async () => {
+    const load = vi.fn()
+
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {},
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it("resolves the canonical video slug from videoId", async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: "video-1",
+      slug: "the-gospel-of-luke",
+      deletedAt: null,
+    })
+
+    const result = await fieldResolver("MediaCollectionItem", "videoSlug")(
+      {
+        videoId: "video-1",
+        videoSlug: null,
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("the-gospel-of-luke")
+    expect(load).toHaveBeenCalledWith("video-1")
+  })
+
+  it("does not expose a slug for deleted linked videos", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "videoSlug")(
+      {
+        videoId: "video-1",
+        videoSlug: "stale-slug",
+      },
+      {},
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({
+              id: "video-1",
+              slug: "stale-slug",
+              deletedAt: new Date("2026-07-08T00:00:00.000Z"),
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("preserves stored videoSlug for legacy items without videoId", async () => {
+    const load = vi.fn()
+
+    const result = await fieldResolver("MediaCollectionItem", "videoSlug")(
+      {
+        videoSlug: "snapshot-slug",
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("snapshot-slug")
+    expect(load).not.toHaveBeenCalled()
+  })
+})
+
 // -----------------------------------------------------------------------------
 // Union dispatch happy path — mixed-kind array (mimics what a real
 // ExperienceLocale.blocks JSON column holds). A SectionBlock inside the array
@@ -311,7 +567,59 @@ describe("Mixed-kind round-trip across nested unions", () => {
 // Edge cases
 // -----------------------------------------------------------------------------
 
+describe("MediaCollectionItem.coreId resolver", () => {
+  const resolveCoreId = fieldResolver("MediaCollectionItem", "coreId")
+
+  it("resolves the referenced Video's coreId via the batched videoById loader", async () => {
+    // The batched loader (not a per-item findUnique) is what keeps the whole
+    // Experience resolve to one video lookup — AE13's "single batched lookup".
+    const load = vi.fn().mockResolvedValue({ id: "vid-1", coreId: "1_jf-0-0" })
+    const result = await resolveCoreId(
+      { videoId: "vid-1" },
+      {},
+      { loaders: { videoById: { load } } },
+      fakeInfo,
+    )
+    expect(result).toBe("1_jf-0-0")
+    expect(load).toHaveBeenCalledWith("vid-1")
+    expect(load).toHaveBeenCalledTimes(1)
+  })
+
+  it("returns null without touching the loader when the item has no videoId", async () => {
+    const load = vi.fn()
+    const result = await resolveCoreId(
+      { videoId: null },
+      {},
+      { loaders: { videoById: { load } } },
+      fakeInfo,
+    )
+    expect(result).toBeNull()
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it("returns null when the referenced Video is not found", async () => {
+    const load = vi.fn().mockResolvedValue(null)
+    const result = await resolveCoreId(
+      { videoId: "missing" },
+      {},
+      { loaders: { videoById: { load } } },
+      fakeInfo,
+    )
+    expect(result).toBeNull()
+  })
+})
+
 describe("Edge cases", () => {
+  it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
+    const type = schema.getType("MediaCollectionItem")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.videoSlug).toBeDefined()
+    expect(fields?.muxPlaybackId).toBeDefined()
+    expect(fields?.coreId).toBeDefined()
+    expect(fields?.imageBlurDataUrl).toBeDefined()
+    expect(fields?.imageOverrideBlurDataUrl).toBeDefined()
+  })
+
   it("unknown discriminator throws UnknownBlockKindError", () => {
     expect(() =>
       resolveTypeName("ExperienceBlock", { t: "totallyUnknownKind" }),

@@ -3,7 +3,7 @@
 // When RAILWAY_S3_BUCKET is not set, artifacts are written to .tmp/artifacts/ locally.
 
 import { env } from "@/config/env"
-import { mkdir, readFile, writeFile, access } from "node:fs/promises"
+import { mkdir, readFile, writeFile, access, stat } from "node:fs/promises"
 import { join } from "node:path"
 
 const useS3 = Boolean(env.RAILWAY_S3_BUCKET)
@@ -223,4 +223,267 @@ export async function artifactExists(
   return useS3
     ? s3Exists(assetId, artifactType, ext)
     : localExists(assetId, artifactType, ext)
+}
+
+// ---------------------------------------------------------------------------
+// Streaming reads (shorts media route — plan 2026-06-11-002 decision 6).
+// readArtifact above buffers whole objects (fine for JSON/VTT, fatal for a
+// 180–360MB MP4); these helpers stream and support byte ranges instead.
+// ---------------------------------------------------------------------------
+
+export class ArtifactNotFoundError extends Error {
+  constructor(key: string) {
+    super(`Artifact not found: ${key}`)
+    this.name = "ArtifactNotFoundError"
+  }
+}
+
+export class ArtifactRangeNotSatisfiableError extends Error {
+  constructor(readonly totalSize: number) {
+    super(`Requested range is not satisfiable (object size ${totalSize})`)
+    this.name = "ArtifactRangeNotSatisfiableError"
+  }
+}
+
+// Discriminated union: a range is EITHER offset-based or a suffix — the
+// mutually-exclusive shapes are unrepresentable as one object, so consumers
+// narrow with `"suffix" in range` instead of re-validating field combos.
+export type ArtifactStreamRange =
+  | {
+      /** Inclusive start byte offset (bytes=a- / bytes=a-b). */
+      start: number
+      /** Inclusive end byte offset (bytes=a-b). */
+      end?: number
+    }
+  | {
+      /** Last-n-bytes suffix length (bytes=-n). */
+      suffix: number
+    }
+
+export type ArtifactStat = {
+  size: number
+  etag?: string
+  contentType?: string
+}
+
+export type ArtifactStream = {
+  /** Web ReadableStream over exactly the requested byte window. */
+  body: ReadableStream<Uint8Array>
+  /** Byte count of THIS response body (end - start + 1). */
+  contentLength: number
+  /** Full object size. */
+  totalSize: number
+  /** Inclusive absolute offsets of the body within the object. */
+  rangeStart: number
+  rangeEnd: number
+  etag?: string
+  contentType?: string
+}
+
+// AWS S3 NoSuchKey classification (root CLAUDE.md): match the SDK v3 typed
+// surface (error.name) FIRST, legacy error.Code second, fs ENOENT for the
+// local backend, message regex as backstop only.
+function isStorageNotFoundError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false
+  }
+  const candidate = error as {
+    name?: unknown
+    Code?: unknown
+    code?: unknown
+    message?: unknown
+  }
+  if (candidate.name === "NoSuchKey" || candidate.name === "NotFound") {
+    return true
+  }
+  if (candidate.Code === "NoSuchKey" || candidate.Code === "NotFound") {
+    return true
+  }
+  if (candidate.code === "ENOENT") {
+    return true
+  }
+  return (
+    typeof candidate.message === "string" &&
+    /not found|does not exist|ENOENT/i.test(candidate.message)
+  )
+}
+
+export async function statArtifact(
+  assetId: string,
+  artifactType: string,
+  ext: string,
+): Promise<ArtifactStat> {
+  const key = artifactKey(assetId, artifactType, ext)
+
+  if (useS3) {
+    const { HeadObjectCommand } = await import("@aws-sdk/client-s3")
+    const s3 = await getS3()
+    try {
+      const head = await s3.send(
+        new HeadObjectCommand({ Bucket: env.RAILWAY_S3_BUCKET, Key: key }),
+      )
+      return {
+        size: head.ContentLength ?? 0,
+        etag: head.ETag ?? undefined,
+        contentType: head.ContentType ?? undefined,
+      }
+    } catch (error) {
+      if (isStorageNotFoundError(error)) {
+        throw new ArtifactNotFoundError(key)
+      }
+      throw error
+    }
+  }
+
+  try {
+    const stats = await stat(localPath(key))
+    return { size: stats.size }
+  } catch (error) {
+    if (isStorageNotFoundError(error)) {
+      throw new ArtifactNotFoundError(key)
+    }
+    throw error
+  }
+}
+
+// Type predicate so callers narrow `range` without a cast. With the
+// discriminated union an "empty" range is unrepresentable, so presence of
+// the value IS the request.
+function hasRequestedRange(
+  range: ArtifactStreamRange | undefined,
+): range is ArtifactStreamRange {
+  return range !== undefined
+}
+
+// Resolves a requested byte range against the object size. Throws
+// ArtifactRangeNotSatisfiableError (carrying the size for the 416
+// Content-Range header) when the window falls entirely outside the object.
+function resolveRange(
+  range: ArtifactStreamRange,
+  size: number,
+): { start: number; end: number } {
+  if ("suffix" in range) {
+    if (range.suffix <= 0 || size === 0) {
+      throw new ArtifactRangeNotSatisfiableError(size)
+    }
+    return { start: Math.max(0, size - range.suffix), end: size - 1 }
+  }
+
+  const { start } = range
+  if (start >= size) {
+    throw new ArtifactRangeNotSatisfiableError(size)
+  }
+  const end = range.end === undefined ? size - 1 : Math.min(range.end, size - 1)
+  if (end < start) {
+    throw new ArtifactRangeNotSatisfiableError(size)
+  }
+  return { start, end }
+}
+
+// Streaming read: S3 GetObject with a Range header (web stream via
+// transformToWebStream) or local createReadStream({start, end}). Never
+// buffers the object. Deliberately separate from readArtifact (untouched).
+export async function openArtifactStream(options: {
+  assetId: string
+  artifactType: string
+  ext: string
+  range?: ArtifactStreamRange
+}): Promise<ArtifactStream> {
+  const key = artifactKey(options.assetId, options.artifactType, options.ext)
+  // Stat first (HEAD / fs.stat) so every path knows the full object size —
+  // suffix ranges and 416 Content-Range headers need it, and validating the
+  // window locally keeps the S3 Range request always absolute + in-bounds.
+  const info = await statArtifact(
+    options.assetId,
+    options.artifactType,
+    options.ext,
+  )
+
+  const requestedRange = options.range
+  const ranged = hasRequestedRange(requestedRange)
+  const resolved = ranged
+    ? resolveRange(requestedRange, info.size)
+    : { start: 0, end: Math.max(0, info.size - 1) }
+  const contentLength = info.size === 0 ? 0 : resolved.end - resolved.start + 1
+
+  if (useS3) {
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3")
+    const s3 = await getS3()
+    let response
+    try {
+      response = await s3.send(
+        new GetObjectCommand({
+          Bucket: env.RAILWAY_S3_BUCKET,
+          Key: key,
+          ...(ranged
+            ? { Range: `bytes=${resolved.start}-${resolved.end}` }
+            : {}),
+        }),
+      )
+    } catch (error) {
+      if (isStorageNotFoundError(error)) {
+        throw new ArtifactNotFoundError(key)
+      }
+      throw error
+    }
+    if (!response.Body) {
+      throw new Error(`S3 object body is empty for key: ${key}`)
+    }
+    return {
+      body: response.Body.transformToWebStream() as ReadableStream<Uint8Array>,
+      contentLength,
+      totalSize: info.size,
+      rangeStart: resolved.start,
+      rangeEnd: resolved.end,
+      etag: response.ETag ?? info.etag,
+      contentType: response.ContentType ?? info.contentType,
+    }
+  }
+
+  const { createReadStream } = await import("node:fs")
+  const { Readable } = await import("node:stream")
+  const nodeStream =
+    info.size === 0
+      ? Readable.from([])
+      : createReadStream(localPath(key), {
+          start: resolved.start,
+          end: resolved.end,
+        })
+
+  return {
+    body: Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>,
+    contentLength,
+    totalSize: info.size,
+    rangeStart: resolved.start,
+    rangeEnd: resolved.end,
+  }
+}
+
+// Presigned GET URL for an artifact (smart-crop QA frames + Mux output
+// ingestion). S3 mode only — the local fallback has no URL surface, so the
+// caller must degrade (smart-crop marks the step skipped with reason
+// "storage_presign_unavailable").
+export async function createPresignedArtifactUrl(
+  assetId: string,
+  artifactType: string,
+  ext: string,
+  expiresInSeconds: number,
+): Promise<string | null> {
+  if (!useS3) {
+    return null
+  }
+
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3")
+  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner")
+  const key = artifactKey(assetId, artifactType, ext)
+  const s3 = await getS3()
+
+  return getSignedUrl(
+    s3,
+    new GetObjectCommand({
+      Bucket: env.RAILWAY_S3_BUCKET,
+      Key: key,
+    }),
+    { expiresIn: expiresInSeconds },
+  )
 }

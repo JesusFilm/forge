@@ -17,6 +17,7 @@ export const env = createEnv({
     MASTRA_GATEWAY_SESSION_SECRET: z.string().min(32).optional(),
     MASTRA_INTERNAL_BASE_URL: z.string().url().optional(),
     MASTRA_INTERNAL_API_KEY: z.string().min(1).optional(),
+    MASTRA_GATEWAY_ADMIN_API_KEYS: z.string().min(1).optional(),
     MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS: z.string().optional(),
   },
   runtimeEnv: {
@@ -40,6 +41,9 @@ export const env = createEnv({
     ),
     MASTRA_INTERNAL_API_KEY: emptyToUndefined(
       process.env.MASTRA_INTERNAL_API_KEY,
+    ),
+    MASTRA_GATEWAY_ADMIN_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_GATEWAY_ADMIN_API_KEYS,
     ),
     MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS:
       process.env.MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS,

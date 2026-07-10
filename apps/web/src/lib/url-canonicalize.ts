@@ -161,9 +161,16 @@ export function canonicalizeWatchPath(
   {
     const segs = path.split("/").filter(Boolean)
     if (segs.length === 2) {
-      const next = segs.map((s) =>
-        hasHtmlSuffix(s) ? s : `${s}${HTML_SUFFIX_LOWER}`,
-      )
+      const secondBare = stripHtmlSuffix(segs[1])
+      const next =
+        secondBare === "videos"
+          ? [
+              hasHtmlSuffix(segs[0])
+                ? segs[0]
+                : `${segs[0]}${HTML_SUFFIX_LOWER}`,
+              "videos",
+            ]
+          : segs.map((s) => (hasHtmlSuffix(s) ? s : `${s}${HTML_SUFFIX_LOWER}`))
       const candidate = `/${next.join("/")}`
       if (candidate !== path) {
         path = candidate

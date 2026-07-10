@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { resolveJobArtifactDescriptor } from "@/lib/job-artifacts"
+import {
+  getJobArtifactStorageAssetId,
+  resolveJobArtifactDescriptor,
+} from "@/lib/job-artifacts"
 import { hasValidMuxArtifactAccessSignature } from "@/lib/mux-artifact-access"
 import { getJob } from "@/lib/state"
 import { readArtifact } from "@/services/storage"
@@ -43,8 +46,10 @@ export async function GET(
     )
   }
 
+  // Smart-crop jobs store artifacts under options.smartCrop.assetId, which may
+  // differ from the job's muxAssetId. Enrichment jobs keep muxAssetId.
   const body = await readArtifact(
-    job.muxAssetId,
+    getJobArtifactStorageAssetId(job),
     descriptor.artifactType,
     descriptor.ext,
   )

@@ -20,13 +20,27 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
-vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
-  searchByKeywordWeighted: vi.fn(),
-  searchByTrigram: vi.fn(),
-  searchByExactTitle: vi.fn(),
-  MAX_EXACT_TITLE_TOKENS: 16,
-  tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
-}))
+vi.mock("./hybrid-search-keyword-first-retrievers", () => {
+  const searchByKeywordWeighted = vi.fn()
+  const searchByTrigram = vi.fn()
+  const searchByExactTitle = vi.fn()
+  const searchKeywordFirstVideoLexical = vi.fn(
+    async (prisma: unknown, params: unknown, timing: unknown) => ({
+      keywordWeighted: await searchByKeywordWeighted(prisma, params, timing),
+      trigram: await searchByTrigram(prisma, params, timing),
+      exactTitle: await searchByExactTitle(prisma, params, timing),
+    }),
+  )
+
+  return {
+    searchByKeywordWeighted,
+    searchByTrigram,
+    searchByExactTitle,
+    searchKeywordFirstVideoLexical,
+    MAX_EXACT_TITLE_TOKENS: 16,
+    tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
+  }
+})
 
 import {
   searchVideoSemantic,
@@ -51,6 +65,10 @@ const mockPrisma = {
     // `prisma.video.findMany`) doesn't crash these tests.
     findMany: vi.fn().mockResolvedValue([]),
   },
+  videoLocale: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  $queryRaw: vi.fn().mockResolvedValue([]),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 const successEmbedder = (): QueryEmbedder =>
@@ -61,6 +79,8 @@ beforeEach(() => {
   __resetSearchHealthForTest()
   // Restore default hydration stub after clearAllMocks wipes it.
   mockPrisma.video.findMany.mockResolvedValue([])
+  mockPrisma.videoLocale.findMany.mockResolvedValue([])
+  mockPrisma.$queryRaw.mockResolvedValue([])
   vi.mocked(searchVideoSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceSemantic).mockResolvedValue([])
   vi.mocked(searchExperienceKeyword).mockResolvedValue([])
@@ -222,8 +242,10 @@ describe("HybridSearchService debug payload routing", () => {
         "debug",
         "durationSeconds",
         "id",
+        "imageBlurDataUrl",
         "imageUrl",
         "label",
+        "muxThumbnailBlurDataUrl",
         "playbackId",
         "score",
         "slug",

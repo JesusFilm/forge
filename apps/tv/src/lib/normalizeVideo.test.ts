@@ -1,10 +1,13 @@
-import { normalizeVideo, normalizeDubMedia } from "./normalizeVideo"
+import {
+  normalizeVideo,
+  normalizeSeries,
+  normalizeDubMedia,
+} from "./normalizeVideo"
 
 // ── Builders ────────────────────────────────────────────────────────
-//
 // makeChild builds one parent.children[] entry (a { child } relation wrapper).
-// The whole makeRawVideo return is cast to the normalizer's param type, so this
-// stays as an inferred object literal whose concrete field types overlap it.
+// makeRawVideo's return is cast to the normalizer's param type, so builders stay
+// inferred object literals whose concrete field types overlap it.
 function makeChild(documentId: string, slug: string, title: string) {
   return {
     child: {
@@ -398,6 +401,210 @@ describe("normalizeVideo — memoization (WeakMap on raw reference)", () => {
   })
 })
 
+// makeEpisodeRel builds one own-children[] entry ({ order, child }) for the
+// series fixture. Distinct from makeChild: the series query's child selection
+// also carries the relation order + locale description/imageAlt.
+function makeEpisodeRel(
+  documentId: string,
+  slug: string,
+  title: string,
+  order: number,
+) {
+  return {
+    order,
+    child: {
+      documentId,
+      slug,
+      label: "EPISODE",
+      locales: [
+        {
+          documentId: `${documentId}-loc`,
+          languageSlug: "english",
+          title,
+          description: `${title} description`,
+          imageAlt: `${title} art`,
+        },
+      ],
+      images: [
+        {
+          documentId: `${documentId}-img`,
+          url: null,
+          thumbnail: `https://img.example.com/${slug}.jpg`,
+          mobileCinematicHigh: null,
+          mobileCinematicLow: null,
+        },
+      ],
+    },
+  }
+}
+
+// makeRawSeries layers the series-only selection (own children) over the base
+// fixture. childDubLanguages moved to the lazy GET_SERIES_LANGUAGES query (U1), so
+// it is no longer part of the lean series record. The series documentId stays
+// "vid-1", so a child with documentId "vid-1" is a self-reference.
+function makeRawSeries(overrides: Record<string, unknown> = {}) {
+  return {
+    ...(makeRawVideo() as object),
+    label: "SERIES",
+    children: [
+      makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2),
+      makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
+    ],
+    ...overrides,
+  } as Parameters<typeof normalizeSeries>[0]
+}
+
+describe("normalizeSeries — base record + trailer", () => {
+  it("returns null for null / undefined / identity-less input", () => {
+    expect(normalizeSeries(null)).toBeNull()
+    expect(normalizeSeries(undefined)).toBeNull()
+    expect(
+      normalizeSeries({ slug: "lonely" } as Parameters<
+        typeof normalizeSeries
+      >[0]),
+    ).toBeNull()
+  })
+
+  it("carries the shared video record: the series' own playable dub is the trailer", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.documentId).toBe("vid-1")
+    expect(result.label).toBe("SERIES")
+    expect(result.title).toBe("The Crucifixion")
+    expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
+    expect(result.variants).toHaveLength(2)
+  })
+
+  // Contract guard: SeriesWatchVideo selects dubs WITHOUT player-only
+  // duration/muxVideo, so those keys are ABSENT (undefined), not null. Builder
+  // must still play a trailer from hls; deleting `?? null` in buildWatchVideoRecord fails here.
+  it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "dub-lean",
+            slug: "english",
+            published: true,
+            hls: "https://stream.mux.com/lean.m3u8",
+            language: {
+              coreId: "c-en",
+              bcp47: "en",
+              slug: "english",
+              name: { en: "English" },
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/lean.m3u8")
+    expect(result.duration).toBeNull()
+    expect(result.muxPlaybackId).toBeNull()
+    expect(result.variants[0].duration).toBeNull()
+    expect(result.variants[0].muxPlaybackId).toBeNull()
+  })
+})
+
+describe("normalizeSeries — episodes (own children)", () => {
+  it("sorts episodes by the relation order field, not input order", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.episodes.map((e) => e.slug)).toEqual([
+      "episode-1",
+      "episode-2",
+    ])
+  })
+
+  it("maps episode card fields including locale description/imageAlt and poster", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.episodes[0]).toEqual({
+      documentId: "ep-1",
+      slug: "episode-1",
+      label: "EPISODE",
+      title: "Episode One",
+      description: "Episode One description",
+      imageAlt: "Episode One art",
+      posterUrl: "https://img.example.com/episode-1.jpg",
+    })
+  })
+
+  // KTD5 fix-tolerance: the inverted admin relation surfaces self-references
+  // and duplicates today — both must vanish, never render.
+  it("filters a self-referencing child by documentId", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          makeEpisodeRel("vid-1", "the-crucifixion", "The Crucifixion", 1), // self
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 2),
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1"])
+  })
+
+  it("dedupes duplicate children by documentId, keeping the first by order", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
+          makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2),
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 3), // dup — collapse
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1", "ep-2"])
+  })
+
+  it("yields empty episodes for missing, null, or all-self children", () => {
+    expect(normalizeSeries(makeRawSeries({ children: [] }))!.episodes).toEqual(
+      [],
+    )
+    expect(
+      normalizeSeries(makeRawSeries({ children: null }))!.episodes,
+    ).toEqual([])
+    // Current (inverted) schema shape: only self-references → empty rail.
+    expect(
+      normalizeSeries(
+        makeRawSeries({
+          children: [
+            makeEpisodeRel("vid-1", "the-crucifixion", "The Crucifixion", 1),
+          ],
+        }),
+      )!.episodes,
+    ).toEqual([])
+  })
+
+  it("drops a relation whose child is null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          { order: 1, child: null },
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 2),
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1"])
+  })
+})
+
+// The language union moved off WatchSeriesRecord entirely (U1): it is fetched by
+// GET_SERIES_LANGUAGES and normalized via normalizeChildDubLanguages — see
+// normalizeLanguages.test.ts. normalizeSeries no longer produces languages.
+
+describe("normalizeSeries — memoization (WeakMap on raw reference)", () => {
+  it("re-normalizing the same raw reference returns the memoized record", () => {
+    const raw = makeRawSeries()
+    const first = normalizeSeries(raw)
+    const second = normalizeSeries(raw)
+    expect(first).not.toBeNull()
+    expect(second).toBe(first) // referential identity proves the cache hit
+  })
+
+  it("a different raw reference produces a distinct record", () => {
+    const a = normalizeSeries(makeRawSeries())
+    const b = normalizeSeries(makeRawSeries())
+    expect(a).not.toBe(b)
+  })
+})
+
 describe("normalizeDubMedia (lazy per-dub media)", () => {
   it("preserves downloads with quality and URL", () => {
     const media = normalizeDubMedia(makeRawDub())
@@ -417,6 +624,14 @@ describe("normalizeDubMedia (lazy per-dub media)", () => {
     expect(media.subtitles[0].primary).toBe(true)
     expect(media.subtitles[1].languageName).toBe("Spanish")
     expect(media.subtitles[1].aiGenerated).toBe(true)
+  })
+
+  it("computes subtitle languageNameNative like audio dubs (null for English, native otherwise)", () => {
+    const media = normalizeDubMedia(makeRawDub())
+    // English subtitle (bcp47 "en") → no redundant native label.
+    expect(media.subtitles[0].languageNameNative).toBeNull()
+    // Spanish subtitle has a distinct native name in its locale map → returned.
+    expect(media.subtitles[1].languageNameNative).toBe("Español")
   })
 
   it("returns a fresh empty record for a missing dub", () => {

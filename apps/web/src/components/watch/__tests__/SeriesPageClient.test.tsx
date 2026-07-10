@@ -186,6 +186,8 @@ function makeChildren(count: number): Series["children"] {
     label: "episode" as const,
     images: [],
     durationSeconds: null,
+    muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   })) as Series["children"]
 }
 

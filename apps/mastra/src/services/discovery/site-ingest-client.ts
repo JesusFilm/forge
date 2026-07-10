@@ -1,4 +1,5 @@
 import type { DiscoveredVideo } from "./candidate"
+import { requireHttpsUrl } from "./secure-url"
 
 /**
  * Sends discovered videos to the website's review-queue ingest endpoint
@@ -65,15 +66,25 @@ export async function submitCandidatesToSite(
   candidates: readonly DiscoveredVideo[],
   options: SubmitCandidatesOptions,
 ): Promise<SiteIngestResult> {
-  const url = options.url?.trim()
+  const rawUrl = options.url?.trim()
   const token = options.token?.trim()
-  if (!url || !token) {
+  if (!rawUrl || !token) {
     throw new SiteIngestError(
       "config_missing",
       "site ingest URL and token are required",
     )
   }
   if (candidates.length === 0) return { ok: true, inserted: 0, skipped: 0 }
+
+  let url: string
+  try {
+    url = requireHttpsUrl(rawUrl, "site ingest URL")
+  } catch (error) {
+    throw new SiteIngestError(
+      "config_missing",
+      error instanceof Error ? error.message : "site ingest URL must use HTTPS",
+    )
+  }
 
   let response: Response
   try {
@@ -84,6 +95,7 @@ export async function submitCandidatesToSite(
         "content-type": "application/json",
       },
       body: JSON.stringify(toPayload(candidates)),
+      redirect: "error",
       signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
     })
   } catch (cause) {
@@ -114,11 +126,24 @@ export async function submitCandidatesToSite(
     )
   })) as { ok?: unknown; inserted?: unknown; skipped?: unknown }
 
-  return {
-    ok: body.ok === true,
-    inserted: typeof body.inserted === "number" ? body.inserted : 0,
-    skipped: typeof body.skipped === "number" ? body.skipped : 0,
+  if (
+    body.ok !== true ||
+    typeof body.inserted !== "number" ||
+    !Number.isInteger(body.inserted) ||
+    !Number.isFinite(body.inserted) ||
+    body.inserted < 0 ||
+    typeof body.skipped !== "number" ||
+    !Number.isInteger(body.skipped) ||
+    !Number.isFinite(body.skipped) ||
+    body.skipped < 0
+  ) {
+    throw new SiteIngestError(
+      "invalid_response",
+      "site ingest returned an invalid success response",
+    )
   }
+
+  return { ok: true, inserted: body.inserted, skipped: body.skipped }
 }
 
 export const _internals = { toPayload }

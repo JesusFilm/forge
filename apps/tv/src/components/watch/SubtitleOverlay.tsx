@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { Animated, Platform, StyleSheet } from "react-native"
+import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  Platform,
+  StyleSheet,
+} from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
@@ -8,10 +14,8 @@ import { scale } from "../../lib/scale"
 import { findActiveCue, parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
 
-// Caption colors. The TV palette (COLORS) has no on-overlay/black token, so
-// the dark caption backdrop and text shadow come from a fixed black via
-// hexToRgba — never the string "transparent" (causes dark banding; see
-// apps/tv/CLAUDE.md and lib/colors.ts).
+// COLORS has no black token; caption backdrop/shadow use fixed black via
+// hexToRgba — never "transparent" (banding; see apps/tv/CLAUDE.md).
 const SHADE = "#000000"
 
 type SubtitleOverlayProps = {
@@ -19,12 +23,20 @@ type SubtitleOverlayProps = {
   player: ExpoVideoPlayer
   /** Active subtitle track URL (CMS-sourced; validated before fetch). */
   vttSrc: string | null
-  /** Distance from the bottom edge, in reference dp (scaled per platform). */
+  /**
+   * Distance from the bottom edge, in reference dp (scaled per platform). Host
+   * raises it while player chrome shows so captions clear the bottom controls.
+   */
   bottomOffset?: number
   /** Horizontal inset so captions clear the safe gutter. */
   horizontalInset?: number
   /** Caption text size in reference dp (scaled per platform). */
   fontSize?: number
+  /**
+   * Animate vertical-offset changes (the lift-to-clear-chrome slide, mirroring
+   * apps/mobile's fullscreen caption). Snaps under reduce-motion.
+   */
+  animate?: boolean
 }
 
 // `fontSize` and friends arrive as reference-dp values; scale() normalises them
@@ -41,14 +53,13 @@ export function SubtitleOverlay({
   bottomOffset = 64,
   horizontalInset = 80,
   fontSize = 32,
+  animate = false,
 }: SubtitleOverlayProps) {
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
 
-  // Fade the caption in/out instead of hard-cutting it as cues change. This is
-  // a cosmetic local animation only — the overlay is a PASSIVE consumer of the
-  // player and MUST NOT touch any control/auto-hide state (no scheduleHide /
-  // revealControls). It never reaches into the player's chrome.
+  // Cosmetic per-cue fade. The overlay is a PASSIVE consumer of the player and
+  // MUST NOT touch any control/auto-hide state (no scheduleHide/revealControls).
   const opacity = useRef(new Animated.Value(0)).current
   useEffect(() => {
     Animated.timing(opacity, {
@@ -57,6 +68,42 @@ export function SubtitleOverlay({
       useNativeDriver: true,
     }).start()
   }, [activeText, opacity])
+
+  // translateY position (native-driver on Fabric): lifted by -bottomOffset;
+  // offset changes slide 200ms when `animate`, else snap. reduce-motion is STATE
+  // not a ref: its async seed lands after the first run, so a ref would miss it.
+  const translateY = useRef(new Animated.Value(-px(bottomOffset))).current
+  const [reduceMotion, setReduceMotion] = useState(false)
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion)
+    const sub = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setReduceMotion,
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // noop
+      }
+    }
+  }, [])
+  useEffect(() => {
+    if (!animate || reduceMotion) {
+      translateY.setValue(-px(bottomOffset))
+      return
+    }
+    const anim = Animated.timing(translateY, {
+      toValue: -px(bottomOffset),
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    })
+    anim.start()
+    // Stop an in-flight slide on unmount / re-target (matches VideoBackdrop's
+    // animation-cleanup discipline).
+    return () => anim.stop()
+  }, [bottomOffset, animate, reduceMotion, translateY])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -118,10 +165,8 @@ export function SubtitleOverlay({
         // Player released — stop touching currentTime until the next effect run.
       }
     }
-    // Reflect the current position immediately, then poll: fast (100ms) while
-    // playing, slow (400ms) while paused. The slow paused poll is cheap (a
-    // bounded binary search) but still catches a seek/scrub made while paused,
-    // which a play-only gate would freeze the subtitle through.
+    // Update now, then poll: 100ms playing, 400ms paused. The paused poll is
+    // cheap and still catches a paused seek/scrub a play-only gate would freeze.
     update()
     const interval = setInterval(update, isPlaying ? 100 : 400)
     return () => clearInterval(interval)
@@ -132,34 +177,52 @@ export function SubtitleOverlay({
   const scaledFont = px(fontSize)
 
   return (
-    <Animated.Text
+    // Bottom-anchored centering container: the inner Text HUGS its content so
+    // the backdrop doesn't span full width for a short cue. translateY slides
+    // the chrome-lift, opacity fades the cue — native-driver on separate nodes.
+    <Animated.View
       pointerEvents="none"
       style={[
-        styles.text,
+        styles.container,
         {
-          opacity,
-          bottom: px(bottomOffset),
-          left: px(horizontalInset),
-          right: px(horizontalInset),
-          fontSize: scaledFont,
-          lineHeight: px(fontSize * 1.3),
-          paddingVertical: px(fontSize * 0.3),
-          paddingHorizontal: px(fontSize * 0.65),
+          paddingHorizontal: px(horizontalInset),
+          transform: [{ translateY }],
         },
       ]}
     >
-      {activeText}
-    </Animated.Text>
+      <Animated.Text
+        style={[
+          styles.text,
+          {
+            opacity,
+            fontSize: scaledFont,
+            lineHeight: px(fontSize * 1.3),
+            paddingVertical: px(fontSize * 0.3),
+            paddingHorizontal: px(fontSize * 0.65),
+          },
+        ]}
+      >
+        {activeText}
+      </Animated.Text>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  text: {
+  // Anchored at the screen's bottom edge; translateY lifts it to the live
+  // bottomOffset. alignItems centers the hugging Text horizontally.
+  container: {
     position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+  },
+  text: {
+    maxWidth: "100%",
     color: COLORS.text,
     fontFamily: "System",
     textAlign: "center",
-    alignSelf: "center",
     backgroundColor: hexToRgba(SHADE, 0.7),
     borderRadius: 8,
     overflow: "hidden",

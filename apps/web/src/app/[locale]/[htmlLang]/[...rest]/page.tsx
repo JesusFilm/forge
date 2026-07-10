@@ -5,29 +5,33 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
-import { WatchHomePage } from "@/components/home/WatchHomePage"
+import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import {
-  isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
-  resolveSeriesBySlug,
+  type MergedWatchBlock,
   resolveSeriesEpisodeBySlug,
+  resolveWatchRouteBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
-  resolveWatchVideoBySlug,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
 import {
+  buildWatchVideoMetadataModel,
   generateSeriesMetadata,
+  generateWatchVideoMetadata,
   getWatchPageMetadata,
+  getWatchRouteFallbackMetadata,
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
   isWatchCtaTextCopyEnabled,
+  isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
-  isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
 import {
   isLocale,
@@ -47,15 +51,24 @@ import {
   SAFE_SLUG_PATTERN,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
-import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
+import {
+  watchBreadcrumbStructuredDataJson,
+  watchVideoStructuredDataJson,
+  watchRelatedItemListStructuredDataJson,
+} from "@/lib/watch-structured-data"
+import { logWatchServerEvent } from "@/lib/watch-observability"
+import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 
-// ISR: pages cached for 60s. Cookie-driven language redirect lives in
+// ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
 // route preserves ISR for the majority of traffic without the preference
-// cookie. Keep the build output clean so runtime ISR artifacts from old
-// deploys cannot be packaged as fresh pages. See
+// cookie. Admin revalidation clears both route paths and tagged resolver data;
+// the route TTL is the fallback when a webhook or process-local invalidation is
+// missed.
+// Keep the build output clean so runtime ISR artifacts from old deploys cannot
+// be packaged as fresh pages. See
 // docs/solutions/web/nextjs-headers-defeats-route-cache.md.
-export const revalidate = 60
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 
@@ -65,6 +78,60 @@ export function generateStaticParams(): Array<{
   rest: string[]
 }> {
   return []
+}
+
+function pruneWatchVideoForClient(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): WatchVideoRecord {
+  const selected =
+    video.variants.find(
+      (variant) => variant.documentId === selectedVariant.documentId,
+    ) ?? selectedVariant
+  return {
+    ...video,
+    parents: [],
+    children: [],
+    childDubLanguages: [],
+    variants: [pruneWatchVariantForClient(selected)],
+    studyQuestions: [],
+    bibleCitations: [],
+  }
+}
+
+function pruneWatchVariantForClient(variant: WatchVariant): WatchVariant {
+  return {
+    ...variant,
+    // `video.subtitles` is the canonical client-side subtitle list. Keeping
+    // the selected variant's full edition subtitle payload duplicates every
+    // track in the RSC stream and initial HTML.
+    videoEdition: null,
+  }
+}
+
+function pruneMergedWatchBlocksForClient(
+  blocks: MergedWatchBlock[],
+  selectedVariant: WatchVariant,
+): MergedWatchBlock[] {
+  return blocks.map((block) => {
+    if (!("kind" in block)) return block
+    switch (block.kind) {
+      case "HeroPlayer":
+      case "WatchBody":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+          variant: pruneWatchVariantForClient(block.variant),
+        }
+      case "Share":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+        }
+      default:
+        return block
+    }
+  })
 }
 
 // Catch-all dispatcher for the one-, two-, and three-segment watch URL shapes.
@@ -172,20 +239,27 @@ async function getDownloadButtonLabel(
   return messages.DownloadButton?.saveVideo ?? "Save Video"
 }
 
-async function getYouVersionBibleQuotePassages(
-  route: string,
-  bibleCitations: Parameters<typeof fetchYouVersionBibleQuotePassages>[0],
-) {
-  const enabled = await isWatchYouVersionBibleQuotesEnabled({
-    custom: { route },
-  })
-  if (!enabled) return []
-  return fetchYouVersionBibleQuotePassages(bibleCitations)
-}
-
 async function getQuestionPanelEnabled(route: string): Promise<boolean> {
   return isWatchQuestionPanelEnabled({
     custom: { route },
+  })
+}
+
+async function getHideBibleQuotesEnabled(route: string): Promise<boolean> {
+  return isWatchHideBibleQuotesEnabled({
+    custom: { route },
+  })
+}
+
+async function getInitialTranscriptForWatchVideo(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): ReturnType<typeof getInitialSubtitleTranscript> {
+  if (video.subtitles.length === 0) return null
+  return getInitialSubtitleTranscript({
+    subtitles: video.subtitles,
+    audioSlug: selectedVariant.language?.slug ?? null,
+    durationSeconds: selectedVariant.duration ?? null,
   })
 }
 
@@ -212,24 +286,31 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
-      if (watchVideo && isSeriesRecord(watchVideo.video)) {
+      const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+      if (routeModel.kind === "series") {
         return generateSeriesMetadata(locale, {
-          series: watchVideo.video,
+          series: routeModel.video,
           pathLocale: rawLocale,
         })
       }
-      if (!watchVideo) {
-        const series = await resolveSeriesBySlug(slug, rawLocale)
-        if (series) {
-          return generateSeriesMetadata(locale, {
-            series: series.video,
-            pathLocale: rawLocale,
-          })
-        }
+      if (routeModel.kind === "video") {
+        return generateWatchVideoMetadata(locale, {
+          video: routeModel.video,
+          selectedVariant: routeModel.selectedVariant,
+          routeSlug: slug,
+          pathLocale: rawLocale,
+        })
       }
-    } catch {
-      // Fall through to getWatchPageMetadata.
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.video.fallback", {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return getWatchRouteFallbackMetadata(locale, {
+        slug,
+        pathLocale: rawLocale,
+      })
     }
     return getWatchPageMetadata(locale, {
       slug,
@@ -238,9 +319,36 @@ export async function generateMetadata({
   }
 
   if (shape.kind === "episode") {
-    const { episodeSlug, rawLocale, locale } = shape
-    // The episode IS the playable video; OG/canonical metadata follows
-    // the episode's slug. Series-context enrichment is Phase 5 work.
+    const { seriesSlug, episodeSlug, rawLocale, locale } = shape
+    // The episode IS the playable video; keep metadata on the verified
+    // three-segment public URL when the series parent resolves.
+    try {
+      const resolved = await resolveSeriesEpisodeBySlug(
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+      )
+      if (resolved) {
+        return generateWatchVideoMetadata(locale, {
+          video: resolved.video,
+          selectedVariant: resolved.selectedVariant,
+          routeSlug: episodeSlug,
+          pathLocale: rawLocale,
+          seriesSlug,
+        })
+      }
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.episode.fallback", {
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return getWatchRouteFallbackMetadata(locale, {
+        slug: episodeSlug,
+        pathLocale: rawLocale,
+      })
+    }
     return getWatchPageMetadata(locale, {
       slug: episodeSlug,
       pathLocale: rawLocale,
@@ -248,6 +356,31 @@ export async function generateMetadata({
   }
 
   return {}
+}
+
+function WatchVideoStructuredData({
+  model,
+}: {
+  model: ReturnType<typeof buildWatchVideoMetadataModel>
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: watchVideoStructuredDataJson(model),
+      }}
+    />
+  )
+}
+
+function WatchStructuredData({ json }: { json: string | null | undefined }) {
+  if (!json) return null
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: json }}
+    />
+  )
 }
 
 export default async function SlugRestPage({ params }: PageProps) {
@@ -279,14 +412,38 @@ async function renderOneSegment(shape: {
 }) {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
-    const home = await resolveWatchHome(locale)
-    if (home.error) {
-      return <ExperienceError message={home.error.message} />
+    const [heroResult, pageResult] = await Promise.all([
+      resolveWatchHome(locale),
+      resolveWatchPage(locale),
+    ])
+    if (heroResult.error) {
+      return <ExperienceError message={heroResult.error.message} />
     }
-    if (!home.data.heroSlides.length && !home.data.sections.length) {
+
+    const builderBlocks =
+      pageResult.data?.kind === "experience"
+        ? (pageResult.data.experience.blocks ?? [])
+        : []
+
+    if (
+      pageResult.error &&
+      !isWatchPageMissingError(pageResult.error) &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.warn("[watch-home] Unable to load builder-authored body.", {
+        error: pageResult.error.message,
+      })
+    }
+
+    if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
       return <ExperienceEmpty />
     }
-    return <WatchHomePage model={home.data} />
+    return (
+      <WatchHomeExperiencePage
+        heroModel={heroResult.data}
+        blocks={builderBlocks}
+      />
+    )
   }
 
   const result = await resolveWatchExperiencePage(locale, slug)
@@ -364,39 +521,69 @@ async function renderEpisode(shape: {
   }
 
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+  const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
     await Promise.all([
       getDownloadButtonLabel(route, locale),
       getQuestionPanelEnabled(route),
-      getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
+      getHideBibleQuotesEnabled(route),
     ])
   const mergedBlocks = mergeWatchExperience({
     video: resolved.video,
     variant: resolved.selectedVariant,
     canonicalParent: resolved.series,
-    youVersionPassages,
   })
+  const clientVariant = pruneWatchVariantForClient(resolved.selectedVariant)
+  const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+    mergedBlocks,
+    resolved.selectedVariant,
+  )
+  const clientVideo = pruneWatchVideoForClient(
+    resolved.video,
+    resolved.selectedVariant,
+  )
   if (!mergedBlocks.length) return <ExperienceEmpty />
-  const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
+  const metadataModel = buildWatchVideoMetadataModel({
+    video: resolved.video,
+    selectedVariant: resolved.selectedVariant,
+    routeSlug: episodeSlug,
+    pathLocale: rawLocale,
+    seriesSlug,
+  })
+  const initialTranscript = await getInitialTranscriptForWatchVideo(
+    resolved.video,
+    resolved.selectedVariant,
+  )
+  const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
+  const breadcrumbJson = watchBreadcrumbStructuredDataJson({
+    videoTitle: metadataModel.videoTitle,
+    canonicalUrl: metadataModel.canonicalUrl,
+    languageSlug,
+    series: {
+      slug: resolved.series.slug,
+      title: resolved.series.title,
+    },
+  })
+  const relatedItemsJson = watchRelatedItemListStructuredDataJson({
+    blocks: mergedBlocks,
+    languageSlug,
+  })
 
   return (
     <>
-      {lcpPlaybackId ? (
-        <link
-          rel="preload"
-          as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
-          fetchPriority="high"
-        />
-      ) : null}
+      <WatchVideoStructuredData model={metadataModel} />
+      <WatchStructuredData json={breadcrumbJson} />
+      <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
         downloadButtonLabel={downloadButtonLabel}
-        mergedBlocks={mergedBlocks}
-        variant={resolved.selectedVariant}
-        video={resolved.video}
-        languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
+        mergedBlocks={clientMergedBlocks}
+        variant={clientVariant}
+        video={clientVideo}
+        languageSlug={languageSlug}
+        collectionSlug={seriesSlug}
         locale={locale}
+        hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
+        initialTranscript={initialTranscript}
       />
     </>
   )
@@ -411,54 +598,14 @@ async function renderVideo(shape: {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
 
-  // Experience-first precedence: when an editor curated an Experience at
-  // this slug, that's the intended landing — even when a slug-colliding
-  // Video (e.g. an `easter` Video alongside an `easter` Experience) exists.
-  // `resolveWatchPage` is React `cache()`-wrapped so the tail-end call
-  // for the video-template fallback is free.
-  const watchPage = await resolveWatchPage(locale, slug)
-  if (watchPage.data?.kind === "experience") {
-    const blocks = (watchPage.data.experience.blocks ?? []).filter(
-      (b): b is Section => b !== null,
-    )
-    if (blocks.length) {
-      const questionPanelEnabled = await getQuestionPanelEnabled(route)
-      return (
-        <main
-          className={`min-h-screen bg-stone-900 ${
-            questionPanelEnabled
-              ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
-              : ""
-          }`}
-        >
-          {blocks.map((block, i) => {
-            const key =
-              "id" in block && typeof block.id === "string"
-                ? block.id
-                : `block-${i}`
-            return (
-              <ExperienceSectionRenderer
-                key={key}
-                section={block}
-                routeVideo={null}
-              />
-            )
-          })}
-          {questionPanelEnabled ? (
-            <WatchQuestionPanel enabled={questionPanelEnabled} />
-          ) : null}
-        </main>
-      )
-    }
-    return <ExperienceEmpty />
-  }
-
-  // Video-by-slug second. Pass rawLocale (not the bcp47-normalised
+  // Video-by-slug first. Pass rawLocale (not the bcp47-normalised
   // `locale`) so the resolver matches either variant.language.slug OR
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
-  // land in the resolver as "korean", not "en".
-  const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
-  if (watchVideo) {
+  // land in the resolver as "korean", not "en". A same-slug Experience is
+  // only a fallback after video and series routes fail to render.
+  const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+  if (routeModel.kind === "video") {
+    const watchVideo = routeModel
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
     if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)
@@ -471,54 +618,68 @@ async function renderVideo(shape: {
         )
       }
     }
-    if (isSeriesRecord(watchVideo.video)) {
-      return (
-        <SeriesPageClient
-          series={watchVideo.video}
-          selectedVariant={watchVideo.selectedVariant}
-          locale={rawLocale}
-        />
-      )
-    }
-    const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
+    const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
       await Promise.all([
         getDownloadButtonLabel(route, locale),
         getQuestionPanelEnabled(route),
-        getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
+        getHideBibleQuotesEnabled(route),
       ])
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
-      canonicalParent: watchVideo.canonicalParent,
-      youVersionPassages,
+      canonicalParent: null,
     })
-    const lcpPlaybackId =
-      watchVideo.selectedVariant.muxVideo?.playbackId ?? null
+    const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
+    const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+      mergedBlocks,
+      watchVideo.selectedVariant,
+    )
+    const clientVideo = pruneWatchVideoForClient(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
+    const metadataModel = buildWatchVideoMetadataModel({
+      video: watchVideo.video,
+      selectedVariant: watchVideo.selectedVariant,
+      routeSlug: slug,
+      pathLocale: rawLocale,
+    })
+    const initialTranscript = await getInitialTranscriptForWatchVideo(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
+    const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
+    const breadcrumbJson = watchBreadcrumbStructuredDataJson({
+      videoTitle: metadataModel.videoTitle,
+      canonicalUrl: metadataModel.canonicalUrl,
+      languageSlug,
+    })
+    const relatedItemsJson = watchRelatedItemListStructuredDataJson({
+      blocks: mergedBlocks,
+      languageSlug,
+    })
     return (
       <>
-        {lcpPlaybackId ? (
-          <link
-            rel="preload"
-            as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
-            fetchPriority="high"
-          />
-        ) : null}
+        <WatchVideoStructuredData model={metadataModel} />
+        <WatchStructuredData json={breadcrumbJson} />
+        <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
           downloadButtonLabel={downloadButtonLabel}
-          mergedBlocks={mergedBlocks}
-          variant={watchVideo.selectedVariant}
-          video={watchVideo.video}
-          languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
+          mergedBlocks={clientMergedBlocks}
+          variant={clientVariant}
+          video={clientVideo}
+          languageSlug={languageSlug}
           locale={locale}
+          hideBibleQuotes={hideBibleQuotes}
           questionPanelEnabled={questionPanelEnabled}
+          initialTranscript={initialTranscript}
         />
       </>
     )
   }
 
-  const series = await resolveSeriesBySlug(slug, rawLocale)
-  if (series) {
+  if (routeModel.kind === "series") {
+    const series = routeModel
     const actualSlug = series.selectedVariant?.language?.slug ?? null
     if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)

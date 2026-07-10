@@ -28,6 +28,7 @@ export const env = createEnv({
     FIREBASE_PROJECT_ID: z.string().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
     FIREBASE_PRIVATE_KEY: z.string().min(1).optional(),
+    AGENT_LOGIN_MINTING_KEY: z.string().min(1).optional(),
     REDIS_HOST: z.string().min(1).optional(),
     REDIS_PORT: z.coerce.number().int().positive().optional(),
     REDIS_PASSWORD: z.string().min(1).optional(),
@@ -56,6 +57,9 @@ export const env = createEnv({
     FIREBASE_PROJECT_ID: emptyToUndefined(process.env.FIREBASE_PROJECT_ID),
     FIREBASE_CLIENT_EMAIL: emptyToUndefined(process.env.FIREBASE_CLIENT_EMAIL),
     FIREBASE_PRIVATE_KEY: emptyToUndefined(process.env.FIREBASE_PRIVATE_KEY),
+    AGENT_LOGIN_MINTING_KEY: emptyToUndefined(
+      process.env.AGENT_LOGIN_MINTING_KEY,
+    ),
     REDIS_HOST: emptyToUndefined(process.env.REDIS_HOST),
     REDIS_PORT: emptyToUndefined(process.env.REDIS_PORT),
     REDIS_PASSWORD: emptyToUndefined(process.env.REDIS_PASSWORD),
@@ -84,7 +88,7 @@ export function getAuthTrustedOrigins(): string[] {
   const productionWebOrigins = [
     "https://jesusfilm.org",
     "https://www.jesusfilm.org",
-    "https://web.jesusfilm.org",
+    "https://watch.jesusfilm.org",
   ]
   const localWebOrigins =
     process.env.NODE_ENV === "production"

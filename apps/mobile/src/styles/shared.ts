@@ -1,12 +1,6 @@
 /**
- * Shared styles for mobile components.
- *
- * Convention: shared styles go FIRST in style arrays, component-specific
- * overrides go LAST. RN resolves left-to-right (last wins).
- *
- *   style={[layout.screenContainer]}                    // sole style
- *   style={[text.sectionHeading, typography.heading]}   // compose with typography
- *   style={[layout.sectionOuter, styles.localPadding]}  // compose with local override
+ * Shared styles for mobile components. Convention: shared styles go FIRST in
+ * style arrays, local overrides LAST — RN resolves left-to-right (last wins).
  */
 import { StyleSheet } from "react-native"
 
@@ -15,6 +9,7 @@ import {
   ACCENT_ON_DARK,
   BG_COLOR,
   SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../lib/color"
@@ -25,12 +20,9 @@ export const HORIZONTAL_PADDING = 16
 export const CARD_GAP = 12
 export const CARD_BORDER_RADIUS = 12
 
-// Detents (fractions of the viewport) for the language/subtitle formSheets.
-// Shared by app/watch/_layout.tsx (the native sheet config) and the sheet
-// components, which compute the FlashList height per detent from these. The
-// formSheet content root is unbounded so the list height can't be measured —
-// it's derived from these fractions + the detent-change index instead. Keep in
-// sync: index 0 is the initial detent.
+// Viewport-fraction detents for the language/subtitle formSheets. The unbounded
+// formSheet root can't be measured, so list height derives from these + the
+// detent-change index. Keep in sync with app/watch/_layout.tsx; index 0 is initial.
 export const LIST_SHEET_DETENTS = [0.65, 1] as const
 
 // ── Layout ─────────────────────────────────────────────────────────────────
@@ -96,6 +88,14 @@ export const text = StyleSheet.create({
     color: ACCENT_ON_DARK,
     fontFamily: "System",
   },
+  // Uppercase section eyebrow; padding/margins stay local to each consumer.
+  eyebrow: {
+    fontWeight: "600",
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
 })
 
 // ── Card ───────────────────────────────────────────────────────────────────
@@ -109,6 +109,21 @@ export const card = StyleSheet.create({
     borderRadius: CARD_BORDER_RADIUS,
     overflow: "hidden",
     backgroundColor: SURFACE_COLOR,
+  },
+  // Meta badge pinned to a poster card's top-right corner.
+  badge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontWeight: "600",
   },
 })
 

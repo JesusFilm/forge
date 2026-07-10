@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { sleepUnlessAborted } from "./abortable-sleep"
 import type { YouTubeRawItem } from "./youtube-discovery/types"
 
 const DEFAULT_YOUTUBE_BASE_URL = "https://www.googleapis.com/youtube/v3"
@@ -35,6 +36,7 @@ export type YouTubeRequestOptions = {
   baseUrl?: string
   timeoutMs?: number
   maxAttempts?: number
+  signal?: AbortSignal
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
 }
@@ -111,6 +113,9 @@ async function youTubeGet(
   const timeoutMs = options.timeoutMs ?? DEFAULT_YOUTUBE_TIMEOUT_MS
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS
   const fetchImpl = options.fetchImpl ?? fetch
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs)
   const sleep =
     options.sleep ??
     ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
@@ -129,9 +134,18 @@ async function youTubeGet(
       response = await fetchImpl(url, {
         method: "GET",
         headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "error",
+        signal,
       })
     } catch (cause) {
+      if (signal.aborted) {
+        throw new YouTubeSearchError(
+          "upstream_failed",
+          "YouTube request exceeded its deadline",
+          true,
+          cause,
+        )
+      }
       lastTransportError = cause
       if (attempt < maxAttempts) {
         await sleep(backoffMs(attempt))
@@ -151,7 +165,19 @@ async function youTubeGet(
       (response.status === 429 || response.status >= 500) &&
       attempt < maxAttempts
     ) {
-      await sleep(retryAfterMs(response, attempt))
+      if (
+        !(await sleepUnlessAborted(
+          sleep,
+          retryAfterMs(response, attempt),
+          signal,
+        ))
+      ) {
+        throw new YouTubeSearchError(
+          "upstream_failed",
+          "YouTube request exceeded its deadline",
+          true,
+        )
+      }
       continue
     }
     break

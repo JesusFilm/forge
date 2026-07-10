@@ -2,20 +2,52 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   RECOVERABLE_MIGRATION,
+  RECOVERABLE_MIGRATIONS,
   deployWithKnownRecovery,
+  getKnownRecoverableP3009Migration,
   isKnownRecoverableP3009,
+  isTransientPrismaDeployFailure,
   type CommandResult,
 } from "./migrate-deploy-known-recovery"
 
 describe("isKnownRecoverableP3009", () => {
-  it("matches only P3009 output for the localized metadata migration", () => {
+  it("matches only P3009 output for known recoverable migrations", () => {
     expect(
       isKnownRecoverableP3009(`Error code: P3009 ${RECOVERABLE_MIGRATION}`),
+    ).toBe(true)
+    expect(
+      isKnownRecoverableP3009(`Error code: P3009 ${RECOVERABLE_MIGRATIONS[1]}`),
     ).toBe(true)
     expect(isKnownRecoverableP3009(`Error code: P3009 0001_init`)).toBe(false)
     expect(
       isKnownRecoverableP3009(`Error code: P3018 ${RECOVERABLE_MIGRATION}`),
     ).toBe(false)
+  })
+})
+
+describe("getKnownRecoverableP3009Migration", () => {
+  it("returns the migration named in the P3009 output", () => {
+    expect(
+      getKnownRecoverableP3009Migration(
+        `Error code: P3009 ${RECOVERABLE_MIGRATIONS[1]}`,
+      ),
+    ).toBe(RECOVERABLE_MIGRATIONS[1])
+  })
+})
+
+describe("isTransientPrismaDeployFailure", () => {
+  it("matches database connection saturation from the schema engine", () => {
+    expect(
+      isTransientPrismaDeployFailure(
+        "Error: Schema engine error:\nFATAL: sorry, too many clients already",
+      ),
+    ).toBe(true)
+    expect(
+      isTransientPrismaDeployFailure(
+        "FATAL: remaining connection slots are reserved for roles with privileges",
+      ),
+    ).toBe(true)
+    expect(isTransientPrismaDeployFailure("Error code: P3018")).toBe(false)
   })
 })
 
@@ -35,9 +67,10 @@ describe("deployWithKnownRecovery", () => {
   })
 
   it("resolves the known failed migration and retries deploy", async () => {
+    const migration = RECOVERABLE_MIGRATIONS[1]
     const runner = vi
       .fn()
-      .mockResolvedValueOnce(result(1, `P3009 ${RECOVERABLE_MIGRATION}`))
+      .mockResolvedValueOnce(result(1, `P3009 ${migration}`))
       .mockResolvedValueOnce(result(0))
       .mockResolvedValueOnce(result(0))
 
@@ -48,9 +81,57 @@ describe("deployWithKnownRecovery", () => {
       "migrate",
       "resolve",
       "--rolled-back",
-      RECOVERABLE_MIGRATION,
+      migration,
     ])
     expect(runner).toHaveBeenNthCalledWith(3, ["migrate", "deploy"])
+  })
+
+  it("retries transient deploy saturation before succeeding", async () => {
+    const sleep = vi.fn().mockResolvedValue(undefined)
+    const runner = vi
+      .fn()
+      .mockResolvedValueOnce(
+        result(
+          1,
+          "Schema engine error: FATAL: sorry, too many clients already",
+        ),
+      )
+      .mockResolvedValueOnce(
+        result(1, "FATAL: remaining connection slots are reserved"),
+      )
+      .mockResolvedValueOnce(result(0))
+
+    await deployWithKnownRecovery(runner, {
+      sleep,
+      transientDeployAttempts: 3,
+      transientDeployDelayMs: 0,
+    })
+
+    expect(runner).toHaveBeenCalledTimes(3)
+    expect(sleep).toHaveBeenCalledTimes(2)
+  })
+
+  it("fails after exhausting transient deploy retries", async () => {
+    const sleep = vi.fn().mockResolvedValue(undefined)
+    const runner = vi
+      .fn()
+      .mockResolvedValue(
+        result(
+          1,
+          "Schema engine error: FATAL: sorry, too many clients already",
+        ),
+      )
+
+    await expect(
+      deployWithKnownRecovery(runner, {
+        sleep,
+        transientDeployAttempts: 2,
+        transientDeployDelayMs: 0,
+      }),
+    ).rejects.toThrow(/without known P3009 recovery/)
+
+    expect(runner).toHaveBeenCalledTimes(2)
+    expect(sleep).toHaveBeenCalledTimes(1)
   })
 
   it("does not resolve unrelated migration failures", async () => {

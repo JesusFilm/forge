@@ -76,6 +76,7 @@ function buildNotFound(): NextResponse {
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   const url = request.nextUrl.clone()
   url.pathname = "/"
+  url.searchParams.delete("q")
   return buildRedirect(url, 307)
 }
 
@@ -151,6 +152,14 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
+    if (segment === "history") {
+      return {
+        kind: "rewrite",
+        locale: DEFAULT_LOCALE,
+        htmlLang: DEFAULT_LOCALE,
+        pathname,
+      }
+    }
     if (segment === "videos") {
       return {
         kind: "rewrite",
@@ -178,6 +187,20 @@ function classifyRewrite(pathname: string): RewriteDecision {
 
   if (segments.length === 2) {
     const [slugSegment, localeSegment] = segments
+    if (localeSegment === "videos") {
+      if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
+      const rawLanguageSlug = stripSafeSlug(slugSegment)
+      if (!rawLanguageSlug) return { kind: "not-found" }
+      if (!isPublicWatchHomeLanguageSlug(rawLanguageSlug)) {
+        return { kind: "not-found" }
+      }
+      return {
+        kind: "rewrite",
+        ...resolveWatchLocaleIdentity(rawLanguageSlug),
+        pathname,
+        internalPathname: `/videos/${rawLanguageSlug}`,
+      }
+    }
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
       return { kind: "not-found" }
     }
@@ -291,6 +314,15 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, 308)
   }
 
+  if (pathname === "/history") {
+    return rewriteToInternal(request, {
+      kind: "rewrite",
+      locale: DEFAULT_LOCALE,
+      htmlLang: DEFAULT_LOCALE,
+      pathname,
+    })
+  }
+
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
   if (canonical.kind === "redirect") {
     const url = request.nextUrl.clone()
@@ -312,6 +344,6 @@ export const config = {
     // Reserved framework + asset subtrees that must never enter the
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
-    "/((?!(?:api|assets|images|fonts|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
   ],
 }

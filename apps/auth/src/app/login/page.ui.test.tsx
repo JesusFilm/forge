@@ -97,6 +97,26 @@ describe("auth login UI", () => {
     expect(html).not.toContain('autoComplete="current-password"')
   })
 
+  it("keeps handle-shaped initial emails in the ordinary email-first step", () => {
+    const html = renderToStaticMarkup(
+      <LoginPageClient
+        enabledProviders={[]}
+        initialEmail="agent+jfp-admin-local.abc@agent-login.jesusfilm.internal"
+        oauthQuery="client_id=jfp_admin_local&sig=signed"
+        requestingAppName="Jesus Film Admin"
+      />,
+    )
+
+    expect(html).toContain("Email address")
+    expect(html).toContain("Continue")
+    expect(html).toContain(
+      'value="agent+jfp-admin-local.abc@agent-login.jesusfilm.internal"',
+    )
+    expect(html).not.toContain("Password")
+    expect(html).not.toContain("Agent")
+    expect(html).not.toContain("agent mode")
+  })
+
   it("identifies OAuth authorize requests as the only valid login entry", () => {
     expect(
       isOAuthAuthorizeRequest({
@@ -171,6 +191,7 @@ describe("auth login UI", () => {
       "Sign up to Jesus Film One to continue to Jesus Film Admin.",
     )
     expect(html).toContain("Sign up")
+    expect(html).toContain('action="/api/auth/sign-up/email"')
     expect(html).toContain("Already have an account?")
     expect(html).toContain(
       'href="/login?client_id=jfp_admin_local&amp;sig=signed"',

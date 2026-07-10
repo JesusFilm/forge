@@ -25,6 +25,13 @@ vi.mock("node:dns", () => ({
   },
 }))
 
+vi.mock("@/lib/auth-session", () => ({
+  verifyAuthSession: vi.fn(async () => ({
+    authenticated: true,
+    user: { id: "user_123" },
+  })),
+}))
+
 import { promises as dns } from "node:dns"
 
 import { GET, HEAD } from "./route"
@@ -190,18 +197,55 @@ describe("GET /watch/api/download — upstream success path", () => {
     const res = await GET(
       makeRequest({
         url: "https://stream.mux.com/abc.mp4",
-        filename: "jesus-highest.mp4",
+        filename: "Jesus-Film_English_eng_360p.mp4",
       }),
     )
     expect(res.status).toBe(200)
     const cd = res.headers.get("content-disposition") ?? ""
-    expect(cd).toContain('attachment; filename="jesus-highest.mp4"')
-    expect(cd).toContain("filename*=UTF-8''jesus-highest.mp4")
+    expect(cd).toContain(
+      'attachment; filename="Jesus-Film_English_eng_360p.mp4"',
+    )
+    expect(cd).toContain("filename*=UTF-8''Jesus-Film_English_eng_360p.mp4")
     expect(res.headers.get("content-type")).toBe("video/mp4")
     expect(res.headers.get("content-length")).toBe("11")
     expect(res.headers.get("cache-control")).toContain("no-store")
     expect(res.headers.get("x-content-type-options")).toBe("nosniff")
     expect(await res.text()).toBe("video-bytes")
+  })
+
+  it("can stream media inline for in-page consumers", async () => {
+    mockUpstream(
+      new Response("WEBVTT\n\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/vtt",
+          "content-length": "8",
+        },
+      }),
+    )
+    const res = await GET(
+      makeRequest({
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+        disposition: "inline",
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-disposition")).toContain(
+      'inline; filename="download"',
+    )
+    expect(res.headers.get("content-type")).toBe("text/vtt")
+    expect(await res.text()).toBe("WEBVTT\n\n")
+  })
+
+  it("defaults unknown dispositions to attachment", async () => {
+    mockUpstream(new Response("video-bytes", { status: 200 }))
+    const res = await GET(
+      makeRequest({
+        url: "https://stream.mux.com/abc.mp4",
+        disposition: "inline; filename=x",
+      }),
+    )
+    expect(res.headers.get("content-disposition")).toContain("attachment;")
   })
 
   it("preserves 206 Partial Content and forwards Content-Range", async () => {
@@ -330,7 +374,7 @@ describe("GET /watch/api/download — filename sanitization", () => {
     // The double-quote in the filename must be stripped so the filename
     // can't break out of the quoted-string token.
     expect(cd).not.toMatch(/filename="[^"]*"[^;]*"/)
-    expect(res.headers.get("set-cookie")).not.toContain("foo=bar")
+    expect(res.headers.has("set-cookie")).toBe(false)
   })
 
   it("strips RTL-override and other bidi-control codepoints used in extension-spoof attacks", async () => {
@@ -355,6 +399,21 @@ describe("GET /watch/api/download — filename sanitization", () => {
     )
     const cd = res.headers.get("content-disposition") ?? ""
     expect(cd).toMatch(/filename="Adobe-Update\.mp4"/)
+  })
+
+  it("preserves an allowed extension when clamping long filenames", async () => {
+    mockUpstream(new Response("ok", { status: 200 }))
+    const res = await GET(
+      makeRequest({
+        url: "https://stream.mux.com/abc.mp4",
+        filename: `${"Jesus-Film-".repeat(30)}_English_eng_360p.mp4`,
+      }),
+    )
+    const cd = res.headers.get("content-disposition") ?? ""
+    const match = cd.match(/filename="([^"]+)"/)
+    const filename = match?.[1] ?? ""
+    expect(filename).toMatch(/\.mp4$/)
+    expect(filename.length).toBeLessThanOrEqual(200)
   })
 
   it("falls back to a `download` literal when the sanitized filename collapses to empty", async () => {
@@ -436,7 +495,7 @@ describe("HEAD /watch/api/download — size probe", () => {
     const res = await HEAD(
       makeRequest({ url: "https://stream.mux.com/abc.mp4" }),
     )
-    expect(res.headers.get("set-cookie")).not.toContain("tracker=abc")
+    expect(res.headers.has("set-cookie")).toBe(false)
     expect(res.headers.has("x-attacker-frame")).toBe(false)
     expect(res.headers.get("content-length")).toBe("100")
   })
@@ -500,7 +559,7 @@ describe("GET /watch/api/download — response header allowlist", () => {
         filename: "x.mp4",
       }),
     )
-    expect(res.headers.get("set-cookie")).not.toContain("tracker=abc")
+    expect(res.headers.has("set-cookie")).toBe(false)
     expect(res.headers.has("x-attacker-frame")).toBe(false)
     expect(res.headers.get("content-type")).toBe("video/mp4")
   })

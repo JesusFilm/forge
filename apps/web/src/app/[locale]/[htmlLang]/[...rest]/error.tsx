@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 
+import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
 
 // Last-line fallback for unexpected render-time errors. Resolver errors are
@@ -14,6 +15,7 @@ export default function WatchPageError({
   reset: () => void
 }) {
   useEffect(() => {
+    reportDatadogRumError(error, { boundary: "watch-page" })
     if (process.env.NODE_ENV !== "production") {
       console.error("[watch-page] error boundary caught:", error)
     }

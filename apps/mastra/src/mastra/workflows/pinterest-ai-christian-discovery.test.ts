@@ -131,6 +131,12 @@ describe("runPinterestDiscovery", () => {
     expect(submitted[0]!.platform).toBe("pinterest")
     expect(submitted[0]!.externalId).toBe("1")
     expect(submitted[0]!.authorUrl).toContain("pinterest.com")
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reviewQueue).toEqual({
+      status: "submitted",
+      inserted: 1,
+      skipped: 0,
+    })
   })
 
   it("returns all_boards_failed when every board errors", async () => {
@@ -204,6 +210,28 @@ describe("runPinterestDiscovery", () => {
     )
   })
 
+  it("reports saved-source outages instead of a successful empty run", async () => {
+    const result = await runPinterestDiscovery(
+      { boards: [] },
+      {
+        runId: "run-sources-failed",
+        artifactStore: fakeStore(),
+        siteIngest: null,
+        sourcesConfig: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchSources: (async () =>
+          new Response("down", { status: 500 })) as unknown as typeof fetch,
+      },
+    )
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "sources_unavailable",
+      retryable: true,
+    })
+  })
+
   it("returns invalid_input for an out-of-range limit", async () => {
     const result = await runPinterestDiscovery(
       { boards: ["x"], limitPerBoard: 0 },
@@ -226,6 +254,7 @@ describe("handlePinterestDiscoveryRouteRequest", () => {
     },
     pins: [],
     boardFailures: [],
+    reviewQueue: { status: "empty" },
   }
 
   it("rejects requests without a valid bearer", async () => {

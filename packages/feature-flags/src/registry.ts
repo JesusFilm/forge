@@ -6,26 +6,12 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the web inline watch player migration.",
   },
-  watchHeroMuxVideo: {
-    key: "forge.watch.heroMuxVideo",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT",
-    description:
-      "Runtime rollout gate for the web watch hero MuxVideo backend.",
-  },
   watchCtaTextCopy: {
     key: "forge.watch.ctaTextCopy",
     defaultValue: false,
     localOverrideEnv: "FORGE_WATCH_CTA_TEXT_COPY_DEFAULT",
     description:
       "Temporary production smoke flag for the watch-page CTA text copy.",
-  },
-  watchDownloadAccountGate: {
-    key: "forge.watch.downloadAccountGate",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT",
-    description:
-      "Gradual rollout gate requiring a Jesus Film One account before watch-page video downloads.",
   },
   watchYouVersionBibleQuotes: {
     key: "forge.watch.youVersionBibleQuotes",
@@ -34,12 +20,26 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the watch-page YouVersion Bible Quotes panel.",
   },
+  watchHideBibleQuotes: {
+    key: "forge.watch.hideBibleQuotes",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT",
+    description:
+      "Runtime rollout gate for hiding the watch-page Bible Quotes section.",
+  },
   watchQuestionPanel: {
     key: "forge.watch.questionPanel",
     defaultValue: false,
     localOverrideEnv: "FORGE_WATCH_QUESTION_PANEL_DEFAULT",
     description:
       "Runtime rollout gate for the watch-page floating question panel.",
+  },
+  watchAlgoliaSearch: {
+    key: "forge.watch.algoliaSearch",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT",
+    description:
+      "Runtime rollout gate for Algolia-backed video results in the Forge watch search modal.",
   },
 } as const
 

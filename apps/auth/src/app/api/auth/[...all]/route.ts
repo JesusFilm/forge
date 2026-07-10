@@ -12,6 +12,10 @@ import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
+import {
+  canRedeemAgentLoginHandle,
+  isAgentLoginHandle,
+} from "@/services/agent-login.service"
 
 type RouteContext = {
   params: Promise<{ all?: string[] }>
@@ -153,12 +157,17 @@ async function parseEmailPasswordRequest(request: Request): Promise<{
 
 async function parseLoginMethodRequest(request: Request): Promise<{
   email: string
+  oauthQuery?: string
 }> {
   const contentType = request.headers.get("content-type") ?? ""
   if (contentType.includes("application/json")) {
-    const body = (await request.json()) as { email?: string }
+    const body = (await request.json()) as {
+      email?: string
+      oauth_query?: string
+    }
     return {
       email: body.email?.trim().toLowerCase() ?? "",
+      oauthQuery: body.oauth_query,
     }
   }
 
@@ -171,6 +180,10 @@ async function parseLoginMethodRequest(request: Request): Promise<{
     email: String(body.get("email") ?? "")
       .trim()
       .toLowerCase(),
+    oauthQuery:
+      typeof body.get("oauth_query") === "string"
+        ? String(body.get("oauth_query"))
+        : undefined,
   }
 }
 
@@ -347,10 +360,26 @@ async function handleLoginMethod(request: Request): Promise<Response> {
     return Response.json({ method: "password" })
   }
 
-  const { email } = await parseLoginMethodRequest(request)
+  const { email, oauthQuery } = await parseLoginMethodRequest(request)
   if (!email) {
     audit("auth.login_method.password")
     return Response.json({ method: "password" })
+  }
+
+  if (isAgentLoginHandle(email)) {
+    const canRedeem = await canRedeemAgentLoginHandle(prisma, {
+      handle: email,
+      oauthQuery,
+    })
+    audit(
+      canRedeem
+        ? "auth.login_method.agent_handle"
+        : "auth.login_method.password",
+      email,
+    )
+    return Response.json(
+      canRedeem ? { method: "agent-handle" } : { method: "password" },
+    )
   }
 
   const enabledProviders = enabledProviderIds()
@@ -381,6 +410,52 @@ async function handleLoginMethod(request: Request): Promise<Response> {
   return Response.json({ method: "password" })
 }
 
+async function enforceAgentOAuthAuthorizePolicy(
+  request: Request,
+): Promise<Response | undefined> {
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (!session?.user?.id) return undefined
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { actorType: true },
+  })
+  if (user?.actorType !== "AGENT") return undefined
+
+  const clientId = new URL(request.url).searchParams.get("client_id")
+  if (!clientId) return new Response("Forbidden", { status: 403 })
+
+  const environment = await prisma.appEnvironment.findUnique({
+    where: { clientId },
+    select: {
+      kind: true,
+      status: true,
+      app: { select: { status: true } },
+      grants: {
+        where: {
+          status: "APPROVED",
+          subjectType: "USER",
+          userId: session.user.id,
+        },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  })
+
+  if (
+    !environment ||
+    environment.kind === "PRODUCTION" ||
+    environment.status !== "APPROVED" ||
+    environment.app.status !== "ACTIVE" ||
+    environment.grants.length === 0
+  ) {
+    return new Response("Forbidden", { status: 403 })
+  }
+
+  return undefined
+}
+
 async function handleEmailSignUp(request: Request): Promise<Response> {
   const limit = await rateLimitAuthRoute({
     request,
@@ -393,7 +468,21 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  const { email } = await parseLoginMethodRequest(request)
+  let parsed: Awaited<ReturnType<typeof parseEmailPasswordRequest>>
+  try {
+    parsed = await parseEmailPasswordRequest(request)
+  } catch {
+    audit("auth.signup.rejected.public")
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const {
+    callbackURL: webCallbackURL,
+    email,
+    isFormPost,
+    oauthQuery,
+    password,
+  } = parsed
   if (!email) {
     audit("auth.signup.rejected.public")
     return Response.json({ error: "Not found" }, { status: 404 })
@@ -413,8 +502,30 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return existingAccountSignUpResponse()
   }
 
-  audit("auth.signup.rejected.public", email)
-  return Response.json({ error: "Not found" }, { status: 404 })
+  if (!password) {
+    audit("auth.signup.rejected.public", email)
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
+  const response = await authRouteHandlers.POST(
+    toJsonRequest(request, {
+      ...(callbackURL ? { callbackURL } : {}),
+      email,
+      password,
+      name: email.split("@")[0] || "user",
+    }),
+  )
+
+  if (!response.ok) return response
+
+  audit("auth.signup.success", email)
+  return isFormPost
+    ? withLastLoginMethodCookie(
+        redirectFormPostAfterSignIn(response, callbackURL),
+        "email",
+      )
+    : withLastLoginMethodCookie(response, "email")
 }
 
 function redirectFormPostAfterSignIn(
@@ -602,6 +713,8 @@ export async function GET(
       clientId: url.searchParams.get("client_id"),
       redirectUri: url.searchParams.get("redirect_uri"),
     })
+    const agentPolicyResponse = await enforceAgentOAuthAuthorizePolicy(request)
+    if (agentPolicyResponse) return agentPolicyResponse
   }
 
   const response = await authRouteHandlers.GET(request)

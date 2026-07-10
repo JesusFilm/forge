@@ -31,6 +31,11 @@ describe("boardFeedUrl / boardNameFromUrl", () => {
       "https://www.pinterest.com/u/board.rss",
     )
   })
+  it("strips query parameters before constructing the feed URL", () => {
+    expect(boardFeedUrl("https://www.pinterest.com/u/board/?ref=feed")).toBe(
+      "https://www.pinterest.com/u/board.rss",
+    )
+  })
   it("derives a board name from the url", () => {
     expect(
       boardNameFromUrl("https://in.pinterest.com/Learnolgy/jesus-ai/"),
@@ -70,6 +75,21 @@ describe("fetchBoardFeed", () => {
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),
     ).rejects.toMatchObject({ code: "not_found" })
+  })
+
+  it("rejects non-Pinterest or non-HTTPS board URLs before fetching", async () => {
+    const fetchImpl = vi.fn()
+    await expect(
+      fetchBoardFeed("https://example.com/u/board/", {
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_response" })
+    await expect(
+      fetchBoardFeed("http://www.pinterest.com/u/board/", {
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_response" })
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it("maps non-RSS body to invalid_response", async () => {

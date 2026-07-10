@@ -12,7 +12,11 @@ import {
   loadUsersData,
   type DashboardStatusTone,
 } from "@/app/dashboard/ops-data"
-import { approveUser, updateManagerAccess } from "@/app/dashboard/users/actions"
+import {
+  approveUser,
+  updateManagerAccess,
+  updateMastraStudioAccess,
+} from "@/app/dashboard/users/actions"
 
 type UsersRow = Awaited<ReturnType<typeof loadUsersData>>["rows"][number]
 type ProductAccessItem = UsersRow["productAccess"][number]
@@ -165,13 +169,21 @@ function ProductAccessControl({
     </select>
   )
 
-  if (access.key === "manager" && access.backed && !access.disabled) {
+  const formAction =
+    access.key === "manager"
+      ? updateManagerAccess
+      : access.key === "mastra-studio"
+        ? updateMastraStudioAccess
+        : null
+
+  if (formAction && access.backed && !access.disabled) {
     return (
       <form
-        action={updateManagerAccess}
+        action={formAction}
         className="grid grid-cols-[86px_minmax(142px,1fr)_32px] items-center gap-2"
       >
         <input type="hidden" name="id" value={userId} />
+        <input type="hidden" name="email" value={userTitle} />
         <span className="label-text text-[10px]">{access.label}</span>
         {select}
         <button

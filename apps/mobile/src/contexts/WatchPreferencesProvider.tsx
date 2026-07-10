@@ -18,19 +18,14 @@ import {
 } from "../lib/watchPreferences"
 
 /**
- * App-wide watch preferences (dub language, subtitle language, subtitles on/off).
- *
- * Lives at the root layout — not inside the watch route — so a choice survives
- * leaving the watch screen (which unmounts WatchSessionProvider) and an app
- * restart. WatchSessionProvider reads these as the top-priority default when
- * resolving a video's variant/subtitle, and writes them back when the user picks.
- *
- * Mirrors {@link ExperienceSelectionProvider}: async read on mount gated by
- * `isReady`, best-effort writes that never block the UI.
+ * App-wide watch preferences (dub/subtitle language, subtitles on/off). Lives at
+ * root layout so a choice survives leaving watch (unmounts WatchSessionProvider)
+ * + app restart. Mirrors {@link ExperienceSelectionProvider}: best-effort async.
  */
 type WatchPreferencesContextValue = WatchPreferences & {
   setPreferredAudioLanguage: (slug: string | null) => void
   setPreferredSubtitleLanguage: (slug: string | null) => void
+  setPreferredSubtitleName: (name: string | null) => void
   setSubtitlesEnabled: (enabled: boolean) => void
   /** False until the persisted blob has been read from AsyncStorage. */
   isReady: boolean
@@ -49,12 +44,9 @@ export function WatchPreferencesProvider({
   )
   const [isReady, setIsReady] = useState(false)
 
-  // Latest prefs snapshot, so the persist helper can merge a single field
-  // without taking `prefs` as a dependency (which would re-create every setter
-  // on each change and thrash WatchSessionProvider's memo). Kept in sync with
-  // committed state on every render (covers the async load on mount); persist()
-  // also advances it synchronously so multiple setter calls in one event handler
-  // compose instead of the later one clobbering the earlier off a stale ref.
+  // Latest prefs snapshot so persist can merge one field without a `prefs` dep
+  // (which would re-create every setter and thrash WatchSessionProvider's memo).
+  // persist() advances it synchronously so multiple setters in one handler compose.
   const prefsRef = useRef(prefs)
   prefsRef.current = prefs
 
@@ -101,6 +93,10 @@ export function WatchPreferencesProvider({
     (slug: string | null) => persist({ subtitleLanguageSlug: slug }),
     [persist],
   )
+  const setPreferredSubtitleName = useCallback(
+    (name: string | null) => persist({ subtitleLanguageName: name }),
+    [persist],
+  )
   const setSubtitlesEnabled = useCallback(
     (enabled: boolean) => persist({ subtitlesEnabled: enabled }),
     [persist],
@@ -112,6 +108,7 @@ export function WatchPreferencesProvider({
         ...prefs,
         setPreferredAudioLanguage,
         setPreferredSubtitleLanguage,
+        setPreferredSubtitleName,
         setSubtitlesEnabled,
         isReady,
       }}

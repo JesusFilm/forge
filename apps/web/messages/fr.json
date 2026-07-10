@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Fermer",
     "download": "Télécharger",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Vérification",
     "closeTermsOfUse": "Fermer les conditions d’utilisation",
     "cancel": "Annuler",
@@ -83,7 +86,8 @@
     "toggleOn": "Oui",
     "toggleOff": "Non",
     "close": "Fermer",
-    "apply": "Appliquer"
+    "apply": "Appliquer",
+    "noLanguageSubtitles": "Aucun sous-titre en {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 ÉPISODE} other {# ÉPISODES}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Ayez une discussion privée avec quelqu'un prêt à écouter.",
     "questionsShort": "Questions utiles",
     "questions": "Questions connexes",
-    "askYours": "Posez votre question",
+    "askYours": "Votre question",
     "chatWithPerson": "Parler avec quelqu’un",
     "askBibleQuestion": "Poser une question biblique"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animation",
     "categoryStudy": "Étude",
     "categoryFamily": "Famille",
-    "categoryChristmas": "Noël"
+    "categoryChristmas": "Noël",
+    "searchLanguageLabel": "Langue de recherche",
+    "allLanguages": "Toutes les langues",
+    "searchSuggestions": "Suggestions de recherche",
+    "languages": "Langues",
+    "recommendedLanguage": "Langue recommandée",
+    "searchSuggestion": "Rechercher {suggestion}",
+    "searchSuggestionWithLanguage": "Rechercher {suggestion} en {language}",
+    "inLanguage": "en {language}",
+    "browseByRegion": "Parcourir par région",
+    "clearLanguages": "Effacer",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Lire avec le son",
+    "playWithSound": "Regarder",
     "tapToUnmute": "Activer le son"
   },
   "ExperienceSkeleton": {

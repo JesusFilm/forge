@@ -11,12 +11,7 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
-import {
-  BLACK,
-  hexToRgba,
-  TEXT_ON_OVERLAY,
-  TEXT_SECONDARY,
-} from "../../lib/color"
+import { BLACK, hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
@@ -126,8 +121,8 @@ export function MediaCollectionRenderer({
             pointerEvents="none"
           />
           {item.collectionSize != null && (
-            <View style={styles.badge}>
-              <Text style={[styles.badgeText, typography.caption]}>
+            <View style={card.badge}>
+              <Text style={[card.badgeText, typography.caption]}>
                 {item.collectionSize}
               </Text>
             </View>
@@ -156,7 +151,7 @@ export function MediaCollectionRenderer({
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
       {categoryLabel != null && (
-        <Text style={[styles.categoryLabel, typography.caption]}>
+        <Text style={[text.eyebrow, styles.categoryLabel, typography.caption]}>
           {categoryLabel.toUpperCase()}
         </Text>
       )}
@@ -207,11 +202,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   categoryLabel: {
-    fontWeight: "600",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    textTransform: "uppercase",
-    letterSpacing: 1,
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },
@@ -225,20 +215,6 @@ const styles = StyleSheet.create({
   cardInner: {
     width: "100%",
     aspectRatio: CARD_ASPECT,
-  },
-  badge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontWeight: "600",
   },
   textContent: {
     position: "absolute",

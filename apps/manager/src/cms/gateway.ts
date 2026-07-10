@@ -20,6 +20,7 @@ import {
 } from "./mock-store"
 import {
   AdminGraphqlClient,
+  type AdminVideoForEnrichment,
   type CoverageSnapshotQuery,
 } from "@/backend/admin-client"
 
@@ -59,6 +60,7 @@ export interface CmsGateway {
   ): Promise<MockCmsState>
   getLanguageGeo(): Promise<MockLanguageGeo>
   getVideoCoverage(languageIds?: string[]): Promise<MockVideoCoverage[]>
+  getVideosForEnrichment(ids?: string[]): Promise<AdminVideoForEnrichment[]>
   getCoverageSnapshots(
     query?: CoverageSnapshotQuery,
   ): Promise<MockCoverageSnapshot[]>
@@ -231,6 +233,11 @@ function createLiveGateway(): CmsGateway {
     async getVideoCoverage() {
       throw new Error("Live CMS gateway video coverage is not configured yet.")
     },
+    async getVideosForEnrichment() {
+      throw new Error(
+        "Live CMS gateway enrichment video lookup is not configured yet.",
+      )
+    },
     async getCoverageSnapshots() {
       throw new Error(
         "Live CMS gateway coverage snapshots are not configured yet.",
@@ -271,6 +278,9 @@ function createAdminGateway(): CmsGateway {
     },
     getVideoCoverage(languageIds) {
       return client.getVideoCoverage(languageIds)
+    },
+    getVideosForEnrichment(ids) {
+      return client.getVideosForEnrichment(ids)
     },
     getCoverageSnapshots(query) {
       return client.getCoverageSnapshots(query)
@@ -367,6 +377,42 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
           }
         }),
       )
+    },
+    async getVideosForEnrichment(ids = []) {
+      const state = await store.readState()
+      const selectedIds = new Set(ids.map((id) => id.trim()).filter(Boolean))
+      return state.readModels.videoCoverage
+        .filter(
+          (video) =>
+            selectedIds.size === 0 ||
+            selectedIds.has(video.documentId) ||
+            (video.coreId != null && selectedIds.has(video.coreId)),
+        )
+        .map((video) => ({
+          documentId: video.documentId,
+          coreId: video.coreId,
+          title: video.title ?? null,
+          label: video.label ?? null,
+          primaryLanguage: {
+            coreId: "529",
+            bcp47: "en",
+            iso3: null,
+          },
+          variants: [
+            {
+              language: {
+                coreId: "529",
+                bcp47: "en",
+                iso3: null,
+              },
+              muxVideo: {
+                assetId: `mock-${video.coreId ?? video.documentId}-asset`,
+                playbackId: `mock-${video.coreId ?? video.documentId}-playback`,
+              },
+              downloads: [],
+            },
+          ],
+        }))
     },
     async getCoverageSnapshots(query) {
       const state = await store.readState()

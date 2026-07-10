@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Tutup",
     "download": "Unduh",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Memeriksa",
     "closeTermsOfUse": "Tutup Ketentuan Penggunaan",
     "cancel": "Batal",
@@ -83,7 +86,8 @@
     "toggleOn": "Aktif",
     "toggleOff": "Nonaktif",
     "close": "Tutup",
-    "apply": "Terapkan"
+    "apply": "Terapkan",
+    "noLanguageSubtitles": "Tanpa teks {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Mulai percakapan pribadi dengan seseorang yang siap mendengarkan.",
     "questionsShort": "Pertanyaan",
     "questions": "Pertanyaan terkait",
-    "askYours": "Ajukan pertanyaan Anda",
+    "askYours": "Pertanyaanmu",
     "chatWithPerson": "Bicara dengan seseorang",
     "askBibleQuestion": "Ajukan pertanyaan tentang Alkitab"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Animasi",
     "categoryStudy": "Pembelajaran",
     "categoryFamily": "Keluarga",
-    "categoryChristmas": "Natal"
+    "categoryChristmas": "Natal",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Putar dengan suara",
+    "playWithSound": "Tonton sekarang",
     "tapToUnmute": "Aktifkan suara"
   },
   "ExperienceSkeleton": {

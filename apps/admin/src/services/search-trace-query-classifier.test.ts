@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const envMock = vi.hoisted(() => ({
   env: {
+    OPENROUTER_API_PAID_KEY: undefined as string | undefined,
     OPENROUTER_API_KEY: undefined as string | undefined,
     OPENROUTER_QUERY_CLASSIFIER_MODEL: undefined as string | undefined,
   },
@@ -57,6 +58,7 @@ const ambiguousInput = {
 describe("search trace query classifier", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    envMock.env.OPENROUTER_API_PAID_KEY = undefined
     envMock.env.OPENROUTER_API_KEY = undefined
     envMock.env.OPENROUTER_QUERY_CLASSIFIER_MODEL = undefined
   })
@@ -132,6 +134,33 @@ describe("search trace query classifier", () => {
     expect(classifier.source).toBe("openrouter:openrouter/test-classifier")
     const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))
     expect(body.model).toBe("openrouter/test-classifier")
+  })
+
+  it("prefers OPENROUTER_API_PAID_KEY from env when no explicit key is passed", async () => {
+    envMock.env.OPENROUTER_API_PAID_KEY = "paid-openrouter-key"
+    envMock.env.OPENROUTER_API_KEY = "legacy-openrouter-key"
+    const fetchImpl = vi.fn().mockResolvedValue(
+      buildOpenRouterResponse({
+        queryQualityLabel: "valid_viewer_intent",
+        abuseLabel: "none",
+        confidence: "high",
+        reasonCode: "felt_need",
+      }),
+    )
+    const classifier = createSearchTraceQueryClassifier({
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+
+    await classifier.classify(ambiguousInput)
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/chat/completions",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer paid-openrouter-key",
+        }),
+      }),
+    )
   })
 
   it("parses OpenRouter text content returned as array parts", async () => {

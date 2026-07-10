@@ -33,7 +33,14 @@ export type SubtitleSheetProps = {
   subtitles: WatchSubtitle[]
   subtitleEnabled: boolean
   activeSubtitleSlug: string | null
-  onSubtitleChange: (enabled: boolean, slug: string | null) => void
+  // isUserSelection distinguishes a deliberate row pick (true → persist the
+  // language) from a bare on/off toggle (false → don't overwrite the preference
+  // with the optimistic/reconciled active slug).
+  onSubtitleChange: (
+    enabled: boolean,
+    slug: string | null,
+    isUserSelection: boolean,
+  ) => void
   onClose: () => void
 }
 
@@ -53,10 +60,9 @@ export function SubtitleSheetContent({
   // unbounded). Derived from the native detent index — see useSheetListHeight.
   const listHeight = useSheetListHeight(windowHeight)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Debounce selection so a fast double-tap (first arms the 300ms deferred
-  // close, second takes the immediate-close branch) can't fire router.back()
-  // twice and pop the watch screen. A timestamp auto-expires, so an interrupted
-  // dismiss can't permanently dead-lock row taps.
+  // Debounce selection so a fast double-tap (first arms the 300ms deferred close,
+  // second takes the immediate-close branch) can't fire router.back() twice and
+  // pop the watch screen. A timestamp auto-expires so it can't dead-lock taps.
   const lastSelectRef = useRef(0)
 
   // Cancel the deferred close on unmount so it can't fire router.back() after
@@ -84,7 +90,7 @@ export function SubtitleSheetContent({
   const handleToggle = useCallback(
     (value: boolean) => {
       setLocalToggle(value)
-      onSubtitleChange(value, activeSubtitleSlug)
+      onSubtitleChange(value, activeSubtitleSlug, false)
     },
     [onSubtitleChange, activeSubtitleSlug],
   )
@@ -94,7 +100,7 @@ export function SubtitleSheetContent({
       const now = Date.now()
       if (now - lastSelectRef.current < 500) return
       lastSelectRef.current = now
-      onSubtitleChange(true, sub.languageSlug)
+      onSubtitleChange(true, sub.languageSlug, true)
       if (!localToggle) {
         // Let the switch animate to ON before dismissing.
         setLocalToggle(true)
@@ -215,10 +221,9 @@ export function SubtitleSheetContent({
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
-          // Off by intent: FlashList v2 enables maintainVisibleContentPosition by
-          // default (for chat-like prepend/append lists). Here the data swaps
-          // wholesale as the user types/clears the search, so anchoring makes the
-          // list jump (scroll up, then settle) when the X clears the query.
+          // Off by intent: FlashList v2's default maintainVisibleContentPosition
+          // (for chat-like lists) makes our list jump when the search swaps data
+          // wholesale (e.g. the X clearing the query scrolls up then settles).
           maintainVisibleContentPosition={{ disabled: true }}
           ListHeaderComponent={header}
           contentContainerStyle={{

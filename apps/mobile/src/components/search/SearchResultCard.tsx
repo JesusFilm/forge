@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import type { SearchResult } from "../../lib/queries"
 import { BLACK, SURFACE_COLOR, TEXT_BODY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { ExperienceFallback } from "./ExperienceFallback"
 
 type SearchResultCardProps = {
   result: SearchResult
@@ -65,6 +66,8 @@ export function SearchResultCard({
               contentFit="cover"
               recyclingKey={`search-${result.id}`}
             />
+          ) : result.type === "EXPERIENCE" ? (
+            <ExperienceFallback slug={result.slug} title={result.title} />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
               <Text style={styles.placeholderIcon}>▶</Text>

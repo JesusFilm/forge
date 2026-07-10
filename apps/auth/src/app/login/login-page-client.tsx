@@ -125,6 +125,15 @@ export function LoginPageClient({
     setError(null)
     setIsSubmitting(true)
 
+    if (flow === "signup") {
+      setStep("password")
+      window.requestAnimationFrame(() => {
+        formRef.current?.querySelector<HTMLInputElement>("#password")?.focus()
+      })
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       const res = await fetch("/api/auth/login-method", {
         method: "POST",
@@ -144,7 +153,14 @@ export function LoginPageClient({
 
       const data = (await res.json()) as
         | { method: "password" }
+        | { method: "agent-handle" }
         | { method: "provider"; provider: LoginProviderId }
+
+      if (data.method === "agent-handle") {
+        const redeemed = await redeemAgentHandle()
+        if (redeemed) return
+        return
+      }
 
       if (data.method === "provider") {
         const started = await startSocialSignIn(data.provider)
@@ -158,6 +174,41 @@ export function LoginPageClient({
       })
     } catch {
       setError("lookup")
+    } finally {
+      if (!isRedirectingRef.current) setIsSubmitting(false)
+    }
+  }
+
+  async function redeemAgentHandle() {
+    try {
+      const res = await fetch("/api/auth/agent-login/redeem", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          handle: email,
+          oauth_query: oauthQuery,
+        }),
+      })
+
+      if (!res.ok) {
+        setError("lookup")
+        return false
+      }
+
+      const data = (await res.json()) as { callbackURL?: string }
+      if (!data.callbackURL) {
+        setError("lookup")
+        return false
+      }
+
+      isRedirectingRef.current = true
+      setIsRedirecting(true)
+      window.location.href = data.callbackURL
+      return true
+    } catch {
+      setError("lookup")
+      return false
     } finally {
       if (!isRedirectingRef.current) setIsSubmitting(false)
     }
@@ -276,7 +327,11 @@ export function LoginPageClient({
 
             <form
               ref={formRef}
-              action="/api/auth/sign-in/email"
+              action={
+                flow === "signup"
+                  ? "/api/auth/sign-up/email"
+                  : "/api/auth/sign-in/email"
+              }
               method="post"
               onSubmit={handleSubmit}
             >
@@ -319,7 +374,9 @@ export function LoginPageClient({
                     id="password"
                     name="password"
                     type="password"
-                    autoComplete="current-password"
+                    autoComplete={
+                      flow === "signup" ? "new-password" : "current-password"
+                    }
                     className="h-[42px] w-full rounded border border-white/10 bg-transparent px-3 text-[#f5f5f4] outline-none focus:border-[#ef3340] focus:shadow-[0_0_0_3px_rgba(239,51,64,0.12)]"
                     required
                   />
@@ -346,7 +403,11 @@ export function LoginPageClient({
                 type="submit"
               >
                 <span className="min-w-0">
-                  {step === "password" ? "Log in" : "Continue"}
+                  {step === "password"
+                    ? flow === "signup"
+                      ? "Sign up"
+                      : "Log in"
+                    : "Continue"}
                 </span>
                 {isBusy ? (
                   <span

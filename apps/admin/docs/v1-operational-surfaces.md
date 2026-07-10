@@ -37,8 +37,9 @@ version of `apps/admin`.
 - Workflow run inspection uses the Workflow runtime event log. Forge-owned
   trigger actions still live on their domain surfaces, such as Core Sync on
   `/dashboard/system-status`.
-- Semantic search requires `OPENROUTER_API_KEY`. Without it, the page stays
-  usable but reports the missing provider explicitly.
+- Semantic search requires `OPENROUTER_API_PAID_KEY` or the legacy
+  `OPENROUTER_API_KEY`. Without either, the page stays usable but reports the
+  missing provider explicitly.
 
 ## Validation
 

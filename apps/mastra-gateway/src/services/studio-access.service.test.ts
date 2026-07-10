@@ -26,6 +26,9 @@ function repository(
   requestAccess: ReturnType<typeof vi.fn>
   markAccessed: ReturnType<typeof vi.fn>
   upsertBootstrapAdmin: ReturnType<typeof vi.fn>
+  listByEmails: ReturnType<typeof vi.fn>
+  approveByEmail: ReturnType<typeof vi.fn>
+  revokeByEmail: ReturnType<typeof vi.fn>
 } {
   return {
     findBySubjectOrEmail: vi.fn(async () => found),
@@ -35,9 +38,16 @@ function repository(
     requestAccess: vi.fn(async (input) =>
       record({ ...input, status: "pending" }),
     ),
+    listByEmails: vi.fn(async ({ emails }) =>
+      emails.map((email: string) => record({ email })),
+    ),
     list: vi.fn(async () => []),
     approve: vi.fn(async () => record()),
+    approveByEmail: vi.fn(async (input) => record({ ...input })),
     revoke: vi.fn(async () => record({ status: "revoked" })),
+    revokeByEmail: vi.fn(async (input) =>
+      record({ ...input, status: "revoked" }),
+    ),
     updateRole: vi.fn(async () => record({ role: "admin" })),
     markAccessed: vi.fn(async () => undefined),
   }
@@ -106,5 +116,46 @@ describe("Studio access service", () => {
         repository: repository(record({ role: "editor" })),
       }).requireAdmin({ subject: "editor", email: "editor@example.com" }),
     ).resolves.toBe(false)
+  })
+
+  it("normalizes and dedupes admin API email lookups", async () => {
+    const repo = repository(null)
+    const service = createStudioAccessService({ repository: repo })
+
+    await expect(
+      service.listByEmails([
+        " FIRST@example.com ",
+        "first@example.com",
+        "",
+        "Second@Example.com",
+      ]),
+    ).resolves.toMatchObject([
+      { email: "first@example.com" },
+      { email: "second@example.com" },
+    ])
+    expect(repo.listByEmails).toHaveBeenCalledWith({
+      emails: ["first@example.com", "second@example.com"],
+    })
+  })
+
+  it("normalizes admin API grant and revoke emails", async () => {
+    const repo = repository(null)
+    const service = createStudioAccessService({ repository: repo })
+
+    await service.approveByEmail({
+      email: "User@Example.com",
+      role: "editor",
+      approvedBy: "admin-user",
+    })
+    await service.revokeByEmail({ email: "User@Example.com" })
+
+    expect(repo.approveByEmail).toHaveBeenCalledWith({
+      email: "user@example.com",
+      role: "editor",
+      approvedBy: "admin-user",
+    })
+    expect(repo.revokeByEmail).toHaveBeenCalledWith({
+      email: "user@example.com",
+    })
   })
 })

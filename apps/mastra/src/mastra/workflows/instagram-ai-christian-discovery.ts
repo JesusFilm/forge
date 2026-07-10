@@ -9,16 +9,26 @@ import {
   getInstagramSiteIngestConfig,
   type FirecrawlConfig,
 } from "../../config/env"
+import {
+  DISCOVERY_SOURCE_BUDGET_MS,
+  DISCOVERY_SOURCE_CONCURRENCY,
+  mapWithConcurrency,
+} from "../../services/discovery/bounded-parallel"
 import type { SourcesConfig } from "../../services/discovery/sources-client"
 import {
-  loadSavedSourceValues,
+  loadSavedSourceValuesResult,
   mergeUnique,
 } from "../../services/discovery/saved-sources"
 import {
   submitPostsToSite,
+  SiteIngestError,
   type SiteIngestConfig,
   type SiteIngestResult,
 } from "../../services/instagram-discovery/site-ingest-client"
+import {
+  ReviewQueueOutcomeSchema,
+  type ReviewQueueOutcome,
+} from "../../services/discovery/review-queue-outcome"
 import {
   FirecrawlSearchError,
   requestFirecrawlSearch,
@@ -54,16 +64,17 @@ const WORKFLOW_FAILURE_ERROR_PREFIX = "INSTAGRAM_DISCOVERY_WORKFLOW_FAILED:"
 // a one-off keyword sweep (those get the full AI + Christian + not-commentary
 // filter).
 const DEFAULT_QUERIES: string[] = []
+const MAX_HANDLES = 50
 
 export const InstagramDiscoveryWorkflowInputSchema = z
   .object({
     /** Trusted creator handles (e.g. "biblewithlife"); each becomes an
      * account-scoped Firecrawl search and is kept unless it reads as commentary. */
-    handles: z.array(z.string().min(1)).max(50).default([]),
+    handles: z.array(z.string().min(1)).max(MAX_HANDLES).default([]),
     queries: z.array(z.string().min(1)).max(20).default(DEFAULT_QUERIES),
     limitPerQuery: z.number().int().positive().max(50).default(10),
     scrapeMetadata: z.boolean().default(false),
-    maxResults: z.number().int().positive().max(200).default(50),
+    maxResults: z.number().int().positive().max(200).default(10),
     persistArtifact: z.boolean().default(true),
   })
   .strict()
@@ -85,6 +96,7 @@ const WorkflowSuccessSchema = z
     totals: DiscoveryTotalsSchema,
     posts: z.array(InstagramPostSchema),
     queryFailures: z.array(DiscoveryQueryFailureSchema),
+    reviewQueue: ReviewQueueOutcomeSchema,
     artifactPath: z.string().optional(),
   })
   .strict()
@@ -92,7 +104,12 @@ const WorkflowSuccessSchema = z
 const WorkflowFailureSchema = z
   .object({
     ok: z.literal(false),
-    reason: z.enum(["invalid_input", "config_missing", "all_queries_failed"]),
+    reason: z.enum([
+      "invalid_input",
+      "config_missing",
+      "sources_unavailable",
+      "all_queries_failed",
+    ]),
     retryable: z.boolean(),
     mastraRunId: z.string(),
     details: z.string().optional(),
@@ -155,15 +172,23 @@ export type InstagramDiscoveryOptions = {
 
 /**
  * Merge the website's saved Instagram handles into the run input (deduped).
- * Best-effort — a fetch failure leaves the input unchanged.
+ * The caller surfaces a failed source request when no fallback input exists.
  */
 async function withSavedInstagramSources(
   input: InstagramDiscoveryWorkflowInput,
   options: { config?: SourcesConfig | null; fetchImpl?: typeof fetch },
-): Promise<InstagramDiscoveryWorkflowInput> {
-  const values = await loadSavedSourceValues("instagram", options)
-  if (values.length === 0) return input
-  return { ...input, handles: mergeUnique(input.handles, values) }
+): Promise<{
+  input: InstagramDiscoveryWorkflowInput
+  sourceLoadStatus: "not_configured" | "loaded" | "failed"
+}> {
+  const loaded = await loadSavedSourceValuesResult("instagram", options)
+  return {
+    input: {
+      ...input,
+      handles: mergeUnique(input.handles, loaded.values, MAX_HANDLES),
+    },
+    sourceLoadStatus: loaded.status,
+  }
 }
 
 /**
@@ -174,9 +199,10 @@ async function withSavedInstagramSources(
 async function submitToReviewQueue(
   posts: readonly InstagramPost[],
   options: Pick<InstagramDiscoveryOptions, "siteIngest" | "submitPosts">,
-): Promise<void> {
-  if (posts.length === 0) return
+): Promise<ReviewQueueOutcome> {
+  if (posts.length === 0) return { status: "empty" }
   const config = options.siteIngest ?? getInstagramSiteIngestConfig()
+  if (!options.submitPosts && !config) return { status: "not_configured" }
   try {
     const result = options.submitPosts
       ? await options.submitPosts([...posts])
@@ -187,13 +213,23 @@ async function submitToReviewQueue(
       console.log(
         `[instagram-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
       )
+      return {
+        status: "submitted",
+        inserted: result.inserted,
+        skipped: result.skipped,
+      }
     }
+    return { status: "not_configured" }
   } catch (error) {
     console.error(
       `[instagram-discovery] event=site_ingest_failed message=${
         error instanceof Error ? error.message : String(error)
       }`,
     )
+    return {
+      status: "failed",
+      reason: error instanceof SiteIngestError ? error.code : "upstream_failed",
+    }
   }
 }
 
@@ -299,32 +335,62 @@ export async function searchInstagramCandidates(
     })),
     ...input.queries.map((query) => ({ query, trusted: false })),
   ]
+  const sourceSignal = AbortSignal.timeout(DISCOVERY_SOURCE_BUDGET_MS)
+
+  const outcomes = await mapWithConcurrency(
+    sources,
+    DISCOVERY_SOURCE_CONCURRENCY,
+    async (source) => {
+      try {
+        if (sourceSignal.aborted) {
+          throw new FirecrawlSearchError(
+            "upstream_failed",
+            "Instagram discovery source deadline exceeded",
+            true,
+          )
+        }
+        const queryHits = await options.searchQuery(source.query, {
+          apiKey: options.firecrawlConfig.apiKey,
+          baseUrl: options.firecrawlConfig.apiUrl,
+          timeoutMs: options.firecrawlConfig.timeoutMs,
+          limit: Math.min(
+            input.limitPerQuery,
+            options.firecrawlConfig.maxSearchResults,
+          ),
+          maxMarkdownCharacters: options.firecrawlConfig.maxMarkdownCharacters,
+          signal: sourceSignal,
+          scrape: input.scrapeMetadata,
+        })
+        return {
+          hits: queryHits.map((hit) => ({ hit, trusted: source.trusted })),
+          failure: null,
+          retryable: false,
+        }
+      } catch (error) {
+        const code =
+          error instanceof FirecrawlSearchError ? error.code : "search_failed"
+        return {
+          hits: [],
+          failure: {
+            query: source.query,
+            code,
+            message: error instanceof Error ? error.message : String(error),
+          } satisfies DiscoveryQueryFailure,
+          retryable:
+            error instanceof FirecrawlSearchError ? error.retryable : false,
+        }
+      }
+    },
+  )
 
   const hits: TaggedHit[] = []
   const queryFailures: DiscoveryQueryFailure[] = []
   let anyRetryable = false
-
-  for (const source of sources) {
-    try {
-      const queryHits = await options.searchQuery(source.query, {
-        apiKey: options.firecrawlConfig.apiKey,
-        baseUrl: options.firecrawlConfig.baseUrl,
-        timeoutMs: options.firecrawlConfig.timeoutMs,
-        limit: input.limitPerQuery,
-        scrape: input.scrapeMetadata,
-      })
-      hits.push(...queryHits.map((hit) => ({ hit, trusted: source.trusted })))
-    } catch (error) {
-      const code =
-        error instanceof FirecrawlSearchError ? error.code : "search_failed"
-      if (error instanceof FirecrawlSearchError && error.retryable) {
-        anyRetryable = true
-      }
-      queryFailures.push({
-        query: source.query,
-        code,
-        message: error instanceof Error ? error.message : String(error),
-      })
+  for (const outcome of outcomes) {
+    hits.push(...outcome.hits)
+    if (outcome.failure) {
+      queryFailures.push(outcome.failure)
+      if (outcome.retryable) anyRetryable = true
     }
   }
 
@@ -453,10 +519,22 @@ export async function runInstagramDiscovery(
   if (!parsedInput.success) {
     return failure("invalid_input", { mastraRunId, retryable: false })
   }
-  const input = await withSavedInstagramSources(parsedInput.data, {
+  const savedSources = await withSavedInstagramSources(parsedInput.data, {
     config: options.sourcesConfig,
     fetchImpl: options.fetchSources,
   })
+  const input = savedSources.input
+  if (
+    savedSources.sourceLoadStatus === "failed" &&
+    input.handles.length === 0 &&
+    input.queries.length === 0
+  ) {
+    return failure("sources_unavailable", {
+      mastraRunId,
+      retryable: true,
+      details: "saved Instagram sources could not be loaded",
+    })
+  }
 
   const startedAt = now().toISOString()
   try {
@@ -483,7 +561,7 @@ export async function runInstagramDiscovery(
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(posts, options)
+    const reviewQueue = await submitToReviewQueue(posts, options)
 
     return {
       ok: true,
@@ -491,6 +569,7 @@ export async function runInstagramDiscovery(
       totals,
       posts,
       queryFailures,
+      reviewQueue,
       ...(artifactPath ? { artifactPath } : {}),
     } satisfies InstagramDiscoveryWorkflowSuccess
   } catch (error) {
@@ -620,7 +699,7 @@ const reportStep = createStep({
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(inputData.posts, {})
+    const reviewQueue = await submitToReviewQueue(inputData.posts, {})
 
     return {
       ok: true as const,
@@ -628,6 +707,7 @@ const reportStep = createStep({
       totals: inputData.totals,
       posts: inputData.posts,
       queryFailures: inputData.queryFailures,
+      reviewQueue,
       ...(artifactPath ? { artifactPath } : {}),
     }
   },
@@ -655,14 +735,25 @@ export async function launchInstagramDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
-  const inputData = await withSavedInstagramSources(parsed.data, {
+  const savedSources = await withSavedInstagramSources(parsed.data, {
     config: getDiscoverySourcesConfig(),
   })
+  if (
+    savedSources.sourceLoadStatus === "failed" &&
+    savedSources.input.handles.length === 0 &&
+    savedSources.input.queries.length === 0
+  ) {
+    return failure("sources_unavailable", {
+      mastraRunId: runId,
+      retryable: true,
+      details: "saved Instagram sources could not be loaded",
+    })
+  }
 
   const run = await instagramAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData })
+    result = await run.start({ inputData: savedSources.input })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??
@@ -698,7 +789,12 @@ function routeStatusForResult(
 ): number {
   if (result.ok) return 200
   if (result.reason === "invalid_input") return 400
-  if (result.reason === "config_missing") return 503
+  if (
+    result.reason === "config_missing" ||
+    result.reason === "sources_unavailable"
+  ) {
+    return 503
+  }
   return 502
 }
 

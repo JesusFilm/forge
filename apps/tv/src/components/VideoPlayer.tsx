@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { ReactNode } from "react"
 import {
   AccessibilityInfo,
   Animated,
@@ -16,27 +17,44 @@ import {
   View,
 } from "react-native"
 import { useVideoPlayer, VideoView, type VideoPlayerStatus } from "expo-video"
+import { LinearGradient } from "expo-linear-gradient"
+import Ionicons from "@expo/vector-icons/Ionicons"
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { TVFocusGuideView } from "./TVFocusGuideView"
-import { COLORS, hexToRgba } from "../lib/colors"
 import { scale } from "../lib/scale"
+import { datadogLog, reportDatadogError } from "../lib/datadog"
+import { extractMuxPlaybackId } from "../lib/muxUrl"
+import {
+  createVideoQoeSession,
+  sanitizeVideoErrorMessage,
+  shouldCountRebuffer,
+} from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
+import { WATCH_THEME } from "./watch/watchDetailTheme"
+import { focusTransform, useFocusAnimation } from "./watch/useFocusAnimation"
+import { AnimatedFocusIcon } from "./watch/AnimatedFocusIcon"
 
-// ── Shared Visual Tokens ───────────────────────────────────────────────────
-// Player chrome uses the app-wide Crimson Gallery tokens (see ../lib/colors).
-// The warm-salmon palette previously pinned here (from an early Stitch
-// mockup) has been retired — the player now visually matches the rest of
-// the TV app (FocusableCard, ContentRail, etc.).
-const TRACK_BG = COLORS.surfaceContainerHighest // progress track fill
-const GLASS_BG = hexToRgba(COLORS.surfaceContainer, 0.8) // frosted-glass panel
+type IconName = React.ComponentProps<typeof Ionicons>["name"]
+
+// Caption resting/lifted offsets (reference dp; SubtitleOverlay scales them).
+// Resting sits near the bottom edge; lifted clears the full bottom chrome
+// (inset + times + scrubber + gap + play circle) plus breathing room.
+const SUBTITLE_BOTTOM_RESTING = 64
+const SUBTITLE_BOTTOM_LIFTED = 272
+
+// ── Visual language (U8) ───────────────────────────────────────────────────
+// Player chrome per the "Forge TV Video Page" handoff. Shares WATCH_THEME +
+// useFocusAnimation with the details page so screen → fullscreen reads as one
+// surface; the pills carry the SAME icons as the details page's pickers.
 
 // ── SVG-free Icon Components ───────────────────────────────────────────────
 
 /** Two vertical bars — pure View-based pause icon */
 function PauseIcon({
   size = 24,
-  color = COLORS.text,
+  color = WATCH_THEME.accentText,
 }: {
   size?: number
   color?: string
@@ -78,7 +96,7 @@ function PauseIcon({
 /** Right-pointing triangle — pure View-based play icon */
 function PlayIcon({
   size = 24,
-  color = COLORS.text,
+  color = WATCH_THEME.accentText,
 }: {
   size?: number
   color?: string
@@ -110,6 +128,462 @@ function PlayIcon({
   )
 }
 
+// ── Chrome building blocks (U8) ─────────────────────────────────────────────
+// Module-level (NOT inside VideoPlayer) so identity is stable across host
+// re-renders — an inline component would remount per render and drop tvOS
+// focus. Each owns its useFocusAnimation; host threads scheduleHide via onFocus.
+
+/** Rest→ink icon cross-fade. Icon colour is a prop (not an animatable style),
+    so the flip is two stacked copies with opposing opacity — same trick as
+    AnimatedFocusIcon, generalised to any glyph via a render prop. */
+function FocusCrossfade({
+  progress,
+  size,
+  render,
+}: {
+  progress: Animated.Value
+  size: number
+  render: (color: string) => ReactNode
+}) {
+  // Memoized: progress is a stable ref, so the interpolation is built once
+  // rather than on every host re-render (the host re-renders at ~1Hz from
+  // timeUpdate) — same rationale as DetailsActionRow's pills.
+  const restOpacity = useMemo(
+    () => ({
+      opacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 0],
+      }),
+    }),
+    [progress],
+  )
+  return (
+    <View style={{ width: size, height: size }}>
+      <Animated.View style={[styles.crossfadeLayer, restOpacity]}>
+        {render(WATCH_THEME.text)}
+      </Animated.View>
+      <Animated.View style={[styles.crossfadeLayer, { opacity: progress }]}>
+        {render(WATCH_THEME.focusInk)}
+      </Animated.View>
+    </View>
+  )
+}
+
+/** Glass Back pill, top-left. The Pressable spans the full row width so the
+    tvOS spatial engine can traverse DOWN into the transport column (same
+    full-width-hit pattern as before the restyle); only the pill is visible. */
+function BackPill({
+  onPress,
+  onFocusActivity,
+  focusable,
+  hasTVPreferredFocus,
+  accessibilityLabel,
+}: {
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  hasTVPreferredFocus: boolean
+  accessibilityLabel: string
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: progress is a stable ref, so the interpolations are built once
+  // rather than on every host re-render (1Hz timeUpdate) — matches
+  // DetailsActionRow's pills.
+  const pillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  const inkStyle = useMemo(
+    () => ({
+      color: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    }),
+    [progress],
+  )
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      focusable={focusable}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      style={styles.backHit}
+    >
+      <Animated.View style={[styles.backPill, pillStyle]}>
+        <FocusCrossfade
+          progress={progress}
+          size={scale(24)}
+          render={(color) => (
+            <Ionicons name="chevron-back" size={scale(24)} color={color} />
+          )}
+        />
+        <Animated.Text style={[styles.backText, inkStyle]}>Back</Animated.Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** 84px circular glass transport button (−10 / +10). White-fill focus. */
+function CircleControl({
+  icon,
+  onPress,
+  onFocusActivity,
+  focusable,
+  dimmed,
+  accessibilityLabel,
+}: {
+  icon: "replay-10" | "forward-10"
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  dimmed: boolean
+  accessibilityLabel: string
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render.
+  const circleStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.6],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      focusable={focusable}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      style={dimmed && styles.controlDisabled}
+    >
+      <Animated.View style={[styles.circleBtn, circleStyle]}>
+        <FocusCrossfade
+          progress={progress}
+          size={scale(38)}
+          render={(color) => (
+            <MaterialIcons name={icon} size={scale(38)} color={color} />
+          )}
+        />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** 98px accent play/pause circle. Stays accent-filled when focused; the focus
+    signal is a white ring (animated borderColor — constant width, no layout
+    shift) + the shared lift/magnify, mirroring the details page's PlayPill. */
+function PlayCircle({
+  isPaused,
+  onPress,
+  onFocusActivity,
+  focusable,
+  dimmed,
+  hasTVPreferredFocus,
+}: {
+  isPaused: boolean
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  dimmed: boolean
+  hasTVPreferredFocus: boolean
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render.
+  const ringStyle = useMemo(
+    () => ({
+      borderColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      focusable={focusable}
+      accessibilityLabel={isPaused ? "Play" : "Pause"}
+      accessibilityRole="button"
+      // selected=playing: machine-readable play state so automated D-pad
+      // drivers can branch on accessibilityState instead of parsing the label.
+      accessibilityState={{ selected: !isPaused }}
+      style={dimmed && styles.controlDisabled}
+    >
+      <Animated.View style={[styles.playBtn, ringStyle]}>
+        {isPaused ? (
+          <PlayIcon size={scale(42)} color={WATCH_THEME.accentText} />
+        ) : (
+          <PauseIcon size={scale(42)} color={WATCH_THEME.accentText} />
+        )}
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** Two-line glass menu pill, bottom-right — the in-player menu triggers
+    (Language / Subtitles). Carries the SAME Ionicons as the details page's
+    pickers (AnimatedFocusIcon) so the two surfaces read as one grammar. */
+function MenuPill({
+  icon,
+  label,
+  sub,
+  onPress,
+  onFocusActivity,
+  focusable,
+  dimmed,
+}: {
+  icon: IconName
+  label: string
+  sub: string | null
+  onPress: () => void
+  onFocusActivity: () => void
+  focusable: boolean
+  dimmed: boolean
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render.
+  const pillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
+  const labelInk = useMemo(
+    () => ({
+      color: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    }),
+    [progress],
+  )
+  const subInk = useMemo(
+    () => ({
+      color: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text62, "rgba(0,0,0,0.5)"],
+      }),
+    }),
+    [progress],
+  )
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => {
+        setFocused(true)
+        onFocusActivity()
+      }}
+      onBlur={() => setFocused(false)}
+      focusable={focusable}
+      // Fold the visible sub-value into the label so VoiceOver and automated
+      // D-pad drivers can read the state without activating the picker
+      // (mirrors DetailsActionRow's SecondaryPill).
+      accessibilityLabel={sub ? `${label}, ${sub}` : label}
+      accessibilityRole="button"
+      style={dimmed && styles.controlDisabled}
+    >
+      <Animated.View style={[styles.asPill, pillStyle]}>
+        <AnimatedFocusIcon name={icon} progress={progress} size={scale(26)} />
+        <View style={styles.asCap}>
+          <Animated.Text style={[styles.asLabel, labelInk]} numberOfLines={1}>
+            {label}
+          </Animated.Text>
+          {sub != null && (
+            <Animated.Text style={[styles.asSub, subInk]} numberOfLines={1}>
+              {sub}
+            </Animated.Text>
+          )}
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** Focusable scrubber: thin track at rest; focused, it thickens with a white
+    thumb + time bubble. Left/right seeking is handled by the host's TV-event
+    listener — the wrapper traps horizontal focus, so a press becomes a seek. */
+function PlayerScrubber({
+  progressPct,
+  bufferedPct,
+  bubbleText,
+  onPress,
+  onFocusChange,
+  focusable,
+  dimmed,
+}: {
+  progressPct: number
+  bufferedPct: number
+  bubbleText: string
+  onPress: () => void
+  onFocusChange: (focused: boolean) => void
+  focusable: boolean
+  dimmed: boolean
+}) {
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: interpolations built once per mount, not per 1Hz host render
+  // (the percent-left position styles below NEED to rebuild each tick — only
+  // the focus-driven interpolations are stable).
+  const trackStyle = useMemo(
+    () => ({
+      height: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [scale(8), scale(13)],
+      }),
+    }),
+    [progress],
+  )
+  const thumbScale = useMemo(
+    () => ({
+      transform: [
+        {
+          scale: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 1],
+          }),
+        },
+      ],
+    }),
+    [progress],
+  )
+  const bubbleRise = useMemo(
+    () => ({
+      opacity: progress,
+      transform: [
+        {
+          translateY: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [scale(6), 0],
+          }),
+        },
+      ],
+    }),
+    [progress],
+  )
+  return (
+    <TVFocusGuideView trapFocusLeft trapFocusRight>
+      <Pressable
+        onPress={onPress}
+        onFocus={() => {
+          setFocused(true)
+          onFocusChange(true)
+        }}
+        onBlur={() => {
+          setFocused(false)
+          onFocusChange(false)
+        }}
+        focusable={focusable}
+        accessibilityLabel={`Seek bar, ${bubbleText}`}
+        accessibilityRole="adjustable"
+        style={[styles.scrubWrap, dimmed && styles.controlDisabled]}
+      >
+        <Animated.View style={[styles.scrubTrack, trackStyle]}>
+          <View style={[styles.scrubBuf, { width: `${bufferedPct}%` }]} />
+          <View style={[styles.scrubFill, { width: `${progressPct}%` }]} />
+        </Animated.View>
+        <Animated.View
+          style={[styles.scrubThumb, { left: `${progressPct}%` }, thumbScale]}
+        />
+        <Animated.View
+          style={[styles.scrubBubble, { left: `${progressPct}%` }, bubbleRise]}
+        >
+          <Text style={styles.scrubBubbleText}>{bubbleText}</Text>
+        </Animated.View>
+      </Pressable>
+    </TVFocusGuideView>
+  )
+}
+
+/** Pre-playback veil: dim layer + rotating accent ring. pointerEvents="none"
+    so focus engine + autoplay retry keep working beneath it. Looped single
+    timing + interpolation on native driver — a looped sequence runs once on Fabric. */
+function LoadingVeil() {
+  const spin = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [spin])
+  return (
+    // collapsable={false} keeps the veil above the Android TV VideoView
+    // SurfaceView (same convention as the scrims/chrome layers). The label
+    // gives automated drivers a stable node to poll for "player ready".
+    <View
+      style={styles.veil}
+      pointerEvents="none"
+      collapsable={false}
+      accessibilityLabel="Loading, starting playback"
+    >
+      <Animated.View
+        style={[
+          styles.veilRing,
+          {
+            transform: [
+              {
+                rotate: spin.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0deg", "360deg"],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Text style={styles.veilText}>Starting playback…</Text>
+    </View>
+  )
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type VideoPlayerProps = {
@@ -130,29 +604,31 @@ export function VideoPlayer({
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  // Buffered head (seconds) from timeUpdate — drives the scrubber's buffer
+  // hint. -1 from native means "unknown"; we clamp at render.
+  const [buffered, setBuffered] = useState(0)
+  // First playingChange(true) drops the loading veil for good — buffering
+  // stalls later in playback must NOT bring the full veil back (U5's
+  // statusChange path owns mid-play buffering UX).
+  const [hasStarted, setHasStarted] = useState(false)
 
-  // Focus states for each interactive element
-  const [backFocused, setBackFocused] = useState(false)
-  const [playFocused, setPlayFocused] = useState(false)
-  const [rewindFocused, setRewindFocused] = useState(false)
-  const [forwardFocused, setForwardFocused] = useState(false)
-  const [menuFocused, setMenuFocused] = useState(false)
+  // Per-control focus visuals live in the chrome components. Host only tracks
+  // scrubber focus (via ref) because the TV-event listener turns left/right
+  // into seeks while the scrubber owns focus.
+  const scrubFocusedRef = useRef(false)
 
-  // Fix #5: One-shot flag so `hasTVPreferredFocus` is only true on the
-  // first render. Moved out of the render body into useEffect so React
-  // StrictMode's double-invoke doesn't consume the flag before first
-  // commit (dev-only regression). Leaving it true on every render would
-  // re-steal focus on every state change (react-native-tvos#839).
+  // Fix #5: One-shot flag — `hasTVPreferredFocus` true only on first render;
+  // leaving it true re-steals focus on every state change (react-native-tvos#839).
+  // In useEffect so StrictMode double-invoke doesn't consume it before first commit.
   const [shouldRequestFocus, setShouldRequestFocus] = useState(true)
   useEffect(() => {
     setShouldRequestFocus(false)
   }, [])
 
   // ── Auto-hide state machine (U1 foundation; wired in Units 2-7) ─────
-  // Visibility + focusability drive the chrome fade. `status` mirrors the
-  // expo-video VideoPlayerStatus enum so Unit 5 can branch on buffering
-  // vs error. Accessibility state gates auto-hide entirely (screen reader)
-  // and switches the fade to a snap (reduce motion).
+  // Visibility + focusability drive the chrome fade. `status` mirrors expo-video's
+  // VideoPlayerStatus so U5 can branch on buffering vs error. Accessibility state
+  // gates auto-hide (screen reader) and snaps the fade (reduce motion).
   const [controlsVisible, setControlsVisible] = useState(true)
   const [controlsFocusable, setControlsFocusable] = useState(true)
   const [status, setStatus] = useState<VideoPlayerStatus>("idle")
@@ -160,10 +636,9 @@ export function VideoPlayer({
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false)
   const [isReduceMotionEnabled, setIsReduceMotionEnabled] = useState(false)
 
-  // One-shot focus flags (I6). Each is set true by reveal entry / error
-  // entry respectively and cleared after the render that consumed it,
-  // mirroring Fix #5's `hasTVPreferredFocus` pattern. The if-guard inside
-  // the useEffect prevents the false→false invocation from looping.
+  // One-shot focus flags (I6): set by reveal/error entry, cleared after the
+  // render that consumed it (mirrors Fix #5). The if-guard inside the useEffect
+  // prevents the false→false invocation from looping.
   const [revealFocusPending, setRevealFocusPending] = useState(false)
   useEffect(() => {
     if (revealFocusPending) setRevealFocusPending(false)
@@ -173,17 +648,15 @@ export function VideoPlayer({
     if (errorFocusPending) setErrorFocusPending(false)
   }, [errorFocusPending])
 
-  // Inactivity timer (I3) and shared Animated.Value for chrome opacity.
-  // The timer uses a ref so rapid D-pad resets don't trigger re-renders;
-  // `opacityAnim` is populated once per mount and driven imperatively
-  // from hide/reveal helpers (Unit 2).
+  // Inactivity timer (I3) + shared Animated.Value for chrome opacity. Timer is
+  // a ref so rapid D-pad resets don't re-render; opacityAnim is driven
+  // imperatively from the hide/reveal helpers (Unit 2).
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const opacityAnim = useRef(new Animated.Value(1)).current
 
-  // Clear any pending inactivity timer + in-flight hide animation on
-  // unmount, and flip isMountedRef so late-arriving native emissions
-  // bail out. This prevents setState-on-unmounted warnings from
-  // dangling expo-video callbacks (P1.2 + P2.3).
+  // On unmount: clear pending inactivity timer + in-flight hide animation and
+  // flip isMountedRef so late native emissions bail — prevents
+  // setState-on-unmounted warnings from dangling expo-video callbacks (P1.2 + P2.3).
   useEffect(() => {
     return () => {
       isMountedRef.current = false
@@ -199,33 +672,32 @@ export function VideoPlayer({
   }, [])
 
   // Stable handler refs bridge subscription owners (this unit) and handler
-  // implementers (Units 2-3). Without this pattern, subscriptions would
-  // re-register every time the handlers closed over fresh state, churning
-  // the underlying native event emitter. Mirrors Fix #15's `onDismissRef`.
+  // implementers (Units 2-3) — without them, subscriptions re-register on every
+  // state change and churn the native emitter. Mirrors Fix #15's `onDismissRef`.
   const scheduleHideRef = useRef<() => void>(() => {})
   const revealControlsRef = useRef<() => void>(() => {})
+  // Seek handlers behind refs so the ref-stable TV-event callback can seek
+  // (scrub-focused left/right) without re-binding on duration changes.
+  const seekBackwardRef = useRef<() => void>(() => {})
+  const seekForwardRef = useRef<() => void>(() => {})
   const controlsVisibleRef = useRef(true)
   const isScreenReaderEnabledRef = useRef(false)
   const menuKeyEnabledRef = useRef(false)
 
-  // Mirror the gating state into refs so scheduleHide reads ground-truth
-  // values when invoked synchronously from native event callbacks (e.g.
-  // playingChange, statusChange) — before React has committed the state
-  // updates those callbacks just queued. useEffect mirrors update post-
-  // commit and serve as the fall-back; the handlers eagerly sync the
-  // relevant ref BEFORE calling scheduleHideRef so the new gating value
-  // is already in place when the guard runs.
+  // Mirror gating state into refs so scheduleHide reads ground-truth when called
+  // synchronously from native callbacks before React commits. Handlers eagerly
+  // sync the ref BEFORE scheduleHideRef; useEffect mirrors are the post-commit fallback.
   const isPausedRef = useRef(false)
   const statusRef = useRef<VideoPlayerStatus>("idle")
   const hasErrorRef = useRef(false)
   const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+  // Ground-truth "playback has started" for the QoE rebuffer gate, read from the
+  // ref-stable statusChange callback (state would be stale in that closure).
+  const hasStartedRef = useRef(false)
 
-  // isMountedRef guards the handlers of external emissions (expo-video
-  // native events, setTimeout callbacks) from invoking setState after
-  // the component has unmounted. Fix #24's try/catch only catches
-  // thrown onDismiss — it does NOT cover the "callback fires on an
-  // unmounted component" case. Set to false once in the unmount effect
-  // below. P2.3 / reliability rel-2 + rel-3.
+  // isMountedRef guards external-emission handlers (native events, setTimeout)
+  // from setState after unmount — Fix #24's try/catch only catches thrown
+  // onDismiss, not the "callback fires on unmounted component" case. P2.3 / rel-2+3.
   const isMountedRef = useRef(true)
 
   // Keep mirror refs in sync with their state so Unit 3's useTVEventHandler
@@ -245,17 +717,14 @@ export function VideoPlayer({
   useEffect(() => {
     hasErrorRef.current = hasError
   }, [hasError])
+  useEffect(() => {
+    hasStartedRef.current = hasStarted
+  }, [hasStarted])
 
   // ── Screen-reader transition side-effects (U7) ──────────────────────
-  // When SR toggles mid-session, the chrome has to respond:
-  //   - on  → reveal if currently hidden (the user just gained access
-  //     to controls they couldn't navigate) + audible confirmation.
-  //   - off → rearm the inactivity timer so chrome eventually retreats
-  //     again; without this, a passive viewer who briefly toggled VO
-  //     on-then-off would be stuck with permanent controls until they
-  //     pressed D-pad.
-  // The `srSeededRef` guard skips the first invocation so we don't fire
-  // side-effects on the mount-time seed from AccessibilityInfo.
+  // SR toggled mid-session: on → reveal-if-hidden + audible confirm; off →
+  // rearm inactivity timer (else a brief VO on/off leaves chrome stuck visible).
+  // srSeededRef skips the mount-time seed so side-effects don't fire on it.
   const srSeededRef = useRef(false)
   useEffect(() => {
     if (!srSeededRef.current) {
@@ -272,10 +741,9 @@ export function VideoPlayer({
     }
   }, [isScreenReaderEnabled])
 
-  // Accessibility: seed + subscribe to screen-reader and reduce-motion
-  // state. Auto-hide is disabled while a screen reader is active (D13);
-  // reduce-motion switches the fade to an instant snap (D8 reduce-motion
-  // path). Standard AccessibilityInfo reduce-motion subscription shape.
+  // Accessibility: seed + subscribe to screen-reader and reduce-motion. Auto-hide
+  // is disabled while a screen reader is active (D13); reduce-motion snaps the
+  // fade instantly (D8).
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setIsReduceMotionEnabled)
     AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled)
@@ -301,24 +769,9 @@ export function VideoPlayer({
     }
   }, [])
 
-  // Foreground resume (D12 + U6): on AppState 'active', always snap
-  // controls visible, restore a one-shot focus claim (so tvOS
-  // UIFocusEngine has a target — matches react-native-tvos #852), and
-  // rearm a fresh 3 s timer.
-  //   - `hasError` branch: skip scheduleHide entirely (error state
-  //     keeps chrome visible permanently) AND route focus to the back
-  //     pill via errorFocusPending since it is the only meaningful
-  //     control in the error state.
-  //   - Non-error branch: route focus to play/pause via
-  //     revealFocusPending (P1.4 / julik-5). Without this flag, the
-  //     catcher unmounts on foreground but hasTVPreferredFocus has no
-  //     signal to claim focus on play/pause — UIFocusEngine orphans.
-  //   - `isPaused` branch: handled IMPLICITLY. scheduleHide's internal
-  //     guard bails on isPausedRef (Unit 2), so calling it here through
-  //     scheduleHideRef is a no-op when the player is paused. No
-  //     explicit guard needed.
-  // Playback resume behaviour is out of scope per the plan's deferred
-  // items — we don't touch player.play()/pause() here.
+  // Foreground resume (D12 + U6): snap controls visible + restore a one-shot focus
+  // claim (UIFocusEngine needs a target, rn-tvos#852). Error → focus back pill, skip
+  // scheduleHide; else focus play/pause (P1.4, else orphans). Don't touch play/pause.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (next !== "active") return
@@ -347,10 +800,9 @@ export function VideoPlayer({
     }
   }, [opacityAnim])
 
-  // tvOS: claim the hardware Menu key so Expo Router's Stack does not
-  // auto-pop before our BackHandler path runs (Unit 3 wires the handler).
-  // menuKeyEnabledRef bookkeeps whether enable succeeded so cleanup only
-  // runs when there is something to release.
+  // tvOS: claim the hardware Menu key so Expo Router's Stack doesn't auto-pop
+  // before our BackHandler runs (U3). menuKeyEnabledRef tracks whether enable
+  // succeeded so cleanup only releases when there's something to release.
   useEffect(() => {
     if (!Platform.isTV) return
     try {
@@ -371,22 +823,9 @@ export function VideoPlayer({
   }, [])
 
   // ── TV event routing (U3) ──────────────────────────────────────────
-  // Ref-stable TV-event callback reads controlsVisibleRef and
-  // isScreenReaderEnabledRef so the underlying native emitter doesn't
-  // re-register on every render (which would drop events during rapid
-  // state changes). Used for directional / Select / media-key input;
-  // hardware Menu goes through BackHandler below (single-channel, no
-  // double-fire).
-  //
-  // IMPORTANT: we DENYLIST synthetic focus/pan events on the hidden-
-  // state branch. react-native-tvos emits synthetic `focus`/`blur`/
-  // `pan*` events when the engine reassigns focus — including when
-  // the catcher mounts with hasTVPreferredFocus. An earlier strict-
-  // whitelist approach (P2.2 pre-fix) excluded these correctly but
-  // ALSO excluded hardware media buttons (playPause/fastForward/
-  // rewind) that some Android TV remotes and Siri remote gen-1 emit,
-  // silently dropping them while chrome was hidden. Denylist flips
-  // that: anything not-synthetic is treated as user intent.
+  // Ref-stable callback reads refs so the native emitter doesn't re-register per
+  // render. DENYLIST synthetic focus/pan events: an earlier whitelist (P2.2 pre-fix)
+  // also dropped hardware media buttons, so anything not-synthetic = user intent.
   const onTVEvent = useCallback(
     (evt: { eventType?: string } | null | undefined) => {
       if (evt == null) return
@@ -404,11 +843,23 @@ export function VideoPlayer({
         revealControlsRef.current()
         return
       }
-      // Visible state: Siri-remote swipes don't fire Pressable.onFocus,
-      // so they won't reset the timer via the usual D14 path. Catch them
-      // here so every D-pad activity resets the timer as D14 requires.
-      // Arrow / Select events already reset via Pressable onFocus/onPress.
-      // Same treatment for hardware media keys — they're user intent.
+      // Scrubber-focused left/right = seek (U8). The wrapper traps horizontal
+      // focus, so the press can't move focus — translate it into a ±10s seek.
+      if (scrubFocusedRef.current) {
+        if (type === "left" || type === "swipeLeft") {
+          seekBackwardRef.current()
+          scheduleHideRef.current()
+          return
+        }
+        if (type === "right" || type === "swipeRight") {
+          seekForwardRef.current()
+          scheduleHideRef.current()
+          return
+        }
+      }
+      // Siri-remote swipes don't fire Pressable.onFocus, so reset the D14 timer
+      // here (arrows/Select already reset via onFocus/onPress). Hardware media
+      // keys get the same treatment — they're user intent.
       if (
         type.indexOf("swipe") === 0 ||
         type === "playPause" ||
@@ -422,13 +873,18 @@ export function VideoPlayer({
   )
   useTVEventHandler(onTVEvent)
 
-  // Hardware Menu (tvOS) + hardware Back (Android TV) via BackHandler.
-  // react-native-tvos's BackHandler bridges the tvOS Menu event into
-  // 'hardwareBackPress', so one subscription covers both platforms.
-  // Returning `true` consumes the event and prevents Expo Router's Stack
-  // from popping (combined with TVEventControl.enableTVMenuKey on tvOS).
+  // Hardware Menu (tvOS) + Back (Android TV) via BackHandler — rn-tvos bridges the
+  // tvOS Menu event into 'hardwareBackPress', so one subscription covers both.
+  // Returning `true` consumes it so Expo Router's Stack doesn't pop.
   useEffect(() => {
     const handler = () => {
+      // In-player menu open: Back closes the MENU, not playback — else the menu
+      // was a trap (Back exited the video). menuOpenRef/closeMenu declared below;
+      // closure runs post-commit and both identities are stable.
+      if (menuOpenRef.current) {
+        closeMenu()
+        return true
+      }
       if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
         revealControlsRef.current()
         return true
@@ -447,20 +903,9 @@ export function VideoPlayer({
   }, [])
 
   // ── Frozen creation source (U7 — load-bearing) ──────────────────────
-  // useVideoPlayer recreates (and RELEASES) the player whenever its source
-  // argument changes — its dependency is JSON.stringify(source). Before this
-  // unit the overlay was safe because VideoPlayerOverlay unmounts/remounts the
-  // whole component per playVideo, so the source never changed in place. Live
-  // dub-switching removes that safety: a session dub change would otherwise
-  // recreate the player mid-play (black/stuck frame). So we FREEZE the source
-  // passed to useVideoPlayer to the first value and route every later swap
-  // through player.replaceAsync on the SAME instance (the effect below). The
-  // player instance identity is therefore stable across a dub switch.
-  //
-  // Fix #6: Seed duration synchronously from the initializer. `sourceLoad`
-  // can fire before the useEffect subscription mounts, especially on a
-  // warmed player. Without seeding, duration stays 0 forever and the end
-  // time displays "--:--". The listener below stays as the update path.
+  // useVideoPlayer recreates+RELEASES the player on source change, so live dub-switching
+  // would kill it mid-play (black frame): FREEZE source to first value, route swaps through
+  // replaceAsync. Fix #6: seed duration in the initializer — sourceLoad can fire pre-subscription.
   const creationSource = useRef(streamingUrl).current
   const player = useVideoPlayer(creationSource, (p) => {
     p.timeUpdateEventInterval = 1
@@ -469,34 +914,53 @@ export function VideoPlayer({
     }
   })
 
+  // ── Playback QoE session (U13) ──────────────────────────────────────
+  // Pure accumulator created once per session (mount = ttff origin). content_id
+  // is the Mux playback id, never the title (PII); emits fire from the existing
+  // listeners below via safeDatadogCall-guarded wrappers, so they never throw.
+  const contentIdRef = useRef<string | null>(null)
+  const qoeRef = useRef<ReturnType<typeof createVideoQoeSession> | null>(null)
+  if (qoeRef.current == null) {
+    contentIdRef.current = extractMuxPlaybackId(creationSource)
+    qoeRef.current = createVideoQoeSession({ contentId: contentIdRef.current })
+  }
+
+  // QoE completion summary — emitted on whichever of playToEnd OR unmount fires
+  // first (finalize is guarded to emit once). Most sessions end via Back/unmount,
+  // so this cleanup is what captures abandonment QoE.
+  useEffect(() => {
+    return () => {
+      const summary = qoeRef.current?.finalize("abandoned")
+      if (summary != null) datadogLog.info("video_playback.summary", summary)
+    }
+  }, [])
+
   // Fix #15: Stable onDismiss via ref so the playToEnd listener isn't
   // re-registered every parent render (which would open a window where
   // playToEnd events are dropped).
   const onDismissRef = useRef(onDismiss)
   onDismissRef.current = onDismiss
 
-  // Fix #4: Seeking guard. While this ref holds a positive value, in-flight
-  // `timeUpdate` events are ignored so the optimistic seek position isn't
-  // overwritten by a stale native emission. Cleared when a timeUpdate at
-  // or past the target arrives.
+  // Fix #4: Seeking guard. While this ref holds a target, in-flight timeUpdate
+  // events are ignored so a stale emission can't overwrite the optimistic seek
+  // position. Cleared when a timeUpdate at or past the target arrives.
   const seekTargetRef = useRef<number | null>(null)
 
   // ── Session-driven playback (U7) ────────────────────────────────────
-  // All session-only behavior — the in-player menu, the stale-session-safe
-  // `menuActive` gate, the live dub-switch, the Mux auto-subtitle disabling, and
-  // the active-VTT resolution — lives in this hook. It is INERT for
-  // experience-card playback (no session): `menuActive` is false, the dub-switch
-  // short-circuits on the frozen source, and `activeVttSrc` is null. The host
-  // threads the shared auto-hide refs + seek guard + a one-shot reveal-focus
-  // trigger so the hook can suppress/re-arm auto-hide on menu open/close and
-  // clear the seek guard on a dub switch without reaching into module globals.
+  // All session-only behavior (in-player menu, live dub-switch, VTT) lives here;
+  // INERT for experience-card playback. Host threads shared auto-hide refs + seek
+  // guard + reveal-focus trigger so the hook can re-arm auto-hide without globals.
   const {
     menuActive,
     menuOpen,
+    menuSection,
     menuOpenRef,
     openMenu,
     closeMenu,
     activeVttSrc,
+    audioLabel,
+    subtitleLabel,
+    sourceSwappingRef,
   } = useSessionPlayback({
     player,
     streamingUrl,
@@ -507,11 +971,9 @@ export function VideoPlayer({
     onRequestRevealFocus: () => setRevealFocusPending(true),
   })
 
-  // Auto-play on mount. Wrap in try-catch because on tvOS the player may
-  // not be ready when the effect first fires (expo-video silently ignores
-  // play() in the setup callback; the separate useEffect can also race).
-  // Retry once after a short delay if the first attempt doesn't start,
-  // but only if the user hasn't paused in the meantime.
+  // Auto-play on mount. try-catch because on tvOS the player may not be ready when
+  // the effect first fires. Retry once after a short delay if it didn't start,
+  // but only if the user hasn't paused meanwhile.
   useEffect(() => {
     let cancelled = false
     try {
@@ -535,24 +997,13 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // Listen to playToEnd for auto-dismiss.
-  // Fix #15: Depends only on [player] (+ opacityAnim for U6); dismiss is
-  // read through a ref.
-  // Fix #24: Wrap the dismiss call so a throwing onDismiss doesn't
-  // propagate into expo-video's native event dispatch path.
-  // U6: If the chrome is hidden when the video ends, snap it visible for
-  // one paint before dispatching onDismiss. Intent is imperceptible
-  // technical continuity (no black frame) — NOT a visible flash.
-  // setTimeout(0) is used rather than requestAnimationFrame because rAF's
-  // mapping to the native paint thread is less well-specified under
-  // react-native-tvos; if on-device QA ever shows a black frame on a
-  // hidden-to-dismissed transition, switch to requestAnimationFrame.
+  // playToEnd → auto-dismiss. Fix #15: deps [player]+opacityAnim, dismiss via ref.
+  // Fix #24: wrap dismiss so a throw can't reach expo-video's dispatch. U6: if chrome
+  // hidden, snap visible one paint first via setTimeout(0) (rAF's native-paint mapping under-specified on rn-tvos).
   useEffect(() => {
     const doDismiss = () => {
-      // P2.3: if the component has since unmounted, don't fire the
-      // dismiss callback against a dead tree. The parent's onDismiss
-      // typically triggers navigation, which could race with Expo
-      // Router's own unmount path.
+      // P2.3: don't fire dismiss against a dead tree — the parent's onDismiss
+      // triggers navigation, which could race Expo Router's own unmount path.
       if (!isMountedRef.current) return
       try {
         onDismissRef.current()
@@ -561,6 +1012,10 @@ export function VideoPlayer({
       }
     }
     const subscription = player.addListener("playToEnd", () => {
+      // QoE: natural completion. finalize is idempotent — if unmount already
+      // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
+      const summary = qoeRef.current?.finalize("ended")
+      if (summary != null) datadogLog.info("video_playback.summary", summary)
       if (!isMountedRef.current) return
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
@@ -580,27 +1035,33 @@ export function VideoPlayer({
     }
   }, [player, opacityAnim])
 
-  // Track playing state changes.
-  // Fix #25: Guard cleanup for consistency with the unmount-pause guard.
-  // U2: also drive the inactivity timer — clear on pause, rearm on play.
-  // playingChange=isPlaying=true is the authoritative "video actually
-  // started" signal, so it arms the INITIAL 3 s countdown for D1 (see the
-  // separate 2 s mount fallback below).
+  // Track playing state. Fix #25: guard cleanup. U2: drive the inactivity timer
+  // (clear on pause, rearm on play). playingChange=true is the authoritative
+  // "video started" signal, arming the INITIAL 3.5s countdown for D1.
   useEffect(() => {
     const subscription = player.addListener(
       "playingChange",
       ({ isPlaying }) => {
         // P2.3: ignore late-arriving native events after unmount.
         if (!isMountedRef.current) return
-        // Sync the guard ref BEFORE calling scheduleHideRef so the
-        // scheduleHide closure sees the post-transition value. Without
-        // this, the synchronous call happens before React commits the
-        // setIsPaused update, and scheduleHide's `isPausedRef.current`
-        // guard reads the pre-transition value → bails → timer never
-        // arms. Same pattern applied to statusChange below.
+        // Sync the guard ref BEFORE scheduleHideRef so scheduleHide sees the
+        // post-transition value — else the sync call runs before React commits
+        // setIsPaused, the guard reads stale, bails, and the timer never arms.
         isPausedRef.current = !isPlaying
         setIsPaused(!isPlaying)
         if (isPlaying) {
+          // First confirmed playback drops the loading veil permanently (U8).
+          setHasStarted(true)
+          hasStartedRef.current = true
+          // QoE: record + emit time-to-first-frame once (mount → first play).
+          // onFirstPlaying returns null on later calls, so this fires exactly once.
+          const ttffMs = qoeRef.current?.onFirstPlaying()
+          if (ttffMs != null) {
+            datadogLog.info("video_playback.ttff", {
+              content_id: contentIdRef.current,
+              ttff_ms: ttffMs,
+            })
+          }
           scheduleHideRef.current()
         } else if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
@@ -617,10 +1078,9 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // Initial-arming fallback: if playingChange hasn't fired 2 s after mount
-  // (e.g. the stream stalled during autoplay retry), call scheduleHide
-  // anyway so controls don't stick indefinitely. scheduleHide is
-  // idempotent, so the normal playingChange path wins if it fires first.
+  // Initial-arming fallback: if playingChange hasn't fired 2s after mount (e.g.
+  // stream stalled during autoplay retry), call scheduleHide so controls don't
+  // stick. It's idempotent, so the normal playingChange path wins if it fires first.
   useEffect(() => {
     const fallback = setTimeout(() => {
       scheduleHideRef.current()
@@ -633,6 +1093,20 @@ export function VideoPlayer({
   // pre-seek timeUpdate events overwrite the optimistic position.
   useEffect(() => {
     const subscription = player.addListener("timeUpdate", (payload) => {
+      // P2.3: ignore late-arriving native events after unmount (same guard
+      // as playingChange/statusChange).
+      if (!isMountedRef.current) return
+      // QoE: track the playhead for the summary's watched_ms (approximate; the
+      // module keeps only the last value). Pure side-effect, no control flow.
+      qoeRef.current?.onTimeUpdate(payload.currentTime)
+      // Buffer head feeds the scrubber's buffer hint regardless of the seek
+      // guard — it's not a playhead value, so stale emissions can't lie.
+      if (
+        typeof payload.bufferedPosition === "number" &&
+        payload.bufferedPosition >= 0
+      ) {
+        setBuffered(payload.bufferedPosition)
+      }
       const target = seekTargetRef.current
       if (target != null) {
         if (payload.currentTime >= target - 0.1) {
@@ -657,7 +1131,12 @@ export function VideoPlayer({
   // seeded in the useVideoPlayer initializer above).
   useEffect(() => {
     const subscription = player.addListener("sourceLoad", (payload) => {
+      if (!isMountedRef.current) return
       setDuration(payload.duration)
+      // A new source (live dub switch) starts with an empty buffer — without this
+      // reset the scrubber paints the PREVIOUS source's buffered head until the
+      // new source's first timeUpdate (the >= 0 filter keeps stale values through -1).
+      setBuffered(0)
     })
     return () => {
       try {
@@ -668,13 +1147,9 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // U5: expo-video statusChange — drives buffering timer-suspend and
-  // the terminal error state. Status enum is the expo-video
-  // VideoPlayerStatus literal union ('idle' | 'loading' | 'readyToPlay' |
-  // 'error'); no 'buffering' value exists, so 'loading' is the
-  // buffering/suspend signal. Uses `controlsVisibleRef.current` (not the
-  // state) to avoid stale-closure reads of visibility inside the
-  // long-lived subscription callback.
+  // U5: statusChange drives buffering timer-suspend + terminal error. No
+  // 'buffering' value exists in VideoPlayerStatus, so 'loading' is the suspend
+  // signal. Reads controlsVisibleRef (not state) to avoid stale-closure reads.
   useEffect(() => {
     const subscription = player.addListener("statusChange", (payload) => {
       // P2.3: ignore late-arriving native events after unmount.
@@ -688,16 +1163,25 @@ export function VideoPlayer({
       // Terminal error — force chrome visible permanently, focus the
       // back pill. hasError gates all subsequent scheduleHide calls.
       if (next === "error") {
+        // QoE: count + report a tracked RUM error. Sanitize first — the native
+        // message can embed the failing (signed) Mux URL, so cap + strip query.
+        const errorMessage = payload.error?.message
+        qoeRef.current?.onError(errorMessage)
+        reportDatadogError(
+          errorMessage != null
+            ? sanitizeVideoErrorMessage(errorMessage)
+            : "video playback error",
+          { content_id: contentIdRef.current, origin: "video_playback" },
+        )
         hasErrorRef.current = true
         setHasError(true)
         if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
           inactivityTimerRef.current = null
         }
-        // P1.2 / adversarial #4: stop any in-flight hide so its
-        // completion callback doesn't flip controlsVisible=false after
-        // we just force-revealed. Without this, an error landing mid-
-        // fade yields a fleeting "error UI then invisible" flash.
+        // P1.2 / adversarial #4: stop any in-flight hide so its completion
+        // callback doesn't flip controlsVisible=false after a force-reveal — else
+        // an error landing mid-fade flashes "error UI then invisible".
         if (hideAnimRef.current != null) {
           hideAnimRef.current.stop()
           hideAnimRef.current = null
@@ -718,10 +1202,17 @@ export function VideoPlayer({
         // side and the stall is expected. Without this guard the timer
         // would suspend (and force-reveal) on every 10 s skip press.
         if (seekTargetRef.current !== null) return
-        // Genuine network buffering: clear timer (suspend), and force
-        // controls visible if currently hidden so the user isn't left
-        // staring at an invisible stall. revealControlsRef's early-return
-        // de-dup makes this a no-op if already visible.
+        // QoE rebuffer (rule 3): reached only with seekTargetRef null (guarded
+        // above). A "loading" after playback started that is NOT a dub/source
+        // swap is a genuine rebuffer; seeks and swaps must never count.
+        if (
+          shouldCountRebuffer(hasStartedRef.current, sourceSwappingRef.current)
+        ) {
+          qoeRef.current?.onRebuffer()
+        }
+        // Genuine network buffering: suspend the timer and force controls visible
+        // if hidden so the user isn't staring at an invisible stall.
+        // revealControlsRef's early-return makes it a no-op if already visible.
         if (inactivityTimerRef.current != null) {
           clearTimeout(inactivityTimerRef.current)
           inactivityTimerRef.current = null
@@ -732,7 +1223,7 @@ export function VideoPlayer({
         return
       }
 
-      // Resume from buffering — restart the 3 s countdown.
+      // Resume from buffering — restart the 3.5 s countdown.
       if (next === "readyToPlay") {
         scheduleHideRef.current()
         return
@@ -765,10 +1256,9 @@ export function VideoPlayer({
     }
   }, [player])
 
-  // Fix #9: Decide from React state (`isPaused`), not `player.playing`.
-  // Rapid D-pad selects all see the same native value within one event
-  // cycle and issue redundant calls; using React state gives us a single
-  // monotonic source that toggles once per press.
+  // Fix #9: Decide from React state (`isPaused`), not `player.playing` — rapid
+  // D-pad selects all read the same native value in one event cycle and issue
+  // redundant calls; React state is a monotonic source that toggles once per press.
   const togglePlayPause = () => {
     if (isPaused) {
       player.play()
@@ -799,20 +1289,26 @@ export function VideoPlayer({
   }
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
+  const bufferedPct =
+    duration > 0 ? Math.min(100, (buffered / duration) * 100) : 0
+  // Pill sub-captions mirror the details page: Language shows the active dub's
+  // name; Subtitles shows the active track's name, or "Off". (The redundant
+  // top-right status chip was removed — the pills already carry this state.)
+  const subtitlePillSub = menuActive ? (subtitleLabel ?? "Off") : null
+  const remainingLabel =
+    duration > 0
+      ? `−${formatTime(Math.max(0, duration - currentTime))}`
+      : "--:--"
 
   // ── Auto-hide helpers (U2) ──────────────────────────────────────────
-  // hideControls: releases focusability → runs the 150 ms ease-out fade
-  // (or snap under reduce-motion) → flips controlsVisible to false so
-  // Unit 3's catcher mounts. I7 ordering — focusable off BEFORE the fade
-  // starts so UIFocusEngine releases the controls before they're invisible.
-  //
-  // Captures the Animated.CompositeAnimation handle in hideAnimRef so
-  // reveal / error paths can .stop() it, preventing the completion
-  // callback from flipping controlsVisible=false after we just force-
-  // revealed (P1.2 / adversarial #4). The completion callback is guarded
-  // by `finished` — when the animation is stopped, finished=false and we
-  // do NOT apply the "hide complete" state update.
+  // hideControls: release focusability BEFORE the 150ms fade (I7 — UIFocusEngine
+  // releases controls before they're invisible), then controlsVisible=false.
+  // Captures the anim in hideAnimRef so reveal/error can .stop() it (P1.2); `finished` guard skips the hide-complete update when stopped.
   const hideControls = () => {
+    // Eager-clear the scrub-focus mirror BEFORE releasing focusability: onBlur
+    // lands a tick after controlsFocusable flips, so a left/right press in the
+    // 150ms fade window would otherwise seek on an invisibly-fading control.
+    scrubFocusedRef.current = false
     setControlsFocusable(false)
     if (isReduceMotionEnabled) {
       opacityAnim.setValue(0)
@@ -833,15 +1329,9 @@ export function VideoPlayer({
     })
   }
 
-  // scheduleHide: idempotent timer arm. Clears any in-flight timer first,
-  // then only arms a new 3 s if the state supports auto-hide (D3/D15 plus
-  // D9 buffering, D10 error, D13 screen reader gates).
-  //
-  // Reads ground-truth values from refs (not render-closure state) so that
-  // native event callbacks (playingChange, statusChange) can drive this
-  // synchronously before their setState queue has committed. Without the
-  // ref reads, the resume-from-pause and buffering→ready paths would see
-  // stale guard values and bail, leaving auto-hide permanently disarmed.
+  // scheduleHide: idempotent timer arm — clears any in-flight timer, then arms a new
+  // 3.5s only if state supports auto-hide (D3/D15 + D9/D10/D13 gates). Reads refs (not render
+  // state) so native callbacks drive it pre-commit, else resume/buffering→ready stay disarmed.
   const scheduleHide = () => {
     if (inactivityTimerRef.current != null) {
       clearTimeout(inactivityTimerRef.current)
@@ -859,17 +1349,13 @@ export function VideoPlayer({
     ) {
       return
     }
-    inactivityTimerRef.current = setTimeout(hideControls, 3000)
+    // 3.5s per the handoff's player spec (was 3s pre-redesign).
+    inactivityTimerRef.current = setTimeout(hideControls, 3500)
   }
 
-  // revealControls: early-return when already visible to neutralize the
-  // catcher-onPress vs useTVEventHandler-select double-dispatch race in
-  // Unit 3. Does NOT reset opacityAnim before animating — any in-flight
-  // hide animates smoothly from its current mid-fade value, avoiding a
-  // black flash when the user interrupts a hide. Before starting the
-  // reveal we .stop() any in-flight hide animation so its completion
-  // callback doesn't clobber our just-revealed state with a stale
-  // setControlsVisible(false) (P1.2 / reliability rel-1 / julik-9).
+  // revealControls: early-return when already visible to neutralize the catcher vs
+  // TV-event double-dispatch race (U3). Skips opacityAnim reset (interrupted hide animates
+  // from mid-fade, no black flash); .stop()s in-flight hide so it can't clobber the reveal (P1.2).
   const revealControls = () => {
     if (controlsVisibleRef.current) return
     if (hideAnimRef.current != null) {
@@ -897,15 +1383,14 @@ export function VideoPlayer({
   // mirrors Fix #15's `onDismissRef` assignment pattern.
   scheduleHideRef.current = scheduleHide
   revealControlsRef.current = revealControls
+  seekBackwardRef.current = seekBackward
+  seekForwardRef.current = seekForward
 
   return (
     <View style={styles.overlay}>
-      {/* Video fills the entire screen behind everything.
-          The pointerEvents="none" wrapper from the documented pattern
-          (tv-videoview-steals-dpad-focus) blocks AVPlayerLayer rendering
-          on tvOS. In this overlay context, TVFocusGuideView with
-          trapFocus* already contains D-pad navigation, so focusable={false}
-          alone is sufficient. */}
+      {/* Video fills the screen behind everything. The pointerEvents="none"
+          wrapper (tv-videoview-steals-dpad-focus pattern) blocks AVPlayerLayer on
+          tvOS; here trapFocus* already contains D-pad, so focusable={false} suffices. */}
       <VideoView
         style={StyleSheet.absoluteFill}
         player={player}
@@ -915,25 +1400,55 @@ export function VideoPlayer({
       />
 
       {/* ── VTT subtitle layer (U7) ─────────────────────────────────────
-          Passive absolute-positioned cue renderer (pointerEvents="none"
-          internally), above the VideoView but below the chrome. Mounted only
-          when the session is driving this overlay AND captions are on AND a VTT
-          track resolves (activeVttSrc). For experience-card playback
-          (menuActive false) activeVttSrc is null and nothing mounts. It MUST
-          NOT touch the auto-hide state machine (it never does). */}
+          Passive cue renderer above VideoView, below chrome; mounts only when a session drives
+          this overlay + captions on + activeVttSrc resolves. MUST NOT touch the auto-hide state
+          machine — only FOLLOWS controlsVisible (rises above the panel when chrome is up). */}
       {menuActive && activeVttSrc != null && (
-        <SubtitleOverlay player={player} vttSrc={activeVttSrc} />
+        <SubtitleOverlay
+          player={player}
+          vttSrc={activeVttSrc}
+          bottomOffset={
+            controlsVisible ? SUBTITLE_BOTTOM_LIFTED : SUBTITLE_BOTTOM_RESTING
+          }
+          animate
+        />
       )}
 
-      {/* Controls have their own glass backgrounds (GLASS_BG on the
-          controls panel, semi-transparent on the back button pill), so
-          no full-screen scrim is needed. */}
+      {/* ── Scrims (U8) ──────────────────────────────────────────────────
+          Full-bleed top/bottom gradients that fade with the chrome (shared
+          opacityAnim). collapsable={false} keeps them above the Android TV
+          VideoView; pointerEvents="none" keeps them out of the focus engine. */}
+      <Animated.View
+        style={[styles.scrimTop, { opacity: opacityAnim }]}
+        pointerEvents="none"
+        collapsable={false}
+      >
+        <LinearGradient
+          colors={[WATCH_THEME.scrim(0.78), WATCH_THEME.scrim(0)]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      </Animated.View>
+      <Animated.View
+        style={[styles.scrimBottom, { opacity: opacityAnim }]}
+        pointerEvents="none"
+        collapsable={false}
+      >
+        <LinearGradient
+          colors={[
+            WATCH_THEME.scrim(0),
+            WATCH_THEME.scrim(0.55),
+            WATCH_THEME.scrim(0.94),
+          ]}
+          locations={[0, 0.54, 1]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      </Animated.View>
 
-      {/* trapFocus* props prevent focus from escaping to the underlying
-          Stack navigator (which is still mounted behind this overlay).
-          Without trapping, UIFocusEngine may consider the obscured page's
-          focusable elements as potential targets when the user presses
-          D-pad. */}
+      {/* trapFocus* prevents focus escaping to the underlying Stack navigator
+          (still mounted behind this overlay) — else UIFocusEngine may target the
+          obscured page's focusable elements on a D-pad press. */}
       <TVFocusGuideView
         style={styles.contentLayer}
         trapFocusUp
@@ -942,19 +1457,9 @@ export function VideoPlayer({
         trapFocusRight
       >
         {/* ── Invisible D-pad catcher (U3) ────────────────────────
-            Rendered whenever the real controls are non-focusable AND
-            no screen reader is active. Gating on `!controlsFocusable`
-            (not `!controlsVisible`) means the catcher mounts at the
-            start of the hide transition — synchronously with the
-            setControlsFocusable(false) call — so UIFocusEngine has a
-            valid target throughout the 150 ms fade. Gating on
-            `!controlsVisible` was the previous behavior and it dropped
-            D-pad input during the fade (the catcher only mounted after
-            the animation completed). See P1.3 / julik-1.
-            The catcher's Select → revealControls is the primary reveal
-            path on tvOS; useTVEventHandler handles arrows/swipes as a
-            secondary channel. Lives inside contentLayer (above
-            VideoView on Android TV per I9). */}
+            Gate on `!controlsFocusable` (not `!controlsVisible`) so it mounts at the
+            start of the hide fade — UIFocusEngine keeps a target through the 150ms;
+            `!controlsVisible` dropped D-pad input during the fade (P1.3). Select → reveal is primary; useTVEventHandler secondary. */}
         {!controlsFocusable && !isScreenReaderEnabled && (
           <Pressable
             onPress={revealControls}
@@ -967,252 +1472,176 @@ export function VideoPlayer({
           />
         )}
 
-        {/* ── Top Bar ──────────────────────────────────────────────── */}
-        {/* Animated.View wraps the top pill so it fades with the shared
-            opacityAnim. collapsable={false} keeps the RN view in the
-            native hierarchy above the Android TV VideoView surface. */}
+        {/* ── Top Bar (U8) ─────────────────────────────────────────────
+            Glass Back pill; its full-width hit region preserves the spatial column
+            down to the transport. Fades with opacityAnim; collapsable={false} for z-order. */}
         <Animated.View
           style={[styles.topBar, { opacity: opacityAnim }]}
           collapsable={false}
         >
-          {/* Full-width Pressable is the focusable/hit region (needed
-              for tvOS spatial focus traversal to reach play below). The
-              inner View is the visible pill, which hugs its text content. */}
-          <Pressable
+          <BackPill
             onPress={onDismiss}
-            onFocus={() => {
-              setBackFocused(true)
-              scheduleHide()
-            }}
-            onBlur={() => setBackFocused(false)}
+            onFocusActivity={scheduleHide}
             hasTVPreferredFocus={errorFocusPending}
             focusable={controlsFocusable}
             accessibilityLabel={
               subtitle != null ? `Back to ${subtitle}` : "Back"
             }
-            accessibilityRole="button"
-            style={styles.backButtonHit}
-          >
-            <View
-              style={[
-                styles.backButtonPill,
-                backFocused && styles.backButtonPillFocused,
-              ]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.backButtonText,
-                  backFocused && styles.backButtonTextFocused,
-                ]}
-              >
-                {"←  Back" + (subtitle ? ` to ${subtitle}` : "")}
-              </Text>
-            </View>
-          </Pressable>
+          />
         </Animated.View>
 
-        {/* Empty middle spacer — the full-width backButtonHit above and
+        {/* Empty middle spacer — the full-width back hit above and
             centered play button below still share a spatial column, so
             tvOS's UIFocusEngine can traverse DOWN/UP between them. */}
         <View style={styles.spacer} />
 
-        {/* ── Bottom Controls Panel ──────────────────────────────── */}
-        {/* Animated.View wraps the bottom panel so it fades with the
-            shared opacityAnim. collapsable={false} preserves z-order on
-            Android TV above the VideoView surface. */}
+        {/* ── Bottom Controls (U8) ─────────────────────────────────────
+            Three-column row over the bottom scrim (title / transport / pills),
+            then scrubber + times. Fades with opacityAnim; collapsable={false} for z-order. */}
         <Animated.View
-          style={[styles.controlsContainer, { opacity: opacityAnim }]}
+          style={[styles.bottomPanel, { opacity: opacityAnim }]}
           collapsable={false}
         >
-          {/* Title area. On error, the error label replaces the title
-              inline — keeps the bottom-panel layout stable and avoids
-              introducing a separate error overlay. Subtitle stays so
-              the user retains context about what failed. */}
-          <View style={styles.titleRow}>
-            {hasError ? (
-              <Text style={styles.videoTitle} numberOfLines={2}>
-                Playback failed — press Back to exit.
-              </Text>
-            ) : (
-              title != null && (
-                <Text style={styles.videoTitle} numberOfLines={1}>
-                  {title}
+          <View style={styles.infoRow}>
+            {/* Title column. On error, the error label replaces the title
+                inline — keeps the layout stable, no separate error overlay.
+                The subtitle prop renders as the accent eyebrow above. */}
+            <View style={styles.titleCol}>
+              {subtitle != null && !hasError && (
+                <Text style={styles.eyebrow} numberOfLines={1}>
+                  {subtitle}
                 </Text>
-              )
-            )}
-            {subtitle != null && (
-              <Text style={styles.videoSubtitle} numberOfLines={1}>
-                {subtitle}
-              </Text>
-            )}
-          </View>
-
-          {/* Playback controls: rewind, play/pause, forward.
-              When hasError (U5), all three are ghosted (opacity 0.3) and
-              unfocusable — the spatial layout is preserved so the user's
-              mental model ("back is top-left") doesn't shift, but the
-              only meaningful action is Back. */}
-          <View style={styles.controlsRow}>
-            {/* Rewind 10s */}
-            <Pressable
-              onPress={() => {
-                seekBackward()
-                scheduleHide()
-              }}
-              onFocus={() => {
-                setRewindFocused(true)
-                scheduleHide()
-              }}
-              onBlur={() => setRewindFocused(false)}
-              focusable={controlsFocusable && !hasError}
-              accessibilityLabel="Rewind 10 seconds"
-              accessibilityRole="button"
-              style={[
-                styles.skipButton,
-                rewindFocused && styles.skipButtonFocused,
-                hasError && styles.controlDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.skipText,
-                  rewindFocused && styles.skipTextFocused,
-                ]}
-              >
-                {"↺ 10"}
-              </Text>
-            </Pressable>
-
-            {/* Play / Pause.
-                U4 focus-restore on reveal: we rely on mitigation (b) from
-                the plan — each reveal flips `controlsFocusable` false→true,
-                which re-adds this Pressable to UIFocusEngine as a "new"
-                focus target, letting hasTVPreferredFocus take effect per
-                cycle. If device QA shows focus doesn't transfer, fall back
-                to mitigation (a) by adding `key={revealCycleCount}`. */}
-            <Pressable
-              onPress={() => {
-                togglePlayPause()
-                scheduleHide()
-              }}
-              onFocus={() => {
-                setPlayFocused(true)
-                scheduleHide()
-              }}
-              onBlur={() => setPlayFocused(false)}
-              hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
-              focusable={controlsFocusable && !hasError}
-              accessibilityLabel={isPaused ? "Play" : "Pause"}
-              accessibilityRole="button"
-              style={[
-                styles.playPauseButton,
-                playFocused && styles.playPauseButtonFocused,
-                hasError && styles.controlDisabled,
-              ]}
-            >
-              {isPaused ? (
-                <PlayIcon size={scale(28)} color={COLORS.text} />
-              ) : (
-                <PauseIcon size={scale(28)} color={COLORS.text} />
               )}
-            </Pressable>
+              {hasError ? (
+                <Text style={styles.videoTitle} numberOfLines={2}>
+                  Playback failed — press Back to exit.
+                </Text>
+              ) : (
+                title != null && (
+                  <Text style={styles.videoTitle} numberOfLines={1}>
+                    {title}
+                  </Text>
+                )
+              )}
+            </View>
 
-            {/* Forward 10s */}
-            <Pressable
-              onPress={() => {
-                seekForward()
-                scheduleHide()
-              }}
-              onFocus={() => {
-                setForwardFocused(true)
-                scheduleHide()
-              }}
-              onBlur={() => setForwardFocused(false)}
-              focusable={controlsFocusable && !hasError}
-              accessibilityLabel="Forward 10 seconds"
-              accessibilityRole="button"
-              style={[
-                styles.skipButton,
-                forwardFocused && styles.skipButtonFocused,
-                hasError && styles.controlDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.skipText,
-                  forwardFocused && styles.skipTextFocused,
-                ]}
-              >
-                {"10 ↻"}
-              </Text>
-            </Pressable>
-
-            {/* ── In-player menu open control (U7) ─────────────────────────
-                Rendered ONLY when the session is driving this overlay
-                (menuActive) — experience-card playback never shows it.
-                Opening suppresses auto-hide; opening from a hidden-chrome
-                state is unsupported (it's only focusable while controls are
-                visible, like its siblings). */}
-            {menuActive && (
-              <Pressable
+            {/* Transport: −10 / play-pause / +10. On hasError (U5) all are ghosted
+                + unfocusable (Back is the only action). U4 focus-restore: each reveal
+                flips controlsFocusable false→true so hasTVPreferredFocus re-fires per cycle. */}
+            <View style={styles.transport}>
+              <CircleControl
+                icon="replay-10"
                 onPress={() => {
-                  // No scheduleHide() here: openMenu() sets
-                  // menuOpenRef.current=true synchronously and scheduleHide
-                  // early-returns while the menu is open, so it would be a
-                  // guaranteed no-op.
-                  openMenu()
-                }}
-                onFocus={() => {
-                  setMenuFocused(true)
+                  seekBackward()
                   scheduleHide()
                 }}
-                onBlur={() => setMenuFocused(false)}
+                onFocusActivity={scheduleHide}
                 focusable={controlsFocusable && !hasError}
-                accessibilityLabel="Audio and subtitles"
-                accessibilityRole="button"
-                style={[
-                  styles.skipButton,
-                  menuFocused && styles.skipButtonFocused,
-                  hasError && styles.controlDisabled,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.skipText,
-                    menuFocused && styles.skipTextFocused,
-                  ]}
-                >
-                  {"CC"}
-                </Text>
-              </Pressable>
-            )}
+                dimmed={hasError}
+                accessibilityLabel="Rewind 10 seconds"
+              />
+              <PlayCircle
+                isPaused={isPaused}
+                onPress={() => {
+                  togglePlayPause()
+                  scheduleHide()
+                }}
+                onFocusActivity={scheduleHide}
+                hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
+                focusable={controlsFocusable && !hasError}
+                dimmed={hasError}
+              />
+              <CircleControl
+                icon="forward-10"
+                onPress={() => {
+                  seekForward()
+                  scheduleHide()
+                }}
+                onFocusActivity={scheduleHide}
+                focusable={controlsFocusable && !hasError}
+                dimmed={hasError}
+                accessibilityLabel="Forward 10 seconds"
+              />
+            </View>
+
+            {/* ── In-player menu triggers (U7→U8) ───────────────────────
+                Language / Subtitles pills, each opening its menu section. Rendered
+                ONLY when a session drives this overlay (menuActive). No scheduleHide()
+                on press — openMenu() sets menuOpenRef synchronously and scheduleHide early-returns. */}
+            <View style={styles.rightCol}>
+              {menuActive && (
+                <>
+                  <MenuPill
+                    icon="globe-outline"
+                    label="Language"
+                    sub={audioLabel}
+                    onPress={() => openMenu("language")}
+                    onFocusActivity={scheduleHide}
+                    focusable={controlsFocusable && !hasError}
+                    dimmed={hasError}
+                  />
+                  <MenuPill
+                    icon="text-outline"
+                    label="Subtitles"
+                    sub={subtitlePillSub}
+                    onPress={() => openMenu("subtitles")}
+                    onFocusActivity={scheduleHide}
+                    focusable={controlsFocusable && !hasError}
+                    dimmed={hasError}
+                  />
+                </>
+              )}
+            </View>
           </View>
 
-          {/* Progress bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            </View>
-            <View style={styles.timeRow}>
-              <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-              <Text style={styles.timeText}>
-                {duration > 0 ? formatTime(duration) : "--:--"}
-              </Text>
-            </View>
+          {/* Scrubber + times. The scrubber is focusable (Down from the
+              transport lands here); while it owns focus, left/right are
+              seeks (host TV-event listener) and Select toggles play. */}
+          <PlayerScrubber
+            progressPct={progress}
+            bufferedPct={bufferedPct}
+            bubbleText={formatTime(currentTime)}
+            onPress={() => {
+              togglePlayPause()
+              scheduleHide()
+            }}
+            onFocusChange={(focused) => {
+              scrubFocusedRef.current = focused
+              if (focused) scheduleHide()
+            }}
+            focusable={controlsFocusable && !hasError}
+            dimmed={hasError}
+          />
+          <View style={styles.timesRow}>
+            <Text
+              style={[styles.timeText, styles.timeCurrent]}
+              accessibilityLabel={`Elapsed ${formatTime(currentTime)}`}
+            >
+              {formatTime(currentTime)}
+            </Text>
+            <Text
+              style={styles.timeText}
+              accessibilityLabel={`Remaining ${remainingLabel}`}
+            >
+              {remainingLabel}
+            </Text>
           </View>
         </Animated.View>
 
         {/* ── In-player language/subtitle menu (U7) ───────────────────────
-            Absolute-fill scrim with its own trapFocus* TVFocusGuideView +
-            autoFocus, so D-pad stays within the menu while open and the chrome
-            behind it is unreachable. Rendered inside the overlay's content
-            layer (not a Modal) so it shares the overlay's focus trap and the
-            menu's writes feed the live dub-switch + subtitle layer above.
-            Mounted only when the session drives this overlay AND the menu is
-            open — never for experience-card playback. */}
-        {menuActive && menuOpen && <InPlayerMenu onClose={closeMenu} />}
+            Absolute-fill scrim with its own trapFocus* + autoFocus so D-pad stays
+            within the menu. Inside the content layer (not a Modal) to share the
+            overlay's focus trap; mounts only when a session drives this overlay AND open. */}
+        {menuActive && menuOpen && (
+          <InPlayerMenu section={menuSection} onClose={closeMenu} />
+        )}
       </TVFocusGuideView>
+
+      {/* ── Loading veil (U8) ─────────────────────────────────────────────
+          Mounted until first confirmed playback, never on error; conditionally
+          mounted (not faded) so it can't linger. Unmounts while the menu is open —
+          the veil (zIndex 20) outranks contentLayer (10) and would dim the menu (its zIndex 50 can't escape its parent's context). */}
+      {!hasStarted && !hasError && !menuOpen && <LoadingVeil />}
     </View>
   )
 }
@@ -1228,113 +1657,135 @@ function formatTime(seconds: number): string {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  // Pure black behind the video — the handoff's .player surface (the old
+  // Crimson Gallery warm-stone bg read as a tint behind letterboxing).
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.surface,
+    backgroundColor: "#000000",
     zIndex: 1000,
   },
 
   // Flex column layout spanning the overlay so D-pad can move
-  // between the top back button and bottom controls
+  // between the top back button and bottom controls. Insets per the
+  // handoff: 54 top, 80 sides, 46 bottom.
   contentLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-    paddingTop: scale(40),
-    paddingBottom: scale(40),
-    paddingHorizontal: scale(48),
+    paddingTop: scale(54),
+    paddingBottom: scale(46),
+    paddingHorizontal: scale(80),
   },
 
   spacer: {
     flex: 1,
   },
 
-  // Invisible full-screen Pressable that owns focus while controls are
-  // hidden — see the U3 block in the render tree. `absoluteFillObject`
-  // lifts it above the sibling flex layout so it covers the entire
-  // overlay, and the absence of backgroundColor keeps the underlying
-  // VideoView visible. No visible treatment — this element is purely
-  // an input capture surface.
+  // Invisible full-screen Pressable that owns focus while controls are hidden
+  // (U3). absoluteFillObject covers the overlay above the flex layout; no
+  // backgroundColor keeps VideoView visible — purely an input-capture surface.
   catcher: {
     ...StyleSheet.absoluteFillObject,
   },
 
+  // Stacked-copy icon cross-fade layers (FocusCrossfade).
+  crossfadeLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // ── Scrims ─────────────────────────────────────────────────────────────────
+  scrimTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: scale(280),
+  },
+  scrimBottom: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: scale(520),
+  },
+
   // ── Top Bar ────────────────────────────────────────────────────────────────
-  // `backButtonHit` is the full-width Pressable — invisible but provides
-  // the spatial column that overlaps with the play button below, so
-  // tvOS's UIFocusEngine can traverse DOWN from back to play via pure
-  // spatial navigation. `backButtonPill` is the visible compact pill
-  // containing the "← Back" text, hugging its content on the left.
+  // `backHit` (inside BackPill) is the full-width invisible Pressable — its
+  // spatial column overlaps the play button below so tvOS's UIFocusEngine can
+  // traverse DOWN from back to play via pure spatial navigation.
   topBar: {
     flexDirection: "row",
-    alignItems: "stretch",
+    alignItems: "center",
   },
-  backButtonHit: {
+  backHit: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  backButtonPill: {
+  backPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
-    backgroundColor: hexToRgba(COLORS.surfaceContainer, 0.6),
+    gap: scale(8),
+    height: scale(58),
+    paddingLeft: scale(16),
+    paddingRight: scale(24),
+    borderRadius: scale(15),
     alignSelf: "flex-start",
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(9) },
   },
-  backButtonPillFocused: {
-    backgroundColor: COLORS.surfaceContainerHigh,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: scale(30),
-    elevation: 8,
-    transform: [{ scale: 1.05 }],
-  },
-  backButtonText: {
+  backText: {
     fontFamily: "System",
-    fontSize: scale(20),
-    color: COLORS.text,
-    fontWeight: "500",
+    fontSize: Math.round(scale(21)),
+    fontWeight: "600",
   },
-  backButtonTextFocused: {
-    color: COLORS.text,
-  },
-
   // ── Bottom Controls ────────────────────────────────────────────────────────
-  // NOTE: `backdrop-filter` isn't available in RN StyleSheet — we rely on
-  // background opacity against the scrim to get the frosted-glass look.
-  controlsContainer: {
-    backgroundColor: GLASS_BG,
-    borderRadius: scale(16),
-    paddingHorizontal: scale(32),
-    paddingVertical: scale(24),
+  bottomPanel: {
+    width: "100%",
   },
-
-  titleRow: {
-    marginBottom: scale(20),
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(24),
+    marginBottom: scale(30),
+  },
+  titleCol: {
+    flex: 1,
+  },
+  eyebrow: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(18)),
+    fontWeight: "700",
+    letterSpacing: scale(2.9),
+    textTransform: "uppercase",
+    color: WATCH_THEME.accent,
+    marginBottom: scale(8),
   },
   videoTitle: {
     fontFamily: "System",
-    fontSize: scale(24),
-    fontWeight: "600",
-    color: COLORS.text,
+    fontSize: Math.round(scale(42)),
+    fontWeight: "800",
+    letterSpacing: -scale(0.7),
+    color: WATCH_THEME.text,
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowOffset: { width: 0, height: scale(3) },
+    textShadowRadius: scale(22),
   },
-  videoSubtitle: {
-    fontFamily: "System",
-    fontSize: scale(16),
-    color: COLORS.muted,
-    marginTop: scale(4),
-  },
-
-  // ── Playback Controls ──────────────────────────────────────────────────────
-  controlsRow: {
+  transport: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: scale(32),
-    marginBottom: scale(20),
+    gap: scale(22),
+  },
+  // Two side-by-side menu pills, right-aligned (Language · Subtitles).
+  rightCol: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: scale(14),
   },
 
   // Error-state ghost treatment: controls remain mounted (so the spatial
@@ -1343,74 +1794,153 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 
-  skipButton: {
-    width: scale(52),
-    height: scale(52),
-    borderRadius: scale(26),
+  circleBtn: {
+    width: scale(84),
+    height: scale(84),
+    borderRadius: scale(42),
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: hexToRgba(COLORS.surface, 0),
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(9) },
   },
-  skipButtonFocused: {
-    backgroundColor: hexToRgba(COLORS.primary, 0.15),
-    transform: [{ scale: 1.1 }],
+  playBtn: {
+    width: scale(98),
+    height: scale(98),
+    borderRadius: scale(49),
+    backgroundColor: WATCH_THEME.accent,
+    borderWidth: scale(4),
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: WATCH_THEME.accent,
+    shadowRadius: scale(19),
+    shadowOpacity: 0.55,
+    shadowOffset: { width: 0, height: scale(7) },
   },
-  skipText: {
-    fontFamily: "System",
-    fontSize: scale(18),
-    fontWeight: "600",
-    color: COLORS.primary,
-  },
-  skipTextFocused: {
-    color: COLORS.text,
-  },
-
-  playPauseButton: {
-    width: scale(64),
+  asPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
     height: scale(64),
-    borderRadius: scale(32),
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: scale(16),
-    elevation: 8,
+    paddingHorizontal: scale(22),
+    borderRadius: scale(16),
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(9) },
   },
-  playPauseButtonFocused: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: scale(30),
-    elevation: 12,
-    transform: [{ scale: 1.1 }],
+  asCap: {
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  asLabel: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(20)),
+    fontWeight: "600",
+  },
+  asSub: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(14)),
+    fontWeight: "600",
+    marginTop: scale(2),
   },
 
-  // ── Progress Bar ───────────────────────────────────────────────────────────
-  progressContainer: {
-    width: "100%",
+  // ── Scrubber ───────────────────────────────────────────────────────────────
+  scrubWrap: {
+    height: scale(36),
+    justifyContent: "center",
   },
-  progressTrack: {
-    height: scale(6),
-    backgroundColor: TRACK_BG,
-    borderRadius: scale(3),
+  scrubTrack: {
+    width: "100%",
+    borderRadius: scale(5),
+    backgroundColor: "rgba(255,255,255,0.18)",
     overflow: "hidden",
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: COLORS.primary,
-    borderRadius: scale(3),
+  scrubBuf: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: scale(5),
   },
-  timeRow: {
+  scrubFill: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: WATCH_THEME.accent,
+    borderRadius: scale(5),
+  },
+  scrubThumb: {
+    position: "absolute",
+    top: "50%",
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(11),
+    marginTop: -scale(11),
+    marginLeft: -scale(11),
+    backgroundColor: WATCH_THEME.focusFill,
+    shadowColor: "#000000",
+    shadowRadius: scale(14),
+    shadowOpacity: 0.55,
+    shadowOffset: { width: 0, height: scale(4) },
+  },
+  scrubBubble: {
+    position: "absolute",
+    bottom: scale(42),
+    width: scale(110),
+    marginLeft: -scale(55),
+    alignItems: "center",
+    paddingVertical: scale(7),
+    borderRadius: scale(11),
+    backgroundColor: "rgba(28,28,30,0.92)",
+  },
+  scrubBubbleText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(19)),
+    fontWeight: "700",
+    color: WATCH_THEME.text,
+    fontVariant: ["tabular-nums"],
+  },
+
+  // ── Times ──────────────────────────────────────────────────────────────────
+  timesRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: scale(8),
+    marginTop: scale(10),
   },
   timeText: {
     fontFamily: "System",
-    fontSize: scale(14),
-    color: COLORS.muted,
+    fontSize: Math.round(scale(20)),
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.55)",
     fontVariant: ["tabular-nums"],
+  },
+  timeCurrent: {
+    color: WATCH_THEME.text,
+  },
+
+  // ── Loading veil ───────────────────────────────────────────────────────────
+  veil: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(24),
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  veilRing: {
+    width: scale(84),
+    height: scale(84),
+    borderRadius: scale(42),
+    borderWidth: scale(5),
+    borderColor: "rgba(255,255,255,0.18)",
+    borderTopColor: WATCH_THEME.accent,
+  },
+  veilText: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(21)),
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.6)",
   },
 })

@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   classifyYouTubeSource,
+  loadSavedSourceValuesResult,
   loadSavedSourceValues,
   mergeUnique,
+  normalizeYouTubeSource,
 } from "./saved-sources"
 
 const CONFIG = { url: "https://site.test/api/discovery-sources", token: "tok" }
@@ -45,6 +47,31 @@ describe("mergeUnique", () => {
       "d",
     ])
   })
+
+  it("enforces the requested cap while preserving earliest values", () => {
+    expect(mergeUnique(["a"], ["b", "c", "d"], 3)).toEqual(["a", "b", "c"])
+  })
+})
+
+describe("normalizeYouTubeSource", () => {
+  it("extracts playlist IDs from YouTube playlist URLs", () => {
+    expect(
+      normalizeYouTubeSource(
+        "https://www.youtube.com/playlist?list=PLqbible123",
+      ),
+    ).toEqual({ kind: "playlist", value: "PLqbible123" })
+  })
+
+  it("drops legacy custom-channel URLs rather than sending them as handles", () => {
+    expect(
+      normalizeYouTubeSource("https://www.youtube.com/c/GraceFilms"),
+    ).toBeNull()
+  })
+
+  it("drops malformed URL-like values rather than treating them as handles", () => {
+    expect(normalizeYouTubeSource("https://")).toBeNull()
+    expect(normalizeYouTubeSource("youtube.com/c/GraceFilms")).toBeNull()
+  })
 })
 
 describe("loadSavedSourceValues", () => {
@@ -71,5 +98,15 @@ describe("loadSavedSourceValues", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     })
     expect(values).toEqual([])
+  })
+
+  it("preserves a failed-load status for callers that need to surface it", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({}, { status: 500 }))
+    await expect(
+      loadSavedSourceValuesResult("pinterest", {
+        config: CONFIG,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).resolves.toEqual({ values: [], status: "failed" })
   })
 })

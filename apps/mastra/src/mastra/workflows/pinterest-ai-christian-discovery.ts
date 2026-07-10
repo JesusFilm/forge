@@ -7,14 +7,24 @@ import {
   getDiscoverySiteIngestConfig,
   getDiscoverySourcesConfig,
 } from "../../config/env"
+import {
+  DISCOVERY_SOURCE_BUDGET_MS,
+  DISCOVERY_SOURCE_CONCURRENCY,
+  mapWithConcurrency,
+} from "../../services/discovery/bounded-parallel"
 import { classifyContent } from "../../services/discovery/classifier"
 import type { DiscoveredVideo } from "../../services/discovery/candidate"
 import type { SourcesConfig } from "../../services/discovery/sources-client"
 import {
-  loadSavedSourceValues,
+  ReviewQueueOutcomeSchema,
+  type ReviewQueueOutcome,
+} from "../../services/discovery/review-queue-outcome"
+import {
+  loadSavedSourceValuesResult,
   mergeUnique,
 } from "../../services/discovery/saved-sources"
 import {
+  SiteIngestError,
   submitCandidatesToSite,
   type SiteIngestConfig,
   type SiteIngestResult,
@@ -41,12 +51,13 @@ import type {
 import { isValidServiceBearer } from "../../server/service-bearer"
 
 const WORKFLOW_FAILURE_ERROR_PREFIX = "PINTEREST_DISCOVERY_WORKFLOW_FAILED:"
+const MAX_BOARDS = 50
 
 export const PinterestDiscoveryWorkflowInputSchema = z
   .object({
-    boards: z.array(z.string().min(1)).max(50).default([]),
+    boards: z.array(z.string().min(1)).max(MAX_BOARDS).default([]),
     limitPerBoard: z.number().int().positive().max(50).default(15),
-    maxResults: z.number().int().positive().max(300).default(100),
+    maxResults: z.number().int().positive().max(300).default(10),
     persistArtifact: z.boolean().default(true),
   })
   .strict()
@@ -62,6 +73,7 @@ const WorkflowSuccessSchema = z
     totals: PinterestDiscoveryTotalsSchema,
     pins: z.array(PinterestPinSchema),
     boardFailures: z.array(BoardFailureSchema),
+    reviewQueue: ReviewQueueOutcomeSchema,
     artifactPath: z.string().optional(),
   })
   .strict()
@@ -69,7 +81,11 @@ const WorkflowSuccessSchema = z
 const WorkflowFailureSchema = z
   .object({
     ok: z.literal(false),
-    reason: z.enum(["invalid_input", "all_boards_failed"]),
+    reason: z.enum([
+      "invalid_input",
+      "sources_unavailable",
+      "all_boards_failed",
+    ]),
     retryable: z.boolean(),
     mastraRunId: z.string(),
     details: z.string().optional(),
@@ -106,15 +122,23 @@ export type PinterestDiscoveryOptions = {
 
 /**
  * Merge the website's saved Pinterest boards into the run input (deduped).
- * Best-effort — a fetch failure leaves the input unchanged.
+ * The caller surfaces a failed source request when no fallback input exists.
  */
 async function withSavedPinterestSources(
   input: PinterestDiscoveryWorkflowInput,
   options: { config?: SourcesConfig | null; fetchImpl?: typeof fetch },
-): Promise<PinterestDiscoveryWorkflowInput> {
-  const values = await loadSavedSourceValues("pinterest", options)
-  if (values.length === 0) return input
-  return { ...input, boards: mergeUnique(input.boards, values) }
+): Promise<{
+  input: PinterestDiscoveryWorkflowInput
+  sourceLoadStatus: "not_configured" | "loaded" | "failed"
+}> {
+  const loaded = await loadSavedSourceValuesResult("pinterest", options)
+  return {
+    input: {
+      ...input,
+      boards: mergeUnique(input.boards, loaded.values, MAX_BOARDS),
+    },
+    sourceLoadStatus: loaded.status,
+  }
 }
 
 function toCandidate(pin: PinterestPin): DiscoveredVideo {
@@ -135,10 +159,11 @@ function toCandidate(pin: PinterestPin): DiscoveredVideo {
 async function submitToReviewQueue(
   pins: readonly PinterestPin[],
   options: Pick<PinterestDiscoveryOptions, "siteIngest" | "submitPins">,
-): Promise<void> {
-  if (pins.length === 0) return
+): Promise<ReviewQueueOutcome> {
+  if (pins.length === 0) return { status: "empty" }
   const candidates = pins.map(toCandidate)
   const config = options.siteIngest ?? getDiscoverySiteIngestConfig()
+  if (!options.submitPins && !config) return { status: "not_configured" }
   try {
     const result = options.submitPins
       ? await options.submitPins(candidates)
@@ -149,13 +174,23 @@ async function submitToReviewQueue(
       console.log(
         `[pinterest-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
       )
+      return {
+        status: "submitted",
+        inserted: result.inserted,
+        skipped: result.skipped,
+      }
     }
+    return { status: "not_configured" }
   } catch (error) {
     console.error(
       `[pinterest-discovery] event=site_ingest_failed message=${
         error instanceof Error ? error.message : String(error)
       }`,
     )
+    return {
+      status: "failed",
+      reason: error instanceof SiteIngestError ? error.code : "upstream_failed",
+    }
   }
 }
 
@@ -233,25 +268,51 @@ export async function collectPinterestCandidates(
   input: PinterestDiscoveryWorkflowInput,
   options: { runId: string; fetchBoard: FetchBoardFn },
 ): Promise<{ items: PinterestRawItem[]; boardFailures: BoardFailure[] }> {
+  const sourceSignal = AbortSignal.timeout(DISCOVERY_SOURCE_BUDGET_MS)
+  const outcomes = await mapWithConcurrency(
+    input.boards,
+    DISCOVERY_SOURCE_CONCURRENCY,
+    async (board) => {
+      try {
+        if (sourceSignal.aborted) {
+          throw new PinterestSearchError(
+            "upstream_failed",
+            "Pinterest discovery source deadline exceeded",
+            true,
+          )
+        }
+        return {
+          items: (
+            await options.fetchBoard(board, { signal: sourceSignal })
+          ).slice(0, input.limitPerBoard),
+          failure: null,
+          retryable: false,
+        }
+      } catch (error) {
+        const code =
+          error instanceof PinterestSearchError ? error.code : "board_failed"
+        return {
+          items: [],
+          failure: {
+            board,
+            code,
+            message: error instanceof Error ? error.message : String(error),
+          } satisfies BoardFailure,
+          retryable:
+            error instanceof PinterestSearchError ? error.retryable : false,
+        }
+      }
+    },
+  )
+
   const items: PinterestRawItem[] = []
   const boardFailures: BoardFailure[] = []
   let anyRetryable = false
-
-  for (const board of input.boards) {
-    try {
-      const raw = await options.fetchBoard(board, {})
-      items.push(...raw.slice(0, input.limitPerBoard))
-    } catch (error) {
-      const code =
-        error instanceof PinterestSearchError ? error.code : "board_failed"
-      if (error instanceof PinterestSearchError && error.retryable) {
-        anyRetryable = true
-      }
-      boardFailures.push({
-        board,
-        code,
-        message: error instanceof Error ? error.message : String(error),
-      })
+  for (const outcome of outcomes) {
+    items.push(...outcome.items)
+    if (outcome.failure) {
+      boardFailures.push(outcome.failure)
+      if (outcome.retryable) anyRetryable = true
     }
   }
 
@@ -358,10 +419,18 @@ export async function runPinterestDiscovery(
   if (!parsedInput.success) {
     return failure("invalid_input", { mastraRunId, retryable: false })
   }
-  const input = await withSavedPinterestSources(parsedInput.data, {
+  const savedSources = await withSavedPinterestSources(parsedInput.data, {
     config: options.sourcesConfig,
     fetchImpl: options.fetchSources,
   })
+  const input = savedSources.input
+  if (savedSources.sourceLoadStatus === "failed" && input.boards.length === 0) {
+    return failure("sources_unavailable", {
+      mastraRunId,
+      retryable: true,
+      details: "saved Pinterest sources could not be loaded",
+    })
+  }
 
   const startedAt = now().toISOString()
   try {
@@ -388,7 +457,7 @@ export async function runPinterestDiscovery(
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(pins, options)
+    const reviewQueue = await submitToReviewQueue(pins, options)
 
     return {
       ok: true,
@@ -396,6 +465,7 @@ export async function runPinterestDiscovery(
       totals,
       pins,
       boardFailures,
+      reviewQueue,
       ...(artifactPath ? { artifactPath } : {}),
     } satisfies PinterestDiscoveryWorkflowSuccess
   } catch (error) {
@@ -513,7 +583,7 @@ const reportStep = createStep({
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(inputData.pins, {})
+    const reviewQueue = await submitToReviewQueue(inputData.pins, {})
 
     return {
       ok: true as const,
@@ -521,6 +591,7 @@ const reportStep = createStep({
       totals: inputData.totals,
       pins: inputData.pins,
       boardFailures: inputData.boardFailures,
+      reviewQueue,
       ...(artifactPath ? { artifactPath } : {}),
     }
   },
@@ -548,14 +619,24 @@ export async function launchPinterestDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
-  const inputData = await withSavedPinterestSources(parsed.data, {
+  const savedSources = await withSavedPinterestSources(parsed.data, {
     config: getDiscoverySourcesConfig(),
   })
+  if (
+    savedSources.sourceLoadStatus === "failed" &&
+    savedSources.input.boards.length === 0
+  ) {
+    return failure("sources_unavailable", {
+      mastraRunId: runId,
+      retryable: true,
+      details: "saved Pinterest sources could not be loaded",
+    })
+  }
 
   const run = await pinterestAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData })
+    result = await run.start({ inputData: savedSources.input })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??
@@ -591,6 +672,7 @@ function routeStatusForResult(
 ): number {
   if (result.ok) return 200
   if (result.reason === "invalid_input") return 400
+  if (result.reason === "sources_unavailable") return 503
   return 502
 }
 

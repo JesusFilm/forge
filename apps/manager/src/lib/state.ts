@@ -8,6 +8,14 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
+import {
+  buildShortsMetadataArtifact,
+  getShortsReport,
+  mergeShortsReport,
+  type ShortsReportPatch,
+} from "@/lib/shorts-report"
+import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
+import { normalizeTranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -15,6 +23,7 @@ import type {
   JobRecord,
   JobStatus,
   JobStepDetails,
+  MastraStepCorrelation,
   JobStepState,
   WorkflowStepName,
   StepStatus,
@@ -26,6 +35,25 @@ type JobListOptions = {
   limit?: number
   offset?: number
 }
+
+type JobUpdateFields = Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "startedAt"
+    | "completedAt"
+    | "retries"
+    | "steps"
+    | "sourceLanguageId"
+    | "sourceLanguageCode"
+    | "sourceSelectionReason"
+    | "primaryRequestedTargetLanguageCode"
+    | "resolvedTargetLanguageCodes"
+  >
+>
 
 export type JobLookupResult =
   | {
@@ -347,23 +375,115 @@ function normalizeTranslationLanguageResult(
   }
 }
 
+function normalizeMastraStepCorrelation(
+  raw: unknown,
+): MastraStepCorrelation | undefined {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const candidate = raw as {
+    runId?: unknown
+    status?: unknown
+    reason?: unknown
+    retryable?: unknown
+    provider?: unknown
+    model?: unknown
+    chunks?: unknown
+    totalTokens?: unknown
+    sourceContentHash?: unknown
+    languages?: unknown
+  }
+
+  if (typeof candidate.runId !== "string" || candidate.runId.length === 0) {
+    return undefined
+  }
+
+  const languages = Array.isArray(candidate.languages)
+    ? candidate.languages.filter(
+        (language): language is string =>
+          typeof language === "string" && language.length > 0,
+      )
+    : []
+
+  return {
+    runId: candidate.runId,
+    ...(typeof candidate.status === "string"
+      ? { status: candidate.status }
+      : {}),
+    ...(typeof candidate.reason === "string"
+      ? { reason: candidate.reason }
+      : {}),
+    ...(typeof candidate.retryable === "boolean"
+      ? { retryable: candidate.retryable }
+      : {}),
+    ...(typeof candidate.provider === "string"
+      ? { provider: candidate.provider }
+      : {}),
+    ...(typeof candidate.model === "string" ? { model: candidate.model } : {}),
+    ...(typeof candidate.chunks === "number"
+      ? { chunks: candidate.chunks }
+      : {}),
+    ...(typeof candidate.totalTokens === "number"
+      ? { totalTokens: candidate.totalTokens }
+      : {}),
+    ...(typeof candidate.sourceContentHash === "string"
+      ? { sourceContentHash: candidate.sourceContentHash }
+      : {}),
+    ...(languages.length > 0 ? { languages } : {}),
+  }
+}
+
 function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
     return undefined
   }
 
-  const candidate = raw as { languageResults?: unknown }
+  const candidate = raw as {
+    languageResults?: unknown
+    subtitleValidation?: unknown
+    transcriptCorrection?: unknown
+    mastra?: unknown
+    progress?: unknown
+    message?: unknown
+  }
   const languageResults = Array.isArray(candidate.languageResults)
     ? candidate.languageResults
         .map(normalizeTranslationLanguageResult)
         .filter((result): result is TranslationLanguageResult => result != null)
     : []
+  const progress =
+    typeof candidate.progress === "number" ? candidate.progress : undefined
+  const message =
+    typeof candidate.message === "string" ? candidate.message : undefined
+  const mastra = normalizeMastraStepCorrelation(candidate.mastra)
+  const subtitleValidation = normalizeSubtitleValidationStepSummary(
+    candidate.subtitleValidation,
+  )
+  const transcriptCorrection =
+    normalizeTranscriptScriptureCorrectionStepSummary(
+      candidate.transcriptCorrection,
+    )
 
-  if (languageResults.length === 0) {
+  if (
+    languageResults.length === 0 &&
+    subtitleValidation === undefined &&
+    transcriptCorrection === undefined &&
+    mastra === undefined &&
+    progress === undefined &&
+    !message
+  ) {
     return undefined
   }
 
-  return { languageResults }
+  return {
+    ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation !== undefined ? { subtitleValidation } : {}),
+    ...(transcriptCorrection !== undefined ? { transcriptCorrection } : {}),
+    ...(mastra !== undefined ? { mastra } : {}),
+    ...(progress !== undefined ? { progress } : {}),
+    ...(message !== undefined ? { message } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -376,10 +496,18 @@ export async function createJob(
   languages: string[] = [],
   options?: {
     videoDocumentId?: string
+    sourceCollectionTitle?: string
+    sourceMediaTitle?: string
     initialArtifacts?: JobArtifactManifest
+    // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
+    // custom step inventory (smart-crop jobs persist smart_crop_* steps
+    // instead of the enrichment FORGE_WORKFLOW_STEPS).
+    jobOptions?: JobRecord["options"]
+    steps?: JobStepState[]
   },
 ): Promise<JobRecord> {
-  const steps = buildInitialSteps()
+  const steps = options?.steps ?? buildInitialSteps()
+  const jobOptions = options?.jobOptions ?? {}
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
 
@@ -413,7 +541,7 @@ export async function createJob(
       resolvedTargetLanguageCodes: languages,
       sourceCollectionTitle: sourceCollection?.title ?? undefined,
       sourceMediaTitle: sourceVideo?.title ?? undefined,
-      options: {},
+      options: jobOptions,
       status: "pending",
       retries: 0,
       createdAt: now,
@@ -442,7 +570,9 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
-      options: {},
+      sourceCollectionTitle: options?.sourceCollectionTitle,
+      sourceMediaTitle: options?.sourceMediaTitle,
+      options: jobOptions,
       artifacts: initialArtifacts,
       errors: [],
       steps,
@@ -588,13 +718,14 @@ export async function updateJob(
 
   if (gateway.mode === "admin") {
     try {
-      const adminUpdates =
+      const updatesWithDerivedFields =
         updates.artifacts !== undefined
           ? {
               ...updates,
               ...deriveMaterializationFields(updates.artifacts),
             }
           : updates
+      const adminUpdates = buildJobUpdateData(updatesWithDerivedFields)
       const job = await getAdminJobClient().updateJob(id, adminUpdates)
       if (job) {
         publishJobEvent(job)
@@ -610,19 +741,7 @@ export async function updateJob(
 }
 
 export function buildJobUpdateData(
-  updates: Partial<
-    Pick<
-      JobRecord,
-      | "status"
-      | "currentStep"
-      | "artifacts"
-      | "errors"
-      | "startedAt"
-      | "completedAt"
-      | "retries"
-      | "steps"
-    >
-  >,
+  updates: JobUpdateFields,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {}
 
@@ -634,6 +753,22 @@ export function buildJobUpdateData(
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
+  if (updates.sourceLanguageId !== undefined) {
+    data.sourceLanguageId = updates.sourceLanguageId
+  }
+  if (updates.sourceLanguageCode !== undefined) {
+    data.sourceLanguageCode = updates.sourceLanguageCode
+  }
+  if (updates.sourceSelectionReason !== undefined) {
+    data.sourceSelectionReason = updates.sourceSelectionReason
+  }
+  if (updates.primaryRequestedTargetLanguageCode !== undefined) {
+    data.primaryRequestedTargetLanguageCode =
+      updates.primaryRequestedTargetLanguageCode
+  }
+  if (updates.resolvedTargetLanguageCodes !== undefined) {
+    data.resolvedTargetLanguageCodes = updates.resolvedTargetLanguageCodes
+  }
 
   return data
 }
@@ -686,6 +821,26 @@ export async function updateStepStatus(
   return next
 }
 
+// Field-level merge of the shorts report entry INSIDE the per-job write
+// lock: the CURRENT persisted entry is re-read at write time and the patch
+// is layered onto it via mergeShortsReport, so callers holding a stale
+// snapshot cannot clobber concurrent writers. Two races this closes:
+// a draft save (patching ONLY draftVersion) racing a render workflow must
+// never revert the workflow-owned phase, and a workflow persist landing
+// after a multi-minute step must not erase an interim draftVersion mirror.
+export async function mergeShortsReportEntry(
+  jobId: string,
+  patch: ShortsReportPatch,
+): Promise<JobRecord | null> {
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(() => doMergeShortsReportEntry(jobId, patch))
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
+
 async function doMergeJobArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
@@ -695,6 +850,22 @@ async function doMergeJobArtifacts(
 
   return updateJob(jobId, {
     artifacts: mergeArtifactEntries(job.artifacts, artifacts),
+  })
+}
+
+async function doMergeShortsReportEntry(
+  jobId: string,
+  patch: ShortsReportPatch,
+): Promise<JobRecord | null> {
+  const job = await getJob(jobId)
+  if (!job) return null
+
+  const merged = mergeShortsReport(getShortsReport(job.artifacts), patch)
+  return updateJob(jobId, {
+    artifacts: mergeArtifactEntries(
+      job.artifacts,
+      buildShortsMetadataArtifact(merged),
+    ),
   })
 }
 

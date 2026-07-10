@@ -28,6 +28,13 @@
     }
   },
   "remoteUser": "vscode",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Forge Web",
+      "onAutoForward": "openBrowser"
+    }
+  },
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",

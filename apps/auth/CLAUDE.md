@@ -42,6 +42,20 @@ pnpm --filter @forge/auth lint
 pnpm --filter @forge/auth typecheck
 ```
 
+## Agent login handles
+
+Trusted developer environments can mint short-lived email-like login handles
+for local/preview browser testing. Set `AGENT_LOGIN_MINTING_KEY` in Auth for
+the API endpoint, then mint a handle:
+
+```bash
+pnpm --filter @forge/auth mint:agent-handle
+```
+
+Paste the printed handle into the normal Auth email field and click Continue.
+The raw `AGENT_LOGIN_MINTING_KEY` and printed handles are bearer credentials; do
+not commit them, pipe them into durable logs, or paste them into issue/PR text.
+
 ## Deployment
 
 Auth deploys as its own Railway service. `auth.jesusfilm.org` should point to
@@ -55,8 +69,20 @@ document the dashboard as canonical.
 ## Security posture
 
 - No shared `.jesusfilm.org` cookie dependency for admin.
-- No public signup while migration fallback exists.
+- Public signup is allowed for new viewer accounts. Keep duplicate-account
+  protection in front of Better Auth signup so existing Auth users and legacy
+  Firebase users are asked to sign in instead of creating a second account.
 - OAuth redirect URLs must be exact-match per app environment.
+- The first-party seed (`src/scripts/seed-first-party-apps.ts`) is
+  **upsert-only and never prunes.** Editing a client's redirect URIs is scrubbed
+  into the DB on the next deploy (the upsert `update` branch replaces
+  `redirectUris` wholesale), but **removing or renaming a client's `clientId` in
+  the seed leaves the old OAuth client row live** — the seeder never deletes it.
+  Retiring a client (DNS cutover to a new id, or decommission) means
+  disabling/deleting its row out-of-band, not just dropping it from the seed.
+  This matters most when a redirect host is reclaimable (e.g. a raw
+  `*.up.railway.app` domain) — see
+  `docs/solutions/auth/public-repo-oauth-seed-railway-domain-exposure-calculus.md`.
 - Operator dashboard access is disabled in production until the developer
   console becomes an OAuth relying client.
 - Token issuance must be scoped, audience-bound, environment-bound, expiring,

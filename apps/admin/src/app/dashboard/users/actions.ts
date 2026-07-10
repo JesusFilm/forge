@@ -6,6 +6,7 @@ import {
   grantManagerAccess as grantManagerAccessForUser,
   revokeManagerAccess as revokeManagerAccessForUser,
 } from "@/services/user-access.service"
+import { updateMastraStudioAccessByEmail } from "@/services/mastra-studio-access.service"
 
 export async function approveUser(formData: FormData) {
   "use server"
@@ -43,5 +44,26 @@ export async function updateManagerAccess(formData: FormData) {
       throw error
     }
   }
+  revalidatePath("/dashboard/users")
+}
+
+export async function updateMastraStudioAccess(formData: FormData) {
+  "use server"
+
+  const user = await requireAdminSession()
+  const email = formData.get("email")
+  const role = formData.get("role")
+  if (
+    typeof email !== "string" ||
+    (role !== "STUDIO_ACCESS" && role !== "NO_ACCESS")
+  ) {
+    return
+  }
+
+  await updateMastraStudioAccessByEmail({
+    email,
+    role,
+    approvedBy: user.id ?? "admin",
+  })
   revalidatePath("/dashboard/users")
 }

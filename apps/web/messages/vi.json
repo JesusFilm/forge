@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "Đóng",
     "download": "Tải xuống",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "Đang kiểm tra",
     "closeTermsOfUse": "Đóng Điều khoản Sử dụng",
     "cancel": "Hủy",
@@ -83,7 +86,8 @@
     "toggleOn": "Bật",
     "toggleOff": "Tắt",
     "close": "Đóng",
-    "apply": "Áp dụng"
+    "apply": "Áp dụng",
+    "noLanguageSubtitles": "Không có phụ đề {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# TẬP} other {# TẬP}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "Bắt đầu cuộc trò chuyện riêng với một người sẵn sàng lắng nghe.",
     "questionsShort": "Câu hỏi",
     "questions": "Câu hỏi liên quan",
-    "askYours": "Đặt câu hỏi của bạn",
+    "askYours": "Câu hỏi của bạn",
     "chatWithPerson": "Trò chuyện với một người",
     "askBibleQuestion": "Đặt câu hỏi về Kinh Thánh"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "Hoạt hình",
     "categoryStudy": "Học hỏi",
     "categoryFamily": "Gia đình",
-    "categoryChristmas": "Giáng sinh"
+    "categoryChristmas": "Giáng sinh",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Phát có âm thanh",
+    "playWithSound": "Xem ngay",
     "tapToUnmute": "Bật tiếng"
   },
   "ExperienceSkeleton": {

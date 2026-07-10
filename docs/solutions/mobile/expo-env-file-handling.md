@@ -7,7 +7,7 @@ module: apps/mobile
 symptom: "Network Request Failed or Aborted on real iOS devices; app works on simulators"
 root_cause: "@expo/env loads .env.production over .env when NODE_ENV=production (set by Metro for device builds); real devices cannot reach localhost"
 severity: high
-last_updated: 2026-06-08
+last_updated: 2026-06-22
 ---
 
 ## Problem
@@ -101,14 +101,15 @@ Added to `app.json` infoPlist. Allows HTTP to LAN IPs on real devices. Scoped to
 
 ## Key Gotchas
 
-| Gotcha                                            | Detail                                                                                                           |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `expo export` forces `NODE_ENV=production`        | Regardless of what you set. Don't rely on NODE_ENV for env switching.                                            |
-| Shell `export` doesn't work for `EXPO_PUBLIC_*`   | Metro inlines values from `.env` files via babel, not from `process.env`. Use file-based overrides.              |
-| `--channel` != `--environment` in EAS             | Channel = which builds receive the update. Environment = which env vars are injected. Must pass both explicitly. |
-| SDK 54: `--environment` is optional but critical  | Without it, `eas update` falls back to local `.env` files (which don't exist in CI). In SDK 55+, it's required.  |
-| EAS "secret" visibility                           | NOT available during `eas update`, only during `eas build`. Use "sensitive" for `EXPO_PUBLIC_*` tokens.          |
-| `fromJson` on empty string crashes GitHub Actions | Guard with `services != '' && services != '[]'` before `contains(fromJson(...))`.                                |
+| Gotcha                                                   | Detail                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `expo export` forces `NODE_ENV=production`               | Regardless of what you set. Don't rely on NODE_ENV for env switching.                                                                                                                                                                                         |
+| Shell `export` doesn't work for `EXPO_PUBLIC_*`          | Metro inlines values from `.env` files via babel, not from `process.env`. Use file-based overrides.                                                                                                                                                           |
+| `--channel` != `--environment` in EAS                    | Channel = which builds receive the update. Environment = which env vars are injected. Must pass both explicitly.                                                                                                                                              |
+| SDK 54: `--environment` is optional but critical         | Without it, `eas update` falls back to local `.env` files (which don't exist in CI). In SDK 55+, it's required.                                                                                                                                               |
+| EAS "secret" visibility                                  | NOT available during `eas update`, only during `eas build`. Use "sensitive" for `EXPO_PUBLIC_*` tokens.                                                                                                                                                       |
+| `fromJson` on empty string crashes GitHub Actions        | Guard with `services != '' && services != '[]'` before `contains(fromJson(...))`.                                                                                                                                                                             |
+| `--tunnel` poisons the bundle host for localhost clients | A `--tunnel` Metro bakes the ngrok URL into the manifest it serves to _every_ client, so a simulator connecting via `localhost` still fetches the bundle through the tunnel. Run plain-localhost Metro for sim work; reserve `--tunnel` for physical devices. |
 
 ## Prevention
 
@@ -123,6 +124,7 @@ Added to `app.json` infoPlist. Allows HTTP to LAN IPs on real devices. Scoped to
 
 - [Mobile admin data-layer cutover](../architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md) — the Strapi → admin migration that replaced platform-split `EXPO_PUBLIC_GRAPHQL_URL_*` (+ `:1337`) with the single `EXPO_PUBLIC_ADMIN_GRAPHQL_URL`
 - [Verifying mobile Expo worktree changes in the simulator](../developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md) — the local admin endpoint trap (`:3003`) and the second-Metro / full-reload verification loop
+- [Metro crashes with RangeError when watchman is missing](../runtime-errors/metro-node-crawler-rangerror-missing-watchman-20260622.md) — the watchman prerequisite, and why a `--tunnel` Metro forces even localhost-connected simulators through the tunnel
 - [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — references `.env` which is now `.env.local`
 - [New App CI and Deployment Patterns](../platform/new-app-ci-and-deployment-patterns.md) — `skipValidation` guard and `EAS_BUILD` explanation
 - [Adding New Apps](../platform/adding-new-apps.md) — env validation convention

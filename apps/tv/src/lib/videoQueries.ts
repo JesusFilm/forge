@@ -1,28 +1,15 @@
-// TV-side video-detail GraphQL operations.
-//
-// Kept field-for-field in sync with apps/mobile/src/lib/queries.ts
-// (`watchVideoFragment` / GET_VIDEO_BY_SLUG and `watchDubMediaFragment` /
-// GET_VIDEO_DUB). The split — lean bulk video + dub list, lazy per-dub media —
-// is the proven mobile pattern; do not inline downloads/subtitles into the
-// bulk fragment (see the payload note below).
-//
-// Defined here in apps/tv/ per convention:
-// "Operations are defined in apps using graphql() from this package."
-//
-// Uses @_unmask to make fragment fields directly accessible on parent results.
+// TV-side video-detail GraphQL operations, kept field-for-field in sync with
+// apps/mobile/src/lib/queries.ts. Split (lean bulk video + dub list, lazy per-dub
+// media) is the proven mobile pattern; do NOT inline downloads/subtitles.
 import {
   adminGraphql as graphql,
   type AdminResultOf as ResultOf,
 } from "@forge/admin-graphql"
 
 // ── Bulk video fragment (lean) ──────────────────────────────────────
-//
-// Lean by design: the `variants: dubs` selection deliberately OMITS each dub's
-// `downloads` + `videoEdition.subtitles`. A video like birth-of-jesus has 2,259
-// dubs; projecting their downloads/subtitles here made the payload ~9.5MB and
-// the resolver ~13s. The screen only needs one dub's downloads/subtitles (the
-// active language), fetched lazily via GET_VIDEO_DUB when the user opens the
-// Download/Subtitle panel or turns captions on. Keep this selection lean.
+// `variants: dubs` deliberately OMITS each dub's downloads + subtitles: at 2,259
+// dubs (birth-of-jesus) projecting them made the payload ~9.5MB / resolver ~13s.
+// Only the active language's media is needed, fetched lazily via GET_VIDEO_DUB.
 export const watchVideoFragment = graphql(`
   fragment WatchVideo on Video @_unmask {
     documentId: id
@@ -136,13 +123,131 @@ export const GET_VIDEO_BY_SLUG = graphql(
 
 export type WatchVideoData = ResultOf<typeof GET_VIDEO_BY_SLUG>
 
+// ── Lean series-screen video fragment ──────────────────────────────
+// SYNC: mirrors apps/mobile/src/lib/queries.ts `seriesWatchVideoFragment`. Omits vs
+// watchVideoFragment the `parents → parent → children` chain (~208 nodes/~1.6s) + each
+// dub's `duration`/`muxVideo.playbackId`; childDubLanguages awaits a composite index (docs/).
+export const seriesWatchVideoFragment = graphql(`
+  fragment SeriesWatchVideo on Video @_unmask {
+    documentId: id
+    slug
+    label
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+    }
+    primaryLanguage {
+      coreId
+      bcp47
+    }
+    locales(locale: $locale) {
+      documentId: id
+      languageSlug
+      title
+      description
+      snippet
+      imageAlt
+    }
+    variants: dubs {
+      documentId: id
+      slug
+      published
+      hls
+      language {
+        coreId
+        bcp47
+        slug
+        name
+      }
+    }
+    studyQuestions {
+      documentId: id
+      languageSlug
+      value: text
+      order
+    }
+    bibleCitations {
+      documentId: id
+      chapterStart
+      chapterEnd
+      verseStart
+      verseEnd
+      order
+      osisId
+      bibleBook {
+        documentId: id
+        name
+      }
+    }
+  }
+`)
+
+// ── Series detail query ─────────────────────────────────────────────
+// SYNC: mirrors apps/mobile/src/lib/queries.ts GET_SERIES_BY_SLUG, plus the OWN
+// `children` (episode rail). The childDubLanguages union — the ~835KB server
+// aggregation — is split into GET_SERIES_LANGUAGES below so the hero + rail paint
+// without waiting on it. Children select card fields only, never dubs/variants.
+export const GET_SERIES_BY_SLUG = graphql(
+  `
+    query GetSeriesBySlug($locale: String!, $slug: String!) {
+      videoBySlug(slug: $slug) {
+        ...SeriesWatchVideo
+        children {
+          order
+          child {
+            documentId: id
+            slug
+            label
+            locales(locale: $locale) {
+              documentId: id
+              languageSlug
+              title
+              description
+              imageAlt
+            }
+            images {
+              documentId: id
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+          }
+        }
+      }
+    }
+  `,
+  [seriesWatchVideoFragment],
+)
+
+export type SeriesVideoData = ResultOf<typeof GET_SERIES_BY_SLUG>
+
+// ── Series language union (lazy, secondary) ─────────────────────────
+// childDubLanguages alone, fetched after the lean GET_SERIES_BY_SLUG so the hero
+// and rail render first; feeds the panel + count from its OWN state, never the
+// lean record (KTD1 keeps the lean read stable so the dub memo never re-walks).
+export const GET_SERIES_LANGUAGES = graphql(`
+  query GetSeriesLanguages($slug: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
+      childDubLanguages {
+        slug
+        name
+        bcp47
+      }
+    }
+  }
+`)
+
+export type SeriesLanguagesData = ResultOf<typeof GET_SERIES_LANGUAGES>
+
 // ── Per-dub media (lazy) ────────────────────────────────────────────
-//
-// The downloads + subtitles deliberately left out of WatchVideo above. Fetched
-// for a single dub on demand (active language only) when the user opens the
-// Download/Subtitle panel or enables captions — so switching language fetches
-// just that dub's media, never all ~2,200. The selection MUST mirror the fields
-// trimmed from WatchVideo's `dubs` so normalizeDubMedia maps the same shape.
+// The downloads + subtitles left out of WatchVideo, fetched per dub on demand
+// (active language only) so switching fetches just that dub, never all ~2,200. MUST
+// mirror the fields trimmed from WatchVideo's `dubs` so normalizeDubMedia maps it.
 export const watchDubMediaFragment = graphql(`
   fragment WatchDubMedia on VideoDub @_unmask {
     documentId: id

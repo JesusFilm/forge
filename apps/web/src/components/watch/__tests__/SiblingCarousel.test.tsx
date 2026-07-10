@@ -11,7 +11,7 @@
  * verifying U6's auto-scroll-on-mount behavior.
  */
 
-import { act } from "react"
+import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -29,12 +29,16 @@ vi.mock("next/image", () => ({
     fill: _fill,
     sizes: _sizes,
     className,
+    placeholder,
+    blurDataURL,
   }: {
     src: string
     alt: string
     fill?: boolean
     sizes?: string
     className?: string
+    placeholder?: string
+    blurDataURL?: string
   }) => (
     // A `<div>` stand-in (not `<img>`) sidesteps the next/no-img-element
     // lint rule while still letting us assert on `data-src` and the
@@ -44,8 +48,40 @@ vi.mock("next/image", () => ({
       data-testid="next-image-mock"
       data-src={src}
       data-alt={alt}
+      data-placeholder={placeholder ?? ""}
+      data-blur-data-url={blurDataURL ?? ""}
       className={className}
     />
+  ),
+}))
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    onClick,
+    onNavigate: _onNavigate,
+    prefetch,
+    children,
+    ...props
+  }: {
+    href: string
+    onClick?: MouseEventHandler<HTMLAnchorElement>
+    onNavigate?: unknown
+    prefetch?: boolean
+    children: ReactNode
+    [key: string]: unknown
+  }) => (
+    <a
+      href={href}
+      data-prefetch={String(prefetch)}
+      onClick={(event) => {
+        onClick?.(event)
+        event.preventDefault()
+      }}
+      {...props}
+    >
+      {children}
+    </a>
   ),
 }))
 
@@ -78,6 +114,7 @@ vi.mock("next-intl", () => ({
 }))
 
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
+import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -105,7 +142,13 @@ type ImageVariantFields = {
 
 function makeChild(
   i: number,
-  opts: { thumb?: boolean; image?: ImageVariantFields } = {},
+  opts: {
+    thumb?: boolean
+    image?: ImageVariantFields
+    muxPlaybackId?: string | null
+    muxThumbnailBlurDataUrl?: string | null
+    muxHeroPosterBlurDataUrl?: string | null
+  } = {},
 ) {
   // When `opts.image` is supplied, use it verbatim — lets tests assert on
   // the priority chain (`mobileCinematicHigh` > `mobileCinematicLow` >
@@ -124,6 +167,10 @@ function makeChild(
     title: `Child ${i}`,
     label: i % 2 === 0 ? `Label ${i}` : null,
     images,
+    durationSeconds: null,
+    muxPlaybackId: opts.muxPlaybackId ?? null,
+    muxThumbnailBlurDataUrl: opts.muxThumbnailBlurDataUrl ?? null,
+    muxHeroPosterBlurDataUrl: opts.muxHeroPosterBlurDataUrl ?? null,
   }
 }
 
@@ -147,6 +194,38 @@ function makeBlock(
   }
 }
 
+const pilatePageChapterSlugs = [
+  "triumphal-entry-and-results",
+  "last-supper",
+  "betrayal-and-denial-foretold",
+  "jesus-promises-the-holy-spirit",
+  "the-arrest-of-jesus-and-peter-denial",
+  "my-kingdom-is-not-of-this-world",
+  "jesus-sentenced-to-be-crucified",
+  "the-crucifixion-of-jesus",
+  "jesus-is-alive",
+  "doubting-thomas",
+  "miraculous-catch",
+  "do-you-love-me",
+  "upper-room-teaching",
+  "jesus-is-betrayed-and-arrested",
+  "jesus-is-mocked-and-questioned",
+  "jesus-is-brought-to-pilate",
+  "jesus-is-brought-to-herod",
+  "jesus-is-sentenced",
+  "jesus-carries-his-cross",
+  "jesus-is-crucified",
+  "sign-on-the-cross",
+  "crucified-convicts",
+  "my-last-day",
+  "death-of-jesus",
+  "jesus-is-buried",
+  "angels-at-the-tomb",
+  "the-tomb-is-empty",
+  "resurrected-jesus-appears",
+  "invitation-to-know-jesus-personally",
+]
+
 describe("SiblingCarousel — happy path", () => {
   it("renders one thumbnail per child with the current item highlighted", () => {
     const block = makeBlock(10, 2)
@@ -165,22 +244,33 @@ describe("SiblingCarousel — happy path", () => {
     expect(firstItemSlot?.className).toContain("md:basis-1/3")
 
     const rail = container.querySelector("[data-block-type='SiblingCarousel']")
-    expect(rail?.className).toContain("-mx-10")
-    expect(rail?.className).toContain("w-[calc(100%+5rem)]")
+    expect(rail?.className).toContain("-mx-5")
+    expect(rail?.className).toContain("w-[calc(100%+2.5rem)]")
     expect(rail?.className).toContain("md:mx-0")
     expect(rail?.className).toContain("md:w-full")
 
     const header = rail?.querySelector("header")
-    expect(header?.className).toContain("px-10")
+    expect(header?.className).toContain("px-5")
     expect(header?.className).toContain("md:px-0")
+    const headerLine = header?.querySelector("p")
+    expect(headerLine?.className).toContain("font-normal")
+    expect(headerLine?.className).not.toContain("font-medium")
+    expect(headerLine?.querySelector("span")?.className).toContain(
+      "font-medium",
+    )
     const carousel = container.querySelector("[data-slot='carousel']")
+    expect(carousel?.className).toContain("pl-5")
+    expect(carousel?.className).toContain("md:pl-0")
     expect(carousel?.className).not.toContain("translate-x-10")
     expect(carousel?.className).not.toContain("md:translate-x-0")
     const content = container.querySelector(
       "[data-slot='carousel-content'] > div",
     )
-    expect(content?.className).toContain("pl-10")
-    expect(content?.className).toContain("md:pl-0")
+    const viewport = container.querySelector("[data-slot='carousel-content']")
+    expect(viewport?.className).toContain("overflow-x-visible")
+    expect(viewport?.className).toContain("md:overflow-x-clip")
+    expect(content?.className).not.toContain("pl-10")
+    expect(content?.className).not.toContain("md:pl-0")
     expect(content?.className).not.toContain("translate-x-14")
     expect(content?.className).not.toContain("md:translate-x-0")
     const endSpacer = container.querySelector(
@@ -195,7 +285,19 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(active).not.toBeNull()
-    expect(active!.className).toContain("border-white")
+    const activeOutline = active!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(activeOutline).not.toBeNull()
+    expect(activeOutline?.className).toContain("absolute")
+    expect(activeOutline?.className).toContain("inset-0")
+    expect(activeOutline?.className).toContain("z-[70]")
+    expect(activeOutline?.className).toContain("border-4")
+    expect(activeOutline?.className).toContain("border-brand-red")
+    expect(activeOutline?.className).toContain("transition-[opacity,transform]")
+    expect(activeOutline?.className).toContain("duration-300")
+    expect(activeOutline?.className).toContain("opacity-100")
+    expect(active!.className).not.toContain("border-4")
     expect(active!.className).toContain("aspect-video")
     expect(active!.className).not.toContain("translate-x-10")
     expect(active!.className).not.toContain("md:translate-x-0")
@@ -205,10 +307,10 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).not.toContain("after:border-4")
     expect(active!.className).toContain("focus-visible:outline-white/80")
     expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
-    // Canonical 2-segment `.html` shape `/{slug}.html/{locale}.html`,
-    // emitted by the `watchVideoPath` builder.
+    // Contextual 3-segment shape keeps chapter navigation inside the
+    // collection instead of resolving by the child slug alone.
     expect(active!.getAttribute("data-href")).toBe(
-      "/child-3-slug.html/english.html",
+      "/jesus-collection.html/child-3-slug/english.html",
     )
     const caption = active!.querySelector(
       "[data-testid='sibling-carousel-caption']",
@@ -218,6 +320,13 @@ describe("SiblingCarousel — happy path", () => {
     expect(caption?.className).toContain("bg-gradient-to-t")
     expect(caption?.className).toContain("via-black/35")
     expect(caption?.className).toContain("z-20")
+    expect(caption?.className).toContain("gap-[3px]")
+    expect(caption?.className).not.toContain("gap-1.5")
+    const captionText = Array.from(caption!.querySelectorAll("span"))
+    expect(captionText[0]?.className).toContain("font-normal")
+    expect(captionText[0]?.className).not.toContain("font-semibold")
+    expect(captionText[1]?.className).toContain("font-semibold")
+    expect(captionText[1]?.className).not.toContain("font-bold")
 
     const blurMask = active!.querySelector("[aria-hidden='true']")
     expect(blurMask?.className).toContain("h-full")
@@ -247,8 +356,18 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(inactive?.className).not.toContain("border-transparent")
     expect(inactive?.className).toContain("opacity-70")
-    expect(inactive?.className).toContain("hover:outline-brand-red")
     expect(inactive?.className).toContain("hover:opacity-100")
+    const hoverOutline = inactive?.querySelector(
+      "[data-testid='sibling-carousel-hover-outline']",
+    )
+    expect(hoverOutline?.className).toContain("inset-0")
+    expect(hoverOutline?.className).toContain("z-[70]")
+    expect(hoverOutline?.className).toContain("border-4")
+    expect(hoverOutline?.className).toContain("border-brand-red")
+    expect(hoverOutline?.className).not.toContain("watch-home-gradient-outline")
+    expect(hoverOutline?.className).toContain("group-hover:opacity-100")
+    const outlineSegments = hoverOutline?.querySelectorAll("span")
+    expect(outlineSegments).toHaveLength(0)
 
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
@@ -259,9 +378,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
   })
 
-  it("routes a child through watchVideoPath to the canonical `.html` 2-segment shape", () => {
-    // Builder contract: slug `magdalena` + locale `english` →
-    // `/magdalena.html/english.html` (no manual encodeURIComponent, no cast).
+  it("routes a child through the contextual collection shape", () => {
+    // Builder contract: parent `jesus-collection` + child `magdalena`
+    // + locale `english` → `/jesus-collection.html/magdalena/english.html`.
     const block: WatchSiblingCarouselBlock = {
       kind: "SiblingCarousel",
       canonicalParent: {
@@ -285,9 +404,366 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(active!.tagName).toBe("A")
     expect(active!.getAttribute("data-href")).toBe(
-      "/magdalena.html/english.html",
+      "/jesus-collection.html/magdalena/english.html",
     )
-    expect(active!.getAttribute("href")).toBe("/magdalena.html/english.html")
+    expect(active!.getAttribute("href")).toBe(
+      "/jesus-collection.html/magdalena/english.html",
+    )
+  })
+
+  it("uses the stored Mux thumbnail LQIP only for Mux thumbnails", () => {
+    const blurDataURL = "data:image/jpeg;base64,AQIDBA=="
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          makeChild(1, {
+            muxPlaybackId: "mux-playback-1",
+            muxThumbnailBlurDataUrl: blurDataURL,
+          }),
+          makeChild(2, {
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,SHOULD_NOT_USE",
+          }),
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const images = container.querySelectorAll("[data-testid='next-image-mock']")
+    expect(images[0]?.getAttribute("data-src")).toBe(
+      "https://image.mux.com/mux-playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+    expect(images[0]?.getAttribute("data-placeholder")).toBe("blur")
+    expect(images[0]?.getAttribute("data-blur-data-url")).toBe(blurDataURL)
+    expect(images[1]?.getAttribute("data-src")).toBe("https://cdn.test/2.jpg")
+    expect(images[1]?.getAttribute("data-placeholder")).toBe("")
+    expect(images[1]?.getAttribute("data-blur-data-url")).toBe("")
+  })
+
+  it("preserves the Anticipate collection segment for all 29 Pilate page chapters", () => {
+    const children = pilatePageChapterSlugs.map((slug, index) => ({
+      ...makeChild(index + 1),
+      documentId: `pilate-chapter-${index + 1}`,
+      slug,
+      title: `Pilate chapter ${index + 1}`,
+    }))
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "anticipate-parent",
+        slug: "anticipate-the-resurrection",
+        title: "Anticipate the Resurrection",
+        children,
+      } as never,
+      currentVideoDocumentId: "pilate-chapter-12",
+    }
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const hrefs = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+      (item) => item.getAttribute("data-href"),
+    )
+    expect(hrefs).toHaveLength(29)
+    expect(hrefs).toEqual(
+      pilatePageChapterSlugs.map(
+        (slug) => `/anticipate-the-resurrection.html/${slug}/english.html`,
+      ),
+    )
+    expect(hrefs).toContain(
+      "/anticipate-the-resurrection.html/jesus-is-crucified/english.html",
+    )
+    expect(hrefs).toContain(
+      "/anticipate-the-resurrection.html/resurrected-jesus-appears/english.html",
+    )
+    expect(hrefs).toContain(
+      "/anticipate-the-resurrection.html/invitation-to-know-jesus-personally/english.html",
+    )
+    expect(hrefs).not.toContain("/jesus-is-crucified.html/english.html")
+    expect(hrefs).not.toContain("/resurrected-jesus-appears.html/english.html")
+    expect(hrefs).not.toContain(
+      "/invitation-to-know-jesus-personally.html/english.html",
+    )
+  })
+
+  it("makes the clicked chapter card current while navigation is pending", () => {
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
+    )
+
+    expect(target).not.toBeNull()
+    expect(previousCurrent).not.toBeNull()
+    expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("false")
+    expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(previousCurrent!.getAttribute("data-active")).toBe("true")
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("data-active")).toBe("true")
+    expect(target!.getAttribute("aria-busy")).toBe("true")
+    const targetOutline = target!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(targetOutline).not.toBeNull()
+    expect(targetOutline?.className).toContain("border-4")
+    expect(targetOutline?.className).toContain("border-brand-red")
+    expect(targetOutline?.className).toContain("opacity-100")
+    expect(target!.className).not.toContain("border-4")
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    const previousOutline = previousCurrent!.querySelector(
+      "[data-testid='sibling-carousel-active-outline']",
+    )
+    expect(previousOutline).not.toBeNull()
+    expect(previousOutline?.className).toContain("opacity-0")
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    const mobileLabel = label?.querySelector(".md\\:hidden")
+    const desktopLabel = label?.querySelector(".hidden.md\\:inline")
+    expect(mobileLabel?.textContent).toBe("2 of 4")
+    expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
+  })
+
+  it("emits full pending chapter metadata for a normal inactive click", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    })
+    act(() => {
+      target!.dispatchEvent(event)
+    })
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(onChapterNavigateIntent).toHaveBeenCalledTimes(1)
+    expect(onChapterNavigateIntent).toHaveBeenCalledWith({
+      href: "/jesus-collection.html/child-2-slug/english.html",
+      languageSlug: "english",
+      sourceVideoDocumentId: "child-1",
+      targetVideoDocumentId: "child-2",
+      title: "Child 2",
+      slug: "child-2-slug",
+      label: "Label 2",
+      posterUrl: "https://cdn.test/2.jpg",
+      posterBlurDataUrl: null,
+      sourceCarouselIndex: expect.any(Number),
+    })
+  })
+
+  it("emits the full hero Mux poster for optimistic chapter transitions", () => {
+    const onChapterNavigateIntent = vi.fn()
+    const block: WatchSiblingCarouselBlock = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "parent-1",
+        slug: "jesus-collection",
+        title: "Jesus Collection",
+        children: [
+          makeChild(1),
+          makeChild(2, {
+            muxPlaybackId: "mux playback 2",
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,CARD==",
+            muxHeroPosterBlurDataUrl: "data:image/webp;base64,HERO==",
+          }),
+        ],
+      } as never,
+      currentVideoDocumentId: "child-1",
+    }
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        posterUrl:
+          "https://image.mux.com/mux%20playback%202/thumbnail.webp?time=2",
+        posterBlurDataUrl: "data:image/webp;base64,HERO==",
+      }),
+    )
+  })
+
+  it("uses controlled pending state when the parent supplies it", () => {
+    const block = makeBlock(4, 0)
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          pendingNavigation={{
+            href: "/jesus-collection.html/child-3-slug/english.html",
+            languageSlug: "english",
+            sourceVideoDocumentId: "child-1",
+            targetVideoDocumentId: "child-3",
+            title: "Child 3",
+            slug: "child-3-slug",
+            label: null,
+            posterUrl: "https://cdn.test/3.jpg",
+          }}
+        />,
+      )
+    })
+
+    const previousCurrent = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
+    )
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-3-slug/english.html']",
+    )
+
+    expect(previousCurrent!.getAttribute("data-active")).toBe("false")
+    expect(target!.getAttribute("data-active")).toBe("true")
+    expect(target!.getAttribute("data-pending")).toBe("true")
+    expect(target!.getAttribute("aria-busy")).toBe("true")
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).not.toBeNull()
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    expect(label?.textContent).toContain("3 of 4")
+    expect(label?.textContent).toContain("Clip 3 of 4")
+  })
+
+  it("does not show pending feedback for modified chapter clicks", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const target = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-2-slug/english.html']",
+    )
+
+    act(() => {
+      target!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          metaKey: true,
+        }),
+      )
+    })
+
+    expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+    expect(target!.getAttribute("aria-busy")).toBeNull()
+    expect(
+      target!.querySelector("[data-testid='sibling-carousel-loading-icon']"),
+    ).toBeNull()
+  })
+
+  it("does not emit pending feedback for the already-current chapter", () => {
+    const block = makeBlock(4, 0)
+    const onChapterNavigateIntent = vi.fn()
+
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          block={block}
+          languageSlug="english"
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />,
+      )
+    })
+
+    const current = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-href='/jesus-collection.html/child-1-slug/english.html']",
+    )
+
+    act(() => {
+      current!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+
+    expect(onChapterNavigateIntent).not.toHaveBeenCalled()
+    expect(current!.getAttribute("data-pending")).toBe("false")
+    expect(current!.getAttribute("aria-busy")).toBeNull()
   })
 
   it("renders an in-app href without the /watch/ basePath prefix", () => {
@@ -304,9 +780,10 @@ describe("SiblingCarousel — happy path", () => {
       const href = item.getAttribute("data-href") ?? ""
       // basePath auto-prepends; in-app hrefs MUST NOT include /watch/ literal.
       expect(href.startsWith("/watch/")).toBe(false)
-      // Canonical 2-segment `.html` shape — child slug then locale, no
-      // parent segment.
-      expect(href).toMatch(/^\/child-\d+-slug\.html\/english\.html$/)
+      // Contextual 3-segment shape — parent slug, child slug, then locale.
+      expect(href).toMatch(
+        /^\/jesus-collection\.html\/child-\d+-slug\/english\.html$/,
+      )
       expect(href.endsWith("/english.html")).toBe(true)
     }
   })
@@ -428,8 +905,9 @@ describe("SiblingCarousel — edge cases", () => {
     )
     expect(active).not.toBeNull()
     expect(active!.getAttribute("data-href")).toBe(
-      "/child-12-slug.html/english.html",
+      "/jesus-collection.html/child-12-slug/english.html",
     )
+    expect(active!.getAttribute("data-prefetch")).toBe("false")
     const label = container.querySelector(
       "[data-testid='sibling-carousel-label']",
     )
@@ -437,6 +915,69 @@ describe("SiblingCarousel — edge cases", () => {
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("12 of 15")
     expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
+  })
+
+  it("consumes preserved chapter-navigation carousel state on the target page", async () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "child-4",
+      }),
+    )
+
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY),
+    ).toBeNull()
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-4-slug/english.html",
+    )
+  })
+
+  it("prefers preserved carousel scroll index over source chapter index", async () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "child-4",
+        sourceCarouselIndex: 2,
+      }),
+    )
+
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+      )
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(
+      window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY),
+    ).toBeNull()
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-4-slug/english.html",
+    )
   })
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {
@@ -450,7 +991,7 @@ describe("SiblingCarousel — edge cases", () => {
       "[data-testid='sibling-carousel-item'][data-active='true']",
     )
     expect(item).not.toBeNull()
-    // Empty languageSlug fails the slug regex, so `watchVideoPath` is never built.
+    // Empty languageSlug fails the slug regex, so no watch route is built.
     // The card still renders — as a plain <div>, not an <a> — with no href.
     expect(item!.tagName).toBe("DIV")
     expect(item!.getAttribute("href")).toBeNull()
@@ -463,14 +1004,17 @@ describe("SiblingCarousel — edge cases", () => {
   })
 })
 
-describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
+describe("SiblingCarousel — image priority", () => {
   // Each test renders a single-active-item block and reads the active item's
   // <Image> stand-in (`data-src`) to assert which image variant won the
   // priority chain. The variant order is:
+  //   muxPlaybackId second-2 frame > editorial image chain > placeholder
+  // The editorial fallback order is:
   //   mobileCinematicHigh > mobileCinematicLow > thumbnail > placeholder
   //   (`url` is intentionally NOT in the chain — it 400s on Cloudflare.)
   function singleChildBlock(
     image: ImageVariantFields,
+    muxPlaybackId: string | null = null,
   ): WatchSiblingCarouselBlock {
     return {
       kind: "SiblingCarousel",
@@ -479,7 +1023,7 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
         slug: "p",
         title: "P",
         children: [
-          makeChild(1, { image }),
+          makeChild(1, { image, muxPlaybackId }),
           makeChild(2), // sibling so children.length >= 2 (carousel renders)
         ],
       } as never,
@@ -499,6 +1043,26 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     )
   }
 
+  it("uses the language-aware Mux second-2 frame before curated image fallbacks", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel
+          languageSlug="english"
+          block={singleChildBlock(
+            {
+              mobileCinematicHigh: "https://cdn.test/high.jpg",
+              thumbnail: "https://cdn.test/thumb.jpg",
+            },
+            "mux-playback-1",
+          )}
+        />,
+      )
+    })
+    expect(activeImage()!.getAttribute("data-src")).toBe(
+      "https://image.mux.com/mux-playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+  })
+
   it("uses mobileCinematicHigh when all four variants are present", () => {
     act(() => {
       root.render(
@@ -516,6 +1080,22 @@ describe("SiblingCarousel — image priority (resolvePosterUrl)", () => {
     const img = activeImage()
     expect(img).not.toBeNull()
     expect(img!.getAttribute("data-src")).toBe("https://cdn.test/high.jpg")
+    expect(img!.getAttribute("data-alt")).toBe("Child 1 thumbnail")
+  })
+
+  it("uses a non-empty fallback alt for informative thumbnails without titles", () => {
+    const block = singleChildBlock({
+      thumbnail: "https://cdn.test/thumb.jpg",
+    })
+    block.canonicalParent.children[0]!.title = null
+
+    act(() => {
+      root.render(<SiblingCarousel languageSlug="english" block={block} />)
+    })
+
+    expect(activeImage()!.getAttribute("data-alt")).toBe(
+      "Related video thumbnail",
+    )
   })
 
   it("falls through to mobileCinematicLow when mobileCinematicHigh is absent", () => {

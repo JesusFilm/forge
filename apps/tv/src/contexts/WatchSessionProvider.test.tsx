@@ -1,8 +1,6 @@
-// TV has no @testing-library/react-native (and no react-test-renderer), so the
-// provider's React wiring is kept a thin shell over PURE, exported helpers and
-// those helpers are unit-tested directly here (per U3's "otherwise test the
-// reducer/helper logic directly without rendering"). Each helper backs one
-// provider behavior; the mapping is noted per describe block.
+// TV has no @testing-library/react-native, so the provider stays a thin shell
+// over PURE exported helpers that we unit-test directly here (per U3). Each
+// helper backs one provider behavior; the mapping is noted per describe block.
 
 // Import from the React-free helper module (not the .tsx provider) — the jest
 // transform can't load the provider's React/JSX module graph, and the provider
@@ -69,6 +67,7 @@ function makeSubtitle(
     documentId: `sub-${slug}`,
     languageSlug: slug,
     languageName: slug,
+    languageNameNative: null,
     languageBcp47: bcp47,
     vttSrc: `https://x/${slug}.vtt`,
     primary: false,

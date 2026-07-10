@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
+  clearWatchRouteManifestCache,
+  getWatchRouteManifest,
   isWatchRouteAdmittedByManifest,
   parseWatchRouteManifest,
   type WatchRouteManifest,
@@ -25,6 +27,16 @@ const manifest: WatchRouteManifest = {
     },
   },
 }
+
+const originalEnv = { ...process.env }
+
+afterEach(() => {
+  process.env.ADMIN_GRAPHQL_URL = originalEnv.ADMIN_GRAPHQL_URL
+  process.env.WEB_ADMIN_API_KEYS = originalEnv.WEB_ADMIN_API_KEYS
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  clearWatchRouteManifestCache()
+})
 
 describe("parseWatchRouteManifest", () => {
   it("accepts the admin manifest contract", () => {
@@ -56,6 +68,55 @@ describe("parseWatchRouteManifest", () => {
         audioLanguageIndexesByEpisode: { jesus: { "the-beginning": [null] } },
       }),
     ).toBeNull()
+  })
+})
+
+describe("getWatchRouteManifest", () => {
+  it("logs a Datadog-visible breadcrumb when the admin manifest fetch fails", async () => {
+    process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "key-one"
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("nope", { status: 503 })),
+    )
+
+    await expect(getWatchRouteManifest()).resolves.toBeNull()
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[watch] event=watch_route_manifest.fetch.failed status=503 url=https://admin.test/api/watch-route-manifest",
+    )
+  })
+
+  it("logs a Datadog-visible breadcrumb when the admin manifest fetch throws", async () => {
+    process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "key-one"
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout now")))
+
+    await expect(getWatchRouteManifest()).resolves.toBeNull()
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[watch] event=watch_route_manifest.fetch.error detail=timeout_now url=https://admin.test/api/watch-route-manifest",
+    )
+  })
+
+  it("logs a Datadog-visible breadcrumb when the admin manifest payload is invalid", async () => {
+    process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "key-one"
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
+    )
+
+    await expect(getWatchRouteManifest()).resolves.toBeNull()
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[watch] event=watch_route_manifest.fetch.invalid_payload url=https://admin.test/api/watch-route-manifest",
+    )
   })
 })
 

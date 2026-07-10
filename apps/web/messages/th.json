@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "",
     "close": "ปิด",
     "download": "ดาวน์โหลด",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "กำลังตรวจสอบ",
     "closeTermsOfUse": "ปิดข้อกำหนดการใช้งาน",
     "cancel": "ยกเลิก",
@@ -83,7 +86,8 @@
     "toggleOn": "เปิด",
     "toggleOff": "ปิด",
     "close": "ปิด",
-    "apply": "ใช้"
+    "apply": "ใช้",
+    "noLanguageSubtitles": "ไม่มีคำบรรยายภาษา{language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# ตอน} other {# ตอน}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "เริ่มการสนทนาส่วนตัวกับคนที่พร้อมรับฟัง",
     "questionsShort": "คำถาม",
     "questions": "คำถามที่เกี่ยวข้อง",
-    "askYours": "ถามคำถามของคุณ",
+    "askYours": "ถามเอง",
     "chatWithPerson": "คุยกับคนจริง",
     "askBibleQuestion": "ถามคำถามเกี่ยวกับพระคัมภีร์"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "แอนิเมชัน",
     "categoryStudy": "ศึกษา",
     "categoryFamily": "ครอบครัว",
-    "categoryChristmas": "คริสต์มาส"
+    "categoryChristmas": "คริสต์มาส",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "เล่นพร้อมเสียง",
+    "playWithSound": "ดูตอนนี้",
     "tapToUnmute": "เปิดเสียง"
   },
   "ExperienceSkeleton": {

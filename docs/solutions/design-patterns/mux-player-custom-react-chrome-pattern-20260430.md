@@ -527,6 +527,11 @@ useEffect(() => {
 
 iPhone Safari does **not** allow fullscreen on arbitrary elements like the wrapper `div` — only the inner `<video>` element via `videoEl.webkitEnterFullscreen()`. The webkit-prefixed fallbacks above cover desktop Safari and iPad, but iPhone-specific full-fullscreen still needs to delegate to the `<video>` element directly. **Verify on real device hardware** before claiming iPhone fullscreen works.
 
+When adding that video-element fallback, branch on wrapper method availability
+rather than the wrapper method's return value. Older WebKit fullscreen methods
+can return `void`; a handler that falls through on an `undefined` return may
+call both `wrapper.webkitRequestFullscreen()` and `video.webkitEnterFullscreen()`.
+
 ### Volume slider with pointer capture + lost-capture safety
 
 ```tsx
@@ -707,3 +712,4 @@ The `HeroPlayerControls` test suite lives in `apps/web/src/components/watch/__te
 - The 2026-05-01 update layer (sections 5a–5e and the iOS-safe sequence patch) was developed against `main` directly without a separate PR; the working tree carries the change.
 - [`docs/solutions/logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md`](../logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md) — sibling fix from the same PR (#878). The `aspect-video` + `useLayoutEffect` + `onCanPlay`+`onError` combination in section 5a/5f was added as part of fixing the wrong-language-variant bug, because the original watch page used `useEffect` for the ResizeObserver and had no loading-state coverage at all. Read together for the full context of PR #878.
 - PR [#878](https://github.com/JesusFilm/forge/pull/878) — `feat(web): fix English variant selection + redesign watch share modal + harden hero loading`. Source of the 2026-05-04 updates to sections 5a and 5f.
+- [`docs/solutions/design-patterns/watch-language-player-chrome-layout-20260609.md`](./watch-language-player-chrome-layout-20260609.md) — current watch-page UX refinements layered on top of this pattern: language-picker icons/tooltips/I/O switch, 0.3 player/header opacity states, pointer lockout, and measured muted-preview episode-rail overlap. Read before changing the files touched in that branch.

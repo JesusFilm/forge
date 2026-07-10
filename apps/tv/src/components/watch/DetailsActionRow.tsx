@@ -1,34 +1,23 @@
-// Action row for the video-details screen.
-//
-// Order: [Language] [Subtitles] [Play] [Share] [Download], with Play as the
-// solid crimson circle anchor in the centre. Wrapped in a TVFocusGuideView so
-// D-pad LEFT/RIGHT traverses the row and focus can't escape upward into the
-// non-interactive backdrop.
-//
-// Focus (R7): Play receives a one-shot hasTVPreferredFocus on mount (cleared via
-// useEffect) AND becomes the focus-restore target when the fullscreen overlay
-// dismisses — when VideoPlayerContext goes visible → not-visible, we re-arm
-// Play's preferred focus for one render.
-//
-// Play (R5): validate the active variant's hls via validateStreamingUrl, then
-// playVideo(hls, title, subtitle).
-//
-// Share / Download (R18, R19): v1 capability probe is QR-or-hide. We build the
-// continuation URL, validate it with validateActionUrl, and only render the
-// action when valid; pressing it opens the QR LinkModal. (Native-intent probe is
-// refined in U7-adjacent work.)
+// Video-details inline pills row (Claude Design handoff): [Play] [Language] [Subtitles]
+// [Share] left-aligned under the title; WATCH_THEME, a TVFocusGuideView (autoFocus).
+// Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share R18 opens the QR LinkModal.
 
-import { useEffect, useRef, useState } from "react"
-import { Pressable, StyleSheet, Text } from "react-native"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { LinkModal } from "../LinkModal"
-import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { buildShareUrl } from "./detailsHelpers"
+import { WATCH_THEME } from "./watchDetailTheme"
+import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
+
+type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
 type DetailsActionRowProps = {
   title: string | null
@@ -42,7 +31,7 @@ export function DetailsActionRow({
   onOpenSubtitles,
 }: DetailsActionRowProps) {
   const { playVideo, state } = useVideoPlayerContext()
-  const { video, activeVariant } = useWatchSession()
+  const { video, activeVariant, subtitleEnabled } = useWatchSession()
 
   // One-shot preferred focus on Play: armed on mount, and re-armed whenever the
   // overlay closes so focus returns to Play (R7). Cleared the render after it
@@ -59,8 +48,6 @@ export function DetailsActionRow({
 
   useEffect(() => {
     if (!playPreferredFocus) return
-    // Clear on the next tick so the flag is one-shot (mirrors the mobile/TV
-    // back-navigation focus-restore pattern).
     const id = setTimeout(() => setPlayPreferredFocus(false), 0)
     return () => clearTimeout(id)
   }, [playPreferredFocus])
@@ -71,8 +58,8 @@ export function DetailsActionRow({
     playVideo(hls, title ?? undefined, undefined)
   }
 
-  // Share / Download continuation URL → QR fallback. Same public watch URL for
-  // both in v1 (the phone page exposes share + download); validated before use.
+  // Share continuation URL → QR fallback: the public watch URL, validated
+  // before use so the phone can pick the video up.
   const shareUrl = buildShareUrl(video, activeVariant?.languageSlug ?? null)
   const canShare = shareUrl != null && validateActionUrl(shareUrl)
 
@@ -80,36 +67,42 @@ export function DetailsActionRow({
   const [modalHeading, setModalHeading] = useState<string>(
     "Scan to continue on your phone",
   )
-
   const openModal = (url: string | null, heading: string) => {
     if (!validateActionUrl(url)) return
     setModalHeading(heading)
     setModalUrl(url)
   }
 
+  // Secondary-pill sub-labels from real session data. The play button is just the
+  // icon + "Play" (the mockup's "Day 1 · 3:42 left" resume state has no JFP
+  // equivalent — no watch-progress tracking).
+  const langSub = activeVariant?.languageName ?? null
+  const subsSub = subtitleEnabled ? "On" : "Off"
+
   return (
     <>
       <TVFocusGuideView autoFocus style={styles.row}>
-        <SecondaryAction label="Language" onPress={onOpenLanguage} />
-        <SecondaryAction label="Subtitles" onPress={onOpenSubtitles} />
-
-        <PlayAction
+        <PlayPill
           onPress={handlePlay}
           hasTVPreferredFocus={playPreferredFocus}
         />
-
+        <SecondaryPill
+          icon="globe-outline"
+          label="Language"
+          sub={langSub}
+          onPress={onOpenLanguage}
+        />
+        <SecondaryPill
+          icon="text-outline"
+          label="Subtitles"
+          sub={subsSub}
+          onPress={onOpenSubtitles}
+        />
         {canShare ? (
-          <SecondaryAction
+          <SecondaryPill
+            icon="share-outline"
             label="Share"
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
-          />
-        ) : null}
-        {canShare ? (
-          <SecondaryAction
-            label="Download"
-            onPress={() =>
-              openModal(shareUrl, "Scan to download on your phone")
-            }
           />
         ) : null}
       </TVFocusGuideView>
@@ -128,15 +121,32 @@ export function DetailsActionRow({
 }
 
 // ── Buttons ─────────────────────────────────────────────────────────
+// Focus eases in via useFocusAnimation's 0→1 `progress`: the pill lifts + magnifies
+// and its highlight cross-fades over ~180ms. SecondaryPill is exported for reuse
+// (SeriesActionRow's Language pill).
 
-function PlayAction({
+const ICON_SIZE = Math.round(scale(30))
+
+function PlayPill({
   onPress,
   hasTVPreferredFocus,
 }: {
   onPress: () => void
   hasTVPreferredFocus: boolean
 }) {
-  const [focused, setFocused] = useState(false)
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: progress is a stable ref, so the interpolations are built once
+  // rather than on every focus/blur re-render.
+  const animatedStyle = useMemo(
+    () => ({
+      borderColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.9)"],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       onPress={onPress}
@@ -145,82 +155,157 @@ function PlayAction({
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel="Play"
-      style={[styles.playButton, focused && styles.playButtonFocused]}
     >
-      <Text style={styles.playIcon}>{"▶"}</Text>
+      <Animated.View style={[styles.playPill, animatedStyle]}>
+        <Ionicons name="play" size={ICON_SIZE} color={WATCH_THEME.accentText} />
+        <Text style={styles.playLabel}>Play</Text>
+      </Animated.View>
     </Pressable>
   )
 }
 
-function SecondaryAction({
+export function SecondaryPill({
+  icon,
   label,
+  sub,
   onPress,
+  hasTVPreferredFocus,
 }: {
+  icon: IconName
   label: string
+  sub?: string | null
   onPress: () => void
+  hasTVPreferredFocus?: boolean
 }) {
-  const [focused, setFocused] = useState(false)
+  const { setFocused, progress } = useFocusAnimation()
+  // Memoized: progress is a stable ref, so the interpolations are built once
+  // rather than on every focus/blur re-render.
+  const ink = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    [progress],
+  )
+  const subInk = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text62, "rgba(0,0,0,0.5)"],
+      }),
+    [progress],
+  )
+  const animatedStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform: focusTransform(progress),
+    }),
+    [progress],
+  )
   return (
     <Pressable
       onPress={onPress}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      style={[styles.secondaryButton, focused && styles.secondaryButtonFocused]}
+      // Fold the visible sub-value (current language / "On"/"Off") into the
+      // label so VoiceOver and automated D-pad drivers can read the state
+      // without activating the picker.
+      accessibilityLabel={sub ? `${label}, ${sub}` : label}
     >
-      <Text style={styles.secondaryLabel}>{label}</Text>
+      <Animated.View style={[styles.pill, animatedStyle]}>
+        <AnimatedFocusIcon name={icon} progress={progress} size={ICON_SIZE} />
+        <View style={styles.cap}>
+          <Animated.Text style={[styles.pillLabel, { color: ink }]}>
+            {label}
+          </Animated.Text>
+          {sub ? (
+            <Animated.Text
+              style={[styles.pillSub, { color: subInk }]}
+              numberOfLines={1}
+            >
+              {sub}
+            </Animated.Text>
+          ) : null}
+        </View>
+      </Animated.View>
     </Pressable>
   )
 }
 
+const PILL_HEIGHT = scale(76)
+const PILL_RADIUS = scale(18)
+
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
+    alignItems: "stretch",
+    gap: scale(18),
+    marginTop: scale(34),
+  },
+
+  // Play (primary, solid red). A constant-width transparent border becomes a
+  // white ring as focus eases in (animating borderColor avoids any layout shift).
+  playPill: {
+    height: PILL_HEIGHT,
+    paddingLeft: scale(32),
+    paddingRight: scale(40),
+    borderRadius: PILL_RADIUS,
+    backgroundColor: WATCH_THEME.accent,
+    borderWidth: scale(3),
+    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: scale(80),
-    paddingVertical: scale(24),
+    gap: scale(16),
+    // Resting crimson drop shadow — the play button is the page anchor.
+    shadowColor: WATCH_THEME.accent,
+    shadowRadius: scale(18),
+    shadowOpacity: 0.55,
+    shadowOffset: { width: 0, height: scale(10) },
   },
-  playButton: {
-    width: scale(76),
-    height: scale(76),
-    borderRadius: scale(38),
-    backgroundColor: COLORS.primary,
+  playLabel: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(28)),
+    fontWeight: "700",
+    color: WATCH_THEME.accentText,
+  },
+
+  // Secondary (glass → white-fill on focus). backgroundColor + shadowOpacity are
+  // animated; the dark drop shadow (color/radius/offset) is static and revealed
+  // by the opacity ramp.
+  pill: {
+    height: PILL_HEIGHT,
+    paddingHorizontal: scale(26),
+    borderRadius: PILL_RADIUS,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: scale(24),
+    gap: scale(13),
+    shadowColor: "#000000",
+    shadowRadius: scale(22),
+    shadowOffset: { width: 0, height: scale(14) },
   },
-  playButtonFocused: {
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(24),
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 0 },
-    transform: [{ scale: 1.08 }],
-  },
-  playIcon: {
+  pillLabel: {
     fontFamily: "System",
-    fontSize: scale(30),
-    color: COLORS.text,
-    marginLeft: scale(4), // optical centering of the triangle glyph
-  },
-  secondaryButton: {
-    paddingHorizontal: scale(28),
-    paddingVertical: scale(16),
-    borderRadius: scale(28),
-    backgroundColor: COLORS.surfaceContainerHigh,
-    marginHorizontal: scale(8),
-  },
-  secondaryButtonFocused: {
-    backgroundColor: COLORS.surfaceContainerHighest,
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(16),
-    shadowOpacity: 0.8,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  secondaryLabel: {
-    fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(23)),
     fontWeight: "600",
-    color: COLORS.text,
+  },
+  pillSub: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(15)),
+    fontWeight: "600",
+    marginTop: scale(2),
+  },
+
+  cap: {
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
 })

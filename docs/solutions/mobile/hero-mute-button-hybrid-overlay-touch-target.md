@@ -18,6 +18,7 @@ components:
   - VideoHeroRenderer
   - CuratedHomeLayout
   - SectionWrapperRenderer
+last_updated: "2026-06-11"
 ---
 
 ## Problem
@@ -45,6 +46,8 @@ The mobile-v2 home feed uses a three-layer architecture: a video hero (zIndex 0)
 5. Tried `headerBackTitle` on destination screen → also ineffective
 
 ## Solution
+
+> **Scope (2026-06-11):** This hybrid measureLayout pattern is only valid for **non-paged** heroes (a single hero, as in CuratedHomeLayout). Inside a paged FlatList, `measureLayout` rects are page-relative — they include the `index * screenWidth` offset — so the invisible overlay target drifts off-screen on any slide past index 0. Paged heroes render visible chrome directly in the touch overlay instead; see [paged-hero-overlay-chrome-touch-architecture.md](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md).
 
 ### Hybrid rendering pattern for mute button
 
@@ -136,7 +139,7 @@ useEffect(() => {
 
 - **Never place tappable elements behind a ScrollView/FlashList** expecting them to receive touches. The scroll container captures all touches in its frame.
 - **`pointerEvents="box-none"` does not cross view hierarchies.** It only affects hit testing within parent-child relationships, not between sibling views.
-- **Use the hybrid pattern**: visual element in the correct z-layer + invisible touch target in a higher overlay. Sync positions via `measureLayout`.
+- **Use the hybrid pattern (non-paged heroes only)**: visual element in the correct z-layer + invisible touch target in a higher overlay. Sync positions via `measureLayout`. For paged heroes, render visible chrome directly in the overlay instead — measured rects carry the page offset.
 - **Always test on Android**: `VideoView` renders on top of all RN views regardless of zIndex. The overlay pattern may behave differently.
 
 ### CMS field validation
@@ -158,6 +161,7 @@ useEffect(() => {
 
 ## Related Documentation
 
+- [Paged hero overlay chrome touch architecture](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md) — the paged-hero variant; why this measureLayout pattern breaks on paged content
 - [FlashList hero bleed-through feed background](flashlist-hero-bleed-through-feed-background.md) — the translucent feed wrapper pattern this builds on
 - [FlashList opaque background hides absolute hero](flashlist-opaque-background-hides-absolute-hero.md) — why `contentContainerStyle` bg must stay transparent
 - [Full-bleed video hero with scroll-over content](full-bleed-video-hero-with-scroll-over-content.md) — foundational two-layer architecture (now three layers)

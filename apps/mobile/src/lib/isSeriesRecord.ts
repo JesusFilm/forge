@@ -1,12 +1,6 @@
-// Series detection, mirroring web's apps/web/src/lib/content.ts isSeriesRecord:
-// a record is series-shaped when its label is SERIES/COLLECTION, or it has
-// children. The two call sites carry different shapes, so the label test is
-// shared and each site supplies its own "has children" signal:
-//   - search: a SearchResult has `label` + `childCount` (a number) — inline.
-//   - the /watch redirect: a normalized record has `label` + `episodes`. The
-//     lean watch fragment doesn't fetch the video's own children, so `episodes`
-//     is [] there and this resolves to a label check (the search entry's
-//     `childCount` covers the unlabeled-but-has-children case).
+// Series-shaped = label SERIES/COLLECTION or has children (mirrors web's content.ts).
+// Each call site supplies has-children: the lean /watch fragment omits children so
+// `episodes` is [] there, and search's `childCount` covers unlabeled-with-children.
 const SERIES_LABELS = new Set(["series", "collection"])
 
 export function isSeriesLabel(label: string | null | undefined): boolean {

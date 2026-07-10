@@ -28,6 +28,7 @@ export type BlockTemplateKey =
   | "video"
   | "videoCarousel"
   | "videoHero"
+  | "watchHomeHero"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -36,6 +37,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "videoHero",
   "video",
   "videoCarousel",
+  "watchHomeHero",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -69,6 +71,8 @@ export const CONTAINER_SLOT_LAYOUT_PRESETS = [
   { label: "3 / 3 / 3 / 3", spans: [3, 3, 3, 3] },
 ] as const
 
+const legacyEditorOnlyKeys = new Set(["videoSlug"])
+
 export type VideoLibraryItem = {
   key: string
   title: string
@@ -84,6 +88,7 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  hasGrounding: boolean
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
@@ -174,6 +179,7 @@ export function containerSlotMarkerIndexes(content: unknown[]) {
 
 const optionalEmptyStringKeys = new Set([
   "backgroundColor",
+  "backgroundImageAssetId",
   "backgroundImageUrl",
   "buttonLink",
   "category",
@@ -184,11 +190,14 @@ const optionalEmptyStringKeys = new Set([
   "ctaLink",
   "footerText",
   "imageOverrideUrl",
+  "imageOverrideAssetId",
+  "imageAssetId",
   "imageUrl",
   "labelOverride",
   "link",
   "linkToSectionKey",
   "mediaUrl",
+  "mediaAssetId",
   "ogImageUrl",
   "sectionKey",
   "streamingUrl",
@@ -261,6 +270,7 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
   const normalizedEntries = Object.entries(record)
     .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
     .filter(([key, item]) => {
+      if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
@@ -329,6 +339,17 @@ export function summarizeBlock(
       badges: [
         asBoolean(value.useRouteVideo) ? "ROUTE_VIDEO" : "AUTHORED_VIDEO",
       ],
+    }
+  }
+
+  if (type === "watchHomeHero") {
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Home Hero",
+      title: "Watch Home Hero",
+      body: "Renders the static Watch homepage hero.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
     }
   }
 
@@ -610,6 +631,13 @@ export function createTemplateBlock(
       ctaEnabled: true,
       ctaLabel: "Learn more",
       ctaLink: "/",
+    }
+  }
+
+  if (template === "watchHomeHero") {
+    return {
+      t: "watchHomeHero",
+      sectionKey: `watch-home-hero-${index}`,
     }
   }
 

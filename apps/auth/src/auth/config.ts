@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth"
 import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
 
+import { agentLoginPlugin } from "@/auth/agent-login-plugin"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import {
   assertProductionAuthSecrets,
@@ -34,7 +35,6 @@ const socialProviders = {
         facebook: {
           clientId: env.FACEBOOK_CLIENT_ID,
           clientSecret: env.FACEBOOK_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -43,7 +43,6 @@ const socialProviders = {
         google: {
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -52,7 +51,6 @@ const socialProviders = {
         apple: {
           clientId: env.APPLE_CLIENT_ID,
           clientSecret: env.APPLE_CLIENT_SECRET,
-          disableSignUp: true,
         },
       }
     : {}),
@@ -66,7 +64,6 @@ const upstreamProviderPlugins =
             okta({
               clientId: env.OKTA_CLIENT_ID,
               clientSecret: env.OKTA_CLIENT_SECRET,
-              disableSignUp: true,
               issuer: env.OKTA_ISSUER,
             }),
           ],
@@ -75,6 +72,7 @@ const upstreamProviderPlugins =
     : []
 
 function firstPartyUserClaims(user: {
+  actorType?: string | null
   email?: string | null
   emailVerified?: boolean | null
   name?: string | null
@@ -86,6 +84,8 @@ function firstPartyUserClaims(user: {
     email_verified: user.emailVerified ?? undefined,
     name: user.name ?? undefined,
     picture: user.image ?? undefined,
+    "https://jesusfilm.org/claims/actor_type":
+      user.actorType === "AGENT" ? "agent" : "human",
     "https://jesusfilm.org/claims/membership_status":
       user.membershipStatus ?? "invited",
   }
@@ -105,8 +105,18 @@ export const auth = betterAuth({
       trustedProviders: ["google", "facebook", "apple", "okta"],
     },
   },
+  user: {
+    additionalFields: {
+      actorType: {
+        type: "string",
+        required: false,
+        input: false,
+      },
+    },
+  },
   plugins: [
     jwt(),
+    agentLoginPlugin(),
     oauthProvider({
       loginPage: "/login",
       consentPage: "/oauth/consent",
@@ -127,6 +137,7 @@ export const auth = betterAuth({
           "email_verified",
           "name",
           "picture",
+          "https://jesusfilm.org/claims/actor_type",
           "https://jesusfilm.org/claims/membership_status",
           "https://jesusfilm.org/claims/environment",
           "https://jesusfilm.org/claims/app",

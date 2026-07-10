@@ -4,6 +4,8 @@ import {
   resolveWatchPage,
   type ResolvedSeriesBySlug,
   type ResolvedWatchPage,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
 import {
   WATCH_BASE_PATH,
@@ -18,6 +20,7 @@ import { resolvePosterUrl } from "@/lib/url"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 
 const TITLE_SUFFIX = "| Jesus Film Project"
+const TITLE_SUFFIX_TEXT = "Jesus Film Project"
 
 /**
  * Build the canonical absolute URL for a watch page in the `.html` shape,
@@ -78,12 +81,157 @@ function getOgLocale(locale: string): string {
   return `${locale}_${locale.toUpperCase()}`
 }
 
+function withTitleSuffix(title: string): string {
+  const trimmed = title.trim()
+  if (!trimmed) return `Watch ${TITLE_SUFFIX}`
+  if (trimmed.endsWith(TITLE_SUFFIX_TEXT)) return trimmed
+  return `${trimmed} ${TITLE_SUFFIX}`
+}
+
 const DEFAULT_OG_IMAGE = {
   url: "https://images.unsplash.com/photo-1482424917728-d82d29662023?w=1400&auto=format&fit=crop&q=60",
   width: 1400,
   height: 933,
   alt: "Jesus Film Project",
   type: "image/jpeg" as const,
+}
+
+type WatchMetadataImage = {
+  url: string
+  width: number
+  height: number
+  alt: string
+  type: "image/jpeg"
+}
+
+const MUX_SOCIAL_IMAGE_WIDTH = 1200
+const MUX_SOCIAL_IMAGE_HEIGHT = 630
+
+function buildMuxSocialImage(
+  playbackId: string | null | undefined,
+  alt: string,
+): WatchMetadataImage | null {
+  if (!playbackId) return null
+
+  return {
+    url: `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${MUX_SOCIAL_IMAGE_WIDTH}&height=${MUX_SOCIAL_IMAGE_HEIGHT}&fit_mode=smartcrop`,
+    width: MUX_SOCIAL_IMAGE_WIDTH,
+    height: MUX_SOCIAL_IMAGE_HEIGHT,
+    alt,
+    type: "image/jpeg",
+  }
+}
+
+export type WatchVideoMetadataModel = {
+  title: string
+  videoTitle: string
+  description: string
+  canonicalUrl: string
+  image: WatchMetadataImage
+  noIndex: boolean
+  inLanguage: string | null
+  durationSeconds: number | null
+  contentUrl: string | null
+  embedUrl: string
+  uploadDate: string | null
+}
+
+type WatchVideoMetadataOptions = {
+  video: WatchVideoRecord
+  selectedVariant: WatchVariant
+  routeSlug: string
+  pathLocale: string
+  seriesSlug?: string
+}
+
+export function buildWatchVideoMetadataModel(
+  options: WatchVideoMetadataOptions,
+): WatchVideoMetadataModel {
+  const episodeSlug = options.video.slug ?? options.routeSlug
+  const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
+  const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const title = `${videoTitle} ${TITLE_SUFFIX}`
+  const description = options.video.description ?? options.video.snippet ?? ""
+  const imageAlt =
+    options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
+  const muxSocialImage = buildMuxSocialImage(
+    options.selectedVariant.muxVideo?.playbackId,
+    imageAlt,
+  )
+  const posterUrl = resolvePosterUrl(
+    options.video.images?.[0],
+    options.selectedVariant.muxVideo?.playbackId,
+  )
+  const image =
+    muxSocialImage ??
+    (posterUrl
+      ? {
+          url: posterUrl,
+          width: DEFAULT_OG_IMAGE.width,
+          height: DEFAULT_OG_IMAGE.height,
+          alt: imageAlt,
+          type: "image/jpeg" as const,
+        }
+      : DEFAULT_OG_IMAGE)
+
+  return {
+    title,
+    videoTitle,
+    description,
+    canonicalUrl,
+    image,
+    noIndex: options.video.noIndex ?? false,
+    inLanguage:
+      options.selectedVariant.language?.bcp47 ??
+      options.selectedVariant.language?.slug ??
+      null,
+    durationSeconds: options.selectedVariant.duration ?? null,
+    contentUrl: options.selectedVariant.hls ?? null,
+    embedUrl: canonicalUrl,
+    uploadDate: options.video.publishedAt ?? null,
+  }
+}
+
+export function generateWatchVideoMetadata(
+  locale: string,
+  options: WatchVideoMetadataOptions,
+): Metadata {
+  const model = buildWatchVideoMetadataModel(options)
+  const { fbAppId } = getSocialConfig()
+
+  return {
+    title: model.title,
+    description: model.description || undefined,
+    openGraph: {
+      title: model.title,
+      description: model.description || undefined,
+      url: model.canonicalUrl,
+      siteName: "Jesus Film Project",
+      locale: getOgLocale(locale),
+      type: "website" as const,
+      images: [model.image],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      site: "@JesusFilm",
+      creator: "@JesusFilm",
+      title: model.title,
+      description: model.description || undefined,
+      images: [
+        {
+          url: model.image.url,
+          alt: model.image.alt,
+        },
+      ],
+    },
+    robots: model.noIndex
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
+    ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
+    alternates: {
+      canonical: model.canonicalUrl,
+    },
+  }
 }
 
 function toMetadata(
@@ -139,6 +287,14 @@ function toMetadata(
         card: "summary_large_image" as const,
         site: "@JesusFilm",
         creator: "@JesusFilm",
+        title,
+        description: description || undefined,
+        images: [
+          {
+            url: ogImage.url,
+            alt: ogImage.alt,
+          },
+        ],
       },
       robots: resolvedPage.routeVideo.noIndex
         ? { index: false, follow: false }
@@ -158,11 +314,11 @@ function toMetadata(
   const fallbackTitle = options?.slug
     ? `${options.slug} ${TITLE_SUFFIX}`
     : "Watch | Jesus Film Project"
-  const title = cms?.title ?? fallbackTitle
+  const title = cms?.title ? withTitleSuffix(cms.title) : fallbackTitle
   const description =
     cms?.description ??
     "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages."
-  const ogTitle = cms?.ogTitle ?? title
+  const ogTitle = cms?.ogTitle ? withTitleSuffix(cms.ogTitle) : title
   const ogDescription = cms?.ogDescription ?? description
   const ogImage = cms?.ogImage
     ? {
@@ -190,6 +346,14 @@ function toMetadata(
       card: "summary_large_image" as const,
       site: "@JesusFilm",
       creator: "@JesusFilm",
+      title: ogTitle,
+      description: ogDescription || undefined,
+      images: [
+        {
+          url: ogImage.url,
+          alt: ogImage.alt,
+        },
+      ],
     },
     // Explicit index/follow default. Without this, no <meta name="robots">
     // is emitted — Google still defaults to index,follow, but explicit is
@@ -208,6 +372,13 @@ export async function getWatchPageMetadata(
 ): Promise<Metadata> {
   const result = await resolveWatchPage(locale, options?.slug)
   return toMetadata(locale, result.data, options)
+}
+
+export function getWatchRouteFallbackMetadata(
+  locale: string,
+  options?: { slug?: string; pathLocale?: string },
+): Metadata {
+  return toMetadata(locale, null, options)
 }
 
 // Series-page metadata helper. Mirrors the shape `getWatchPageMetadata`
@@ -260,6 +431,14 @@ export function generateSeriesMetadata(
       card: "summary_large_image" as const,
       site: "@JesusFilm",
       creator: "@JesusFilm",
+      title,
+      description: description || undefined,
+      images: [
+        {
+          url: ogImage.url,
+          alt: ogImage.alt,
+        },
+      ],
     },
     robots: series.noIndex
       ? { index: false, follow: false }

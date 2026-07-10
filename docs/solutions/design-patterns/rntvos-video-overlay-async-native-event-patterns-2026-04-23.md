@@ -1,6 +1,7 @@
 ---
 title: Async native events vs React state in react-native-tvos video overlays
 date: 2026-04-23
+last_updated: "2026-06-25"
 category: design-patterns
 module: apps/tv
 problem_type: design_pattern
@@ -219,6 +220,8 @@ The principle: `controlsFocusable` is what `UIFocusEngine` cares about; `control
 ### Pattern 4 — On foreground resume, set a one-shot `hasTVPreferredFocus` flag yourself — don't rely on the focus engine's default restoration
 
 [react-native-tvos #852](https://github.com/react-native-tvos/react-native-tvos/issues/852): after `AppState` foreground resume (and after back-navigation stack pops), `UIFocusEngine` can end up without a valid focused element even when focusable elements exist. The mitigation is a **one-shot `hasTVPreferredFocus` claim** on a specific `Pressable`, toggled by a React state flag that the `AppState 'active'` handler sets and the `Pressable`'s own `useEffect` clears.
+
+> Scope: the one-shot flag restores **one fixed control**. To restore the _actual_ last-focused element across a screen with many focusables (rails, hero, tabs) after a back-navigation pop, use a screen-level focus memory (`requestTVFocus` on the remembered node) instead — see [`tv-back-nav-focus-restoration-screen-focus-memory.md`](./tv-back-nav-focus-restoration-screen-focus-memory.md). Foreground-resume restore (this pattern) and back-nav element restore (the focus memory) are complementary.
 
 Critically, if the resume handler short-circuits any other code path that would have set the focus-pending flag (e.g., by directly flipping visibility rather than calling `revealControls`), it must set the correct focus-pending flag **itself** — and it must branch on the current error state so focus lands on the right control.
 

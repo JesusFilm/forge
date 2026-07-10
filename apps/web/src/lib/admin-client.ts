@@ -12,41 +12,69 @@ import { env } from "@/env"
 // 3 s once admin's resolver fan-out is trimmed.
 // Pattern: docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md
 const REQUEST_TIMEOUT_MS = 15_000
+const SEMANTIC_SEARCH_REQUEST_TIMEOUT_MS = 45_000
 
-const timeoutFetch: typeof fetch = (input, init) =>
-  fetch(input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
+function createTimeoutFetch(timeoutMs: number): typeof fetch {
+  return (input, init) =>
+    fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) })
+}
 
 // Deferred construction: types in `content.ts` are imported transitively
 // by a few `"use client"` renderers (e.g. `WatchSectionRenderer` needs
 // the `isWatchBlock` type-guard alongside block types). Reading
 // `env.WEB_ADMIN_API_KEYS` / `env.ADMIN_GRAPHQL_URL` at module-load
 // trips t3-oss/env-nextjs's client guard the moment any such client
-// chunk evaluates this file. A lazy singleton keeps module-load inert
-// on the client; server callers still hit a single shared instance.
-let realClient: ApolloClient | undefined
-
-function ensureClient(): ApolloClient {
-  if (realClient) return realClient
+// chunk evaluates this file. Lazy singletons keep module-load inert
+// on the client; server callers still hit shared instances per timeout budget.
+function createAdminClient(timeoutMs: number): ApolloClient {
   // WEB_ADMIN_API_KEYS may be a single key or a CSV mirroring admin's
   // keyring. We read the first entry as our outbound bearer so traffic
   // identifies as `consumer:<key>` at admin's rate-limit layer rather
   // than `public:<railway-egress-ip>`.
   const bearer = env.WEB_ADMIN_API_KEYS.split(",")[0]?.trim() ?? ""
-  realClient = new ApolloClient({
+  return new ApolloClient({
     link: new HttpLink({
       uri: env.ADMIN_GRAPHQL_URL,
       headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
-      fetch: timeoutFetch,
+      fetch: createTimeoutFetch(timeoutMs),
     }),
     cache: new InMemoryCache(),
   })
-  return realClient
 }
 
-const adminClient = new Proxy({} as ApolloClient, {
-  get(_target, prop, receiver) {
-    return Reflect.get(ensureClient(), prop, receiver)
-  },
-})
+export function createUserAdminClient(
+  accessToken: string,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): ApolloClient {
+  return new ApolloClient({
+    link: new HttpLink({
+      uri: env.ADMIN_GRAPHQL_URL,
+      headers: { Authorization: `Bearer ${accessToken}` },
+      fetch: createTimeoutFetch(timeoutMs),
+    }),
+    cache: new InMemoryCache(),
+  })
+}
+
+function createLazyAdminClient(timeoutMs: number): ApolloClient {
+  let realClient: ApolloClient | undefined
+
+  function ensureClient(): ApolloClient {
+    realClient ??= createAdminClient(timeoutMs)
+    return realClient
+  }
+
+  return new Proxy({} as ApolloClient, {
+    get(_target, prop, receiver) {
+      return Reflect.get(ensureClient(), prop, receiver)
+    },
+  })
+}
+
+const adminClient = createLazyAdminClient(REQUEST_TIMEOUT_MS)
+
+export const semanticSearchAdminClient = createLazyAdminClient(
+  SEMANTIC_SEARCH_REQUEST_TIMEOUT_MS,
+)
 
 export default adminClient

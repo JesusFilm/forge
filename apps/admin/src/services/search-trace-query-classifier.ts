@@ -164,11 +164,12 @@ export function isLlmClassificationCandidate(
 export function createSearchTraceQueryClassifier(
   options: SearchTraceQueryClassifierOptions = {},
 ): SearchTraceQueryClassifier {
-  const apiKey = options.apiKey ?? env.OPENROUTER_API_KEY
+  const apiKey =
+    options.apiKey ?? env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
   if (!apiKey) {
     throw new SearchTraceQueryClassifierError(
       "missing_credentials",
-      "OPENROUTER_API_KEY is required to classify search trace queries",
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required to classify search trace queries",
     )
   }
   const model =

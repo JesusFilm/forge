@@ -6,8 +6,9 @@ This package wraps two video backends behind a single workspace dependency
 so consumer apps don't have to install Mux / video.js dependencies directly:
 
 - **`MuxPlayer`, `MuxVideo`** — thin React wrappers around
-  `@mux/mux-player-react` and `@mux/mux-video-react`. Used by `apps/web`
-  for the watch page and inline / hero / carousel video surfaces.
+  `@mux/mux-player-react` and `@mux/mux-video-react`. `apps/web` uses
+  `MuxVideo` for the watch page and inline / hero / carousel video surfaces;
+  `MuxPlayer` remains exported for package-level compatibility.
 - **`useVideoPlayerCore`** — a video.js-based React hook that handles
   Strict-Mode-safe player init, source swaps, text-track management,
   viewport autoplay, and standard playback controls. Used by
@@ -22,10 +23,9 @@ so consumer apps don't have to install Mux / video.js dependencies directly:
   architecture review. The dual API exists transitionally; widening the
   surface defeats the point.
 - **Mux deps are declared in this package's `package.json`** so the wrappers
-  resolve under pnpm strict resolution. Consumer apps may also list the same
-  Mux packages directly if they need to use additional Mux exports (e.g. spike
-  tests in `apps/web`); pnpm hoists single versions, no duplicate
-  custom-element `define` collision (verified in U1 spike).
+  resolve under pnpm strict resolution. Consumer apps should depend on
+  `@forge/video-player`, not direct Mux React packages, unless they truly need
+  an upstream-only API.
 
 ### Subpath exports (`./mux-player` + `./mux-video`)
 
@@ -36,14 +36,9 @@ the package exposes two subpath specifiers:
 - `@forge/video-player/mux-video` → default export = `MuxVideo`
 
 The barrel is convenient but pulls both backends into the same Webpack
-module group, so `import("@forge/video-player").then(m => m.MuxPlayer)`
-inside a `next/dynamic` factory still ships both Mux packages in the
-resulting chunk. The subpaths resolve to distinct module specifiers,
-which Turbopack splits into separate chunks — exactly one of which
-loads at runtime. The hero player flag at
-`apps/web/src/components/watch/HeroPlayer.tsx` uses the subpaths +
-build-time-folded `process.env.NEXT_PUBLIC_*` to keep the inactive
-backend out of the route bundle entirely.
+module group, so dynamic imports that need chunk separation should use the
+subpaths. The watch-page hero now imports only `@forge/video-player/mux-video`;
+do not reintroduce a MuxPlayer hero fallback in `apps/web`.
 
 Prefer the barrel for static (non-dynamic) imports and the subpaths
 only when chunk separation matters.
@@ -69,8 +64,9 @@ The wrappers (`MuxPlayer`, `MuxVideo`) remain.
 - `pnpm --filter @forge/video-player test` — vitest, jsdom environment.
 - `useVideoPlayerCore.test.tsx` covers the hook's public contract. Mock
   `video.js` at the module level.
-- Mux wrapper smoke tests live in `apps/web` (`MuxPlayerSpike.test.tsx`,
-  flag-on branch tests for `VideoHero` / `Video` / `CarouselVideo`).
+- Mux wrapper smoke tests live near their consumers, including the MuxVideo
+  branch tests for `VideoHero` / `Video` / `CarouselVideo` and
+  `HeroPlayer.test.tsx`.
   Real-playback assertions require Playwright (jsdom does not implement
   HTMLMediaElement playback); see plan U1 for the production-stack smoke.
 

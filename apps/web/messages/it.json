@@ -1,222 +1,239 @@
 {
   "ExperienceError": {
-    "empty": "No experience content available.",
-    "failedToLoad": "Failed to load experience: {message}",
-    "unexpected": "An unexpected error occurred.",
-    "notConfigured": "Content service is not configured.",
-    "noContent": "No content is available.",
-    "homepageMisconfigured": "The watch homepage is misconfigured.",
-    "defaultTemplateMisconfigured": "The default watch template is misconfigured.",
-    "authFailed": "Unable to authenticate with the content service. Please contact support if this persists."
+    "empty": "Nessun contenuto dell'esperienza disponibile.",
+    "failedToLoad": "Impossibile caricare l'esperienza: {message}",
+    "unexpected": "Si è verificato un errore imprevisto.",
+    "notConfigured": "Il servizio contenuti non è configurato.",
+    "noContent": "Nessun contenuto disponibile.",
+    "homepageMisconfigured": "La home page di Watch non è configurata correttamente.",
+    "defaultTemplateMisconfigured": "Il modello predefinito di Watch non è configurato correttamente.",
+    "authFailed": "Impossibile autenticarsi con il servizio contenuti. Contatta l'assistenza se il problema persiste."
   },
   "VideosPage": {
-    "title": "All Videos",
-    "placeholder": "Catalog browsing is coming. In the meantime use search or a topic-specific URL."
+    "title": "Tutti i video",
+    "placeholder": "La navigazione del catalogo arriverà presto. Nel frattempo usa la ricerca o un URL dedicato a un argomento."
   },
   "BibleQuotes": {
-    "title": "Bible Quotes",
-    "share": "Share",
-    "readMore": "Read more...",
-    "learnMore": "Learn more",
-    "freeResources": "Free Resources",
-    "promoHeading": "Want to understand the Bible more deeply?",
-    "joinBibleStudy": "Join our Bible study",
-    "previousQuote": "Previous Bible quote",
-    "nextQuote": "Next Bible quote"
+    "title": "Citazioni bibliche",
+    "share": "Condividi",
+    "readMore": "Leggi di più...",
+    "learnMore": "Scopri di più",
+    "freeResources": "Risorse gratuite",
+    "promoHeading": "Vuoi comprendere la Bibbia più a fondo?",
+    "joinBibleStudy": "Partecipa al nostro studio biblico",
+    "previousQuote": "Citazione biblica precedente",
+    "nextQuote": "Citazione biblica successiva"
   },
   "DownloadButton": {
-    "checking": "Checking",
-    "download": "Download",
-    "sessionError": "Unable to check your session. Please try again.",
-    "saveVideo": "Save Video"
+    "checking": "Verifica in corso",
+    "download": "Scarica",
+    "sessionError": "Impossibile verificare la sessione. Riprova.",
+    "saveVideo": "Salva video"
   },
   "DownloadModal": {
-    "dialogTitle": "Download video",
-    "eyebrow": "Download Video",
-    "posterAlt": "Video poster",
-    "noDownloads": "No downloads are available for this video.",
-    "fileSizeLabel": "Select a file size",
-    "termsAgreementPrefix": "I agree to the ",
-    "termsOfUse": "Terms of Use",
+    "dialogTitle": "Scarica video",
+    "eyebrow": "Scarica video",
+    "posterAlt": "Poster del video",
+    "noDownloads": "Non sono disponibili download per questo video.",
+    "fileSizeLabel": "Seleziona una dimensione del file",
+    "termsAgreementPrefix": "Accetto i ",
+    "termsOfUse": "Termini di utilizzo",
     "termsAgreementSuffix": "",
-    "close": "Close",
-    "download": "Download",
-    "checking": "Checking",
-    "closeTermsOfUse": "Close Terms of Use",
-    "cancel": "Cancel",
-    "accept": "Accept",
-    "errorSessionExpired": "Your session expired. Sign in again to download.",
-    "errorSessionUnavailable": "Unable to check your session. Please try again.",
-    "errorUnavailableSource": "Download unavailable from this source",
-    "tierHighest": "Highest",
-    "tierHigh": "High",
-    "tierLow": "Low"
+    "close": "Chiudi",
+    "download": "Scarica",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
+    "checking": "Verifica in corso",
+    "closeTermsOfUse": "Chiudi i Termini di utilizzo",
+    "cancel": "Annulla",
+    "accept": "Accetta",
+    "errorSessionExpired": "La sessione è scaduta. Accedi di nuovo per scaricare.",
+    "errorSessionUnavailable": "Impossibile verificare la sessione. Riprova.",
+    "errorUnavailableSource": "Download non disponibile da questa fonte",
+    "tierHighest": "Massima",
+    "tierHigh": "Alta",
+    "tierLow": "Bassa"
   },
   "HeroPlayerControls": {
-    "play": "Play",
-    "pause": "Pause",
-    "seek": "Seek",
-    "seekValue": "{current} of {total}",
+    "play": "Riproduci",
+    "pause": "Pausa",
+    "seek": "Scorri",
+    "seekValue": "{current} di {total}",
     "volume": "Volume",
-    "volumeValue": "{percent} percent",
-    "mute": "Mute",
-    "unmute": "Unmute",
-    "changeAudioLanguage": "Change audio language",
-    "enterFullscreen": "Enter fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "volumeValue": "{percent} percento",
+    "mute": "Disattiva audio",
+    "unmute": "Attiva audio",
+    "changeAudioLanguage": "Cambia lingua audio",
+    "enterFullscreen": "Schermo intero",
+    "exitFullscreen": "Esci da schermo intero"
   },
   "LanguageCombobox": {
-    "selectLanguage": "Select language",
-    "searchPlaceholder": "Search languages…",
-    "languages": "Languages",
-    "noMatches": "No matches"
+    "selectLanguage": "Seleziona lingua",
+    "searchPlaceholder": "Cerca lingue…",
+    "languages": "Lingue",
+    "noMatches": "Nessuna corrispondenza"
   },
   "LanguagePickerModal": {
-    "dialogTitle": "Language",
-    "dialogTitleWithSubtitles": "Language & Subtitles",
-    "languageHeading": "Language",
-    "subtitlesHeading": "Subtitles",
-    "languageCount": "{count, plural, one {# language} other {# languages}}",
-    "requestSent": "Request sent",
-    "translateWithAi": "Translate with AI",
-    "noSubtitles": "No subtitles",
-    "toggleOn": "On",
-    "toggleOff": "Off",
-    "close": "Close",
-    "apply": "Apply"
+    "dialogTitle": "Lingua",
+    "dialogTitleWithSubtitles": "Lingua e sottotitoli",
+    "languageHeading": "Lingua",
+    "subtitlesHeading": "Sottotitoli",
+    "languageCount": "{count, plural, one {# lingua} other {# lingue}}",
+    "requestSent": "Richiesta inviata",
+    "translateWithAi": "Traduci con l'AI",
+    "noSubtitles": "Nessun sottotitolo",
+    "toggleOn": "Attivo",
+    "toggleOff": "Disattivato",
+    "close": "Chiudi",
+    "apply": "Applica",
+    "noLanguageSubtitles": "Nessun sottotitolo in {language}"
   },
   "SeriesPage": {
-    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODES}}",
-    "seriesLabel": "SERIES · {episodes}",
-    "changeAudioLanguage": "Change audio language",
-    "share": "Share",
-    "languages": "Languages"
+    "episodeCount": "{count, plural, one {1 EPISODIO} other {# EPISODI}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Cambia lingua audio",
+    "share": "Condividi",
+    "languages": "Lingue"
   },
   "WatchModal": {
-    "close": "Close"
+    "close": "Chiudi"
   },
   "WatchStudyQuestions": {
-    "placeholderQuestion": "If you could ask the creator of this video a question, what would it be?",
-    "fallbackBody": "Have a private discussion with someone who is ready to listen.",
-    "questionsShort": "Questions",
-    "questions": "Related Questions",
-    "askYours": "Ask your question",
-    "chatWithPerson": "Chat with a person",
-    "askBibleQuestion": "Ask a Bible question"
+    "placeholderQuestion": "Se potessi fare una domanda al creatore di questo video, quale sarebbe?",
+    "fallbackBody": "Parla in privato con qualcuno pronto ad ascoltare.",
+    "questionsShort": "Domande",
+    "questions": "Domande correlate",
+    "askYours": "Fai la tua domanda",
+    "chatWithPerson": "Parla con una persona",
+    "askBibleQuestion": "Fai una domanda sulla Bibbia"
   },
   "WatchQuestionPanel": {
-    "messageType": "Message type",
-    "fieldLabel": "Ask a question about this video",
-    "send": "Send question",
+    "messageType": "Tipo di messaggio",
+    "fieldLabel": "Fai una domanda su questo video",
+    "send": "Invia domanda",
     "prompts": {
       "bibleQuestion": {
-        "label": "Ask a Bible question",
-        "description": "Instant answers from the Bible using AI search"
+        "label": "Fai una domanda sulla Bibbia",
+        "description": "Risposte immediate dalla Bibbia con ricerca AI"
       },
       "prayerRequest": {
-        "label": "Request a prayer",
-        "description": "Share what you want prayer for"
+        "label": "Richiedi preghiera",
+        "description": "Condividi ciò per cui desideri preghiera"
       },
       "comment": {
-        "label": "Leave a comment",
-        "description": "Send thoughts about this video"
+        "label": "Lascia un commento",
+        "description": "Invia pensieri su questo video"
       },
       "personChat": {
-        "label": "Chat with a person",
-        "description": "Talk with someone now"
+        "label": "Parla con una persona",
+        "description": "Parla ora con qualcuno"
       }
     }
   },
   "ShareModal": {
-    "dialogTitle": "Share video",
-    "heading": "Share this video",
-    "posterAlt": "Video poster",
-    "shareOnFacebook": "Share on Facebook",
-    "shareOnFacebookUnavailable": "Share on Facebook (unavailable on this build)",
-    "shareOnX": "Share on X",
-    "shareOnXUnavailable": "Share on X (unavailable on this build)",
-    "shareDisabledHint": "Sharing requires a deployed page — works once this video is in production.",
-    "shareFormat": "Share format",
-    "shareLinkTab": "Share Link",
-    "embedCodeTab": "Embed Code",
-    "copyFailed": "Couldn’t copy automatically — select the text below and copy manually.",
-    "copyLink": "Copy Link",
-    "copyCode": "Copy Code",
-    "copied": "Copied",
-    "close": "Close"
+    "dialogTitle": "Condividi video",
+    "heading": "Condividi questo video",
+    "posterAlt": "Poster del video",
+    "shareOnFacebook": "Condividi su Facebook",
+    "shareOnFacebookUnavailable": "Condividi su Facebook (non disponibile in questa versione)",
+    "shareOnX": "Condividi su X",
+    "shareOnXUnavailable": "Condividi su X (non disponibile in questa versione)",
+    "shareDisabledHint": "La condivisione richiede una pagina pubblicata: funzionerà quando questo video sarà in produzione.",
+    "shareFormat": "Formato di condivisione",
+    "shareLinkTab": "Link di condivisione",
+    "embedCodeTab": "Codice di incorporamento",
+    "copyFailed": "Impossibile copiare automaticamente: seleziona il testo qui sotto e copialo manualmente.",
+    "copyLink": "Copia link",
+    "copyCode": "Copia codice",
+    "copied": "Copiato",
+    "close": "Chiudi"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
-    "subheading": "Tap any line to jump to that moment.",
-    "subtitleLanguage": "Subtitle language",
+    "heading": "Trascrizione",
+    "subheading": "Tocca una riga per saltare a quel momento.",
+    "subtitleLanguage": "Lingua dei sottotitoli",
     "aiSuffix": " · AI",
-    "loading": "Loading transcript…",
-    "unavailable": "Transcript unavailable for this subtitle track.",
-    "empty": "No transcript lines found."
+    "loading": "Caricamento trascrizione…",
+    "unavailable": "Trascrizione non disponibile per questa traccia di sottotitoli.",
+    "empty": "Nessuna riga trovata nella trascrizione."
   },
   "FloatingSearch": {
-    "placeholder": "Search or browse topics…",
-    "openSearch": "Search videos",
-    "searchRegion": "Search videos",
-    "clearSearch": "Clear search",
-    "changeAudioLanguage": "Change audio language",
-    "home": "JesusFilm home"
+    "placeholder": "Cerca o sfoglia argomenti…",
+    "openSearch": "Cerca video",
+    "searchRegion": "Cerca video",
+    "clearSearch": "Cancella ricerca",
+    "changeAudioLanguage": "Cambia lingua audio",
+    "home": "Home di JesusFilm"
   },
   "SearchOverlay": {
-    "dialogLabel": "Search and browse videos",
-    "home": "JesusFilm home",
-    "placeholder": "Search or browse topics…",
-    "inputLabel": "Search videos by keyword",
-    "searchFailed": "Search failed. Please try again.",
-    "loadMoreFailed": "Failed to load more results.",
-    "searching": "Searching...",
-    "connectionHint": "Please check your connection and try again.",
-    "retrySearch": "Retry search",
-    "retry": "Retry",
-    "noResults": "No results for \"{query}\"",
-    "tryDifferentKeywords": "Try different keywords or browse categories",
-    "loading": "Loading...",
-    "loadMore": "Load more",
-    "categoryBibleStories": "Bible Stories",
-    "categoryParables": "Parables",
-    "categoryAnimated": "Animated",
-    "categoryStudy": "Study",
-    "categoryFamily": "Family",
-    "categoryChristmas": "Christmas"
+    "dialogLabel": "Cerca e sfoglia video",
+    "home": "Home di JesusFilm",
+    "placeholder": "Cerca o sfoglia argomenti…",
+    "inputLabel": "Cerca video per parola chiave",
+    "searchFailed": "Ricerca non riuscita. Riprova.",
+    "loadMoreFailed": "Impossibile caricare altri risultati.",
+    "searching": "Ricerca in corso...",
+    "connectionHint": "Controlla la connessione e riprova.",
+    "retrySearch": "Riprova la ricerca",
+    "retry": "Riprova",
+    "noResults": "Nessun risultato per \"{query}\"",
+    "tryDifferentKeywords": "Prova parole chiave diverse o sfoglia le categorie",
+    "loading": "Caricamento...",
+    "loadMore": "Carica altro",
+    "categoryBibleStories": "Storie bibliche",
+    "categoryParables": "Parabole",
+    "categoryAnimated": "Animazione",
+    "categoryStudy": "Studio",
+    "categoryFamily": "Famiglia",
+    "categoryChristmas": "Natale",
+    "searchLanguageLabel": "Lingua di ricerca",
+    "allLanguages": "Tutte le lingue",
+    "searchSuggestions": "Suggerimenti di ricerca",
+    "languages": "Lingue",
+    "recommendedLanguage": "Lingua consigliata",
+    "searchSuggestion": "Cerca {suggestion}",
+    "searchSuggestionWithLanguage": "Cerca {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Sfoglia per regione",
+    "clearLanguages": "Cancella",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "Play with Sound",
-    "tapToUnmute": "Tap to Unmute"
+    "playWithSound": "Guarda ora",
+    "tapToUnmute": "Tocca per attivare l'audio"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Loading content"
+    "loadingContent": "Caricamento contenuto"
   },
   "VideoLabels": {
     "video": "Video",
-    "segment": "Segment",
-    "episode": "Episode",
-    "featureFilm": "Feature Film",
-    "shortFilm": "Short Film",
-    "series": "Series",
-    "collection": "Collection",
+    "segment": "Segmento",
+    "episode": "Episodio",
+    "featureFilm": "Film",
+    "shortFilm": "Cortometraggio",
+    "series": "Serie",
+    "collection": "Raccolta",
     "trailer": "Trailer",
-    "behindTheScenes": "Behind the Scenes"
+    "behindTheScenes": "Dietro le quinte"
   },
   "SiblingCarousel": {
-    "clipPosition": "Clip {current} of {total}",
-    "position": "{current} of {total}",
-    "chapterCount": "{count, plural, one {# chapter} other {# chapters}}",
-    "clipAriaLabel": "{title} · Clip {current} of {total}",
-    "chaptersAriaLabel": "{title} · {count, plural, one {# chapter} other {# chapters}}",
-    "chapter": "Chapter",
-    "noImage": "No image",
-    "playingNow": "Playing now",
-    "previousChapter": "Previous chapter",
-    "nextChapter": "Next chapter"
+    "clipPosition": "Clip {current} di {total}",
+    "position": "{current} di {total}",
+    "chapterCount": "{count, plural, one {# capitolo} other {# capitoli}}",
+    "clipAriaLabel": "{title} · Clip {current} di {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# capitolo} other {# capitoli}}",
+    "chapter": "Capitolo",
+    "noImage": "Nessuna immagine",
+    "playingNow": "In riproduzione",
+    "previousChapter": "Capitolo precedente",
+    "nextChapter": "Capitolo successivo"
   },
   "SearchResultCard": {
-    "experience": "Experience",
-    "episodeCount": "{count, plural, one {# episode} other {# episodes}}",
-    "thumbnailAlt": "Video thumbnail"
+    "experience": "Esperienza",
+    "episodeCount": "{count, plural, one {# episodio} other {# episodi}}",
+    "thumbnailAlt": "Miniatura video"
   }
 }

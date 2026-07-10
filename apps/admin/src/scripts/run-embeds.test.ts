@@ -1,20 +1,16 @@
+import { spawnSync } from "node:child_process"
 import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { fileURLToPath } from "node:url"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
-  RunEmbedsConfigError,
   extractContentBackfillGateFromReport,
-  extractFailedSceneRetryTargetsFromReport,
   isLocalBackfillDatabaseUrl,
   loadContentBackfillGateReport,
-  pipelineErrorDetails,
-  pipelineErrorMessage,
   requiresContentBackfillGateReport,
   resolveGateReportPath,
-  resolveReportInPath,
   resolveReportOutPath,
-  runSceneBranch,
   writeReportToPath,
 } from "./run-embeds"
 
@@ -80,6 +76,22 @@ function validGateReport(reportId = "report-1") {
   }
 }
 
+function runCli(args: string[]) {
+  return spawnSync(
+    "pnpm",
+    ["exec", "tsx", "src/scripts/run-embeds.ts", ...args],
+    {
+      cwd: fileURLToPath(new URL("../../", import.meta.url)),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        DATABASE_URL:
+          "postgresql://forge:forge@localhost:5433/forge_admin_test",
+      },
+    },
+  )
+}
+
 describe("resolveReportOutPath", () => {
   it("returns undefined when the arg is unset", () => {
     expect(resolveReportOutPath(undefined)).toBeUndefined()
@@ -111,15 +123,37 @@ describe("resolveReportOutPath", () => {
   })
 })
 
-describe("resolveReportInPath", () => {
-  it("returns undefined when unset or empty", () => {
-    expect(resolveReportInPath(undefined)).toBeUndefined()
-    expect(resolveReportInPath("")).toBeUndefined()
+describe("run-embeds CLI retired scene arguments", () => {
+  it("rejects pipeline=scene at the entrypoint", () => {
+    const result = runCli(["--pipeline=scene"])
+
+    expect(result.status, result.stderr).toBe(2)
+    expect(result.stderr).toContain("invalid --pipeline=scene")
   })
 
-  it("anchors relative paths to process.cwd()", () => {
-    expect(resolveReportInPath(".tmp/report.json")).toBe(
-      resolve(process.cwd(), ".tmp/report.json"),
+  it("rejects --scene-mode at the entrypoint", () => {
+    const result = runCli([
+      "--pipeline=transcript",
+      "--scene-mode=model-upgrade",
+    ])
+
+    expect(result.status, result.stderr).toBe(2)
+    expect(result.stderr).toContain("--scene-mode is no longer supported")
+    expect(result.stderr).toContain(
+      "scene embedding backfills have been retired",
+    )
+  })
+
+  it("rejects --from-report at the entrypoint", () => {
+    const result = runCli([
+      "--pipeline=transcript",
+      "--from-report=.tmp/scene-report.json",
+    ])
+
+    expect(result.status, result.stderr).toBe(2)
+    expect(result.stderr).toContain("--from-report is no longer supported")
+    expect(result.stderr).toContain(
+      "scene embedding backfills have been retired",
     )
   })
 })
@@ -370,300 +404,6 @@ describe("extractContentBackfillGateFromReport", () => {
   })
 })
 
-describe("extractFailedSceneRetryTargetsFromReport", () => {
-  it("extracts and dedupes failed scene outcomes in deterministic order", () => {
-    const report = {
-      reports: {
-        scene: {
-          outcomes: [
-            {
-              status: "failed",
-              locale: "es",
-              target: {
-                coreId: "core-b",
-                videoEditionId: "edition-b",
-                cmsVideoId: 2,
-              },
-            },
-            {
-              status: "failed",
-              locale: "en",
-              target: {
-                coreId: "core-a",
-                videoEditionId: "edition-a",
-                cmsVideoId: 1,
-              },
-            },
-            {
-              status: "failed",
-              locale: "en",
-              target: {
-                coreId: "core-a",
-                videoEditionId: "edition-a",
-                cmsVideoId: 1,
-              },
-            },
-            {
-              status: "skipped",
-              locale: "fr",
-              target: {
-                coreId: "core-c",
-                videoEditionId: "edition-c",
-                cmsVideoId: 3,
-              },
-            },
-          ],
-        },
-      },
-    }
-
-    expect(extractFailedSceneRetryTargetsFromReport(report)).toEqual([
-      {
-        coreId: "core-a",
-        videoEditionId: "edition-a",
-        locale: "en",
-        cmsVideoId: 1,
-      },
-      {
-        coreId: "core-b",
-        videoEditionId: "edition-b",
-        locale: "es",
-        cmsVideoId: 2,
-      },
-    ])
-  })
-
-  it("throws a config error when the report is missing scene outcomes", () => {
-    expect(() =>
-      extractFailedSceneRetryTargetsFromReport({ reports: { scene: {} } }),
-    ).toThrow(RunEmbedsConfigError)
-  })
-
-  it("throws a config error instead of skipping malformed failed scene outcomes", () => {
-    expect(() =>
-      extractFailedSceneRetryTargetsFromReport({
-        reports: {
-          scene: {
-            outcomes: [
-              {
-                status: "failed",
-                locale: "en",
-                target: {
-                  coreId: "core-a",
-                  cmsVideoId: 1,
-                },
-              },
-            ],
-          },
-        },
-      }),
-    ).toThrow(/reports\.scene\.outcomes\[0\].*videoEditionId/)
-  })
-
-  it("returns an empty retry set when there are no failed outcomes", () => {
-    expect(
-      extractFailedSceneRetryTargetsFromReport({
-        reports: { scene: { outcomes: [{ status: "succeeded" }] } },
-      }),
-    ).toEqual([])
-  })
-})
-
-describe("pipelineErrorDetails", () => {
-  it("preserves scene retry selection details from stale retry errors", () => {
-    const retrySelection = {
-      requested: 2,
-      matched: 1,
-      unmatched: 1,
-      unmatchedRetryTargets: [
-        { coreId: "core-a", videoEditionId: "stale-edition", locale: "en" },
-      ],
-    }
-    const error = Object.assign(new Error("Scene retry selector mismatch"), {
-      retrySelection,
-    })
-
-    expect(pipelineErrorMessage(error)).toBe("Scene retry selector mismatch")
-    expect(pipelineErrorDetails(error)).toEqual({ retrySelection })
-  })
-
-  it("ignores malformed retry selection details", () => {
-    expect(
-      pipelineErrorDetails({
-        retrySelection: {
-          requested: 1,
-          matched: 0,
-          unmatched: 1,
-          unmatchedRetryTargets: [{ coreId: "core-a" }],
-        },
-      }),
-    ).toBeUndefined()
-  })
-})
-
-describe("runSceneBranch", () => {
-  it("runs preflight with the retry sample asset before invoking the scene workflow", async () => {
-    const writes: string[] = []
-    const preflight = vi.fn(async () => ({
-      ok: true,
-      checks: [
-        { name: "manager_artifact_storage", status: "passed", reason: "ok" },
-      ],
-    }))
-    const runScene = vi.fn(async () => ({
-      totalTargets: 1,
-      succeeded: 1,
-      skipped: 0,
-      failed: 0,
-      retrySelection: null,
-      groupedFailures: [],
-    }))
-
-    const result = await runSceneBranch({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: [],
-      locales: [],
-      sceneRetryTargets: [
-        {
-          coreId: "core-a",
-          videoEditionId: "edition-a",
-          locale: "en",
-          cmsVideoId: 123,
-        },
-      ],
-      runManagerArtifactsPreflight: preflight,
-      runSceneEmbeddingBackfill: runScene,
-      writeStdout: (line) => writes.push(line),
-    })
-
-    expect(result.ok).toBe(true)
-    expect(preflight).toHaveBeenCalledWith({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      sampleSceneAssetId: 123,
-    })
-    expect(runScene).toHaveBeenCalledWith({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: undefined,
-      locales: undefined,
-      retryTargets: [
-        {
-          coreId: "core-a",
-          videoEditionId: "edition-a",
-          locale: "en",
-          cmsVideoId: 123,
-        },
-      ],
-      mode: undefined,
-    })
-    expect(writes.map((line) => JSON.parse(line).event)).toEqual([
-      "run-embeds.scene.preflight",
-      "run-embeds.scene.start",
-      "run-embeds.scene.complete",
-    ])
-  })
-
-  it("does not invoke the scene workflow when preflight fails", async () => {
-    const writes: string[] = []
-    const runScene = vi.fn()
-
-    const result = await runSceneBranch({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: ["core-a"],
-      locales: ["en"],
-      sceneRetryTargets: undefined,
-      runManagerArtifactsPreflight: vi.fn(async () => ({
-        ok: false,
-        checks: [
-          {
-            name: "manager_artifact_storage",
-            status: "failed",
-            reason: "dns_failed",
-          },
-        ],
-      })),
-      runSceneEmbeddingBackfill: runScene,
-      writeStdout: (line) => writes.push(line),
-    })
-
-    expect(result).toEqual({
-      ok: false,
-      error: "scene preflight failed: manager_artifact_storage:dns_failed",
-    })
-    expect(runScene).not.toHaveBeenCalled()
-    expect(writes.map((line) => JSON.parse(line).event)).toEqual([
-      "run-embeds.scene.preflight",
-      "run-embeds.scene.error",
-    ])
-  })
-
-  it("preserves stale retry selection details from workflow errors", async () => {
-    const retrySelection = {
-      requested: 1,
-      matched: 0,
-      unmatched: 1,
-      unmatchedRetryTargets: [
-        { coreId: "core-a", videoEditionId: "stale-edition", locale: "en" },
-      ],
-    }
-
-    const result = await runSceneBranch({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: [],
-      locales: [],
-      sceneRetryTargets: undefined,
-      runManagerArtifactsPreflight: vi.fn(async () => ({
-        ok: true,
-        checks: [],
-      })),
-      runSceneEmbeddingBackfill: vi.fn(async () => {
-        throw Object.assign(new Error("Scene retry selector mismatch"), {
-          retrySelection,
-        })
-      }),
-      writeStdout: () => undefined,
-    })
-
-    expect(result).toEqual({
-      ok: false,
-      error: "Scene retry selector mismatch",
-      details: { retrySelection },
-    })
-  })
-
-  it("passes scene overwrite mode through to the scene workflow branch", async () => {
-    const writes: string[] = []
-    const runScene = vi.fn(async () => ({
-      totalTargets: 1,
-      succeeded: 1,
-      skipped: 0,
-      failed: 0,
-    }))
-
-    await runSceneBranch({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: ["core-a"],
-      locales: ["en"],
-      sceneMode: "repair",
-      sceneRetryTargets: undefined,
-      runManagerArtifactsPreflight: vi.fn(async () => ({
-        ok: true,
-        checks: [],
-      })),
-      runSceneEmbeddingBackfill: runScene,
-      writeStdout: (line) => writes.push(line),
-    })
-
-    expect(runScene).toHaveBeenCalledWith({
-      mappingS3Key: "admin-migrations/core-id-mapping.json",
-      coreIds: ["core-a"],
-      locales: ["en"],
-      retryTargets: undefined,
-      mode: "repair",
-    })
-    expect(JSON.parse(writes[1]!).mode).toBe("repair")
-  })
-})
-
 describe("writeReportToPath", () => {
   let tmpDir: string
 
@@ -679,9 +419,9 @@ describe("writeReportToPath", () => {
     const path = join(tmpDir, "report.json")
     const report = {
       event: "run-embeds.complete",
-      pipeline: "scene",
+      pipeline: "transcript",
       reports: {
-        scene: { totalTargets: 3, succeeded: 3, missingArtifacts: [] },
+        transcript: { totalTargets: 3, succeeded: 3, missingArtifacts: [] },
       },
     }
 
@@ -729,24 +469,14 @@ describe("writeReportToPath", () => {
   })
 
   it("preserves the report shape — operator can JSON.parse the file end-to-end", async () => {
-    // PR2's `pnpm trigger-enrichment --from-report=<path>` will parse
-    // this file. Lock in that the JSON shape round-trips exactly so
-    // a future contract change here is a deliberate breaking choice.
+    // Lock in that the JSON shape round-trips exactly so a future
+    // contract change here is a deliberate breaking choice.
     const path = join(tmpDir, "round-trip.json")
     const report = {
       event: "run-embeds.complete",
-      pipeline: "both",
+      pipeline: "all",
       wallClockMs: 12345,
       reports: {
-        scene: {
-          totalTargets: 12,
-          succeeded: 10,
-          skipped: 2,
-          failed: 0,
-          missingArtifacts: [
-            { assetId: 790, coreId: "2_0-Crushing", kind: "scene-analysis" },
-          ],
-        },
         transcript: {
           totalTargets: 12,
           succeeded: 11,
@@ -755,6 +485,12 @@ describe("writeReportToPath", () => {
           missingArtifacts: [
             { assetId: 790, coreId: "2_0-Crushing", kind: "transcript" },
           ],
+        },
+        experience: {
+          totalTargets: 4,
+          succeeded: 4,
+          skipped: 0,
+          failed: 0,
         },
       },
     }

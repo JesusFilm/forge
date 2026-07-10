@@ -30,41 +30,14 @@ import {
   EXPERIENCE_LOCALE_TSVECTOR_QUERY_EXPR,
 } from "./hybrid-search-sql"
 import type { RankedItem } from "./hybrid-search-fusion"
-import type { EmbeddingSource } from "./embeddings.service"
+import {
+  recordSearchDbTiming,
+  type SearchTimingRecorder,
+} from "./hybrid-search-timing"
 
 const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
 const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
 const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
-
-/**
- * Closed allowlist mapping an embedding source to the physical pgvector
- * COLUMN the semantic-video retriever reads. This is the SQL-injection
- * guard for the `Prisma.raw(column)` interpolation below: the column
- * name NEVER comes from caller input directly — it is always one of
- * these two compile-time string literals, selected by the source.
- *
- * - `"gateway"` → `"embedding_qwen"` (Qwen 1536-dim vectors, U2 column;
- *   read by the admin AI experience-gen path only).
- * - anything else (including `"openrouter"`) → `"embedding"` (the
- *   public default column). Semantic SQL also requires the row-level
- *   Qwen-compatible content provenance below, so legacy OpenAI vectors in
- *   the same column fail closed instead of being cross-compared.
- *
- * The matching per-locale partial HNSW index on the chosen column is
- * selected by the planner automatically — the WHERE locale predicate
- * in the query is unchanged.
- */
-export function resolveSemanticEmbeddingColumn(
-  source: EmbeddingSource | undefined,
-): "embedding" | "embedding_qwen" {
-  return source === "gateway" ? "embedding_qwen" : "embedding"
-}
-
-function requiresSharedColumnQwenProvenance(
-  source: EmbeddingSource | undefined,
-): boolean {
-  return source !== "gateway"
-}
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -77,15 +50,6 @@ export type SemanticSearchParams = {
   queryEmbedding: string
   locale: string
   limit: number
-  /**
-   * Per-call embedding source. Selects which stored vector COLUMN the
-   * video semantic retriever reads via the `resolveSemanticEmbeddingColumn`
-   * closed allowlist (`"gateway"` → `embedding_qwen`, else `embedding`).
-   * Absent / unknown → `embedding` (the OpenRouter default). Consumed only by
-   * `searchVideoSemantic`; the experience retriever ignores it (experience
-   * vectors are out of the U3 pilot and always read `embedding`).
-   */
-  embeddingSource?: EmbeddingSource
 }
 
 export const VIDEO_SEMANTIC_MAX_AGREEMENT_BONUS = 0.01
@@ -296,6 +260,40 @@ export function mixVideoSemanticEvidenceRows(
   )
 }
 
+function videoTranscriptProvenanceFilter() {
+  return Prisma.sql`
+          AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
+          AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+          AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          AND vt.embedding_transform_version IS NULL
+          AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+          AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        `
+}
+
+function mapVideoSemanticEvidenceRows(
+  evidenceRows: readonly VideoSemanticEvidenceRow[],
+  limit: number,
+): VideoSemanticResult[] {
+  return mixVideoSemanticEvidenceRows(evidenceRows)
+    .slice(0, limit)
+    .map((row) => ({
+      resultType: "video" as const,
+      resultId: row.video_id,
+      videoCoreId: row.video_core_id,
+      videoSlug: row.video_slug ?? "",
+      videoTitle: row.video_title ?? "",
+      imageUrl: row.image_url ?? null,
+      sceneDescription: row.scene_description,
+      startSeconds:
+        row.start_seconds == null ? null : Number(row.start_seconds),
+      playbackId: row.playback_id,
+      similarity: Number(row.similarity),
+      embeddingText: row.embedding_text,
+    }))
+}
+
 type VideoKeywordRow = {
   video_id: string
   video_core_id: string | null
@@ -348,176 +346,131 @@ type ExperienceKeywordRow = {
 export async function searchVideoSemantic(
   prisma: PrismaClient,
   params: SemanticSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<VideoSemanticResult[]> {
   const { queryEmbedding, locale, limit } = params
   const candidateLimit = Math.max(limit * 2, limit)
 
-  // Resolve the read column from the CLOSED two-literal allowlist BEFORE
-  // touching Prisma.raw — the source value never reaches raw SQL
-  // unvalidated (SQL-injection guard). `vsl.<col>` is the scene column,
-  // `vtc.<col>` the transcript column; both move together per call.
-  const column = resolveSemanticEmbeddingColumn(params.embeddingSource)
-  const requireProvenance = requiresSharedColumnQwenProvenance(
-    params.embeddingSource,
-  )
-  const sceneProvenanceFilter = requireProvenance
-    ? Prisma.sql`
-          AND vsl.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-          AND vsl.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND vsl.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vsl.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vsl.embedding_transform_version IS NULL
-        `
-    : Prisma.empty
-  const transcriptProvenanceFilter = requireProvenance
-    ? Prisma.sql`
-          AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-          AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vt.embedding_transform_version IS NULL
-          AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        `
-    : Prisma.empty
-  const sceneEmbeddingCol = Prisma.raw(`vsl.${column}`)
-  const transcriptEmbeddingCol = Prisma.raw(`vtc.${column}`)
+  const transcriptProvenanceFilter = videoTranscriptProvenanceFilter()
 
-  const evidenceRows = await prisma.$queryRaw<VideoSemanticEvidenceRow[]>`
-    WITH scene_source AS (
-      SELECT * FROM (
-        SELECT DISTINCT ON (vs.video_id)
-          vs.video_id                       AS video_id,
-          v.core_id                         AS video_core_id,
-          v.slug                            AS video_slug,
-          vl.title                          AS video_title,
-          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
-          vsl.id                            AS evidence_id,
-          'scene'                           AS evidence_source,
-          vsl.description                   AS scene_description,
-          vs.start_seconds                  AS start_seconds,
-          dub_mux.playback_id               AS playback_id,
-          1 - (${sceneEmbeddingCol} <=> ${queryEmbedding}::vector) AS source_score,
-          ${sceneEmbeddingCol}::text        AS embedding_text
-        FROM video_scene_locale vsl
-        JOIN video_scene vs ON vs.id = vsl.video_scene_id
-        JOIN video v ON v.id = vs.video_id
-          AND v.deleted_at IS NULL
-        JOIN video_locale vl
-          ON vl.video_id = v.id
-          AND vl.locale = ${locale}
-          AND vl.status = 'published'
-          AND vl.deleted_at IS NULL
-        LEFT JOIN LATERAL (
-          SELECT mv.playback_id
-          FROM video_dub vd
-          JOIN language lg ON lg.id = vd.language_id
-            AND lg.bcp47 = ${locale}
-
-          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-          WHERE vd.video_edition_id = vs.video_edition_id
-            AND vd.deleted_at IS NULL
-          ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
-          LIMIT 1
-        ) dub_mux ON true
-        LEFT JOIN LATERAL (
-          SELECT vi2.mobile_cinematic_high, vi2.url
-          FROM video_image vi2
-          WHERE vi2.video_id = v.id
-            AND vi2.deleted_at IS NULL
-          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
-          LIMIT 1
-        ) vi ON true
-        WHERE ${sceneEmbeddingCol} IS NOT NULL
-          ${sceneProvenanceFilter}
-          AND vsl.locale = ${locale}
-        ORDER BY
-          vs.video_id,
-          ${sceneEmbeddingCol} <=> ${queryEmbedding}::vector,
-          vs.start_seconds ASC,
-          vsl.id ASC
-      ) best_scene_per_video
-      ORDER BY source_score DESC, start_seconds ASC, evidence_id ASC
-      LIMIT ${candidateLimit}
-    ),
-    transcript_source AS (
-      SELECT * FROM (
+  const evidenceRows = await recordSearchDbTiming(
+    timing,
+    "semantic-video.query",
+    () => prisma.$queryRaw<VideoSemanticEvidenceRow[]>`
+      WITH query_embedding AS MATERIALIZED (
+        SELECT ${queryEmbedding}::vector AS embedding
+      ),
+      best_transcript_per_video AS (
         SELECT DISTINCT ON (vt.video_id)
           vt.video_id                       AS video_id,
-          v.core_id                         AS video_core_id,
-          v.slug                            AS video_slug,
-          vl.title                          AS video_title,
-          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+          vt.video_edition_id               AS video_edition_id,
           vtc.id                            AS evidence_id,
           'transcript'                      AS evidence_source,
-          vtc.text                          AS scene_description,
+          COALESCE(
+            NULLIF(vtc.content_summary, ''),
+            NULLIF(vtc.raw_source_text, ''),
+            vtc.text
+          )                                 AS scene_description,
           vtc.start_seconds                 AS start_seconds,
-          dub_mux.playback_id               AS playback_id,
-          1 - (${transcriptEmbeddingCol} <=> ${queryEmbedding}::vector) AS source_score,
-          ${transcriptEmbeddingCol}::text   AS embedding_text
+          1 - (vtc.embedding <=> qe.embedding) AS source_score
         FROM video_transcript_chunk vtc
+        CROSS JOIN query_embedding qe
         JOIN video_transcript vt ON vt.id = vtc.transcript_id
-        JOIN video v ON v.id = vt.video_id
-          AND v.deleted_at IS NULL
-        JOIN video_locale vl
-          ON vl.video_id = v.id
-          AND vl.locale = ${locale}
-          AND vl.status = 'published'
-          AND vl.deleted_at IS NULL
-        LEFT JOIN LATERAL (
-          SELECT mv.playback_id
-          FROM video_dub vd
-          JOIN language lg ON lg.id = vd.language_id
-            AND lg.bcp47 = ${locale}
-
-          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-          WHERE vd.video_edition_id = vt.video_edition_id
-            AND vd.deleted_at IS NULL
-          ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
-          LIMIT 1
-        ) dub_mux ON true
-        LEFT JOIN LATERAL (
-          SELECT vi2.mobile_cinematic_high, vi2.url
-          FROM video_image vi2
-          WHERE vi2.video_id = v.id
-            AND vi2.deleted_at IS NULL
-          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
-          LIMIT 1
-        ) vi ON true
-        WHERE ${transcriptEmbeddingCol} IS NOT NULL
+          AND vt.language = ${locale}
+        WHERE vtc.embedding IS NOT NULL
           ${transcriptProvenanceFilter}
           AND vtc.language = ${locale}
-          AND vt.language = ${locale}
         ORDER BY
           vt.video_id,
-          ${transcriptEmbeddingCol} <=> ${queryEmbedding}::vector,
+          vtc.embedding <=> qe.embedding,
           vtc.start_seconds ASC NULLS LAST,
           vtc.id ASC
-      ) best_transcript_per_video
-      ORDER BY source_score DESC, start_seconds ASC NULLS LAST, evidence_id ASC
-      LIMIT ${candidateLimit}
-    )
-    SELECT * FROM scene_source
-    UNION ALL
-    SELECT * FROM transcript_source
-  `
+      ),
+      visible_semantic_candidates AS (
+        SELECT
+          b.video_id                       AS video_id,
+          v.core_id                        AS video_core_id,
+          v.slug                           AS video_slug,
+          b.video_edition_id               AS video_edition_id,
+          b.evidence_id                    AS evidence_id,
+          b.evidence_source                AS evidence_source,
+          b.scene_description              AS scene_description,
+          b.start_seconds                  AS start_seconds,
+          b.source_score                   AS source_score
+        FROM best_transcript_per_video b
+        JOIN video v ON v.id = b.video_id
+          AND v.deleted_at IS NULL
+        WHERE EXISTS (
+          SELECT 1
+          FROM video_locale vl_visible
+          WHERE vl_visible.video_id = v.id
+            AND vl_visible.locale = ${locale}
+            AND vl_visible.status = 'published'
+            AND vl_visible.deleted_at IS NULL
+        )
+      ),
+      transcript_source AS (
+        SELECT *
+        FROM visible_semantic_candidates
+        ORDER BY source_score DESC, start_seconds ASC NULLS LAST, evidence_id ASC
+        LIMIT ${candidateLimit}
+      ),
+      requested_language AS MATERIALIZED (
+        SELECT id
+        FROM language
+        WHERE bcp47 = ${locale}
+      )
+      SELECT
+        ts.video_id                      AS video_id,
+        ts.video_core_id                 AS video_core_id,
+        ts.video_slug                    AS video_slug,
+        display_locale.title             AS video_title,
+        COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+        ts.evidence_id                   AS evidence_id,
+        ts.evidence_source               AS evidence_source,
+        ts.scene_description             AS scene_description,
+        ts.start_seconds                 AS start_seconds,
+        dub_mux.playback_id              AS playback_id,
+        ts.source_score                  AS source_score,
+        vtc_final.embedding::text        AS embedding_text
+      FROM transcript_source ts
+      LEFT JOIN video_transcript_chunk vtc_final
+        ON vtc_final.id = ts.evidence_id
+      JOIN LATERAL (
+        SELECT vl_display.title
+        FROM video_locale vl_display
+        WHERE vl_display.video_id = ts.video_id
+          AND vl_display.locale = ${locale}
+          AND vl_display.status = 'published'
+          AND vl_display.deleted_at IS NULL
+        ORDER BY
+          vl_display.language_core_id ASC NULLS LAST,
+          vl_display.language_slug ASC NULLS LAST,
+          vl_display.id ASC
+        LIMIT 1
+      ) display_locale ON true
+      LEFT JOIN LATERAL (
+        SELECT mv.playback_id
+        FROM video_dub vd
+        LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+        WHERE vd.video_edition_id = ts.video_edition_id
+          AND vd.deleted_at IS NULL
+          AND vd.language_id IN (SELECT id FROM requested_language)
+        ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC
+        LIMIT 1
+      ) dub_mux ON true
+      LEFT JOIN LATERAL (
+        SELECT vi2.mobile_cinematic_high, vi2.url
+        FROM video_image vi2
+        WHERE vi2.video_id = ts.video_id
+          AND vi2.deleted_at IS NULL
+        ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+        LIMIT 1
+      ) vi ON true
+    `,
+  )
 
-  return mixVideoSemanticEvidenceRows(evidenceRows)
-    .slice(0, limit)
-    .map((row) => ({
-      resultType: "video" as const,
-      resultId: row.video_id,
-      videoCoreId: row.video_core_id,
-      videoSlug: row.video_slug ?? "",
-      videoTitle: row.video_title ?? "",
-      imageUrl: row.image_url ?? null,
-      sceneDescription: row.scene_description,
-      startSeconds:
-        row.start_seconds == null ? null : Number(row.start_seconds),
-      playbackId: row.playback_id,
-      similarity: Number(row.similarity),
-      embeddingText: row.embedding_text,
-    }))
+  return mapVideoSemanticEvidenceRows(evidenceRows, limit)
 }
 
 /**
@@ -533,6 +486,7 @@ export async function searchVideoSemantic(
 export async function searchVideoKeyword(
   prisma: PrismaClient,
   params: KeywordSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<VideoKeywordResult[]> {
   const trimmed = params.query.trim()
   if (trimmed.length === 0) return []
@@ -540,58 +494,62 @@ export async function searchVideoKeyword(
   const { locale, limit } = params
   const tsvector = Prisma.raw(VIDEO_LOCALE_TSVECTOR_QUERY_EXPR)
 
-  const rows = await prisma.$queryRaw<VideoKeywordRow[]>`
-    SELECT * FROM (
-      SELECT DISTINCT ON (v.id)
-        v.id           AS video_id,
-        v.core_id      AS video_core_id,
-        v.slug         AS video_slug,
-        vl.title       AS video_title,
-        COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
-        vl.description AS description,
-        dub_mux.playback_id AS playback_id,
-        ts_rank(
-          ${tsvector},
-          plainto_tsquery('simple', ${trimmed})
-        ) AS rank
-      FROM video_locale vl
-      JOIN video v ON v.id = vl.video_id
-        AND v.deleted_at IS NULL
-      LEFT JOIN LATERAL (
-        SELECT vi2.mobile_cinematic_high, vi2.url
-        FROM video_image vi2
-        WHERE vi2.video_id = v.id
-          AND vi2.deleted_at IS NULL
-        ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
-        LIMIT 1
-      ) vi ON true
-      LEFT JOIN LATERAL (
-        -- Only published dubs reach the public search response. An
-        -- unpublished dub's playback_id is still a public Mux ID
-        -- (HLS URL component, not a secret), but consumers expect
-        -- search results to point at content they can actually play.
-        -- Returning a draft dub's playback_id surfaces unfinished
-        -- editorial work on the watch page.
-        SELECT mv.playback_id
-        FROM video_dub vd
-        JOIN language lg ON lg.id = vd.language_id
-          AND lg.bcp47 = ${locale}
-        LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
-        WHERE vd.video_id = v.id
-          AND vd.published = true
-          AND vd.deleted_at IS NULL
-        ORDER BY vd.updated_at DESC
-        LIMIT 1
-      ) dub_mux ON true
-      WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
-        AND vl.locale = ${locale}
-        AND vl.status = 'published'
-        AND vl.deleted_at IS NULL
-      ORDER BY v.id, rank DESC
-    ) sub
-    ORDER BY sub.rank DESC
-    LIMIT ${limit}
-  `
+  const rows = await recordSearchDbTiming(
+    timing,
+    "keyword-video.query",
+    () => prisma.$queryRaw<VideoKeywordRow[]>`
+      SELECT * FROM (
+        SELECT DISTINCT ON (v.id)
+          v.id           AS video_id,
+          v.core_id      AS video_core_id,
+          v.slug         AS video_slug,
+          vl.title       AS video_title,
+          COALESCE(vi.mobile_cinematic_high, vi.url) AS image_url,
+          vl.description AS description,
+          dub_mux.playback_id AS playback_id,
+          ts_rank(
+            ${tsvector},
+            plainto_tsquery('simple', ${trimmed})
+          ) AS rank
+        FROM video_locale vl
+        JOIN video v ON v.id = vl.video_id
+          AND v.deleted_at IS NULL
+        LEFT JOIN LATERAL (
+          SELECT vi2.mobile_cinematic_high, vi2.url
+          FROM video_image vi2
+          WHERE vi2.video_id = v.id
+            AND vi2.deleted_at IS NULL
+          ORDER BY vi2.mobile_cinematic_high IS NULL, vi2.created_at
+          LIMIT 1
+        ) vi ON true
+        LEFT JOIN LATERAL (
+          -- Only published dubs reach the public search response. An
+          -- unpublished dub's playback_id is still a public Mux ID
+          -- (HLS URL component, not a secret), but consumers expect
+          -- search results to point at content they can actually play.
+          -- Returning a draft dub's playback_id surfaces unfinished
+          -- editorial work on the watch page.
+          SELECT mv.playback_id
+          FROM video_dub vd
+          JOIN language lg ON lg.id = vd.language_id
+            AND lg.bcp47 = ${locale}
+          LEFT JOIN mux_video mv ON mv.id = vd.mux_video_id
+          WHERE vd.video_id = v.id
+            AND vd.published = true
+            AND vd.deleted_at IS NULL
+          ORDER BY vd.updated_at DESC
+          LIMIT 1
+        ) dub_mux ON true
+        WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
+          AND vl.locale = ${locale}
+          AND vl.status = 'published'
+          AND vl.deleted_at IS NULL
+        ORDER BY v.id, rank DESC
+      ) sub
+      ORDER BY sub.rank DESC
+      LIMIT ${limit}
+    `,
+  )
 
   return rows.map((row) => ({
     resultType: "video" as const,
@@ -624,30 +582,35 @@ export async function searchVideoKeyword(
 export async function searchExperienceSemantic(
   prisma: PrismaClient,
   params: SemanticSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<ExperienceSemanticResult[]> {
   const { queryEmbedding, locale, limit } = params
 
-  const rows = await prisma.$queryRaw<ExperienceSemanticRow[]>`
-    SELECT
-      el.id               AS experience_locale_id,
-      el.slug             AS slug,
-      el.title            AS title,
-      el.meta_description AS meta_description,
-      1 - (el.embedding <=> ${queryEmbedding}::vector) AS similarity
-    FROM experience_locale el
-    JOIN experience e ON e.id = el.experience_id
-      AND e.archived_at IS NULL
-    WHERE el.embedding IS NOT NULL
-      AND el.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-      AND el.embedding_model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-      AND el.embedding_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-      AND el.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-      AND el.embedding_transform_version IS NULL
-      AND el.locale = ${locale}
-      AND el.status = 'published'
-    ORDER BY el.embedding <=> ${queryEmbedding}::vector
-    LIMIT ${limit}
-  `
+  const rows = await recordSearchDbTiming(
+    timing,
+    "semantic-experience.query",
+    () => prisma.$queryRaw<ExperienceSemanticRow[]>`
+      SELECT
+        el.id               AS experience_locale_id,
+        el.slug             AS slug,
+        el.title            AS title,
+        el.meta_description AS meta_description,
+        1 - (el.embedding <=> ${queryEmbedding}::vector) AS similarity
+      FROM experience_locale el
+      JOIN experience e ON e.id = el.experience_id
+        AND e.archived_at IS NULL
+      WHERE el.embedding IS NOT NULL
+        AND el.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
+        AND el.embedding_model = ${QWEN_CONTENT_EMBEDDING_MODEL}
+        AND el.embedding_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        AND el.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+        AND el.embedding_transform_version IS NULL
+        AND el.locale = ${locale}
+        AND el.status = 'published'
+      ORDER BY el.embedding <=> ${queryEmbedding}::vector
+      LIMIT ${limit}
+    `,
+  )
 
   return rows.map((row) => ({
     resultType: "experience" as const,
@@ -671,6 +634,7 @@ export async function searchExperienceSemantic(
 export async function searchExperienceKeyword(
   prisma: PrismaClient,
   params: KeywordSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<ExperienceKeywordResult[]> {
   const trimmed = params.query.trim()
   if (trimmed.length === 0) return []
@@ -678,25 +642,29 @@ export async function searchExperienceKeyword(
   const { locale, limit } = params
   const tsvector = Prisma.raw(EXPERIENCE_LOCALE_TSVECTOR_QUERY_EXPR)
 
-  const rows = await prisma.$queryRaw<ExperienceKeywordRow[]>`
-    SELECT
-      el.id               AS experience_locale_id,
-      el.slug             AS slug,
-      el.title            AS title,
-      el.meta_description AS meta_description,
-      ts_rank(
-        ${tsvector},
-        plainto_tsquery('simple', ${trimmed})
-      ) AS rank
-    FROM experience_locale el
-    JOIN experience e ON e.id = el.experience_id
-      AND e.archived_at IS NULL
-    WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
-      AND el.locale = ${locale}
-      AND el.status = 'published'
-    ORDER BY rank DESC
-    LIMIT ${limit}
-  `
+  const rows = await recordSearchDbTiming(
+    timing,
+    "keyword-experience.query",
+    () => prisma.$queryRaw<ExperienceKeywordRow[]>`
+      SELECT
+        el.id               AS experience_locale_id,
+        el.slug             AS slug,
+        el.title            AS title,
+        el.meta_description AS meta_description,
+        ts_rank(
+          ${tsvector},
+          plainto_tsquery('simple', ${trimmed})
+        ) AS rank
+      FROM experience_locale el
+      JOIN experience e ON e.id = el.experience_id
+        AND e.archived_at IS NULL
+      WHERE ${tsvector} @@ plainto_tsquery('simple', ${trimmed})
+        AND el.locale = ${locale}
+        AND el.status = 'published'
+      ORDER BY rank DESC
+      LIMIT ${limit}
+    `,
+  )
 
   return rows.map((row) => ({
     resultType: "experience" as const,

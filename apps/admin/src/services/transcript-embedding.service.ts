@@ -18,13 +18,14 @@
 // Stage 3 of the embed-backfill performance plan (feat-117) collapses
 // the per-chunk write loop into ONE bulk SQL statement per
 // `(video, edition, language)` target — `INSERT INTO
-// video_transcript_chunk … SELECT * FROM unnest(9 parallel arrays)
+// video_transcript_chunk … SELECT * FROM unnest(...) parallel arrays
 // ON CONFLICT (transcript_id, chunk_index) DO UPDATE`. Per-row Way A
 // `::vector(1536)` cast at the SELECT seam (NOT a `::vector(1536)[]`
 // parameter cast — that array-input parser is less-trodden code; Way A
 // keeps the cast at one site per row). See
 // docs/solutions/database-issues/pgvector-bulk-insert-on-conflict-pattern-20260505.md.
 
+import { Buffer } from "node:buffer"
 import { randomUUID } from "node:crypto"
 
 import { Prisma, type PrismaClient } from "@prisma/client"
@@ -55,15 +56,18 @@ export const EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS = 1536
  * the payload here; intentional model replacement must use the ingest
  * service's explicit generation modes.
  */
-const ACCEPTED_MODEL_STAMPS = new Set<string>([
-  "openai/text-embedding-3-small",
-  "text-embedding-3-small",
-  "embeddings",
-])
+export const ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS: ReadonlySet<string> =
+  new Set<string>([
+    "openai/text-embedding-3-small",
+    "text-embedding-3-small",
+    "embeddings",
+  ])
 
 // Precomputed list form for the drift-warning log payload. Avoids
 // re-serializing the Set on every mismatch.
-const ACCEPTED_MODEL_STAMPS_LIST = Array.from(ACCEPTED_MODEL_STAMPS)
+const ACCEPTED_MODEL_STAMPS_LIST = Array.from(
+  ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS,
+)
 
 /**
  * Prisma's default interactive-transaction timeout is 5s. Stage 3
@@ -100,6 +104,12 @@ export type TranscriptEmbeddingProvenance = {
   embeddingNativeDimensions?: number
   embeddingTransformVersion?: string
   sourceArtifactKey?: string
+  sourceKind?: string
+  sourceLanguageId?: string
+  sourceLanguageSlug?: string
+  sourceSubtitleId?: string
+  sourceFormat?: string
+  sourceUrl?: string
   sourceContentHash?: string
   sourceProvider?: string
   sourceGeneratedAt?: string
@@ -115,6 +125,15 @@ export type TranscriptEmbeddingPayloadChunk = {
   tokenCount: number
   startSeconds?: number
   endSeconds?: number
+  rawSourceText?: string
+  embeddingInputText?: string
+  feltNeeds?: string[]
+  bibleVerses?: string[]
+  contentSummary?: string
+  tone?: string
+  demographics?: string[]
+  spiritualContext?: string[]
+  extractionMetadata?: Record<string, unknown>
   embedding: number[]
 }
 
@@ -122,6 +141,15 @@ export type TranscriptEmbeddingArtifactChunk = {
   chunkId: string
   text: string
   embedding: number[]
+  rawSourceText?: string
+  embeddingInputText?: string
+  feltNeeds?: string[]
+  bibleVerses?: string[]
+  contentSummary?: string
+  tone?: string
+  demographics?: string[]
+  spiritualContext?: string[]
+  extractionMetadata?: Record<string, unknown>
   metadata: {
     tokenCount: number
     startTime?: number
@@ -230,7 +258,7 @@ function assertNonEmptyText(chunks: EmbeddingsResult["chunks"]): void {
 }
 
 function logModelStampDriftIfAny(artifactModel: string): void {
-  if (ACCEPTED_MODEL_STAMPS.has(artifactModel)) return
+  if (ACCEPTED_TRANSCRIPT_EMBEDDING_MODEL_STAMPS.has(artifactModel)) return
   console.warn(
     JSON.stringify({
       event: "transcript_model_mismatch",
@@ -276,6 +304,15 @@ function toEmbeddingsResult(
       chunkId: chunk.chunkId,
       text: chunk.text,
       embedding: chunk.embedding,
+      rawSourceText: chunk.rawSourceText,
+      embeddingInputText: chunk.embeddingInputText,
+      feltNeeds: chunk.feltNeeds,
+      bibleVerses: chunk.bibleVerses,
+      contentSummary: chunk.contentSummary,
+      tone: chunk.tone,
+      demographics: chunk.demographics,
+      spiritualContext: chunk.spiritualContext,
+      extractionMetadata: chunk.extractionMetadata,
       metadata: {
         tokenCount: chunk.tokenCount,
         ...(chunk.startSeconds == null
@@ -298,6 +335,10 @@ function toEmbeddingsResult(
       generatedAt: input.generatedAt,
     },
   }
+}
+
+function jsonToBase64(value: unknown): string {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64")
 }
 
 export async function writeTranscriptEmbeddingPayload(
@@ -426,6 +467,24 @@ export async function indexEditionTranscript(
             ...(input.provenance?.sourceArtifactKey
               ? { sourceArtifactKey: input.provenance.sourceArtifactKey }
               : {}),
+            ...(input.provenance?.sourceKind
+              ? { sourceKind: input.provenance.sourceKind }
+              : {}),
+            ...(input.provenance?.sourceLanguageId
+              ? { sourceLanguageId: input.provenance.sourceLanguageId }
+              : {}),
+            ...(input.provenance?.sourceLanguageSlug
+              ? { sourceLanguageSlug: input.provenance.sourceLanguageSlug }
+              : {}),
+            ...(input.provenance?.sourceSubtitleId
+              ? { sourceSubtitleId: input.provenance.sourceSubtitleId }
+              : {}),
+            ...(input.provenance?.sourceFormat
+              ? { sourceFormat: input.provenance.sourceFormat }
+              : {}),
+            ...(input.provenance?.sourceUrl
+              ? { sourceUrl: input.provenance.sourceUrl }
+              : {}),
             ...(input.provenance?.sourceContentHash
               ? { sourceContentHash: input.provenance.sourceContentHash }
               : {}),
@@ -469,6 +528,12 @@ export async function indexEditionTranscript(
             totalTokens: artifact.metadata.totalTokens,
             generatedAt: new Date(artifact.metadata.generatedAt),
             sourceArtifactKey: input.provenance?.sourceArtifactKey ?? null,
+            sourceKind: input.provenance?.sourceKind ?? null,
+            sourceLanguageId: input.provenance?.sourceLanguageId ?? null,
+            sourceLanguageSlug: input.provenance?.sourceLanguageSlug ?? null,
+            sourceSubtitleId: input.provenance?.sourceSubtitleId ?? null,
+            sourceFormat: input.provenance?.sourceFormat ?? null,
+            sourceUrl: input.provenance?.sourceUrl ?? null,
             sourceContentHash: input.provenance?.sourceContentHash ?? null,
             sourceProvider: input.provenance?.sourceProvider ?? null,
             sourceGeneratedAt: input.provenance?.sourceGeneratedAt
@@ -494,7 +559,7 @@ export async function indexEditionTranscript(
         chunksPruned = pruneResult.count
 
         // ─── Stage 3 (feat-117) — Bulk chunk INSERT … ON CONFLICT … DO UPDATE ─
-        // Build 12 parallel arrays. text[] params unfold via
+        // Build parallel arrays. text[] params unfold via
         // `u.<col>::<type>` per-row casts at the SELECT seam (Way A
         // discipline). The vector cast lives on the SELECT seam too —
         // `u.embedding_text::vector(1536)` — NOT `::vector(1536)[]` on
@@ -506,6 +571,33 @@ export async function indexEditionTranscript(
         const chunkIndexes = artifact.chunks.map((_, i) => String(i))
         const chunkIds = artifact.chunks.map((c) => c.chunkId)
         const texts = artifact.chunks.map((c) => c.text)
+        const rawSourceTexts = artifact.chunks.map(
+          (c) => c.rawSourceText ?? null,
+        )
+        const embeddingInputTexts = artifact.chunks.map(
+          (c) => c.embeddingInputText ?? null,
+        )
+        const feltNeedsJson = artifact.chunks.map((c) =>
+          JSON.stringify(c.feltNeeds ?? []),
+        )
+        const bibleVersesJson = artifact.chunks.map((c) =>
+          JSON.stringify(c.bibleVerses ?? []),
+        )
+        const contentSummaries = artifact.chunks.map(
+          (c) => c.contentSummary ?? null,
+        )
+        const tones = artifact.chunks.map((c) => c.tone ?? null)
+        const demographicsJson = artifact.chunks.map((c) =>
+          JSON.stringify(c.demographics ?? []),
+        )
+        const spiritualContextJson = artifact.chunks.map((c) =>
+          JSON.stringify(c.spiritualContext ?? []),
+        )
+        const extractionMetadataBase64 = artifact.chunks.map((c) =>
+          c.extractionMetadata == null
+            ? null
+            : jsonToBase64(c.extractionMetadata),
+        )
         const tokenCounts = artifact.chunks.map((c) =>
           String(c.metadata.tokenCount),
         )
@@ -530,6 +622,24 @@ export async function indexEditionTranscript(
             { name: "chunkIndexes", length: chunkIndexes.length },
             { name: "chunkIds", length: chunkIds.length },
             { name: "texts", length: texts.length },
+            { name: "rawSourceTexts", length: rawSourceTexts.length },
+            {
+              name: "embeddingInputTexts",
+              length: embeddingInputTexts.length,
+            },
+            { name: "feltNeedsJson", length: feltNeedsJson.length },
+            { name: "bibleVersesJson", length: bibleVersesJson.length },
+            { name: "contentSummaries", length: contentSummaries.length },
+            { name: "tones", length: tones.length },
+            { name: "demographicsJson", length: demographicsJson.length },
+            {
+              name: "spiritualContextJson",
+              length: spiritualContextJson.length,
+            },
+            {
+              name: "extractionMetadataBase64",
+              length: extractionMetadataBase64.length,
+            },
             { name: "tokenCounts", length: tokenCounts.length },
             { name: "startSeconds", length: startSeconds.length },
             { name: "endSeconds", length: endSeconds.length },
@@ -547,7 +657,10 @@ export async function indexEditionTranscript(
         const writeAffected = await tx.$executeRaw`
           INSERT INTO video_transcript_chunk (
             id, transcript_id, language, chunk_index, chunk_id,
-            text, token_count, start_seconds, end_seconds,
+            text, raw_source_text, embedding_input_text,
+            felt_needs, bible_verses, content_summary, tone,
+            demographics, spiritual_context, extraction_metadata,
+            token_count, start_seconds, end_seconds,
             model, dimensions, embedding,
             created_at, updated_at
           )
@@ -558,6 +671,18 @@ export async function indexEditionTranscript(
             u.chunk_index::int,
             u.chunk_id,
             u.text,
+            u.raw_source_text,
+            u.embedding_input_text,
+            ARRAY(SELECT jsonb_array_elements_text(u.felt_needs_json::jsonb)),
+            ARRAY(SELECT jsonb_array_elements_text(u.bible_verses_json::jsonb)),
+            u.content_summary,
+            u.tone,
+            ARRAY(SELECT jsonb_array_elements_text(u.demographics_json::jsonb)),
+            ARRAY(SELECT jsonb_array_elements_text(u.spiritual_context_json::jsonb)),
+            CASE
+              WHEN u.extraction_metadata_base64 IS NULL THEN NULL
+              ELSE convert_from(decode(u.extraction_metadata_base64, 'base64'), 'UTF8')::jsonb
+            END,
             u.token_count::int,
             u.start_seconds::double precision,
             u.end_seconds::double precision,
@@ -573,6 +698,15 @@ export async function indexEditionTranscript(
             ${toPgArray(chunkIndexes)}::text[],
             ${toPgArray(chunkIds)}::text[],
             ${toPgArray(texts)}::text[],
+            ${toPgArray(rawSourceTexts)}::text[],
+            ${toPgArray(embeddingInputTexts)}::text[],
+            ${toPgArray(feltNeedsJson)}::text[],
+            ${toPgArray(bibleVersesJson)}::text[],
+            ${toPgArray(contentSummaries)}::text[],
+            ${toPgArray(tones)}::text[],
+            ${toPgArray(demographicsJson)}::text[],
+            ${toPgArray(spiritualContextJson)}::text[],
+            ${toPgArray(extractionMetadataBase64)}::text[],
             ${toPgArray(tokenCounts)}::text[],
             ${toPgArray(startSeconds)}::text[],
             ${toPgArray(endSeconds)}::text[],
@@ -581,7 +715,10 @@ export async function indexEditionTranscript(
             ${toPgArray(vectorTexts)}::text[]
           ) AS u(
             id, transcript_id, language, chunk_index, chunk_id,
-            text, token_count, start_seconds, end_seconds,
+            text, raw_source_text, embedding_input_text,
+            felt_needs_json, bible_verses_json, content_summary, tone,
+            demographics_json, spiritual_context_json, extraction_metadata_base64,
+            token_count, start_seconds, end_seconds,
             model, dimensions, embedding_text
           )
           ON CONFLICT (transcript_id, chunk_index)
@@ -589,6 +726,15 @@ export async function indexEditionTranscript(
             language      = EXCLUDED.language,
             chunk_id      = EXCLUDED.chunk_id,
             text          = EXCLUDED.text,
+            raw_source_text = EXCLUDED.raw_source_text,
+            embedding_input_text = EXCLUDED.embedding_input_text,
+            felt_needs    = EXCLUDED.felt_needs,
+            bible_verses  = EXCLUDED.bible_verses,
+            content_summary = EXCLUDED.content_summary,
+            tone          = EXCLUDED.tone,
+            demographics  = EXCLUDED.demographics,
+            spiritual_context = EXCLUDED.spiritual_context,
+            extraction_metadata = EXCLUDED.extraction_metadata,
             token_count   = EXCLUDED.token_count,
             start_seconds = EXCLUDED.start_seconds,
             end_seconds   = EXCLUDED.end_seconds,

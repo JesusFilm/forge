@@ -1,0 +1,39 @@
+# Railway only reads this file if the service's Config-as-code Path is set to
+# apps/crop-worker/railway.toml. Otherwise configure the same commands in the
+# Railway dashboard and treat that dashboard config as canonical.
+#
+# FFmpeg/ffprobe at runtime: this service uses the NIXPACKS builder, and the
+# repo-root nixpacks.toml extends the setup phase with ffmpeg (which includes
+# ffprobe). Verify both binaries on first deploy — the app classifies a
+# missing binary into an actionable error instead of assuming presence.
+
+[build]
+builder = "NIXPACKS"
+# The repo-root nixpacks.toml overrides the install phase with
+# NODE_ENV=development so devDependencies are present for monorepo lifecycle
+# scripts and this TypeScript build. Keep this command focused on compiling the
+# worker; Railway's Nixpacks install phase has already run by this point.
+buildCommand = "pnpm --filter @forge/crop-worker build"
+watchPatterns = [
+  "/apps/crop-worker/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+# Single replica REQUIRED — the job registry/queue is in-memory (src/jobs.ts).
+# A second replica round-robins manager's GET /jobs/{id} polls onto replicas
+# that never saw the POST, producing spurious 404s that manager classifies as
+# job_lost (bounded resubmit, then terminal failure) while orphaned renders
+# keep burning CPU. Scale throughput via CROP_WORKER_MAX_CONCURRENT_JOBS /
+# CROP_WORKER_QUEUE_LIMIT, not replicas. Railway only honors this file when
+# the service's Config-as-code Path is set — keep the dashboard replica
+# setting at 1 as well.
+numReplicas = 1
+startCommand = "pnpm --filter @forge/crop-worker start"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

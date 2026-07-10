@@ -1,11 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock } = vi.hoisted(() => ({
+const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  unstableCacheCalls: [] as {
+    keyParts: unknown[]
+    options: { revalidate?: unknown; tags?: unknown }
+  }[],
 }))
 
 vi.mock("next/cache", () => ({
-  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(
+    fn: T,
+    keyParts: unknown[],
+    options?: { revalidate?: unknown; tags?: unknown },
+  ) => {
+    unstableCacheCalls.push({ keyParts, options: options ?? {} })
+    return fn
+  },
 }))
 
 vi.mock("react", async () => {
@@ -30,6 +41,8 @@ function makeImage(overrides: Record<string, unknown> = {}) {
     mobileCinematicHigh: "https://cdn.example/jesus-cinematic.jpg",
     mobileCinematicLow: null,
     videoStill: null,
+    blurDataUrl: null,
+    dominantColor: null,
     ...overrides,
   }
 }
@@ -117,6 +130,24 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
 }
 
 describe("buildWatchHomeModelFromVideos", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    unstableCacheCalls.length = 0
+    vi.resetModules()
+  })
+
+  it("declares tags on the cached watch home model", async () => {
+    await import("../watch-home")
+
+    expect(unstableCacheCalls).toContainEqual({
+      keyParts: ["watch-home", "v6-real-images-with-dominant-colors"],
+      options: {
+        revalidate: 60,
+        tags: ["watch:home", "watch:video"],
+      },
+    })
+  })
+
   it("maps admin videos into hero slides and configured sections with safe watch URLs", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 
@@ -204,6 +235,142 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(vertical?.cards[0]?.title).toBe("Episode One")
     expect(vertical?.cards[0]?.href).toBe("/lumo.html/episode-one/english.html")
     expect(vertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
+  })
+
+  it("applies homepage media overrides to configured child cards", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          documentId: "lumo-admin-id",
+          coreId: "LUMOCollection",
+          slug: "lumo",
+          label: "COLLECTION",
+          children: [{ child: makeChild() }],
+        }),
+      ] as never,
+      experienceBlocks: [
+        {
+          __typename: "MediaCollectionBlock",
+          sectionKey: "home-collection-showcase-grid-vertical",
+          items: [
+            {
+              videoId: "lumo-admin-id",
+              imageOverrideUrl:
+                "http://localhost:3003/api/media-assets/asset-1/preview",
+              imageOverrideBlurDataUrl:
+                "data:image/jpeg;base64,override-placeholder",
+              imageOverrideDominantColor: "#787e16",
+            },
+          ],
+        },
+      ] as never,
+    })
+
+    const vertical = model.sections.find(
+      (section) => section.id === "home-collection-showcase-grid-vertical",
+    )
+    expect(vertical?.cards[0]?.imageUrl).toBe(
+      "http://localhost:3003/api/media-assets/asset-1/preview",
+    )
+    expect(vertical?.cards[0]?.blurDataUrl).toBe(
+      "data:image/jpeg;base64,override-placeholder",
+    )
+    expect(vertical?.cards[0]?.dominantColor).toBe("#787e16")
+  })
+
+  it("selects watch-home image URL, blur, and dominant color from the same image row", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          images: [
+            makeImage({
+              documentId: "img-without-render-url",
+              url: null,
+              thumbnail: null,
+              mobileCinematicHigh: null,
+              blurDataUrl: "data:image/jpeg;base64,wrong-row",
+              dominantColor: "#ffffff",
+            }),
+            makeImage({
+              documentId: "img-rendered",
+              mobileCinematicHigh: "https://cdn.example/rendered.jpg",
+              blurDataUrl: "data:image/jpeg;base64,right-row",
+              dominantColor: "#123456",
+            }),
+          ],
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]).toMatchObject({
+      imageUrl: "https://cdn.example/rendered.jpg",
+      blurDataUrl: "data:image/jpeg;base64,right-row",
+      dominantColor: "#123456",
+    })
+  })
+
+  it("does not reuse child video color when an authored override image has no color", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          documentId: "lumo-collection",
+          coreId: "LUMOCollection",
+          slug: "lumo",
+          label: "COLLECTION",
+          children: [
+            {
+              child: makeChild({
+                documentId: "lumo-child",
+                coreId: "lumo-child-core",
+                images: [
+                  makeImage({
+                    mobileCinematicHigh: "https://cdn.example/lumo-child.jpg",
+                    blurDataUrl: "data:image/jpeg;base64,VIDEO",
+                    dominantColor: "#778899",
+                  }),
+                ],
+              }),
+            },
+          ],
+        }),
+      ] as never,
+      experienceBlocks: [
+        {
+          sectionKey: "home-collection-showcase-grid-vertical",
+          items: [
+            {
+              videoId: "lumo-child",
+              imageOverrideUrl: "https://cdn.example/uploaded-scripture.jpg",
+              imageOverrideBlurDataUrl: null,
+              imageOverrideDominantColor: null,
+            },
+          ],
+        },
+      ] as never,
+    })
+
+    const scripture = model.sections.find(
+      (section) => section.id === "home-collection-showcase-grid-vertical",
+    )
+    const card = scripture?.cards.find((item) => item.id === "lumo-child")
+
+    expect(card).toMatchObject({
+      imageUrl: "https://cdn.example/uploaded-scripture.jpg",
+      blurDataUrl: null,
+      dominantColor: null,
+    })
   })
 
   it("expands the Journey with Jesus course into child episode cards", async () => {
@@ -329,6 +496,7 @@ describe("buildWatchHomeModelFromVideos", () => {
 describe("resolveWatchHome", () => {
   afterEach(() => {
     queryMock.mockReset()
+    unstableCacheCalls.length = 0
     vi.resetModules()
   })
 
@@ -338,15 +506,54 @@ describe("resolveWatchHome", () => {
         watchHomeVideos: [makeVideo()],
       },
     })
+    queryMock.mockResolvedValueOnce({
+      data: { watchSetting: { homepageExperience: { blocks: [] } } },
+    })
 
     const { resolveWatchHome } = await import("../watch-home")
 
     const result = await resolveWatchHome("ru")
 
     expect(result.error).toBeNull()
-    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe("russian")
     expect(queryMock.mock.calls[0][0].variables.locale).toBe("ru")
     expect(queryMock.mock.calls[0][0].variables.coreIds).toContain("1_jf-0-0")
+  })
+
+  it("uses an explicit language slug when the caller provides one", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchHomeVideos: [
+          makeVideo({
+            variants: [
+              makeVariant({
+                slug: "spanish-latin-american",
+                language: {
+                  coreId: "21028",
+                  bcp47: "es-419",
+                  slug: "spanish-latin-american",
+                  name: { en: "Spanish, Latin American" },
+                },
+              }),
+            ],
+          }),
+        ],
+      },
+    })
+    queryMock.mockResolvedValueOnce({
+      data: { watchSetting: { homepageExperience: { blocks: [] } } },
+    })
+
+    const { resolveWatchHome } = await import("../watch-home")
+
+    const result = await resolveWatchHome("es", "spanish-latin-american")
+
+    expect(result.error).toBeNull()
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe(
+      "spanish-latin-american",
+    )
+    expect(queryMock.mock.calls[0][0].variables.locale).toBe("es")
   })
 })

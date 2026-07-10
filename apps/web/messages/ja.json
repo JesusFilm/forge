@@ -41,6 +41,9 @@
     "termsAgreementSuffix": "に同意します",
     "close": "閉じる",
     "download": "ダウンロード",
+    "authRequiredTitle": "Sign in to download",
+    "authRequiredBody": "Downloads are available after you sign in with a Jesus Film account. You can keep watching without signing in.",
+    "signInToDownload": "Sign in to download",
     "checking": "確認中",
     "closeTermsOfUse": "利用規約を閉じる",
     "cancel": "キャンセル",
@@ -83,7 +86,8 @@
     "toggleOn": "オン",
     "toggleOff": "オフ",
     "close": "閉じる",
-    "apply": "適用"
+    "apply": "適用",
+    "noLanguageSubtitles": "{language}の字幕なし"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# エピソード} other {# エピソード}}",
@@ -100,7 +104,7 @@
     "fallbackBody": "話を聞く準備のある人と個人的に話せます。",
     "questionsShort": "質問",
     "questions": "関連する質問",
-    "askYours": "自分の質問をする",
+    "askYours": "質問する",
     "chatWithPerson": "人と話す",
     "askBibleQuestion": "聖書について質問する"
   },
@@ -182,10 +186,23 @@
     "categoryAnimated": "アニメーション",
     "categoryStudy": "学び",
     "categoryFamily": "家族",
-    "categoryChristmas": "クリスマス"
+    "categoryChristmas": "クリスマス",
+    "searchLanguageLabel": "Search language",
+    "allLanguages": "All languages",
+    "searchSuggestions": "Search Suggestions",
+    "languages": "Languages",
+    "recommendedLanguage": "Recommended language",
+    "searchSuggestion": "Search {suggestion}",
+    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "inLanguage": "in {language}",
+    "browseByRegion": "Browse by region",
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
-    "playWithSound": "音声付きで再生",
+    "playWithSound": "今すぐ見る",
     "tapToUnmute": "ミュートを解除"
   },
   "ExperienceSkeleton": {

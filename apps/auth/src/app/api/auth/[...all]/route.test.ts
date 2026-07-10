@@ -7,10 +7,15 @@ const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
   source: "local",
 }))
 const signUpEmail = vi.fn()
+const getSession = vi.fn()
+const canRedeemAgentLoginHandle = vi.fn(
+  async (_prisma: unknown, _input: unknown) => false,
+)
 
 vi.mock("@/auth/config", () => ({
   auth: {
     api: {
+      getSession: (input: unknown) => getSession(input),
       signUpEmail: (...args: unknown[]) => signUpEmail(...args),
     },
   },
@@ -38,12 +43,23 @@ vi.mock("@/db/client", () => ({
     ),
     user: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    appEnvironment: {
+      findUnique: vi.fn(),
     },
   },
 }))
 
 vi.mock("@/auth/rate-limit", () => ({
   rateLimitAuthRoute: (input: unknown) => rateLimitAuthRoute(input),
+}))
+
+vi.mock("@/services/agent-login.service", () => ({
+  canRedeemAgentLoginHandle: (prisma: unknown, input: unknown) =>
+    canRedeemAgentLoginHandle(prisma, input),
+  isAgentLoginHandle: (value: string) =>
+    value.trim().toLowerCase().endsWith("@agent-login.jesusfilm.internal"),
 }))
 
 vi.mock("@/auth/firebase-rest", () => ({
@@ -60,13 +76,17 @@ describe("Auth route wrapper", () => {
     authGet.mockReset()
     authGet.mockResolvedValue(Response.json({ ok: true }))
     authPost.mockReset()
+    getSession.mockReset()
+    getSession.mockResolvedValue(null)
+    canRedeemAgentLoginHandle.mockReset()
+    canRedeemAgentLoginHandle.mockResolvedValue(false)
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     signUpEmail.mockReset()
     vi.unstubAllEnvs()
   })
 
-  it("blocks public email signup", async () => {
+  it("blocks malformed email signup", async () => {
     const { POST } = await import("./route")
     const response = await POST(
       new Request("http://localhost:3004/api/auth/sign-up/email", {
@@ -130,28 +150,86 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
-  it("keeps public email signup blocked for new emails", async () => {
+  it("allows email signup for new emails", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(
+      Response.json(
+        { redirect: true },
+        { headers: { "set-cookie": "better-auth.session=abc; Path=/" } },
+      ),
+    )
 
     const { POST } = await import("./route")
     const response = await POST(
       new Request("http://localhost:3004/api/auth/sign-up/email", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "new@example.com" }),
+        body: JSON.stringify({
+          email: "new@example.com",
+          password: "correct horse battery staple",
+        }),
       }),
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: "Not found" })
-    expect(authPost).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      email: "new@example.com",
+      name: "new",
+      password: "correct horse battery staple",
+    })
   })
 
-  it("keeps public web signup blocked for trusted watch callbacks", async () => {
+  it("forwards OAuth continuation through email signup", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(
+      Response.json(
+        { redirect: true },
+        { headers: { "set-cookie": "better-auth.session=abc; Path=/" } },
+      ),
+    )
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          email: "NEW@example.com",
+          oauth_query: "client_id=jfp_web_production&sig=signed",
+          password: "correct horse battery staple",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL:
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_production&sig=signed",
+      email: "new@example.com",
+    })
+    expect(response.status).toBe(303)
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_production&sig=signed",
+    )
+    expect(response.headers.get("set-cookie")).toContain(
+      "forge_auth_last_login_method=email",
+    )
+  })
+
+  it("allows trusted watch callbacks through email signup", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(
+      Response.json(
+        { redirect: true },
+        { headers: { "set-cookie": "better-auth.session=abc; Path=/" } },
+      ),
+    )
 
     const { POST } = await import("./route")
     const response = await POST(
@@ -161,21 +239,24 @@ describe("Auth route wrapper", () => {
         body: JSON.stringify({
           callbackURL: "http://localhost:3000/watch/jesus/english",
           email: "NEW@example.com",
-          name: "New Viewer",
           password: "correct horse battery staple",
         }),
       }),
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: "Not found" })
-    expect(authPost).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL: "http://localhost:3000/watch/jesus/english",
+      email: "new@example.com",
+    })
   })
 
-  it("keeps public signup blocked when callback targets watch API routes", async () => {
+  it("strips unsafe watch API callbacks from email signup", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(Response.json({ ok: true }))
 
     const { POST } = await import("./route")
     const response = await POST(
@@ -193,8 +274,11 @@ describe("Auth route wrapper", () => {
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(404)
-    expect(authPost).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.not.toHaveProperty(
+      "callbackURL",
+    )
   })
 
   it("passes unrelated auth routes through to Better Auth", async () => {
@@ -386,6 +470,55 @@ describe("Auth route wrapper", () => {
     await expect(response.json()).resolves.toEqual({ method: "password" })
   })
 
+  it("returns agent-handle for a valid agent login handle", async () => {
+    canRedeemAgentLoginHandle.mockResolvedValueOnce(true)
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "agent+jfp-admin-local.abc@agent-login.jesusfilm.internal",
+          oauth_query:
+            "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ method: "agent-handle" })
+    expect(canRedeemAgentLoginHandle).toHaveBeenCalledWith(expect.anything(), {
+      handle: "agent+jfp-admin-local.abc@agent-login.jesusfilm.internal",
+      oauthQuery:
+        "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+    })
+  })
+
+  it("falls back generically for an invalid agent login handle", async () => {
+    canRedeemAgentLoginHandle.mockResolvedValueOnce(false)
+    const { prisma } = await import("@/db/client")
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/login-method", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "agent+jfp-admin-local.bad@agent-login.jesusfilm.internal",
+          oauth_query:
+            "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["login-method"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ method: "password" })
+    expect(prisma.user.findFirst).not.toHaveBeenCalled()
+  })
+
   it("does not expose provider lookup failures when rate limited", async () => {
     rateLimitAuthRoute.mockResolvedValueOnce({
       allowed: false,
@@ -405,6 +538,7 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ method: "password" })
     expect(authPost).not.toHaveBeenCalled()
+    expect(canRedeemAgentLoginHandle).not.toHaveBeenCalled()
   })
 
   it("forwards OAuth continuation as callbackURL through email sign-in", async () => {
@@ -696,5 +830,55 @@ describe("Auth route wrapper", () => {
     expect(response.headers.get("set-cookie") ?? "").not.toContain(
       "forge_auth_last_login_method",
     )
+  })
+
+  it("allows agent sessions to authorize approved local clients", async () => {
+    const { prisma } = await import("@/db/client")
+    getSession.mockResolvedValueOnce({ user: { id: "agent_user_1" } })
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      actorType: "AGENT",
+    } as never)
+    vi.mocked(prisma.appEnvironment.findUnique).mockResolvedValueOnce({
+      kind: "LOCAL",
+      status: "APPROVED",
+      app: { status: "ACTIVE" },
+      grants: [{ id: "grant_1" }],
+    } as never)
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(authGet).toHaveBeenCalled()
+  })
+
+  it("blocks agent sessions from authorizing production clients", async () => {
+    const { prisma } = await import("@/db/client")
+    getSession.mockResolvedValueOnce({ user: { id: "agent_user_1" } })
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      actorType: "AGENT",
+    } as never)
+    vi.mocked(prisma.appEnvironment.findUnique).mockResolvedValueOnce({
+      kind: "PRODUCTION",
+      status: "APPROVED",
+      app: { status: "ACTIVE" },
+      grants: [{ id: "grant_1" }],
+    } as never)
+
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_production&redirect_uri=https%3A%2F%2Fadmin.jesusfilm.org%2Fapi%2Fauth%2Fcallback",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(authGet).not.toHaveBeenCalled()
   })
 })

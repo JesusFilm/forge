@@ -15,7 +15,7 @@ import {
   filterTranscriptSubtitlesForAudio,
   normalizeCueOffset,
   parseVtt,
-} from "@/components/watch/SubtitleTranscript"
+} from "@/lib/subtitle-transcript"
 
 const englishSubtitle: WatchSubtitle = {
   documentId: "subtitle-en",

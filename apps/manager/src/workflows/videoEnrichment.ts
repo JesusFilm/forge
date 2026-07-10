@@ -12,7 +12,6 @@
 // for durable execution. Each step is idempotent.
 
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
-import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import { setTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import type { WorkflowStepName } from "@/types/job"
@@ -21,17 +20,115 @@ import type {
   JobStepDetails,
   MuxSyncReport,
   RequestedTranscriptionProvider,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
   TranscriptionRoutingReport,
   TranslationLanguageResult,
 } from "@/types/job"
 import type { Chapter, GenerateChaptersInput } from "@/services/chapters"
-import type { LanguageResult } from "@/services/subtitleTranslation/types"
+import type {
+  LanguageResult,
+  MastraSubtitleTranslationContext,
+} from "@/services/mastra-subtitle-enrichment"
+import type { MastraTranscriptEmbeddingResult } from "@/services/mastra-transcript-embeddings"
+import type {
+  CleanedAudioTranscriptionSource,
+  TranscriptionResult,
+} from "@/services/transcription"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   stepGetJob,
   stepMergeJobArtifacts,
   stepUpdateJob,
   stepUpdateStepStatus,
 } from "@/workflows/jobStateSteps"
+
+type SubtitleTranslationStepResult = {
+  mastraRunId: string
+  languages: LanguageResult[]
+}
+
+type TranscriptScriptureCorrectionStepResult = {
+  transcription: TranscriptionResult
+  artifactKeys: string[]
+  summary: TranscriptScriptureCorrectionStepSummary
+  mastraRunId?: string
+  mastraStatus?: string
+  mastraReason?: string
+  retryable?: boolean
+}
+
+type MastraStepDetailsError = Error & {
+  stepDetails?: JobStepDetails
+}
+
+const SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCES = 20
+const SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCE_CHARS = 80
+const BIBLE_REFERENCE_PATTERN =
+  /^(?:[1-3]\s*)?[A-Za-z][A-Za-z .'-]{1,40}\s+\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?(?:\s*[-–]\s*\d{1,3}(?::\d{1,3}(?:[-–]\d{1,3})?)?)?$/
+
+function buildMastraFailureStepDetails(input: {
+  mastraRunId?: string
+  status?: string
+  reason?: string
+  retryable?: boolean
+  languages?: LanguageResult[]
+}): JobStepDetails | undefined {
+  const details: JobStepDetails = {}
+  if (input.mastraRunId) {
+    details.mastra = {
+      runId: input.mastraRunId,
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.reason ? { reason: input.reason } : {}),
+      ...(input.retryable !== undefined ? { retryable: input.retryable } : {}),
+      ...(input.languages
+        ? { languages: input.languages.map((language) => language.lang) }
+        : {}),
+    }
+  }
+
+  if (input.languages && input.languages.length > 0) {
+    details.languageResults = input.languages.map((result) => ({
+      lang: result.lang,
+      status: result.status,
+      error: result.error,
+    }))
+    const subtitleValidation = getSubtitleValidationStepSummary(input.languages)
+    if (subtitleValidation) {
+      details.subtitleValidation = subtitleValidation
+    }
+  }
+
+  return details.mastra || details.languageResults ? details : undefined
+}
+
+function errorWithStepDetails(
+  message: string,
+  details: JobStepDetails | undefined,
+): MastraStepDetailsError {
+  const error = new Error(message) as MastraStepDetailsError
+  if (details) {
+    error.stepDetails = details
+  }
+  return error
+}
+
+function getStepDetailsFromError(error: unknown): JobStepDetails | undefined {
+  if (typeof error !== "object" || error == null) {
+    return undefined
+  }
+
+  const details = (error as { stepDetails?: unknown }).stepDetails
+  if (
+    typeof details !== "object" ||
+    details == null ||
+    Array.isArray(details)
+  ) {
+    return undefined
+  }
+
+  return details as JobStepDetails
+}
 
 function getRoutingReportFromError(error: unknown): JobArtifactManifest | null {
   if (
@@ -59,6 +156,7 @@ export type VideoEnrichmentInput = {
   translateTo?: string[]
   runSceneAnalysis?: boolean
   runAudioCleanup?: boolean
+  videoTitle?: string
   videoLabel?: string
   bibleVerses?: string[]
   initialArtifacts?: JobArtifactManifest
@@ -84,6 +182,50 @@ export type VideoEnrichmentOutput = {
   tags: string[]
 }
 
+function cleanOptionalString(
+  value: string | null | undefined,
+): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function cleanBibleReference(value: string): string | undefined {
+  const trimmed = value.trim().replace(/\s+/g, " ")
+  if (
+    !trimmed ||
+    trimmed.length > SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCE_CHARS ||
+    !BIBLE_REFERENCE_PATTERN.test(trimmed)
+  ) {
+    return undefined
+  }
+  return trimmed
+}
+
+function buildSubtitleTranslationContext(input: {
+  videoTitle?: string
+  videoLabel?: string
+  bibleVerses?: string[]
+}): MastraSubtitleTranslationContext | undefined {
+  const bibleReferences = Array.from(
+    new Set(
+      (input.bibleVerses ?? [])
+        .map(cleanBibleReference)
+        .filter((reference): reference is string => reference != null),
+    ),
+  ).slice(0, SUBTITLE_CONTEXT_MAX_BIBLE_REFERENCES)
+  const context: MastraSubtitleTranslationContext = {
+    ...(cleanOptionalString(input.videoTitle)
+      ? { videoTitle: cleanOptionalString(input.videoTitle) }
+      : {}),
+    ...(cleanOptionalString(input.videoLabel)
+      ? { videoLabel: cleanOptionalString(input.videoLabel) }
+      : {}),
+    ...(bibleReferences.length > 0 ? { bibleReferences } : {}),
+  }
+
+  return Object.keys(context).length > 0 ? context : undefined
+}
+
 async function markStepRunning(jobId: string, step: WorkflowStepName) {
   await stepUpdateStepStatus(jobId, step, "running")
   await stepUpdateJob(jobId, { status: "running", currentStep: step })
@@ -106,8 +248,14 @@ async function markStepFailed(
   jobId: string,
   step: WorkflowStepName,
   error: string,
+  details?: JobStepDetails,
 ) {
-  await stepUpdateStepStatus(jobId, step, "failed", error)
+  if (details === undefined) {
+    await stepUpdateStepStatus(jobId, step, "failed", error)
+    return
+  }
+
+  await stepUpdateStepStatus(jobId, step, "failed", error, details)
 }
 
 async function markStepSkipped(jobId: string, step: WorkflowStepName) {
@@ -157,34 +305,142 @@ async function persistMergedArtifacts(
   }
 }
 
-function getTranslationArtifactManifest(
-  results: LanguageResult[],
-): JobArtifactManifest {
+function getTranslationArtifactManifest({
+  languages,
+}: SubtitleTranslationStepResult): JobArtifactManifest {
   return buildDownloadableArtifactManifest(
-    results.flatMap((result) =>
-      result.status === "completed"
-        ? [`subtitles-${result.lang}`, `translation-${result.lang}`]
-        : [],
-    ),
+    languages.flatMap((result) => {
+      if (result.status !== "completed") {
+        return []
+      }
+      return [
+        `subtitles-${result.lang}`,
+        `translation-${result.lang}`,
+        ...(result.artifactKeys?.validation
+          ? [`subtitle-validation-${result.lang}`]
+          : []),
+      ]
+    }),
   )
 }
 
-function getTranslationStepDetails(
-  results: LanguageResult[],
-): JobStepDetails | undefined {
+const VALIDATION_VERDICT_RANK: Record<SubtitleValidationVerdict, number> = {
+  pass: 0,
+  unavailable: 1,
+  warning: 2,
+  needs_review: 3,
+}
+
+function highestSubtitleValidationVerdict(
+  verdicts: SubtitleValidationVerdict[],
+): SubtitleValidationVerdict {
+  return verdicts.reduce<SubtitleValidationVerdict>(
+    (highest, verdict) =>
+      VALIDATION_VERDICT_RANK[verdict] > VALIDATION_VERDICT_RANK[highest]
+        ? verdict
+        : highest,
+    "pass",
+  )
+}
+
+function getSubtitleValidationStepSummary(
+  languages: LanguageResult[],
+): SubtitleValidationStepSummary | undefined {
+  const results = languages.flatMap((result) =>
+    result.validationSummary
+      ? [
+          {
+            lang: result.lang,
+            ...result.validationSummary,
+          },
+        ]
+      : [],
+  )
   if (results.length === 0) {
     return undefined
   }
 
-  const languageResults: TranslationLanguageResult[] = results.map(
+  return {
+    highestVerdict: highestSubtitleValidationVerdict(
+      results.map((result) => result.verdict),
+    ),
+    languagesChecked: results.length,
+    modelOnlyLanguages: results
+      .filter((result) => result.basis === "model_knowledge")
+      .map((result) => result.lang),
+    unavailableLanguages: results
+      .filter(
+        (result) =>
+          result.basis === "unavailable" || result.verdict === "unavailable",
+      )
+      .map((result) => result.lang),
+    warningCount: results.reduce(
+      (total, result) => total + result.warningCount,
+      0,
+    ),
+    needsReviewCount: results.reduce(
+      (total, result) => total + result.needsReviewCount,
+      0,
+    ),
+    results,
+  }
+}
+
+function getTranslationStepDetails(
+  result: SubtitleTranslationStepResult,
+): JobStepDetails | undefined {
+  const languageResults: TranslationLanguageResult[] = result.languages.map(
     (result) => ({
       lang: result.lang,
       status: result.status,
       error: result.error,
     }),
   )
+  const subtitleValidation = getSubtitleValidationStepSummary(result.languages)
 
-  return { languageResults }
+  return {
+    ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation ? { subtitleValidation } : {}),
+    mastra: {
+      runId: result.mastraRunId,
+      status: "completed",
+      languages: result.languages.map((language) => language.lang),
+    },
+  }
+}
+
+function getTranscriptEmbeddingsStepDetails(
+  result: Extract<MastraTranscriptEmbeddingResult, { ok: true }>,
+): JobStepDetails {
+  return {
+    mastra: {
+      runId: result.mastraRunId,
+      status: result.status,
+      provider: result.provider,
+      model: result.model,
+      chunks: result.chunks,
+      totalTokens: result.totalTokens,
+      sourceContentHash: result.sourceContentHash,
+    },
+  }
+}
+
+function getTranscriptCorrectionStepDetails(
+  result: TranscriptScriptureCorrectionStepResult,
+): JobStepDetails {
+  return {
+    transcriptCorrection: result.summary,
+    ...(result.mastraRunId || result.mastraReason
+      ? {
+          mastra: {
+            runId: result.mastraRunId ?? "unavailable",
+            status: result.mastraStatus,
+            reason: result.mastraReason,
+            retryable: result.retryable,
+          },
+        }
+      : {}),
+  }
 }
 
 export async function runVideoEnrichment(
@@ -209,81 +465,7 @@ export async function runVideoEnrichment(
   })
 
   try {
-    // Step 1: Transcription
-    await markStepRunning(input.jobId, "transcription")
-    let transcription: Awaited<ReturnType<typeof stepTranscribe>>
-    try {
-      transcription = await stepTranscribe(
-        input.assetId,
-        input.muxAssetId,
-        language,
-        input.requestedTranscriptionProvider,
-        artifactManifest,
-      )
-      const transcriptionArtifacts = transcription.routingReport
-        ? mergeArtifactEntries(
-            buildDownloadableArtifactManifest(transcription.artifactKeys),
-            setTranscriptionRoutingReport({}, transcription.routingReport),
-          )
-        : buildDownloadableArtifactManifest(transcription.artifactKeys)
-      artifactManifest = mergeArtifactEntries(
-        artifactManifest,
-        transcriptionArtifacts,
-      )
-      await persistArtifacts(input.jobId, artifactManifest)
-      await markStepComplete(input.jobId, "transcription")
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error"
-      const routingArtifacts = getRoutingReportFromError(err)
-      if (routingArtifacts) {
-        artifactManifest = mergeArtifactEntries(
-          artifactManifest,
-          routingArtifacts,
-        )
-        await persistArtifacts(input.jobId, artifactManifest)
-      }
-      await markStepFailed(input.jobId, "transcription", msg)
-      throw err
-    }
-
-    // Steps 2-5: Translation, chapters, metadata, embeddings
-    // Translation and chapters still depend only on transcription.
-    // Transcript embeddings now launch Mastra from transcript source data only;
-    // Mastra owns chunking and vectors while Admin owns storage.
-    const targets = input.translateTo ?? []
-    const parallelSteps: WorkflowStepName[] = [
-      "translation",
-      "chapters",
-      "metadata",
-      "embeddings",
-    ]
-    for (const step of parallelSteps) {
-      await markStepRunning(input.jobId, step)
-    }
-
-    async function runParallelStep<T>(
-      stepName: WorkflowStepName,
-      fn: () => Promise<T>,
-      getArtifacts?: (result: T) => JobArtifactManifest,
-      getDetails?: (result: T) => JobStepDetails | undefined,
-    ): Promise<{ result: T }> {
-      try {
-        const result = await fn()
-        const artifacts = getArtifacts?.(result) ?? {}
-        const details = getDetails?.(result)
-        await persistMergedArtifacts(input.jobId, artifacts)
-        await markStepComplete(input.jobId, stepName, details)
-        return {
-          result,
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error"
-        await markStepFailed(input.jobId, stepName, msg)
-        throw err
-      }
-    }
-
-    async function runAudioCleanupStep(): Promise<void> {
+    async function runAudioCleanupStep(): Promise<CleanedAudioTranscriptionSource> {
       try {
         await markStepRunning(input.jobId, "audio_cleanup")
         const audioCleanupResult = await stepAudioCleanup({
@@ -296,6 +478,11 @@ export async function runVideoEnrichment(
           buildDownloadableArtifactManifest(audioCleanupResult.artifactKeys),
         )
         await markStepComplete(input.jobId, "audio_cleanup")
+        return {
+          assetId: input.assetId,
+          artifactType: "cleaned-audio",
+          ext: "mp3",
+        }
       } catch (audioError) {
         const audioCleanupArtifactKeys =
           getPersistedAudioCleanupArtifactKeys(audioError)
@@ -336,21 +523,150 @@ export async function runVideoEnrichment(
         }
         console.error(
           JSON.stringify({
-            event: "audio_cleanup_failed_in_enrichment",
+            event: "audio_cleanup_failed_before_transcription",
             jobId: input.jobId,
             error: msg,
           }),
         )
+        throw audioError
       }
     }
 
-    const audioCleanupPromise = input.runAudioCleanup
-      ? runAudioCleanupStep()
+    const cleanedAudioArtifact = input.runAudioCleanup
+      ? await runAudioCleanupStep()
       : undefined
+    if (!input.runAudioCleanup) {
+      await markStepSkipped(input.jobId, "audio_cleanup")
+    }
+
+    // Step 1: Transcription
+    await markStepRunning(input.jobId, "transcription")
+    let transcription: Awaited<ReturnType<typeof stepTranscribe>>
+    try {
+      transcription = await stepTranscribe(
+        input.assetId,
+        input.muxAssetId,
+        language,
+        input.requestedTranscriptionProvider,
+        artifactManifest,
+        cleanedAudioArtifact,
+      )
+      const transcriptionArtifacts = transcription.routingReport
+        ? mergeArtifactEntries(
+            buildDownloadableArtifactManifest(transcription.artifactKeys),
+            setTranscriptionRoutingReport({}, transcription.routingReport),
+          )
+        : buildDownloadableArtifactManifest(transcription.artifactKeys)
+      artifactManifest = mergeArtifactEntries(
+        artifactManifest,
+        transcriptionArtifacts,
+      )
+      await persistArtifacts(input.jobId, artifactManifest)
+      await markStepComplete(input.jobId, "transcription")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      const routingArtifacts = getRoutingReportFromError(err)
+      if (routingArtifacts) {
+        artifactManifest = mergeArtifactEntries(
+          artifactManifest,
+          routingArtifacts,
+        )
+        await persistArtifacts(input.jobId, artifactManifest)
+      }
+      await markStepFailed(input.jobId, "transcription", msg)
+      throw err
+    }
+
+    let transcriptCorrectionResult: TranscriptScriptureCorrectionStepResult
+    await markStepRunning(input.jobId, "structured_transcript")
+    try {
+      transcriptCorrectionResult = await stepTranscriptScriptureCorrection({
+        assetId: input.assetId,
+        sourceLanguage: transcription.language,
+        transcription,
+        translationContext: buildSubtitleTranslationContext({
+          videoTitle: input.videoTitle,
+          videoLabel: input.videoLabel,
+          bibleVerses: input.bibleVerses,
+        }),
+      })
+      transcription = transcriptCorrectionResult.transcription
+      if (transcriptCorrectionResult.artifactKeys.length > 0) {
+        artifactManifest = mergeArtifactEntries(
+          artifactManifest,
+          buildDownloadableArtifactManifest(
+            transcriptCorrectionResult.artifactKeys,
+          ),
+        )
+        await persistArtifacts(input.jobId, artifactManifest)
+      }
+      await markStepComplete(
+        input.jobId,
+        "structured_transcript",
+        getTranscriptCorrectionStepDetails(transcriptCorrectionResult),
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      await markStepFailed(input.jobId, "structured_transcript", msg)
+      throw err
+    }
+
+    // Steps 2-5: Translation, chapters, metadata, embeddings
+    // Translation and chapters still depend only on transcription.
+    // Transcript embeddings now launch Mastra from transcript source data only;
+    // Mastra owns chunking and vectors while Admin owns storage.
+    const targets = input.translateTo ?? []
+    const parallelSteps: WorkflowStepName[] = [
+      "translation",
+      "chapters",
+      "metadata",
+      "embeddings",
+    ]
+    for (const step of parallelSteps) {
+      await markStepRunning(input.jobId, step)
+    }
+
+    async function runParallelStep<T>(
+      stepName: WorkflowStepName,
+      fn: () => Promise<T>,
+      getArtifacts?: (result: T) => JobArtifactManifest,
+      getDetails?: (result: T) => JobStepDetails | undefined,
+    ): Promise<{ result: T }> {
+      let stepDetails: JobStepDetails | undefined
+      try {
+        const result = await fn()
+        const artifacts = getArtifacts?.(result) ?? {}
+        stepDetails = getDetails?.(result)
+        await persistMergedArtifacts(input.jobId, artifacts)
+        await markStepComplete(input.jobId, stepName, stepDetails)
+        return {
+          result,
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error"
+        await markStepFailed(
+          input.jobId,
+          stepName,
+          msg,
+          getStepDetailsFromError(err) ?? stepDetails,
+        )
+        throw err
+      }
+    }
 
     const translationPromise = runParallelStep(
       "translation",
-      () => stepSubtitleTranslation(input.assetId, language, targets),
+      () =>
+        stepSubtitleTranslation(
+          input.assetId,
+          language,
+          targets,
+          buildSubtitleTranslationContext({
+            videoTitle: input.videoTitle,
+            videoLabel: input.videoLabel,
+            bibleVerses: input.bibleVerses,
+          }),
+        ),
       getTranslationArtifactManifest,
       getTranslationStepDetails,
     )
@@ -373,15 +689,19 @@ export async function runVideoEnrichment(
       (result) => buildDownloadableArtifactManifest(result.artifactKeys),
     )
 
-    const embeddingsPromise = runParallelStep("embeddings", () =>
-      stepMastraTranscriptEmbeddings({
-        assetId: input.assetId,
-        muxAssetId: input.muxAssetId,
-        language: transcription.language,
-        transcript: transcription.text,
-        segments: transcription.segments,
-        provider: transcription.resolvedProvider,
-      }),
+    const embeddingsPromise = runParallelStep(
+      "embeddings",
+      () =>
+        stepMastraTranscriptEmbeddings({
+          assetId: input.assetId,
+          muxAssetId: input.muxAssetId,
+          language: transcription.language,
+          transcript: transcription.text,
+          segments: transcription.segments,
+          provider: transcription.resolvedProvider,
+        }),
+      undefined,
+      getTranscriptEmbeddingsStepDetails,
     )
 
     const [
@@ -397,19 +717,15 @@ export async function runVideoEnrichment(
     ])
 
     if (translationResult.status === "rejected") {
-      await audioCleanupPromise
       throw translationResult.reason
     }
     if (chaptersResult.status === "rejected") {
-      await audioCleanupPromise
       throw chaptersResult.reason
     }
     if (metadataResult.status === "rejected") {
-      await audioCleanupPromise
       throw metadataResult.reason
     }
     if (embeddingsResult.status === "rejected") {
-      await audioCleanupPromise
       throw embeddingsResult.reason
     }
 
@@ -424,7 +740,7 @@ export async function runVideoEnrichment(
         jobId: input.jobId,
         assetId: input.assetId,
         muxAssetId: input.muxAssetId,
-        translationResults: translationResult.value.result,
+        translationResults: translationResult.value.result.languages,
         previousReport: getMuxSyncReport(currentJob.artifacts),
       })
 
@@ -452,14 +768,7 @@ export async function runVideoEnrichment(
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error"
       await markStepFailed(input.jobId, "mux_upload", msg)
-      await audioCleanupPromise
       throw err
-    }
-
-    if (audioCleanupPromise) {
-      await audioCleanupPromise
-    } else {
-      await markStepSkipped(input.jobId, "audio_cleanup")
     }
 
     // Optional: Scene analysis (chapters → scene boundaries → OpenRouter + stills)
@@ -467,9 +776,8 @@ export async function runVideoEnrichment(
     // Error-isolated: scene analysis failure does not block core enrichment.
     if (input.runSceneAnalysis) {
       try {
-        const sceneEmbeddingSyncReport = await stepSceneAnalysisAndSync({
+        await stepSceneAnalysis({
           assetId: input.assetId,
-          videoDocumentId: input.videoDocumentId,
           muxAssetId: input.muxAssetId,
           language: transcription.language,
           transcript: transcription.text,
@@ -477,25 +785,6 @@ export async function runVideoEnrichment(
           videoLabel: input.videoLabel ?? "unknown",
           bibleVerses: input.bibleVerses,
         })
-
-        if (
-          sceneEmbeddingSyncReport.status === "failed" ||
-          sceneEmbeddingSyncReport.status === "unsupported"
-        ) {
-          console.error(
-            JSON.stringify({
-              event: "scene_embedding_sync_issue_in_enrichment",
-              jobId: input.jobId,
-              status: sceneEmbeddingSyncReport.status,
-              reason: sceneEmbeddingSyncReport.reason ?? "unknown",
-            }),
-          )
-        }
-
-        await persistMergedArtifacts(
-          input.jobId,
-          buildSceneEmbeddingSyncArtifact(sceneEmbeddingSyncReport),
-        )
       } catch (sceneError) {
         console.error(
           JSON.stringify({
@@ -561,6 +850,7 @@ async function stepTranscribe(
   language: string,
   requestedProvider: RequestedTranscriptionProvider | undefined,
   artifacts: JobArtifactManifest,
+  cleanedAudioArtifact?: CleanedAudioTranscriptionSource,
 ) {
   "use step"
   const { getTranscriptionRoutingReport } =
@@ -570,6 +860,7 @@ async function stepTranscribe(
   return transcribe(assetId, muxAssetId, language, {
     requestedProvider,
     sourceInputUrl: priorRoutingReport?.sourceInputUrl,
+    cleanedAudioArtifact,
     priorRoutingReport,
   })
 }
@@ -578,10 +869,178 @@ async function stepSubtitleTranslation(
   assetId: string,
   sourceLanguage: string,
   targetLanguages: string[],
+  translationContext?: MastraSubtitleTranslationContext,
 ) {
   "use step"
-  const { translateSubtitles } = await import("@/services/subtitleTranslation")
-  return translateSubtitles({ assetId, sourceLanguage, targetLanguages })
+  const { launchMastraSubtitleEnrichment } =
+    await import("@/services/mastra-subtitle-enrichment")
+  const result = await launchMastraSubtitleEnrichment({
+    assetId,
+    sourceLanguage,
+    targetLanguages,
+    ...(translationContext ? { translationContext } : {}),
+  })
+
+  if (!result.ok) {
+    throw errorWithStepDetails(
+      `Mastra subtitle enrichment failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
+      buildMastraFailureStepDetails({
+        mastraRunId: result.mastraRunId,
+        status: "failed",
+        reason: result.reason,
+        retryable: result.retryable,
+        languages: result.languages,
+      }),
+    )
+  }
+
+  return {
+    mastraRunId: result.mastraRunId,
+    languages: result.languages,
+  }
+}
+
+async function stepTranscriptScriptureCorrection(input: {
+  assetId: string
+  sourceLanguage: string
+  transcription: TranscriptionResult
+  translationContext?: MastraSubtitleTranslationContext
+}): Promise<TranscriptScriptureCorrectionStepResult> {
+  "use step"
+  const { writeArtifact } = await import("@/services/storage")
+  const { segmentsToVTT } = await import("@/lib/vtt")
+  const { launchMastraTranscriptScriptureCorrection } =
+    await import("@/services/mastra-transcript-scripture-correction")
+  const {
+    applyTranscriptScriptureCorrections,
+    buildTranscriptCorrectionReport,
+  } = await import("@/services/transcript-scripture-correction")
+
+  const mastraResult = await launchMastraTranscriptScriptureCorrection({
+    assetId: input.assetId,
+    sourceLanguage: input.sourceLanguage,
+    segments: input.transcription.segments,
+    ...(input.translationContext
+      ? { translationContext: input.translationContext }
+      : {}),
+    provider: { name: input.transcription.resolvedProvider },
+  })
+  const correction = mastraResult.ok
+    ? mastraResult.correction
+    : {
+        status: "unavailable" as const,
+        basis: "unavailable" as const,
+        contentDomain: "christian_general" as const,
+        confidence: 0,
+        checkedReferenceCount: 0,
+        candidateCount: 0,
+        flaggedCount: 0,
+        unavailableReason: mastraResult.reason,
+        likelyBibleReferences: [],
+        findings: [],
+      }
+  const application = applyTranscriptScriptureCorrections({
+    text: input.transcription.text,
+    segments: input.transcription.segments,
+    correction,
+  })
+  const artifactKeys = ["transcript-correction-report"]
+
+  if (application.changed) {
+    await writeArtifact({
+      assetId: input.assetId,
+      artifactType: "transcript-raw",
+      ext: "json",
+      body: JSON.stringify(
+        {
+          text: input.transcription.text,
+          segments: input.transcription.segments,
+          language: input.transcription.language,
+          resolvedProvider: input.transcription.resolvedProvider,
+          routingReport: input.transcription.routingReport,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    })
+    artifactKeys.push("transcript-raw")
+
+    if (input.transcription.segments.length > 0) {
+      await writeArtifact({
+        assetId: input.assetId,
+        artifactType: "subtitles-raw",
+        ext: "vtt",
+        body: segmentsToVTT(input.transcription.segments),
+        contentType: "text/vtt",
+      })
+      artifactKeys.push("subtitles-raw")
+    }
+
+    await writeArtifact({
+      assetId: input.assetId,
+      artifactType: "transcript",
+      ext: "json",
+      body: JSON.stringify(
+        {
+          text: application.text,
+          segments: application.segments,
+          language: input.transcription.language,
+          resolvedProvider: input.transcription.resolvedProvider,
+          routingReport: input.transcription.routingReport,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    })
+    artifactKeys.push("transcript")
+
+    if (application.segments.length > 0) {
+      await writeArtifact({
+        assetId: input.assetId,
+        artifactType: "subtitles",
+        ext: "vtt",
+        body: segmentsToVTT(application.segments),
+        contentType: "text/vtt",
+      })
+      artifactKeys.push("subtitles")
+    }
+  }
+
+  await writeArtifact({
+    assetId: input.assetId,
+    artifactType: "transcript-correction-report",
+    ext: "json",
+    body: JSON.stringify(
+      buildTranscriptCorrectionReport(application.summary),
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  })
+
+  return {
+    transcription: {
+      ...input.transcription,
+      text: application.text,
+      segments: application.segments,
+      artifactKeys: Array.from(
+        new Set([...input.transcription.artifactKeys, ...artifactKeys]),
+      ),
+    },
+    artifactKeys,
+    summary: application.summary,
+    ...(mastraResult.ok
+      ? {
+          mastraRunId: mastraResult.mastraRunId,
+          mastraStatus: mastraResult.correction.status,
+        }
+      : {
+          mastraReason: mastraResult.reason,
+          retryable: mastraResult.retryable,
+        }),
+  }
 }
 
 async function stepChapters(assetId: string, input: GenerateChaptersInput) {
@@ -624,8 +1083,14 @@ async function stepMastraTranscriptEmbeddings(input: {
   })
 
   if (!result.ok) {
-    throw new Error(
+    throw errorWithStepDetails(
       `Mastra transcript embedding failed for assetId=${input.assetId}: ${result.reason}`,
+      buildMastraFailureStepDetails({
+        mastraRunId: result.mastraRunId,
+        status: "failed",
+        reason: result.reason,
+        retryable: result.retryable,
+      }),
     )
   }
 
@@ -661,9 +1126,8 @@ async function stepAudioCleanup(input: {
   })
 }
 
-async function stepSceneAnalysisAndSync(input: {
+async function stepSceneAnalysis(input: {
   assetId: string
-  videoDocumentId?: string
   muxAssetId: string
   language: string
   transcript: string
@@ -676,8 +1140,6 @@ async function stepSceneAnalysisAndSync(input: {
   const { extractAndStoreSceneBoundaries } =
     await import("@/services/sceneBoundaries")
   const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
-  const { syncSceneAnalysisEmbeddings } =
-    await import("@/services/sceneEmbeddingSync")
   const { getMuxAsset } = await import("@/services/mux")
 
   const boundaries = await extractAndStoreSceneBoundaries(
@@ -687,7 +1149,7 @@ async function stepSceneAnalysisAndSync(input: {
   )
 
   const muxAsset = await getMuxAsset(input.muxAssetId)
-  const analysisResult = await analyzeAllScenes(
+  return analyzeAllScenes(
     input.assetId,
     muxAsset.playbackId,
     boundaries.scenes,
@@ -703,13 +1165,4 @@ async function stepSceneAnalysisAndSync(input: {
       },
     },
   )
-
-  return syncSceneAnalysisEmbeddings({
-    assetId: input.assetId,
-    videoDocumentId: input.videoDocumentId,
-    muxAssetId: input.muxAssetId,
-    playbackId: muxAsset.playbackId,
-    language: input.language,
-    analysisResult,
-  })
 }

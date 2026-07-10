@@ -34,13 +34,27 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
-vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
-  searchByKeywordWeighted: vi.fn().mockResolvedValue([]),
-  searchByTrigram: vi.fn().mockResolvedValue([]),
-  searchByExactTitle: vi.fn().mockResolvedValue([]),
-  MAX_EXACT_TITLE_TOKENS: 16,
-  tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
-}))
+vi.mock("./hybrid-search-keyword-first-retrievers", () => {
+  const searchByKeywordWeighted = vi.fn().mockResolvedValue([])
+  const searchByTrigram = vi.fn().mockResolvedValue([])
+  const searchByExactTitle = vi.fn().mockResolvedValue([])
+  const searchKeywordFirstVideoLexical = vi.fn(
+    async (prisma: unknown, params: unknown, timing: unknown) => ({
+      keywordWeighted: await searchByKeywordWeighted(prisma, params, timing),
+      trigram: await searchByTrigram(prisma, params, timing),
+      exactTitle: await searchByExactTitle(prisma, params, timing),
+    }),
+  )
+
+  return {
+    searchByKeywordWeighted,
+    searchByTrigram,
+    searchByExactTitle,
+    searchKeywordFirstVideoLexical,
+    MAX_EXACT_TITLE_TOKENS: 16,
+    tokenizeForExactTitle: (q: string) => q.toLowerCase().split(/\s+/),
+  }
+})
 
 import {
   searchVideoSemantic,
@@ -66,6 +80,10 @@ const mockPrisma = {
     // `prisma.video.findMany`) doesn't crash these regression tests.
     findMany: vi.fn().mockResolvedValue([]),
   },
+  videoLocale: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  $queryRaw: vi.fn().mockResolvedValue([]),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 
@@ -156,6 +174,8 @@ beforeEach(() => {
   setupRetrieverFixtures()
   // Restore default hydration stub after clearAllMocks wipes it.
   mockPrisma.video.findMany.mockResolvedValue([])
+  mockPrisma.videoLocale.findMany.mockResolvedValue([])
+  mockPrisma.$queryRaw.mockResolvedValue([])
 })
 
 describe("HybridSearchService default-mode regression snapshot", () => {
@@ -199,7 +219,7 @@ describe("HybridSearchService default-mode regression snapshot", () => {
     }
   })
 
-  it("default path resolves embeddingSource to 'openrouter' (public default / U3)", async () => {
+  it("default path embeds once and searches semantic video without a source override", async () => {
     for (const { mode } of DEFAULT_EQUIVALENT_MODES) {
       vi.clearAllMocks()
       setupRetrieverFixtures()
@@ -210,15 +230,10 @@ describe("HybridSearchService default-mode regression snapshot", () => {
         embedder,
         logger: { warn: vi.fn(), error: vi.fn() },
       })
-      // No embeddingSource passed — the public contract. Both the query
-      // embedder and the semantic-video retriever must see "openrouter" so
-      // the read column stays `embedding` (never the gateway column).
       await service.search({ query: "jesus", locale: "en", mode })
-      expect(embedder).toHaveBeenCalledWith("jesus", "openrouter")
-      expect(searchVideoSemantic).toHaveBeenCalledWith(
-        mockPrisma,
-        expect.objectContaining({ embeddingSource: "openrouter" }),
-      )
+      expect(embedder).toHaveBeenCalledWith("jesus")
+      const params = vi.mocked(searchVideoSemantic).mock.calls.at(-1)?.[1]
+      expect(params).not.toHaveProperty("embeddingSource")
     }
   })
 
