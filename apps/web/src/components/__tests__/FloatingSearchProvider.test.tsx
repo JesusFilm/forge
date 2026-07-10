@@ -1495,7 +1495,11 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     })
 
     act(() => {
-      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        languageCode: "EN",
+      })
     })
 
     const languageButton = document.querySelector(
@@ -1503,6 +1507,11 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ) as HTMLButtonElement | null
     const header = document.querySelector('[data-testid="floating-header"]')
     expect(languageButton).not.toBeNull()
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("EN")
     expect(header?.className).toContain("fixed")
     expect(header?.className).toContain("right-5")
     expect(header?.className).toContain(
