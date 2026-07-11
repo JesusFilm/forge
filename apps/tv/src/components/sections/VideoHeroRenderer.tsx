@@ -1,4 +1,6 @@
+import { useCallback, useState } from "react"
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
+import { useFocusEffect } from "expo-router"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
@@ -31,6 +33,18 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const { state: playerState } = useVideoPlayerContext()
   // Pauses the hero when it scrolls substantially off-screen (R10).
   const heroOnScreen = useHeroOnScreen()
+  // Pauses when the Experience screen is not focused: the user navigated forward
+  // to another route or pressed Back. The stacked screen stays mounted, so unmount
+  // alone wouldn't stop the audio (R15). The fullscreen-overlay case is separate
+  // (overlayVisible / R11). useFocusEffect fires on focus/blur; local state makes
+  // it reactive for the render.
+  const [isFocused, setIsFocused] = useState(true)
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true)
+      return () => setIsFocused(false)
+    }, []),
+  )
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
   const streamingUrl = section.streamingUrl as string | null | undefined
@@ -53,7 +67,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         overlayVisible={playerState.isVisible}
         bottomFadeColor={WATCH_THEME.below}
         muted={false}
-        active={heroOnScreen}
+        active={heroOnScreen && isFocused}
       />
 
       {/* Silent-focus target: full-bleed invisible Pressable. As the topmost

@@ -3,7 +3,13 @@
 // (KTD4/KTD8); collapsable={false} on Android vs VideoView SurfaceView z-order.
 
 import { useEffect, useRef, useState } from "react"
-import { AccessibilityInfo, Animated, StyleSheet, View } from "react-native"
+import {
+  AccessibilityInfo,
+  Animated,
+  AppState,
+  StyleSheet,
+  View,
+} from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
@@ -78,9 +84,24 @@ export function VideoBackdrop({
       : null
   const hasValidStream = validStream !== null
 
+  // Pause + release the decode slot while the app isn't foreground: a backgrounded
+  // app must not keep decoding, and the sound hero must not play audio behind the
+  // OS or screensaver (R15). Universal — siblings release their slot too, resuming
+  // on foreground. (Screensaver coverage is best-effort: tvOS may stay "active"
+  // under the screensaver, in which case audio isn't caught here — a known gap.)
+  const [appForeground, setAppForeground] = useState(
+    AppState.currentState === "active",
+  )
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      setAppForeground(next === "active")
+    })
+    return () => sub.remove()
+  }, [])
+
   // Single play gate: one derived boolean feeds the one play/pause effect below,
   // so overlay/scroll/lifecycle never race into two concurrent decoders (KTD4).
-  const shouldPlay = active && !overlayVisible
+  const shouldPlay = active && !overlayVisible && appForeground
 
   // Freeze the useVideoPlayer source: a changing source RELEASES + recreates the
   // player (black/stuck frame). Seed with the first source and route later swaps
@@ -219,9 +240,11 @@ export function VideoBackdrop({
       )}
 
       {/* Video — crossfaded in over the poster once ready; KTD4 pointerEvents.
-          UNMOUNTED (not paused) while overlay is open: a mounted tvOS VideoView
-          holds a decode slot even paused, starving the overlay (black at 0:00). */}
-      {hasValidStream && videoReady && !overlayVisible ? (
+          UNMOUNTED (not just paused) while the overlay is open OR the app is
+          backgrounded: a mounted tvOS VideoView holds a decode slot even paused,
+          starving the overlay (black at 0:00). Scroll-off only pauses (stays
+          mounted for instant resume — no competing player there). */}
+      {hasValidStream && videoReady && !overlayVisible && appForeground ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"
