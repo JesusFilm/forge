@@ -277,8 +277,16 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-end-spacer']",
     )
     expect(endSpacer).not.toBeNull()
-    expect(endSpacer?.className).toContain("basis-[52%]")
-    expect(endSpacer?.className).toContain("md:basis-[66.666%]")
+    expect(endSpacer?.getAttribute("data-slot")).toBe("carousel-item")
+    expect(endSpacer?.getAttribute("aria-hidden")).toBe("true")
+    expect(endSpacer?.getAttribute("tabindex")).toBe("-1")
+    expect(endSpacer?.className).toContain("basis-auto")
+    expect(endSpacer?.className).toContain("pl-0")
+    expect(endSpacer?.className).not.toContain("basis-[52%]")
+    expect(endSpacer?.className).not.toContain("md:basis-[66.666%]")
+    const endGutter = endSpacer?.querySelector("div")
+    expect(endGutter?.className).toContain("w-4")
+    expect(endGutter?.className).toContain("sm:w-6")
 
     // Active item carries data-active="true" and renders the "Playing now" pill.
     const active = container.querySelector(
@@ -856,6 +864,29 @@ describe("SiblingCarousel — happy path", () => {
 })
 
 describe("SiblingCarousel — edge cases", () => {
+  it("keeps a final active child on the filled terminal page", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(5, 4)} languageSlug="english" />,
+      )
+    })
+
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-5-slug/english.html",
+    )
+
+    const endSpacer = container.querySelector(
+      "[data-testid='sibling-carousel-end-spacer']",
+    )
+    expect(endSpacer?.getAttribute("aria-hidden")).toBe("true")
+    expect(endSpacer?.getAttribute("tabindex")).toBe("-1")
+    expect(endSpacer?.className).toContain("basis-auto")
+    expect(endSpacer?.className).not.toContain("basis-[52%]")
+  })
+
   it("returns null when the canonical parent has fewer than 2 children", () => {
     const block: WatchSiblingCarouselBlock = {
       kind: "SiblingCarousel",

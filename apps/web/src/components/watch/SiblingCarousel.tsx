@@ -21,6 +21,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
+import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import {
@@ -514,11 +515,14 @@ export function SiblingCarousel({
               </CarouselItem>
             )
           })}
-          <div
+          <CarouselItem
             aria-hidden="true"
             data-testid="sibling-carousel-end-spacer"
-            className="min-w-0 shrink-0 grow-0 basis-[52%] sm:basis-[64%] md:basis-[66.666%] lg:basis-[75%] xl:basis-[80%] 2xl:basis-[83.333%]"
-          />
+            tabIndex={-1}
+            className="basis-auto pl-0"
+          >
+            <div className={CAROUSEL_END_SPACER} />
+          </CarouselItem>
         </CarouselContent>
 
         {/* The shared `outline` Button variant only sets text color on
