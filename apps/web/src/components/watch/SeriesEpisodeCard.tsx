@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import type { Route } from "next"
 import { Play } from "lucide-react"
 
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
@@ -55,7 +56,7 @@ export function SeriesEpisodeCard({
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
   const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
-  let href: string | undefined
+  let href: Route | undefined
   if (slug && lang) {
     if (isSeriesRecord(episode)) {
       href = watchVideoPath(slug, lang)
