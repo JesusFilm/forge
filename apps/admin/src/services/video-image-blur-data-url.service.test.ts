@@ -12,12 +12,19 @@ function buildPrisma(existingBlurDataUrl: string | null = null) {
       findUnique: vi
         .fn()
         .mockResolvedValue(
-          existingBlurDataUrl ? { blurDataUrl: existingBlurDataUrl } : null,
+          existingBlurDataUrl
+            ? { blurDataUrl: existingBlurDataUrl, dominantColor: "#123456" }
+            : null,
         ),
       update: vi.fn().mockResolvedValue({}),
     },
   }
 }
+
+const svgBytes = new TextEncoder().encode(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="#336699"/></svg>',
+)
+const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgBytes).toString("base64")}`
 
 describe("buildVideoImageBlurUrl", () => {
   it("rewrites Cloudflare-style width, height, and quality variant segments", () => {
@@ -117,7 +124,38 @@ describe("getOrCreateVideoImageBlurDataUrl", () => {
     expect(prisma.videoImage.update).not.toHaveBeenCalled()
   })
 
-  it("stores small image responses as data URLs", async () => {
+  it("stores decodable small image responses as data URLs", async () => {
+    const prisma = buildPrisma()
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(svgBytes, {
+        headers: { "content-type": "image/svg+xml" },
+        status: 200,
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      getOrCreateVideoImageBlurDataUrl({
+        prisma: prisma as never,
+        imageId: "image-1",
+        imageUrl: "https://imagedelivery.net/account/image-id/w=448",
+      }),
+    ).resolves.toBe(svgDataUrl)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://imagedelivery.net/account/image-id/w=24,h=14,q=40",
+      expect.objectContaining({ redirect: "error" }),
+    )
+    expect(prisma.videoImage.update).toHaveBeenCalledWith({
+      where: { id: "image-1" },
+      data: {
+        blurDataUrl: svgDataUrl,
+        dominantColor: expect.stringMatching(/^#[0-9a-f]{6}$/i),
+      },
+    })
+  })
+
+  it("does not store corrupt image responses", async () => {
     const prisma = buildPrisma()
     vi.stubGlobal(
       "fetch",
@@ -135,11 +173,8 @@ describe("getOrCreateVideoImageBlurDataUrl", () => {
         imageId: "image-1",
         imageUrl: "https://imagedelivery.net/account/image-id/w=448",
       }),
-    ).resolves.toBe("data:image/jpeg;base64,AQID")
+    ).resolves.toBeNull()
 
-    expect(prisma.videoImage.update).toHaveBeenCalledWith({
-      where: { id: "image-1" },
-      data: { blurDataUrl: "data:image/jpeg;base64,AQID" },
-    })
+    expect(prisma.videoImage.update).not.toHaveBeenCalled()
   })
 })

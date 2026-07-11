@@ -51,11 +51,16 @@ afterEach(() => {
 
 function renderPreview(
   previewUrl: string | null = "https://image.mux.com/pb/animated.webp",
+  onPreviewLoadedChange?: (loaded: boolean) => void,
 ) {
   act(() => {
     root.render(
       <button type="button">
-        <MuxHoverPreview previewUrl={previewUrl} sizes="100vw" />
+        <MuxHoverPreview
+          previewUrl={previewUrl}
+          sizes="100vw"
+          onPreviewLoadedChange={onPreviewLoadedChange}
+        />
       </button>,
     )
   })
@@ -111,6 +116,27 @@ describe("MuxHoverPreview", () => {
     expect(
       container.querySelector('[data-testid="next-image-mock"]')?.className,
     ).toContain("opacity-100")
+  })
+
+  it("reports loaded state only after the animated image finishes loading", () => {
+    const onPreviewLoadedChange = vi.fn()
+    const previewUrl = "https://image.mux.com/playback/animated.webp?width=448"
+    renderPreview(previewUrl, onPreviewLoadedChange)
+
+    expect(onPreviewLoadedChange).toHaveBeenLastCalledWith(false)
+
+    const button = container.querySelector("button")
+    act(() => {
+      button?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+    expect(onPreviewLoadedChange).toHaveBeenLastCalledWith(false)
+
+    const image = container.querySelector('[data-testid="next-image-mock"]')
+    act(() => {
+      image?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(onPreviewLoadedChange).toHaveBeenLastCalledWith(true)
   })
 
   it("loads the preview after keyboard focus reaches the card", () => {

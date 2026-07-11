@@ -96,6 +96,8 @@ type MediaPreviewContext = {
         objectKey: string | null
         previewObjectKey: string | null
         muxPlaybackId: string | null
+        blurDataUrl: string | null
+        dominantColor: string | null
       } | null>
     }
   }
@@ -130,12 +132,64 @@ async function resolveAssetBackedUrl(
   return isPrivateMediaAssetUrl(storedUrl) ? null : storedUrl
 }
 
+async function resolveAssetBackedBlurDataUrl(
+  row: object,
+  ctx: MediaPreviewContext,
+  assetField: string,
+) {
+  const record = row as Record<string, unknown>
+  const id = optionalString(record[assetField])
+  if (!id) return null
+
+  const asset = await ctx.prisma.mediaAsset.findUnique({ where: { id } })
+  return asset?.blurDataUrl ?? null
+}
+
+async function resolveAssetBackedDominantColor(
+  row: object,
+  ctx: MediaPreviewContext,
+  assetField: string,
+) {
+  const record = row as Record<string, unknown>
+  const id = optionalString(record[assetField])
+  if (!id) return null
+
+  const asset = await ctx.prisma.mediaAsset.findUnique({ where: { id } })
+  return asset?.dominantColor ?? null
+}
+
 function isPrivateMediaAssetUrl(value: unknown) {
   return (
     typeof value === "string" &&
     (value.startsWith("/api/media-assets/") ||
       value.includes("/api/media-assets/"))
   )
+}
+
+type VideoImageMetadataSource = {
+  mobileCinematicHigh: string | null
+  mobileCinematicLow: string | null
+  videoStill: string | null
+  url: string | null
+  thumbnail: string | null
+  blurDataUrl: string | null
+  dominantColor: string | null
+}
+
+function videoImageUrl(image: VideoImageMetadataSource) {
+  return (
+    image.mobileCinematicHigh ??
+    image.mobileCinematicLow ??
+    image.videoStill ??
+    image.url ??
+    image.thumbnail
+  )
+}
+
+function selectRenderableVideoImage(
+  images: readonly VideoImageMetadataSource[],
+) {
+  return images.find((image) => videoImageUrl(image)) ?? null
 }
 
 /** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
@@ -296,6 +350,19 @@ const MediaCollectionItemRef = builder.objectRef<MediaCollectionItem>(
 MediaCollectionItemRef.implement({
   description: "Single entry in MediaCollectionBlock.items.",
   fields: (t) => ({
+    coreId: t.string({
+      nullable: true,
+      description:
+        "The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.",
+      resolve: async (row, _args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return null
+
+        const video = await ctx.loaders.videoById.load(videoId)
+        if (video?.deletedAt) return null
+        return video?.coreId ?? null
+      },
+    }),
     videoId: t.exposeString("videoId", { nullable: true }),
     videoSlug: t.string({
       nullable: true,
@@ -308,17 +375,6 @@ MediaCollectionItemRef.implement({
         const video = await ctx.loaders.videoById.load(videoId)
         if (video?.deletedAt) return null
         return video?.slug ?? optionalString(row.videoSlug)
-      },
-    }),
-    coreId: t.string({
-      nullable: true,
-      description:
-        "The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.",
-      resolve: async (row, _args, ctx) => {
-        const videoId = optionalString(row.videoId)
-        if (!videoId) return null
-        const video = await ctx.loaders.videoById.load(videoId)
-        return video?.coreId ?? null
       },
     }),
     muxPlaybackId: t.string({
@@ -337,6 +393,30 @@ MediaCollectionItemRef.implement({
         })
       },
     }),
+    videoImageBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Best generated LQIP for the linked Video image. Falls back to null when the item is not linked to a Video or no video image has blur metadata.",
+      resolve: async (row, _args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return null
+
+        const images = await ctx.loaders.videoImagesByVideoId.load(videoId)
+        return selectRenderableVideoImage(images)?.blurDataUrl ?? null
+      },
+    }),
+    videoImageDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the linked Video image used by this item.",
+      resolve: async (row, _args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return null
+
+        const images = await ctx.loaders.videoImagesByVideoId.load(videoId)
+        return selectRenderableVideoImage(images)?.dominantColor ?? null
+      },
+    }),
     imageOverrideUrl: t.string({
       nullable: true,
       resolve: (row, _args, ctx) =>
@@ -350,6 +430,16 @@ MediaCollectionItemRef.implement({
     imageOverrideAssetId: t.exposeString("imageOverrideAssetId", {
       nullable: true,
     }),
+    imageOverrideBlurDataUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedBlurDataUrl(row, ctx, "imageOverrideAssetId"),
+    }),
+    imageOverrideDominantColor: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedDominantColor(row, ctx, "imageOverrideAssetId"),
+    }),
     titleOverride: t.exposeString("titleOverride", { nullable: true }),
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),
     labelOverride: t.exposeString("labelOverride", { nullable: true }),
@@ -360,6 +450,16 @@ MediaCollectionItemRef.implement({
         resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
     }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
+    imageBlurDataUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedBlurDataUrl(row, ctx, "imageAssetId"),
+    }),
+    imageDominantColor: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveAssetBackedDominantColor(row, ctx, "imageAssetId"),
+    }),
     linkToSectionKey: t.exposeString("linkToSectionKey", { nullable: true }),
   }),
 })

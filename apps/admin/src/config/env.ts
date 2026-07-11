@@ -89,6 +89,20 @@ export const searchTraceRawRetentionDaysEnvSchema = z.coerce
   .optional()
   .default(29)
 
+export const workflowStartupTransientAttemptsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(12)
+
+export const workflowStartupTransientDelayMsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(10_000)
+
 /**
  * AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED — enum-of-strings (not a
  * boolean) so a stray non-empty value can't silently flip the gate.
@@ -278,6 +292,10 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS:
+      workflowStartupTransientAttemptsEnvSchema,
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS:
+      workflowStartupTransientDelayMsEnvSchema,
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
     WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
     WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
@@ -642,6 +660,12 @@ export const env = createEnv({
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
       process.env.WORKFLOW_RUNNER_ENABLED,
+    ),
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: emptyToUndefined(
+      process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS,
+    ),
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: emptyToUndefined(
+      process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS,
     ),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
     WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(

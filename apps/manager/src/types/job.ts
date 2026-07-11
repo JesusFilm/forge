@@ -85,6 +85,7 @@ export type ShortsJobOptions = {
   sourceMuxAssetId: string
   sourcePlaybackId: string
   sourceCoreId?: string
+  sourceSlug?: string
   sourceTitle?: string
   clip: { startSec: number; endSec: number }
   language: { bcp47: string | null; whisper: string | null }

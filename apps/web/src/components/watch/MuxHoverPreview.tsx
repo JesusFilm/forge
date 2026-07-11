@@ -9,6 +9,7 @@ type MuxHoverPreviewProps = {
   previewUrl: string | null
   className?: string
   imageClassName?: string
+  onPreviewLoadedChange?: (loaded: boolean) => void
   sizes: string
   testId?: string
 }
@@ -17,13 +18,18 @@ export function MuxHoverPreview({
   previewUrl,
   className,
   imageClassName,
+  onPreviewLoadedChange,
   sizes,
   testId = "mux-hover-preview",
 }: MuxHoverPreviewProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [activated, setActivated] = useState(false)
   const [loadedPreviewUrl, setLoadedPreviewUrl] = useState<string | null>(null)
-  const loaded = loadedPreviewUrl === previewUrl
+  const loaded = previewUrl != null && loadedPreviewUrl === previewUrl
+
+  useEffect(() => {
+    onPreviewLoadedChange?.(loaded)
+  }, [loaded, onPreviewLoadedChange])
 
   useEffect(() => {
     if (!previewUrl || activated) return
@@ -49,6 +55,7 @@ export function MuxHoverPreview({
       ref={ref}
       data-testid={testId}
       data-active={activated ? "true" : "false"}
+      data-loaded={loaded ? "true" : "false"}
       className={cn(
         "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100",
         className,
