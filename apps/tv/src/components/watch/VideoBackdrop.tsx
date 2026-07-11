@@ -8,7 +8,7 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
 
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fallbackBg: {
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.below,
   },
   bottomFade: {
     position: "absolute",
