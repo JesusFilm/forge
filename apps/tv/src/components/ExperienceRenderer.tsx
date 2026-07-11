@@ -11,6 +11,7 @@ import React, {
 } from "react"
 import {
   ActivityIndicator,
+  Dimensions,
   Platform,
   Pressable,
   ScrollView,
@@ -18,13 +19,21 @@ import {
   Text,
   View,
 } from "react-native"
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
-import { WATCH_THEME } from "./watch/watchDetailTheme"
+import { HeroVisibilityProvider } from "./sections/heroVisibility"
+import { HERO_PEEK, WATCH_THEME } from "./watch/watchDetailTheme"
 import { normalizeExperience, type NormalizedBlock } from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+// The hero (first section) is ~ SCREEN_HEIGHT - HERO_PEEK tall. Treat it as
+// off-screen once ~60% has scrolled past, so the small reveal-scroll from
+// focusing the first rail card never trips the hero's scroll-off pause (R10/KTD2).
+const HERO_OFFSCREEN_THRESHOLD = (SCREEN_HEIGHT - HERO_PEEK) * 0.6
 
 type Props = {
   /** Experience slug to load via the public experienceBySlug query. */
@@ -156,6 +165,19 @@ export function ExperienceRenderer({ slug, header }: Props) {
     }
   }, [])
 
+  // Hero scroll-off pause (R10): the hero reads this via HeroVisibilityProvider
+  // and folds it into its single shouldPlay. Note: whether onScroll fires during
+  // tvOS focus-driven scroll is unproven (no prior art) — if the sim shows it
+  // doesn't, derive on-screen from the focused-section index instead (U8 fallback).
+  const [heroOnScreen, setHeroOnScreen] = useState(true)
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = e.nativeEvent.contentOffset.y < HERO_OFFSCREEN_THRESHOLD
+      setHeroOnScreen((prev) => (prev === next ? prev : next))
+    },
+    [],
+  )
+
   if (loading) {
     return (
       <StateScreen header={header}>
@@ -195,49 +217,53 @@ export function ExperienceRenderer({ slug, header }: Props) {
       registerNestedLayout={handleNestedLayout}
       refetch={handleRefetch}
     >
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        // Header (when present) is the sticky first child, prepended outside
-        // the section .map(), so scroll-to-section indices stay 0-based.
-        stickyHeaderIndices={header != null ? [0] : undefined}
-      >
-        {header != null ? (
-          <View
-            onLayout={(e) => {
-              headerHeightRef.current = e.nativeEvent.layout.height
-            }}
-          >
-            {header}
-          </View>
-        ) : null}
-        {experience.sections.map((section, index) => (
-          <View
-            key={`${section.kind}-${section.id}-${index}`}
-            onLayout={(e) => {
-              const y = e.nativeEvent.layout.y
-              handleSectionLayout(section, index, y)
-              // Store the Y so SectionWrapperRenderer can compute
-              // absolute positions for nested children
-              sectionPositions.current.set(`__parentY_${index}`, y)
-            }}
-          >
-            {/* Invisible focus anchor — receives focus after scrollToSection
+      <HeroVisibilityProvider value={heroOnScreen}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
+          // Header (when present) is the sticky first child, prepended outside
+          // the section .map(), so scroll-to-section indices stay 0-based.
+          stickyHeaderIndices={header != null ? [0] : undefined}
+        >
+          {header != null ? (
+            <View
+              onLayout={(e) => {
+                headerHeightRef.current = e.nativeEvent.layout.height
+              }}
+            >
+              {header}
+            </View>
+          ) : null}
+          {experience.sections.map((section, index) => (
+            <View
+              key={`${section.kind}-${section.id}-${index}`}
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y
+                handleSectionLayout(section, index, y)
+                // Store the Y so SectionWrapperRenderer can compute
+                // absolute positions for nested children
+                sectionPositions.current.set(`__parentY_${index}`, y)
+              }}
+            >
+              {/* Invisible focus anchor — receives focus after scrollToSection
                 so the next D-pad press starts from this section, not the
                 NavigationCarousel card that triggered the scroll. */}
-            <Pressable
-              ref={(ref) => {
-                if (ref) focusAnchors.current.set(index, ref)
-                else focusAnchors.current.delete(index)
-              }}
-              style={styles.focusAnchor}
-              accessible={false}
-            />
-            <SectionDispatcher section={section} parentIndex={index} />
-          </View>
-        ))}
-      </ScrollView>
+              <Pressable
+                ref={(ref) => {
+                  if (ref) focusAnchors.current.set(index, ref)
+                  else focusAnchors.current.delete(index)
+                }}
+                style={styles.focusAnchor}
+                accessible={false}
+              />
+              <SectionDispatcher section={section} parentIndex={index} />
+            </View>
+          ))}
+        </ScrollView>
+      </HeroVisibilityProvider>
     </ExperienceProvider>
   )
 }

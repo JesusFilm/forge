@@ -7,6 +7,7 @@ import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { VideoBackdrop } from "../watch/VideoBackdrop"
 import { HERO_PEEK, WATCH_THEME } from "../watch/watchDetailTheme"
+import { useHeroOnScreen } from "./heroVisibility"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,8 @@ export type VideoHeroRendererProps = {
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const { state: playerState } = useVideoPlayerContext()
+  // Pauses the hero when it scrolls substantially off-screen (R10).
+  const heroOnScreen = useHeroOnScreen()
   const heading = section.heading as string | null
   const subheading = section.subheading as string | null
   const streamingUrl = section.streamingUrl as string | null | undefined
@@ -50,6 +53,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
         overlayVisible={playerState.isVisible}
         bottomFadeColor={WATCH_THEME.below}
         muted={false}
+        active={heroOnScreen}
       />
 
       {/* Silent-focus target: full-bleed invisible Pressable. As the topmost

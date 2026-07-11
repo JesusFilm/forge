@@ -39,6 +39,13 @@ type VideoBackdropProps = {
    * Search) is muted. The Experience hero opts into sound with muted={false}.
    */
   muted?: boolean
+  /**
+   * External play gate (default true = today's behavior). When provided, the
+   * backdrop plays only while active AND no overlay is open. The Experience hero
+   * passes onScreen && screen-focused so it pauses when scrolled off or navigated
+   * away; siblings omit it and stay gated by the overlay alone.
+   */
+  active?: boolean
 }
 
 export function VideoBackdrop({
@@ -47,6 +54,7 @@ export function VideoBackdrop({
   overlayVisible,
   bottomFadeColor,
   muted = true,
+  active = true,
 }: VideoBackdropProps) {
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
@@ -69,6 +77,10 @@ export function VideoBackdrop({
       ? streamingUrl
       : null
   const hasValidStream = validStream !== null
+
+  // Single play gate: one derived boolean feeds the one play/pause effect below,
+  // so overlay/scroll/lifecycle never race into two concurrent decoders (KTD4).
+  const shouldPlay = active && !overlayVisible
 
   // Freeze the useVideoPlayer source: a changing source RELEASES + recreates the
   // player (black/stuck frame). Seed with the first source and route later swaps
@@ -103,9 +115,9 @@ export function VideoBackdrop({
   // first frame — avoids the black-flash window during HLS init.
   const [videoReady, setVideoReady] = useState(false)
   const videoOpacity = useRef(new Animated.Value(0)).current
-  // Mirrors overlayVisible for the playToEnd listener (reads it at call time
-  // without re-registering the listener on every overlay toggle).
-  const overlayVisibleRef = useRef(overlayVisible)
+  // Mirrors shouldPlay for the playToEnd listener (reads it at call time without
+  // re-registering the listener on every gate change).
+  const shouldPlayRef = useRef(shouldPlay)
 
   useEffect(() => {
     if (!hasValidStream) {
@@ -132,10 +144,10 @@ export function VideoBackdrop({
   useEffect(() => {
     if (!hasValidStream) return
     const sub = player.addListener("playToEnd", () => {
-      // Guard the overlay-pause race: if the fullscreen player opened right at
-      // the loop seam, a queued playToEnd must not resume the backdrop (two
-      // concurrent decoders — R6). The overlay-pause effect already paused us.
-      if (overlayVisibleRef.current) return
+      // Guard the pause race: if we were paused (overlay opened, hero scrolled
+      // off, or app backgrounded) right at the loop seam, a queued playToEnd must
+      // not resume the backdrop into two concurrent decoders (R11).
+      if (!shouldPlayRef.current) return
       try {
         player.replay()
       } catch {
@@ -145,19 +157,19 @@ export function VideoBackdrop({
     return () => sub.remove()
   }, [player, hasValidStream])
 
-  // Play unless the overlay is open. Pausing while the overlay plays keeps a
-  // single decoder active and frees the backdrop's frame budget for the
-  // fullscreen player (R6). Resume on close.
+  // One play/pause effect driven by the single shouldPlay gate. Pausing while the
+  // overlay plays (or the hero is scrolled off) keeps a single decoder active and
+  // frees the backdrop's frame budget for the fullscreen player (R11/KTD4).
   useEffect(() => {
-    overlayVisibleRef.current = overlayVisible
+    shouldPlayRef.current = shouldPlay
     if (!hasValidStream) return
     try {
-      if (overlayVisible) player.pause()
-      else player.play()
+      if (shouldPlay) player.play()
+      else player.pause()
     } catch {
       // Native player already released; benign.
     }
-  }, [player, hasValidStream, overlayVisible])
+  }, [player, hasValidStream, shouldPlay])
 
   useEffect(() => {
     return () => {
