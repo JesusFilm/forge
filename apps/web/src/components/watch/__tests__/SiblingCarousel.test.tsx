@@ -15,6 +15,10 @@ import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { linkDefaultPrevented } = vi.hoisted(() => ({
+  linkDefaultPrevented: [] as boolean[],
+}))
+
 // Embla browser-API polyfills (matchMedia / IntersectionObserver /
 // ResizeObserver) live in vitest.setup.ts so every Embla-backed test inherits
 // them automatically.
@@ -76,6 +80,7 @@ vi.mock("next/link", () => ({
       data-prefetch={String(prefetch)}
       onClick={(event) => {
         onClick?.(event)
+        linkDefaultPrevented.push(event.defaultPrevented)
         event.preventDefault()
       }}
       {...props}
@@ -121,6 +126,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  linkDefaultPrevented.length = 0
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -534,6 +540,7 @@ describe("SiblingCarousel — happy path", () => {
       )
     })
 
+    expect(linkDefaultPrevented).toEqual([false])
     expect(target!.getAttribute("data-pending")).toBe("true")
     expect(target!.getAttribute("data-active")).toBe("true")
     expect(target!.getAttribute("aria-busy")).toBe("true")
@@ -734,6 +741,7 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(linkDefaultPrevented).toEqual([false])
     expect(onChapterNavigateIntent).not.toHaveBeenCalled()
     expect(target!.getAttribute("aria-busy")).toBeNull()
     expect(
