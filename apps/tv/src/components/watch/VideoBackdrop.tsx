@@ -34,6 +34,11 @@ type VideoBackdropProps = {
    * VideoView SurfaceView (see apps/tv/CLAUDE.md "Android TV VideoView z-order").
    */
   bottomFadeColor?: string | null
+  /**
+   * Mute the backdrop audio. Defaults to true — every sibling hero (watch, Home,
+   * Search) is muted. The Experience hero opts into sound with muted={false}.
+   */
+  muted?: boolean
 }
 
 export function VideoBackdrop({
@@ -41,6 +46,7 @@ export function VideoBackdrop({
   posterUrl,
   overlayVisible,
   bottomFadeColor,
+  muted = true,
 }: VideoBackdropProps) {
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
@@ -69,12 +75,21 @@ export function VideoBackdrop({
   // (e.g. dub switches) through replaceAsync — mirrors VideoPlayer.tsx.
   const creationSource = useRef(validStream).current
   const player = useVideoPlayer(creationSource, (p) => {
-    p.muted = true
+    p.muted = muted
     // Looped manually via the playToEnd listener below — the native `loop` left a
     // long black pause before restarting (it re-buffers the HLS seek). With the
     // VideoView kept mounted (videoReady latches), replay() restarts instantly.
     p.loop = false
   })
+
+  // Keep muted in sync if the prop flips after creation (the initializer runs once).
+  useEffect(() => {
+    try {
+      player.muted = muted
+    } catch {
+      // Native player already released; benign.
+    }
+  }, [player, muted])
 
   const loadedSourceRef = useRef(creationSource)
   useEffect(() => {

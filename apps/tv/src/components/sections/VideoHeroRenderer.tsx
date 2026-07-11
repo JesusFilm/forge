@@ -41,13 +41,15 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   return (
     <View style={styles.container}>
       {/* Cinematic backdrop: poster-hold → video crossfade, manual loop, and the
-          decode-slot unmount while a fullscreen overlay is open (R11). Muted here;
-          U7 opts this hero into sound. Its own scrims darken the lower-left. */}
+          decode-slot unmount while a fullscreen overlay is open (R11). Autoplays
+          WITH SOUND (muted={false}) — a deliberate Apple-TV-style divergence from
+          the muted siblings (R9). Its own scrims darken the lower-left. */}
       <VideoBackdrop
         streamingUrl={hasValidStream ? streamingUrl : null}
         posterUrl={posterUrl}
         overlayVisible={playerState.isVisible}
         bottomFadeColor={WATCH_THEME.below}
+        muted={false}
       />
 
       {/* Silent-focus target: full-bleed invisible Pressable. As the topmost
