@@ -55,7 +55,7 @@ export type WatchHomeSectionConfig = {
   childLimit?: number
 }
 
-export const WATCH_HOME_CACHE_VERSION = "v6-real-images-with-dominant-colors"
+export const WATCH_HOME_CACHE_VERSION = "v7-share-identity"
 
 export const collectionShowcaseSources = [
   { id: "1_jf-0-0", limitChildren: 0 },

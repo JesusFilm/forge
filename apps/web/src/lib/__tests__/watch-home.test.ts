@@ -140,7 +140,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     await import("../watch-home")
 
     expect(unstableCacheCalls).toContainEqual({
-      keyParts: ["watch-home", "v6-real-images-with-dominant-colors"],
+      keyParts: ["watch-home", "v7-share-identity"],
       options: {
         revalidate: 60,
         tags: ["watch:home", "watch:video"],

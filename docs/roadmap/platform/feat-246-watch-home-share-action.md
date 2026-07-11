@@ -3,7 +3,7 @@ id: "feat-246"
 title: "Watch home share action"
 owner: "vlad"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-10"
 duration: 1
 depends_on: []

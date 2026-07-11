@@ -1,7 +1,7 @@
 ---
 title: "feat: Add Watch home share action"
 type: feat
-status: active
+status: completed
 date: 2026-07-10
 ---
 
