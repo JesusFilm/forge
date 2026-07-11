@@ -30,9 +30,9 @@ import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
-// The hero (first section) is ~ SCREEN_HEIGHT - HERO_PEEK tall. Treat it as
-// off-screen once ~60% has scrolled past, so the small reveal-scroll from
-// focusing the first rail card never trips the hero's scroll-off pause (R10/KTD2).
+// INVARIANT: one videoHero, authored FIRST (y≈0 when visible) — this top-anchored
+// threshold + the shared heroOnScreen boolean assume it; a non-first/second hero would
+// invert the pause or double audio. 60% margin so the first-card reveal-scroll won't trip it.
 const HERO_OFFSCREEN_THRESHOLD = (SCREEN_HEIGHT - HERO_PEEK) * 0.6
 
 type Props = {

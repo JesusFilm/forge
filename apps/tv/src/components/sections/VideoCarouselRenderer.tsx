@@ -73,7 +73,7 @@ function VideoCarouselCard({
               styles.thumbnail,
               {
                 backgroundColor:
-                  item.backgroundColor ?? "rgba(255,255,255,0.06)",
+                  item.backgroundColor ?? WATCH_THEME.cardFallback,
               },
             ]}
           />

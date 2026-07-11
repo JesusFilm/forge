@@ -1,6 +1,6 @@
-// Muted, non-interactive cinematic backdrop: poster-hold → video-fade-in (no
-// black flash), paused while the overlay player is open (R6). Zero focusables
-// (KTD4/KTD8); collapsable={false} on Android vs VideoView SurfaceView z-order.
+// Cinematic backdrop: poster-hold → video-fade-in (no black flash), gated by
+// computeBackdropGate. Muted + overlay-only for siblings; the Experience hero adds
+// sound + slot-release on scroll-off/nav/background. collapsable={false}=Android z-order.
 
 import { useEffect, useRef, useState } from "react"
 import {
@@ -17,6 +17,7 @@ import { useVideoPlayer, VideoView } from "expo-video"
 import { hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
+import { computeBackdropGate } from "./videoBackdropGate"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -84,24 +85,28 @@ export function VideoBackdrop({
       : null
   const hasValidStream = validStream !== null
 
-  // Background/foreground for the sound hero's slot + audio teardown (R15). Only
-  // the unmuted hero acts on it (appGate below); screensaver is best-effort since
-  // tvOS may stay "active" under it (known gap).
+  // Background release for the sound hero's slot + audio (R15). Only the unmuted
+  // hero subscribes; "inactive" (app-switcher peek, Siri) is NOT teardown — mirror
+  // VideoPlayer.tsx, tear down only on genuine "background" (screensaver a known gap).
   const [appForeground, setAppForeground] = useState(
-    AppState.currentState === "active",
+    AppState.currentState !== "background",
   )
   useEffect(() => {
+    if (muted) return
     const sub = AppState.addEventListener("change", (next) => {
-      setAppForeground(next === "active")
+      setAppForeground(next !== "background")
     })
     return () => sub.remove()
-  }, [])
+  }, [muted])
 
-  // Muted siblings keep today's behavior (default-inert, KTD1); only the unmuted
-  // hero releases its slot on background. Single play gate feeds the one play/pause
-  // effect so overlay/scroll/lifecycle never race into two decoders (KTD4).
-  const appGate = muted ? true : appForeground
-  const shouldPlay = active && !overlayVisible && appGate
+  // Single source of truth for play + mount so overlay/scroll/lifecycle never race
+  // into two decoders (KTD4). Muted siblings ignore appForeground (default-inert).
+  const { shouldPlay, shouldMountVideo } = computeBackdropGate({
+    muted,
+    active,
+    overlayVisible,
+    appForeground,
+  })
 
   // Freeze the useVideoPlayer source: a changing source RELEASES + recreates the
   // player (black/stuck frame). Seed with the first source and route later swaps
@@ -242,7 +247,7 @@ export function VideoBackdrop({
       {/* Video crossfaded over the poster once ready (KTD4 pointerEvents). Unmounts
           (not just pauses) on overlay-open, background, or nav-away to free the
           decode slot; scroll-off only pauses, staying mounted for instant resume. */}
-      {hasValidStream && videoReady && !overlayVisible && appGate ? (
+      {hasValidStream && videoReady && shouldMountVideo ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"
