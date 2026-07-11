@@ -84,11 +84,9 @@ export function VideoBackdrop({
       : null
   const hasValidStream = validStream !== null
 
-  // Pause + release the decode slot while the app isn't foreground: a backgrounded
-  // app must not keep decoding, and the sound hero must not play audio behind the
-  // OS or screensaver (R15). Universal — siblings release their slot too, resuming
-  // on foreground. (Screensaver coverage is best-effort: tvOS may stay "active"
-  // under the screensaver, in which case audio isn't caught here — a known gap.)
+  // Background/foreground for the sound hero's slot + audio teardown (R15). Only
+  // the unmuted hero acts on it (appGate below); screensaver is best-effort since
+  // tvOS may stay "active" under it (known gap).
   const [appForeground, setAppForeground] = useState(
     AppState.currentState === "active",
   )
@@ -99,9 +97,11 @@ export function VideoBackdrop({
     return () => sub.remove()
   }, [])
 
-  // Single play gate: one derived boolean feeds the one play/pause effect below,
-  // so overlay/scroll/lifecycle never race into two concurrent decoders (KTD4).
-  const shouldPlay = active && !overlayVisible && appForeground
+  // Muted siblings keep today's behavior (default-inert, KTD1); only the unmuted
+  // hero releases its slot on background. Single play gate feeds the one play/pause
+  // effect so overlay/scroll/lifecycle never race into two decoders (KTD4).
+  const appGate = muted ? true : appForeground
+  const shouldPlay = active && !overlayVisible && appGate
 
   // Freeze the useVideoPlayer source: a changing source RELEASES + recreates the
   // player (black/stuck frame). Seed with the first source and route later swaps
@@ -239,12 +239,10 @@ export function VideoBackdrop({
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Video — crossfaded in over the poster once ready; KTD4 pointerEvents.
-          UNMOUNTED (not just paused) while the overlay is open OR the app is
-          backgrounded: a mounted tvOS VideoView holds a decode slot even paused,
-          starving the overlay (black at 0:00). Scroll-off only pauses (stays
-          mounted for instant resume — no competing player there). */}
-      {hasValidStream && videoReady && !overlayVisible && appForeground ? (
+      {/* Video crossfaded over the poster once ready (KTD4 pointerEvents). Unmounts
+          (not just pauses) on overlay-open, background, or nav-away to free the
+          decode slot; scroll-off only pauses, staying mounted for instant resume. */}
+      {hasValidStream && videoReady && !overlayVisible && appGate ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"

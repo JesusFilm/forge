@@ -165,10 +165,9 @@ export function ExperienceRenderer({ slug, header }: Props) {
     }
   }, [])
 
-  // Hero scroll-off pause (R10): the hero reads this via HeroVisibilityProvider
-  // and folds it into its single shouldPlay. Note: whether onScroll fires during
-  // tvOS focus-driven scroll is unproven (no prior art) — if the sim shows it
-  // doesn't, derive on-screen from the focused-section index instead (U8 fallback).
+  // Hero scroll-off pause (R10), read via HeroVisibilityProvider. onScroll firing
+  // during tvOS focus-scroll is unproven — if the sim shows it doesn't, derive
+  // on-screen from the focused-section index instead (U8 fallback).
   const [heroOnScreen, setHeroOnScreen] = useState(true)
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
