@@ -179,6 +179,8 @@ describe("buildWatchHomeModelFromVideos", () => {
       "The Gospel of John",
     ])
     expect(model.heroSlides[0]?.href).toBe("/jesus.html/english.html")
+    expect(model.heroSlides[0]?.shareVideoSlug).toBe("jesus")
+    expect(model.heroSlides[0]?.shareLanguageSlug).toBe("english")
     expect(model.heroSlides[0]?.imageUrl).toBe(
       "https://cdn.example/jesus-cinematic.jpg",
     )
@@ -204,6 +206,19 @@ describe("buildWatchHomeModelFromVideos", () => {
       "join-us",
       "telling-the-story-of-jesus",
     ])
+  })
+
+  it("does not expose catalog share identity for an internal locale key", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "en",
+      videos: [makeVideo()] as never,
+    })
+
+    expect(model.heroSlides[0]?.shareVideoSlug).toBe("jesus")
+    expect(model.heroSlides[0]?.shareLanguageSlug).toBeNull()
   })
 
   it("renders limited child cards with parent-scoped episode routes", async () => {
@@ -234,6 +249,8 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(vertical?.cards).toHaveLength(1)
     expect(vertical?.cards[0]?.title).toBe("Episode One")
     expect(vertical?.cards[0]?.href).toBe("/lumo.html/episode-one/english.html")
+    expect(vertical?.cards[0]?.shareVideoSlug).toBe("episode-one")
+    expect(vertical?.cards[0]?.shareLanguageSlug).toBe("english")
     expect(vertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
   })
 

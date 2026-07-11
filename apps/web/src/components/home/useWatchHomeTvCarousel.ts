@@ -242,6 +242,7 @@ export function useWatchHomeTvCarousel(
         displaySlides.findIndex((slide) => slide.id === activeSlide.id),
       )
     : 0
+  const autoAdvancePausedRef = useRef(autoAdvancePaused)
 
   const clearVideoPosterHold = useCallback(() => {
     if (videoPosterHoldTimeoutRef.current != null) {
@@ -386,10 +387,16 @@ export function useWatchHomeTvCarousel(
       setProgress(nextProgress)
       previousProgressRef.current = nextProgress
       setMediaReady(true)
-      void video.play().catch(() => undefined)
+      if (!autoAdvancePausedRef.current) {
+        void video.play().catch(() => undefined)
+      }
       videoPosterHoldTimeoutRef.current = null
     }, VIDEO_POSTER_HOLD_MS)
   }, [clearVideoPosterHold])
+
+  useEffect(() => {
+    autoAdvancePausedRef.current = autoAdvancePaused
+  }, [autoAdvancePaused])
 
   useEffect(() => {
     isMutedRef.current = isMuted

@@ -45,6 +45,43 @@ vi.mock("@forge/video-player/mux-video", async () => {
   }
 })
 
+vi.mock("@/components/watch/ShareModal", () => ({
+  ShareModal: ({
+    currentLanguageSlug,
+    onClose,
+    open,
+    playbackId,
+    posterUrl,
+    videoDescription,
+    videoSlug,
+    videoTitle,
+  }: {
+    currentLanguageSlug: string
+    onClose: () => void
+    open: boolean
+    playbackId?: string | null
+    posterUrl?: string | null
+    videoDescription?: string | null
+    videoSlug: string
+    videoTitle?: string | null
+  }) => (
+    <div
+      data-testid="watch-share-modal"
+      data-description={videoDescription ?? ""}
+      data-language-slug={currentLanguageSlug}
+      data-open={open ? "true" : "false"}
+      data-playback-id={playbackId ?? ""}
+      data-poster-url={posterUrl ?? ""}
+      data-title={videoTitle ?? ""}
+      data-video-slug={videoSlug}
+    >
+      <button type="button" onClick={onClose}>
+        Close share modal
+      </button>
+    </div>
+  ),
+}))
+
 const carouselApi = vi.hoisted(() => ({
   scrollTo: vi.fn(),
 }))
@@ -132,6 +169,8 @@ function makeCard(overrides: Record<string, unknown> = {}) {
     id: "card-1",
     sourceId: "1_jf-0-0",
     coreId: "1_jf-0-0",
+    shareVideoSlug: "jesus",
+    shareLanguageSlug: "english",
     title: "Jesus",
     description: "The story of Jesus",
     label: "Feature film",
@@ -185,6 +224,8 @@ function makeCarouselSlide(
   return {
     kind: "video",
     id: "queued-1",
+    shareVideoSlug: "queued-one",
+    shareLanguageSlug: "english",
     title: "Queued One",
     description: "Queued from the playlist pool",
     label: "Short film",
@@ -653,6 +694,190 @@ describe("WatchHomePage", () => {
     ).toContain("Watch Now")
   })
 
+  it("opens Share for the active catalog video and keeps carousel controls locked", async () => {
+    const queuedTwo = makeCarouselSlide({
+      id: "queued-2",
+      shareVideoSlug: "queued-two",
+      title: "Queued Two",
+      description: "The second queued video",
+      href: "/queued-two.html/english.html",
+      src: "https://stream.example/queued-two.m3u8",
+      playbackId: "mux-queued-two",
+    })
+
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: [makeCarouselSlide(), queuedTwo],
+                },
+              ],
+              muxInserts: [],
+            },
+          })}
+        />,
+      )
+    })
+
+    const shareButton = container.querySelector(
+      '[data-testid="watch-home-share-button"]',
+    ) as HTMLButtonElement | null
+    expect(shareButton?.previousElementSibling?.textContent).toContain(
+      "Watch Now",
+    )
+    expect(shareButton?.textContent).toContain("Share")
+    expect(shareButton?.getAttribute("class")).toContain("border-white/35")
+    expect(shareButton?.getAttribute("aria-label")).toBe("Share")
+
+    const heroVideo = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    const initialVideoSrc = heroVideo.getAttribute("src")
+    const activeShare =
+      initialVideoSrc === "https://stream.example/queued-one.m3u8"
+        ? {
+            description: "Queued from the playlist pool",
+            playbackId: "mux-queued-one",
+            posterUrl: "https://cdn.example/queued-one.jpg",
+            slug: "queued-one",
+            title: "Queued One",
+          }
+        : {
+            description: "The second queued video",
+            playbackId: "mux-queued-two",
+            posterUrl: "https://cdn.example/queued-one.jpg",
+            slug: "queued-two",
+            title: "Queued Two",
+          }
+
+    await act(async () => {
+      shareButton?.click()
+      await Promise.resolve()
+    })
+
+    const shareModal = container.querySelector(
+      '[data-testid="watch-share-modal"]',
+    ) as HTMLElement | null
+    expect(shareModal?.getAttribute("data-open")).toBe("true")
+    expect(shareModal?.getAttribute("data-video-slug")).toBe(activeShare.slug)
+    expect(shareModal?.getAttribute("data-language-slug")).toBe("english")
+    expect(shareModal?.getAttribute("data-title")).toBe(activeShare.title)
+    expect(shareModal?.getAttribute("data-description")).toBe(
+      activeShare.description,
+    )
+    expect(shareModal?.getAttribute("data-poster-url")).toBe(
+      activeShare.posterUrl,
+    )
+    expect(shareModal?.getAttribute("data-playback-id")).toBe(
+      activeShare.playbackId,
+    )
+
+    const nextButton = container.querySelector(
+      'button[aria-label="Next video"]',
+    )
+    const inactiveRailCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((card) => card.getAttribute("aria-pressed") === "false")
+
+    await act(async () => {
+      nextButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      inactiveRailCard?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      )
+      heroVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    expect(heroVideo.getAttribute("src")).toBe(initialVideoSrc)
+    expect(shareModal?.getAttribute("data-video-slug")).toBe(activeShare.slug)
+
+    await act(async () => {
+      shareModal?.querySelector("button")?.click()
+    })
+
+    expect(shareModal?.getAttribute("data-open")).toBe("false")
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 160))
+    })
+    expect(
+      container.querySelector('[data-testid="watch-share-modal"]'),
+    ).toBeNull()
+  })
+
+  it("pauses and resumes an already-playing preview around Share", async () => {
+    const pausedGetter = vi
+      .spyOn(HTMLMediaElement.prototype, "paused", "get")
+      .mockReturnValue(false)
+    const pauseSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "pause")
+      .mockImplementation(() => {})
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined)
+
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel()} />)
+    })
+
+    const shareButton = container.querySelector(
+      '[data-testid="watch-home-share-button"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      shareButton.click()
+      await Promise.resolve()
+    })
+
+    expect(pausedGetter).toHaveBeenCalled()
+    expect(pauseSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-share-modal"] button')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(playSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not start the poster-hold preview while Share is open", async () => {
+    vi.useFakeTimers()
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined)
+
+    try {
+      await act(async () => {
+        root.render(<WatchHomePage model={makeModel()} />)
+      })
+
+      const heroVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      const shareButton = container.querySelector(
+        '[data-testid="watch-home-share-button"]',
+      ) as HTMLButtonElement
+
+      await act(async () => {
+        heroVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
+        shareButton.click()
+        await Promise.resolve()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500)
+      })
+
+      expect(playSpy).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("shows available subtitles while the hero preview is muted", async () => {
     await act(async () => {
       root.render(
@@ -737,6 +962,9 @@ describe("WatchHomePage", () => {
       'a[href="https://example.com/join"]',
     )
     expect(primaryCta?.textContent).toContain("Join Us")
+    expect(
+      container.querySelector('[data-testid="watch-home-share-button"]'),
+    ).toBeNull()
     const shortFilmButton = Array.from(
       container.querySelectorAll("button"),
     ).find((button) => button.textContent?.includes("Watch Short Film"))

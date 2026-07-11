@@ -22,6 +22,8 @@ function slide(id: string, src = `${id}.m3u8`): WatchHomeTvCarouselSlide {
   return {
     kind: "video",
     id,
+    shareVideoSlug: id,
+    shareLanguageSlug: "english",
     title: id,
     description: null,
     label: "Featured",

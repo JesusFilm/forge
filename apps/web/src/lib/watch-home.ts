@@ -6,7 +6,10 @@ import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
 import { localWatchHomeBlurDataUrl } from "@/lib/enrichment"
-import { publicWatchHomeLanguageSlugForLocale } from "@/lib/locale"
+import {
+  isPublicWatchHomeLanguageSlug,
+  publicWatchHomeLanguageSlugForLocale,
+} from "@/lib/locale"
 import {
   asLocaleSlug,
   tryAsContentSlug,
@@ -76,6 +79,8 @@ export type WatchHomeCard = {
   id: string
   sourceId: string
   coreId: string
+  shareVideoSlug: string | null
+  shareLanguageSlug: string | null
   title: string
   description: string | null
   label: string
@@ -410,6 +415,12 @@ function normalizeCard(args: {
       ? args.video.children.length
       : 0
   const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const shareVideoSlug = args.video.slug
+    ? tryAsContentSlug(args.video.slug)
+    : null
+  const shareLanguageSlug = isPublicWatchHomeLanguageSlug(args.languageSlug)
+    ? tryAsLocaleSlug(args.languageSlug)
+    : null
   const href = buildHref({
     slug: args.video.slug ?? null,
     parentSlug: args.parent?.slug ?? null,
@@ -461,6 +472,8 @@ function normalizeCard(args: {
     id: args.video.documentId,
     sourceId: args.sourceId,
     coreId: args.video.coreId,
+    shareVideoSlug,
+    shareLanguageSlug,
     title,
     description: locale?.snippet ?? locale?.description ?? null,
     label,
@@ -652,6 +665,8 @@ function cardToCarouselSlide(
   return {
     kind: "video",
     id: card.coreId,
+    shareVideoSlug: card.shareVideoSlug,
+    shareLanguageSlug: card.shareLanguageSlug,
     title: card.title,
     description: card.description,
     label: card.label,

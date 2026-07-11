@@ -27,6 +27,8 @@ function video(id: string): WatchHomeTvCarouselVideoSlide {
   return {
     kind: "video",
     id,
+    shareVideoSlug: id,
+    shareLanguageSlug: "english",
     title: id,
     description: null,
     label: "Short film",
