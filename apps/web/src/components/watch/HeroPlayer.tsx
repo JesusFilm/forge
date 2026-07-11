@@ -36,6 +36,7 @@ import {
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { languageCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import {
@@ -193,6 +194,8 @@ function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
 // window. The poster is already the intentional LCP surface, and user intent
 // still activates the player synchronously through the click/pointer handlers.
 const IDLE_PREVIEW_FALLBACK_DELAY_MS = 8000
+const MOBILE_VISIBLE_PREVIEW_DELAY_MS = 700
+const MOBILE_PREVIEW_MAX_WIDTH_PX = 767
 const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
 
 type IdleWindow = Window & {
@@ -210,6 +213,10 @@ function isHeroNearViewport(wrapper: HTMLElement, windowRef: Window): boolean {
     rect.bottom >= -IDLE_PREVIEW_VIEWPORT_MARGIN_PX &&
     rect.top <= viewportHeight + IDLE_PREVIEW_VIEWPORT_MARGIN_PX
   )
+}
+
+function shouldUseFastMobilePreview(windowRef: Window): boolean {
+  return windowRef.innerWidth <= MOBILE_PREVIEW_MAX_WIDTH_PX
 }
 
 // Fraction of the visible video that must be obscured by the body section
@@ -674,7 +681,7 @@ export function HeroPlayer({
       setPlayerActivated(true)
     }
 
-    const scheduleIdleActivation = () => {
+    const scheduleConservativeActivation = () => {
       if (cancelled || idleHandle != null || timeoutHandle != null) return
       timeoutHandle = window.setTimeout(() => {
         timeoutHandle = null
@@ -689,21 +696,38 @@ export function HeroPlayer({
       }, IDLE_PREVIEW_FALLBACK_DELAY_MS)
     }
 
-    const scheduleAfterLoad = () => {
+    const scheduleFastMobileActivation = () => {
+      if (cancelled || idleHandle != null || timeoutHandle != null) return
+      timeoutHandle = window.setTimeout(() => {
+        timeoutHandle = null
+        tryActivatePreview()
+      }, MOBILE_VISIBLE_PREVIEW_DELAY_MS)
+    }
+
+    const handleLoad = () => {
+      loadListenerInstalled = false
+      scheduleActivation()
+    }
+
+    const scheduleActivation = () => {
       if (document.readyState === "complete") {
-        scheduleIdleActivation()
+        if (shouldUseFastMobilePreview(window)) {
+          scheduleFastMobileActivation()
+          return
+        }
+        scheduleConservativeActivation()
         return
       }
+      if (loadListenerInstalled) return
       loadListenerInstalled = true
-      window.addEventListener("load", scheduleIdleActivation, { once: true })
+      window.addEventListener("load", handleLoad, { once: true })
     }
 
     const retryIfEligible = () => {
-      if (document.readyState !== "complete") return
-      scheduleIdleActivation()
+      scheduleActivation()
     }
 
-    scheduleAfterLoad()
+    scheduleActivation()
     document.addEventListener("visibilitychange", retryIfEligible)
     window.addEventListener("scroll", retryIfEligible, { passive: true })
     window.addEventListener("resize", retryIfEligible, { passive: true })
@@ -712,7 +736,7 @@ export function HeroPlayer({
       cancelled = true
       clearScheduledWork()
       if (loadListenerInstalled) {
-        window.removeEventListener("load", scheduleIdleActivation)
+        window.removeEventListener("load", handleLoad)
       }
       document.removeEventListener("visibilitychange", retryIfEligible)
       window.removeEventListener("scroll", retryIfEligible)
@@ -1289,6 +1313,11 @@ export function HeroPlayer({
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
+  const languageCode = languageCodeFor({
+    bcp47: variant.language?.bcp47,
+    iso3: variant.language?.iso3,
+    slug: variant.language?.slug ?? languageSlug,
+  })
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1361,19 +1390,24 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            languageCode: showTopLanguageSwitch ? languageCode : null,
           },
         },
       ),
     )
+  }, [languageCode, onLanguageClick, showTopLanguageSwitch])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     return () => {
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null } },
+          { detail: { visible: false, onClick: null, languageCode: null } },
         ),
       )
     }
-  }, [onLanguageClick, showTopLanguageSwitch])
+  }, [])
 
   return (
     <>
@@ -1604,6 +1638,7 @@ export function HeroPlayer({
             overlayAnchor={overlayAnchor}
             playbackId={playbackId}
             onLanguageClick={onLanguageClick}
+            languageCode={languageCode}
             // In-chrome globe intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}

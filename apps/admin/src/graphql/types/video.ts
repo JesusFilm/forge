@@ -10,7 +10,10 @@ import type { Principal } from "@/auth/principal"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
-import { getOrScheduleWatchHeroPosterMuxBlurDataUrl } from "@/services/mux-image-derivative.service"
+import {
+  getOrScheduleWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxDominantColor,
+} from "@/services/mux-image-derivative.service"
 import type { Passage } from "@/services/scripture-passage.service"
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
@@ -345,6 +348,27 @@ builder.prismaObject("VideoDub", {
         })
       },
     }),
+    muxHeroPosterDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.",
+      resolve: async (dub, _args, ctx) => {
+        const muxVideo = await ctx.prisma.muxVideo.findFirst({
+          where: {
+            dubs: { some: { id: dub.id } },
+            playbackId: { not: null },
+            deletedAt: null,
+          },
+          select: { id: true, playbackId: true },
+        })
+        if (!muxVideo?.playbackId) return null
+        return getOrScheduleWatchHeroPosterMuxDominantColor({
+          prisma: ctx.prisma,
+          muxVideoId: muxVideo.id,
+          playbackId: muxVideo.playbackId,
+        })
+      },
+    }),
     downloads: t.relation("downloads", {
       query: { where: { deletedAt: null } },
     }),
@@ -424,6 +448,7 @@ const VideoImageRef = builder.prismaObject("VideoImage", {
     thumbnail: t.exposeString("thumbnail", { nullable: true }),
     videoStill: t.exposeString("videoStill", { nullable: true }),
     blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
     kind: t.exposeString("kind", { nullable: true }),
   }),
 })
@@ -569,6 +594,19 @@ builder.prismaObject("Video", {
           languageSlug: args.languageSlug ?? null,
         }),
     }),
+    muxThumbnailDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxThumbnailDominantColorByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
     muxHeroPosterBlurDataUrl: t.string({
       nullable: true,
       description:
@@ -578,6 +616,19 @@ builder.prismaObject("Video", {
       },
       resolve: (video, args, ctx) =>
         ctx.loaders.videoMuxHeroPosterBlurDataUrlByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    muxHeroPosterDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxHeroPosterDominantColorByIdAndLanguageSlug.load({
           videoId: video.id,
           languageSlug: args.languageSlug ?? null,
         }),
@@ -1017,6 +1068,7 @@ WatchRouteSnapshotImageRef.implement({
     mobileCinematicLow: t.exposeString("mobileCinematicLow", {
       nullable: true,
     }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
   }),
 })
 
@@ -1094,7 +1146,13 @@ WatchRouteSnapshotChildRef.implement({
     muxThumbnailBlurDataUrl: t.exposeString("muxThumbnailBlurDataUrl", {
       nullable: true,
     }),
+    muxThumbnailDominantColor: t.exposeString("muxThumbnailDominantColor", {
+      nullable: true,
+    }),
     muxHeroPosterBlurDataUrl: t.exposeString("muxHeroPosterBlurDataUrl", {
+      nullable: true,
+    }),
+    muxHeroPosterDominantColor: t.exposeString("muxHeroPosterDominantColor", {
       nullable: true,
     }),
   }),
@@ -1251,6 +1309,9 @@ WatchRouteSnapshotPreferredVariantRef.implement({
       resolve: (row) => row.language,
     }),
     muxHeroPosterBlurDataUrl: t.exposeString("muxHeroPosterBlurDataUrl", {
+      nullable: true,
+    }),
+    muxHeroPosterDominantColor: t.exposeString("muxHeroPosterDominantColor", {
       nullable: true,
     }),
   }),

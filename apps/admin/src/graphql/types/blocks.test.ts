@@ -351,9 +351,99 @@ describe("asset-backed block URL field resolvers", () => {
 
     expect(result).toBe("https://image.example.test/poster.jpg")
   })
+
+  it("exposes media asset blur data for collection item overrides", async () => {
+    const findUnique = vi.fn().mockResolvedValue({
+      id: "asset-1",
+      backend: "S3",
+      status: "READY",
+      visibility: "PUBLIC",
+      objectKey: "media-assets/asset-1/original/hero.webp",
+      previewObjectKey: null,
+      muxPlaybackId: null,
+      blurDataUrl: "data:image/jpeg;base64,LQIP",
+    })
+
+    const result = await fieldResolver(
+      "MediaCollectionItem",
+      "imageOverrideBlurDataUrl",
+    )(
+      { imageOverrideAssetId: "asset-1" },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("data:image/jpeg;base64,LQIP")
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: "asset-1" } })
+  })
 })
 
 describe("MediaCollectionItem videoSlug resolver", () => {
+  it("resolves compatibility coreId from the linked video", async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: "video-1",
+      coreId: "1_jf-0-0",
+      deletedAt: null,
+    })
+
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {
+        videoId: "video-1",
+      },
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("1_jf-0-0")
+    expect(load).toHaveBeenCalledWith("video-1")
+  })
+
+  it("does not expose compatibility coreId for deleted linked videos", async () => {
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {
+        videoId: "video-1",
+      },
+      {},
+      {
+        loaders: {
+          videoById: {
+            load: vi.fn().mockResolvedValue({
+              id: "video-1",
+              coreId: "1_jf-0-0",
+              deletedAt: new Date("2026-07-08T00:00:00.000Z"),
+            }),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null compatibility coreId for legacy items without videoId", async () => {
+    const load = vi.fn()
+
+    const result = await fieldResolver("MediaCollectionItem", "coreId")(
+      {},
+      {},
+      {
+        loaders: { videoById: { load } },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(load).not.toHaveBeenCalled()
+  })
+
   it("resolves the canonical video slug from videoId", async () => {
     const load = vi.fn().mockResolvedValue({
       id: "video-1",
@@ -526,6 +616,8 @@ describe("Edge cases", () => {
     expect(fields?.videoSlug).toBeDefined()
     expect(fields?.muxPlaybackId).toBeDefined()
     expect(fields?.coreId).toBeDefined()
+    expect(fields?.imageBlurDataUrl).toBeDefined()
+    expect(fields?.imageOverrideBlurDataUrl).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

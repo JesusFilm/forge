@@ -3,7 +3,7 @@ id: "feat-175"
 title: "Admin semantic search latency recovery"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-12"
 duration: 1
 depends_on:
@@ -61,15 +61,15 @@ it as an active roadmap follow-up.
 - [x] Add safe timing logs for Admin search stages, retriever fan-out, raw
       retriever SQL, card hydration SQL, and trace-write overhead without
       changing the public search response.
-- [ ] Measure repeated cold and warm Web/Admin semantic canaries after the
+- [x] Measure repeated cold and warm Web/Admin semantic canaries after the
       safe-slice hydration/projection deploy and compare against the 2026-06-12
       baseline: `the bible project` 7.0s, `jesus` 7.3s,
       `hope when life is hard` 4.7s.
-- [ ] Record p50/p95/p99/max latency, timeout/error count, response
+- [x] Record p50/p95/p99/max latency, timeout/error count, response
       `searchMode`, top-N video IDs, evidence/snippet parity, and
       image/playback null-rate deltas. Exclude degraded keyword-only responses
       from semantic-latency success counts.
-- [ ] Close this ticket if the safe slice meets the agreed user-visible latency
+- [x] Close this ticket if the safe slice meets the agreed user-visible latency
       target and preserves result quality; HNSW-first is not an active follow-up.
 - [x] Evaluate and remove the internal `semantic-hnsw-prototype` mode after
       repeated production canaries showed parity but no meaningful end-to-end
@@ -85,6 +85,20 @@ it as an active roadmap follow-up.
       semantic-video retrieval would require updating
       `hybrid-search-retrievers.ts`, transcript-only regression tests, Mastra
       relevance proof, and EXPLAIN proof.
+
+## Completion Note - 2026-07-09
+
+Production Watch search latency was dominated by OpenRouter query embedding
+tail latency, not Admin CPU or semantic DB retrieval. Admin now pins Qwen query
+embedding requests to OpenRouter's SiliconFlow route, keeps 1536 dimensions, and
+applies a short single-query retry/deadline so provider tails do not block the
+user request.
+
+Post-deploy production canaries through `https://admin.jesusfilm.org/api/graphql`
+with the Web bearer and `mode="keyword-first"` returned `HYBRID` results in
+roughly 0.57-2.54s after rolling-deploy drain. Admin timing logs showed
+retrieval/hydration remained sub-second and query embedding waits were bounded
+to cache hits through approximately 2.08s on the final verification slice.
 
 ## Entry Points - Read These First
 

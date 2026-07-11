@@ -19,7 +19,9 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 
 import {
   getOrScheduleWatchChapterCarouselMuxBlurDataUrl,
+  getOrScheduleWatchChapterCarouselMuxDominantColor,
   getOrScheduleWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 
 export type Loaders = ReturnType<typeof createLoaders>
@@ -461,6 +463,11 @@ export function createLoaders(prisma: PrismaClient) {
       },
       { cacheKeyFn: serializeVideoMuxThumbnailBlurKey },
     ),
+    videoMuxThumbnailDominantColorByIdAndLanguageSlug:
+      createVideoMuxDerivativeLoader(
+        prisma,
+        getOrScheduleWatchChapterCarouselMuxDominantColor,
+      ),
     videoMuxHeroPosterBlurDataUrlByIdAndLanguageSlug: new DataLoader<
       VideoMuxThumbnailBlurKey,
       string | null,
@@ -559,7 +566,114 @@ export function createLoaders(prisma: PrismaClient) {
       },
       { cacheKeyFn: serializeVideoMuxThumbnailBlurKey },
     ),
+    videoMuxHeroPosterDominantColorByIdAndLanguageSlug:
+      createVideoMuxDerivativeLoader(
+        prisma,
+        getOrScheduleWatchHeroPosterMuxDominantColor,
+      ),
   }
+}
+
+function createVideoMuxDerivativeLoader(
+  prisma: PrismaClient,
+  resolveDerivative: (args: {
+    prisma: PrismaClient
+    muxVideoId: string
+    playbackId: string
+  }) => Promise<string | null>,
+) {
+  return new DataLoader<VideoMuxThumbnailBlurKey, string | null, string>(
+    async (keys) => {
+      const normalizedKeys = keys.map(normalizeVideoMuxThumbnailBlurKey)
+      const videoIds = unique(normalizedKeys.map((key) => key.videoId))
+      const languageSlugs = unique(
+        normalizedKeys
+          .map((key) => key.languageSlug)
+          .filter((slug): slug is string => slug != null),
+      )
+
+      const exactByKey = new Map<string, MuxVideoChoice>()
+      if (languageSlugs.length > 0) {
+        const exactDubs = await prisma.videoDub.findMany({
+          where: {
+            videoId: { in: videoIds },
+            deletedAt: null,
+            published: true,
+            hls: { not: null },
+            language: { slug: { in: languageSlugs }, deletedAt: null },
+            muxVideo: { playbackId: { not: null }, deletedAt: null },
+          },
+          orderBy: [{ duration: "desc" }, { id: "asc" }],
+          select: {
+            videoId: true,
+            language: { select: { slug: true } },
+            muxVideo: { select: { id: true, playbackId: true } },
+          },
+        })
+
+        for (const dub of exactDubs) {
+          const slug = dub.language?.slug ?? null
+          const muxVideo = normalizeMuxVideoChoice(dub.muxVideo)
+          if (!slug || !muxVideo) continue
+          const key = serializeVideoMuxThumbnailBlurKey({
+            videoId: dub.videoId,
+            languageSlug: slug,
+          })
+          if (!exactByKey.has(key)) exactByKey.set(key, muxVideo)
+        }
+      }
+
+      const fallbackRows = await prisma.video.findMany({
+        where: { id: { in: videoIds }, deletedAt: null },
+        select: {
+          id: true,
+          primaryLanguageId: true,
+          dubs: {
+            where: {
+              published: true,
+              hls: { not: null },
+              deletedAt: null,
+              muxVideo: { playbackId: { not: null }, deletedAt: null },
+            },
+            orderBy: [{ duration: "desc" }, { id: "asc" }],
+            take: PRIMARY_DUB_PLAYBACK_SCAN_LIMIT,
+            select: {
+              languageId: true,
+              muxVideo: { select: { id: true, playbackId: true } },
+            },
+          },
+        },
+      })
+      const fallbackByVideoId = new Map<string, MuxVideoChoice | null>()
+      for (const row of fallbackRows) {
+        const primaryDub = row.primaryLanguageId
+          ? row.dubs.find((dub) => dub.languageId === row.primaryLanguageId)
+          : undefined
+        const dub = primaryDub ?? row.dubs[0] ?? null
+        fallbackByVideoId.set(
+          row.id,
+          normalizeMuxVideoChoice(dub?.muxVideo ?? null),
+        )
+      }
+
+      return Promise.all(
+        normalizedKeys.map((key) => {
+          const muxVideo =
+            exactByKey.get(serializeVideoMuxThumbnailBlurKey(key)) ??
+            fallbackByVideoId.get(key.videoId) ??
+            null
+          if (!muxVideo) return null
+
+          return resolveDerivative({
+            prisma,
+            muxVideoId: muxVideo.id,
+            playbackId: muxVideo.playbackId,
+          })
+        }),
+      )
+    },
+    { cacheKeyFn: serializeVideoMuxThumbnailBlurKey },
+  )
 }
 
 // Bounds the per-video dubs scan in `videoPrimaryDubDurationById`. Matches
