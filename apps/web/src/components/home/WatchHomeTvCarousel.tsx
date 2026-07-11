@@ -1031,7 +1031,7 @@ export function WatchHomeTvCarousel({
       if (isMuted) toggleMuted()
       const video = videoRef.current
       if (!video) return
-      setPlayer(video as MuxPlayerRef)
+      setPlayer(video as unknown as MuxPlayerRef)
       video.muted = false
       const playResult = video.play()
       if (playResult && typeof playResult.catch === "function") {
