@@ -1,6 +1,6 @@
-// Shared SDUI renderer for one Experience, used by both home and detail
-// screens. Centralized deliberately: the home previously diverged onto the
-// editor-gated Query.experiences and broke for the public TV app.
+// SDUI renderer for one Experience — the /experience/[slug] detail screen.
+// Uses WATCH_THEME (near-black) to match Video Details + Home; Crimson Gallery
+// COLORS remain for series + legacy surfaces only.
 import { useQuery } from "@apollo/client/react"
 import React, {
   useCallback,
@@ -21,7 +21,7 @@ import {
 
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
-import { COLORS } from "../lib/colors"
+import { WATCH_THEME } from "./watch/watchDetailTheme"
 import { normalizeExperience, type NormalizedBlock } from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
@@ -159,7 +159,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   if (loading) {
     return (
       <StateScreen header={header}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={WATCH_THEME.accent} />
       </StateScreen>
     )
   }
@@ -300,17 +300,17 @@ function ErrorState({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   list: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   listContent: {
     // Lets the last section scroll fully to the viewport top; without it
@@ -327,12 +327,12 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   emptyText: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontSize: 20,
     fontFamily: "System",
   },
   errorText: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontSize: 20,
     fontFamily: "System",
     marginBottom: 24,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   retryButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: WATCH_THEME.accent,
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 24,
@@ -353,20 +353,20 @@ const styles = StyleSheet.create({
   retryButtonFocused: {
     transform: [{ scale: 1.05 }],
     borderColor: "rgba(255,255,255,0.9)",
-    shadowColor: COLORS.primary,
+    shadowColor: WATCH_THEME.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 12,
     elevation: 8,
   },
   retryButtonText: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontSize: 18,
     fontFamily: "System",
     fontWeight: "600",
   },
   backHint: {
-    color: COLORS.muted,
+    color: WATCH_THEME.text50,
     fontSize: 14,
     fontFamily: "System",
     marginTop: 16,
