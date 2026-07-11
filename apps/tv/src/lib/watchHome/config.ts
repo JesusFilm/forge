@@ -1,15 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile). Two halves
- * with DIFFERENT sync obligations (mirrors mobile's heroConfig / fallbackConfig split):
- *
- * - LIVE — WATCH_HOME_HERO_SOURCE_IDS + WATCH_HOME_FEATURED_RAIL are client-owned;
- *   mirror web hero curation here until feat-160 moves the hero into admin.
- * - FROZEN — WATCH_HOME_SECTIONS is an emergency body fallback, NOT mirrored. The
- *   live body is the admin `watch-home` Experience (see experienceAdapter.ts); these
- *   rows render only on Experience null / error / zero rails and are expected to drift.
- *
- * TV cuts WATCH_HOME_PLAYLIST_SEQUENCE + WATCH_HOME_MUX_INSERTS (scarce decode slots);
- * WATCH_HOME_FEATURED_RAIL is TV-only (titleVariants carry web's Mux greetings).
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile). Two halves with
+ * different sync obligations — see the LIVE / FROZEN markers on WATCH_HOME_HERO_SOURCE_IDS
+ * and WATCH_HOME_SECTIONS below. (TV cuts the playlist-sequence + Mux-insert configs.)
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on

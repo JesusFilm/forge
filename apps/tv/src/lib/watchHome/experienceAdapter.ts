@@ -1,11 +1,6 @@
-// Maps the admin `watch-home` Experience's MediaCollectionBlocks into TV's
-// existing WatchHomeSection[] so HomeRail/HomeCard render unchanged (R2, R3).
-//
-// TV DIVERGES from mobile's adapter: mobile renders the flat Experience items
-// directly (childCount 0, no rawLabel, and — in prod — a null videoSlug it can't
-// even navigate). TV instead joins each item to a hydrated video record by coreId
-// and builds the card through model.ts's normalizeCard, so meta chips are exact
-// ("N episodes" / duration) and series-vs-single routing is precise (R3, R5).
+// Maps the admin watch-home Experience's MediaCollectionBlocks into TV rails,
+// hydrating each item by coreId through model.ts's normalizeCard — so meta chips
+// and series routing are exact (TV DIVERGES from mobile's flat, unhydrated render).
 
 import { ENGLISH_LANGUAGE_SLUG } from "./config"
 import type { WatchHomeFallbackReason } from "./logWatchHomeFallback"
@@ -212,15 +207,9 @@ export type WatchHomeReconcileOutput =
     }
 
 /**
- * The R8/R9/R10 resilience state machine as a pure function (the hook owns only the
- * impure fetch + setState around it). Decides the Home body and which fallback
- * reasons to log:
- *  - primary not ok → retry-error (nothing can hydrate).
- *  - Experience yields >=1 rail → use it; if that came from a reused last-good over
- *    a live error, log `error-recovered`.
- *  - zero rails → config rows, log `error` (rejected) / `null` (absent) / `empty`
- *    (present-but-empty).
- *  - a dropped top-up additionally logs `topup-error` (config-pool rows still render).
+ * The R8/R9/R10 resilience decision as a pure function, so the hook stays impure-only
+ * and this stays unit-testable. Maps the primary + experience result to the Home body
+ * and the fallback reasons to log (see WatchHomeReconcileInput/Output for the branches).
  */
 export function reconcileWatchHome(
   input: WatchHomeReconcileInput,
@@ -238,6 +227,10 @@ export function reconcileWatchHome(
     nextLastGoodBlocks = input.experienceBlocks
     if (input.experienceOutcome === "error") logs.push("error-recovered")
   } else {
+    // A definitive fulfilled-absent homepage invalidates any stale last-good, so a
+    // later transient error can't resurrect a removed homepage (R9); error/empty give
+    // no fresh authoritative signal, so leave last-good unchanged.
+    if (input.experienceOutcome === "absent") nextLastGoodBlocks = null
     logs.push(
       input.experienceOutcome === "error"
         ? "error"

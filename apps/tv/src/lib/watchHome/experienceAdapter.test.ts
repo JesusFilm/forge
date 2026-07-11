@@ -249,6 +249,17 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     expect(buildWatchHomeSectionsFromExperience(null, HYDRATED)).toEqual([])
     expect(buildWatchHomeSectionsFromExperience([], HYDRATED)).toEqual([])
   })
+
+  it("derives the section id from the block index when sectionKey is null (rail identity)", () => {
+    // sectionKey is nullable in admin's schema; the section id becomes the rail's
+    // React key, so the index-derived fallback must be exercised.
+    const sections = buildWatchHomeSectionsFromExperience(
+      [{ __typename: "WatchHomeHeroBlock" }, mediaBlock({ sectionKey: null })],
+      HYDRATED,
+    )
+    expect(sections).toHaveLength(1)
+    expect(sections[0].id).toBe("home-experience-section-1")
+  })
 })
 
 describe("AE1/AE3 — prod-shaped Experience → 8 rails with exact meta chips", () => {

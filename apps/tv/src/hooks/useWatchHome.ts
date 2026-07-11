@@ -1,10 +1,6 @@
-// SYNC: ported from apps/mobile/src/hooks/useWatchHome.ts. TV drops the
-// carousel/pager machinery (see ../lib/watchHome/model.ts) and DIVERGES by
-// hydrating each Experience item by coreId through the bulk fetch (mobile renders
-// flat). Fetches the config-pool videos + the watch-home Experience in parallel,
-// tops up any genuinely-uncovered item coreIds, and falls back to the code-curated
-// rows on Experience absence / error / zero rails. SWR snapshot (v2) paints the
-// prior launch's Experience body instantly while the live fetch revalidates.
+// SYNC: ported from apps/mobile/src/hooks/useWatchHome.ts; TV DIVERGES by hydrating
+// each Experience item by coreId through the bulk fetch (mobile renders flat), with
+// a config fallback and an SWR v2 snapshot for instant cold-launch paint.
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -26,12 +22,14 @@ import {
   resolveWatchHomeModel,
   type ExperienceBlock,
   type ExperienceOutcomeKind,
+  type PrimaryVideosState,
 } from "../lib/watchHome/experienceAdapter"
 import { logWatchHomeFallback } from "../lib/watchHome/logWatchHomeFallback"
 import {
   buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
   type WatchHomeModel,
+  type WatchHomeSection,
   type WatchHomeVideoInput,
 } from "../lib/watchHome/model"
 import {
@@ -40,22 +38,20 @@ import {
   parseStoredHomeSnapshot,
   serializeHomeSnapshotFromVideosJson,
 } from "../lib/watchHome/homeSnapshot"
+import { fetchTopUpVideos, type FetchPolicy } from "../lib/watchHome/topUpFetch"
 import { withTimeout } from "../lib/withTimeout"
 
 // Errors surface as a retryable message (never a throw) so the screen renders
 // error-with-retry instead of a blank surface (R10/R15).
 const RETRYABLE_ERROR_MESSAGE = "Couldn't load videos. Please try again."
 
-// Only the Experience fetch is bounded — a slow admin must not stall the whole
-// Home render; the config-pool videos fetch feeds the fallback rows and is not wrapped.
+// The Experience and top-up fetches get a client deadline so a slow admin degrades
+// to the fallback fast; the load-bearing primary videos fetch relies on the Apollo
+// link request timeout (its slowness routes to retry, not a silent stall).
 const EXPERIENCE_FETCH_DEADLINE_MS = 8000
+const TOPUP_FETCH_DEADLINE_MS = 8000
 
-// admin's watchHomeVideos caps at 100 coreIds and throws over it — chunk the top-up.
-const VIDEOS_BY_CORE_IDS_MAX = 100
-
-type FetchPolicy = "cache-first" | "network-only"
 type ExperienceBlockList = readonly ExperienceBlock[]
-type ApolloClient = ReturnType<typeof getApolloClient>
 
 export type WatchHomeState = {
   model: WatchHomeModel | null
@@ -68,38 +64,6 @@ export type WatchHomeState = {
   error: string | null
   /** Network-only refetch suited to a retry action. */
   refetch: () => void
-}
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size))
-  }
-  return chunks
-}
-
-/** Top-up hydration for editor-added coreIds the config pool doesn't cover.
- *  Chunked under the 100-id cap; any rejected chunk rejects the whole top-up so
- *  the caller degrades (drop divergent items, keep the config-pool rows). */
-async function fetchTopUpVideos(
-  client: ApolloClient,
-  coreIds: readonly string[],
-  fetchPolicy: FetchPolicy,
-): Promise<WatchHomeVideoInput[]> {
-  const batches = await Promise.all(
-    chunk(coreIds, VIDEOS_BY_CORE_IDS_MAX).map((ids) =>
-      client.query({
-        query: GET_WATCH_HOME_VIDEOS,
-        variables: {
-          coreIds: ids,
-          locale: HOME_LOCALE,
-          languageSlug: ENGLISH_LANGUAGE_SLUG,
-        },
-        fetchPolicy,
-      }),
-    ),
-  )
-  return batches.flatMap((result) => result.data?.watchHomeVideos ?? [])
 }
 
 /** Fire-and-forget; an empty response never reaches here, and an oversized blob
@@ -172,88 +136,105 @@ export function useWatchHome(): WatchHomeState {
       ])
       if (requestIdRef.current !== thisRequest) return
 
-      // The config-pool videos fetch is load-bearing: it feeds the hero AND the
-      // fallback rows, neither of which can hydrate without it (R10/AE10).
+      // The load-bearing config-pool fetch. A rejected primary — or an empty-but-
+      // successful response over a painted snapshot (never paint full-empty over
+      // good content) — can hydrate nothing; reconcileWatchHome routes both to the
+      // retry state below, keeping that decision in one place (R10/AE10).
+      let primary: PrimaryVideosState
+      let videos: readonly WatchHomeVideoInput[] = []
       if (videosOutcome.status === "rejected") {
-        setError(RETRYABLE_ERROR_MESSAGE)
-        return
-      }
-      networkLandedRef.current = true
-      const videos = videosOutcome.value.data?.watchHomeVideos ?? []
-
-      // Empty-but-successful over a painted snapshot degrades like a failed fetch —
-      // never paint full-empty over good content.
-      if (
-        mode === "initial" &&
-        videos.length === 0 &&
-        snapshotVideosJsonRef.current != null
-      ) {
-        setError(RETRYABLE_ERROR_MESSAGE)
-        return
-      }
-
-      // Derive the Experience body. A rejected watchSetting reuses the last-good
-      // body (R9); a fulfilled-but-null homepage is "absent"; otherwise live blocks.
-      const liveBlocks: ExperienceBlockList | null =
-        experienceOutcome.status === "fulfilled"
-          ? ((experienceOutcome.value.data?.watchSetting?.homepageExperience
-              ?.blocks as ExperienceBlockList | undefined) ?? null)
-          : null
-      const experienceOutcomeKind: ExperienceOutcomeKind =
-        experienceOutcome.status === "rejected"
-          ? "error"
-          : liveBlocks != null
-            ? "present"
-            : "absent"
-      const experienceBlocks: ExperienceBlockList | null =
-        experienceOutcome.status === "rejected"
-          ? lastGoodExperienceBlocksRef.current
-          : liveBlocks
-
-      // Hydration index from the config pool; top-up ONLY the coreIds genuinely
-      // uncovered by the built index keyset (child episodes are already indexed —
-      // KTD3/KTD4). A rejected top-up degrades: drop the divergent items, keep the
-      // config-pool rows, and log topup-error (R10/AE14) — never blank the home.
-      let mergedVideos: readonly WatchHomeVideoInput[] = videos
-      let videoByCoreId = buildVideoByCoreIdIndex(videos)
-      let topUpFailed = false
-      if (experienceBlocks != null) {
-        const divergent = experienceItemCoreIds(experienceBlocks).filter(
-          (coreId) => !videoByCoreId.has(coreId),
-        )
-        if (divergent.length > 0) {
-          try {
-            const topUp = await fetchTopUpVideos(client, divergent, fetchPolicy)
-            // The single post-allSettled guard does not cover this new await.
-            if (requestIdRef.current !== thisRequest) return
-            mergedVideos = [...videos, ...topUp]
-            videoByCoreId = buildVideoByCoreIdIndex(mergedVideos)
-          } catch {
-            if (requestIdRef.current !== thisRequest) return
-            topUpFailed = true
+        primary = { kind: "rejected" }
+      } else {
+        videos = videosOutcome.value.data?.watchHomeVideos ?? []
+        networkLandedRef.current = true
+        if (
+          mode === "initial" &&
+          videos.length === 0 &&
+          snapshotVideosJsonRef.current != null
+        ) {
+          primary = { kind: "empty-over-snapshot" }
+        } else {
+          primary = {
+            kind: "ok",
+            configModel: buildWatchHomeModelFromVideos({
+              videos,
+              languageSlug: ENGLISH_LANGUAGE_SLUG,
+            }),
           }
         }
       }
 
-      const configModel = buildWatchHomeModelFromVideos({
-        videos,
-        languageSlug: ENGLISH_LANGUAGE_SLUG,
-      })
-      const experienceSections = experienceBlocks
-        ? buildWatchHomeSectionsFromExperience(experienceBlocks, videoByCoreId)
-        : []
+      // Experience hydration runs only on the ok path; a non-ok primary reconciles
+      // straight to the retry-error state.
+      let experienceBlocks: ExperienceBlockList | null = null
+      let experienceOutcomeKind: ExperienceOutcomeKind = "absent"
+      let experienceSections: WatchHomeSection[] = []
+      let mergedVideos: readonly WatchHomeVideoInput[] = videos
+      let topUpFailed = false
+      if (primary.kind === "ok") {
+        // A rejected watchSetting reuses the last-good body (R9); a fulfilled-but-
+        // null homepage is "absent"; otherwise the live blocks.
+        const liveBlocks: ExperienceBlockList | null =
+          experienceOutcome.status === "fulfilled"
+            ? ((experienceOutcome.value.data?.watchSetting?.homepageExperience
+                ?.blocks as ExperienceBlockList | undefined) ?? null)
+            : null
+        experienceOutcomeKind =
+          experienceOutcome.status === "rejected"
+            ? "error"
+            : liveBlocks != null
+              ? "present"
+              : "absent"
+        experienceBlocks =
+          experienceOutcome.status === "rejected"
+            ? lastGoodExperienceBlocksRef.current
+            : liveBlocks
 
-      // The R8/R9/R10 decision is a pure function (see reconcileWatchHome): it
-      // picks the body and the fallback reasons to emit. `primary` is always ok
-      // here — the rejected / empty-over-snapshot cases returned above.
+        // Top-up ONLY the item coreIds uncovered by the built index keyset (child
+        // episodes are already indexed — KTD3/KTD4). A rejected/slow top-up degrades:
+        // drop the divergent items, keep config-pool rows, log topup-error (R10/AE14).
+        let videoByCoreId = buildVideoByCoreIdIndex(videos)
+        if (experienceBlocks != null) {
+          const divergent = experienceItemCoreIds(experienceBlocks).filter(
+            (coreId) => !videoByCoreId.has(coreId),
+          )
+          if (divergent.length > 0) {
+            try {
+              const topUp = await withTimeout(
+                fetchTopUpVideos(client, divergent, fetchPolicy),
+                TOPUP_FETCH_DEADLINE_MS,
+              )
+              // The single post-allSettled guard does not cover this new await.
+              if (requestIdRef.current !== thisRequest) return
+              mergedVideos = [...videos, ...topUp]
+              videoByCoreId = buildVideoByCoreIdIndex(mergedVideos)
+            } catch {
+              if (requestIdRef.current !== thisRequest) return
+              topUpFailed = true
+            }
+          }
+        }
+        experienceSections = experienceBlocks
+          ? buildWatchHomeSectionsFromExperience(
+              experienceBlocks,
+              videoByCoreId,
+            )
+          : []
+      }
+
+      // reconcileWatchHome is the single R8/R9/R10 decision point: it maps the
+      // primary state + experience result to the body and the reasons to log.
       const reconciled = reconcileWatchHome({
-        primary: { kind: "ok", configModel },
+        primary,
         experienceSections,
         experienceOutcome: experienceOutcomeKind,
         experienceBlocks,
         topUpFailed,
       })
-      if (reconciled.kind !== "model") return
+      if (reconciled.kind === "error") {
+        setError(RETRYABLE_ERROR_MESSAGE)
+        return
+      }
       if (reconciled.nextLastGoodBlocks !== undefined) {
         lastGoodExperienceBlocksRef.current = reconciled.nextLastGoodBlocks
       }

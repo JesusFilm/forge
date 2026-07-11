@@ -52,8 +52,27 @@ describe("reconcileWatchHome — config fallback reasons (R8, R12)", () => {
     if (result.kind !== "model") throw new Error("expected model")
     expect(result.model).toBe(configModel)
     expect(result.logs).toEqual(["null"])
-    // A fallback must NOT clobber the last-good body (R9).
-    expect(result.nextLastGoodBlocks).toBeUndefined()
+    // A definitive absent homepage CLEARS last-good (null), so a later transient
+    // error can't resurrect the removed homepage (R9).
+    expect(result.nextLastGoodBlocks).toBeNull()
+  })
+
+  it("leaves last-good unchanged on an error/empty fallback (no fresh signal)", () => {
+    // "empty" = a present Experience that maps to zero rails.
+    const errResult = reconcile({
+      experienceOutcome: "error",
+      experienceSections: [],
+    })
+    const emptyResult = reconcile({
+      experienceOutcome: "present",
+      experienceSections: [],
+      experienceBlocks: expBlocks,
+    })
+    if (errResult.kind !== "model" || emptyResult.kind !== "model") {
+      throw new Error("expected model")
+    }
+    expect(errResult.nextLastGoodBlocks).toBeUndefined()
+    expect(emptyResult.nextLastGoodBlocks).toBeUndefined()
   })
 
   it("watchSetting error with no last-good → config rows + one `error` log (AE7)", () => {

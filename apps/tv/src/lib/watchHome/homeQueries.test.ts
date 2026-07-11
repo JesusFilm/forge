@@ -71,4 +71,14 @@ describe("GET_WATCH_SETTING — public home Experience query + doc guard (AE12)"
   it("selects coreId on the MediaCollection items (the hydration key)", () => {
     expect(printedSetting).toMatch(/items\s*\{[^}]*\bcoreId\b/)
   })
+
+  // Same 9.5MB-payload trap as GET_WATCH_HOME_VIDEOS: the shared AdminWatchExperience
+  // fragment tree is edited by other consumers, so a heavy nested field (dubs/variants)
+  // could enter TV's Home query via any block fragment. Guard against it here too.
+  it("stays lean — never projects dubs/variants/downloads/subtitles", () => {
+    expect(printedSetting).not.toMatch(/\bdubs\b/)
+    expect(printedSetting).not.toMatch(/\bvariants\b/)
+    expect(printedSetting).not.toMatch(/\bdownloads\b/)
+    expect(printedSetting).not.toMatch(/\bsubtitles\b/)
+  })
 })
