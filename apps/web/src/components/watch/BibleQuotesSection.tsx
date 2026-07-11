@@ -24,6 +24,10 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import {
+  getBibleComUrl,
+  JOIN_BIBLE_STUDY_URL,
+} from "@/components/watch/watch-next-step-links"
 import { cn } from "@/lib/utils"
 
 type WatchBibleCitation = WatchBibleQuotesBlock["bibleCitations"][number]
@@ -38,9 +42,6 @@ type BibleQuotesSectionProps = {
    */
   passages?: WatchBibleQuotesBlock["passages"]
 }
-
-const JOIN_BIBLE_STUDY_URL =
-  "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
 
 // Promo-card hero image. Same fixed Unsplash photo used by
 // `FreeResourceCard` in core/apps/watch — the final slide is intentionally
@@ -334,21 +335,6 @@ function BibleCitationCard({
       </div>
     </div>
   )
-}
-
-function getBibleComUrl(passage: WatchBiblePassage | null) {
-  if (
-    passage == null ||
-    passage.reference.trim() === "" ||
-    passage.versionAbbreviation == null ||
-    passage.versionAbbreviation.trim() === ""
-  ) {
-    return null
-  }
-
-  return `https://www.bible.com/bible/${passage.versionId}/${encodeURIComponent(
-    passage.reference,
-  )}.${encodeURIComponent(passage.versionAbbreviation.trim())}`
 }
 
 function getPassageGradient(

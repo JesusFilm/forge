@@ -29,6 +29,14 @@ const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
   ssr: false,
 }) as typeof MuxVideoType
 
+const WatchEndReflection = dynamic(
+  () =>
+    import("@/components/watch/WatchEndReflection").then((module) => ({
+      default: module.WatchEndReflection,
+    })),
+  { ssr: false },
+)
+
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import {
@@ -250,6 +258,10 @@ export function HeroPlayer({
   optimisticVisual,
   coverBlackoutKey,
   coverBlackoutPhase,
+  reflectionPrompts = [],
+  reflectionBibleReadHref = null,
+  onReflectionDownload,
+  onReflectionShare,
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
@@ -263,6 +275,10 @@ export function HeroPlayer({
   optimisticVisual?: WatchChapterOptimisticVisual | null
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
+  reflectionPrompts?: string[]
+  reflectionBibleReadHref?: string | null
+  onReflectionDownload?: () => void
+  onReflectionShare?: () => void
 }) {
   const t = useTranslations("HeroPlayer")
   const videoLabels = useTranslations("VideoLabels")
@@ -283,6 +299,9 @@ export function HeroPlayer({
     paused: true,
     ended: false,
   })
+  const [endReflectionPlaybackIdentity, setEndReflectionPlaybackIdentity] =
+    useState<string | null>(null)
+  const reflectionPlaybackIdentity = `${video.documentId}:${variant.documentId}:${languageSlug ?? ""}`
   const nextNavigationStartedRef = useRef(false)
   const setPlayerRef = useCallback(
     (next: MuxPlayerRef | null) => {
@@ -410,6 +429,14 @@ export function HeroPlayer({
     onPlayerActivated?.()
   }, [chromeRevealed, onPlayerActivated])
 
+  // Reflection is an end-only interaction. Prewarm its chunk after the
+  // viewer has committed to playback so it is ready at completion without
+  // making the hero's first-load bundle heavier.
+  useEffect(() => {
+    if (!chromeRevealed) return
+    void import("@/components/watch/WatchEndReflection")
+  }, [chromeRevealed])
+
   useEffect(() => {
     if (typeof window === "undefined") return
     const currentPlayer = playerRef.current
@@ -490,7 +517,11 @@ export function HeroPlayer({
 
   useEffect(() => {
     nextNavigationStartedRef.current = false
-  }, [video.documentId])
+    setEndReflectionPlaybackIdentity(null)
+  }, [reflectionPlaybackIdentity])
+
+  const endReflectionOpen =
+    endReflectionPlaybackIdentity === reflectionPlaybackIdentity
 
   const watchNextMode =
     watchNextModeState?.videoId === video.documentId
@@ -592,12 +623,10 @@ export function HeroPlayer({
     }
     const handleEnded = () => {
       sync("ended")
-      if (
-        watchNextModeRef.current?.videoId === video.documentId &&
-        watchNextModeRef.current.mode === "armed"
-      ) {
-        navigateToNextWatchItem()
-      }
+      if (!chromeRevealed) return
+      watchNextModeRef.current = null
+      setWatchNextModeState(null)
+      setEndReflectionPlaybackIdentity(reflectionPlaybackIdentity)
     }
     const handleSeeking = () => {
       seekInProgressRef.current = true
@@ -643,7 +672,13 @@ export function HeroPlayer({
       player.removeEventListener("seeked", handleSeeked)
       player.removeEventListener("ended", handleEnded)
     }
-  }, [navigateToNextWatchItem, nextWatchHref, player, video.documentId])
+  }, [
+    chromeRevealed,
+    nextWatchHref,
+    player,
+    reflectionPlaybackIdentity,
+    video.documentId,
+  ])
 
   useEffect(() => {
     if (playerActivated || autoplayParam === "1" || heroPosterUrl == null) {
@@ -1357,7 +1392,10 @@ export function HeroPlayer({
       )
     : 0
   const showWatchNextButton =
-    chromeRevealed && nextWatchHref != null && watchNextWindowActive
+    chromeRevealed &&
+    !endReflectionOpen &&
+    nextWatchHref != null &&
+    watchNextWindowActive
   const cancelWatchNextAutoAdvance = useCallback(() => {
     if (watchNextWindowActive) {
       const nextMode = { videoId: video.documentId, mode: "manual" } as const
@@ -1380,6 +1418,46 @@ export function HeroPlayer({
     },
     [cancelWatchNextAutoAdvance],
   )
+
+  const dismissEndReflection = useCallback(() => {
+    setEndReflectionPlaybackIdentity(null)
+    window.requestAnimationFrame(() => {
+      const playControl = overlayAnchor?.querySelector<HTMLElement>(
+        '[data-testid="hero-chrome-play"]',
+      )
+      if (playControl) {
+        playControl.focus()
+        return
+      }
+      const focusablePlayer = playerRef.current as unknown as
+        | (HTMLElement & { focus?: () => void })
+        | null
+      focusablePlayer?.focus?.()
+    })
+  }, [overlayAnchor])
+
+  const replayFromReflection = useCallback(() => {
+    const currentPlayer = playerRef.current
+    setEndReflectionPlaybackIdentity(null)
+    watchNextModeRef.current = null
+    setWatchNextModeState(null)
+    if (!currentPlayer) return
+    currentPlayer.currentTime = 0
+    const result = currentPlayer.play()
+    if (result && typeof (result as Promise<void>).then === "function") {
+      ;(result as Promise<void>).catch(() => {})
+    }
+  }, [])
+
+  const openReflectionDownload = useCallback(() => {
+    setEndReflectionPlaybackIdentity(null)
+    onReflectionDownload?.()
+  }, [onReflectionDownload])
+
+  const openReflectionShare = useCallback(() => {
+    setEndReflectionPlaybackIdentity(null)
+    onReflectionShare?.()
+  }, [onReflectionShare])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1630,7 +1708,7 @@ export function HeroPlayer({
           ) : null}
         </div>
 
-        {chromeRevealed ? (
+        {chromeRevealed && !endReflectionOpen ? (
           <HeroPlayerControls
             player={player}
             playerRef={playerRef}
@@ -1646,11 +1724,13 @@ export function HeroPlayer({
             onWatchNextInteraction={cancelWatchNextAutoAdvance}
           />
         ) : null}
-        <SubtitleOverlay
-          playerRef={playerRef}
-          wrapperRef={wrapperRef}
-          player={player}
-        />
+        {!endReflectionOpen ? (
+          <SubtitleOverlay
+            playerRef={playerRef}
+            wrapperRef={wrapperRef}
+            player={player}
+          />
+        ) : null}
         {showWatchNextButton ? (
           <button
             type="button"
@@ -1679,6 +1759,21 @@ export function HeroPlayer({
               Next Episode
             </span>
           </button>
+        ) : null}
+        {endReflectionOpen ? (
+          <WatchEndReflection
+            open
+            videoId={video.documentId}
+            prompts={reflectionPrompts}
+            bibleReadHref={reflectionBibleReadHref}
+            onDownload={
+              onReflectionDownload ? openReflectionDownload : undefined
+            }
+            onNext={nextWatchHref ? navigateToNextWatchItem : undefined}
+            onReplay={replayFromReflection}
+            onShare={onReflectionShare ? openReflectionShare : undefined}
+            onDismiss={dismissEndReflection}
+          />
         ) : null}
       </div>
 

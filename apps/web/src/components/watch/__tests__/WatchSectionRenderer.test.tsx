@@ -41,6 +41,8 @@ const {
     ({
       block,
       optimisticVisual,
+      reflectionPrompts,
+      reflectionBibleReadHref,
     }: {
       block: {
         variant: {
@@ -56,6 +58,8 @@ const {
         loading?: boolean
         transitionKey?: string | null
       } | null
+      reflectionPrompts?: string[]
+      reflectionBibleReadHref?: string | null
     }) => {
       // Mirror the original placeholder's data attributes so the renderer
       // contract assertions below (data-block-type + data-content JSON
@@ -65,6 +69,8 @@ const {
         playbackId: block.variant.muxVideo?.playbackId ?? null,
         hls: block.variant.hls ?? null,
         optimisticVisual: optimisticVisual ?? null,
+        reflectionPrompts: reflectionPrompts ?? [],
+        reflectionBibleReadHref: reflectionBibleReadHref ?? null,
       })
       return (
         <div data-block-type="HeroPlayer" data-content={content}>
@@ -395,6 +401,15 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       count: 1,
       passageCount: 1,
     })
+    const heroContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="HeroPlayer"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+    expect(heroContent.reflectionPrompts).toEqual(["Q?"])
+    expect(heroContent.reflectionBibleReadHref).toBe(
+      "https://www.bible.com/bible/3034/JHN.1.1.BSB",
+    )
   })
 
   it("HeroPlayer placeholder serializes playbackId and hls into data-content", () => {

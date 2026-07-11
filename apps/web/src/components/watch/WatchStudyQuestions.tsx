@@ -18,12 +18,12 @@ import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
+import {
+  ASK_BIBLE_QUESTION_URL,
+  ASK_YOURS_URL,
+  CHAT_WITH_PERSON_URL,
+} from "@/components/watch/watch-next-step-links"
 
-const CHAT_WITH_PERSON_URL =
-  "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
-const ASK_BIBLE_QUESTION_URL =
-  "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
-const ASK_YOURS_URL = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
 const PANEL_COLLAPSE_ANIMATION_MS = 300
 
 function WatchQuestionIcon() {

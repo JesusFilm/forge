@@ -2,6 +2,7 @@
 
 import { DownloadButton } from "@/components/watch/DownloadButton"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
+import { getWatchStudyQuestionPrompts } from "@/components/watch/watch-study-question-prompts"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 export function WatchBody({
@@ -26,9 +27,7 @@ export function WatchBody({
   const { video, variant } = block
   const visualTitle = optimisticTitle ?? video.title ?? ""
   const hasDownloads = (variant.downloads ?? []).length > 0
-  const prompts = (studyQuestions?.studyQuestions ?? [])
-    .map((q) => q.value)
-    .filter((v): v is string => v != null && v.length > 0)
+  const prompts = getWatchStudyQuestionPrompts(studyQuestions)
 
   // The right column (Related Questions + Ask Yours CTA) always renders.
   // When there are no editorial prompts, WatchStudyQuestions falls back to

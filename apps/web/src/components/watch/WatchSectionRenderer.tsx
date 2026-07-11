@@ -17,6 +17,8 @@ import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import { findBibleReadHref } from "@/components/watch/watch-next-step-links"
+import { getWatchStudyQuestionPrompts } from "@/components/watch/watch-study-question-prompts"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -71,6 +73,13 @@ export function WatchSectionRenderer({
       (b): b is WatchStudyQuestionsBlock =>
         isWatchBlock(b) && b.kind === "StudyQuestions",
     ) ?? null
+  const bibleQuotesBlock =
+    blocks.find(
+      (b): b is Extract<WatchBlock, { kind: "BibleQuotes" }> =>
+        isWatchBlock(b) && b.kind === "BibleQuotes",
+    ) ?? null
+  const reflectionPrompts = getWatchStudyQuestionPrompts(studyQuestionsBlock)
+  const reflectionBibleReadHref = findBibleReadHref(bibleQuotesBlock?.passages)
 
   const topBlocks: MergedWatchBlock[] = []
   const bodyBlocks: MergedWatchBlock[] = []
@@ -94,6 +103,8 @@ export function WatchSectionRenderer({
           downloadHref={downloadHref}
           downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
+          reflectionPrompts={reflectionPrompts}
+          reflectionBibleReadHref={reflectionBibleReadHref}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
@@ -138,6 +149,8 @@ export function WatchSectionRenderer({
                   downloadHref={downloadHref}
                   downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
+                  reflectionPrompts={reflectionPrompts}
+                  reflectionBibleReadHref={reflectionBibleReadHref}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   onPlayerActivated={onPlayerActivated}
@@ -166,6 +179,8 @@ function WatchBlockEntry({
   downloadHref,
   downloadPending,
   studyQuestionsBlock,
+  reflectionPrompts,
+  reflectionBibleReadHref,
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
@@ -185,6 +200,8 @@ function WatchBlockEntry({
   downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
+  reflectionPrompts: string[]
+  reflectionBibleReadHref: string | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
@@ -206,6 +223,8 @@ function WatchBlockEntry({
         downloadHref={downloadHref}
         downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
+        reflectionPrompts={reflectionPrompts}
+        reflectionBibleReadHref={reflectionBibleReadHref}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         onPlayerActivated={onPlayerActivated}
@@ -230,6 +249,8 @@ function SyntheticBlock({
   downloadHref,
   downloadPending,
   studyQuestionsBlock,
+  reflectionPrompts,
+  reflectionBibleReadHref,
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
@@ -248,6 +269,8 @@ function SyntheticBlock({
   downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
+  reflectionPrompts: string[]
+  reflectionBibleReadHref: string | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
@@ -286,6 +309,12 @@ function SyntheticBlock({
           languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}
           subtitleVttSrc={subtitleVttSrc}
+          reflectionPrompts={reflectionPrompts}
+          reflectionBibleReadHref={reflectionBibleReadHref}
+          onReflectionDownload={
+            downloadHref != null ? modalCallbacks?.openDownload : undefined
+          }
+          onReflectionShare={modalCallbacks?.openShare}
           optimisticVisual={optimisticVisual}
           coverBlackoutKey={coverBlackoutKey}
           coverBlackoutPhase={coverBlackoutPhase}
