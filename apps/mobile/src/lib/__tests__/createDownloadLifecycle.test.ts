@@ -538,6 +538,65 @@ describe("native handlers", () => {
     expect(h.records.get("washi-gospel-1")?.swapFrom).toBeNull()
   })
 
+  it("subtitle-only swap keeps the just-committed file — same-path guard, no delete", async () => {
+    // Same rendition, different subtitle: new committedPath EQUALS the old, so
+    // the "remove superseded old file" step must NOT delete what it just wrote.
+    const committed = `${ROOT}/washi-gospel-1/rend-1.mp4`
+    const existing = makeRecord({
+      renditionDocumentId: "rend-1",
+      committedPath: committed,
+      subtitleLanguageSlug: null,
+    })
+    const h = makeHarness({ records: [existing] })
+    const request = makeRequest({
+      subtitleLanguageSlug: "korean",
+      subtitleUrl: "https://cdn.example/s.vtt",
+    })
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    const { spec, handlers } = h.started[0]
+    h.files.add(spec.destination)
+    handlers.onDone({ location: spec.destination, bytesTotal: 1000 })
+    await settle()
+    expect(h.calls).not.toContain(`removeUri:${committed}`)
+    const record = h.records.get("washi-gospel-1")
+    expect(record?.state).toBe("downloaded")
+    expect(record?.committedPath).toBe(committed)
+    expect(record?.swapFrom).toBeNull()
+  })
+
+  it("onDone with an unresolvable requested subtitle fails the bundle (incomplete branch)", async () => {
+    // Subtitle requested, no persisted URL, and the start path has no lazy
+    // resolver → resolveBundle returns "incomplete" → the record fails.
+    const request = makeRequest({
+      subtitleLanguageSlug: "korean",
+      subtitleUrl: null,
+    })
+    const { h, spec, handlers } = await startAndGetHandlers({}, request)
+    h.files.add(spec.destination)
+    handlers.onDone({ location: spec.destination, bytesTotal: 1000 })
+    await settle()
+    expect(h.records.get("washi-gospel-1")?.state).toBe("failed")
+  })
+
+  it("onDone incomplete-bundle reverts an in-flight swap to the old copy (AE2)", async () => {
+    const existing = makeRecord({ renditionDocumentId: "rend-old" })
+    const h = makeHarness({ records: [existing] })
+    const request = makeRequest({
+      subtitleLanguageSlug: "korean",
+      subtitleUrl: null,
+    })
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    const { spec, handlers } = h.started[0]
+    h.files.add(spec.destination)
+    handlers.onDone({ location: spec.destination, bytesTotal: 1000 })
+    await settle()
+    const record = h.records.get("washi-gospel-1")
+    expect(record?.state).toBe("downloaded")
+    expect(record?.renditionDocumentId).toBe("rend-old")
+    expect(record?.swapFrom).toBeNull()
+  })
+
   it("onDone with no file anywhere reverts a swap to the old copy (AE2)", async () => {
     const existing = makeRecord({ renditionDocumentId: "rend-old" })
     const h = makeHarness({ records: [existing] })

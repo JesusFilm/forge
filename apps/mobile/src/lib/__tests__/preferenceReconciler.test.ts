@@ -8,9 +8,8 @@ import {
 
 /**
  * Pure-function tests for the guard choreography the twin session providers share.
- * resolveDefaultSlug's ranking has its own suite; here every case sets a
- * preferredSlug that matches an option, so the applied slug is deterministic and
- * the assertions focus on WHETHER resolution runs (the guards), not its ranking.
+ * Every case sets a preferredSlug matching an option, so the applied slug is
+ * deterministic and assertions focus on WHETHER resolution runs, not its ranking.
  */
 
 const OPTIONS = [

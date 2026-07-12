@@ -3,10 +3,9 @@ import { useCallback } from "react"
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
 import type { WatchChildLanguage } from "../../lib/normalizeVideo"
 
-// Series language rows over childDubLanguages (episode language union). Identity is
-// the unique `slug`, not bcp47 (`ko` collides with `ko-kmr`), and there's no
-// `hls`/`documentId` — hence a different key/guard than the watch LanguageSheet,
-// expressed here as shell params rather than a forked copy.
+// Series language rows over childDubLanguages. Identity is the unique `slug`, not
+// bcp47 (`ko` collides with `ko-kmr`); no `hls`/`documentId` — hence a different
+// key/guard than the watch LanguageSheet, passed as shell params not a fork.
 function displayName(lang: WatchChildLanguage): string {
   return lang.name ?? lang.slug
 }

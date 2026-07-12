@@ -422,6 +422,25 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
     }
   }
 
+  // The one engine-start seam shared by start/swap/restart: a synchronous
+  // engine throw (missing native module, session init) must never strand a
+  // phantom "downloading" record, so each caller passes its own cleanup.
+  const startEngineTask = async (
+    spec: MediaDownloadSpec,
+    handlers: MediaDownloadHandlers,
+    onFailure: () => Promise<void>,
+  ): Promise<boolean> => {
+    let task: EngineTask
+    try {
+      task = deps.engine.start(spec, handlers)
+    } catch {
+      await onFailure()
+      return false
+    }
+    taskRegistry.set(spec.id, task)
+    return true
+  }
+
   // U3: restart an interrupted download — re-resolve the URL, rewrite it
   // `downloading`, start, and register. Best-effort: a null re-resolve
   // (offline / unsafe URL) leaves the record for the next launch.
@@ -460,34 +479,28 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
         pendingPath,
         bytesWritten: 0,
       })
-      let task: EngineTask
-      try {
-        task = deps.engine.start(
-          {
-            id: record.videoSlug,
-            url: refreshed.mediaUrl,
-            destination: pendingPath,
-            allowCellular: deps.allowCellularForRestart(),
-          },
-          makeHandlers({
-            videoSlug: record.videoSlug,
-            committedPath,
-            pendingPath,
-            fallbackTotalBytes: record.totalBytes,
-            // U6: restart re-resolves the whole dub, so the fresh subtitle URL
-            // is already in hand — thread it straight through.
-            subtitleLanguageSlug: record.subtitleLanguageSlug,
-            subtitleUrl: refreshed.subtitleUrl,
-            posterUrl: null,
-          }),
-        )
-      } catch {
-        // Engine start threw — mark failed (delete/retry stay available)
-        // instead of stranding a phantom "downloading" record with no task.
-        await deps.writeRecord({ ...record, state: "failed" })
-        return
-      }
-      taskRegistry.set(record.videoSlug, task)
+      // Engine throw → mark failed (delete/retry stay available), not a
+      // phantom "downloading" with no task.
+      await startEngineTask(
+        {
+          id: record.videoSlug,
+          url: refreshed.mediaUrl,
+          destination: pendingPath,
+          allowCellular: deps.allowCellularForRestart(),
+        },
+        makeHandlers({
+          videoSlug: record.videoSlug,
+          committedPath,
+          pendingPath,
+          fallbackTotalBytes: record.totalBytes,
+          // U6: restart re-resolves the whole dub, so the fresh subtitle URL
+          // is already in hand — thread it straight through.
+          subtitleLanguageSlug: record.subtitleLanguageSlug,
+          subtitleUrl: refreshed.subtitleUrl,
+          posterUrl: null,
+        }),
+        () => deps.writeRecord({ ...record, state: "failed" }),
+      )
     } finally {
       restarting.delete(record.videoSlug)
     }
@@ -579,30 +592,25 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
     // The engine can throw synchronously (missing native module, session init
     // failure) — drop the provisional record so no phantom "downloading" row
     // survives a start that never produced a task.
-    let task: EngineTask
-    try {
-      task = deps.engine.start(
-        {
-          id: videoSlug,
-          url: mediaUrl,
-          destination: pendingPath,
-          allowCellular: request.allowCellular,
-        },
-        makeHandlers({
-          videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: requestTotalBytes(request),
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
-          posterUrl: request.posterUrl,
-        }),
-      )
-    } catch {
-      await deps.removeRecord(videoSlug)
-      return { ok: false, reason: "error" }
-    }
-    taskRegistry.set(videoSlug, task)
+    const started = await startEngineTask(
+      {
+        id: videoSlug,
+        url: mediaUrl,
+        destination: pendingPath,
+        allowCellular: request.allowCellular,
+      },
+      makeHandlers({
+        videoSlug,
+        committedPath,
+        pendingPath,
+        fallbackTotalBytes: requestTotalBytes(request),
+        subtitleLanguageSlug: request.subtitleLanguageSlug,
+        subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+        posterUrl: request.posterUrl,
+      }),
+      () => deps.removeRecord(videoSlug),
+    )
+    if (!started) return { ok: false, reason: "error" }
     return { ok: true }
   }
 
@@ -694,30 +702,25 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
 
     // Engine start threw before producing a task — restore the pre-swap
     // record (old copy + file untouched; no pending file exists yet).
-    let task: EngineTask
-    try {
-      task = deps.engine.start(
-        {
-          id: videoSlug,
-          url: mediaUrl,
-          destination: pendingPath,
-          allowCellular: request.allowCellular,
-        },
-        makeHandlers({
-          videoSlug,
-          committedPath,
-          pendingPath,
-          fallbackTotalBytes: requestTotalBytes(request),
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
-          posterUrl: request.posterUrl,
-        }),
-      )
-    } catch {
-      await deps.writeRecord(existing)
-      return { ok: false, reason: "error" }
-    }
-    taskRegistry.set(videoSlug, task)
+    const started = await startEngineTask(
+      {
+        id: videoSlug,
+        url: mediaUrl,
+        destination: pendingPath,
+        allowCellular: request.allowCellular,
+      },
+      makeHandlers({
+        videoSlug,
+        committedPath,
+        pendingPath,
+        fallbackTotalBytes: requestTotalBytes(request),
+        subtitleLanguageSlug: request.subtitleLanguageSlug,
+        subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
+        posterUrl: request.posterUrl,
+      }),
+      () => deps.writeRecord(existing),
+    )
+    if (!started) return { ok: false, reason: "error" }
     return { ok: true }
   }
 

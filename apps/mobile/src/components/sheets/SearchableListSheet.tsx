@@ -38,10 +38,9 @@ export type SearchableListSheetProps<T> = {
   headerTop?: ReactNode
 }
 
-// Generic searchable list sheet: FlashList + search field + "Current" section +
-// 500ms double-tap debounce + formSheet detent-height wiring. The three
-// language/subtitle sheets are thin adapters that supply row identity, labels,
-// the availability guard, and the selection callback.
+// Generic searchable list sheet: FlashList + search + "Current" section + 500ms
+// double-tap debounce + formSheet detent-height wiring. The language/subtitle
+// sheets are thin adapters supplying row identity, labels, guard, and callback.
 export function SearchableListSheet<T>({
   rows,
   activeId,

@@ -29,6 +29,11 @@ export function useManagedVideoPlayer(
   // frozen creationSource so swap decisions can compare against it.
   const loadedUrlRef = useRef(sourceUrl)
 
+  // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
+  // a background transition; resume() reads this so it never force-plays into
+  // the background after the AppState listener already paused.
+  const isForegroundRef = useRef(true)
+
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
 
@@ -44,7 +49,9 @@ export function useManagedVideoPlayer(
     // a mid-play swap would strand a paused frame. Resume after load.
     const wasPlaying = player.playing
     const resume = () => {
-      if (!wasPlaying) return
+      // Bail if the app backgrounded while replaceAsync was in flight — the
+      // AppState 'active' handler re-resumes on foreground via wasPlayingRef.
+      if (!wasPlaying || !isForegroundRef.current) return
       try {
         player.play()
       } catch {
@@ -85,6 +92,7 @@ export function useManagedVideoPlayer(
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
+        isForegroundRef.current = true
         if (wasPlayingRef.current) {
           try {
             player.play()
@@ -93,6 +101,7 @@ export function useManagedVideoPlayer(
           }
         }
       } else {
+        isForegroundRef.current = false
         wasPlayingRef.current = isPlayingRef.current
         try {
           player.pause()
