@@ -9,7 +9,6 @@ import {
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_FEATURED_RAIL,
   WATCH_HOME_SECTIONS,
-  type WatchHomeFeaturedRailConfig,
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
@@ -163,23 +162,6 @@ function buildMetaLabel(args: {
     if (duration) return duration
   }
   return args.label
-}
-
-/**
- * Featured rail title for an injected clock (ALWAYS a param — consumers
- * re-evaluate on focus; model never reads Date.now()). Boundaries: morning
- * <12:00, afternoon <17:00, evening otherwise (web only pins the 17:00 edge).
- */
-export function resolveFeaturedTitle(
-  config: Pick<WatchHomeFeaturedRailConfig, "title" | "titleVariants">,
-  date: Date,
-): string {
-  const variants = config.titleVariants
-  if (!variants) return config.title
-  const hours = date.getHours()
-  if (hours < 12) return variants.morning
-  if (hours < 17) return variants.afternoon
-  return variants.evening
 }
 
 // KTD5: admin Video.parents/children relation is inverted on main and can

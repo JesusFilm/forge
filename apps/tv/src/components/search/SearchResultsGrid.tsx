@@ -180,7 +180,7 @@ function ResultsList({
         renderItem={({ item, index }) => (
           // Per-cell wrapper gives the focus lift (translateY −8 + 1.06x)
           // breathing room; without it contentContainer clips the lifted card
-          // at its edges. Same pattern as SearchBrowse / home's ContentRail.
+          // at its edges. Same pattern as SearchBrowse.
           <View
             style={[
               styles.resultCellWrapper,

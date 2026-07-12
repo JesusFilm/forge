@@ -1,6 +1,5 @@
 // Up Next rail — siblings under the same parent; a card opens THAT video's details
-// (R15), it does NOT play; renders nothing without siblings. Built inline (own
-// FlatList) not via shared ContentRail so Home/Search keep their look.
+// (R15), it does NOT play; renders nothing without siblings.
 
 import { useMemo } from "react"
 import {

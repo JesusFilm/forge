@@ -7,15 +7,6 @@ export type VideoImage = {
   videoStill?: string | null
 }
 
-/** Shared shape for a video reference resolved from CMS data. */
-export type VideoRef = {
-  documentId?: string
-  title?: string
-  slug?: string
-  imageAlt?: string
-  images?: VideoImage[]
-}
-
 /**
  * Pick the best thumbnail URL from a video's images. Accepts an array (runtime
  * GraphQL shape) or single object (gql.tada inferred); Strapi returns a collection.

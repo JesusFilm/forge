@@ -53,26 +53,19 @@ type EpisodeRailProps = {
   episodes: WatchEpisode[]
   /** Selected language slug, threaded into the pushed route's `lang` param (U4 provider supplies + consumes it). */
   languageSlug?: string | null
-  /** Replaces the default push-by-shape routing when provided. */
-  onEpisodePress?: (episode: WatchEpisode) => void
 }
 
 export const EpisodeRail = memo(function EpisodeRail({
   episodes,
   languageSlug,
-  onEpisodePress,
 }: EpisodeRailProps) {
   const router = useRouter()
 
   const handlePress = useCallback(
     (episode: WatchEpisode) => {
-      if (onEpisodePress != null) {
-        onEpisodePress(episode)
-        return
-      }
       router.push(episodeHref(resolveEpisodePath(episode, { languageSlug })))
     },
-    [router, onEpisodePress, languageSlug],
+    [router, languageSlug],
   )
 
   const renderItem = useCallback(
