@@ -42,7 +42,6 @@ import {
 } from "../lib/offlineFileSystem"
 import {
   OFFLINE_INDEX_STORAGE_KEY,
-  OFFLINE_MANIFEST_VERSION,
   isBatchPlaceholderRecord,
   isLiveDownloadRecord,
   offlineRecordKey,
@@ -57,7 +56,17 @@ import {
   canQueueBatchDownload,
   nextBatchAction,
 } from "../lib/batchDownloadQueue"
-import { normalizeDubMedia, type WatchDownload } from "../lib/normalizeVideo"
+import { normalizeDubMedia } from "../lib/normalizeVideo"
+import {
+  buildRequestRecord,
+  buildSwapSnapshot,
+  isStorageBlocked,
+  newDownloadNonce,
+  requestTotalBytes,
+  swapRevertFields,
+  type StartDownloadRequest,
+  type StartDownloadResult,
+} from "../lib/downloadLifecycle"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
@@ -71,29 +80,12 @@ import { useWatchPreferences } from "./WatchPreferencesProvider"
  * route) so the detail-page badge and My Downloads — both outside the watch
  * route group — can read it. Transfer/background behavior is device-verified.
  */
-export type StartDownloadRequest = {
-  videoSlug: string
-  /** Human title stored on the record for the offline library. */
-  title: string
-  dubDocumentId: string
-  /** The chosen rendition (documentId/quality/size/url) to download. */
-  rendition: WatchDownload
-  /** Chosen subtitle language slug, or null for "No subtitles". */
-  subtitleLanguageSlug: string | null
-  /** Fresh subtitle VTT URL when a subtitle was chosen, else null. */
-  subtitleUrl: string | null
-  /** Poster URL to cache for the offline library, if available. */
-  posterUrl: string | null
-  /** Per-download cellular override. */
-  allowCellular: boolean
-}
-
-export type StartDownloadResult =
-  | { ok: true }
-  | {
-      ok: false
-      reason: "exists" | "insufficient-storage" | "error" | "canceled"
-    }
+// Request/result shapes live in the React-free lifecycle lib (todo 013);
+// re-exported so existing `from DownloadsProvider` import sites keep working.
+export type {
+  StartDownloadRequest,
+  StartDownloadResult,
+} from "../lib/downloadLifecycle"
 
 type DownloadsContextValue = {
   /** False until the persisted manifest has been read. */
@@ -353,21 +345,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         if (isLiveDownloadRecord(existing)) {
           continue
         }
-        await writeRecord({
-          version: OFFLINE_MANIFEST_VERSION,
-          videoSlug: request.videoSlug,
-          dubDocumentId: request.dubDocumentId,
-          renditionDocumentId: request.rendition.documentId,
-          qualityLabel: request.rendition.quality,
-          title: request.title,
-          subtitleLanguageSlug: request.subtitleLanguageSlug,
-          state: "queued",
-          committedPath: null,
-          pendingPath: null,
-          posterPath: null,
-          bytesWritten: 0,
-          totalBytes: Number(request.rendition.size) || 0,
-        })
+        await writeRecord(buildRequestRecord(request, "queued"))
       }
     },
     [writeRecord],
@@ -441,18 +419,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       // file was never touched, so it's still playable.
       const revertSwap = (swap: SwapFrom) => {
         void removeUri(pendingPath)
-        patch({
-          state: "downloaded",
-          committedPath: swap.committedPath,
-          renditionDocumentId: swap.renditionDocumentId,
-          qualityLabel: swap.qualityLabel,
-          subtitleLanguageSlug: swap.subtitleLanguageSlug,
-          posterPath: swap.posterPath,
-          totalBytes: swap.totalBytes,
-          bytesWritten: swap.totalBytes,
-          pendingPath: null,
-          swapFrom: null,
-        })
+        patch(swapRevertFields(swap))
       }
 
       const finalize = async (location: string) => {
@@ -623,9 +590,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           subtitleLanguageSlug: record.subtitleLanguageSlug,
         })
         if (!refreshed || !validateActionUrl(refreshed.mediaUrl)) return
-        const nonce = `${Date.now().toString(36)}-${Math.floor(
-          Math.random() * 1e9,
-        ).toString(36)}`
+        const nonce = newDownloadNonce()
         const pendingPath =
           record.pendingPath ??
           buildPendingPath(OFFLINE_ROOT, record.videoSlug, nonce)
@@ -853,12 +818,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "exists" }
       }
 
-      // U12: refuse before writing a record if the footprint plus a reserve (so
-      // the device never fills up) won't fit. A free read of 0 means the API is
-      // unavailable — don't block on a check we couldn't perform.
-      const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
-      const free = await freeDiskBytes()
-      if (free > 0 && free < required) {
+      // U12: refuse before writing a record if the footprint plus the reserve
+      // won't fit (isStorageBlocked never blocks on an unreadable free reading).
+      if (isStorageBlocked(await freeDiskBytes(), requestTotalBytes(request))) {
         // Clean up only our own adopted placeholder — never a pre-existing record.
         if (isOwnPlaceholder) await removeRecord(videoSlug)
         return { ok: false, reason: "insufficient-storage" }
@@ -881,9 +843,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "canceled" }
       }
 
-      const nonce = `${Date.now().toString(36)}-${Math.floor(
-        Math.random() * 1e9,
-      ).toString(36)}`
+      const nonce = newDownloadNonce()
       const pendingPath = buildPendingPath(OFFLINE_ROOT, videoSlug, nonce)
       const committedPath = buildCommittedPath(
         OFFLINE_ROOT,
@@ -891,21 +851,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         rendition.documentId,
       )
 
-      await writeRecord({
-        version: OFFLINE_MANIFEST_VERSION,
-        videoSlug,
-        dubDocumentId: request.dubDocumentId,
-        renditionDocumentId: rendition.documentId,
-        qualityLabel: rendition.quality,
-        title: request.title,
-        subtitleLanguageSlug: request.subtitleLanguageSlug,
-        state: "downloading",
-        committedPath: null,
-        pendingPath,
-        posterPath: null,
-        bytesWritten: 0,
-        totalBytes: Number(rendition.size) || 0,
-      })
+      await writeRecord(
+        buildRequestRecord(request, "downloading", { pendingPath }),
+      )
 
       // U4: refresh the signed URL right before starting — the sheet's URL may
       // have expired while it sat open. Fall back to the page URL so a transient
@@ -914,7 +862,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         dubDocumentId: request.dubDocumentId,
         renditionDocumentId: rendition.documentId,
         qualityLabel: rendition.quality,
-        totalBytes: Number(rendition.size) || 0,
+        totalBytes: requestTotalBytes(request),
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
@@ -950,7 +898,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             videoSlug,
             committedPath,
             pendingPath,
-            fallbackTotalBytes: Number(rendition.size) || 0,
+            fallbackTotalBytes: requestTotalBytes(request),
             subtitleLanguageSlug: request.subtitleLanguageSlug,
             subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
             posterUrl: request.posterUrl,
@@ -1017,22 +965,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             result.reason !== "canceled" &&
             !recordsRef.current[action.request.videoSlug]
           ) {
-            const r = action.request
-            await writeRecord({
-              version: OFFLINE_MANIFEST_VERSION,
-              videoSlug: r.videoSlug,
-              dubDocumentId: r.dubDocumentId,
-              renditionDocumentId: r.rendition.documentId,
-              qualityLabel: r.rendition.quality,
-              title: r.title,
-              subtitleLanguageSlug: r.subtitleLanguageSlug,
-              state: "failed",
-              committedPath: null,
-              pendingPath: null,
-              posterPath: null,
-              bytesWritten: 0,
-              totalBytes: Number(r.rendition.size) || 0,
-            })
+            await writeRecord(buildRequestRecord(action.request, "failed"))
           }
           // Processed → no longer a pending swap. Done AFTER the swap wrote its
           // `downloading` record, so the ring never blips through "done" (an
@@ -1107,9 +1040,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "exists" }
       }
       // The new copy lives alongside the old until verified, so reserve room.
-      const required = (Number(rendition.size) || 0) + STORAGE_RESERVE_BYTES
-      const free = await freeDiskBytes()
-      if (free > 0 && free < required) {
+      if (isStorageBlocked(await freeDiskBytes(), requestTotalBytes(request))) {
         return { ok: false, reason: "insufficient-storage" }
       }
       try {
@@ -1119,23 +1050,14 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         return { ok: false, reason: "error" }
       }
 
-      const nonce = `${Date.now().toString(36)}-${Math.floor(
-        Math.random() * 1e9,
-      ).toString(36)}`
+      const nonce = newDownloadNonce()
       const pendingPath = buildPendingPath(OFFLINE_ROOT, videoSlug, nonce)
       const committedPath = buildCommittedPath(
         OFFLINE_ROOT,
         videoSlug,
         rendition.documentId,
       )
-      const swapFrom: SwapFrom = {
-        committedPath: existing.committedPath,
-        renditionDocumentId: existing.renditionDocumentId,
-        qualityLabel: existing.qualityLabel,
-        subtitleLanguageSlug: existing.subtitleLanguageSlug,
-        totalBytes: existing.totalBytes,
-        posterPath: existing.posterPath,
-      }
+      const swapFrom = buildSwapSnapshot(existing, existing.committedPath)
       await writeRecord({
         ...existing,
         renditionDocumentId: rendition.documentId,
@@ -1146,7 +1068,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         committedPath: null,
         pendingPath,
         bytesWritten: 0,
-        totalBytes: Number(rendition.size) || 0,
+        totalBytes: requestTotalBytes(request),
         swapFrom,
       })
 
@@ -1154,7 +1076,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         dubDocumentId: request.dubDocumentId,
         renditionDocumentId: rendition.documentId,
         qualityLabel: rendition.quality,
-        totalBytes: Number(rendition.size) || 0,
+        totalBytes: requestTotalBytes(request),
         subtitleLanguageSlug: request.subtitleLanguageSlug,
       })
 
@@ -1190,7 +1112,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             videoSlug,
             committedPath,
             pendingPath,
-            fallbackTotalBytes: Number(rendition.size) || 0,
+            fallbackTotalBytes: requestTotalBytes(request),
             subtitleLanguageSlug: request.subtitleLanguageSlug,
             subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
             posterUrl: request.posterUrl,
@@ -1268,21 +1190,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       // A swap in flight reverts to the old copy (keep the previously-downloaded
       // file that shares the video dir); a fresh download is removed entirely.
       if (action === "revert" && current.swapFrom) {
-        const swap = current.swapFrom
         if (current.pendingPath) await removeUri(current.pendingPath)
-        void writeRecord({
-          ...current,
-          state: "downloaded",
-          committedPath: swap.committedPath,
-          renditionDocumentId: swap.renditionDocumentId,
-          qualityLabel: swap.qualityLabel,
-          subtitleLanguageSlug: swap.subtitleLanguageSlug,
-          posterPath: swap.posterPath,
-          totalBytes: swap.totalBytes,
-          bytesWritten: swap.totalBytes,
-          pendingPath: null,
-          swapFrom: null,
-        })
+        void writeRecord({ ...current, ...swapRevertFields(current.swapFrom) })
         return
       }
       // A fresh in-flight download → remove it entirely.
