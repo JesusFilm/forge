@@ -41,6 +41,55 @@ describe("focus visual contract", () => {
     expect(resolveFocusVisual("row")).toMatchObject({ magnify: 1, lift: 0 })
   })
 
+  it("pins each preset's full shadow so a single-field drift fails", () => {
+    expect(resolveFocusVisual("card").shadow).toEqual({
+      color: "neutral",
+      radius: scale(20),
+      opacity: 0.6,
+      offsetY: scale(12),
+      elevation: 8,
+    })
+    expect(resolveFocusVisual("thumb").shadow).toEqual({
+      color: "neutral",
+      radius: scale(25),
+      opacity: 0.8,
+      offsetY: scale(16),
+      elevation: 0,
+    })
+    expect(resolveFocusVisual("cta").shadow).toEqual({
+      color: "accent",
+      radius: scale(20),
+      opacity: 0.5,
+      offsetY: 0,
+      elevation: 8,
+    })
+    expect(resolveFocusVisual("key").shadow).toEqual({
+      color: "neutral",
+      radius: scale(14),
+      opacity: 0.7,
+      offsetY: scale(12),
+      elevation: 8,
+    })
+    expect(resolveFocusVisual("tile").shadow).toEqual({
+      color: "neutral",
+      radius: scale(22),
+      opacity: 0.6,
+      offsetY: scale(10),
+      elevation: 0,
+    })
+    // The motion-free roles share one zero shadow.
+    const noShadow = {
+      color: "neutral",
+      radius: 0,
+      opacity: 0,
+      offsetY: 0,
+      elevation: 0,
+    }
+    for (const role of ["pill", "tab", "option", "row"] as const) {
+      expect(resolveFocusVisual(role).shadow).toEqual(noShadow)
+    }
+  })
+
   it("applies overrides without mutating the preset", () => {
     const overridden = resolveFocusVisual("card", { magnify: 1.1 })
     expect(overridden.magnify).toBe(1.1)

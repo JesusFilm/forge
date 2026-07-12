@@ -1,9 +1,7 @@
-// TV-owned (the mobile normalizer this was ported from no longer exists).
-//
-// Normalizer = the typed block seam. Wire blocks come in as the gql.tada
-// ResultOf union; models go out as a `kind`-discriminated union DERIVED from
-// that ResultOf — so a fragment/alias change breaks HERE and in the typed
-// renderers at compile time, never as a silent `undefined` at runtime.
+// TV-owned typed block seam (the mobile normalizer it was ported from is gone).
+// Wire blocks arrive as the gql.tada ResultOf union; models leave as a
+// `kind`-discriminated union DERIVED from it, so a fragment/alias change breaks
+// here and in the typed renderers at compile time, not as a runtime `undefined`.
 
 import type { AdminResultOf as ResultOf } from "@forge/admin-graphql"
 
@@ -95,6 +93,12 @@ export type QuizButtonBlockModel = RawOf<"QuizButtonBlock"> & {
 export type EasterDatesBlockModel = RawOf<"EasterDatesBlock"> & {
   kind: "easterDates"
 }
+// Fields ARE fetched (the query selects CTASectionFields/AdventCountdownFields);
+// the dispatcher placeholders them today, but the model must not claim fieldless.
+export type CtaBlockModel = RawOf<"CtaBlock"> & { kind: "cta" }
+export type AdventCountdownBlockModel = RawOf<"AdventCountdownBlock"> & {
+  kind: "adventCountdown"
+}
 
 export type SectionWrapperBlockModel = Omit<RawSection, "sectionContent"> & {
   kind: "sectionWrapper"
@@ -111,9 +115,9 @@ export type ContainerBlockModel = Omit<RawContainer, "content"> & {
   slots: NormalizedSlot[]
 }
 
-/** Kinds the query selects no fields for; the dispatcher placeholders them. */
+// Kinds the query selects no fields for; the dispatcher placeholders them.
 export type UnrenderedBlockModel = {
-  kind: "adventCountdown" | "cta" | "card" | "promoBanner" | "infoBlocks"
+  kind: "card" | "promoBanner" | "infoBlocks"
   __typename: string
   sectionKey?: string | null
 }
@@ -131,6 +135,8 @@ export type NormalizedBlock =
   | VideoCarouselBlockModel
   | QuizButtonBlockModel
   | EasterDatesBlockModel
+  | CtaBlockModel
+  | AdventCountdownBlockModel
   | UnrenderedBlockModel
 
 export type NormalizedExperience = {

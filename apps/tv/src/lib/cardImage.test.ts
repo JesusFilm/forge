@@ -27,6 +27,13 @@ describe("pickCardImage — poster intent (first image only)", () => {
 
 describe("pickCardImage — card intent (scan all images)", () => {
   it("applies the full cinematic precedence per image", () => {
+    // Top link: mobileCinematicHigh beats everything below it.
+    expect(
+      pickCardImage(
+        [{ mobileCinematicHigh: "high", mobileCinematicLow: "low" }],
+        "card",
+      ),
+    ).toBe("high")
     expect(
       pickCardImage(
         [{ mobileCinematicLow: "low", videoStill: "still" }],
@@ -36,6 +43,8 @@ describe("pickCardImage — card intent (scan all images)", () => {
     expect(pickCardImage([{ videoStill: "still", url: "u" }], "card")).toBe(
       "still",
     )
+    // Bottom link: url beats thumbnail.
+    expect(pickCardImage([{ url: "u", thumbnail: "t" }], "card")).toBe("u")
   })
 
   it("falls through to later images when earlier ones are empty", () => {

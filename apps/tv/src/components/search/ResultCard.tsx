@@ -6,6 +6,7 @@ import type { View as ViewType } from "react-native"
 import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
+import { FOCUS_RING_WIDTH } from "../focus/focusVisual"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { ExperienceFallback } from "./ExperienceFallback"
 import { resultChipLabel, resultKindLabel } from "./searchDisplay"
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: scale(16),
-    borderWidth: scale(5),
+    borderWidth: FOCUS_RING_WIDTH,
     borderColor: SEARCH_THEME.ring,
   },
   meta: {

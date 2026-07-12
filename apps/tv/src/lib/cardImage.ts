@@ -12,14 +12,9 @@ export type CardImageSource = {
 
 export type CardImageIntent = "poster" | "card"
 
-/**
- * Pick the best image URL for an intent.
- *
- * - "poster" (watch/series art): FIRST image only — high → url → thumbnail.
- *   Additional images are alternates, not fallbacks, on these records.
- * - "card" (home rail art): scan ALL images, full cinematic precedence per
- *   image — high → low → videoStill → url → thumbnail.
- */
+// Best image for an intent: "poster" (watch/series) takes the FIRST image only
+// — high → url → thumbnail (later images are alternates, not fallbacks); "card"
+// (home rails) scans ALL images — high → low → videoStill → url → thumbnail.
 export function pickCardImage(
   images: readonly CardImageSource[] | null | undefined,
   intent: CardImageIntent,

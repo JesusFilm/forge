@@ -426,12 +426,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: scale(120),
   },
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: scale(20),
-    paddingHorizontal: scale(80),
-  },
 
   // ── Hero ──────────────────────────────────────────────────────────
   hero: {
@@ -523,14 +517,5 @@ const styles = StyleSheet.create({
     backgroundColor: WATCH_THEME.below,
     // Tightened (was 48) so the rail sits closer under the hero action row.
     paddingTop: scale(24),
-  },
-
-  // ── Error state ───────────────────────────────────────────────────
-  errorMessage: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    fontWeight: "600",
-    color: COLORS.text,
-    textAlign: "center",
   },
 })

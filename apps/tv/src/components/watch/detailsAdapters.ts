@@ -1,7 +1,6 @@
 // KTD7: pure builders feeding section renderers with wire-conformant block
-// models (the same typed shapes the SDUI normalizer emits), so the watch page
-// reuses the Experience renderers. Returning null omits the whole section
-// (heading + body) — U5 contract.
+// models (the SDUI normalizer's typed shapes), so the watch page reuses the
+// Experience renderers. Returning null omits the whole section — U5 contract.
 
 import {
   BIBLE_IMAGES,

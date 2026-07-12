@@ -34,7 +34,6 @@ import { SECTION_HEADING } from "../../src/components/sections/sectionHeading"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
-import { COLORS } from "../../src/lib/colors"
 import type { WatchBibleCitation } from "../../src/lib/normalizeVideo"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
@@ -402,20 +401,5 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(25)),
     lineHeight: Math.round(scale(37)),
     color: WATCH_THEME.text,
-  },
-
-  // ── Error state ───────────────────────────────────────────────────
-  errorCentered: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: scale(20),
-    paddingHorizontal: scale(80),
-  },
-  errorMessage: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    fontWeight: "600",
-    color: COLORS.text,
-    textAlign: "center",
   },
 })

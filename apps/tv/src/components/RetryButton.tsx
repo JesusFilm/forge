@@ -1,8 +1,6 @@
-// The one focusable "Try again" CTA for full-screen error states, on the shared
-// focus module's "cta" role: white border + accent glow (the primary-CTA focus
-// look). Uses onFocus/onBlur + state, not the `({ focused }) =>` callback:
-// `focused` exists at runtime in react-native-tvos but not in upstream
-// PressableStateCallbackType (fails strict tsc).
+// The one "Try again" CTA (shared "cta" focus role). onFocus/onBlur + state,
+// not the `({ focused }) =>` callback: `focused` exists at runtime in
+// react-native-tvos but not in upstream PressableStateCallbackType (strict tsc).
 
 import { Animated, Pressable, StyleSheet, Text } from "react-native"
 

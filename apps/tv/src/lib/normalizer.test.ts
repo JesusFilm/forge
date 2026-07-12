@@ -1,4 +1,9 @@
-import { normalizeExperience, type RawWatchExperience } from "./normalizer"
+import {
+  blockKey,
+  normalizeExperience,
+  type NormalizedBlock,
+  type RawWatchExperience,
+} from "./normalizer"
 
 // Admin sends a flat container: ContainerSlotBlock markers divide content[] into
 // side-by-side slots. These tests pin the reconstruction that ContainerRenderer
@@ -83,5 +88,75 @@ describe("normalizeExperience — flat container slots", () => {
     expect(slots).toHaveLength(1)
     const only = slots[0].slotContent as Array<{ kind: string }>
     expect(only[0].kind).toBe("video")
+  })
+})
+
+describe("normalizeExperience — SectionBlock recursion", () => {
+  it("normalizes a section wrapper's nested content recursively", () => {
+    const { sections } = normalizeExperience({
+      documentId: "exp1",
+      slug: "s",
+      title: "S",
+      blocks: [
+        {
+          __typename: "SectionBlock",
+          sectionKey: "s1",
+          sectionContent: [
+            { __typename: "TextBlock", textHeading: "Hi" },
+            { __typename: "VideoBlock", videoId: "v1" },
+          ],
+        },
+      ],
+    } as unknown as RawWatchExperience)
+
+    expect(sections).toHaveLength(1)
+    expect(sections[0].kind).toBe("sectionWrapper")
+    const content = (
+      sections[0] as unknown as { sectionContent: Array<{ kind: string }> }
+    ).sectionContent
+    expect(content.map((c) => c.kind)).toEqual(["text", "video"])
+  })
+
+  it("drops unknown nested types inside a section wrapper", () => {
+    const { sections } = normalizeExperience({
+      documentId: "exp1",
+      slug: "s",
+      title: "S",
+      blocks: [
+        {
+          __typename: "SectionBlock",
+          sectionKey: "s1",
+          sectionContent: [
+            { __typename: "MysteryBlock", foo: "bar" },
+            { __typename: "VideoBlock", videoId: "v1" },
+          ],
+        },
+      ],
+    } as unknown as RawWatchExperience)
+
+    const content = (
+      sections[0] as unknown as { sectionContent: Array<{ kind: string }> }
+    ).sectionContent
+    expect(content.map((c) => c.kind)).toEqual(["video"])
+  })
+})
+
+describe("blockKey", () => {
+  it("returns the sectionKey when it is a string, else undefined", () => {
+    expect(
+      blockKey({
+        kind: "text",
+        sectionKey: "foo",
+      } as unknown as NormalizedBlock),
+    ).toBe("foo")
+    expect(
+      blockKey({
+        kind: "text",
+        sectionKey: null,
+      } as unknown as NormalizedBlock),
+    ).toBeUndefined()
+    expect(
+      blockKey({ kind: "video" } as unknown as NormalizedBlock),
+    ).toBeUndefined()
   })
 })

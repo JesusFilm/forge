@@ -281,18 +281,4 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: "System",
   },
-  errorText: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontFamily: "System",
-    marginBottom: 24,
-    textAlign: "center",
-    paddingHorizontal: 40,
-  },
-  backHint: {
-    color: COLORS.muted,
-    fontSize: 14,
-    fontFamily: "System",
-    marginTop: 16,
-  },
 })

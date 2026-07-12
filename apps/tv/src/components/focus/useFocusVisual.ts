@@ -1,7 +1,6 @@
-// The one focus engine. Owns focused state, the single timing curve, the
-// role-preset transform, and the Android focus-compositing props. Ring/shadow
-// application stays at the call site (overlay vs border swap), on the shared
-// constants from focusVisual.ts.
+// The one focus engine: focused state, the single timing curve, the role-preset
+// transform, and the Android focus-compositing props. Ring/shadow application
+// stays at the call site (overlay vs border swap), on focusVisual.ts constants.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Easing, Platform, type ViewStyle } from "react-native"

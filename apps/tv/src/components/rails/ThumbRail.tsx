@@ -1,7 +1,6 @@
-// The WATCH-theme horizontal rail scaffold shared by Episodes and Up Next:
-// SECTION_HEADING + count, TVFocusGuideView, virtualized FlatList with fixed
-// ThumbCard dims (getItemLayout — no measuring pass). Was two inline copies;
-// Up Next gained virtualization by adoption.
+// WATCH-theme rail scaffold shared by Episodes and Up Next: SECTION_HEADING +
+// count, TVFocusGuideView, virtualized FlatList with fixed ThumbCard dims
+// (getItemLayout, no measuring pass). Was two inline copies.
 
 import { useCallback, type ReactElement } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"

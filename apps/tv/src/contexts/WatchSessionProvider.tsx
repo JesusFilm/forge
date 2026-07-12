@@ -207,11 +207,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     )
   }, [activeVariant?.documentId])
 
-  // ONE owner for "load the active Dub's media" (review candidate 4): whenever
-  // a session resolves an active dub, its media is ensured here — panels and
-  // the player consume outputs and never drive fetches. ensureDubMedia dedupes
-  // per dub id, and only the ACTIVE dub is ever fetched (~5KB; the lazy
-  // per-dub law from the 9.5MB incident is preserved).
+  // ONE owner for "load the active Dub's media": resolving an active dub ensures
+  // its media here; panels/player only consume it. Dedupes per dub id, and only
+  // the ACTIVE dub fetches (~5KB — preserves the 9.5MB-incident lazy law).
   useEffect(() => {
     ensureActiveVariantMedia()
   }, [ensureActiveVariantMedia])
