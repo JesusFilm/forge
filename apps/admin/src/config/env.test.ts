@@ -11,6 +11,8 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
+  workflowStartupTransientAttemptsEnvSchema,
+  workflowStartupTransientDelayMsEnvSchema,
   youVersionPassageCacheTtlSecondsEnvSchema,
 } from "@/config/env"
 
@@ -135,6 +137,54 @@ describe("env", () => {
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("1.5")).toThrow()
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("-1")).toThrow()
       expect(() => searchTraceRawRetentionDaysEnvSchema.parse("30")).toThrow()
+    })
+  })
+
+  describe("workflowStartupTransientAttemptsEnvSchema", () => {
+    it("defaults to 12 attempts", () => {
+      expect(workflowStartupTransientAttemptsEnvSchema.parse(undefined)).toBe(
+        12,
+      )
+    })
+
+    it("coerces a positive integer attempt count", () => {
+      expect(workflowStartupTransientAttemptsEnvSchema.parse("3")).toBe(3)
+    })
+
+    it("rejects invalid attempt counts", () => {
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("nope"),
+      ).toThrow()
+    })
+  })
+
+  describe("workflowStartupTransientDelayMsEnvSchema", () => {
+    it("defaults to a ten-second retry delay", () => {
+      expect(workflowStartupTransientDelayMsEnvSchema.parse(undefined)).toBe(
+        10_000,
+      )
+    })
+
+    it("coerces a positive integer delay", () => {
+      expect(workflowStartupTransientDelayMsEnvSchema.parse("250")).toBe(250)
+    })
+
+    it("rejects invalid delay values", () => {
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("nope"),
+      ).toThrow()
     })
   })
 

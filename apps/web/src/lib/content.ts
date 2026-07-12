@@ -127,6 +127,8 @@ export type WatchImage = {
   thumbnail: string | null
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 // One distinct playable dub language available across a series' children,
@@ -157,10 +159,10 @@ export type WatchChild = {
   // back server-side to a primary/longest playable Mux dub. Lets the carousel
   // render frame thumbnails without projecting every child's dubs.
   muxPlaybackId: string | null
-  // Base64 LQIP for the exact Watch carousel Mux thumbnail recipe, generated
-  // and stored admin-side. Only applies when muxPlaybackId is present.
+  // Base64 blur data URL for the exact Watch carousel Mux thumbnail recipe,
+  // generated and stored admin-side. Only applies when muxPlaybackId is present.
   muxThumbnailBlurDataUrl: string | null
-  // Base64 LQIP for the exact Watch hero poster Mux thumbnail recipe.
+  // Base64 blur data URL for the exact Watch hero poster Mux thumbnail recipe.
   muxHeroPosterBlurDataUrl?: string | null
 }
 
@@ -456,6 +458,8 @@ type AdminImageRaw = {
   thumbnail?: string | null
   mobileCinematicHigh?: string | null
   mobileCinematicLow?: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 type AdminLanguageRaw = {
@@ -614,6 +618,8 @@ function normalizeImage(img: AdminImageRaw): WatchImage | null {
     thumbnail: img.thumbnail ?? null,
     mobileCinematicHigh: img.mobileCinematicHigh ?? null,
     mobileCinematicLow: img.mobileCinematicLow ?? null,
+    blurDataUrl: img.blurDataUrl ?? null,
+    dominantColor: img.dominantColor ?? null,
   }
 }
 
@@ -1026,7 +1032,11 @@ function normalizeRelatedRouteItems(
         slug: child.slug,
         label: child.label,
         muxPlaybackId: child.muxPlaybackId,
-        images: child.images.map((img) => ({ url: img.url })),
+        images: child.images.map((img) => ({
+          url: img.url,
+          blurDataUrl: img.blurDataUrl,
+          dominantColor: img.dominantColor,
+        })),
       }),
     )
     .filter((item): item is EnrichedMediaItem => item != null)
@@ -1131,7 +1141,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page"],
+  ["watch-page", "v3-media-dominant-colors"],
   {
     revalidate: 60,
     tags: [

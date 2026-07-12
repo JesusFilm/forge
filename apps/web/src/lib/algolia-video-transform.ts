@@ -70,6 +70,8 @@ export function transformAlgoliaVideoHits({
         title,
         snippet: description,
         imageUrl: pickString(hit.image),
+        imageBlurDataUrl: null,
+        muxThumbnailBlurDataUrl: null,
         startSeconds: null,
         playbackId: null,
         score: 0,

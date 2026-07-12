@@ -336,11 +336,11 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: it is empty on prod admin, and consumer clients' homes render the Home Curation instead — pointing all platforms back at a real Homepage Experience is a possible future consolidation, not the current state.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.
 
 ### Home Curation
 
-The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Curation lives in code, not the CMS — changing the home's rows is a code release, not an admin edit. Each client (web, mobile, TV) carries the same set, so per-app copies must stay in sync.
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
 
 ### Series-Shaped
 

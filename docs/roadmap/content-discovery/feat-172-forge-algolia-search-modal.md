@@ -10,7 +10,8 @@ duration: 5
 depends_on:
   - "feat-011"
   - "feat-144"
-blocks: []
+blocks:
+  - "feat-242"
 tags:
   - "content-discovery"
   - "web"

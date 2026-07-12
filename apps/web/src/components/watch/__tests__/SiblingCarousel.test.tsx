@@ -291,9 +291,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(activeOutline).not.toBeNull()
     expect(activeOutline?.className).toContain("absolute")
     expect(activeOutline?.className).toContain("inset-0")
-    expect(activeOutline?.className).toContain("z-[60]")
+    expect(activeOutline?.className).toContain("z-[70]")
     expect(activeOutline?.className).toContain("border-4")
-    expect(activeOutline?.className).toContain("border-white")
+    expect(activeOutline?.className).toContain("border-brand-red")
     expect(activeOutline?.className).toContain("transition-[opacity,transform]")
     expect(activeOutline?.className).toContain("duration-300")
     expect(activeOutline?.className).toContain("opacity-100")
@@ -360,11 +360,11 @@ describe("SiblingCarousel — happy path", () => {
     const hoverOutline = inactive?.querySelector(
       "[data-testid='sibling-carousel-hover-outline']",
     )
-    expect(hoverOutline?.className).toContain("z-50")
-    expect(hoverOutline?.className).toContain("watch-home-gradient-outline")
-    expect(hoverOutline?.className).toContain(
-      "watch-home-gradient-outline-landscape",
-    )
+    expect(hoverOutline?.className).toContain("inset-0")
+    expect(hoverOutline?.className).toContain("z-[70]")
+    expect(hoverOutline?.className).toContain("border-4")
+    expect(hoverOutline?.className).toContain("border-brand-red")
+    expect(hoverOutline?.className).not.toContain("watch-home-gradient-outline")
     expect(hoverOutline?.className).toContain("group-hover:opacity-100")
     const outlineSegments = hoverOutline?.querySelectorAll("span")
     expect(outlineSegments).toHaveLength(0)
@@ -534,7 +534,7 @@ describe("SiblingCarousel — happy path", () => {
     )
     expect(targetOutline).not.toBeNull()
     expect(targetOutline?.className).toContain("border-4")
-    expect(targetOutline?.className).toContain("border-white")
+    expect(targetOutline?.className).toContain("border-brand-red")
     expect(targetOutline?.className).toContain("opacity-100")
     expect(target!.className).not.toContain("border-4")
     expect(previousCurrent!.getAttribute("data-active")).toBe("false")

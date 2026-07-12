@@ -140,7 +140,7 @@ describe("resolveWatchPage", () => {
     expect(unstableCacheCalls).toEqual(
       expect.arrayContaining([
         {
-          keyParts: ["watch-page"],
+          keyParts: ["watch-page", "v3-media-dominant-colors"],
           options: {
             revalidate: 60,
             tags: [

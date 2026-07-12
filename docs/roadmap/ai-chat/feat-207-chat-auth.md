@@ -9,8 +9,8 @@ duration: 5
 depends_on:
   - "feat-205"
 blocks:
-  - "feat-209"
   - "feat-229"
+  - "feat-240"
 tags:
   - "web"
   - "infrastructure"

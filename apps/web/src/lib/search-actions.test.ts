@@ -65,6 +65,8 @@ const semanticResult: SearchResult = {
   slug: "jesus",
   title: "JESUS",
   imageUrl: null,
+  imageBlurDataUrl: null,
+  muxThumbnailBlurDataUrl: null,
   snippet: "",
   startSeconds: null,
   playbackId: null,
@@ -97,7 +99,7 @@ describe("runSearch", () => {
     consoleError.mockRestore()
   })
 
-  it("keeps semantic search when the Algolia flag is off and passes the resolved locale", async () => {
+  it("defaults untyped semantic searches to videos when the Algolia flag is off", async () => {
     vi.mocked(isWatchAlgoliaSearchEnabled).mockResolvedValueOnce(false)
     vi.mocked(searchVideos).mockResolvedValueOnce({
       results: [semanticResult],
@@ -115,7 +117,7 @@ describe("runSearch", () => {
       languageOptions: [spanishOption],
     })
 
-    expect(searchVideos).toHaveBeenCalledWith("jesus", 5, 10, undefined, "es")
+    expect(searchVideos).toHaveBeenCalledWith("jesus", 5, 10, "video", "es")
     expect(searchAlgoliaVideos).not.toHaveBeenCalled()
     expect(readSearchLanguagePreferenceSlug).not.toHaveBeenCalled()
     expect(readPreferredLanguageSlug).not.toHaveBeenCalled()
@@ -645,7 +647,7 @@ describe("runSearch", () => {
       cappedQuery,
       undefined,
       undefined,
-      undefined,
+      "video",
       expect.any(String),
     )
     expect(scheduleWatchSearchAnalyticsEvent).toHaveBeenCalledWith(
