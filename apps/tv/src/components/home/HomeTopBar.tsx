@@ -9,7 +9,7 @@ import type { View as ViewType } from "react-native"
 import { scale } from "../../lib/scale"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { useFocusAnimation } from "../watch/useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { formatClock } from "./clockFormat"
 
 /**
@@ -174,7 +174,9 @@ function TopBarTab({
   nodeRef,
   onFocusNode,
 }: TopBarTabProps) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("tab", {
+    nativeDriver: false,
+  })
   // Own this tab's host node so onFocus can report it, while still forwarding to
   // nodeRef (Search tab lifts its node up to the hero's nextFocusUp).
   const localRef = useRef<ViewType | null>(null)
@@ -201,16 +203,9 @@ function TopBarTab({
         inputRange: [0, 1],
         outputRange: [0, 0.7],
       }),
-      transform: [
-        {
-          scale: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 1.07],
-          }),
-        },
-      ],
+      transform,
     }),
-    [progress, selected],
+    [progress, selected, transform],
   )
   const ink = useMemo(
     () =>

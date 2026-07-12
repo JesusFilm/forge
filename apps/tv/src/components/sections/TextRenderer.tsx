@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { TextBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
@@ -8,13 +8,13 @@ import { SECTION_HEADING } from "./sectionHeading"
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface TextRendererProps {
-  section: NormalizedBlock
+  section: TextBlockModel
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function TextRenderer({ section }: TextRendererProps) {
-  const heading = section.textHeading as string | null
+  const heading = section.textHeading
   const rawParagraphs = section.contentParagraphs
 
   // contentParagraphs is a Strapi JSON field that should be string[]

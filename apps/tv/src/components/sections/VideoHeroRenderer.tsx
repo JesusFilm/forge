@@ -2,7 +2,7 @@ import { useCallback, useState } from "react"
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
 import { useFocusEffect } from "expo-router"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { VideoHeroBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
 import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -24,7 +24,7 @@ const noop = () => {}
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type VideoHeroRendererProps = {
-  section: NormalizedBlock
+  section: VideoHeroBlockModel
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -45,9 +45,9 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
       return () => setIsFocused(false)
     }, []),
   )
-  const heading = section.heading as string | null
-  const subheading = section.subheading as string | null
-  const streamingUrl = section.streamingUrl as string | null | undefined
+  const heading = section.heading
+  const subheading = section.subheading
+  const streamingUrl = section.streamingUrl
 
   const hasValidStream =
     typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)

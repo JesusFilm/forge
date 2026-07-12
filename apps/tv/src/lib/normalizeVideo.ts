@@ -7,6 +7,7 @@ import type {
   WatchDubData,
   SeriesVideoData,
 } from "./videoQueries"
+import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -131,9 +132,7 @@ type RawImage = {
 function pickPosterUrl(
   images: readonly RawImage[] | undefined | null,
 ): string | null {
-  if (!images || images.length === 0) return null
-  const img = images[0]
-  return img.mobileCinematicHigh ?? img.url ?? img.thumbnail ?? null
+  return pickCardImage(images, "poster")
 }
 
 function compareLanguageSlug(

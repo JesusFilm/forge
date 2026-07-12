@@ -19,11 +19,10 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import {
-  focusTransform,
   THUMB_SHADOW,
-  useFocusAnimation,
+  useFocusVisual,
   useThumbFocusRing,
-} from "../watch/useFocusAnimation"
+} from "../focus/useFocusVisual"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
@@ -71,7 +70,7 @@ export const HomeCard = memo(function HomeCard({
   nextFocusUp,
   nodeRef,
 }: HomeCardProps) {
-  const { focused, setFocused, progress } = useFocusAnimation({
+  const { focused, setFocused, progress, transform } = useFocusVisual("thumb", {
     nativeDriver: IS_ANDROID,
   })
   // Own this card's host node so onFocus can report it upward, while still
@@ -98,12 +97,7 @@ export const HomeCard = memo(function HomeCard({
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
-  const liftStyle = useMemo(
-    () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
-    }),
-    [progress],
-  )
+  const liftStyle = useMemo(() => ({ transform }), [transform])
   const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
     progress,
     HOME_CARD_WIDTH,

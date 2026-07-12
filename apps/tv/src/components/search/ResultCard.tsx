@@ -6,7 +6,8 @@ import type { View as ViewType } from "react-native"
 import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { FOCUS_RING_WIDTH } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { ExperienceFallback } from "./ExperienceFallback"
 import { resultChipLabel, resultKindLabel } from "./searchDisplay"
 import { SEARCH_THEME } from "./searchTheme"
@@ -47,19 +48,13 @@ export function ResultCard({
   // docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md.
   const handlePress = () => onPress(result)
 
-  // Shared useFocusAnimation hook: 0→1 `progress` drives focusTransform and
-  // stops the prior timing first so a rapid D-pad sweep can't orphan animations.
-  // `focused` gates the non-animated focus styles (shadow, ring, title color).
-  const { focused, setFocused, progress } = useFocusAnimation()
+  // Shared focus module ("thumb" role); `focused` gates the non-animated focus
+  // styles (shadow, ring, title color).
+  const { focused, setFocused, transform } = useFocusVisual("thumb", {
+    nativeDriver: false,
+  })
 
-  // Memoized: progress is a stable ref, so the interpolations are built
-  // once rather than on every focus/blur re-render.
-  const liftStyle = useMemo(
-    () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
-    }),
-    [progress],
-  )
+  const liftStyle = useMemo(() => ({ transform }), [transform])
 
   return (
     <Pressable
@@ -182,7 +177,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: scale(16),
-    borderWidth: scale(5),
+    borderWidth: FOCUS_RING_WIDTH,
     borderColor: SEARCH_THEME.ring,
   },
   meta: {

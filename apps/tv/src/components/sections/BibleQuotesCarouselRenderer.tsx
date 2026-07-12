@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { BibleQuotesCarouselBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
@@ -27,10 +27,11 @@ const LEFT_ALIGN_THRESHOLD = 4
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+// Wire quotes carry no id (detailsAdapters' synthetic ones do).
 type QuoteItem = {
-  id: string
-  reference: string
-  text: string
+  id?: string
+  reference: string | null
+  text: string | null
   attribution?: string | null
   imageUrl?: string | null
   backgroundColor?: string | null
@@ -39,7 +40,7 @@ type QuoteItem = {
 }
 
 export interface BibleQuotesCarouselRendererProps {
-  section: NormalizedBlock
+  section: BibleQuotesCarouselBlockModel
 }
 
 // ── QuoteCard ────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ function QuoteCard({
       onPress={onPress}
       focusAnchor={focusAnchor}
       style={{ ...styles.card, backgroundColor: bgColor }}
-      accessibilityLabel={`${quote.reference}: ${quote.text}`}
+      accessibilityLabel={`${quote.reference ?? ""}: ${quote.text ?? ""}`}
     >
       {imageSource != null && (
         <Image
@@ -74,7 +75,7 @@ function QuoteCard({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           contentPosition="center"
-          recyclingKey={`bqc-${quote.id}`}
+          recyclingKey={`bqc-${quote.id ?? quote.reference ?? "quote"}`}
         />
       )}
       <View style={styles.cardContent}>
@@ -90,7 +91,7 @@ function QuoteCard({
           </Text>
         )}
         <Text style={styles.reference} numberOfLines={1}>
-          {quote.reference.toUpperCase()}
+          {(quote.reference ?? "").toUpperCase()}
         </Text>
         <Text style={styles.quoteText} numberOfLines={6}>
           {quote.text}
@@ -114,8 +115,8 @@ function QuoteCard({
 export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
-  const heading = section.bqcHeading as string | null
-  const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
+  const heading = section.bqcHeading
+  const quotes: QuoteItem[] = section.quotes ?? []
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
   // 4+ cards overflow the canvas → the rail left-aligns (listContentLeftAligned).
   // Cards still scale from center: left-anchoring the first card grew it rightward
@@ -147,7 +148,8 @@ export function BibleQuotesCarouselRenderer({
   }, [])
 
   const keyExtractor = useCallback(
-    (item: QuoteItem, index: number) => `bqc-${item.id}-${index}`,
+    (item: QuoteItem, index: number) =>
+      `bqc-${item.id ?? item.reference ?? "quote"}-${index}`,
     [],
   )
 

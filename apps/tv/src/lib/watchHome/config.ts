@@ -30,25 +30,18 @@ export type WatchHomeSectionConfig = {
 export type WatchHomeFeaturedRailConfig = {
   id: string
   eyebrow: string
-  /** Fallback display label when no time-of-day variant applies. */
   title: string
-  titleVariants?: { morning: string; afternoon: string; evening: string }
 }
 
 /**
  * TV-only hero-pool rail. Base copy is web's Mux-insert base overlay
- * ("Faith & Scripture" / "Today's Video Picks"); variants are web's
- * time-range conditionalOverlays titles.
+ * ("Faith & Scripture" / "Today's Video Picks"). The time-of-day title
+ * variants were never wired on TV and were removed with resolveFeaturedTitle.
  */
 export const WATCH_HOME_FEATURED_RAIL: WatchHomeFeaturedRailConfig = {
   id: "home-featured",
   eyebrow: "Faith & Scripture",
   title: "Today's Video Picks",
-  titleVariants: {
-    morning: "Good Morning! Today's Bible Moments Await.",
-    afternoon: "Good Afternoon! Bible Moments for Your Day.",
-    evening: "Good Evening! Wind Down with Bible Moments.",
-  },
 }
 
 export const collectionShowcaseSources = [

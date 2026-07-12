@@ -10,22 +10,25 @@ import React, {
   type ReactNode,
 } from "react"
 import {
-  ActivityIndicator,
   Dimensions,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native"
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 
+import { ScreenStateView } from "./ScreenStateView"
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
 import { HeroVisibilityProvider } from "./sections/heroVisibility"
 import { HERO_PEEK, WATCH_THEME } from "./watch/watchDetailTheme"
-import { normalizeExperience, type NormalizedBlock } from "../lib/normalizer"
+import {
+  blockKey,
+  normalizeExperience,
+  type NormalizedBlock,
+} from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
 
@@ -60,7 +63,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
 
   const experience = useMemo(() => {
     if (!rawExperience) return null
-    return normalizeExperience(rawExperience as Record<string, unknown>)
+    return normalizeExperience(rawExperience)
   }, [rawExperience])
 
   const errorMessage = error?.message ?? null
@@ -83,9 +86,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   /** Register the Y position and index for a top-level section. */
   const handleSectionLayout = useCallback(
     (section: NormalizedBlock, index: number, y: number) => {
-      const key =
-        (section.sectionKey as string | undefined) ??
-        (section.id as string | undefined)
+      const key = blockKey(section)
       if (key) {
         sectionPositions.current.set(key, y)
         sectionKeyToIndex.current.set(key, index)
@@ -109,27 +110,19 @@ export function ExperienceRenderer({ slug, header }: Props) {
       const parentY = sectionPositions.current.get(parentKey) ?? 0
       const absoluteY = parentY + offsetWithinSection
 
-      const key =
-        (block.sectionKey as string | undefined) ??
-        (block.id as string | undefined)
+      const key = blockKey(block)
       if (key) {
         sectionPositions.current.set(key, absoluteY)
         sectionKeyToIndex.current.set(key, parentIndex)
       }
       // Also index container slot children at the container's Y
-      if (block.kind === "container" && Array.isArray(block.slots)) {
-        for (const slot of block.slots as Array<{
-          slotContent?: NormalizedBlock[]
-        }>) {
-          if (Array.isArray(slot.slotContent)) {
-            for (const child of slot.slotContent) {
-              const childKey =
-                (child.sectionKey as string | undefined) ??
-                (child.id as string | undefined)
-              if (childKey) {
-                sectionPositions.current.set(childKey, absoluteY)
-                sectionKeyToIndex.current.set(childKey, parentIndex)
-              }
+      if (block.kind === "container") {
+        for (const slot of block.slots) {
+          for (const child of slot.slotContent) {
+            const childKey = blockKey(child)
+            if (childKey) {
+              sectionPositions.current.set(childKey, absoluteY)
+              sectionKeyToIndex.current.set(childKey, parentIndex)
             }
           }
         }
@@ -180,7 +173,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   if (loading) {
     return (
       <StateScreen header={header}>
-        <ActivityIndicator size="large" color={WATCH_THEME.accent} />
+        <ScreenStateView kind="loading" accent={WATCH_THEME.accent} />
       </StateScreen>
     )
   }
@@ -190,19 +183,22 @@ export function ExperienceRenderer({ slug, header }: Props) {
     // screen — the home screen (which passes a header) is the root, so
     // suppress it there.
     return (
-      <ErrorState
-        message={errorMessage}
-        onRetry={handleRefetch}
-        showBackHint={header == null}
-        header={header}
-      />
+      <StateScreen header={header}>
+        <ScreenStateView
+          kind="error"
+          message={errorMessage}
+          onRetry={handleRefetch}
+          accent={WATCH_THEME.accent}
+          hint={header == null ? "Press menu to go back" : undefined}
+        />
+      </StateScreen>
     )
   }
 
   if (!experience || experience.sections.length === 0) {
     return (
       <StateScreen header={header}>
-        <Text style={styles.emptyText}>No content available</Text>
+        <ScreenStateView kind="empty" message="No content available" />
       </StateScreen>
     )
   }
@@ -238,7 +234,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
           ) : null}
           {experience.sections.map((section, index) => (
             <View
-              key={`${section.kind}-${section.id}-${index}`}
+              key={`${section.kind}-${blockKey(section) ?? "block"}-${index}`}
               onLayout={(e) => {
                 const y = e.nativeEvent.layout.y
                 handleSectionLayout(section, index, y)
@@ -290,38 +286,6 @@ function StateScreen({
   )
 }
 
-function ErrorState({
-  message,
-  onRetry,
-  showBackHint,
-  header,
-}: {
-  message: string
-  onRetry: () => void
-  showBackHint: boolean
-  header?: ReactNode
-}) {
-  const [focused, setFocused] = useState(false)
-
-  return (
-    <StateScreen header={header}>
-      <Text style={styles.errorText}>{message}</Text>
-      <Pressable
-        onPress={onRetry}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        hasTVPreferredFocus
-        style={[styles.retryButton, focused && styles.retryButtonFocused]}
-      >
-        <Text style={styles.retryButtonText}>Try Again</Text>
-      </Pressable>
-      {showBackHint ? (
-        <Text style={styles.backHint}>Press menu to go back</Text>
-      ) : null}
-    </StateScreen>
-  )
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -355,45 +319,5 @@ const styles = StyleSheet.create({
     color: WATCH_THEME.text,
     fontSize: 20,
     fontFamily: "System",
-  },
-  errorText: {
-    color: WATCH_THEME.text,
-    fontSize: 20,
-    fontFamily: "System",
-    marginBottom: 24,
-    textAlign: "center",
-    paddingHorizontal: 40,
-  },
-  retryButton: {
-    backgroundColor: WATCH_THEME.accent,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 24,
-    // Reserve the focus border so toggling its color never shifts layout.
-    borderWidth: scale(3),
-    borderColor: "transparent",
-  },
-  // Matches the home Play/See More CTA: white border + red drop shadow on the
-  // red fill (not a crimson glow).
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    borderColor: "rgba(255,255,255,0.9)",
-    shadowColor: WATCH_THEME.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  retryButtonText: {
-    color: WATCH_THEME.text,
-    fontSize: 18,
-    fontFamily: "System",
-    fontWeight: "600",
-  },
-  backHint: {
-    color: WATCH_THEME.text50,
-    fontSize: 14,
-    fontFamily: "System",
-    marginTop: 16,
   },
 })
