@@ -1,7 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile's config.ts) — mirror
- * any web curation change here until feat-160 moves it to admin. TV cuts WATCH_HOME_PLAYLIST_SEQUENCE
- * + WATCH_HOME_MUX_INSERTS (scarce decode slots); WATCH_HOME_FEATURED_RAIL is TV-only (titleVariants carry web's Mux conditionalOverlays greetings).
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile). Two halves with
+ * different sync obligations — see the LIVE / FROZEN markers on WATCH_HOME_HERO_SOURCE_IDS
+ * and WATCH_HOME_SECTIONS below. (TV cuts the playlist-sequence + Mux-insert configs.)
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on
@@ -89,6 +89,7 @@ export const newBelieverCourse = [
   { id: "8_NBC", limitChildren: 10 },
 ] as const satisfies readonly WatchHomeSourceConfig[]
 
+// LIVE (client-owned): mirror web hero curation here until feat-160 moves it to admin.
 export const WATCH_HOME_HERO_SOURCE_IDS = [
   "1_jf-0-0",
   "2_GOJ-0-0",
@@ -98,6 +99,7 @@ export const WATCH_HOME_HERO_SOURCE_IDS = [
 
 export const WATCH_HOME_COLLECTION_BLACKLIST = new Set(["7_Origins4Connect"])
 
+// FROZEN emergency fallback: the live body is the admin Experience; may drift.
 export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
   {
     id: "home-video-gospels",

@@ -1,5 +1,6 @@
 import { WATCH_HOME_FEATURED_RAIL, WATCH_HOME_HERO_SOURCE_IDS } from "./config"
 import {
+  buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
   resolveFeaturedTitle,
   type WatchHomeChildRelationInput,
@@ -276,5 +277,39 @@ describe("resolveFeaturedTitle — injected clock", () => {
         new Date(2026, 5, 11, 9),
       ),
     ).toBe("Today's Video Picks")
+  })
+})
+
+describe("buildVideoByCoreIdIndex — spans both levels, top-level-wins (KTD4)", () => {
+  it("indexes top-level records AND their children by coreId", () => {
+    const parent = video("collection-a", {
+      children: [childRel("child-1"), childRel("child-2")],
+    })
+    const index = buildVideoByCoreIdIndex([parent])
+    expect(index.get("collection-a")).toBe(parent)
+    // The 20 child-only prod items must resolve — a top-level-only map drops them.
+    expect(index.get("child-1")?.coreId).toBe("child-1")
+    expect(index.get("child-2")?.coreId).toBe("child-2")
+  })
+
+  it("resolves a coreId present both top-level and as a child to the TOP-LEVEL record", () => {
+    const asChildOf = video("outer", { children: [childRel("shared")] })
+    const asTopLevel = video("shared", {
+      label: "SERIES",
+      children: [childRel("grandchild")],
+    })
+    // Child entry inserted first, top-level second → top-level overrides.
+    const index = buildVideoByCoreIdIndex([asChildOf, asTopLevel])
+    const resolved = index.get("shared")
+    expect(resolved).toBe(asTopLevel)
+    // Proof it's the top-level record: it carries its own children (the shallow
+    // child copy does not), so normalizeCard would compute a real childCount.
+    expect(resolved?.children).toHaveLength(1)
+  })
+
+  it("skips records with no coreId", () => {
+    const noCore = video("x", { coreId: null })
+    const index = buildVideoByCoreIdIndex([noCore])
+    expect(index.size).toBe(0)
   })
 })

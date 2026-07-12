@@ -200,7 +200,10 @@ function resolvedChildren(
   return children
 }
 
-function normalizeCard(args: {
+// Exported for the Experience adapter (experienceAdapter.ts): it hydrates each
+// curated item by coreId and builds its card through this same normalizer, so
+// rawLabel/childCount/metaLabel/title stay identical to the config path.
+export function normalizeCard(args: {
   sectionId: string
   sourceId: string
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
@@ -434,6 +437,28 @@ function hasCoreId(video: WatchHomeVideoInput): video is WatchHomeVideoInput & {
   return typeof video.coreId === "string" && video.coreId.length > 0
 }
 
+/**
+ * KTD4: index BOTH the top-level records AND every `children[].child` by coreId, so
+ * the Experience adapter can hydrate a curated item that lives only as another
+ * collection's child (20 of prod's 42 unique item ids). On a coreId present both
+ * ways the TOP-LEVEL record wins (inserted last) so normalizeCard sees `children`
+ * and reports a real childCount. Both the config model and the adapter consume this.
+ */
+export function buildVideoByCoreIdIndex(
+  videos: readonly WatchHomeVideoInput[],
+): Map<string, WatchHomeVideoInput> {
+  const index = new Map<string, WatchHomeVideoInput>()
+  for (const video of videos) {
+    for (const child of resolvedChildren(video)) {
+      if (hasCoreId(child)) index.set(child.coreId, child)
+    }
+  }
+  for (const video of videos) {
+    if (hasCoreId(video)) index.set(video.coreId, video)
+  }
+  return index
+}
+
 export function buildWatchHomeModelFromVideos(args: {
   videos: readonly WatchHomeVideoInput[]
   languageSlug?: string | null
@@ -451,9 +476,7 @@ export function buildWatchHomeModelFromVideos(args: {
         "Ingest source thumbnail overrides into admin/Core image data or configure editor-owned poster assets.",
     },
   ]
-  const videoByCoreId = new Map(
-    args.videos.filter(hasCoreId).map((video) => [video.coreId, video]),
-  )
+  const videoByCoreId = buildVideoByCoreIdIndex(args.videos)
 
   const featured = buildFeatured({ videoByCoreId, languageSlug, missingData })
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })

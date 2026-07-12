@@ -26,6 +26,9 @@ describe("authHeadersForOperation (fleet-protection contract)", () => {
   // consumer:<key> 60/min bucket on admin.
   it("sends NO header on public operations even when a token is set", () => {
     expect(authHeadersForOperation("GetWatchHomeVideos", "k")).toEqual({})
+    // The home Experience query (R13/AE12) is public — a bearer here would pool
+    // the whole fleet into admin's shared consumer:<key> rate-limit bucket.
+    expect(authHeadersForOperation("GetWatchSetting", "k")).toEqual({})
     expect(authHeadersForOperation("GetSeriesBySlug", "k")).toEqual({})
     expect(authHeadersForOperation("GetVideoBySlug", "k")).toEqual({})
     expect(authHeadersForOperation(undefined, "k")).toEqual({})
