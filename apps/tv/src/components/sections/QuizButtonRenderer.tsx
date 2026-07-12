@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { Dimensions, StyleSheet, Text, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { FocusableCard } from "../FocusableCard"
@@ -10,8 +10,14 @@ import type { QuizButtonBlockModel } from "../../lib/normalizer"
 import { isAllowedQuizUrl } from "../../lib/validateUrl"
 
 // ── Quiz gradient (from mobile src/lib/color.ts) ───────────────────────
+// DELIBERATE WATCH_THEME exception (commit 74e7965a) — do NOT auto-migrate this
+// Crimson gradient to WATCH (U4 did once, and it was reverted). 2nd stop = COLORS.primary.
 
-const QUIZ_GRADIENT: readonly [string, string] = ["#E8891C", "#CB333B"]
+const QUIZ_GRADIENT: readonly [string, string] = ["#E8891C", COLORS.primary]
+
+// Constrain the CTA to half the viewport so it reads as a button, not a banner.
+const { width: SCREEN_WIDTH } = Dimensions.get("window")
+const QUIZ_WIDTH = SCREEN_WIDTH / 2
 
 // ── QuizButtonRenderer ─────────────────────────────────────────────────────
 
@@ -33,7 +39,11 @@ export function QuizButtonRenderer({
   return (
     <>
       <View style={styles.sectionOuter}>
-        <FocusableCard onPress={openModal} style={styles.cardOverride}>
+        <FocusableCard
+          onPress={openModal}
+          style={styles.cardOverride}
+          accessibilityLabel={buttonText ?? "Take the quiz"}
+        >
           <LinearGradient
             colors={[...QUIZ_GRADIENT]}
             start={{ x: 0, y: 0.5 }}
@@ -70,8 +80,10 @@ const styles = StyleSheet.create({
   sectionOuter: {
     paddingHorizontal: scale(80),
     paddingVertical: scale(12),
+    alignItems: "center",
   },
   cardOverride: {
+    width: QUIZ_WIDTH,
     backgroundColor: hexToRgba(COLORS.surface, 0),
     borderRadius: scale(16),
     overflow: "hidden",
@@ -95,7 +107,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: "#ffffff",
-    fontSize: scale(14),
+    fontSize: Math.round(scale(14)),
     fontWeight: "800",
     fontFamily: "System",
     letterSpacing: 1.5,
@@ -103,14 +115,14 @@ const styles = StyleSheet.create({
   buttonLabel: {
     flex: 1,
     color: "#ffffff",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(22)),
     fontWeight: "700",
     fontFamily: "System",
     textAlign: "center",
   },
   arrow: {
     color: "#ffffff",
-    fontSize: scale(28),
+    fontSize: Math.round(scale(28)),
     marginLeft: scale(16),
   },
 })

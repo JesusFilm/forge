@@ -1,7 +1,7 @@
 import { useRef } from "react"
 import { ImageBackground, StyleSheet, View } from "react-native"
 
-import { COLORS } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import {
   blockKey,
   type NormalizedBlock,
@@ -15,9 +15,10 @@ export interface SectionWrapperRendererProps {
   parentIndex?: number
 }
 
-// CMS semantic names collapse onto three Crimson Gallery warm-stone tiers
-// so TV sections alternate subtly without introducing blue/purple hues.
-// Raw hex values on section wrappers are intentionally ignored on TV.
+// All CMS semantic names flatten onto the single WATCH_THEME near-black surface.
+// WATCH_THEME exposes no elevation tiers, and Video Details / Home don't alternate
+// section backgrounds, so the old three-tier warm-stone alternation is dropped for
+// near-black consistency. Raw hex values on section wrappers stay ignored on TV.
 type SectionSemanticName =
   | "default"
   | "dark"
@@ -27,12 +28,12 @@ type SectionSemanticName =
   | "purple"
 
 const SECTION_BACKGROUND_COLORS = {
-  default: COLORS.surface,
-  dark: COLORS.surface,
-  primary: COLORS.surfaceContainer,
-  light: COLORS.surfaceContainer,
-  cosmic: COLORS.surfaceContainerHigh,
-  purple: COLORS.surfaceContainerHigh,
+  default: WATCH_THEME.below,
+  dark: WATCH_THEME.below,
+  primary: WATCH_THEME.below,
+  light: WATCH_THEME.below,
+  cosmic: WATCH_THEME.below,
+  purple: WATCH_THEME.below,
 } satisfies Record<SectionSemanticName, string>
 
 function sectionBackgroundColor(value: unknown): string | undefined {
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   imageOverlay: {
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    backgroundColor: WATCH_THEME.scrim(0.35),
   },
   withImage: {
     overflow: "hidden",

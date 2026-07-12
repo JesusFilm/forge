@@ -4,7 +4,7 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
 import type { VideoBlockModel } from "../../lib/normalizer"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { scale } from "../../lib/scale"
 import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
@@ -91,7 +91,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           width: cardWidth,
           height: cardHeight,
           alignSelf: "center",
-          backgroundColor: COLORS.surfaceContainerHigh,
+          backgroundColor: WATCH_THEME.scrim(1),
           borderRadius: 16,
           overflow: "hidden",
         }}
@@ -110,10 +110,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
         {/* Gradient overlay (decorative, not focusable) */}
         <LinearGradient
-          colors={[
-            hexToRgba(COLORS.surfaceContainerHigh, 0),
-            COLORS.surfaceContainerHigh,
-          ]}
+          colors={[WATCH_THEME.scrim(0), WATCH_THEME.scrim(1)]}
           locations={[0.4, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -162,7 +159,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
 const styles = StyleSheet.create({
   thumbnailFallback: {
-    backgroundColor: COLORS.surfaceContainerHighest,
+    backgroundColor: WATCH_THEME.below,
   },
   playIconContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -170,12 +167,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   playIcon: {
-    backgroundColor: hexToRgba("#000000", 0.5),
+    backgroundColor: WATCH_THEME.scrim(0.5),
     justifyContent: "center",
     alignItems: "center",
   },
   playGlyph: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontFamily: "System",
   },
   titleContainer: {
@@ -188,6 +185,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(24),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
   },
 })

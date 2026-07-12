@@ -4,6 +4,8 @@ import { HDate, months } from "@hebcal/hdate"
 
 import type { EasterDatesBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
+import { hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import {
   calculateWesternEaster,
   calculateOrthodoxEaster,
@@ -49,7 +51,7 @@ export function EasterDatesRenderer({
     <View style={styles.outerContainer}>
       <View style={styles.cardShadow}>
         <LinearGradient
-          colors={["#5b9bd5", "#d4a033", "#c0392b"]}
+          colors={[WATCH_THEME.accent, hexToRgba(WATCH_THEME.accent, 0.4)]}
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0 }}
           style={styles.card}
@@ -88,7 +90,7 @@ const styles = StyleSheet.create({
   },
   cardShadow: {
     borderRadius: scale(16),
-    shadowColor: "#000",
+    shadowColor: WATCH_THEME.scrim(1),
     shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.2,
     shadowRadius: scale(12),
@@ -97,6 +99,9 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: scale(16),
     overflow: "hidden",
+    // Near-black base under the accent ramp: the gradient's translucent tail
+    // reads as a darkened accent rather than washing to the page color.
+    backgroundColor: WATCH_THEME.scrim(1),
     paddingHorizontal: scale(40),
     paddingVertical: scale(32),
   },
@@ -104,7 +109,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(32),
     fontWeight: "700",
-    color: "rgba(0, 0, 0, 0.85)",
+    color: WATCH_THEME.text,
     marginBottom: scale(24),
   },
   content: {
@@ -117,19 +122,19 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(18),
     fontWeight: "500",
-    color: "rgba(0, 0, 0, 0.5)",
+    color: WATCH_THEME.text66,
   },
   datePrimary: {
     fontFamily: "System",
     fontSize: scale(28),
     fontWeight: "800",
-    color: "rgba(0, 0, 0, 0.85)",
+    color: WATCH_THEME.text,
     letterSpacing: -0.5,
   },
   dateSecondary: {
     fontFamily: "System",
     fontSize: scale(22),
     fontWeight: "800",
-    color: "rgba(0, 0, 0, 0.75)",
+    color: WATCH_THEME.text82,
   },
 })

@@ -5,7 +5,8 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import type { NavigationCarouselBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
@@ -31,7 +32,7 @@ export interface NavigationCarouselRendererProps {
 function NavCard({ item }: { item: NavItem }) {
   const { scrollToSection } = useExperienceContext()
   const imageSource = resolveImageUrl(item.imageUrl ?? null)
-  const bgColor = item.backgroundColor ?? "#292524"
+  const bgColor = item.backgroundColor ?? WATCH_THEME.scrim(1)
 
   return (
     <FocusableCard
@@ -48,7 +49,7 @@ function NavCard({ item }: { item: NavItem }) {
         />
       )}
       <LinearGradient
-        colors={[hexToRgba("#000000", 0), hexToRgba("#000000", 0.7)]}
+        colors={[WATCH_THEME.scrim(0), WATCH_THEME.scrim(0.7)]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -120,8 +121,6 @@ function Separator() {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const HEADING_FONT_SIZE = scale(24)
-
 const CATEGORY_FONT_SIZE = scale(14)
 
 const TITLE_FONT_SIZE = scale(20)
@@ -131,11 +130,7 @@ const styles = StyleSheet.create({
     marginBottom: scale(32),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: HEADING_FONT_SIZE,
-    fontWeight: "600",
-    color: COLORS.muted,
-    letterSpacing: 0.5,
+    ...SECTION_HEADING,
     marginBottom: scale(12),
     paddingHorizontal: scale(80),
   },
@@ -163,7 +158,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: CATEGORY_FONT_SIZE,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.8)",
+    color: WATCH_THEME.text82,
     letterSpacing: 1.2,
     marginBottom: scale(4),
   },
@@ -171,7 +166,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: TITLE_FONT_SIZE,
     fontWeight: "700",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     lineHeight: scale(26),
   },
 })

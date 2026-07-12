@@ -17,7 +17,6 @@ import {
   CHAT_WITH_PERSON_URL,
 } from "../../lib/bibleContent"
 import type { RelatedQuestionsBlockModel } from "../../lib/normalizer"
-import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { FOCUS_RING_COLOR, FOCUS_RING_WIDTH } from "../focus/focusVisual"
@@ -307,13 +306,13 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(22),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     marginRight: scale(12),
   },
   chevron: {
     fontFamily: "System",
     fontSize: scale(24),
-    color: COLORS.muted,
+    color: WATCH_THEME.text50,
   },
   fallbackContainer: {
     paddingTop: EXPANDED_TOP_GAP,
@@ -323,7 +322,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: Math.round(scale(20)),
     lineHeight: Math.round(scale(28)),
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     marginBottom: scale(16),
   },
   fallbackButtonRow: {
@@ -353,7 +352,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(20),
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text82,
     lineHeight: scale(30),
     marginTop: EXPANDED_TOP_GAP,
     paddingBottom: scale(20),

@@ -5,7 +5,8 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import type { MediaCollectionBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
@@ -24,8 +25,8 @@ const CARD_HEIGHT = scale(347)
 const CARD_GAP = scale(24)
 
 const GRADIENT_COLORS: [string, string] = [
-  hexToRgba("#000000", 0),
-  hexToRgba("#000000", 0.85),
+  WATCH_THEME.scrim(0),
+  WATCH_THEME.scrim(0.85),
 ]
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -145,7 +146,6 @@ function Separator() {
 const fontSize14 = scale(14)
 const fontSize16 = scale(16)
 const fontSize18 = scale(18)
-const fontSize24 = scale(24)
 
 const styles = StyleSheet.create({
   container: {
@@ -155,17 +155,14 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize16,
     fontWeight: "600",
-    color: COLORS.muted,
+    color: WATCH_THEME.accent,
     letterSpacing: 1,
     textTransform: "uppercase",
     paddingHorizontal: scale(80),
     marginBottom: scale(4),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: fontSize24,
-    fontWeight: "700",
-    color: COLORS.text,
+    ...SECTION_HEADING,
     paddingHorizontal: scale(80),
     marginBottom: scale(4),
   },
@@ -173,7 +170,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize18,
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     paddingHorizontal: scale(80),
     marginBottom: scale(12),
   },
@@ -188,7 +185,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.scrim(1),
     borderRadius: scale(16),
     overflow: "hidden",
   },
@@ -198,13 +195,13 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   thumbnailFallback: {
-    backgroundColor: COLORS.surfaceContainerHighest,
+    backgroundColor: WATCH_THEME.cardFallback,
   },
   badge: {
     position: "absolute",
     top: scale(8),
     right: scale(8),
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: WATCH_THEME.scrim(0.6),
     borderRadius: scale(6),
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
@@ -213,7 +210,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize14,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: WATCH_THEME.text,
   },
   textContent: {
     position: "absolute",
@@ -225,7 +222,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize14,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.9)",
+    color: WATCH_THEME.text82,
     letterSpacing: 0.8,
     marginBottom: scale(2),
   },
@@ -233,6 +230,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize18,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: WATCH_THEME.text,
   },
 })

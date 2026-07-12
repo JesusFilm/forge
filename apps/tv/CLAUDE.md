@@ -38,8 +38,8 @@ surface.
 
 ### Crimson Gallery (`COLORS` in `src/lib/colors.ts`)
 
-Governs the SDUI experience renderer, series, and the remaining legacy surfaces.
-From the Stitch mockups:
+Governs series and the remaining legacy surfaces. (The SDUI Experience Details
+renderer moved to WATCH_THEME — see below.) From the Stitch mockups:
 
 - Background: `#161311` (warm stone, never pure black)
 - Surface container: `#221F1D`
@@ -54,13 +54,21 @@ From the Stitch mockups:
 
 ### WATCH_THEME (`src/components/watch/watchDetailTheme.ts`)
 
-Governs the watch detail, Home, and Search screens. Ported from the Claude
-Design handoff and adopted across those surfaces — a deliberate product decision:
+Governs the watch detail, Home, Search, and Experience Details (SDUI experience)
+screens. Ported from the Claude Design handoff and adopted across those surfaces
+— a deliberate product decision:
 
 - Primary accent: `#E1241E` (brighter red than Crimson Gallery)
 - Near-black surfaces/scrims (`NEAR_BLACK` = `#0a0a0b`); never warm stone
 - Focus state: white-fill focus with near-black ink (white ring, not crimson glow)
 - Frosted-glass pills approximated with translucent white fill (no backdrop blur on TV)
+- Experience Details hero: unlike the muted watch/Home/Search heroes, it autoplays
+  _with sound_ and pauses when scrolled off-screen or on nav-away/background — a
+  deliberate Apple-TV-style divergence. `VideoBackdrop` gates it via its `muted` /
+  `active` props; siblings keep the muted, overlay-only defaults.
+- Experience Details quiz button (`QuizButtonRenderer`) is a deliberate Crimson-palette
+  exception in this WATCH page — its orange→crimson gradient is intentional; do NOT
+  auto-migrate it to WATCH (a U4 sweep did once and it was reverted).
 
 `SEARCH_THEME` (`src/components/search/searchTheme.ts`) extends WATCH_THEME with
 search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).

@@ -1,14 +1,29 @@
-// Shared SDUI renderer for one Experience, used by both home and detail
-// screens. Centralized deliberately: the home previously diverged onto the
-// editor-gated Query.experiences and broke for the public TV app.
+// SDUI renderer for one Experience — the /experience/[slug] detail screen.
+// Uses WATCH_THEME (near-black) to match Video Details + Home; Crimson Gallery
+// COLORS remain for series + legacy surfaces only.
 import { useQuery } from "@apollo/client/react"
-import React, { useCallback, useMemo, useRef, type ReactNode } from "react"
-import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native"
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
+import {
+  Dimensions,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native"
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 
 import { ScreenStateView } from "./ScreenStateView"
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
-import { COLORS } from "../lib/colors"
+import { HeroVisibilityProvider } from "./sections/heroVisibility"
+import { HERO_PEEK, WATCH_THEME } from "./watch/watchDetailTheme"
 import {
   blockKey,
   normalizeExperience,
@@ -16,6 +31,12 @@ import {
 } from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+// INVARIANT: one videoHero, authored FIRST (y≈0 when visible) — this top-anchored
+// threshold + the shared heroOnScreen boolean assume it; a non-first/second hero would
+// invert the pause or double audio. 60% margin so the first-card reveal-scroll won't trip it.
+const HERO_OFFSCREEN_THRESHOLD = (SCREEN_HEIGHT - HERO_PEEK) * 0.6
 
 type Props = {
   /** Experience slug to load via the public experienceBySlug query. */
@@ -137,10 +158,22 @@ export function ExperienceRenderer({ slug, header }: Props) {
     }
   }, [])
 
+  // Hero scroll-off pause (R10), read via HeroVisibilityProvider. onScroll firing
+  // during tvOS focus-scroll is unproven — if the sim shows it doesn't, derive
+  // on-screen from the focused-section index instead (U8 fallback).
+  const [heroOnScreen, setHeroOnScreen] = useState(true)
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = e.nativeEvent.contentOffset.y < HERO_OFFSCREEN_THRESHOLD
+      setHeroOnScreen((prev) => (prev === next ? prev : next))
+    },
+    [],
+  )
+
   if (loading) {
     return (
       <StateScreen header={header}>
-        <ScreenStateView kind="loading" accent={COLORS.primary} />
+        <ScreenStateView kind="loading" accent={WATCH_THEME.accent} />
       </StateScreen>
     )
   }
@@ -155,7 +188,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
           kind="error"
           message={errorMessage}
           onRetry={handleRefetch}
-          accent={COLORS.primary}
+          accent={WATCH_THEME.accent}
           hint={header == null ? "Press menu to go back" : undefined}
         />
       </StateScreen>
@@ -179,49 +212,53 @@ export function ExperienceRenderer({ slug, header }: Props) {
       registerNestedLayout={handleNestedLayout}
       refetch={handleRefetch}
     >
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        // Header (when present) is the sticky first child, prepended outside
-        // the section .map(), so scroll-to-section indices stay 0-based.
-        stickyHeaderIndices={header != null ? [0] : undefined}
-      >
-        {header != null ? (
-          <View
-            onLayout={(e) => {
-              headerHeightRef.current = e.nativeEvent.layout.height
-            }}
-          >
-            {header}
-          </View>
-        ) : null}
-        {experience.sections.map((section, index) => (
-          <View
-            key={`${section.kind}-${blockKey(section) ?? "block"}-${index}`}
-            onLayout={(e) => {
-              const y = e.nativeEvent.layout.y
-              handleSectionLayout(section, index, y)
-              // Store the Y so SectionWrapperRenderer can compute
-              // absolute positions for nested children
-              sectionPositions.current.set(`__parentY_${index}`, y)
-            }}
-          >
-            {/* Invisible focus anchor — receives focus after scrollToSection
+      <HeroVisibilityProvider value={heroOnScreen}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
+          // Header (when present) is the sticky first child, prepended outside
+          // the section .map(), so scroll-to-section indices stay 0-based.
+          stickyHeaderIndices={header != null ? [0] : undefined}
+        >
+          {header != null ? (
+            <View
+              onLayout={(e) => {
+                headerHeightRef.current = e.nativeEvent.layout.height
+              }}
+            >
+              {header}
+            </View>
+          ) : null}
+          {experience.sections.map((section, index) => (
+            <View
+              key={`${section.kind}-${blockKey(section) ?? "block"}-${index}`}
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y
+                handleSectionLayout(section, index, y)
+                // Store the Y so SectionWrapperRenderer can compute
+                // absolute positions for nested children
+                sectionPositions.current.set(`__parentY_${index}`, y)
+              }}
+            >
+              {/* Invisible focus anchor — receives focus after scrollToSection
                 so the next D-pad press starts from this section, not the
                 NavigationCarousel card that triggered the scroll. */}
-            <Pressable
-              ref={(ref) => {
-                if (ref) focusAnchors.current.set(index, ref)
-                else focusAnchors.current.delete(index)
-              }}
-              style={styles.focusAnchor}
-              accessible={false}
-            />
-            <SectionDispatcher section={section} parentIndex={index} />
-          </View>
-        ))}
-      </ScrollView>
+              <Pressable
+                ref={(ref) => {
+                  if (ref) focusAnchors.current.set(index, ref)
+                  else focusAnchors.current.delete(index)
+                }}
+                style={styles.focusAnchor}
+                accessible={false}
+              />
+              <SectionDispatcher section={section} parentIndex={index} />
+            </View>
+          ))}
+        </ScrollView>
+      </HeroVisibilityProvider>
     </ExperienceProvider>
   )
 }
@@ -252,15 +289,17 @@ function StateScreen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   centered: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: WATCH_THEME.below,
   },
   list: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   listContent: {
     // Lets the last section scroll fully to the viewport top; without it
@@ -277,7 +316,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   emptyText: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontSize: 20,
     fontFamily: "System",
   },
