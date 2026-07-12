@@ -31,7 +31,9 @@ export type VideoHeroRendererProps = {
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const { state: playerState } = useVideoPlayerContext()
-  // Pauses the hero when it scrolls substantially off-screen (R10).
+  // Pauses the hero when it scrolls off-screen (R10). heroOnScreen is ONE shared
+  // top-anchored scalar assuming a single videoHero authored FIRST — see
+  // ExperienceRenderer's HERO_OFFSCREEN_THRESHOLD before adding a second hero.
   const heroOnScreen = useHeroOnScreen()
   // Screen-focus gate (R15): false on forward-nav/Back. The stacked screen stays
   // mounted, so nav-away must release the decode slot (folded into overlayVisible

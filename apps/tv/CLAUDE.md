@@ -62,6 +62,9 @@ screens. Ported from the Claude Design handoff and adopted across those surfaces
   _with sound_ and pauses when scrolled off-screen or on nav-away/background — a
   deliberate Apple-TV-style divergence. `VideoBackdrop` gates it via its `muted` /
   `active` props; siblings keep the muted, overlay-only defaults.
+- Experience Details quiz button (`QuizButtonRenderer`) is a deliberate Crimson-palette
+  exception in this WATCH page — its orange→crimson gradient is intentional; do NOT
+  auto-migrate it to WATCH (a U4 sweep did once and it was reverted).
 
 `SEARCH_THEME` (`src/components/search/searchTheme.ts`) extends WATCH_THEME with
 search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).

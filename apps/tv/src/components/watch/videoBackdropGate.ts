@@ -2,6 +2,8 @@
 // behavioral contract (R9/R10/R11/R15, AE1/AE2/AE4) is unit-testable without a
 // render harness — apps/tv has none by convention (see WatchSessionProvider.test).
 
+import type { AppStateStatus } from "react-native"
+
 export type BackdropGateInputs = {
   /** Muted consumers (watch/Home/Search) opt out of lifecycle teardown. */
   muted: boolean
@@ -41,4 +43,13 @@ export function computeBackdropGate({
     shouldPlay: active && !overlayVisible && appGate,
     shouldMountVideo: !overlayVisible && appGate,
   }
+}
+
+/**
+ * True unless the app is genuinely backgrounded. Transient "inactive" (tvOS
+ * Control Center, Siri, app-switcher peek) is NOT teardown — only "background"
+ * releases the unmuted hero's decode slot + audio (R15).
+ */
+export function isAppStateForeground(state: AppStateStatus): boolean {
+  return state !== "background"
 }

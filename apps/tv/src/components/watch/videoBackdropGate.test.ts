@@ -1,4 +1,4 @@
-import { computeBackdropGate } from "./videoBackdropGate"
+import { computeBackdropGate, isAppStateForeground } from "./videoBackdropGate"
 
 // The unmuted Experience hero is the only gate combination that hinges on all
 // four inputs; the muted siblings must reduce to today's overlay-only behavior.
@@ -61,5 +61,19 @@ describe("computeBackdropGate — unmuted Experience hero", () => {
       computeBackdropGate({ ...hero, active: false, appForeground: true })
         .shouldPlay,
     ).toBe(false)
+  })
+})
+
+describe("isAppStateForeground", () => {
+  it("active is foreground", () => {
+    expect(isAppStateForeground("active")).toBe(true)
+  })
+
+  it("background is NOT foreground — tears down the sound hero (R15)", () => {
+    expect(isAppStateForeground("background")).toBe(false)
+  })
+
+  it("transient inactive stays foreground — Control Center/Siri is not teardown", () => {
+    expect(isAppStateForeground("inactive")).toBe(true)
   })
 })

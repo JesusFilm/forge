@@ -17,7 +17,7 @@ import { useVideoPlayer, VideoView } from "expo-video"
 import { hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
-import { computeBackdropGate } from "./videoBackdropGate"
+import { computeBackdropGate, isAppStateForeground } from "./videoBackdropGate"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -86,15 +86,15 @@ export function VideoBackdrop({
   const hasValidStream = validStream !== null
 
   // Background release for the sound hero's slot + audio (R15). Only the unmuted
-  // hero subscribes; "inactive" (app-switcher peek, Siri) is NOT teardown — mirror
-  // VideoPlayer.tsx, tear down only on genuine "background" (screensaver a known gap).
+  // hero subscribes; transient "inactive" (app-switcher peek, Siri, Control Center)
+  // is NOT teardown — only genuine "background" releases (screensaver a known gap).
   const [appForeground, setAppForeground] = useState(
-    AppState.currentState !== "background",
+    isAppStateForeground(AppState.currentState),
   )
   useEffect(() => {
     if (muted) return
     const sub = AppState.addEventListener("change", (next) => {
-      setAppForeground(next !== "background")
+      setAppForeground(isAppStateForeground(next))
     })
     return () => sub.remove()
   }, [muted])
