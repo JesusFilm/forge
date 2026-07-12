@@ -12,6 +12,7 @@ import {
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
+import { pickCardImage } from "../cardImage"
 
 /**
  * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
@@ -124,16 +125,7 @@ function labelText(label: string | null | undefined): string {
 }
 
 function pickAdminImage(images: readonly WatchHomeImageInput[]): string | null {
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
-  }
-  return null
+  return pickCardImage(images, "card")
 }
 
 /**
