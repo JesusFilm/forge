@@ -336,11 +336,11 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web and mobile now render this Experience as their home body (published on prod admin, verified 2026-07-08), while TV still renders the code-defined Home Curation — consolidating TV onto the same Homepage Experience is the remaining move.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.
 
 ### Home Curation
 
-The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web and mobile now source their rows from the Homepage Experience and keep only the featured hero pool in code; TV still renders the full code set (hero plus rows). The featured hero pool stays code-defined and mirrored across clients, but the row sections are no longer mirrored where the Experience is the source.
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
 
 ### Series-Shaped
 
