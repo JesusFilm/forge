@@ -11,7 +11,7 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { scale } from "../../lib/scale"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { SecondaryPill } from "../watch/DetailsActionRow"
 
 type SeriesActionRowProps = {
@@ -114,7 +114,9 @@ function TrailerPill({
   onPress: () => void
   hasTVPreferredFocus: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
   const animatedStyle = useMemo(
@@ -123,9 +125,9 @@ function TrailerPill({
         inputRange: [0, 1],
         outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.9)"],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable

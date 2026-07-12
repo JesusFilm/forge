@@ -22,6 +22,21 @@ describe("focus visual contract", () => {
     })
     expect(resolveFocusVisual("cta")).toMatchObject({ magnify: 1.05, lift: 0 })
     expect(resolveFocusVisual("cta").shadow.color).toBe("accent")
+    expect(resolveFocusVisual("pill")).toMatchObject({
+      magnify: 1.06,
+      lift: scale(4),
+    })
+    expect(resolveFocusVisual("tab")).toMatchObject({ magnify: 1.07, lift: 0 })
+    expect(resolveFocusVisual("key")).toMatchObject({ magnify: 1.1, lift: 0 })
+    expect(resolveFocusVisual("key").shadow).toMatchObject({
+      radius: scale(14),
+      opacity: 0.7,
+      elevation: 8,
+    })
+    expect(resolveFocusVisual("option")).toMatchObject({
+      magnify: 1.015,
+      lift: 0,
+    })
     expect(resolveFocusVisual("tile")).toMatchObject({ magnify: 1.02 })
     expect(resolveFocusVisual("row")).toMatchObject({ magnify: 1, lift: 0 })
   })

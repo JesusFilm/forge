@@ -29,7 +29,24 @@ export type FocusVisualSpec = {
   shadow: FocusShadowSpec
 }
 
-export type FocusVisualRole = "card" | "thumb" | "cta" | "tile" | "row"
+export type FocusVisualRole =
+  | "card"
+  | "thumb"
+  | "cta"
+  | "pill"
+  | "tab"
+  | "key"
+  | "option"
+  | "tile"
+  | "row"
+
+const NO_SHADOW: FocusShadowSpec = {
+  color: "neutral",
+  radius: 0,
+  opacity: 0,
+  offsetY: 0,
+  elevation: 0,
+}
 
 const PRESETS: Record<FocusVisualRole, FocusVisualSpec> = {
   // Browse/SDUI cards (FocusableCard default): inset white ring + neutral drop.
@@ -68,6 +85,29 @@ const PRESETS: Record<FocusVisualRole, FocusVisualSpec> = {
       elevation: 8,
     },
   },
+  // Glass/CTA pills (Play, Trailer, See-more chevron, in-player controls):
+  // lift-and-magnify; fills/rings cross-fade at the site off `progress`.
+  pill: {
+    magnify: 1.06,
+    lift: scale(4),
+    shadow: NO_SHADOW,
+  },
+  // Top-bar tabs: bigger pop, no lift; invert fill + shadow stay at the site.
+  tab: { magnify: 1.07, lift: 0, shadow: NO_SHADOW },
+  // Keyboard keys: strongest pop on the smallest target, white-fill invert.
+  key: {
+    magnify: 1.1,
+    lift: 0,
+    shadow: {
+      color: "neutral",
+      radius: scale(14),
+      opacity: 0.7,
+      offsetY: scale(12),
+      elevation: 8,
+    },
+  },
+  // Menu option rows: the white fill is the focus signal, near-imperceptible grow.
+  option: { magnify: 1.015, lift: 0, shadow: NO_SHADOW },
   // Large ambient tiles (mission QR): subtle grow, neutral drop.
   tile: {
     magnify: 1.02,
@@ -81,17 +121,7 @@ const PRESETS: Record<FocusVisualRole, FocusVisualSpec> = {
     },
   },
   // Full-width rows (related questions): ring only, no motion.
-  row: {
-    magnify: 1,
-    lift: 0,
-    shadow: {
-      color: "neutral",
-      radius: 0,
-      opacity: 0,
-      offsetY: 0,
-      elevation: 0,
-    },
-  },
+  row: { magnify: 1, lift: 0, shadow: NO_SHADOW },
 }
 
 export function resolveFocusVisual(

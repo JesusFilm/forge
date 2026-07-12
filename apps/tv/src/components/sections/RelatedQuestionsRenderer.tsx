@@ -24,7 +24,6 @@ import { FOCUS_RING_COLOR, FOCUS_RING_WIDTH } from "../focus/focusVisual"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { LinkModal } from "../LinkModal"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 
@@ -76,7 +75,9 @@ function FallbackPill({
   // Standardized invert-on-focus pill (matches DetailsActionRow's SecondaryPill):
   // dark glass + white ink at rest -> white fill + near-black ink/icon on focus.
   // No crimson glow — the old FocusableCard focusRing="crimson" exception is gone.
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   const fillStyle = useMemo(
     () => ({
       backgroundColor: progress.interpolate({
@@ -87,9 +88,9 @@ function FallbackPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   const ink = useMemo(
     () =>

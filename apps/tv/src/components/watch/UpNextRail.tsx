@@ -22,11 +22,10 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { WATCH_THEME } from "./watchDetailTheme"
 import { SECTION_HEADING } from "../sections/sectionHeading"
 import {
-  focusTransform,
   THUMB_SHADOW,
-  useFocusAnimation,
+  useFocusVisual,
   useThumbFocusRing,
-} from "./useFocusAnimation"
+} from "../focus/useFocusVisual"
 
 const CARD_WIDTH = scale(360)
 const THUMB_HEIGHT = scale(168.75) // 32:15 (2.13:1), matches the cinematic art
@@ -83,20 +82,15 @@ function EpisodeCard({
 }) {
   // Focus eases in (no "blink"): the card lifts + magnifies, the white ring fades
   // in, and the play overlay fades in over ~180ms.
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("thumb", {
+    nativeDriver: false,
+  })
   const title = sibling.title ?? sibling.slug
   // CMS poster URL is untrusted — sanitize before it reaches expo-image.
   const poster =
     sibling.posterUrl != null ? resolveImageUrl(sibling.posterUrl) : null
 
-  // Memoized: progress is a stable ref, so the interpolations are built once
-  // rather than on every focus/blur re-render.
-  const cardStyle = useMemo(
-    () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
-    }),
-    [progress],
-  )
+  const cardStyle = useMemo(() => ({ transform }), [transform])
   const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
     progress,
     CARD_WIDTH,

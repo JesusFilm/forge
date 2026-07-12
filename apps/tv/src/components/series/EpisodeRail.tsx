@@ -24,11 +24,10 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "../sections/sectionHeading"
 import {
-  focusTransform,
   THUMB_SHADOW,
-  useFocusAnimation,
+  useFocusVisual,
   useThumbFocusRing,
-} from "../watch/useFocusAnimation"
+} from "../focus/useFocusVisual"
 import { episodeHref, resolveEpisodePath } from "./episodeRouting"
 
 const CARD_WIDTH = scale(360)
@@ -133,7 +132,9 @@ const EpisodeCard = memo(function EpisodeCard({
 }) {
   // Focus eases in (no "blink"): the card lifts + magnifies, the white ring
   // fades in, and the overlay icon fades in over ~180ms.
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("thumb", {
+    nativeDriver: false,
+  })
   const title = episode.title ?? episode.slug
   // A series-shaped card opens a nested collection, not a video — its eyebrow
   // shows the shape label and its focus overlay a stack icon, so the routing
@@ -149,14 +150,7 @@ const EpisodeCard = memo(function EpisodeCard({
     [episode.posterUrl],
   )
 
-  // Memoized: progress is a stable ref, so the interpolations are built once
-  // rather than on every focus/blur re-render.
-  const cardStyle = useMemo(
-    () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
-    }),
-    [progress],
-  )
+  const cardStyle = useMemo(() => ({ transform }), [transform])
   const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
     progress,
     CARD_WIDTH,
