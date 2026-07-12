@@ -94,8 +94,8 @@ export function HomeScreen() {
   // ── Hero queue (referentially stable per model identity) ──────────────────
 
   // AsyncStorage carousel memory (web parity). playedIdsRef is a ref so it only
-  // feeds queue REBUILDS, not the live pager; it intentionally duplicates the
-  // reducer's playedIds (reducer signals wrap; ref feeds rebuilds, resets on wrap).
+  // feeds queue REBUILDS, not the live pager; the build signals exhaustion via
+  // queue.wrapped and the ref resets then.
   const {
     playedIdsRef,
     startPoolIndexRef,

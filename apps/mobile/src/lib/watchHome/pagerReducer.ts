@@ -45,10 +45,6 @@ export type PagerState = {
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null
-  /** Slides the pager has left, fed back into queue rebuilds on wrap. */
-  playedIds: ReadonlySet<string>
-  /** Times the queue wrapped past its end back to index 0. */
-  wrapCount: number
 }
 
 export type PagerEvent =
@@ -86,8 +82,6 @@ export function createInitialPagerState(
     pendingSwap: false,
     pendingSkip: false,
     suspended: null,
-    playedIds: new Set<string>(),
-    wrapCount: 0,
   }
 }
 
@@ -117,16 +111,6 @@ export function activeSlide(state: PagerState): WatchHomeSlide | null {
 
 // ── Transitions ─────────────────────────────────────────────────────────────
 
-function withPlayed(
-  playedIds: ReadonlySet<string>,
-  id: string | undefined,
-): ReadonlySet<string> {
-  if (!id || playedIds.has(id)) return playedIds
-  const next = new Set(playedIds)
-  next.add(id)
-  return next
-}
-
 /** User-driven jump (swipe settle or chip tap). */
 function moveTo(state: PagerState, rawIndex: number): PagerState {
   if (state.slides.length === 0) return state
@@ -136,7 +120,6 @@ function moveTo(state: PagerState, rawIndex: number): PagerState {
     ...state,
     currentIndex: index,
     phase: "poster",
-    playedIds: withPlayed(state.playedIds, activeSlide(state)?.id),
     // A move during an in-flight swap can't cancel the native replaceAsync;
     // it records a pending swap for the new slide instead.
     pendingSwap: state.pendingSwap || state.swapInFlight,
@@ -154,9 +137,7 @@ function advance(state: PagerState): PagerState {
   return {
     ...state,
     currentIndex: wrapped ? 0 : next,
-    wrapCount: wrapped ? state.wrapCount + 1 : state.wrapCount,
     phase: "poster",
-    playedIds: withPlayed(state.playedIds, activeSlide(state)?.id),
     pendingSwap: state.pendingSwap || state.swapInFlight,
   }
 }
