@@ -17,7 +17,11 @@ import { RetryButton } from "./RetryButton"
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
 import { COLORS } from "../lib/colors"
-import { normalizeExperience, type NormalizedBlock } from "../lib/normalizer"
+import {
+  blockKey,
+  normalizeExperience,
+  type NormalizedBlock,
+} from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
 
@@ -46,7 +50,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
 
   const experience = useMemo(() => {
     if (!rawExperience) return null
-    return normalizeExperience(rawExperience as Record<string, unknown>)
+    return normalizeExperience(rawExperience)
   }, [rawExperience])
 
   const errorMessage = error?.message ?? null
@@ -69,9 +73,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   /** Register the Y position and index for a top-level section. */
   const handleSectionLayout = useCallback(
     (section: NormalizedBlock, index: number, y: number) => {
-      const key =
-        (section.sectionKey as string | undefined) ??
-        (section.id as string | undefined)
+      const key = blockKey(section)
       if (key) {
         sectionPositions.current.set(key, y)
         sectionKeyToIndex.current.set(key, index)
@@ -95,27 +97,19 @@ export function ExperienceRenderer({ slug, header }: Props) {
       const parentY = sectionPositions.current.get(parentKey) ?? 0
       const absoluteY = parentY + offsetWithinSection
 
-      const key =
-        (block.sectionKey as string | undefined) ??
-        (block.id as string | undefined)
+      const key = blockKey(block)
       if (key) {
         sectionPositions.current.set(key, absoluteY)
         sectionKeyToIndex.current.set(key, parentIndex)
       }
       // Also index container slot children at the container's Y
-      if (block.kind === "container" && Array.isArray(block.slots)) {
-        for (const slot of block.slots as Array<{
-          slotContent?: NormalizedBlock[]
-        }>) {
-          if (Array.isArray(slot.slotContent)) {
-            for (const child of slot.slotContent) {
-              const childKey =
-                (child.sectionKey as string | undefined) ??
-                (child.id as string | undefined)
-              if (childKey) {
-                sectionPositions.current.set(childKey, absoluteY)
-                sectionKeyToIndex.current.set(childKey, parentIndex)
-              }
+      if (block.kind === "container") {
+        for (const slot of block.slots) {
+          for (const child of slot.slotContent) {
+            const childKey = blockKey(child)
+            if (childKey) {
+              sectionPositions.current.set(childKey, absoluteY)
+              sectionKeyToIndex.current.set(childKey, parentIndex)
             }
           }
         }
@@ -209,7 +203,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
         ) : null}
         {experience.sections.map((section, index) => (
           <View
-            key={`${section.kind}-${section.id}-${index}`}
+            key={`${section.kind}-${blockKey(section) ?? "block"}-${index}`}
             onLayout={(e) => {
               const y = e.nativeEvent.layout.y
               handleSectionLayout(section, index, y)

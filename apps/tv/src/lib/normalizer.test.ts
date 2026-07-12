@@ -1,4 +1,4 @@
-import { normalizeExperience } from "./normalizer"
+import { normalizeExperience, type RawWatchExperience } from "./normalizer"
 
 // Admin sends a flat container: ContainerSlotBlock markers divide content[] into
 // side-by-side slots. These tests pin the reconstruction that ContainerRenderer
@@ -13,7 +13,13 @@ function experienceWith(content: Record<string, unknown>[]) {
     blocks: [
       { __typename: "ContainerBlock", sectionKey: "easter-row", content },
     ],
-  })
+  } as unknown as RawWatchExperience)
+}
+
+/** Narrow a normalized section to its container slots (throws if not one). */
+function slotsOf(section: { kind: string }) {
+  if (section.kind !== "container") throw new Error("expected container")
+  return (section as unknown as { slots: Array<Record<string, unknown>> }).slots
 }
 
 describe("normalizeExperience — flat container slots", () => {
@@ -25,7 +31,7 @@ describe("normalizeExperience — flat container slots", () => {
       { __typename: "VideoBlock", videoId: "v1" },
     ])
 
-    const slots = sections[0].slots as Array<Record<string, unknown>>
+    const slots = slotsOf(sections[0])
     expect(slots).toHaveLength(2)
 
     const first = slots[0].slotContent as Array<{ kind: string }>
@@ -47,7 +53,7 @@ describe("normalizeExperience — flat container slots", () => {
       { __typename: "TextBlock", heading: "Right" },
     ])
 
-    const slots = sections[0].slots as Array<Record<string, unknown>>
+    const slots = slotsOf(sections[0])
     expect(slots[0].gridSpan).toBe(7)
     expect(slots[0].spans).toEqual({ xl: 8, md: 6 })
     expect(slots[1].gridSpan).toBe(5)
@@ -60,7 +66,7 @@ describe("normalizeExperience — flat container slots", () => {
       { __typename: "VideoBlock", videoId: "v1" },
     ])
 
-    const slots = sections[0].slots as Array<Record<string, unknown>>
+    const slots = slotsOf(sections[0])
     expect(slots).toHaveLength(1)
     expect(slots[0].slotContent).toHaveLength(2)
   })
@@ -73,7 +79,7 @@ describe("normalizeExperience — flat container slots", () => {
       { __typename: "VideoBlock", videoId: "v1" },
     ])
 
-    const slots = sections[0].slots as Array<Record<string, unknown>>
+    const slots = slotsOf(sections[0])
     expect(slots).toHaveLength(1)
     const only = slots[0].slotContent as Array<{ kind: string }>
     expect(only[0].kind).toBe("video")

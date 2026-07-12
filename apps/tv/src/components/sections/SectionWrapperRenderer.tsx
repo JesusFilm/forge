@@ -2,12 +2,16 @@ import { useRef } from "react"
 import { ImageBackground, StyleSheet, View } from "react-native"
 
 import { COLORS } from "../../lib/colors"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import {
+  blockKey,
+  type NormalizedBlock,
+  type SectionWrapperBlockModel,
+} from "../../lib/normalizer"
 import { SectionDispatcher } from "./SectionDispatcher"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 export interface SectionWrapperRendererProps {
-  section: NormalizedBlock
+  section: SectionWrapperBlockModel
   parentIndex?: number
 }
 
@@ -45,8 +49,7 @@ export function SectionWrapperRenderer({
 }: SectionWrapperRendererProps) {
   const { registerNestedLayout } = useExperienceContext()
   const wrapperOffsetRef = useRef(0)
-  const content =
-    (section.sectionContent as NormalizedBlock[] | undefined) ?? []
+  const content: NormalizedBlock[] = section.sectionContent ?? []
 
   if (content.length === 0) return null
 
@@ -62,7 +65,7 @@ export function SectionWrapperRenderer({
   ]
   const children = content.map((child, index) => (
     <View
-      key={`${child.kind}-${child.id}-${index}`}
+      key={`${child.kind}-${blockKey(child) ?? "block"}-${index}`}
       onLayout={(e) => {
         if (parentIndex != null) {
           // child's Y relative to wrapper + wrapper's Y relative to section View

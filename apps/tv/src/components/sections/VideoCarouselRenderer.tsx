@@ -2,12 +2,11 @@ import React, { useCallback } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { VideoCarouselBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -20,25 +19,9 @@ const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type VideoCarouselItem = {
-  id: string
-  streamingUrl?: string | null
-  imageUrl?: string | null
-  titleOverride?: string | null
-  backgroundColor?: string | null
-  video?: {
-    documentId?: string
-    title?: string
-    slug?: string
-    streamingUrl?: string
-    imageAlt?: string
-    images?: {
-      url?: string
-      mobileCinematicHigh?: string
-      videoStill?: string
-    }[]
-  } | null
-}
+// Derived from the fragment: streamingUrl + overrides only (no nested video
+// record is fetched on TV).
+type VideoCarouselItem = NonNullable<VideoCarouselBlockModel["items"]>[number]
 
 // ── VideoCarouselCard ────────────────────────────────────────────────────────
 
@@ -49,10 +32,8 @@ function VideoCarouselCard({
   item: VideoCarouselItem
   onPress: () => void
 }) {
-  const thumbnailUrl = resolveImageUrl(
-    item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-  )
-  const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+  const thumbnailUrl = resolveImageUrl(item.imageUrl ?? null)
+  const title = item.titleOverride ?? "Untitled"
 
   return (
     <FocusableCard onPress={onPress} style={styles.card}>
@@ -63,7 +44,7 @@ function VideoCarouselCard({
             style={styles.thumbnail}
             contentFit="cover"
             contentPosition="top left"
-            recyclingKey={`vc-${item.id}`}
+            recyclingKey={`vc-${item.videoId ?? "item"}`}
             accessibilityLabel={title}
           />
         ) : (
@@ -101,23 +82,22 @@ function VideoCarouselCard({
 export function VideoCarouselRenderer({
   section,
 }: {
-  section: NormalizedBlock
+  section: VideoCarouselBlockModel
 }) {
   const { playVideo } = useVideoPlayerContext()
 
-  const heading = section.vcTitle as string | null | undefined
-  const subtitle = section.vcSubtitle as string | null | undefined
-  const items = (section.items as VideoCarouselItem[] | undefined) ?? []
+  const heading = section.vcTitle
+  const subtitle = section.vcSubtitle
+  const items: VideoCarouselItem[] = section.items ?? []
 
   const handlePress = useCallback(
     (item: VideoCarouselItem) => {
-      const streamingUrl = item.streamingUrl ?? item.video?.streamingUrl ?? null
+      const streamingUrl = item.streamingUrl ?? null
       if (
         typeof streamingUrl === "string" &&
         validateStreamingUrl(streamingUrl)
       ) {
-        const title = item.titleOverride ?? item.video?.title ?? undefined
-        playVideo(streamingUrl, title)
+        playVideo(streamingUrl, item.titleOverride ?? undefined)
       }
     },
     [playVideo],
@@ -133,7 +113,8 @@ export function VideoCarouselRenderer({
   )
 
   const keyExtractor = useCallback(
-    (item: VideoCarouselItem, index: number) => `vc-${item.id}-${index}`,
+    (item: VideoCarouselItem, index: number) =>
+      `vc-${item.videoId ?? "item"}-${index}`,
     [],
   )
 

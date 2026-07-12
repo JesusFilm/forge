@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { NavigationCarouselBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
@@ -19,17 +19,11 @@ const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type NavItem = {
-  id: string
-  contentId: string
-  title: string
-  category?: string | null
-  imageUrl?: string | null
-  backgroundColor?: string | null
-}
+// Derived from the fragment (no id is fetched; contentId is the identity).
+type NavItem = NonNullable<NavigationCarouselBlockModel["items"]>[number]
 
 export interface NavigationCarouselRendererProps {
-  section: NormalizedBlock
+  section: NavigationCarouselBlockModel
 }
 
 // ── NavCard ─────────────────────────────────────────────────────────────────
@@ -41,7 +35,7 @@ function NavCard({ item }: { item: NavItem }) {
 
   return (
     <FocusableCard
-      onPress={() => scrollToSection(item.contentId)}
+      onPress={() => item.contentId && scrollToSection(item.contentId)}
       style={{ ...styles.card, backgroundColor: bgColor }}
     >
       {imageSource != null && (
@@ -50,7 +44,7 @@ function NavCard({ item }: { item: NavItem }) {
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           contentPosition="top left"
-          recyclingKey={`nav-${item.id}`}
+          recyclingKey={`nav-${item.contentId ?? "item"}`}
         />
       )}
       <LinearGradient
@@ -77,10 +71,11 @@ function NavCard({ item }: { item: NavItem }) {
 export function NavigationCarouselRenderer({
   section,
 }: {
-  section: NormalizedBlock
+  section: NavigationCarouselBlockModel
 }) {
-  const heading = (section.navHeading as string | null) ?? "Stories"
-  const items = (section.items as NavItem[] | undefined) ?? []
+  // The fragment fetches no heading — this rail is always titled "Stories".
+  const heading = "Stories"
+  const items: NavItem[] = section.items ?? []
 
   const renderItem = useCallback(
     ({ item }: { item: NavItem }) => (
@@ -92,7 +87,8 @@ export function NavigationCarouselRenderer({
   )
 
   const keyExtractor = useCallback(
-    (item: NavItem, index: number) => `navCarousel-${item.id}-${index}`,
+    (item: NavItem, index: number) =>
+      `navCarousel-${item.contentId ?? "item"}-${index}`,
     [],
   )
 

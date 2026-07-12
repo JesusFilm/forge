@@ -2,41 +2,20 @@ import React, { useCallback } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { useRouter } from "expo-router"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { MediaCollectionBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
-import { validateStreamingUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
-import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type MediaItem = {
-  id: string
-  titleOverride?: string | null
-  subtitleOverride?: string | null
-  labelOverride?: string | null
-  collectionSize?: number | null
-  imageUrl?: string | null
-  linkToSectionKey?: string | null
-  video?: {
-    slug?: string
-    title?: string
-    streamingUrl?: string
-    imageAlt?: string
-    images?: {
-      url?: string
-      mobileCinematicHigh?: string
-      videoStill?: string
-    }[]
-  } | null
-}
+// Derived from the fragment: an item carries overrides + videoId only (no
+// nested video record is fetched on TV).
+type MediaItem = NonNullable<MediaCollectionBlockModel["items"]>[number]
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,41 +33,24 @@ const GRADIENT_COLORS: [string, string] = [
 export function MediaCollectionRenderer({
   section,
 }: {
-  section: NormalizedBlock
+  section: MediaCollectionBlockModel
 }) {
-  const router = useRouter()
-  const { playVideo } = useVideoPlayerContext()
   const { scrollToSection } = useExperienceContext()
 
-  const mcTitle = section.mcTitle as string | null
-  const mcSubtitle = section.mcSubtitle as string | null
-  const categoryLabel = section.categoryLabel as string | null
-  const items = (section.items as MediaItem[] | undefined) ?? []
+  const { mcTitle, mcSubtitle, categoryLabel } = section
+  const items: MediaItem[] = section.items ?? []
 
   const renderItem = useCallback(
     ({ item, index }: { item: MediaItem; index: number }) => {
-      const thumbnailUrl = resolveImageUrl(
-        item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-      )
-      const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+      const thumbnailUrl = resolveImageUrl(item.imageUrl ?? null)
+      const title = item.titleOverride ?? "Untitled"
       const label = item.labelOverride ?? categoryLabel
 
+      // The fragment fetches no video record, so a card's only live action
+      // is the in-page section jump.
       const handlePress = () => {
-        const streamingUrl = item.video?.streamingUrl ?? null
-        if (
-          typeof streamingUrl === "string" &&
-          validateStreamingUrl(streamingUrl)
-        ) {
-          playVideo(streamingUrl, title)
-          return
-        }
         if (item.linkToSectionKey) {
           scrollToSection(item.linkToSectionKey)
-          return
-        }
-        if (item.video?.slug) {
-          router.push(`/experience/${encodeURIComponent(item.video.slug)}`)
-          return
         }
       }
 
@@ -102,8 +64,8 @@ export function MediaCollectionRenderer({
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
                   contentPosition="top left"
-                  recyclingKey={`mc-${item.id}-${index}`}
-                  accessibilityLabel={item.video?.imageAlt ?? title}
+                  recyclingKey={`mc-${item.videoId ?? "item"}-${index}`}
+                  accessibilityLabel={title}
                 />
               ) : (
                 <View
@@ -136,11 +98,11 @@ export function MediaCollectionRenderer({
         </View>
       )
     },
-    [categoryLabel, playVideo, router],
+    [categoryLabel, scrollToSection],
   )
 
   const keyExtractor = useCallback(
-    (item: MediaItem, index: number) => `mc-${item.id}-${index}`,
+    (item: MediaItem, index: number) => `mc-${item.videoId ?? "item"}-${index}`,
     [],
   )
 

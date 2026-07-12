@@ -4,11 +4,10 @@ import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { VideoHeroBlockModel } from "../../lib/normalizer"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
-import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
+import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
@@ -23,36 +22,21 @@ const noop = () => {}
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type VideoHeroRendererProps = {
-  section: NormalizedBlock
+  section: VideoHeroBlockModel
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   const { state: playerState } = useVideoPlayerContext()
-  const heading = section.heading as string | null
-  const subheading = section.subheading as string | null
-  const streamingUrl = section.streamingUrl as string | null | undefined
-
-  const video = section.video as
-    | {
-        documentId?: string
-        title?: string
-        slug?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }
-      }
-    | null
-    | undefined
+  const heading = section.heading
+  const subheading = section.subheading
+  const streamingUrl = section.streamingUrl
 
   const hasValidStream =
     typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
-  const thumbnailSource =
-    resolveImageUrl(pickThumbnailUrl(video?.images)) ??
-    getMuxThumbnailUrl(streamingUrl)
+  // The fragment fetches no video record — the poster is always Mux-derived.
+  const thumbnailSource = getMuxThumbnailUrl(streamingUrl)
 
   // Inline autoplay: muted, looping background video.
   // Source is guaranteed stable per mount — the section data does not change
@@ -117,8 +101,8 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
             source={thumbnailSource}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
-            accessibilityLabel={video?.title ?? heading ?? "Video hero image"}
+            recyclingKey={`video-hero-${section.sectionKey ?? "unknown"}`}
+            accessibilityLabel={heading ?? "Video hero image"}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />

@@ -6,7 +6,7 @@ import { FocusableCard } from "../FocusableCard"
 import { LinkModal } from "../LinkModal"
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { QuizButtonBlockModel } from "../../lib/normalizer"
 import { isAllowedQuizUrl } from "../../lib/validateUrl"
 
 // ── Quiz gradient (from mobile src/lib/color.ts) ───────────────────────
@@ -15,11 +15,14 @@ const QUIZ_GRADIENT: readonly [string, string] = ["#E8891C", "#CB333B"]
 
 // ── QuizButtonRenderer ─────────────────────────────────────────────────────
 
-export function QuizButtonRenderer({ section }: { section: NormalizedBlock }) {
+export function QuizButtonRenderer({
+  section,
+}: {
+  section: QuizButtonBlockModel
+}) {
   const [modalVisible, setModalVisible] = useState(false)
 
-  const buttonText = section.buttonText as string | null
-  const iframeSrc = section.iframeSrc as string | null
+  const { buttonText, iframeSrc } = section
 
   // Silent drop if URL is invalid or missing
   if (!iframeSrc || !isAllowedQuizUrl(iframeSrc)) return null

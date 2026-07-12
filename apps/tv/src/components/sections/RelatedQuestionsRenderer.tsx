@@ -16,7 +16,7 @@ import {
   ASK_BIBLE_QUESTION_URL,
   CHAT_WITH_PERSON_URL,
 } from "../../lib/bibleContent"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { RelatedQuestionsBlockModel } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { validateActionUrl } from "../../lib/validateUrl"
@@ -38,9 +38,9 @@ if (
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+// Wire shape (no id is fetched; rows key on their index).
 type QuestionItem = {
-  id: string
-  question: string
+  question: string | null
   /** Nullable in admin's schema (RelatedQuestionItem.answer: String). */
   answer: string | null
 }
@@ -172,7 +172,7 @@ function QuestionRow({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         accessibilityRole="button"
-        accessibilityLabel={item.question}
+        accessibilityLabel={item.question ?? undefined}
         accessibilityState={{ expanded: isExpanded }}
       >
         <Text style={styles.questionText} numberOfLines={3}>
@@ -200,22 +200,22 @@ export function RelatedQuestionsRenderer({
   section,
   inset = scale(80),
 }: {
-  section: NormalizedBlock
+  section: RelatedQuestionsBlockModel
   /**
    * Horizontal screen gutter; defaults to the SDUI full-bleed gutter (scale(80)).
    * The watch page passes 0 when the section sits in an already-padded column.
    */
   inset?: number
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [linkUrl, setLinkUrl] = useState<string | null>(null)
 
-  const heading = section.rqHeading as string | null
-  const questions = (section.questions as QuestionItem[] | undefined) ?? []
+  const heading = section.rqHeading
+  const questions: QuestionItem[] = section.questions ?? []
 
-  const handleToggle = useCallback((id: string) => {
+  const handleToggle = useCallback((index: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setExpandedId((prev) => (prev === id ? null : id))
+    setExpandedIndex((prev) => (prev === index ? null : index))
   }, [])
 
   if (questions.length === 0) {
@@ -244,10 +244,10 @@ export function RelatedQuestionsRenderer({
       )}
       {questions.map((item, index) => (
         <QuestionRow
-          key={`rq-${item.id}-${index}`}
+          key={`rq-${index}`}
           item={item}
-          isExpanded={expandedId === item.id}
-          onToggle={() => handleToggle(item.id)}
+          isExpanded={expandedIndex === index}
+          onToggle={() => handleToggle(index)}
           inset={inset}
           onOpenLink={setLinkUrl}
         />

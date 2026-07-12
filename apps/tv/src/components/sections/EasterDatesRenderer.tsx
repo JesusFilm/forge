@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native"
 import { LinearGradient } from "expo-linear-gradient"
 import { HDate, months } from "@hebcal/hdate"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { EasterDatesBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
 import {
   calculateWesternEaster,
@@ -26,12 +26,14 @@ const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function EasterDatesRenderer({ section }: { section: NormalizedBlock }) {
-  const easterDatesTitle = section.easterDatesTitle as string | null
-  const westernEasterLabel = section.westernEasterLabel as string | null
-  const orthodoxEasterLabel = section.orthodoxEasterLabel as string | null
-  const passoverLabel = section.passoverLabel as string | null
-  const locale = (section.locale as string | null) ?? "en-US"
+export function EasterDatesRenderer({
+  section,
+}: {
+  section: EasterDatesBlockModel
+}) {
+  const { easterDatesTitle, westernEasterLabel, orthodoxEasterLabel } = section
+  const passoverLabel = section.passoverLabel
+  const locale = section.locale ?? "en-US"
 
   const currentYear = new Date().getFullYear()
   const westernEaster = calculateWesternEaster(currentYear)
