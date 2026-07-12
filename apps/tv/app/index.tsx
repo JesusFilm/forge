@@ -9,7 +9,6 @@ import {
 } from "react"
 import {
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,6 +24,7 @@ import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
+import { RetryButton } from "../src/components/RetryButton"
 import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
@@ -70,7 +70,6 @@ const IS_ANDROID = Platform.OS === "android"
 
 export default function HomeScreen() {
   const router = useRouter()
-  const [retryFocused, setRetryFocused] = useState(false)
   const { model, loading, error, refetch } = useWatchHome()
 
   // tvos#852: a stack pop doesn't restore the previously focused view (falls to
@@ -366,21 +365,11 @@ export default function HomeScreen() {
         <View style={styles.centered}>
           <Text style={styles.errorText}>Something went wrong</Text>
           <Text style={styles.errorDetail}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try again"
-            accessibilityHint="Reloads the home feed"
-            onFocus={() => setRetryFocused(true)}
-            onBlur={() => setRetryFocused(false)}
-            style={[
-              styles.retryButton,
-              retryFocused && styles.retryButtonFocused,
-            ]}
+          <RetryButton
             onPress={refetch}
-            hasTVPreferredFocus
-          >
-            <Text style={styles.retryText}>Try Again</Text>
-          </Pressable>
+            accent={WATCH_THEME.accent}
+            accessibilityHint="Reloads the home feed"
+          />
         </View>
       </View>
     )
@@ -535,25 +524,6 @@ const styles = StyleSheet.create({
     color: WATCH_THEME.text62,
     marginBottom: scale(32),
     textAlign: "center",
-  },
-  retryButton: {
-    paddingHorizontal: scale(40),
-    paddingVertical: scale(16),
-    borderRadius: scale(28),
-    backgroundColor: WATCH_THEME.accent,
-  },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: WATCH_THEME.accent,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  retryText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(20)),
-    fontWeight: "600",
-    color: WATCH_THEME.text,
   },
   // ── Empty state ──
   emptyText: {

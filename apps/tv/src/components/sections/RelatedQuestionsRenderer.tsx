@@ -20,6 +20,8 @@ import type { NormalizedBlock } from "../../lib/normalizer"
 import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { FOCUS_RING_COLOR, FOCUS_RING_WIDTH } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { LinkModal } from "../LinkModal"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
@@ -154,7 +156,8 @@ function QuestionRow({
   inset: number
   onOpenLink: (url: string) => void
 }) {
-  const [isFocused, setIsFocused] = useState(false)
+  // Shared focus engine ("row" role): ring only, no motion.
+  const { focused: isFocused, setFocused: setIsFocused } = useFocusVisual("row")
   // Null-safe: admin's RelatedQuestionItem.answer is a nullable String and the
   // SDUI cast hides it — a null answer must fall back, not crash the screen
   // (mobile's renderer guards the same way).
@@ -295,8 +298,8 @@ const styles = StyleSheet.create({
     left: -RING_OUTSET_H,
     right: -RING_OUTSET_H,
     borderRadius: scale(12),
-    borderWidth: scale(5),
-    borderColor: "rgba(255,255,255,0.9)",
+    borderWidth: FOCUS_RING_WIDTH,
+    borderColor: FOCUS_RING_COLOR,
   },
   questionText: {
     flex: 1,

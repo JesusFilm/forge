@@ -1,32 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Animated, Easing, type ViewStyle } from "react-native"
+// Adapter over the shared focus module (src/components/focus/) — the curve,
+// ring, and shadow constants live there. Kept so this file's 14 consumers keep
+// their imports; new call sites should use useFocusVisual directly.
+
+import { useMemo, useState } from "react"
+import { Animated, type ViewStyle } from "react-native"
 
 import { scale } from "../../lib/scale"
+import {
+  FOCUS_RING_COLOR,
+  FOCUS_RING_WIDTH as MODULE_RING_WIDTH,
+  focusShadowStyle,
+  resolveFocusVisual,
+} from "../focus/focusVisual"
+import { useFocusProgress } from "../focus/useFocusVisual"
 
-// 0→1 focus-progress so highlights glide in (timing/easing match the mockup's
-// .18s cubic-bezier). JS-driven by default: callers interpolate color/shadow,
-// which the native driver can't animate.
-//
-// Pass { nativeDriver: true } ONLY for transform/opacity-only callers (never
-// color/shadow) — Android uses it to get the focus tween off the JS thread.
-const FOCUS_DURATION_MS = 180
-
+// 0→1 focus-progress so highlights glide in. JS-driven by default: callers
+// interpolate color/shadow, which the native driver can't animate. Pass
+// { nativeDriver: true } ONLY for transform/opacity-only callers.
 export function useFocusAnimation(opts?: { nativeDriver?: boolean }) {
-  const nativeDriver = opts?.nativeDriver ?? false
   const [focused, setFocused] = useState(false)
-  const progress = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    const animation = Animated.timing(progress, {
-      toValue: focused ? 1 : 0,
-      duration: FOCUS_DURATION_MS,
-      easing: Easing.bezier(0.22, 0.61, 0.36, 1),
-      useNativeDriver: nativeDriver,
-    })
-    animation.start()
-    return () => animation.stop()
-  }, [focused, progress, nativeDriver])
-
+  const progress = useFocusProgress(focused, opts)
   return { focused, setFocused, progress }
 }
 
@@ -56,14 +49,16 @@ export function focusTransform(
 }
 
 /** White focus-ring width shared by HomeCard and the Up Next / Episodes rails. */
-export const FOCUS_RING_WIDTH = scale(5)
+export const FOCUS_RING_WIDTH = MODULE_RING_WIDTH
 
-// Neutral dark drop shadow under a focused thumb. iOS-only shadow props (Android
-// TV shows the border ring instead); pair with useThumbFocusRing's ring.
+// Neutral dark drop shadow under a focused thumb (module "thumb" preset).
+// iOS-only shadow props (Android TV shows the border ring instead); pair with
+// useThumbFocusRing's ring.
+const THUMB_SPEC = resolveFocusVisual("thumb")
 export const THUMB_SHADOW = {
-  shadowColor: "#000000",
-  shadowRadius: scale(25),
-  shadowOffset: { width: 0, height: scale(16) },
+  shadowColor: focusShadowStyle(THUMB_SPEC.shadow).shadowColor,
+  shadowRadius: THUMB_SPEC.shadow.radius,
+  shadowOffset: { width: 0, height: THUMB_SPEC.shadow.offsetY },
 } as const
 
 // Home-card focus treatment for a fixed-size thumb: an animated neutral drop
@@ -79,7 +74,7 @@ export function useThumbFocusRing(
     () => ({
       shadowOpacity: progress.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 0.8],
+        outputRange: [0, THUMB_SPEC.shadow.opacity],
       }),
     }),
     [progress],
@@ -94,7 +89,7 @@ export function useThumbFocusRing(
       height: thumbHeight + FOCUS_RING_WIDTH * 2,
       borderRadius: cardRadius + FOCUS_RING_WIDTH,
       borderWidth: FOCUS_RING_WIDTH,
-      borderColor: "rgba(255,255,255,0.88)",
+      borderColor: FOCUS_RING_COLOR,
     }),
     [cardWidth, thumbHeight, cardRadius],
   )

@@ -1,10 +1,9 @@
 import { useRouter } from "expo-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import {
   ActivityIndicator,
   FlatList,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -18,6 +17,7 @@ import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
 import { scale } from "../../lib/scale"
 import { buildWatchSearchResultClickContext } from "../../lib/watchSearchRum"
+import { RetryButton } from "../RetryButton"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ResultCard } from "./ResultCard"
@@ -94,10 +94,14 @@ export function SearchResultsGrid({
     return (
       <View style={styles.centered}>
         <Text style={styles.message}>Search is temporarily unavailable.</Text>
-        <RetryButton
-          onPress={() => onRetry?.()}
-          accessibilityHint="Re-runs your last search"
-        />
+        <View style={styles.retrySpacer}>
+          <RetryButton
+            onPress={() => onRetry?.()}
+            accent={WATCH_THEME.accent}
+            accessibilityHint="Re-runs your last search"
+            hasTVPreferredFocus={false}
+          />
+        </View>
       </View>
     )
   }
@@ -205,34 +209,6 @@ function ResultsList({
   )
 }
 
-/**
- * Retry button for the error state. Uses onFocus/onBlur + state, not the
- * `({ focused }) => [...]` callback: rn-tvos exposes `focused` at runtime but
- * upstream PressableStateCallbackType omits it, so the callback form fails tsc.
- */
-function RetryButton({
-  onPress,
-  accessibilityHint,
-}: {
-  onPress: () => void
-  accessibilityHint: string
-}) {
-  const [isFocused, setIsFocused] = useState(false)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Try again"
-      accessibilityHint={accessibilityHint}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
-      onPress={onPress}
-    >
-      <Text style={styles.retryText}>Try again</Text>
-    </Pressable>
-  )
-}
-
 function EmptyState({ query }: { query: string }) {
   // Pure presentation (design .s-empty, top-left aligned). No auto-focus-
   // return-to-⏎: its keyboard remount killed focus on the pressed letter on
@@ -281,25 +257,8 @@ const styles = StyleSheet.create({
     color: SEARCH_THEME.textDim(0.5),
     marginTop: scale(10),
   },
-  retryButton: {
+  retrySpacer: {
     marginTop: scale(16),
-    paddingHorizontal: scale(32),
-    paddingVertical: scale(14),
-    borderRadius: scale(24),
-    backgroundColor: WATCH_THEME.accent,
-  },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: WATCH_THEME.accent,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  retryText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(18)),
-    fontWeight: "600",
-    color: WATCH_THEME.accentText,
   },
   listWrapper: {
     flex: 1,

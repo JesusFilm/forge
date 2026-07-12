@@ -2,13 +2,7 @@
 // screens. Centralized deliberately: the home previously diverged onto the
 // editor-gated Query.experiences and broke for the public TV app.
 import { useQuery } from "@apollo/client/react"
-import React, {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react"
+import React, { useCallback, useMemo, useRef, type ReactNode } from "react"
 import {
   ActivityIndicator,
   Platform,
@@ -19,6 +13,7 @@ import {
   View,
 } from "react-native"
 
+import { RetryButton } from "./RetryButton"
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
 import { COLORS } from "../lib/colors"
@@ -276,20 +271,10 @@ function ErrorState({
   showBackHint: boolean
   header?: ReactNode
 }) {
-  const [focused, setFocused] = useState(false)
-
   return (
     <StateScreen header={header}>
       <Text style={styles.errorText}>{message}</Text>
-      <Pressable
-        onPress={onRetry}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        hasTVPreferredFocus
-        style={[styles.retryButton, focused && styles.retryButtonFocused]}
-      >
-        <Text style={styles.retryButtonText}>Try Again</Text>
-      </Pressable>
+      <RetryButton onPress={onRetry} />
       {showBackHint ? (
         <Text style={styles.backHint}>Press menu to go back</Text>
       ) : null}
@@ -338,32 +323,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: "center",
     paddingHorizontal: 40,
-  },
-  retryButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 24,
-    // Reserve the focus border so toggling its color never shifts layout.
-    borderWidth: scale(3),
-    borderColor: "transparent",
-  },
-  // Matches the home Play/See More CTA: white border + red drop shadow on the
-  // red fill (not a crimson glow).
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    borderColor: "rgba(255,255,255,0.9)",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  retryButtonText: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontFamily: "System",
-    fontWeight: "600",
   },
   backHint: {
     color: COLORS.muted,
