@@ -1,6 +1,6 @@
 // Focus-aware Ionicons glyph for watch-detail surfaces. Ionicons colour is a
 // prop, not animatable, so the rest→focus flip cross-fades two stacked copies
-// (opacity is animatable), driven by useFocusAnimation's 0→1 progress.
+// (opacity is animatable), driven by the focus module's 0→1 progress.
 
 import { Animated, StyleSheet, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"

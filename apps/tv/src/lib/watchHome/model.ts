@@ -9,10 +9,10 @@ import {
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_FEATURED_RAIL,
   WATCH_HOME_SECTIONS,
-  type WatchHomeFeaturedRailConfig,
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
+import { pickCardImage } from "../cardImage"
 
 /**
  * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
@@ -125,16 +125,7 @@ function labelText(label: string | null | undefined): string {
 }
 
 function pickAdminImage(images: readonly WatchHomeImageInput[]): string | null {
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
-  }
-  return null
+  return pickCardImage(images, "card")
 }
 
 /**
@@ -163,23 +154,6 @@ function buildMetaLabel(args: {
     if (duration) return duration
   }
   return args.label
-}
-
-/**
- * Featured rail title for an injected clock (ALWAYS a param — consumers
- * re-evaluate on focus; model never reads Date.now()). Boundaries: morning
- * <12:00, afternoon <17:00, evening otherwise (web only pins the 17:00 edge).
- */
-export function resolveFeaturedTitle(
-  config: Pick<WatchHomeFeaturedRailConfig, "title" | "titleVariants">,
-  date: Date,
-): string {
-  const variants = config.titleVariants
-  if (!variants) return config.title
-  const hours = date.getHours()
-  if (hours < 12) return variants.morning
-  if (hours < 17) return variants.afternoon
-  return variants.evening
 }
 
 // KTD5: admin Video.parents/children relation is inverted on main and can

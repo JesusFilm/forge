@@ -20,7 +20,7 @@ import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { useFocusAnimation, useFocusVisual } from "../focus/useFocusVisual"
 import { HomeBillboard } from "./HomeBillboard"
 
 const AUTO_ADVANCE_MS = 7000
@@ -304,7 +304,9 @@ function HeroChevronButton({
   selfNode: ViewType | null
   upFocusTarget?: ViewType | null
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   const fillStyle = useMemo(
     () => ({
       backgroundColor: progress.interpolate({
@@ -315,9 +317,9 @@ function HeroChevronButton({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
