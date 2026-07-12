@@ -15,8 +15,8 @@ import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
-import { RetryButton } from "../../src/components/RetryButton"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
+import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
 import { LanguagePanel } from "../../src/components/watch/LanguagePanel"
@@ -182,15 +182,14 @@ export default function WatchVideoScreen() {
 
   if (showErrorState) {
     return (
-      <View style={[styles.screen, styles.errorCentered]}>
-        <Text style={styles.errorMessage}>
-          This video is temporarily unavailable.
-        </Text>
-        <RetryButton
-          onPress={() => {
+      <View style={styles.screen}>
+        <ScreenStateView
+          kind="error"
+          message="This video is temporarily unavailable."
+          onRetry={() => {
             void refetch()
           }}
-          accessibilityHint="Reloads this video"
+          retryHint="Reloads this video"
         />
       </View>
     )

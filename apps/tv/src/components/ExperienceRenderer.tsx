@@ -3,17 +3,9 @@
 // editor-gated Query.experiences and broke for the public TV app.
 import { useQuery } from "@apollo/client/react"
 import React, { useCallback, useMemo, useRef, type ReactNode } from "react"
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
+import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native"
 
-import { RetryButton } from "./RetryButton"
+import { ScreenStateView } from "./ScreenStateView"
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
 import { COLORS } from "../lib/colors"
@@ -148,7 +140,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   if (loading) {
     return (
       <StateScreen header={header}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ScreenStateView kind="loading" accent={COLORS.primary} />
       </StateScreen>
     )
   }
@@ -158,19 +150,22 @@ export function ExperienceRenderer({ slug, header }: Props) {
     // screen — the home screen (which passes a header) is the root, so
     // suppress it there.
     return (
-      <ErrorState
-        message={errorMessage}
-        onRetry={handleRefetch}
-        showBackHint={header == null}
-        header={header}
-      />
+      <StateScreen header={header}>
+        <ScreenStateView
+          kind="error"
+          message={errorMessage}
+          onRetry={handleRefetch}
+          accent={COLORS.primary}
+          hint={header == null ? "Press menu to go back" : undefined}
+        />
+      </StateScreen>
     )
   }
 
   if (!experience || experience.sections.length === 0) {
     return (
       <StateScreen header={header}>
-        <Text style={styles.emptyText}>No content available</Text>
+        <ScreenStateView kind="empty" message="No content available" />
       </StateScreen>
     )
   }
@@ -254,28 +249,6 @@ function StateScreen({
   )
 }
 
-function ErrorState({
-  message,
-  onRetry,
-  showBackHint,
-  header,
-}: {
-  message: string
-  onRetry: () => void
-  showBackHint: boolean
-  header?: ReactNode
-}) {
-  return (
-    <StateScreen header={header}>
-      <Text style={styles.errorText}>{message}</Text>
-      <RetryButton onPress={onRetry} />
-      {showBackHint ? (
-        <Text style={styles.backHint}>Press menu to go back</Text>
-      ) : null}
-    </StateScreen>
-  )
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -283,8 +256,6 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: COLORS.surface,
   },
   list: {

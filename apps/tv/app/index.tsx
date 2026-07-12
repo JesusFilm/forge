@@ -11,7 +11,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type LayoutChangeEvent,
   type View as ViewType,
@@ -24,7 +23,7 @@ import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
-import { RetryButton } from "../src/components/RetryButton"
+import { ScreenStateView } from "../src/components/ScreenStateView"
 import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
@@ -362,15 +361,13 @@ export default function HomeScreen() {
     return (
       <View style={styles.screen}>
         {topBar}
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>Something went wrong</Text>
-          <Text style={styles.errorDetail}>{error}</Text>
-          <RetryButton
-            onPress={refetch}
-            accent={WATCH_THEME.accent}
-            accessibilityHint="Reloads the home feed"
-          />
-        </View>
+        <ScreenStateView
+          kind="error"
+          message="Something went wrong"
+          detail={error}
+          onRetry={refetch}
+          retryHint="Reloads the home feed"
+        />
       </View>
     )
   }
@@ -382,9 +379,7 @@ export default function HomeScreen() {
     return (
       <View style={styles.screen}>
         {topBar}
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>No content available</Text>
-        </View>
+        <ScreenStateView kind="empty" message="No content available" />
       </View>
     )
   }
@@ -497,12 +492,6 @@ const styles = StyleSheet.create({
     // top bar straight on it.
     backgroundColor: WATCH_THEME.below,
   },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: scale(80),
-  },
   list: {
     flex: 1,
   },
@@ -511,24 +500,5 @@ const styles = StyleSheet.create({
     paddingBottom: scale(80),
   },
   // ── Error state ──
-  errorText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(28)),
-    fontWeight: "bold",
-    color: WATCH_THEME.text,
-    marginBottom: scale(8),
-  },
-  errorDetail: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(18)),
-    color: WATCH_THEME.text62,
-    marginBottom: scale(32),
-    textAlign: "center",
-  },
   // ── Empty state ──
-  emptyText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    color: WATCH_THEME.text62,
-  },
 })

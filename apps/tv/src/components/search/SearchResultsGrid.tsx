@@ -17,7 +17,7 @@ import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
 import { scale } from "../../lib/scale"
 import { buildWatchSearchResultClickContext } from "../../lib/watchSearchRum"
-import { RetryButton } from "../RetryButton"
+import { ScreenStateView } from "../ScreenStateView"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ResultCard } from "./ResultCard"
@@ -92,17 +92,13 @@ export function SearchResultsGrid({
 
   if (state === "error") {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.message}>Search is temporarily unavailable.</Text>
-        <View style={styles.retrySpacer}>
-          <RetryButton
-            onPress={() => onRetry?.()}
-            accent={WATCH_THEME.accent}
-            accessibilityHint="Re-runs your last search"
-            hasTVPreferredFocus={false}
-          />
-        </View>
-      </View>
+      <ScreenStateView
+        kind="error"
+        message="Search is temporarily unavailable."
+        onRetry={() => onRetry?.()}
+        retryHint="Re-runs your last search"
+        retryAutoFocus={false}
+      />
     )
   }
 
@@ -256,9 +252,6 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(22)),
     color: SEARCH_THEME.textDim(0.5),
     marginTop: scale(10),
-  },
-  retrySpacer: {
-    marginTop: scale(16),
   },
   listWrapper: {
     flex: 1,
