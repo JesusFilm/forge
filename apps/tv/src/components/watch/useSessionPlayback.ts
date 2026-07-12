@@ -253,16 +253,6 @@ export function useSessionPlayback({
     }
   }, [player])
 
-  // ── Lazy-load active dub media when subtitles are needed (U7) ────────
-  // Fetch the active dub's media (GET_VIDEO_DUB → subtitles) only when menuActive
-  // AND captions on. ensureActiveVariantMedia is deduped per dub id, so it's safe
-  // to call on every relevant change; inert for experience-card playback.
-  useEffect(() => {
-    if (menuActive && session.subtitleEnabled) {
-      session.ensureActiveVariantMedia()
-    }
-  }, [menuActive, session.subtitleEnabled, session.ensureActiveVariantMedia])
-
   // Resolve the active subtitle TRACK for the active slug — undefined unless
   // menuActive AND captions on AND a matching track loaded. One guarded lookup
   // feeds both the VTT src and the label, so the label can't diverge from the track.

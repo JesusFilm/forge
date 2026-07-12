@@ -207,6 +207,15 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     )
   }, [activeVariant?.documentId])
 
+  // ONE owner for "load the active Dub's media" (review candidate 4): whenever
+  // a session resolves an active dub, its media is ensured here — panels and
+  // the player consume outputs and never drive fetches. ensureDubMedia dedupes
+  // per dub id, and only the ACTIVE dub is ever fetched (~5KB; the lazy
+  // per-dub law from the 9.5MB incident is preserved).
+  useEffect(() => {
+    ensureActiveVariantMedia()
+  }, [ensureActiveVariantMedia])
+
   // New video identity → reset choice tracking + subtitle state, drop the prior
   // video's per-dub media + ledger (before resolution effects, for a clean slate).
   // Dub ids are per-video: stale entries waste memory + can wedge a dub into a no-op.
