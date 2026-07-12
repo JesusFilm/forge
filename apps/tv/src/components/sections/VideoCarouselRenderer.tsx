@@ -4,7 +4,8 @@ import { Image } from "expo-image"
 
 import type { NormalizedBlock } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { pickThumbnailUrl } from "../../lib/types"
@@ -72,7 +73,7 @@ function VideoCarouselCard({
               styles.thumbnail,
               {
                 backgroundColor:
-                  item.backgroundColor ?? COLORS.surfaceContainer,
+                  item.backgroundColor ?? WATCH_THEME.cardFallback,
               },
             ]}
           />
@@ -170,7 +171,6 @@ function Separator() {
 
 const PLAY_ICON_SIZE = scale(48)
 const SUBTITLE_FONT_SIZE = scale(18)
-const HEADING_FONT_SIZE = scale(24)
 const TITLE_FONT_SIZE = scale(18)
 const PLAY_GLYPH_SIZE = scale(20)
 
@@ -182,15 +182,12 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: SUBTITLE_FONT_SIZE,
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     marginBottom: scale(4),
     paddingHorizontal: scale(80),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: HEADING_FONT_SIZE,
-    fontWeight: "600",
-    color: COLORS.text,
+    ...SECTION_HEADING,
     marginBottom: scale(12),
     paddingHorizontal: scale(80),
   },
@@ -206,7 +203,7 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.scrim(1),
     borderRadius: scale(16),
     overflow: "hidden",
   },
@@ -232,14 +229,14 @@ const styles = StyleSheet.create({
     width: PLAY_ICON_SIZE,
     height: PLAY_ICON_SIZE,
     borderRadius: PLAY_ICON_SIZE / 2,
-    backgroundColor: hexToRgba("#000000", 0.5),
+    backgroundColor: WATCH_THEME.scrim(0.5),
     justifyContent: "center",
     alignItems: "center",
   },
   playGlyph: {
     fontFamily: "System",
     fontSize: PLAY_GLYPH_SIZE,
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     // Slight offset to visually center the triangle glyph
     marginLeft: scale(3),
   },
@@ -248,13 +245,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: hexToRgba("#000000", 0.4),
+    backgroundColor: WATCH_THEME.scrim(0.4),
     padding: scale(12),
   },
   titleText: {
     fontFamily: "System",
     fontSize: TITLE_FONT_SIZE,
     fontWeight: "700",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
   },
 })

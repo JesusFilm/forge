@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: WATCH_THEME.scrim(1),
   },
   thumbFallback: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: WATCH_THEME.cardFallback,
   },
   thumbEdge: {
     ...StyleSheet.absoluteFillObject,

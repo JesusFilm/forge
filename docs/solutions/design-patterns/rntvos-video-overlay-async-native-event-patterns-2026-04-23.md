@@ -278,6 +278,8 @@ if (next === "error") {
 }
 ```
 
+> **Direction matters — `!== "active"` is correct here only because this is a _resume_ handler.** It acts on return to `"active"` and early-returns on everything else, so collapsing `"inactive"` and `"background"` into "not active" is harmless. A _teardown_-direction handler is the opposite shape — it acts _while the app is away_ (release a decode slot, stop audio) — and must branch on `"background"` specifically, never on `"!== active"`: tvOS routes transient in-foreground interruptions (Control Center, Siri, app-switcher peek) through `"inactive"`, so a `!== "active"` teardown flaps on every such blip. See [`tvos-appstate-inactive-vs-background-video-teardown.md`](../ui-bugs/tvos-appstate-inactive-vs-background-video-teardown.md).
+
 ### Pattern 5 — Denylist synthetic focus events in `useTVEventHandler`, not whitelist user inputs
 
 `react-native-tvos`'s `useTVEventHandler` fires for both real user input **and synthetic focus-reassignment events** (`focus`, `blur`, `pan`, `panBegin`, `panEnd`) that the engine emits when it reassigns focus — including when a newly mounted `Pressable` with `hasTVPreferredFocus` claims focus.
@@ -410,6 +412,7 @@ All examples are inline in the Guidance section above — each pattern includes 
 
 - [`docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md`](../best-practices/react-native-tvos-porting-pitfalls-20260414.md) — umbrella pitfalls; this learning closes a gap (state-machine stale closures + Animated handle lifecycle) not covered there. **Refresh candidate** — consider adding a pitfall entry that cross-links here.
 - [`docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md`](../best-practices/playlist-video-player-sdui-mobile-20260409.md) — shares the `wasPlayingRef` AppState guard pattern and the `useRef`-over-state rule; Pattern 4 here extends to TV with the one-shot `hasTVPreferredFocus` flag. **Refresh candidate** — Section 5 could reference the TV-specific focus flag requirement.
+- [`docs/solutions/ui-bugs/tvos-appstate-inactive-vs-background-video-teardown.md`](../ui-bugs/tvos-appstate-inactive-vs-background-video-teardown.md) — the teardown-direction counterpart to Pattern 4's resume handler: a lifecycle gate that releases a decode slot must branch on `"background"`, not `"!== active"` (transient `"inactive"` would flap it). Same `AppState` event source, opposite direction.
 - [`docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md`](../best-practices/tv-focus-driven-hero-patterns-20260420.md) — sibling TV pattern doc; same debounced-timer-ref discipline applied to focus commits. **Refresh candidate** — Section 6 on `onFocus` leaf wiring could link to Pattern 5's denylist.
 - [`docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`](../ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md) — same component surface (`VideoPlayer.tsx`). Together with this doc they form the "things that broke `VideoPlayer` on tvOS" cluster.
 - [`docs/solutions/ui-bugs/tv-videoview-steals-dpad-focus-20260413.md`](../ui-bugs/tv-videoview-steals-dpad-focus-20260413.md) — prerequisite context: why `VideoPlayer` needs both a `TVFocusGuideView` focus trap and a catcher `Pressable`.

@@ -11,6 +11,8 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
 import { LinkModal } from "../LinkModal"
+import { SecondaryPill } from "../watch/DetailsActionRow"
+import { NEAR_BLACK } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -54,7 +56,10 @@ function QuoteCard({
   focusAnchor: "center" | "left"
 }) {
   const imageSource = resolveImageUrl(quote.imageUrl ?? null)
-  const bgColor = quote.backgroundColor ?? "#292524"
+  // WATCH cards sit on a near-black surface (mirrors HomeCard), not warm stone.
+  // A CMS-supplied color still wins; NEAR_BLACK is a hex so the scrim gradient's
+  // hexToRgba(bgColor, 0) fade stays valid.
+  const bgColor = quote.backgroundColor ?? NEAR_BLACK
 
   return (
     <FocusableCard
@@ -91,8 +96,12 @@ function QuoteCard({
           {quote.text}
         </Text>
         {ctaLabel != null && (
-          <View style={styles.ctaButton}>
-            <Text style={styles.ctaText}>{ctaLabel}</Text>
+          <View style={styles.ctaPillWrap}>
+            <SecondaryPill
+              icon="arrow-forward-outline"
+              label={ctaLabel}
+              onPress={onPress}
+            />
           </View>
         )}
       </View>
@@ -251,18 +260,10 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     lineHeight: Math.round(scale(37)),
   },
-  ctaButton: {
+  // Hug the SecondaryPill to its content width (left-aligned) instead of
+  // stretching it across the card's text column.
+  ctaPillWrap: {
     marginTop: scale(12),
     alignSelf: "flex-start",
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  ctaText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(14)),
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
   },
 })
