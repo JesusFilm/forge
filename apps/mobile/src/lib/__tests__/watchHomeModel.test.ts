@@ -239,30 +239,52 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(card.playbackId).toBeNull()
   })
 
-  it("builds carousel pools from the playlist sequence without requiring streams (KTD-4)", () => {
+  it("builds carousel pools from the playlist sequence, emitting parent films even with children (KTD-4)", () => {
+    // Feature films survive the label gate; MAG1 keeps its parent card despite
+    // having chapter children (the JESUS/Magdalena case).
     const model = buildWatchHomeModelFromVideos({
       videos: [
-        videoInput("1_jf-0-0"),
-        videoInput("11_Advent", {
-          children: [child("11_Advent-ep1"), child("11_Advent-ep2")],
+        videoInput("1_jf-0-0", { label: "FEATURE_FILM" }),
+        videoInput("MAG1", {
+          label: "FEATURE_FILM",
+          children: [child("MAG1-ep1"), child("MAG1-ep2")],
         }),
       ],
     })
 
     const poolIds = model.carousel.pools.map((pool) => pool.id)
-    expect(poolIds).toEqual([
-      "playlist-0-1_jf-0-0",
-      "playlist-6-11_Sermon|11_Shema|11_ReadBible|11_Advent",
-    ])
+    expect(poolIds).toEqual(["playlist-0-1_jf-0-0", "playlist-5-MAG1"])
 
-    // web-parity: the pool holds the PARENT collection, not its child episodes.
-    const adventPool = model.carousel.pools[1]
-    expect(adventPool?.videos.map((video) => video.id)).toEqual(["11_Advent"])
+    // web-parity: the pool holds the PARENT film, not its child episodes.
+    const magPool = model.carousel.pools[1]
+    expect(magPool?.videos.map((video) => video.id)).toEqual(["MAG1"])
+  })
+
+  it("drops collection/series playlist sources from the carousel (web-parity label gate)", () => {
+    // 8_NBC (COLLECTION) and GOMattCollection (SERIES) carry no playable stream on
+    // web → dropped; only the feature film forms a playlist pool.
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        videoInput("1_jf-0-0", { label: "FEATURE_FILM" }),
+        videoInput("8_NBC", {
+          label: "COLLECTION",
+          children: [child("nbc-ep1")],
+        }),
+        videoInput("GOMattCollection", {
+          label: "SERIES",
+          children: [child("gomatt-ep1")],
+        }),
+      ],
+    })
+
+    expect(model.carousel.pools.map((pool) => pool.id)).toEqual([
+      "playlist-0-1_jf-0-0",
+    ])
   })
 
   it("keeps a posterless card in its section but out of the carousel (KTD-4)", () => {
     const model = buildWatchHomeModelFromVideos({
-      videos: [videoInput("1_jf-0-0", { images: [] })],
+      videos: [videoInput("1_jf-0-0", { label: "FEATURE_FILM", images: [] })],
     })
 
     expect(firstCard(model).imageUrl).toBeNull()

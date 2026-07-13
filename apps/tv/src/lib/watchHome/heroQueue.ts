@@ -141,9 +141,11 @@ function eligibleCardsForSource(args: {
     return []
   }
 
-  // Web-parity: emit the PARENT film/collection as the hero slide, NOT its child
-  // episodes — mirroring web/mobile. (Web's child expansion is dead-filtered by
-  // its fragment, so it always falls back to the parent; mobile now matches.)
+  // Label-based web-parity: drop collection/series containers (web's hero omits
+  // them — they carry no playable stream). Keep individually-playable films/shorts
+  // (feature films are kept even when they have chapter-children, e.g. JESUS).
+  if (parent.label === "COLLECTION" || parent.label === "SERIES") return []
+
   const parentCard = normalizeCard({
     sectionId: "home-carousel",
     sourceId: args.sourceId,

@@ -23,6 +23,60 @@
           "snippet": "1_jf-0-0",
           "imageAlt": "1_jf-0-0"
         }
+      ],
+      "children": [
+        {
+          "child": {
+            "documentId": "jf-ep1-doc",
+            "coreId": "jf-ep1",
+            "slug": "jf-ep1-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "jf-ep1",
+                "description": "jf-ep1",
+                "snippet": "jf-ep1",
+                "imageAlt": "jf-ep1"
+              }
+            ]
+          }
+        },
+        {
+          "child": {
+            "documentId": "jf-ep2-doc",
+            "coreId": "jf-ep2",
+            "slug": "jf-ep2-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "jf-ep2",
+                "description": "jf-ep2",
+                "snippet": "jf-ep2",
+                "imageAlt": "jf-ep2"
+              }
+            ]
+          }
+        }
       ]
     },
     {

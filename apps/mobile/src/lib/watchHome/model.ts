@@ -408,6 +408,11 @@ function eligibleSlidesForSource(args: {
     return []
   }
 
+  // Label-based web-parity: drop collection/series containers (web omits them, no
+  // playable stream). Keep playable films/shorts (feature films kept even when they
+  // have chapter-children, e.g. JESUS).
+  if (parent.label === "COLLECTION" || parent.label === "SERIES") return []
+
   const card = normalizeCard({
     sectionId: args.sectionId,
     sourceId: args.sourceId,

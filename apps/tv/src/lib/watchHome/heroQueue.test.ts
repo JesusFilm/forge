@@ -93,18 +93,30 @@ describe("simpleHash / getWatchHomeDeterministicOffset", () => {
 })
 
 describe("buildHeroPools", () => {
-  it("emits the parent collection card, not its child episodes (web-parity)", () => {
-    const videos = [collection("8_NBC", ["nbc-ep1", "nbc-ep2"])]
+  it("drops collection/series containers but keeps feature films (web-parity label gate)", () => {
+    // 8_NBC (COLLECTION) and GOMattCollection (SERIES) carry no playable stream
+    // on web → dropped. 1_jf-0-0 (FEATURE_FILM) is kept even though it has chapter
+    // children (the JESUS case), emitted as the parent film.
+    const videos = [
+      collection("1_jf-0-0", ["jf-ep1", "jf-ep2"], "FEATURE_FILM"),
+      collection("8_NBC", ["nbc-ep1", "nbc-ep2"], "COLLECTION"),
+      collection("GOMattCollection", ["gomatt-ep1"], "SERIES"),
+    ]
     const pools = buildHeroPools({
       videoByCoreId: sourceMap(videos),
       languageSlug: "english",
       missingData: noMissing(),
     })
-    const nbcPool = pools.find((p) => p.collectionIds.includes("8_NBC"))
-    expect(nbcPool).toBeDefined()
-    // web-parity: the pool holds the PARENT collection, never its children.
-    expect(coreIds(nbcPool!.cards as WatchHomeCard[])).toEqual(["8_NBC"])
-    expect(nbcPool!.id).toBe("playlist-2-8_NBC")
+
+    const jfPool = pools.find((p) => p.collectionIds.includes("1_jf-0-0"))
+    expect(jfPool).toBeDefined()
+    expect(jfPool!.id).toBe("playlist-0-1_jf-0-0")
+    expect(coreIds(jfPool!.cards as WatchHomeCard[])).toEqual(["1_jf-0-0"])
+
+    expect(pools.find((p) => p.collectionIds.includes("8_NBC"))).toBeUndefined()
+    expect(
+      pools.find((p) => p.collectionIds.includes("GOMattCollection")),
+    ).toBeUndefined()
   })
 
   it("emits a leaf source as its own parent card", () => {
@@ -121,8 +133,10 @@ describe("buildHeroPools", () => {
   // no slug contributes nothing and its pool is dropped (mirrors web dropping a
   // pool whose parent lacks a playable variant).
   it("drops a pool whose parent card is ineligible (no image or no slug)", () => {
+    // Both are FEATURE_FILM (they survive the label gate); each is dropped purely
+    // for missing image / slug, so this proves the eligibility gate, not the label one.
     const noImage: WatchHomeVideoInput = {
-      ...leaf("8_NBC", "COLLECTION"),
+      ...leaf("2_GOJ-0-0", "FEATURE_FILM"),
       images: [],
     }
     const noSlug: WatchHomeVideoInput = {
@@ -134,7 +148,9 @@ describe("buildHeroPools", () => {
       languageSlug: "english",
       missingData: noMissing(),
     })
-    expect(pools.find((p) => p.collectionIds.includes("8_NBC"))).toBeUndefined()
+    expect(
+      pools.find((p) => p.collectionIds.includes("2_GOJ-0-0")),
+    ).toBeUndefined()
     expect(
       pools.find((p) => p.collectionIds.includes("1_jf-0-0")),
     ).toBeUndefined()
@@ -194,12 +210,13 @@ describe("buildHeroVideoQueue", () => {
   // additionally depend on admin returning children/videos in a STABLE order (R-E):
   // the pick is candidates[hash % len], so a reorder shifts the chosen card.
   it("is deterministic for the same day and inputs", () => {
-    // A group with 4 parent sources exercises the day-seeded pick among candidates.
+    // A group with 4 parent film sources exercises the day-seeded pick among
+    // candidates (feature films survive the label gate; collections would not).
     const videos = [
-      leaf("GOJohnCollection", "COLLECTION"),
-      leaf("GOLukeCollection", "COLLECTION"),
-      leaf("GOMarkCollection", "COLLECTION"),
-      leaf("GOMattCollection", "COLLECTION"),
+      leaf("GOJohnCollection", "FEATURE_FILM"),
+      leaf("GOLukeCollection", "FEATURE_FILM"),
+      leaf("GOMarkCollection", "FEATURE_FILM"),
+      leaf("GOMattCollection", "FEATURE_FILM"),
     ]
     const pools = buildHeroPools({
       videoByCoreId: sourceMap(videos),

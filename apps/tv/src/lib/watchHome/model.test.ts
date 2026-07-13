@@ -38,21 +38,40 @@ function childRel(coreId: string): WatchHomeChildRelationInput {
 const heroVideos = WATCH_HOME_HERO_SOURCE_IDS.map((id) => video(id))
 
 describe("buildWatchHomeModelFromVideos — featured", () => {
-  it("builds featured from the playlist-sequence pool queue, emitting the parent collection (web-parity)", () => {
-    // 8_NBC is a playlist-sequence source; the hero shows the collection itself,
-    // not its child episodes (matching web/mobile).
+  it("builds featured from the playlist-sequence pool queue, emitting the parent film even with children (web-parity)", () => {
+    // 1_jf-0-0 (JESUS) is a FEATURE_FILM playlist source with chapter children;
+    // the hero shows the parent film itself, not its episodes (web/mobile parity).
     const model = buildWatchHomeModelFromVideos({
       videos: [
-        video("8_NBC", {
-          children: [childRel("nbc-ep1"), childRel("nbc-ep2")],
+        video("1_jf-0-0", {
+          label: "FEATURE_FILM",
+          children: [childRel("jf-ep1"), childRel("jf-ep2")],
         }),
       ],
     })
 
     const coreIds = model.featured.map((card) => card.coreId)
-    expect(coreIds).toContain("8_NBC")
-    expect(coreIds).not.toContain("nbc-ep1")
-    expect(coreIds).not.toContain("nbc-ep2")
+    expect(coreIds).toContain("1_jf-0-0")
+    expect(coreIds).not.toContain("jf-ep1")
+    expect(coreIds).not.toContain("jf-ep2")
+  })
+
+  it("keeps the feature film but drops collection sources from the featured queue (label gate)", () => {
+    // Both are playlist sources. 8_NBC (COLLECTION) carries no playable stream on
+    // web → dropped; the FEATURE_FILM survives and is the only hero card.
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        video("1_jf-0-0", { label: "FEATURE_FILM" }),
+        video("8_NBC", {
+          label: "COLLECTION",
+          children: [childRel("nbc-ep1")],
+        }),
+      ],
+    })
+
+    const coreIds = model.featured.map((card) => card.coreId)
+    expect(coreIds).toContain("1_jf-0-0")
+    expect(coreIds).not.toContain("8_NBC")
   })
 
   it("falls back to hero-source-id cards when no sequence source hydrates (R8)", () => {
