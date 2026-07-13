@@ -60,6 +60,8 @@ characterized before changing production behavior.
    download, or Mux detail to the initial page payload.
 5. Verify the viewer flow in a browser and confirm no material page-loading
    regression attributable to the fix.
+6. Render subtitle text without a filled or blurred backdrop while retaining
+   sufficient text contrast over video.
 
 ## Constraints
 
@@ -77,3 +79,5 @@ characterized before changing production behavior.
 - Browser smoke on a representative `/watch/{video}.html/{language}.html`
   route, including a screenshot with visible cues and inspection of the modal
   and media text-track authority.
+- Browser-computed subtitle styling confirms a transparent background with no
+  backdrop filter, while retaining a text shadow for contrast.
