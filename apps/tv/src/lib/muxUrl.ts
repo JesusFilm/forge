@@ -20,8 +20,9 @@ export function muxHlsUrlFromPlaybackId(
 }
 
 // Animated hover-preview still. SYNC: apps/web resolveMuxAnimatedPreviewUrl —
-// same shape, params TV-tuned (640/fps12 vs web 448/fps8) for the 10-foot card;
-// finalized on the U1 spike. Don't resync to web's numbers.
+// same shape AND params (448/8). Mux transcodes animated.webp on-demand per
+// (id, params) then CDN-caches; matching web rides its warm cache = instant
+// (a TV-specific size is a novel combo = ~4.5s cold transcode on every card).
 export type MuxAnimatedPreviewOpts = {
   start?: number
   end?: number
@@ -32,8 +33,8 @@ export type MuxAnimatedPreviewOpts = {
 const ANIMATED_PREVIEW_DEFAULTS: Required<MuxAnimatedPreviewOpts> = {
   start: 2,
   end: 6,
-  width: 640,
-  fps: 12,
+  width: 448,
+  fps: 8,
 }
 
 /**

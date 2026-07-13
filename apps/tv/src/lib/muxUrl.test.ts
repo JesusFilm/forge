@@ -73,15 +73,15 @@ describe("extractMuxPlaybackId", () => {
 })
 
 describe("getMuxAnimatedPreviewUrl", () => {
-  it("builds the animated.webp URL with TV-tuned defaults", () => {
+  it("builds the animated.webp URL with web-matched defaults (warm Mux cache)", () => {
     expect(getMuxAnimatedPreviewUrl("abc123XYZ")).toBe(
-      "https://image.mux.com/abc123XYZ/animated.webp?start=2&end=6&width=640&fps=12",
+      "https://image.mux.com/abc123XYZ/animated.webp?start=2&end=6&width=448&fps=8",
     )
   })
 
   it("accepts the - and _ characters Mux uses in playback ids", () => {
     expect(getMuxAnimatedPreviewUrl("x3XKV1Yi01z-dyF_8ZLBM")).toBe(
-      "https://image.mux.com/x3XKV1Yi01z-dyF_8ZLBM/animated.webp?start=2&end=6&width=640&fps=12",
+      "https://image.mux.com/x3XKV1Yi01z-dyF_8ZLBM/animated.webp?start=2&end=6&width=448&fps=8",
     )
   })
 
@@ -93,7 +93,7 @@ describe("getMuxAnimatedPreviewUrl", () => {
 
   it("trims surrounding whitespace before validating", () => {
     expect(getMuxAnimatedPreviewUrl("  abc123  ")).toBe(
-      "https://image.mux.com/abc123/animated.webp?start=2&end=6&width=640&fps=12",
+      "https://image.mux.com/abc123/animated.webp?start=2&end=6&width=448&fps=8",
     )
   })
 
