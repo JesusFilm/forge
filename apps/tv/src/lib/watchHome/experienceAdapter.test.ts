@@ -170,6 +170,22 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     ).toBe(false)
   })
 
+  it("threads the item's muxPlaybackId onto the card, null when absent (R5, R6)", () => {
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({
+          sectionKey: "with-id",
+          items: [{ coreId: "core-single", muxPlaybackId: "pbSingle01" }],
+        }),
+        mediaBlock({ sectionKey: "no-id", items: [{ coreId: "core-series" }] }),
+      ],
+      HYDRATED,
+    )
+    const [withId, noId] = sections
+    expect(withId.cards[0].muxPlaybackId).toBe("pbSingle01")
+    expect(noId.cards[0].muxPlaybackId).toBeNull()
+  })
+
   it("uses categoryLabel as the title when the block title is blank", () => {
     const sections = buildWatchHomeSectionsFromExperience(
       [mediaBlock({ title: "" })],

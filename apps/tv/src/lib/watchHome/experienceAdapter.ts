@@ -16,7 +16,11 @@ import {
 // snapshot-deserialized JSON blocks (the reason mobile reads blocks dynamically).
 export type ExperienceBlock = { readonly __typename?: string | null }
 
-type ExperienceItem = { readonly coreId?: string | null }
+type ExperienceItem = {
+  readonly coreId?: string | null
+  // Threaded onto the card for the animated hover-preview (U5); already on the wire.
+  readonly muxPlaybackId?: string | null
+}
 
 type MediaCollectionBlockLike = {
   readonly __typename?: string | null
@@ -76,7 +80,13 @@ function itemToCard(
   if (!isValidCoreId(coreId)) return null
   const video = videoByCoreId.get(coreId)
   if (!video) return null // per-item drop: the coreId did not hydrate (R3)
-  return normalizeCard({ sectionId, sourceId: coreId, video, languageSlug })
+  return normalizeCard({
+    sectionId,
+    sourceId: coreId,
+    video,
+    languageSlug,
+    muxPlaybackId: item.muxPlaybackId ?? null,
+  })
 }
 
 function blockToSection(
