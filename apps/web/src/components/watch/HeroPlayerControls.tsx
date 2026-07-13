@@ -1,6 +1,6 @@
 "use client"
 
-import { Globe } from "lucide-react"
+import { AudioLines, Captions } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -82,7 +82,9 @@ export function HeroPlayerControls({
   playbackId,
   onLanguageClick,
   languageCode,
+  subtitleLanguageCode,
   showLanguageButton,
+  showSubtitleButton,
   onVisibilityChange,
   onWatchNextInteraction,
 }: {
@@ -99,20 +101,25 @@ export function HeroPlayerControls({
    */
   overlayAnchor: HTMLDivElement | null
   playbackId?: string
-  /** Click handler for the in-chrome globe (mirrors the top-right globe). */
+  /** Click handler for the in-chrome audio and subtitle controls. */
   onLanguageClick?: () => void
-  /** Active audio language code displayed beside the in-chrome globe. */
+  /** Active audio language code displayed beside the in-chrome voice icon. */
   languageCode?: string | null
+  /** Active subtitle language code; null when subtitles are disabled. */
+  subtitleLanguageCode?: string | null
   /**
-   * Whether to render the in-chrome globe button. The parent applies the
+   * Whether to render the in-chrome audio button. The parent applies the
    * same gate it uses for the top-right globe (>= 2 playable variants AND
    * a callback is provided), so both surfaces appear together.
    */
   showLanguageButton?: boolean
+  /** Whether the current video exposes subtitle options. */
+  showSubtitleButton?: boolean
   onVisibilityChange?: (detail: WatchPlayerChromeVisibilityDetail) => void
   onWatchNextInteraction?: () => void
 }) {
   const t = useTranslations("HeroPlayerControls")
+  const languagePickerT = useTranslations("LanguagePickerModal")
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -164,6 +171,11 @@ export function HeroPlayerControls({
       : chromeVisibility === "dim"
         ? "opacity-100"
         : "opacity-0"
+  const showSubtitleLanguageCode = Boolean(
+    languageCode &&
+    subtitleLanguageCode &&
+    subtitleLanguageCode !== languageCode,
+  )
 
   useEffect(() => {
     onVisibilityChange?.({
@@ -1142,13 +1154,36 @@ export function HeroPlayerControls({
               : undefined
           }
         >
-          <Globe aria-hidden className="h-6 w-6" />
+          <AudioLines aria-hidden className="h-6 w-6" />
           {languageCode ? (
             <span
               data-testid="hero-chrome-language-code"
               className="text-[10px] font-bold tracking-[0.14em]"
             >
               {languageCode}
+            </span>
+          ) : null}
+        </ChromeButton>
+      ) : null}
+
+      {showSubtitleButton && onLanguageClick ? (
+        <ChromeButton
+          onClick={onLanguageClick}
+          ariaLabel={languagePickerT("subtitlesHeading")}
+          testId="hero-chrome-subtitles"
+          className={
+            showSubtitleLanguageCode
+              ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
+              : undefined
+          }
+        >
+          <Captions aria-hidden className="h-6 w-6" />
+          {showSubtitleLanguageCode ? (
+            <span
+              data-testid="hero-chrome-subtitle-language-code"
+              className="text-[10px] font-bold tracking-[0.14em]"
+            >
+              {subtitleLanguageCode}
             </span>
           ) : null}
         </ChromeButton>

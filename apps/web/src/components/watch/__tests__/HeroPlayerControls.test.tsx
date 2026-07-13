@@ -74,10 +74,13 @@ function setFullscreenElement(el: Element | null) {
   document.dispatchEvent(new Event("fullscreenchange"))
 }
 
-describe("HeroPlayerControls — in-chrome language button render gate", () => {
+describe("HeroPlayerControls — in-chrome language controls", () => {
   function renderWith(props: {
     showLanguageButton?: boolean
+    showSubtitleButton?: boolean
     onLanguageClick?: () => void
+    languageCode?: string | null
+    subtitleLanguageCode?: string | null
   }) {
     const wrapperEl = document.createElement("div")
     const overlayAnchor = document.createElement("div")
@@ -101,29 +104,38 @@ describe("HeroPlayerControls — in-chrome language button render gate", () => {
           wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
           overlayAnchor={overlayAnchor}
           showLanguageButton={props.showLanguageButton}
+          showSubtitleButton={props.showSubtitleButton}
           onLanguageClick={props.onLanguageClick}
+          languageCode={props.languageCode}
+          subtitleLanguageCode={props.subtitleLanguageCode}
         />,
       )
     })
     return overlayAnchor
   }
 
-  it("renders the in-chrome globe when showLanguageButton + onLanguageClick are both provided", () => {
+  it("renders the in-chrome voice icon and audio language code", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: true,
       onLanguageClick: () => {},
+      languageCode: "EN",
     })
+    const audioButton = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-language"]',
+    )
+    expect(audioButton).not.toBeNull()
+    expect(audioButton?.querySelector(".lucide-audio-lines")).not.toBeNull()
+    expect(audioButton?.querySelector(".lucide-globe")).toBeNull()
     expect(
-      overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
-    ).not.toBeNull()
-    expect(
-      overlayAnchor
-        .querySelector('[data-testid="hero-chrome-language"] svg')
-        ?.getAttribute("class"),
-    ).toContain("h-6")
+      audioButton?.querySelector('[data-testid="hero-chrome-language-code"]')
+        ?.textContent,
+    ).toBe("EN")
+    expect(audioButton?.querySelector("svg")?.getAttribute("class")).toContain(
+      "h-6",
+    )
   })
 
-  it("does not render the in-chrome globe when showLanguageButton is false", () => {
+  it("does not render the in-chrome audio control when showLanguageButton is false", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: false,
       onLanguageClick: () => {},
@@ -133,14 +145,14 @@ describe("HeroPlayerControls — in-chrome language button render gate", () => {
     ).toBeNull()
   })
 
-  it("does not render the in-chrome globe when onLanguageClick is undefined", () => {
+  it("does not render the in-chrome audio control when onLanguageClick is undefined", () => {
     const overlayAnchor = renderWith({ showLanguageButton: true })
     expect(
       overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
     ).toBeNull()
   })
 
-  it("fires onLanguageClick exactly once when the in-chrome globe is clicked", async () => {
+  it("fires onLanguageClick exactly once when the in-chrome audio control is clicked", async () => {
     const onLanguageClick = vi.fn()
     const overlayAnchor = renderWith({
       showLanguageButton: true,
@@ -152,6 +164,66 @@ describe("HeroPlayerControls — in-chrome language button render gate", () => {
     expect(btn).not.toBeNull()
     await act(async () => {
       btn.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("renders subtitles independently of the multi-audio control gate", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: false,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+    })
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
+    ).toBeNull()
+    expect(
+      overlayAnchor.querySelector('[data-testid="hero-chrome-subtitles"]'),
+    ).not.toBeNull()
+  })
+
+  it("shows the subtitle code only when it differs from audio", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+      languageCode: "EN",
+      subtitleLanguageCode: "ES",
+    })
+    expect(
+      overlayAnchor.querySelector(
+        '[data-testid="hero-chrome-subtitle-language-code"]',
+      )?.textContent,
+    ).toBe("ES")
+
+    act(() => {
+      root.render(<></>)
+    })
+    const matchingAnchor = renderWith({
+      showLanguageButton: true,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+      languageCode: "EN",
+      subtitleLanguageCode: "EN",
+    })
+    expect(
+      matchingAnchor.querySelector(
+        '[data-testid="hero-chrome-subtitle-language-code"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("opens the combined modal from the subtitles control", async () => {
+    const onLanguageClick = vi.fn()
+    const overlayAnchor = renderWith({
+      showSubtitleButton: true,
+      onLanguageClick,
+    })
+    const button = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-subtitles"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      button.click()
     })
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
   })
