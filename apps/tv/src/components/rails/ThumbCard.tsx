@@ -28,6 +28,8 @@ type ThumbCardProps = {
   eyebrow?: string | null
   /** Focus-overlay glyph: "albums" marks a nested Series-Shaped card. */
   overlayIcon?: "play" | "albums"
+  /** Mux playback id for the focus hover-preview (U7 renders it); null/omitted = no preview. */
+  previewPlaybackId?: string | null
   recyclingKey: string
   /** Stable, low-cardinality RUM action name (auto-tracker would use the title). */
   ddActionName: string
