@@ -77,6 +77,7 @@ export async function createContext({
         if (consumer.valid) {
           user = CONSUMER_BEARER_PRINCIPAL({
             rateLimitBucketKey: consumer.bucketKey,
+            fleet: consumer.fleet,
           })
         } else {
           user = null

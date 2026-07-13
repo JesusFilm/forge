@@ -15,8 +15,8 @@ import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
-import { RetryButton } from "../../src/components/RetryButton"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
+import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
 import { LanguagePanel } from "../../src/components/watch/LanguagePanel"
@@ -34,7 +34,6 @@ import { SECTION_HEADING } from "../../src/components/sections/sectionHeading"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
-import { COLORS } from "../../src/lib/colors"
 import type { WatchBibleCitation } from "../../src/lib/normalizeVideo"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
@@ -182,15 +181,14 @@ export default function WatchVideoScreen() {
 
   if (showErrorState) {
     return (
-      <View style={[styles.screen, styles.errorCentered]}>
-        <Text style={styles.errorMessage}>
-          This video is temporarily unavailable.
-        </Text>
-        <RetryButton
-          onPress={() => {
+      <View style={styles.screen}>
+        <ScreenStateView
+          kind="error"
+          message="This video is temporarily unavailable."
+          onRetry={() => {
             void refetch()
           }}
-          accessibilityHint="Reloads this video"
+          retryHint="Reloads this video"
         />
       </View>
     )
@@ -403,20 +401,5 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(25)),
     lineHeight: Math.round(scale(37)),
     color: WATCH_THEME.text,
-  },
-
-  // ── Error state ───────────────────────────────────────────────────
-  errorCentered: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: scale(20),
-    paddingHorizontal: scale(80),
-  },
-  errorMessage: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    fontWeight: "600",
-    color: COLORS.text,
-    textAlign: "center",
   },
 })

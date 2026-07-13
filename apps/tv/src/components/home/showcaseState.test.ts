@@ -28,6 +28,7 @@ function card(
     metaLabel: null,
     imageUrl: null,
     imageAlt: `Title ${id}`,
+    muxPlaybackId: null,
     durationSeconds: null,
     childCount: 0,
     parentCoreId: null,

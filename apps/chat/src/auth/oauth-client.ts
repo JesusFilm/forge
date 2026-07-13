@@ -86,15 +86,21 @@ export function getChatOAuthRedirectUri(config: ChatOAuthConfig) {
   return `${config.chatBaseUrl}/api/auth/callback`
 }
 
-/** Build the apps/auth authorize URL with identity-only scopes + PKCE S256 (R1). */
+/**
+ * Build the apps/auth authorize URL with identity-only scopes + PKCE S256 (R1).
+ * prompt: "login" forces the provider's login page even with a live SSO session
+ * (feat-240 force-login marker); omitted → the provider's default behavior.
+ */
 export function buildChatAuthorizeUrl({
   config,
   state,
   codeChallenge,
+  prompt,
 }: {
   config: ChatOAuthConfig
   state: string
   codeChallenge: string
+  prompt?: "login"
 }) {
   const url = new URL("/api/auth/oauth2/authorize", config.issuerUrl)
   url.searchParams.set("client_id", config.clientId)
@@ -104,6 +110,9 @@ export function buildChatAuthorizeUrl({
   url.searchParams.set("state", state)
   url.searchParams.set("code_challenge", codeChallenge)
   url.searchParams.set("code_challenge_method", "S256")
+  if (prompt) {
+    url.searchParams.set("prompt", prompt)
+  }
 
   return url
 }

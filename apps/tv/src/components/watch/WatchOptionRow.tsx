@@ -8,7 +8,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
 import { WATCH_THEME } from "./watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
 // Deterministic single-line row height so virtualized lists compute offsets
 // without measuring: text pins lineHeight to ROW_LINE_HEIGHT + numberOfLines={1}.
@@ -48,7 +48,9 @@ export function WatchOptionRow({
 }) {
   // Called unconditionally (hooks rule); the disabled branch below renders a
   // plain View and never drives `progress`.
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("option", {
+    nativeDriver: false,
+  })
 
   const bg = useMemo(
     () =>
@@ -93,11 +95,11 @@ export function WatchOptionRow({
   const animatedRow = useMemo(
     () => ({
       backgroundColor: bg,
-      // Design `.menu-item[data-focused]`: scale(1.015), no lift — the white
-      // fill is the focus signal, not a magnify-and-rise like the pills.
-      transform: focusTransform(progress, { lift: 0, magnify: 1.015 }),
+      // The white fill is the focus signal; the near-imperceptible grow comes
+      // from the shared "option" role.
+      transform,
     }),
-    [bg, progress],
+    [bg, transform],
   )
 
   // Unplayable dub: plain View (never Pressable) so the D-pad skips it. Static

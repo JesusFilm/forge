@@ -1,6 +1,6 @@
 import { canQueueBatchDownload, nextBatchAction } from "../batchDownloadQueue"
 import type { OfflineDownloadRecord } from "../offlineManifest"
-import type { StartDownloadRequest } from "../../contexts/DownloadsProvider"
+import type { StartDownloadRequest } from "../downloadLifecycle"
 
 const rec = (
   videoSlug: string,

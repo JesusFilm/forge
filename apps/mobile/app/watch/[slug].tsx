@@ -3,8 +3,6 @@ import {
   AccessibilityInfo,
   Alert,
   Animated,
-  AppState,
-  BackHandler,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -15,7 +13,7 @@ import {
   View,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
@@ -37,10 +35,8 @@ import {
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
-import {
-  enterFullscreenLandscape,
-  exitToPortrait,
-} from "../../src/lib/orientation"
+import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
+import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
@@ -53,7 +49,11 @@ import { BibleQuotesCarouselRenderer } from "../../src/components/sections/Bible
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
-import { PLAYER_HEIGHT_RATIO } from "../../src/lib/playerLayout"
+import {
+  BACK_BUTTON_PROPS,
+  PLAYER_HEIGHT_RATIO,
+  PLAYER_SIDE_PADDING,
+} from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
@@ -65,13 +65,6 @@ import {
 } from "../../src/lib/subtitleSelection"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
-// Inline player is inset this far on each side; the back button floats just
-// inside the player's top-left corner (the side padding + an inner margin).
-const PLAYER_SIDE_PADDING = 10
-const BACK_BUTTON_PROPS = {
-  topOffset: 10,
-  sideOffset: PLAYER_SIDE_PADDING + 8,
-}
 
 export default function WatchVideoPage() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
@@ -81,7 +74,6 @@ export default function WatchVideoPage() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
 
-  const navigation = useNavigation()
   const router = useRouter()
   const {
     getRecord,
@@ -93,13 +85,11 @@ export default function WatchVideoPage() {
   } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const insets = useSafeAreaInsets()
   // Honor reduce-motion for the scroll-to-top FAB, the way the player's
   // chrome/subtitles already do — snap instead of fading.
   const reduceMotionRef = useRef(false)
-
-  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then((v) => {
@@ -117,44 +107,6 @@ export default function WatchVideoPage() {
       } catch {
         // noop
       }
-    }
-  }, [])
-
-  // Fullscreen: disable iOS edge-swipe back (can't pop mid-fullscreen); native header
-  // stays hidden both states (see app/watch/_layout.tsx), floating back button is the
-  // affordance. Orientation set via screen `orientation` + lockAsync since RN-screens overrides lockAsync.
-  useEffect(() => {
-    navigation.setOptions({
-      gestureEnabled: !isFullscreen,
-      orientation: isFullscreen ? "landscape" : "portrait",
-    })
-    if (isFullscreen) void enterFullscreenLandscape()
-    else void exitToPortrait()
-  }, [isFullscreen, navigation])
-
-  // While fullscreen: Android hardware back exits fullscreen (not the route),
-  // and a foreground resume re-asserts the landscape-follow lock the OS may
-  // have dropped on background.
-  useEffect(() => {
-    if (!isFullscreen) return
-    const back = BackHandler.addEventListener("hardwareBackPress", () => {
-      setIsFullscreen(false)
-      return true
-    })
-    const app = AppState.addEventListener("change", (s) => {
-      if (s === "active") void enterFullscreenLandscape()
-    })
-    return () => {
-      back.remove()
-      app.remove()
-    }
-  }, [isFullscreen])
-
-  // Safety net: re-lock portrait if the screen unmounts while still fullscreen
-  // (e.g. a deep navigation away), so no other screen inherits landscape.
-  useEffect(() => {
-    return () => {
-      void exitToPortrait()
     }
   }, [])
 
@@ -343,10 +295,12 @@ export default function WatchVideoPage() {
 
   const handleShare = useCallback(() => {
     if (!video) return
-    const langSlug = activeVariant?.languageSlug
-    const base = `https://www.jesusfilm.org/watch/${video.slug}`
-    const shareUrl = langSlug ? `${base}/${langSlug}` : base
-    Share.share({ message: shareUrl, title: video.title ?? undefined })
+    // Share.share rejects when the OS share sheet is dismissed/unavailable;
+    // swallow it so it never surfaces as an unhandled rejection.
+    void Share.share({
+      message: buildWatchShareUrl(video.slug, activeVariant?.languageSlug),
+      title: video.title ?? undefined,
+    }).catch(() => {})
   }, [video, activeVariant?.languageSlug])
 
   const hasVideo = video != null

@@ -1,6 +1,6 @@
-// Shared SDUI renderer for one Experience, used by both home and detail
-// screens. Centralized deliberately: the home previously diverged onto the
-// editor-gated Query.experiences and broke for the public TV app.
+// SDUI renderer for one Experience — the /experience/[slug] detail screen.
+// Uses WATCH_THEME (near-black) to match Video Details + Home; Crimson Gallery
+// COLORS remain for series + legacy surfaces only.
 import { useQuery } from "@apollo/client/react"
 import React, {
   useCallback,
@@ -10,21 +10,33 @@ import React, {
   type ReactNode,
 } from "react"
 import {
-  ActivityIndicator,
+  Dimensions,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native"
+import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 
+import { ScreenStateView } from "./ScreenStateView"
 import { SectionDispatcher } from "./sections/SectionDispatcher"
 import { ExperienceProvider } from "../contexts/ExperienceProvider"
-import { COLORS } from "../lib/colors"
-import { normalizeExperience, type NormalizedBlock } from "../lib/normalizer"
+import { HeroVisibilityProvider } from "./sections/heroVisibility"
+import { HERO_PEEK, WATCH_THEME } from "./watch/watchDetailTheme"
+import {
+  blockKey,
+  normalizeExperience,
+  type NormalizedBlock,
+} from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
 import { scale } from "../lib/scale"
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+// INVARIANT: one videoHero, authored FIRST (y≈0 when visible) — this top-anchored
+// threshold + the shared heroOnScreen boolean assume it; a non-first/second hero would
+// invert the pause or double audio. 60% margin so the first-card reveal-scroll won't trip it.
+const HERO_OFFSCREEN_THRESHOLD = (SCREEN_HEIGHT - HERO_PEEK) * 0.6
 
 type Props = {
   /** Experience slug to load via the public experienceBySlug query. */
@@ -51,7 +63,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
 
   const experience = useMemo(() => {
     if (!rawExperience) return null
-    return normalizeExperience(rawExperience as Record<string, unknown>)
+    return normalizeExperience(rawExperience)
   }, [rawExperience])
 
   const errorMessage = error?.message ?? null
@@ -74,9 +86,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
   /** Register the Y position and index for a top-level section. */
   const handleSectionLayout = useCallback(
     (section: NormalizedBlock, index: number, y: number) => {
-      const key =
-        (section.sectionKey as string | undefined) ??
-        (section.id as string | undefined)
+      const key = blockKey(section)
       if (key) {
         sectionPositions.current.set(key, y)
         sectionKeyToIndex.current.set(key, index)
@@ -100,27 +110,19 @@ export function ExperienceRenderer({ slug, header }: Props) {
       const parentY = sectionPositions.current.get(parentKey) ?? 0
       const absoluteY = parentY + offsetWithinSection
 
-      const key =
-        (block.sectionKey as string | undefined) ??
-        (block.id as string | undefined)
+      const key = blockKey(block)
       if (key) {
         sectionPositions.current.set(key, absoluteY)
         sectionKeyToIndex.current.set(key, parentIndex)
       }
       // Also index container slot children at the container's Y
-      if (block.kind === "container" && Array.isArray(block.slots)) {
-        for (const slot of block.slots as Array<{
-          slotContent?: NormalizedBlock[]
-        }>) {
-          if (Array.isArray(slot.slotContent)) {
-            for (const child of slot.slotContent) {
-              const childKey =
-                (child.sectionKey as string | undefined) ??
-                (child.id as string | undefined)
-              if (childKey) {
-                sectionPositions.current.set(childKey, absoluteY)
-                sectionKeyToIndex.current.set(childKey, parentIndex)
-              }
+      if (block.kind === "container") {
+        for (const slot of block.slots) {
+          for (const child of slot.slotContent) {
+            const childKey = blockKey(child)
+            if (childKey) {
+              sectionPositions.current.set(childKey, absoluteY)
+              sectionKeyToIndex.current.set(childKey, parentIndex)
             }
           }
         }
@@ -156,10 +158,22 @@ export function ExperienceRenderer({ slug, header }: Props) {
     }
   }, [])
 
+  // Hero scroll-off pause (R10), read via HeroVisibilityProvider. onScroll firing
+  // during tvOS focus-scroll is unproven — if the sim shows it doesn't, derive
+  // on-screen from the focused-section index instead (U8 fallback).
+  const [heroOnScreen, setHeroOnScreen] = useState(true)
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = e.nativeEvent.contentOffset.y < HERO_OFFSCREEN_THRESHOLD
+      setHeroOnScreen((prev) => (prev === next ? prev : next))
+    },
+    [],
+  )
+
   if (loading) {
     return (
       <StateScreen header={header}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ScreenStateView kind="loading" accent={WATCH_THEME.accent} />
       </StateScreen>
     )
   }
@@ -169,19 +183,22 @@ export function ExperienceRenderer({ slug, header }: Props) {
     // screen — the home screen (which passes a header) is the root, so
     // suppress it there.
     return (
-      <ErrorState
-        message={errorMessage}
-        onRetry={handleRefetch}
-        showBackHint={header == null}
-        header={header}
-      />
+      <StateScreen header={header}>
+        <ScreenStateView
+          kind="error"
+          message={errorMessage}
+          onRetry={handleRefetch}
+          accent={WATCH_THEME.accent}
+          hint={header == null ? "Press menu to go back" : undefined}
+        />
+      </StateScreen>
     )
   }
 
   if (!experience || experience.sections.length === 0) {
     return (
       <StateScreen header={header}>
-        <Text style={styles.emptyText}>No content available</Text>
+        <ScreenStateView kind="empty" message="No content available" />
       </StateScreen>
     )
   }
@@ -195,49 +212,53 @@ export function ExperienceRenderer({ slug, header }: Props) {
       registerNestedLayout={handleNestedLayout}
       refetch={handleRefetch}
     >
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        // Header (when present) is the sticky first child, prepended outside
-        // the section .map(), so scroll-to-section indices stay 0-based.
-        stickyHeaderIndices={header != null ? [0] : undefined}
-      >
-        {header != null ? (
-          <View
-            onLayout={(e) => {
-              headerHeightRef.current = e.nativeEvent.layout.height
-            }}
-          >
-            {header}
-          </View>
-        ) : null}
-        {experience.sections.map((section, index) => (
-          <View
-            key={`${section.kind}-${section.id}-${index}`}
-            onLayout={(e) => {
-              const y = e.nativeEvent.layout.y
-              handleSectionLayout(section, index, y)
-              // Store the Y so SectionWrapperRenderer can compute
-              // absolute positions for nested children
-              sectionPositions.current.set(`__parentY_${index}`, y)
-            }}
-          >
-            {/* Invisible focus anchor — receives focus after scrollToSection
+      <HeroVisibilityProvider value={heroOnScreen}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
+          // Header (when present) is the sticky first child, prepended outside
+          // the section .map(), so scroll-to-section indices stay 0-based.
+          stickyHeaderIndices={header != null ? [0] : undefined}
+        >
+          {header != null ? (
+            <View
+              onLayout={(e) => {
+                headerHeightRef.current = e.nativeEvent.layout.height
+              }}
+            >
+              {header}
+            </View>
+          ) : null}
+          {experience.sections.map((section, index) => (
+            <View
+              key={`${section.kind}-${blockKey(section) ?? "block"}-${index}`}
+              onLayout={(e) => {
+                const y = e.nativeEvent.layout.y
+                handleSectionLayout(section, index, y)
+                // Store the Y so SectionWrapperRenderer can compute
+                // absolute positions for nested children
+                sectionPositions.current.set(`__parentY_${index}`, y)
+              }}
+            >
+              {/* Invisible focus anchor — receives focus after scrollToSection
                 so the next D-pad press starts from this section, not the
                 NavigationCarousel card that triggered the scroll. */}
-            <Pressable
-              ref={(ref) => {
-                if (ref) focusAnchors.current.set(index, ref)
-                else focusAnchors.current.delete(index)
-              }}
-              style={styles.focusAnchor}
-              accessible={false}
-            />
-            <SectionDispatcher section={section} parentIndex={index} />
-          </View>
-        ))}
-      </ScrollView>
+              <Pressable
+                ref={(ref) => {
+                  if (ref) focusAnchors.current.set(index, ref)
+                  else focusAnchors.current.delete(index)
+                }}
+                style={styles.focusAnchor}
+                accessible={false}
+              />
+              <SectionDispatcher section={section} parentIndex={index} />
+            </View>
+          ))}
+        </ScrollView>
+      </HeroVisibilityProvider>
     </ExperienceProvider>
   )
 }
@@ -265,52 +286,20 @@ function StateScreen({
   )
 }
 
-function ErrorState({
-  message,
-  onRetry,
-  showBackHint,
-  header,
-}: {
-  message: string
-  onRetry: () => void
-  showBackHint: boolean
-  header?: ReactNode
-}) {
-  const [focused, setFocused] = useState(false)
-
-  return (
-    <StateScreen header={header}>
-      <Text style={styles.errorText}>{message}</Text>
-      <Pressable
-        onPress={onRetry}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        hasTVPreferredFocus
-        style={[styles.retryButton, focused && styles.retryButtonFocused]}
-      >
-        <Text style={styles.retryButtonText}>Try Again</Text>
-      </Pressable>
-      {showBackHint ? (
-        <Text style={styles.backHint}>Press menu to go back</Text>
-      ) : null}
-    </StateScreen>
-  )
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   list: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: WATCH_THEME.below,
   },
   listContent: {
     // Lets the last section scroll fully to the viewport top; without it
@@ -327,48 +316,8 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   emptyText: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontSize: 20,
     fontFamily: "System",
-  },
-  errorText: {
-    color: COLORS.text,
-    fontSize: 20,
-    fontFamily: "System",
-    marginBottom: 24,
-    textAlign: "center",
-    paddingHorizontal: 40,
-  },
-  retryButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 24,
-    // Reserve the focus border so toggling its color never shifts layout.
-    borderWidth: scale(3),
-    borderColor: "transparent",
-  },
-  // Matches the home Play/See More CTA: white border + red drop shadow on the
-  // red fill (not a crimson glow).
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    borderColor: "rgba(255,255,255,0.9)",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  retryButtonText: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontFamily: "System",
-    fontWeight: "600",
-  },
-  backHint: {
-    color: COLORS.muted,
-    fontSize: 14,
-    fontFamily: "System",
-    marginTop: 16,
   },
 })

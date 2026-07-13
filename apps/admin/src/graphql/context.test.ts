@@ -143,10 +143,39 @@ describe("createContext", () => {
       id: null,
       role: "CONSUMER_BEARER",
       rateLimitBucketKey: "consumer-key-aaa",
+      fleet: false,
     })
     expect(isValidConsumerBearer).toHaveBeenCalledWith(
       "Bearer consumer-key-aaa",
     )
+  })
+
+  it("threads the fleet flag onto the principal for a fleet key (per-IP bucket seam)", async () => {
+    // Cross-seam guard (KTD1): the fleet discriminant identifyForRateLimit reads
+    // for consumer:<key>:<ip> comes straight from isValidConsumerBearer via
+    // createContext — the same field search-bearer reads for source=fleet, so a
+    // future edit that drops it here decouples the bucket from the log signal.
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValue(false)
+    isValidConsumerBearer.mockReturnValue({
+      valid: true,
+      bucketKey: "fleet-key-zzz",
+      fleet: true,
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer fleet-key-zzz" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({
+      id: null,
+      role: "CONSUMER_BEARER",
+      rateLimitBucketKey: "fleet-key-zzz",
+      fleet: true,
+    })
   })
 
   it("mints MANAGER_BACKEND when no session and manager bearer is valid", async () => {
