@@ -1,4 +1,4 @@
-import React, { useCallback } from "react"
+import React, { useCallback, useState } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 
@@ -7,9 +7,12 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
+import { extractMuxPlaybackId } from "../../lib/muxUrl"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -35,9 +38,20 @@ function VideoCarouselCard({
 }) {
   const thumbnailUrl = resolveImageUrl(item.imageUrl ?? null)
   const title = item.titleOverride ?? "Untitled"
+  const [focused, setFocused] = useState(false)
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: true,
+    playbackId: extractMuxPlaybackId(item.streamingUrl ?? null),
+  })
 
   return (
-    <FocusableCard onPress={onPress} style={styles.card}>
+    <FocusableCard
+      onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={styles.card}
+    >
       <View style={styles.thumbnailContainer}>
         {thumbnailUrl != null ? (
           <Image
@@ -66,6 +80,13 @@ function VideoCarouselCard({
             <Text style={styles.playGlyph}>{"\u25B6"}</Text>
           </View>
         </View>
+
+        {/* Above the thumbnail + play icon, below the title band (KTD6 z-order). */}
+        <HoverPreviewImage
+          previewUrl={previewUrl}
+          contentFit="cover"
+          contentPosition="top left"
+        />
 
         {/* Title band */}
         <View style={styles.titleBand}>

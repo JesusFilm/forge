@@ -22,6 +22,7 @@ export function UpNextRail({ siblings }: { siblings: WatchSibling[] }) {
       <ThumbCard
         title={sibling.title ?? sibling.slug}
         posterUrl={sibling.posterUrl}
+        previewPlaybackId={sibling.muxPlaybackId}
         recyclingKey={`upnext-${sibling.documentId}`}
         ddActionName="upnext-episode"
         accessibilityHint="Opens this video"

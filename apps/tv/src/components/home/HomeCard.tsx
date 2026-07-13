@@ -23,6 +23,8 @@ import {
   useFocusVisual,
   useThumbFocusRing,
 } from "../focus/useFocusVisual"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
@@ -94,6 +96,12 @@ export const HomeCard = memo(function HomeCard({
     label: card.rawLabel,
     childCount: card.childCount,
   })
+  // Animated hover-preview: video cards only, once focus dwells (R1/R3).
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: !isSeriesShaped,
+    playbackId: card.muxPlaybackId,
+  })
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
@@ -151,6 +159,13 @@ export const HomeCard = memo(function HomeCard({
                 // skipped, so focus can still traverse this rail.
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
               )}
+
+              {/* Above the poster, below the chip + focus ring (KTD6 z-order). */}
+              <HoverPreviewImage
+                previewUrl={previewUrl}
+                contentFit="cover"
+                contentPosition="top left"
+              />
 
               {/* Hairline edge (design: 1px white .07). Dropped on Android —
                   one fewer view per card to redraw during a scroll. */}

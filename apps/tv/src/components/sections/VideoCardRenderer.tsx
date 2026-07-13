@@ -6,8 +6,11 @@ import { LinearGradient } from "expo-linear-gradient"
 import type { VideoBlockModel } from "../../lib/normalizer"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { scale } from "../../lib/scale"
+import { extractMuxPlaybackId } from "../../lib/muxUrl"
 import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
@@ -49,6 +52,13 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
   const title = section.videoTitle ?? null
 
+  const [focused, setFocused] = useState(false)
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: true,
+    playbackId: extractMuxPlaybackId(sectionStreamingUrl),
+  })
+
   // ── Sizing: 65% of screen width, capped to parent container ──
   const targetWidth = Math.round(screenWidth * TARGET_WIDTH_RATIO)
   const cardWidth =
@@ -84,6 +94,8 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
             playVideo(playbackUrl, title ?? undefined)
           }
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         focusScale={FOCUS_SCALE}
         hasTVPreferredFocus={shouldRestoreFocus}
         accessibilityLabel={title ? `Play ${title}` : "Play video"}
@@ -141,6 +153,9 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
             </Text>
           </View>
         </View>
+
+        {/* Above the thumbnail + play icon, below the title (KTD6 z-order). */}
+        <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
 
         {/* Title in gradient area (decorative overlay, not focusable) */}
         {title != null && (
