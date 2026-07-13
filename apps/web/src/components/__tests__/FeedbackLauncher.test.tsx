@@ -1,0 +1,199 @@
+/**
+ * @vitest-environment jsdom
+ */
+
+import { act } from "react"
+import { createRoot, type Root } from "react-dom/client"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const searchState = vi.hoisted(() => ({ searchOpen: false }))
+
+vi.mock("@/components/FloatingSearchProvider", () => ({
+  useFloatingSearchPinned: () => ({
+    pinned: false,
+    playerChromeVisible: true,
+    searchChromeVisible: true,
+    searchChromeDimmed: false,
+    searchOpen: searchState.searchOpen,
+  }),
+}))
+
+import { FeedbackLauncher } from "@/components/FeedbackLauncher"
+
+const EMBED_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLScNeD3kPs7bqhV2i_QA6IMRCrs9W638TJuApb6QA4_ezQAEPA/viewform?embedded=true"
+
+let container: HTMLDivElement
+let root: Root
+
+function launcher() {
+  return document.querySelector(
+    '[data-testid="feedback-launcher"]',
+  ) as HTMLButtonElement | null
+}
+
+function iframe() {
+  return document.querySelector(
+    '[data-testid="feedback-form-iframe"]',
+  ) as HTMLIFrameElement | null
+}
+
+async function flushDynamicModal() {
+  await act(async () => {
+    const deadline = Date.now() + 2000
+    while (
+      !document.querySelector('[data-testid="feedback-modal"]') &&
+      Date.now() < deadline
+    ) {
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    }
+  })
+}
+
+async function openFeedback() {
+  const button = launcher()
+  if (!button) throw new Error("Expected feedback launcher")
+  act(() => {
+    button.focus()
+    button.click()
+  })
+  await flushDynamicModal()
+}
+
+beforeEach(() => {
+  searchState.searchOpen = false
+  container = document.createElement("div")
+  document.body.appendChild(container)
+  root = createRoot(container)
+  act(() => {
+    root.render(<FeedbackLauncher />)
+  })
+})
+
+afterEach(() => {
+  act(() => root.unmount())
+  container.remove()
+  document.body.innerHTML = ""
+  vi.restoreAllMocks()
+})
+
+describe("FeedbackLauncher", () => {
+  it("renders a 44px global launcher without mounting the modal or Google iframe", () => {
+    const button = launcher()
+    expect(button).not.toBeNull()
+    expect(button?.getAttribute("aria-label")).toBe("Open feedback form")
+    expect(button?.className).toContain("min-h-11")
+    expect(button?.className).toContain("min-w-11")
+    expect(button?.className).toContain("safe-area-inset-right")
+    expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
+    expect(iframe()).toBeNull()
+  })
+
+  it("shows immediate loading feedback while the dialog chunk resolves", async () => {
+    const button = launcher()
+    if (!button) throw new Error("Expected feedback launcher")
+
+    act(() => {
+      button.focus()
+      button.click()
+    })
+
+    const loading = document.querySelector(
+      '[data-testid="feedback-modal-loading"]',
+    )
+    if (loading) {
+      expect(loading.getAttribute("role")).toBe("status")
+      expect(button.getAttribute("aria-busy")).toBe("true")
+    }
+
+    await flushDynamicModal()
+    expect(
+      document.querySelectorAll('[data-testid="feedback-modal"]'),
+    ).toHaveLength(1)
+  })
+
+  it("loads one hardened Google Forms iframe and a safe fallback link", async () => {
+    await openFeedback()
+
+    const formFrame = iframe()
+    expect(formFrame).not.toBeNull()
+    expect(formFrame?.getAttribute("src")).toBe(EMBED_URL)
+    expect(formFrame?.getAttribute("title")).toBe("Submit Beta Feedback")
+    expect(formFrame?.getAttribute("loading")).toBe("lazy")
+    expect(formFrame?.getAttribute("sandbox")).toBe(
+      "allow-forms allow-scripts allow-same-origin",
+    )
+    expect(formFrame?.getAttribute("referrerpolicy")).toBe("no-referrer")
+
+    const fallback = document.querySelector(
+      '[data-testid="feedback-fallback-link"]',
+    ) as HTMLAnchorElement | null
+    expect(fallback?.getAttribute("href")).toBe(
+      "https://forms.gle/8WddM1kuyEBznukW8",
+    )
+    expect(fallback?.getAttribute("target")).toBe("_blank")
+    expect(fallback?.getAttribute("rel")).toContain("noopener")
+    expect(fallback?.getAttribute("rel")).toContain("noreferrer")
+  })
+
+  it("removes the iframe when the visible close control closes the dialog", async () => {
+    await openFeedback()
+    const button = launcher()
+    const close = document.querySelector(
+      '[data-testid="feedback-modal-close"]',
+    ) as HTMLButtonElement | null
+    expect(close?.className).toContain("size-11")
+
+    await act(async () => {
+      close?.click()
+      await Promise.resolve()
+    })
+
+    expect(iframe()).toBeNull()
+    const popup = document.querySelector('[data-testid="feedback-modal"]')
+    expect(popup === null || popup.hasAttribute("data-closed")).toBe(true)
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 120))
+    })
+    expect(document.activeElement).toBe(button)
+  })
+
+  it("suppresses feedback atomically while global search owns the screen", async () => {
+    await openFeedback()
+    expect(iframe()).not.toBeNull()
+
+    searchState.searchOpen = true
+    act(() => {
+      root.render(<FeedbackLauncher />)
+    })
+
+    expect(launcher()).toBeNull()
+    expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
+    expect(iframe()).toBeNull()
+
+    await act(async () => {
+      await new Promise((resolve) => window.requestAnimationFrame(resolve))
+    })
+
+    searchState.searchOpen = false
+    act(() => {
+      root.render(<FeedbackLauncher />)
+    })
+    await act(async () => Promise.resolve())
+
+    expect(launcher()).not.toBeNull()
+    expect(iframe()).toBeNull()
+  })
+
+  it("does not open when search is already active", () => {
+    searchState.searchOpen = true
+    act(() => {
+      root.render(<FeedbackLauncher />)
+    })
+
+    expect(launcher()).toBeNull()
+    expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
+    expect(iframe()).toBeNull()
+  })
+})
