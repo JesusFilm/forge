@@ -22,11 +22,13 @@ execution: code
 
 ## Product Contract
 
-> **Product Contract preservation note:** Enriched in place from the requirements-only artifact. Scope intent is unchanged — "TV hero shows the same videos as web/mobile, no web-links." Changed by research and document review (see Planning Contract): **R2** rewritten and **AE3** corrected because web/mobile do not render one card per group — they run a deterministic pool round-robin over child episodes; **R8/AE6** added for the empty-queue fallback web already has; **R7/AE5** sharpened to name the daily rotation, now conditioned on admin child-ordering. The parity bar is **algorithmic parity** verified against mobile's golden output, not on-device bit-identity (KTD8). No product scope was widened.
+> **Amendment (2026-07-13, after live web comparison):** The premise "web and mobile show the same hero" is FALSE. Web renders each playlist source as its **parent film/collection** (its child expansion is dead — the web GraphQL fragment omits child `variants`/`hls`, so children always fail web's hls gate and it falls back to the parent). Mobile/TV gate on `poster+slug`, which children have, so they **expand to child episodes** — a pre-existing web↔mobile divergence. The user chose to **converge all three apps on web's parent behavior**: TV **and mobile** now emit the PARENT film/collection per source, not child episodes. This is a TV **and** mobile change (`eligibleSlidesForSource` / `eligibleCardsForSource` in both apps). Web is untouched (already correct). TV still excludes Mux inserts; mobile keeps them. The cross-app golden was regenerated from mobile's new parent output.
+
+> **Product Contract preservation note:** Enriched in place from the requirements-only artifact. The web-link exclusion (TV) and "same hero content as web" intent are unchanged; the pivot above changed the resolution granularity from child episodes to parent films/collections and brought mobile into scope. The parity bar remains **algorithmic parity** verified against mobile's regenerated golden output (KTD8).
 
 ### Summary
 
-Give TV's home hero the same rotating video/series set that web and mobile already show. TV's hero is fed from only 4 hardcoded IDs today; web and mobile compose theirs from a 12-group playlist sequence via a deterministic, day-seeded round-robin that yields ~7 videos. Port that config and algorithm into TV — mirroring mobile's exact data resolution — show only tappable videos and series, and never build the external web-link (Mux insert) slides.
+Give TV's home hero the same films/collections web shows. All three apps build the hero from the same 12-group playlist sequence via a deterministic, day-seeded round-robin; the difference was granularity. TV and mobile now emit the **parent film/collection** per source (matching web), not child episodes. TV additionally excludes the external web-link (Mux insert) slides.
 
 ### Problem Frame
 
@@ -48,7 +50,7 @@ Web and mobile build the hero from config pieces that are byte-for-byte identica
 **Hero content**
 
 - R1. TV's home hero rotates through the same video/series set web and mobile show, by mirroring their hero playlist config (`WATCH_HOME_PLAYLIST_SEQUENCE`) and composition algorithm into `apps/tv`.
-- R2. TV composes the hero by mobile's algorithm: one pool per playlist group (each collection in a group expands to its eligible child videos), plus an appended synthetic `shortFilms` pool last, then a round-robin over the pools that picks one day-deterministic video per pool visit up to a 7-video target, mirroring mobile's initial queue (`startPoolIndex` 0, empty played-state, no stored progress).
+- R2. TV composes the hero by the shared algorithm: one pool per playlist group (each source contributes its **parent film/collection** card — NOT child episodes, per the Amendment), plus an appended synthetic `shortFilms` pool of top-level short films, then a round-robin over the pools that picks one day-deterministic slide per pool visit up to a 7-video target, mirroring the initial queue (`startPoolIndex` 0, empty played-state, no stored progress). Mobile emits the same parent cards.
 - R3. The hero shows only tappable video and series slides — no slide links to an external web page.
 
 **Exclusions honored by construction**
@@ -88,7 +90,7 @@ Web and mobile build the hero from config pieces that are byte-for-byte identica
 ### Scope Boundaries
 
 - The branded "Today's Video Picks" Mux promo slide is out — TV already surfaces that identity as a static rail, and it is not a catalog video/series.
-- Web and mobile are untouched — this is a TV-only change.
+- Web is untouched (its parent behavior is the target). **Mobile IS changed** (per the Amendment) — its hero now emits parent films/collections like web, matching TV. Mobile keeps its Mux inserts.
 - The admin Experience / feat-160 is out — moving hero curation into admin so all clients share one source is the eventual successor to this interim mirror, not part of it.
 - No shared client config package — the mirror is deliberately a copy, to be retired by feat-160.
 - The on-screen rotation cadence, trigger, and focus behavior are unchanged (R7).

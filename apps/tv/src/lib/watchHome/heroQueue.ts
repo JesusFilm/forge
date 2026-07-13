@@ -141,25 +141,9 @@ function eligibleCardsForSource(args: {
     return []
   }
 
-  // Mirror mobile: iterate RAW parent.children (NOT resolvedChildren — its
-  // self-filter/dedupe would change candidates.length and the modulus pick).
-  const childCards = (parent.children ?? [])
-    .map((rel) =>
-      rel.child
-        ? normalizeCard({
-            sectionId: "home-carousel",
-            sourceId: args.sourceId,
-            video: rel.child,
-            parent,
-            languageSlug: args.languageSlug,
-          })
-        : null,
-    )
-    .filter((card): card is WatchHomeCard => card != null)
-    .filter(isEligibleHeroCard)
-
-  if (childCards.length > 0) return childCards
-
+  // Web-parity: emit the PARENT film/collection as the hero slide, NOT its child
+  // episodes — mirroring web/mobile. (Web's child expansion is dead-filtered by
+  // its fragment, so it always falls back to the parent; mobile now matches.)
   const parentCard = normalizeCard({
     sectionId: "home-carousel",
     sourceId: args.sourceId,
@@ -193,34 +177,19 @@ export function buildHeroPools(args: {
     }
   }).filter((pool) => pool.cards.length > 0)
 
-  // Synthetic shortFilms pool last (mirrors mobile), iterating the same
-  // top-level source map so the ordering matches. Deduped by coreId.
+  // Synthetic shortFilms pool last (mirrors mobile/web): only top-level SHORT_FILM
+  // records (parents) reach web's hero — child short films are dropped. Dedupe by coreId.
   const shortFilmByCoreId = new Map<string, WatchHomeCard>()
   for (const video of args.videoByCoreId.values()) {
-    const cards: WatchHomeCard[] = []
     const parentCard = normalizeCard({
       sectionId: "home-carousel-short-films",
       sourceId: video.coreId ?? video.documentId ?? "unknown",
       video,
       languageSlug: args.languageSlug,
     })
-    if (parentCard) cards.push(parentCard)
-    for (const rel of video.children ?? []) {
-      if (!rel.child || rel.child.label !== "SHORT_FILM") continue
-      const childCard = normalizeCard({
-        sectionId: "home-carousel-short-films",
-        sourceId: video.coreId ?? video.documentId ?? "unknown",
-        video: rel.child,
-        parent: video,
-        languageSlug: args.languageSlug,
-      })
-      if (childCard) cards.push(childCard)
-    }
-    for (const card of cards) {
-      if (card.label !== "Short film") continue
-      if (!isEligibleHeroCard(card)) continue
-      shortFilmByCoreId.set(card.coreId, card)
-    }
+    if (!parentCard || parentCard.label !== "Short film") continue
+    if (!isEligibleHeroCard(parentCard)) continue
+    shortFilmByCoreId.set(parentCard.coreId, parentCard)
   }
 
   if (shortFilmByCoreId.size > 0) {

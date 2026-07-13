@@ -1,12 +1,4 @@
 {
   "nowIso": "2026-07-13T15:00:00.000Z",
-  "coreIds": [
-    "1_jf-0-0",
-    "nbc-ep1",
-    "gomatt-ep1",
-    "sf-standalone",
-    "CS1",
-    "GOMattCollection",
-    "nbc-ep2"
-  ]
+  "coreIds": ["1_jf-0-0", "8_NBC", "GOMattCollection", "sf-standalone"]
 }

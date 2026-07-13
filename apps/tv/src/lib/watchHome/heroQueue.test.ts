@@ -93,7 +93,7 @@ describe("simpleHash / getWatchHomeDeterministicOffset", () => {
 })
 
 describe("buildHeroPools", () => {
-  it("maps each group to one pool and expands children (not the collection card)", () => {
+  it("emits the parent collection card, not its child episodes (web-parity)", () => {
     const videos = [collection("8_NBC", ["nbc-ep1", "nbc-ep2"])]
     const pools = buildHeroPools({
       videoByCoreId: sourceMap(videos),
@@ -102,17 +102,14 @@ describe("buildHeroPools", () => {
     })
     const nbcPool = pools.find((p) => p.collectionIds.includes("8_NBC"))
     expect(nbcPool).toBeDefined()
-    expect(coreIds(nbcPool!.cards as WatchHomeCard[]).sort()).toEqual([
-      "nbc-ep1",
-      "nbc-ep2",
-    ])
+    // web-parity: the pool holds the PARENT collection, never its children.
+    expect(coreIds(nbcPool!.cards as WatchHomeCard[])).toEqual(["8_NBC"])
     expect(nbcPool!.id).toBe("playlist-2-8_NBC")
   })
 
-  it("falls back to the parent card when a source has no eligible children", () => {
-    const videos = [leaf("1_jf-0-0", "FEATURE_FILM")]
+  it("emits a leaf source as its own parent card", () => {
     const pools = buildHeroPools({
-      videoByCoreId: sourceMap(videos),
+      videoByCoreId: sourceMap([leaf("1_jf-0-0", "FEATURE_FILM")]),
       languageSlug: "english",
       missingData: noMissing(),
     })
@@ -120,69 +117,27 @@ describe("buildHeroPools", () => {
     expect(coreIds(jfPool!.cards as WatchHomeCard[])).toEqual(["1_jf-0-0"])
   })
 
-  // The image+slug eligibility gate is the most divergence-prone path: dropping a
-  // candidate shifts candidates.length and every downstream `candidates[hash % len]`
-  // pick. Lock it so a regression can't silently reshuffle the hero away from mobile.
-  it("excludes ineligible children (no image or no slug), falling back to the parent when all are ineligible", () => {
-    const noImage = { child: { ...leaf("no-img"), images: [] } }
-    const noSlug = { child: { ...leaf("no-slug"), slug: null } }
-    const mixed: WatchHomeVideoInput = {
+  // Eligibility gates the PARENT card now: a source whose parent has no image or
+  // no slug contributes nothing and its pool is dropped (mirrors web dropping a
+  // pool whose parent lacks a playable variant).
+  it("drops a pool whose parent card is ineligible (no image or no slug)", () => {
+    const noImage: WatchHomeVideoInput = {
       ...leaf("8_NBC", "COLLECTION"),
-      children: [noImage, noSlug, { child: leaf("good-ep") }],
+      images: [],
     }
-    const mixedPools = buildHeroPools({
-      videoByCoreId: sourceMap([mixed]),
-      languageSlug: "english",
-      missingData: noMissing(),
-    })
-    const nbc = mixedPools.find((p) => p.collectionIds.includes("8_NBC"))!
-    expect(coreIds(nbc.cards as WatchHomeCard[])).toEqual(["good-ep"])
-
-    const allIneligible: WatchHomeVideoInput = {
+    const noSlug: WatchHomeVideoInput = {
       ...leaf("1_jf-0-0", "FEATURE_FILM"),
-      children: [noImage, noSlug],
-    }
-    const fallbackPools = buildHeroPools({
-      videoByCoreId: sourceMap([allIneligible]),
-      languageSlug: "english",
-      missingData: noMissing(),
-    })
-    const jf = fallbackPools.find((p) => p.collectionIds.includes("1_jf-0-0"))!
-    expect(coreIds(jf.cards as WatchHomeCard[])).toEqual(["1_jf-0-0"])
-  })
-
-  it("keeps raw children including self-refs and duplicates (no resolvedChildren)", () => {
-    const selfRef = {
-      documentId: "GOMattCollection-doc", // same as parent
-      coreId: "GOMattCollection",
-      slug: "GOMattCollection-slug",
-      label: "SERIES",
-      images: [IMG],
-      locales: loc("GOMattCollection"),
-    }
-    const gomatt: WatchHomeVideoInput = {
-      ...leaf("GOMattCollection", "SERIES"),
-      children: [
-        { child: leaf("gomatt-ep1") },
-        { child: selfRef },
-        { child: leaf("gomatt-ep1") },
-      ],
+      slug: null,
     }
     const pools = buildHeroPools({
-      videoByCoreId: sourceMap([gomatt]),
+      videoByCoreId: sourceMap([noImage, noSlug]),
       languageSlug: "english",
       missingData: noMissing(),
     })
-    const pool = pools.find((p) =>
-      p.collectionIds.includes("GOMattCollection"),
-    )!
-    // raw children: 3 candidates (dup + self-ref preserved), unlike resolvedChildren.
-    expect(pool.cards).toHaveLength(3)
-    expect(coreIds(pool.cards as WatchHomeCard[])).toEqual([
-      "gomatt-ep1",
-      "GOMattCollection",
-      "gomatt-ep1",
-    ])
+    expect(pools.find((p) => p.collectionIds.includes("8_NBC"))).toBeUndefined()
+    expect(
+      pools.find((p) => p.collectionIds.includes("1_jf-0-0")),
+    ).toBeUndefined()
   })
 
   it("drops a source that exists only as another record's child (top-level-only map)", () => {
@@ -224,21 +179,28 @@ describe("buildHeroVideoQueue", () => {
   })
 
   it("dedupes across the queue by coreId", () => {
-    // A duplicate child (same coreId twice) must be emitted at most once.
+    // 8_NBC as a SHORT_FILM appears in its sequence pool AND the shortFilms pool;
+    // the same coreId must be emitted at most once.
     const built = buildHeroPools({
-      videoByCoreId: sourceMap([collection("8_NBC", ["shared", "shared"])]),
+      videoByCoreId: sourceMap([leaf("8_NBC", "SHORT_FILM")]),
       languageSlug: "english",
       missingData: noMissing(),
     })
     const queue = buildHeroVideoQueue({ pools: built, now })
-    expect(coreIds(queue).filter((id) => id === "shared")).toHaveLength(1)
+    expect(coreIds(queue).filter((id) => id === "8_NBC")).toHaveLength(1)
   })
 
   // Proves buildHeroVideoQueue is pure. Cross-app and intra-day re-fetch parity
   // additionally depend on admin returning children/videos in a STABLE order (R-E):
   // the pick is candidates[hash % len], so a reorder shifts the chosen card.
   it("is deterministic for the same day and inputs", () => {
-    const videos = [collection("8_NBC", ["nbc-ep1", "nbc-ep2", "nbc-ep3"])]
+    // A group with 4 parent sources exercises the day-seeded pick among candidates.
+    const videos = [
+      leaf("GOJohnCollection", "COLLECTION"),
+      leaf("GOLukeCollection", "COLLECTION"),
+      leaf("GOMarkCollection", "COLLECTION"),
+      leaf("GOMattCollection", "COLLECTION"),
+    ]
     const pools = buildHeroPools({
       videoByCoreId: sourceMap(videos),
       languageSlug: "english",
@@ -246,6 +208,7 @@ describe("buildHeroVideoQueue", () => {
     })
     const a = buildHeroVideoQueue({ pools, now })
     const b = buildHeroVideoQueue({ pools, now })
+    expect(a.length).toBeGreaterThan(0)
     expect(coreIds(a)).toEqual(coreIds(b))
   })
 })

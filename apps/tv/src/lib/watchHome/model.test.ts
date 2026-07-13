@@ -38,8 +38,9 @@ function childRel(coreId: string): WatchHomeChildRelationInput {
 const heroVideos = WATCH_HOME_HERO_SOURCE_IDS.map((id) => video(id))
 
 describe("buildWatchHomeModelFromVideos — featured", () => {
-  it("builds featured from the playlist-sequence pool queue, expanding a collection into its episodes", () => {
-    // 8_NBC is a playlist-sequence source; its child episodes become hero slides.
+  it("builds featured from the playlist-sequence pool queue, emitting the parent collection (web-parity)", () => {
+    // 8_NBC is a playlist-sequence source; the hero shows the collection itself,
+    // not its child episodes (matching web/mobile).
     const model = buildWatchHomeModelFromVideos({
       videos: [
         video("8_NBC", {
@@ -49,10 +50,9 @@ describe("buildWatchHomeModelFromVideos — featured", () => {
     })
 
     const coreIds = model.featured.map((card) => card.coreId)
-    expect(coreIds).toContain("nbc-ep1")
-    expect(coreIds).toContain("nbc-ep2")
-    // the collection card itself is not a hero slide — its episodes are.
-    expect(coreIds).not.toContain("8_NBC")
+    expect(coreIds).toContain("8_NBC")
+    expect(coreIds).not.toContain("nbc-ep1")
+    expect(coreIds).not.toContain("nbc-ep2")
   })
 
   it("falls back to hero-source-id cards when no sequence source hydrates (R8)", () => {

@@ -255,12 +255,9 @@ describe("buildWatchHomeModelFromVideos", () => {
       "playlist-6-11_Sermon|11_Shema|11_ReadBible|11_Advent",
     ])
 
+    // web-parity: the pool holds the PARENT collection, not its child episodes.
     const adventPool = model.carousel.pools[1]
-    expect(adventPool?.videos.map((video) => video.id)).toEqual([
-      "11_Advent-ep1",
-      "11_Advent-ep2",
-    ])
-    expect(adventPool?.videos[0]?.parentSlug).toBe("11_Advent-slug")
+    expect(adventPool?.videos.map((video) => video.id)).toEqual(["11_Advent"])
   })
 
   it("keeps a posterless card in its section but out of the carousel (KTD-4)", () => {
@@ -274,14 +271,11 @@ describe("buildWatchHomeModelFromVideos", () => {
     ).toBe(false)
   })
 
-  it("synthesizes the short-films pool from SHORT_FILM labels", () => {
+  it("synthesizes the short-films pool from top-level SHORT_FILM records only", () => {
     const model = buildWatchHomeModelFromVideos({
       videos: [
         videoInput("1_jf-0-0", {
-          children: [
-            child("short-1", { label: "SHORT_FILM" }),
-            child("episode-1", { label: "EPISODE" }),
-          ],
+          children: [child("short-1", { label: "SHORT_FILM" })],
         }),
         videoInput("standalone-short", { label: "SHORT_FILM" }),
       ],
@@ -290,12 +284,10 @@ describe("buildWatchHomeModelFromVideos", () => {
     const shortFilms = model.carousel.pools.find(
       (pool) => pool.id === "shortFilms",
     )
-    expect(shortFilms?.videos.map((video) => video.id)).toEqual(
-      expect.arrayContaining(["short-1", "standalone-short"]),
-    )
-    expect(shortFilms?.videos.some((video) => video.id === "episode-1")).toBe(
-      false,
-    )
+    // web-parity: only top-level SHORT_FILM parents; child short films are dropped.
+    expect(shortFilms?.videos.map((video) => video.id)).toEqual([
+      "standalone-short",
+    ])
   })
 
   it("excludes blacklisted core ids from the carousel everywhere", () => {
