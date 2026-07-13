@@ -7,6 +7,11 @@ origin: "docs/brainstorms/2026-06-16-mobile-offline-video-downloads-requirements
 
 # feat: Mobile in-app offline video downloads
 
+> **Decision-ID note (2026-07-12):** KTD3 and KTD6 mean different things here
+> than in the later `2026-07-01-001-feat-mobile-download-all-completion-plan.md`.
+> Code comments follow the 2026-07-01 meanings (KTD3 = supersede-safe language
+> switch, KTD6 = storage reserve/gate); treat that plan as current.
+
 ## Summary
 
 Replace the mobile app's "download MP4 → OS share sheet → Camera Roll" flow with true in-app offline downloads. The user picks quality, audio language (Dub), and one subtitle track (or none), accepts the existing Terms of Use, and the media plus subtitle and poster are saved to backup-excluded app-private storage and played offline from a "My Downloads" surface. One copy per video (green tick), changed via a non-destructive swap; a whole series downloads as one batch. The download engine is a **native background-download library** running on the app's existing dev-client / prebuild: transfers continue while the app is backgrounded, screen-off, or OS-evicted, survive restart via reattach, are wifi-only-optional, queued, and resumable.

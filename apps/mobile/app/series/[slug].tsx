@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActionSheetIOS,
   Alert,
-  AppState,
-  BackHandler,
   Platform,
   Share,
   StyleSheet,
@@ -12,7 +10,7 @@ import {
 } from "react-native"
 import { Image } from "expo-image"
 import { StatusBar } from "expo-status-bar"
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -27,10 +25,12 @@ import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { useTypography } from "../../src/hooks/useTypography"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
 import {
-  enterFullscreenLandscape,
-  exitToPortrait,
-} from "../../src/lib/orientation"
+  BACK_BUTTON_PROPS,
+  PLAYER_SIDE_PADDING,
+} from "../../src/lib/playerLayout"
+import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
@@ -51,14 +51,6 @@ import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
 
 const EMPTY_EPISODES: WatchEpisode[] = []
 
-// Mirrors app/watch/[slug]: the hero docks at the top safe edge, inset this far
-// on each side, with the back button floating just inside its top-left corner.
-const PLAYER_SIDE_PADDING = 10
-const BACK_BUTTON_PROPS = {
-  topOffset: 10,
-  sideOffset: PLAYER_SIDE_PADDING + 8,
-}
-
 // Series detail screen. A trailer plays in a VideoPlayer PINNED at the route root
 // (outside the list) so fullscreen never reparents and scrolling can't obscure it.
 // A poster-only hero instead scrolls away in the grid header.
@@ -69,10 +61,8 @@ export default function SeriesScreen() {
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
 
-  const navigation = useNavigation()
   const router = useRouter()
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
+  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
 
@@ -180,39 +170,6 @@ export default function SeriesScreen() {
 
   const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
 
-  // Fullscreen side-effects — mirrors the watch screen: no native header to
-  // toggle (the floating back button is the affordance), so only gestures +
-  // orientation flip with the reused player's custom fullscreen.
-  useEffect(() => {
-    navigation.setOptions({
-      gestureEnabled: !isFullscreen,
-      orientation: isFullscreen ? "landscape" : "portrait",
-    })
-    if (isFullscreen) void enterFullscreenLandscape()
-    else void exitToPortrait()
-  }, [isFullscreen, navigation])
-
-  useEffect(() => {
-    if (!isFullscreen) return
-    const back = BackHandler.addEventListener("hardwareBackPress", () => {
-      setIsFullscreen(false)
-      return true
-    })
-    const app = AppState.addEventListener("change", (s) => {
-      if (s === "active") void enterFullscreenLandscape()
-    })
-    return () => {
-      back.remove()
-      app.remove()
-    }
-  }, [isFullscreen])
-
-  useEffect(() => {
-    return () => {
-      void exitToPortrait()
-    }
-  }, [])
-
   const displayTitle = series?.title ?? seed?.title ?? null
   const displayPoster = resolveImageUrl(
     series?.posterUrl ?? seed?.imageUrl ?? null,
@@ -237,16 +194,10 @@ export default function SeriesScreen() {
 
   const handleShare = useCallback(() => {
     if (!series) return
-    // Public watch URL is /watch/{slug}.html/{language}.html (verified 200);
-    // the bare /{slug}.html form without /watch/ 404s.
-    const base = `https://www.jesusfilm.org/watch/${series.slug}.html`
-    const shareUrl = selectedLanguageSlug
-      ? `${base}/${selectedLanguageSlug}.html`
-      : base
     // Share.share rejects when the OS share sheet is dismissed/unavailable;
     // swallow it so it never surfaces as an unhandled rejection.
     void Share.share({
-      message: shareUrl,
+      message: buildWatchShareUrl(series.slug, selectedLanguageSlug),
       title: series.title ?? undefined,
     }).catch(() => {})
   }, [series, selectedLanguageSlug])

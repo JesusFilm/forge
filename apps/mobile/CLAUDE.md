@@ -54,7 +54,8 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **Flat container model**: Admin's `ContainerBlock` uses flat `content[]` with `ContainerSlotBlock` markers instead of nested `slots[].slotContent`. `groupBySlotMarker()` reconstructs slot groups.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
 - **Three-layer hero**: the hero (zIndex 0) is absolutely-positioned behind FlashList, with an interactive overlay (zIndex 2, `pointerEvents="box-none"`) above the scroll view for anything tappable. SDUI/CuratedHomeLayout path: visual elements render in the hero layer and invisible overlay Pressables are positioned over them via `measureLayout`. HomeScreen path: visible chrome Pressables (Watch Now / insert CTA / mute) render directly in the overlay and fade with scroll, while hero swipes are claimed by a capture-phase PanResponder on the screen root and forwarded to the pager.
-- **VideoDecoderBudget**: Global context limiting concurrent video decoder slots on Android.
+- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids raw `useVideoPlayer(` outside it plus a two-file allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`).
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions

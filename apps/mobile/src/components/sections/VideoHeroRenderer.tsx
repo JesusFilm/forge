@@ -25,10 +25,9 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { feedback } from "../../styles/shared"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
-import { deriveMuxThumbnailUrl } from "../../lib/muxThumbnail"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
 
@@ -65,9 +64,7 @@ export function VideoHeroRenderer({
   const videoId = s.videoId as string | null
 
   const resolvedThumb = useVideoThumbnail(videoId)
-  const thumbnailUrl = resolveImageUrl(
-    resolvedThumb ?? deriveMuxThumbnailUrl(streamingUrl),
-  )
+  const thumbnailUrl = resolveThumbnailUrl(resolvedThumb, streamingUrl)
   const hasValidStream = validateStreamingUrl(streamingUrl)
   const hasCta =
     ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
