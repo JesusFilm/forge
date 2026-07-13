@@ -14,6 +14,8 @@ import {
   useFocusVisual,
   useThumbFocusRing,
 } from "../focus/useFocusVisual"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const THUMB_CARD_WIDTH = scale(360)
@@ -28,6 +30,8 @@ type ThumbCardProps = {
   eyebrow?: string | null
   /** Focus-overlay glyph: "albums" marks a nested Series-Shaped card. */
   overlayIcon?: "play" | "albums"
+  /** Mux playback id for the focus hover-preview (U7 renders it); null/omitted = no preview. */
+  previewPlaybackId?: string | null
   recyclingKey: string
   /** Stable, low-cardinality RUM action name (auto-tracker would use the title). */
   ddActionName: string
@@ -40,6 +44,7 @@ export function ThumbCard({
   posterUrl,
   eyebrow,
   overlayIcon = "play",
+  previewPlaybackId,
   recyclingKey,
   ddActionName,
   accessibilityHint,
@@ -47,8 +52,13 @@ export function ThumbCard({
 }: ThumbCardProps) {
   // Focus eases in (no "blink"): the card lifts + magnifies, the white ring
   // fades in, and the overlay icon fades in over ~180ms.
-  const { setFocused, progress, transform } = useFocusVisual("thumb", {
+  const { focused, setFocused, progress, transform } = useFocusVisual("thumb", {
     nativeDriver: false,
+  })
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: true,
+    playbackId: previewPlaybackId ?? null,
   })
   const poster = useMemo(
     () => (posterUrl != null ? resolveImageUrl(posterUrl) : null),
@@ -97,6 +107,9 @@ export function ThumbCard({
                 color={WATCH_THEME.text}
               />
             </Animated.View>
+            {/* Above the poster + focus scrim/icon so the preview reads as clean
+                motion; the white ring (outside the clip) stays on top. */}
+            <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
           </View>
         </Animated.View>
 

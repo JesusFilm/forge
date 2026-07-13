@@ -14,7 +14,7 @@ import {
 } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel, isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -23,6 +23,8 @@ import {
   useFocusVisual,
   useThumbFocusRing,
 } from "../focus/useFocusVisual"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
@@ -94,6 +96,14 @@ export const HomeCard = memo(function HomeCard({
     label: card.rawLabel,
     childCount: card.childCount,
   })
+  // Animated hover-preview, once focus dwells. Gate on the LABEL not childCount:
+  // a feature film WITH episodes (JESUS, 61 eps) is playable and previews; only
+  // COLLECTION/SERIES-labeled cards are excluded (they carry a null id anyway).
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: !isSeriesLabel(card.rawLabel),
+    playbackId: card.muxPlaybackId,
+  })
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
@@ -151,6 +161,9 @@ export const HomeCard = memo(function HomeCard({
                 // skipped, so focus can still traverse this rail.
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
               )}
+
+              {/* Above the poster, below the chip + focus ring (KTD6 z-order). */}
+              <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
 
               {/* Hairline edge (design: 1px white .07). Dropped on Android —
                   one fewer view per card to redraw during a scroll. */}

@@ -1,7 +1,8 @@
 /**
  * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (ported from apps/web/src/lib/watch-home.ts)
  * — sync obligation in ./config.ts. TV cuts: no carousel/pager (hero → `model.featured`), no
- * playbackId on cards (lazy streams; 9.5MB lean-bulk), time-of-day title from an INJECTED Date. Pure TS.
+ * playbackId on the lean-bulk fragment (9.5MB; the preview muxPlaybackId rides the Experience item,
+ * not the bulk query), time-of-day title from an INJECTED Date. Pure TS.
  */
 
 import {
@@ -13,6 +14,7 @@ import {
   type WatchHomeSourceConfig,
 } from "./config"
 import { pickCardImage } from "../cardImage"
+import { buildHeroFeatured, buildHeroSourceMap } from "./heroQueue"
 
 /**
  * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
@@ -83,6 +85,8 @@ export type WatchHomeCard = {
   metaLabel: string | null
   imageUrl: string | null
   imageAlt: string
+  // Mux playback id for the animated hover-preview, or null (config path / series parent).
+  muxPlaybackId: string | null
   durationSeconds: number | null
   childCount: number
   parentCoreId: string | null
@@ -183,6 +187,7 @@ export function normalizeCard(args: {
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
   languageSlug: string
   parent?: WatchHomeVideoInput | null
+  muxPlaybackId?: string | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
@@ -232,6 +237,7 @@ export function normalizeCard(args: {
     }),
     imageUrl: adminImageUrl,
     imageAlt: locale?.imageAlt ?? title,
+    muxPlaybackId: args.muxPlaybackId ?? null,
     durationSeconds: args.video.durationSeconds ?? null,
     childCount,
     parentCoreId: args.parent?.coreId ?? null,
@@ -358,16 +364,24 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
-// Web's heroSlides recipe: each hero source id resolves to its own record's
-// card (never a child). Unresolved sources are omitted and recorded.
+// Primary: the day-seeded hero pool queue (heroQueue.ts) for web/mobile parity.
+// Fallback: the hero-source-id cards, only when the queue is empty.
 function buildFeatured(args: {
-  videoByCoreId: Map<string, WatchHomeVideoInput>
+  videos: readonly WatchHomeVideoInput[]
   languageSlug: string
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
+  const queue = buildHeroFeatured({
+    videos: args.videos,
+    languageSlug: args.languageSlug,
+    missingData: args.missingData,
+  })
+  if (queue.length > 0) return queue
+
+  const videoByCoreId = buildHeroSourceMap(args.videos)
   const featured: WatchHomeCard[] = []
   for (const sourceId of WATCH_HOME_HERO_SOURCE_IDS) {
-    const video = args.videoByCoreId.get(sourceId)
+    const video = videoByCoreId.get(sourceId)
     if (!video) {
       args.missingData.push({
         sectionId: WATCH_HOME_FEATURED_RAIL.id,
@@ -452,7 +466,11 @@ export function buildWatchHomeModelFromVideos(args: {
   ]
   const videoByCoreId = buildVideoByCoreIdIndex(args.videos)
 
-  const featured = buildFeatured({ videoByCoreId, languageSlug, missingData })
+  const featured = buildFeatured({
+    videos: args.videos,
+    languageSlug,
+    missingData,
+  })
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })
   const cardMissing = [
     ...featured.flatMap((card) => card.missingData),

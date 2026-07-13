@@ -3,7 +3,7 @@ id: "feat-241"
 title: "Chat server-side conversation history + sidebar hydration"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-20"
 duration: 3
 depends_on:
@@ -11,6 +11,8 @@ depends_on:
   - "feat-240"
 blocks:
   - "feat-209"
+  - "feat-247"
+  - "feat-248"
 tags:
   - "web"
   - "ai-pipeline"
