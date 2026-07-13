@@ -453,6 +453,10 @@ The first conversational agent of the planned headless Jesus Film AI Chat system
 
 The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then membership in the `SEEKER_ALLOWED_EMAILS` env allowlist (an operator-maintained CSV of dogfooder emails on the chat service). Default-deny and fail-closed by construction — anonymous users, unlisted users, identities without a verified email, and an unset or empty allowlist all resolve to the stub; delisting a user is an env edit that takes effect once the service restarts with the new value. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
 
+### Conversation History
+
+The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
+
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
