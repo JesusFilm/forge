@@ -3,7 +3,7 @@ id: "feat-240"
 title: "Chat sign-out force-login marker (no silent re-auth)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-15"
 duration: 1
 depends_on:
@@ -14,6 +14,18 @@ tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-13 via [PR #1539](https://github.com/JesusFilm/forge/pull/1539) (`feat(chat): force a real login page on the sign-in after sign-out (feat-240)`).
+
+**What landed.** Web's force-login marker pattern with two deliberate divergences. The planned one: a 30-day marker `maxAge` (web: 10 minutes), sized to apps/auth's rolling SSO session. The review-driven one: this ticket originally prescribed web's delete-on-the-login-redirect consumption, but three independent reviewers (security + adversarial personas + a cross-model pass) converged on the same line — burning the marker on the redirect lets an abandoned or failed OAuth attempt disarm it, so the retry silently re-auths. The shipped shape consumes the marker on the callback's success path only and keeps it armed on every failure; this ticket's What To Build was reworded mid-implementation to match. Zero apps/auth changes; the dropped lease/revocation design stayed dropped per the Decision Record.
+
+**Compound docs.** [Force-login marker pattern](../../solutions/architecture-patterns/post-sign-out-force-login-marker-oidc-relying-apps.md) (five-persona doc-review applied: per-app scope honesty, provider-transfer qualifier, upstream-IdP one-click caveat, provider-bump re-verification tripwire). Also rode the PR: [the dev-server pipe gotcha](../../solutions/developer-experience/background-dev-server-piped-through-head-wedges.md) and CONCEPTS.md's "User sign-in" cluster.
+
+**Residual risk / follow-ups.** apps/web's original copy keeps the delete-on-redirect gap and 10-minute TTL — tracked as [feat-249](../platform/feat-249-web-force-login-marker-consume-on-success.md). Chat's logout remains CSRF-unchecked (bounded, accepted nuisance: a cross-site POST can only force extra login prompts, never bypass the marker). The provider-side `prompt=login` dependency carries a documented re-verification tripwire for `@better-auth/oauth-provider` bumps.
+
+**Unblocked.** [feat-241](feat-241-chat-server-history-sidebar.md) (`depends_on: feat-240`).
 
 ## Problem
 
