@@ -109,11 +109,7 @@ export function ThumbCard({
             </Animated.View>
             {/* Above the poster + focus scrim/icon so the preview reads as clean
                 motion; the white ring (outside the clip) stays on top. */}
-            <HoverPreviewImage
-              previewUrl={previewUrl}
-              contentFit="cover"
-              contentPosition="top left"
-            />
+            <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
           </View>
         </Animated.View>
 

@@ -82,11 +82,7 @@ function VideoCarouselCard({
         </View>
 
         {/* Above the thumbnail + play icon, below the title band (KTD6 z-order). */}
-        <HoverPreviewImage
-          previewUrl={previewUrl}
-          contentFit="cover"
-          contentPosition="top left"
-        />
+        <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
 
         {/* Title band */}
         <View style={styles.titleBand}>

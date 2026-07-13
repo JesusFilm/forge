@@ -11,9 +11,8 @@ const FADE_MS = 260
 type Props = {
   // The Mux animated-preview URL from useHoverPreview, or null when inactive.
   previewUrl: string | null
-  // Match the poster's fit/position so the crossfade doesn't jump (KTD6).
+  // Fill mode (default cover). Position is always center — see below.
   contentFit?: React.ComponentProps<typeof Image>["contentFit"]
-  contentPosition?: React.ComponentProps<typeof Image>["contentPosition"]
 }
 
 /**
@@ -22,11 +21,7 @@ type Props = {
  * loaded (poster shows through until then — no half-loaded flash). Decorative and
  * non-focusable. The parent stacks it above the poster/scrim, below ring + chip.
  */
-export function HoverPreviewImage({
-  previewUrl,
-  contentFit = "cover",
-  contentPosition,
-}: Props) {
+export function HoverPreviewImage({ previewUrl, contentFit = "cover" }: Props) {
   const opacity = useRef(new Animated.Value(0)).current
 
   // A new (or cleared) url starts hidden and fades in on its own onLoad.
@@ -47,7 +42,9 @@ export function HoverPreviewImage({
         source={{ uri: previewUrl }}
         style={StyleSheet.absoluteFill}
         contentFit={contentFit}
-        contentPosition={contentPosition}
+        // Center-crop: the ~16:9 preview fills the wider 32:15 card, trimming
+        // top+bottom equally with left/right flush to the edges (not top-left).
+        contentPosition="center"
         autoplay
         onLoad={() =>
           Animated.timing(opacity, {

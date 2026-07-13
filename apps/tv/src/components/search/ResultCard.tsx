@@ -104,11 +104,7 @@ export function ResultCard({
             ) : (
               <View style={[styles.image, styles.imageFallback]} />
             )}
-            <HoverPreviewImage
-              previewUrl={previewUrl}
-              contentFit="cover"
-              contentPosition="top left"
-            />
+            <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
             {chip != null ? (
               <View style={styles.chip} pointerEvents="none">
                 <Text style={styles.chipText}>{chip}</Text>

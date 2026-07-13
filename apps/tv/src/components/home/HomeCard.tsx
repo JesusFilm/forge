@@ -163,11 +163,7 @@ export const HomeCard = memo(function HomeCard({
               )}
 
               {/* Above the poster, below the chip + focus ring (KTD6 z-order). */}
-              <HoverPreviewImage
-                previewUrl={previewUrl}
-                contentFit="cover"
-                contentPosition="top left"
-              />
+              <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
 
               {/* Hairline edge (design: 1px white .07). Dropped on Android —
                   one fewer view per card to redraw during a scroll. */}
