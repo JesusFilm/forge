@@ -198,8 +198,14 @@ emailVerified? }`) read from the id_token at callback — chat writes no user
   exposure); the cookie's own lifetime is authoritative (the id_token's ~1h `exp`
   is verified once at callback, not carried onto the session). The one gated
   decision — the feat-233 seeker dogfood gate — rides the cookie's 8h claim
-  snapshot (`email` + `emailVerified`), not token freshness; revocation within
-  that window is the plan's accepted residual (R13).
+  snapshot (`email` + `emailVerified`), not token freshness. A live session
+  cannot be ended early per-user — no revocation, a deliberate decision
+  (feat-240's Decision Record), not an oversight. The honest mitigations are
+  the 8h TTL (the repo's shortest), server-side self-scoped reads, and chat's
+  plain-text message rendering discipline: message content renders as
+  React-escaped text only — no `dangerouslySetInnerHTML`, no HTML, no
+  markdown; keep it that way. The everyone-at-once incident lever is rotating
+  `CHAT_SESSION_SECRET`.
 - **Config-gated, default off.** `chatAuthConfigured()` (`config/env.ts`) is true
   only when `AUTH_ISSUER_URL`, `AUTH_CHAT_CLIENT_ID`, `CHAT_BASE_URL`, and a REAL
   `CHAT_SESSION_SECRET` (rejects empty, the `.env.example` placeholder, and
@@ -224,8 +230,9 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   (`src/lib/seeker-gate.ts`) may consume the claims for named-person feature
   gating via the `SEEKER_ALLOWED_EMAILS` env allowlist — internal staff
   dogfooders only. Anything broader (rule-based gating, allowlist entries
-  outside the org, or reuse beyond seeker dogfooding) still requires
-  revocation + a membership gate first (see the code comment).
+  outside the org, or reuse beyond seeker dogfooding) still requires a
+  membership gate first — revocation is deliberately not required (see the
+  code comment + feat-240's Decision Record and its scope tripwire).
 - **R9 divergence from admin's verifier (net-new, so it carries its own tests):**
   `verifyChatIdToken` verifies the **id_token only** (no `idToken ?? accessToken`
   fallback — admin is safe without this only because it also gates on
@@ -264,7 +271,8 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   the `SEEKER_ALLOWED_EMAILS` env allowlist, internal staff dogfooders only.
   No other role/permission checks and no gating of any other surface;
   rule-based gating, non-org entries, or reuse beyond seeker dogfooding
-  requires revocation + a membership gate first. Sign-in itself stays optional
+  requires a membership gate first (revocation deliberately not required —
+  feat-240's Decision Record). Sign-in itself stays optional
   (feat-207) and default-off.
 - No rate/concurrency cap on `/api/seeker` or the auth routes (lands later,
   alongside Cloudflare fronting — see the access-posture notes above). Inbound
@@ -274,8 +282,9 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   writes no user record). Since feat-208 the SERVER side does persist: Seeker
   threads/messages live in Mastra's `ai_chat` Postgres schema (30d anon / 180d
   signed-in retention). What's still absent here is UI restore — conversations
-  in the client reset on refresh; per-conversation URLs + sidebar history are
-  feat-209 (gated on session revocation, see that ticket's preconditions)
+  in the client reset on refresh; sidebar history is feat-241 (requires
+  feat-240's real sign-out first — not revocation, which feat-240's Decision
+  Record dropped) and per-conversation URLs are feat-209
 - No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`
 

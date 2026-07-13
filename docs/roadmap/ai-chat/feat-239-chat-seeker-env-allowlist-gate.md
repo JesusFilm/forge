@@ -27,6 +27,18 @@ tags:
 
 **Unblocked.** [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md)'s `depends_on` edge on this ticket is satisfied (it still awaits the phase-end decision and its step-0 rate cap).
 
+## Amendment (2026-07-13)
+
+The Constraints entry below stating that rule-based gating or widening
+"requires session revocation + a membership gate first" is superseded on the
+revocation half: feat-240 dropped the session-lease/revocation design by
+decision (see the Decision Record in
+[feat-240](feat-240-chat-sign-out-force-login.md)). The membership-gate
+requirement stands unchanged; revocation is deliberately not required —
+accepted for an 8h cookie whose only power is reading the holder's own
+conversation history; revisit if the session gets longer or the cookie starts
+gating more than that. The body below is the unmodified historical record.
+
 ## Problem
 
 feat-233 gated the real seeker agent behind a per-user LaunchDarkly

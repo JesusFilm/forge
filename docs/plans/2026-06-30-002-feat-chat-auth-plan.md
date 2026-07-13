@@ -10,6 +10,21 @@ execution: code
 enriched: 2026-07-01
 ---
 
+> **Amendment (2026-07-13, feat-240 rewording):** the revocation precondition
+> recorded below ("the first feature to trust the authenticated subject for
+> durable or authorization decisions must introduce revocation FIRST", under
+> Dependencies / Assumptions) and the related accepted-risk framing are
+> superseded. feat-240 was reworded to a web-pattern force-login marker
+> (sign-out forces a real login page on the next sign-in; no end-session
+> call, no refresh-token lease), and revocation is not a precondition for
+> feat-241 and is not planned — accepted for an 8h cookie whose only power is
+> reading the holder's own conversation history; revisit if the session gets
+> longer or the cookie starts gating more than that. The everyone-at-once
+> incident lever is rotating `CHAT_SESSION_SECRET` (already noted below as
+> invalidating all sessions). Decision record:
+> `docs/roadmap/ai-chat/feat-240-chat-sign-out-force-login.md`. The original
+> text below is unmodified.
+
 > **Product Contract preservation:** Product Contract unchanged. `ce-plan`
 > enriched this file in place (2026-07-01) with the Planning Contract, High-Level
 > Technical Design, Implementation Units (U1–U8), Verification Contract, and

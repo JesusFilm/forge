@@ -40,8 +40,9 @@ surface from "any signed-in account" back to the dogfood roster — which
 matters since apps/auth enabled public signup (PR #1504, 2026-07-09: anyone
 can now create an account, though the seeker gate still stands in front of
 the paid path). The gate layer is phase-scoped scaffolding and comes off in
-feat-236 with the rest of the dogfood gate; signed-in + fresh lease +
-server-side resource scoping are the permanent design.
+feat-236 with the rest of the dogfood gate; signed-in + server-side
+resource scoping are the permanent design (feat-240's session lease was
+dropped — see its Decision Record).
 
 ## Entry Points — Read These First
 
@@ -90,8 +91,9 @@ server-side resource scoping are the permanent design.
    `authorizeAiChatThreadAccess` first — `thread_forbidden` on any mismatch,
    never silent adoption.
 3. **Chat proxy routes**: resolve the resource server-side from the session
-   (the client never names a resource), require a fresh feat-240 lease before
-   forwarding any history read, hold the Mastra bearer server-side — and deny
+   (the client never names a resource) — a valid signed session cookie IS the
+   credential (expired/invalid → refuse; feat-240 dropped the lease design,
+   see its Decision Record), hold the Mastra bearer server-side — and deny
    unless `resolveSeekerGate` returns a full grant (the dogfood-phase layer;
    same helper and deny pattern as `/api/seeker`, re-resolved per request).
 4. **Hook hydration** in `use-conversations.ts`: fetch the thread list on load
@@ -110,8 +112,13 @@ server-side resource scoping are the permanent design.
 
 ## Constraints
 
-- **No listing or replay surface before feat-240 merges** — the revocation
-  precondition recorded by feat-207/feat-208 stands.
+- **No listing or replay surface before feat-240 merges** — not for a lease
+  (feat-240's revocation/lease design is dropped; see its Decision Record,
+  which retires the feat-207/feat-208 revocation precondition) but for
+  sign-out: until the force-login marker lands, sign-out on a shared browser
+  is followed by silent re-auth, which would hand the next user of that
+  browser the previous user's full history. Real sign-out precedes history
+  exposure.
 - **Signed-in `user:*` resources only**, enforced in the Mastra routes.
   `anon:*` resources are never listable or replayable.
 - History reads go through bearer-gated `/forge-*` routes only — never
@@ -122,8 +129,8 @@ server-side resource scoping are the permanent design.
   limitation).
 - No changes to `apps/auth`.
 - **The seeker-gate layer on history routes is scaffolding, not the design.**
-  It sits IN ADDITION to (never instead of) signed-in + fresh lease +
-  server-side resource scoping, and it comes off in feat-236. The
+  It sits IN ADDITION to (never instead of) signed-in + server-side
+  resource scoping, and it comes off in feat-236. The
   implementation PR must update feat-236's removal recipe with the new
   `resolveSeekerGate` call sites it adds (the recipe's greps are its source
   of truth — keep them true).
@@ -141,7 +148,7 @@ server-side resource scoping are the permanent design.
 - An anonymous session receives no history (listing refused server-side, not
   just unrendered).
 - A replay request for another identity's thread returns `thread_forbidden`.
-- A history read with an expired/revoked lease (feat-240) is refused.
+- A history read with an expired or invalid session cookie is refused.
 - Refresh as a signed-in user restores the sidebar from the server; refresh
   as an anonymous user resets, as today.
 - `pnpm --filter @forge/chat test lint typecheck` and
