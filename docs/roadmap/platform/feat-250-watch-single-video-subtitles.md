@@ -62,6 +62,8 @@ characterized before changing production behavior.
    regression attributable to the fix.
 6. Render subtitle text without a filled or blurred backdrop while retaining
    sufficient text contrast over video.
+7. Keep the subtitle switch on the same row as the subtitle heading and count
+   at narrow viewport widths when the available space can contain them.
 
 ## Constraints
 
@@ -81,3 +83,5 @@ characterized before changing production behavior.
   and media text-track authority.
 - Browser-computed subtitle styling confirms a transparent background with no
   backdrop filter, while retaining a text shadow for contrast.
+- Narrow-viewport browser proof confirms the subtitle heading, count, and
+  switch remain centered on one non-wrapping row without horizontal overflow.
