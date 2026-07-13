@@ -379,6 +379,12 @@ A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoi
 
 One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
 
+### Hero Eligibility
+
+The rule deciding which catalog records may appear as Hero Queue slides: individually-playable videos — feature films and short films — are eligible and contribute their own tile, while container records (collections and series) are excluded, even though Carousel Pools are built around such containers.
+
+An eligible film is emitted as a single parent tile, never expanded into its chapter children — a feature film with dozens of episodes still shows as one hero slide. Clients enforce the same rule through different signals: the web client keys on whether a record carries a playable stream, while the leaner native clients, which do not fetch that stream, approximate it from the record's catalog type. That approximation is deliberately looser than exact stream-level playability, so a native client may surface a few films the stream-level check would drop. Because Carousel Pools that yield no eligible video drop out entirely, excluding the containers can also change which later pools the round-robin reaches.
+
 ### Played Set
 
 The per-user memory of which videos the watch-home rotation has already shown, used to exclude them from Hero Queue rebuilds so returning users lead with unseen content. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.

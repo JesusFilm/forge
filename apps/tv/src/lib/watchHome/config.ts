@@ -1,7 +1,9 @@
 /**
  * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile). Two halves with
  * different sync obligations — see the LIVE / FROZEN markers on WATCH_HOME_HERO_SOURCE_IDS
- * and WATCH_HOME_SECTIONS below. (TV cuts the playlist-sequence + Mux-insert configs.)
+ * and WATCH_HOME_SECTIONS below. The hero is a config-mirrored deterministic pool queue
+ * (heroQueue.ts) built from WATCH_HOME_PLAYLIST_SEQUENCE, mirroring mobile; TV still cuts
+ * the Mux-insert config (no web-link/promo slides — the hero shows videos/series only).
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on
@@ -83,11 +85,38 @@ export const newBelieverCourse = [
 ] as const satisfies readonly WatchHomeSourceConfig[]
 
 // LIVE (client-owned): mirror web hero curation here until feat-160 moves it to admin.
+// WATCH_HOME_HERO_SOURCE_IDS is now the empty-queue FALLBACK only (see heroQueue.ts /
+// buildFeatured). The live hero rotates through WATCH_HOME_PLAYLIST_SEQUENCE below.
 export const WATCH_HOME_HERO_SOURCE_IDS = [
   "1_jf-0-0",
   "2_GOJ-0-0",
   "GOMattCollection",
   "LUMOCollection",
+] as const
+
+export type WatchHomePlaylistGroup = readonly string[]
+
+// LIVE (client-owned): mirror mobile's apps/mobile/src/lib/watchHome/heroConfig.ts
+// (ported from JesusFilm/core apps/watch/config/video-playlist.json). Core/Arclight
+// ids stored in admin as Video.coreId. Each group becomes one hero pool.
+export const WATCH_HOME_PLAYLIST_SEQUENCE: readonly WatchHomePlaylistGroup[] = [
+  ["1_jf-0-0"],
+  ["JFP-Featured"],
+  ["8_NBC"],
+  [
+    "GOJohnCollection",
+    "GOLukeCollection",
+    "GOMarkCollection",
+    "GOMattCollection",
+  ],
+  ["7_Origins", "Nua", "2_ElCamWaySJEN"],
+  ["MAG1"],
+  ["11_Sermon", "11_Shema", "11_ReadBible", "11_Advent"],
+  ["2_GOJ-0-0"],
+  ["CS1"],
+  ["9_CreationtoChrist"],
+  ["2_FileZero-0-0"],
+  ["10_DarkroomFaith"],
 ] as const
 
 export const WATCH_HOME_COLLECTION_BLACKLIST = new Set(["7_Origins4Connect"])
@@ -170,6 +199,7 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
 export function getWatchHomeCoreIds(): string[] {
   const ids = [
     ...WATCH_HOME_HERO_SOURCE_IDS,
+    ...WATCH_HOME_PLAYLIST_SEQUENCE.flat(),
     ...WATCH_HOME_SECTIONS.flatMap((section) => [
       section.primaryCollectionId,
       ...(section.sources ?? []).map((source) => source.id),
