@@ -1,0 +1,261 @@
+{
+  "nowIso": "2026-07-13T15:00:00.000Z",
+  "videos": [
+    {
+      "documentId": "1_jf-0-0-doc",
+      "coreId": "1_jf-0-0",
+      "slug": "1_jf-0-0-slug",
+      "label": "FEATURE_FILM",
+      "durationSeconds": 120,
+      "images": [
+        {
+          "url": "https://img.example/x.jpg",
+          "thumbnail": "https://img.example/x-thumb.jpg",
+          "mobileCinematicHigh": "https://img.example/x-high.jpg",
+          "mobileCinematicLow": "https://img.example/x-low.jpg",
+          "videoStill": "https://img.example/x-still.jpg"
+        }
+      ],
+      "locales": [
+        {
+          "title": "1_jf-0-0",
+          "description": "1_jf-0-0",
+          "snippet": "1_jf-0-0",
+          "imageAlt": "1_jf-0-0"
+        }
+      ]
+    },
+    {
+      "documentId": "8_NBC-doc",
+      "coreId": "8_NBC",
+      "slug": "8_NBC-slug",
+      "label": "COLLECTION",
+      "durationSeconds": 120,
+      "images": [
+        {
+          "url": "https://img.example/x.jpg",
+          "thumbnail": "https://img.example/x-thumb.jpg",
+          "mobileCinematicHigh": "https://img.example/x-high.jpg",
+          "mobileCinematicLow": "https://img.example/x-low.jpg",
+          "videoStill": "https://img.example/x-still.jpg"
+        }
+      ],
+      "locales": [
+        {
+          "title": "8_NBC",
+          "description": "8_NBC",
+          "snippet": "8_NBC",
+          "imageAlt": "8_NBC"
+        }
+      ],
+      "children": [
+        {
+          "child": {
+            "documentId": "nbc-ep1-doc",
+            "coreId": "nbc-ep1",
+            "slug": "nbc-ep1-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "nbc-ep1",
+                "description": "nbc-ep1",
+                "snippet": "nbc-ep1",
+                "imageAlt": "nbc-ep1"
+              }
+            ]
+          }
+        },
+        {
+          "child": {
+            "documentId": "nbc-ep2-doc",
+            "coreId": "nbc-ep2",
+            "slug": "nbc-ep2-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "nbc-ep2",
+                "description": "nbc-ep2",
+                "snippet": "nbc-ep2",
+                "imageAlt": "nbc-ep2"
+              }
+            ]
+          }
+        },
+        {
+          "child": {
+            "documentId": "CS1-doc",
+            "coreId": "CS1",
+            "slug": "CS1-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "CS1",
+                "description": "CS1",
+                "snippet": "CS1",
+                "imageAlt": "CS1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "documentId": "GOMattCollection-doc",
+      "coreId": "GOMattCollection",
+      "slug": "GOMattCollection-slug",
+      "label": "SERIES",
+      "durationSeconds": 120,
+      "images": [
+        {
+          "url": "https://img.example/x.jpg",
+          "thumbnail": "https://img.example/x-thumb.jpg",
+          "mobileCinematicHigh": "https://img.example/x-high.jpg",
+          "mobileCinematicLow": "https://img.example/x-low.jpg",
+          "videoStill": "https://img.example/x-still.jpg"
+        }
+      ],
+      "locales": [
+        {
+          "title": "GOMattCollection",
+          "description": "GOMattCollection",
+          "snippet": "GOMattCollection",
+          "imageAlt": "GOMattCollection"
+        }
+      ],
+      "children": [
+        {
+          "child": {
+            "documentId": "gomatt-ep1-doc",
+            "coreId": "gomatt-ep1",
+            "slug": "gomatt-ep1-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "gomatt-ep1",
+                "description": "gomatt-ep1",
+                "snippet": "gomatt-ep1",
+                "imageAlt": "gomatt-ep1"
+              }
+            ]
+          }
+        },
+        {
+          "child": {
+            "documentId": "GOMattCollection-doc",
+            "coreId": "GOMattCollection",
+            "slug": "GOMattCollection-slug",
+            "label": "SERIES",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "GOMattCollection",
+                "description": "GOMattCollection",
+                "snippet": "GOMattCollection",
+                "imageAlt": "GOMattCollection"
+              }
+            ]
+          }
+        },
+        {
+          "child": {
+            "documentId": "gomatt-ep1-doc",
+            "coreId": "gomatt-ep1",
+            "slug": "gomatt-ep1-slug",
+            "label": "EPISODE",
+            "durationSeconds": 120,
+            "images": [
+              {
+                "url": "https://img.example/x.jpg",
+                "thumbnail": "https://img.example/x-thumb.jpg",
+                "mobileCinematicHigh": "https://img.example/x-high.jpg",
+                "mobileCinematicLow": "https://img.example/x-low.jpg",
+                "videoStill": "https://img.example/x-still.jpg"
+              }
+            ],
+            "locales": [
+              {
+                "title": "gomatt-ep1",
+                "description": "gomatt-ep1",
+                "snippet": "gomatt-ep1",
+                "imageAlt": "gomatt-ep1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "documentId": "sf-standalone-doc",
+      "coreId": "sf-standalone",
+      "slug": "sf-standalone-slug",
+      "label": "SHORT_FILM",
+      "durationSeconds": 120,
+      "images": [
+        {
+          "url": "https://img.example/x.jpg",
+          "thumbnail": "https://img.example/x-thumb.jpg",
+          "mobileCinematicHigh": "https://img.example/x-high.jpg",
+          "mobileCinematicLow": "https://img.example/x-low.jpg",
+          "videoStill": "https://img.example/x-still.jpg"
+        }
+      ],
+      "locales": [
+        {
+          "title": "sf-standalone",
+          "description": "sf-standalone",
+          "snippet": "sf-standalone",
+          "imageAlt": "sf-standalone"
+        }
+      ]
+    }
+  ]
+}
