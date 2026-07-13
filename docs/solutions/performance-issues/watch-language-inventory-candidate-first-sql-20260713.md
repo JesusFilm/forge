@@ -144,16 +144,33 @@ worktree; the ignored proof artifact is not part of the production bundle.
 
 ## Post-Deploy Validation
 
-After the normal Admin-to-Web deployment reaches production:
+The normal Admin-to-Web deployment reached production at `f0a04a6d` through
+PR #1548. Direct Admin `watchLanguageInventory` canaries returned HTTP 200 with
+the expected complete counts:
 
-1. Run direct Admin `watchLanguageInventory` canaries for Spanish and English
-   at `limit: 1` and `limit: 1000`.
-2. Load the public Spanish and English inventory routes twice to cover cold and
-   warm server rendering.
-3. Confirm no PostgreSQL `57014` statement timeout, Prisma `P2010`, GraphQL
-   unexpected-error response, or Web 500 appears in Admin/Web logs.
-4. Treat warm Admin latency above 2 seconds, cold latency above 5 seconds, or a
-   changed bucket/count/fallback shape as a rollback or immediate-fix trigger.
+| Language | Collections | Audio videos | Subtitle-only | Total |   Duration |
+| -------- | ----------: | -----------: | ------------: | ----: | ---------: |
+| English  |         109 |          983 |             0 | 1,092 | 623-668 ms |
+| Spanish  |          62 |          625 |             2 |   689 | 520-644 ms |
+
+The first uncached `/watch/videos` request returned HTTP 200 in 7.85 seconds,
+with `x-nextjs-cache: MISS` and the expected `/watch/en/en/videos` rewrite.
+Three repeat requests returned HTTP 200 in 1.03-1.48 seconds, with time to first
+byte between 261 and 339 ms. A bounded production-log check found no subsequent
+PostgreSQL `57014` statement timeout. The Admin canaries returned no GraphQL
+errors, and the public route no longer reproduced the server-render 500.
+
+An isolated production browser session completed the English page load in
+1.24 seconds and displayed the 1,092-item language total. The Spanish page
+displayed the expected Spanish heading and section counts, completed in 7.31
+seconds cold, and reloaded in 514 ms. Neither page emitted browser console or
+page errors. Visual proof is captured locally at
+`output/playwright/watch-videos-production-restored.png`.
+
+The direct Admin resolver remains below the 2-second warm and 5-second cold
+thresholds. The slower uncached Watch response includes the page's wider render
+and payload work; it remains below the route failure boundary and is distinct
+from the resolved SQL timeout.
 
 ## Related
 
