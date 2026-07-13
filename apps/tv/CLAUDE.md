@@ -19,13 +19,29 @@ as mobile, different renderers optimized for 10-foot UI and D-pad navigation.
 ### SDUI Pipeline
 
 ```
-Admin GraphQL → gql.tada typed query → normalizer (adds `kind`) → dispatcher → TV renderers
+Admin GraphQL → gql.tada typed query → normalizer (typed block-model union) → dispatcher → typed TV renderers
 ```
 
 - **Queries**: Imported from mobile or copied with sync comment
-- **Normalizer**: Copied from mobile (identical logic)
-- **Dispatcher**: TV version with subset of block kinds
-- **Renderers**: All new, designed for 10-foot UI with D-pad focus
+- **Normalizer**: TV-owned (`src/lib/normalizer.ts`) — emits a `kind`-discriminated
+  union of block models DERIVED from the query's gql.tada ResultOf, so fragment/alias
+  changes fail at compile time (never a silent `undefined` in a renderer)
+- **Dispatcher**: TV version with subset of block kinds; the switch narrows each
+  renderer to its typed model
+- **Renderers**: All new, designed for 10-foot UI with D-pad focus; props are the
+  typed block models, no `as` casts
+
+### Home hero (client-owned, not the Experience)
+
+The topmost home hero is a config-mirrored deterministic pool queue over
+`WATCH_HOME_PLAYLIST_SEQUENCE` (`src/lib/watchHome/heroQueue.ts`) that mirrors mobile's
+algorithm exactly, so TV shows the same day's videos/series as web/mobile (→
+`model.featured`). It is NOT the admin Experience (whose `WatchHomeHeroBlock` the
+adapter skips). Mirror mobile's data path precisely: top-level-only source map + raw
+`parent.children` (never `resolvedChildren`), and dedupe the queue on `coreId`.
+`businessDate` is Intl-free (Hermes; see `clockFormat.ts`), and TV builds NO Mux inserts
+(no web-link/promo slides). `WATCH_HOME_HERO_SOURCE_IDS` is the empty-queue fallback
+only; feat-160 later moves curation into admin.
 
 ## Design Systems
 
@@ -34,8 +50,8 @@ surface.
 
 ### Crimson Gallery (`COLORS` in `src/lib/colors.ts`)
 
-Governs the SDUI experience renderer, series, and the remaining legacy surfaces.
-From the Stitch mockups:
+Governs series and the remaining legacy surfaces. (The SDUI Experience Details
+renderer moved to WATCH_THEME — see below.) From the Stitch mockups:
 
 - Background: `#161311` (warm stone, never pure black)
 - Surface container: `#221F1D`
@@ -50,13 +66,21 @@ From the Stitch mockups:
 
 ### WATCH_THEME (`src/components/watch/watchDetailTheme.ts`)
 
-Governs the watch detail, Home, and Search screens. Ported from the Claude
-Design handoff and adopted across those surfaces — a deliberate product decision:
+Governs the watch detail, Home, Search, and Experience Details (SDUI experience)
+screens. Ported from the Claude Design handoff and adopted across those surfaces
+— a deliberate product decision:
 
 - Primary accent: `#E1241E` (brighter red than Crimson Gallery)
 - Near-black surfaces/scrims (`NEAR_BLACK` = `#0a0a0b`); never warm stone
 - Focus state: white-fill focus with near-black ink (white ring, not crimson glow)
 - Frosted-glass pills approximated with translucent white fill (no backdrop blur on TV)
+- Experience Details hero: unlike the muted watch/Home/Search heroes, it autoplays
+  _with sound_ and pauses when scrolled off-screen or on nav-away/background — a
+  deliberate Apple-TV-style divergence. `VideoBackdrop` gates it via its `muted` /
+  `active` props; siblings keep the muted, overlay-only defaults.
+- Experience Details quiz button (`QuizButtonRenderer`) is a deliberate Crimson-palette
+  exception in this WATCH page — its orange→crimson gradient is intentional; do NOT
+  auto-migrate it to WATCH (a U4 sweep did once and it was reverted).
 
 `SEARCH_THEME` (`src/components/search/searchTheme.ts`) extends WATCH_THEME with
 search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
@@ -72,6 +96,21 @@ search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
 - Composite React keys: `key={\`${item.kind}-${item.id}-${index}\`}`.
 - Hardcoded English locale: `{ locale: "en" }` for all GraphQL queries.
+
+## Running on a simulator (env setup)
+
+**Before launching apps/tv on a simulator, ALWAYS run
+`bash scripts/setup-sim-env.sh tv` first.** Fresh git worktrees don't inherit
+`.env.local` (gitignored), and this app's `.env.local` historically ships only
+`EXPO_PUBLIC_GRAPHQL_URL` — missing `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`, the
+consumer bearer without which admin's `Query.search` returns `UNAUTHENTICATED`
+and search silently breaks.
+
+The script is idempotent: it seeds `apps/tv/.env.local` from the main checkout
+and guarantees the search token is present (tv and mobile share the same
+consumer-bearer value). Run it BEFORE `expo start` — Expo inlines
+`EXPO_PUBLIC_*` at bundler startup, so a change made after boot needs a Metro
+restart to take effect.
 
 ## Test builds & distribution
 
@@ -133,6 +172,14 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.
+- Focus visuals come from the one focus module (`src/components/focus/`):
+  `useFocusVisual(role)` with role presets (card/thumb/cta/pill/tab/key/option/tile/row)
+  owns the single 180ms curve, the white ring (`FOCUS_RING_COLOR`, 0.9), shadows, and
+  the Android compositing quirks. Never hand-roll onFocus + Animated scale/ring.
+- Shared state box for loading/error/empty screens: `src/components/ScreenStateView.tsx`
+  (accent-parameterized; Crimson surfaces pass `COLORS.primary`). Shared episode-style
+  rail/card: `src/components/rails/ThumbRail.tsx` + `ThumbCard.tsx`. Card-image
+  precedence lives in `src/lib/cardImage.ts` (named intents poster/card).
 - Visible focus ring on focused elements: a white ring is the app-wide default on all surfaces (cards get a white border ring; the primary red CTA keeps its colored drop shadow). The `focusRing="crimson"` opt-in is retired; pills on dark glass (e.g. the former Related Questions FallbackPill, the hero next-chevron) use the invert-on-focus fill (dark glass -> white fill + near-black ink/icon on focus).
 - `TVFocusGuideView` to constrain focus within horizontal rails.
 - `hasTVPreferredFocus` for initial (first-mount) focus control. For back-navigation focus restore use `createFocusMemory()` + `requestTVFocus()` in a `useFocusEffect` (Home; see `src/components/home/focusMemory.ts`) — `hasTVPreferredFocus` is one-shot mount-only and does not restore on pop.

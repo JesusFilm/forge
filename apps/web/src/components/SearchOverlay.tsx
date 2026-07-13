@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -10,8 +11,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import {
   ChevronDown,
@@ -28,9 +27,23 @@ import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { SpinnerIcon } from "@/components/ui/spinner"
-import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
+import {
+  LanguageCombobox,
+  type LanguageComboboxOption,
+} from "@/components/watch/LanguageCombobox"
 import { CATEGORIES } from "@/lib/search-categories"
-import { SEARCH_OVERLAY_FIELD_WIDTH_CLASSES } from "@/lib/content-width"
+import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_PINNED_TOP_CLASS,
+  FLOATING_HEADER_TOP_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+} from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import {
   MAX_SEARCH_LANGUAGE_FILTERS,
@@ -78,12 +91,10 @@ const ALGOLIA_REGION_ORDER = [
 ] as const
 
 type AlgoliaBrowseTab = "suggestions" | "languages"
-const MAX_LANGUAGE_AUTOCOMPLETE_OPTIONS = 50
 const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
 
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
-  const tLanguage = useTranslations("LanguageCombobox")
   const {
     open,
     closing,
@@ -110,6 +121,9 @@ export function SearchOverlay() {
     selectedSearchLanguageOption,
     searchResultAnalytics,
     defaultSearchLanguageOption,
+    headerLanguageSwitcherVisible,
+    headerLanguageCode,
+    headerPinned,
     setQuery,
     search,
     loadMore,
@@ -126,22 +140,14 @@ export function SearchOverlay() {
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingSearchAfterLanguageLoadRef = useRef<string | null>(null)
-  const languageSearchInputRef = useRef<HTMLInputElement>(null)
-  const languageAutocompleteBlurTimeoutRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null)
   const [languagePanelCollapsed, setLanguagePanelCollapsed] = useState(true)
   const [algoliaBrowseTab, setAlgoliaBrowseTab] =
     useState<AlgoliaBrowseTab>("languages")
   const [selectedRegionName, setSelectedRegionName] = useState<string | null>(
     null,
   )
-  const [languageSearchQuery, setLanguageSearchQuery] = useState("")
   const [languageAutocompleteOpen, setLanguageAutocompleteOpen] =
     useState(false)
-  const [languageAutocompleteDirty, setLanguageAutocompleteDirty] =
-    useState(false)
-  const [activeLanguageOptionIndex, setActiveLanguageOptionIndex] = useState(0)
   const [languageMetadataFallbackReady, setLanguageMetadataFallbackReady] =
     useState(false)
 
@@ -168,11 +174,23 @@ export function SearchOverlay() {
     setClosePortalContainer(node)
   }, [])
 
-  // Autofocus the input shortly after user-open.
-  useEffect(() => {
+  // Keep the modal ready for immediate typing even when portal/lazy mount work
+  // races the opening click.
+  useLayoutEffect(() => {
     if (!open) return
-    const t = setTimeout(() => inputRef.current?.focus(), 100)
-    return () => clearTimeout(t)
+    let cancelled = false
+    const focusInput = () => {
+      if (cancelled) return
+      inputRef.current?.focus({ preventScroll: true })
+    }
+    focusInput()
+    const frame = window.requestAnimationFrame(focusInput)
+    const timer = window.setTimeout(focusInput, 100)
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
   }, [open])
 
   // Escape closes the modal while preserving the in-memory query state.
@@ -201,19 +219,39 @@ export function SearchOverlay() {
       if (e.key !== "Tab") return
       const overlay = overlayRef.current
       if (!overlay) return
-      const focusable = overlay.querySelectorAll<HTMLElement>(
-        'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+      const overlayFocusable = Array.from(
+        overlay.querySelectorAll<HTMLElement>(
+          'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+        ),
       )
+      const headerLogo = document.querySelector<HTMLElement>(
+        '[data-testid="floating-header-logo"]',
+      )
+      const headerLanguage = document.querySelector<HTMLElement>(
+        '[data-testid="floating-header-language-button"]',
+      )
+      const headerClose = document.querySelector<HTMLElement>(
+        '[data-testid="floating-header-search-close"]',
+      )
+      const focusable = [
+        headerLogo,
+        ...overlayFocusable,
+        headerLanguage,
+        headerClose,
+      ].filter((element): element is HTMLElement => element != null)
       if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
+      const activeIndex = focusable.indexOf(
+        document.activeElement as HTMLElement,
+      )
+      const nextIndex = e.shiftKey
+        ? activeIndex <= 0
+          ? focusable.length - 1
+          : activeIndex - 1
+        : activeIndex === -1 || activeIndex >= focusable.length - 1
+          ? 0
+          : activeIndex + 1
+      e.preventDefault()
+      focusable[nextIndex]?.focus()
     }
     document.addEventListener("keydown", handleTab)
     return () => document.removeEventListener("keydown", handleTab)
@@ -223,9 +261,6 @@ export function SearchOverlay() {
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
-      if (languageAutocompleteBlurTimeoutRef.current) {
-        clearTimeout(languageAutocompleteBlurTimeoutRef.current)
-      }
     }
   }, [])
 
@@ -395,10 +430,7 @@ export function SearchOverlay() {
       if (!language.publicSlug) return
       if (debounceRef.current) clearTimeout(debounceRef.current)
       pendingSearchAfterLanguageLoadRef.current = null
-      setLanguageSearchQuery(language.englishName)
       setLanguageAutocompleteOpen(false)
-      setLanguageAutocompleteDirty(false)
-      setActiveLanguageOptionIndex(0)
       selectSearchLanguage(language, regionName)
       if (query.trim().length > 0) {
         void search(query, {
@@ -413,12 +445,9 @@ export function SearchOverlay() {
   const handleResetSearchLanguage = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     pendingSearchAfterLanguageLoadRef.current = null
-    setLanguageSearchQuery(defaultSearchLanguageOption?.englishName ?? "")
     setLanguageAutocompleteOpen(false)
-    setLanguageAutocompleteDirty(false)
-    setActiveLanguageOptionIndex(0)
     resetSearchLanguageToDefault()
-  }, [defaultSearchLanguageOption, resetSearchLanguageToDefault])
+  }, [resetSearchLanguageToDefault])
 
   const handleClearInput = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -435,10 +464,14 @@ export function SearchOverlay() {
     languageOptions.length > 0 ||
     languageOptionsError != null
   const languagePanelOpen =
-    open && searchLanguageControlVisible && !languagePanelCollapsed
-  const showLanguageBrowsePanel =
+    open &&
+    algoliaSearchEnabled &&
     searchLanguageControlVisible &&
-    (languagePanelOpen || (algoliaSearchEnabled && query.trim().length === 0))
+    !languagePanelCollapsed
+  const showLanguageBrowsePanel =
+    algoliaSearchEnabled &&
+    searchLanguageControlVisible &&
+    (languagePanelOpen || query.trim().length === 0)
   const activeRegionGroup =
     orderedLanguageGroups.find(
       (group) => group.regionName === activeRegionName,
@@ -446,12 +479,13 @@ export function SearchOverlay() {
     orderedLanguageGroups[0] ??
     null
   const searchOverlayScrollTopClass = queryLanguageSuggestion
-    ? "top-64 sm:top-56"
+    ? "top-72 md:top-60"
     : searchLanguageControlVisible
-      ? "top-56 sm:top-44"
-      : "top-44 sm:top-32"
-  const languageCountLabel =
-    languageOptions.length >= 1000 ? "1000+" : String(languageOptions.length)
+      ? "top-60 md:top-48"
+      : "top-44 md:top-32"
+  const languageCountLabel = new Intl.NumberFormat().format(
+    languageOptions.length,
+  )
   const algoliaSelectedLanguageSummary =
     selectedLanguageEnglishNames.length === 0
       ? t("allLanguages")
@@ -464,11 +498,6 @@ export function SearchOverlay() {
     defaultSearchLanguageOption?.englishName.split(",")[0] ??
     recommendedLanguage?.englishName.split(",")[0] ??
     null
-  const selectedSearchLanguageFullName =
-    selectedSearchLanguageOption?.englishName ??
-    defaultSearchLanguageOption?.englishName ??
-    recommendedLanguage?.englishName ??
-    ""
   const selectedLanguageSummary = algoliaSearchEnabled
     ? algoliaSelectedLanguageSummary
     : (selectedSearchLanguageName ?? t("searchLanguageLabel"))
@@ -484,158 +513,64 @@ export function SearchOverlay() {
     semanticSearchEnabled &&
     (selectedSearchLanguageOption?.publicSlug ?? null) !==
       (defaultSearchLanguageOption?.publicSlug ?? null)
-  const searchableSemanticLanguageOptions = useMemo(
+  const semanticLanguageTriggerClassName = [
+    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20",
+    semanticLanguageOverrideActive ? "pr-14" : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const semanticLanguageComboboxOptions = useMemo<LanguageComboboxOption[]>(
     () =>
-      languageOptions.flatMap((language) => {
-        if (!language.publicSlug) return []
-        return [
-          {
-            language,
-            searchText: [
-              language.englishName,
-              language.nativeName ?? "",
-              language.bcp47 ?? "",
-              language.publicSlug,
+      languageOptions.flatMap((language) =>
+        language.publicSlug
+          ? [
+              {
+                slug: language.publicSlug,
+                name: language.englishName,
+                nativeName: language.nativeName,
+                bcp47: language.bcp47,
+              },
             ]
-              .join("\u0001")
-              .toLocaleLowerCase(),
-          },
-        ]
-      }),
+          : [],
+      ),
     [languageOptions],
   )
-  const semanticLanguageAutocompleteOptions = useMemo(() => {
-    const term = languageAutocompleteDirty
-      ? languageSearchQuery.trim().toLocaleLowerCase()
-      : ""
-    const matches: SearchLanguageOption[] = []
-    for (const { language, searchText } of searchableSemanticLanguageOptions) {
-      if (term.length > 0 && !searchText.includes(term)) continue
-      matches.push(language)
-      if (matches.length >= MAX_LANGUAGE_AUTOCOMPLETE_OPTIONS) break
+  const semanticLanguageOptionBySlug = useMemo(() => {
+    const bySlug = new Map<string, SearchLanguageOption>()
+    for (const language of languageOptions) {
+      if (language.publicSlug) bySlug.set(language.publicSlug, language)
     }
-    return matches
-  }, [
-    languageAutocompleteDirty,
-    languageSearchQuery,
-    searchableSemanticLanguageOptions,
-  ])
-  const showSemanticLanguageAutocomplete =
-    !algoliaSearchEnabled &&
-    languageAutocompleteOpen &&
-    languagePanelOpen &&
-    !languageOptionsLoading &&
-    !languageOptionsError
-  const resolvedActiveLanguageOptionIndex =
-    semanticLanguageAutocompleteOptions.length === 0
-      ? 0
-      : Math.min(
-          activeLanguageOptionIndex,
-          semanticLanguageAutocompleteOptions.length - 1,
-        )
-  const activeLanguageAutocompleteOption =
-    semanticLanguageAutocompleteOptions[resolvedActiveLanguageOptionIndex] ??
-    null
-  const activeLanguageAutocompleteOptionId =
-    activeLanguageAutocompleteOption?.publicSlug != null
-      ? `search-language-autocomplete-option-${activeLanguageAutocompleteOption.publicSlug}`
-      : undefined
-
-  useEffect(() => {
-    if (!languagePanelOpen || algoliaSearchEnabled) return
-    const focusTimer = setTimeout(() => {
-      const input = languageSearchInputRef.current
-      input?.focus()
-      input?.select()
-    }, 0)
-    return () => clearTimeout(focusTimer)
-  }, [algoliaSearchEnabled, languagePanelOpen])
+    return bySlug
+  }, [languageOptions])
+  const semanticLanguageComboboxValue =
+    selectedSearchLanguageOption?.publicSlug ??
+    defaultSearchLanguageOption?.publicSlug ??
+    recommendedLanguage?.publicSlug ??
+    ""
 
   const handleLanguagePanelToggle = useCallback(() => {
     setLanguagePanelCollapsed((collapsed) => {
       const nextCollapsed = !collapsed
-      setLanguageSearchQuery(selectedSearchLanguageFullName)
-      setLanguageAutocompleteDirty(false)
       if (nextCollapsed) {
         setLanguageAutocompleteOpen(false)
-        setActiveLanguageOptionIndex(0)
       } else {
         setLanguageAutocompleteOpen(true)
       }
       return nextCollapsed
     })
-  }, [selectedSearchLanguageFullName])
-
-  const handleLanguageAutocompleteChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setLanguageSearchQuery(event.target.value)
-      setLanguageAutocompleteOpen(true)
-      setLanguageAutocompleteDirty(true)
-      setActiveLanguageOptionIndex(0)
-    },
-    [],
-  )
-
-  const handleLanguageAutocompleteFocus = useCallback(() => {
-    if (languageAutocompleteBlurTimeoutRef.current) {
-      clearTimeout(languageAutocompleteBlurTimeoutRef.current)
-      languageAutocompleteBlurTimeoutRef.current = null
-    }
-    setLanguageAutocompleteOpen(true)
   }, [])
 
-  const handleLanguageAutocompleteBlur = useCallback(() => {
-    languageAutocompleteBlurTimeoutRef.current = setTimeout(() => {
-      setLanguageAutocompleteOpen(false)
-    }, 120)
-  }, [])
-
-  const handleLanguageAutocompleteKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Escape") {
-        if (languageAutocompleteOpen) {
-          event.stopPropagation()
-          setLanguageAutocompleteOpen(false)
-          setLanguageSearchQuery(selectedSearchLanguageFullName)
-          setLanguageAutocompleteDirty(false)
-        }
-        return
-      }
-
-      if (event.key === "ArrowDown") {
-        event.preventDefault()
-        setLanguageAutocompleteOpen(true)
-        if (semanticLanguageAutocompleteOptions.length === 0) return
-        setActiveLanguageOptionIndex((index) =>
-          Math.min(index + 1, semanticLanguageAutocompleteOptions.length - 1),
-        )
-        return
-      }
-
-      if (event.key === "ArrowUp") {
-        event.preventDefault()
-        setLanguageAutocompleteOpen(true)
-        if (semanticLanguageAutocompleteOptions.length === 0) return
-        setActiveLanguageOptionIndex((index) => Math.max(index - 1, 0))
-        return
-      }
-
-      if (event.key === "Enter" && activeLanguageAutocompleteOption) {
-        event.preventDefault()
-        handleSemanticLanguageClick(
-          activeLanguageAutocompleteOption,
-          activeLanguageAutocompleteOption.regionNames[0],
-        )
-      }
+  const handleSemanticLanguageSlugChange = useCallback(
+    (slug: string) => {
+      const language = semanticLanguageOptionBySlug.get(slug)
+      if (!language) return
+      handleSemanticLanguageClick(language, language.regionNames[0])
     },
-    [
-      activeLanguageAutocompleteOption,
-      handleSemanticLanguageClick,
-      languageAutocompleteOpen,
-      semanticLanguageAutocompleteOptions.length,
-      selectedSearchLanguageFullName,
-    ],
+    [handleSemanticLanguageClick, semanticLanguageOptionBySlug],
   )
+  const headerTopClass = headerPinned
+    ? FLOATING_HEADER_PINNED_TOP_CLASS
+    : FLOATING_HEADER_TOP_CLASS
 
   return (
     <div
@@ -643,54 +578,26 @@ export function SearchOverlay() {
       role="dialog"
       aria-modal="true"
       aria-label={t("dialogLabel")}
-      onClick={() => closeAndKeepQuery()}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
-        zIndex: 9999,
+        zIndex: 45,
         backgroundColor: "rgba(0, 0, 0, 0.75)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Floating top bar: input is viewport-centered via mx-auto. On mobile
-          the logo is in normal flow above the field so it cannot overlap the
-          input. Outer padding (px-4 sm:px-6) matches the
-          floating searchbar's side margin (w-[calc(100%-2rem)]
-          sm:w-[calc(100%-3rem)]) so the input's position and size on open
-          match the bar's exactly. The padding-top mirrors the header bar's
-          unpinned top offset, including safe-area inset and the md breakpoint,
-          so the modal input does not drift vertically when opened. The wrapper
-          is `pointer-events-none` so scroll wheel events over the empty edges
-          pass through to the body; the pill + logo + close button re-enable
-          pointer events on themselves. */}
+      {/* Mirror the floating header grid so the active input lands exactly
+          where the closed search pill was. The persistent header stays above
+          this overlay and owns the logo, language icon, and close button. */}
       <div
         data-testid="search-overlay-top-bar"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:px-6 md:pt-[calc(env(safe-area-inset-top,0px)+3rem)]"
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
       >
-        <Link
-          href={"/" as Route}
-          aria-label={t("home")}
-          // stopPropagation keeps the overlay from intercepting the click as
-          // a backdrop dismiss; search("") clears the query and cached results
-          // so home navigation lands on a fresh search bar.
-          onClick={(e) => {
-            e.stopPropagation()
-            void search("")
-          }}
-          className="pointer-events-auto mb-6 flex w-fit items-center rounded-full p-1 sm:hidden focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
-        >
-          <Image
-            src="/watch/images/jesusfilm-sign.svg"
-            alt="JesusFilm"
-            width={70}
-            height={70}
-            unoptimized
-            className="h-auto max-w-[50px]"
-          />
-        </Link>
+        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
         <div
+          data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
-          className={`pointer-events-auto ${SEARCH_OVERLAY_FIELD_WIDTH_CLASSES}`}
+          className="pointer-events-auto min-w-0 flex-1"
         >
           <FloatingSearchFieldInput
             ref={inputRef}
@@ -701,8 +608,35 @@ export function SearchOverlay() {
             placeholder={t("placeholder")}
             aria-label={t("inputLabel")}
             iconTestId="search-overlay-input-icon"
+            autoFocus
             wrapperClassName="w-full"
           />
+          {!algoliaSearchEnabled && searchLanguageControlVisible && (
+            <div className="relative mt-3 w-full md:w-72 lg:w-80">
+              <LanguageCombobox
+                options={semanticLanguageComboboxOptions}
+                value={semanticLanguageComboboxValue}
+                onChange={handleSemanticLanguageSlugChange}
+                compact
+                open={languageAutocompleteOpen}
+                onOpenChange={setLanguageAutocompleteOpen}
+                disabled={languageOptionsLoading}
+                placeholder={t("searchLanguageLabel")}
+                popoverPortalContainer={closePortalContainer}
+                triggerClassName={semanticLanguageTriggerClassName}
+              />
+              {semanticLanguageOverrideActive && (
+                <button
+                  type="button"
+                  aria-label="Use website default search language"
+                  onClick={handleResetSearchLanguage}
+                  className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
+                >
+                  <X size={16} aria-hidden />
+                </button>
+              )}
+            </div>
+          )}
           {queryLanguageSuggestion && suggestedLanguageName && (
             <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full bg-stone-950/70 px-3 py-2 text-sm text-stone-200 ring-1 ring-white/12 backdrop-blur-md">
               <span className="font-medium">
@@ -720,7 +654,7 @@ export function SearchOverlay() {
               </button>
             </div>
           )}
-          {searchLanguageControlVisible && (
+          {algoliaSearchEnabled && searchLanguageControlVisible && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1">
                 <button
@@ -744,56 +678,54 @@ export function SearchOverlay() {
                     <ChevronDown size={16} aria-hidden />
                   )}
                 </button>
-                {semanticLanguageOverrideActive && (
-                  <button
-                    type="button"
-                    aria-label="Use website default search language"
-                    onClick={handleResetSearchLanguage}
-                    className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/10 text-stone-200 ring-1 ring-white/15 transition hover:bg-white/16 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
-                  >
-                    <X size={16} aria-hidden />
-                  </button>
-                )}
               </div>
-              {algoliaSearchEnabled &&
-                selectedLanguageEnglishNames.map((language) => (
-                  <button
-                    key={language}
-                    type="button"
-                    aria-label={`Remove ${language}`}
-                    onClick={() => {
-                      const option = languageGroups
-                        .flatMap((group) => group.languages)
-                        .find((item) => item.englishName === language)
-                      toggleSearchLanguage(
-                        option ?? {
-                          englishName: language,
-                          nativeName: null,
-                          bcp47: null,
-                          publicSlug: null,
-                          regionNames: [],
-                        },
-                      )
-                    }}
-                    className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-white/10 px-3 text-xs font-medium text-stone-100 ring-1 ring-white/15 transition hover:bg-white/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
-                  >
-                    <span className="max-w-[9rem] truncate">
-                      {language.split(",")[0]}
-                    </span>
-                    <X size={13} aria-hidden />
-                  </button>
-                ))}
+              {selectedLanguageEnglishNames.map((language) => (
+                <button
+                  key={language}
+                  type="button"
+                  aria-label={`Remove ${language}`}
+                  onClick={() => {
+                    const option = languageGroups
+                      .flatMap((group) => group.languages)
+                      .find((item) => item.englishName === language)
+                    toggleSearchLanguage(
+                      option ?? {
+                        englishName: language,
+                        nativeName: null,
+                        bcp47: null,
+                        publicSlug: null,
+                        regionNames: [],
+                      },
+                    )
+                  }}
+                  className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-full bg-white/10 px-3 text-xs font-medium text-stone-100 ring-1 ring-white/15 transition hover:bg-white/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+                >
+                  <span className="max-w-[9rem] truncate">
+                    {language.split(",")[0]}
+                  </span>
+                  <X size={13} aria-hidden />
+                </button>
+              ))}
             </div>
           )}
         </div>
+        <div
+          aria-hidden="true"
+          data-testid="search-overlay-trailing-controls-spacer"
+          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+        >
+          {headerLanguageSwitcherVisible ? (
+            <div
+              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                headerLanguageCode
+                  ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
+                  : ""
+              }`}
+            />
+          ) : null}
+          <div className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
+        </div>
       </div>
-      <WatchModalViewportCloseButton
-        open={open || closing}
-        onClose={closeAndKeepQuery}
-        testId="search-overlay-close"
-        portalContainer={closePortalContainer}
-        positionClassName="top-6 right-4 sm:top-12 sm:right-10"
-      />
 
       <div
         aria-hidden="true"
@@ -867,105 +799,17 @@ export function SearchOverlay() {
                       {languageCountLabel}
                     </span>
                   </div>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <label
-                      htmlFor="search-language-autocomplete"
-                      className="sr-only"
-                    >
-                      {tLanguage("selectLanguage")}
-                    </label>
-                    <div className="relative w-full sm:max-w-md">
-                      <SearchIcon
-                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500"
-                        aria-hidden
-                      />
-                      <input
-                        ref={languageSearchInputRef}
-                        id="search-language-autocomplete"
-                        type="search"
-                        role="combobox"
-                        aria-autocomplete="list"
-                        aria-expanded={showSemanticLanguageAutocomplete}
-                        aria-controls="search-language-autocomplete-listbox"
-                        aria-activedescendant={
-                          showSemanticLanguageAutocomplete
-                            ? activeLanguageAutocompleteOptionId
-                            : undefined
-                        }
-                        value={languageSearchQuery}
-                        onChange={handleLanguageAutocompleteChange}
-                        onFocus={handleLanguageAutocompleteFocus}
-                        onBlur={handleLanguageAutocompleteBlur}
-                        onKeyDown={handleLanguageAutocompleteKeyDown}
-                        placeholder={tLanguage("searchPlaceholder")}
-                        className="h-10 w-full rounded-full border border-white/12 bg-white/8 py-0 pl-10 pr-3 text-sm text-stone-100 outline-none transition placeholder:text-stone-500 focus:border-white/28 focus:bg-white/12 focus:ring-2 focus:ring-white/20"
-                      />
-                      {showSemanticLanguageAutocomplete && (
-                        <div
-                          id="search-language-autocomplete-listbox"
-                          role="listbox"
-                          aria-label={tLanguage("selectLanguage")}
-                          className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-72 overflow-y-auto rounded-xl border border-white/14 bg-stone-950/95 p-1 shadow-2xl shadow-black/35 backdrop-blur-xl"
-                        >
-                          {semanticLanguageAutocompleteOptions.length > 0 ? (
-                            semanticLanguageAutocompleteOptions.map(
-                              (language, index) => {
-                                const selected =
-                                  selectedSearchLanguageOption?.publicSlug ===
-                                  language.publicSlug
-                                const active =
-                                  index === resolvedActiveLanguageOptionIndex
-                                return (
-                                  <button
-                                    id={`search-language-autocomplete-option-${language.publicSlug}`}
-                                    key={
-                                      language.publicSlug ??
-                                      language.englishName
-                                    }
-                                    type="button"
-                                    role="option"
-                                    aria-label={language.englishName}
-                                    aria-selected={selected}
-                                    onMouseDown={(event) =>
-                                      event.preventDefault()
-                                    }
-                                    onMouseEnter={() =>
-                                      setActiveLanguageOptionIndex(index)
-                                    }
-                                    onClick={() =>
-                                      handleSemanticLanguageClick(
-                                        language,
-                                        language.regionNames[0],
-                                      )
-                                    }
-                                    className={`flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 ${
-                                      selected
-                                        ? "bg-brand-red text-white"
-                                        : active
-                                          ? "bg-white/12 text-white"
-                                          : "text-stone-200 hover:bg-white/10"
-                                    }`}
-                                  >
-                                    <span className="min-w-0 truncate font-medium">
-                                      {language.englishName}
-                                    </span>
-                                  </button>
-                                )
-                              },
-                            )
-                          ) : (
-                            <div
-                              role="option"
-                              aria-selected={false}
-                              aria-disabled="true"
-                              className="px-3 py-3 text-sm text-stone-400"
-                            >
-                              {tLanguage("noMatches")}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                  <div className="mt-4 max-w-md">
+                    <LanguageCombobox
+                      options={semanticLanguageComboboxOptions}
+                      value={semanticLanguageComboboxValue}
+                      onChange={handleSemanticLanguageSlugChange}
+                      compact
+                      open={languageAutocompleteOpen}
+                      onOpenChange={setLanguageAutocompleteOpen}
+                      placeholder={t("searchLanguageLabel")}
+                      popoverPortalContainer={closePortalContainer}
+                    />
                   </div>
                 </div>
               )}
@@ -1199,23 +1043,28 @@ export function SearchOverlay() {
                     onClick={() => handleCategoryClick(cat.searchTerm)}
                     aria-label={title}
                     data-testid={`search-overlay-category-${cat.searchTerm.replace(/\s+/g, "-")}`}
-                    className="relative aspect-video w-full cursor-pointer overflow-hidden rounded-lg p-3 text-white transition-transform duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 [@media(hover:hover)]:hover:scale-105 sm:p-6"
-                    style={{ background: cat.gradient }}
+                    className="group relative isolate aspect-video w-full cursor-pointer overflow-hidden rounded-lg p-3 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:p-6"
                   >
-                    {Icon ? (
-                      // Decorative top-right icon. Sized at roughly a
-                      // quarter of the rectangle's width so it reads as
-                      // a prominent corner badge (matching the reference
-                      // from core/apps/watch's CategoryGrid). `pointer-
-                      // events-none` keeps clicks falling through to
-                      // the button.
-                      <Icon
-                        aria-hidden="true"
-                        className="pointer-events-none absolute right-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:right-2 sm:top-2 sm:h-24 sm:w-24"
-                      />
-                    ) : null}
                     <span
-                      className="absolute bottom-3 left-3 text-base font-semibold leading-tight sm:text-lg md:text-xl"
+                      aria-hidden="true"
+                      data-testid={`search-overlay-category-background-${cat.searchTerm.replace(/\s+/g, "-")}`}
+                      className="search-card-hover-zoom pointer-events-none absolute inset-0 z-0 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                      style={{ background: cat.gradient }}
+                    >
+                      {Icon ? (
+                        <Icon
+                          aria-hidden="true"
+                          className="absolute right-1 top-1 h-16 w-16 opacity-30 drop-shadow-lg sm:right-2 sm:top-2 sm:h-24 sm:w-24"
+                        />
+                      ) : null}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      data-testid={`search-overlay-category-hover-outline-${cat.searchTerm.replace(/\s+/g, "-")}`}
+                      className="search-card-hover-outline search-card-red-outline pointer-events-none absolute z-20 opacity-0 transition-opacity duration-200"
+                    />
+                    <span
+                      className="absolute bottom-3 left-3 z-10 text-base font-semibold leading-tight sm:text-lg md:text-xl"
                       style={{ textShadow: "0 1px 3px rgba(0,0,0,0.4)" }}
                     >
                       {title}

@@ -69,7 +69,9 @@ document the dashboard as canonical.
 ## Security posture
 
 - No shared `.jesusfilm.org` cookie dependency for admin.
-- No public signup while migration fallback exists.
+- Public signup is allowed for new viewer accounts. Keep duplicate-account
+  protection in front of Better Auth signup so existing Auth users and legacy
+  Firebase users are asked to sign in instead of creating a second account.
 - OAuth redirect URLs must be exact-match per app environment.
 - The first-party seed (`src/scripts/seed-first-party-apps.ts`) is
   **upsert-only and never prunes.** Editing a client's redirect URIs is scrubbed

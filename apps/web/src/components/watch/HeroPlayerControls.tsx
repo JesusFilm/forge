@@ -81,6 +81,7 @@ export function HeroPlayerControls({
   overlayAnchor,
   playbackId,
   onLanguageClick,
+  languageCode,
   showLanguageButton,
   onVisibilityChange,
   onWatchNextInteraction,
@@ -100,6 +101,8 @@ export function HeroPlayerControls({
   playbackId?: string
   /** Click handler for the in-chrome globe (mirrors the top-right globe). */
   onLanguageClick?: () => void
+  /** Active audio language code displayed beside the in-chrome globe. */
+  languageCode?: string | null
   /**
    * Whether to render the in-chrome globe button. The parent applies the
    * same gate it uses for the top-right globe (>= 2 playable variants AND
@@ -1133,8 +1136,21 @@ export function HeroPlayerControls({
           onClick={onLanguageClick}
           ariaLabel={t("changeAudioLanguage")}
           testId="hero-chrome-language"
+          className={
+            languageCode
+              ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
+              : undefined
+          }
         >
           <Globe aria-hidden className="h-6 w-6" />
+          {languageCode ? (
+            <span
+              data-testid="hero-chrome-language-code"
+              className="text-[10px] font-bold tracking-[0.14em]"
+            >
+              {languageCode}
+            </span>
+          ) : null}
         </ChromeButton>
       ) : null}
 

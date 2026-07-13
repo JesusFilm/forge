@@ -11,6 +11,8 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
+  workflowStartupTransientAttemptsEnvSchema,
+  workflowStartupTransientDelayMsEnvSchema,
   youVersionPassageCacheTtlSecondsEnvSchema,
 } from "@/config/env"
 
@@ -138,6 +140,54 @@ describe("env", () => {
     })
   })
 
+  describe("workflowStartupTransientAttemptsEnvSchema", () => {
+    it("defaults to 12 attempts", () => {
+      expect(workflowStartupTransientAttemptsEnvSchema.parse(undefined)).toBe(
+        12,
+      )
+    })
+
+    it("coerces a positive integer attempt count", () => {
+      expect(workflowStartupTransientAttemptsEnvSchema.parse("3")).toBe(3)
+    })
+
+    it("rejects invalid attempt counts", () => {
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("nope"),
+      ).toThrow()
+    })
+  })
+
+  describe("workflowStartupTransientDelayMsEnvSchema", () => {
+    it("defaults to a ten-second retry delay", () => {
+      expect(workflowStartupTransientDelayMsEnvSchema.parse(undefined)).toBe(
+        10_000,
+      )
+    })
+
+    it("coerces a positive integer delay", () => {
+      expect(workflowStartupTransientDelayMsEnvSchema.parse("250")).toBe(250)
+    })
+
+    it("rejects invalid delay values", () => {
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("nope"),
+      ).toThrow()
+    })
+  })
+
   describe("youVersionPassageCacheTtlSecondsEnvSchema", () => {
     it("defaults to a two-week cache ttl", () => {
       expect(youVersionPassageCacheTtlSecondsEnvSchema.parse(undefined)).toBe(
@@ -221,11 +271,23 @@ describe("env", () => {
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a,mastra-b",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a,experience-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
+          FLEET_ADMIN_API_KEYS: "fleet-a,fleet-b",
           WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a,watch-progress-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
           SEARCH_TRACE_SAMPLING_API_KEYS: "trace-sampling-a,trace-sampling-b",
         }),
       ).not.toThrow()
+    })
+
+    it("throws when FLEET_ADMIN and WEB_ADMIN share a value", () => {
+      // The fleet CSV must stay disjoint from the web SSR CSV — sharing a
+      // value would give a fleet key web's per-key bucket (or vice versa).
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-fleet-key",
+          FLEET_ADMIN_API_KEYS: "shared-fleet-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and FLEET_ADMIN_API_KEYS/)
     })
 
     it("throws when WORKFLOW and WEB_ADMIN share a value", () => {
@@ -393,6 +455,12 @@ describe("env", () => {
         /MASTRA_EXPERIENCE_INGEST_API_KEYS:\s*env\.MASTRA_EXPERIENCE_INGEST_API_KEYS/,
       )
       expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
+      // Boot-call arg is load-bearing: the `satisfies` guard only aligns the
+      // mapped type, so a missing arg here silently skips the fleet disjointness
+      // check. This grep fails if FLEET_ADMIN_API_KEYS is dropped from the call.
+      expect(source).toMatch(
+        /FLEET_ADMIN_API_KEYS:\s*env\.FLEET_ADMIN_API_KEYS/,
+      )
       expect(source).toMatch(
         /WATCH_PROGRESS_ADMIN_API_KEYS:\s*env\.WATCH_PROGRESS_ADMIN_API_KEYS/,
       )

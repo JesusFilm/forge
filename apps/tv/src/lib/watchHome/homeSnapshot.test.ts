@@ -64,3 +64,44 @@ describe("parseStoredHomeSnapshot guardrails", () => {
     ])
   })
 })
+
+describe("snapshot v2 — Experience blocks (R14, R15)", () => {
+  const blocks = [
+    { __typename: "MediaCollectionBlock", sectionKey: "row-1" },
+    { __typename: "SectionBlock" },
+  ]
+
+  it("round-trips the Experience blocks alongside the videos", () => {
+    const parsed = parseStoredHomeSnapshot(
+      serializeHomeSnapshot(videos, NOW, blocks),
+      NOW,
+    )
+    expect(parsed?.videos).toEqual(videos)
+    expect(parsed?.blocks).toEqual(blocks)
+  })
+
+  it("persists blocks as null when the config body was rendered", () => {
+    const parsed = parseStoredHomeSnapshot(
+      serializeHomeSnapshot(videos, NOW, null),
+      NOW,
+    )
+    expect(parsed?.blocks).toBeNull()
+  })
+
+  it("migrates a v1 (videos-only) snapshot to null — one-time network-first paint", () => {
+    const v1 = `{"version":1,"persistedAt":${NOW.getTime()},"videos":[{"coreId":"a"}]}`
+    expect(parseStoredHomeSnapshot(v1, NOW)).toBeNull()
+  })
+
+  it("coerces a non-array blocks field to null (config body / drift)", () => {
+    const blob = `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${NOW.getTime()},"videos":[{"coreId":"a"}],"blocks":"nope"}`
+    expect(parseStoredHomeSnapshot(blob, NOW)?.blocks).toBeNull()
+  })
+
+  it("drops non-object blocks but keeps the valid ones", () => {
+    const blob = `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${NOW.getTime()},"videos":[{"coreId":"a"}],"blocks":[{"__typename":"MediaCollectionBlock"},null,5]}`
+    expect(parseStoredHomeSnapshot(blob, NOW)?.blocks).toEqual([
+      { __typename: "MediaCollectionBlock" },
+    ])
+  })
+})

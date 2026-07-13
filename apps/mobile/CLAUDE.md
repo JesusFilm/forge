@@ -54,7 +54,8 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **Flat container model**: Admin's `ContainerBlock` uses flat `content[]` with `ContainerSlotBlock` markers instead of nested `slots[].slotContent`. `groupBySlotMarker()` reconstructs slot groups.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
 - **Three-layer hero**: the hero (zIndex 0) is absolutely-positioned behind FlashList, with an interactive overlay (zIndex 2, `pointerEvents="box-none"`) above the scroll view for anything tappable. SDUI/CuratedHomeLayout path: visual elements render in the hero layer and invisible overlay Pressables are positioned over them via `measureLayout`. HomeScreen path: visible chrome Pressables (Watch Now / insert CTA / mute) render directly in the overlay and fade with scroll, while hero swipes are claimed by a capture-phase PanResponder on the screen root and forwarded to the pager.
-- **VideoDecoderBudget**: Global context limiting concurrent video decoder slots on Android.
+- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids raw `useVideoPlayer(` outside it plus a two-file allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`).
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions
@@ -66,6 +67,21 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
+
+## Running on a simulator (env setup)
+
+**Before launching apps/mobile on a simulator, ALWAYS run
+`bash scripts/setup-sim-env.sh mobile` first.** Fresh git worktrees don't
+inherit `.env.local` (gitignored), so `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (the
+`Search`-scoped consumer bearer) is absent and search fails with
+`UNAUTHENTICATED` until it's seeded.
+
+The script is idempotent: it seeds `apps/mobile/.env.local` from the main
+checkout with the search token. It's a shortcut — the canonical way to populate
+the full env (and the fallback on a fresh solo clone with no other checkout) is
+`pnpm --filter @forge/mobile fetch-secrets` (Doppler `forge-mobile`). Run either
+BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
+change made after boot needs a Metro restart to take effect.
 
 ## Common Pitfalls
 

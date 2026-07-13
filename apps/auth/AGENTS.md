@@ -17,7 +17,8 @@ Full context lives in `apps/auth/CLAUDE.md`. Keep both files aligned.
   contexts.
 - Do not log raw passwords, bearer tokens, refresh tokens, client secrets, or
   unnecessary PII.
-- Do not expose public signup while Firebase lazy migration exists.
+- Public signup is allowed for new viewer accounts, but do not let existing
+  Auth or legacy Firebase emails create duplicate password accounts.
 - Do not make Auth own app-specific domain authorization; apps keep ABAC and
   local permission rules.
 

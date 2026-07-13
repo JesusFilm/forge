@@ -9,8 +9,8 @@ duration: 5
 depends_on:
   - "feat-205"
 blocks:
-  - "feat-209"
   - "feat-229"
+  - "feat-240"
 tags:
   - "web"
   - "infrastructure"
@@ -30,6 +30,22 @@ tags:
 - The world-reachable `/api/auth/*` (and the existing `/api/seeker`) routes ship **un-rate-limited** in v1 (accepted risk; a per-IP cap is a prerequisite before the audience widens).
 
 **Unblocked.** [feat-229](feat-229-chat-auth-register-oauth-client.md) (`depends_on: feat-207`) — completed alongside this flip. [feat-209](feat-209-chat-per-conversation-urls.md)'s `feat-207` dependency is now satisfied, though it stays `blocked` on [feat-208](feat-208-seeker-postgres-memory.md).
+
+## Amendment (2026-07-13)
+
+The revocation precondition this ticket's plan recorded ("the first feature
+to trust the authenticated subject for durable or authorization decisions
+must introduce revocation first") has been **retired by decision, not
+satisfied** — see the Decision Record in
+[feat-240](feat-240-chat-sign-out-force-login.md). feat-240 was reworded
+(2026-07-13) from "end-session sign-out + refresh-token session lease" to a
+web-pattern force-login marker: sign-out now guarantees the next sign-in on
+that browser shows a real login page, closing this ticket's accepted
+silent-re-auth risk, while session revocation is not planned. Accepted for
+the session's current shape — an 8h cookie whose only power is reading the
+holder's own conversation history; revisit if the session gets longer or the
+cookie starts gating more than that. The body below is the unmodified
+historical record.
 
 ## Problem
 

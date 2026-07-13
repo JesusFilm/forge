@@ -1,14 +1,13 @@
 ---
 id: "feat-209"
-title: "Per-conversation URLs + sidebar history"
+title: "Per-conversation URLs"
 owner: "jian wei"
 priority: "P2"
 status: "not-started"
-start_date: "2026-07-15"
-duration: 3
+start_date: "2026-07-23"
+duration: 2
 depends_on:
-  - "feat-207"
-  - "feat-208"
+  - "feat-241"
 blocks: []
 tags:
   - "web"
@@ -16,77 +15,91 @@ tags:
 
 ## Problem
 
-Conversations are client-only with no URL, so they can't be deep-linked,
-restored, or shared, and there's no sidebar of past conversations. Add
-per-conversation URLs and a history sidebar, reading history back from the
-`ai_chat` Postgres memory feat-208 established.
+Conversations restore via the sidebar (feat-241) but have no address:
+they can't be deep-linked, bookmarked, or reopened from browser history.
+Give each signed-in conversation a URL that restores it.
 
-## Hard preconditions (recorded by feat-208 — read before starting)
+> **Scope note.** This ticket originally bundled "per-conversation URLs +
+> sidebar history". It was split (2026-07-08): real sign-out is feat-240
+> (whose original session-revocation half was later dropped by decision —
+> see that ticket's Decision Record), server history + sidebar hydration is
+> feat-241, and this ticket is now only the URL layer on top. The original
+> hard preconditions moved with their work: sign-out → feat-240; the listing
+> API, fallback-resource exclusion, and anon-migration boundary → feat-241.
+> The rotation invariant and the expired-session UX stayed here.
 
-1. **Revocation before listing.** Per-user thread listing turns the
-   revocation-less, display-only feat-207 session cookie into an
-   _authorization credential_ (a stolen/replayed cookie would read a user's
-   full spiritual-conversation history). feat-207's own code comment
-   (`apps/chat/src/auth/identity.ts`) requires revocation/re-verification
-   before the first feature trusts the subject — that work is a dependency of
-   this ticket's listing surface, not optional hardening.
-2. **Listing API.** Mastra 1.x has no `getThreadsByResourceId` — use
-   `memory.listThreads({ filter: { resourceId }, page, perPage })`.
-3. **Never list the fallback resource.** `SEEKER_DEFAULT_RESOURCE_ID`
-   (`"seeker-dogfood"`) is a shared commons for non-chat dogfooding callers —
-   it must never appear as anyone's history.
-4. **Preserve the rotation invariant.** Today an identity change (sign-in/out
-   full-page redirect) resets client conversation state, so post-change
-   conversations get fresh thread ids by construction. Once ids live in URLs
-   that reset no longer happens for free — rotation on identity change must be
-   preserved deliberately, or the feat-208 ownership gate will (correctly)
-   reject the resumed thread with `thread_forbidden`.
-5. **Anonymous→account migration stays out of scope** (feat-208 accepted
-   limitation): threads created anonymously belong to the `anon:<uuid>`
-   resource and are not re-parented on sign-in.
-6. **Session-expiry UX.** Passive expiry of the 8h session cookie (no
-   redirect) makes the next send resolve as `anon:*`, so the ownership gate
-   returns `thread_forbidden` on the user's OWN thread (feat-208 accepted
-   limitation, plan §C). With URL-addressable threads, opening an old link
-   with an expired session becomes the COMMON path — map
-   `thread_forbidden` + signed-out state to an explicit "session expired —
-   sign in to continue" prompt (not the generic failure notice). Do NOT fix
-   this by rolling/extending the session cookie lifetime before precondition
-   1 (revocation) lands: the 8h fixed TTL is the only bound on a
-   revocation-less credential.
+**URLs are signed-in-only.** Anonymous conversations never get a URL: replay
+is signed-in-only (feat-241), so an anonymous conversation URL would be a
+dead link for everyone including its creator (anonymous→account migration is
+out of scope per feat-208), and a URL that can never restore is worse than no
+URL. Anonymous chat stays at the root URL with today's ephemeral behavior —
+matching the major AI chat products.
 
 ## Entry Points — Read These First
 
-1. `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md` — §C/§D/§G
-   (ownership gate, resource keying, these preconditions).
-2. `apps/mastra/src/mastra/ai-chat-thread-ownership.ts` — any new listing
-   route must scope strictly by the caller's resolved resource.
-3. `apps/chat/src/auth/anon-id.ts` — how the proxy resolves resources.
-4. `apps/chat/src/components/shell/sidebar-conversation-list.tsx` — the
-   sidebar surface to feed from server history.
+1. `apps/chat/src/app/page.tsx` — the single-page entry today (resolves the
+   seeker gate + identity server-side, `force-dynamic`); the per-conversation
+   route reuses this resolution.
+2. `apps/chat/src/lib/use-conversations.ts` — `activeId` /
+   `selectConversation` / `newConversation`; these become URL-driven for
+   signed-in users.
+3. `apps/chat/src/components/shell/app-shell.tsx` — state owner wiring the
+   hook to the sidebar and pane.
+4. feat-241's replay proxy route — the deep-link restore path; this ticket
+   adds no new data surface.
+5. `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md` §C — the
+   identity-rotation invariant this ticket must preserve.
 
 ## Grep These
 
-- `listThreads` in `apps/mastra/` — the pagination + filter surface.
-- `SEEKER_DEFAULT_RESOURCE_ID` — the resource that must never be listed.
-- `resolveSeekerResource` — the only legitimate source of a listing scope.
+- `activeId` and `activeIdRef` in `apps/chat/src/lib/use-conversations.ts` —
+  the state the route param takes over.
+- `thread_forbidden` in `apps/chat/` — the failure reason the deep-link UX
+  maps to the sign-in prompt.
+- `useRouter\|usePathname` in `apps/chat/` — should be absent today; this
+  ticket introduces the routing layer.
 
 ## What To Build
 
-(To be planned when picked up — a bearer-gated Mastra listing/replay route
-scoped by resource, chat-side per-conversation URLs, sidebar hydration, and
-the revocation work from precondition 1.)
+1. **Route structure**: a conversation route (e.g. `app/c/[id]/page.tsx`)
+   alongside the root; selecting a conversation or starting a new one (first
+   send) updates the URL for signed-in users. Anonymous users stay at `/` —
+   no URL is ever minted for an anonymous conversation.
+2. **URL ↔ state sync**: the route param drives `activeId`; sidebar select
+   and new-conversation become navigations. Client-side transitions must not
+   remount the pane or drop in-flight streams (the per-conversation
+   AbortController map keeps replies landing in their conversation).
+3. **Deep-link restore**: opening `/c/<id>` signed-in loads the thread via
+   feat-241's replay path.
+4. **One unified "sign in to continue" state** for every deep-link denial —
+   expired or invalid session cookie, anonymous visitor, or another
+   identity's thread (`thread_forbidden`). The prompt is explicit (not the
+   generic failure notice) and never silently adopts the thread.
+5. **Identity-rotation invariant**: an identity change (sign-in/out) must
+   still reset active conversation state. Today the OAuth full-page redirect
+   does this for free; once ids live in URLs it must be preserved
+   deliberately — after sign-out or identity change, a stale `/c/<id>` in the
+   address bar or history resolves through the denial state above, and
+   sign-out while viewing `/c/<id>` redirects to `/`.
 
 ## Constraints
 
-- No listing surface before precondition 1 lands.
-- History reads must go through a bearer-gated `/forge-*` route (never
-  Mastra's built-in `/api/*` surfaces) and be scoped server-side to the
-  caller's resolved resource — the client never names a resource.
+- Signed-in-only: no anonymous conversation URLs, no anonymous restore.
+- No new Mastra or proxy surfaces — deep-link restore reuses feat-241's
+  replay path and its server-side scoping.
+- No conversation sharing. A URL opened by a different identity is always
+  denied; an intentional share feature (snapshot copy) would be its own
+  future ticket.
+- Anonymous UX is unchanged: root URL, in-memory conversations, reset on
+  refresh.
 
 ## Verification
 
-- A signed-in user sees only threads whose resource is their own `user:<sub>`.
-- The dogfood fallback resource never appears in any listing.
-- A replayed conversation URL under a different identity is rejected
-  (`thread_forbidden`), not silently adopted.
+- Signed-in: select a conversation → URL changes; open that URL in a new tab
+  → same conversation restores; browser back/forward walks conversations.
+- Anonymous: chatting never changes the URL; refresh resets as today.
+- Deep link while signed out (or with an expired session) → "sign in to
+  continue" prompt; after signing in as the owner, the conversation opens.
+- Deep link under a different account → denial prompt, never adoption.
+- Sign out while viewing `/c/<id>` → lands on `/` as anonymous.
+- `pnpm --filter @forge/chat test && pnpm --filter @forge/chat lint && pnpm --filter @forge/chat typecheck`

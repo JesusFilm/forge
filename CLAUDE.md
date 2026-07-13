@@ -87,6 +87,11 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 - Cloudflare handles DNS, WAF rules, and Authenticated Origin Pulls in front of Railway.
 - Railway services configured via `railway.toml` or dashboard.
 - Environment variables managed in Railway service settings.
+- Production deploys happen via PR merge to `main` and the normal Railway
+  autodeploy path. Do not publish local worktree code to production with
+  `railway up`, manual Railway redeploys, or equivalent shortcuts unless the
+  user explicitly declares a break-glass emergency and names the exact
+  service/environment in that same request.
 
 ## Patterns and Preferences
 
@@ -100,6 +105,7 @@ Consumers use `@forge/admin-graphql` (admin's GraphQL surface). The package owns
 - Colocate tests: `Component.test.tsx` next to `Component.tsx`.
 - Use `vitest` for unit tests, Playwright for e2e.
 - Test behaviour, not implementation.
+- For frontend changes, verify the change did not degrade page-loading performance. Visual browser smoke proves behavior, not load impact; add timing, trace, Web Vitals/Lighthouse, network/resource timing, or equivalent evidence when rendering, hydration, media, routing, or client-side initialization changed. See `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`.
 
 ### Git
 

@@ -337,17 +337,19 @@ export class MediaAssetService {
   }: {
     mediaAssetId: string
     user: Principal | null
-    data: Pick<
-      Prisma.MediaAssetUpdateInput,
-      | "blurDataUrl"
-      | "dominantColor"
-      | "width"
-      | "height"
-      | "imageEnrichmentStatus"
-      | "imageEnrichmentErrorCode"
-      | "imageEnrichmentErrorMessage"
-      | "imageEnrichmentStartedAt"
-      | "imageEnrichmentCompletedAt"
+    data: Partial<
+      Pick<
+        Prisma.MediaAssetUpdateInput,
+        | "blurDataUrl"
+        | "dominantColor"
+        | "width"
+        | "height"
+        | "imageEnrichmentStatus"
+        | "imageEnrichmentErrorCode"
+        | "imageEnrichmentErrorMessage"
+        | "imageEnrichmentStartedAt"
+        | "imageEnrichmentCompletedAt"
+      >
     >
   }) {
     if (!canWriteDerived(user)) {

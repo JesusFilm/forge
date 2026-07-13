@@ -1,10 +1,9 @@
 import { useRouter } from "expo-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import {
   ActivityIndicator,
   FlatList,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -18,6 +17,7 @@ import { type SearchResult } from "../../lib/queries"
 import { type SearchState } from "../../lib/search"
 import { scale } from "../../lib/scale"
 import { buildWatchSearchResultClickContext } from "../../lib/watchSearchRum"
+import { ScreenStateView } from "../ScreenStateView"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ResultCard } from "./ResultCard"
@@ -92,13 +92,13 @@ export function SearchResultsGrid({
 
   if (state === "error") {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.message}>Search is temporarily unavailable.</Text>
-        <RetryButton
-          onPress={() => onRetry?.()}
-          accessibilityHint="Re-runs your last search"
-        />
-      </View>
+      <ScreenStateView
+        kind="error"
+        message="Search is temporarily unavailable."
+        onRetry={() => onRetry?.()}
+        retryHint="Re-runs your last search"
+        retryAutoFocus={false}
+      />
     )
   }
 
@@ -176,7 +176,7 @@ function ResultsList({
         renderItem={({ item, index }) => (
           // Per-cell wrapper gives the focus lift (translateY −8 + 1.06x)
           // breathing room; without it contentContainer clips the lifted card
-          // at its edges. Same pattern as SearchBrowse / home's ContentRail.
+          // at its edges. Same pattern as SearchBrowse.
           <View
             style={[
               styles.resultCellWrapper,
@@ -202,34 +202,6 @@ function ResultsList({
         )}
       />
     </TVFocusGuideView>
-  )
-}
-
-/**
- * Retry button for the error state. Uses onFocus/onBlur + state, not the
- * `({ focused }) => [...]` callback: rn-tvos exposes `focused` at runtime but
- * upstream PressableStateCallbackType omits it, so the callback form fails tsc.
- */
-function RetryButton({
-  onPress,
-  accessibilityHint,
-}: {
-  onPress: () => void
-  accessibilityHint: string
-}) {
-  const [isFocused, setIsFocused] = useState(false)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Try again"
-      accessibilityHint={accessibilityHint}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
-      onPress={onPress}
-    >
-      <Text style={styles.retryText}>Try again</Text>
-    </Pressable>
   )
 }
 
@@ -280,26 +252,6 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(22)),
     color: SEARCH_THEME.textDim(0.5),
     marginTop: scale(10),
-  },
-  retryButton: {
-    marginTop: scale(16),
-    paddingHorizontal: scale(32),
-    paddingVertical: scale(14),
-    borderRadius: scale(24),
-    backgroundColor: WATCH_THEME.accent,
-  },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: WATCH_THEME.accent,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  retryText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(18)),
-    fontWeight: "600",
-    color: WATCH_THEME.accentText,
   },
   listWrapper: {
     flex: 1,

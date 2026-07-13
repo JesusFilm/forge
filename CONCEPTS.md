@@ -316,7 +316,31 @@ The identity a request's rate budget is counted under: an authenticated user's o
 
 ### Fleet Client
 
-A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address, and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address (though carrier-grade NAT can collapse many devices onto one), and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+
+### Viewer Id
+
+A client-generated, stable-per-device identifier a Fleet Client attaches to a request so the server can count that device's rate budget on its own Rate-Limit Identity rather than a shared credential or a carrier-collapsed network address. It is an availability mechanism, not an authorization or abuse control: being client-supplied it is freely rotatable, so a global per-credential ceiling remains the abuse bound.
+
+## User sign-in
+
+### SSO Session
+
+The sign-in session the auth provider itself holds for a person, shared by all first-party relying apps — signing in to any one app rides it, and it is what lets a later sign-in skip the login page.
+
+It is rolling: active use extends its expiry, so it has no fixed end while a browser keeps using it. An App-Local Session ending (sign-out or expiry) leaves the SSO Session alive; ending it belongs to the provider, not to relying apps.
+
+### App-Local Session
+
+A relying app's own record that a person is signed in to that app, held by the app and independent of the SSO Session — ending it signs the person out of that app only.
+
+Created from a completed OIDC sign-in; each app chooses its own lifetime, which the SSO Session's rolling behavior does not extend.
+
+### Force-Login Marker
+
+A single-use, browser-local flag a relying app sets at sign-out so the next sign-in to that app shows the provider's real login page instead of silently reusing the live SSO Session. Per-app: one app's marker does not affect its siblings' sign-ins.
+
+Armed at sign-out; consumed only by a completed sign-in — an abandoned or failed attempt leaves it armed so the retry still forces a login page. Consuming it any earlier (when a sign-in merely starts) silently disarms the protection — a known implementation pitfall. Its lifetime is sized generously relative to the rolling SSO Session, which single-use consumption makes cost-free. It prevents accidental silent re-auth on a shared browser, not a deliberate user who clears the app's cookies, and it leaves the SSO Session itself untouched.
 
 ## Admin schema operations
 
@@ -336,11 +360,11 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: it is empty on prod admin, and consumer clients' homes render the Home Curation instead — pointing all platforms back at a real Homepage Experience is a possible future consolidation, not the current state.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.
 
 ### Home Curation
 
-The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Curation lives in code, not the CMS — changing the home's rows is a code release, not an admin edit. Each client (web, mobile, TV) carries the same set, so per-app copies must stay in sync.
+The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
 
 ### Series-Shaped
 
@@ -374,6 +398,12 @@ A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoi
 ### Carousel Pool
 
 One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
+
+### Hero Eligibility
+
+The rule deciding which catalog records may appear as Hero Queue slides: individually-playable videos — feature films and short films — are eligible and contribute their own tile, while container records (collections and series) are excluded, even though Carousel Pools are built around such containers.
+
+An eligible film is emitted as a single parent tile, never expanded into its chapter children — a feature film with dozens of episodes still shows as one hero slide. Clients enforce the same rule through different signals: the web client keys on whether a record carries a playable stream, while the leaner native clients, which do not fetch that stream, approximate it from the record's catalog type. That approximation is deliberately looser than exact stream-level playability, so a native client may surface a few films the stream-level check would drop. Because Carousel Pools that yield no eligible video drop out entirely, excluding the containers can also change which later pools the round-robin reaches.
 
 ### Played Set
 
@@ -441,7 +471,11 @@ The first conversational agent of the planned headless Jesus Film AI Chat system
 
 ### Seeker Dogfood Gate
 
-The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then membership in the `SEEKER_ALLOWED_EMAILS` env allowlist (an operator-maintained CSV of dogfooder emails on the chat service). Default-deny and fail-closed by construction — anonymous users, unlisted users, identities without a verified email, and an unset or empty allowlist all resolve to the stub; delisting a user is an env edit that takes effect once the service restarts with the new value. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
+The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse service-wide kill switch, then a verified signed-in identity, then membership in an operator-maintained allowlist of dogfooder emails held in the chat service's configuration. Default-deny and fail-closed by construction — anonymous users, unlisted users, identities without a verified email, and an unset or empty allowlist all resolve to the stub; delisting a user is a configuration change that takes effect when the service restarts with the new value. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
+
+### Conversation History
+
+The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
 
 ### JesusFilm RAG
 

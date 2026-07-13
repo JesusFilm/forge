@@ -14,7 +14,7 @@ import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { buildShareUrl } from "./detailsHelpers"
 import { WATCH_THEME } from "./watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
@@ -134,7 +134,9 @@ function PlayPill({
   onPress: () => void
   hasTVPreferredFocus: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
   const animatedStyle = useMemo(
@@ -143,9 +145,9 @@ function PlayPill({
         inputRange: [0, 1],
         outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.9)"],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
@@ -177,7 +179,9 @@ export function SecondaryPill({
   onPress: () => void
   hasTVPreferredFocus?: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
   const ink = useMemo(
@@ -206,9 +210,9 @@ export function SecondaryPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable

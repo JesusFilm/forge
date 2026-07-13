@@ -1,10 +1,11 @@
-// SYNC: keep in sync with apps/mobile/src/lib/normalizer.ts
+// TV-owned typed block seam (the mobile normalizer it was ported from is gone).
+// Wire blocks arrive as the gql.tada ResultOf union; models leave as a
+// `kind`-discriminated union DERIVED from it, so a fragment/alias change breaks
+// here and in the typed renderers at compile time, not as a runtime `undefined`.
 
-/**
- * Thin normalizer: maps __typename strings to clean `kind` discriminants. No
- * parallel type hierarchy — renderers receive gql.tada ResultOf types with
- * `kind` added for dispatch.
- */
+import type { AdminResultOf as ResultOf } from "@forge/admin-graphql"
+
+import type { GET_WATCH_EXPERIENCE } from "./queries"
 
 const TYPENAME_TO_KIND = {
   VideoHeroBlock: "videoHero",
@@ -46,11 +47,97 @@ const TYPENAME_TO_KIND = {
 export type SectionKind =
   (typeof TYPENAME_TO_KIND)[keyof typeof TYPENAME_TO_KIND]
 
-export type NormalizedBlock = {
-  kind: SectionKind
-  __typename: string
-  [key: string]: unknown
+// ── Wire shapes (derived from the query — the single source) ────────────────
+
+export type RawWatchExperience = NonNullable<
+  ResultOf<typeof GET_WATCH_EXPERIENCE>["experienceBySlug"]
+>
+type RawBlock = NonNullable<RawWatchExperience["blocks"]>[number]
+type RawSection = Extract<RawBlock, { __typename: "SectionBlock" }>
+type RawSectionContent = NonNullable<RawSection["sectionContent"]>[number]
+type RawContainer = Extract<RawBlock, { __typename: "ContainerBlock" }>
+type RawContainerContent = NonNullable<RawContainer["content"]>[number]
+
+// The same typename can appear at any of the three nesting levels; union the
+// selections so a model is valid wherever its block appears.
+type AnyRawBlock = RawBlock | RawSectionContent | RawContainerContent
+type RawOf<T extends AnyRawBlock["__typename"]> = Extract<
+  AnyRawBlock,
+  { __typename: T }
+>
+
+// ── Block models (the seam's output union) ──────────────────────────────────
+
+export type VideoHeroBlockModel = RawOf<"VideoHeroBlock"> & {
+  kind: "videoHero"
 }
+export type TextBlockModel = RawOf<"TextBlock"> & { kind: "text" }
+export type VideoBlockModel = RawOf<"VideoBlock"> & { kind: "video" }
+export type RelatedQuestionsBlockModel = RawOf<"RelatedQuestionsBlock"> & {
+  kind: "relatedQuestions"
+}
+export type BibleQuotesCarouselBlockModel =
+  RawOf<"BibleQuotesCarouselBlock"> & { kind: "bibleQuotesCarousel" }
+export type MediaCollectionBlockModel = RawOf<"MediaCollectionBlock"> & {
+  kind: "mediaCollection"
+}
+export type NavigationCarouselBlockModel = RawOf<"NavigationCarouselBlock"> & {
+  kind: "navigationCarousel"
+}
+export type VideoCarouselBlockModel = RawOf<"VideoCarouselBlock"> & {
+  kind: "videoCarousel"
+}
+export type QuizButtonBlockModel = RawOf<"QuizButtonBlock"> & {
+  kind: "quizButton"
+}
+export type EasterDatesBlockModel = RawOf<"EasterDatesBlock"> & {
+  kind: "easterDates"
+}
+// Fields ARE fetched (the query selects CTASectionFields/AdventCountdownFields);
+// the dispatcher placeholders them today, but the model must not claim fieldless.
+export type CtaBlockModel = RawOf<"CtaBlock"> & { kind: "cta" }
+export type AdventCountdownBlockModel = RawOf<"AdventCountdownBlock"> & {
+  kind: "adventCountdown"
+}
+
+export type SectionWrapperBlockModel = Omit<RawSection, "sectionContent"> & {
+  kind: "sectionWrapper"
+  sectionContent: NormalizedBlock[]
+}
+
+export type NormalizedSlot = {
+  gridSpan?: number | null
+  spans?: unknown
+  slotContent: NormalizedBlock[]
+}
+export type ContainerBlockModel = Omit<RawContainer, "content"> & {
+  kind: "container"
+  slots: NormalizedSlot[]
+}
+
+// Kinds the query selects no fields for; the dispatcher placeholders them.
+export type UnrenderedBlockModel = {
+  kind: "card" | "promoBanner" | "infoBlocks"
+  __typename: string
+  sectionKey?: string | null
+}
+
+export type NormalizedBlock =
+  | VideoHeroBlockModel
+  | SectionWrapperBlockModel
+  | ContainerBlockModel
+  | VideoBlockModel
+  | TextBlockModel
+  | RelatedQuestionsBlockModel
+  | BibleQuotesCarouselBlockModel
+  | MediaCollectionBlockModel
+  | NavigationCarouselBlockModel
+  | VideoCarouselBlockModel
+  | QuizButtonBlockModel
+  | EasterDatesBlockModel
+  | CtaBlockModel
+  | AdventCountdownBlockModel
+  | UnrenderedBlockModel
 
 export type NormalizedExperience = {
   documentId: string
@@ -59,10 +146,18 @@ export type NormalizedExperience = {
   sections: NormalizedBlock[]
 }
 
-/**
- * Normalize a single block by adding `kind` from its __typename.
- * Returns null for unknown types (logged in dev).
- */
+/** Scroll/layout key for a block: sectionKey where the fragment carries one. */
+export function blockKey(block: NormalizedBlock): string | undefined {
+  if ("sectionKey" in block && typeof block.sectionKey === "string") {
+    return block.sectionKey
+  }
+  return undefined
+}
+
+// ── Implementation ───────────────────────────────────────────────────────────
+// The interior stays generic (blocks arrive from three nesting levels and two
+// schema generations); the one cast lives here, behind the typed interface.
+
 function normalizeBlock(
   block: Record<string, unknown>,
 ): NormalizedBlock | null {
@@ -88,18 +183,14 @@ function normalizeBlock(
     } as unknown as NormalizedBlock
   }
 
-  // For container, recursively normalize admin content or legacy slot content.
+  // Admin containers are flat: ContainerSlotBlock markers split content[] into
+  // side-by-side slots (each marker carries the grid span). Reconstruct those
+  // groups so ContainerRenderer lays them out by span instead of one column.
   if (kind === "container" && Array.isArray(block.content)) {
     return {
       ...block,
       kind,
-      slots: [
-        {
-          slotContent: normalizeContentArray(
-            block.content as Record<string, unknown>[],
-          ),
-        },
-      ],
+      slots: groupContainerSlots(block.content as Record<string, unknown>[]),
     } as unknown as NormalizedBlock
   }
 
@@ -116,7 +207,7 @@ function normalizeBlock(
     } as unknown as NormalizedBlock
   }
 
-  return { ...block, kind } as NormalizedBlock
+  return { ...block, kind } as unknown as NormalizedBlock
 }
 
 /**
@@ -131,17 +222,51 @@ function normalizeContentArray(
 }
 
 /**
+ * Split a flat container `content[]` into side-by-side slot groups. Each
+ * ContainerSlotBlock marker opens a slot carrying its span; following blocks
+ * fill it. Content with no markers collapses into one slot (never vanishes).
+ */
+function groupContainerSlots(
+  content: Record<string, unknown>[],
+): NormalizedSlot[] {
+  const slots: NormalizedSlot[] = []
+  let current: NormalizedSlot | null = null
+
+  for (const item of content) {
+    if (item.__typename === "ContainerSlotBlock") {
+      current = {
+        gridSpan: item.gridSpan as number | null | undefined,
+        spans: item.spans,
+        slotContent: [],
+      }
+      slots.push(current)
+      continue
+    }
+    const normalized = normalizeBlock(item)
+    if (!normalized) continue
+    if (!current) {
+      current = { slotContent: [] }
+      slots.push(current)
+    }
+    current.slotContent.push(normalized)
+  }
+
+  return slots.filter((slot) => slot.slotContent.length > 0)
+}
+
+/**
  * Normalize a full Experience response into typed sections.
  */
 export function normalizeExperience(
-  experience: Record<string, unknown>,
+  experience: RawWatchExperience,
 ): NormalizedExperience {
-  const blocks = (experience.blocks ?? []) as Record<string, unknown>[]
+  const raw = experience as unknown as Record<string, unknown>
+  const blocks = (raw.blocks ?? []) as Record<string, unknown>[]
 
   return {
-    documentId: experience.documentId as string,
-    slug: experience.slug as string,
-    title: (experience.title as string) ?? null,
+    documentId: raw.documentId as string,
+    slug: raw.slug as string,
+    title: (raw.title as string) ?? null,
     sections: blocks
       .map((block) => normalizeBlock(block))
       .filter((block): block is NormalizedBlock => block !== null),

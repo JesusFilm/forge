@@ -41,6 +41,8 @@ const searchVideosOperation = adminGraphql(`
         title
         snippet
         imageUrl
+        imageBlurDataUrl
+        muxThumbnailBlurDataUrl
         playbackId
         startSeconds
         score
@@ -71,6 +73,8 @@ export type SearchResult = {
   slug: string
   title: string
   imageUrl: string | null
+  imageBlurDataUrl: string | null
+  muxThumbnailBlurDataUrl: string | null
   snippet: string
   startSeconds: number | null
   playbackId: string | null
@@ -221,6 +225,8 @@ export async function searchVideos(
     title: row.title,
     snippet: row.snippet,
     imageUrl: row.imageUrl ?? null,
+    imageBlurDataUrl: row.imageBlurDataUrl ?? null,
+    muxThumbnailBlurDataUrl: row.muxThumbnailBlurDataUrl ?? null,
     startSeconds: row.startSeconds ?? null,
     playbackId: row.playbackId ?? null,
     score: row.score,

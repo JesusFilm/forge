@@ -41,8 +41,8 @@ export function isValidAnonId(value: unknown): value is string {
 /**
  * Minimal cookie-header lookup (first match wins), no decoding surprises.
  * Deliberately does NOT `decodeURIComponent` the value (anon ids are bare
- * UUIDs) — this diverges on purpose from `readCookie` in
- * `app/api/auth/callback/route.ts`, which decodes because it carries a URL.
+ * UUIDs) — this diverges on purpose from `readRequestCookie` in
+ * `src/auth/session-cookie.ts`, which decodes because it can carry a URL.
  * Keep the two in sync only if the anon cookie ever needs percent-decoding.
  */
 export function getCookieValue(

@@ -2,7 +2,7 @@ import {
   isBatchPlaceholderRecord,
   type OfflineDownloadRecord,
 } from "./offlineManifest"
-import type { StartDownloadRequest } from "../contexts/DownloadsProvider"
+import type { StartDownloadRequest } from "./downloadLifecycle"
 
 // Sequential batch pump (R14): series batch downloads (incl. RE-downloads, which
 // swap a still-saved episode) run ONE at a time in episode order — the next begins

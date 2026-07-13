@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { after } from "next/server"
 import type { PrismaClient } from "@prisma/client"
+import { generateDominantColorStrict } from "./image-metadata.service"
 
 const FETCH_TIMEOUT_MS = 3000
 const MAX_LQIP_BYTES = 64 * 1024
@@ -29,6 +30,16 @@ type MuxImageRecipe = {
     time: number
     format: "jpg" | "webp"
   }
+}
+
+type FetchedImageMetadata = {
+  dataUrl: string
+  dominantColor: string
+}
+
+type StoredMuxImageMetadata = {
+  blurDataUrl: string | null
+  dominantColor: string | null
 }
 
 const WATCH_CHAPTER_CAROUSEL_RECIPE = {
@@ -130,6 +141,23 @@ export async function getOrScheduleWatchChapterCarouselMuxBlurDataUrl({
   })
 }
 
+export async function getOrScheduleWatchChapterCarouselMuxDominantColor({
+  prisma,
+  muxVideoId,
+  playbackId,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+}): Promise<string | null> {
+  return getOrScheduleMuxDominantColor({
+    prisma,
+    muxVideoId,
+    playbackId,
+    recipe: WATCH_CHAPTER_CAROUSEL_RECIPE,
+  })
+}
+
 export async function getOrCreateWatchHeroPosterMuxBlurDataUrl({
   prisma,
   muxVideoId,
@@ -164,6 +192,23 @@ export async function getOrScheduleWatchHeroPosterMuxBlurDataUrl({
   })
 }
 
+export async function getOrScheduleWatchHeroPosterMuxDominantColor({
+  prisma,
+  muxVideoId,
+  playbackId,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+}): Promise<string | null> {
+  return getOrScheduleMuxDominantColor({
+    prisma,
+    muxVideoId,
+    playbackId,
+    recipe: WATCH_HERO_POSTER_RECIPE,
+  })
+}
+
 async function getOrScheduleMuxBlurDataUrl({
   prisma,
   muxVideoId,
@@ -175,8 +220,44 @@ async function getOrScheduleMuxBlurDataUrl({
   playbackId: string
   recipe: MuxImageRecipe
 }): Promise<string | null> {
-  const existing = await getStoredMuxBlurDataUrl({ prisma, muxVideoId, recipe })
-  if (existing) return existing
+  const existing = await getStoredMuxImageMetadata({
+    prisma,
+    muxVideoId,
+    recipe,
+  })
+  if (existing?.blurDataUrl) {
+    if (!existing.dominantColor) {
+      scheduleMuxBlurDataUrlGeneration({
+        prisma,
+        muxVideoId,
+        playbackId,
+        recipe,
+      })
+    }
+    return existing.blurDataUrl
+  }
+
+  scheduleMuxBlurDataUrlGeneration({ prisma, muxVideoId, playbackId, recipe })
+  return null
+}
+
+async function getOrScheduleMuxDominantColor({
+  prisma,
+  muxVideoId,
+  playbackId,
+  recipe,
+}: {
+  prisma: PrismaClient
+  muxVideoId: string
+  playbackId: string
+  recipe: MuxImageRecipe
+}): Promise<string | null> {
+  const existing = await getStoredMuxImageMetadata({
+    prisma,
+    muxVideoId,
+    recipe,
+  })
+  if (existing?.dominantColor) return existing.dominantColor
 
   scheduleMuxBlurDataUrlGeneration({ prisma, muxVideoId, playbackId, recipe })
   return null
@@ -193,14 +274,20 @@ async function getOrCreateMuxBlurDataUrl({
   playbackId: string
   recipe: MuxImageRecipe
 }): Promise<string | null> {
-  const existing = await getStoredMuxBlurDataUrl({ prisma, muxVideoId, recipe })
-  if (existing) return existing
+  const existing = await getStoredMuxImageMetadata({
+    prisma,
+    muxVideoId,
+    recipe,
+  })
+  if (existing?.blurDataUrl && existing.dominantColor) {
+    return existing.blurDataUrl
+  }
 
   const paramsHash = muxImageDerivativeParamsHash(recipe)
   const sourceUrl = buildMuxThumbnailUrl(playbackId, recipe.source)
   const lqipUrl = buildMuxThumbnailUrl(playbackId, recipe.lqip)
-  const blurDataUrl = await fetchImageAsDataUrl(lqipUrl)
-  if (!blurDataUrl) return null
+  const metadata = await fetchImageMetadata(lqipUrl)
+  if (!metadata) return null
 
   const row = await prisma.muxImageDerivative.upsert({
     where: {
@@ -217,12 +304,14 @@ async function getOrCreateMuxBlurDataUrl({
       params: recipe,
       sourceUrl,
       lqipUrl,
-      blurDataUrl,
+      blurDataUrl: metadata.dataUrl,
+      dominantColor: metadata.dominantColor,
     },
     update: {
       sourceUrl,
       lqipUrl,
-      blurDataUrl,
+      blurDataUrl: metadata.dataUrl,
+      dominantColor: metadata.dominantColor,
       generatedAt: new Date(),
     },
     select: { blurDataUrl: true },
@@ -231,7 +320,7 @@ async function getOrCreateMuxBlurDataUrl({
   return row.blurDataUrl
 }
 
-async function getStoredMuxBlurDataUrl({
+async function getStoredMuxImageMetadata({
   prisma,
   muxVideoId,
   recipe,
@@ -239,7 +328,7 @@ async function getStoredMuxBlurDataUrl({
   prisma: PrismaClient
   muxVideoId: string
   recipe: MuxImageRecipe
-}): Promise<string | null> {
+}): Promise<StoredMuxImageMetadata | null> {
   const paramsHash = muxImageDerivativeParamsHash(recipe)
   const existing = await prisma.muxImageDerivative.findUnique({
     where: {
@@ -249,9 +338,9 @@ async function getStoredMuxBlurDataUrl({
         paramsHash,
       },
     },
-    select: { blurDataUrl: true },
+    select: { blurDataUrl: true, dominantColor: true },
   })
-  return existing?.blurDataUrl ?? null
+  return existing ?? null
 }
 
 function scheduleMuxBlurDataUrlGeneration({
@@ -336,7 +425,9 @@ function buildMuxThumbnailUrl(
   return url.toString()
 }
 
-async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+async function fetchImageMetadata(
+  url: string,
+): Promise<FetchedImageMetadata | null> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
@@ -350,15 +441,51 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
     const contentType = response.headers.get("content-type") ?? "image/jpeg"
     if (!contentType.startsWith("image/")) return null
 
-    const bytes = Buffer.from(await response.arrayBuffer())
-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_LQIP_BYTES) {
-      return null
-    }
+    const bytes = await readCappedResponseBytes(response, MAX_LQIP_BYTES)
+    if (!bytes) return null
 
-    return `data:${contentType};base64,${bytes.toString("base64")}`
+    return {
+      dataUrl: `data:${contentType};base64,${bytes.toString("base64")}`,
+      dominantColor: await generateDominantColorStrict(bytes),
+    }
   } catch {
     return null
   } finally {
     clearTimeout(timeout)
   }
+}
+
+async function readCappedResponseBytes(
+  response: Response,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  if (!response.body) {
+    const bytes = Buffer.from(await response.arrayBuffer())
+    if (bytes.byteLength === 0 || bytes.byteLength > maxBytes) return null
+    return bytes
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Buffer[] = []
+  let totalBytes = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+
+      totalBytes += value.byteLength
+      if (totalBytes > maxBytes) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  if (totalBytes === 0) return null
+  return Buffer.concat(chunks, totalBytes)
 }

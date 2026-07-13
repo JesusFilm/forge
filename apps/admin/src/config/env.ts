@@ -89,6 +89,20 @@ export const searchTraceRawRetentionDaysEnvSchema = z.coerce
   .optional()
   .default(29)
 
+export const workflowStartupTransientAttemptsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(12)
+
+export const workflowStartupTransientDelayMsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(10_000)
+
 /**
  * AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED — enum-of-strings (not a
  * boolean) so a stray non-empty value can't silently flip the gate.
@@ -238,6 +252,10 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Fleet consumer-bearer allowlist (apps/tv + apps/mobile). Mints the same
+    // CONSUMER_BEARER principal as WEB_ADMIN_API_KEYS but flagged `fleet`, so
+    // identifyForRateLimit buckets per-IP (consumer:<key>:<ip>), not per-key.
+    FLEET_ADMIN_API_KEYS: z.string().optional(),
     // Dedicated receiver-side CSV for consumer watch-progress persistence.
     // This endpoint accepts caller-supplied consumer user ids, so it must stay
     // narrower than the general web SSR consumer bearer.
@@ -278,6 +296,10 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS:
+      workflowStartupTransientAttemptsEnvSchema,
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS:
+      workflowStartupTransientDelayMsEnvSchema,
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
     WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
     WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
@@ -621,6 +643,7 @@ export const env = createEnv({
       process.env.EXPERIENCE_EXEMPLAR_FALLBACK_SLUG,
     ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    FLEET_ADMIN_API_KEYS: emptyToUndefined(process.env.FLEET_ADMIN_API_KEYS),
     WATCH_PROGRESS_ADMIN_API_KEYS: emptyToUndefined(
       process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
     ),
@@ -642,6 +665,12 @@ export const env = createEnv({
     WORKFLOW_TARGET_WORLD: emptyToUndefined(process.env.WORKFLOW_TARGET_WORLD),
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
       process.env.WORKFLOW_RUNNER_ENABLED,
+    ),
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: emptyToUndefined(
+      process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS,
+    ),
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: emptyToUndefined(
+      process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS,
     ),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
     WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(
@@ -822,6 +851,7 @@ const BEARER_CSV_KEYS = [
   "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
+  "FLEET_ADMIN_API_KEYS",
   "WATCH_PROGRESS_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
   "SEARCH_TRACE_SAMPLING_API_KEYS",
@@ -900,6 +930,7 @@ assertBearerCsvsDisjoint({
   ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  FLEET_ADMIN_API_KEYS: env.FLEET_ADMIN_API_KEYS,
   WATCH_PROGRESS_ADMIN_API_KEYS: env.WATCH_PROGRESS_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
   SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,

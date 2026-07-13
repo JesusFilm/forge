@@ -33,12 +33,17 @@ export const SESSION_TTL_SECONDS = 60 * 60 * 8
 // Transient state/verifier/return_to cookies live only for the redirect round
 // trip (R8) — deleted on callback.
 export const TRANSIENT_TTL_SECONDS = 60 * 10
+// Force-login marker (feat-240): 30 days, NOT web's 10 minutes — apps/auth's
+// SSO session is rolling, so no finite marker covers the whole silent-re-auth
+// window; consumed on the next COMPLETED sign-in, so lifetime is cost-free.
+export const FORCE_LOGIN_TTL_SECONDS = 60 * 60 * 24 * 30
 
 const prefix = chatAuthCookiePrefix()
 export const CHAT_SESSION_COOKIE = `${prefix}_session`
 export const CHAT_OAUTH_STATE_COOKIE = `${prefix}_oauth_state`
 export const CHAT_OAUTH_VERIFIER_COOKIE = `${prefix}_oauth_verifier`
 export const CHAT_OAUTH_RETURN_TO_COOKIE = `${prefix}_oauth_return_to`
+export const CHAT_FORCE_LOGIN_COOKIE = `${prefix}_force_login`
 
 /**
  * Sign the identity claims into a session cookie value (HS256, short TTL).
@@ -117,6 +122,36 @@ export function transientCookieOptions() {
   return {
     ...chatSessionCookieOptions(),
     maxAge: TRANSIENT_TTL_SECONDS,
+  }
+}
+
+/** Force-login-marker attributes: same hardening as the session, 30-day TTL (feat-240). */
+export function forceLoginCookieOptions() {
+  return {
+    ...chatSessionCookieOptions(),
+    maxAge: FORCE_LOGIN_TTL_SECONDS,
+  }
+}
+
+/**
+ * Read one cookie value from a raw Cookie request header (route handlers get a
+ * plain Request, no next/headers). Decodes the value to mirror Next's own
+ * RequestCookies read (NextResponse.cookies.set percent-encodes on write) —
+ * load-bearing for URL-valued cookies like return_to. The decode is guarded
+ * (falls back to the raw value) so a malformed % sequence never throws into a
+ * caller running before its own try — fail closed, never 500.
+ */
+export function readRequestCookie(cookieHeader: string | null, name: string) {
+  const raw = cookieHeader
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1)
+  if (raw === undefined) return undefined
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
   }
 }
 

@@ -23,6 +23,9 @@ import {
 import { slugToBcp47Tag } from "@/lib/locale"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import { isWatchBlock } from "@/lib/watch-blocks"
+import { isSeriesRecord } from "@/lib/watch-content-kind"
+
+export { isSeriesRecord } from "@/lib/watch-content-kind"
 
 // Keep gql.tada introspection types live for the watch-page fragments.
 void watchVideoShellFragment
@@ -127,6 +130,8 @@ export type WatchImage = {
   thumbnail: string | null
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 // One distinct playable dub language available across a series' children,
@@ -157,10 +162,10 @@ export type WatchChild = {
   // back server-side to a primary/longest playable Mux dub. Lets the carousel
   // render frame thumbnails without projecting every child's dubs.
   muxPlaybackId: string | null
-  // Base64 LQIP for the exact Watch carousel Mux thumbnail recipe, generated
-  // and stored admin-side. Only applies when muxPlaybackId is present.
+  // Base64 blur data URL for the exact Watch carousel Mux thumbnail recipe,
+  // generated and stored admin-side. Only applies when muxPlaybackId is present.
   muxThumbnailBlurDataUrl: string | null
-  // Base64 LQIP for the exact Watch hero poster Mux thumbnail recipe.
+  // Base64 blur data URL for the exact Watch hero poster Mux thumbnail recipe.
   muxHeroPosterBlurDataUrl?: string | null
 }
 
@@ -456,6 +461,8 @@ type AdminImageRaw = {
   thumbnail?: string | null
   mobileCinematicHigh?: string | null
   mobileCinematicLow?: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 type AdminLanguageRaw = {
@@ -614,6 +621,8 @@ function normalizeImage(img: AdminImageRaw): WatchImage | null {
     thumbnail: img.thumbnail ?? null,
     mobileCinematicHigh: img.mobileCinematicHigh ?? null,
     mobileCinematicLow: img.mobileCinematicLow ?? null,
+    blurDataUrl: img.blurDataUrl ?? null,
+    dominantColor: img.dominantColor ?? null,
   }
 }
 
@@ -1026,7 +1035,11 @@ function normalizeRelatedRouteItems(
         slug: child.slug,
         label: child.label,
         muxPlaybackId: child.muxPlaybackId,
-        images: child.images.map((img) => ({ url: img.url })),
+        images: child.images.map((img) => ({
+          url: img.url,
+          blurDataUrl: img.blurDataUrl,
+          dominantColor: img.dominantColor,
+        })),
       }),
     )
     .filter((item): item is EnrichedMediaItem => item != null)
@@ -1131,7 +1144,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page"],
+  ["watch-page", "v3-media-dominant-colors"],
   {
     revalidate: 60,
     tags: [
@@ -2208,33 +2221,9 @@ export const resolveSeriesEpisodeBySlug = cache(
 // resolveWatchVideoBySlug rejects (no playable variant). Used by the series
 // details page when a slug points at a parent record (collection / series).
 //
-// The discriminator is intentionally defensive (case-insensitive label match
-// against the known series-shaped enum values, OR null label with children
-// present). Admin's `VideoLabel` enum uses uppercase values
-// (`COLLECTION`, `SERIES`); legacy Strapi data used camelCase
-// (`collection`, `series`). The defensive OR survives either shape and
-// degrades gracefully for editor records that pre-date the label taxonomy.
-
-// Explicit `Set<string>` annotation so the deliberate widening to string
-// (to accept admin-uppercase labels via the `String(label).toLowerCase()`
-// normalization below) is declared on the container, not buried in the
-// call-site cast. Without this annotation the Set is inferred as
-// `Set<"collection" | "series">` and a future typo in the contents
-// (e.g. `"collectionn"`) would still pass the literal-union check.
-const SERIES_LABEL_VALUES = new Set<string>(["collection", "series"])
-
-// Consumed by `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx`
-// (routing branch + `generateMetadata`) AND by unit tests that exercise
-// the discriminator without standing up Apollo.
-export function isSeriesRecord(record: {
-  label?: string | null
-  children?: { documentId: string }[] | null
-}): boolean {
-  const label = record.label
-  if (label) return SERIES_LABEL_VALUES.has(String(label).toLowerCase())
-  return (record.children?.length ?? 0) > 0
-}
-
+// `isSeriesRecord` is consumed by the Watch route and re-exported here for
+// existing server callers. Its client-safe implementation lives in
+// watch-content-kind.ts.
 // Returns null when the slug doesn't match a record OR the record is not
 // series-shaped. Caller falls through to resolveWatchPage / Experience.
 export const resolveSeriesBySlug = cache(

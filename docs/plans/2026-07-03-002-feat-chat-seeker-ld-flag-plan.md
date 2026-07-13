@@ -9,6 +9,18 @@ product_contract_source: ce-brainstorm
 execution: code
 ---
 
+> **Amendment (2026-07-13, feat-240 rewording):** the revocation half of this
+> plan's widening precondition (R13's "until revocation and a membership gate
+> exist" and the Scope Boundaries entry "Required before gating expands beyond
+> a named-person list") is superseded: feat-240 dropped the
+> session-lease/revocation design by decision. The login-time membership-gate
+> requirement stands unchanged; revocation is deliberately not required —
+> accepted for an 8h cookie whose only power is reading the holder's own
+> conversation history; revisit if the session gets longer or the cookie
+> starts gating more than that. Decision record:
+> `docs/roadmap/ai-chat/feat-240-chat-sign-out-force-login.md`. The original
+> text below is unmodified.
+
 # Chat Seeker LaunchDarkly Dogfood Gate - Plan
 
 ## Goal Capsule

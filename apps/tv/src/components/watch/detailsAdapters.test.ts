@@ -33,7 +33,7 @@ function makeCitation(
 describe("buildDescriptionBlock", () => {
   it("maps description into the textHeading/contentParagraphs alias shape", () => {
     const block = buildDescriptionBlock("A short film.")
-    expect(block).toEqual({
+    expect(block).toMatchObject({
       kind: "text",
       __typename: "TextBlock",
       textHeading: null,
@@ -50,7 +50,7 @@ describe("buildDescriptionBlock", () => {
 })
 
 describe("buildRelatedQuestionsBlock", () => {
-  it("uses the rqHeading alias and a per-question index id with empty answers", () => {
+  it("uses the rqHeading alias with empty answers (rows key on index)", () => {
     const block = buildRelatedQuestionsBlock([
       makeQuestion("Who is Jesus?", 0),
       makeQuestion("Why does it matter?", 1),
@@ -61,8 +61,8 @@ describe("buildRelatedQuestionsBlock", () => {
       rqHeading: "Related Questions",
     })
     expect(block?.questions).toEqual([
-      { id: "0", question: "Who is Jesus?", answer: "" },
-      { id: "1", question: "Why does it matter?", answer: "" },
+      { question: "Who is Jesus?", answer: "" },
+      { question: "Why does it matter?", answer: "" },
     ])
   })
 

@@ -8,7 +8,8 @@ start_date: "2026-06-16"
 duration: 6
 depends_on:
   - "feat-178"
-blocks: []
+blocks:
+  - "feat-246"
 tags:
   - "tv"
 ---

@@ -11,5 +11,4 @@ export const CoreVideoImageSchema = z.object({
   mobileCinematicVeryLow: z.string().nullable(),
   thumbnail: z.string().nullable(),
   videoStill: z.string().nullable(),
-  blurhash: z.string().nullable(),
 })
