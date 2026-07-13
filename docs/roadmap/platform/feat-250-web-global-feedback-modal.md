@@ -3,7 +3,7 @@ id: "feat-250"
 title: "Web global feedback modal"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-13"
 duration: 1
 depends_on: []

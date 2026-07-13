@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react"
 
@@ -94,8 +95,18 @@ export function FeedbackLauncher() {
   const { searchOpen } = useFloatingSearchPinned()
   const [open, setOpen] = useState(false)
   const [modalReady, setModalReady] = useState(false)
+  const launcherRef = useRef<HTMLButtonElement>(null)
   const markModalReady = useCallback(() => setModalReady(true), [])
-  const closeFeedback = useCallback(() => setOpen(false), [])
+
+  const closeFeedback = useCallback(() => {
+    setOpen(false)
+    if (searchOpen) return
+    window.requestAnimationFrame(() => launcherRef.current?.focus())
+  }, [searchOpen])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => (nextOpen ? setOpen(true) : closeFeedback()),
+    [closeFeedback],
+  )
 
   useEffect(() => {
     if (!searchOpen) return
@@ -112,6 +123,7 @@ export function FeedbackLauncher() {
     <>
       {!searchOpen ? (
         <button
+          ref={launcherRef}
           type="button"
           aria-label="Open feedback form"
           aria-busy={open && !modalReady}
@@ -129,7 +141,7 @@ export function FeedbackLauncher() {
         <FeedbackLoadingCancelContext.Provider value={closeFeedback}>
           <LazyFeedbackModal
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             onReady={markModalReady}
           />
         </FeedbackLoadingCancelContext.Provider>

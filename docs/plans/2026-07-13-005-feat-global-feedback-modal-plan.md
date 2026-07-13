@@ -1,7 +1,7 @@
 ---
 title: "feat: Add a global feedback modal"
 type: feat
-status: active
+status: completed
 date: 2026-07-13
 deepened: 2026-07-13
 ---
