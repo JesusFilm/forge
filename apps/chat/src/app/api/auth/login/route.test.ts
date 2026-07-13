@@ -53,6 +53,37 @@ describe("GET /api/auth/login", () => {
     expect(setCookies.toLowerCase()).not.toContain("domain=")
   })
 
+  it("omits prompt from the authorize URL when no force-login marker is present", async () => {
+    setConfigured()
+    const { GET } = await loadRoute()
+    const res = await GET(
+      new Request("https://chat.example.com/api/auth/login"),
+    )
+    const location = new URL(res.headers.get("location") ?? "")
+    expect(location.searchParams.has("prompt")).toBe(false)
+    // No marker → nothing to delete.
+    const setCookies = res.headers.getSetCookie().join("\n")
+    expect(setCookies).not.toContain("forge_chat_force_login=")
+  })
+
+  it("sends prompt=login and KEEPS the marker armed when the force-login cookie is present (feat-240)", async () => {
+    setConfigured()
+    const { GET } = await loadRoute()
+    const res = await GET(
+      new Request("https://chat.example.com/api/auth/login", {
+        headers: { cookie: "forge_chat_force_login=1" },
+      }),
+    )
+    expect(res.status).toBe(302)
+    const location = new URL(res.headers.get("location") ?? "")
+    expect(location.searchParams.get("prompt")).toBe("login")
+    // The marker is consumed by the callback's SUCCESS path, never here — an
+    // abandoned/failed attempt must leave the next sign-in still forced.
+    expect(res.headers.getSetCookie().join("\n")).not.toContain(
+      "forge_chat_force_login=",
+    )
+  })
+
   it("refuses to start a flow and returns home when auth is unconfigured (KTD6)", async () => {
     setConfigured()
     delete process.env.CHAT_SESSION_SECRET // missing secret → not configured

@@ -3,7 +3,7 @@ id: "feat-240"
 title: "Chat sign-out force-login marker (no silent re-auth)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-15"
 duration: 1
 depends_on:
@@ -86,7 +86,8 @@ cookies — the same trade web made.
    the HttpOnly `*_force_login = "1"` marker alongside cookie deletion.
 2. `apps/web/src/app/api/auth/login/route.ts` — reads the marker →
    `prompt=login` on the authorize URL → deletes the marker on the redirect
-   response (single-use).
+   response. (Chat deliberately diverges on the deletion point — see What To
+   Build 2.)
 3. `apps/chat/src/app/api/auth/logout/route.ts` — chat's POST logout
    (cookie-delete-only today) that gains the marker set.
 4. `apps/chat/src/app/api/auth/login/route.ts` — chat's login entry that
@@ -116,16 +117,22 @@ cookies — the same trade web made.
    production, SameSite=Lax, host-only, `Path=/`, **`maxAge` 30 days** (the
    one deliberate divergence from web's 10 minutes; see 3).
 2. **`prompt=login` on login**: when the marker is present, add
-   `prompt=login` to the authorize URL and delete the marker on the
-   redirect response — single-use, mirroring web's login route exactly.
+   `prompt=login` to the authorize URL. The marker is consumed by the
+   **callback's success path only** — a failed or abandoned attempt keeps it
+   armed, so the retry still forces a login page. This is a second deliberate
+   divergence from web (which deletes on the login redirect): review found
+   delete-on-redirect lets an abandoned/failed attempt burn the marker and
+   silently re-auth the next sign-in — the exact gap this ticket exists to
+   close. Web's copy has the same gap, masked by its 10-minute marker.
 3. **The 30-day lifetime, and how to word the guarantee**: `apps/auth`'s
    SSO session is ROLLING (`expiresIn` 7d + `updateAge` 1d in
    `apps/auth/src/auth/config.ts`) — any SSO use extends it, so no finite
    marker can claim to cover the entire silent-re-auth window. Lifetime is
-   cost-free (the marker is deleted after a single sign-in), and 30 days is
-   far beyond realistic re-visit gaps. Word the guarantee with its bound —
-   "after sign-out, the next sign-in on this browser within 30 days always
-   shows a real login page" — never an unqualified "always".
+   cost-free (the marker is consumed by the first COMPLETED sign-in), and 30
+   days is far beyond realistic re-visit gaps. Word the guarantee with its
+   bound — "after sign-out, every sign-in on this browser within 30 days
+   shows a real login page until one completes" — never an unqualified
+   "always".
 4. **Docs**: update `apps/chat/CLAUDE.md`'s Authentication section
    (sign-out semantics + a pointer to this Decision Record) in the
    implementation PR.
@@ -154,8 +161,9 @@ cookies — the same trade web made.
   cycle repeats.
 - Route tests: logout sets the marker with the exact hardening + 30d
   `maxAge`; login with the marker present builds an authorize URL
-  containing `prompt=login` AND deletes the marker; login without the
-  marker adds no `prompt` param.
+  containing `prompt=login` and leaves the marker untouched; the callback
+  deletes the marker on success and keeps it armed on failure; login
+  without the marker adds no `prompt` param.
 - Sign-out on an already-anonymous session stays idempotent (existing R6
   behavior).
 - `pnpm --filter @forge/chat test && pnpm --filter @forge/chat lint && pnpm --filter @forge/chat typecheck`

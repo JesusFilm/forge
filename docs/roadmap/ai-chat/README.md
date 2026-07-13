@@ -15,8 +15,8 @@ from the main DS Year 1 roadmap.
 
 - **Total tickets:** 21
 - ✅ **Complete:** 17
-- 🟡 **In progress:** 0
-- 🔵 **Not started:** 4
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 3
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -42,5 +42,5 @@ from the main DS Year 1 roadmap.
 | [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md)      | Remove the chat seeker dogfood gate (public seeker release)               | jian wei | P2       | 2026-09-01 | 2    | 🔵 not-started | —       |
 | [feat-237](feat-237-seeker-gateway-model.md)                 | Seeker agent JesusFilm gateway model (opt-in primary)                     | jian wei | P2       | 2026-07-07 | 2    | ✅ complete    | #1491   |
 | [feat-239](feat-239-chat-seeker-env-allowlist-gate.md)       | Replace the chat seeker LaunchDarkly gate with an env-var email allowlist | jian wei | P1       | 2026-07-08 | 1    | ✅ complete    | #1498   |
-| [feat-240](feat-240-chat-sign-out-force-login.md)            | Chat sign-out force-login marker (no silent re-auth)                      | jian wei | P2       | 2026-07-15 | 1    | 🔵 not-started | —       |
+| [feat-240](feat-240-chat-sign-out-force-login.md)            | Chat sign-out force-login marker (no silent re-auth)                      | jian wei | P2       | 2026-07-15 | 1    | 🟡 in-progress | —       |
 | [feat-241](feat-241-chat-server-history-sidebar.md)          | Chat server-side conversation history + sidebar hydration                 | jian wei | P2       | 2026-07-20 | 3    | 🔵 not-started | —       |

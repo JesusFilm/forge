@@ -15,9 +15,11 @@ import { buildChatAuthorizeUrl, getChatOAuthConfig } from "@/auth/oauth-client"
 import { createOAuthState } from "@/auth/oauth-state"
 import { getChatHomeURL, resolveChatReturnToURL } from "@/auth/origins"
 import {
+  CHAT_FORCE_LOGIN_COOKIE,
   CHAT_OAUTH_RETURN_TO_COOKIE,
   CHAT_OAUTH_STATE_COOKIE,
   CHAT_OAUTH_VERIFIER_COOKIE,
+  readRequestCookie,
   transientCookieOptions,
 } from "@/auth/session-cookie"
 import { chatAuthConfigured } from "@/config/env"
@@ -35,12 +37,21 @@ export async function GET(request: Request) {
     url.searchParams.get("returnTo") ?? undefined,
   )
   const state = createOAuthState()
+  // feat-240: the post-sign-out marker forces a real login page at apps/auth
+  // (no silent SSO re-auth). Consumed by the callback's SUCCESS path only, so
+  // a failed/abandoned attempt keeps forcing login. No ?prompt= passthrough.
+  const forceLogin =
+    readRequestCookie(
+      request.headers.get("cookie"),
+      CHAT_FORCE_LOGIN_COOKIE,
+    ) !== undefined
 
   const response = NextResponse.redirect(
     buildChatAuthorizeUrl({
       config,
       state: state.state,
       codeChallenge: state.codeChallenge,
+      prompt: forceLogin ? "login" : undefined,
     }),
     302,
   )
