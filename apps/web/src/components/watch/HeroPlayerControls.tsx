@@ -1143,59 +1143,64 @@ export function HeroPlayerControls({
         </ChromeButton>
       </div>
 
-      {showLanguageButton && onLanguageClick ? (
-        <ChromeButton
-          onClick={onLanguageClick}
-          ariaLabel={t("changeAudioLanguage")}
-          testId="hero-chrome-language"
-          className={
-            languageCode
-              ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
-              : undefined
-          }
-        >
-          <AudioLines aria-hidden className="h-6 w-6" />
-          {languageCode ? (
-            <span
-              data-testid="hero-chrome-language-code"
-              className="text-[10px] font-bold tracking-[0.14em]"
-            >
-              {languageCode}
-            </span>
-          ) : null}
-        </ChromeButton>
-      ) : null}
-
-      {showSubtitleButton && onLanguageClick ? (
-        <ChromeButton
-          onClick={onLanguageClick}
-          ariaLabel={languagePickerT("subtitlesHeading")}
-          testId="hero-chrome-subtitles"
-          className={
-            showSubtitleLanguageCode
-              ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
-              : undefined
-          }
-        >
-          <Captions aria-hidden className="h-6 w-6" />
-          {showSubtitleLanguageCode ? (
-            <span
-              data-testid="hero-chrome-subtitle-language-code"
-              className="text-[10px] font-bold tracking-[0.14em]"
-            >
-              {subtitleLanguageCode}
-            </span>
-          ) : null}
-        </ChromeButton>
-      ) : null}
-
-      <ChromeButton
-        onClick={toggleFullscreen}
-        ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
-        testId="hero-chrome-fullscreen"
+      <div
+        data-testid="hero-chrome-language-controls"
+        className="flex shrink-0 items-center gap-2 md:gap-4"
       >
-        {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
-      </ChromeButton>
+        {showLanguageButton && onLanguageClick ? (
+          <ChromeButton
+            onClick={onLanguageClick}
+            ariaLabel={t("changeAudioLanguage")}
+            testId="hero-chrome-language"
+            className={
+              languageCode
+                ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
+                : undefined
+            }
+          >
+            <AudioLines aria-hidden className="h-6 w-6" />
+            {languageCode ? (
+              <span
+                data-testid="hero-chrome-language-code"
+                className="text-[10px] font-bold tracking-[0.14em]"
+              >
+                {languageCode}
+              </span>
+            ) : null}
+          </ChromeButton>
+        ) : null}
+
+        {showSubtitleButton && onLanguageClick ? (
+          <ChromeButton
+            onClick={onLanguageClick}
+            ariaLabel={languagePickerT("subtitlesHeading")}
+            testId="hero-chrome-subtitles"
+            className={
+              showSubtitleLanguageCode
+                ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
+                : undefined
+            }
+          >
+            <Captions aria-hidden className="h-6 w-6" />
+            {showSubtitleLanguageCode ? (
+              <span
+                data-testid="hero-chrome-subtitle-language-code"
+                className="text-[10px] font-bold tracking-[0.14em]"
+              >
+                {subtitleLanguageCode}
+              </span>
+            ) : null}
+          </ChromeButton>
+        ) : null}
+
+        <ChromeButton
+          onClick={toggleFullscreen}
+          ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
+          testId="hero-chrome-fullscreen"
+        >
+          {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
+        </ChromeButton>
+      </div>
     </div>
   )
 

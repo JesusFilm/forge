@@ -3,7 +3,7 @@ id: "feat-250"
 title: "Watch Audio and Subtitle Chrome Indicators"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-13"
 duration: 1
 depends_on: []

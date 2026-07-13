@@ -1,7 +1,7 @@
 ---
 title: "feat: Add Watch audio and subtitle chrome indicators"
 type: feat
-status: active
+status: completed
 date: 2026-07-13
 ---
 

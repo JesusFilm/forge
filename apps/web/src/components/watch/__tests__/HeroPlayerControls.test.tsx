@@ -182,6 +182,35 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     ).not.toBeNull()
   })
 
+  it("keeps audio, subtitles, and fullscreen in one non-breaking cluster", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+      languageCode: "EN",
+      subtitleLanguageCode: "ES",
+    })
+    const cluster = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-language-controls"]',
+    )
+    expect(cluster?.className).toContain("shrink-0")
+    expect(
+      cluster?.contains(
+        overlayAnchor.querySelector('[data-testid="hero-chrome-language"]'),
+      ),
+    ).toBe(true)
+    expect(
+      cluster?.contains(
+        overlayAnchor.querySelector('[data-testid="hero-chrome-subtitles"]'),
+      ),
+    ).toBe(true)
+    expect(
+      cluster?.contains(
+        overlayAnchor.querySelector('[data-testid="hero-chrome-fullscreen"]'),
+      ),
+    ).toBe(true)
+  })
+
   it("shows the subtitle code only when it differs from audio", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: true,
