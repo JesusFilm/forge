@@ -5,6 +5,17 @@
 - Status: implemented in the same PR as this plan
 - Depends on: feat-205 (chat ↔ `/forge-seeker` wiring); recorded feat-209 preconditions below
 
+> **Amendment (2026-07-13, feat-240 rewording):** §G's first precondition
+> ("revocation/re-verification must land first" before per-user thread
+> listing) is superseded — feat-240 dropped the session-lease/revocation
+> design by decision. Revocation is not a precondition for feat-241 and is
+> not planned; the retained preconditions are real sign-out (feat-240's
+> force-login marker, so a shared browser cannot silently re-auth into
+> someone's history), signed-in-only `user:*` scoping, and the rest of §G.
+> Decision record:
+> `docs/roadmap/ai-chat/feat-240-chat-sign-out-force-login.md`. The original
+> text below is unmodified.
+
 ## Goal
 
 Move the seeker agent's Memory off its deliberately non-persistent

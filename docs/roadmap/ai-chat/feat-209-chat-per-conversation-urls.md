@@ -20,10 +20,11 @@ they can't be deep-linked, bookmarked, or reopened from browser history.
 Give each signed-in conversation a URL that restores it.
 
 > **Scope note.** This ticket originally bundled "per-conversation URLs +
-> sidebar history". It was split (2026-07-08): session revocation / real
-> sign-out is feat-240, server history + sidebar hydration is feat-241, and
-> this ticket is now only the URL layer on top. The original hard
-> preconditions moved with their work: revocation → feat-240; the listing
+> sidebar history". It was split (2026-07-08): real sign-out is feat-240
+> (whose original session-revocation half was later dropped by decision —
+> see that ticket's Decision Record), server history + sidebar hydration is
+> feat-241, and this ticket is now only the URL layer on top. The original
+> hard preconditions moved with their work: sign-out → feat-240; the listing
 > API, fallback-resource exclusion, and anon-migration boundary → feat-241.
 > The rotation invariant and the expired-session UX stayed here.
 
@@ -71,7 +72,7 @@ matching the major AI chat products.
 3. **Deep-link restore**: opening `/c/<id>` signed-in loads the thread via
    feat-241's replay path.
 4. **One unified "sign in to continue" state** for every deep-link denial —
-   expired/revoked session (feat-240 lease), anonymous visitor, or another
+   expired or invalid session cookie, anonymous visitor, or another
    identity's thread (`thread_forbidden`). The prompt is explicit (not the
    generic failure notice) and never silently adopts the thread.
 5. **Identity-rotation invariant**: an identity change (sign-in/out) must
@@ -97,7 +98,7 @@ matching the major AI chat products.
 - Signed-in: select a conversation → URL changes; open that URL in a new tab
   → same conversation restores; browser back/forward walks conversations.
 - Anonymous: chatting never changes the URL; refresh resets as today.
-- Deep link while signed out (or after lease revocation) → "sign in to
+- Deep link while signed out (or with an expired session) → "sign in to
   continue" prompt; after signing in as the owner, the conversation opens.
 - Deep link under a different account → denial prompt, never adoption.
 - Sign out while viewing `/c/<id>` → lands on `/` as anonymous.
