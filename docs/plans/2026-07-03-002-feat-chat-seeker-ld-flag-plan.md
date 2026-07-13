@@ -376,6 +376,14 @@ CI note: units land together or in dependency order (U1 and U2 → U3 → U4 →
 
 ## Rollout Runbook
 
+> **Superseded (2026-07-08, feat-239):** none of the steps below ever ran, and
+> they are now obsolete — feat-239 ([PR #1498](https://github.com/JesusFilm/forge/pull/1498))
+> replaced the gate's membership source with the `SEEKER_ALLOWED_EMAILS` env
+> CSV and the code no longer reads LaunchDarkly. Do not provision the LD
+> environment, flag, SDK key, or targeting; the flip-time operator work now
+> lives in feat-239 (`docs/roadmap/ai-chat/feat-239-chat-seeker-env-allowlist-gate.md`,
+> What To Build step 6). The runbook below stays as the historical record.
+
 Post-merge, operator-owned (jian wei). The gated build is merged to main and live in production _before_ step 1 — fail-closed, serving stub to everyone (`SEEKER_CHAT_ENABLED` unset, no flag or key yet), so the merge exposes nothing. No step below exposes seeker until step 6. Steps point to their detailed criteria in the Definition of Done and Verification Contract rather than restating them; this is the ordered spine, those are the checkboxes and checks.
 
 1. **Decide + provision the LaunchDarkly topology.** Dedicated LD environment for chat recommended (isolates the SDK key, the dogfooder-email ruleset, and the R17 zero-rules check from web; independent rotation). Confirm feasibility against the dashboard / account tier; a forced-shared environment means accepting the shared blast radius (Dependencies/Assumptions). Every step below runs against the chosen environment.
