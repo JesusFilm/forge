@@ -1,7 +1,7 @@
 "use client"
 
 import { ExternalLink, Loader2, X } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import {
   Dialog,
@@ -26,6 +26,8 @@ export function FeedbackModal({
   onOpenChange,
   onReady,
 }: FeedbackModalProps) {
+  const [iframeLoaded, setIframeLoaded] = useState(false)
+
   useEffect(() => {
     onReady?.()
   }, [onReady])
@@ -65,13 +67,19 @@ export function FeedbackModal({
           </DialogClose>
         </header>
 
-        <div className="relative min-h-0 flex-1 bg-white">
-          <div className="absolute inset-0 grid place-items-center bg-stone-950 text-stone-200">
-            <div className="flex items-center gap-3 text-sm font-semibold">
-              <Loader2 aria-hidden className="size-5 animate-spin" />
-              Loading Google Form…
+        <div className="relative min-h-0 flex-1 bg-white pb-[env(safe-area-inset-bottom,0px)] sm:pb-0">
+          {!iframeLoaded ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="absolute inset-x-0 top-0 bottom-[env(safe-area-inset-bottom,0px)] grid place-items-center bg-stone-950 text-stone-200 sm:bottom-0"
+            >
+              <div className="flex items-center gap-3 text-sm font-semibold">
+                <Loader2 aria-hidden className="size-5 animate-spin" />
+                Loading Google Form…
+              </div>
             </div>
-          </div>
+          ) : null}
           {open ? (
             <iframe
               src={FEEDBACK_EMBED_URL}
@@ -79,8 +87,9 @@ export function FeedbackModal({
               loading="lazy"
               sandbox="allow-forms allow-scripts allow-same-origin"
               referrerPolicy="no-referrer"
+              onLoad={() => setIframeLoaded(true)}
               data-testid="feedback-form-iframe"
-              className="relative z-1 h-full w-full border-0 bg-white"
+              className={`relative z-1 h-full w-full border-0 bg-white transition-opacity duration-200 ${iframeLoaded ? "opacity-100" : "opacity-0"}`}
             />
           ) : null}
         </div>

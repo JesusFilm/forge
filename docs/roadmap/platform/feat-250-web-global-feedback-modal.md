@@ -1,7 +1,7 @@
 ---
 id: "feat-250"
 title: "Web global feedback modal"
-owner: "unassigned"
+owner: "urim"
 priority: "P2"
 status: "in-progress"
 start_date: "2026-07-13"

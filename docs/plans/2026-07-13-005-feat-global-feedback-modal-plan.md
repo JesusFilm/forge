@@ -84,7 +84,7 @@ The normal path preserves the server-rendered page and existing floating header.
 - **Files:**
   - `apps/web/src/components/FeedbackLauncher.tsx`
   - `apps/web/src/components/FeedbackModal.tsx`
-  - `apps/web/src/components/__tests__/FeedbackLauncher.test.tsx`
+  - `apps/web/src/components/FeedbackLauncher.test.tsx`
 - **Approach:** Keep the launcher client island minimal and declare a module-scope `next/dynamic` import with an immediate accessible loading fallback. Disable repeated activation while the chunk resolves, latch the loaded component after first intent, pass controlled `open` state, and render the iframe only while open. When `searchOpen` becomes true, omit the modal subtree immediately, suppress focus restoration to the hidden launcher, and clear feedback state before search can close. Use the shared `Dialog`, feedback-specific backdrop/content layers above `z-[57]`, a visible close control, a responsive bounded iframe viewport, and a visible new-tab fallback.
 - **Patterns to follow:** `apps/web/src/components/sections/QuizButton.tsx`, `apps/web/src/components/watch/ShareModal.tsx`, `apps/web/src/components/FloatingSearchProvider.tsx`, and `docs/solutions/best-practices/base-ui-dialog-state-attribute-detection-20260520.md`.
 - **Test scenarios:**
@@ -107,7 +107,7 @@ The normal path preserves the server-rendered page and existing floating header.
 - **Files:**
   - `apps/web/src/app/[locale]/[htmlLang]/layout.tsx`
   - `apps/web/src/app/(demo)/layout.tsx`
-  - `apps/web/src/components/__tests__/FeedbackLauncher.test.tsx`
+  - `apps/web/src/components/FeedbackLauncher.test.tsx`
 - **Approach:** Render `FeedbackLauncher` as a child of each existing `FloatingSearchProvider` alongside page content. Preserve the layouts as Server Components and do not add new preconnect, DNS-prefetch, or eager Google resource hints.
 - **Patterns to follow:** The layouts' existing `DatadogRum` and `FloatingSearchProvider` client-island composition.
 - **Test scenarios:**
@@ -122,7 +122,7 @@ The normal path preserves the server-rendered page and existing floating header.
 - **Requirements:** R2-R8.
 - **Dependencies:** U3.
 - **Files:**
-  - `apps/web/src/components/__tests__/FeedbackLauncher.test.tsx`
+  - `apps/web/src/components/FeedbackLauncher.test.tsx`
 - **Approach:** Run focused tests plus web format, lint, typecheck, and build checks. Browser-smoke a normal Watch route and the demo route at desktop and mobile widths, inspect actual Base UI open/closed attributes, verify focus cannot escape the open dialog, and capture a screenshot. Compare resource timing before and after activation to prove the `FeedbackModal` JavaScript chunk and all Google Forms requests are absent before the click and requested only after it; do not submit test feedback.
 - **Patterns to follow:** `docs/solutions/conventions/frontend-change-page-load-performance-verification.md` and `docs/solutions/performance-issues/watch-staged-client-loading-20260611.md`.
 - **Test scenarios:**

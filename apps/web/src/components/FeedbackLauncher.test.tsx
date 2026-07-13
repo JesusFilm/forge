@@ -18,7 +18,10 @@ vi.mock("@/components/FloatingSearchProvider", () => ({
   }),
 }))
 
-import { FeedbackLauncher } from "@/components/FeedbackLauncher"
+import {
+  FeedbackLauncher,
+  FeedbackLoadNotice,
+} from "@/components/FeedbackLauncher"
 
 const EMBED_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLScNeD3kPs7bqhV2i_QA6IMRCrs9W638TJuApb6QA4_ezQAEPA/viewform?embedded=true"
@@ -89,27 +92,69 @@ describe("FeedbackLauncher", () => {
     expect(iframe()).toBeNull()
   })
 
-  it("shows immediate loading feedback while the dialog chunk resolves", async () => {
+  it("disables duplicate activation while the dialog chunk resolves", async () => {
     const button = launcher()
     if (!button) throw new Error("Expected feedback launcher")
 
     act(() => {
       button.focus()
       button.click()
+      button.click()
     })
 
-    const loading = document.querySelector(
-      '[data-testid="feedback-modal-loading"]',
-    )
-    if (loading) {
-      expect(loading.getAttribute("role")).toBe("status")
-      expect(button.getAttribute("aria-busy")).toBe("true")
-    }
+    expect(button.disabled).toBe(true)
+    expect(button.getAttribute("aria-busy")).toBe("true")
 
     await flushDynamicModal()
     expect(
       document.querySelectorAll('[data-testid="feedback-modal"]'),
     ).toHaveLength(1)
+  })
+
+  it("renders recoverable loading and error notices", () => {
+    const onCancel = vi.fn()
+    const retry = vi.fn()
+
+    act(() => {
+      root.render(<FeedbackLoadNotice onCancel={onCancel} isLoading />)
+    })
+
+    const loading = document.querySelector(
+      '[data-testid="feedback-modal-loading"]',
+    )
+    expect(loading?.getAttribute("role")).toBe("status")
+    expect(loading?.textContent).toContain("Loading feedback form")
+
+    act(() => {
+      root.render(
+        <FeedbackLoadNotice
+          error={new Error("chunk failed")}
+          retry={retry}
+          onCancel={onCancel}
+        />,
+      )
+    })
+
+    const error = document.querySelector(
+      '[data-testid="feedback-modal-loading"]',
+    )
+    expect(error?.getAttribute("role")).toBe("alert")
+    expect(error?.textContent).toContain("Feedback form could not load")
+
+    const buttons = Array.from(error?.querySelectorAll("button") ?? [])
+    act(() => {
+      buttons.find((button) => button.textContent === "Retry")?.click()
+      buttons.find((button) => button.textContent === "Cancel")?.click()
+    })
+    expect(retry).toHaveBeenCalledOnce()
+    expect(onCancel).toHaveBeenCalledOnce()
+
+    const fallback = error?.querySelector("a")
+    expect(fallback?.getAttribute("href")).toBe(
+      "https://forms.gle/8WddM1kuyEBznukW8",
+    )
+    expect(fallback?.getAttribute("rel")).toContain("noopener")
+    expect(fallback?.getAttribute("rel")).toContain("noreferrer")
   })
 
   it("loads one hardened Google Forms iframe and a safe fallback link", async () => {
@@ -124,6 +169,13 @@ describe("FeedbackLauncher", () => {
       "allow-forms allow-scripts allow-same-origin",
     )
     expect(formFrame?.getAttribute("referrerpolicy")).toBe("no-referrer")
+    expect(formFrame?.className).toContain("opacity-0")
+
+    act(() => {
+      formFrame?.dispatchEvent(new Event("load"))
+    })
+    expect(formFrame?.className).toContain("opacity-100")
+    expect(document.body.textContent).not.toContain("Loading Google Form")
 
     const fallback = document.querySelector(
       '[data-testid="feedback-fallback-link"]',
