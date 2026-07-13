@@ -23,13 +23,13 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame the client maps to the stub). Testable core handleSeekerProxyRequest
-      auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; no-op home redirect when unconfigured (feat-207)
-      auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie, 302 return_to; single catch → non-PII log + ?signin=failed
-      auth/logout/route.ts   POST → clear session cookie, 303 home (POST so it isn't prefetchable)
+      auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
+      auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie + consume the feat-240 force-login marker (success only), 302 return_to; single catch → non-PII log + ?signin=failed (marker kept armed)
+      auth/logout/route.ts   POST → clear session cookie + set the 30-day single-use force-login marker (feat-240), 303 home (POST so it isn't prefetchable)
   auth/                  Chat auth (feat-207), adapted from apps/admin/src/auth/* — SDL of the OAuth flow, no DB, no authorization
     oauth-state.ts       state + PKCE (S256) via node:crypto (verbatim port)
     oauth-client.ts      authorize URL + token exchange + verifyChatIdToken (JWKS-derived alg allowlist, NO access-token fallback — R9 divergence)
-    session-cookie.ts    signed identity cookie create/read + option helpers; fail-closed to anonymous without a real secret
+    session-cookie.ts    signed identity cookie create/read + option helpers (session / transient / feat-240 force-login marker) + readRequestCookie; fail-closed to anonymous without a real secret
     origins.ts           resolveChatReturnToURL — post-login return-target validated against chat's own origin (R10)
     identity.ts          getChatIdentity() server reader (next/headers); never redirects; display-only
     anon-id.ts           feat-208: anonymous continuity id — resolveSeekerResource (user:/anon: namespacing, prefix-check only), UUID validation, rolling 30-day hardened cookie serialization
@@ -250,7 +250,18 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   rule), `Path=/`. The transient `state`/`verifier`/`return_to` cookies share the
   hardening with a ~10m TTL and are cleared on callback. Sign-out is a **POST
   form** (not a GET link — a GET logout is prefetchable/crawlable); it clears
-  chat's cookie only, leaving `apps/auth`'s SSO session untouched.
+  chat's session cookie and sets the **force-login marker** (feat-240):
+  `forge_chat_force_login`, same hardening, 30-day TTL. Every sign-in on
+  that browser within 30 days sends `prompt=login` to `apps/auth` — a real
+  login page renders instead of a silent SSO re-auth — until one COMPLETES:
+  the marker is consumed by the callback's success path only, so a failed or
+  abandoned attempt keeps it armed (review-hardened; web deletes on the login
+  redirect instead, which lets an abandoned attempt burn the marker).
+  `apps/auth`'s SSO session itself stays untouched, and the marker is
+  deliberately 30 days (not web's 10 minutes): the SSO session is rolling, so
+  no finite marker covers the whole silent-re-auth window; lifetime is
+  cost-free under consume-on-success. See feat-240's Decision Record for the
+  dropped lease/revocation design.
 - **No PII in logs or surfaces (KTD7):** the callback logs only fixed non-PII
   reason codes in the `[chat-auth] event=callback_failed reason=<code>`
   plain-string format (Railway logsV2 silences JSON stdout); it never logs the
@@ -295,7 +306,9 @@ behind `chatAuthConfigured()`, default off): optional OAuth sign-in/out against
 control. Now present (feat-233, default deny): the per-user seeker dogfood
 gate — `src/lib/seeker-gate.ts` (`SEEKER_ALLOWED_EMAILS` membership), enforced
 at the page and on every `/api/seeker` request. Authentication now feeds that
-one gate; everything else stays ungated.
+one gate; everything else stays ungated. Now present (feat-240): sign-out sets
+the 30-day single-use force-login marker, so the next sign-in shows a real
+login page instead of silently re-authenticating via the SSO session.
 
 ## Key Conventions
 
