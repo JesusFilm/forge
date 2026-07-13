@@ -3,7 +3,7 @@ import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
@@ -58,10 +58,9 @@ export function ResultCard({
   })
   const previewUrl = useHoverPreview({
     focused,
-    enabled: !isSeriesSearchResult({
-      label: result.label,
-      childCount: result.childCount,
-    }),
+    // Gate on the LABEL not childCount so a playable feature film with episodes
+    // still previews; pure COLLECTION/SERIES results stay out.
+    enabled: !isSeriesLabel(result.label),
     playbackId: result.playbackId,
   })
 

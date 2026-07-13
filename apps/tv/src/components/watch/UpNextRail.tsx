@@ -6,6 +6,7 @@ import { useCallback } from "react"
 import { useRouter } from "expo-router"
 
 import type { WatchSibling } from "../../lib/normalizeVideo"
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { ThumbCard } from "../rails/ThumbCard"
 import { ThumbRail } from "../rails/ThumbRail"
 
@@ -22,7 +23,9 @@ export function UpNextRail({ siblings }: { siblings: WatchSibling[] }) {
       <ThumbCard
         title={sibling.title ?? sibling.slug}
         posterUrl={sibling.posterUrl}
-        previewPlaybackId={sibling.muxPlaybackId}
+        previewPlaybackId={
+          isSeriesLabel(sibling.label) ? null : sibling.muxPlaybackId
+        }
         recyclingKey={`upnext-${sibling.documentId}`}
         ddActionName="upnext-episode"
         accessibilityHint="Opens this video"

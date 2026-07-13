@@ -14,7 +14,7 @@ import {
 } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel, isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -96,10 +96,12 @@ export const HomeCard = memo(function HomeCard({
     label: card.rawLabel,
     childCount: card.childCount,
   })
-  // Animated hover-preview: video cards only, once focus dwells (R1/R3).
+  // Animated hover-preview, once focus dwells. Gate on the LABEL not childCount:
+  // a feature film WITH episodes (JESUS, 61 eps) is playable and previews; only
+  // COLLECTION/SERIES-labeled cards are excluded (they carry a null id anyway).
   const previewUrl = useHoverPreview({
     focused,
-    enabled: !isSeriesShaped,
+    enabled: !isSeriesLabel(card.rawLabel),
     playbackId: card.muxPlaybackId,
   })
 
