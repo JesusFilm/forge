@@ -293,6 +293,45 @@ describe("SeriesEpisodeCard — href", () => {
     )
   })
 
+  it("routes a nested collection to its standalone language page", () => {
+    renderCard({
+      episode: makeEpisode({
+        slug: "lumo-the-gospel-of-matthew",
+        label: "COLLECTION",
+      }),
+      languageSlug: "russian",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo-the-gospel-of-matthew.html/russian.html",
+    )
+  })
+
+  it("routes a nested series without requiring a valid parent slug", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "nested-series", label: "SERIES" }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/nested-series.html/english.html",
+    )
+  })
+
+  it("keeps unlabeled children on the contextual route", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "unlabeled-child", label: null }),
+      languageSlug: "english",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo.html/unlabeled-child/english.html",
+    )
+  })
+
   it("renders a plain div (no <a>) when the parent slug is malformed", () => {
     renderCard({
       episode: makeEpisode({ slug: "wedding-in-cana" }),
