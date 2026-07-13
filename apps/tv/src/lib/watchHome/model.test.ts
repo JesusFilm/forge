@@ -101,6 +101,8 @@ describe("buildWatchHomeModelFromVideos — featured", () => {
     expect(card.coreId).toBeTruthy()
     expect(card).not.toHaveProperty("hls")
     expect(card).not.toHaveProperty("playbackId")
+    // Config-path cards carry no preview id, so they never hover-preview (R3/R6).
+    expect(card.muxPlaybackId).toBeNull()
   })
 })
 

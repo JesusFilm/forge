@@ -47,6 +47,7 @@ export const EpisodeRail = memo(function EpisodeRail({
             isNestedSeries ? (episode.label ?? "") : `EPISODE ${index + 1}`
           }
           overlayIcon={isNestedSeries ? "albums" : "play"}
+          previewPlaybackId={isNestedSeries ? null : episode.muxPlaybackId}
           recyclingKey={`episode-${episode.documentId}`}
           ddActionName="series-episode"
           accessibilityHint={

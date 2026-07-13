@@ -1,7 +1,8 @@
 /**
  * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (ported from apps/web/src/lib/watch-home.ts)
  * — sync obligation in ./config.ts. TV cuts: no carousel/pager (hero → `model.featured`), no
- * playbackId on cards (lazy streams; 9.5MB lean-bulk), time-of-day title from an INJECTED Date. Pure TS.
+ * playbackId on the lean-bulk fragment (9.5MB; the preview muxPlaybackId rides the Experience item,
+ * not the bulk query), time-of-day title from an INJECTED Date. Pure TS.
  */
 
 import {
@@ -84,6 +85,8 @@ export type WatchHomeCard = {
   metaLabel: string | null
   imageUrl: string | null
   imageAlt: string
+  // Mux playback id for the animated hover-preview, or null (config path / series parent).
+  muxPlaybackId: string | null
   durationSeconds: number | null
   childCount: number
   parentCoreId: string | null
@@ -184,6 +187,7 @@ export function normalizeCard(args: {
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
   languageSlug: string
   parent?: WatchHomeVideoInput | null
+  muxPlaybackId?: string | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
@@ -233,6 +237,7 @@ export function normalizeCard(args: {
     }),
     imageUrl: adminImageUrl,
     imageAlt: locale?.imageAlt ?? title,
+    muxPlaybackId: args.muxPlaybackId ?? null,
     durationSeconds: args.video.durationSeconds ?? null,
     childCount,
     parentCoreId: args.parent?.coreId ?? null,
