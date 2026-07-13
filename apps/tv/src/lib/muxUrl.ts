@@ -19,6 +19,38 @@ export function muxHlsUrlFromPlaybackId(
   return `https://stream.mux.com/${playbackId}.m3u8`
 }
 
+// Animated hover-preview still. SYNC: apps/web resolveMuxAnimatedPreviewUrl —
+// same shape, params TV-tuned (640/fps12 vs web 448/fps8) for the 10-foot card;
+// finalized on the U1 spike. Don't resync to web's numbers.
+export type MuxAnimatedPreviewOpts = {
+  start?: number
+  end?: number
+  width?: number
+  fps?: number
+}
+
+const ANIMATED_PREVIEW_DEFAULTS: Required<MuxAnimatedPreviewOpts> = {
+  start: 2,
+  end: 6,
+  width: 640,
+  fps: 12,
+}
+
+/**
+ * Mux animated hover-preview URL (looping webp) from a playback ID, or null if
+ * missing/unsafe. Same host-injection guard as the HLS builder above; opts is a
+ * test/spike seam so production callers pass only the id.
+ */
+export function getMuxAnimatedPreviewUrl(
+  playbackId: string | null | undefined,
+  opts: MuxAnimatedPreviewOpts = {},
+): string | null {
+  const id = playbackId?.trim()
+  if (!id || !MUX_PLAYBACK_ID_RE.test(id)) return null
+  const { start, end, width, fps } = { ...ANIMATED_PREVIEW_DEFAULTS, ...opts }
+  return `https://image.mux.com/${id}/animated.webp?start=${start}&end=${end}&width=${width}&fps=${fps}`
+}
+
 /**
  * Mux playback ID from a stored HLS URL, or null if not a Mux stream URL. Lets
  * us compare sources by asset identity, not exact string (stored `hls` may
