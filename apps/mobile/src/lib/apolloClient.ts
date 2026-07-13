@@ -6,6 +6,7 @@ import {
 } from "@apollo/client"
 import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
+import { getViewerId } from "./viewer-id"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -40,7 +41,11 @@ export function getApolloClient(): ApolloClient {
   // rate-limit-buckets as consumer:<key> on admin (one shared bucket for the
   // whole fleet), while anonymous public queries bucket per device IP.
   const authLink = new ApolloLink((operation, forward) => {
-    const auth = authHeadersForOperation(operation.operationName, getApiToken())
+    const auth = authHeadersForOperation(
+      operation.operationName,
+      getApiToken(),
+      getViewerId(),
+    )
     if (Object.keys(auth).length > 0) {
       const prev = operation.getContext()
       operation.setContext({

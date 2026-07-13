@@ -2203,14 +2203,24 @@ TV and mobile ship the SAME consumer bearer baked into every install, so a flat
 `consumer:<key>` bucket would collapse the whole fleet into one 60/min limit
 (self-DoS). `FLEET_ADMIN_API_KEYS` is a dedicated consumer-bearer CSV whose keys
 mint the normal `CONSUMER_BEARER` principal (zero permissions) but flagged
-`fleet`, so `identifyForRateLimit` buckets them per client IP as
-`consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) stays flat `consumer:<key>`.
+`fleet`, so `identifyForRateLimit` buckets them per device: by a client-provided
+`viewer_id` as `consumer:<key>:v:<viewer_id>` when present (preferred), else per
+client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) stays flat
+`consumer:<key>`.
 
 - **Trusted IP only (R8).** The `<ip>` comes from `getTrustedClientIp`
   (`cf-connecting-ip` only) — never the client-supplied `x-forwarded-for`. The
   fleet key is extractable from the app bundle and per-IP is its sole abuse
   control, so a spoofable IP would let a holder mint buckets or pin a victim. No
   trusted IP → `consumer:<key>:unknown` (fleet namespace, not `public:unknown`).
+- **Per-`viewer_id` (preferred, CGNAT-immune).** When the client sends a valid
+  `x-viewer-id` header (sanitized: 1–64 chars `[A-Za-z0-9._-]`), fleet traffic
+  buckets `consumer:<key>:v:<viewer_id>` — one bucket per install regardless of
+  NAT, so co-egress carrier devices don't collapse. `viewer_id` is client-set and
+  spoofable, so it is an availability label ONLY (never identity/authz); abuse stays
+  bounded by the F1 global ceiling, exactly like the IP path. The `v:` prefix keeps
+  a spoofed IP-shaped id from colliding with a real IP bucket. Absent/malformed →
+  IP fallback, so it is additive and inert until clients send it.
 - **Disjoint at boot.** `FLEET_ADMIN_API_KEYS` joins `BEARER_CSV_KEYS` and the
   `assertBearerCsvsDisjoint` invariant; a value shared with any other bearer CSV
   fails the boot. Mint a DEDICATED fleet key per surface (tv, mobile) — never
@@ -2218,12 +2228,12 @@ mint the normal `CONSUMER_BEARER` principal (zero permissions) but flagged
 - **Observable.** A fleet key logs `source=fleet` in the per-request search log
   (vs web SSR's `source=consumer`); a rising `consumer:*:unknown` share signals a
   `cf-connecting-ip` drop / AOP regression collapsing the fleet.
-- **Carrier-NAT residual.** Per-IP means devices behind one carrier-grade NAT
-  egress share a single `consumer:<key>:<ip>` 60/min bucket — the multi-user-per-IP
-  collapse the flat `consumer:<key>` bucket exists to escape, re-scoped to
-  per-carrier-egress; the mobile cellular fleet is most exposed. The limit is
-  server-side tunable — raise the fleet key's cap if honest co-egress users hit
-  429s (no client rebuild), or lean on the F1 global per-fleet-key ceiling.
+- **Carrier-NAT residual (IP path only).** Devices behind one carrier-grade NAT
+  egress that do NOT send a `viewer_id` share a single `consumer:<key>:<ip>` 60/min
+  bucket — the multi-user-per-IP collapse re-scoped to per-carrier-egress; the
+  mobile cellular fleet is most exposed. A client that sends `x-viewer-id` avoids
+  this entirely (per-device bucket). For the IP-only fallback, the limit is
+  server-side tunable (raise the cap; no client rebuild) or lean on the F1 ceiling.
 
 **Deploy ordering (receiver-first).** Land the fleet keys in admin's
 `FLEET_ADMIN_API_KEYS` BEFORE provisioning the client

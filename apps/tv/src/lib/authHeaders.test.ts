@@ -45,4 +45,22 @@ describe("authHeadersForOperation (fleet-protection contract)", () => {
     // Guards the copy-the-wrong-literal trap: mobile's name must not match.
     expect(authHeadersForOperation("Search", "k")).toEqual({})
   })
+
+  it("adds x-viewer-id on the search op alongside the bearer", () => {
+    expect(
+      authHeadersForOperation(SEARCH_OPERATION_NAME, "k", "device-1"),
+    ).toEqual({ Authorization: "Bearer k", "x-viewer-id": "device-1" })
+  })
+
+  it("sends x-viewer-id on search even with no token (ready for provisioning)", () => {
+    expect(
+      authHeadersForOperation(SEARCH_OPERATION_NAME, undefined, "device-1"),
+    ).toEqual({ "x-viewer-id": "device-1" })
+  })
+
+  it("never sends x-viewer-id on a public operation", () => {
+    expect(
+      authHeadersForOperation("GetWatchHomeVideos", "k", "device-1"),
+    ).toEqual({})
+  })
 })

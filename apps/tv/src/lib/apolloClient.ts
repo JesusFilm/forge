@@ -7,6 +7,7 @@ import {
 import { getMainDefinition } from "@apollo/client/utilities"
 import { getGraphQLUrl, getApiToken } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
+import { getViewerId } from "./viewer-id"
 import { datadogGraphqlHeaders, isDatadogProvisioned } from "./datadog"
 
 const REQUEST_TIMEOUT_MS = 15_000
@@ -50,7 +51,11 @@ export function createRequestChain(): ApolloLink {
   const authLink = new ApolloLink((operation, forward) => {
     mergeContextHeaders(
       operation,
-      authHeadersForOperation(operation.operationName, getApiToken()),
+      authHeadersForOperation(
+        operation.operationName,
+        getApiToken(),
+        getViewerId(),
+      ),
     )
     return forward(operation)
   })

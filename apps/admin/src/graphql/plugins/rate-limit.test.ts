@@ -226,6 +226,110 @@ describe("identifyForRateLimit", () => {
     ).toBe("consumer:fleet-key:unknown")
   })
 
+  it("prefers a client viewer_id over IP for the fleet bucket (v: namespace)", () => {
+    // CGNAT-immune: a valid x-viewer-id keys per-install, ignoring the shared
+    // carrier egress IP.
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "fleet-key",
+            fleet: true,
+          },
+          request: makeRequest({
+            "cf-connecting-ip": "1.1.1.1",
+            "x-viewer-id": "device-abc",
+          }),
+        }),
+      ),
+    ).toBe("consumer:fleet-key:v:device-abc")
+  })
+
+  it("splits two devices sharing one IP into separate viewer buckets (CGNAT)", () => {
+    const shared = "203.0.113.9"
+    const mk = (viewer: string) =>
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "fleet-key",
+            fleet: true,
+          },
+          request: makeRequest({
+            "cf-connecting-ip": shared,
+            "x-viewer-id": viewer,
+          }),
+        }),
+      )
+    const one = mk("device-one")
+    const two = mk("device-two")
+    expect(one).toBe("consumer:fleet-key:v:device-one")
+    expect(two).toBe("consumer:fleet-key:v:device-two")
+    expect(one).not.toBe(two)
+  })
+
+  it("falls back to the IP bucket when the viewer_id is malformed", () => {
+    // Bad charset / over-length / empty → treated as absent, so junk can't dodge
+    // the IP fallback. `:` is rejected so it can't cross the bucket namespace.
+    for (const bad of ["has space", "colon:here", "a".repeat(65), ""]) {
+      expect(
+        identifyForRateLimit(
+          makeCtx({
+            user: {
+              id: null,
+              role: "CONSUMER_BEARER",
+              rateLimitBucketKey: "fleet-key",
+              fleet: true,
+            },
+            request: makeRequest({
+              "cf-connecting-ip": "1.2.3.4",
+              "x-viewer-id": bad,
+            }),
+          }),
+        ),
+      ).toBe("consumer:fleet-key:1.2.3.4")
+    }
+  })
+
+  it("keeps a viewer_id shaped like an IP distinct from the IP bucket (R2)", () => {
+    // A spoofed viewer_id "1.2.3.4" must NOT collide with the real IP bucket
+    // consumer:<key>:1.2.3.4 — the v: prefix separates the namespaces.
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "fleet-key",
+            fleet: true,
+          },
+          request: makeRequest({ "x-viewer-id": "1.2.3.4" }),
+        }),
+      ),
+    ).toBe("consumer:fleet-key:v:1.2.3.4")
+  })
+
+  it("ignores x-viewer-id for a non-fleet consumer bearer (R6)", () => {
+    // Web SSR (fleet:false) stays flat consumer:<key> — viewer_id only applies
+    // to the fleet dimension.
+    expect(
+      identifyForRateLimit(
+        makeCtx({
+          user: {
+            id: null,
+            role: "CONSUMER_BEARER",
+            rateLimitBucketKey: "web-key",
+            fleet: false,
+          },
+          request: makeRequest({ "x-viewer-id": "device-abc" }),
+        }),
+      ),
+    ).toBe("consumer:web-key")
+  })
+
   it("falls back to public:<ip> when CONSUMER_BEARER lacks a bucket key (defensive)", () => {
     // Should not happen in practice — `createContext` mints the
     // principal via `CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey })`

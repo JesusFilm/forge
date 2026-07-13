@@ -48,6 +48,17 @@ function getTrustedClientIp(request: Request): string {
   return request.headers.get("cf-connecting-ip") ?? "unknown"
 }
 
+// `x-viewer-id` is a client-set, spoofable bucket LABEL (never identity/authz):
+// bound it to a safe charset + length so it can't inject log structure or blow
+// up Redis key cardinality; anything else falls back to the IP bucket.
+const VIEWER_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/
+
+function sanitizeViewerId(raw: string | null): string | null {
+  if (raw == null) return null
+  const trimmed = raw.trim()
+  return VIEWER_ID_PATTERN.test(trimmed) ? trimmed : null
+}
+
 /**
  * Identity formation for the rate-limit bucket. Exported for direct
  * unit testing so the bucket-key logic doesn't have to be exercised
@@ -56,7 +67,8 @@ function getTrustedClientIp(request: Request): string {
  * Buckets, in priority order:
  *   1. Authenticated user (`ctx.user.id`) — keyed by user id.
  *   2. Consumer-app bearer (`role === "CONSUMER_BEARER"`) — keyed by
- *      the bearer's `rateLimitBucketKey` as `consumer:<key>`.
+ *      the bearer's `rateLimitBucketKey` as `consumer:<key>`; fleet keys
+ *      append a per-device suffix `:v:<viewer_id>` (preferred) or `:<ip>`.
  *   3. Video mapper bearer (`role === "VIDEO_MAPPER"`) — keyed by service
  *      class as `service:video-mapper`.
  *   4. Anonymous IP fallback — `public:<cf-connecting-ip>`.
@@ -73,8 +85,13 @@ export function identifyForRateLimit(ctx: ContextShape): string {
     ctx.user.rateLimitBucketKey != null
   ) {
     if (ctx.user.fleet) {
-      // Per client IP: a fleet of installs shipping one baked-in key would
-      // otherwise collapse into a single `consumer:<key>` bucket (self-DoS).
+      // Prefer a client-provided viewer_id (per-install, CGNAT-immune) over IP.
+      // Spoofable → an availability label only; abuse stays bounded by the
+      // edge/global per-key ceiling, never this key. See sanitizeViewerId.
+      const viewerId = sanitizeViewerId(ctx.request.headers.get("x-viewer-id"))
+      if (viewerId) {
+        return `consumer:${ctx.user.rateLimitBucketKey}:v:${viewerId}`
+      }
       const ip = getTrustedClientIp(ctx.request)
       return `consumer:${ctx.user.rateLimitBucketKey}:${ip}`
     }
