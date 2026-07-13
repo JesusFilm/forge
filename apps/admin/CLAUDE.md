@@ -2181,8 +2181,9 @@ Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
 ### Files
 
 - `src/auth/search-bearer.ts` — `isAnyKnownBearer` composer
-  (async, returns `BearerCheckResult`; OR-composes the three
-  known-caller branches in PARTNER → CONSUMER → WORKFLOW order).
+  (async, returns `BearerCheckResult`; OR-composes PARTNER →
+  CONSUMER → WORKFLOW; the CONSUMER branch reports `source=fleet`
+  for a `FLEET_ADMIN_API_KEYS` key, else `source=consumer`).
 - `src/auth/partner-token.ts` — pure helpers for the partner token
   format (`jfp_search_<keyId>_<random>`).
 - `src/services/partner-api-key.service.ts` — DB-backed partner
@@ -2195,6 +2196,70 @@ Before flipping `SEARCH_AUTH_REQUIRED=true` on prod:
   stays.
 - `src/config/env.ts` — `SEARCH_AUTH_REQUIRED` enum +
   `assertBearerCsvsDisjoint` over the 3 remaining env CSVs.
+
+### Fleet-aware rate-limit bucketing (apps/tv + apps/mobile)
+
+TV and mobile ship the SAME consumer bearer baked into every install, so a flat
+`consumer:<key>` bucket would collapse the whole fleet into one 60/min limit
+(self-DoS). `FLEET_ADMIN_API_KEYS` is a dedicated consumer-bearer CSV whose keys
+mint the normal `CONSUMER_BEARER` principal (zero permissions) but flagged
+`fleet`, so `identifyForRateLimit` buckets them per device: by a client-provided
+`viewer_id` as `consumer:<key>:v:<viewer_id>` when present (preferred), else per
+client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) stays flat
+`consumer:<key>`.
+
+- **Trusted IP only (R8).** The `<ip>` comes from `getTrustedClientIp`
+  (`cf-connecting-ip` only) — never the client-supplied `x-forwarded-for`. The
+  fleet key is extractable from the app bundle and per-IP is its sole abuse
+  control, so a spoofable IP would let a holder mint buckets or pin a victim. No
+  trusted IP → `consumer:<key>:unknown` (fleet namespace, not `public:unknown`).
+- **Per-`viewer_id` (preferred, CGNAT-immune).** When the client sends a valid
+  `x-viewer-id` header (sanitized: 1–64 chars `[A-Za-z0-9._-]`), fleet traffic
+  buckets `consumer:<key>:v:<viewer_id>` — one bucket per app launch (the client id
+  is in-memory, regenerated on relaunch), regardless of NAT, so co-egress carrier
+  devices don't collapse. `viewer_id` is client-set and freely rotatable, so it is
+  an availability label ONLY (never identity/authz) and makes minting fresh buckets
+  TRIVIAL (rotate a header, cheaper than rotating IPs) — so it is safe ONLY once the
+  F1 global per-fleet-key ceiling is live. That ceiling (BLOCKING precondition #2
+  below) is the SOLE abuse bound, not this per-device key. The `v:` prefix keeps a
+  spoofed IP-shaped id from colliding with a real IP bucket. Absent/malformed → IP
+  fallback (additive, inert until clients send it).
+- **Disjoint at boot.** `FLEET_ADMIN_API_KEYS` joins `BEARER_CSV_KEYS` and the
+  `assertBearerCsvsDisjoint` invariant; a value shared with any other bearer CSV
+  fails the boot. Mint a DEDICATED fleet key per surface (tv, mobile) — never
+  reuse web SSR's or another surface's value.
+- **Observable.** A fleet key logs `source=fleet` in the per-request search log
+  (vs web SSR's `source=consumer`); a rising `consumer:*:unknown` share signals a
+  `cf-connecting-ip` drop / AOP regression collapsing the fleet.
+- **Carrier-NAT residual (IP path only).** Devices behind one carrier-grade NAT
+  egress that do NOT send a `viewer_id` share a single `consumer:<key>:<ip>` 60/min
+  bucket — the multi-user-per-IP collapse re-scoped to per-carrier-egress; the
+  mobile cellular fleet is most exposed. A client that sends `x-viewer-id` avoids
+  this entirely (per-device bucket). For the IP-only fallback, the limit is
+  server-side tunable (raise the cap; no client rebuild) or lean on the F1 ceiling.
+
+**Deploy ordering (receiver-first).** Land the fleet keys in admin's
+`FLEET_ADMIN_API_KEYS` BEFORE provisioning the client
+`EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` in EAS. Rotation overlap is WEEKS, not
+sub-hour: store binaries update at user discretion, so keep the old fleet key
+valid until install metrics confirm the new build reached the fleet.
+
+**Before shipping a fleet token — F1 preconditions, both BLOCKING:**
+
+1. Confirm Cloudflare Authenticated Origin Pulls is enforced and the raw
+   `*.up.railway.app` origin is unreachable/403 (probe + record) — R8's
+   unspoofability rests entirely on this.
+2. Land a real abuse ceiling on the search path (a Cloudflare edge rate-limit
+   keyed on the fleet bearer, or an app-level global per-fleet-key counter):
+   per-IP does NOT bound an attacker rotating IPs with the extracted key.
+
+**Abuse-incident runbook.** Env-CSV keys have no sub-second per-key revocation
+(unlike the DB-backed partner store). To revoke a compromised fleet key: rotate
+`FLEET_ADMIN_API_KEYS` + redeploy (revokes fleet-wide immediately, but fleet
+search breaks until a new build ships); use a Cloudflare edge block of the
+abusive pattern as the no-user-impact interim.
+
+See `docs/plans/2026-07-08-002-feat-admin-fleet-aware-rate-limit-bucketing-plan.md`.
 
 ### Cross-references
 
