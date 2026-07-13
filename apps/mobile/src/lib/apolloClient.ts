@@ -6,6 +6,7 @@ import {
 } from "@apollo/client"
 import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
+import { getViewerId } from "./viewer-id"
 
 const REQUEST_TIMEOUT_MS = 15_000
 
@@ -36,11 +37,15 @@ let _client: ApolloClient | undefined
 export function getApolloClient(): ApolloClient {
   if (_client) return _client
 
-  // The bearer rides ONLY on the gated Search operation: a bearer'd request
-  // rate-limit-buckets as consumer:<key> on admin (one shared bucket for the
-  // whole fleet), while anonymous public queries bucket per device IP.
+  // Bearer + x-viewer-id ride ONLY on the gated Search operation: admin buckets a
+  // fleet key per device (consumer:<key>:v:<viewer_id> from x-viewer-id, else per
+  // IP). On public ops the bearer would pool the whole fleet into one bucket.
   const authLink = new ApolloLink((operation, forward) => {
-    const auth = authHeadersForOperation(operation.operationName, getApiToken())
+    const auth = authHeadersForOperation(
+      operation.operationName,
+      getApiToken(),
+      getViewerId(),
+    )
     if (Object.keys(auth).length > 0) {
       const prev = operation.getContext()
       operation.setContext({

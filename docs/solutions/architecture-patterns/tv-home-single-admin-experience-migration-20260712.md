@@ -1,6 +1,7 @@
 ---
 title: "Migrating a native client's home to a single admin CMS Experience (hydrate-by-coreId, TV home parity)"
 date: "2026-07-12"
+last_refreshed: "2026-07-13"
 category: "architecture-patterns"
 module: "apps/tv, apps/admin, packages/admin-graphql"
 problem_type: "architecture_pattern"
@@ -198,14 +199,20 @@ coverage in a codebase that can't render hooks in tests.
   module."_ Fix: extract the pure logic into its own module (here `topUpFetch.ts`, and
   the pure `reconcileWatchHome`) and test **that** — matching the codebase's existing
   extract-pure-logic discipline. Don't reach for `renderHook`.
-- **Hero divergence is expected, not a bug.** TV's hero shows only the 4
-  `WATCH_HOME_HERO_SOURCE_IDS`; web's top carousel cycles a much larger set (Christmas
-  short films, etc.) because web keeps `WATCH_HOME_PLAYLIST_SEQUENCE` +
-  `WATCH_HOME_MUX_INSERTS` + a "short-films sweep" (every `SHORT_FILM`-labeled video is
-  swept into the carousel pool). TV deliberately **cut** the playlist/mux machinery
-  (feat-179: scarce tvOS decode slots; image-based banner). The 4 hero ids are identical
-  on both — but on web they're only the _fallback_ used if the sequenced slides are
-  empty. Closing the gap means porting the playlist-sequence/short-films sweep to TV.
+- **Hero divergence — gap since closed to an approximation by PR #1534.** As shipped
+  here (feat-179), TV's hero showed only the 4 `WATCH_HOME_HERO_SOURCE_IDS`, while web's
+  top carousel cycled a much larger set (Christmas short films, etc.) via
+  `WATCH_HOME_PLAYLIST_SEQUENCE` + `WATCH_HOME_MUX_INSERTS` + a "short-films sweep",
+  keeping the 4 ids only as the empty-queue _fallback_. PR #1534 later ported the
+  playlist-sequence pool queue + short-films pool to **both** TV and mobile (still no Mux
+  inserts on TV — scarce tvOS decode slots, image-based banner), so the 4 ids are now the
+  fallback on TV too. The catch: TV/mobile use a lean fetch without `hls`, so they cannot
+  replicate web's exact `hls` eligibility gate and instead **approximate** it with a
+  wire-`label` gate (drop `COLLECTION`/`SERIES`, keep `FEATURE_FILM`/`SHORT_FILM`). So the
+  gap is closed to an approximation — a few feature films web drops only for missing `hls`
+  are over-included — not an exact match. The hero stays client-owned throughout (guidance
+  #6). See
+  [Cross-client home-hero web parity via a wire-label eligibility gate](cross-client-hero-parity-eligibility-gate.md).
 - **tvOS device-smoke has a real limit.** The Home top bar is a sticky ScrollView
   header, and tvOS drops `nextFocus` on its children, so the D-pad won't reliably descend
   past the banner into lower rails — some smoke verifications end up inferred (from card
@@ -238,4 +245,5 @@ coverage in a codebase that can't render hooks in tests.
 - [TV/mobile clients consume only public admin queries](../conventions/tv-mobile-clients-consume-only-public-admin-queries.md) — the public-query posture and the two-layer guards.
 - [Pothos public widening multi-layer coordination](../graphql/pothos-public-widening-multi-layer-coordination-20260511.md) — where the new public `coreId` field must register.
 - [Mocked-shape vs real-contract discipline](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — why live-prod verification caught the videoId≠coreId gap.
+- [Cross-client home-hero web parity via a wire-label eligibility gate](cross-client-hero-parity-eligibility-gate.md) — the follow-up that closed the hero-divergence gap this doc flagged (label-gate approximation of web's hls gate; PR #1534).
 - Plan: `docs/plans/2026-07-08-003-feat-tv-home-experience-parity-plan.md`.

@@ -316,7 +316,11 @@ The identity a request's rate budget is counted under: an authenticated user's o
 
 ### Fleet Client
 
-A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address, and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+A client app distributed as many installed copies (mobile, TV) that share one baked-in credential and one release cycle. Contrast with a single-egress server client: a fleet cannot rotate its credential without a release and field adoption lag, each device has its own network address (though carrier-grade NAT can collapse many devices onto one), and any globally attached shared credential pools the whole fleet onto one Rate-Limit Identity.
+
+### Viewer Id
+
+A client-generated, stable-per-device identifier a Fleet Client attaches to a request so the server can count that device's rate budget on its own Rate-Limit Identity rather than a shared credential or a carrier-collapsed network address. It is an availability mechanism, not an authorization or abuse control: being client-supplied it is freely rotatable, so a global per-credential ceiling remains the abuse bound.
 
 ## Admin schema operations
 
@@ -374,6 +378,12 @@ A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoi
 ### Carousel Pool
 
 One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
+
+### Hero Eligibility
+
+The rule deciding which catalog records may appear as Hero Queue slides: individually-playable videos — feature films and short films — are eligible and contribute their own tile, while container records (collections and series) are excluded, even though Carousel Pools are built around such containers.
+
+An eligible film is emitted as a single parent tile, never expanded into its chapter children — a feature film with dozens of episodes still shows as one hero slide. Clients enforce the same rule through different signals: the web client keys on whether a record carries a playable stream, while the leaner native clients, which do not fetch that stream, approximate it from the record's catalog type. That approximation is deliberately looser than exact stream-level playability, so a native client may surface a few films the stream-level check would drop. Because Carousel Pools that yield no eligible video drop out entirely, excluding the containers can also change which later pools the round-robin reaches.
 
 ### Played Set
 
@@ -442,6 +452,10 @@ The first conversational agent of the planned headless Jesus Film AI Chat system
 ### Seeker Dogfood Gate
 
 The layered per-request decision in the chat app that resolves seeker-vs-stub: the coarse `SEEKER_CHAT_ENABLED` kill switch, then a verified signed-in identity, then membership in the `SEEKER_ALLOWED_EMAILS` env allowlist (an operator-maintained CSV of dogfooder emails on the chat service). Default-deny and fail-closed by construction — anonymous users, unlisted users, identities without a verified email, and an unset or empty allowlist all resolve to the stub; delisting a user is an env edit that takes effect once the service restarts with the new value. Distinct from authorization proper: it gates a single feature for named people and deliberately skips session revocation and a membership gate.
+
+### Conversation History
+
+The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
 
 ### JesusFilm RAG
 
