@@ -548,15 +548,73 @@ describe("VideoService", () => {
       })
 
       const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
-      expect(sql).toContain("child_recency.latest_child_at")
       expect(sql).toContain("MAX(")
-      expect(sql).toContain("child_dub.language_id = inventory_language.id")
-      expect(sql).toContain("child_dub.published = TRUE")
-      expect(sql).toContain("NULLIF(child_dub.hls, '') IS NOT NULL")
+      expect(sql).toContain("FROM eligible_candidate_video child")
+      expect(sql).toContain('child."hasAudio" = TRUE')
+      expect(sql).toContain('COALESCE(child."publishedAt", child."createdAt")')
+      expect(sql).toContain('COALESCE(child."updatedAt", child."createdAt")')
       expect(sql).toContain("ORDER BY")
       expect(sql).toContain('"sortAt" DESC NULLS LAST')
       expect(sql).toContain('relation.order AS "parentOrder"')
-      expect(sql).toContain('parent_ref."parentOrder" AS "parentOrder"')
+      expect(sql).toContain('parent_ref."parentOrder"')
+    })
+
+    it("bounds language candidates before expensive card hydration", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      const playableAudio = sql.indexOf("playable_audio AS MATERIALIZED")
+      const subtitleCandidates = sql.indexOf(
+        "usable_subtitle_video AS MATERIALIZED",
+      )
+      const candidateVideoSource = sql.indexOf("candidate_video_source AS")
+      const recencyCutoff = sql.indexOf("candidate_cutoff AS")
+      const prelimitedCandidates = sql.indexOf("prelimited_candidates AS")
+      const candidateDisplay = sql.indexOf("candidate_display AS")
+      const limitedCandidates = sql.indexOf(
+        "limited_candidates AS",
+        candidateDisplay,
+      )
+      const selectedImage = sql.indexOf("selected_image.image_url")
+      const fallbackDub = sql.indexOf("fallback_dub.language_slug")
+
+      expect(playableAudio).toBeGreaterThanOrEqual(0)
+      expect(subtitleCandidates).toBeGreaterThan(playableAudio)
+      expect(candidateVideoSource).toBeGreaterThan(subtitleCandidates)
+      const subtitleCandidateSql = sql.slice(
+        sql.indexOf("usable_subtitle AS MATERIALIZED"),
+        candidateVideoSource,
+      )
+      expect(subtitleCandidateSql).toContain("SELECT DISTINCT")
+      expect(subtitleCandidateSql).not.toContain("UNION ALL")
+      expect(recencyCutoff).toBeGreaterThan(subtitleCandidates)
+      expect(prelimitedCandidates).toBeGreaterThan(recencyCutoff)
+      expect(candidateDisplay).toBeGreaterThan(prelimitedCandidates)
+      expect(limitedCandidates).toBeGreaterThan(candidateDisplay)
+      expect(selectedImage).toBeGreaterThan(limitedCandidates)
+      expect(fallbackDub).toBeGreaterThan(limitedCandidates)
+      expect(sql).not.toContain("published_videos AS")
+      expect(sql).not.toContain("selected_locale AS")
+      expect(sql).not.toContain("selected_image AS")
+      expect(sql).toContain('BOOL_OR("hasAudio") AS "hasAudio"')
+      expect(sql).toContain('BOOL_OR("hasSubtitle") AS "hasSubtitle"')
+      expect(sql).not.toContain("same_language_audio")
+      expect(sql).toContain(
+        'candidate_recency."sortAt" IS NOT DISTINCT FROM candidate_cutoff."sortAt"',
+      )
+      expect(sql).toContain("dub.hls IS NOT NULL")
+      expect(sql).toContain("dub.hls <> ''")
+      expect(sql).toContain("subtitle.vtt_src IS NOT NULL")
+      expect(sql).toContain("subtitle.srt_src IS NOT NULL")
     })
   })
 
