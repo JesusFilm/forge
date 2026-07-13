@@ -31,6 +31,10 @@ ticket is the admin-side rollout; feat-241 is the client side.
 Doppler, admin deploy) are the admin CMS owner's to execute. `owner: urim` here tracks
 coordination of the end-to-end search unblock, not admin ownership.
 
+> **Status 2026-07-13:** PR #1493 is MERGED (per-IP + per-`viewer_id` fleet bucketing, dormant
+> until provisioned). Precondition #1 (origin bypass) has been PROBED and is **CONFIRMED OPEN** —
+> see What To Do step 1; it is now active remediation, not a verification checkbox.
+
 ## Entry Points - Read These First
 
 1. `docs/plans/2026-07-08-002-feat-admin-fleet-aware-rate-limit-bucketing-plan.md` - the plan;
@@ -53,9 +57,27 @@ coordination of the end-to-end search unblock, not admin ownership.
 
 ## What To Do
 
-1. **AOP precondition (blocking).** Confirm Cloudflare Authenticated Origin Pulls is enforced
-   on the admin service AND the raw `*.up.railway.app` origin is unreachable/403 — probe and
-   record the result. R8's `cf-connecting-ip` unspoofability rests entirely on this.
+1. **Close the origin bypass (blocking) — CONFIRMED OPEN 2026-07-13; active remediation, not a probe.**
+   Empirical finding: `https://forgeadmin-production-f4d1.up.railway.app/api/graphql` returns `200`
+   directly (`server: railway-hikari`, no `cf-ray`) — the raw Railway origin is reachable, bypassing
+   Cloudflare. So `cf-connecting-ip` is spoofable on that path and any Cloudflare-edge protection is
+   skippable; R8's whole trust basis is void until this is closed. With an extractable fleet key +
+   this bypass, an attacker rotates `x-viewer-id`/`cf-connecting-ip` against the origin for unlimited
+   free `Query.search` (cost + availability abuse). MUST close before any fleet token ships.
+   - **Fix (lowest blast radius): remove/lock the generated `*.up.railway.app` public domain** on the
+     admin Railway service, keeping only the Cloudflare-fronted custom domain (`admin.jesusfilm.org`).
+     If that URL is load-bearing for Cloudflare's origin, instead enforce mTLS Authenticated Origin
+     Pulls, or a Cloudflare-injected secret header that admin requires.
+   - **Preserve legit callers — block ONLY the public origin.** Web SSR reaches admin over the PRIVATE
+     Railway network (`forgeadmin.railway.internal`); manager + TV/mobile use Cloudflare
+     (`admin.jesusfilm.org`). Neither uses the public `*.up.railway.app`, so removing it is safe — but
+     a blanket "reject non-Cloudflare" (secret-header) approach breaks web SSR's private-network calls
+     unless the private network is exempted.
+   - **Pre-flight:** enumerate every admin caller + endpoint to confirm nothing legit depends on the
+     `*.up.railway.app` URL (health check, webhook, CI probe).
+   - **Re-verify:** re-probe `…up.railway.app/api/graphql` → must return refused/`403`, not `200`.
+   - With the abuse ceiling (#2) potentially lagging, this bypass being open makes #1 the SOLE
+     protection for the search surface — not optional.
 2. **Abuse-ceiling precondition (blocking).** Land a real per-fleet-key ceiling on the search
    path: a Cloudflare edge rate-limit keyed on the fleet bearer, or an app-level global
    per-fleet-key counter, with anomaly alerting. Per-IP alone does not bound an attacker
@@ -77,8 +99,11 @@ coordination of the end-to-end search unblock, not admin ownership.
 
 ## Verification
 
-1. Anonymous `SemanticSearch` against admin still returns `401 UNAUTHENTICATED`.
-2. A request carrying a minted fleet key returns `200` and logs `auth=bearer source=fleet` in
-   the per-request search log, bucketing `consumer:<key>:<ip>`.
-3. Admin boots cleanly (the disjointness invariant passes with the new keys).
-4. The edge/global abuse ceiling is active and alerting on anomalous fleet-key volume.
+1. **Origin bypass closed:** re-probe `https://forgeadmin-production-f4d1.up.railway.app/api/graphql`
+   → connection refused / `403` (NOT `200`). Legit callers still work: `admin.jesusfilm.org`
+   (Cloudflare) and web SSR via `forgeadmin.railway.internal` are unaffected.
+2. Anonymous `SemanticSearch` against admin still returns `401 UNAUTHENTICATED`.
+3. A request carrying a minted fleet key returns `200` and logs `auth=bearer source=fleet` in the
+   per-request search log, bucketing `consumer:<key>:v:<viewer_id>` (or `:<ip>`).
+4. Admin boots cleanly (the disjointness invariant passes with the new keys).
+5. The edge/global abuse ceiling is active and alerting on anomalous fleet-key volume.
