@@ -63,7 +63,6 @@ export type FloatingSearchContextValue = {
   ) => void
   resetSearchLanguageToDefault: () => void
   clearSearchLanguages: () => void
-  closeAndKeepQuery: () => void
 }
 
 export type FloatingSearchPinnedContextValue = {

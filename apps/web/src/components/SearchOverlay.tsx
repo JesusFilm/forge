@@ -124,6 +124,7 @@ export function SearchOverlay() {
     headerLanguageSwitcherVisible,
     headerLanguageCode,
     headerPinned,
+    setOpen,
     setQuery,
     search,
     loadMore,
@@ -131,7 +132,6 @@ export function SearchOverlay() {
     selectSearchLanguage,
     resetSearchLanguageToDefault,
     clearSearchLanguages,
-    closeAndKeepQuery,
   } = useFloatingSearch()
 
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -193,15 +193,15 @@ export function SearchOverlay() {
     }
   }, [open])
 
-  // Escape closes the modal while preserving the in-memory query state.
+  // Escape closes the modal through the provider-owned reset boundary.
   useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") closeAndKeepQuery()
+      if (e.key === "Escape") setOpen(false)
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, closeAndKeepQuery])
+  }, [open, setOpen])
 
   // Body scroll lock — prevents the page behind from scrolling while modal open.
   useEffect(() => {
@@ -1143,7 +1143,7 @@ export function SearchOverlay() {
                 {displayResults.map((result, index) => (
                   <div
                     key={`${result.id}-${index}`}
-                    onClick={() => closeAndKeepQuery()}
+                    onClick={() => setOpen(false)}
                   >
                     <VideoCard
                       result={result}
