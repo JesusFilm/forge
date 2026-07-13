@@ -1506,6 +1506,8 @@ export function HeroPlayer({
         onPointerDownCapture={handleWatchNextSurfaceInteract}
         onKeyDownCapture={handleWatchNextSurfaceInteract}
         className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} ${
+          endReflectionOpen ? "z-[60]" : ""
+        } ${
           playbackFrameActive
             ? "overflow-hidden"
             : `overflow-x-clip ${
@@ -1762,8 +1764,8 @@ export function HeroPlayer({
         ) : null}
         {endReflectionOpen ? (
           <WatchEndReflection
+            key={video.documentId}
             open
-            videoId={video.documentId}
             prompts={reflectionPrompts}
             bibleReadHref={reflectionBibleReadHref}
             onDownload={

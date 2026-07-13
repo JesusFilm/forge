@@ -24,7 +24,6 @@ import {
 
 type WatchEndReflectionProps = {
   open: boolean
-  videoId: string
   prompts: string[]
   bibleReadHref?: string | null
   onDownload?: () => void
@@ -39,7 +38,7 @@ const PRIMARY_ACTION_CLASS =
 const SECONDARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/18 bg-white/[0.08] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.16] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
 const STEP_ACTION_CLASS =
-  "group flex min-h-15 w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3 text-left text-white transition-[background-color,border-color,transform] hover:border-white/28 hover:bg-white/[0.12] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
+  "group flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3 text-left text-white transition-[background-color,border-color,transform] hover:border-white/28 hover:bg-white/[0.12] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -51,7 +50,6 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 
 export function WatchEndReflection({
   open,
-  videoId,
   prompts,
   bibleReadHref = null,
   onDownload,
@@ -72,11 +70,6 @@ export function WatchEndReflection({
       : [tStudyQuestions("placeholderQuestion")]
   const currentPrompt = reflectionPrompts[promptIndex]!
   const isLastPrompt = promptIndex === reflectionPrompts.length - 1
-
-  useEffect(() => {
-    setStep("reflection")
-    setPromptIndex(0)
-  }, [videoId, open])
 
   useEffect(() => {
     if (!open) return
@@ -137,24 +130,27 @@ export function WatchEndReflection({
           firstElement.focus()
         }
       }}
-      className="absolute inset-0 z-50 flex items-end overflow-y-auto bg-black/72 px-4 py-5 text-white backdrop-blur-[14px] animate-overlay-fade-in focus:outline-none sm:items-center sm:px-8 sm:py-10 motion-reduce:animate-none"
+      className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/88 text-white backdrop-blur-[14px] animate-overlay-fade-in focus:outline-none motion-reduce:animate-none"
     >
-      <section className="relative mx-auto w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/14 bg-stone-950/80 shadow-2xl shadow-black/65">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(239,51,64,0.24),transparent_34%),radial-gradient(circle_at_95%_5%,rgba(255,255,255,0.1),transparent_28%)]"
-        />
-        <div className="relative p-6 sm:p-10">
+      <section
+        data-testid="watch-end-reflection-content"
+        className={`relative mx-auto flex min-h-full w-full flex-col px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-10 sm:py-8 ${
+          step === "reflection" ? "max-w-3xl" : "max-w-5xl"
+        }`}
+      >
+        <div className="sticky top-[max(1rem,env(safe-area-inset-top))] z-10 ml-auto h-11">
           <button
             type="button"
             aria-label={t("dismiss")}
             data-testid="watch-end-reflection-dismiss"
             onClick={onDismiss}
-            className="absolute top-5 right-5 grid size-10 cursor-pointer place-items-center rounded-full border border-white/14 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.15] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+            className="grid size-11 cursor-pointer place-items-center rounded-full bg-black/45 text-white/75 backdrop-blur-md transition hover:bg-white/[0.12] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
           >
             <X aria-hidden className="size-5" />
           </button>
+        </div>
 
+        <div className="flex flex-1 flex-col justify-center py-6 sm:py-10">
           {step === "reflection" ? (
             <div
               key={`reflection-${promptIndex}`}
@@ -177,7 +173,7 @@ export function WatchEndReflection({
                 })}{" "}
                 {currentPrompt}
               </p>
-              <p className="mt-6 text-sm font-medium text-white/60">
+              <p className="mt-5 text-sm font-medium text-white/60 sm:mt-6">
                 {t("questionProgress", {
                   current: promptIndex + 1,
                   total: reflectionPrompts.length,
@@ -186,7 +182,7 @@ export function WatchEndReflection({
               <h2
                 id="watch-end-reflection-title"
                 data-testid="watch-end-reflection-question"
-                className="mt-3 max-w-[19ch] text-3xl leading-[1.08] font-semibold text-balance sm:text-5xl"
+                className="mt-3 max-w-[19ch] text-[clamp(2rem,9vw,3.5rem)] leading-[1.05] font-semibold tracking-[-0.025em] text-balance"
               >
                 {currentPrompt}
               </h2>
@@ -194,13 +190,13 @@ export function WatchEndReflection({
                 {t("reflectionSupport")}
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
                 {promptIndex > 0 ? (
                   <button
                     type="button"
                     data-testid="watch-end-reflection-back"
                     onClick={() => setPromptIndex((current) => current - 1)}
-                    className={SECONDARY_ACTION_CLASS}
+                    className={`${SECONDARY_ACTION_CLASS} sm:flex-none`}
                   >
                     <ArrowLeft aria-hidden className="size-4" />
                     {t("back")}
@@ -210,7 +206,9 @@ export function WatchEndReflection({
                   type="button"
                   data-testid="watch-end-reflection-continue"
                   onClick={advance}
-                  className={PRIMARY_ACTION_CLASS}
+                  className={`${PRIMARY_ACTION_CLASS} ${
+                    promptIndex === 0 ? "col-span-2" : ""
+                  } sm:flex-none`}
                 >
                   {isLastPrompt ? t("seeNextSteps") : t("nextQuestion")}
                   <ArrowRight aria-hidden className="size-4" />
@@ -219,7 +217,7 @@ export function WatchEndReflection({
                   type="button"
                   data-testid="watch-end-reflection-replay"
                   onClick={onReplay}
-                  className="min-h-12 cursor-pointer px-2 text-sm font-semibold text-white/72 underline decoration-white/35 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+                  className="col-span-2 min-h-12 cursor-pointer px-2 text-sm font-semibold text-white/72 underline decoration-white/35 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:col-span-1"
                 >
                   {t("replay")}
                 </button>
@@ -237,7 +235,7 @@ export function WatchEndReflection({
               </div>
               <h2
                 id="watch-end-reflection-title"
-                className="mt-4 max-w-[17ch] text-3xl leading-[1.08] font-semibold text-balance sm:text-5xl"
+                className="mt-4 max-w-[17ch] text-[clamp(2rem,8vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.025em] text-balance"
               >
                 {t("nextStepsTitle")}
               </h2>
@@ -245,7 +243,7 @@ export function WatchEndReflection({
                 {t("nextStepsSupport")}
               </p>
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {bibleReadHref ? (
                   <ExternalNextStep
                     href={bibleReadHref}
@@ -341,12 +339,12 @@ export function WatchEndReflection({
                 ) : null}
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                 <button
                   type="button"
                   data-testid="watch-end-reflection-more"
                   onClick={() => setStep("reflection")}
-                  className={SECONDARY_ACTION_CLASS}
+                  className={`${SECONDARY_ACTION_CLASS} sm:flex-none`}
                 >
                   <ArrowLeft aria-hidden className="size-4" />
                   {t("moreReflection")}

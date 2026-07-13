@@ -3808,6 +3808,9 @@ describe("HeroPlayer — Watch Next countdown", () => {
       container.querySelector('[data-testid="watch-end-reflection"]'),
     ).not.toBeNull()
     expect(
+      container.querySelector('[data-testid="hero-player-wrapper"]')?.className,
+    ).toContain("z-[60]")
+    expect(
       container.querySelector('[data-testid="hero-player-custom-chrome"]'),
     ).toBeNull()
     expect(

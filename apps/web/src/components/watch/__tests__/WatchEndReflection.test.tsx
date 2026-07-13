@@ -86,7 +86,6 @@ function renderReflection(
     root.render(
       <WatchEndReflection
         open
-        videoId="video-1"
         prompts={["What did this story show you?", "What could change next?"]}
         bibleReadHref="https://www.bible.com/bible/111/John.3.16.NIV"
         {...callbacks}
@@ -220,6 +219,26 @@ describe("WatchEndReflection", () => {
       )
     })
     expect(callbacks.onDismiss).toHaveBeenCalledOnce()
+  })
+
+  it("uses a viewport-fixed scroll surface without a decorated parent shell", () => {
+    renderReflection()
+
+    const dialog = container.querySelector(
+      '[data-testid="watch-end-reflection"]',
+    ) as HTMLDivElement
+    const content = container.querySelector(
+      '[data-testid="watch-end-reflection-content"]',
+    ) as HTMLElement
+
+    expect(dialog.className).toContain("fixed")
+    expect(dialog.className).toContain("overflow-y-auto")
+    expect(dialog.className).toContain("overscroll-contain")
+    expect(content.className).toContain("min-h-full")
+    expect(content.className).not.toContain("overflow-hidden")
+    expect(content.className).not.toContain("rounded-")
+    expect(content.className).not.toContain("border")
+    expect(content.className).not.toContain("shadow")
   })
 
   it("keeps keyboard focus inside the reflection dialog", () => {
