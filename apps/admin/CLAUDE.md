@@ -2215,12 +2215,15 @@ client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) stays flat
   trusted IP → `consumer:<key>:unknown` (fleet namespace, not `public:unknown`).
 - **Per-`viewer_id` (preferred, CGNAT-immune).** When the client sends a valid
   `x-viewer-id` header (sanitized: 1–64 chars `[A-Za-z0-9._-]`), fleet traffic
-  buckets `consumer:<key>:v:<viewer_id>` — one bucket per install regardless of
-  NAT, so co-egress carrier devices don't collapse. `viewer_id` is client-set and
-  spoofable, so it is an availability label ONLY (never identity/authz); abuse stays
-  bounded by the F1 global ceiling, exactly like the IP path. The `v:` prefix keeps
-  a spoofed IP-shaped id from colliding with a real IP bucket. Absent/malformed →
-  IP fallback, so it is additive and inert until clients send it.
+  buckets `consumer:<key>:v:<viewer_id>` — one bucket per app launch (the client id
+  is in-memory, regenerated on relaunch), regardless of NAT, so co-egress carrier
+  devices don't collapse. `viewer_id` is client-set and freely rotatable, so it is
+  an availability label ONLY (never identity/authz) and makes minting fresh buckets
+  TRIVIAL (rotate a header, cheaper than rotating IPs) — so it is safe ONLY once the
+  F1 global per-fleet-key ceiling is live. That ceiling (BLOCKING precondition #2
+  below) is the SOLE abuse bound, not this per-device key. The `v:` prefix keeps a
+  spoofed IP-shaped id from colliding with a real IP bucket. Absent/malformed → IP
+  fallback (additive, inert until clients send it).
 - **Disjoint at boot.** `FLEET_ADMIN_API_KEYS` joins `BEARER_CSV_KEYS` and the
   `assertBearerCsvsDisjoint` invariant; a value shared with any other bearer CSV
   fails the boot. Mint a DEDICATED fleet key per surface (tv, mobile) — never

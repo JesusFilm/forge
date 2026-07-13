@@ -59,9 +59,9 @@ the header.
   spaces) and bounds Redis key cardinality.
 - **R4** — `viewer_id` is a pure spoofable **bucket label**: never an authz/identity signal,
   grants nothing, and is never logged raw (the limiter already never logs the bucket key).
-- **R5** — TV + mobile generate a stable per-install `viewer_id` (persisted via AsyncStorage,
-  in-memory cached, sync getter) and attach `x-viewer-id` on their search operation
-  (`SemanticSearch` / `Search`) alongside the existing consumer bearer.
+- **R5** — TV + mobile generate a per-launch `viewer_id` (in-memory, sync `getViewerId()`; no
+  persistence) and attach `x-viewer-id` on their search operation (`SemanticSearch` / `Search`)
+  alongside the existing consumer bearer.
 - **R6** — Additive/inert: `FLEET_ADMIN_API_KEYS` unset ⇒ no fleet principal ⇒ `x-viewer-id`
   is ignored; and web-SSR (`consumer:<key>`, non-fleet) is untouched.
 
@@ -70,10 +70,10 @@ the header.
 - **Prefer viewer_id, fall back to IP** (not viewer_id-only): robust to clients that don't
   send it (mixed fleet during rollout buckets each device correctly by whatever it provides).
 - **Namespaced subkeys** (`v:` for viewer, bare for IP) to make spoof-collision impossible.
-- **In-memory cache + async hydrate** on the client: AsyncStorage is async but the auth-header
-  path is sync, so hydrate at module load and expose a sync `getViewerId()` that returns the
-  cached value (generating+persisting on first miss). Startup race (a fresh id before hydrate)
-  is acceptable — availability only, and searches occur well after startup.
+- **In-memory, per-launch (no persistence)** on the client: a fresh `viewer_id` per cold launch
+  fully solves CGNAT (each device its own bucket within any window) and keeps the module pure +
+  trivially testable (no AsyncStorage / native-mock friction). Cross-launch persistence + merge-
+  into-account is a login-era follow-up, not needed for the rate-limit goal.
 - **No new dependency**: mirror `watchSearchLog.ts`'s `randomUUID` + manual-UUID fallback.
 
 ## Implementation Units
@@ -94,9 +94,9 @@ the header.
 
 ### U2 — TV client: viewer_id + header (`apps/tv`)
 
-- `src/lib/viewer-id.ts`: `getViewerId(): string` — in-memory cache, AsyncStorage key
-  `forge.viewer_id`, RN-safe UUID (mirror `watchSearchLog.ts`), async `hydrateViewerId()`
-  called at app start.
+- `src/lib/viewer-id.ts`: `getViewerId(): string` — in-memory per-launch cache, RN-safe UUID
+  (`crypto.randomUUID` with an exported `uuidV4Fallback()` for the Hermes path; mirrors
+  `watchSearchLog.ts`, no new dependency). No persistence.
 - `src/lib/authHeaders.ts`: `authHeadersForOperation(op, token, viewerId?)` adds
   `{ "x-viewer-id": viewerId }` for the search op (alongside/independent of the bearer).
 - `src/lib/apolloClient.ts`: pass `getViewerId()` into `authHeadersForOperation`; kick
@@ -122,6 +122,9 @@ the header.
 
 - **Spoofability** → availability-only; abuse bounded by the F1 global ceiling (unchanged). R4.
 - **Cardinality** (attacker spams random ids) → length cap + Redis window TTL + global ceiling.
-- **Startup race** (fresh id before hydrate) → acceptable; availability only; search is post-startup.
+- **Per-launch reset** (viewer_id regenerates each cold launch) → acceptable; availability only,
+  each device still gets its own bucket within any window; persistence is a login-era follow-up.
+- **Trivial bucket-minting** (rotate a header) → viewer_id is availability-only; abuse is bounded
+  solely by the F1 global per-fleet-key ceiling, which MUST be live before the token ships.
 - **Mixed rollout** (some devices send viewer_id, some don't) → each buckets correctly by what
   it provides; `v:`/IP namespaces never collide.
