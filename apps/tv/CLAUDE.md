@@ -31,6 +31,18 @@ Admin GraphQL → gql.tada typed query → normalizer (typed block-model union) 
 - **Renderers**: All new, designed for 10-foot UI with D-pad focus; props are the
   typed block models, no `as` casts
 
+### Home hero (client-owned, not the Experience)
+
+The topmost home hero is a config-mirrored deterministic pool queue over
+`WATCH_HOME_PLAYLIST_SEQUENCE` (`src/lib/watchHome/heroQueue.ts`) that mirrors mobile's
+algorithm exactly, so TV shows the same day's videos/series as web/mobile (→
+`model.featured`). It is NOT the admin Experience (whose `WatchHomeHeroBlock` the
+adapter skips). Mirror mobile's data path precisely: top-level-only source map + raw
+`parent.children` (never `resolvedChildren`), and dedupe the queue on `coreId`.
+`businessDate` is Intl-free (Hermes; see `clockFormat.ts`), and TV builds NO Mux inserts
+(no web-link/promo slides). `WATCH_HOME_HERO_SOURCE_IDS` is the empty-queue fallback
+only; feat-160 later moves curation into admin.
+
 ## Design Systems
 
 The TV app runs two coexisting design systems. Which one applies depends on the

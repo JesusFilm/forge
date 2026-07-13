@@ -2,6 +2,7 @@ import { WATCH_HOME_FEATURED_RAIL, WATCH_HOME_HERO_SOURCE_IDS } from "./config"
 import {
   buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
+  normalizeCard,
   type WatchHomeChildRelationInput,
   type WatchHomeVideoInput,
 } from "./model"
@@ -37,31 +38,56 @@ function childRel(coreId: string): WatchHomeChildRelationInput {
 const heroVideos = WATCH_HOME_HERO_SOURCE_IDS.map((id) => video(id))
 
 describe("buildWatchHomeModelFromVideos — featured", () => {
-  it("produces featured cards from the hero source ids in config order", () => {
-    const model = buildWatchHomeModelFromVideos({ videos: heroVideos })
-
-    expect(model.featured.map((card) => card.sourceId)).toEqual([
-      ...WATCH_HOME_HERO_SOURCE_IDS,
-    ])
-    expect(model.featured.map((card) => card.coreId)).toEqual([
-      ...WATCH_HOME_HERO_SOURCE_IDS,
-    ])
-  })
-
-  it("omits an unresolved hero coreId and records it in missingData", () => {
+  it("builds featured from the playlist-sequence pool queue, emitting the parent film even with children (web-parity)", () => {
+    // 1_jf-0-0 (JESUS) is a FEATURE_FILM playlist source with chapter children;
+    // the hero shows the parent film itself, not its episodes (web/mobile parity).
     const model = buildWatchHomeModelFromVideos({
-      videos: heroVideos.filter((v) => v.coreId !== "2_GOJ-0-0"),
+      videos: [
+        video("1_jf-0-0", {
+          label: "FEATURE_FILM",
+          children: [childRel("jf-ep1"), childRel("jf-ep2")],
+        }),
+      ],
     })
 
-    expect(model.featured.map((card) => card.sourceId)).toEqual([
-      "1_jf-0-0",
-      "GOMattCollection",
+    const coreIds = model.featured.map((card) => card.coreId)
+    expect(coreIds).toContain("1_jf-0-0")
+    expect(coreIds).not.toContain("jf-ep1")
+    expect(coreIds).not.toContain("jf-ep2")
+  })
+
+  it("keeps the feature film but drops collection sources from the featured queue (label gate)", () => {
+    // Both are playlist sources. 8_NBC (COLLECTION) carries no playable stream on
+    // web → dropped; the FEATURE_FILM survives and is the only hero card.
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        video("1_jf-0-0", { label: "FEATURE_FILM" }),
+        video("8_NBC", {
+          label: "COLLECTION",
+          children: [childRel("nbc-ep1")],
+        }),
+      ],
+    })
+
+    const coreIds = model.featured.map((card) => card.coreId)
+    expect(coreIds).toContain("1_jf-0-0")
+    expect(coreIds).not.toContain("8_NBC")
+  })
+
+  it("falls back to hero-source-id cards when no sequence source hydrates (R8)", () => {
+    // LUMOCollection is a hero-source fallback id but is NOT in the playlist
+    // sequence, so it forms no pool — the queue is empty and the fallback renders.
+    const model = buildWatchHomeModelFromVideos({
+      videos: [video("LUMOCollection")],
+    })
+
+    expect(model.featured.map((card) => card.coreId)).toEqual([
       "LUMOCollection",
     ])
     expect(model.missingData).toContainEqual(
       expect.objectContaining({
         sectionId: WATCH_HOME_FEATURED_RAIL.id,
-        sourceId: "2_GOJ-0-0",
+        sourceId: "1_jf-0-0",
         field: "record",
       }),
     )
@@ -71,8 +97,8 @@ describe("buildWatchHomeModelFromVideos — featured", () => {
     const model = buildWatchHomeModelFromVideos({ videos: heroVideos })
     const card = model.featured[0]
 
-    expect(card.slug).toBe("1_jf-0-0-slug")
-    expect(card.coreId).toBe("1_jf-0-0")
+    expect(card.slug).toBeTruthy()
+    expect(card.coreId).toBeTruthy()
     expect(card).not.toHaveProperty("hls")
     expect(card).not.toHaveProperty("playbackId")
   })
@@ -184,52 +210,45 @@ describe("buildWatchHomeModelFromVideos — sections", () => {
   })
 })
 
-describe("buildWatchHomeModelFromVideos — metaLabel", () => {
-  it("says 'N episodes' when childCount > 0", () => {
-    const model = buildWatchHomeModelFromVideos({
-      videos: [
-        video("1_jf-0-0", {
-          children: [childRel("1_jf-ep1"), childRel("1_jf-ep2")],
-        }),
-        video("2_GOJ-0-0", { children: [childRel("2_GOJ-ep1")] }),
-      ],
+describe("normalizeCard — metaLabel & wire label", () => {
+  const norm = (v: WatchHomeVideoInput) =>
+    normalizeCard({
+      sectionId: "s",
+      sourceId: v.coreId ?? "x",
+      video: v,
+      languageSlug: "english",
     })
 
-    expect(model.featured[0]?.childCount).toBe(2)
-    expect(model.featured[0]?.metaLabel).toBe("2 episodes")
-    expect(model.featured[1]?.metaLabel).toBe("1 episode")
+  it("says 'N episodes' when childCount > 0", () => {
+    expect(
+      norm(video("c", { children: [childRel("e1"), childRel("e2")] }))
+        ?.metaLabel,
+    ).toBe("2 episodes")
+    expect(norm(video("c", { children: [childRel("e1")] }))?.metaLabel).toBe(
+      "1 episode",
+    )
   })
 
   it("falls back to duration text when there are no children", () => {
-    const model = buildWatchHomeModelFromVideos({
-      videos: [
-        video("1_jf-0-0", { durationSeconds: 125 }),
-        video("2_GOJ-0-0", { durationSeconds: 3661 }),
-      ],
-    })
-
-    expect(model.featured[0]?.metaLabel).toBe("2:05")
-    expect(model.featured[1]?.metaLabel).toBe("1:01:01")
+    expect(norm(video("c", { durationSeconds: 125 }))?.metaLabel).toBe("2:05")
+    expect(norm(video("c", { durationSeconds: 3661 }))?.metaLabel).toBe(
+      "1:01:01",
+    )
   })
 
   it("falls back to the label text when neither children nor duration exist", () => {
-    const model = buildWatchHomeModelFromVideos({
-      videos: [video("1_jf-0-0", { label: "FEATURE_FILM" })],
-    })
-
-    expect(model.featured[0]?.metaLabel).toBe("Feature film")
+    expect(norm(video("c", { label: "FEATURE_FILM" }))?.metaLabel).toBe(
+      "Feature film",
+    )
   })
 
   // Producer side of the routing contract: homeCardRouting feeds rawLabel
   // into isSeriesSearchResult, which matches uppercase wire literals only —
   // the display-text `label` must never stand in for it.
   it("carries the raw wire label alongside the display text", () => {
-    const model = buildWatchHomeModelFromVideos({
-      videos: [video("1_jf-0-0", { label: "COLLECTION" })],
-    })
-
-    expect(model.featured[0]?.label).toBe("Collection")
-    expect(model.featured[0]?.rawLabel).toBe("COLLECTION")
+    const card = norm(video("c", { label: "COLLECTION" }))
+    expect(card?.label).toBe("Collection")
+    expect(card?.rawLabel).toBe("COLLECTION")
   })
 })
 

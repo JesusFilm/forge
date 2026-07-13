@@ -13,6 +13,7 @@ import {
   type WatchHomeSourceConfig,
 } from "./config"
 import { pickCardImage } from "../cardImage"
+import { buildHeroFeatured, buildHeroSourceMap } from "./heroQueue"
 
 /**
  * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
@@ -358,16 +359,24 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
-// Web's heroSlides recipe: each hero source id resolves to its own record's
-// card (never a child). Unresolved sources are omitted and recorded.
+// Primary: the day-seeded hero pool queue (heroQueue.ts) for web/mobile parity.
+// Fallback: the hero-source-id cards, only when the queue is empty.
 function buildFeatured(args: {
-  videoByCoreId: Map<string, WatchHomeVideoInput>
+  videos: readonly WatchHomeVideoInput[]
   languageSlug: string
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
+  const queue = buildHeroFeatured({
+    videos: args.videos,
+    languageSlug: args.languageSlug,
+    missingData: args.missingData,
+  })
+  if (queue.length > 0) return queue
+
+  const videoByCoreId = buildHeroSourceMap(args.videos)
   const featured: WatchHomeCard[] = []
   for (const sourceId of WATCH_HOME_HERO_SOURCE_IDS) {
-    const video = args.videoByCoreId.get(sourceId)
+    const video = videoByCoreId.get(sourceId)
     if (!video) {
       args.missingData.push({
         sectionId: WATCH_HOME_FEATURED_RAIL.id,
@@ -452,7 +461,11 @@ export function buildWatchHomeModelFromVideos(args: {
   ]
   const videoByCoreId = buildVideoByCoreIdIndex(args.videos)
 
-  const featured = buildFeatured({ videoByCoreId, languageSlug, missingData })
+  const featured = buildFeatured({
+    videos: args.videos,
+    languageSlug,
+    missingData,
+  })
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })
   const cardMissing = [
     ...featured.flatMap((card) => card.missingData),
