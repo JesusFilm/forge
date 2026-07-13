@@ -44,7 +44,9 @@ const {
     (_props: { series: unknown; selectedVariant: unknown; locale: string }) =>
       null,
   ),
-  watchPageClientMock: vi.fn((_props: unknown) => null),
+  watchPageClientMock: vi.fn((_props: unknown) => (
+    <div data-testid="watch-page-client-mock" />
+  )),
   watchHomeExperiencePageMock: vi.fn((_props: unknown) => null),
   watchQuestionPanelMock: vi.fn((_props: unknown) => null),
   experienceEmptyMock: vi.fn(() => null),
@@ -770,6 +772,9 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     await render2Seg("storyclubs", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-home-footer"]'),
+    ).toBeNull()
   })
 
   it("renders SeriesPageClient when label is 'series' (defensive OR)", async () => {
@@ -790,6 +795,14 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       }),
     )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="watch-page-client-mock"], [data-testid="watch-home-footer"]',
+        ),
+        (element) => element.getAttribute("data-testid"),
+      ),
+    ).toEqual(["watch-page-client-mock", "watch-home-footer"])
   })
 
   it("defers transcript cues and prunes client variant rows", async () => {
@@ -1468,6 +1481,14 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "wedding-in-cana",
       "english",
     )
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="watch-page-client-mock"], [data-testid="watch-home-footer"]',
+        ),
+        (element) => element.getAttribute("data-testid"),
+      ),
+    ).toEqual(["watch-page-client-mock", "watch-home-footer"])
   })
 
   it("keeps the requested parent collection for multi-parent chapter routes", async () => {
