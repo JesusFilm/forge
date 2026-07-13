@@ -14,7 +14,7 @@
  * integration surface.
  */
 
-import { act, useImperativeHandle } from "react"
+import { act, useImperativeHandle, type ComponentProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -1772,9 +1772,12 @@ describe("HeroPlayer — fallback HLS source", () => {
 // volume slider mute/unmute heuristics, and the auto-dim timer lifecycle.
 // ---------------------------------------------------------------------------
 
-async function revealChrome(block = makeBlock()): Promise<void> {
+async function revealChrome(
+  block = makeBlock(),
+  props: Omit<ComponentProps<typeof HeroPlayer>, "block"> = {},
+): Promise<void> {
   act(() => {
-    root.render(<HeroPlayer block={block} />)
+    root.render(<HeroPlayer block={block} {...props} />)
   })
   const pill = container.querySelector(
     '[data-testid="hero-player-unmute-pill"]',
@@ -1817,6 +1820,53 @@ describe("HeroPlayer — custom chrome render", () => {
       container.querySelector('[data-testid="hero-chrome-time"]'),
     ).not.toBeNull()
   })
+
+  it("renders subtitle access independently of the multi-audio gate", async () => {
+    await revealChrome(makeBlock(), {
+      onLanguageClick: vi.fn(),
+      playableLanguageCount: 1,
+      hasSubtitleOptions: true,
+      subtitleLanguageCode: "ES",
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-chrome-language"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-subtitles"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="hero-chrome-subtitle-language-code"]',
+      )?.textContent,
+    ).toBe("ES")
+  })
+
+  it.each([
+    { hasSubtitleOptions: true, subtitleLanguageCode: "EN" },
+    { hasSubtitleOptions: true, subtitleLanguageCode: null },
+    { hasSubtitleOptions: false, subtitleLanguageCode: "ES" },
+  ])(
+    "suppresses the subtitle code for $subtitleLanguageCode with availability $hasSubtitleOptions",
+    async ({ hasSubtitleOptions, subtitleLanguageCode }) => {
+      await revealChrome(makeBlock(), {
+        onLanguageClick: vi.fn(),
+        playableLanguageCount: 2,
+        hasSubtitleOptions,
+        subtitleLanguageCode,
+      })
+
+      const subtitleButton = container.querySelector(
+        '[data-testid="hero-chrome-subtitles"]',
+      )
+      expect(subtitleButton === null).toBe(!hasSubtitleOptions)
+      expect(
+        container.querySelector(
+          '[data-testid="hero-chrome-subtitle-language-code"]',
+        ),
+      ).toBeNull()
+    },
+  )
 
   it("uses the full-width watch rail layout for the chrome bar", async () => {
     await revealChrome()
