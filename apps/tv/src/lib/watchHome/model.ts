@@ -359,11 +359,8 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
-// Primary: the deterministic hero pool queue (heroQueue.ts) over the playlist
-// sequence, mirroring web/mobile so TV shows the same day's videos/series.
-// Fallback (R8/KTD5): web's `sequencedSlides ?? slides` — the hero-source-id
-// cards (each source's own record, never a child) with drop-and-record-null
-// diagnostics, only when the queue yields nothing.
+// Primary: the day-seeded hero pool queue (heroQueue.ts) for web/mobile parity.
+// Fallback: the hero-source-id cards, only when the queue is empty.
 function buildFeatured(args: {
   videos: readonly WatchHomeVideoInput[]
   languageSlug: string

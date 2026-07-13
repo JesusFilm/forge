@@ -45,6 +45,9 @@ const noMissing = (): WatchHomeMissingData[] => []
 const coreIds = (cards: readonly WatchHomeCard[]) => cards.map((c) => c.coreId)
 
 describe("businessDate", () => {
+  // Validates TV's Intl-free date against Node's ICU en-CA output — the day-correct
+  // ET reference web/mobile target. Device-Hermes parity is not provable here (that's
+  // the non-ET-clock device smoke); the DST rule encodes the current US-era rule.
   it("returns the ET calendar date without Intl, matching mobile's en-CA output", () => {
     const instants = [
       "2026-07-13T15:00:00.000Z", // EDT, ET same day
@@ -115,6 +118,37 @@ describe("buildHeroPools", () => {
     })
     const jfPool = pools.find((p) => p.collectionIds.includes("1_jf-0-0"))
     expect(coreIds(jfPool!.cards as WatchHomeCard[])).toEqual(["1_jf-0-0"])
+  })
+
+  // The image+slug eligibility gate is the most divergence-prone path: dropping a
+  // candidate shifts candidates.length and every downstream `candidates[hash % len]`
+  // pick. Lock it so a regression can't silently reshuffle the hero away from mobile.
+  it("excludes ineligible children (no image or no slug), falling back to the parent when all are ineligible", () => {
+    const noImage = { child: { ...leaf("no-img"), images: [] } }
+    const noSlug = { child: { ...leaf("no-slug"), slug: null } }
+    const mixed: WatchHomeVideoInput = {
+      ...leaf("8_NBC", "COLLECTION"),
+      children: [noImage, noSlug, { child: leaf("good-ep") }],
+    }
+    const mixedPools = buildHeroPools({
+      videoByCoreId: sourceMap([mixed]),
+      languageSlug: "english",
+      missingData: noMissing(),
+    })
+    const nbc = mixedPools.find((p) => p.collectionIds.includes("8_NBC"))!
+    expect(coreIds(nbc.cards as WatchHomeCard[])).toEqual(["good-ep"])
+
+    const allIneligible: WatchHomeVideoInput = {
+      ...leaf("1_jf-0-0", "FEATURE_FILM"),
+      children: [noImage, noSlug],
+    }
+    const fallbackPools = buildHeroPools({
+      videoByCoreId: sourceMap([allIneligible]),
+      languageSlug: "english",
+      missingData: noMissing(),
+    })
+    const jf = fallbackPools.find((p) => p.collectionIds.includes("1_jf-0-0"))!
+    expect(coreIds(jf.cards as WatchHomeCard[])).toEqual(["1_jf-0-0"])
   })
 
   it("keeps raw children including self-refs and duplicates (no resolvedChildren)", () => {
@@ -200,6 +234,9 @@ describe("buildHeroVideoQueue", () => {
     expect(coreIds(queue).filter((id) => id === "shared")).toHaveLength(1)
   })
 
+  // Proves buildHeroVideoQueue is pure. Cross-app and intra-day re-fetch parity
+  // additionally depend on admin returning children/videos in a STABLE order (R-E):
+  // the pick is candidates[hash % len], so a reorder shifts the chosen card.
   it("is deterministic for the same day and inputs", () => {
     const videos = [collection("8_NBC", ["nbc-ep1", "nbc-ep2", "nbc-ep3"])]
     const pools = buildHeroPools({
@@ -214,6 +251,9 @@ describe("buildHeroVideoQueue", () => {
 })
 
 describe("cross-app parity (AE1)", () => {
+  // golden.json = mobile's REAL buildWatchHomeHeroQueue(...).videos coreIds for the fixture.
+  // Regenerate on a mobile-algorithm change: run mobile's buildWatchHomeModelFromVideos +
+  // buildWatchHomeHeroQueue over the fixture (startPoolIndex 0, its nowIso) → ordered coreIds.
   it("TV's hero queue equals mobile's golden output for the shared fixture", () => {
     const featured = buildHeroFeatured({
       videos: heroParityFixture.videos as WatchHomeVideoInput[],

@@ -22,9 +22,9 @@ import {
 } from "./model"
 
 /** Web's initial hero queue size (mobile's WATCH_HOME_HERO_QUEUE_TARGET). */
-export const WATCH_HOME_HERO_QUEUE_TARGET = 7
+const WATCH_HOME_HERO_QUEUE_TARGET = 7
 
-export type HeroPool = {
+type HeroPool = {
   id: string
   collectionIds: readonly string[]
   cards: readonly WatchHomeCard[]
