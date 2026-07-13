@@ -1265,6 +1265,9 @@ describe("Catch-all routing — video precedence (2-seg)", () => {
       undefined,
     )
     expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-home-footer"]'),
+    ).toBeNull()
     expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(
       "easter",
       "english",
