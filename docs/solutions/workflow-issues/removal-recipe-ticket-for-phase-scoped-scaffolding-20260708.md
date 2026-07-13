@@ -159,7 +159,7 @@ Removal-ticket skeleton (adapt to the roadmap lane's conventions):
 1. Delete (with re-verify greps): <grep patterns + conditionals>
 2. Revert (compile-forced where possible): <union member removal -> follow the compiler>
 3. Keep — do NOT revert: <the permanent infra a git revert would wrongly delete, + why each stays>
-4. Docs re-amendment: <the doc edits that shipped with the scaffolding, in reverse>
+4. Docs re-amendment: <the doc edits that shipped with the scaffolding, in reverse> + a mechanism-noun prose sweep of docs/ for OTHER files' forward-looking instructions (see mechanism-retirement-docs-prose-sweep.md)
 5. Operator teardown (NOT claimable from a merged PR — flip owner checks off separately): <dashboard flag archival, env-var removal, access-group + PII-mapping cleanup, exposure re-check>
 
 ## Verification
@@ -174,3 +174,4 @@ Removal-ticket skeleton (adapt to the roadmap lane's conventions):
 - `docs/roadmap/ai-chat/feat-236-chat-remove-seeker-dogfood-gate.md` — the worked removal recipe this learning generalizes.
 - `docs/solutions/architecture-patterns/fail-closed-by-construction-feature-flag-gate-20260708.md` — the scaffolding whose teardown feat-236 captures.
 - `docs/solutions/architecture-patterns/legacy-embedding-pipeline-retirement-tombstone-pattern.md` — a related "planned removal" shape (tombstone) for a different scaffolding kind.
+- `docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md` — the retirement-time complement: this recipe reverses the doc edits that shipped WITH the scaffolding; the prose sweep catches forward-looking instructions in OTHER docs that independently treat the mechanism as live.

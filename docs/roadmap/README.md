@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 13, 2026)
 
-- **Total tickets:** 318
-- **Complete:** 228
+- **Total tickets:** 319
+- **Complete:** 229
 - **In progress:** 19
 - **Not started:** 27
 - **Blocked:** 44
@@ -274,6 +274,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-241](platform/feat-241-tv-mobile-fleet-search-token-rollout.md)                | TV/mobile fleet search token provisioning + rebuild                              | urim       | P1       | 2026-07-09 | 2    | 2026-07-10 | not-started |
 | [feat-242](platform/feat-242-uploaded-media-raster-lqips.md)                         | Uploaded media raster LQIPs                                                      | tataihono  | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
 | [feat-243](platform/feat-243-web-dominant-color-lqip-card-rollout.md)                | Web card dominant-color and LQIP rollout                                         | tataihono  | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
+| [feat-244](platform/feat-244-watch-language-options-browser-cache.md)                | Watch language options browser cache                                             | vlad       | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
 | [feat-244](platform/feat-244-watch-mobile-autoplay-delay.md)                         | Watch mobile hero autoplay delay                                                 | vlad       | P1       | 2026-07-09 | 1    | 2026-07-09 | complete    |
 | [feat-245](platform/feat-245-watch-language-code-selectors.md)                       | Watch language-code selectors                                                    | vlad       | P1       | 2026-07-10 | 1    | 2026-07-10 | complete    |
 | [feat-246](platform/feat-246-watch-nested-series-card-routing.md)                    | Watch nested-series card routing                                                 | vlad       | P1       | 2026-07-11 | 1    | 2026-07-11 | complete    |
