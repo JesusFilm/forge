@@ -39,8 +39,9 @@ tags:
 > "Sign in to save your conversations" nudge to this ticket (it only becomes
 > truthful once public users' conversations persist). Two consequences here:
 > (1) the removal in step 2 also un-gates the history routes — their permanent
-> gating is signed-in + fresh session lease (feat-240) + server-side resource
-> scoping, which all STAY; (2) step 2 gains one addition-not-revert item, the
+> gating is signed-in + server-side resource scoping (feat-240's session
+> lease was dropped — see its Decision Record), which all STAY; (2) step 2
+> gains one addition-not-revert item, the
 > nudge. feat-241's implementation PR must refresh this recipe's specifics
 > (exact files/tests it adds) — the `resolveSeekerGate|seeker-gate` grep
 > remains the source of truth for call sites.
@@ -63,8 +64,9 @@ seeker for everyone, anonymous included. The other arms are NOT this ticket:
 
 - **Iterate:** gate stays; this ticket stays open and untouched.
 - **Widen to all signed-in users:** NOT a removal — that is rule-based/broader
-  gating, which the feat-233 plan (R13, Scope Boundaries) forbids without
-  session revocation + a login-time membership gate first. New ticket, new
+  gating, which the feat-233 plan (R13, Scope Boundaries) forbids without a
+  login-time membership gate first (revocation deliberately not required —
+  feat-240's Decision Record). New ticket, new
   mechanism; most of this recipe's delete-list still applies afterward.
 - **Kill seeker:** bigger removal (the seeker wiring itself, feat-205/208
   surfaces); this recipe's delete/keep split still identifies the feat-233
@@ -157,8 +159,8 @@ isSeekerChatEnabled()` on `SeekerProxyConfig`, checked ahead of
   compiler — the exhaustive switch in `message-list.tsx` and the stub mapping
   in `chat-stub.ts` (`streamSeekerReply`) fail typecheck until cleaned.
 - History routes (feat-241): drop their `resolveSeekerGate` deny layer; their
-  permanent gating — signed-in + fresh lease (feat-240) + server-side
-  resource scoping — stays untouched. Also drop the gate condition on the
+  permanent gating — signed-in + server-side resource scoping (feat-240's
+  lease was dropped) — stays untouched. Also drop the gate condition on the
   client's history hydration so every signed-in user's sidebar hydrates.
 - One ADDITION (not a revert), deferred here from feat-241: the signed-out
   sidebar's "Sign in to save your conversations" nudge — truthful only now
@@ -216,9 +218,9 @@ PR; check off separately):**
   log as compensating control; public release removes both the roster and the
   log's usefulness as a bound.
 - **This ticket is the widen-to-public arm only.** Do not repurpose it to
-  widen the gate to "all signed-in users" — that path requires session
-  revocation + a membership gate first (feat-233 plan R13/Scope Boundaries)
-  and is a different feature.
+  widen the gate to "all signed-in users" — that path requires a membership
+  gate first (feat-233 plan R13/Scope Boundaries; revocation deliberately
+  not required per feat-240's Decision Record) and is a different feature.
 - **Keep-list is binding** (What To Build step 3): `booleanVariationDetail`,
   the `emailVerified` threading, and `SEEKER_CHAT_ENABLED` survive. A wholesale
   `git revert` of the feat-233 PR is the wrong move.
