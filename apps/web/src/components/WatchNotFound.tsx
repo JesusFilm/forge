@@ -44,42 +44,44 @@ export function WatchNotFound() {
           aria-labelledby="watch-not-found-heading"
           className="watch-home-copy-enter relative w-full max-w-2xl"
         >
-          <p className="text-xs font-bold tracking-[0.24em] text-brand-red uppercase sm:text-sm">
-            Page not found
-          </p>
-
           <p
             aria-hidden="true"
             data-testid="watch-not-found-code"
-            className="pointer-events-none -mt-4 -mb-8 text-[clamp(8rem,31vw,18rem)] leading-none font-black tracking-[-0.09em] text-white/10 select-none sm:-mt-7 sm:-mb-12 md:text-[clamp(12rem,22vw,22rem)]"
+            className="pointer-events-none absolute top-1/2 left-0 -translate-y-1/2 text-[clamp(11rem,42vw,22rem)] leading-none font-black tracking-[-0.09em] text-white/10 select-none md:-left-5 md:text-[clamp(15rem,24vw,24rem)]"
           >
             404
           </p>
 
-          <h1
-            id="watch-not-found-heading"
-            className="max-w-xl text-4xl leading-[0.98] font-extrabold tracking-[-0.04em] text-white text-balance sm:text-6xl md:text-7xl"
-          >
-            <span className="sr-only">Page not found: </span>
-            This scene isn&apos;t here.
-          </h1>
-          <p className="mt-5 max-w-lg text-base leading-7 font-medium text-stone-200/85 sm:text-lg sm:leading-8">
-            The page may have moved, but the story continues.
-          </p>
+          <div className="relative z-10">
+            <p className="text-xs font-bold tracking-[0.24em] text-brand-red uppercase sm:text-sm">
+              Page not found
+            </p>
 
-          <nav
-            aria-label="Page not found actions"
-            className="mt-8 flex flex-col items-stretch gap-3 min-[420px]:flex-row min-[420px]:items-center sm:mt-10"
-          >
-            <Link href={searchPath()} className={primaryActionClasses}>
-              <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
-              Back to Watch
-            </Link>
-            <Link href={videosIndexPath()} className={secondaryActionClasses}>
-              <Clapperboard aria-hidden="true" className="h-5 w-5 shrink-0" />
-              Browse videos
-            </Link>
-          </nav>
+            <h1
+              id="watch-not-found-heading"
+              className="mt-4 max-w-xl text-4xl leading-[0.98] font-extrabold tracking-[-0.04em] text-white text-balance sm:mt-6 sm:text-6xl md:text-7xl"
+            >
+              <span className="sr-only">Page not found: </span>
+              This scene isn&apos;t here.
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-7 font-medium text-stone-200/85 sm:text-lg sm:leading-8">
+              The page may have moved, but the story continues.
+            </p>
+
+            <nav
+              aria-label="Page not found actions"
+              className="mt-8 flex flex-col items-stretch gap-3 min-[420px]:flex-row min-[420px]:items-center sm:mt-10"
+            >
+              <Link href={searchPath()} className={primaryActionClasses}>
+                <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
+                Back to Watch
+              </Link>
+              <Link href={videosIndexPath()} className={secondaryActionClasses}>
+                <Clapperboard aria-hidden="true" className="h-5 w-5 shrink-0" />
+                Browse videos
+              </Link>
+            </nav>
+          </div>
         </section>
       </div>
     </main>

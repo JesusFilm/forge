@@ -3,7 +3,7 @@ id: "feat-250"
 title: "Watch custom not-found page"
 owner: "unassigned"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-13"
 duration: 1
 depends_on: []
@@ -84,3 +84,16 @@ page must preserve that boundary and the final HTTP 404 status.
   critical-path request or document-timing regression.
 - Browser-smoke desktop, portrait mobile, and landscape mobile layouts; tab to
   both actions, emulate reduced motion, navigate both links, and open search.
+
+## Completion Notes
+
+- Added a locale-scoped cinematic not-found page and fixed internal sentinel so
+  proxy and resolver misses converge on the same server-rendered response.
+- Production proof confirms HTTP 404, automatic `noindex`, original URL
+  retention, same-origin-only error-page requests, and working recovery actions.
+- Focused tests (62), typecheck, lint, formatting, and production build pass.
+- Responsive and interaction proof covers 1440x900, 390x667, and 844x390,
+  keyboard focus, reduced motion, navigation, and global search.
+- The valid `/watch` shell remains 200 with no new critical-path resource or
+  warmed document-timing regression against base revision `8496d905`.
+- Route-scoping inherited remote-media hints is follow-up `feat-251`.

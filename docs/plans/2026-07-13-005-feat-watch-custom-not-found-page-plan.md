@@ -1,7 +1,7 @@
 ---
 title: "feat: Add a custom Watch not-found page"
 type: feat
-status: active
+status: completed
 date: 2026-07-13
 ---
 
@@ -268,3 +268,27 @@ browser keeps the original invalid URL while Next.js owns the rendered response.
   documents rewriting to a Page that produces the final response.
 - [NextResponse rewrite](https://nextjs.org/docs/app/api-reference/functions/next-response#rewrite)
   documents preserving the visible URL while routing to an internal destination.
+
+---
+
+## Completion Evidence
+
+- Focused component and proxy coverage passes: 62 tests.
+- Web typecheck, lint, formatting, and production build pass.
+- Production-mode proxy rejection preserves the requested URL and returns HTTP
+  404 with `noindex`, CSP, and referrer policy headers. The error page requests
+  only same-origin resources; its single 42.5 KB local artwork is the only media
+  resource, and no Mux or image-delivery request is made.
+- Desktop (1440x900), portrait (390x667), and landscape (844x390) browser proof
+  covers layout, constrained-height scrolling, both links, global search, and
+  visible keyboard focus. Reduced-motion emulation reports both page entrance
+  animations as `none` while the heading and actions remain visible.
+- A detached build of base revision `8496d905` and the feature build both return
+  200 for `/watch`. Five warmed document requests measured 5.9-8.2 ms TTFB on
+  base and 5.3-7.1 ms on the feature build. Browser waterfalls remained within
+  normal responsive-image variance at 79-80 requests, with identical script,
+  stylesheet, font, and XHR counts and no new critical-path resource. The
+  feature document transfer increased by 1,025 bytes (63,216 to 64,241 bytes).
+- Review identified locale-layout remote-media connection hints inherited by
+  the 404. Moving those hints safely is tracked separately in `feat-251` so this
+  routing change does not risk valid media-route startup performance.
