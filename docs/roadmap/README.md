@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 9, 2026)
+## Status (July 13, 2026)
 
-- **Total tickets:** 296
-- **Complete:** 209
+- **Total tickets:** 314
+- **Complete:** 226
 - **In progress:** 19
-- **Not started:** 24
+- **Not started:** 25
 - **Blocked:** 44
 - **Overdue and not complete:** 0
 
@@ -73,7 +73,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-172](content-discovery/feat-172-forge-algolia-search-modal.md)                                           | Forge Algolia search modal                                                                      | urim      | P1       | —     | 5    | —   | complete    |
 | [feat-172](content-discovery/feat-172-web-search-keyword-first-opt-in.md)                                      | Web search keyword-first opt-in                                                                 | nisal     | P1       | —     | 1    | —   | complete    |
 | [feat-174](content-discovery/feat-174-watch-search-page-size.md)                                               | Watch search page size                                                                          | nisal     | P1       | —     | 1    | —   | complete    |
-| [feat-175](content-discovery/feat-175-admin-semantic-search-latency.md)                                        | Admin semantic search latency recovery                                                          | nisal     | P1       | —     | 1    | —   | in-progress |
+| [feat-175](content-discovery/feat-175-admin-semantic-search-latency.md)                                        | Admin semantic search latency recovery                                                          | nisal     | P1       | —     | 1    | —   | complete    |
 | [feat-192](content-discovery/feat-192-watch-language-inventory-page.md)                                        | Watch Language Inventory Page                                                                   | vlad      | P1       | —     | 2    | —   | complete    |
 | [feat-193](content-discovery/feat-193-remove-legacy-scene-embedding-pipeline.md)                               | Remove Legacy Scene Embedding Pipeline                                                          | nisal     | P1       | —     | 3    | —   | complete    |
 | [feat-193](content-discovery/feat-193-watch-search-readiness-eval-suite.md)                                    | Watch search readiness eval suite                                                               | nisal     | P1       | —     | 4    | —   | complete    |
@@ -81,7 +81,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-196](content-discovery/feat-196-watch-multilingual-search-behavior.md)                                   | Watch multilingual search behavior                                                              | nisal     | P1       | —     | 5    | —   | complete    |
 | [feat-198](content-discovery/feat-198-keyword-first-brand-entity-search.md)                                    | Keyword-first transcript relevance and entity search ranking                                    | nisal     | P1       | —     | 4    | —   | in-progress |
 | [feat-232](content-discovery/feat-232-yt-video-mapper-arbitrary-raw-clip-matching.md)                          | YouTube mapper arbitrary raw clip matching                                                      | nisal     | P1       | —     | 10   | —   | in-progress |
+| [feat-242](content-discovery/feat-242-watch-search-video-only-default.md)                                      | Watch search video-only default                                                                 | urim      | P1       | —     | 1    | —   | complete    |
 | [feat-244](content-discovery/feat-244-search-modal-instant-shell.md)                                           | Search modal instant input shell                                                                | urim      | P1       | —     | 1    | —   | complete    |
+| [feat-244](content-discovery/feat-244-watch-search-modal-focus-alignment.md)                                   | Watch search modal focus alignment                                                              | urim      | P1       | —     | 1    | —   | complete    |
 | [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)                                         | Video Vectorization — Visual Shot Detection Fusion                                              | nisal     | P2       | —     | 10   | —   | blocked     |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono | P2       | —     | 45   | —   | blocked     |
 | [feat-071](content-discovery/feat-071-recommendation-content-deduplication.md)                                 | Recommendation Content Deduplication                                                            | nisal     | P2       | —     | 5    | —   | complete    |
@@ -135,6 +137,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-065](media-generation/feat-065-full-content-translation.md)                         | Full Content Translation                                             | vlad  | P2       | —     | 61   | —   | blocked     |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)        | Instagram AI Christian discovery workflow                            | vlad  | P2       | —     | 1    | —   | complete    |
 | [feat-194](media-generation/feat-194-instagram-discovery-commentary-exclusion-filter.md)  | Instagram discovery commentary exclusion filter                      | vlad  | P2       | —     | 1    | —   | complete    |
+| [feat-240](media-generation/feat-240-instagram-discovery-website-review-submit.md)        | Instagram discovery website review submission                        | vlad  | P2       | —     | 1    | —   | complete    |
 
 ### Platform
 
@@ -169,6 +172,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-229](platform/feat-229-web-production-readiness.md)                            | Web production readiness gates                                                   | urim      | P0       | —     | 5    | —   | in-progress |
 | [feat-230](platform/feat-230-watch-route-snapshot-published-at-contract.md)          | Restore Watch route snapshot publishedAt contract                                | tataihono | P0       | —     | 1    | —   | complete    |
 | [feat-236](platform/feat-236-roadmap-frontmatter-normalization.md)                   | Roadmap frontmatter normalization for deploy builds                              | nisal     | P0       | —     | 1    | —   | complete    |
+| [feat-239](platform/feat-239-watch-public-media-url-hotfix.md)                       | Watch Public Media URL Hotfix                                                    | codex     | P0       | —     | 1    | —   | complete    |
+| [feat-240](platform/feat-240-watch-home-media-item-slug-hotfix.md)                   | Watch Home Media Item Slug Hotfix                                                | codex     | P0       | —     | 1    | —   | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                            | Scaffolding Support for Urim                                                     | tataihono | P1       | —     | 21   | —   | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)     | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                          | Partner Activation Network                                                       | urim      | P1       | —     | 28   | —   | blocked     |
@@ -264,7 +269,14 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-232](platform/feat-232-watch-next-countdown.md)                                | Watch next countdown                                                             | vlad      | P1       | —     | 1    | —   | complete    |
 | [feat-235](platform/feat-235-watch-home-builder-production-rollout.md)               | Watch home builder production rollout                                            | urim      | P1       | —     | 1    | —   | complete    |
 | [feat-236](platform/feat-236-admin-image-picker-media-library-browser.md)            | Admin image picker media library browser                                         | tataihono | P1       | —     | 4    | —   | complete    |
+| [feat-236](platform/feat-236-admin-public-media-asset-resolution.md)                 | Admin Public Media Asset Resolution                                              | codex     | P1       | —     | 1    | —   | complete    |
+| [feat-240](platform/feat-240-admin-fleet-search-key-provisioning.md)                 | Admin fleet search key provisioning + rollout preconditions                      | urim      | P1       | —     | 3    | —   | not-started |
+| [feat-240](platform/feat-240-watch-language-modal-focus-ring.md)                     | Watch language modal focus ring visibility                                       | vlad      | P1       | —     | 1    | —   | complete    |
+| [feat-241](platform/feat-241-tv-mobile-fleet-search-token-rollout.md)                | TV/mobile fleet search token provisioning + rebuild                              | urim      | P1       | —     | 2    | —   | not-started |
+| [feat-242](platform/feat-242-uploaded-media-raster-lqips.md)                         | Uploaded media raster LQIPs                                                      | tataihono | P1       | —     | 1    | —   | complete    |
+| [feat-243](platform/feat-243-web-dominant-color-lqip-card-rollout.md)                | Web card dominant-color and LQIP rollout                                         | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-244](platform/feat-244-watch-mobile-autoplay-delay.md)                         | Watch mobile hero autoplay delay                                                 | vlad      | P1       | —     | 1    | —   | complete    |
+| [feat-245](platform/feat-245-watch-language-code-selectors.md)                       | Watch language-code selectors                                                    | vlad      | P1       | —     | 1    | —   | complete    |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)               | Optimize Through Data-Driven Insights                                            | tataihono | P2       | —     | 46   | —   | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)              | LLM Steering System (RAG + Guardrails)                                           | tataihono | P2       | —     | 78   | —   | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                         | Doctrinal Validation Engine                                                      | vlad      | P2       | —     | 31   | —   | blocked     |
@@ -287,47 +299,52 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-228](platform/feat-228-tv-perf-tooling-mcp-and-profiler.md)                    | TV perf tooling: Datadog MCP for agents and Hermes profiler pairing              | urim      | P2       | —     | 2    | —   | not-started |
 | [feat-233](platform/feat-233-watch-home-card-hover-backdrop-polish.md)               | Watch home card hover backdrop polish                                            | vlad      | P2       | —     | 1    | —   | complete    |
 | [feat-234](platform/feat-234-watch-home-short-film-player.md)                        | Watch home short film inline player                                              | urim      | P2       | —     | 1    | —   | complete    |
+| [feat-235](platform/feat-235-watch-card-mux-hover-previews.md)                       | Watch card Mux hover previews                                                    | urim      | P2       | —     | 1    | —   | complete    |
+| [feat-237](platform/feat-237-admin-image-library-picker-scroll.md)                   | Admin Image Library Picker Scroll                                                | codex     | P2       | —     | 1    | —   | complete    |
+| [feat-238](platform/feat-238-admin-image-picker-scroll-frame.md)                     | Admin Image Picker Scroll Frame                                                  | codex     | P2       | —     | 1    | —   | complete    |
+| [feat-240](platform/feat-240-watch-chapter-thumbnail-outline.md)                     | Watch Chapter Thumbnail Outline                                                  | codex     | P2       | —     | 1    | —   | complete    |
 
 ### Topic Experiences
 
-| ID                                                                                          | Feature                                                     | Owner     | Priority | Start | Days | Due | Status      |
-| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | --------- | -------- | ----- | ---- | --- | ----------- |
-| [feat-001](topic-experiences/feat-001-architecture-contracts.md)                            | Architecture Contracts                                      | tataihono | P0       | —     | 7    | —   | not-started |
-| [feat-002](topic-experiences/feat-002-wire-enrichment-metadata-to-cms.md)                   | Wire Enrichment Metadata Back to CMS                        | vlad      | P0       | —     | 14   | —   | not-started |
-| [feat-003](topic-experiences/feat-003-topic-content-type.md)                                | Topic Content Type in Strapi                                | nisal     | P0       | —     | 14   | —   | blocked     |
-| [feat-007](topic-experiences/feat-007-topic-clustering.md)                                  | Topic Clustering from Enriched Metadata                     | ekkasit   | P0       | —     | 21   | —   | blocked     |
-| [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                            | ekkasit   | P0       | —     | 21   | —   | blocked     |
-| [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                         | ekkasit   | P0       | —     | 42   | —   | blocked     |
-| [feat-023](topic-experiences/feat-023-web-experience-pages.md)                              | Web Experience Pages                                        | nisal     | P0       | —     | 31   | —   | complete    |
-| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)                                   | Mobile App — Expo                                           | ekkasit   | P0       | —     | 28   | —   | complete    |
-| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)                             | Mobile App — iOS Native                                     | urim      | P0       | —     | 16   | —   | complete    |
-| [feat-029](topic-experiences/feat-029-easter-experience.md)                                 | Easter Experience (First Production Launch)                 | nisal     | P0       | —     | 21   | —   | complete    |
-| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                           | AI-Generated Christmas Experience                           | ekkasit   | P0       | —     | 14   | —   | in-progress |
-| [feat-015](topic-experiences/feat-015-bulk-experience-write-api.md)                         | Bulk Experience Write API                                   | nisal     | P1       | —     | 21   | —   | blocked     |
-| [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                          | Topic / Experience GraphQL Wiring                           | nisal     | P1       | —     | 28   | —   | blocked     |
-| [feat-017](topic-experiences/feat-017-topic-browsing-web.md)                                | Topic Browsing — Web                                        | urim      | P1       | —     | 28   | —   | blocked     |
-| [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)                             | Topic Browsing — Mobile                                     | urim      | P1       | —     | 28   | —   | blocked     |
-| [feat-036](topic-experiences/feat-036-semantic-visualization-workbench.md)                  | Semantic Visualization Workbench                            | ekkasit   | P1       | —     | 21   | —   | blocked     |
-| [feat-039](topic-experiences/feat-039-topic-discovery-programming-engine.md)                | Topic Programming Engine                                    | ekkasit   | P1       | —     | 28   | —   | blocked     |
-| [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening | urim      | P1       | —     | 3    | —   | complete    |
-| [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish         | urim      | P1       | —     | 1    | —   | complete    |
-| [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection              | urim      | P1       | —     | 2    | —   | complete    |
-| [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                 | tataihono | P1       | —     | 45   | —   | blocked     |
-| [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                | tataihono | P1       | —     | 48   | —   | blocked     |
-| [feat-072](topic-experiences/feat-072-tv-app-spike.md)                                      | TV App — Expo TV Toolchain Spike                            | urim      | P1       | —     | 2    | —   | complete    |
-| [feat-073](topic-experiences/feat-073-tv-app-scaffolding.md)                                | TV App — Scaffolding + GraphQL Wiring                       | urim      | P1       | —     | 3    | —   | complete    |
-| [feat-074](topic-experiences/feat-074-tv-app-home-screen.md)                                | TV App — Home Screen (Hero + Experiences Rail)              | urim      | P1       | —     | 5    | —   | complete    |
-| [feat-075](topic-experiences/feat-075-tv-app-experience-screen.md)                          | TV App — Experience Detail Screen (SDUI Renderers)          | urim      | P1       | —     | 7    | —   | complete    |
-| [feat-076](topic-experiences/feat-076-tv-app-video-playback.md)                             | TV App — Video Playback + Polish                            | urim      | P1       | —     | 7    | —   | complete    |
-| [feat-106](topic-experiences/feat-106-tv-app-search-ui.md)                                  | TV App — Search UI                                          | urim      | P1       | —     | 7    | —   | complete    |
-| [feat-107](topic-experiences/feat-107-watch-language-switch-pending-feedback.md)            | Watch Language Switch Pending Feedback                      | urim      | P1       | —     | 2    | —   | complete    |
-| [feat-146](topic-experiences/feat-146-watch-download-modal-mobile-close.md)                 | Watch Download Modal Mobile Close Placement                 | urim      | P1       | —     | 1    | —   | complete    |
-| [feat-172](topic-experiences/feat-172-mobile-home-watch-parity.md)                          | Mobile Home with watch-homepage content parity              | urim      | P1       | —     | 3    | —   | in-progress |
-| [feat-178](topic-experiences/feat-178-tv-app-series-detail-screen.md)                       | TV App — Series Detail Screen                               | urim      | P1       | —     | 4    | —   | complete    |
-| [feat-179](topic-experiences/feat-179-tv-app-home-watch-parity.md)                          | TV App — Home Watch-Content Parity (Focus-Driven Showcase)  | urim      | P1       | —     | 6    | —   | complete    |
-| [feat-191](topic-experiences/feat-191-watch-language-switch-timeout-feedback.md)            | Watch Language Switch Timeout Feedback                      | urim      | P1       | —     | 1    | —   | complete    |
-| [feat-196](topic-experiences/feat-196-watch-compatible-download-filenames.md)               | Watch compatible download filenames                         | vlad      | P1       | —     | 2    | —   | complete    |
-| [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                         | vlad      | P2       | —     | 28   | —   | blocked     |
-| [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                   | ekkasit   | P2       | —     | 21   | —   | blocked     |
-| [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                       | tataihono | P2       | —     | 61   | —   | blocked     |
-| [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                           | urim      | P2       | —     | 1    | —   | complete    |
+| ID                                                                                          | Feature                                                                          | Owner     | Priority | Start | Days | Due | Status      |
+| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------- | -------- | ----- | ---- | --- | ----------- |
+| [feat-001](topic-experiences/feat-001-architecture-contracts.md)                            | Architecture Contracts                                                           | tataihono | P0       | —     | 7    | —   | not-started |
+| [feat-002](topic-experiences/feat-002-wire-enrichment-metadata-to-cms.md)                   | Wire Enrichment Metadata Back to CMS                                             | vlad      | P0       | —     | 14   | —   | not-started |
+| [feat-003](topic-experiences/feat-003-topic-content-type.md)                                | Topic Content Type in Strapi                                                     | nisal     | P0       | —     | 14   | —   | blocked     |
+| [feat-007](topic-experiences/feat-007-topic-clustering.md)                                  | Topic Clustering from Enriched Metadata                                          | ekkasit   | P0       | —     | 21   | —   | blocked     |
+| [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                                                 | ekkasit   | P0       | —     | 21   | —   | blocked     |
+| [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit   | P0       | —     | 42   | —   | blocked     |
+| [feat-023](topic-experiences/feat-023-web-experience-pages.md)                              | Web Experience Pages                                                             | nisal     | P0       | —     | 31   | —   | complete    |
+| [feat-024](topic-experiences/feat-024-mobile-app-expo.md)                                   | Mobile App — Expo                                                                | ekkasit   | P0       | —     | 28   | —   | complete    |
+| [feat-025](topic-experiences/feat-025-mobile-app-ios-native.md)                             | Mobile App — iOS Native                                                          | urim      | P0       | —     | 16   | —   | complete    |
+| [feat-029](topic-experiences/feat-029-easter-experience.md)                                 | Easter Experience (First Production Launch)                                      | nisal     | P0       | —     | 21   | —   | complete    |
+| [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                           | AI-Generated Christmas Experience                                                | ekkasit   | P0       | —     | 14   | —   | in-progress |
+| [feat-015](topic-experiences/feat-015-bulk-experience-write-api.md)                         | Bulk Experience Write API                                                        | nisal     | P1       | —     | 21   | —   | blocked     |
+| [feat-016](topic-experiences/feat-016-topic-experience-graphql.md)                          | Topic / Experience GraphQL Wiring                                                | nisal     | P1       | —     | 28   | —   | blocked     |
+| [feat-017](topic-experiences/feat-017-topic-browsing-web.md)                                | Topic Browsing — Web                                                             | urim      | P1       | —     | 28   | —   | blocked     |
+| [feat-018](topic-experiences/feat-018-topic-browsing-mobile.md)                             | Topic Browsing — Mobile                                                          | urim      | P1       | —     | 28   | —   | blocked     |
+| [feat-036](topic-experiences/feat-036-semantic-visualization-workbench.md)                  | Semantic Visualization Workbench                                                 | ekkasit   | P1       | —     | 21   | —   | blocked     |
+| [feat-039](topic-experiences/feat-039-topic-discovery-programming-engine.md)                | Topic Programming Engine                                                         | ekkasit   | P1       | —     | 28   | —   | blocked     |
+| [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim      | P1       | —     | 3    | —   | complete    |
+| [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim      | P1       | —     | 1    | —   | complete    |
+| [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim      | P1       | —     | 2    | —   | complete    |
+| [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | —     | 45   | —   | blocked     |
+| [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                                     | tataihono | P1       | —     | 48   | —   | blocked     |
+| [feat-072](topic-experiences/feat-072-tv-app-spike.md)                                      | TV App — Expo TV Toolchain Spike                                                 | urim      | P1       | —     | 2    | —   | complete    |
+| [feat-073](topic-experiences/feat-073-tv-app-scaffolding.md)                                | TV App — Scaffolding + GraphQL Wiring                                            | urim      | P1       | —     | 3    | —   | complete    |
+| [feat-074](topic-experiences/feat-074-tv-app-home-screen.md)                                | TV App — Home Screen (Hero + Experiences Rail)                                   | urim      | P1       | —     | 5    | —   | complete    |
+| [feat-075](topic-experiences/feat-075-tv-app-experience-screen.md)                          | TV App — Experience Detail Screen (SDUI Renderers)                               | urim      | P1       | —     | 7    | —   | complete    |
+| [feat-076](topic-experiences/feat-076-tv-app-video-playback.md)                             | TV App — Video Playback + Polish                                                 | urim      | P1       | —     | 7    | —   | complete    |
+| [feat-106](topic-experiences/feat-106-tv-app-search-ui.md)                                  | TV App — Search UI                                                               | urim      | P1       | —     | 7    | —   | complete    |
+| [feat-107](topic-experiences/feat-107-watch-language-switch-pending-feedback.md)            | Watch Language Switch Pending Feedback                                           | urim      | P1       | —     | 2    | —   | complete    |
+| [feat-146](topic-experiences/feat-146-watch-download-modal-mobile-close.md)                 | Watch Download Modal Mobile Close Placement                                      | urim      | P1       | —     | 1    | —   | complete    |
+| [feat-172](topic-experiences/feat-172-mobile-home-watch-parity.md)                          | Mobile Home with watch-homepage content parity                                   | urim      | P1       | —     | 3    | —   | in-progress |
+| [feat-178](topic-experiences/feat-178-tv-app-series-detail-screen.md)                       | TV App — Series Detail Screen                                                    | urim      | P1       | —     | 4    | —   | complete    |
+| [feat-179](topic-experiences/feat-179-tv-app-home-watch-parity.md)                          | TV App — Home Watch-Content Parity (Focus-Driven Showcase)                       | urim      | P1       | —     | 6    | —   | complete    |
+| [feat-191](topic-experiences/feat-191-watch-language-switch-timeout-feedback.md)            | Watch Language Switch Timeout Feedback                                           | urim      | P1       | —     | 1    | —   | complete    |
+| [feat-196](topic-experiences/feat-196-watch-compatible-download-filenames.md)               | Watch compatible download filenames                                              | vlad      | P1       | —     | 2    | —   | complete    |
+| [feat-246](topic-experiences/feat-246-tv-home-experience-content-parity.md)                 | TV Home content parity — render rows from the single admin watch-home Experience | urim      | P1       | —     | 4    | —   | in-progress |
+| [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | —     | 28   | —   | blocked     |
+| [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit   | P2       | —     | 21   | —   | blocked     |
+| [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono | P2       | —     | 61   | —   | blocked     |
+| [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim      | P2       | —     | 1    | —   | complete    |
