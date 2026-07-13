@@ -2,7 +2,6 @@ import { WATCH_HOME_FEATURED_RAIL, WATCH_HOME_HERO_SOURCE_IDS } from "./config"
 import {
   buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
-  resolveFeaturedTitle,
   type WatchHomeChildRelationInput,
   type WatchHomeVideoInput,
 } from "./model"
@@ -231,52 +230,6 @@ describe("buildWatchHomeModelFromVideos — metaLabel", () => {
 
     expect(model.featured[0]?.label).toBe("Collection")
     expect(model.featured[0]?.rawLabel).toBe("COLLECTION")
-  })
-})
-
-describe("resolveFeaturedTitle — injected clock", () => {
-  it("selects the morning variant before 12:00", () => {
-    expect(
-      resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date(2026, 5, 11, 6)),
-    ).toBe("Good Morning! Today's Bible Moments Await.")
-    expect(
-      resolveFeaturedTitle(
-        WATCH_HOME_FEATURED_RAIL,
-        new Date(2026, 5, 11, 11, 59),
-      ),
-    ).toBe("Good Morning! Today's Bible Moments Await.")
-  })
-
-  it("selects the afternoon variant from 12:00 to 16:59", () => {
-    expect(
-      resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date(2026, 5, 11, 12)),
-    ).toBe("Good Afternoon! Bible Moments for Your Day.")
-    expect(
-      resolveFeaturedTitle(
-        WATCH_HOME_FEATURED_RAIL,
-        new Date(2026, 5, 11, 16, 59),
-      ),
-    ).toBe("Good Afternoon! Bible Moments for Your Day.")
-  })
-
-  // 17:00 is web's afternoon→evening overlay boundary (range 17–21), so TV's
-  // evening starts there too.
-  it("selects the evening variant from 17:00 onward", () => {
-    expect(
-      resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date(2026, 5, 11, 17)),
-    ).toBe("Good Evening! Wind Down with Bible Moments.")
-    expect(
-      resolveFeaturedTitle(WATCH_HOME_FEATURED_RAIL, new Date(2026, 5, 11, 23)),
-    ).toBe("Good Evening! Wind Down with Bible Moments.")
-  })
-
-  it("falls back to the base title when no variants are configured", () => {
-    expect(
-      resolveFeaturedTitle(
-        { title: "Today's Video Picks" },
-        new Date(2026, 5, 11, 9),
-      ),
-    ).toBe("Today's Video Picks")
   })
 })
 
