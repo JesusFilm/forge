@@ -662,11 +662,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
-    ).toContain("h-6")
+    ).toContain("h-5")
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
-    ).toContain("px-1")
+    ).toContain("px-0.5")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
@@ -674,11 +674,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.className,
-    ).toContain("h-6")
+    ).toContain("h-5")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.className,
-    ).toContain("px-1")
+    ).toContain("px-0.5")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.className,
@@ -687,6 +687,10 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.className,
     ).toContain("text-stone-950")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.className,
+    ).toContain("font-medium")
 
     await act(async () => {
       languageTag.click()
