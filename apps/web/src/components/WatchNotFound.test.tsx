@@ -74,14 +74,14 @@ describe("WatchNotFound", () => {
     expect(marker?.getAttribute("aria-hidden")).toBe("true")
   })
 
-  it("links to Watch home and the video inventory with accessible names", () => {
+  it("links to Watch home and the language inventory with accessible names", () => {
     renderPage()
 
     const links = container.querySelectorAll("a")
     expect(links).toHaveLength(2)
     expect(links[0]?.getAttribute("href")).toBe("/")
     expect(links[0]?.textContent?.trim()).toBe("Back to Watch")
-    expect(links[1]?.getAttribute("href")).toBe("/videos")
+    expect(links[1]?.getAttribute("href")).toBe("/languages")
     expect(links[1]?.textContent?.trim()).toBe("Browse videos")
   })
 
