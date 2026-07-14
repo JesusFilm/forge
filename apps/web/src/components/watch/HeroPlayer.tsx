@@ -19,7 +19,7 @@ import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
-import { Share2 } from "lucide-react"
+import { Languages, Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -31,13 +31,14 @@ const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
 }) as typeof MuxVideoType
 
 import { env } from "@/env"
-import type { WatchHeroPlayerBlock } from "@/lib/content"
+import type { WatchHeroPlayerBlock, WatchVariantDownload } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { languageCodeFor } from "@/lib/language-code"
+import { formatDuration } from "@/lib/format-duration"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import {
@@ -65,12 +66,71 @@ import { resolveMuxHeroPosterUrl } from "@/lib/url"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
+import {
+  downloadQualityResolutionLabel,
+  type DownloadResolutionLabel,
+} from "./download-options"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
 import { MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
+
+type HeroMetadataQuality = {
+  label: DownloadResolutionLabel
+  rank: number
+}
+
+const HERO_METADATA_TAG_CLASS =
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-white/35 bg-black/45 px-2 text-[0.7rem] font-bold tracking-wide text-white/95 shadow-sm"
+
+const HERO_METADATA_QUALITY_RANK: Record<DownloadResolutionLabel, number> = {
+  "4K": 5,
+  "2K": 4,
+  FHD: 3,
+  HD: 2,
+  SD: 1,
+}
+
+function withHeroMetadataQualityRank(
+  label: DownloadResolutionLabel,
+): HeroMetadataQuality {
+  return { label, rank: HERO_METADATA_QUALITY_RANK[label] }
+}
+
+function downloadQualityBadge(
+  download: WatchVariantDownload,
+): HeroMetadataQuality | null {
+  const height = download.height
+  if (typeof height === "number" && Number.isFinite(height) && height > 0) {
+    if (height >= 2160) return withHeroMetadataQualityRank("4K")
+    if (height >= 1440) return withHeroMetadataQualityRank("2K")
+    if (height >= 1080) return withHeroMetadataQualityRank("FHD")
+    if (height >= 720) return withHeroMetadataQualityRank("HD")
+    return withHeroMetadataQualityRank("SD")
+  }
+
+  const label = downloadQualityResolutionLabel(download.quality)
+  return label == null ? null : withHeroMetadataQualityRank(label)
+}
+
+function highestDownloadQualityLabel(
+  downloads: WatchVariantDownload[],
+): HeroMetadataQuality["label"] | null {
+  return (
+    downloads.reduce<HeroMetadataQuality | null>((highest, download) => {
+      const candidate = downloadQualityBadge(download)
+      if (
+        candidate == null ||
+        (highest != null && highest.rank >= candidate.rank)
+      ) {
+        return highest
+      }
+      return candidate
+    }, null)?.label ?? null
+  )
+}
 
 function subscribeViewerId(_onStoreChange: () => void): () => void {
   return () => {}
@@ -268,6 +328,7 @@ export function HeroPlayer({
   coverBlackoutPhase?: "covering" | "revealing" | null
 }) {
   const t = useTranslations("HeroPlayer")
+  const tLanguagePicker = useTranslations("LanguagePickerModal")
   const tBibleQuotes = useTranslations("BibleQuotes")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
@@ -1307,6 +1368,11 @@ export function HeroPlayer({
   // initial fullscreenchange event.
   const isFullscreen = useIsFullscreen()
 
+  const languageCount = Math.max(
+    0,
+    playableLanguageCount ?? block.playableLanguageCount ?? 0,
+  )
+
   // Both globe surfaces (top-right floating + in-chrome) share this gate:
   // a wired callback AND enough variants to warrant a switcher. The
   // top-right surface adds `!isFullscreen` because it overlaps the
@@ -1314,7 +1380,7 @@ export function HeroPlayer({
   // stays visible in fullscreen so the user can still reach the picker.
   const hasLanguageSwitcher =
     typeof onLanguageClick === "function" &&
-    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+    languageCount >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
   const languageCode = languageCodeFor({
@@ -1322,6 +1388,23 @@ export function HeroPlayer({
     iso3: variant.language?.iso3,
     slug: variant.language?.slug ?? languageSlug,
   })
+  const languageCountLabel =
+    languageCount > 0
+      ? tLanguagePicker("languageCount", { count: languageCount })
+      : null
+  const runtimeLabel =
+    typeof variant.duration === "number" && variant.duration > 0
+      ? formatDuration(variant.duration)
+      : ""
+  const qualityLabel = highestDownloadQualityLabel(variant.downloads)
+  const hasSubtitleTrack = video.subtitles.some(
+    ({ vttSrc }) => vttSrc.length > 0,
+  )
+  const hasHeroMetadataTags =
+    languageCountLabel != null ||
+    runtimeLabel !== "" ||
+    hasSubtitleTrack ||
+    qualityLabel != null
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1722,40 +1805,101 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                  <button
-                    type="button"
-                    data-testid="hero-player-unmute-pill"
-                    data-state={pillState}
-                    aria-label={preRevealActionLabel}
-                    aria-controls={HERO_PLAYER_MEDIA_ID}
-                    onPointerDown={handleWatchNowPointerDown}
-                    onKeyDown={handleWatchNowKeyDown}
-                    onClick={handleWatchNowClick}
-                    className={
-                      pillState === "tap-to-unmute"
-                        ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
-                        : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
-                    }
-                  >
-                    {pillState === "tap-to-unmute" ? (
-                      <MutedSpeakerIcon />
-                    ) : (
-                      <PlayIcon />
-                    )}
-                    <span>{preRevealActionLabel}</span>
-                  </button>
-                  {onShareClick ? (
+                <div className="flex flex-col items-start gap-3">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
                     <button
                       type="button"
-                      data-testid="hero-player-share-button"
-                      aria-label={tBibleQuotes("share")}
-                      onClick={onShareClick}
-                      className={`${WATCH_NOW_LINK_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`}
+                      data-testid="hero-player-unmute-pill"
+                      data-state={pillState}
+                      aria-label={preRevealActionLabel}
+                      aria-controls={HERO_PLAYER_MEDIA_ID}
+                      onPointerDown={handleWatchNowPointerDown}
+                      onKeyDown={handleWatchNowKeyDown}
+                      onClick={handleWatchNowClick}
+                      className={
+                        pillState === "tap-to-unmute"
+                          ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                          : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
+                      }
                     >
-                      <Share2 className="h-5 w-5 shrink-0" aria-hidden />
-                      {tBibleQuotes("share")}
+                      {pillState === "tap-to-unmute" ? (
+                        <MutedSpeakerIcon />
+                      ) : (
+                        <PlayIcon />
+                      )}
+                      <span>{preRevealActionLabel}</span>
                     </button>
+                    {onShareClick ? (
+                      <button
+                        type="button"
+                        data-testid="hero-player-share-button"
+                        aria-label={tBibleQuotes("share")}
+                        onClick={onShareClick}
+                        className={`${WATCH_NOW_LINK_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`}
+                      >
+                        <Share2 className="h-5 w-5 shrink-0" aria-hidden />
+                        {tBibleQuotes("share")}
+                      </button>
+                    ) : null}
+                  </div>
+                  {hasHeroMetadataTags ? (
+                    <div
+                      data-testid="hero-player-metadata-tags"
+                      className="flex flex-wrap items-center gap-2"
+                    >
+                      {languageCountLabel != null ? (
+                        hasLanguageSwitcher ? (
+                          <button
+                            type="button"
+                            data-testid="hero-player-language-tag"
+                            aria-label={languageCountLabel}
+                            onClick={onLanguageClick}
+                            className={`${HERO_METADATA_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
+                          >
+                            <Languages
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                            <span>{languageCountLabel}</span>
+                          </button>
+                        ) : (
+                          <span
+                            data-testid="hero-player-language-tag"
+                            className={`${HERO_METADATA_TAG_CLASS} uppercase`}
+                          >
+                            <Languages
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                            <span>{languageCountLabel}</span>
+                          </span>
+                        )
+                      ) : null}
+                      {runtimeLabel !== "" ? (
+                        <span
+                          data-testid="hero-player-runtime-tag"
+                          className={`${HERO_METADATA_TAG_CLASS} uppercase`}
+                        >
+                          {runtimeLabel}
+                        </span>
+                      ) : null}
+                      {hasSubtitleTrack ? (
+                        <span
+                          data-testid="hero-player-captions-tag"
+                          className={`${HERO_METADATA_TAG_CLASS} uppercase`}
+                        >
+                          CC
+                        </span>
+                      ) : null}
+                      {qualityLabel != null ? (
+                        <span
+                          data-testid="hero-player-quality-tag"
+                          className={`${HERO_METADATA_TAG_CLASS} uppercase`}
+                        >
+                          {qualityLabel}
+                        </span>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               </div>

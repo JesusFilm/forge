@@ -83,8 +83,14 @@ vi.mock("@forge/video-player", () => ({
 
 vi.mock("next-intl", () => ({
   useTranslations:
-    (namespace: "HeroPlayer" | "VideoLabels" | "BibleQuotes") =>
-    (key: string) => {
+    (
+      namespace:
+        | "HeroPlayer"
+        | "VideoLabels"
+        | "BibleQuotes"
+        | "LanguagePickerModal",
+    ) =>
+    (key: string, values?: { count?: number }) => {
       const catalogs = {
         HeroPlayer: {
           playWithSound: "Watch now",
@@ -97,6 +103,12 @@ vi.mock("next-intl", () => ({
         },
         BibleQuotes: {
           share: "Share",
+        },
+        LanguagePickerModal: {
+          languageCount:
+            values?.count === 1
+              ? "1 language"
+              : `${values?.count ?? 0} languages`,
         },
       }
 
@@ -234,10 +246,16 @@ function makeBlock({
   muxHeroPosterBlurDataUrl = null,
   playbackId = "playback-id-123",
   nextWatchItem = null,
+  duration = null,
+  downloads = [],
+  subtitles = [],
 }: {
   muxHeroPosterBlurDataUrl?: string | null
   playbackId?: string | null
   nextWatchItem?: WatchHeroPlayerBlock["nextWatchItem"]
+  duration?: number | null
+  downloads?: WatchHeroPlayerBlock["variant"]["downloads"]
+  subtitles?: WatchHeroPlayerBlock["video"]["subtitles"]
 } = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
@@ -248,12 +266,15 @@ function makeBlock({
       title: "Jesus",
       children: [],
       parents: [],
+      subtitles,
     } as never,
     variant: {
       documentId: "variant-1",
       slug: "english",
       published: true,
       hls: "https://cdn.example/jesus.m3u8",
+      duration,
+      downloads,
       muxVideo: playbackId ? { playbackId } : null,
       muxHeroPosterBlurDataUrl,
       language: {
@@ -523,6 +544,141 @@ describe("HeroPlayer — initial mount", () => {
     })
     expect(
       container.querySelector('[data-testid="hero-player-share-button"]'),
+    ).toBeNull()
+  })
+
+  it("renders ordered factual metadata and opens the language picker from its tag", async () => {
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            duration: 394,
+            downloads: [
+              {
+                documentId: "download-hd",
+                height: 720,
+                quality: "high",
+                size: null,
+              },
+              {
+                documentId: "download-uhd",
+                height: null,
+                quality: "uhd",
+                size: null,
+              },
+            ],
+            subtitles: [
+              {
+                documentId: "subtitle-en",
+                language: {
+                  slug: "english",
+                  name: "English",
+                  nativeName: null,
+                  bcp47: "en",
+                },
+                vttSrc: "https://cdn.example/subtitles.vtt",
+                primary: true,
+                aiGenerated: false,
+              },
+            ],
+          })}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={3}
+        />,
+      )
+    })
+
+    const tags = container.querySelector(
+      '[data-testid="hero-player-metadata-tags"]',
+    ) as HTMLDivElement
+    expect(tags).not.toBeNull()
+    expect(
+      Array.from(tags.children).map((tag) => tag.getAttribute("data-testid")),
+    ).toEqual([
+      "hero-player-language-tag",
+      "hero-player-runtime-tag",
+      "hero-player-captions-tag",
+      "hero-player-quality-tag",
+    ])
+
+    const languageTag = container.querySelector(
+      '[data-testid="hero-player-language-tag"]',
+    ) as HTMLButtonElement
+    expect(languageTag.tagName).toBe("BUTTON")
+    expect(languageTag.getAttribute("aria-label")).toBe("3 languages")
+    expect(languageTag.querySelector("svg")).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-runtime-tag"]')
+        ?.textContent,
+    ).toBe("6:34")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.textContent,
+    ).toBe("CC")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.textContent,
+    ).toBe("4K")
+
+    await act(async () => {
+      languageTag.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps a one-language count informational and omits unavailable factual tags", () => {
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={1}
+        />,
+      )
+    })
+
+    const languageTag = container.querySelector(
+      '[data-testid="hero-player-language-tag"]',
+    ) as HTMLSpanElement
+    expect(languageTag.tagName).toBe("SPAN")
+    expect(languageTag.textContent).toBe("1 language")
+    expect(
+      container.querySelector('[data-testid="hero-player-runtime-tag"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]'),
+    ).toBeNull()
+    expect(onLanguageClick).not.toHaveBeenCalled()
+  })
+
+  it("removes the metadata strip when Watch now reveals player chrome", async () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ duration: 394 })}
+          playableLanguageCount={1}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-metadata-tags"]'),
+    ).not.toBeNull()
+    const watchNow = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      watchNow.click()
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-metadata-tags"]'),
     ).toBeNull()
   })
 
