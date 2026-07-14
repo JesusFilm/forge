@@ -3,7 +3,7 @@ id: "feat-252"
 title: "Watch header control overlap"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-14"
 duration: 1
 depends_on:
@@ -68,3 +68,19 @@ using only the global header remain correctly separated.
 - Browser smoke at 390px and desktop widths proves positive horizontal
   separation, aligned vertical centers, stable search-open geometry, and
   independent keyboard focus for language and account controls.
+
+## Completion Notes
+
+- Removed the fixed `series-page-language-button` and routed static series
+  language switching through the existing global Watch header event.
+- Kept playable-trailer ownership inside `HeroPlayer` by passing the language
+  callback and playable-language count through `SeriesHero`, preserving its
+  fullscreen visibility lifecycle.
+- Focused tests passed: 63 assertions across `SeriesPageClient`, `SeriesHero`,
+  and `FloatingSearchProvider`; web typecheck and lint passed.
+- Browser proof on the reproduced LUMO Matthew series route showed exactly one
+  language control and zero obsolete series buttons. At 400 px the language
+  and account controls had a 4 px gap and 0 px center delta; at 1440 px they
+  had an 8 px gap and 0 px center delta. Search-open retained the 4 px gap,
+  the language modal opened from the global control, and both controls accepted
+  independent focus with no browser errors.

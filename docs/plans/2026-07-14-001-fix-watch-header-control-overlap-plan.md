@@ -1,7 +1,7 @@
 ---
 title: Fix Watch Header Control Overlap
 type: fix
-status: active
+status: completed
 date: 2026-07-14
 ---
 
