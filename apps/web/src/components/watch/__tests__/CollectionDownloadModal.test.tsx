@@ -35,9 +35,15 @@ vi.mock("@/components/watch/collection-download-queue", async () => {
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  DialogContent: ({
+    children,
+    overlayClassName: _overlayClassName,
+    showCloseButton: _showCloseButton,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & {
+    overlayClassName?: string
+    showCloseButton?: boolean
+  }) => <div {...props}>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => (
     <h1>{children}</h1>
   ),
@@ -313,6 +319,18 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-quality"]',
       )?.className,
     ).toContain("scheme-dark")
+  })
+
+  it("renders the form without parent container chrome", async () => {
+    renderModal()
+    await flush()
+
+    const modal = container.querySelector(
+      '[data-testid="watch-collection-download-modal"]',
+    )
+    expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("rounded-none")
+    expect(modal?.className).not.toContain("bg-stone-950")
   })
 
   it("shows a thumbnail stack with the number of ready episodes", async () => {

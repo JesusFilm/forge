@@ -430,7 +430,7 @@ export function CollectionDownloadModal({
       />
       <DialogContent
         data-testid="watch-collection-download-modal"
-        className="w-full max-w-[min(92vw,680px)] border-0 bg-stone-950 p-0 text-stone-100 ring-0 sm:max-w-[680px]"
+        className="w-full max-w-[min(92vw,680px)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[680px]"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
       >
