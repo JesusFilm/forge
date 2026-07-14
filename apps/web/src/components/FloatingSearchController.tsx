@@ -729,10 +729,6 @@ export function FloatingSearchController({
     }
   }, [query, search])
 
-  const closeAndKeepQuery = useCallback(() => {
-    setOpen(false)
-  }, [setOpen])
-
   const initialShellQueryRef = useRef(query)
   const initialShellQueryConsumedRef = useRef(false)
   useEffect(() => {
@@ -790,7 +786,6 @@ export function FloatingSearchController({
       selectSearchLanguage,
       resetSearchLanguageToDefault,
       clearSearchLanguages,
-      closeAndKeepQuery,
     }),
     [
       open,
@@ -831,7 +826,6 @@ export function FloatingSearchController({
       selectSearchLanguage,
       resetSearchLanguageToDefault,
       clearSearchLanguages,
-      closeAndKeepQuery,
     ],
   )
 

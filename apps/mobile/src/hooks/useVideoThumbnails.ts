@@ -3,7 +3,10 @@ import { getGraphQLUrl } from "../lib/config"
 import { pickThumbnailUrl, type VideoImage } from "../lib/types"
 import type { AdminBlock, WatchExperience } from "../lib/queries"
 
-export type ThumbnailMap = Map<string, string>
+// videoId → its resolvable card thumbnail and localized title. Both nullable:
+// a video may resolve one without the other (missing images or empty locale).
+export type VideoMeta = { thumbnail: string | null; title: string | null }
+export type VideoMetaMap = Map<string, VideoMeta>
 
 const FETCH_TIMEOUT_MS = 15_000
 const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
@@ -48,10 +51,12 @@ function collectVideoIds(experience: WatchExperience | null): string[] {
 
 function buildBatchQuery(videoIds: string[]): string {
   const safeIds = videoIds.filter((id) => SAFE_ID_RE.test(id))
+  // Hardcoded en locale (app-wide convention); flat MediaCollection items carry
+  // no title, so the card resolves it from the linked video's localized title.
   const fields = safeIds
     .map(
       (id, i) =>
-        `v${i}: video(id: "${id}") { id images { mobileCinematicHigh videoStill url } }`,
+        `v${i}: video(id: "${id}") { id images { mobileCinematicHigh videoStill url } locales(locale: "en") { title } }`,
     )
     .join("\n    ")
   return `{\n    ${fields}\n  }`
@@ -59,13 +64,13 @@ function buildBatchQuery(videoIds: string[]): string {
 
 export function useVideoThumbnails(
   experience: WatchExperience | null,
-): ThumbnailMap {
+): VideoMetaMap {
   const videoIds = useMemo(() => collectVideoIds(experience), [experience])
-  const [thumbnails, setThumbnails] = useState<ThumbnailMap>(new Map())
+  const [meta, setMeta] = useState<VideoMetaMap>(new Map())
 
   useEffect(() => {
     if (videoIds.length === 0) {
-      setThumbnails(new Map())
+      setMeta(new Map())
       return
     }
 
@@ -85,17 +90,23 @@ export function useVideoThumbnails(
         const json = await response.json()
         if (controller.signal.aborted || !json.data) return
 
-        const map = new Map<string, string>()
+        const map: VideoMetaMap = new Map()
         for (let i = 0; i < videoIds.length; i++) {
           const videoData = json.data[`v${i}`] as {
             id?: string
             images?: VideoImage[]
+            locales?: { title?: string | null }[] | null
           } | null
-          if (!videoData?.images) continue
-          const thumb = pickThumbnailUrl(videoData.images)
-          if (thumb && videoData.id) map.set(videoData.id, thumb)
+          if (!videoData?.id) continue
+          const thumb = videoData.images
+            ? pickThumbnailUrl(videoData.images)
+            : null
+          const title = videoData.locales?.[0]?.title?.trim() || null
+          if (thumb || title) {
+            map.set(videoData.id, { thumbnail: thumb ?? null, title })
+          }
         }
-        if (!controller.signal.aborted) setThumbnails(map)
+        if (!controller.signal.aborted) setMeta(map)
       } catch {
         if (__DEV__) console.warn("[useVideoThumbnails] fetch failed")
       } finally {
@@ -110,5 +121,5 @@ export function useVideoThumbnails(
     }
   }, [videoIds])
 
-  return thumbnails
+  return meta
 }

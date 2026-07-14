@@ -6,7 +6,10 @@ import { LinearGradient } from "expo-linear-gradient"
 import type { VideoBlockModel } from "../../lib/normalizer"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { scale } from "../../lib/scale"
-import { extractMuxPlaybackId } from "../../lib/muxUrl"
+import {
+  extractMuxPlaybackId,
+  EXPERIENCE_CARD_PREVIEW_OPTS,
+} from "../../lib/muxUrl"
 import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
 import { useHoverPreview } from "../focus/useHoverPreview"
@@ -57,6 +60,9 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     focused,
     enabled: true,
     playbackId: extractMuxPlaybackId(sectionStreamingUrl),
+    // This inline card is far larger than a rail thumb — request Mux's max-quality
+    // animated preview (accepts a cold ~5s transcode); rails keep the warm default.
+    previewOpts: EXPERIENCE_CARD_PREVIEW_OPTS,
   })
 
   // ── Sizing: 65% of screen width, capped to parent container ──

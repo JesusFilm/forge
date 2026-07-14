@@ -269,7 +269,7 @@ flowchart TB
 - **Requirements:** R1 through R10.
 - **Dependencies:** U1, U2.
 - **Files:**
-  - `docs/roadmap/platform/feat-250-watch-global-beta-tester-modal.md`
+  - `docs/roadmap/platform/feat-252-watch-global-beta-tester-modal.md`
   - `docs/roadmap/README.md`
 - **Approach:** Run focused tests, typecheck, lint, formatting/diff checks, and
   the web build. Smoke `/watch`, a representative video route, and
@@ -280,7 +280,7 @@ flowchart TB
   production build contains a distinct modal chunk and a cold page does not
   request or preload it until activation. Compare repeatable before/after cold
   runs on the same route and viewport for initial transferred JavaScript,
-  request count, long tasks, and LCP/load timing. The feat-250 roadmap ticket is
+  request count, long tasks, and LCP/load timing. The feat-252 roadmap ticket is
   already created and `in-progress`; mark it complete and regenerate the roadmap
   index only after the proof is green.
 - **Patterns to follow:**
@@ -303,7 +303,7 @@ flowchart TB
   - Before/after cold runs report initial transferred JavaScript, request
     count, long tasks, and LCP/load timing on the same route and viewport.
 - **Verification:** Automated gates are green, screenshots/resource evidence
-  are captured, and feat-250 plus the generated roadmap index are complete.
+  are captured, and feat-252 plus the generated roadmap index are complete.
 
 ---
 
