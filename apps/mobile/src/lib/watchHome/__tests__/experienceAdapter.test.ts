@@ -77,6 +77,45 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     ])
   })
 
+  it("renders portrait when every item has a poster override, even for a carousel", () => {
+    // Curated vertical posters (e.g. admin media-asset previews) would crop in a
+    // 16:9 landscape card, so a full-override rail goes portrait regardless of variant.
+    const [posterRail] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "carousel",
+        items: [
+          {
+            videoId: "a",
+            videoSlug: "jesus",
+            imageOverrideUrl: "https://admin/x/preview",
+          },
+          {
+            videoId: "b",
+            videoSlug: "lumo",
+            imageOverrideUrl: "https://admin/y/preview",
+          },
+        ],
+      }),
+    ])
+    expect(posterRail.orientation).toBe("vertical")
+
+    // A mixed rail (some items lack an override) stays landscape.
+    const [mixed] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "carousel",
+        items: [
+          {
+            videoId: "a",
+            videoSlug: "jesus",
+            imageOverrideUrl: "https://admin/x/preview",
+          },
+          { videoId: "b", videoSlug: "lumo", imageOverrideUrl: null },
+        ],
+      }),
+    ])
+    expect(mixed.orientation).toBe("horizontal")
+  })
+
   it("skips a non-collection block and warns in dev (AE4, R5)", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
     const sections = buildWatchHomeSectionsFromExperience([

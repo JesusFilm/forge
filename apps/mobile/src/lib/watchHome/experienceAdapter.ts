@@ -40,6 +40,21 @@ function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
+// A rail whose every item carries a poster override renders PORTRAIT regardless
+// of the authored variant: those overrides are vertical posters (curated art),
+// so a 16:9 landscape card would crop them. Cinematic rails (no override) stay
+// landscape.
+function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
+  return (
+    items.length > 0 &&
+    items.every(
+      (it) =>
+        typeof it.imageOverrideUrl === "string" &&
+        it.imageOverrideUrl.trim() !== "",
+    )
+  )
+}
+
 function itemToCard(
   item: ExperienceItem,
   sourceId: string,
@@ -109,7 +124,7 @@ function blockToSection(
     title: blockTitle || categoryLabel,
     description: (b.subtitle as string | null) ?? null,
     layout,
-    orientation,
+    orientation: isPortraitPosterRail(rawItems) ? "vertical" : orientation,
     showSequenceNumbers: (b.showItemNumbers as boolean | null) ?? false,
     cards,
   }
