@@ -39,4 +39,23 @@ describe("authHeadersForOperation", () => {
     expect(authHeadersForOperation("Search", undefined)).toEqual({})
     expect(authHeadersForOperation("Search", "")).toEqual({})
   })
+
+  it("adds x-viewer-id on the Search op alongside the bearer", () => {
+    expect(authHeadersForOperation("Search", "abc123", "device-1")).toEqual({
+      Authorization: "Bearer abc123",
+      "x-viewer-id": "device-1",
+    })
+  })
+
+  it("sends x-viewer-id on Search even with no token (ready for provisioning)", () => {
+    expect(authHeadersForOperation("Search", undefined, "device-1")).toEqual({
+      "x-viewer-id": "device-1",
+    })
+  })
+
+  it("never sends x-viewer-id on a public operation", () => {
+    expect(
+      authHeadersForOperation("GetVideoBySlug", "abc123", "device-1"),
+    ).toEqual({})
+  })
 })

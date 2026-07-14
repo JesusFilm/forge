@@ -1764,6 +1764,14 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
     expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
 
+    const firstInput = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement
+    act(() => {
+      setInputValue(firstInput, "jesus")
+    })
+    expect(firstInput.value).toBe("jesus")
+
     const close = document.querySelector(
       '[data-testid="floating-header-search-close"]',
     ) as HTMLButtonElement | null
@@ -1777,10 +1785,69 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       await Promise.resolve()
     })
 
+    const reopenedInput = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement | null
+    expect(reopenedInput?.value).toBe("")
     expect(
-      document.querySelector('input[aria-label="Search videos by keyword"]'),
+      document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ),
     ).not.toBeNull()
     expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
+  })
+
+  it("resets the search field when Escape closes the modal", async () => {
+    const input = await openSearchOverlay()
+    act(() => {
+      setInputValue(input, "jesus")
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 220))
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    const reopenedInput = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement | null
+    expect(reopenedInput?.value).toBe("")
+  })
+
+  it("ignores an in-flight search response after the modal closes", async () => {
+    vi.useFakeTimers()
+    const delayedSearch = deferred<SearchActionResult>()
+    mockedRunSearch.mockReturnValueOnce(delayedSearch.promise)
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "jesus")
+
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      close.click()
+      await Promise.resolve()
+    })
+    expect(input.value).toBe("")
+
+    await act(async () => {
+      delayedSearch.resolve(
+        makeSearchResponse([makeSearchResult("late", "Late Result")], false),
+      )
+      await delayedSearch.promise
+      await Promise.resolve()
+      vi.advanceTimersByTime(220)
+    })
+
+    expect(document.body.textContent).not.toContain("Late Result")
   })
 
   it("ignores direct query URLs on initial render", async () => {
@@ -2112,11 +2179,14 @@ describe("FloatingSearchProvider — search pagination", () => {
       mockedRunSearch.mock.calls[0]?.[0].analytics?.searchRequestId
 
     expect(link).not.toBeUndefined()
-    act(() => {
+    await act(async () => {
       link?.dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       )
+      await Promise.resolve()
     })
+
+    expect(input.value).toBe("")
 
     expect(reportDatadogRumAction).toHaveBeenCalledWith(
       WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,

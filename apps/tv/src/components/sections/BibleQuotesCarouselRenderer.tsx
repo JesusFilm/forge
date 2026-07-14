@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { BibleQuotesCarouselBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
@@ -11,6 +11,8 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
 import { LinkModal } from "../LinkModal"
+import { SecondaryPill } from "../watch/DetailsActionRow"
+import { NEAR_BLACK } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -25,10 +27,11 @@ const LEFT_ALIGN_THRESHOLD = 4
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+// Wire quotes carry no id (detailsAdapters' synthetic ones do).
 type QuoteItem = {
-  id: string
-  reference: string
-  text: string
+  id?: string
+  reference: string | null
+  text: string | null
   attribution?: string | null
   imageUrl?: string | null
   backgroundColor?: string | null
@@ -37,7 +40,7 @@ type QuoteItem = {
 }
 
 export interface BibleQuotesCarouselRendererProps {
-  section: NormalizedBlock
+  section: BibleQuotesCarouselBlockModel
 }
 
 // ── QuoteCard ────────────────────────────────────────────────────────────────
@@ -54,14 +57,17 @@ function QuoteCard({
   focusAnchor: "center" | "left"
 }) {
   const imageSource = resolveImageUrl(quote.imageUrl ?? null)
-  const bgColor = quote.backgroundColor ?? "#292524"
+  // WATCH cards sit on a near-black surface (mirrors HomeCard), not warm stone.
+  // A CMS-supplied color still wins; NEAR_BLACK is a hex so the scrim gradient's
+  // hexToRgba(bgColor, 0) fade stays valid.
+  const bgColor = quote.backgroundColor ?? NEAR_BLACK
 
   return (
     <FocusableCard
       onPress={onPress}
       focusAnchor={focusAnchor}
       style={{ ...styles.card, backgroundColor: bgColor }}
-      accessibilityLabel={`${quote.reference}: ${quote.text}`}
+      accessibilityLabel={`${quote.reference ?? ""}: ${quote.text ?? ""}`}
     >
       {imageSource != null && (
         <Image
@@ -69,7 +75,7 @@ function QuoteCard({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           contentPosition="center"
-          recyclingKey={`bqc-${quote.id}`}
+          recyclingKey={`bqc-${quote.id ?? quote.reference ?? "quote"}`}
         />
       )}
       <View style={styles.cardContent}>
@@ -85,14 +91,18 @@ function QuoteCard({
           </Text>
         )}
         <Text style={styles.reference} numberOfLines={1}>
-          {quote.reference.toUpperCase()}
+          {(quote.reference ?? "").toUpperCase()}
         </Text>
         <Text style={styles.quoteText} numberOfLines={6}>
           {quote.text}
         </Text>
         {ctaLabel != null && (
-          <View style={styles.ctaButton}>
-            <Text style={styles.ctaText}>{ctaLabel}</Text>
+          <View style={styles.ctaPillWrap}>
+            <SecondaryPill
+              icon="arrow-forward-outline"
+              label={ctaLabel}
+              onPress={onPress}
+            />
           </View>
         )}
       </View>
@@ -105,8 +115,8 @@ function QuoteCard({
 export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
-  const heading = section.bqcHeading as string | null
-  const quotes = (section.quotes as QuoteItem[] | undefined) ?? []
+  const heading = section.bqcHeading
+  const quotes: QuoteItem[] = section.quotes ?? []
   const [selectedCtaUrl, setSelectedCtaUrl] = useState<string | null>(null)
   // 4+ cards overflow the canvas → the rail left-aligns (listContentLeftAligned).
   // Cards still scale from center: left-anchoring the first card grew it rightward
@@ -138,7 +148,8 @@ export function BibleQuotesCarouselRenderer({
   }, [])
 
   const keyExtractor = useCallback(
-    (item: QuoteItem, index: number) => `bqc-${item.id}-${index}`,
+    (item: QuoteItem, index: number) =>
+      `bqc-${item.id ?? item.reference ?? "quote"}-${index}`,
     [],
   )
 
@@ -251,18 +262,10 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     lineHeight: Math.round(scale(37)),
   },
-  ctaButton: {
+  // Hug the SecondaryPill to its content width (left-aligned) instead of
+  // stretching it across the card's text column.
+  ctaPillWrap: {
     marginTop: scale(12),
     alignSelf: "flex-start",
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  ctaText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(14)),
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.9)",
   },
 })

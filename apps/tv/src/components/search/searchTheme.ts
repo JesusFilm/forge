@@ -2,6 +2,7 @@
 // deliberately diverges from Crimson Gallery (near-black, white-fill focus) and
 // is scoped here — rest of the app keeps COLORS. Solid bg, not blur (no TV blur).
 
+import { FOCUS_RING_COLOR } from "../focus/focusVisual"
 import { NEAR_BLACK } from "../watch/watchDetailTheme"
 
 export const SEARCH_THEME = {
@@ -24,8 +25,8 @@ export const SEARCH_THEME = {
   chipBg: "rgba(0,0,0,0.6)",
   /** 1px resting outline on result thumbs. */
   thumbBorder: "rgba(255,255,255,0.07)",
-  /** Focused-card ring (design: 0 0 0 5px rgba(255,255,255,.88)). */
-  ring: "rgba(255,255,255,0.88)",
+  /** Focused-card ring — the app-wide white ring (design asked .88; unified at .9). */
+  ring: FOCUS_RING_COLOR,
 } as const
 
 /**

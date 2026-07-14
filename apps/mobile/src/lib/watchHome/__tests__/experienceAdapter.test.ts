@@ -77,6 +77,45 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     ])
   })
 
+  it("renders portrait when every item has a poster override, even for a carousel", () => {
+    // Curated vertical posters (e.g. admin media-asset previews) would crop in a
+    // 16:9 landscape card, so a full-override rail goes portrait regardless of variant.
+    const [posterRail] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "carousel",
+        items: [
+          {
+            videoId: "a",
+            videoSlug: "jesus",
+            imageOverrideUrl: "https://admin/x/preview",
+          },
+          {
+            videoId: "b",
+            videoSlug: "lumo",
+            imageOverrideUrl: "https://admin/y/preview",
+          },
+        ],
+      }),
+    ])
+    expect(posterRail.orientation).toBe("vertical")
+
+    // A mixed rail (some items lack an override) stays landscape.
+    const [mixed] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "carousel",
+        items: [
+          {
+            videoId: "a",
+            videoSlug: "jesus",
+            imageOverrideUrl: "https://admin/x/preview",
+          },
+          { videoId: "b", videoSlug: "lumo", imageOverrideUrl: null },
+        ],
+      }),
+    ])
+    expect(mixed.orientation).toBe("horizontal")
+  })
+
   it("skips a non-collection block and warns in dev (AE4, R5)", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
     const sections = buildWatchHomeSectionsFromExperience([
@@ -189,6 +228,35 @@ describe("buildWatchHomeSectionsFromExperience", () => {
 
     // collectionSize is a free-text String, never coerced to a numeric badge.
     expect(typeof withSize.cards[0].metaLabel).toBe("string")
+  })
+
+  it("rewrites a jesusfilm.org /images seed override; passes admin URLs through", () => {
+    const [section] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        items: [
+          {
+            videoSlug: "seed",
+            titleOverride: "Seed",
+            imageOverrideUrl:
+              "https://www.jesusfilm.org/images/thumbnails/1-vertical.png",
+          },
+          {
+            videoSlug: "admin",
+            titleOverride: "Admin",
+            imageOverrideUrl:
+              "https://admin.jesusfilm.org/api/public/media-assets/x/preview",
+          },
+        ],
+      }),
+    ])
+    // Seed rewritten to the watch origin (matches the SDUI card path); the admin
+    // preview URL (today's real home data) passes through unchanged.
+    expect(section.cards[0].imageUrl).toBe(
+      "https://watch.jesusfilm.org/watch/images/thumbnails/1-vertical.png",
+    )
+    expect(section.cards[1].imageUrl).toBe(
+      "https://admin.jesusfilm.org/api/public/media-assets/x/preview",
+    )
   })
 
   it("prefers imageOverrideUrl over imageUrl; title never blank (R3)", () => {

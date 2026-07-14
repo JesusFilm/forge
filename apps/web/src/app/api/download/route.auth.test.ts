@@ -127,6 +127,95 @@ describe("GET /watch/api/download - account gate", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("streams allowlisted inline VTT subtitles without an auth cookie", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe(
+        "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      )
+      return new Response("WEBVTT\n\n", {
+        status: 200,
+        headers: { "content-type": "Text/VTT; charset=utf-8" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest({
+        disposition: "inline",
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-disposition")).toContain("inline;")
+    expect(response.headers.get("content-type")).toBe("Text/VTT; charset=utf-8")
+    expect(await response.text()).toBe("WEBVTT\n\n")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects a non-VTT response on the anonymous subtitle path", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("video-bytes", {
+          status: 200,
+          headers: { "content-type": "video/mp4" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const consoleErrorMock = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest({
+        disposition: "inline",
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      }),
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toEqual({
+      error: "Upstream subtitle response was not VTT",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(consoleErrorMock).toHaveBeenCalledWith(
+      "[api/download] rejected non-VTT anonymous response",
+      expect.objectContaining({ contentType: "video/mp4" }),
+    )
+  })
+
+  it.each([
+    {
+      name: "inline video",
+      query: {
+        disposition: "inline",
+        url: "https://stream.mux.com/example.mp4",
+      },
+    },
+    {
+      name: "subtitle attachment",
+      query: {
+        disposition: "attachment",
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      },
+    },
+  ])(
+    "keeps anonymous $name requests behind the account gate",
+    async ({ query }) => {
+      const fetchMock = vi.fn(async () => new Response("should not happen"))
+      vi.stubGlobal("fetch", fetchMock)
+
+      const { GET } = await importRoute()
+      const response = await GET(makeRequest(query))
+
+      expect(response.status).toBe(401)
+      expect(dns.resolve4).not.toHaveBeenCalled()
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("resolves signed-in downloads by opaque IDs instead of requiring the browser to send a CDN URL", async () => {
     queryMock.mockResolvedValueOnce({
       data: adminVideoDub(),

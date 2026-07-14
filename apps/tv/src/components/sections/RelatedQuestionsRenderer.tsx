@@ -16,13 +16,13 @@ import {
   ASK_BIBLE_QUESTION_URL,
   CHAT_WITH_PERSON_URL,
 } from "../../lib/bibleContent"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { COLORS } from "../../lib/colors"
+import type { RelatedQuestionsBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { FOCUS_RING_COLOR, FOCUS_RING_WIDTH } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { LinkModal } from "../LinkModal"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 
@@ -37,9 +37,9 @@ if (
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+// Wire shape (no id is fetched; rows key on their index).
 type QuestionItem = {
-  id: string
-  question: string
+  question: string | null
   /** Nullable in admin's schema (RelatedQuestionItem.answer: String). */
   answer: string | null
 }
@@ -74,7 +74,9 @@ function FallbackPill({
   // Standardized invert-on-focus pill (matches DetailsActionRow's SecondaryPill):
   // dark glass + white ink at rest -> white fill + near-black ink/icon on focus.
   // No crimson glow — the old FocusableCard focusRing="crimson" exception is gone.
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   const fillStyle = useMemo(
     () => ({
       backgroundColor: progress.interpolate({
@@ -85,9 +87,9 @@ function FallbackPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   const ink = useMemo(
     () =>
@@ -154,7 +156,8 @@ function QuestionRow({
   inset: number
   onOpenLink: (url: string) => void
 }) {
-  const [isFocused, setIsFocused] = useState(false)
+  // Shared focus engine ("row" role): ring only, no motion.
+  const { focused: isFocused, setFocused: setIsFocused } = useFocusVisual("row")
   // Null-safe: admin's RelatedQuestionItem.answer is a nullable String and the
   // SDUI cast hides it — a null answer must fall back, not crash the screen
   // (mobile's renderer guards the same way).
@@ -168,7 +171,7 @@ function QuestionRow({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         accessibilityRole="button"
-        accessibilityLabel={item.question}
+        accessibilityLabel={item.question ?? undefined}
         accessibilityState={{ expanded: isExpanded }}
       >
         <Text style={styles.questionText} numberOfLines={3}>
@@ -196,22 +199,22 @@ export function RelatedQuestionsRenderer({
   section,
   inset = scale(80),
 }: {
-  section: NormalizedBlock
+  section: RelatedQuestionsBlockModel
   /**
    * Horizontal screen gutter; defaults to the SDUI full-bleed gutter (scale(80)).
    * The watch page passes 0 when the section sits in an already-padded column.
    */
   inset?: number
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [linkUrl, setLinkUrl] = useState<string | null>(null)
 
-  const heading = section.rqHeading as string | null
-  const questions = (section.questions as QuestionItem[] | undefined) ?? []
+  const heading = section.rqHeading
+  const questions: QuestionItem[] = section.questions ?? []
 
-  const handleToggle = useCallback((id: string) => {
+  const handleToggle = useCallback((index: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setExpandedId((prev) => (prev === id ? null : id))
+    setExpandedIndex((prev) => (prev === index ? null : index))
   }, [])
 
   if (questions.length === 0) {
@@ -240,10 +243,10 @@ export function RelatedQuestionsRenderer({
       )}
       {questions.map((item, index) => (
         <QuestionRow
-          key={`rq-${item.id}-${index}`}
+          key={`rq-${index}`}
           item={item}
-          isExpanded={expandedId === item.id}
-          onToggle={() => handleToggle(item.id)}
+          isExpanded={expandedIndex === index}
+          onToggle={() => handleToggle(index)}
           inset={inset}
           onOpenLink={setLinkUrl}
         />
@@ -295,21 +298,21 @@ const styles = StyleSheet.create({
     left: -RING_OUTSET_H,
     right: -RING_OUTSET_H,
     borderRadius: scale(12),
-    borderWidth: scale(5),
-    borderColor: "rgba(255,255,255,0.9)",
+    borderWidth: FOCUS_RING_WIDTH,
+    borderColor: FOCUS_RING_COLOR,
   },
   questionText: {
     flex: 1,
     fontFamily: "System",
     fontSize: scale(22),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     marginRight: scale(12),
   },
   chevron: {
     fontFamily: "System",
     fontSize: scale(24),
-    color: COLORS.muted,
+    color: WATCH_THEME.text50,
   },
   fallbackContainer: {
     paddingTop: EXPANDED_TOP_GAP,
@@ -319,7 +322,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: Math.round(scale(20)),
     lineHeight: Math.round(scale(28)),
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     marginBottom: scale(16),
   },
   fallbackButtonRow: {
@@ -349,7 +352,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(20),
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text82,
     lineHeight: scale(30),
     marginTop: EXPANDED_TOP_GAP,
     paddingBottom: scale(20),

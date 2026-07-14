@@ -130,6 +130,18 @@ describe("buildChatAuthorizeUrl", () => {
       "https://chat.example.com/api/auth/callback",
     )
     expect(url.searchParams.get("client_id")).toBe("chat-client")
+    // No prompt unless the force-login marker asks for one (feat-240).
+    expect(url.searchParams.has("prompt")).toBe(false)
+  })
+
+  it("adds prompt=login when passed (feat-240 force-login marker)", () => {
+    const url = buildChatAuthorizeUrl({
+      config,
+      state: "state-abc",
+      codeChallenge: "challenge-xyz",
+      prompt: "login",
+    })
+    expect(url.searchParams.get("prompt")).toBe("login")
   })
 
   it("resolves the authorize endpoint against the issuer ORIGIN via new URL()", () => {

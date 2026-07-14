@@ -1,145 +1,41 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react"
-import userEvent, { type UserEvent } from "@testing-library/user-event"
+import { act, fireEvent, render, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { buildStubReply, STUB_REPLY_DELAY_MS } from "@/lib/chat-stub"
 import { deriveTitle } from "@/lib/conversations"
-import { encodeSseFrame } from "@/lib/sse"
 
 import { AppShell } from "./app-shell"
 
-let user: UserEvent
-let view: ReturnType<typeof render>
-let container: HTMLElement
-
-// Render the shell with a given flag value and capture the view/container. The
-// outer beforeEach renders flag-off (the stub path); Seeker-path tests unmount
-// that and re-render flag-on after stubbing fetch.
-function renderShell(seekerEnabled = false) {
-  view = render(<AppShell seekerEnabled={seekerEnabled} />)
-  container = view.container
-}
+import {
+  awaitReply,
+  clickNewConversation,
+  container,
+  getConversationNav,
+  getLog,
+  getSendButton,
+  getTextarea,
+  isPending,
+  jsonRes,
+  messageTexts,
+  renderSeeker,
+  renderShell,
+  seekerCallBodies,
+  selectSidebarConversation,
+  sendMessage,
+  setupShellTest,
+  sidebarReplyingCount,
+  teardownShellTest,
+  user,
+  view,
+} from "./app-shell-test-harness"
 
 beforeEach(() => {
-  // shouldAdvanceTime lets user-event's awaited interactions resolve AND lets
-  // real microtasks flow, so the promise-driven streaming seam settles under the
-  // fake clock (the stub path's 800ms timer is jumped by awaitReply). cleanup()
-  // (vitest.setup.ts) unmounts after each test.
-  vi.useFakeTimers({ shouldAdvanceTime: true })
-  user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderShell(false)
+  setupShellTest()
 })
 
 afterEach(() => {
-  vi.useRealTimers()
-  vi.unstubAllGlobals()
+  teardownShellTest()
 })
-
-function getTextarea(): HTMLTextAreaElement {
-  return screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" })
-}
-
-function getSendButton(): HTMLButtonElement {
-  return screen.getByRole<HTMLButtonElement>("button", { name: "Send" })
-}
-
-function getLog(): HTMLElement {
-  return screen.getByRole("log", { name: "Conversation" })
-}
-
-function getConversationNav(): HTMLElement {
-  return screen.getByRole("navigation", { name: "Conversations" })
-}
-
-// Read only the answer text of each turn (the [data-message-content] node), so
-// the engine marker / grounded badge / sources metadata never leak into counts.
-function messageTexts(): string[] {
-  return Array.from(getLog().querySelectorAll("[data-message-content]")).map(
-    (el) => el.textContent ?? "",
-  )
-}
-
-function isPending(): boolean {
-  return getLog().querySelector("[data-pending]") !== null
-}
-
-function getNewConversationAction(): HTMLButtonElement {
-  const nav = getConversationNav()
-  const action = screen
-    .getAllByRole("button", { name: "New conversation" })
-    .find((b) => !nav.contains(b))
-  if (!action) throw new Error("New conversation action button not found")
-  return action as HTMLButtonElement
-}
-
-function sidebarReplyingCount(): number {
-  return getConversationNav().querySelectorAll("[data-replying]").length
-}
-
-async function sendMessage(text: string) {
-  await user.type(getTextarea(), text)
-  await user.click(getSendButton())
-}
-
-// Jump the stub reply's 800ms timer AND flush the microtasks the streaming seam
-// resolves on (the reply now lands via an awaited promise, not a sync callback).
-async function awaitReply() {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(STUB_REPLY_DELAY_MS)
-  })
-}
-
-async function clickNewConversation() {
-  await user.click(getNewConversationAction())
-}
-
-async function selectSidebarConversation(title: string) {
-  await user.click(
-    within(getConversationNav()).getByRole("button", { name: title }),
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Seeker-path helpers (flag on): a mocked fetch returning an SSE Response.
-// ---------------------------------------------------------------------------
-
-type Frame = { event: string; data: unknown }
-
-function sseResponse(frames: Frame[], init?: ResponseInit): Response {
-  const encoder = new TextEncoder()
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const f of frames) {
-        controller.enqueue(encoder.encode(encodeSseFrame(f.event, f.data)))
-      }
-      controller.close()
-    },
-  })
-  return new Response(body, { status: 200, ...init })
-}
-
-// Stub global fetch (the hook calls streamReply with no fetchImpl → global
-// fetch), render flag-on, and return the mock. `framesFor` is called per request
-// so each turn gets a fresh, un-consumed stream.
-function renderSeeker(framesFor: () => Frame[] | { reject: true } = () => []) {
-  view.unmount()
-  const fetchMock = vi.fn().mockImplementation(() => {
-    const out = framesFor()
-    if (!Array.isArray(out) && out.reject)
-      return Promise.reject(new Error("down"))
-    return Promise.resolve(sseResponse(out as Frame[]))
-  })
-  vi.stubGlobal("fetch", fetchMock)
-  renderShell(true)
-  return fetchMock
-}
 
 describe("AppShell — reply lifecycle (stub path, flag off)", () => {
   it("renders the empty-state prompt and stub note when no messages exist", () => {
@@ -409,10 +305,9 @@ describe("Seeker wiring (flag on)", () => {
     await sendMessage("second turn")
     await waitFor(() => expect(isPending()).toBe(false))
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    const firstBody = JSON.parse(fetchMock.mock.calls[0][1].body)
-    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body)
-    expect(firstBody.conversationId).toBe(secondBody.conversationId)
+    const bodies = seekerCallBodies(fetchMock)
+    expect(bodies).toHaveLength(2)
+    expect(bodies[0].conversationId).toBe(bodies[1].conversationId)
   })
 
   // AE4
@@ -519,9 +414,13 @@ describe("Seeker wiring (flag on)", () => {
   it("aborts the in-flight Seeker stream on unmount without state-update warnings", async () => {
     const errorSpy = vi.spyOn(console, "error")
     let fetchSignal: AbortSignal | undefined
-    // A stream that stays open and idle, erroring its body on abort (mirroring
-    // real fetch) so the unmount-driven abort is what unwinds it.
-    const fetchMock = vi.fn().mockImplementation((_url, init) => {
+    // A stream that stays open, erroring its body on abort (like real fetch).
+    // The flag-on mount also fires a hydration fetch — answer it with an empty
+    // page so only the /api/seeker call carries the hanging stream.
+    const fetchMock = vi.fn().mockImplementation((url, init) => {
+      if (String(url) === "/api/history/list") {
+        return Promise.resolve(jsonRes(200, { threads: [], hasMore: false }))
+      }
       fetchSignal = (init as { signal?: AbortSignal }).signal
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -541,7 +440,11 @@ describe("Seeker wiring (flag on)", () => {
     renderShell(true)
 
     await sendMessage("unmount mid-stream")
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter((c) => String(c[0]) === "/api/seeker"),
+      ).toHaveLength(1),
+    )
     view.unmount()
 
     // Unmount aborts the in-flight fetch (resource cleanup) and the post-abort

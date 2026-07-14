@@ -2,19 +2,20 @@ import { useEffect, useRef, useState } from "react"
 
 import { getApolloClient } from "../../lib/apolloClient"
 import { SEMANTIC_SEARCH } from "../../lib/queries"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { pickThumbnailUrl } from "./categoryThumbnail"
 import { CATEGORIES } from "./categories"
 
-// Mirrors apps/mobile useCategoryThumbnails. Module-scope so the six limit:1
-// lookups run once per JS session, not per mount — re-entering Search paints
-// cached art with zero new calls. null = looked up, none found (no retry).
+// Mirrors apps/mobile useCategoryThumbnails. Module-scope so the six lookups run
+// once per JS session, not per mount — re-entering Search paints cached art with
+// zero new calls. null = looked up, none usable (no retry).
 const thumbnailCache = new Map<string, string | null>()
 
 /**
- * Background image source for each browse-topic card: the first search result's
- * artwork for that category's term, fetched once via the same SEMANTIC_SEARCH
- * the card triggers (capped at limit:1). Returns `{ [searchTerm]: url | null }`;
- * a term stays absent while in flight (card shows its gradient until then).
+ * Background image source for each browse-topic card: the first search result
+ * WITH artwork for that category's term (limit:5, scanned by pickThumbnailUrl —
+ * the top hit can be imageless, e.g. "christmas"), fetched once via the same
+ * SEMANTIC_SEARCH the card triggers. Returns `{ [searchTerm]: url | null }`; a
+ * term stays absent while in flight (card shows its gradient until then).
  */
 export function useCategoryThumbnails(): Record<string, string | null> {
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>(
@@ -32,12 +33,10 @@ export function useCategoryThumbnails(): Record<string, string | null> {
         try {
           const response = await client.query({
             query: SEMANTIC_SEARCH,
-            variables: { query: category.searchTerm, locale: "en", limit: 1 },
+            variables: { query: category.searchTerm, locale: "en", limit: 5 },
             fetchPolicy: "cache-first",
           })
-          const url = resolveImageUrl(
-            response.data?.semanticSearch?.results?.[0]?.imageUrl,
-          )
+          const url = pickThumbnailUrl(response.data)
           thumbnailCache.set(category.searchTerm, url)
           if (!mountedRef.current) return
           setThumbnails((prev) => ({ ...prev, [category.searchTerm]: url }))

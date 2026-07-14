@@ -1,6 +1,7 @@
 ---
 title: "Mastra agent.stream({memory}) auto-creates the thread; low-level memory.recall() throws — so forwarding a client id as threadId is safe"
 date: 2026-06-26
+last_updated: 2026-07-14
 category: architecture-patterns
 problem_type: architecture_pattern
 component: assistant
@@ -61,6 +62,35 @@ The thread is created _before_ messages are added or recall runs. So:
 Verified **live** this session: a first turn on a brand-new conversation id
 answered without error; a follow-up referencing it ("when was it first
 released?") correctly recalled the prior turn's subject.
+
+**Consumer-side corollary (feat-241, 2026-07-14; on the unmerged feat-241
+branch as of this writing): the auto-create runs BEFORE generation, so a
+FAILED turn can still have created the thread.** Any client predicate of the
+form "the turn failed ⇒ nothing was persisted server-side" is wrong under
+this contract. In apps/chat, the conversation's server-persisted flag (which
+withholds the stub fallback so an access loss fails visibly instead of
+silently forking — KTD10) initially flipped only on a SUCCESSFUL Seeker
+finalize; a mid-stream failure left the conversation classified as
+never-persisted even though Mastra had already created the thread row. The
+observable client-side proof is **non-empty partial text**: tokens streamed ⇒
+the stream opened through Mastra ⇒ the thread row exists. The fix marks the
+conversation persisted in the send **failure** branch too, whenever
+`seekerEnabled && result.partialText.length > 0` (the `seekerEnabled` guard is
+load-bearing — the stub path also streams `partialText` but creates no Mastra
+thread) (`apps/chat/src/lib/use-conversations.ts:594-605`); regression suite
+"KTD10 predicate — mid-stream-failed turns count as persisted"
+(`apps/chat/src/components/shell/app-shell.history.test.tsx:530`). This rides
+the same undocumented, semver-unprotected timing as the auto-create contract
+above — specifically the create-**before**-generation ordering, which the KTD10
+test does not guard (it asserts the persisted predicate, not the ordering); a
+future Mastra change deferring thread creation until success would falsely mark
+failed turns persisted, which fails visibly rather than silently stub-forking —
+the safe direction, but still worth re-verifying on any bump. Same
+family as the record-before-poll idempotency rule in
+`docs/solutions/architecture-patterns/smart-crop-three-app-decomposition-20260610.md`:
+the server creates external state before the outcome is known — producers
+must record it before waiting; consumers must not infer its absence from a
+failed outcome.
 
 ## Why This Matters
 

@@ -2,7 +2,7 @@
 // gate in playerSwitch.ts); U8 renders one `section`, trapped in the overlay TVFocusGuideView. Dub list VIRTUALIZED (JESUS
 // ~2,259 dubs froze it); rows via panelState.ts (annotateVariantRows/deriveSubtitlePanelState); Close stays focusable so the viewer is never trapped.
 
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
@@ -32,19 +32,11 @@ export function InPlayerMenu({
     activeVariantIndex,
     setActiveVariantIndex,
     activeVariantMediaState,
-    ensureActiveVariantMedia,
     subtitleEnabled,
     setSubtitleEnabled,
     activeSubtitleSlug,
     setActiveSubtitleSlug,
   } = useWatchSession()
-
-  // Lazy-fetch the active dub's media (subtitles) when the subtitle section
-  // mounts — the menu only mounts while open, so this is the "on open"
-  // trigger. The language section doesn't need per-dub media.
-  useEffect(() => {
-    if (section === "subtitles") ensureActiveVariantMedia()
-  }, [section, ensureActiveVariantMedia])
 
   const languageRows = useMemo(
     () => annotateVariantRows(video?.variants ?? [], activeVariantIndex),

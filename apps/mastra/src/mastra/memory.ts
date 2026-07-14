@@ -50,6 +50,8 @@ import { InMemoryStore } from "@mastra/core/storage"
 import { Memory } from "@mastra/memory"
 import { PgVector, PostgresStore } from "@mastra/pg"
 
+import type { MastraModelConfig } from "@mastra/core/llm"
+
 import {
   env,
   getMastraDatabaseUrl,
@@ -112,23 +114,56 @@ export function getAiChatStorage(): PostgresStore {
 }
 
 /**
+ * LLM thread titles (feat-241, KTD12): the model-router string for Mastra's
+ * `generateTitle` — the free Gemma tier the seeker's fallback chain already
+ * uses, as a PLAIN string (a static `@ai-sdk/*` import would trip the Mastra
+ * CLI bundler; `generateTitle: true` would instead burn the paid gateway model
+ * whenever feat-237's flag is on). Titling rides the same `OPENROUTER_API_KEY`
+ * the Gemma chain requires; an absent key degrades to a benign no-op.
+ *
+ * Trust posture, stated plainly: titles send conversation-derived content to a
+ * free-tier third-party model. Accepted for the signed-in dogfood roster;
+ * revisit (first-party gateway titling) when feat-237's gateway flag is on.
+ */
+export const AI_CHAT_TITLE_MODEL = "openrouter/google/gemma-4-26b-a4b-it:free"
+
+/**
  * Build the ai-chat Memory. Backend-aware (feat-208): `memory` → a dedicated
  * `InMemoryStore` (local dev/tests + the production kill-switch), `postgres` →
  * the shared `ai_chat` store. Storage-only — no vector/embedder/semantic
  * recall yet. `getBackend` is an injectable seam (same pattern as
- * seeker-route's `getEnabled`/`getModelKey`) so tests flip backends per-case.
+ * seeker-route's `getEnabled`/`getModelKey`) so tests flip backends per-case;
+ * `titleModel` is the matching seam for title generation so tests can observe
+ * the titling path with a mock model.
+ *
+ * Title generation (feat-241, KTD12): the TOP-LEVEL `generateTitle` option —
+ * NEVER the deprecated `threads.generateTitle` nesting, which throws mid-turn
+ * at the first merged-config read (not at construction). Semantics, verified
+ * against the pinned dist: fire-and-forget AFTER a completed turn (it cannot
+ * delay or fail the turn it rides on); fires only for threads whose stored
+ * title is still empty — `""` is the untitled sentinel (`createThread` stores
+ * `title || ""`) — so a title-model failure leaves `""` and retries on the
+ * next turn, and the first listing after a first turn may legitimately still
+ * show the client's fallback label. Scope: signed-in threads only — the send
+ * route passes a per-call `options: { generateTitle: false }` override for
+ * non-`user:` resources (they are permanently unlistable under R2, so titling
+ * them would waste a model call per junk POST).
  */
 export function buildAiChatMemory({
   getBackend = resolveAiChatMemoryBackend,
+  titleModel = AI_CHAT_TITLE_MODEL,
 }: {
   getBackend?: () => "postgres" | "memory"
+  titleModel?: MastraModelConfig
 } = {}): Memory {
+  const options = { generateTitle: { model: titleModel } }
   if (getBackend() === "memory") {
     return new Memory({
       storage: new InMemoryStore({ id: "ai-chat-memory-storage" }),
+      options,
     })
   }
-  return new Memory({ storage: getAiChatStorage() })
+  return new Memory({ storage: getAiChatStorage(), options })
 }
 
 /**

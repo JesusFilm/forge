@@ -37,16 +37,18 @@
 
 import { isValidServiceBearer } from "../../server/service-bearer"
 import { getOpenRouterApiKey, isSeekerRouteEnabled } from "../../config/env"
-import { TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
+import { settleWithinBudget, TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
 import {
   authorizeAiChatThreadAccess,
+  USER_RESOURCE_PREFIX,
   type AiChatOwnershipMemory,
 } from "../ai-chat-thread-ownership"
 import { getAiChatMemory } from "../memory"
 
 // Narrow structural surface of the seeker agent's streaming API (avoids
 // fighting the generic Agent.stream signature; the runtime contract is
-// textStream + toolResults). `resource` is ALWAYS set — see KTD3.
+// textStream + toolResults). `resource` is ALWAYS set — see KTD3. `options`
+// carries the per-call memory-config override (feat-241: titling scope).
 type SeekerToolResultChunk = {
   payload?: { toolName?: string; result?: unknown }
 }
@@ -60,7 +62,11 @@ type SeekerStreamAgent = {
     opts: {
       maxSteps?: number
       abortSignal?: AbortSignal
-      memory?: { thread: string; resource: string }
+      memory?: {
+        thread: string
+        resource: string
+        options?: { generateTitle?: boolean }
+      }
     },
   ) => Promise<SeekerStreamOutput> | SeekerStreamOutput
 }
@@ -199,37 +205,6 @@ function extractSources(chunks: SeekerToolResultChunk[]): {
   return { sources, grounded: result?.status === "ok" }
 }
 
-/**
- * Resolve `promise`, but reject if `signal` aborts first. Bounds an opaque
- * store call by the turn budget: the ownership gate's `@mastra/pg` queries
- * (feat-208) honor no per-call timeout, and the pinned PostgresStore pool sets
- * no `statement_timeout`/`connectionTimeoutMillis`, so without this a slow (not
- * down) Postgres would hang the SSE stream past the 90s ceiling with no
- * terminal frame. A budget-abort here surfaces through the outer catch as the
- * existing fail-closed `timeout` frame — matching the repo's
- * outbound-timeout-shorter-than-caller-budget rule.
- */
-function settleWithinBudget<T>(
-  promise: Promise<T>,
-  signal: AbortSignal,
-): Promise<T> {
-  if (signal.aborted) return Promise.reject(new Error("budget_aborted"))
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(new Error("budget_aborted"))
-    signal.addEventListener("abort", onAbort, { once: true })
-    promise.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort)
-        resolve(value)
-      },
-      (error) => {
-        signal.removeEventListener("abort", onAbort)
-        reject(error)
-      },
-    )
-  })
-}
-
 export async function handleSeekerRouteRequest({
   authHeader,
   serviceKeys,
@@ -270,13 +245,17 @@ export async function handleSeekerRouteRequest({
   // Memory keying (KTD3): `resource` is ALWAYS set — the runtime guard requires
   // it whenever the agent has memory attached. `resourceId` stays opaque (R8).
   // An absent OR empty-string `resourceId` normalizes to the constant default.
-  const memory = {
-    thread: threadId,
-    resource:
-      resourceId && resourceId.length > 0
-        ? resourceId
-        : SEEKER_DEFAULT_RESOURCE_ID,
-  }
+  const resource =
+    resourceId && resourceId.length > 0
+      ? resourceId
+      : SEEKER_DEFAULT_RESOURCE_ID
+  // Titling scope (feat-241, KTD12): LLM titles are signed-in-only. Anonymous
+  // and dogfood-fallback threads are permanently unlistable (R2), so titling
+  // them would waste a model call per junk POST on the documented open-proxy
+  // accepted risk — the per-call override disables the Memory-level option.
+  const memory = resource.startsWith(USER_RESOURCE_PREFIX)
+    ? { thread: threadId, resource }
+    : { thread: threadId, resource, options: { generateTitle: false } }
 
   // Compose the inbound request signal with the internal turn budget so EITHER
   // a client disconnect or the 90s ceiling aborts the agent run (R9, R10).

@@ -1979,64 +1979,358 @@ export class VideoService {
         )
         return tx.$queryRaw<WatchLanguageInventoryRow[]>`
       WITH inventory_language AS (
-        SELECT id, slug, bcp47, name
+        SELECT id, slug
         FROM language
         WHERE slug = ${language.slug}
           AND deleted_at IS NULL
         LIMIT 1
       ),
-      published_videos AS (
-        SELECT v.*
-        FROM video v
-        WHERE v.deleted_at IS NULL
-          AND v.no_index = FALSE
+      playable_audio AS MATERIALIZED (
+        SELECT DISTINCT ON (dub.video_id)
+          dub.video_id AS "videoId",
+          dub.duration AS "durationSeconds"
+        FROM video_dub dub
+        JOIN inventory_language
+          ON inventory_language.id = dub.language_id
+        LEFT JOIN video_edition edition
+          ON edition.id = dub.video_edition_id
+        WHERE dub.deleted_at IS NULL
+          AND dub.published = TRUE
+          AND dub.hls IS NOT NULL
+          AND dub.hls <> ''
+          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
+        ORDER BY
+          dub.video_id ASC,
+          dub.duration DESC NULLS LAST,
+          dub.updated_at DESC,
+          dub.id ASC
+      ),
+      usable_subtitle AS MATERIALIZED (
+        SELECT DISTINCT
+          subtitle.video_id AS "directVideoId",
+          subtitle.video_edition_id AS "videoEditionId"
+        FROM video_subtitle subtitle
+        JOIN inventory_language
+          ON inventory_language.id = subtitle.language_id
+        JOIN video_edition subtitle_edition
+          ON subtitle_edition.id = subtitle.video_edition_id
+         AND subtitle_edition.deleted_at IS NULL
+        WHERE subtitle.deleted_at IS NULL
+          AND (
+            (subtitle.vtt_src IS NOT NULL AND subtitle.vtt_src <> '')
+            OR (subtitle.srt_src IS NOT NULL AND subtitle.srt_src <> '')
+          )
+      ),
+      usable_subtitle_video AS MATERIALIZED (
+        SELECT "directVideoId" AS "videoId"
+        FROM usable_subtitle
+        WHERE "directVideoId" IS NOT NULL
+        UNION
+        SELECT edition_dub.video_id AS "videoId"
+        FROM usable_subtitle subtitle
+        JOIN video_dub edition_dub
+          ON edition_dub.video_edition_id = subtitle."videoEditionId"
+      ),
+      candidate_video_source AS (
+        SELECT
+          "videoId",
+          TRUE AS "hasAudio",
+          FALSE AS "hasSubtitle"
+        FROM playable_audio
+        UNION ALL
+        SELECT
+          "videoId",
+          FALSE AS "hasAudio",
+          TRUE AS "hasSubtitle"
+        FROM usable_subtitle_video
+      ),
+      candidate_video_id AS MATERIALIZED (
+        SELECT
+          "videoId",
+          BOOL_OR("hasAudio") AS "hasAudio",
+          BOOL_OR("hasSubtitle") AS "hasSubtitle"
+        FROM candidate_video_source
+        GROUP BY "videoId"
+      ),
+      eligible_candidate_video AS MATERIALIZED (
+        SELECT
+          video.id,
+          video.core_id AS "coreId",
+          video.slug,
+          video.label::text AS label,
+          video.primary_language_id AS "primaryLanguageId",
+          candidate."hasAudio",
+          candidate."hasSubtitle",
+          video.published_at AS "publishedAt",
+          video.created_at AS "createdAt",
+          video.updated_at AS "updatedAt"
+        FROM candidate_video_id candidate
+        JOIN video
+          ON video.id = candidate."videoId"
+        WHERE video.deleted_at IS NULL
+          AND video.no_index = FALSE
           AND EXISTS (
             SELECT 1
             FROM video_locale published_locale
-            WHERE published_locale.video_id = v.id
+            WHERE published_locale.video_id = video.id
               AND published_locale.deleted_at IS NULL
               AND published_locale.status = 'published'
           )
       ),
-      selected_locale AS (
-        SELECT DISTINCT ON (locale.video_id)
-          locale.video_id,
-          locale.title,
-          locale.description,
-          locale.snippet,
-          locale.image_alt
-        FROM video_locale locale
-        JOIN published_videos published_video
-          ON published_video.id = locale.video_id
-        LEFT JOIN inventory_language
-          ON TRUE
-        WHERE locale.deleted_at IS NULL
-          AND locale.status = 'published'
-        ORDER BY
-          locale.video_id ASC,
-          CASE
-            WHEN locale.language_id = inventory_language.id THEN 0
-            WHEN locale.language_slug = inventory_language.slug THEN 1
-            WHEN locale.language_slug = 'english' THEN 2
-            WHEN locale.locale = 'en' THEN 3
-            ELSE 4
-          END ASC,
-          locale.updated_at DESC,
-          locale.id ASC
+      audio_collection_candidate AS (
+        SELECT
+          'audio_collection' AS bucket,
+          parent.id,
+          parent.core_id AS "coreId",
+          parent.slug,
+          parent.label::text AS label,
+          parent.primary_language_id AS "primaryLanguageId",
+          NULL::integer AS "durationSeconds",
+          parent.published_at AS "publishedAt",
+          parent.created_at AS "createdAt",
+          parent.updated_at AS "updatedAt",
+          GREATEST(
+            COALESCE(parent.published_at, parent.created_at),
+            COALESCE(parent.updated_at, parent.created_at),
+            parent.created_at,
+            MAX(
+              GREATEST(
+                COALESCE(child."publishedAt", child."createdAt"),
+                COALESCE(child."updatedAt", child."createdAt"),
+                child."createdAt"
+              )
+            )
+          ) AS "sortAt"
+        FROM eligible_candidate_video child
+        JOIN video_relation relation
+          ON relation.child_id = child.id
+        JOIN video parent
+          ON parent.id = relation.parent_id
+        WHERE child."hasAudio" = TRUE
+          AND parent.deleted_at IS NULL
+          AND parent.no_index = FALSE
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = parent.id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
+          )
+        GROUP BY
+          parent.id,
+          parent.core_id,
+          parent.slug,
+          parent.label,
+          parent.primary_language_id,
+          parent.published_at,
+          parent.created_at,
+          parent.updated_at
       ),
-      selected_image AS (
-        SELECT DISTINCT ON (image.video_id)
-          image.video_id,
+      audio_video_candidate AS (
+        SELECT
+          'audio_video' AS bucket,
+          video.id,
+          video."coreId",
+          video.slug,
+          video.label,
+          video."primaryLanguageId",
+          audio."durationSeconds",
+          video."publishedAt",
+          video."createdAt",
+          video."updatedAt",
+          GREATEST(
+            COALESCE(video."publishedAt", video."createdAt"),
+            COALESCE(video."updatedAt", video."createdAt"),
+            video."createdAt"
+          ) AS "sortAt"
+        FROM eligible_candidate_video video
+        JOIN playable_audio audio
+          ON audio."videoId" = video.id
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM video_relation child_relation
+          WHERE child_relation.parent_id = video.id
+        )
+      ),
+      subtitle_video_candidate AS (
+        SELECT
+          'subtitle_video' AS bucket,
+          video.id,
+          video."coreId",
+          video.slug,
+          video.label,
+          video."primaryLanguageId",
+          NULL::integer AS "durationSeconds",
+          video."publishedAt",
+          video."createdAt",
+          video."updatedAt",
+          GREATEST(
+            COALESCE(video."publishedAt", video."createdAt"),
+            COALESCE(video."updatedAt", video."createdAt"),
+            video."createdAt"
+          ) AS "sortAt"
+        FROM eligible_candidate_video video
+        WHERE video."hasSubtitle" = TRUE
+          AND video."hasAudio" = FALSE
+          AND NOT EXISTS (
+            SELECT 1
+            FROM video_relation child_relation
+            WHERE child_relation.parent_id = video.id
+          )
+          AND EXISTS (
+            SELECT 1
+            FROM video_dub fallback_dub
+            JOIN language fallback_language
+              ON fallback_language.id = fallback_dub.language_id
+             AND fallback_language.deleted_at IS NULL
+             AND fallback_language.slug IS NOT NULL
+            LEFT JOIN video_edition fallback_edition
+              ON fallback_edition.id = fallback_dub.video_edition_id
+            WHERE fallback_dub.video_id = video.id
+              AND fallback_dub.deleted_at IS NULL
+              AND fallback_dub.published = TRUE
+              AND fallback_dub.hls IS NOT NULL
+              AND fallback_dub.hls <> ''
+              AND (
+                fallback_edition.id IS NULL
+                OR fallback_edition.deleted_at IS NULL
+              )
+          )
+      ),
+      candidate_inventory AS (
+        SELECT * FROM audio_collection_candidate
+        UNION ALL
+        SELECT * FROM audio_video_candidate
+        UNION ALL
+        SELECT * FROM subtitle_video_candidate
+      ),
+      candidate_recency AS (
+        SELECT
+          candidate_inventory.*,
+          COUNT(*) OVER (PARTITION BY bucket) AS "bucketTotal",
+          ROW_NUMBER() OVER (
+            PARTITION BY bucket
+            ORDER BY "sortAt" DESC NULLS LAST
+          ) AS recency_rank
+        FROM candidate_inventory
+      ),
+      candidate_cutoff AS (
+        SELECT bucket, "sortAt"
+        FROM candidate_recency
+        WHERE recency_rank = ${pageSize}
+      ),
+      prelimited_candidates AS (
+        SELECT candidate_recency.*
+        FROM candidate_recency
+        LEFT JOIN candidate_cutoff
+          ON candidate_cutoff.bucket = candidate_recency.bucket
+        WHERE candidate_recency.recency_rank <= ${pageSize}
+          OR candidate_recency."sortAt" IS NOT DISTINCT FROM candidate_cutoff."sortAt"
+      ),
+      candidate_display AS (
+        SELECT
+          candidate.*,
           COALESCE(
-            NULLIF(image.mobile_cinematic_high, ''),
-            NULLIF(image.video_still, ''),
-            NULLIF(image.thumbnail, ''),
-            NULLIF(image.url, '')
-          ) AS image_url
+            NULLIF(candidate_locale.title, ''),
+            NULLIF(candidate.slug, ''),
+            candidate."coreId",
+            candidate.id
+          ) AS title,
+          COALESCE(
+            NULLIF(candidate_locale.description, ''),
+            NULLIF(candidate_locale.snippet, '')
+          ) AS description,
+          candidate_locale.image_alt AS "imageAlt"
+        FROM prelimited_candidates candidate
+        JOIN inventory_language
+          ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT
+            locale.title,
+            locale.description,
+            locale.snippet,
+            locale.image_alt
+          FROM video_locale locale
+          WHERE locale.video_id = candidate.id
+            AND locale.deleted_at IS NULL
+            AND locale.status = 'published'
+          ORDER BY
+            CASE
+              WHEN locale.language_id = inventory_language.id THEN 0
+              WHEN locale.language_slug = inventory_language.slug THEN 1
+              WHEN locale.language_slug = 'english' THEN 2
+              WHEN locale.locale = 'en' THEN 3
+              ELSE 4
+            END ASC,
+            locale.updated_at DESC,
+            locale.id ASC
+          LIMIT 1
+        ) candidate_locale ON TRUE
+      ),
+      ranked_candidates AS (
+        SELECT
+          candidate_display.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY bucket
+            ORDER BY
+              "sortAt" DESC NULLS LAST,
+              title ASC,
+              id ASC
+          ) AS bucket_rank
+        FROM candidate_display
+      ),
+      limited_candidates AS (
+        SELECT *
+        FROM ranked_candidates
+        WHERE bucket_rank <= ${pageSize}
+      )
+      SELECT
+        candidate.bucket,
+        candidate.id,
+        candidate."coreId",
+        candidate.slug,
+        candidate.title,
+        candidate.description,
+        selected_image.image_url AS "imageUrl",
+        candidate."imageAlt",
+        candidate.label,
+        CASE
+          WHEN candidate.bucket = 'subtitle_video' THEN 'SUBTITLE_ONLY'
+          ELSE 'AUDIO'
+        END AS availability,
+        CASE
+          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub.language_slug
+          ELSE inventory_language.slug
+        END AS "watchLanguageSlug",
+        parent_ref.slug AS "parentSlug",
+        parent_ref.title AS "parentTitle",
+        parent_ref."parentOrder",
+        CASE
+          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub.duration
+          ELSE candidate."durationSeconds"
+        END AS "durationSeconds",
+        CASE
+          WHEN candidate.bucket = 'audio_collection' THEN COALESCE(child_counts.count, 0)
+          ELSE 0
+        END AS "childCount",
+        candidate."publishedAt"::text AS "publishedAt",
+        candidate."createdAt"::text AS "createdAt",
+        candidate."updatedAt"::text AS "updatedAt",
+        candidate."sortAt",
+        candidate."bucketTotal"
+      FROM limited_candidates candidate
+      JOIN inventory_language
+        ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(
+          NULLIF(image.mobile_cinematic_high, ''),
+          NULLIF(image.video_still, ''),
+          NULLIF(image.thumbnail, ''),
+          NULLIF(image.url, '')
+        ) AS image_url
         FROM video_image image
-        JOIN published_videos published_video
-          ON published_video.id = image.video_id
-        WHERE image.deleted_at IS NULL
+        WHERE image.video_id = candidate.id
+          AND image.deleted_at IS NULL
           AND COALESCE(
             NULLIF(image.mobile_cinematic_high, ''),
             NULLIF(image.video_still, ''),
@@ -2044,7 +2338,6 @@ export class VideoService {
             NULLIF(image.url, '')
           ) IS NOT NULL
         ORDER BY
-          image.video_id ASC,
           CASE
             WHEN NULLIF(image.mobile_cinematic_high, '') IS NOT NULL THEN 0
             WHEN NULLIF(image.video_still, '') IS NOT NULL THEN 1
@@ -2053,359 +2346,111 @@ export class VideoService {
           END ASC,
           image.updated_at DESC,
           image.id ASC
-      ),
-      audio_collection AS (
-        SELECT DISTINCT ON (parent.id)
-          'audio_collection' AS bucket,
-          parent.id,
-          parent.core_id AS "coreId",
+        LIMIT 1
+      ) selected_image ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS count
+        FROM video_relation child_relation
+        JOIN video child_video
+          ON child_video.id = child_relation.child_id
+        WHERE candidate.bucket = 'audio_collection'
+          AND child_relation.parent_id = candidate.id
+          AND child_video.deleted_at IS NULL
+          AND child_video.no_index = FALSE
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = child_video.id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
+          )
+      ) child_counts ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
           parent.slug,
+          relation.order AS "parentOrder",
           COALESCE(
-            NULLIF(selected_locale.title, ''),
+            NULLIF(parent_locale.title, ''),
             NULLIF(parent.slug, ''),
             parent.core_id,
             parent.id
-          ) AS title,
-          COALESCE(
-            NULLIF(selected_locale.description, ''),
-            NULLIF(selected_locale.snippet, '')
-          ) AS description,
-          selected_image.image_url AS "imageUrl",
-          selected_locale.image_alt AS "imageAlt",
-          parent.label::text AS label,
-          'AUDIO' AS availability,
-          inventory_language.slug AS "watchLanguageSlug",
-          NULL::text AS "parentSlug",
-          NULL::text AS "parentTitle",
-          NULL::integer AS "parentOrder",
-          NULL::integer AS "durationSeconds",
-          COALESCE(child_counts.count, 0) AS "childCount",
-          parent.published_at::text AS "publishedAt",
-          parent.created_at::text AS "createdAt",
-          parent.updated_at::text AS "updatedAt",
-          GREATEST(
-            COALESCE(parent.published_at, parent.created_at),
-            COALESCE(parent.updated_at, parent.created_at),
-            parent.created_at,
-            child_recency.latest_child_at
-          ) AS "sortAt"
-        FROM published_videos parent
-        JOIN video_relation relation
-          ON relation.parent_id = parent.id
-        JOIN published_videos child
-          ON child.id = relation.child_id
-        JOIN video_dub dub
-          ON dub.video_id = child.id
-        JOIN inventory_language
-          ON inventory_language.id = dub.language_id
-        LEFT JOIN video_edition edition
-          ON edition.id = dub.video_edition_id
-        LEFT JOIN selected_locale
-          ON selected_locale.video_id = parent.id
-        LEFT JOIN selected_image
-          ON selected_image.video_id = parent.id
+          ) AS title
+        FROM video_relation relation
+        JOIN video parent
+          ON parent.id = relation.parent_id
         LEFT JOIN LATERAL (
-          SELECT COUNT(*)::int AS count
-          FROM video_relation child_relation
-          JOIN published_videos child_video
-            ON child_video.id = child_relation.child_id
-          WHERE child_relation.parent_id = parent.id
-        ) child_counts ON TRUE
-        LEFT JOIN LATERAL (
-          SELECT MAX(
-            GREATEST(
-              COALESCE(child_video.published_at, child_video.created_at),
-              COALESCE(child_video.updated_at, child_video.created_at),
-              child_video.created_at
-            )
-          ) AS latest_child_at
-          FROM video_relation child_relation
-          JOIN published_videos child_video
-            ON child_video.id = child_relation.child_id
-          JOIN video_dub child_dub
-            ON child_dub.video_id = child_video.id
-          LEFT JOIN video_edition child_edition
-            ON child_edition.id = child_dub.video_edition_id
-          WHERE child_relation.parent_id = parent.id
-            AND child_dub.language_id = inventory_language.id
-            AND child_dub.deleted_at IS NULL
-            AND child_dub.published = TRUE
-            AND NULLIF(child_dub.hls, '') IS NOT NULL
-            AND (
-              child_edition.id IS NULL
-              OR child_edition.deleted_at IS NULL
-            )
-        ) child_recency ON TRUE
-        WHERE dub.deleted_at IS NULL
-          AND dub.published = TRUE
-          AND NULLIF(dub.hls, '') IS NOT NULL
-          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
-        ORDER BY
-          parent.id ASC,
-          relation.order ASC NULLS LAST,
-          relation.created_at ASC
-      ),
-      audio_video AS (
-        SELECT DISTINCT ON (video.id)
-          'audio_video' AS bucket,
-          video.id,
-          video.core_id AS "coreId",
-          video.slug,
-          COALESCE(
-            NULLIF(selected_locale.title, ''),
-            NULLIF(video.slug, ''),
-            video.core_id,
-            video.id
-          ) AS title,
-          COALESCE(
-            NULLIF(selected_locale.description, ''),
-            NULLIF(selected_locale.snippet, '')
-          ) AS description,
-          selected_image.image_url AS "imageUrl",
-          selected_locale.image_alt AS "imageAlt",
-          video.label::text AS label,
-          'AUDIO' AS availability,
-          inventory_language.slug AS "watchLanguageSlug",
-          parent_ref.slug AS "parentSlug",
-          parent_ref.title AS "parentTitle",
-          parent_ref."parentOrder" AS "parentOrder",
-          dub.duration AS "durationSeconds",
-          0 AS "childCount",
-          video.published_at::text AS "publishedAt",
-          video.created_at::text AS "createdAt",
-          video.updated_at::text AS "updatedAt",
-          GREATEST(
-            COALESCE(video.published_at, video.created_at),
-            COALESCE(video.updated_at, video.created_at),
-            video.created_at
-          ) AS "sortAt"
-        FROM published_videos video
-        JOIN video_dub dub
-          ON dub.video_id = video.id
-        JOIN inventory_language
-          ON inventory_language.id = dub.language_id
-        LEFT JOIN video_edition edition
-          ON edition.id = dub.video_edition_id
-        LEFT JOIN selected_locale
-          ON selected_locale.video_id = video.id
-        LEFT JOIN selected_image
-          ON selected_image.video_id = video.id
-        LEFT JOIN LATERAL (
-          SELECT
-            parent.slug,
-            relation.order AS "parentOrder",
-            COALESCE(
-              NULLIF(parent_locale.title, ''),
-              NULLIF(parent.slug, ''),
-              parent.core_id,
-              parent.id
-            ) AS title
-          FROM video_relation relation
-          JOIN published_videos parent
-            ON parent.id = relation.parent_id
-          LEFT JOIN selected_locale parent_locale
-            ON parent_locale.video_id = parent.id
-          WHERE relation.child_id = video.id
-          ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
-          LIMIT 1
-        ) parent_ref ON TRUE
-        WHERE dub.deleted_at IS NULL
-          AND dub.published = TRUE
-          AND NULLIF(dub.hls, '') IS NOT NULL
-          AND (edition.id IS NULL OR edition.deleted_at IS NULL)
-          AND NOT EXISTS (
-            SELECT 1
-            FROM video_relation child_relation
-            WHERE child_relation.parent_id = video.id
-          )
-        ORDER BY
-          video.id ASC,
-          dub.duration DESC NULLS LAST,
-          dub.updated_at DESC,
-          dub.id ASC
-      ),
-      subtitle_video AS (
-        SELECT DISTINCT ON (video.id)
-          'subtitle_video' AS bucket,
-          video.id,
-          video.core_id AS "coreId",
-          video.slug,
-          COALESCE(
-            NULLIF(selected_locale.title, ''),
-            NULLIF(video.slug, ''),
-            video.core_id,
-            video.id
-          ) AS title,
-          COALESCE(
-            NULLIF(selected_locale.description, ''),
-            NULLIF(selected_locale.snippet, '')
-          ) AS description,
-          selected_image.image_url AS "imageUrl",
-          selected_locale.image_alt AS "imageAlt",
-          video.label::text AS label,
-          'SUBTITLE_ONLY' AS availability,
-          fallback_dub.language_slug AS "watchLanguageSlug",
-          parent_ref.slug AS "parentSlug",
-          parent_ref.title AS "parentTitle",
-          parent_ref."parentOrder" AS "parentOrder",
-          fallback_dub.duration AS "durationSeconds",
-          0 AS "childCount",
-          video.published_at::text AS "publishedAt",
-          video.created_at::text AS "createdAt",
-          video.updated_at::text AS "updatedAt",
-          GREATEST(
-            COALESCE(video.published_at, video.created_at),
-            COALESCE(video.updated_at, video.created_at),
-            video.created_at
-          ) AS "sortAt"
-        FROM published_videos video
-        JOIN inventory_language
-          ON TRUE
-        JOIN video_subtitle subtitle
-          ON subtitle.deleted_at IS NULL
-         AND subtitle.language_id = inventory_language.id
-         AND (
-           subtitle.video_id = video.id
-           OR EXISTS (
-             SELECT 1
-             FROM video_dub edition_dub
-             WHERE edition_dub.video_id = video.id
-               AND edition_dub.video_edition_id = subtitle.video_edition_id
-           )
-         )
-        JOIN video_edition subtitle_edition
-          ON subtitle_edition.id = subtitle.video_edition_id
-         AND subtitle_edition.deleted_at IS NULL
-        JOIN LATERAL (
-          SELECT
-            fallback_language.slug AS language_slug,
-            fallback_dub.duration
-          FROM video_dub fallback_dub
-          JOIN language fallback_language
-            ON fallback_language.id = fallback_dub.language_id
-           AND fallback_language.deleted_at IS NULL
-           AND fallback_language.slug IS NOT NULL
-          LEFT JOIN video_edition fallback_edition
-            ON fallback_edition.id = fallback_dub.video_edition_id
-          WHERE fallback_dub.video_id = video.id
-            AND fallback_dub.deleted_at IS NULL
-            AND fallback_dub.published = TRUE
-            AND NULLIF(fallback_dub.hls, '') IS NOT NULL
-            AND (fallback_edition.id IS NULL OR fallback_edition.deleted_at IS NULL)
+          SELECT locale.title
+          FROM video_locale locale
+          WHERE locale.video_id = parent.id
+            AND locale.deleted_at IS NULL
+            AND locale.status = 'published'
           ORDER BY
             CASE
-              WHEN video.primary_language_id = fallback_language.id THEN 0
-              WHEN fallback_language.slug = 'english' THEN 1
-              ELSE 2
+              WHEN locale.language_id = inventory_language.id THEN 0
+              WHEN locale.language_slug = inventory_language.slug THEN 1
+              WHEN locale.language_slug = 'english' THEN 2
+              WHEN locale.locale = 'en' THEN 3
+              ELSE 4
             END ASC,
-            fallback_dub.duration DESC NULLS LAST,
-            fallback_language.slug ASC,
-            fallback_dub.id ASC
+            locale.updated_at DESC,
+            locale.id ASC
           LIMIT 1
-        ) fallback_dub ON TRUE
-        LEFT JOIN selected_locale
-          ON selected_locale.video_id = video.id
-        LEFT JOIN selected_image
-          ON selected_image.video_id = video.id
-        LEFT JOIN LATERAL (
-          SELECT
-            parent.slug,
-            relation.order AS "parentOrder",
-            COALESCE(
-              NULLIF(parent_locale.title, ''),
-              NULLIF(parent.slug, ''),
-              parent.core_id,
-              parent.id
-            ) AS title
-          FROM video_relation relation
-          JOIN published_videos parent
-            ON parent.id = relation.parent_id
-          LEFT JOIN selected_locale parent_locale
-            ON parent_locale.video_id = parent.id
-          WHERE relation.child_id = video.id
-          ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
-          LIMIT 1
-        ) parent_ref ON TRUE
-        WHERE (NULLIF(subtitle.vtt_src, '') IS NOT NULL OR NULLIF(subtitle.srt_src, '') IS NOT NULL)
-          AND NOT EXISTS (
+        ) parent_locale ON TRUE
+        WHERE candidate.bucket <> 'audio_collection'
+          AND relation.child_id = candidate.id
+          AND parent.deleted_at IS NULL
+          AND parent.no_index = FALSE
+          AND EXISTS (
             SELECT 1
-            FROM video_dub same_language_dub
-            LEFT JOIN video_edition same_language_edition
-              ON same_language_edition.id = same_language_dub.video_edition_id
-            WHERE same_language_dub.video_id = video.id
-              AND same_language_dub.language_id = inventory_language.id
-              AND same_language_dub.deleted_at IS NULL
-              AND same_language_dub.published = TRUE
-              AND NULLIF(same_language_dub.hls, '') IS NOT NULL
-              AND (
-                same_language_edition.id IS NULL
-                OR same_language_edition.deleted_at IS NULL
-              )
+            FROM video_locale published_locale
+            WHERE published_locale.video_id = parent.id
+              AND published_locale.deleted_at IS NULL
+              AND published_locale.status = 'published'
           )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM video_relation child_relation
-            WHERE child_relation.parent_id = video.id
+        ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
+        LIMIT 1
+      ) parent_ref ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
+          fallback_language.slug AS language_slug,
+          fallback_audio.duration
+        FROM video_dub fallback_audio
+        JOIN language fallback_language
+          ON fallback_language.id = fallback_audio.language_id
+         AND fallback_language.deleted_at IS NULL
+         AND fallback_language.slug IS NOT NULL
+        LEFT JOIN video_edition fallback_edition
+          ON fallback_edition.id = fallback_audio.video_edition_id
+        WHERE candidate.bucket = 'subtitle_video'
+          AND fallback_audio.video_id = candidate.id
+          AND fallback_audio.deleted_at IS NULL
+          AND fallback_audio.published = TRUE
+          AND fallback_audio.hls IS NOT NULL
+          AND fallback_audio.hls <> ''
+          AND (
+            fallback_edition.id IS NULL
+            OR fallback_edition.deleted_at IS NULL
           )
         ORDER BY
-          video.id ASC,
-          CASE WHEN subtitle.primary = TRUE THEN 0 ELSE 1 END ASC,
-          subtitle.updated_at DESC,
-          subtitle.id ASC
-      ),
-      inventory_rows AS (
-        SELECT * FROM audio_collection
-        UNION ALL
-        SELECT * FROM audio_video
-        UNION ALL
-        SELECT * FROM subtitle_video
-      ),
-      ranked_rows AS (
-        SELECT
-          inventory_rows.*,
-          COUNT(*) OVER (PARTITION BY bucket) AS "bucketTotal",
-          ROW_NUMBER() OVER (
-            PARTITION BY bucket
-            ORDER BY
-              "sortAt" DESC NULLS LAST,
-              title ASC,
-              id ASC
-          ) AS bucket_rank
-        FROM inventory_rows
-      )
-      SELECT
-        bucket,
-        id,
-        "coreId",
-        slug,
-        title,
-        description,
-        "imageUrl",
-        "imageAlt",
-        label,
-        availability,
-        "watchLanguageSlug",
-        "parentSlug",
-        "parentTitle",
-        "parentOrder",
-        "durationSeconds",
-        "childCount",
-        "publishedAt",
-        "createdAt",
-        "updatedAt",
-        "sortAt",
-        "bucketTotal"
-      FROM ranked_rows
-      WHERE bucket_rank <= ${pageSize}
+          CASE
+            WHEN candidate."primaryLanguageId" = fallback_language.id THEN 0
+            WHEN fallback_language.slug = 'english' THEN 1
+            ELSE 2
+          END ASC,
+          fallback_audio.duration DESC NULLS LAST,
+          fallback_language.slug ASC,
+          fallback_audio.id ASC
+        LIMIT 1
+      ) fallback_dub ON TRUE
       ORDER BY
         CASE
-          WHEN bucket = 'audio_collection' THEN 0
-          WHEN bucket = 'audio_video' THEN 1
+          WHEN candidate.bucket = 'audio_collection' THEN 0
+          WHEN candidate.bucket = 'audio_video' THEN 1
           ELSE 2
         END ASC,
-        "sortAt" DESC NULLS LAST,
-        title ASC,
-        id ASC
+        candidate."sortAt" DESC NULLS LAST,
+        candidate.title ASC,
+        candidate.id ASC
     `
       },
       { timeout: WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS },

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
-  AppState,
   Platform,
   Pressable,
   StyleSheet,
@@ -14,12 +13,11 @@ import {
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
-import { useVideoPlayer, VideoView } from "expo-video"
-import { useEvent } from "expo"
+import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
+import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { applySkip } from "../../lib/scrubber"
 import {
   DOUBLE_TAP_MS,
@@ -70,19 +68,15 @@ export function VideoPlayer({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
   const [hasStarted, setHasStarted] = useState(false)
-  const wasPlayingRef = useRef(false)
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
   )
 
-  // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
-  // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
-  // player; a changing source = "black screen, stuck on language switch" bug.
-  const creationSource = useRef(streamingUrl).current
-  const player = useVideoPlayer(creationSource, (p) => {
-    p.muted = false
-    p.loop = false
+  // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
+  // pause) lives in the shared adapter (todo 016); this component owns the
+  // chrome, captions, and tap handling.
+  const { player, isPlaying } = useManagedVideoPlayer(streamingUrl, (p) => {
     // Favor a fast first frame over deep prebuffer — JFP audience skews to
     // low-bandwidth networks. (Android-only fields are ignored on iOS.)
     p.bufferOptions = {
@@ -91,49 +85,6 @@ export function VideoPlayer({
       prioritizeTimeOverSizeThreshold: true,
     }
   })
-
-  // The source currently loaded into the player, tracked separately from the
-  // frozen creationSource so swap decisions can compare against it.
-  const loadedUrlRef = useRef(streamingUrl)
-
-  useEffect(() => {
-    if (!streamingUrl || streamingUrl === loadedUrlRef.current) return
-
-    // Compare by Mux playback ID, not raw URL: the seed URL (rebuilt from
-    // playbackId) and resolved variant (stored `hls`) give one asset two URL
-    // strings; reloading the same asset would needlessly restart playback.
-    const currentId = extractMuxPlaybackId(loadedUrlRef.current)
-    const nextId = extractMuxPlaybackId(streamingUrl)
-    loadedUrlRef.current = streamingUrl
-    if (currentId != null && nextId != null && currentId === nextId) return
-
-    // Preserve playback across the swap: replace() drops the playing state, so
-    // a mid-play language switch would strand a paused frame. Resume after load
-    // if we were playing.
-    const wasPlaying = player.playing
-    const resume = () => {
-      if (!wasPlaying) return
-      try {
-        player.play()
-      } catch {
-        // Player already released.
-      }
-    }
-
-    // replaceAsync loads off the main thread (replace() blocks the UI thread
-    // for HLS on iOS). Fall back to the synchronous path if it rejects.
-    void player
-      .replaceAsync(streamingUrl)
-      .then(resume)
-      .catch(() => {
-        try {
-          player.replace(streamingUrl, true)
-          resume()
-        } catch {
-          // Player already released.
-        }
-      })
-  }, [streamingUrl, player])
 
   // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
   // instead). These three events cover every AVPlayer auto-select; a fourth
@@ -155,54 +106,10 @@ export function VideoPlayer({
     return () => subs.forEach((s) => s.remove())
   }, [player])
 
-  const { isPlaying } = useEvent(player, "playingChange", {
-    isPlaying: player.playing,
-  })
-
-  // Mirror isPlaying into a ref so the AppState listener registers once on
-  // [player] and reads the current value — re-subscribing on every play/pause
-  // left a window where a background event could be missed.
-  const isPlayingRef = useRef(isPlaying)
-  useEffect(() => {
-    isPlayingRef.current = isPlaying
-  }, [isPlaying])
-
   useEffect(() => {
     if (isPlaying && !hasStarted) setHasStarted(true)
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active") {
-        if (wasPlayingRef.current) {
-          try {
-            player.play()
-          } catch {
-            // Already released
-          }
-        }
-      } else {
-        wasPlayingRef.current = isPlayingRef.current
-        try {
-          player.pause()
-        } catch {
-          // Already released
-        }
-      }
-    })
-    return () => subscription.remove()
-  }, [player])
-
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause()
-      } catch {
-        // Native player already released
-      }
-    }
-  }, [player])
 
   const controls = useControlsVisibility(player)
 

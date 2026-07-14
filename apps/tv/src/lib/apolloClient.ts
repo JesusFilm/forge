@@ -7,6 +7,7 @@ import {
 import { getMainDefinition } from "@apollo/client/utilities"
 import { getGraphQLUrl, getApiToken } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
+import { getViewerId } from "./viewer-id"
 import { datadogGraphqlHeaders, isDatadogProvisioned } from "./datadog"
 
 const REQUEST_TIMEOUT_MS = 15_000
@@ -44,13 +45,17 @@ function mergeContextHeaders(
  * tests can prove the Search bearer survives the attribution merge (U3).
  */
 export function createRequestChain(): ApolloLink {
-  // Bearer rides ONLY on the Search op: attaching it globally merges the fleet
-  // into one consumer:<key> 60/min bucket (public ops bucket per device IP). Prod
-  // token embargoed until admin lands fleet-aware bucketing (U7).
+  // Bearer + x-viewer-id ride ONLY on the Search op: admin buckets a fleet key
+  // per device (consumer:<key>:v:<viewer_id> from x-viewer-id, else per IP).
+  // On public ops the bearer would pool the whole fleet into one bucket.
   const authLink = new ApolloLink((operation, forward) => {
     mergeContextHeaders(
       operation,
-      authHeadersForOperation(operation.operationName, getApiToken()),
+      authHeadersForOperation(
+        operation.operationName,
+        getApiToken(),
+        getViewerId(),
+      ),
     )
     return forward(operation)
   })

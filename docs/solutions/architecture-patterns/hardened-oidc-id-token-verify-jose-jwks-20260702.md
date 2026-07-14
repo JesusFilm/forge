@@ -70,6 +70,17 @@ no forgery the signature+`aud`+`iss` checks don't already. (If chat ever gates a
 feature on the session or keys per-user data on `sub`, revisit this bound — items
 3–4 would then become privilege-relevant.)
 
+> **Bound flipped (2026-07-13, feat-241):** that revisit clause has fired. Since
+> feat-208 the verified `sub` keys per-user server-side memory
+> (`user:<sub>` resources), and feat-241's history read path (`/api/history/*`)
+> authorizes bulk conversation reads on the session-derived `sub` — an accepted
+> forged/stale identity would now read (and resume) that subject's persisted
+> conversations, not just mis-render a display name. The JWKS allowlist
+> derivation/cache items (3–4) are therefore privilege-relevant, not merely
+> observability. The blast radius of a stolen SESSION cookie (as opposed to a
+> forged token) is bounded by the 8h TTL and self-scoped reads — see feat-240's
+> Decision Record for why revocation was deliberately dropped.
+
 This doc also captures three adjacent gotchas the same work surfaced: a fail-closed
 config gate for an opt-in auth surface, a cookie percent-encoding round-trip bug the
 tests initially hid, and a jose/jsdom crypto incompatibility.

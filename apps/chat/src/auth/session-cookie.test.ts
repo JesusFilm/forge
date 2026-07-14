@@ -211,12 +211,26 @@ describe("cookie options (R11)", () => {
     expect("domain" in opts).toBe(false)
     expect(opts.maxAge).toBe(60 * 10)
   })
+
+  it("force-login marker shares the hardening but a 30-day TTL (feat-240)", async () => {
+    const { forceLoginCookieOptions } = await loadModule({
+      secret: REAL_SECRET,
+    })
+    const opts = forceLoginCookieOptions()
+    expect(opts.httpOnly).toBe(true)
+    expect(opts.sameSite).toBe("lax")
+    expect("domain" in opts).toBe(false)
+    expect(opts.maxAge).toBe(60 * 60 * 24 * 30)
+  })
 })
 
 describe("cookie names honor AUTH_COOKIE_PREFIX", () => {
   it("defaults to forge_chat", async () => {
-    const { CHAT_SESSION_COOKIE } = await loadModule({ secret: REAL_SECRET })
+    const { CHAT_SESSION_COOKIE, CHAT_FORCE_LOGIN_COOKIE } = await loadModule({
+      secret: REAL_SECRET,
+    })
     expect(CHAT_SESSION_COOKIE).toBe("forge_chat_session")
+    expect(CHAT_FORCE_LOGIN_COOKIE).toBe("forge_chat_force_login")
   })
 
   it("uses a custom prefix", async () => {
@@ -226,5 +240,21 @@ describe("cookie names honor AUTH_COOKIE_PREFIX", () => {
     })
     expect(CHAT_SESSION_COOKIE).toBe("myapp_session")
     expect(CHAT_OAUTH_STATE_COOKIE).toBe("myapp_oauth_state")
+  })
+})
+
+describe("readRequestCookie", () => {
+  it("reads one cookie from a raw Cookie header, decoding percent-encoding", async () => {
+    const { readRequestCookie } = await loadModule({ secret: REAL_SECRET })
+    const header = "a=1; forge_chat_force_login=1; return_to=https%3A%2F%2Fx"
+    expect(readRequestCookie(header, "forge_chat_force_login")).toBe("1")
+    expect(readRequestCookie(header, "return_to")).toBe("https://x")
+    expect(readRequestCookie(header, "absent")).toBeUndefined()
+    expect(readRequestCookie(null, "a")).toBeUndefined()
+  })
+
+  it("falls back to the raw value on a malformed % sequence (never throws)", async () => {
+    const { readRequestCookie } = await loadModule({ secret: REAL_SECRET })
+    expect(readRequestCookie("bad=%E0%A4%A", "bad")).toBe("%E0%A4%A")
   })
 })

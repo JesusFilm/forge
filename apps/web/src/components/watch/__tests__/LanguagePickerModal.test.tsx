@@ -646,12 +646,16 @@ describe("LanguagePickerModal — globe overlay", () => {
       "flex-wrap",
     )
     expect(toggle.parentElement?.parentElement?.className).toContain("min-w-0")
-    expect(
-      toggle.parentElement?.parentElement?.parentElement?.className,
-    ).toContain("flex-col")
-    expect(
-      toggle.parentElement?.parentElement?.parentElement?.className,
-    ).toContain("sm:flex-row")
+    expect(toggle.parentElement?.parentElement?.className).toContain("shrink-0")
+    const subtitleHeader = $(
+      '[data-testid="watch-language-picker-subtitles-header"]',
+    )
+    expect(subtitleHeader?.contains(subtitlesTooltip)).toBe(true)
+    expect(subtitleHeader?.contains(toggle)).toBe(true)
+    expect(subtitleHeader?.className).toContain("items-center")
+    expect(subtitleHeader?.className).toContain("justify-between")
+    expect(subtitleHeader?.className).not.toContain("flex-col")
+    expect(subtitleHeader?.className).not.toContain("sm:flex-row")
     const thumb = toggle.querySelector('span[aria-hidden="true"]')
     expect(thumb?.className).toContain("size-7")
     expect(thumb?.className).toContain("translate-x-7")

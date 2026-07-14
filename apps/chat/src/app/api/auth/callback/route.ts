@@ -2,8 +2,10 @@
  * OAuth callback (F1, R8/R9/R10/R11/R12) — the security-critical step. Verifies
  * the returned state against the transient cookie, exchanges the code, verifies
  * the id_token (R9 — id-token-only, JWKS-derived alg allowlist, NO access-token
- * fallback), then sets the signed identity session cookie and 302s to the
- * validated return_to. EVERY failure — bad state, missing verifier, token
+ * fallback), then sets the signed identity session cookie, consumes the
+ * feat-240 force-login marker (success only — failures keep it armed so a
+ * retry still forces a login page), and 302s to the validated return_to.
+ * EVERY failure — bad state, missing verifier, token
  * exchange failure (incl. the outbound timeout), or verify failure — funnels
  * through ONE catch that logs a fixed non-PII reason code (KTD7), clears the
  * transient cookies, and 302s home with the R12 marker. Anonymous is the safe
@@ -19,12 +21,14 @@ import {
 } from "@/auth/oauth-client"
 import { getChatHomeURL, resolveChatReturnToURL } from "@/auth/origins"
 import {
+  CHAT_FORCE_LOGIN_COOKIE,
   CHAT_OAUTH_RETURN_TO_COOKIE,
   CHAT_OAUTH_STATE_COOKIE,
   CHAT_OAUTH_VERIFIER_COOKIE,
   CHAT_SESSION_COOKIE,
   chatSessionCookieOptions,
   createChatSessionCookie,
+  readRequestCookie,
 } from "@/auth/session-cookie"
 import { SIGN_IN_ERROR_PARAM, SIGN_IN_ERROR_VALUE } from "@/auth/sign-in-notice"
 import { chatAuthConfigured } from "@/config/env"
@@ -36,10 +40,13 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
   const cookieHeader = request.headers.get("cookie")
-  const expectedState = readCookie(cookieHeader, CHAT_OAUTH_STATE_COOKIE)
-  const codeVerifier = readCookie(cookieHeader, CHAT_OAUTH_VERIFIER_COOKIE)
+  const expectedState = readRequestCookie(cookieHeader, CHAT_OAUTH_STATE_COOKIE)
+  const codeVerifier = readRequestCookie(
+    cookieHeader,
+    CHAT_OAUTH_VERIFIER_COOKIE,
+  )
   const returnTo = resolveChatReturnToURL(
-    readCookie(cookieHeader, CHAT_OAUTH_RETURN_TO_COOKIE),
+    readRequestCookie(cookieHeader, CHAT_OAUTH_RETURN_TO_COOKIE),
   )
 
   try {
@@ -78,6 +85,9 @@ export async function GET(request: Request) {
       chatSessionCookieOptions(),
     )
     clearTransientCookies(response)
+    // feat-240: sign-in completed — consume the force-login marker. The catch
+    // below keeps it armed so a failed/abandoned attempt still forces login.
+    response.cookies.delete(CHAT_FORCE_LOGIN_COOKIE)
     return response
   } catch (error) {
     // KTD7: fixed reason CODE only — never the caught error's message (it can
@@ -101,25 +111,4 @@ function homeWithSignInError(): string {
   const home = new URL(getChatHomeURL())
   home.searchParams.set(SIGN_IN_ERROR_PARAM, SIGN_IN_ERROR_VALUE)
   return home.toString()
-}
-
-/**
- * Read a cookie from the raw Cookie header. Decodes the value to mirror Next's
- * own RequestCookies read (NextResponse.cookies.set percent-encodes on write) —
- * a no-op for base64url state/verifier, load-bearing for the URL-valued
- * return_to. The decode is guarded because this runs BEFORE the callback's try,
- * so a throw on a malformed % sequence would 500 instead of failing closed.
- */
-function readCookie(cookieHeader: string | null, name: string) {
-  const raw = cookieHeader
-    ?.split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`))
-    ?.slice(name.length + 1)
-  if (raw === undefined) return undefined
-  try {
-    return decodeURIComponent(raw)
-  } catch {
-    return raw
-  }
 }

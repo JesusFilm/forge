@@ -9,7 +9,7 @@ import type { OfflineDownloadRecord } from "./offlineManifest"
 import type {
   StartDownloadRequest,
   StartDownloadResult,
-} from "../contexts/DownloadsProvider"
+} from "./downloadLifecycle"
 
 // Pure enqueue orchestration: storage gate, request builder, capped enqueue loop,
 // result-derived outcome buckets. I/O-free via injected provider primitives so it

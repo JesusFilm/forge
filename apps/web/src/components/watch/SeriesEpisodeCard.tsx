@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import type { Route } from "next"
 import { Play } from "lucide-react"
 
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
@@ -9,10 +10,12 @@ import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
+  watchVideoPath,
 } from "@/lib/routes"
 
 type Episodes = NonNullable<ResolvedSeriesBySlug["video"]["children"]>
@@ -53,8 +56,14 @@ export function SeriesEpisodeCard({
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
   const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
-  const href =
-    parent && slug && lang ? watchEpisodePath(parent, slug, lang) : undefined
+  let href: Route | undefined
+  if (slug && lang) {
+    if (isSeriesRecord(episode)) {
+      href = watchVideoPath(slug, lang)
+    } else if (parent) {
+      href = watchEpisodePath(parent, slug, lang)
+    }
+  }
   const thumbnailUrl = resolveEpisodeImageUrl(episode)
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   // Per-chapter runtime now arrives precomputed as a single Int

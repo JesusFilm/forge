@@ -220,7 +220,7 @@ export function SubtitleOverlay({
         transition: "transform 200ms ease-out",
       }}
     >
-      <div className="max-w-[min(80%,700px)] whitespace-pre-line rounded-md bg-black/40 px-5 py-2.5 text-center text-lg font-medium text-white shadow-lg backdrop-blur-sm md:text-xl">
+      <div className="max-w-[min(80%,700px)] whitespace-pre-line px-5 py-2.5 text-center text-lg font-medium text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.9)] md:text-xl">
         {cueText}
       </div>
     </div>
