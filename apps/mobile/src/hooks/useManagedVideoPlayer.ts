@@ -4,6 +4,7 @@ import { useEvent } from "expo"
 import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
 import { extractMuxPlaybackId } from "../lib/muxThumbnail"
+import { datadogLog } from "../lib/datadog"
 
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
@@ -55,7 +56,12 @@ export function useManagedVideoPlayer(
       try {
         player.play()
       } catch {
-        // Player already released.
+        // R16: a genuine resume failure (player released mid-swap) — the
+        // "came back and it was frozen" bug; not the unmount-pause noise.
+        datadogLog.warn("video.resume_failed", {
+          content_id: nextId,
+          surface: "swap",
+        })
       }
     }
 
@@ -65,11 +71,12 @@ export function useManagedVideoPlayer(
       .replaceAsync(sourceUrl)
       .then(resume)
       .catch(() => {
+        datadogLog.warn("video.swap_fallback", { content_id: nextId })
         try {
           player.replace(sourceUrl, true)
           resume()
         } catch {
-          // Player already released.
+          datadogLog.error("video.swap_failed", { content_id: nextId })
         }
       })
   }, [sourceUrl, player])
@@ -97,7 +104,12 @@ export function useManagedVideoPlayer(
           try {
             player.play()
           } catch {
-            // Already released
+            // R16: resume-after-background play() failed (released while
+            // suspended) — the silent "frozen after foregrounding" complaint.
+            datadogLog.warn("video.resume_failed", {
+              content_id: extractMuxPlaybackId(loadedUrlRef.current),
+              surface: "foreground",
+            })
           }
         }
       } else {

@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from "react-native"
 import type { ApolloClient, NormalizedCacheObject } from "@apollo/client"
 
 import { env } from "../env"
+import { datadogLog } from "./datadog"
 
 /**
  * Hand-rolled, opt-in Apollo cache persistence — apollo3-cache-persist crashed on launch (targets v3),
@@ -96,10 +97,17 @@ async function writeSnapshot(client: ApolloClient): Promise<void> {
     const serialized = JSON.stringify(snapshot)
     // Over cap → skip the write and keep the last valid snapshot. Never trim
     // (trimming a normalized blob drops ref targets → dangling refs on restore).
-    if (serialized.length > MAX_BYTES) return
+    if (serialized.length > MAX_BYTES) {
+      // R17: the snapshot outgrew the cap; the cold-launch snapshot stops
+      // refreshing (stale-but-valid). Surface it so silent staleness is visible.
+      datadogLog.warn("cache_persist.over_cap", { bytes: serialized.length })
+      return
+    }
     await AsyncStorage.setItem(STORAGE_KEY, serialized)
   } catch {
-    // best-effort
+    // R17: a swallowed write means the cold-launch snapshot silently stops
+    // updating — the home paints stale content on next launch.
+    datadogLog.warn("cache_persist.write_failed", {})
   } finally {
     writing = false
   }
