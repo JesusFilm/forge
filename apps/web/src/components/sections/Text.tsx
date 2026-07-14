@@ -135,7 +135,6 @@ export function Text({ data }: TextProps) {
             >
               <Markdown
                 components={PROMOTIONAL_MARKDOWN_COMPONENTS}
-                skipHtml
                 urlTransform={defaultUrlTransform}
               >
                 {markdown}

@@ -75,6 +75,9 @@ describe("Text promotional Markdown", () => {
     })
 
     expect(container.querySelector("script")).toBeNull()
+    expect(container.textContent).toContain(
+      '<script data-danger="true">alert("unsafe")</script>',
+    )
     expect(html).not.toContain('data-danger="true"')
     const links = Array.from(container.querySelectorAll("a"))
     expect(

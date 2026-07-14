@@ -45,7 +45,7 @@ scripts, or another Experience block discriminator.
 ## Grep These
 
 - `TextBlockSchema` and `TextVariantEnum` — persistence and GraphQL contracts.
-- `BLOCK_LIBRARY` and `createBlockFromTemplate` — Experience editor discovery
+- `BLOCK_LIBRARY` and `createTemplateBlock` — Experience editor discovery
   and starter composition.
 - `contentParagraphs` — existing cross-consumer text storage shape.
 - `ReactMarkdown` and `react-markdown` — established safe Markdown renderer.

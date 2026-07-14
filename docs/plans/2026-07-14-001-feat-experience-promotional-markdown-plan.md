@@ -184,7 +184,7 @@ Markdown on Web; the legacy branches retain their current paragraph mapping.
   using the existing one-paragraph-per-line control for legacy variants. Keep
   the starter copy clearly editable and avoid shipping search copy on the
   user's behalf.
-- **Patterns to follow:** `BLOCK_LIBRARY`, `createBlockFromTemplate`,
+- **Patterns to follow:** `BLOCK_LIBRARY`, `createTemplateBlock`,
   `normalizeEditorBlocks`, existing inline textarea helpers, and starter-schema
   tests.
 - **Test scenarios:**
