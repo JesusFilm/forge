@@ -598,6 +598,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-metadata-tags"]',
     ) as HTMLDivElement
     expect(tags).not.toBeNull()
+    expect(tags.className).toContain("mt-3")
     expect(
       Array.from(tags.children).map((tag) => tag.getAttribute("data-testid")),
     ).toEqual([
@@ -641,7 +642,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
-    ).toContain("border-2")
+    ).toContain("border-white/45")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).not.toContain("border-2")
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
@@ -654,6 +659,10 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
     ).toContain("text-[0.6rem]")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("px-1.5")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,

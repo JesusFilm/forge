@@ -82,7 +82,7 @@ type HeroMetadataQuality = {
 }
 
 const HERO_METADATA_TAG_CLASS =
-  "inline-flex h-7 items-center gap-1.5 rounded-md border-2 border-white/45 bg-transparent px-2 text-[0.6rem] font-normal tracking-wide text-white/95"
+  "inline-flex h-7 items-center gap-1 rounded-md border border-white/45 bg-transparent px-1.5 text-[0.6rem] font-normal tracking-wide text-white/95"
 const HERO_LANGUAGE_TAG_CLASS =
   "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.625rem] font-normal tracking-wide text-white/95"
 
@@ -1871,7 +1871,7 @@ export function HeroPlayer({
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
-                      className="flex flex-wrap items-center gap-2"
+                      className="mt-3 flex flex-wrap items-center gap-2"
                     >
                       {releaseMetadata !== "" ? (
                         <span
