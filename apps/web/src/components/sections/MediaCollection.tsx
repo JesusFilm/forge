@@ -165,7 +165,7 @@ function MediaCollectionBackdrop({
       />
       <div
         data-testid={`${testId}-motion`}
-        className="animate-watch-backdrop-pan-zoom absolute inset-0 opacity-40 mix-blend-overlay motion-reduce:hidden"
+        className="animate-watch-backdrop-pan-zoom absolute inset-0 opacity-40 mix-blend-overlay"
       >
         <div
           data-testid={`${testId}-motion-image`}

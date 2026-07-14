@@ -30,8 +30,8 @@ static and feels inconsistent with the equivalent series grid treatment.
    backdrop structure and shared animation consumer.
 2. `apps/web/src/components/sections/MediaCollection.tsx` - experience section
    default, entering, and exiting artwork layers.
-3. `apps/web/src/app/globals.css` - Watch backdrop keyframes and reduced-motion
-   rules.
+3. `apps/web/src/app/globals.css` - Watch backdrop keyframes and shared
+   animation utility.
 4. `apps/web/src/components/sections/MediaCollection.test.tsx` - focused
    section rendering and interaction coverage.
 
@@ -49,8 +49,8 @@ static and feels inconsistent with the equivalent series grid treatment.
    utility without changing its 28-second motion path.
 2. Apply the shared animation to default and card-selected media-collection
    artwork through nested layers so existing crossfades remain independent.
-3. Stop the ambient movement under `prefers-reduced-motion` while keeping
-   artwork swaps and section readability intact.
+3. Keep the backdrop movement active regardless of `prefers-reduced-motion`
+   while keeping artwork swaps and section readability intact.
 4. Add focused regression coverage and real-browser visual proof.
 
 ## Constraints
@@ -68,8 +68,8 @@ static and feels inconsistent with the equivalent series grid treatment.
 - `pnpm --filter @forge/web lint`
 - `pnpm exec prettier --check apps/web/src/app/globals.css apps/web/src/components/sections/MediaCollection.tsx apps/web/src/components/sections/MediaCollection.test.tsx apps/web/src/components/watch/SeriesEpisodesGrid.tsx apps/web/src/components/watch/__tests__/SeriesEpisodesGrid.test.tsx`
 - Browser smoke a representative Experience media-collection section at narrow
-  and desktop widths in normal and reduced-motion modes, with screenshots and
-  clean console/network inspection.
+  and desktop widths in normal and reduced-motion modes, confirming the same
+  motion remains active, with screenshots and clean console/network inspection.
 
 ## Completion Notes
 
@@ -78,16 +78,20 @@ static and feels inconsistent with the equivalent series grid treatment.
   preserving its 28-second transform sequence on both series backdrop stacks.
 - Experience `MediaCollection` backdrops now keep a stationary full-canvas
   artwork layer beneath a lower-opacity animated layer. Crossfade state remains
-  on the outer wrapper, and reduced motion hides the ambient layer while the
-  stationary artwork remains painted.
+  on the outer wrapper, and the ambient layer remains active regardless of the
+  browser's reduced-motion preference.
 - Added default, hover/focus, overlapping enter/exit, leave-and-settle, no-image,
   and shared-series-consumer regression coverage. Focused suites pass with 27
   tests; Web typecheck and lint pass.
 - Browser proof on `http://127.0.0.1:3000/watch` rendered eight experience media
   sections at 1440x900 and 390x844. Normal mode computed
-  `watch-backdrop-pan-zoom 28s infinite`; reduced-motion mode computed no motion
-  or crossfade animation while focus still changed artwork; each stationary
-  layer covered its section at both widths.
+  `watch-backdrop-pan-zoom 28s infinite`; the original reduced-motion behavior
+  kept artwork swaps static while each stationary layer covered its section at
+  both widths.
+- Follow-up product direction explicitly superseded the original reduced-motion
+  requirement. With `prefers-reduced-motion: reduce` forced in the browser, all
+  eight experience layers still computed `watch-backdrop-pan-zoom 28s infinite`
+  and their transforms changed over a 1.2-second sample.
 - Rapid card changes retained entering and exiting layers together with a
   continuously painted base. Each stationary/moving pair reused the same inline
   source, producing zero data-URI network requests and no added animation

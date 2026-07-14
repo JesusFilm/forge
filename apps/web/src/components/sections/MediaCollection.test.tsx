@@ -453,7 +453,7 @@ describe("MediaCollection VideoCard href", () => {
 
     expect(backdrop?.className).not.toContain("animate-watch-backdrop-pan-zoom")
     expect(motionLayer?.className).toContain("animate-watch-backdrop-pan-zoom")
-    expect(motionLayer?.className).toContain("motion-reduce:hidden")
+    expect(motionLayer?.className).not.toContain("motion-reduce:hidden")
     expect(imageLayer?.getAttribute("style")).toContain("episode-one-blur.jpg")
     expect(imageLayer?.className).toContain("scale-105")
     expect(motionImageLayer?.getAttribute("style")).toContain(

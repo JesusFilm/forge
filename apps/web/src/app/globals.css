@@ -589,13 +589,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .animate-watch-backdrop-pan-zoom {
-    animation: none;
-    transform: none;
-  }
-}
-
 /* Search overlay scrollbar */
 @layer base {
   .search-overlay-scroll::-webkit-scrollbar {
