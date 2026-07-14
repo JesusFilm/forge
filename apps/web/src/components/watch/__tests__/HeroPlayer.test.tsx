@@ -4138,14 +4138,14 @@ describe("HeroPlayer — Watch Next countdown", () => {
     act(() => {
       ;(
         container.querySelector(
-          '[data-testid="watch-end-reflection-continue"]',
+          '[data-testid="watch-end-reflection-next-watch"]',
         ) as HTMLButtonElement | null
       )?.click()
     })
     act(() => {
       ;(
         container.querySelector(
-          '[data-testid="watch-end-reflection-next-watch"]',
+          '[data-testid="watch-end-reflection-active-action"]',
         ) as HTMLButtonElement | null
       )?.click()
     })

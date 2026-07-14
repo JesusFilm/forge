@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import {
-  ArrowLeft,
   ArrowRight,
   BookOpenText,
   Download,
@@ -35,10 +34,11 @@ type WatchEndReflectionProps = {
   onDismiss: () => void
 }
 
-type ReflectionView = "actions" | "ask" | "talk" | "share"
+type ActionKind = "ask" | "talk" | "share" | "link" | "callback"
 
 type NextStepAction = {
   id: string
+  kind: ActionKind
   icon: ReactNode
   label: string
   detail: string
@@ -47,15 +47,13 @@ type NextStepAction = {
   testId: string
 }
 
-const ACTION_REVEAL_INTERVAL_MS = 850
-const FINAL_HIGHLIGHT_DURATION_MS = 1400
+const CHAPTER_DURATION_MS = 6_000
+const INACTIVITY_RESUME_MS = 9_000
 
 const PRIMARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
-const SECONDARY_ACTION_CLASS =
-  "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/18 bg-white/[0.08] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.16] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
 const STEP_ACTION_CLASS =
-  "group flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-left text-white transition-[opacity,transform,background-color,border-color,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none motion-reduce:transition-none"
+  "group relative flex min-h-16 w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-left text-white transition-[background-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -89,88 +87,42 @@ export function WatchEndReflection({
       ? cleanedPrompts
       : [tStudyQuestions("placeholderQuestion")]
   ).slice(0, 3)
-  const actionCount =
-    3 +
-    Number(onShare != null) +
-    Number(bibleReadHref != null) +
-    Number(onNext != null) +
-    Number(onDownload != null)
   const reducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  const [view, setView] = useState<ReflectionView>("actions")
-  const [revealedCount, setRevealedCount] = useState(
-    reducedMotion ? actionCount : 1,
-  )
-  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(
-    reducedMotion ? null : 0,
-  )
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [isGuiding, setIsGuiding] = useState(!reducedMotion)
+  const [interactionVersion, setInteractionVersion] = useState(0)
   const [customQuestion, setCustomQuestion] = useState("")
-
-  useEffect(() => {
-    if (!open) return
-    const frame = window.requestAnimationFrame(() => {
-      surfaceRef.current?.focus()
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [open])
-
-  useEffect(() => {
-    if (view !== "actions" || reducedMotion || highlightedIndex == null) {
-      return
-    }
-
-    const isLastReveal = revealedCount >= actionCount
-    const timeout = window.setTimeout(
-      () => {
-        if (isLastReveal) {
-          setHighlightedIndex(null)
-          return
-        }
-        setRevealedCount((current) => Math.min(current + 1, actionCount))
-        setHighlightedIndex((current) =>
-          current == null ? 0 : Math.min(current + 1, actionCount - 1),
-        )
-      },
-      isLastReveal ? FINAL_HIGHLIGHT_DURATION_MS : ACTION_REVEAL_INTERVAL_MS,
-    )
-
-    return () => window.clearTimeout(timeout)
-  }, [actionCount, highlightedIndex, reducedMotion, revealedCount, view])
-
-  if (!open) return null
-
-  const openDetail = (nextView: Exclude<ReflectionView, "actions">) => {
-    setHighlightedIndex(null)
-    setRevealedCount(actionCount)
-    setView(nextView)
-  }
 
   const actions: NextStepAction[] = [
     {
       id: "ask",
+      kind: "ask",
       icon: <MessageCircleHeart aria-hidden className="size-5" />,
       label: t("askBibleQuestion"),
       detail: t("askBibleQuestionDetail"),
-      onClick: () => openDetail("ask"),
+      href: ASK_BIBLE_QUESTION_URL,
       testId: "watch-end-reflection-ask-bible",
     },
     {
       id: "talk",
+      kind: "talk",
       icon: <HeartHandshake aria-hidden className="size-5" />,
       label: t("talkToPerson"),
       detail: t("talkToPersonDetail"),
-      onClick: () => openDetail("talk"),
+      href: CHAT_WITH_PERSON_URL,
       testId: "watch-end-reflection-talk-person",
     },
     ...(onShare
       ? [
           {
             id: "share",
+            kind: "share" as const,
             icon: <Share2 aria-hidden className="size-5" />,
             label: t("share"),
             detail: t("shareDetail"),
-            onClick: () => openDetail("share"),
+            onClick: onShare,
             testId: "watch-end-reflection-share",
           },
         ]
@@ -179,6 +131,7 @@ export function WatchEndReflection({
       ? [
           {
             id: "read",
+            kind: "link" as const,
             icon: <BookOpenText aria-hidden className="size-5" />,
             label: t("readInBible"),
             detail: t("readInBibleDetail"),
@@ -189,6 +142,7 @@ export function WatchEndReflection({
       : []),
     {
       id: "deeper",
+      kind: "link",
       icon: <Sparkles aria-hidden className="size-5" />,
       label: t("goDeeper"),
       detail: t("goDeeperDetail"),
@@ -199,6 +153,7 @@ export function WatchEndReflection({
       ? [
           {
             id: "next",
+            kind: "callback" as const,
             icon: <Play aria-hidden className="size-4 fill-current" />,
             label: t("watchNext"),
             detail: t("watchNextDetail"),
@@ -211,6 +166,7 @@ export function WatchEndReflection({
       ? [
           {
             id: "download",
+            kind: "callback" as const,
             icon: <Download aria-hidden className="size-5" />,
             label: t("download"),
             detail: t("downloadDetail"),
@@ -221,6 +177,54 @@ export function WatchEndReflection({
       : []),
   ]
 
+  const activeAction = actions[Math.min(activeIndex, actions.length - 1)]!
+
+  useEffect(() => {
+    if (!open) return
+    const frame = window.requestAnimationFrame(() => {
+      surfaceRef.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.documentElement.style.overflow
+    document.documentElement.style.overflow = "hidden"
+    return () => {
+      document.documentElement.style.overflow = previousOverflow
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || reducedMotion || !isGuiding) return
+    const timeout = window.setTimeout(() => {
+      setActiveIndex((current) => (current + 1) % actions.length)
+    }, CHAPTER_DURATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [actions.length, activeIndex, isGuiding, open, reducedMotion])
+
+  useEffect(() => {
+    if (!open || reducedMotion || isGuiding || interactionVersion === 0) return
+    const timeout = window.setTimeout(() => {
+      setIsGuiding(true)
+    }, INACTIVITY_RESUME_MS)
+    return () => window.clearTimeout(timeout)
+  }, [interactionVersion, isGuiding, open, reducedMotion])
+
+  if (!open) return null
+
+  const markInteraction = () => {
+    if (reducedMotion) return
+    setIsGuiding(false)
+    setInteractionVersion((current) => current + 1)
+  }
+
+  const selectChapter = (index: number) => {
+    markInteraction()
+    setActiveIndex(index)
+  }
+
   return (
     <div
       ref={surfaceRef}
@@ -229,13 +233,14 @@ export function WatchEndReflection({
       aria-labelledby="watch-end-reflection-title"
       data-testid="watch-end-reflection"
       tabIndex={-1}
+      onPointerDownCapture={markInteraction}
+      onInputCapture={markInteraction}
+      onFocusCapture={(event) => {
+        if (event.target !== event.currentTarget) markInteraction()
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
-          if (view !== "actions") {
-            setView("actions")
-          } else {
-            onDismiss()
-          }
+          onDismiss()
           return
         }
         if (event.key !== "Tab") return
@@ -266,173 +271,221 @@ export function WatchEndReflection({
           firstElement.focus()
         }
       }}
-      className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/88 text-white backdrop-blur-[14px] animate-overlay-fade-in focus:outline-none motion-reduce:animate-none"
+      className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/90 text-white backdrop-blur-[14px] animate-overlay-fade-in focus:outline-none motion-reduce:animate-none"
     >
       <section
         data-testid="watch-end-reflection-content"
-        className={`relative mx-auto flex min-h-full w-full flex-col px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-10 sm:py-8 ${
-          view === "actions" ? "max-w-5xl" : "max-w-3xl"
-        }`}
+        className="relative mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-8 lg:px-12"
       >
-        <div className="sticky top-[max(1rem,env(safe-area-inset-top))] z-10 ml-auto h-11">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-1 gap-1.5" aria-hidden="true">
+            {actions.map((action, index) => (
+              <span
+                key={action.id}
+                className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
+              >
+                <span
+                  key={`${activeAction.id}-${isGuiding}`}
+                  className={`block h-full origin-left rounded-full bg-white ${
+                    index < activeIndex
+                      ? "scale-x-100"
+                      : index === activeIndex
+                        ? isGuiding
+                          ? "animate-watch-story-progress"
+                          : "scale-x-[0.12] bg-brand-red"
+                        : "scale-x-0"
+                  }`}
+                />
+              </span>
+            ))}
+          </div>
           <button
             type="button"
             aria-label={t("dismiss")}
             data-testid="watch-end-reflection-dismiss"
             onClick={onDismiss}
-            className="grid size-11 cursor-pointer place-items-center rounded-full bg-black/45 text-white/75 backdrop-blur-md transition hover:bg-white/[0.12] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+            className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-white/[0.07] text-white/75 transition hover:bg-white/[0.14] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
           >
             <X aria-hidden className="size-5" />
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col justify-center py-6 sm:py-10">
-          {view === "actions" ? (
-            <ActionsView
-              actions={actions}
-              highlightedIndex={highlightedIndex}
-              revealedCount={revealedCount}
-              replayLabel={t("replay")}
-              title={t("nextStepsTitle")}
-              support={t("nextStepsSupport")}
-              eyebrow={t("nextStepsEyebrow")}
-              onReplay={onReplay}
-            />
-          ) : null}
-          {view === "ask" ? (
-            <AskView
+        <div className="grid flex-1 items-center gap-10 py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)] lg:gap-14 lg:py-10">
+          <main
+            id="watch-end-reflection-stage"
+            key={activeAction.id}
+            aria-live="polite"
+            onPointerEnter={markInteraction}
+            data-testid="watch-end-reflection-panel"
+            className="min-w-0 animate-watch-reflection-enter motion-reduce:animate-none"
+          >
+            <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/55 uppercase">
+              <span>{t("nextStepsEyebrow")}</span>
+              <span aria-hidden="true" className="text-white/25">
+                /
+              </span>
+              <span className="text-white/80">
+                {String(activeIndex + 1).padStart(2, "0")}
+              </span>
+            </div>
+            <ActionStage
+              action={activeAction}
               prompts={reflectionPrompts}
               customQuestion={customQuestion}
-              title={t("askBibleQuestion")}
-              detail={t("askBibleQuestionDetail")}
               fieldLabel={tQuestionPanel("fieldLabel")}
-              backLabel={t("back")}
-              onBack={() => setView("actions")}
               onQuestionChange={setCustomQuestion}
             />
-          ) : null}
-          {view === "talk" ? (
-            <TalkView
-              title={t("talkToPerson")}
-              detail={t("talkToPersonDetail")}
-              backLabel={t("back")}
-              onBack={() => setView("actions")}
-            />
-          ) : null}
-          {view === "share" && onShare ? (
-            <ShareView
-              title={t("share")}
-              detail={t("shareDetail")}
-              backLabel={t("back")}
-              onBack={() => setView("actions")}
-              onShare={onShare}
-            />
-          ) : null}
+          </main>
+
+          <nav aria-label={t("nextStepsTitle")} className="min-w-0">
+            <div className="mb-4 flex items-end justify-between gap-4 lg:mb-5">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.16em] text-white/45 uppercase">
+                  {t("nextStepsEyebrow")}
+                </p>
+                <p className="mt-1 max-w-xs text-sm leading-relaxed text-white/60">
+                  {t("nextStepsSupport")}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs tabular-nums text-white/40">
+                {activeIndex + 1} / {actions.length}
+              </span>
+            </div>
+            <ol className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-1">
+              {actions.map((action, index) => (
+                <li key={action.id}>
+                  <ChapterButton
+                    action={action}
+                    index={index}
+                    active={index === activeIndex}
+                    onSelect={() => selectChapter(index)}
+                  />
+                </li>
+              ))}
+            </ol>
+          </nav>
         </div>
+
+        <button
+          type="button"
+          data-testid="watch-end-reflection-replay"
+          onClick={onReplay}
+          className="min-h-11 w-fit cursor-pointer px-1 text-sm font-semibold text-white/65 underline decoration-white/30 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+        >
+          {t("replay")}
+        </button>
       </section>
     </div>
   )
 }
 
-function ActionsView({
-  actions,
-  highlightedIndex,
-  revealedCount,
-  replayLabel,
-  title,
-  support,
-  eyebrow,
-  onReplay,
-}: {
-  actions: NextStepAction[]
-  highlightedIndex: number | null
-  revealedCount: number
-  replayLabel: string
-  title: string
-  support: string
-  eyebrow: string
-  onReplay: () => void
-}) {
-  return (
-    <div
-      key="actions"
-      data-testid="watch-end-reflection-panel"
-      className="animate-watch-reflection-enter motion-reduce:animate-none"
-    >
-      <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/60 uppercase">
-        <HeartHandshake aria-hidden className="size-4 text-brand-red" />
-        <span>{eyebrow}</span>
-      </div>
-      <h2
-        id="watch-end-reflection-title"
-        className="mt-4 max-w-[17ch] text-[clamp(2rem,8vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.025em] text-balance"
-      >
-        {title}
-      </h2>
-      <p className="mt-5 max-w-xl text-base leading-relaxed text-white/72 sm:text-lg">
-        {support}
-      </p>
-
-      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {actions.map((action, index) => (
-          <NextStepCard
-            key={action.id}
-            action={action}
-            active={highlightedIndex === index}
-            revealed={index < revealedCount}
-          />
-        ))}
-      </div>
-
-      <button
-        type="button"
-        data-testid="watch-end-reflection-replay"
-        onClick={onReplay}
-        className="mt-6 min-h-12 cursor-pointer px-2 text-sm font-semibold text-white/72 underline decoration-white/35 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
-      >
-        {replayLabel}
-      </button>
-    </div>
-  )
-}
-
-function NextStepCard({
+function ChapterButton({
   action,
+  index,
   active,
-  revealed,
+  onSelect,
 }: {
   action: NextStepAction
+  index: number
   active: boolean
-  revealed: boolean
+  onSelect: () => void
 }) {
-  const className = `${STEP_ACTION_CLASS} ${
-    revealed
-      ? "translate-y-0 border-white/12 bg-white/[0.06] opacity-100 hover:border-white/28 hover:bg-white/[0.12]"
-      : "pointer-events-none translate-y-2 border-white/5 bg-white/[0.025] opacity-25"
-  } ${
-    active
-      ? "scale-[1.015] border-brand-red/85 bg-brand-red/[0.13] shadow-[0_0_0_1px_rgba(239,51,64,0.24),0_12px_36px_rgba(239,51,64,0.12)]"
-      : ""
-  }`
-  const content = (
-    <>
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-current={active ? "step" : undefined}
+      aria-controls="watch-end-reflection-stage"
+      data-testid={action.testId}
+      data-action-id={action.id}
+      data-highlighted={active ? "true" : "false"}
+      className={`${STEP_ACTION_CLASS} ${
+        active
+          ? "bg-white/[0.13] opacity-100"
+          : "bg-transparent opacity-65 hover:bg-white/[0.07] hover:opacity-100"
+      }`}
+    >
       <span
-        className={`grid size-10 shrink-0 place-items-center rounded-full text-white transition-colors duration-500 ${
-          active ? "bg-brand-red" : "bg-white/10"
+        className={`grid size-9 shrink-0 place-items-center rounded-full transition-colors ${
+          active ? "bg-brand-red text-white" : "bg-white/10 text-white/75"
         }`}
       >
         {action.icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{action.label}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-white/60">
-          {action.detail}
+        <span className="block text-[10px] font-semibold tracking-[0.12em] text-white/40 uppercase">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="mt-0.5 block text-xs leading-tight font-semibold sm:text-sm">
+          {action.label}
         </span>
       </span>
+      <ArrowRight
+        aria-hidden
+        className={`hidden size-4 shrink-0 transition sm:block ${
+          active
+            ? "translate-x-0 text-brand-red"
+            : "-translate-x-1 text-white/30"
+        }`}
+      />
+    </button>
+  )
+}
+
+function ActionStage({
+  action,
+  prompts,
+  customQuestion,
+  fieldLabel,
+  onQuestionChange,
+}: {
+  action: NextStepAction
+  prompts: string[]
+  customQuestion: string
+  fieldLabel: string
+  onQuestionChange: (question: string) => void
+}) {
+  return (
+    <>
+      <div className="mt-5 grid size-12 place-items-center rounded-full bg-brand-red text-white sm:size-14">
+        {action.icon}
+      </div>
+      <h2
+        id="watch-end-reflection-title"
+        className="mt-5 max-w-[17ch] text-[clamp(2.25rem,7vw,4.5rem)] leading-[0.98] font-semibold tracking-[-0.04em] text-balance"
+      >
+        {action.label}
+      </h2>
+      <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
+        {action.detail}
+      </p>
+
+      {action.kind === "ask" ? (
+        <AskChapter
+          prompts={prompts}
+          customQuestion={customQuestion}
+          fieldLabel={fieldLabel}
+          action={action}
+          onQuestionChange={onQuestionChange}
+        />
+      ) : null}
+      {action.kind === "talk" ? <TalkChapter action={action} /> : null}
+      {action.kind === "share" ? <ShareChapter action={action} /> : null}
+      {action.kind === "link" || action.kind === "callback" ? (
+        <StageAction action={action} />
+      ) : null}
+    </>
+  )
+}
+
+function StageAction({ action }: { action: NextStepAction }) {
+  const content = (
+    <>
+      {action.label}
       {action.href ? (
-        <ExternalLink aria-hidden className="size-4 text-white/55" />
+        <ExternalLink aria-hidden className="size-4" />
       ) : (
-        <ArrowRight aria-hidden className="size-4 text-white/55" />
+        <ArrowRight aria-hidden className="size-4" />
       )}
     </>
   )
@@ -443,13 +496,8 @@ function NextStepCard({
         href={action.href}
         target="_blank"
         rel="noopener noreferrer"
-        aria-hidden={!revealed}
-        tabIndex={revealed ? undefined : -1}
-        data-testid={action.testId}
-        data-action-id={action.id}
-        data-highlighted={active ? "true" : "false"}
-        data-revealed={revealed ? "true" : "false"}
-        className={className}
+        data-testid="watch-end-reflection-active-action"
+        className={`${PRIMARY_ACTION_CLASS} mt-7`}
       >
         {content}
       </a>
@@ -460,253 +508,133 @@ function NextStepCard({
     <button
       type="button"
       onClick={action.onClick}
-      aria-hidden={!revealed}
-      tabIndex={revealed ? undefined : -1}
-      data-testid={action.testId}
-      data-action-id={action.id}
-      data-highlighted={active ? "true" : "false"}
-      data-revealed={revealed ? "true" : "false"}
-      className={className}
+      data-testid="watch-end-reflection-active-action"
+      className={`${PRIMARY_ACTION_CLASS} mt-7`}
     >
       {content}
     </button>
   )
 }
 
-function DetailHeader({
-  icon,
-  title,
-  detail,
-}: {
-  icon: ReactNode
-  title: string
-  detail: string
-}) {
-  return (
-    <>
-      <div className="grid size-12 place-items-center rounded-full bg-brand-red text-white">
-        {icon}
-      </div>
-      <h2
-        id="watch-end-reflection-title"
-        className="mt-5 max-w-[18ch] text-[clamp(2rem,8vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.025em] text-balance"
-      >
-        {title}
-      </h2>
-      <p className="mt-4 max-w-xl text-base leading-relaxed text-white/72 sm:text-lg">
-        {detail}
-      </p>
-    </>
-  )
-}
-
-function AskView({
+function AskChapter({
   prompts,
   customQuestion,
-  title,
-  detail,
   fieldLabel,
-  backLabel,
-  onBack,
+  action,
   onQuestionChange,
 }: {
   prompts: string[]
   customQuestion: string
-  title: string
-  detail: string
   fieldLabel: string
-  backLabel: string
-  onBack: () => void
+  action: NextStepAction
   onQuestionChange: (question: string) => void
 }) {
   return (
     <div
       data-testid="watch-end-reflection-ask-panel"
-      className="animate-watch-reflection-enter motion-reduce:animate-none"
+      className="mt-6 max-w-2xl"
     >
-      <DetailHeader
-        icon={<MessageCircleHeart aria-hidden className="size-6" />}
-        title={title}
-        detail={detail}
-      />
-      <div className="mt-7 flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
         {prompts.map((prompt) => (
           <button
             key={prompt}
             type="button"
             data-testid="watch-end-reflection-suggested-question"
             onClick={() => onQuestionChange(prompt)}
-            className="cursor-pointer rounded-2xl border border-white/12 bg-white/[0.05] px-4 py-3 text-left text-sm leading-relaxed text-white/80 transition hover:border-white/30 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+            className="cursor-pointer rounded-full border border-white/14 bg-white/[0.05] px-3.5 py-2 text-left text-xs leading-snug text-white/72 transition hover:border-white/30 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm"
           >
             {prompt}
           </button>
         ))}
       </div>
-      <label className="mt-5 block text-sm font-semibold text-white/72">
+      <label className="mt-4 block text-sm font-semibold text-white/65">
         <span>{fieldLabel}</span>
         <textarea
           value={customQuestion}
           onChange={(event) => onQuestionChange(event.target.value)}
-          rows={3}
+          rows={2}
           data-testid="watch-end-reflection-question-input"
-          className="mt-2 block min-h-28 w-full resize-y rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3 text-base leading-relaxed text-white placeholder:text-white/35 focus:border-brand-red/80 focus:ring-2 focus:ring-brand-red/30 focus:outline-none"
+          className="mt-2 block min-h-20 w-full resize-y rounded-xl border border-white/15 bg-white/[0.07] px-4 py-3 text-base leading-relaxed text-white placeholder:text-white/35 focus:border-brand-red/80 focus:ring-2 focus:ring-brand-red/30 focus:outline-none"
         />
       </label>
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          data-testid="watch-end-reflection-detail-back"
-          onClick={onBack}
-          className={SECONDARY_ACTION_CLASS}
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          {backLabel}
-        </button>
-        <a
-          href={ASK_BIBLE_QUESTION_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-testid="watch-end-reflection-ask-submit"
-          className={PRIMARY_ACTION_CLASS}
-        >
-          <SendHorizontal aria-hidden className="size-4" />
-          {title}
-        </a>
-      </div>
+      <a
+        href={action.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid="watch-end-reflection-ask-submit"
+        className={`${PRIMARY_ACTION_CLASS} mt-4`}
+      >
+        <SendHorizontal aria-hidden className="size-4" />
+        {action.label}
+      </a>
     </div>
   )
 }
 
-function TalkView({
-  title,
-  detail,
-  backLabel,
-  onBack,
-}: {
-  title: string
-  detail: string
-  backLabel: string
-  onBack: () => void
-}) {
+function TalkChapter({ action }: { action: NextStepAction }) {
   const languages = ["EN", "ES", "FR", "PT"]
   const languageNames = ["English", "Español", "Français", "Português"]
 
   return (
-    <div
-      data-testid="watch-end-reflection-talk-panel"
-      className="animate-watch-reflection-enter motion-reduce:animate-none"
-    >
-      <DetailHeader
-        icon={<HeartHandshake aria-hidden className="size-6" />}
-        title={title}
-        detail={detail}
-      />
-      <div className="mt-8 flex -space-x-3" aria-hidden="true">
-        {languages.map((language, index) => (
+    <div data-testid="watch-end-reflection-talk-panel" className="mt-7">
+      <div className="flex -space-x-2" aria-hidden="true">
+        {languages.map((language) => (
           <span
             key={language}
-            className="relative grid size-16 place-items-center rounded-full border-2 border-black bg-stone-800 text-white shadow-xl"
+            className="relative grid size-12 place-items-center rounded-full border-2 border-black bg-stone-800 text-white shadow-xl sm:size-14"
           >
-            <UserRound className="size-7 text-white/80" />
-            <span className="absolute right-0 bottom-0 rounded-full bg-brand-red px-1.5 py-0.5 text-[9px] font-bold tracking-wide">
+            <UserRound className="size-6 text-white/80" />
+            <span className="absolute right-0 bottom-0 rounded-full bg-brand-red px-1.5 py-0.5 text-[8px] font-bold tracking-wide">
               {language}
             </span>
-            <span
-              aria-hidden="true"
-              className={`absolute inset-0 -z-10 rounded-full ${
-                index % 2 === 0 ? "bg-brand-red/20" : "bg-white/10"
-              }`}
-            />
           </span>
         ))}
       </div>
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {languageNames.map((language) => (
           <span
             key={language}
-            className="rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/72"
+            className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs font-medium text-white/65"
           >
             {language}
           </span>
         ))}
       </div>
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          data-testid="watch-end-reflection-detail-back"
-          onClick={onBack}
-          className={SECONDARY_ACTION_CLASS}
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          {backLabel}
-        </button>
-        <a
-          href={CHAT_WITH_PERSON_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-testid="watch-end-reflection-talk-submit"
-          className={PRIMARY_ACTION_CLASS}
-        >
-          <HeartHandshake aria-hidden className="size-4" />
-          {title}
-        </a>
-      </div>
+      <a
+        href={action.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid="watch-end-reflection-talk-submit"
+        className={`${PRIMARY_ACTION_CLASS} mt-6`}
+      >
+        <HeartHandshake aria-hidden className="size-4" />
+        {action.label}
+      </a>
     </div>
   )
 }
 
-function ShareView({
-  title,
-  detail,
-  backLabel,
-  onBack,
-  onShare,
-}: {
-  title: string
-  detail: string
-  backLabel: string
-  onBack: () => void
-  onShare: () => void
-}) {
+function ShareChapter({ action }: { action: NextStepAction }) {
   return (
-    <div
-      data-testid="watch-end-reflection-share-panel"
-      className="animate-watch-reflection-enter motion-reduce:animate-none"
-    >
-      <DetailHeader
-        icon={<Share2 aria-hidden className="size-6" />}
-        title={title}
-        detail={detail}
-      />
-      <div className="mt-8 flex items-center gap-4" aria-hidden="true">
-        <span className="grid size-14 place-items-center rounded-full border border-white/15 bg-white/[0.07]">
-          <UserRound className="size-6 text-white/70" />
+    <div data-testid="watch-end-reflection-share-panel" className="mt-7">
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="grid size-11 place-items-center rounded-full bg-white/[0.08]">
+          <UserRound className="size-5 text-white/65" />
         </span>
-        <span className="h-px w-12 bg-gradient-to-r from-brand-red to-white/20" />
-        <span className="grid size-14 place-items-center rounded-full bg-brand-red text-white">
-          <Share2 className="size-6" />
+        <span className="h-px w-10 bg-gradient-to-r from-white/20 to-brand-red" />
+        <span className="grid size-11 place-items-center rounded-full bg-brand-red text-white">
+          <Share2 className="size-5" />
         </span>
       </div>
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          data-testid="watch-end-reflection-detail-back"
-          onClick={onBack}
-          className={SECONDARY_ACTION_CLASS}
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          {backLabel}
-        </button>
-        <button
-          type="button"
-          data-testid="watch-end-reflection-share-submit"
-          onClick={onShare}
-          className={PRIMARY_ACTION_CLASS}
-        >
-          <Share2 aria-hidden className="size-4" />
-          {title}
-        </button>
-      </div>
+      <button
+        type="button"
+        data-testid="watch-end-reflection-share-submit"
+        onClick={action.onClick}
+        className={`${PRIMARY_ACTION_CLASS} mt-6`}
+      >
+        <Share2 aria-hidden className="size-4" />
+        {action.label}
+      </button>
     </div>
   )
 }

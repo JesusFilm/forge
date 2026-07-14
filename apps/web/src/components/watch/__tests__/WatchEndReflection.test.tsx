@@ -104,7 +104,7 @@ function renderReflection(
 }
 
 describe("WatchEndReflection", () => {
-  it("starts with next steps, spotlights them in sequence, and opens reflection prompts on intent", () => {
+  it("shows every chapter, auto-advances while idle, and pauses after intent", () => {
     vi.useFakeTimers()
     try {
       renderReflection()
@@ -116,40 +116,43 @@ describe("WatchEndReflection", () => {
         '[data-testid="watch-end-reflection-talk-person"]',
       ) as HTMLButtonElement
 
-      expect(container.textContent).toContain("Keep going when you are ready.")
-      expect(ask.getAttribute("data-revealed")).toBe("true")
+      expect(container.textContent).toContain("Choose your next step")
       expect(ask.getAttribute("data-highlighted")).toBe("true")
-      expect(talk.getAttribute("data-revealed")).toBe("false")
+      expect(talk).not.toBeNull()
+      expect(
+        container.querySelectorAll<HTMLElement>("[data-action-id]").length,
+      ).toBe(7)
 
       act(() => {
-        vi.advanceTimersByTime(850)
+        vi.advanceTimersByTime(6_000)
       })
 
-      expect(talk.getAttribute("data-revealed")).toBe("true")
       expect(talk.getAttribute("data-highlighted")).toBe("true")
-
-      const actions = Array.from(
-        container.querySelectorAll<HTMLElement>("[data-action-id]"),
-      )
-      for (let index = 0; index < actions.length; index += 1) {
-        act(() => {
-          vi.advanceTimersByTime(850)
-        })
-      }
-      act(() => {
-        vi.advanceTimersByTime(1_400)
-      })
       expect(
-        actions.every((action) => action.dataset.revealed === "true"),
-      ).toBe(true)
-      expect(
-        actions.every((action) => action.dataset.highlighted === "false"),
-      ).toBe(true)
+        container.querySelector(
+          '[data-testid="watch-end-reflection-talk-panel"]',
+        ),
+      ).not.toBeNull()
 
       act(() => {
         ask.click()
       })
+      act(() => {
+        vi.advanceTimersByTime(6_000)
+      })
+      expect(ask.getAttribute("data-highlighted")).toBe("true")
 
+      act(() => {
+        vi.advanceTimersByTime(9_000)
+      })
+      act(() => {
+        vi.advanceTimersByTime(6_000)
+      })
+      expect(talk.getAttribute("data-highlighted")).toBe("true")
+
+      act(() => {
+        ask.click()
+      })
       expect(
         container.querySelector(
           '[data-testid="watch-end-reflection-ask-panel"]',
@@ -181,10 +184,44 @@ describe("WatchEndReflection", () => {
     }
   })
 
+  it("keeps the selected chapter stationary when reduced motion is requested", () => {
+    vi.useFakeTimers()
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true })
+
+    try {
+      renderReflection()
+      const ask = container.querySelector(
+        '[data-testid="watch-end-reflection-ask-bible"]',
+      ) as HTMLButtonElement
+
+      act(() => {
+        vi.advanceTimersByTime(24_000)
+      })
+
+      expect(ask.getAttribute("data-highlighted")).toBe("true")
+      expect(
+        container.querySelectorAll(
+          '[aria-controls="watch-end-reflection-stage"]',
+        ).length,
+      ).toBe(7)
+    } finally {
+      window.matchMedia = originalMatchMedia
+      vi.useRealTimers()
+    }
+  })
+
   it("offers safe external destinations and delegates Watch-owned actions", () => {
     const callbacks = renderReflection({ prompts: ["One question"] })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-read-bible"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
     const bible = container.querySelector(
-      '[data-testid="watch-end-reflection-read-bible"]',
+      '[data-testid="watch-end-reflection-active-action"]',
     ) as HTMLAnchorElement
     expect(bible.href).toBe("https://www.bible.com/bible/111/John.3.16.NIV")
     expect(bible.target).toBe("_blank")
@@ -197,11 +234,29 @@ describe("WatchEndReflection", () => {
           '[data-testid="watch-end-reflection-next-watch"]',
         ) as HTMLButtonElement
       ).click()
+    })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-active-action"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
       ;(
         container.querySelector(
           '[data-testid="watch-end-reflection-download"]',
         ) as HTMLButtonElement
       ).click()
+    })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-active-action"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
       ;(
         container.querySelector(
           '[data-testid="watch-end-reflection-share"]',
@@ -219,11 +274,6 @@ describe("WatchEndReflection", () => {
       ;(
         container.querySelector(
           '[data-testid="watch-end-reflection-share-submit"]',
-        ) as HTMLButtonElement
-      ).click()
-      ;(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-detail-back"]',
         ) as HTMLButtonElement
       ).click()
     })
@@ -270,7 +320,7 @@ describe("WatchEndReflection", () => {
     expect(chat.rel).toContain("noopener")
   })
 
-  it("uses the translated study-question fallback and supports layered Escape dismissal", () => {
+  it("uses the translated study-question fallback and supports Escape dismissal", () => {
     const callbacks = renderReflection({ prompts: [] })
     const dialog = container.querySelector(
       '[data-testid="watch-end-reflection"]',
@@ -285,13 +335,6 @@ describe("WatchEndReflection", () => {
     })
     expect(dialog.textContent).toContain("What stays with you from this story?")
     expect(dialog.className).toContain("motion-reduce:animate-none")
-
-    act(() => {
-      dialog.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      )
-    })
-    expect(callbacks.onDismiss).not.toHaveBeenCalled()
 
     act(() => {
       dialog.dispatchEvent(
@@ -319,6 +362,7 @@ describe("WatchEndReflection", () => {
     expect(content.className).not.toContain("rounded-")
     expect(content.className).not.toContain("border")
     expect(content.className).not.toContain("shadow")
+    expect(document.documentElement.style.overflow).toBe("hidden")
   })
 
   it("keeps keyboard focus inside the reflection dialog", () => {
