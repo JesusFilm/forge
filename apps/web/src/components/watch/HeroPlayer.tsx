@@ -1905,7 +1905,7 @@ export function HeroPlayer({
                             data-testid="hero-player-language-tag"
                             aria-label={languageCountLabel}
                             onClick={onLanguageClick}
-                            className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
+                            className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
                             <AudioLanguagesIcon />
                             <span>{languageCountLabel}</span>
@@ -1913,7 +1913,7 @@ export function HeroPlayer({
                         ) : (
                           <span
                             data-testid="hero-player-language-tag"
-                            className={`${HERO_LANGUAGE_TAG_CLASS} uppercase`}
+                            className={HERO_LANGUAGE_TAG_CLASS}
                           >
                             <AudioLanguagesIcon />
                             <span>{languageCountLabel}</span>
