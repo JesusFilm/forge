@@ -619,6 +619,18 @@ describe("HeroPlayer — initial mount", () => {
         ?.textContent,
     ).toBe("CC")
     expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("border-2")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("bg-transparent")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("font-normal")
+    expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
     ).toBe("4K")
