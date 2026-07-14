@@ -1,5 +1,8 @@
 import type { CollectionDownloadQueueItem } from "@/components/watch/collection-download-options"
 
+const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
+const DOWNLOAD_AUTH_REQUIRED = "auth-required"
+
 export type CollectionDownloadDirectory = {
   getFileHandle(
     name: string,
@@ -63,7 +66,7 @@ export async function runCollectionDownloadQueue(input: {
       total: input.items.length,
     })
 
-  for (const item of input.items) {
+  for (const [index, item] of input.items.entries()) {
     if (input.signal.aborted) {
       canceled = true
       break
@@ -74,9 +77,17 @@ export async function runCollectionDownloadQueue(input: {
         credentials: "include",
         signal: input.signal,
       })
-      if (response.status === 401) {
+      if (
+        response.status === 401 &&
+        response.headers.get(DOWNLOAD_ERROR_HEADER) === DOWNLOAD_AUTH_REQUIRED
+      ) {
         authRequired = true
-        failed.push({ item, reason: "auth-required" })
+        failed.push(
+          ...input.items.slice(index).map((retryItem) => ({
+            item: retryItem,
+            reason: "auth-required",
+          })),
+        )
         break
       }
       if (!response.ok || !response.body) {

@@ -46,6 +46,9 @@ const ALLOWED_DOWNLOAD_HEADERS = [
   "last-modified",
 ] as const
 
+const DOWNLOAD_ERROR_HEADER = "x-watch-download-error"
+const DOWNLOAD_AUTH_REQUIRED = "auth-required"
+
 // Conditional/Range headers the browser sends to validate a resumable
 // download. Forwarded as a unit so the upstream can return 206 + matching
 // validators (or 412 if the asset has rotated).
@@ -119,7 +122,13 @@ async function resolveDownloadAccountGate(
 
   return {
     ok: false,
-    response: jsonError("Authentication required", 401),
+    response: NextResponse.json(
+      { error: "Authentication required" },
+      {
+        status: 401,
+        headers: { [DOWNLOAD_ERROR_HEADER]: DOWNLOAD_AUTH_REQUIRED },
+      },
+    ),
   }
 }
 

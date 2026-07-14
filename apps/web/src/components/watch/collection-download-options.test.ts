@@ -11,6 +11,36 @@ const episodes = [
   { documentId: "v3", slug: "three", title: "Three" },
 ]
 
+function buildQueueForTitles(titles: string[]) {
+  const options = buildCollectionDownloadOptions(
+    titles.map((title, index) => ({
+      documentId: `v${index + 1}`,
+      slug: `episode-${index + 1}`,
+      title,
+    })),
+    titles.map((_, index) => ({
+      documentId: `dub-${index + 1}`,
+      videoId: `v${index + 1}`,
+      downloads: [
+        {
+          documentId: `download-${index + 1}`,
+          height: 720,
+          quality: "high" as const,
+          size: 100,
+        },
+      ],
+    })),
+  )
+
+  return buildCollectionDownloadQueue({
+    candidates: options.candidates,
+    tier: "highest",
+    languageCode: "eng",
+    languageName: "English",
+    languageSlug: "english",
+  })
+}
+
 describe("collection download options", () => {
   it("returns an empty quality list when no episodes are downloadable", () => {
     expect(buildCollectionDownloadOptions(episodes, [])).toEqual({
@@ -71,5 +101,33 @@ describe("collection download options", () => {
     expect(item.url).toContain("/watch/api/download?")
     expect(item.url).toContain("downloadId=download-1")
     expect(item.url).not.toContain("stream.mux.com")
+  })
+
+  it("gives episodes with duplicate normalized titles unique filenames", () => {
+    const queue = buildQueueForTitles(["Same title", "Same-title"])
+
+    expect(queue.map(({ filename }) => filename)).toEqual([
+      "Same-title_English_eng_720p.mp4",
+      "Same-title_English_eng_720p_2.mp4",
+    ])
+    for (const item of queue) {
+      expect(
+        new URL(item.url, "https://watch.example").searchParams.get("filename"),
+      ).toBe(item.filename)
+    }
+  })
+
+  it("keeps truncation-collision filenames unique and within 200 characters", () => {
+    const queue = buildQueueForTitles(["A".repeat(250), `${"A".repeat(249)}B`])
+    const filenames = queue.map(({ filename }) => filename)
+
+    expect(new Set(filenames).size).toBe(2)
+    expect(filenames.every((filename) => filename.length <= 200)).toBe(true)
+    expect(filenames[1]).toMatch(/_2\.mp4$/)
+    expect(
+      new URL(queue[1].url, "https://watch.example").searchParams.get(
+        "filename",
+      ),
+    ).toBe(filenames[1])
   })
 })

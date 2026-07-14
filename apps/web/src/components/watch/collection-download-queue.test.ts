@@ -14,27 +14,39 @@ const items = ["one", "two", "three"].map((id) => ({
 
 describe("collection download queue", () => {
   it("downloads one item at a time and continues after a failure", async () => {
-    let active = 0
-    let maxActive = 0
+    let finishFirstTransfer: ((blob: Blob) => void) | undefined
+    const firstTransfer = new Promise<Blob>((resolve) => {
+      finishFirstTransfer = resolve
+    })
     const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
-      active += 1
-      maxActive = Math.max(maxActive, active)
-      await Promise.resolve()
-      active -= 1
+      if (String(url).endsWith("one")) {
+        return {
+          body: {},
+          blob: () => firstTransfer,
+          headers: new Headers(),
+          ok: true,
+          status: 200,
+        } as Response
+      }
       return String(url).endsWith("two")
         ? new Response("bad", { status: 502 })
         : new Response("ok")
     }) as typeof fetch
     const saveBlob = vi.fn()
 
-    const result = await runCollectionDownloadQueue({
+    const queue = runCollectionDownloadQueue({
       items,
       signal: new AbortController().signal,
       fetchImpl,
       saveBlob,
     })
 
-    expect(maxActive).toBe(1)
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1))
+    expect(saveBlob).not.toHaveBeenCalled()
+    finishFirstTransfer?.(new Blob(["one"]))
+
+    const result = await queue
+
     expect(fetchImpl).toHaveBeenCalledTimes(3)
     expect(result.completed.map((item) => item.id)).toEqual(["one", "three"])
     expect(result.failed.map(({ item }) => item.id)).toEqual(["two"])
@@ -42,9 +54,33 @@ describe("collection download queue", () => {
     expect(failedCollectionDownloadItems(result)).toEqual([items[1]])
   })
 
-  it("stops on authentication failure", async () => {
-    const fetchImpl = vi.fn(
-      async () => new Response(null, { status: 401 }),
+  it("continues after an unmarked upstream 401", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) =>
+      String(url).endsWith("two")
+        ? new Response(null, { status: 401 })
+        : new Response("ok"),
+    ) as typeof fetch
+    const result = await runCollectionDownloadQueue({
+      items,
+      signal: new AbortController().signal,
+      fetchImpl,
+      saveBlob: vi.fn(),
+    })
+
+    expect(result.authRequired).toBe(false)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    expect(result.completed.map((item) => item.id)).toEqual(["one", "three"])
+    expect(result.failed).toEqual([{ item: items[1], reason: "http-401" }])
+  })
+
+  it("stops on marked authentication failure and preserves the retry tail", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) =>
+      String(url).endsWith("two")
+        ? new Response(null, {
+            status: 401,
+            headers: { "x-watch-download-error": "auth-required" },
+          })
+        : new Response("ok"),
     ) as typeof fetch
     const result = await runCollectionDownloadQueue({
       items,
@@ -54,7 +90,9 @@ describe("collection download queue", () => {
     })
 
     expect(result.authRequired).toBe(true)
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(result.completed).toEqual([items[0]])
+    expect(failedCollectionDownloadItems(result)).toEqual([items[1], items[2]])
   })
 
   it("streams to a directory without creating a Blob", async () => {

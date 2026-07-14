@@ -30,6 +30,37 @@ export type CollectionDownloadOptions = {
 }
 
 const TIER_ORDER: DownloadTier[] = ["highest", "high", "low"]
+const DOWNLOAD_FILENAME_EXTENSION = ".mp4"
+const MAX_DOWNLOAD_FILENAME_LENGTH = 200
+
+function uniqueCollectionDownloadFilename(
+  filename: string,
+  ordinal: number,
+  usedFilenames: Set<string>,
+): string {
+  if (!usedFilenames.has(filename)) {
+    usedFilenames.add(filename)
+    return filename
+  }
+
+  const basename = filename.slice(0, -DOWNLOAD_FILENAME_EXTENSION.length)
+  let attempt = 1
+  while (true) {
+    const suffix = `_${ordinal}${attempt === 1 ? "" : `-${attempt}`}`
+    const maxBasenameLength =
+      MAX_DOWNLOAD_FILENAME_LENGTH -
+      DOWNLOAD_FILENAME_EXTENSION.length -
+      suffix.length
+    const trimmedBasename =
+      basename.slice(0, maxBasenameLength).replace(/[._-]+$/g, "") || "video"
+    const uniqueFilename = `${trimmedBasename}${suffix}${DOWNLOAD_FILENAME_EXTENSION}`
+    if (!usedFilenames.has(uniqueFilename)) {
+      usedFilenames.add(uniqueFilename)
+      return uniqueFilename
+    }
+    attempt += 1
+  }
+}
 
 export function buildCollectionDownloadOptions(
   episodes: CollectionDownloadEpisode[],
@@ -84,18 +115,23 @@ export function buildCollectionDownloadQueue(input: {
   languageName?: string | null
   languageSlug: string
 }): CollectionDownloadQueueItem[] {
-  return input.candidates.flatMap((candidate) => {
+  const usedFilenames = new Set<string>()
+  return input.candidates.flatMap((candidate, index) => {
     const download = candidate.tiers[input.tier]
     if (!download) return []
-    const filename = buildDownloadFilename({
-      languageCode: input.languageCode,
-      languageName: input.languageName,
-      languageSlug: input.languageSlug,
-      renditionHeight: download.height,
-      tier: input.tier,
-      videoSlug: candidate.slug,
-      videoTitle: candidate.title,
-    })
+    const filename = uniqueCollectionDownloadFilename(
+      buildDownloadFilename({
+        languageCode: input.languageCode,
+        languageName: input.languageName,
+        languageSlug: input.languageSlug,
+        renditionHeight: download.height,
+        tier: input.tier,
+        videoSlug: candidate.slug,
+        videoTitle: candidate.title,
+      }),
+      index + 1,
+      usedFilenames,
+    )
     return [
       {
         id: candidate.documentId,

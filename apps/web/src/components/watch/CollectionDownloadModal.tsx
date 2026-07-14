@@ -10,6 +10,7 @@ import {
   buildCollectionDownloadOptions,
   buildCollectionDownloadQueue,
   type CollectionDownloadEpisode,
+  type CollectionDownloadQueueItem,
 } from "@/components/watch/collection-download-options"
 import {
   failedCollectionDownloadItems,
@@ -20,6 +21,7 @@ import {
 } from "@/components/watch/collection-download-queue"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { redirectToAuth } from "@/components/watch/download-session-client"
+import { DOWNLOAD_PROXY_PATH } from "@/components/watch/download-link"
 import type { DownloadTier } from "@/components/watch/download-options"
 import type { LanguageComboboxOption } from "@/components/watch/LanguageCombobox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
@@ -41,6 +43,107 @@ type LoadState =
       options: ReturnType<typeof buildCollectionDownloadOptions>
     }
   | { status: "error" }
+
+type StoredCollectionDownloadResume = Pick<
+  CollectionDownloadQueueResult,
+  "completed" | "failed" | "total"
+>
+
+const COLLECTION_DOWNLOAD_RESUME_KEY = "forge.watch.collection-download-resume"
+
+function collectionDownloadResumeKey(
+  collectionSlug: string,
+  languageSlug: string,
+): string {
+  return `${COLLECTION_DOWNLOAD_RESUME_KEY}:${encodeURIComponent(collectionSlug)}:${encodeURIComponent(languageSlug)}`
+}
+
+function isStoredQueueItem(
+  value: unknown,
+): value is CollectionDownloadQueueItem {
+  if (value == null || typeof value !== "object") return false
+  const item = value as Partial<CollectionDownloadQueueItem>
+  return (
+    typeof item.id === "string" &&
+    typeof item.filename === "string" &&
+    typeof item.title === "string" &&
+    typeof item.url === "string" &&
+    item.url.startsWith(`${DOWNLOAD_PROXY_PATH}?`)
+  )
+}
+
+function readCollectionDownloadResume(
+  collectionSlug: string,
+  languageSlug: string,
+): CollectionDownloadQueueResult | null {
+  try {
+    const raw = window.sessionStorage.getItem(
+      collectionDownloadResumeKey(collectionSlug, languageSlug),
+    )
+    if (!raw) return null
+    const stored = JSON.parse(raw) as Partial<StoredCollectionDownloadResume>
+    if (
+      !Array.isArray(stored.completed) ||
+      !stored.completed.every(isStoredQueueItem) ||
+      !Array.isArray(stored.failed) ||
+      !stored.failed.every(
+        (failure) =>
+          failure != null &&
+          typeof failure === "object" &&
+          isStoredQueueItem(failure.item) &&
+          typeof failure.reason === "string",
+      ) ||
+      typeof stored.total !== "number" ||
+      !Number.isInteger(stored.total) ||
+      stored.total < stored.completed.length + stored.failed.length
+    ) {
+      return null
+    }
+    return {
+      active: null,
+      authRequired: false,
+      canceled: false,
+      completed: stored.completed,
+      failed: stored.failed,
+      total: stored.total,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeCollectionDownloadResume(
+  collectionSlug: string,
+  languageSlug: string,
+  result: CollectionDownloadQueueResult,
+): void {
+  try {
+    const stored: StoredCollectionDownloadResume = {
+      completed: result.completed,
+      failed: result.failed,
+      total: result.total,
+    }
+    window.sessionStorage.setItem(
+      collectionDownloadResumeKey(collectionSlug, languageSlug),
+      JSON.stringify(stored),
+    )
+  } catch {
+    // A blocked storage API should not prevent the sign-in flow.
+  }
+}
+
+function clearCollectionDownloadResume(
+  collectionSlug: string,
+  languageSlug: string,
+): void {
+  try {
+    window.sessionStorage.removeItem(
+      collectionDownloadResumeKey(collectionSlug, languageSlug),
+    )
+  } catch {
+    // A blocked storage API should not prevent a download.
+  }
+}
 
 function tierMessageKey(tier: DownloadTier) {
   if (tier === "highest") return "tierHighest" as const
@@ -107,6 +210,7 @@ export function CollectionDownloadModal({
       "function"
 
   const loadOptions = useCallback(async () => {
+    startVersionRef.current += 1
     if (!collectionSlug) {
       setLoadState({ status: "error" })
       return
@@ -123,18 +227,33 @@ export function CollectionDownloadModal({
     setProgress(null)
     setResult(null)
     setError(null)
-    const response = await loadWatchCollectionDownloads({
-      collectionSlug,
-      languageSlug,
-    })
+    let response: Awaited<ReturnType<typeof loadWatchCollectionDownloads>>
+    try {
+      response = await loadWatchCollectionDownloads({
+        collectionSlug,
+        languageSlug,
+      })
+    } catch {
+      if (requestVersion !== requestVersionRef.current) return
+      setLoadState({ status: "error" })
+      return
+    }
     if (requestVersion !== requestVersionRef.current) return
     if (!response.ok) {
       setLoadState({ status: "error" })
       return
     }
     const nextOptions = buildCollectionDownloadOptions(episodes, response.dubs)
+    const restoredResult = readCollectionDownloadResume(
+      collectionSlug,
+      languageSlug,
+    )
     setLoadState({ status: "ready", options: nextOptions })
     setSelectedTier(nextOptions.commonTiers[0] ?? "highest")
+    if (restoredResult?.failed.length) {
+      setProgress(restoredResult)
+      setResult(restoredResult)
+    }
   }, [collectionSlug, episodes, languageSlug])
 
   useEffect(() => {
@@ -192,8 +311,8 @@ export function CollectionDownloadModal({
   ) {
     if (!options || !effectiveTier || busy) return
     const startVersion = ++startVersionRef.current
+    const previousResult = retryItems ? result : null
     setError(null)
-    setResult(null)
 
     if (accountGateEnabled) {
       setStarting(true)
@@ -213,6 +332,8 @@ export function CollectionDownloadModal({
       setStarting(false)
     }
 
+    clearCollectionDownloadResume(collectionSlug, languageSlug)
+    setResult(null)
     const items =
       retryItems ??
       buildCollectionDownloadQueue({
@@ -222,31 +343,70 @@ export function CollectionDownloadModal({
         languageName: selectedLanguage?.name,
         languageSlug,
       })
+    const completedBeforeRetry = previousResult?.completed ?? []
+    const total = previousResult?.total ?? items.length
+    const mergeProgress = (
+      nextProgress: CollectionDownloadProgress,
+    ): CollectionDownloadProgress => ({
+      ...nextProgress,
+      completed: [...completedBeforeRetry, ...nextProgress.completed],
+      total,
+    })
     const controller = new AbortController()
     controllerRef.current = controller
     setProgress({
       active: items[0] ?? null,
-      completed: [],
+      completed: completedBeforeRetry,
       failed: [],
-      total: items.length,
+      total,
     })
     const nextResult = await runCollectionDownloadQueue({
       items,
       signal: controller.signal,
       directory,
-      onProgress: setProgress,
+      onProgress: (nextProgress) => setProgress(mergeProgress(nextProgress)),
     })
+    const completedRetryIds = new Set(
+      nextResult.completed.map((item) => item.id),
+    )
+    const retryFailureById = new Map(
+      nextResult.failed.map((failure) => [failure.item.id, failure]),
+    )
+    const previousFailureIds = new Set(
+      previousResult?.failed.map((failure) => failure.item.id) ?? [],
+    )
+    const failed = previousResult
+      ? [
+          ...previousResult.failed.flatMap((failure) => {
+            if (completedRetryIds.has(failure.item.id)) return []
+            return [retryFailureById.get(failure.item.id) ?? failure]
+          }),
+          ...nextResult.failed.filter(
+            (failure) => !previousFailureIds.has(failure.item.id),
+          ),
+        ]
+      : nextResult.failed
+    const mergedResult: CollectionDownloadQueueResult = {
+      ...nextResult,
+      completed: [...completedBeforeRetry, ...nextResult.completed],
+      failed,
+      total,
+    }
     controllerRef.current = null
-    setProgress({
-      active: null,
-      completed: nextResult.completed,
-      failed: nextResult.failed,
-      total: nextResult.total,
-    })
-    setResult(nextResult)
+    setProgress(mergedResult)
+    setResult(mergedResult)
+    if (mergedResult.failed.length === 0) {
+      clearCollectionDownloadResume(collectionSlug, languageSlug)
+    }
     if (nextResult.authRequired) {
       const refreshedSession = await resolveDownloadSessionAccess()
+      if (startVersion !== startVersionRef.current) return
       if (!refreshedSession.ok && refreshedSession.reason === "auth-required") {
+        writeCollectionDownloadResume(
+          collectionSlug,
+          languageSlug,
+          mergedResult,
+        )
         setAuthLoginUrl(refreshedSession.loginUrl)
       }
     }
@@ -355,6 +515,7 @@ export function CollectionDownloadModal({
                   <Button
                     variant="ghost"
                     className="mt-2"
+                    data-testid="watch-collection-download-load-retry"
                     onClick={loadOptions}
                   >
                     {t("retry")}
@@ -372,9 +533,23 @@ export function CollectionDownloadModal({
                     {t("availableCount", { count: options.candidates.length })}
                   </p>
                   {options.skipped.length > 0 ? (
-                    <p className="mt-1 text-amber-300">
-                      {t("skippedCount", { count: options.skipped.length })}
-                    </p>
+                    <div className="mt-1 text-amber-300">
+                      <p>
+                        {t("skippedCount", { count: options.skipped.length })}
+                      </p>
+                      <ul
+                        data-testid="watch-collection-download-skipped"
+                        className="mt-2 list-disc space-y-1 pl-5"
+                      >
+                        {options.skipped.map((episode) => (
+                          <li key={episode.documentId}>
+                            {episode.title ??
+                              episode.slug ??
+                              episode.documentId}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ) : null}
                 </div>
               ) : null}
@@ -445,7 +620,11 @@ export function CollectionDownloadModal({
               ) : null}
 
               <div className="flex justify-end gap-3">
-                <Button variant="ghost" onClick={close}>
+                <Button
+                  variant="ghost"
+                  data-testid="watch-collection-download-close"
+                  onClick={close}
+                >
                   {t("close")}
                 </Button>
                 {busy ? (
