@@ -13,8 +13,6 @@ export const WATCH_HOME_TV_MUX_SELECTIONS_SEED_STORAGE_KEY =
 export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
   id: string
-  shareVideoSlug: string | null
-  shareLanguageSlug: string | null
   title: string
   description: string | null
   label: string

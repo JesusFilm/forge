@@ -83,7 +83,8 @@ vi.mock("@forge/video-player", () => ({
 
 vi.mock("next-intl", () => ({
   useTranslations:
-    (namespace: "HeroPlayer" | "VideoLabels") => (key: string) => {
+    (namespace: "HeroPlayer" | "VideoLabels" | "BibleQuotes") =>
+    (key: string) => {
       const catalogs = {
         HeroPlayer: {
           playWithSound: "Watch now",
@@ -93,6 +94,9 @@ vi.mock("next-intl", () => ({
           episode: "Episode",
           segment: "Segment",
           video: "Video",
+        },
+        BibleQuotes: {
+          share: "Share",
         },
       }
 
@@ -481,6 +485,41 @@ describe("HeroPlayer — initial mount", () => {
     expect(muxVideoMock).not.toHaveBeenCalled()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("renders the text Share action beside Watch now only while the hero is unrevealed", async () => {
+    const onShareClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer block={makeBlock()} onShareClick={onShareClick} />,
+      )
+    })
+
+    const watchNow = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    const share = container.querySelector(
+      '[data-testid="hero-player-share-button"]',
+    ) as HTMLButtonElement
+
+    expect(share.previousElementSibling).toBe(watchNow)
+    expect(share.type).toBe("button")
+    expect(share.textContent).toBe("Share")
+    expect(share.className).toContain("hover:underline")
+    expect(share.className).not.toContain("border")
+
+    await act(async () => {
+      share.click()
+    })
+    expect(onShareClick).toHaveBeenCalledTimes(1)
+    expect(muxVideoMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      watchNow.click()
+    })
+    expect(
+      container.querySelector('[data-testid="hero-player-share-button"]'),
     ).toBeNull()
   })
 

@@ -1,6 +1,4 @@
 import { resolveWatchHome, type WatchHomeSection } from "@/lib/watch-home"
-import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
-import { tryAsLocaleSlug } from "@/lib/routes"
 
 function withLanguageSlug(href: string | null, languageSlug: string) {
   if (!href) return href
@@ -11,16 +9,11 @@ function localizeHomeSections(
   sections: WatchHomeSection[],
   languageSlug: string,
 ): WatchHomeSection[] {
-  const shareLanguageSlug = isPublicWatchHomeLanguageSlug(languageSlug)
-    ? tryAsLocaleSlug(languageSlug)
-    : null
-
   return sections.map((section) => ({
     ...section,
     cards: section.cards.map((card) => ({
       ...card,
       href: withLanguageSlug(card.href, languageSlug),
-      shareLanguageSlug,
     })),
   }))
 }

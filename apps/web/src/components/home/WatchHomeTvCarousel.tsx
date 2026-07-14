@@ -3,7 +3,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
-import dynamic from "next/dynamic"
 import {
   useCallback,
   useEffect,
@@ -24,7 +23,6 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react"
-import { useTranslations } from "next-intl"
 import {
   Carousel,
   type CarouselApi,
@@ -48,9 +46,7 @@ import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type {
   WatchHomeCarouselSequenceData,
   WatchHomeTvCarouselMuxSlide,
-  WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
-import { loadWatchInteraction } from "@/lib/watch-interaction-loader"
 import { cn } from "@/lib/utils"
 import {
   useWatchHomeTvCarousel,
@@ -66,15 +62,6 @@ type WatchHomeTvCarouselProps = {
 type WatchHomeShortFilmPhase = "transitioning" | "playing"
 
 const WATCH_HOME_SHORT_FILM_TRANSITION_MS = 360
-const WATCH_HOME_SHARE_CLOSE_DELAY_MS = 150
-
-const ShareModal = dynamic(
-  () =>
-    import("@/components/watch/ShareModal").then((module) => ({
-      default: module.ShareModal,
-    })),
-  { ssr: false },
-)
 
 function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
@@ -115,8 +102,6 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
     return {
       kind: "video",
       id: slide.coreId,
-      shareVideoSlug: slide.shareVideoSlug,
-      shareLanguageSlug: slide.shareLanguageSlug,
       title: slide.title,
       description: slide.description,
       label: slide.eyebrow || slide.label,
@@ -138,18 +123,6 @@ type PrimaryActionIconName = NonNullable<
   WatchHomeTvCarouselMuxSlide["action"]
 >["icon"]
 
-function isShareableCatalogSlide(
-  slide: WatchHomeTvCarouselSlide,
-): slide is WatchHomeTvCarouselVideoSlide & {
-  shareVideoSlug: string
-  shareLanguageSlug: string
-} {
-  return (
-    slide.kind === "video" &&
-    Boolean(slide.href && slide.shareVideoSlug && slide.shareLanguageSlug)
-  )
-}
-
 function PrimaryActionIcon({ icon }: { icon: PrimaryActionIconName }) {
   const iconClassName = "h-5 w-5 shrink-0"
 
@@ -165,22 +138,18 @@ function PrimaryActionIcon({ icon }: { icon: PrimaryActionIconName }) {
 }
 
 function PrimaryAction({
-  onShare,
   onWatchShortFilm,
   playbackTimeSeconds,
-  shareLabel,
   slide,
 }: {
-  onShare?: (slide: WatchHomeTvCarouselVideoSlide) => void
   onWatchShortFilm?: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
-  shareLabel: string
   slide: WatchHomeTvCarouselSlide
 }) {
   const primaryClassName =
     "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
   const secondaryClassName =
-    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-md px-1 text-sm font-bold text-white/90 transition hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-2 sm:text-lg"
+    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full border border-white/35 bg-black/30 px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.22)] backdrop-blur transition hover:border-white/60 hover:bg-white/12 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
 
   const secondaryAction =
     slide.kind === "mux" && slide.secondaryAction && slide.src ? (
@@ -208,30 +177,14 @@ function PrimaryAction({
 
   if (!slide.href) return secondaryAction
 
-  const shareableSlide = isShareableCatalogSlide(slide) ? slide : null
-
   return (
-    <div className="flex max-w-[calc(100vw-9rem)] flex-col items-start gap-3 sm:max-w-full sm:flex-row sm:items-center">
-      <Link
-        href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
-        className={primaryClassName}
-      >
-        <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
-        <span className="truncate">Watch Now</span>
-      </Link>
-      {shareableSlide ? (
-        <button
-          type="button"
-          aria-label={shareLabel}
-          className={secondaryClassName}
-          data-testid="watch-home-share-button"
-          onClick={() => onShare?.(shareableSlide)}
-        >
-          <Share2 className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="truncate">{shareLabel}</span>
-        </button>
-      ) : null}
-    </div>
+    <Link
+      href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
+      className={primaryClassName}
+    >
+      <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
+      <span className="truncate">Watch Now</span>
+    </Link>
   )
 }
 
@@ -488,11 +441,9 @@ function WatchHomeTvOverlay({
   isMuted,
   leavingSlide,
   onNext,
-  onShare,
   onToggleMuted,
   onWatchShortFilm,
   playbackTimeSeconds,
-  shareLabel,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
   exitingToPlayer: boolean
@@ -500,11 +451,9 @@ function WatchHomeTvOverlay({
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onNext: () => void
-  onShare: (slide: WatchHomeTvCarouselVideoSlide) => void
   onToggleMuted: () => void
   onWatchShortFilm: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
-  shareLabel: string
 }) {
   const advanceDurationSeconds =
     watchHomeTvSlideAdvanceDurationSeconds(activeSlide)
@@ -527,7 +476,6 @@ function WatchHomeTvOverlay({
             key={`${leavingSlide.id}-leaving-copy`}
             mode="leaving"
             playbackTimeSeconds={0}
-            shareLabel={shareLabel}
             slide={leavingSlide}
           />
         ) : null}
@@ -535,10 +483,8 @@ function WatchHomeTvOverlay({
           key={`${activeSlide.id}-${exitingToPlayer ? "player-exit" : "entering"}-copy`}
           enterDelayOffsetMs={leavingSlide ? 430 : 0}
           mode={exitingToPlayer ? "leaving" : "entering"}
-          onShare={onShare}
           onWatchShortFilm={onWatchShortFilm}
           playbackTimeSeconds={playbackTimeSeconds}
-          shareLabel={shareLabel}
           showAction={!fullPlayerMode}
           slide={activeSlide}
         />
@@ -586,19 +532,15 @@ function watchHomeTvSlideAdvanceDurationSeconds(
 function WatchHomeTvOverlayContent({
   enterDelayOffsetMs = 0,
   mode,
-  onShare,
   onWatchShortFilm,
   playbackTimeSeconds,
-  shareLabel,
   showAction = true,
   slide,
 }: {
   enterDelayOffsetMs?: number
   mode: "entering" | "leaving"
-  onShare?: (slide: WatchHomeTvCarouselVideoSlide) => void
   onWatchShortFilm?: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
-  shareLabel: string
   showAction?: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
@@ -656,10 +598,8 @@ function WatchHomeTvOverlayContent({
         <div className={itemClassName} style={delayStyle(3)}>
           <PrimaryAction
             slide={slide}
-            onShare={onShare}
             onWatchShortFilm={onWatchShortFilm}
             playbackTimeSeconds={playbackTimeSeconds}
-            shareLabel={shareLabel}
           />
         </div>
       ) : null}
@@ -951,7 +891,6 @@ export function WatchHomeTvCarousel({
   sequence = null,
   slides,
 }: WatchHomeTvCarouselProps) {
-  const tBibleQuotes = useTranslations("BibleQuotes")
   const carouselSlides = useMemo(
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
@@ -960,10 +899,6 @@ export function WatchHomeTvCarousel({
     useState<WatchHomeTvCarouselMuxSlide | null>(null)
   const [shortFilmPhase, setShortFilmPhase] =
     useState<WatchHomeShortFilmPhase | null>(null)
-  const [shareSlide, setShareSlide] =
-    useState<WatchHomeTvCarouselVideoSlide | null>(null)
-  const [shareOpen, setShareOpen] = useState(false)
-  const shareLockedSlideId = shareSlide?.id ?? null
   const {
     activeSlide,
     advance,
@@ -981,14 +916,12 @@ export function WatchHomeTvCarousel({
     toggleMuted,
     videoRef,
   } = useWatchHomeTvCarousel(carouselSlides, sequence, {
-    autoAdvancePausedForSlideId: shortFilmSlide?.id ?? shareLockedSlideId,
+    autoAdvancePausedForSlideId: shortFilmSlide?.id ?? null,
     suppressLeavingSlide: shortFilmSlide != null,
   })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const shortFilmTakeoverSlideIdRef = useRef<string | null>(null)
-  const shareCloseTimeoutRef = useRef<number | null>(null)
-  const shareWasPlayingRef = useRef(false)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
@@ -997,33 +930,8 @@ export function WatchHomeTvCarousel({
     if (shortFilmTakeoverSlideIdRef.current == null) return
     setPlayer((current) => (current === next ? current : next))
   }, [])
-  const handleOpenShare = useCallback(
-    (slide: WatchHomeTvCarouselVideoSlide) => {
-      if (!isShareableCatalogSlide(slide)) return
-      if (shareCloseTimeoutRef.current != null) {
-        window.clearTimeout(shareCloseTimeoutRef.current)
-        shareCloseTimeoutRef.current = null
-      }
-      setShareSlide(slide)
-      setShareOpen(true)
-      void loadWatchInteraction("share").catch(() => {})
-    },
-    [],
-  )
-  const handleCloseShare = useCallback(() => {
-    setShareOpen(false)
-    shareCloseTimeoutRef.current = window.setTimeout(() => {
-      setShareSlide(null)
-      shareCloseTimeoutRef.current = null
-    }, WATCH_HOME_SHARE_CLOSE_DELAY_MS)
-  }, [])
-  const handleAdvance = useCallback(() => {
-    if (shareLockedSlideId) return
-    advance()
-  }, [advance, shareLockedSlideId])
   const handleOpenShortFilm = useCallback(
     (slide: WatchHomeTvCarouselSlide) => {
-      if (shareLockedSlideId) return
       if (slide.kind !== "mux" || !slide.src) return
       shortFilmTakeoverSlideIdRef.current = slide.id
       setShortFilmSlide(slide)
@@ -1038,7 +946,7 @@ export function WatchHomeTvCarousel({
         playResult.catch(() => undefined)
       }
     },
-    [isMuted, shareLockedSlideId, toggleMuted, videoRef],
+    [isMuted, toggleMuted, videoRef],
   )
   const handlePlayerChromeVisibilityChange = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
@@ -1061,33 +969,6 @@ export function WatchHomeTvCarousel({
   }, [shortFilmSlide, videoRef])
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    if (shareOpen) {
-      shareWasPlayingRef.current = !video.paused
-      if (shareWasPlayingRef.current) video.pause()
-      return
-    }
-
-    if (!shareWasPlayingRef.current) return
-    shareWasPlayingRef.current = false
-    const playResult = video.play()
-    if (playResult && typeof playResult.catch === "function") {
-      playResult.catch(() => undefined)
-    }
-  }, [shareOpen, videoRef])
-
-  useEffect(
-    () => () => {
-      if (shareCloseTimeoutRef.current != null) {
-        window.clearTimeout(shareCloseTimeoutRef.current)
-      }
-    },
-    [],
-  )
-
-  useEffect(() => {
     if (shortFilmSlide == null || shortFilmPhase !== "transitioning") return
     const timeout = window.setTimeout(() => {
       setShortFilmPhase("playing")
@@ -1104,7 +985,6 @@ export function WatchHomeTvCarousel({
     shortFilmPhase === "transitioning" &&
     activeSlide?.id === shortFilmSlide.id
   const handleMediaEnded = useCallback(() => {
-    if (shareLockedSlideId) return
     if (
       shortFilmTakeoverSlideIdRef.current != null &&
       activeSlide?.id === shortFilmTakeoverSlideIdRef.current
@@ -1112,7 +992,7 @@ export function WatchHomeTvCarousel({
       return
     }
     handleEnded()
-  }, [activeSlide?.id, handleEnded, shareLockedSlideId])
+  }, [activeSlide?.id, handleEnded])
 
   useEffect(() => {
     if (fullPlayerMode || playerTransitioning) return
@@ -1140,13 +1020,12 @@ export function WatchHomeTvCarousel({
 
   const handleSelectSlide = useCallback(
     (slideId: string) => {
-      if (shareLockedSlideId) return
       shortFilmTakeoverSlideIdRef.current = null
       setShortFilmSlide(null)
       setShortFilmPhase(null)
       selectSlide(slideId)
     },
-    [selectSlide, shareLockedSlideId],
+    [selectSlide],
   )
 
   if (!activeSlide) return null
@@ -1177,12 +1056,10 @@ export function WatchHomeTvCarousel({
           fullPlayerMode={fullPlayerMode}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
-          onNext={handleAdvance}
-          onShare={handleOpenShare}
+          onNext={advance}
           onToggleMuted={toggleMuted}
           onWatchShortFilm={handleOpenShortFilm}
           playbackTimeSeconds={playbackTimeSeconds}
-          shareLabel={tBibleQuotes("share")}
         />
         {subtitleCueText && !fullPlayerMode ? (
           <WatchHomeSubtitleOverlay cueText={subtitleCueText} />
@@ -1211,7 +1088,7 @@ export function WatchHomeTvCarousel({
                 activeSlide,
               )}
               animationKey={activeSlide.id}
-              onClick={handleAdvance}
+              onClick={advance}
               size="compact"
             />
             <Button
@@ -1242,18 +1119,6 @@ export function WatchHomeTvCarousel({
         progress={progress}
         onSelect={handleSelectSlide}
       />
-      {shareSlide ? (
-        <ShareModal
-          open={shareOpen}
-          videoSlug={shareSlide.shareVideoSlug ?? ""}
-          currentLanguageSlug={shareSlide.shareLanguageSlug ?? ""}
-          videoTitle={shareSlide.title}
-          videoDescription={shareSlide.description}
-          posterUrl={shareSlide.posterUrl}
-          playbackId={shareSlide.playbackId}
-          onClose={handleCloseShare}
-        />
-      ) : null}
     </section>
   )
 }

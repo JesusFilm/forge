@@ -25,8 +25,6 @@ const fallbackSections = [
         id: "video-1",
         sourceId: "1_jf-0-0",
         coreId: "1_jf-0-0",
-        shareVideoSlug: "jesus",
-        shareLanguageSlug: "english",
         title: "Jesus",
         description: null,
         label: "Feature film",
@@ -55,7 +53,7 @@ beforeEach(() => {
 })
 
 describe("resolveLanguageHomeSections", () => {
-  it("keeps fallback card share identity aligned with the requested language", async () => {
+  it("keeps fallback card routes aligned with the requested language", async () => {
     resolveWatchHomeMock
       .mockResolvedValueOnce({ data: { sections: [] }, error: null })
       .mockResolvedValueOnce({
@@ -67,6 +65,5 @@ describe("resolveLanguageHomeSections", () => {
     const card = sections[0]?.cards[0]
 
     expect(card?.href).toBe("/jesus.html/russian.html")
-    expect(card?.shareLanguageSlug).toBe("russian")
   })
 })
