@@ -12,6 +12,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { isWatchDownloadAccountGateEnabledMock } = vi.hoisted(() => ({
+  isWatchDownloadAccountGateEnabledMock: vi.fn(async () => true),
+}))
+
 // Stub DNS so the route's pre-flight check is deterministic. Default
 // behaviour: every hostname resolves to a single public IPv4
 // (203.0.113.1, TEST-NET-3 from RFC 5737). Tests override per-case to
@@ -30,6 +34,15 @@ vi.mock("@/lib/auth-session", () => ({
     authenticated: true,
     user: { id: "user_123" },
   })),
+}))
+
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchDownloadAccountGateEnabled: isWatchDownloadAccountGateEnabledMock,
+  watchDownloadAccountGateFlagContext: {
+    custom: {
+      surface: "watch-download",
+    },
+  },
 }))
 
 import { promises as dns } from "node:dns"
@@ -57,6 +70,7 @@ function mockUpstream(response: Response): void {
 }
 
 afterEach(() => {
+  isWatchDownloadAccountGateEnabledMock.mockResolvedValue(true)
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -180,6 +194,20 @@ describe("GET /watch/api/download — input validation", () => {
   it("rejects http: downgrades from allowlisted hostnames", async () => {
     const res = await GET(makeRequest({ url: "http://stream.mux.com/abc.mp4" }))
     expect(res.status).toBe(403)
+  })
+
+  it("rejects anonymous raw-URL attachment downloads when the account gate is disabled", async () => {
+    isWatchDownloadAccountGateEnabledMock.mockResolvedValueOnce(false)
+    const res = await GET(
+      makeRequest({
+        url: "https://stream.mux.com/abc.mp4",
+        filename: "x.mp4",
+      }),
+    )
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({
+      error: "Download identifiers required",
+    })
   })
 })
 
