@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
+import { SmartCropProviderError } from "../../services/smart-crop/openrouter-vision"
 import { smartCropFailureFromUnknown } from "../../services/smart-crop/workflow-failure"
 import {
   _internals,
@@ -150,6 +151,27 @@ function intent(shotId: string) {
 }
 
 describe("smart crop repair workflow", () => {
+  it("preserves terminal provider rate limits from the repair boundary", async () => {
+    const result = await runSmartCropRepairWorkflow(baseInput, {
+      runId: "run-repair-rate-limited",
+      requestRepairIntents: async () => {
+        throw new SmartCropProviderError(
+          "provider_rate_limited",
+          false,
+          "smart crop vision rate limited after 3 attempts (status 429)",
+        )
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-repair-rate-limited",
+    })
+  })
+
   it("repairs selected shots from a canned OpenRouter response", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(cannedRepairResponse))
 

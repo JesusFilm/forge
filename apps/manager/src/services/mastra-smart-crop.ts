@@ -15,7 +15,7 @@ const DEFAULT_TIMEOUT_MS = 120_000
 
 // Mastra-produced failure reasons (wire contract) + client-side transport
 // reasons (config_missing / auth_failed / network_error / parse_error).
-const FAILURE_REASONS = new Set([
+const FAILURE_REASON_VALUES = [
   "config_missing",
   "auth_failed",
   "network_error",
@@ -23,22 +23,16 @@ const FAILURE_REASONS = new Set([
   "invalid_input",
   "provider_config_missing",
   "provider_auth_failed",
+  "provider_rate_limited",
   "provider_failed",
   "provider_invalid_output",
   "frame_host_not_allowed",
-])
+] as const
+
+const FAILURE_REASONS = new Set<string>(FAILURE_REASON_VALUES)
 
 export type MastraSmartCropFailureReason =
-  | "config_missing"
-  | "auth_failed"
-  | "network_error"
-  | "parse_error"
-  | "invalid_input"
-  | "provider_config_missing"
-  | "provider_auth_failed"
-  | "provider_failed"
-  | "provider_invalid_output"
-  | "frame_host_not_allowed"
+  (typeof FAILURE_REASON_VALUES)[number]
 
 export type MastraSmartCropFailure = {
   ok: false
@@ -237,7 +231,8 @@ function parseFailure(
   return {
     ok: false,
     reason: result.reason as MastraSmartCropFailureReason,
-    retryable: result.retryable,
+    retryable:
+      result.reason === "provider_rate_limited" ? false : result.retryable,
     message: typeof result.message === "string" ? result.message : undefined,
     mastraRunId:
       typeof result.mastraRunId === "string" ? result.mastraRunId : undefined,

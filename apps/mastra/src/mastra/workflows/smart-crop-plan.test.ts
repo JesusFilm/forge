@@ -1,11 +1,16 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { requestShotCropIntents } from "../../services/smart-crop/openrouter-vision"
+import {
+  requestShotCropIntents,
+  SmartCropProviderError,
+} from "../../services/smart-crop/openrouter-vision"
 import { smartCropFailureFromUnknown } from "../../services/smart-crop/workflow-failure"
 import {
   _internals,
   handleSmartCropPlanRouteRequest,
+  launchSmartCropPlanWorkflow,
   runSmartCropPlanWorkflow,
+  smartCropPlanWorkflow,
   type SmartCropPlanResult,
 } from "./smart-crop-plan"
 
@@ -356,11 +361,66 @@ describe("smart crop plan workflow", () => {
     expect(upstream).toMatchObject({
       ok: false,
       reason: "provider_failed",
-      retryable: true,
+      retryable: false,
     })
   })
 
-  it("requires OPENROUTER_API_KEY at the vision service boundary", async () => {
+  it("preserves terminal provider rate limits from the plan boundary", async () => {
+    const result = await runSmartCropPlanWorkflow(baseInput, {
+      runId: "run-rate-limited",
+      requestIntents: async () => {
+        throw new SmartCropProviderError(
+          "provider_rate_limited",
+          false,
+          "smart crop vision rate limited after 3 attempts (status 429)",
+        )
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-rate-limited",
+    })
+  })
+
+  it("recovers the typed failure from an actual launcher failed-step result", async () => {
+    const failure = {
+      ok: false as const,
+      reason: "provider_rate_limited" as const,
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-launch-rate-limited",
+    }
+    const createRun = vi.spyOn(smartCropPlanWorkflow, "createRun")
+    createRun.mockResolvedValueOnce({
+      start: vi.fn(async () => ({
+        status: "failed",
+        input: baseInput,
+        error: new Error("Workflow execution failed"),
+        steps: {
+          "plan-smart-crop-segments": {
+            status: "failed",
+            error: {
+              name: "SmartCropWorkflowFailureError",
+              message: `SMART_CROP_PLAN_WORKFLOW_FAILED:${JSON.stringify(failure)}`,
+            },
+          },
+        },
+      })),
+    } as never)
+
+    await expect(
+      launchSmartCropPlanWorkflow(baseInput, {
+        runId: "run-launch-rate-limited",
+      }),
+    ).resolves.toEqual(failure)
+    createRun.mockRestore()
+  })
+
+  it("requires an OpenRouter key at the vision service boundary", async () => {
     await expect(
       requestShotCropIntents({
         shots: [
@@ -409,6 +469,24 @@ describe("smart crop plan workflow", () => {
       reason: "invalid_input",
       retryable: false,
     })
+  })
+
+  it("maps terminal provider rate limits to 503", async () => {
+    const result: SmartCropPlanResult = {
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-rate-limited",
+    }
+    const outcome = await handleSmartCropPlanRouteRequest({
+      authHeader: "Bearer service-key",
+      serviceKeys: ["service-key"],
+      readJson: async () => baseInput,
+      launch: async () => result,
+    })
+
+    expect(outcome).toEqual({ status: 503, body: { result } })
   })
 
   it("launches the workflow from a valid route request", async () => {

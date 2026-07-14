@@ -625,6 +625,7 @@ describe("runSmartCropLocalized — QA advisory degradation", () => {
       reason: "provider_invalid_output",
       retryable: false,
       message: "model returned junk",
+      mastraRunId: "run-qa-invalid",
     })
 
     const error = await runSmartCropLocalized(LOCALIZED_INPUT).catch(
@@ -632,7 +633,9 @@ describe("runSmartCropLocalized — QA advisory degradation", () => {
     )
     expect(error).toBeInstanceOf(Error)
     expect((error as Error).name).toBe("FatalError")
-    expect((error as Error).message).toContain("provider_invalid_output")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop QA failed (provider_invalid_output): model returned junk [mastraRunId=run-qa-invalid]",
+    )
   })
 })
 
@@ -814,6 +817,74 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
     expect(plan.usage).toEqual({ inputTokens: 150, outputTokens: 15 })
   })
 
+  it("keeps completed batches when provider recovery exhausts, then resumes on operator retry", async () => {
+    seedCanonicalBase(17)
+    launchSmartCropPlanMock
+      .mockResolvedValueOnce({
+        ok: true,
+        segments: [SEGMENT],
+        usage: { inputTokens: 25, outputTokens: 4 },
+        model: "m",
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        reason: "provider_rate_limited",
+        retryable: false,
+        message: "smart crop vision rate limited after 3 attempts (status 429)",
+        mastraRunId: "run-rate-limit",
+      })
+
+    const error = await runSmartCropCanonical(CANONICAL_INPUT).catch(
+      (caught: unknown) => caught,
+    )
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).name).toBe("FatalError")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop plan failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-rate-limit]",
+    )
+    expect(launchSmartCropPlanMock).toHaveBeenCalledTimes(2)
+    expect(
+      readSeededArtifact("asset123", SMART_CROP_PLAN_PROGRESS_ARTIFACT_TYPE),
+    ).toMatchObject({
+      completedBatches: 1,
+      totalBatches: 3,
+      usage: { inputTokens: 25, outputTokens: 4 },
+    })
+    expect(stepStatusCalls("smart_crop_plan").at(-1)).toEqual([
+      "job-can",
+      "smart_crop_plan",
+      "failed",
+      "mastra smart-crop plan failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-rate-limit]",
+    ])
+
+    launchSmartCropPlanMock.mockReset()
+    launchSmartCropPlanMock.mockImplementation(
+      async (input: { shots: Array<{ shotId: string }> }) => ({
+        ok: true,
+        segments: [{ ...SEGMENT, shotId: input.shots[0]?.shotId }],
+        usage: { inputTokens: 10, outputTokens: 1 },
+        model: "m",
+      }),
+    )
+
+    await runSmartCropCanonical(CANONICAL_INPUT)
+
+    expect(launchSmartCropPlanMock).toHaveBeenCalledTimes(2)
+    const completedPlan = readSeededArtifact(
+      "asset123",
+      "smart-crop-plan-9x16-v1",
+    ) as {
+      segments: Array<{ shotId: string }>
+      usage: { inputTokens: number; outputTokens: number }
+    }
+    expect(completedPlan.segments.map((segment) => segment.shotId)).toEqual([
+      "shot_00001",
+      "shot_00009",
+      "shot_00017",
+    ])
+    expect(completedPlan.usage).toEqual({ inputTokens: 45, outputTokens: 6 })
+  })
+
   it("starts fresh when the checkpoint belongs to a regenerated fingerprint", async () => {
     seedCanonicalBase(17)
     seedArtifact(
@@ -919,6 +990,41 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
     })
   })
 
+  it("preserves the Mastra run id when repair recovery exhausts", async () => {
+    seedCanonicalBase(2)
+    artifactStore.delete("asset123/smart-crop-qa-9x16-v1")
+    launchSmartCropQaMock.mockResolvedValueOnce({
+      ok: true,
+      verdict: "pass",
+      issues: [
+        {
+          severity: "warning",
+          description: "Speaker face is cut off by the crop",
+          shotId: "shot_00001",
+        },
+      ],
+      usage: { inputTokens: 5, outputTokens: 1 },
+      model: "qa-model",
+    })
+    launchSmartCropRepairMock.mockResolvedValueOnce({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-repair-limit",
+    })
+
+    const error = await runSmartCropCanonical(CANONICAL_INPUT).catch(
+      (caught: unknown) => caught,
+    )
+
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).name).toBe("FatalError")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop repair failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-repair-limit]",
+    )
+  })
+
   it("does not repair a report-only QA warning", async () => {
     seedCanonicalBase(2)
     artifactStore.delete("asset123/smart-crop-qa-9x16-v1")
@@ -952,6 +1058,29 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
 })
 
 describe("step error classification (FatalError vs SmartCropStepError)", () => {
+  it("keeps Manager-to-Mastra network errors retryable", async () => {
+    seedArtifact(
+      "asset123",
+      "smart-crop-fingerprint-v1",
+      buildFingerprint("asset123", CANONICAL_FP_AT),
+    )
+    launchSmartCropPlanMock.mockResolvedValue({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+    })
+
+    const error = await runSmartCropCanonical(CANONICAL_INPUT).catch(
+      (caught: unknown) => caught,
+    )
+
+    expect(error).toBeInstanceOf(SmartCropStepError)
+    expect((error as SmartCropStepError).code).toBe("network_error")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop plan failed (network_error)",
+    )
+  })
+
   it("maps retryable:false envelope failures to FatalError (no SDK retry)", async () => {
     // Fingerprint artifact absent -> crop-worker runs and fails terminally.
     runCropWorkerJobMock.mockResolvedValue({

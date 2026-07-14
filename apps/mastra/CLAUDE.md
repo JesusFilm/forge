@@ -415,9 +415,23 @@ Three bounded synchronous workflows, each with a service route protected by
 Results use a discriminated `{ ok: true, ... } | { ok: false, reason,
 retryable, message, mastraRunId }` envelope with the shared reasons
 `invalid_input | provider_config_missing | provider_auth_failed |
-provider_failed | provider_invalid_output | frame_host_not_allowed`. The
-planner and alignment modules are pure functions — keep them free of I/O and
-env reads so they stay property-testable.
+provider_rate_limited | provider_failed | provider_invalid_output |
+frame_host_not_allowed`.
+
+The shared Smart Crop OpenRouter client is the only automatic provider-retry
+owner. Plan, QA, and repair prefer `OPENROUTER_API_PAID_KEY`, fall back to
+`OPENROUTER_API_KEY`, and make at most three attempts for explicit HTTP 429/503
+or their typed embedded equivalents. Recovery honors `Retry-After` or bounded
+jittered backoff inside a 90-second operation deadline, below Manager's
+120-second client timeout. If the full provider delay cannot fit, or recovery
+otherwise exhausts, the workflow returns a sanitized terminal failure so
+Manager does not multiply the provider loop. Ambiguous no-response transport
+failures, auth/credit failures, and invalid output are not automatically
+retried. Structured logs use `smart_crop_provider_retry`,
+`smart_crop_provider_recovered`, and `smart_crop_provider_exhausted`; they
+contain only category, status, attempts, and timing, never request/response
+content. The planner and alignment modules are pure functions — keep them free
+of I/O and env reads so they stay property-testable.
 
 ## Firecrawl web data
 
