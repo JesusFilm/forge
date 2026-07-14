@@ -1,11 +1,14 @@
-import type { InstagramPost } from "./types"
-import { requireHttpsUrl } from "../discovery/secure-url"
+import type { DiscoveredVideo } from "./candidate"
+import { requireHttpsUrl } from "./secure-url"
 
 /**
- * Sends qualified posts to the website's review-queue ingest endpoint
+ * Sends discovered videos to the website's review-queue ingest endpoint
  * (apps/aimedialab `/api/inspiration-candidates`). The site stores each as a
- * `draft` awaiting human approval and dedups by shortcode, so re-sending the
- * same post on a later run is a harmless no-op (that is the cross-run memory).
+ * `draft` awaiting human approval and dedups by `(platform, externalId)`, so
+ * re-sending the same video on a later run is a harmless no-op (cross-run memory).
+ *
+ * Platform-agnostic successor to the Instagram-only site-ingest client: every
+ * payload carries an explicit `platform` and an author link for attribution.
  * Opt-in: only runs when both the URL and token are configured.
  */
 
@@ -38,27 +41,30 @@ export class SiteIngestError extends Error {
   }
 }
 
-export type SubmitPostsOptions = SiteIngestConfig & {
+export type SubmitCandidatesOptions = SiteIngestConfig & {
   fetchImpl?: typeof fetch
 }
 
-function toPayload(posts: readonly InstagramPost[]) {
+function toPayload(candidates: readonly DiscoveredVideo[]) {
   return {
-    posts: posts.map((post) => ({
-      shortcode: post.shortcode,
-      url: post.url,
-      caption: post.caption,
-      author: post.authorHandle,
-      thumbnailUrl: post.thumbnailUrl,
-      matchedAi: post.matchedAi,
-      matchedChristian: post.matchedChristian,
+    posts: candidates.map((candidate) => ({
+      platform: candidate.platform,
+      externalId: candidate.externalId,
+      url: candidate.url,
+      caption: candidate.caption,
+      author: candidate.authorHandle,
+      authorName: candidate.authorName,
+      authorUrl: candidate.authorUrl,
+      thumbnailUrl: candidate.thumbnailUrl,
+      matchedAi: candidate.matchedAi,
+      matchedChristian: candidate.matchedChristian,
     })),
   }
 }
 
-export async function submitPostsToSite(
-  posts: readonly InstagramPost[],
-  options: SubmitPostsOptions,
+export async function submitCandidatesToSite(
+  candidates: readonly DiscoveredVideo[],
+  options: SubmitCandidatesOptions,
 ): Promise<SiteIngestResult> {
   const rawUrl = options.url?.trim()
   const token = options.token?.trim()
@@ -68,7 +74,7 @@ export async function submitPostsToSite(
       "site ingest URL and token are required",
     )
   }
-  if (posts.length === 0) return { ok: true, inserted: 0, skipped: 0 }
+  if (candidates.length === 0) return { ok: true, inserted: 0, skipped: 0 }
 
   let url: string
   try {
@@ -88,7 +94,7 @@ export async function submitPostsToSite(
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(toPayload(posts)),
+      body: JSON.stringify(toPayload(candidates)),
       redirect: "error",
       signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
     })

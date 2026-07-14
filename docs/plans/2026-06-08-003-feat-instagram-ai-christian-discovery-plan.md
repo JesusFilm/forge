@@ -13,10 +13,9 @@ depth: standard
 We want a Mastra workflow in `apps/mastra` that discovers AI-generated Christian
 videos on Instagram and returns a structured list of posts with metadata,
 author info, and a best-effort published date. Discovery uses **Firecrawl web
-search** (`POST /v2/search` through Mastra's shared Firecrawl client) rather
-than direct crawling because Instagram is heavily gated — search returns
-Instagram post/reel URLs plus title/snippet, and optional markdown hydration can
-enrich candidate text.
+search** (`POST /v1/search`) rather than direct crawling because Instagram is
+heavily gated — search returns Instagram post/reel URLs plus title/snippet, and
+optional per-result scraping can enrich metadata.
 
 Decisions confirmed with the user (origin design: an approved pre-plan design
 doc):
@@ -25,28 +24,28 @@ doc):
 - **Classification**: keyword/heuristic only — no LLM. Match AI-generation and Christian keyword signals over caption/title/hashtags. Qualifies only when both match.
 - **Output**: return the list in the HTTP/workflow response **and** write a timestamped JSON artifact under Mastra storage (mirrors the `offline-search-eval` artifact pattern).
 
-This builds on Mastra's existing Firecrawl web-data surface. The workflow stays
-self-contained in `apps/mastra`: no Admin ingest contract, no imports from
-other apps (per `apps/mastra/CLAUDE.md` architecture rules).
+This is greenfield — there is no existing Firecrawl usage in the repo. The
+workflow stays self-contained in `apps/mastra`: no Admin ingest contract, no
+imports from other apps (per `apps/mastra/CLAUDE.md` architecture rules).
 
 ---
 
 ## Requirements
 
-- R1. Discover candidate Instagram posts via the shared Firecrawl search client from operator-supplied queries (with defaults), tolerant to per-query failures.
+- R1. Discover candidate Instagram posts via Firecrawl `/v1/search` from operator-supplied queries (with defaults), tolerant to per-query failures.
 - R2. Parse each Firecrawl hit into a normalized Instagram post: canonical URL, shortcode, media type, author handle/name, caption, hashtags, thumbnail, best-effort `publishedAt`.
 - R3. Filter posts via keyword heuristics; keep only posts that signal **both** AI-generation and Christian content. Dedupe by shortcode; cap at `maxResults`.
 - R4. Return the qualified post list in the workflow/route response and (by default) persist a validated JSON artifact under Mastra storage.
 - R5. Guard the HTTP route with the existing service-bearer mechanism; expose the workflow in Studio with no-JSON-needed defaults.
-- R6. Reuse the existing Firecrawl production env contract and add only the Instagram artifact-dir override.
+- R6. New env vars are optional/defaulted and never added to production-required asserts (opt-in tool, not always-on path).
 
-Success criteria: an operator can run the workflow from Studio with defaults (given a Firecrawl key), receive a list of qualified Instagram posts in the response, and find a matching JSON artifact on disk. Missing key -> typed `config_missing` failure, not a crash. Persistence failure -> typed `artifact_failed` failure, not a misleading query failure.
+Success criteria: an operator can run the workflow from Studio with defaults (given a Firecrawl key), receive a list of qualified Instagram posts in the response, and find a matching JSON artifact on disk. Missing key → typed `config_missing` failure, not a crash.
 
 ---
 
 ## Key Technical Decisions
 
-- **Shared Firecrawl search as the discovery seam.** Mastra already owns Firecrawl credentials, allowlisting, bounded result counts, markdown caps, retries, and `/v2/search` response normalization. Direct Instagram crawling is unreliable; search yields URLs + snippet metadata that the keyword heuristic can act on.
+- **Firecrawl `/v1/search` as the discovery seam.** Search returns `{ success, data: [{ url, title, description, markdown?, metadata? }] }`. Direct Instagram crawling is unreliable; search yields URLs + snippet metadata that the keyword heuristic can act on.
 - **Keyword/heuristic classification, no LLM.** Cheaper, no extra provider dependency. Trade-off: noisier than an LLM classifier — explicitly documented. Word-boundary matching for short tokens (`ai`, `god`) to suppress false positives (`said`, `goddess`).
 - **`publishedAt` is best-effort.** Instagram search snippets rarely carry a reliable timestamp. Populated only from scrape metadata (`article:published_time` / og) when present; otherwise `null`. Documented in code + docs + the run summary.
 - **Discriminated-union result shape** (`z.discriminatedUnion("ok", [...])`) mirroring `src/mastra/workflows/scene-embedding.ts`, so Studio records typed success/failure.
@@ -68,9 +67,10 @@ Success criteria: an operator can run the workflow from Studio with defaults (gi
 
 ```
 apps/mastra/src/
-├── config/env.ts                                   # (modified) Instagram artifact-dir var
+├── config/env.ts                                   # (modified) Firecrawl + artifact-dir vars + getFirecrawlConfig()
 ├── services/
-│   ├── firecrawl-client.ts                         # (existing) shared Firecrawl search/scrape client
+│   ├── firecrawl-search-client.ts                  # (new) typed Firecrawl /v1/search client
+│   ├── firecrawl-search-client.test.ts             # (new)
 │   └── instagram-discovery/
 │       ├── types.ts                                # (new) InstagramPost, DiscoveryReport, MatchSignals
 │       ├── post-parser.ts                          # (new) isInstagramUrl, parseInstagramPost
@@ -90,32 +90,33 @@ apps/mastra/src/
 
 ## Implementation Units
 
-### U1. Env config for Instagram artifact dir
+### U1. Env config for Firecrawl + artifact dir
 
-**Goal:** Add an optional/defaulted Instagram artifact directory override while reusing the existing Firecrawl config.
+**Goal:** Add optional/defaulted env vars and a `getFirecrawlConfig()` getter.
 **Requirements:** R1, R6.
 **Dependencies:** none.
 **Files:** `apps/mastra/src/config/env.ts`, `apps/mastra/src/config/env.test.ts`, `apps/mastra/.env.example`.
-**Approach:** Keep the existing `FIRECRAWL_API_KEY`, `FIRECRAWL_API_URL`, allowlist, user-agent, timeout, result-cap, and markdown-cap settings. Add `INSTAGRAM_DISCOVERY_ARTIFACT_DIR` (`z.string().min(1).optional()`) and wire it through the `process.env` map with `emptyToUndefined`.
+**Approach:** Add to `envSchema`: `FIRECRAWL_API_KEY` (`z.string().min(1).optional()`), `FIRECRAWL_API_BASE_URL` (`z.string().url().default("https://api.firecrawl.dev")`), `FIRECRAWL_SEARCH_TIMEOUT_MS` (`z.coerce.number().int().positive().max(120_000).default(60_000)`), `INSTAGRAM_DISCOVERY_ARTIFACT_DIR` (`z.string().min(1).optional()`). Wire each through the `process.env` map with `emptyToUndefined`. Add `getFirecrawlConfig()` → `{ apiKey, baseUrl, timeoutMs }`. Do **not** add any of these to `assertMastraRuntimeEnv()`.
 **Patterns to follow:** existing optional vars + getters in `env.ts`.
 **Test scenarios:**
 
-- Firecrawl config continues to expose the existing bounded-client settings.
-- `INSTAGRAM_DISCOVERY_ARTIFACT_DIR` defaults to `<storage>/instagram-discovery` when unset.
+- `getFirecrawlConfig()` returns defaults (base URL, 60_000 timeout) when only the key is set.
+- `assertMastraRuntimeEnv()` in production with all existing required vars present but no Firecrawl vars does **not** throw (regression guard for the opt-in rule).
 
-### U2. Shared Firecrawl search adapter
+### U2. Firecrawl search client
 
-**Goal:** Use the existing shared Firecrawl client for search and translate its failure union into Instagram discovery query failures.
+**Goal:** Typed client for `POST /v1/search` with retry/timeout and a typed error class.
 **Requirements:** R1.
 **Dependencies:** U1.
-**Files:** `apps/mastra/src/mastra/workflows/instagram-ai-christian-discovery.ts`, `apps/mastra/src/services/firecrawl-client.ts`.
-**Approach:** Call `searchFirecrawl({ query, limit, includeMarkdown, config })`, preserve the configured result and markdown caps, and map `config_missing | auth_failed | network_error | rate_limited | rejected | parse_error | invalid_response` into the workflow's per-query failure list. Missing key returns typed `config_missing`.
-**Patterns to follow:** existing `apps/mastra/src/mastra/tools/firecrawl.ts` wrapper behavior.
+**Files:** `apps/mastra/src/services/firecrawl-search-client.ts`, `apps/mastra/src/services/firecrawl-search-client.test.ts`.
+**Approach:** Export `class FirecrawlSearchError` (`code: "config_missing" | "auth_failed" | "rate_limited" | "upstream_failed" | "invalid_response"`, `retryable`). `requestFirecrawlSearch(query, { apiKey, baseUrl, limit, timeoutMs, scrape?, fetchImpl? })`: `POST {baseUrl}/v1/search`, `Authorization: Bearer`, body `{ query, limit, ...(scrape ? { scrapeOptions: { formats: ["markdown"], onlyMainContent: true } } : {}) }`. Attempt loop with exponential backoff + `retry-after` (mirror judge.ts). Status mapping: `401/403`→`auth_failed` (non-retryable), `429`→`rate_limited` (retryable), `>=500`→`upstream_failed` (retryable), other non-ok → `upstream_failed` non-retryable. Tolerant Zod parse with `.passthrough()` on result items; normalize to `FirecrawlSearchHit[]` (`{ url, title?, description?, markdown?, metadata? }`). Throw `config_missing` if key absent.
+**Patterns to follow:** `offline-search-eval/judge.ts` retry loop; `embedding-provider.ts` status→retryable.
 **Test scenarios (inject `fetchImpl`):**
 
-- Happy path: shared client results become Instagram candidate hits.
-- Missing `apiKey` returns `config_missing` before query execution.
-- Per-query failures are collected; only all-query failures return `all_queries_failed`.
+- Happy path: 200 with `{ success: true, data: [...] }` → normalized hits; unknown extra fields tolerated via passthrough.
+- Missing `apiKey` → throws `FirecrawlSearchError` code `config_missing` before any fetch.
+- 401 → `auth_failed`, non-retryable. 429 → `rate_limited`, retryable, retried up to max attempts then throws. 500 → `upstream_failed` retryable. Malformed JSON / missing `data` → `invalid_response`.
+- Backoff sleep is injected (no real timers in tests).
 
 ### U3. Instagram post parser + types
 
@@ -165,7 +166,7 @@ apps/mastra/src/
 **Requirements:** R1–R5.
 **Dependencies:** U2, U3, U4, U5.
 **Files:** `apps/mastra/src/mastra/workflows/instagram-ai-christian-discovery.ts`, `apps/mastra/src/mastra/workflows/instagram-ai-christian-discovery.test.ts`.
-**Approach:** Input schema (strict, defaults): `queries` (`.min(1).max(20).default([...two default IG-targeted queries...])`), `limitPerQuery` (`.max(20).default(5)`, matching the shared Firecrawl result-cap default), `scrapeMetadata` (`.default(false)`), `maxResults` (`.max(200).default(50)`), `persistArtifact` (`.default(true)`). Three `createStep`s: (1) `search-instagram-candidates` — run each query through the shared Firecrawl search adapter, collect hits, collect per-query failures, return `config_missing` failure if key absent; (2) `parse-and-filter` — `parseInstagramPost` over Instagram hits, drop non-IG, dedupe by shortcode, `classifyPost`, keep qualifying, cap at `maxResults`; (3) `report-and-persist` — build `DiscoveryReport` (runId, startedAt/finishedAt, queries, totals {candidates, instagram, deduped, qualified}, queryFailures, posts), write via store when `persistArtifact`, return success or `artifact_failed`. Output `z.discriminatedUnion("ok", [Success, Failure])`: Success `{ ok:true, mastraRunId, totals, posts, artifactPath? }`; Failure `{ ok:false, reason: "invalid_input"|"config_missing"|"all_queries_failed"|"artifact_failed", retryable, mastraRunId, details? }`. Export `instagramAiChristianDiscoveryWorkflow`, `launchInstagramDiscoveryWorkflow`, `handleInstagramDiscoveryRouteRequest` (service-bearer guard via `isValidServiceBearer`, status mapping: 200 / 400 invalid_input / 401 bearer / 500 artifact_failed / 502 all_queries_failed / 503 config_missing), input/output schemas, `_internals`.
+**Approach:** Input schema (strict, defaults): `queries` (`.min(1).max(20).default([...two default IG-targeted queries...])`), `limitPerQuery` (`.max(50).default(10)`), `scrapeMetadata` (`.default(false)`), `maxResults` (`.max(200).default(50)`), `persistArtifact` (`.default(true)`). Three `createStep`s: (1) `search-instagram-candidates` — run each query through `requestFirecrawlSearch`, collect hits, collect per-query failures, return `config_missing` failure if key absent; (2) `parse-and-filter` — `parseInstagramPost` over Instagram hits, drop non-IG, dedupe by shortcode, `classifyPost`, keep qualifying, cap at `maxResults`; (3) `report-and-persist` — build `DiscoveryReport` (runId, startedAt/finishedAt, queries, totals {candidates, instagram, deduped, qualified}, queryFailures, posts), write via store when `persistArtifact`, return success. Output `z.discriminatedUnion("ok", [Success, Failure])`: Success `{ ok:true, mastraRunId, totals, posts, artifactPath? }`; Failure `{ ok:false, reason: "invalid_input"|"config_missing"|"all_queries_failed", retryable, mastraRunId, details? }`. Export `instagramAiChristianDiscoveryWorkflow`, `launchInstagramDiscoveryWorkflow`, `handleInstagramDiscoveryRouteRequest` (service-bearer guard via `isValidServiceBearer`, status mapping: 200 / 400 invalid_input / 401 bearer / 502 all_queries_failed / 503 config_missing), input/output schemas, `_internals`.
 **Patterns to follow:** `scene-embedding.ts` (steps, launch, route handler, status mapping, bearer guard).
 **Execution note:** Inject `fetchImpl`/client + artifact store via options so tests run without network or real FS root.
 **Test scenarios:**
@@ -173,7 +174,6 @@ apps/mastra/src/
 - Happy path (injected fetch returning IG + non-IG hits, one AI+Christian, one only-AI): success, `posts` contains only the qualified post, non-IG dropped, artifact written (assert `artifactPath`).
 - Missing Firecrawl key → `config_missing`, route status 503.
 - Every query errors (injected fetch throws/4xx) → `all_queries_failed`, route status 502.
-- Artifact write failure → `artifact_failed`, route status 500.
 - Dedupe: same shortcode from two queries → one post.
 - `persistArtifact:false` → success with no `artifactPath`, store not called.
 - Invalid input (e.g. `limitPerQuery: 0`) → `invalid_input`, route 400.

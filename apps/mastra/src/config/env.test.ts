@@ -122,6 +122,82 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("defaults Firecrawl config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-key")
+    vi.stubEnv("FIRECRAWL_API_URL", "")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "")
+
+    const { getFirecrawlConfig } = await import("./env")
+
+    expect(getFirecrawlConfig()).toEqual({
+      apiKey: "fc-test-key",
+      apiUrl: "https://api.firecrawl.dev",
+      timeoutMs: 60_000,
+      userAgent: "forge-mastra-firecrawl/1.0",
+      maxSearchResults: 5,
+      maxMarkdownCharacters: 16_000,
+    })
+  })
+
+  it("requires Firecrawl credentials in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+
+    const { assertMastraRuntimeEnv, getFirecrawlConfig } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_KEY required for Mastra production",
+    )
+    expect(getFirecrawlConfig().apiKey).toBeUndefined()
+  })
+
+  it("defaults YouTube config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "yt-test-key")
+    vi.stubEnv("YOUTUBE_API_BASE_URL", "")
+    vi.stubEnv("YOUTUBE_SEARCH_TIMEOUT_MS", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig()).toEqual({
+      apiKey: "yt-test-key",
+      baseUrl: "https://www.googleapis.com/youtube/v3",
+      timeoutMs: 30_000,
+    })
+  })
+
+  it("leaves the YouTube API key undefined when unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig().apiKey).toBeUndefined()
+  })
+
   it("defaults storage to the local gateway database in development", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("DATABASE_URL", "")
@@ -647,6 +723,68 @@ describe("Mastra env", () => {
     vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
   }
+
+  it("rejects a production discovery URL without the shared bearer", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", "")
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "")
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.internal/api/discovery-sources",
+    )
+    vi.stubEnv("DISCOVERY_SITE_ALLOWED_HOSTS", "site.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN is required when INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL is set in Mastra production",
+    )
+  })
+
+  it("rejects a production review-queue URL without the shared bearer", async () => {
+    stubProductionBaseline()
+    vi.stubEnv(
+      "INSTAGRAM_DISCOVERY_SITE_INGEST_URL",
+      "https://site.internal/api/review-queue",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "")
+    vi.stubEnv("DISCOVERY_SOURCES_URL", "")
+    vi.stubEnv("DISCOVERY_SITE_ALLOWED_HOSTS", "site.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN is required when INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL is set in Mastra production",
+    )
+  })
+
+  it("rejects a production discovery bearer without an endpoint", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", "")
+    vi.stubEnv("DISCOVERY_SOURCES_URL", "")
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN requires INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL in Mastra production",
+    )
+  })
+
+  it("accepts a complete production saved-sources configuration", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", "")
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.internal/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.stubEnv("DISCOVERY_SITE_ALLOWED_HOSTS", "site.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
 
   it("imports cleanly with all RAG vars unset (no boot failure)", async () => {
     vi.stubEnv("NODE_ENV", "development")
