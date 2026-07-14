@@ -24,6 +24,14 @@
  */
 export const AI_CHAT_MAX_THREADS_PER_RESOURCE = 200
 
+/**
+ * Resource-key prefix for signed-in users (chat-proxy contract, feat-208).
+ * Single mastra-side home (this module owns the resource contract); apps/chat
+ * keeps its own mirror per the no-cross-app-import rule. Prefix-check only —
+ * NEVER split on ":" (an OIDC sub may contain anything).
+ */
+export const USER_RESOURCE_PREFIX = "user:"
+
 /** The narrow Memory surface the gate needs — structural so tests fake it. */
 export type AiChatOwnershipMemory = {
   getThreadById: (args: {

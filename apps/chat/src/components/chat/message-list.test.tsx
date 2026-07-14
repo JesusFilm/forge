@@ -64,12 +64,16 @@ describe("MessageList failure notices", () => {
     expect(forbidden).not.toBe(limit)
   })
 
-  it("maps gate_denied to the grouped unavailable notice (feat-233 defensive fallback)", () => {
-    // In practice the seam turns gate_denied into a stub reply; this asserts
-    // the defensive copy if one ever reaches a rendered failure state.
-    expect(noticeFor("gate_denied")).toBe(
+  it("maps gate_denied to the distinct access-changed notice (feat-241, KTD10)", () => {
+    // Reaches a rendered failure only on server-persisted conversations (the
+    // seam still stub-degrades never-persisted ones). Distinct copy — never
+    // the generic unavailable bucket, and no sign-in nudge (feat-236 owns it).
+    const notice = noticeFor("gate_denied")
+    expect(notice).toMatch(/access to Seeker has changed/)
+    expect(notice).not.toBe(
       "Seeker is unavailable right now. Please try again later.",
     )
+    expect(notice).not.toMatch(/sign in/i)
   })
 
   it("maps every ReplyFailureReason to a non-empty user notice", () => {

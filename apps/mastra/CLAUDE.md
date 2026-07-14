@@ -131,6 +131,7 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `MASTRA_SERVICE_API_KEYS`                    | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `AI_CHAT_SERVICE_API_KEYS`                   | Dedicated CSV bearer allowlist for the ai-chat history read routes (`/forge-ai-chat-history-*`, feat-241) — deliberately NOT the shared pool above, so embedding/eval pool keys never gain bulk transcript read. Optional, **no default** — unset = empty allowlist = the history routes fail closed (401) until provisioned. Boot asserts it shares no key value with `MASTRA_SERVICE_API_KEYS` (`assertAiChatServiceKeysDisjoint`). Holder: the chat service (`AI_CHAT_MASTRA_API_KEY`). Deploy receiver-first: set this CSV before chat's key.                                                                                              |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `AI_GATEWAY_SEEKER_ENABLED`                  | Default-off gate that prepends the JesusFilm gateway chat model to the seeker agent's fallback chain (feat-237). Optional, **no default** — the seeker stays on the free-Gemma chain unless this is exactly `"true"` AND `AI_GATEWAY_CHAT_API_KEY` is set (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot. Coupling: `AI_GATEWAY_CHAT_MODEL` and `AI_GATEWAY_CHAT_BASE_URL` are SHARED with the experience surface — changing either while this flag is `"true"` swaps the seeker's model (or retargets its gateway endpoint) too, so re-run the feat-237 smoke checklist before deploying such a change. |
@@ -520,6 +521,50 @@ ai_chat.mastra_threads WHERE "resourceId" = $1;` (plus
   deletion is deferred follow-up.
 - Plan + verified package-behavior citations:
   `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md`.
+
+### ai-chat history read surface (feat-241)
+
+`POST /forge-ai-chat-history-list` + `POST /forge-ai-chat-history-replay`
+(handlers: `src/mastra/ai-chat-history-route.ts`) — the bearer-gated read path
+for persisted seeker conversations, consumed by chat's `/api/history/*`
+proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.md`.
+
+- **Gate ladder (KTD2):** `SEEKER_ROUTE_ENABLED` flag (reused — history is
+  meaningless with sends off; flipping it off during a send-path incident also
+  darkens reads) → the DEDICATED `AI_CHAT_SERVICE_API_KEYS` lane bearer (never
+  the shared pool; see the env table) → body guard → `user:`-prefix resource
+  refusal (R2: `anon:*` and the dogfood fallback are never listable or
+  replayable; prefix-check only, never split on `:`).
+- **Listing:** explicit `updatedAt DESC` ordering (the dist default is
+  `createdAt`), server-side clamps (`perPage` default 20, max 50), rows
+  projected field-by-field to `{ id, title, updatedAt }` — `""` is the
+  untitled sentinel the client turns into a date fallback label.
+- **Replay (KTD4/KTD5):** `authorizeAiChatThreadAccess` → explicit
+  `getThreadById` existence check (the gate's missing-thread branch is a
+  write-path concept and would admit it) → `recall({ threadId, resourceId,
+perPage: 200 })` — `resourceId` ALWAYS passed (omitting it disables the
+  store's own ownership throw), `perPage` explicit (dist default 10). Wire
+  projection is `{ id, role, text, createdAt }`, user/assistant text parts
+  only, capped at 8,192 UTF-16 units per message (≤3 UTF-8 bytes each —
+  the chat proxy's 8 MiB thread byte-cap covers the worst case) — tool internals and provider metadata are
+  unrepresentable. The gate's `thread_limit` maps to `thread_not_found` on
+  this read wire; a store failure is a generic `store_failed` (fail closed —
+  never `thread_not_found`). Transcript order relies on `recall`'s
+  chronological return order — a pinned dist fact, CI-guarded by the
+  real-memory smoke's user-before-assistant assertion; re-verify on
+  `@mastra/*` bumps.
+- **Budget:** `TIME_BUDGET_MS.historyRead` (8s) via the `settleWithinBudget`
+  pattern — millisecond-class store reads never inherit the 90s turn envelope,
+  and the cap sits strictly below the chat proxy's 10s read ceiling.
+- **Titles (KTD12):** `buildAiChatMemory` enables top-level
+  `generateTitle: { model: AI_CHAT_TITLE_MODEL }` (free-Gemma model-router
+  string; rides `OPENROUTER_API_KEY`, absent key = benign no-op; NEVER the
+  deprecated `threads.generateTitle` nesting — it throws mid-turn). Signed-in
+  scope: the send route passes a per-call `options: { generateTitle: false }`
+  override for non-`user:` resources. Fire-and-forget after the turn; `""`
+  stays the untitled sentinel and generation retries on the next turn.
+- Logging is enum-only plain-string `[ai-chat-history] event=… reason=…` —
+  never thread ids, titles, transcript text, or exception text (KTD13).
 
 ### Local run
 

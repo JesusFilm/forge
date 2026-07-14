@@ -1,6 +1,7 @@
 ---
 title: "Browser-facing SSE proxy to a bearer-gated internal SSE service — parse-and-re-emit, classify HTTP status before the stream, one client parse path"
 date: 2026-06-26
+last_updated: 2026-07-14
 category: architecture-patterns
 problem_type: architecture_pattern
 component: service_object
@@ -149,6 +150,45 @@ terminal frame then closes; the client treats the first `result`/`error` as
 authoritative and ignores later frames. This guards the route-timeout-vs-proxy-
 timeout race when the two budgets are close (e.g. 90s route vs 95s proxy).
 
+**7. Body-conditional reason passthrough binds EVERY hop of the chain
+(buffered-JSON history variant — added 2026-07-14, feat-241, unmerged as of
+this writing).** The SSE path sidesteps semantic client-side status
+classification (#3); the history surfaces (`/api/history/*`, the buffered-JSON siblings in the
+supersession note below) instead speak status + JSON `reason` at each hop —
+Mastra route → chat proxy → browser client — and there the classification rule
+is the CHAIN's contract, not one hop's implementation detail. The rule: a
+status code alone is never a semantic discriminator. Data-level meanings
+("gone", "forbidden") require the chain's own reason literal in the body; a
+reasonless or non-JSON response gets the infrastructure meaning (retryable
+`unavailable`) — because any hop can be handed a status by infrastructure that
+doesn't speak the vocabulary (a chat-router 404 after a rollback/deploy skew,
+middleware/CDN interception, a front-door HTML error page). feat-241 shipped
+the rule at the proxy hop from the start (`history-proxy.ts`: a reasonless
+upstream 404 is `unavailable`, "never 'your conversations were deleted'") but
+initially NOT at the browser client, which mapped any 404 to the
+session-cached data-loss state — so a config outage would have rendered "This
+conversation is no longer available" and stayed that way after the outage
+cleared (the replay state is session-cached and blocks sends, R22). Caught in
+the pre-push Tier-2 review, where two independent model families (the
+in-process adversarial persona and a Codex cross-model pass) converged on it.
+The fix mirrors the proxy at the last hop: `failureReasonFor`
+(`apps/chat/src/lib/history-client.ts:64-81`) maps 403 AND 404 to
+`access`/`not_available` only when the body carries the proxy's own
+`gate_denied`/`thread_forbidden`/`thread_not_found` literal; reasonless →
+`unavailable`. Two riders: when classifying ambiguity, prefer the
+retryable/infrastructure reading over the destructive/data-loss one — doubly
+so when the wrong state gets cached (a cached destructive state converts a
+transient outage into a permanent-looking loss); and every hop's suite needs a
+reasonless AND a wrong-shape (non-JSON) fixture for each semantically-mapped
+status (`history-client.test.ts:43`, `:51-57`, `:59-71`) — a reason-carrying
+fixture alone satisfies both a status-only classifier and the body-conditional
+one, so only the reasonless/non-JSON cases make the body check load-bearing
+(see `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`,
+which carries this as a worked instance). Genus sibling:
+`docs/solutions/best-practices/client-mirror-server-dedupe-per-id-contract-20260506.md`
+— a client must mirror a server-side boundary discipline, stated in both
+halves' comments.
+
 ## Why This Matters
 
 The contract mismatch in guidance #2 is invisible to mocked tests that only feed
@@ -169,6 +209,15 @@ lever applied is a prompt-length cap (`MAX_PROMPT_CHARS`). A real inbound auth
 gate AND a per-caller rate/concurrency cap are HARD PREREQUISITES before the
 audience widens — do not copy this pattern onto a wider-audience surface without
 solving the inbound gate separately.
+
+> **Posture partially superseded (2026-07-13, feat-241):** the chat HISTORY
+> surface (`/api/history/*`, buffered JSON siblings of this SSE proxy sharing
+> the same base URL/host-allowlist discipline) ships WITH a real inbound gate —
+> a valid signed session resolved server-side (401 `invalid_session` otherwise)
+> plus, for the dogfood phase, the seeker allowlist gate (surface `"history"`;
+> removed by feat-236). The "deliberately unauthenticated" posture note above
+> now describes the SEND path (`/api/seeker`) only; the rate/concurrency cap
+> remains the open prerequisite on both.
 
 ## When to Apply
 

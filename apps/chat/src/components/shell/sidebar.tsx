@@ -4,6 +4,8 @@ import { type ChatIdentity } from "@/auth/session-cookie"
 import { cn } from "@/lib/cn"
 import { type Conversation } from "@/lib/conversations"
 
+import { type HistoryListUi } from "@/lib/use-conversations"
+
 import { SidebarAccount } from "./sidebar-account"
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { ConversationList } from "./sidebar-conversation-list"
@@ -20,10 +22,13 @@ type SidebarProps = {
   authConfigured: boolean
   identity: ChatIdentity | null
   signInError: boolean
+  history: HistoryListUi
   onNew: () => void
   onSelect: (id: string) => void
   onToggleCollapsed: () => void
   onCloseMobile: () => void
+  onRetryHistory: () => void
+  onLoadMore: () => void
 }
 
 // Stable id so the mobile trigger can reference the drawer via aria-controls.
@@ -49,10 +54,13 @@ export function Sidebar({
   authConfigured,
   identity,
   signInError,
+  history,
   onNew,
   onSelect,
   onToggleCollapsed,
   onCloseMobile,
+  onRetryHistory,
+  onLoadMore,
 }: SidebarProps) {
   const { clip, closeRef, handleToggleCollapsed, handleTransitionEnd } =
     useSidebarChrome({
@@ -119,8 +127,11 @@ export function Sidebar({
           activeId={activeId}
           pendingIds={pendingIds}
           styles={styles}
+          history={history}
           onSelect={onSelect}
           onCloseMobile={onCloseMobile}
+          onRetryHistory={onRetryHistory}
+          onLoadMore={onLoadMore}
         />
         <SidebarAccount
           authConfigured={authConfigured}
