@@ -368,6 +368,10 @@ A migration failure state the team has classified as safe for automated failed-r
 
 A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
 
+### Experience Block
+
+An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.
+
 ### Homepage Experience
 
 The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.

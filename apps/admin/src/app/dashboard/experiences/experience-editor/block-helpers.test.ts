@@ -5,9 +5,11 @@ import {
   type BlockTemplateKey,
   createContainerSlotLayout,
   createTemplateBlock,
+  editorTextFromContentParagraphs,
   defaultContainerSlotSpans,
   normalizeEditorBlocks,
   normalizeEditorBlockPayload,
+  contentParagraphsFromEditorText,
   readContainerSlotSpans,
   summarizeBlock,
   type VideoLibraryItem,
@@ -36,17 +38,70 @@ const videoLibrary: VideoLibraryItem[] = [
 
 describe("experience editor block helpers", () => {
   const nonComposingBlockKeys = BLOCK_TEMPLATE_KEYS.filter(
-    (key): key is Exclude<BlockTemplateKey, "section" | "container"> =>
-      key !== "section" && key !== "container",
+    (
+      key,
+    ): key is Exclude<
+      BlockTemplateKey,
+      "section" | "container" | "promotionalText"
+    > => key !== "section" && key !== "container" && key !== "promotionalText",
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(20)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(21)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
       expect(result.success, key).toBe(true)
     }
+  })
+
+  it("creates a schema-valid promotional story composition", () => {
+    const starter = createTemplateBlock("promotionalText", 4)
+
+    expect(starter).toMatchObject({
+      t: "section",
+      sectionKey: "promotional-story-4",
+      backgroundColor: "purple",
+      staticOverlay: true,
+      content: [
+        {
+          t: "text",
+          sectionKey: "promotional-copy-4",
+          variant: "promotional",
+          headingLevel: "h2",
+        },
+      ],
+    })
+    expect(BlockSchema.safeParse(starter).success).toBe(true)
+  })
+
+  it("preserves promotional Markdown blocks and legacy line splitting", () => {
+    const markdown = [
+      "### Why this story matters",
+      "A first paragraph.",
+      "A second paragraph.",
+      "- One reason\n- Another reason",
+    ].join("\n\n")
+
+    expect(contentParagraphsFromEditorText(markdown, "promotional")).toEqual([
+      "### Why this story matters",
+      "A first paragraph.",
+      "A second paragraph.",
+      "- One reason\n- Another reason",
+    ])
+    expect(
+      editorTextFromContentParagraphs(
+        contentParagraphsFromEditorText(markdown, "promotional"),
+        "promotional",
+      ),
+    ).toBe(markdown)
+    expect(contentParagraphsFromEditorText("First\nSecond", "lead")).toEqual([
+      "First",
+      "Second",
+    ])
+    expect(contentParagraphsFromEditorText("  \n\n ", "promotional")).toEqual(
+      [],
+    )
   })
 
   it("normalizes empty optional fields before save", () => {
