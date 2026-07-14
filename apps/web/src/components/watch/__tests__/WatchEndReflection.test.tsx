@@ -30,6 +30,8 @@ vi.mock("next-intl", () => ({
         readInBibleDetail: "Explore the passage behind this story.",
         askBibleQuestion: "Ask a Bible question",
         askBibleQuestionDetail: "Get help exploring Scripture.",
+        chatInvitation:
+          "Have a question about this video or another topic? Share your thoughts or comments.",
         talkToPerson: "Talk to a person",
         talkToPersonDetail: "Connect with someone ready to listen.",
         goDeeper: "Go deeper",
@@ -162,6 +164,9 @@ describe("WatchEndReflection", () => {
       ).not.toBeNull()
       expect(container.textContent).toContain("What did this story show you?")
       expect(container.textContent).toContain("What could change next?")
+      expect(container.textContent).toContain(
+        "Have a question about this video or another topic? Share your thoughts or comments.",
+      )
       expect(
         container.querySelector(
           '[data-testid="watch-end-reflection-question-input"]',

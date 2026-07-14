@@ -394,6 +394,7 @@ export function WatchEndReflection({
             prompts={reflectionPrompts}
             customQuestion={customQuestion}
             fieldLabel={tQuestionPanel("fieldLabel")}
+            chatInvitation={t("chatInvitation")}
             onQuestionChange={setCustomQuestion}
           />
         </main>
@@ -497,12 +498,14 @@ function ActionStage({
   prompts,
   customQuestion,
   fieldLabel,
+  chatInvitation,
   onQuestionChange,
 }: {
   action: NextStepAction
   prompts: string[]
   customQuestion: string
   fieldLabel: string
+  chatInvitation: string
   onQuestionChange: (question: string) => void
 }) {
   return (
@@ -527,6 +530,7 @@ function ActionStage({
           prompts={prompts}
           customQuestion={customQuestion}
           fieldLabel={fieldLabel}
+          chatInvitation={chatInvitation}
           action={action}
           onQuestionChange={onQuestionChange}
         />
@@ -583,12 +587,14 @@ function AskChapter({
   prompts,
   customQuestion,
   fieldLabel,
+  chatInvitation,
   action,
   onQuestionChange,
 }: {
   prompts: string[]
   customQuestion: string
   fieldLabel: string
+  chatInvitation: string
   action: NextStepAction
   onQuestionChange: (question: string) => void
 }) {
@@ -609,10 +615,7 @@ function AskChapter({
               {action.icon}
             </span>
             <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
-              <p>{action.detail}</p>
-              <p className="mt-1.5 text-xs text-white/50 sm:text-sm">
-                {fieldLabel}
-              </p>
+              <p>{chatInvitation}</p>
             </div>
           </div>
 
