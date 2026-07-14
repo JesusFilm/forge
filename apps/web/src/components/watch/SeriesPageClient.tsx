@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Globe } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -26,6 +26,10 @@ import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+} from "@/lib/watch-player-chrome-events"
 
 // Non-null `hls` marker for the synthesized LanguagePickerVariant entries.
 // `series.childDubLanguages` is server-guaranteed playable but ships no
@@ -37,10 +41,9 @@ const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
 // because the series page never offers downloads (R-scope: no series-level
-// downloads). The language picker mirrors the video page's globe-button +
-// modal pattern as a second affordance alongside the inline
-// LanguageCombobox in the meta section — both surfaces dispatch to the
-// same handleLanguageChange path.
+// downloads). The language picker is opened from the global Watch header and
+// remains available inline through LanguageCombobox in the meta section —
+// both surfaces dispatch to the same handleLanguageChange path.
 type SeriesModalState = "none" | "share" | "language"
 
 type SeriesPageClientProps = {
@@ -172,6 +175,35 @@ export function SeriesPageClient({
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
 
+  const headerLanguageSwitcherVisible = variantsForLanguagePicker.length >= 2
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    window.dispatchEvent(
+      new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        {
+          detail: {
+            visible: headerLanguageSwitcherVisible,
+            onClick: headerLanguageSwitcherVisible ? openLanguage : null,
+            languageCode: headerLanguageSwitcherVisible
+              ? currentLanguageCode
+              : null,
+          },
+        },
+      ),
+    )
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+          WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+          { detail: { visible: false, onClick: null, languageCode: null } },
+        ),
+      )
+    }
+  }, [currentLanguageCode, headerLanguageSwitcherVisible, openLanguage])
+
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
       const seriesSlug = series.slug
@@ -197,38 +229,6 @@ export function SeriesPageClient({
       data-modal-state={modalState}
       className="min-h-screen bg-stone-900 text-stone-100"
     >
-      {/* Floating globe button — mirrors HeroPlayer's top-right globe
-          on the video page (same top-10 right-10 offset, same Globe
-          icon, same circular 12×12 hit area). Only renders when there
-          are 2+ playable languages — a single-language series has
-          nothing to switch to. Sits above the hero via z-50 so it
-          remains tappable while the sticky hero is still painted. */}
-      {variantsForLanguagePicker.length >= 2 ? (
-        <button
-          type="button"
-          data-testid="series-page-language-button"
-          onClick={openLanguage}
-          aria-label={t("changeAudioLanguage")}
-          title={t("changeAudioLanguage")}
-          className={`fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
-            currentLanguageCode ? "w-auto min-w-12 gap-1.5 px-2" : ""
-          }`}
-        >
-          <Globe
-            aria-hidden
-            className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-          />
-          {currentLanguageCode ? (
-            <span
-              data-testid="series-page-language-code"
-              className="text-[10px] font-bold tracking-[0.14em]"
-            >
-              {currentLanguageCode}
-            </span>
-          ) : null}
-        </button>
-      ) : null}
-
       <SeriesHero
         series={series}
         selectedVariant={selectedVariant}

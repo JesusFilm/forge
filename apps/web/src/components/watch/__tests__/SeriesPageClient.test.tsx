@@ -133,6 +133,10 @@ vi.mock("@/components/watch/LanguagePickerModal", () => ({
 
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+} from "@/lib/watch-player-chrome-events"
 
 let container: HTMLDivElement
 let root: Root
@@ -224,6 +228,21 @@ function makeChildDubLanguages(
   return perChildLanguages
     .flat()
     .map(makeLanguage) as Series["childDubLanguages"]
+}
+
+function listenForHeaderLanguageSwitcher() {
+  const updates: WatchHeaderLanguageSwitcherDetail[] = []
+  const handler = (event: Event) => {
+    updates.push(
+      (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+    )
+  }
+  window.addEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler)
+  return {
+    updates,
+    cleanup: () =>
+      window.removeEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler),
+  }
 }
 
 describe("SeriesPageClient — pluralized label (R8, AE4)", () => {
@@ -401,8 +420,9 @@ describe("SeriesPageClient — edge cases", () => {
   })
 })
 
-describe("SeriesPageClient — globe button + language modal", () => {
-  it("omits the globe button when fewer than 2 languages are available across children", () => {
+describe("SeriesPageClient — header language switcher + language modal", () => {
+  it("hides the header switcher when fewer than 2 languages are available across children", () => {
+    const listener = listenForHeaderLanguageSwitcher()
     const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }],
       [{ languageSlug: "english" }],
@@ -416,12 +436,13 @@ describe("SeriesPageClient — globe button + language modal", () => {
         />,
       )
     })
-    expect(
-      container.querySelector('[data-testid="series-page-language-button"]'),
-    ).toBeNull()
+    expect(listener.updates.at(-1)?.visible).toBe(false)
+    expect(listener.updates.at(-1)?.onClick).toBeNull()
+    listener.cleanup()
   })
 
-  it("renders the globe button when 2+ languages are available", () => {
+  it("publishes the global header switcher when 2+ languages are available", () => {
+    const listener = listenForHeaderLanguageSwitcher()
     const childDubLanguages = makeChildDubLanguages([
       [
         { languageSlug: "english", bcp47: "en" },
@@ -437,17 +458,18 @@ describe("SeriesPageClient — globe button + language modal", () => {
         />,
       )
     })
-    const languageButton = container.querySelector(
-      '[data-testid="series-page-language-button"]',
-    )
-    expect(languageButton).not.toBeNull()
+    const latest = listener.updates.at(-1)
+    expect(latest?.visible).toBe(true)
+    expect(latest?.languageCode).toBe("EN")
+    expect(latest?.onClick).toEqual(expect.any(Function))
     expect(
-      languageButton?.querySelector('[data-testid="series-page-language-code"]')
-        ?.textContent,
-    ).toBe("EN")
+      container.querySelector('[data-testid="series-page-language-button"]'),
+    ).toBeNull()
+    listener.cleanup()
   })
 
-  it("opens the language modal when the globe button is clicked", () => {
+  it("opens the language modal from the global header switcher", () => {
+    const listener = listenForHeaderLanguageSwitcher()
     const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }, { languageSlug: "spanish" }],
     ])
@@ -460,11 +482,8 @@ describe("SeriesPageClient — globe button + language modal", () => {
         />,
       )
     })
-    const button = container.querySelector(
-      '[data-testid="series-page-language-button"]',
-    ) as HTMLButtonElement
     act(() => {
-      button.click()
+      listener.updates.at(-1)?.onClick?.()
     })
     expect(
       container
@@ -475,6 +494,7 @@ describe("SeriesPageClient — globe button + language modal", () => {
       container.querySelectorAll('[data-testid="language-picker-modal-mock"]'),
     )
     expect(allMockOpens.at(-1)?.getAttribute("data-open")).toBe("true")
+    listener.cleanup()
   })
 
   it("dedupes languages by slug when projecting to the picker", () => {
