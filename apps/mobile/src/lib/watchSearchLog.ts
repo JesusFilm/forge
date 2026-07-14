@@ -1,3 +1,5 @@
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
+
 // Pure, React-free helpers for the watch_search Log (search screen), so
 // request-id generation, outcome selection, and error-code classification are
 // unit-testable without the native Datadog SDK. The emit stays in watch.tsx.
@@ -13,15 +15,14 @@ export function generateSearchRequestId(): string {
 }
 
 // Admin surfaces rate-limit / auth / unavailable as a 200-body GraphQL error
-// (never a 429, R34), so the code lives in the first error's extensions.
+// (never a 429, R34); Apollo v4 throws CombinedGraphQLErrors whose first error's
+// extensions carry the code (v3's `.graphQLErrors` is gone). Cf. apolloClient.ts.
 export function parseSearchErrorCode(error: unknown): string {
-  const graphQLErrors = (
-    error as {
-      graphQLErrors?: readonly { extensions?: { code?: unknown } }[]
-    } | null
-  )?.graphQLErrors
-  const code = graphQLErrors?.[0]?.extensions?.code
-  return typeof code === "string" ? code : "unknown"
+  if (CombinedGraphQLErrors.is(error)) {
+    const code = error.errors[0]?.extensions?.code
+    return typeof code === "string" ? code : "unknown"
+  }
+  return "unknown"
 }
 
 export type WatchSearchOutcome = {

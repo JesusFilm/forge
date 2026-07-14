@@ -26,10 +26,9 @@ export const fetchWithTimeout = (
 ): Promise<Response> => {
   const controller = new AbortController()
   const id = setTimeout(() => {
-    // Mark the client's own 15s deadline distinctly from an upstream signal abort
-    // or a true network failure (R12/AE3): RUM records an aborted resource either
-    // way, so this marker is what lets the agent tell "client gave up" from
-    // "admin is slow" when the RUM↔APM durations disagree.
+    // Mark the client's own 15s deadline distinctly from an upstream abort or a
+    // true network failure (R12/AE3): RUM records an aborted resource either way,
+    // so this marker separates "client gave up" from "admin is slow".
     if (isDatadogProvisioned()) {
       datadogLog.warn("graphql.client_timeout_abort", {
         budget_ms: REQUEST_TIMEOUT_MS,

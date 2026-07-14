@@ -30,10 +30,9 @@ const createAppEnv = () =>
       // Opt-in cache persistence (default off). Optional so default builds need
       // no new env var; the consumer falls back to "disabled".
       EXPO_PUBLIC_FORGE_CACHE_PERSIST: z.string().optional(),
-      // Datadog RUM/Logs. All optional so an unprovisioned build still boots —
-      // datadog.ts's null-gate skips telemetry when creds are absent. The client
-      // token is public (ships in the bundle); the API key is NOT here (it is a
-      // build-time EAS secret, never EXPO_PUBLIC_*).
+      // Datadog RUM/Logs — all optional so an unprovisioned build still boots
+      // (datadog.ts null-gates telemetry when creds are absent). Client token is
+      // public (in-bundle); the API key is a build-time EAS secret, never here.
       EXPO_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
       EXPO_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
       EXPO_PUBLIC_DATADOG_SITE: z.string().optional(),

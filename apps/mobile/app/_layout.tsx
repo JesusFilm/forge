@@ -214,8 +214,10 @@ export default function RootLayout() {
     restoreApolloCache(clientRef.current.cache).finally(() => {
       if (cancelled) return
       // R23: mark the cold-start restore gate finished; the granular
-      // hit/miss/timeout outcome is emitted inside restoreApolloCache.
-      datadogLog.info("cache_restore", { outcome: "hydration_complete" })
+      // Distinct event: cache_restore's granular hit/miss/timeout outcome is
+      // emitted inside restoreApolloCache — reusing that name here would swamp
+      // its outcome aggregate. This just marks the hydration gate finished.
+      datadogLog.info("app_hydration_complete", {})
       startCachePersistence(clientRef.current)
       setHydrated(true)
     })

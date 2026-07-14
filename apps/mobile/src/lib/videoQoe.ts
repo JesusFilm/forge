@@ -1,7 +1,6 @@
-// Pure video Quality-of-Experience accumulator. Dependency- and framework-free
-// so it unit-tests without the native Datadog SDK or expo-video: VideoPlayer
-// feeds it from EXISTING listeners and emits the summary via datadogLog. PII-free
-// by construction — content_id is the Mux playback id, never the title.
+// Pure video Quality-of-Experience accumulator — framework-free, so it unit-tests
+// without the native Datadog SDK or expo-video (VideoPlayer feeds it from existing
+// listeners). PII-free by construction: content_id is the Mux id, never the title.
 
 /** Why the session ended — "ended" (playToEnd) vs "abandoned" (Back/unmount). */
 export type VideoQoeReason = "ended" | "abandoned"

@@ -233,6 +233,10 @@ export function useManagedVideoPlayer(
   const lastAdvanceAtRef = useRef(0)
   const stallEmittedRef = useRef(false)
   useEffect(() => {
+    // Poll only while playing (matches the comment above): the player ref is
+    // stable for the whole mount, so keying on it alone would poll native every
+    // 1s even while paused. Re-arms the stall window on each resume.
+    if (!isPlaying) return
     lastAdvanceAtRef.current = Date.now()
     const id = setInterval(() => {
       let position: number
@@ -267,7 +271,7 @@ export function useManagedVideoPlayer(
       }
     }, STALL_POLL_MS)
     return () => clearInterval(id)
-  }, [player])
+  }, [player, isPlaying])
 
   // R36: emit the QoE summary on session end. Distinct from the pause try/catch
   // above — that catch is unmount noise and stays silent (KTD4).

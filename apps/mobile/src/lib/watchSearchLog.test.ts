@@ -1,8 +1,16 @@
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import {
   generateSearchRequestId,
   parseSearchErrorCode,
   resolveWatchSearchOutcome,
 } from "./watchSearchLog"
+
+// A real Apollo v4 error, the shape client.query() actually throws — NOT a
+// hand-shaped { graphQLErrors } (v3), which never occurs against this client.
+const combinedError = (code?: string) =>
+  new CombinedGraphQLErrors({
+    errors: [{ message: "boom", extensions: code ? { code } : undefined }],
+  })
 
 describe("generateSearchRequestId", () => {
   it("returns a distinct, monotonic id on each call", () => {
@@ -16,17 +24,15 @@ describe("generateSearchRequestId", () => {
 
 describe("parseSearchErrorCode", () => {
   it("extracts the GraphQL error code from a rate-limit rejection", () => {
-    expect(
-      parseSearchErrorCode({
-        graphQLErrors: [{ extensions: { code: "RATE_LIMITED" } }],
-      }),
-    ).toBe("RATE_LIMITED")
+    expect(parseSearchErrorCode(combinedError("RATE_LIMITED"))).toBe(
+      "RATE_LIMITED",
+    )
   })
 
-  it("falls back to 'unknown' for a network error with no code", () => {
+  it("falls back to 'unknown' for a network error or a code-less GraphQL error", () => {
     expect(parseSearchErrorCode(new Error("network"))).toBe("unknown")
     expect(parseSearchErrorCode(null)).toBe("unknown")
-    expect(parseSearchErrorCode({ graphQLErrors: [{}] })).toBe("unknown")
+    expect(parseSearchErrorCode(combinedError())).toBe("unknown")
   })
 })
 
@@ -53,9 +59,7 @@ describe("resolveWatchSearchOutcome", () => {
       resolveWatchSearchOutcome({
         term: "jesus",
         results: null,
-        error: {
-          graphQLErrors: [{ extensions: { code: "UNAUTHENTICATED" } }],
-        },
+        error: combinedError("UNAUTHENTICATED"),
       }),
     ).toEqual({ outcome: "error", result_count: 0, code: "UNAUTHENTICATED" })
   })
