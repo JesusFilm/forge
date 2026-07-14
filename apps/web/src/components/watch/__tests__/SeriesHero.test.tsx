@@ -47,6 +47,7 @@ vi.mock("next/image", () => ({
 }))
 
 import { SeriesHero } from "@/components/watch/SeriesHero"
+import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -113,10 +114,16 @@ function makeVariant(
 }
 
 describe("SeriesHero — trailer mode (AE1)", () => {
-  it("mounts HeroPlayer when selectedVariant has hls", () => {
+  it("mounts HeroPlayer with the global language-switcher contract", () => {
+    const onLanguageClick = vi.fn()
     act(() => {
       root.render(
-        <SeriesHero series={makeSeries()} selectedVariant={makeVariant()} />,
+        <SeriesHero
+          series={makeSeries()}
+          selectedVariant={makeVariant()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+        />,
       )
     })
     expect(
@@ -125,6 +132,9 @@ describe("SeriesHero — trailer mode (AE1)", () => {
     expect(
       container.querySelector('[data-testid="series-hero-static"]'),
     ).toBeNull()
+    const heroPlayerProps = vi.mocked(HeroPlayer).mock.calls.at(-1)?.[0]
+    expect(heroPlayerProps?.onLanguageClick).toBe(onLanguageClick)
+    expect(heroPlayerProps?.playableLanguageCount).toBe(2)
   })
 })
 

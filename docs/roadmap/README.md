@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 13, 2026)
 
-- **Total tickets:** 314
-- **Complete:** 226
+- **Total tickets:** 315
+- **Complete:** 227
 - **In progress:** 19
 - **Not started:** 25
 - **Blocked:** 44
@@ -279,6 +279,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-243](platform/feat-243-web-dominant-color-lqip-card-rollout.md)                | Web card dominant-color and LQIP rollout                                         | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-244](platform/feat-244-watch-mobile-autoplay-delay.md)                         | Watch mobile hero autoplay delay                                                 | vlad      | P1       | —     | 1    | —   | complete    |
 | [feat-245](platform/feat-245-watch-language-code-selectors.md)                       | Watch language-code selectors                                                    | vlad      | P1       | —     | 1    | —   | complete    |
+| [feat-252](platform/feat-252-watch-header-control-overlap.md)                        | Watch header control overlap                                                     | vlad      | P1       | —     | 1    | —   | complete    |
 | [feat-251](platform/feat-251-watch-subtitle-auto-hide-position.md)                   | Watch subtitle position follows player chrome visibility                         | vlad      | P1       | —     | 1    | —   | complete    |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)               | Optimize Through Data-Driven Insights                                            | tataihono | P2       | —     | 46   | —   | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)              | LLM Steering System (RAG + Guardrails)                                           | tataihono | P2       | —     | 78   | —   | blocked     |
