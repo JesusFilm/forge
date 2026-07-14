@@ -138,6 +138,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)        | Instagram AI Christian discovery workflow                            | vlad  | P2       | —     | 1    | —   | complete    |
 | [feat-194](media-generation/feat-194-instagram-discovery-commentary-exclusion-filter.md)  | Instagram discovery commentary exclusion filter                      | vlad  | P2       | —     | 1    | —   | complete    |
 | [feat-240](media-generation/feat-240-instagram-discovery-website-review-submit.md)        | Instagram discovery website review submission                        | vlad  | P2       | —     | 1    | —   | complete    |
+| [feat-252](media-generation/feat-252-instagram-discovery-daily-schedule.md)               | Instagram discovery daily schedule                                   | vlad  | P2       | —     | 1    | —   | complete    |
 
 ### Platform
 
