@@ -83,6 +83,8 @@ type HeroMetadataQuality = {
 
 const HERO_METADATA_TAG_CLASS =
   "inline-flex h-7 items-center gap-1.5 rounded-md border border-white/35 bg-black/45 px-2 text-[0.7rem] font-bold tracking-wide text-white/95 shadow-sm"
+const HERO_LANGUAGE_TAG_CLASS =
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.7rem] font-bold tracking-wide text-white/95"
 
 const HERO_METADATA_QUALITY_RANK: Record<DownloadResolutionLabel, number> = {
   "4K": 5,
@@ -1846,7 +1848,7 @@ export function HeroPlayer({
                             data-testid="hero-player-language-tag"
                             aria-label={languageCountLabel}
                             onClick={onLanguageClick}
-                            className={`${HERO_METADATA_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
+                            className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
                             <Languages
                               className="h-3.5 w-3.5 shrink-0"
@@ -1857,7 +1859,7 @@ export function HeroPlayer({
                         ) : (
                           <span
                             data-testid="hero-player-language-tag"
-                            className={`${HERO_METADATA_TAG_CLASS} uppercase`}
+                            className={`${HERO_LANGUAGE_TAG_CLASS} uppercase`}
                           >
                             <Languages
                               className="h-3.5 w-3.5 shrink-0"

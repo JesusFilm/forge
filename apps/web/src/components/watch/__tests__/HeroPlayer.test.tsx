@@ -607,6 +607,10 @@ describe("HeroPlayer — initial mount", () => {
     expect(languageTag.tagName).toBe("BUTTON")
     expect(languageTag.getAttribute("aria-label")).toBe("3 languages")
     expect(languageTag.querySelector("svg")).not.toBeNull()
+    expect(languageTag.className).toContain("border-transparent")
+    expect(languageTag.className).toContain("bg-transparent")
+    expect(languageTag.className).toContain("hover:border-white/70")
+    expect(languageTag.className).toContain("hover:bg-white/15")
     expect(
       container.querySelector('[data-testid="hero-player-runtime-tag"]'),
     ).toBeNull()
