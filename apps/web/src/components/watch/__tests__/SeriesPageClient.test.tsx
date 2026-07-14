@@ -13,6 +13,20 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { collectionDownloadModalMock, resolveDownloadSessionAccessMock } =
+  vi.hoisted(() => ({
+    collectionDownloadModalMock: vi.fn(() => null),
+    resolveDownloadSessionAccessMock: vi.fn(),
+  }))
+
+vi.mock("next/dynamic", () => ({
+  default: () => collectionDownloadModalMock,
+}))
+
+vi.mock("@/components/watch/download-session-access", () => ({
+  resolveDownloadSessionAccess: resolveDownloadSessionAccessMock,
+}))
+
 vi.mock("@/components/watch/SeriesHero", () => ({
   SeriesHero: vi.fn(({ overlay }: { overlay?: React.ReactNode }) => (
     <div data-testid="series-hero-mock">{overlay}</div>
@@ -142,6 +156,9 @@ beforeEach(() => {
   languagePickerModalMock.mockClear()
   pushMock.mockClear()
   writePreferredLanguageSlugMock.mockClear()
+  collectionDownloadModalMock.mockClear()
+  resolveDownloadSessionAccessMock.mockReset()
+  window.history.replaceState({}, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -324,6 +341,122 @@ describe("SeriesPageClient — share modal state machine", () => {
       container.querySelectorAll('[data-testid="share-modal-mock"]'),
     )
     expect(allMockOpens.at(-1)?.getAttribute("data-open")).toBe("true")
+  })
+})
+
+describe("SeriesPageClient — collection downloads", () => {
+  it("renders the control only when the collection has episodes", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(2) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="series-page-download-button"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: [] })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="series-page-download-button"]'),
+    ).toBeNull()
+  })
+
+  it("checks the session and opens the lazy modal with ordered episodes", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({ ok: true })
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(2) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(resolveDownloadSessionAccessMock).toHaveBeenCalledTimes(1)
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        collectionSlug: "storyclubs",
+        episodes: [
+          expect.objectContaining({ documentId: "episode-1" }),
+          expect.objectContaining({ documentId: "episode-2" }),
+        ],
+        authRequiredLoginUrl: null,
+      }),
+      undefined,
+    )
+  })
+
+  it("passes the sign-in URL to the collection modal", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: false,
+      reason: "auth-required",
+      loginUrl: "/login",
+    })
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ authRequiredLoginUrl: "/login" }),
+      undefined,
+    )
+  })
+
+  it("reopens the collection flow after returning from sign-in", () => {
+    window.history.replaceState({}, "", "/storyclubs.html/en.html?download=1")
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(window.location.search).toBe("")
   })
 })
 

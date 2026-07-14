@@ -644,6 +644,22 @@ builder.prismaObject("Video", {
           user: ctx.user,
         }),
     }),
+    downloadableChildDubs: t.prismaField({
+      type: ["VideoDub"],
+      nullable: false,
+      description:
+        "One downloadable Dub per visible direct child for an exact language slug. Intended for lazy collection downloads without projecting every child Dub.",
+      args: {
+        languageSlug: t.arg.string({ required: true }),
+      },
+      resolve: (query, video, args, ctx) =>
+        ctx.services.video.getDownloadableChildDubs({
+          videoId: video.id,
+          languageSlug: args.languageSlug,
+          user: ctx.user,
+          query,
+        }),
+    }),
     preferredPlayableDub: t.prismaField({
       type: "VideoDub",
       nullable: true,

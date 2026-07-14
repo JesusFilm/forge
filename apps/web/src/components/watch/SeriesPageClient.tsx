@@ -1,13 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Globe } from "lucide-react"
+import { Download, ExternalLink, Globe } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
+import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
+import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
   LanguageCombobox,
   type LanguageComboboxOption,
@@ -27,6 +30,14 @@ import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
 
+const CollectionDownloadModal = dynamic(
+  () =>
+    import("@/components/watch/CollectionDownloadModal").then((module) => ({
+      default: module.CollectionDownloadModal,
+    })),
+  { ssr: false },
+)
+
 // Non-null `hls` marker for the synthesized LanguagePickerVariant entries.
 // `series.childDubLanguages` is server-guaranteed playable but ships no
 // stream URL; the shared LanguagePickerModal filters its input through
@@ -35,13 +46,7 @@ import { resolvePosterUrl } from "@/lib/url"
 // navigates by language slug — so the real URL is intentionally elided.
 const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
-// Narrowed from WatchModalState ("none" | "download" | "language" | "share")
-// because the series page never offers downloads (R-scope: no series-level
-// downloads). The language picker mirrors the video page's globe-button +
-// modal pattern as a second affordance alongside the inline
-// LanguageCombobox in the meta section — both surfaces dispatch to the
-// same handleLanguageChange path.
-type SeriesModalState = "none" | "share" | "language"
+type SeriesModalState = "none" | "download" | "share" | "language"
 
 type SeriesPageClientProps = {
   series: ResolvedSeriesBySlug["video"]
@@ -57,6 +62,10 @@ export function SeriesPageClient({
   const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
+  const [downloadPending, setDownloadPending] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
+  const downloadPendingRef = useRef(false)
   const openShare = useCallback(() => setModalState("share"), [])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
@@ -71,6 +80,17 @@ export function SeriesPageClient({
     if (!url.searchParams.has(LOCALE_RESOLVED_PARAM)) return
     url.searchParams.delete(LOCALE_RESOLVED_PARAM)
     window.history.replaceState(window.history.state, "", url.toString())
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(DOWNLOAD_RETURN_INTENT_PARAM) !== "1") return
+    url.searchParams.delete(DOWNLOAD_RETURN_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+    setDownloadError(null)
+    setDownloadLoginUrl(null)
+    setModalState("download")
   }, [])
 
   // LanguagePickerModal expects a MuxPlayerRef to read currentTime for
@@ -172,6 +192,25 @@ export function SeriesPageClient({
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
 
+  const openDownload = useCallback(async () => {
+    if (downloadPendingRef.current) return
+    downloadPendingRef.current = true
+    setDownloadPending(true)
+    try {
+      const session = await resolveDownloadSessionAccess()
+      if (!session.ok && session.reason === "session-unavailable") {
+        setDownloadError(t("downloadSessionError"))
+        return
+      }
+      setDownloadError(null)
+      setDownloadLoginUrl(session.ok ? null : session.loginUrl)
+      setModalState("download")
+    } finally {
+      downloadPendingRef.current = false
+      setDownloadPending(false)
+    }
+  }, [t])
+
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
       const seriesSlug = series.slug
@@ -249,14 +288,30 @@ export function SeriesPageClient({
             >
               {t("seriesLabel", { episodes: episodeLabel })}
             </span>
-            <div className="flex items-baseline justify-between gap-4">
+            <div className="flex items-end justify-between gap-4">
               <h1
                 data-testid="series-page-title"
                 className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
               >
                 {series.title ?? ""}
               </h1>
-              <div className="shrink-0">
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                {episodes.length > 0 ? (
+                  <Button
+                    variant="pill"
+                    onClick={openDownload}
+                    disabled={downloadPending}
+                    aria-label={t("downloadCollection")}
+                    data-testid="series-page-download-button"
+                  >
+                    <Download size={16} />
+                    <span>
+                      {downloadPending
+                        ? t("checkingDownloads")
+                        : t("downloadCollection")}
+                    </span>
+                  </Button>
+                ) : null}
                 <Button
                   variant="pill"
                   onClick={openShare}
@@ -268,6 +323,11 @@ export function SeriesPageClient({
                 </Button>
               </div>
             </div>
+            {downloadError ? (
+              <p role="alert" className="text-sm font-semibold text-red-300">
+                {downloadError}
+              </p>
+            ) : null}
           </div>
         }
       />
@@ -335,6 +395,23 @@ export function SeriesPageClient({
         parentSlug={series.slug ?? ""}
         seriesPosterUrl={posterUrl}
       />
+
+      {modalState === "download" ? (
+        <CollectionDownloadModal
+          open
+          collectionSlug={series.slug ?? ""}
+          collectionTitle={series.title}
+          episodes={episodes.map((episode) => ({
+            documentId: episode.documentId,
+            slug: episode.slug,
+            title: episode.title,
+          }))}
+          languages={languageOptions}
+          currentLanguageSlug={currentLanguageSlug}
+          authRequiredLoginUrl={downloadLoginUrl}
+          onClose={closeModal}
+        />
+      ) : null}
 
       <LanguagePickerModal
         open={modalState === "language"}

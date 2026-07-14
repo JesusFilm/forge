@@ -554,3 +554,24 @@ export const getVideoChildDubLanguagesBySlugOperation = adminGraphql(`
     }
   }
 `)
+
+export const getWatchCollectionDownloadDubsBySlugOperation = adminGraphql(`
+  query GetWatchCollectionDownloadDubs(
+    $videoSlug: String!
+    $languageSlug: String!
+  ) {
+    videoBySlug(slug: $videoSlug) {
+      documentId: id
+      downloadableChildDubs(languageSlug: $languageSlug) {
+        documentId: id
+        videoId
+        downloads {
+          documentId: id
+          height
+          quality
+          size
+        }
+      }
+    }
+  }
+`)
