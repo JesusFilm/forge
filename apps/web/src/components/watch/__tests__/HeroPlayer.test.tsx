@@ -599,6 +599,7 @@ describe("HeroPlayer — initial mount", () => {
     ) as HTMLDivElement
     expect(tags).not.toBeNull()
     expect(tags.className).toContain("mt-3")
+    expect(tags.className).toContain("opacity-75")
     expect(
       Array.from(tags.children).map((tag) => tag.getAttribute("data-testid")),
     ).toEqual([

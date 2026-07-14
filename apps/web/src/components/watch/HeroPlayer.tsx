@@ -1882,7 +1882,7 @@ export function HeroPlayer({
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
-                      className="mt-3 flex flex-wrap items-center gap-2"
+                      className="mt-3 flex flex-wrap items-center gap-2 opacity-75"
                     >
                       {releaseMetadata !== "" ? (
                         <span
