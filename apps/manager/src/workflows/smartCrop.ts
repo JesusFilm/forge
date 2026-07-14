@@ -27,7 +27,10 @@ import {
   type SmartCropAttemptStatus,
   type SmartCropTimelineMapProvenance,
 } from "@/services/smartCrop"
-import type { SmartCropQaIssue } from "@/services/mastra-smart-crop"
+import type {
+  MastraSmartCropFailure,
+  SmartCropQaIssue,
+} from "@/services/mastra-smart-crop"
 import type {
   JobArtifactManifest,
   SmartCropCropMode,
@@ -92,6 +95,15 @@ function throwStepFailure(
     throw new FatalError(message)
   }
   throw new SmartCropStepError(failure.reason, message)
+}
+
+function formatMastraFailure(
+  operation: "plan" | "align" | "QA" | "repair",
+  failure: Pick<MastraSmartCropFailure, "reason" | "message" | "mastraRunId">,
+): string {
+  return `mastra smart-crop ${operation} failed (${failure.reason})${
+    failure.message ? `: ${failure.message}` : ""
+  }${failure.mastraRunId ? ` [mastraRunId=${failure.mastraRunId}]` : ""}`
 }
 
 export type SmartCropCanonicalWorkflowInput = {
@@ -702,7 +714,7 @@ async function runQaPhase(
     await markStepSkipped(
       input.jobId,
       "smart_crop_qa",
-      `qa_unavailable (${result.reason})${result.message ? `: ${result.message}` : ""}`,
+      `qa_unavailable (${result.reason})${result.message ? `: ${result.message}` : ""}${result.mastraRunId ? ` [mastraRunId=${result.mastraRunId}]` : ""}`,
     )
     return result
   }
@@ -1103,10 +1115,7 @@ async function stepSmartCropPlan(args: {
     })
 
     if (!result.ok) {
-      throwStepFailure(
-        result,
-        `mastra smart-crop plan failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-      )
+      throwStepFailure(result, formatMastraFailure("plan", result))
     }
 
     collectedSegments.push(result.segments)
@@ -1293,10 +1302,7 @@ async function stepSmartCropAlign(args: {
   })
 
   if (!result.ok) {
-    throwStepFailure(
-      result,
-      `mastra smart-crop align failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-    )
+    throwStepFailure(result, formatMastraFailure("align", result))
   }
 
   const artifact = smartCrop.buildTimelineMapArtifact(
@@ -1416,7 +1422,12 @@ async function stepSmartCropQa(args: {
   force: boolean
 }): Promise<
   | { outcome: "presign_unavailable" }
-  | { outcome: "qa_unavailable"; reason: string; message?: string }
+  | {
+      outcome: "qa_unavailable"
+      reason: string
+      message?: string
+      mastraRunId?: string
+    }
   | {
       outcome: "exists" | "completed"
       verdict: SmartCropQaVerdict
@@ -1523,12 +1534,10 @@ async function stepSmartCropQa(args: {
         outcome: "qa_unavailable",
         reason: result.reason,
         ...(result.message ? { message: result.message } : {}),
+        ...(result.mastraRunId ? { mastraRunId: result.mastraRunId } : {}),
       }
     }
-    throwStepFailure(
-      result,
-      `mastra smart-crop QA failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-    )
+    throwStepFailure(result, formatMastraFailure("QA", result))
   }
 
   const artifact = smartCrop.buildQaArtifact({
@@ -1689,10 +1698,7 @@ async function stepSmartCropRepairAttempt(args: {
   })
 
   if (!result.ok) {
-    throwStepFailure(
-      result,
-      `mastra smart-crop repair failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-    )
+    throwStepFailure(result, formatMastraFailure("repair", result))
   }
 
   const repairedPlan = smartCrop.mergeSmartCropRepairSegments({

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { env } from "../../config/env"
+import { env, getOpenRouterApiKey } from "../../config/env"
 import { isValidServiceBearer } from "../../server/service-bearer"
 import {
   assertAllowedFrameUrl,
@@ -157,7 +157,7 @@ export async function runSmartCropQaWorkflow(
       planSummary: input.planSummary,
       renderMode: input.renderMode,
       model,
-      apiKey: options.apiKey ?? env.OPENROUTER_API_KEY,
+      apiKey: options.apiKey ?? getOpenRouterApiKey(),
       fetchImpl: options.fetchImpl,
       timeoutMs: options.timeoutMs,
     })
