@@ -82,9 +82,9 @@ type HeroMetadataQuality = {
 }
 
 const HERO_METADATA_TAG_CLASS =
-  "inline-flex h-7 items-center gap-1.5 rounded-md border-2 border-white/45 bg-transparent px-2 text-[0.625rem] font-normal tracking-wide text-white/95"
+  "inline-flex h-7 items-center gap-1.5 rounded-md border-2 border-white/45 bg-transparent px-2 text-[0.6rem] font-normal tracking-wide text-white/95"
 const HERO_LANGUAGE_TAG_CLASS =
-  "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.7rem] font-bold tracking-wide text-white/95"
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.625rem] font-normal tracking-wide text-white/95"
 
 const HERO_METADATA_QUALITY_RANK: Record<DownloadResolutionLabel, number> = {
   "4K": 5,
@@ -1876,7 +1876,7 @@ export function HeroPlayer({
                       {releaseMetadata !== "" ? (
                         <span
                           data-testid="hero-player-release-metadata"
-                          className="px-1 text-sm font-medium text-white/85 md:text-base"
+                          className="px-1 text-xs font-normal text-white/85 md:text-sm"
                         >
                           {releaseMetadata}
                         </span>

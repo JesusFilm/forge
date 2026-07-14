@@ -614,6 +614,14 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-release-metadata"]')
         ?.textContent,
     ).toBe("2023 · 29 min")
+    expect(
+      container.querySelector('[data-testid="hero-player-release-metadata"]')
+        ?.className,
+    ).toContain("text-xs")
+    expect(
+      container.querySelector('[data-testid="hero-player-release-metadata"]')
+        ?.className,
+    ).toContain("font-normal")
     expect(languageTag.tagName).toBe("BUTTON")
     expect(languageTag.getAttribute("aria-label")).toBe("3 languages")
     expect(languageTag.querySelector("svg")).not.toBeNull()
@@ -621,6 +629,8 @@ describe("HeroPlayer — initial mount", () => {
     expect(languageTag.className).toContain("bg-transparent")
     expect(languageTag.className).toContain("hover:border-white/70")
     expect(languageTag.className).toContain("hover:bg-white/15")
+    expect(languageTag.className).toContain("text-[0.625rem]")
+    expect(languageTag.className).toContain("font-normal")
     expect(
       container.querySelector('[data-testid="hero-player-runtime-tag"]'),
     ).toBeNull()
@@ -640,6 +650,10 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
     ).toContain("font-normal")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("text-[0.6rem]")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
