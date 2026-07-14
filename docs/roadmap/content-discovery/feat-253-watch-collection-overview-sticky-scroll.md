@@ -44,8 +44,8 @@ description while scanning later videos in the same group.
 
 1. At the existing desktop two-column breakpoint, keep the full collection
    overview sticky beside its video rows.
-2. Keep the sticky element self-sized and bounded by its collection group so
-   it releases before the next collection begins.
+2. Keep the sidebar background and divider stretched to the full collection
+   height while a nested sticky overview remains bounded by that group.
 3. Preserve the existing single-column mobile flow, visual clipping, content,
    routes, and ordering.
 4. Add a focused rendered-markup regression test for the responsive sticky and
@@ -68,5 +68,6 @@ description while scanning later videos in the same group.
 - `pnpm --filter @forge/web exec tsc --noEmit --pretty false`
 - `pnpm --filter @forge/web lint`
 - Desktop browser screenshots show the overview following scroll within one
-  group and releasing before the next group.
+  group, the sidebar background spanning its rows, and the overview releasing
+  before the next group.
 - Mobile browser smoke shows the overview in normal flow above its video rows.

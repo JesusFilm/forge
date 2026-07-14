@@ -615,10 +615,15 @@ function GroupedVideoListSection({
                 data-testid="language-inventory-collection-group"
               >
                 <div
-                  className="border-b border-white/10 bg-white/[0.035] p-4 lg:sticky lg:top-[calc(env(safe-area-inset-top,0px)+7rem)] lg:self-start lg:border-r lg:border-b-0 lg:p-5"
-                  data-testid="language-inventory-collection-overview"
+                  className="border-b border-white/10 bg-white/[0.035] p-4 lg:border-r lg:border-b-0 lg:p-5"
+                  data-testid="language-inventory-collection-sidebar"
                 >
-                  <CollectionGroupOverview group={group} />
+                  <div
+                    className="lg:sticky lg:top-[calc(env(safe-area-inset-top,0px)+7rem)]"
+                    data-testid="language-inventory-collection-overview"
+                  >
+                    <CollectionGroupOverview group={group} />
+                  </div>
                 </div>
                 <div className="divide-y divide-white/10">
                   {group.items.map((item, index) => (

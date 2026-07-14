@@ -26,8 +26,9 @@ The `/watch/videos` inventory renders collection artwork, metadata, CTA, and des
 
 ## Key Technical Decisions
 
-- **Keep the overview cohesive:** Apply sticky behavior to the collection overview column rather than detaching only the description from its artwork, title, and CTA.
+- **Keep the overview cohesive:** Apply sticky behavior to the complete overview content rather than detaching only the description from its artwork, title, and CTA.
 - **Use CSS-only responsive stickiness:** Make the overview self-sized and sticky only at the existing desktop grid breakpoint, avoiding JavaScript scroll listeners or observers.
+- **Separate paint from sticky positioning:** Keep the background and divider on the stretched sidebar grid cell, then position a nested overview so the color spans the full list while only the content follows scroll.
 - **Keep the collection section as the containing boundary:** Ensure the rounded group wrapper does not become the sticky element's scroll container while retaining visual clipping, so normal sticky containment ends at the parent block.
 - **Assert the layout contract near the route fixture:** Extend the existing language inventory page test data with a grouped collection and verify the responsive sticky and containment classes in rendered markup.
 
@@ -56,10 +57,10 @@ The `/watch/videos` inventory renders collection artwork, metadata, CTA, and des
 - **Requirements:** R1, R2, R3, R4, R5, R6
 - **Dependencies:** U1
 - **Files:** `apps/web/src/components/watch-language-inventory/LanguageInventoryPage.tsx`, `apps/web/src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.test.tsx`
-- **Approach:** Adjust the group wrapper's clipping semantics so it remains a visual boundary without capturing sticky positioning. Make the overview column self-sized and sticky at the desktop breakpoint with a header-safe top offset; leave base styles in normal document flow.
+- **Approach:** Adjust the group wrapper's clipping semantics so it remains a visual boundary without capturing sticky positioning. Keep the sidebar grid cell stretched to paint its background and divider for the full group height, then make a nested overview sticky at the desktop breakpoint with a header-safe top offset; leave base styles in normal document flow.
 - **Patterns to follow:** The existing `lg:grid` breakpoint in `GroupedVideoListSection`, sticky Watch layout conventions in `apps/web/src/components/watch/SeriesHero.tsx`, and server-rendered inventory assertions in the localized videos route test.
 - **Test scenarios:**
-  - Render a collection plus multiple child videos and confirm the group retains a bounded parent wrapper while the overview has desktop sticky, self-start, and top-offset classes.
+  - Render a collection plus multiple child videos and confirm the group retains a bounded parent wrapper, the sidebar owns the full-height background and divider, and the nested overview has desktop sticky and top-offset classes.
   - Confirm sticky classes are breakpoint-prefixed and the base overview remains normal-flow for mobile widths.
   - Confirm the rendered collection still contains its image, label, title, CTA, description, and child rows.
 - **Verification:** The focused localized inventory route test passes, web type checking succeeds, and the change introduces no client component or scroll handler.

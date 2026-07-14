@@ -258,14 +258,20 @@ describe("/{language}.html/videos route", () => {
     const group = document.querySelector(
       '[data-testid="language-inventory-collection-group"]',
     )
+    const sidebar = document.querySelector(
+      '[data-testid="language-inventory-collection-sidebar"]',
+    )
     const overview = document.querySelector(
       '[data-testid="language-inventory-collection-overview"]',
     )
 
     expect(group?.classList).toContain("overflow-clip")
     expect(group?.classList).not.toContain("overflow-hidden")
+    expect(sidebar?.classList).toContain("bg-white/[0.035]")
+    expect(sidebar?.classList).toContain("lg:border-r")
+    expect(sidebar?.classList).not.toContain("lg:sticky")
+    expect(sidebar?.classList).not.toContain("lg:self-start")
     expect(overview?.classList).toContain("lg:sticky")
-    expect(overview?.classList).toContain("lg:self-start")
     expect(overview?.classList).toContain(
       "lg:top-[calc(env(safe-area-inset-top,0px)+7rem)]",
     )
