@@ -445,7 +445,7 @@ function ReflectionChat({
           role="group"
           aria-label={nextStepsSupport}
           data-testid="watch-end-reflection-chat-options"
-          className="ml-10 grid w-[calc(94%_-_2.5rem)] grid-cols-1 gap-x-3 gap-y-1 min-[440px]:grid-cols-2 sm:w-[calc(82%_-_2.5rem)]"
+          className="ml-10 grid w-[calc(100%_-_2.5rem)] grid-cols-1 gap-x-3 gap-y-1 min-[440px]:grid-cols-2"
         >
           {actions.map((action, index) => {
             const selected = selectedAction?.id === action.id
@@ -546,13 +546,13 @@ function GuideBubble({
   return (
     <div
       data-testid={testId}
-      className="flex max-w-[94%] items-end gap-2.5 animate-watch-chat-incoming sm:max-w-[82%] motion-reduce:animate-none"
+      className="flex w-full items-end gap-2.5 animate-watch-chat-incoming motion-reduce:animate-none"
       style={{ animationDelay: String(delay) + "ms" }}
     >
       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
         {icon}
       </span>
-      <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
+      <div className="min-w-0 flex-1 rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
         {children}
       </div>
     </div>
@@ -597,7 +597,7 @@ function SelectedConversation({
               ? "watch-end-reflection-question-prompts"
               : "watch-end-reflection-" + action.id + "-hints"
           }
-          className="ml-10 max-w-2xl divide-y divide-white/[0.08] border-y border-white/[0.08]"
+          className="ml-10 w-[calc(100%_-_2.5rem)] divide-y divide-white/[0.08] border-y border-white/[0.08]"
         >
           {action.hints.map((hint, index) => {
             const selected = customQuestion === hint

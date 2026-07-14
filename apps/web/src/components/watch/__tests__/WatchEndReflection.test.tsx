@@ -126,8 +126,7 @@ describe("WatchEndReflection", () => {
       "Have a question or comments about this video or another topic?",
     )
     expect(chatOptions).not.toBeNull()
-    expect(chatOptions?.className).toContain("w-[calc(94%_-_2.5rem)]")
-    expect(chatOptions?.className).toContain("sm:w-[calc(82%_-_2.5rem)]")
+    expect(chatOptions?.className).toContain("w-[calc(100%_-_2.5rem)]")
     expect(
       container.querySelectorAll<HTMLElement>("[data-action-id]").length,
     ).toBe(8)
@@ -217,6 +216,21 @@ describe("WatchEndReflection", () => {
         ) as HTMLElement
       ).style.animationDelay,
     ).toBe("120ms")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-chat-invitation"]',
+      )?.className,
+    ).toContain("w-full")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-chat-invitation"]',
+      )?.lastElementChild?.className,
+    ).toContain("flex-1")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-question-prompts"]',
+      )?.className,
+    ).toContain("w-[calc(100%_-_2.5rem)]")
 
     const suggested = container.querySelector(
       '[data-testid="watch-end-reflection-suggested-question"]',
