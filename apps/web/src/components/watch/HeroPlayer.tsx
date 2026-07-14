@@ -234,7 +234,7 @@ function isAutoplayBlockedError(err: unknown): boolean {
 }
 
 // Minimum number of playable language variants before the language-switch
-// globe button appears. With only one variant there's nothing to switch to.
+// audio button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
 export function HeroPlayer({
@@ -244,6 +244,8 @@ export function HeroPlayer({
   onLanguageClick,
   languageSlug,
   playableLanguageCount,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode,
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
@@ -257,6 +259,8 @@ export function HeroPlayer({
   onLanguageClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
@@ -1296,7 +1300,7 @@ export function HeroPlayer({
       ? "watch-hero-cover-black-bridge"
       : "watch-hero-cover-to-black"
 
-  // Hide the language-switch globe while the player is in fullscreen so it
+  // Hide the floating language switch while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
   // exits fullscreen. Listen for both the standard event and the webkit
   // prefix so Safari is covered.
@@ -1305,7 +1309,7 @@ export function HeroPlayer({
   // initial fullscreenchange event.
   const isFullscreen = useIsFullscreen()
 
-  // Both globe surfaces (top-right floating + in-chrome) share this gate:
+  // Both audio-language surfaces (top-right floating + in-chrome) share this gate:
   // a wired callback AND enough variants to warrant a switcher. The
   // top-right surface adds `!isFullscreen` because it overlaps the
   // browser's fullscreen chrome; the in-chrome surface intentionally
@@ -1313,6 +1317,8 @@ export function HeroPlayer({
   const hasLanguageSwitcher =
     typeof onLanguageClick === "function" &&
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+  const hasSubtitleSwitcher =
+    typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
   const languageCode = languageCodeFor({
@@ -1641,9 +1647,11 @@ export function HeroPlayer({
             playbackId={playbackId}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
-            // In-chrome globe intentionally stays visible in fullscreen
+            subtitleLanguageCode={subtitleLanguageCode}
+            // In-chrome audio control intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
+            showSubtitleButton={hasSubtitleSwitcher}
             onVisibilityChange={handleControlsVisibilityChange}
             onWatchNextInteraction={cancelWatchNextAutoAdvance}
           />
