@@ -506,8 +506,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(share.previousElementSibling).toBe(watchNow)
     expect(share.type).toBe("button")
     expect(share.textContent).toBe("Share")
-    expect(share.className).toContain("hover:underline")
-    expect(share.className).not.toContain("border")
+    expect(share.querySelector("svg")).not.toBeNull()
+    expect(share.className).toContain("bg-transparent")
+    expect(share.className).toContain("border-transparent")
+    expect(share.className).toContain("hover:border-white/50")
+    expect(share.className).toContain("hover:bg-white/12")
 
     await act(async () => {
       share.click()

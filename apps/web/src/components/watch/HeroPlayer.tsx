@@ -19,6 +19,7 @@ import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
+import { Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -1750,8 +1751,9 @@ export function HeroPlayer({
                       data-testid="hero-player-share-button"
                       aria-label={tBibleQuotes("share")}
                       onClick={onShareClick}
-                      className="inline-flex min-h-11 items-center px-1 text-base font-bold text-white/90 transition hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:min-h-14 sm:px-2 sm:text-lg"
+                      className={`${WATCH_NOW_LINK_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`}
                     >
+                      <Share2 className="h-5 w-5 shrink-0" aria-hidden />
                       {tBibleQuotes("share")}
                     </button>
                   ) : null}
