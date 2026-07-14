@@ -1,3 +1,4 @@
+import { mapWithConcurrency } from "../concurrency"
 import { chunkSegments } from "./chunker"
 import { loadLanguageConfig } from "./language-config"
 import { retimeChunk, type RetimeChunkResult } from "./retimer"
@@ -162,27 +163,6 @@ function shouldValidateScripture(
     return true
   }
   return context.contentDomain === "bible_story" && context.confidence >= 0.5
-}
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length)
-  let nextIndex = 0
-  const workerCount = Math.max(1, Math.min(concurrency, items.length))
-
-  await Promise.all(
-    Array.from({ length: workerCount }, async () => {
-      while (nextIndex < items.length) {
-        const currentIndex = nextIndex++
-        results[currentIndex] = await fn(items[currentIndex]!)
-      }
-    }),
-  )
-
-  return results
 }
 
 export async function runSubtitleEnrichment(

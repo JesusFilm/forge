@@ -9,7 +9,7 @@ import { WatchHomeCard } from "@/components/home/WatchHomeCard"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
-import { videosIndexPath } from "@/lib/routes"
+import { languagesIndexPath } from "@/lib/routes"
 
 type WatchHomeSectionProps = {
   section: WatchHomeSectionModel
@@ -53,7 +53,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
     HoverBackdropLayer[]
   >([])
   const sectionHref = section.cards.find((card) => card.href)?.href
-  const ctaHref = sectionHref ?? videosIndexPath()
+  const ctaHref = sectionHref ?? languagesIndexPath()
   const hoverBackdropOpacity = "1"
 
   function updateHoverBackground(imageUrl: string | null) {

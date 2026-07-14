@@ -25,6 +25,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns Firecrawl web data access for agents and operator workflows through
   bounded search/scrape tools, a dedicated web research agent, and the
   `/forge-firecrawl-web-data` service route.
+- Owns optional website review-queue and saved-source discovery integration.
+  Incomplete website configuration disables only that integration and must
+  never block Mastra startup; outbound clients require HTTPS before sending
+  the shared bearer and reject redirects.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.

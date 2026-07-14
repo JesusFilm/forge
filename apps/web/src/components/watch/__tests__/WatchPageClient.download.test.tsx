@@ -78,23 +78,29 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     downloadError,
     downloadHref,
     downloadPending,
+    hasSubtitleOptions,
     languageSlug,
     modalCallbacks,
     shareHref,
     subtitleVttSrc,
+    subtitleLanguageCode,
   }: {
     downloadError?: string | null
     downloadHref?: string
     downloadPending?: boolean
+    hasSubtitleOptions?: boolean
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
     shareHref?: string
     subtitleVttSrc?: string | null
+    subtitleLanguageCode?: string | null
   }) => (
     <div
       data-testid="watch-section-renderer"
       data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
+      data-has-subtitle-options={hasSubtitleOptions ? "true" : "false"}
+      data-subtitle-language-code={subtitleLanguageCode ?? ""}
       data-share-href={shareHref ?? ""}
       data-subtitle-vtt-src={subtitleVttSrc ?? ""}
     >
@@ -666,6 +672,11 @@ describe("WatchPageClient download boundary", () => {
     expect(latestProps.subtitles).toHaveLength(1)
     expect(latestProps.currentSubtitleEnabled).toBe(true)
     expect(latestProps.currentSubtitleSlug).toBe("spanish")
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-has-subtitle-options")).toBe("true")
+    expect(renderer?.getAttribute("data-subtitle-language-code")).toBe("ES")
   })
 
   it("passes selected subtitle VTTs through the same-origin media proxy", () => {

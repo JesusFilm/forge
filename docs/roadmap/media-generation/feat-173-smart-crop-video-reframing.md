@@ -68,6 +68,25 @@ asset creation from presigned artifact URLs.
 - For speaker/person shots, Mastra should prefer visible face/head centers
   over broader body centers when emitting deterministic 9:16 crop keyframes.
 
+## Provider Recovery Contract
+
+- The shared Mastra Smart Crop OpenRouter client is the sole automatic
+  provider-retry owner for plan, QA, and repair. It prefers
+  `OPENROUTER_API_PAID_KEY`, falls back to `OPENROUTER_API_KEY`, and retries
+  only explicit HTTP 429/503 or typed embedded equivalents.
+- Recovery is capped at three total attempts under a 90-second operation
+  deadline, honors `Retry-After`, and uses bounded jittered backoff only when
+  provider timing is absent. It never rotates keys or models.
+- Provider-local exhaustion is terminal for Manager workflow-SDK retries and
+  preserves a sanitized reason plus Mastra run id. Manager-to-Mastra transport
+  failures remain independently retryable.
+- A later operator Retry remains available and resumes from the first
+  incomplete fingerprint-bound plan batch; completed batches are not replayed
+  unless the operator explicitly uses force retry.
+- Retry observability is emitted as `smart_crop_provider_retry`,
+  `smart_crop_provider_recovered`, and `smart_crop_provider_exhausted` without
+  raw prompts, frame URLs, credentials, or provider bodies.
+
 ## Verification
 
 - `pnpm --filter @forge/crop-worker test` / `@forge/mastra test` / `@forge/manager test`

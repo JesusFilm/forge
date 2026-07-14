@@ -1,6 +1,7 @@
 ---
 title: Watch language picker, player chrome fade, and measured episode rail overlap
 date: 2026-06-09
+last_updated: 2026-07-14
 category: docs/solutions/design-patterns
 module: apps/web
 problem_type: design_pattern
@@ -9,6 +10,8 @@ severity: medium
 related_components:
   - apps/web/src/components/watch/HeroPlayer.tsx
   - apps/web/src/components/watch/HeroPlayerControls.tsx
+  - apps/web/src/components/watch/SubtitleOverlay.tsx
+  - apps/web/src/components/watch/__tests__/SubtitleOverlay.test.tsx
   - apps/web/src/components/watch/LanguagePickerModal.tsx
   - apps/web/src/components/watch/LanguageCombobox.tsx
   - apps/web/src/components/FloatingSearchProvider.tsx
@@ -195,12 +198,47 @@ Reason future agents might regress it:
 - A static negative margin looked okay on wide screens but made the muted video
   tiny on narrow screens. The measurement-based rule is the intended correction.
 
+### 6. Subtitle lift follows owner-supplied chrome visibility
+
+Touched files:
+
+- `apps/web/src/components/watch/HeroPlayer.tsx`
+- `apps/web/src/components/watch/SubtitleOverlay.tsx`
+- `apps/web/src/components/watch/__tests__/SubtitleOverlay.test.tsx`
+
+Intent:
+
+- Active subtitles are lifted above the timeline and bottom controls whenever
+  chrome is dim or bright.
+- When chrome reaches its hidden state, subtitles return to the ordinary
+  bottom-edge offset instead of remaining raised over the picture.
+- `HeroPlayer` owns the latest `HeroPlayerControls.onVisibilityChange` detail
+  and passes the visible/hidden boolean to `SubtitleOverlay`.
+- `SubtitleOverlay` may still measure the rendered rail height while it is
+  visible, but it must not rediscover visibility with its own global DOM query
+  and `MutationObserver`. A second visibility channel can lag or disagree with
+  the player lifecycle, especially across fullscreen targets.
+- Keep the chrome lift independent from the overlay's scroll-aware body-zone
+  offset. One avoids player controls; the other avoids content occluding the
+  sticky hero.
+
+Browser proof on the Russian Watch route measured a `-64px` transform with
+visible chrome and 4 px of clearance above the rail. After auto-hide, the
+transform returned to `0px` and the subtitle lower edge sat 16 px above the
+player frame bottom.
+
+Reason future agents might regress it:
+
+- Watching `data-visible` locally looks self-contained, but makes a display
+  component infer lifecycle state that its owner already knows. Preserve the
+  direct state flow and the visible-hidden-visible regression test.
+
 ## Verification commands
 
 Run the focused tests after touching this surface:
 
 ```bash
-pnpm --filter @forge/web test -- src/components/watch/__tests__/HeroPlayer.test.tsx src/components/watch/__tests__/HeroPlayerControls.test.tsx src/components/__tests__/FloatingSearchProvider.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx src/components/watch/__tests__/LanguageCombobox.test.tsx
+pnpm --filter @forge/web test -- src/components/watch/__tests__/HeroPlayer.test.tsx src/components/watch/__tests__/HeroPlayerControls.test.tsx src/components/watch/__tests__/SubtitleOverlay.test.tsx src/components/__tests__/FloatingSearchProvider.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx src/components/watch/__tests__/LanguageCombobox.test.tsx
 ```
 
 Run lint before handing off:
