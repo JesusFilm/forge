@@ -412,7 +412,7 @@ function WatchHomeMediaCollection({
             "grid",
             isVerticalGrid ? "gap-4" : "gap-5",
             isRail
-              ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-6"
+              ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-6"
               : isVerticalGrid
                 ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
                 : variant === "hero" || variant === "player"

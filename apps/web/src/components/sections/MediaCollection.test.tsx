@@ -80,6 +80,23 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
 }
 
 describe("MediaCollection VideoCard href", () => {
+  it("uses four columns from the tablet breakpoint", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData()}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const grid = container.querySelector(
+      '[data-testid="media-collection-section"] .grid',
+    )
+    expect(grid?.getAttribute("class")).toContain("md:grid-cols-4")
+    expect(grid?.getAttribute("class")).toContain("xl:grid-cols-6")
+  })
+
   it("lazy-loads a Mux animated preview for route video child cards", () => {
     act(() => {
       root.render(
