@@ -1416,6 +1416,8 @@ export function HeroPlayer({
     subtitleLanguageCount > 0
       ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
       : null
+  const parentCollectionLabel =
+    video.parents[0]?.title ?? video.parents[0]?.label ?? null
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")
@@ -1865,6 +1867,14 @@ export function HeroPlayer({
                       </button>
                     ) : null}
                   </div>
+                  {parentCollectionLabel != null ? (
+                    <div
+                      data-testid="hero-player-parent-collection"
+                      className="mt-3 px-1 text-xs font-normal text-white/85 md:text-sm"
+                    >
+                      {parentCollectionLabel}
+                    </div>
+                  ) : null}
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
