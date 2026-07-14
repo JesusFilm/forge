@@ -1,14 +1,31 @@
 /**
  * @vitest-environment jsdom
  */
-import { act } from "react"
+import { act, type AnchorHTMLAttributes } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { WatchLanguageIndexLanguage } from "@/lib/language-index"
 
 import { WatchLanguageIndexBrowser } from "./WatchLanguageIndexBrowser"
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    onClick,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a
+      {...props}
+      href={String(href)}
+      onClick={(event) => {
+        onClick?.(event)
+        event.preventDefault()
+      }}
+    />
+  ),
+}))
 
 type TestLanguageOverrides = Partial<WatchLanguageIndexLanguage>
 
@@ -50,6 +67,26 @@ function languageSpeakerCounts(
   )
 }
 
+function singleLanguageRegion(item: WatchLanguageIndexLanguage) {
+  return [
+    {
+      name: "Africa",
+      languages: [item],
+      countries: [
+        {
+          id: "country-dz",
+          coreId: "DZ",
+          name: "Algeria",
+          flagPngSrc: null,
+          speakerCount: item.speakerCount,
+          languageSpeakerCounts: languageSpeakerCounts([item]),
+          languages: [item],
+        },
+      ],
+    },
+  ]
+}
+
 function renderBrowser(props: Parameters<typeof WatchLanguageIndexBrowser>[0]) {
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -85,6 +122,61 @@ function searchLanguages(html: HTMLElement, value: string) {
 }
 
 describe("WatchLanguageIndexBrowser", () => {
+  it("shows immediate pending feedback on the selected language link", () => {
+    const selectedLanguage = language(1)
+    const html = renderBrowser({
+      regions: singleLanguageRegion(selectedLanguage),
+    })
+    const link = html.querySelector(`a[href="${selectedLanguage.href}"]`)
+    if (!(link instanceof HTMLAnchorElement)) {
+      throw new Error("Expected the language link to render")
+    }
+
+    act(() => {
+      link.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+        }),
+      )
+    })
+
+    expect(link.getAttribute("aria-busy")).toBe("true")
+    expect(link.getAttribute("data-pending")).toBe("true")
+    expect(
+      link.querySelector('[data-testid="watch-language-loading-icon"]'),
+    ).not.toBeNull()
+  })
+
+  it("keeps modified language-link clicks out of the pending state", () => {
+    const selectedLanguage = language(1)
+    const html = renderBrowser({
+      regions: singleLanguageRegion(selectedLanguage),
+    })
+    const link = html.querySelector(`a[href="${selectedLanguage.href}"]`)
+    if (!(link instanceof HTMLAnchorElement)) {
+      throw new Error("Expected the language link to render")
+    }
+
+    act(() => {
+      link.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          button: 0,
+          cancelable: true,
+          metaKey: true,
+        }),
+      )
+    })
+
+    expect(link.getAttribute("aria-busy")).toBeNull()
+    expect(link.getAttribute("data-pending")).toBeNull()
+    expect(
+      link.querySelector('[data-testid="watch-language-loading-icon"]'),
+    ).toBeNull()
+  })
+
   it("collapses country languages after the top four", () => {
     const languages = [1, 2, 3, 4, 5].map((index) => language(index))
     const html = renderToString(

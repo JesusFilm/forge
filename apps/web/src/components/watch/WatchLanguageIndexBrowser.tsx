@@ -2,8 +2,15 @@
 
 import Link from "next/link"
 import type { Route } from "next"
-import { ArrowRight, ChevronDown, Globe2, Search, X } from "lucide-react"
-import { useMemo, useState } from "react"
+import {
+  ArrowRight,
+  ChevronDown,
+  Globe2,
+  LoaderCircle,
+  Search,
+  X,
+} from "lucide-react"
+import { useMemo, useState, type MouseEvent } from "react"
 
 import type {
   WatchLanguageIndexCountryGroup,
@@ -144,12 +151,38 @@ function safeDomId(value: string): string {
   return value.replaceAll(/[^a-zA-Z0-9_-]/g, "-")
 }
 
-function LanguageLink({ language }: { language: WatchLanguageIndexLanguage }) {
+function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return (
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  )
+}
+
+function LanguageLink({
+  language,
+  navigationKey,
+  pending,
+  onNavigateStart,
+}: {
+  language: WatchLanguageIndexLanguage
+  navigationKey: string
+  pending: boolean
+  onNavigateStart: (navigationKey: string) => void
+}) {
   return (
     <li>
       <Link
         href={language.href as Route}
-        className="group flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-left text-stone-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+        data-pending={pending ? "true" : undefined}
+        aria-busy={pending ? "true" : undefined}
+        className={`group flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-left text-stone-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none ${pending ? "bg-white/10" : ""}`}
+        onClick={(event) => {
+          if (isPlainLeftClick(event)) onNavigateStart(navigationKey)
+        }}
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base leading-tight font-medium">
@@ -159,10 +192,21 @@ function LanguageLink({ language }: { language: WatchLanguageIndexLanguage }) {
             {language.nativeLabel}
           </span>
         </span>
-        <ArrowRight
-          className="size-4 shrink-0 text-amber-200 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-          aria-hidden="true"
-        />
+        {pending ? (
+          <>
+            <LoaderCircle
+              data-testid="watch-language-loading-icon"
+              className="size-4 shrink-0 animate-spin text-amber-200"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading</span>
+          </>
+        ) : (
+          <ArrowRight
+            className="size-4 shrink-0 text-amber-200 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            aria-hidden="true"
+          />
+        )}
       </Link>
     </li>
   )
@@ -172,11 +216,15 @@ function CountryLanguages({
   country,
   expanded,
   onToggle,
+  onLanguageNavigateStart,
+  pendingLanguageLinkKey,
   regionName,
 }: {
   country: WatchLanguageIndexCountryGroup
   expanded: boolean
   onToggle: () => void
+  onLanguageNavigateStart: (navigationKey: string) => void
+  pendingLanguageLinkKey: string | null
   regionName: string
 }) {
   const hiddenLanguageCount = Math.max(
@@ -224,12 +272,18 @@ function CountryLanguages({
         id={hiddenLanguageCount > 0 ? extraLanguagesId : undefined}
         className="m-0 grid list-none grid-cols-1 gap-1 p-0 sm:grid-cols-2 xl:grid-cols-3"
       >
-        {visibleLanguages.map((language) => (
-          <LanguageLink
-            key={`${country.id}-${language.publicSlug}`}
-            language={language}
-          />
-        ))}
+        {visibleLanguages.map((language) => {
+          const navigationKey = `${countryKey(regionName, country)}:${language.publicSlug}`
+          return (
+            <LanguageLink
+              key={`${country.id}-${language.publicSlug}`}
+              language={language}
+              navigationKey={navigationKey}
+              pending={pendingLanguageLinkKey === navigationKey}
+              onNavigateStart={onLanguageNavigateStart}
+            />
+          )
+        })}
       </ul>
 
       {hiddenLanguageCount > 0 ? (
@@ -257,11 +311,15 @@ function CountryLanguages({
 
 function RegionLanguages({
   expandedCountryKeys,
+  onLanguageNavigateStart,
   onToggleCountry,
+  pendingLanguageLinkKey,
   region,
 }: {
   expandedCountryKeys: ReadonlySet<string>
+  onLanguageNavigateStart: (navigationKey: string) => void
   onToggleCountry: (key: string) => void
+  pendingLanguageLinkKey: string | null
   region: WatchLanguageIndexRegion
 }) {
   const artwork = REGION_ARTWORK[region.name] ?? FALLBACK_REGION_ARTWORK
@@ -297,7 +355,9 @@ function RegionLanguages({
               key={key}
               country={country}
               expanded={expandedCountryKeys.has(key)}
+              onLanguageNavigateStart={onLanguageNavigateStart}
               onToggle={() => onToggleCountry(key)}
+              pendingLanguageLinkKey={pendingLanguageLinkKey}
               regionName={region.name}
             />
           )
@@ -314,6 +374,9 @@ export function WatchLanguageIndexBrowser({
   const [expandedCountryKeys, setExpandedCountryKeys] = useState<
     ReadonlySet<string>
   >(new Set())
+  const [pendingLanguageLinkKey, setPendingLanguageLinkKey] = useState<
+    string | null
+  >(null)
 
   const normalizedSearch = normalizeText(searchValue)
   const regionGroups = useMemo(() => {
@@ -460,7 +523,9 @@ export function WatchLanguageIndexBrowser({
           <RegionLanguages
             key={region.name}
             expandedCountryKeys={expandedCountryKeys}
+            onLanguageNavigateStart={setPendingLanguageLinkKey}
             onToggleCountry={toggleCountryExpansion}
+            pendingLanguageLinkKey={pendingLanguageLinkKey}
             region={region}
           />
         ))
