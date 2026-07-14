@@ -1,8 +1,9 @@
 ---
 title: "TV SDUI MediaCollection cards: resolve title by coreId hydration, image by rewriting the poster seed to the watch origin"
 date: 2026-07-14
+last_updated: 2026-07-14
 category: docs/solutions/architecture-patterns/
-module: apps/tv (SDUI experience-detail renderers)
+module: apps/tv + apps/mobile (SDUI experience-detail renderers)
 problem_type: architecture_pattern
 component: frontend_stimulus
 severity: medium
@@ -10,6 +11,8 @@ applies_when:
   - "Rendering admin SDUI MediaCollection cards in a React Native / TV client"
   - "MediaCollectionItem is flat: titleOverride/imageUrl are null and the real title lives only on the linked Video"
   - "imageOverrideUrl is a curated vertical-poster seed pointing at a host that 404s (www.jesusfilm.org/images)"
+  - "Deciding whether a rewriteSeedPosterUrl call is an active bug-fix or a defensive no-op — imageOverrideUrl is polymorphic per Experience (SDUI seed 404s vs watch-home admin-preview URL resolves)"
+  - "A code review flags a card as rendering a 404 seed poster — verify the real per-Experience URL shape before accepting the severity"
   - "Cards must be hydrated per coreId, mirroring the Home rail's GET_WATCH_HOME_VIDEOS pattern"
   - "Poster seed URLs need rewriting to the watch web origin with an ABSOLUTE base so they load in dev builds too"
 tags:
@@ -50,12 +53,19 @@ title and a dead URL for the image. `MediaCollectionRenderer.tsx` even documents
 that the item "carries overrides + videoId only (no nested video record is
 fetched on TV)." The card had no material to render — hence blank + Untitled.
 
-TV **diverges from mobile** here on purpose: mobile's experience page still
-renders these items flat and unhydrated. Porting this fix to mobile is a
-documented follow-up (`apps/tv/src/lib/experienceHydration.ts` header).
+Fixed for TV in PR **#1551** (`fix(tv,mobile): correct card/preview imagery and
+hydrate SDUI experience cards`, merged). The mobile mirror is in PR **#1553**
+(`fix/mobile-card-imagery-and-titles`, open/unmerged as of this writing) —
+mobile resolves the title from the
+linked video via `getVideoTitle` (folded into its existing thumbnail batch
+fetch, `useVideoThumbnails`) rather than a separate coreId hydration query, and
+rewrites the same seed via `apps/mobile/src/lib/mediaImageUrl.ts`.
 
-Fixed in PR **#1551** (`fix(tv,mobile): correct card/preview imagery and hydrate
-SDUI experience cards`) — open with CI green as of this writing.
+**One caveat the TV path never had to confront, surfaced by the mobile port:**
+`imageOverrideUrl` is **polymorphic per Experience** — see section 2b. On the
+SDUI experience pages it is the 404 seed described above; on the `watch-home`
+homepage Experience it is an admin media-asset preview URL that already resolves.
+Treating it as uniformly a 404 seed is what produced a code-review false-positive.
 
 ## Guidance
 
@@ -155,6 +165,49 @@ rewrite yields posters that never load in dev builds. The absolute
 `raw.githubusercontent.com/.../apps/web/public` is fine for the app's own bundled
 relative assets, but not the curated seed.)
 
+### 2b. `imageOverrideUrl` is polymorphic per Experience — rewrite is a fix on SDUI, a no-op on Home
+
+The same admin field carries **different URL families depending on which
+Experience authored it**, because different Experiences are populated by
+different curation flows. Two live shapes, confirmed by curl against
+`admin.jesusfilm.org`:
+
+- **SDUI experience pages** (`experienceBySlug(slug:"easter", locale:"en")`):
+  `https://www.jesusfilm.org/images/thumbnails/{coreId}-vertical.png` — **404s**.
+  `rewriteSeedPosterUrl` is the **active fix**.
+- **`watch-home` homepage Experience**
+  (`watchSetting(locale:"en").homepageExperience`, the "Discover the full story"
+  rail): `https://admin.jesusfilm.org/api/public/media-assets/{id}/preview` —
+  **HTTP 200**, already usable. `rewriteSeedPosterUrl` is a **no-op** (the regex
+  only matches `jesusfilm.org/images/*`; everything else passes through). The
+  admin-preview shape comes from admin resolving `*AssetId` at the GraphQL read
+  boundary — see the `admin-asset-backed-experience-media-picker-pattern` doc.
+
+So the same helper is a required fix on one path and a defensive no-op on
+another. Mobile now wraps **both** consumers for consistency —
+`apps/mobile/src/components/sections/MediaCollectionRenderer.tsx` (SDUI, active)
+and `apps/mobile/src/lib/watchHome/experienceAdapter.ts` (home, no-op) — but the
+two are classified differently on purpose.
+
+**Verify the real shape before accepting a "404 seed" finding.** A multi-agent
+code review flagged a **P2 "active bug — the home rail renders the un-rewritten
+seed poster that 404s."** The premise (uniform field shape) was false: the home
+overrides are admin-preview URLs (200), and the simulator showed the home cards
+rendering real posters. The finding was reclassified from active P2 to
+defensive-consistency; the wrap was still applied (zero-risk passthrough). Two
+one-liners settle it before you write the severity:
+
+```graphql
+# SDUI page  -> jesusfilm.org/images/... (404 seed, rewrite REQUIRED)
+experienceBySlug(slug:"<slug>", locale:"en"){ blocks { ... on MediaCollectionBlock { items { imageOverrideUrl } } } }
+# watch-home -> admin.jesusfilm.org/.../preview (200, rewrite is a NO-OP)
+watchSetting(locale:"en"){ homepageExperience { blocks { ... on MediaCollectionBlock { items { imageOverrideUrl } } } } }
+```
+
+Apply the wrap on every consumer (safe passthrough, future-proofs each path), but
+label its effect honestly per path — a defensive no-op dressed up as a bug-fix
+pollutes the severity signal for the next reviewer.
+
 ### 3. cardImage: field-major scan, because the bare Cloudflare `url` 400s
 
 The video-art fallback goes through `pickCardImage` (`apps/tv/src/lib/cardImage.ts`),
@@ -197,8 +250,16 @@ render a usable card from the item alone. Resolution has to come from either (a)
 the linked video, hydrated by coreId, or (b) the curated override asset. Bake that
 assumption in from the start when you build a new card renderer.
 
-Three traps generalize beyond this one screen:
+Four traps generalize beyond this one screen:
 
+- **The polymorphic-field trap.** A single admin field (`imageOverrideUrl`)
+  carries different URL families across Experiences — a 404 seed on SDUI pages, a
+  resolvable admin-preview URL on watch-home. Do not assume the shape you saw on
+  one Experience holds on another; a review that reasoned "SDUI had a 404 seed,
+  home uses the same field, therefore home has the same bug" raised a phantom P2.
+  Verify the real value for the specific Experience (section 2b) before writing a
+  severity — the cost is two GraphQL one-liners, the cost of guessing is a
+  mis-severitied finding and eroded trust in the review's other flags.
 - **The dev-vs-prod static-base trap.** TV's `resolveImageUrl` resolves _relative_
   paths against a static base that is a local web server in dev
   (`localhost:3000` / `10.0.2.2:3000`) and GitHub raw in prod. Any curated asset
@@ -225,11 +286,18 @@ Three traps generalize beyond this one screen:
   `collectMediaCollectionCoreIds`'s walk to reach the new block, and resolve
   title/image via the `resolveMediaItem*` helpers rather than reading item fields
   directly.
-- **Porting to mobile.** Mobile's experience page still renders these items flat.
-  The hydration logic in `experienceHydration.ts` is the reference; note the
-  absolute-vs-relative base distinction when adapting `resolveImageUrl`.
+- **The mobile mirror (open PR #1553, unmerged as of this writing).** Mobile
+  resolves the title from the linked video via `getVideoTitle` (folded into
+  `useVideoThumbnails`) and rewrites
+  the seed via `apps/mobile/src/lib/mediaImageUrl.ts`. Use it as the mobile
+  reference; note the absolute-vs-relative base distinction when adapting
+  `resolveImageUrl`.
 - Any time you copy an image-URL rewrite from apps/web into a native app — verify
   the base resolves to a reachable host in a dev build, not a local Next.js server.
+- Any time a review flags an "active bug" whose premise is "field X has shape Y"
+  — query X for the specific Experience/entity before accepting the severity
+  (section 2b). Admin fields shared across content surfaces are polymorphic until
+  the live data says otherwise.
 
 ## Examples
 
@@ -283,4 +351,6 @@ rather than crashing.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
   — prevention tie: the Cloudflare variant-less `url` 400 and the
   `videoId != coreId` gap only surface against the real CDN/prod contract, not
-  mocked fixtures.
+  mocked fixtures. Section 2b's per-Experience `imageOverrideUrl` polymorphism is
+  a fresh worked instance — a review asserted a bug (home 404 seed) from an
+  assumed uniform shape without verifying the real per-Experience contract.
