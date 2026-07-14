@@ -157,9 +157,21 @@ describe("WatchEndReflection", () => {
       container.querySelector('[data-testid="watch-end-reflection-chat"]'),
     ).not.toBeNull()
     expect(
-      container.querySelector('[data-testid="watch-end-reflection-chat-title"]')
-        ?.textContent,
-    ).toContain("Bible Chat")
+      container
+        .querySelector('[data-testid="watch-end-reflection"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Bible Chat")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-chat-title"]',
+      ),
+    ).toBeNull()
+    const chat = container.querySelector(
+      '[data-testid="watch-end-reflection-chat"]',
+    ) as HTMLElement
+    expect(chat.className).not.toContain("rounded-")
+    expect(chat.className).not.toContain("border")
+    expect(chat.className).not.toContain("bg-white")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-chat-messages"]',

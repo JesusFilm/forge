@@ -213,7 +213,7 @@ export function WatchEndReflection({
       ref={surfaceRef}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="watch-end-reflection-title"
+      aria-label={t("bibleChatTitle")}
       data-testid="watch-end-reflection"
       tabIndex={-1}
       onKeyDown={(event) => {
@@ -288,7 +288,6 @@ export function WatchEndReflection({
             fieldLabel={tQuestionPanel("fieldLabel")}
             chatInvitation={t("chatInvitation")}
             chatTitle={t("bibleChatTitle")}
-            nextStepsTitle={t("nextStepsTitle")}
             nextStepsSupport={t("nextStepsSupport")}
             onQuestionChange={setCustomQuestion}
             onSelect={(actionId) => {
@@ -322,7 +321,6 @@ function ReflectionChat({
   fieldLabel,
   chatInvitation,
   chatTitle,
-  nextStepsTitle,
   nextStepsSupport,
   onQuestionChange,
   onSelect,
@@ -334,7 +332,6 @@ function ReflectionChat({
   fieldLabel: string
   chatInvitation: string
   chatTitle: string
-  nextStepsTitle: string
   nextStepsSupport: string
   onQuestionChange: (question: string) => void
   onSelect: (actionId: string) => void
@@ -362,34 +359,13 @@ function ReflectionChat({
       role="region"
       aria-label={chatTitle}
       data-testid="watch-end-reflection-chat"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      <header
-        data-testid="watch-end-reflection-chat-title"
-        className="flex min-h-14 shrink-0 items-center gap-3 border-b border-white/10 px-4 sm:px-5"
-      >
-        <span className="relative grid size-8 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
-          <MessageCircleHeart aria-hidden className="size-4.5" />
-          <span className="absolute right-0 bottom-0 size-2 rounded-full border-2 border-[#171717] bg-emerald-400" />
-        </span>
-        <div>
-          <h2
-            id="watch-end-reflection-title"
-            className="text-sm font-semibold tracking-[-0.01em] text-white sm:text-base"
-          >
-            {chatTitle}
-          </h2>
-          <p className="text-[10px] text-white/45 sm:text-xs">
-            {nextStepsTitle}
-          </p>
-        </div>
-      </header>
-
       <div
         ref={messagesRef}
         aria-live="polite"
         data-testid="watch-end-reflection-chat-messages"
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] sm:px-5 sm:py-5"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1 py-2 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] sm:px-2 sm:py-3"
       >
         <GuideBubble
           testId="watch-end-reflection-chat-invitation"
