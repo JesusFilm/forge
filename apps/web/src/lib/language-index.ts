@@ -28,6 +28,7 @@ export type WatchLanguageIndexCountryGroup = {
   name: string
   flagPngSrc: string | null
   speakerCount: number
+  languageSpeakerCounts: Record<string, number>
   languages: WatchLanguageIndexLanguage[]
 }
 
@@ -52,6 +53,7 @@ export type WatchLanguageIndexMetadataLanguage = {
 
 export type WatchLanguageIndexMetadataCountryLanguage = {
   speakers?: number | null
+  displaySpeakers?: string | null
   primary?: boolean | null
   suggested?: boolean | null
   order?: number | null
@@ -98,6 +100,7 @@ const WATCH_LANGUAGE_INDEX_METADATA_QUERY = adminGraphql(`
       countryLanguages {
         id
         speakers
+        displaySpeakers
         primary
         suggested
         order
@@ -183,7 +186,7 @@ export function buildWatchLanguageIndex({
         countryName,
       })
 
-      const speakers = speakerCount(countryLanguage.speakers)
+      const speakers = countryLanguageSpeakerCount(countryLanguage)
       if (speakers > 0) {
         speakerCountByKey.set(key, (speakerCountByKey.get(key) ?? 0) + speakers)
       }
@@ -348,7 +351,8 @@ function bestFlagPngSrc(
       Number(bLanguage.suggested === true) -
         Number(aLanguage.suggested === true) ||
       Number(bLanguage.primary === true) - Number(aLanguage.primary === true) ||
-      (bLanguage.speakers ?? 0) - (aLanguage.speakers ?? 0) ||
+      countryLanguageSpeakerCount(bLanguage) -
+        countryLanguageSpeakerCount(aLanguage) ||
       (aLanguage.order ?? Number.MAX_SAFE_INTEGER) -
         (bLanguage.order ?? Number.MAX_SAFE_INTEGER)
     )
@@ -435,17 +439,17 @@ function buildCountryGroupsByRegion({
       >(),
     }
 
-    const countryLanguageSpeakerCount = speakerCount(
-      link.countryLanguage.speakers,
+    const effectiveSpeakerCount = countryLanguageSpeakerCount(
+      link.countryLanguage,
     )
-    group.speakerCount += countryLanguageSpeakerCount
+    group.speakerCount += effectiveSpeakerCount
     const existingLanguage = group.languagesByPublicSlug.get(
       language.publicSlug,
     )
     group.languagesByPublicSlug.set(language.publicSlug, {
       language,
       speakerCount:
-        (existingLanguage?.speakerCount ?? 0) + countryLanguageSpeakerCount,
+        (existingLanguage?.speakerCount ?? 0) + effectiveSpeakerCount,
     })
     regionCountryGroups.set(countryKey, group)
     countryGroupsByRegion.set(link.regionName, regionCountryGroups)
@@ -492,6 +496,11 @@ function buildCountryGroupsByRegion({
           name: group.name,
           flagPngSrc: group.flagPngSrc,
           speakerCount: group.speakerCount,
+          languageSpeakerCounts: Object.fromEntries(
+            [...group.languagesByPublicSlug.entries()].map(
+              ([publicSlug, entry]) => [publicSlug, entry.speakerCount],
+            ),
+          ),
           languages: [...group.languagesByPublicSlug.values()]
             .sort(compareCountryLanguageEntries)
             .map((entry) => entry.language),
@@ -522,6 +531,38 @@ function compareCountryLanguageEntries(
 
 function speakerCount(value: number | null | undefined): number {
   return Number.isFinite(value) && value != null && value > 0 ? value : 0
+}
+
+function countryLanguageSpeakerCount(
+  countryLanguage: WatchLanguageIndexMetadataCountryLanguage,
+): number {
+  // Some Core rows use large raw `speakers` sentinel values for ordering.
+  // `displaySpeakers` carries the real count when present.
+  return (
+    parseDisplaySpeakers(countryLanguage.displaySpeakers) ??
+    speakerCount(countryLanguage.speakers)
+  )
+}
+
+function parseDisplaySpeakers(value: string | null | undefined): number | null {
+  if (!value) return null
+
+  const normalized = value.trim().replaceAll(",", "")
+  if (!normalized || normalized === "0") return null
+
+  const suffixMatch = normalized.match(/^(\d+(?:\.\d+)?)\s*([kKmMbB])$/)
+  if (suffixMatch) {
+    const amount = Number(suffixMatch[1])
+    const suffix = suffixMatch[2]?.toLowerCase()
+    const multiplier =
+      suffix === "k" ? 1_000 : suffix === "m" ? 1_000_000 : 1_000_000_000
+    return Number.isFinite(amount) && amount > 0
+      ? Math.round(amount * multiplier)
+      : null
+  }
+
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function publicSlugForLanguage(

@@ -48,6 +48,9 @@ vi.mock("@/lib/language-index", () => ({
             name: "Mexico",
             flagPngSrc: "https://example.test/mx.png",
             speakerCount: 80_000_000,
+            languageSpeakerCounts: {
+              "spanish-latin-american": 80_000_000,
+            },
             languages: [
               {
                 id: "lang-es-419",

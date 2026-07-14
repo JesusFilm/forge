@@ -118,4 +118,87 @@ describe("buildWatchLanguageIndex", () => {
       }),
     ])
   })
+
+  it("sorts country languages by parsed displaySpeakers before raw speakers", () => {
+    const russian = {
+      id: "lang-ru",
+      coreId: "3934",
+      name: { en: "Russian", ru: "Русский" },
+      bcp47: "ru",
+      slug: "russian",
+    }
+    const french = {
+      id: "lang-fr",
+      coreId: "496",
+      name: { en: "French", fr: "Français" },
+      bcp47: "fr",
+      slug: "french",
+    }
+    const spanish = {
+      id: "lang-es-419",
+      coreId: "529",
+      name: {
+        en: "Spanish, Latin American",
+        es: "Español latinoamericano",
+      },
+      bcp47: "es-419",
+      slug: "spanish-latin-american",
+    }
+    const index = buildWatchLanguageIndex({
+      languages: [russian, french, spanish],
+      countries: [
+        {
+          id: "ca",
+          coreId: "CA",
+          name: { en: "Canada" },
+          flagPngSrc: "https://example.test/ca.png",
+          continent: { id: "na", name: { en: "North America" } },
+          countryLanguages: [
+            {
+              speakers: 999_999_999,
+              displaySpeakers: "5,000",
+              primary: false,
+              suggested: false,
+              order: 1,
+              language: russian,
+            },
+            {
+              speakers: 4_000,
+              displaySpeakers: "10K",
+              primary: false,
+              suggested: false,
+              order: 2,
+              language: french,
+            },
+            {
+              speakers: 3_000,
+              displaySpeakers: null,
+              primary: false,
+              suggested: false,
+              order: 3,
+              language: spanish,
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(index.languages.map((language) => language.publicSlug)).toEqual([
+      "french",
+      "russian",
+      "spanish-latin-american",
+    ])
+    expect(index.languages.map((language) => language.speakerCount)).toEqual([
+      10_000, 5_000, 3_000,
+    ])
+    expect(index.regions[0]?.countries[0]).toMatchObject({
+      name: "Canada",
+      speakerCount: 18_000,
+      languages: [
+        expect.objectContaining({ publicSlug: "french" }),
+        expect.objectContaining({ publicSlug: "russian" }),
+        expect.objectContaining({ publicSlug: "spanish-latin-american" }),
+      ],
+    })
+  })
 })
