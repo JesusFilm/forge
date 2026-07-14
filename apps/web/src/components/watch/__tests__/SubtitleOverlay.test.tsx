@@ -87,7 +87,10 @@ afterEach(() => {
   document.body.innerHTML = ""
 })
 
-async function renderOverlay(textTracks: MockTextTrackList) {
+async function renderOverlay(
+  textTracks: MockTextTrackList,
+  controlsVisible = false,
+) {
   const wrapper = document.createElement("div")
   wrapper.setAttribute("data-chrome-revealed", "true")
   document.body.appendChild(wrapper)
@@ -105,17 +108,22 @@ async function renderOverlay(textTracks: MockTextTrackList) {
     current: wrapper,
   }
 
-  await act(async () => {
-    root.render(
-      <SubtitleOverlay
-        playerRef={playerRef}
-        wrapperRef={wrapperRef}
-        player={player as unknown as MuxPlayerRef}
-      />,
-    )
-  })
+  const render = async (visible: boolean) => {
+    await act(async () => {
+      root.render(
+        <SubtitleOverlay
+          playerRef={playerRef}
+          wrapperRef={wrapperRef}
+          player={player as unknown as MuxPlayerRef}
+          controlsVisible={visible}
+        />,
+      )
+    })
+  }
 
-  return { playerRef, wrapperRef }
+  await render(controlsVisible)
+
+  return { playerRef, wrapperRef, render }
 }
 
 async function flushEffects() {
@@ -123,6 +131,39 @@ async function flushEffects() {
 }
 
 describe("SubtitleOverlay", () => {
+  it("moves active subtitles down when player controls hide", async () => {
+    const chrome = document.createElement("div")
+    chrome.setAttribute("data-testid", "hero-player-custom-chrome")
+    chrome.setAttribute("data-visible", "true")
+    chrome.getBoundingClientRect = () =>
+      ({
+        top: 600,
+        bottom: 664,
+        height: 64,
+      }) as DOMRect
+    document.body.appendChild(chrome)
+
+    const forgeTrack = new MockTextTrack({
+      label: FORGE_SUBTITLE_TRACK_LABEL,
+      mode: "showing",
+      activeText: "Forge-selected subtitle",
+    })
+    const textTracks = new MockTextTrackList([forgeTrack])
+    const { render } = await renderOverlay(textTracks, true)
+    await flushEffects()
+
+    const overlay = container.querySelector(
+      '[data-testid="subtitle-overlay"]',
+    ) as HTMLElement | null
+    expect(overlay?.style.transform).toBe("translateY(-64px)")
+
+    await render(false)
+    expect(overlay?.style.transform).toBe("translateY(-0px)")
+
+    await render(true)
+    expect(overlay?.style.transform).toBe("translateY(-64px)")
+  })
+
   it("ignores active Mux-generated subtitle tracks", async () => {
     const generatedTrack = new MockTextTrack({
       label: "Generated subtitles",

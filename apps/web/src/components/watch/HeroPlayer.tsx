@@ -387,6 +387,7 @@ export function HeroPlayer({
   }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [playerActivated, setPlayerActivated] = useState(
@@ -410,6 +411,7 @@ export function HeroPlayer({
 
   const handleControlsVisibilityChange = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
+      setControlsVisible(detail.visible)
       publishChromeVisibility(detail)
     },
     [publishChromeVisibility],
@@ -1731,6 +1733,7 @@ export function HeroPlayer({
             playerRef={playerRef}
             wrapperRef={wrapperRef}
             player={player}
+            controlsVisible={controlsVisible}
           />
         ) : null}
         {showWatchNextButton ? (
