@@ -81,8 +81,10 @@ type HeroMetadataQuality = {
   rank: number
 }
 
-const HERO_METADATA_TAG_CLASS =
-  "inline-flex h-7 items-center gap-1 rounded-md border border-white/45 bg-transparent px-1.5 text-[0.6rem] font-normal tracking-wide text-white/95"
+const HERO_CAPTIONS_TAG_CLASS =
+  "inline-flex h-6 items-center rounded-md border border-white/45 bg-transparent px-1 text-[0.6rem] font-normal tracking-wide text-white/95"
+const HERO_QUALITY_TAG_CLASS =
+  "inline-flex h-6 items-center rounded-md border border-white/80 bg-white/80 px-1 text-[0.6rem] font-normal tracking-wide text-stone-950"
 const HERO_LANGUAGE_TAG_CLASS =
   "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.625rem] font-normal tracking-wide text-white/95"
 
@@ -1881,6 +1883,14 @@ export function HeroPlayer({
                           {releaseMetadata}
                         </span>
                       ) : null}
+                      {qualityLabel != null ? (
+                        <span
+                          data-testid="hero-player-quality-tag"
+                          className={`${HERO_QUALITY_TAG_CLASS} uppercase`}
+                        >
+                          {qualityLabel}
+                        </span>
+                      ) : null}
                       {languageCountLabel != null ? (
                         hasLanguageSwitcher ? (
                           <button
@@ -1912,17 +1922,9 @@ export function HeroPlayer({
                       {hasSubtitleTrack ? (
                         <span
                           data-testid="hero-player-captions-tag"
-                          className={`${HERO_METADATA_TAG_CLASS} uppercase`}
+                          className={`${HERO_CAPTIONS_TAG_CLASS} uppercase`}
                         >
                           CC
-                        </span>
-                      ) : null}
-                      {qualityLabel != null ? (
-                        <span
-                          data-testid="hero-player-quality-tag"
-                          className={`${HERO_METADATA_TAG_CLASS} uppercase`}
-                        >
-                          {qualityLabel}
                         </span>
                       ) : null}
                     </div>

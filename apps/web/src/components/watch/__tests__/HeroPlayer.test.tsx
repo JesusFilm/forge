@@ -603,9 +603,9 @@ describe("HeroPlayer — initial mount", () => {
       Array.from(tags.children).map((tag) => tag.getAttribute("data-testid")),
     ).toEqual([
       "hero-player-release-metadata",
+      "hero-player-quality-tag",
       "hero-player-language-tag",
       "hero-player-captions-tag",
-      "hero-player-quality-tag",
     ])
 
     const languageTag = container.querySelector(
@@ -662,11 +662,31 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
-    ).toContain("px-1.5")
+    ).toContain("h-6")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("px-1")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
     ).toBe("4K")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.className,
+    ).toContain("h-6")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.className,
+    ).toContain("px-1")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.className,
+    ).toContain("bg-white/80")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.className,
+    ).toContain("text-stone-950")
 
     await act(async () => {
       languageTag.click()
