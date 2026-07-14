@@ -22,6 +22,7 @@ export type BlockTemplateKey =
   | "mediaCollection"
   | "navigationCarousel"
   | "promoBanner"
+  | "promotionalText"
   | "relatedQuestions"
   | "section"
   | "text"
@@ -43,6 +44,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "routeVideoCarousel",
   "mediaCollection",
   "text",
+  "promotionalText",
   "cta",
   "infoBlocks",
   "card",
@@ -70,6 +72,25 @@ export const CONTAINER_SLOT_LAYOUT_PRESETS = [
   { label: "4 / 4 / 4", spans: [4, 4, 4] },
   { label: "3 / 3 / 3 / 3", spans: [3, 3, 3, 3] },
 ] as const
+
+export function contentParagraphsFromEditorText(
+  value: string,
+  variant: unknown,
+) {
+  const separator = variant === "promotional" ? /\n\s*\n/g : /\n/g
+
+  return value
+    .split(separator)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+export function editorTextFromContentParagraphs(
+  paragraphs: string[],
+  variant: unknown,
+) {
+  return paragraphs.join(variant === "promotional" ? "\n\n" : "\n")
+}
 
 const legacyEditorOnlyKeys = new Set(["videoSlug"])
 
@@ -717,6 +738,33 @@ export function createTemplateBlock(
       subtitle: "Supporting subtitle",
       contentParagraphs: ["Write the next part of the story here."],
       variant: "default",
+    }
+  }
+
+  if (template === "promotionalText") {
+    return {
+      t: "section",
+      sectionKey: `promotional-story-${index}`,
+      backgroundColor: "purple",
+      backgroundOpacity: 1,
+      dynamicBackgroundImage: false,
+      staticOverlay: true,
+      content: [
+        {
+          t: "text",
+          sectionKey: `promotional-copy-${index}`,
+          subtitle: "Promotional story",
+          heading: "Tell the story behind this experience",
+          headingLevel: "h2",
+          contentParagraphs: [
+            "### Add a descriptive subheading",
+            "Write a substantial opening paragraph that explains what viewers will discover in this experience.",
+            "Follow with the people, places, themes, or context that make this story distinct.",
+            "- Add specific, useful details\n- Use natural language people search for\n- Link to a meaningful next step",
+          ],
+          variant: "promotional",
+        },
+      ],
     }
   }
 

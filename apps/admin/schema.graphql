@@ -1220,6 +1220,7 @@ enum TextHeadingLevel {
 enum TextVariant {
   default
   lead
+  promotional
   small
 }
 

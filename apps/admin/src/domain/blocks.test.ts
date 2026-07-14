@@ -8,6 +8,7 @@ import {
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
+  TextBlockSchema,
   ContainerContentBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
@@ -117,6 +118,27 @@ describe("BlockSchema — all top-level types validate", () => {
       sectionKey: "watch-home-hero",
     })
     expect(result.success).toBe(true)
+  })
+
+  it("accepts promotional Markdown text and rejects unknown variants", () => {
+    const promotional = TextBlockSchema.safeParse({
+      t: "text",
+      sectionKey: "mission-story",
+      heading: "A story worth discovering",
+      contentParagraphs: [
+        "### Why this story matters\n\nA substantial opening paragraph.",
+        "- One reason\n- Another reason",
+      ],
+      variant: "promotional",
+    })
+
+    expect(promotional.success).toBe(true)
+    expect(
+      TextBlockSchema.safeParse({
+        t: "text",
+        variant: "editorial-but-unknown",
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts videoHero metadata source modes", () => {

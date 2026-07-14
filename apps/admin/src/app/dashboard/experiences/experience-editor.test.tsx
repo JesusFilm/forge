@@ -1081,6 +1081,26 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Advent Countdown")
   })
 
+  it("labels promotional Text as Markdown authoring", () => {
+    const html = renderEditor([
+      {
+        t: "text",
+        sectionKey: "mission-story",
+        heading: "Tell the story",
+        contentParagraphs: [
+          "### Why it matters",
+          "A substantial paragraph for people and search crawlers.",
+        ],
+        variant: "promotional",
+      },
+    ])
+
+    expect(html).toContain("Tell the story")
+    expect(html).toContain("Markdown: use blank lines between paragraphs")
+    expect(html).toContain("promotional")
+    expect(html).toContain("### Why it matters\n\nA substantial paragraph")
+  })
+
   it("keeps video attachment and publish controls visible", () => {
     const html = renderEditor([
       {
