@@ -47,13 +47,13 @@ type NextStepAction = {
   testId: string
 }
 
-const CHAPTER_DURATION_MS = 6_000
-const INACTIVITY_RESUME_MS = 9_000
+const CHAPTER_DURATION_MS = 4_000
+const INACTIVITY_RESUME_MS = 6_000
 
 const PRIMARY_ACTION_CLASS =
-  "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+  "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] hover:scale-[1.035] hover:bg-brand-red/90 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none"
 const STEP_ACTION_CLASS =
-  "group relative flex min-h-16 w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-left text-white transition-[background-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
+  "group relative flex min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-xl px-2 pt-4 pb-2 text-left text-white transition-[background-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:px-3 sm:pt-5 sm:pb-3 motion-reduce:transition-none"
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -95,6 +95,13 @@ export function WatchEndReflection({
   const [interactionVersion, setInteractionVersion] = useState(0)
   const [customQuestion, setCustomQuestion] = useState("")
 
+  const resetStory = () => {
+    setActiveIndex(0)
+    setIsGuiding(!reducedMotion)
+    setInteractionVersion(0)
+    setCustomQuestion("")
+  }
+
   const actions: NextStepAction[] = [
     {
       id: "ask",
@@ -122,7 +129,10 @@ export function WatchEndReflection({
             icon: <Share2 aria-hidden className="size-5" />,
             label: t("share"),
             detail: t("shareDetail"),
-            onClick: onShare,
+            onClick: () => {
+              resetStory()
+              onShare()
+            },
             testId: "watch-end-reflection-share",
           },
         ]
@@ -149,19 +159,6 @@ export function WatchEndReflection({
       href: JOIN_BIBLE_STUDY_URL,
       testId: "watch-end-reflection-go-deeper",
     },
-    ...(onNext
-      ? [
-          {
-            id: "next",
-            kind: "callback" as const,
-            icon: <Play aria-hidden className="size-4 fill-current" />,
-            label: t("watchNext"),
-            detail: t("watchNextDetail"),
-            onClick: onNext,
-            testId: "watch-end-reflection-next-watch",
-          },
-        ]
-      : []),
     ...(onDownload
       ? [
           {
@@ -175,9 +172,24 @@ export function WatchEndReflection({
           },
         ]
       : []),
+    ...(onNext
+      ? [
+          {
+            id: "next",
+            kind: "callback" as const,
+            icon: <Play aria-hidden className="size-4 fill-current" />,
+            label: t("watchNext"),
+            detail: t("watchNextDetail"),
+            onClick: onNext,
+            testId: "watch-end-reflection-next-watch",
+          },
+        ]
+      : []),
   ]
 
   const activeAction = actions[Math.min(activeIndex, actions.length - 1)]!
+  const finalActionId = actions.at(-1)!.id
+  const finalActionOnClick = actions.at(-1)!.onClick
 
   useEffect(() => {
     if (!open) return
@@ -199,10 +211,22 @@ export function WatchEndReflection({
   useEffect(() => {
     if (!open || reducedMotion || !isGuiding) return
     const timeout = window.setTimeout(() => {
+      if (activeIndex === actions.length - 1 && finalActionId === "next") {
+        finalActionOnClick?.()
+        return
+      }
       setActiveIndex((current) => (current + 1) % actions.length)
     }, CHAPTER_DURATION_MS)
     return () => window.clearTimeout(timeout)
-  }, [actions.length, activeIndex, isGuiding, open, reducedMotion])
+  }, [
+    actions.length,
+    activeIndex,
+    finalActionId,
+    finalActionOnClick,
+    isGuiding,
+    open,
+    reducedMotion,
+  ])
 
   useEffect(() => {
     if (!open || reducedMotion || isGuiding || interactionVersion === 0) return
@@ -240,6 +264,7 @@ export function WatchEndReflection({
       }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
+          resetStory()
           onDismiss()
           return
         }
@@ -277,99 +302,77 @@ export function WatchEndReflection({
         data-testid="watch-end-reflection-content"
         className="relative mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-8 lg:px-12"
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 flex-1 gap-1.5" aria-hidden="true">
-            {actions.map((action, index) => (
-              <span
-                key={action.id}
-                className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15"
-              >
-                <span
-                  key={`${activeAction.id}-${isGuiding}`}
-                  className={`block h-full origin-left rounded-full bg-white ${
-                    index < activeIndex
-                      ? "scale-x-100"
-                      : index === activeIndex
-                        ? isGuiding
-                          ? "animate-watch-story-progress"
-                          : "scale-x-[0.12] bg-brand-red"
-                        : "scale-x-0"
-                  }`}
-                />
-              </span>
-            ))}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 pt-1">
+            <p className="text-[10px] font-semibold tracking-[0.2em] text-white/45 uppercase sm:text-xs">
+              {t("nextStepsEyebrow")}
+            </p>
+            <p className="mt-1 max-w-xl text-xs leading-relaxed text-white/60 sm:text-sm">
+              {t("nextStepsSupport")}
+            </p>
           </div>
           <button
             type="button"
             aria-label={t("dismiss")}
             data-testid="watch-end-reflection-dismiss"
-            onClick={onDismiss}
+            onClick={() => {
+              resetStory()
+              onDismiss()
+            }}
             className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-white/[0.07] text-white/75 transition hover:bg-white/[0.14] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
           >
             <X aria-hidden className="size-5" />
           </button>
         </div>
 
-        <div className="grid flex-1 items-center gap-10 py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(19rem,0.65fr)] lg:gap-14 lg:py-10">
-          <main
-            id="watch-end-reflection-stage"
-            key={activeAction.id}
-            aria-live="polite"
-            onPointerEnter={markInteraction}
-            data-testid="watch-end-reflection-panel"
-            className="min-w-0 animate-watch-reflection-enter motion-reduce:animate-none"
-          >
-            <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/55 uppercase">
-              <span>{t("nextStepsEyebrow")}</span>
-              <span aria-hidden="true" className="text-white/25">
-                /
-              </span>
-              <span className="text-white/80">
-                {String(activeIndex + 1).padStart(2, "0")}
-              </span>
-            </div>
-            <ActionStage
-              action={activeAction}
-              prompts={reflectionPrompts}
-              customQuestion={customQuestion}
-              fieldLabel={tQuestionPanel("fieldLabel")}
-              onQuestionChange={setCustomQuestion}
-            />
-          </main>
+        <nav aria-label={t("nextStepsTitle")} className="mt-4 min-w-0 sm:mt-6">
+          <ol className="grid grid-cols-7 gap-1 sm:gap-1.5">
+            {actions.map((action, index) => (
+              <li key={action.id} className="min-w-0">
+                <ChapterButton
+                  action={action}
+                  index={index}
+                  active={index === activeIndex}
+                  complete={index < activeIndex}
+                  guiding={isGuiding}
+                  onSelect={() => selectChapter(index)}
+                />
+              </li>
+            ))}
+          </ol>
+        </nav>
 
-          <nav aria-label={t("nextStepsTitle")} className="min-w-0">
-            <div className="mb-4 flex items-end justify-between gap-4 lg:mb-5">
-              <div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-white/45 uppercase">
-                  {t("nextStepsEyebrow")}
-                </p>
-                <p className="mt-1 max-w-xs text-sm leading-relaxed text-white/60">
-                  {t("nextStepsSupport")}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs tabular-nums text-white/40">
-                {activeIndex + 1} / {actions.length}
-              </span>
-            </div>
-            <ol className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-1">
-              {actions.map((action, index) => (
-                <li key={action.id}>
-                  <ChapterButton
-                    action={action}
-                    index={index}
-                    active={index === activeIndex}
-                    onSelect={() => selectChapter(index)}
-                  />
-                </li>
-              ))}
-            </ol>
-          </nav>
-        </div>
+        <main
+          id="watch-end-reflection-stage"
+          key={activeAction.id}
+          aria-live="polite"
+          onPointerEnter={markInteraction}
+          data-testid="watch-end-reflection-panel"
+          className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-8 sm:py-10 lg:py-12"
+        >
+          <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/45 uppercase">
+            <span>{String(activeIndex + 1).padStart(2, "0")}</span>
+            <span aria-hidden="true" className="text-white/20">
+              /
+            </span>
+            <span>{String(actions.length).padStart(2, "0")}</span>
+          </div>
+          <ActionStage
+            action={activeAction}
+            prompts={reflectionPrompts}
+            customQuestion={customQuestion}
+            fieldLabel={tQuestionPanel("fieldLabel")}
+            onQuestionChange={setCustomQuestion}
+          />
+        </main>
 
         <button
           type="button"
           data-testid="watch-end-reflection-replay"
-          onClick={onReplay}
+          onClick={() => {
+            resetStory()
+            onReplay()
+          }}
           className="min-h-11 w-fit cursor-pointer px-1 text-sm font-semibold text-white/65 underline decoration-white/30 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
         >
           {t("replay")}
@@ -383,51 +386,72 @@ function ChapterButton({
   action,
   index,
   active,
+  complete,
+  guiding,
   onSelect,
 }: {
   action: NextStepAction
   index: number
   active: boolean
+  complete: boolean
+  guiding: boolean
   onSelect: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      aria-label={action.label}
       aria-current={active ? "step" : undefined}
       aria-controls="watch-end-reflection-stage"
       data-testid={action.testId}
       data-action-id={action.id}
       data-highlighted={active ? "true" : "false"}
+      data-final-action={action.id === "next" ? "true" : "false"}
       className={`${STEP_ACTION_CLASS} ${
         active
-          ? "bg-white/[0.13] opacity-100"
-          : "bg-transparent opacity-65 hover:bg-white/[0.07] hover:opacity-100"
+          ? "scale-[1.02] bg-white/[0.12] opacity-100"
+          : "bg-transparent opacity-55 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:opacity-100"
       }`}
     >
       <span
-        className={`grid size-9 shrink-0 place-items-center rounded-full transition-colors ${
-          active ? "bg-brand-red text-white" : "bg-white/10 text-white/75"
+        aria-hidden="true"
+        className="absolute inset-x-1 top-0 h-1 overflow-hidden rounded-full bg-white/15 sm:inset-x-2"
+      >
+        <span
+          key={`${action.id}-${active}-${guiding}`}
+          className={`block h-full origin-left rounded-full ${
+            complete
+              ? "scale-x-100 bg-white/55"
+              : active
+                ? guiding
+                  ? "animate-watch-story-progress bg-brand-red"
+                  : "scale-x-[0.1] bg-brand-red"
+                : "scale-x-0 bg-white"
+          }`}
+        />
+      </span>
+      <span
+        className={`grid size-8 shrink-0 place-items-center rounded-full transition-[background-color,transform] sm:size-9 ${
+          active
+            ? "animate-watch-story-icon bg-brand-red text-white"
+            : "bg-white/10 text-white/75 group-hover:scale-105"
         }`}
       >
         {action.icon}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[10px] font-semibold tracking-[0.12em] text-white/40 uppercase">
+      <span className="mt-1 min-w-0 md:mt-2">
+        <span
+          className={`block text-[9px] font-semibold tracking-[0.12em] uppercase sm:text-[10px] ${
+            active ? "text-white/70" : "text-white/35"
+          }`}
+        >
           {String(index + 1).padStart(2, "0")}
         </span>
-        <span className="mt-0.5 block text-xs leading-tight font-semibold sm:text-sm">
+        <span className="mt-0.5 hidden text-[11px] leading-tight font-semibold text-balance md:block lg:text-xs">
           {action.label}
         </span>
       </span>
-      <ArrowRight
-        aria-hidden
-        className={`hidden size-4 shrink-0 transition sm:block ${
-          active
-            ? "translate-x-0 text-brand-red"
-            : "-translate-x-1 text-white/30"
-        }`}
-      />
     </button>
   )
 }
@@ -447,16 +471,16 @@ function ActionStage({
 }) {
   return (
     <>
-      <div className="mt-5 grid size-12 place-items-center rounded-full bg-brand-red text-white sm:size-14">
+      <div className="mt-5 grid size-12 place-items-center rounded-full bg-brand-red text-white animate-watch-story-icon sm:size-14 motion-reduce:animate-none">
         {action.icon}
       </div>
       <h2
         id="watch-end-reflection-title"
-        className="mt-5 max-w-[17ch] text-[clamp(2.25rem,7vw,4.5rem)] leading-[0.98] font-semibold tracking-[-0.04em] text-balance"
+        className="mt-5 max-w-[17ch] text-[clamp(2.25rem,7vw,4.75rem)] leading-[0.96] font-semibold tracking-[-0.045em] text-balance animate-watch-story-copy motion-reduce:animate-none"
       >
         {action.label}
       </h2>
-      <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 sm:text-lg">
+      <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 animate-watch-story-detail sm:text-lg motion-reduce:animate-none">
         {action.detail}
       </p>
 
@@ -497,7 +521,7 @@ function StageAction({ action }: { action: NextStepAction }) {
         target="_blank"
         rel="noopener noreferrer"
         data-testid="watch-end-reflection-active-action"
-        className={`${PRIMARY_ACTION_CLASS} mt-7`}
+        className={`${PRIMARY_ACTION_CLASS} mt-7 animate-watch-story-action motion-reduce:animate-none`}
       >
         {content}
       </a>
@@ -509,7 +533,7 @@ function StageAction({ action }: { action: NextStepAction }) {
       type="button"
       onClick={action.onClick}
       data-testid="watch-end-reflection-active-action"
-      className={`${PRIMARY_ACTION_CLASS} mt-7`}
+      className={`${PRIMARY_ACTION_CLASS} mt-7 animate-watch-story-action motion-reduce:animate-none`}
     >
       {content}
     </button>
@@ -532,7 +556,7 @@ function AskChapter({
   return (
     <div
       data-testid="watch-end-reflection-ask-panel"
-      className="mt-6 max-w-2xl"
+      className="mt-6 max-w-2xl animate-watch-story-action motion-reduce:animate-none"
     >
       <div className="flex flex-wrap gap-2">
         {prompts.map((prompt) => (
@@ -576,7 +600,10 @@ function TalkChapter({ action }: { action: NextStepAction }) {
   const languageNames = ["English", "Español", "Français", "Português"]
 
   return (
-    <div data-testid="watch-end-reflection-talk-panel" className="mt-7">
+    <div
+      data-testid="watch-end-reflection-talk-panel"
+      className="mt-7 animate-watch-story-action motion-reduce:animate-none"
+    >
       <div className="flex -space-x-2" aria-hidden="true">
         {languages.map((language) => (
           <span
@@ -616,7 +643,10 @@ function TalkChapter({ action }: { action: NextStepAction }) {
 
 function ShareChapter({ action }: { action: NextStepAction }) {
   return (
-    <div data-testid="watch-end-reflection-share-panel" className="mt-7">
+    <div
+      data-testid="watch-end-reflection-share-panel"
+      className="mt-7 animate-watch-story-action motion-reduce:animate-none"
+    >
       <div className="flex items-center gap-3" aria-hidden="true">
         <span className="grid size-11 place-items-center rounded-full bg-white/[0.08]">
           <UserRound className="size-5 text-white/65" />

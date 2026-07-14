@@ -43,11 +43,11 @@ connect with a person, or choose a meaningful next step.
 ## What To Build
 
 1. Show an accessible end-of-video reflection overlay when a Watch video ends.
-   Reveal editorial study questions one at a time, falling back to the existing
-   reflection prompt when a video has no editorial questions.
-2. Replace end-triggered automatic Watch Next navigation with a viewer-chosen
-   next-step panel. Preserve the next playable episode/chapter action whenever
-   it is available.
+   Present editorial questions inside the Bible-question chapter, falling back
+   to the existing reflection prompt when a video has no editorial questions.
+2. Guide the viewer through the available next steps as timed, selectable
+   chapters. Keep Watch Next as the final chapter and advance to the next
+   playable episode only after the reflection sequence completes.
 3. Reuse existing public destinations and Watch modals for Bible questions,
    person-to-person chat, sharing, and downloads; include a route-aware Bible
    reading/deeper-learning action only where canonical Watch content supports it.
@@ -63,7 +63,8 @@ connect with a person, or choose a meaningful next step.
 - Do not expose client-side credentials or invent a new chat backend.
 - Keep public Watch URLs on existing route helpers and use current share and
   download flows rather than duplicating their behavior.
-- The reflection overlay must never auto-navigate the viewer away.
+- Do not auto-navigate before every available reflection chapter has been shown;
+  user interaction pauses the guided sequence before it resumes.
 
 ## Verification
 

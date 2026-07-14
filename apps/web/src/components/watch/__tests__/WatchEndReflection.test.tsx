@@ -124,7 +124,7 @@ describe("WatchEndReflection", () => {
       ).toBe(7)
 
       act(() => {
-        vi.advanceTimersByTime(6_000)
+        vi.advanceTimersByTime(4_000)
       })
 
       expect(talk.getAttribute("data-highlighted")).toBe("true")
@@ -138,15 +138,15 @@ describe("WatchEndReflection", () => {
         ask.click()
       })
       act(() => {
-        vi.advanceTimersByTime(6_000)
+        vi.advanceTimersByTime(4_000)
       })
       expect(ask.getAttribute("data-highlighted")).toBe("true")
 
       act(() => {
-        vi.advanceTimersByTime(9_000)
+        vi.advanceTimersByTime(6_000)
       })
       act(() => {
-        vi.advanceTimersByTime(6_000)
+        vi.advanceTimersByTime(4_000)
       })
       expect(talk.getAttribute("data-highlighted")).toBe("true")
 
@@ -179,6 +179,90 @@ describe("WatchEndReflection", () => {
           ) as HTMLTextAreaElement
         ).value,
       ).toBe("What did this story show you?")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("makes Watch next the final timed chapter and advances after it", () => {
+    vi.useFakeTimers()
+    try {
+      const callbacks = renderReflection()
+      const actions = Array.from(
+        container.querySelectorAll<HTMLElement>("[data-action-id]"),
+      )
+
+      expect(actions.at(-2)?.dataset.actionId).toBe("download")
+      expect(actions.at(-1)?.dataset.actionId).toBe("next")
+      expect(actions.at(-1)?.dataset.finalAction).toBe("true")
+
+      for (let chapter = 0; chapter < actions.length; chapter += 1) {
+        act(() => {
+          vi.advanceTimersByTime(4_000)
+        })
+      }
+
+      expect(callbacks.onNext).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("restarts the guided story after the reflection is reopened", () => {
+    vi.useFakeTimers()
+    try {
+      const callbacks = {
+        onDismiss: vi.fn(),
+        onDownload: vi.fn(),
+        onNext: vi.fn(),
+        onReplay: vi.fn(),
+        onShare: vi.fn(),
+      }
+      const renderOpenState = (open: boolean) => {
+        act(() => {
+          root.render(
+            <WatchEndReflection
+              open={open}
+              prompts={["What did this story show you?"]}
+              bibleReadHref="https://www.bible.com/bible/111/John.3.16.NIV"
+              {...callbacks}
+            />,
+          )
+        })
+      }
+
+      renderOpenState(true)
+      act(() => {
+        ;(
+          container.querySelector(
+            '[data-testid="watch-end-reflection-talk-person"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      act(() => {
+        ;(
+          container.querySelector(
+            '[data-testid="watch-end-reflection-dismiss"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      renderOpenState(false)
+      renderOpenState(true)
+
+      expect(
+        container
+          .querySelector('[data-testid="watch-end-reflection-ask-bible"]')
+          ?.getAttribute("data-highlighted"),
+      ).toBe("true")
+
+      act(() => {
+        vi.advanceTimersByTime(4_000)
+      })
+      expect(
+        container
+          .querySelector('[data-testid="watch-end-reflection-talk-person"]')
+          ?.getAttribute("data-highlighted"),
+      ).toBe("true")
     } finally {
       vi.useRealTimers()
     }
