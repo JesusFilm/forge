@@ -1,4 +1,13 @@
 import type { InstagramPost } from "./types"
+import { requireHttpsUrl } from "../discovery/secure-url"
+
+/**
+ * Sends qualified posts to the website's review-queue ingest endpoint
+ * (apps/aimedialab `/api/inspiration-candidates`). The site stores each as a
+ * `draft` awaiting human approval and dedups by shortcode, so re-sending the
+ * same post on a later run is a harmless no-op (that is the cross-run memory).
+ * Opt-in: only runs when both the URL and token are configured.
+ */
 
 export type SiteIngestConfig = {
   url: string
@@ -51,28 +60,25 @@ export async function submitPostsToSite(
   posts: readonly InstagramPost[],
   options: SubmitPostsOptions,
 ): Promise<SiteIngestResult> {
-  const url = options.url?.trim()
+  const rawUrl = options.url?.trim()
   const token = options.token?.trim()
-  if (!url || !token) {
+  if (!rawUrl || !token) {
     throw new SiteIngestError(
       "config_missing",
       "site ingest URL and token are required",
     )
   }
+  if (posts.length === 0) return { ok: true, inserted: 0, skipped: 0 }
 
-  let parsedUrl: URL
+  let url: string
   try {
-    parsedUrl = new URL(url)
-  } catch {
-    throw new SiteIngestError("config_missing", "site ingest URL is invalid")
-  }
-  if (parsedUrl.protocol !== "https:") {
+    url = requireHttpsUrl(rawUrl, "site ingest URL")
+  } catch (error) {
     throw new SiteIngestError(
       "config_missing",
-      "site ingest URL must use HTTPS",
+      error instanceof Error ? error.message : "site ingest URL must use HTTPS",
     )
   }
-  if (posts.length === 0) return { ok: true, inserted: 0, skipped: 0 }
 
   let response: Response
   try {
@@ -83,6 +89,7 @@ export async function submitPostsToSite(
         "content-type": "application/json",
       },
       body: JSON.stringify(toPayload(posts)),
+      redirect: "error",
       signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
     })
   } catch (cause) {
@@ -117,22 +124,20 @@ export async function submitPostsToSite(
     body.ok !== true ||
     typeof body.inserted !== "number" ||
     !Number.isInteger(body.inserted) ||
+    !Number.isFinite(body.inserted) ||
     body.inserted < 0 ||
     typeof body.skipped !== "number" ||
     !Number.isInteger(body.skipped) ||
+    !Number.isFinite(body.skipped) ||
     body.skipped < 0
   ) {
     throw new SiteIngestError(
       "invalid_response",
-      "site ingest returned an invalid result",
+      "site ingest returned an invalid success response",
     )
   }
 
-  return {
-    ok: true,
-    inserted: body.inserted,
-    skipped: body.skipped,
-  }
+  return { ok: true, inserted: body.inserted, skipped: body.skipped }
 }
 
 export const _internals = { toPayload }

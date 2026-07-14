@@ -1,5 +1,5 @@
 ---
-id: "feat-253"
+id: "feat-254"
 title: "Instagram discovery thumbnails and ingest observability"
 owner: "vlad"
 priority: "P1"
@@ -31,7 +31,7 @@ route regression test.
 
 ## Entry Points - Read These First
 
-1. `apps/mastra/src/services/firecrawl-client.ts` - shared Firecrawl response
+1. `apps/mastra/src/services/firecrawl-search-client.ts` - shared Firecrawl response
    validation and normalized search DTO.
 2. `apps/mastra/src/mastra/workflows/instagram-ai-christian-discovery.ts` -
    real search adapter, Studio steps, and best-effort site submission.
@@ -44,16 +44,16 @@ route regression test.
 
 ## Grep These
 
-- `scrapeMetadata` and `includeMarkdown` - Firecrawl result hydration switch.
-- `FirecrawlSearchResult` and `SearchResultSchema` - metadata loss boundary.
-- `requestInstagramDiscoverySearch` - workflow adapter into post parsing.
+- `scrapeMetadata` and `scrape` - Firecrawl result hydration switch.
+- `FirecrawlSearchHit` and `FirecrawlSearchResultSchema` - metadata boundary.
+- `requestFirecrawlSearch` - real search adapter into post parsing.
 - `submitToReviewQueue` and `site_ingest` - run diagnostics.
 - `on conflict (locale, type, slug) do nothing` - website dedupe fallback.
 
 ## What To Build
 
 - [x] Request scraped Firecrawl metadata by default for Instagram discovery.
-- [x] Preserve bounded search-result metadata through `FirecrawlSearchResult`
+- [x] Preserve bounded search-result metadata through `FirecrawlSearchHit`
       and the real workflow adapter so `metadata["og:image"]` reaches
       `parseInstagramPost` and the review-site `thumbnailUrl` payload.
 - [x] Add `runId`, `inserted`, and `skipped` to successful site-ingest logs and

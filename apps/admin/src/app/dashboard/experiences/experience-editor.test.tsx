@@ -288,6 +288,39 @@ describe("ExperienceEditor", () => {
     expect(filledHtml).not.toContain("Use AI Chat to generate a first draft")
   })
 
+  it("adds the promotional story from the Content block library", () => {
+    const view = renderEditorDom([])
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse All Blocks").click()
+      })
+
+      expect(view.container.textContent).toContain("Promotional Story")
+      expect(view.container.textContent).toContain(
+        "Long-form Markdown in a cinematic mission section.",
+      )
+      expect(findButtonByExactText(view.container, "Content")).not.toBeNull()
+
+      act(() => {
+        findButtonByText(view.container, "Promotional Story").click()
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toMatchObject([
+        {
+          t: "section",
+          backgroundColor: "purple",
+          content: [{ t: "text", variant: "promotional" }],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("scopes bottom editor chrome to the canvas instead of the shell sidebar", () => {
     const html = renderEditor([{ t: "text", heading: "Filled" }])
 
@@ -1079,6 +1112,26 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Promo Banner")
     expect(html).toContain("Easter Dates")
     expect(html).toContain("Advent Countdown")
+  })
+
+  it("labels promotional Text as Markdown authoring", () => {
+    const html = renderEditor([
+      {
+        t: "text",
+        sectionKey: "mission-story",
+        heading: "Tell the story",
+        contentParagraphs: [
+          "### Why it matters",
+          "A substantial paragraph for people and search crawlers.",
+        ],
+        variant: "promotional",
+      },
+    ])
+
+    expect(html).toContain("Tell the story")
+    expect(html).toContain("Markdown: use blank lines between paragraphs")
+    expect(html).toContain("promotional")
+    expect(html).toContain("### Why it matters\n\nA substantial paragraph")
   })
 
   it("keeps video attachment and publish controls visible", () => {

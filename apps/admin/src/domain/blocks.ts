@@ -333,7 +333,7 @@ export const TextBlockSchema = z
     headingLevel: headingLevel.optional(),
     subtitle: z.string().optional(),
     contentParagraphs: z.array(z.string()).optional(),
-    variant: z.enum(["default", "lead", "small"]).optional(),
+    variant: z.enum(["default", "lead", "small", "promotional"]).optional(),
   })
   .strict()
 

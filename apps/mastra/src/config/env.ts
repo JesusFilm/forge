@@ -27,6 +27,7 @@ const DEFAULT_FIRECRAWL_USER_AGENT = "forge-mastra-firecrawl/1.0"
 const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
 const DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS = 5
 const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
+const DEFAULT_YOUTUBE_ALLOWED_HOSTS = "www.googleapis.com"
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
@@ -264,8 +265,9 @@ const envSchema = z.object({
     .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
-  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().url().optional(),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().min(1).optional(),
   INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: z.string().min(1).optional(),
+  DISCOVERY_SOURCES_URL: z.string().min(1).optional(),
   RAILWAY_S3_ENDPOINT: z.string().url().optional(),
   RAILWAY_S3_REGION: z.string().min(1).default("auto"),
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -364,6 +366,21 @@ const envSchema = z.object({
     .min(1)
     .default("openai/text-embedding-3-small"),
   TRANSCRIPT_EMBEDDING_PROVIDER: z.string().min(1).default("openai"),
+  YOUTUBE_API_KEY: z.string().min(1).optional(),
+  YOUTUBE_ALLOWED_HOSTS: z
+    .string()
+    .min(1)
+    .default(DEFAULT_YOUTUBE_ALLOWED_HOSTS),
+  YOUTUBE_API_BASE_URL: z
+    .string()
+    .url()
+    .default("https://www.googleapis.com/youtube/v3"),
+  YOUTUBE_SEARCH_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120_000)
+    .default(30_000),
 })
 
 export const env = envSchema.parse({
@@ -524,6 +541,7 @@ export const env = envSchema.parse({
   INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: emptyToUndefined(
     process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN,
   ),
+  DISCOVERY_SOURCES_URL: emptyToUndefined(process.env.DISCOVERY_SOURCES_URL),
   RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
   RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),
   RAILWAY_S3_BUCKET: emptyToUndefined(process.env.RAILWAY_S3_BUCKET),
@@ -588,6 +606,12 @@ export const env = envSchema.parse({
   TRANSCRIPT_EMBEDDING_PROVIDER: emptyToUndefined(
     process.env.TRANSCRIPT_EMBEDDING_PROVIDER,
   ),
+  YOUTUBE_API_KEY: emptyToUndefined(process.env.YOUTUBE_API_KEY),
+  YOUTUBE_ALLOWED_HOSTS: emptyToUndefined(process.env.YOUTUBE_ALLOWED_HOSTS),
+  YOUTUBE_API_BASE_URL: emptyToUndefined(process.env.YOUTUBE_API_BASE_URL),
+  YOUTUBE_SEARCH_TIMEOUT_MS: emptyToUndefined(
+    process.env.YOUTUBE_SEARCH_TIMEOUT_MS,
+  ),
 })
 
 function csvSet(value: string): ReadonlySet<string> {
@@ -615,6 +639,16 @@ function assertFirecrawlApiUrlAllowedForProduction() {
   if (apiUrl.protocol !== "https:" || !allowedHosts.has(apiUrl.hostname)) {
     throw new Error(
       "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
+function assertYouTubeBaseUrlAllowedForProduction() {
+  const baseUrl = new URL(env.YOUTUBE_API_BASE_URL)
+  const allowedHosts = csvSet(env.YOUTUBE_ALLOWED_HOSTS)
+  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+    throw new Error(
+      "YOUTUBE_API_BASE_URL must use https and a host listed in YOUTUBE_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
@@ -713,6 +747,7 @@ export function assertMastraRuntimeEnv() {
     ["MASTRA_SERVICE_API_KEYS", env.MASTRA_SERVICE_API_KEYS],
   ]
   assertFirecrawlApiUrlAllowedForProduction()
+  if (env.YOUTUBE_API_KEY) assertYouTubeBaseUrlAllowedForProduction()
   // The only RAG-driven boot throw (a security control). A missing
   // JESUSFILM_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
   // state degrades at runtime via the client's `config_missing` short-circuit,
@@ -740,6 +775,41 @@ export function assertMastraRuntimeEnv() {
   if (missingNames.length > 0) {
     throw new Error(`${missingNames.join(", ")} required for Mastra production`)
   }
+}
+
+export type YouTubeConfig = {
+  apiKey?: string
+  baseUrl: string
+  timeoutMs: number
+}
+
+export function getYouTubeConfig(): YouTubeConfig {
+  return {
+    apiKey: env.YOUTUBE_API_KEY,
+    baseUrl: env.YOUTUBE_API_BASE_URL,
+    timeoutMs: env.YOUTUBE_SEARCH_TIMEOUT_MS,
+  }
+}
+
+/**
+ * Site review-queue ingest config for all discovery platforms. The same website
+ * endpoint and token serve Instagram, YouTube, and Pinterest submissions, so the
+ * existing INSTAGRAM_DISCOVERY_SITE_INGEST_* vars are reused as the shared source.
+ */
+export function getDiscoverySiteIngestConfig(): InstagramSiteIngestConfig | null {
+  return getInstagramSiteIngestConfig()
+}
+
+/**
+ * Config for reading the website's saved trusted-source list. Opt-in: returns
+ * null unless DISCOVERY_SOURCES_URL and the shared site-ingest token are both
+ * set (same website, same bearer), so no new secret is needed.
+ */
+export function getDiscoverySourcesConfig(): InstagramSiteIngestConfig | null {
+  const url = env.DISCOVERY_SOURCES_URL
+  const token = env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN
+  if (!url || !token) return null
+  return { url, token }
 }
 
 export function getMastraDatabaseUrl() {

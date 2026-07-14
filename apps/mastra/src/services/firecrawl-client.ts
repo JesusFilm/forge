@@ -29,7 +29,6 @@ export type FirecrawlSearchResult = {
   description: string | null
   markdown: string | null
   markdownTruncated: boolean
-  metadata: Record<string, unknown> | null
 }
 
 export type FirecrawlSearchResponse = {
@@ -75,7 +74,6 @@ const SearchResultSchema = z
     description: z.string().nullable().optional(),
     url: z.string().url(),
     markdown: z.string().nullable().optional(),
-    metadata: z.record(z.string(), z.unknown()).nullable().optional(),
   })
   .passthrough()
 
@@ -410,7 +408,6 @@ export async function searchFirecrawl({
           description: item.description ?? null,
           markdown: item.markdown == null ? null : markdown.text,
           markdownTruncated: item.markdown == null ? false : markdown.truncated,
-          metadata: item.metadata ?? null,
         }
       }),
     },

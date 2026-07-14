@@ -53,9 +53,10 @@ describe("submitPostsToSite", () => {
     })
     const headers = init.headers as Record<string, string>
     expect(headers.authorization).toBe("Bearer tok")
+    expect(init.redirect).toBe("error")
   })
 
-  it("throws config_missing when url or token absent before fetch", async () => {
+  it("throws config_missing when url or token absent (before fetch)", async () => {
     const fetchImpl = vi.fn()
     await expect(
       submitPostsToSite([post()], {
@@ -67,12 +68,12 @@ describe("submitPostsToSite", () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
-  it("throws config_missing for non-HTTPS URLs before fetch", async () => {
+  it("rejects a non-HTTPS endpoint before it can receive the bearer", async () => {
     const fetchImpl = vi.fn()
     await expect(
       submitPostsToSite([post()], {
-        url: "http://site.test/api/inspiration-candidates",
-        token: "tok",
+        ...CONFIG,
+        url: "http://127.0.0.1/internal",
         fetchImpl: fetchImpl as unknown as typeof fetch,
       }),
     ).rejects.toMatchObject({ code: "config_missing" })

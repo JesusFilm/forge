@@ -927,6 +927,7 @@ export function WatchHomeTvCarousel({
     null,
   )
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
+    if (shortFilmTakeoverSlideIdRef.current == null) return
     setPlayer((current) => (current === next ? current : next))
   }, [])
   const handleOpenShortFilm = useCallback(
@@ -938,6 +939,7 @@ export function WatchHomeTvCarousel({
       if (isMuted) toggleMuted()
       const video = videoRef.current
       if (!video) return
+      setPlayer(video as unknown as MuxPlayerRef)
       video.muted = false
       const playResult = video.play()
       if (playResult && typeof playResult.catch === "function") {

@@ -159,13 +159,7 @@ export async function executeFirecrawlSearchTool(
   return {
     ok: true,
     query: response.result.query,
-    results: response.result.results.map((result) => ({
-      title: result.title,
-      url: result.url,
-      description: result.description,
-      markdown: result.markdown,
-      markdownTruncated: result.markdownTruncated,
-    })),
+    results: response.result.results,
     creditsUsed: response.result.creditsUsed,
   }
 }

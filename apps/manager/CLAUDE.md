@@ -249,6 +249,13 @@ job-loss).
   client envelopes) throw the workflow SDK's `FatalError` so the runtime does
   NOT auto-retry them (default is 3x); transient failures keep throwing
   `SmartCropStepError` and ride the SDK retries.
+- **Provider recovery ownership:** Mastra's shared Smart Crop OpenRouter client
+  owns bounded automatic recovery for explicit 429/503 outcomes. Exhausted
+  provider recovery, including `provider_rate_limited`, arrives with
+  `retryable:false` and becomes `FatalError`; Manager must not immediately
+  launch another full provider loop. Manager-to-Mastra `network_error` remains
+  retryable because no provider response is known. Last error includes the
+  sanitized typed reason and Mastra run id for correlation.
 - **Mux output idempotency:** the Mux output step records the created asset id
   in `{assetId}/smart-crop-mux-output-v1.json` IMMEDIATELY after
   `createMuxAsset` (before readiness polling, `ready: false`). Retries resume
@@ -257,7 +264,8 @@ job-loss).
 - **Plan checkpointing:** the plan step persists per-batch progress to
   `{assetId}/smart-crop-plan-progress-v1.json` (keyed to the fingerprint's
   `generatedAt`); retries resume from the first incomplete vision batch
-  instead of re-paying completed LLM calls. `force` ignores the checkpoint.
+  instead of re-paying completed LLM calls. This includes an operator Retry
+  after provider recovery exhausts. `force` ignores the checkpoint.
 - **Face-first anchoring:** Mastra plan/repair responses may include optional
   `faceVisible` and `faceCenter` segment metadata. Manager preserves those
   fields for artifacts/debugging but does not calculate crop x positions; the

@@ -5,10 +5,24 @@ status: completed
 created: 2026-07-14
 deepened: 2026-07-14
 depth: standard
-roadmap: docs/roadmap/media-generation/feat-253-instagram-discovery-thumbnail-ingest-observability.md
+roadmap: docs/roadmap/media-generation/feat-254-instagram-discovery-thumbnail-ingest-observability.md
 ---
 
 # fix: Preserve Instagram Thumbnails and Correlate Review Ingest
+
+## Mainline Reconciliation
+
+Before implementation merged, Forge main added the multi-platform discovery
+architecture in PR #1566. That work replaced Instagram's original
+`firecrawl-client.ts` adapter with `firecrawl-search-client.ts`, preserved
+metadata in `FirecrawlSearchHit`, and standardized best-effort submission as a
+discriminated `reviewQueue` outcome. The completed implementation therefore
+uses those current contracts: it defaults `scrapeMetadata` to true, proves the
+real `FirecrawlSearchHit` to submitted `thumbnailUrl` path, correlates the
+top-level `mastraRunId` with `reviewQueue.inserted` and
+`reviewQueue.skipped`, and includes the run id in ingest logs. References below
+to the superseded adapter and proposed `siteIngest` field document the original
+plan, not the final reconciled shape.
 
 ## Problem & Context
 
@@ -44,20 +58,21 @@ Forge.
 
 - R1. Instagram discovery requests hydrated Firecrawl search results by default
   so result metadata is available without a Studio operator toggling a field.
-- R2. `FirecrawlSearchResult` validates and preserves result `metadata`,
+- R2. `FirecrawlSearchHit` validates and preserves result `metadata`,
   including `metadata["og:image"]`, through the workflow's real search adapter.
 - R3. A real-adapter test proves a Firecrawl response containing
   `metadata["og:image"]` reaches `submitPosts` as `thumbnailUrl`.
-- R4. Successful review submissions log `runId`, `inserted`, and `skipped` and
-  expose `{ runId, inserted, skipped }` in Studio/core workflow success output.
+- R4. Successful review submissions log `runId`, `inserted`, and `skipped`; the
+  Studio/core output exposes the same correlation through `mastraRunId` and the
+  submitted `reviewQueue` outcome.
 - R5. Missing configuration, explicit disablement, and website errors remain
   best-effort and do not turn successful discovery into failure.
 - R6. Embers tests prove existing `published` (Approved) and `archived` (Denied)
   inspiration shortcodes produce `inserted: 0`, `skipped: 1` and no insert.
-- R7. Existing route/output consumers remain compatible through an additive
-  nullable `siteIngest` field; no existing field changes meaning.
+- R7. Existing route/output consumers remain compatible by retaining the
+  standardized discriminated `reviewQueue` field.
 - R8. Mastra operator documentation describes the new hydration default, its
-  cost/latency opt-out, and the run-correlated `siteIngest` output.
+  cost/latency opt-out, and the run-correlated `reviewQueue` output.
 
 Success means the default Studio run asks Firecrawl to scrape result metadata,
 a thumbnail-bearing Firecrawl result reaches the website payload intact, and a
@@ -299,7 +314,7 @@ fixtures and proves neither can reach media-artifact or content-item inserts.
 **Files:**
 
 - Modify:
-  `docs/roadmap/media-generation/feat-253-instagram-discovery-thumbnail-ingest-observability.md`
+  `docs/roadmap/media-generation/feat-254-instagram-discovery-thumbnail-ingest-observability.md`
 - Modify:
   `docs/plans/2026-07-14-002-fix-instagram-discovery-thumbnail-ingest-observability-plan.md`
 - Forge and Embers pull-request descriptions/checks
@@ -396,5 +411,5 @@ clearly identified with evidence.
 - Complete code-review and residual-risk passes for both diffs.
 - Open one Forge PR and one Embers PR with cross-links.
 - Monitor required checks and fix failures attributable to these changes.
-- Mark `feat-253` complete only after implementation and local validation are
+- Mark `feat-254` complete only after implementation and local validation are
   complete; record any production-only verification as follow-up, not as done.

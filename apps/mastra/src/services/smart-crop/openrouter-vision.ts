@@ -19,11 +19,16 @@ import {
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions"
 const DEFAULT_TIMEOUT_MS = 90_000
+const MAX_TIMEOUT_MS = 110_000
+const DEFAULT_MAX_ATTEMPTS = 3
+const DEFAULT_MAX_RETRY_DELAY_MS = 30_000
+const RETRY_BASE_DELAY_MS = 500
 const OPENROUTER_REFERER = "https://mastra.jesusfilm.org"
 
 export type SmartCropProviderFailureReason =
   | "provider_config_missing"
   | "provider_auth_failed"
+  | "provider_rate_limited"
   | "provider_failed"
   | "provider_invalid_output"
 
@@ -92,6 +97,14 @@ export type SmartCropShotIntent = {
   faceCenter?: SmartCropSubjectCenter | null
 }
 
+export type SmartCropProviderRecoveryOptions = {
+  maxAttempts?: number
+  maxRetryDelayMs?: number
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
+  random?: () => number
+}
+
 export type RequestShotCropIntentsOptions = {
   shots: readonly SmartCropPlanShot[]
   source: { width: number; height: number }
@@ -100,6 +113,7 @@ export type RequestShotCropIntentsOptions = {
   apiKey?: string
   fetchImpl?: typeof fetch
   timeoutMs?: number
+  recovery?: SmartCropProviderRecoveryOptions
 }
 
 export type RequestShotRepairIntentsOptions = {
@@ -112,6 +126,7 @@ export type RequestShotRepairIntentsOptions = {
   apiKey?: string
   fetchImpl?: typeof fetch
   timeoutMs?: number
+  recovery?: SmartCropProviderRecoveryOptions
 }
 
 export type ShotCropIntentsResult = {
@@ -194,6 +209,7 @@ export type RequestRenderQaReviewOptions = {
   apiKey?: string
   fetchImpl?: typeof fetch
   timeoutMs?: number
+  recovery?: SmartCropProviderRecoveryOptions
 }
 
 export type RenderQaReviewResult = {
@@ -339,85 +355,387 @@ function extractMessageContent(payload: unknown): string | null {
   return typeof content === "string" ? content : null
 }
 
+type RetryableProviderFailure =
+  | { category: "rate_limited"; status: 429 }
+  | { category: "provider_unavailable"; status: 503 }
+
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function embeddedError(payload: unknown): Record<string, unknown> | null {
+  const payloadRecord = objectRecord(payload)
+  if (payloadRecord == null) return null
+  const direct = objectRecord(payloadRecord.error)
+  if (direct != null) return direct
+
+  const choices = payloadRecord.choices
+  if (!Array.isArray(choices)) return null
+  for (const choice of choices) {
+    const choiceError = objectRecord(objectRecord(choice)?.error)
+    if (choiceError != null) return choiceError
+  }
+  return null
+}
+
+function retryableEmbeddedFailure(
+  payload: unknown,
+): RetryableProviderFailure | null {
+  const error = embeddedError(payload)
+  if (error == null) return null
+  const metadata = objectRecord(error.metadata)
+  const canonicalErrorType =
+    typeof metadata?.error_type === "string"
+      ? metadata.error_type
+      : typeof error.error_type === "string"
+        ? error.error_type
+        : null
+  if (canonicalErrorType != null) {
+    const normalized = canonicalErrorType.trim().toLowerCase()
+    if (
+      ["rate_limit_exceeded", "rate_limited", "provider_rate_limited"].includes(
+        normalized,
+      )
+    ) {
+      return { category: "rate_limited", status: 429 }
+    }
+    if (
+      [
+        "provider_unavailable",
+        "provider_overloaded",
+        "service_unavailable",
+        "overloaded",
+        "upstream_unavailable",
+      ].includes(normalized)
+    ) {
+      return { category: "provider_unavailable", status: 503 }
+    }
+    return null
+  }
+
+  const values = [
+    error.code,
+    error.status,
+    error.type,
+    metadata?.code,
+    metadata?.status,
+    metadata?.type,
+  ]
+
+  if (values.some((value) => value === 429 || value === "429")) {
+    return { category: "rate_limited", status: 429 }
+  }
+  if (values.some((value) => value === 503 || value === "503")) {
+    return { category: "provider_unavailable", status: 503 }
+  }
+
+  const labels = values
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim().toLowerCase())
+  if (
+    labels.some((value) =>
+      ["rate_limit_exceeded", "rate_limited", "provider_rate_limited"].includes(
+        value,
+      ),
+    )
+  ) {
+    return { category: "rate_limited", status: 429 }
+  }
+  if (
+    labels.some((value) =>
+      [
+        "provider_unavailable",
+        "provider_overloaded",
+        "service_unavailable",
+        "overloaded",
+        "upstream_unavailable",
+      ].includes(value),
+    )
+  ) {
+    return { category: "provider_unavailable", status: 503 }
+  }
+  return null
+}
+
+function parseRetryAfterMs(value: string | null, nowMs: number): number | null {
+  const normalized = value?.trim()
+  if (!normalized) return null
+  if (/^\d+$/.test(normalized)) {
+    const seconds = Number(normalized)
+    return Number.isSafeInteger(seconds) ? seconds * 1000 : null
+  }
+  const retryAt = Date.parse(normalized)
+  if (!Number.isFinite(retryAt) || retryAt <= nowMs) return null
+  return retryAt - nowMs
+}
+
+function fallbackDelayMs(
+  attempt: number,
+  random: () => number,
+  maxRetryDelayMs: number,
+): number {
+  const exponential = Math.min(
+    RETRY_BASE_DELAY_MS * 2 ** (attempt - 1),
+    maxRetryDelayMs,
+  )
+  const jitter = Math.min(1, Math.max(0, random()))
+  return Math.round(exponential * (0.5 + jitter * 0.5))
+}
+
+function logProviderEvent(fields: Record<string, unknown>): void {
+  const line = JSON.stringify(fields)
+  if (fields.event === "smart_crop_provider_recovered") {
+    console.info(line)
+  } else {
+    console.warn(line)
+  }
+}
+
+async function discardResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel()
+  } catch {
+    // Best-effort release before retrying or returning a terminal HTTP failure.
+  }
+}
+
+function exhaustedProviderError(
+  failure: RetryableProviderFailure,
+  attempts: number,
+): SmartCropProviderError {
+  const attemptLabel = attempts === 1 ? "attempt" : "attempts"
+  if (failure.category === "rate_limited") {
+    return new SmartCropProviderError(
+      "provider_rate_limited",
+      false,
+      `smart crop vision rate limited after ${attempts} ${attemptLabel} (status 429)`,
+    )
+  }
+  return new SmartCropProviderError(
+    "provider_failed",
+    false,
+    `smart crop vision provider unavailable after ${attempts} ${attemptLabel} (status 503)`,
+  )
+}
+
 async function postChatCompletion({
   apiKey,
   title,
   body,
   fetchImpl,
   timeoutMs,
+  recovery = {},
 }: {
   apiKey?: string
   title: string
   body: unknown
   fetchImpl?: typeof fetch
   timeoutMs?: number
+  recovery?: SmartCropProviderRecoveryOptions
 }): Promise<{ content: string; usage: SmartCropTokenUsage }> {
   if (!apiKey) {
     throw new SmartCropProviderError(
       "provider_config_missing",
       false,
-      "OPENROUTER_API_KEY is required for smart crop vision calls",
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for smart crop vision calls",
     )
   }
 
-  const resolvedTimeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const { maxAttempts, maxRetryDelayMs, sleep, now, random } = recovery
+
+  const resolvedTimeoutMs = Math.max(
+    1,
+    Math.min(timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS),
+  )
+  const resolvedMaxAttempts = Math.max(
+    1,
+    Math.min(
+      Math.floor(maxAttempts ?? DEFAULT_MAX_ATTEMPTS),
+      DEFAULT_MAX_ATTEMPTS,
+    ),
+  )
+  const resolvedMaxRetryDelayMs = Math.max(
+    1,
+    Math.min(
+      maxRetryDelayMs ?? DEFAULT_MAX_RETRY_DELAY_MS,
+      DEFAULT_MAX_RETRY_DELAY_MS,
+    ),
+  )
   const doFetch = fetchImpl ?? fetch
-  let response: Response
-  try {
-    response = await doFetch(OPENROUTER_CHAT_COMPLETIONS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": OPENROUTER_REFERER,
-        "X-OpenRouter-Title": title,
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(resolvedTimeoutMs),
-    })
-  } catch (cause) {
-    throw new SmartCropProviderError(
-      "provider_failed",
-      true,
-      cause instanceof Error ? cause.message : String(cause),
-      cause,
-    )
+  const doSleep =
+    sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
+  const nowMs = now ?? Date.now
+  const randomValue = random ?? Math.random
+  const startedAt = nowMs()
+  const deadline = startedAt + resolvedTimeoutMs
+  const serializedBody = JSON.stringify(body)
+  let lastRetryableFailure: RetryableProviderFailure | null = null
+
+  for (let attempt = 1; attempt <= resolvedMaxAttempts; attempt += 1) {
+    const remainingMs = deadline - nowMs()
+    if (remainingMs <= 0) {
+      const failure = lastRetryableFailure ?? {
+        category: "provider_unavailable" as const,
+        status: 503 as const,
+      }
+      logProviderEvent({
+        event: "smart_crop_provider_exhausted",
+        category: "deadline_exceeded",
+        status: failure.status,
+        attempts: attempt - 1,
+        maxAttempts: resolvedMaxAttempts,
+        elapsedMs: Math.max(0, nowMs() - startedAt),
+      })
+      throw exhaustedProviderError(failure, Math.max(1, attempt - 1))
+    }
+
+    let response: Response
+    try {
+      response = await doFetch(OPENROUTER_CHAT_COMPLETIONS_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": OPENROUTER_REFERER,
+          "X-OpenRouter-Title": title,
+        },
+        body: serializedBody,
+        signal: AbortSignal.timeout(Math.max(1, Math.ceil(remainingMs))),
+      })
+    } catch {
+      logProviderEvent({
+        event: "smart_crop_provider_exhausted",
+        category: "transport_failure",
+        status: null,
+        attempts: attempt,
+        maxAttempts: resolvedMaxAttempts,
+        elapsedMs: Math.max(0, nowMs() - startedAt),
+      })
+      throw new SmartCropProviderError(
+        "provider_failed",
+        false,
+        `smart crop vision transport failed after ${attempt} attempt`,
+      )
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      await discardResponseBody(response)
+      throw new SmartCropProviderError(
+        "provider_auth_failed",
+        false,
+        `smart crop vision call rejected with status ${response.status}`,
+      )
+    }
+
+    let payload: unknown
+    let failure: RetryableProviderFailure | null =
+      response.status === 429
+        ? { category: "rate_limited", status: 429 }
+        : response.status === 503
+          ? { category: "provider_unavailable", status: 503 }
+          : null
+
+    if (response.ok) {
+      try {
+        payload = await response.json()
+      } catch {
+        throw new SmartCropProviderError(
+          "provider_invalid_output",
+          false,
+          "smart crop vision response was not valid JSON",
+        )
+      }
+      failure = retryableEmbeddedFailure(payload)
+    }
+
+    if (failure != null) {
+      lastRetryableFailure = failure
+      const retryAfterMs = parseRetryAfterMs(
+        response.headers.get("retry-after"),
+        nowMs(),
+      )
+      const delayMs =
+        retryAfterMs ??
+        fallbackDelayMs(attempt, randomValue, resolvedMaxRetryDelayMs)
+      const remainingAfterResponseMs = deadline - nowMs()
+      const canRetry =
+        attempt < resolvedMaxAttempts &&
+        delayMs < remainingAfterResponseMs &&
+        (retryAfterMs == null || retryAfterMs <= resolvedMaxRetryDelayMs)
+
+      if (!canRetry) {
+        await discardResponseBody(response)
+        logProviderEvent({
+          event: "smart_crop_provider_exhausted",
+          category: failure.category,
+          status: failure.status,
+          attempts: attempt,
+          maxAttempts: resolvedMaxAttempts,
+          retryAfterMs,
+          elapsedMs: Math.max(0, nowMs() - startedAt),
+        })
+        throw exhaustedProviderError(failure, attempt)
+      }
+
+      logProviderEvent({
+        event: "smart_crop_provider_retry",
+        category: failure.category,
+        status: failure.status,
+        attempt,
+        maxAttempts: resolvedMaxAttempts,
+        delayMs,
+        retryAfterMs,
+        elapsedMs: Math.max(0, nowMs() - startedAt),
+      })
+      await discardResponseBody(response)
+      await doSleep(delayMs)
+      continue
+    }
+
+    if (!response.ok) {
+      await discardResponseBody(response)
+      throw new SmartCropProviderError(
+        "provider_failed",
+        false,
+        `smart crop vision call failed with status ${response.status}`,
+      )
+    }
+
+    if (embeddedError(payload) != null) {
+      throw new SmartCropProviderError(
+        "provider_failed",
+        false,
+        "smart crop vision response included an unclassified provider error",
+      )
+    }
+
+    const content = extractMessageContent(payload)
+    if (content == null) {
+      throw new SmartCropProviderError(
+        "provider_invalid_output",
+        false,
+        "smart crop vision response did not include text output",
+      )
+    }
+
+    if (attempt > 1) {
+      logProviderEvent({
+        event: "smart_crop_provider_recovered",
+        attempts: attempt,
+        maxAttempts: resolvedMaxAttempts,
+        elapsedMs: Math.max(0, nowMs() - startedAt),
+      })
+    }
+    return { content, usage: extractUsage(payload) }
   }
 
-  if (response.status === 401 || response.status === 403) {
-    throw new SmartCropProviderError(
-      "provider_auth_failed",
-      false,
-      `smart crop vision call rejected with status ${response.status}`,
-    )
-  }
-  if (!response.ok) {
-    const retryable = response.status === 429 || response.status >= 500
-    throw new SmartCropProviderError(
-      "provider_failed",
-      retryable,
-      `smart crop vision call failed with status ${response.status}`,
-    )
-  }
-
-  const payload = await response.json().catch((cause) => {
-    throw new SmartCropProviderError(
-      "provider_invalid_output",
-      false,
-      "smart crop vision response was not valid JSON",
-      cause,
-    )
-  })
-  const content = extractMessageContent(payload)
-  if (content == null) {
-    throw new SmartCropProviderError(
-      "provider_invalid_output",
-      false,
-      "smart crop vision response did not include text output",
-    )
-  }
-
-  return { content, usage: extractUsage(payload) }
+  throw new SmartCropProviderError(
+    "provider_failed",
+    false,
+    "smart crop vision recovery ended without a result",
+  )
 }
 
 function parseStructuredContent<T>(
@@ -539,6 +857,7 @@ export async function requestShotCropIntents({
   apiKey,
   fetchImpl,
   timeoutMs,
+  recovery,
 }: RequestShotCropIntentsOptions): Promise<ShotCropIntentsResult> {
   const content: UserContentPart[] = [
     {
@@ -561,6 +880,7 @@ export async function requestShotCropIntents({
     title: "Forge Mastra Smart Crop Plan",
     fetchImpl,
     timeoutMs,
+    recovery,
     body: {
       model,
       messages: [{ role: "user", content }],
@@ -608,6 +928,7 @@ export async function requestShotRepairIntents({
   apiKey,
   fetchImpl,
   timeoutMs,
+  recovery,
 }: RequestShotRepairIntentsOptions): Promise<ShotCropIntentsResult> {
   const content: UserContentPart[] = [
     {
@@ -640,6 +961,7 @@ export async function requestShotRepairIntents({
     title: "Forge Mastra Smart Crop Repair",
     fetchImpl,
     timeoutMs,
+    recovery,
     body: {
       model,
       messages: [{ role: "user", content }],
@@ -684,6 +1006,7 @@ export async function requestRenderQaReview({
   apiKey,
   fetchImpl,
   timeoutMs,
+  recovery,
 }: RequestRenderQaReviewOptions): Promise<RenderQaReviewResult> {
   const instruction = [
     `You review ${renderMode} frames rendered from a 9:16 smart-crop plan.`,
@@ -709,6 +1032,7 @@ export async function requestRenderQaReview({
     title: "Forge Mastra Smart Crop QA",
     fetchImpl,
     timeoutMs,
+    recovery,
     body: {
       model,
       messages: [{ role: "user", content }],

@@ -1,12 +1,5 @@
+import type { FirecrawlSearchHit } from "../firecrawl-search-client"
 import type { InstagramMediaType, InstagramPost } from "./types"
-
-type InstagramDiscoverySearchHit = {
-  url: string
-  title?: string | null
-  description?: string | null
-  markdown?: string | null
-  metadata?: Record<string, unknown>
-}
 
 const INSTAGRAM_HOSTS = new Set(["instagram.com", "www.instagram.com"])
 const MAX_CAPTION_LENGTH = 1024
@@ -18,17 +11,6 @@ const MAX_HASHTAGS = 30
 const MAX_HANDLE_OR_NAME_LENGTH = 256
 const MAX_HASHTAG_LENGTH = 128
 const MAX_URL_LENGTH = 512
-const PUBLISHED_AT_METADATA_KEYS = [
-  "article:published_time",
-  "og:published_time",
-  "publishedTime",
-  "datePublished",
-] as const
-const THUMBNAIL_METADATA_KEYS = ["og:image", "ogImage", "image"] as const
-export const INSTAGRAM_DISCOVERY_METADATA_KEYS = [
-  ...THUMBNAIL_METADATA_KEYS,
-  ...PUBLISHED_AT_METADATA_KEYS,
-] as const
 
 // Matches both /<type>/<shortcode> and /<handle>/<type>/<shortcode> forms.
 // The shortcode is length-bounded (real Instagram shortcodes are ~11 chars);
@@ -66,22 +48,15 @@ function pickString(value: unknown): string | null {
     : null
 }
 
-function pickMetadataString(
-  metadata: Record<string, unknown>,
-  keys: readonly string[],
-): string | null {
-  for (const key of keys) {
-    const value = pickString(metadata[key])
-    if (value) return value
-  }
-  return null
-}
-
 function extractPublishedAt(
   metadata: Record<string, unknown> | undefined,
 ): string | null {
   if (!metadata) return null
-  const candidate = pickMetadataString(metadata, PUBLISHED_AT_METADATA_KEYS)
+  const candidate =
+    pickString(metadata["article:published_time"]) ??
+    pickString(metadata["og:published_time"]) ??
+    pickString(metadata["publishedTime"]) ??
+    pickString(metadata["datePublished"])
   if (!candidate) return null
   const parsed = new Date(candidate)
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
@@ -91,7 +66,10 @@ function extractThumbnail(
   metadata: Record<string, unknown> | undefined,
 ): string | null {
   if (!metadata) return null
-  const candidate = pickMetadataString(metadata, THUMBNAIL_METADATA_KEYS)
+  const candidate =
+    pickString(metadata["og:image"]) ??
+    pickString(metadata["ogImage"]) ??
+    pickString(metadata["image"])
   // A truncated URL is useless; drop over-long thumbnails rather than slicing.
   if (!candidate || candidate.length > MAX_URL_LENGTH) return null
   return candidate
@@ -137,7 +115,7 @@ function deriveAuthor(
  * are not Instagram post/reel/tv permalinks.
  */
 export function parseInstagramPost(
-  hit: InstagramDiscoverySearchHit,
+  hit: FirecrawlSearchHit,
 ): InstagramPost | null {
   const url = toInstagramUrl(hit.url)
   if (!url || !INSTAGRAM_HOSTS.has(url.hostname)) return null

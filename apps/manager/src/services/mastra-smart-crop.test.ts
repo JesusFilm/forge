@@ -117,6 +117,61 @@ describe("launchSmartCropPlan", () => {
     })
   })
 
+  it("preserves a typed rate-limit envelope from a non-2xx response", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json(
+        {
+          result: {
+            ok: false,
+            reason: "provider_rate_limited",
+            retryable: false,
+            message:
+              "smart crop vision rate limited after 3 attempts (status 429)",
+            mastraRunId: "run-rate-limit",
+          },
+        },
+        { status: 503 },
+      ),
+    )
+
+    await expect(
+      launchSmartCropPlan(planInput, { ...CLIENT, fetchImpl }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-rate-limit",
+    })
+  })
+
+  it("keeps rate-limit exhaustion terminal when the wire flag is invalid", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json(
+        {
+          result: {
+            ok: false,
+            reason: "provider_rate_limited",
+            retryable: true,
+            message:
+              "smart crop vision rate limited after 3 attempts (status 429)",
+            mastraRunId: "run-invalid-rate-limit",
+          },
+        },
+        { status: 503 },
+      ),
+    )
+
+    await expect(
+      launchSmartCropPlan(planInput, { ...CLIENT, fetchImpl }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      mastraRunId: "run-invalid-rate-limit",
+    })
+  })
+
   it("maps 401 to auth_failed and junk payloads to parse_error", async () => {
     const unauthorized = vi.fn(async () =>
       Response.json({ error: "nope" }, { status: 401 }),
