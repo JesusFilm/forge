@@ -1417,7 +1417,10 @@ export function HeroPlayer({
       ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
       : null
   const parentCollectionLabel =
-    video.parents[0]?.title ?? video.parents[0]?.label ?? null
+    block.parentCollectionLabel ??
+    video.parents[0]?.title ??
+    video.parents[0]?.label ??
+    null
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")
