@@ -348,6 +348,13 @@ function ReflectionChat({
 }) {
   const messagesRef = useRef<HTMLDivElement>(null)
   const selectedActionId = selectedAction?.id
+  const composerAction =
+    selectedAction &&
+    (selectedAction.kind === "ask" ||
+      selectedAction.kind === "talk" ||
+      selectedAction.kind === "prayer")
+      ? selectedAction
+      : actions.find((action) => action.kind === "ask")
 
   useEffect(() => {
     if (!selectedActionId) return
@@ -447,12 +454,9 @@ function ReflectionChat({
         ) : null}
       </div>
 
-      {selectedAction &&
-      (selectedAction.kind === "ask" ||
-        selectedAction.kind === "talk" ||
-        selectedAction.kind === "prayer") ? (
+      {composerAction ? (
         <ChatComposer
-          action={selectedAction}
+          action={composerAction}
           value={customQuestion}
           fieldLabel={fieldLabel}
           onChange={onQuestionChange}
@@ -658,7 +662,7 @@ function ChatComposer({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           rows={1}
-          placeholder={label}
+          placeholder={fieldLabel}
           data-testid={inputTestId}
           className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
         />

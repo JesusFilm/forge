@@ -44,7 +44,7 @@ vi.mock("next-intl", () => ({
         download: "Download video",
         downloadDetail: "Save a copy to watch later.",
         moreReflection: "Return to reflection",
-        fieldLabel: "Ask a question about this video",
+        fieldLabel: "Ask a question or request a prayer",
         "prompts.bibleQuestion.label": "Ask a Bible question",
         "prompts.comment.description": "Send thoughts about this video",
         "prompts.personChat.description": "Talk with someone now",
@@ -136,6 +136,14 @@ describe("WatchEndReflection", () => {
     expect(ask.className).toContain("bg-white/[0.06]")
     expect(ask.firstElementChild?.className).not.toContain("bg-")
     expect(ask.getAttribute("aria-pressed")).toBe("false")
+    const initialComposer = container.querySelector(
+      '[data-testid="watch-end-reflection-chat-composer"]',
+    )
+    const initialInput = container.querySelector(
+      '[data-testid="watch-end-reflection-question-input"]',
+    ) as HTMLTextAreaElement
+    expect(initialComposer).not.toBeNull()
+    expect(initialInput.placeholder).toBe("Ask a question or request a prayer")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-user-selection"]',
