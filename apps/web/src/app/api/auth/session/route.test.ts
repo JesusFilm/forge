@@ -40,9 +40,11 @@ describe("GET /watch/api/auth/session", () => {
 
     expect(response.status).toBe(200)
     const body = (await response.json()) as {
+      accountGateEnabled: boolean
       authenticated: boolean
       loginUrl: string
     }
+    expect(body.accountGateEnabled).toBe(false)
     expect(body.authenticated).toBe(false)
     expect(body.loginUrl).toBe(
       "https://example.test/watch/api/auth/login?returnTo=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish",
@@ -60,7 +62,11 @@ describe("GET /watch/api/auth/session", () => {
     )
 
     expect(response.status).toBe(200)
-    const body = (await response.json()) as { loginUrl: string }
+    const body = (await response.json()) as {
+      accountGateEnabled: boolean
+      loginUrl: string
+    }
+    expect(body.accountGateEnabled).toBe(false)
     expect(body.loginUrl).toBe(
       "https://preview.example.test/watch/api/auth/login?returnTo=https%3A%2F%2Fpreview.example.test%2Fwatch%2Fjesus%2Fenglish",
     )
@@ -92,6 +98,7 @@ describe("GET /watch/api/auth/session", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
+      accountGateEnabled: false,
       authenticated: true,
       user: {
         id: "user_123",
@@ -124,6 +131,7 @@ describe("GET /watch/api/auth/session", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
+      accountGateEnabled: false,
       authenticated: true,
       user: {
         id: "user_123",
@@ -145,5 +153,22 @@ describe("GET /watch/api/auth/session", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Invalid auth destination",
     })
+  })
+
+  it("reports when the download account gate is enabled", async () => {
+    vi.stubEnv("FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT", "true")
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest("http://localhost:3000/watch/jesus/english"),
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      accountGateEnabled: boolean
+      authenticated: boolean
+    }
+    expect(body.accountGateEnabled).toBe(true)
+    expect(body.authenticated).toBe(false)
   })
 })
