@@ -3,6 +3,7 @@
  * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
  * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
  */
+import { rewriteSeedPosterUrl } from "../mediaImageUrl"
 import type { WatchHomeCard, WatchHomeModel, WatchHomeSection } from "./model"
 
 // Structural block shape — the precise gql.tada block unions assign to this;
@@ -40,10 +41,9 @@ function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
-// A rail whose every item carries a poster override renders PORTRAIT regardless
-// of the authored variant: those overrides are vertical posters (curated art),
-// so a 16:9 landscape card would crop them. Cinematic rails (no override) stay
-// landscape.
+// A rail whose every item has a poster override renders PORTRAIT regardless of
+// variant: those overrides are vertical posters (curated art) a 16:9 card would
+// crop. Cinematic rails (no override) stay landscape.
 function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
   return (
     items.length > 0 &&
@@ -87,7 +87,10 @@ function itemToCard(
     description: item.subtitleOverride ?? null,
     label,
     metaLabel,
-    imageUrl: item.imageOverrideUrl ?? item.imageUrl ?? null,
+    // Rewrite the curated seed to the watch origin (same as the SDUI card path);
+    // a non-seed override — today's admin preview URLs — passes through unchanged.
+    imageUrl:
+      rewriteSeedPosterUrl(item.imageOverrideUrl) ?? item.imageUrl ?? null,
     imageAlt: title,
     playbackId: null,
     durationSeconds: null,

@@ -230,6 +230,35 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     expect(typeof withSize.cards[0].metaLabel).toBe("string")
   })
 
+  it("rewrites a jesusfilm.org /images seed override; passes admin URLs through", () => {
+    const [section] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        items: [
+          {
+            videoSlug: "seed",
+            titleOverride: "Seed",
+            imageOverrideUrl:
+              "https://www.jesusfilm.org/images/thumbnails/1-vertical.png",
+          },
+          {
+            videoSlug: "admin",
+            titleOverride: "Admin",
+            imageOverrideUrl:
+              "https://admin.jesusfilm.org/api/public/media-assets/x/preview",
+          },
+        ],
+      }),
+    ])
+    // Seed rewritten to the watch origin (matches the SDUI card path); the admin
+    // preview URL (today's real home data) passes through unchanged.
+    expect(section.cards[0].imageUrl).toBe(
+      "https://watch.jesusfilm.org/watch/images/thumbnails/1-vertical.png",
+    )
+    expect(section.cards[1].imageUrl).toBe(
+      "https://admin.jesusfilm.org/api/public/media-assets/x/preview",
+    )
+  })
+
   it("prefers imageOverrideUrl over imageUrl; title never blank (R3)", () => {
     const [section] = buildWatchHomeSectionsFromExperience([
       mediaCollection({
