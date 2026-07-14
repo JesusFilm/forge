@@ -6,8 +6,9 @@ import {
   isSeekerEmailAllowed as isSeekerEmailAllowedFromEnv,
 } from "@/config/env"
 
-/** The two server surfaces that ask the gate: the RSC page and the seeker route. */
-export type SeekerGateSurface = "page" | "route"
+/** The server surfaces that ask the gate: the RSC page, the seeker route, and
+ * the feat-241 history proxies (one shared surface for list + thread). */
+export type SeekerGateSurface = "page" | "route" | "history"
 
 /** The fixed R15 outcome-code set — the only values that ever reach a log line. */
 export type SeekerGateLoggedOutcome =

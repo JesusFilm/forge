@@ -9,10 +9,8 @@ import {
 } from "react"
 import {
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type LayoutChangeEvent,
   type View as ViewType,
@@ -25,6 +23,7 @@ import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
+import { ScreenStateView } from "../src/components/ScreenStateView"
 import { isRailActive } from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
@@ -70,7 +69,6 @@ const IS_ANDROID = Platform.OS === "android"
 
 export default function HomeScreen() {
   const router = useRouter()
-  const [retryFocused, setRetryFocused] = useState(false)
   const { model, loading, error, refetch } = useWatchHome()
 
   // tvos#852: a stack pop doesn't restore the previously focused view (falls to
@@ -363,25 +361,13 @@ export default function HomeScreen() {
     return (
       <View style={styles.screen}>
         {topBar}
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>Something went wrong</Text>
-          <Text style={styles.errorDetail}>{error}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Try again"
-            accessibilityHint="Reloads the home feed"
-            onFocus={() => setRetryFocused(true)}
-            onBlur={() => setRetryFocused(false)}
-            style={[
-              styles.retryButton,
-              retryFocused && styles.retryButtonFocused,
-            ]}
-            onPress={refetch}
-            hasTVPreferredFocus
-          >
-            <Text style={styles.retryText}>Try Again</Text>
-          </Pressable>
-        </View>
+        <ScreenStateView
+          kind="error"
+          message="Something went wrong"
+          detail={error}
+          onRetry={refetch}
+          retryHint="Reloads the home feed"
+        />
       </View>
     )
   }
@@ -393,9 +379,7 @@ export default function HomeScreen() {
     return (
       <View style={styles.screen}>
         {topBar}
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>No content available</Text>
-        </View>
+        <ScreenStateView kind="empty" message="No content available" />
       </View>
     )
   }
@@ -508,12 +492,6 @@ const styles = StyleSheet.create({
     // top bar straight on it.
     backgroundColor: WATCH_THEME.below,
   },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: scale(80),
-  },
   list: {
     flex: 1,
   },
@@ -522,43 +500,5 @@ const styles = StyleSheet.create({
     paddingBottom: scale(80),
   },
   // ── Error state ──
-  errorText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(28)),
-    fontWeight: "bold",
-    color: WATCH_THEME.text,
-    marginBottom: scale(8),
-  },
-  errorDetail: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(18)),
-    color: WATCH_THEME.text62,
-    marginBottom: scale(32),
-    textAlign: "center",
-  },
-  retryButton: {
-    paddingHorizontal: scale(40),
-    paddingVertical: scale(16),
-    borderRadius: scale(28),
-    backgroundColor: WATCH_THEME.accent,
-  },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: WATCH_THEME.accent,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  retryText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(20)),
-    fontWeight: "600",
-    color: WATCH_THEME.text,
-  },
   // ── Empty state ──
-  emptyText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    color: WATCH_THEME.text62,
-  },
 })

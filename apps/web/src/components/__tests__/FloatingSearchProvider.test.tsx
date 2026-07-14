@@ -5,7 +5,10 @@ import { act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { FloatingSearchController } from "@/components/FloatingSearchController"
+import {
+  FloatingSearchController,
+  resetSearchLanguageOptionsCacheForTest,
+} from "@/components/FloatingSearchController"
 import {
   FloatingSearchProvider,
   useFloatingSearch,
@@ -14,7 +17,6 @@ import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
-  FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
@@ -87,6 +89,7 @@ let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  resetSearchLanguageOptionsCacheForTest()
   navigationMocks.pathname = "/"
   setScrollY(0)
   window.history.replaceState(null, "", "/")
@@ -1495,7 +1498,11 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     })
 
     act(() => {
-      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        languageCode: "EN",
+      })
     })
 
     const languageButton = document.querySelector(
@@ -1503,6 +1510,11 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     ) as HTMLButtonElement | null
     const header = document.querySelector('[data-testid="floating-header"]')
     expect(languageButton).not.toBeNull()
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("EN")
     expect(header?.className).toContain("fixed")
     expect(header?.className).toContain("right-5")
     expect(header?.className).toContain(
@@ -1652,6 +1664,192 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(getSearchLanguageOptions).not.toHaveBeenCalled()
   })
 
+  it("renders the search input shell immediately while the full controller loads", async () => {
+    type LanguageOptionsResponse = Awaited<
+      ReturnType<typeof getSearchLanguageOptions>
+    >
+    const delayedLanguageOptions = deferred<LanguageOptionsResponse>()
+    mockedGetSearchLanguageOptions.mockReturnValueOnce(
+      delayedLanguageOptions.promise,
+    )
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      searchButton.click()
+    })
+
+    expect(
+      document.querySelector('input[aria-label="Search videos by keyword"]'),
+    ).not.toBeNull()
+    const overlayTopBar = document.querySelector(
+      '[data-testid="search-overlay-instant-top-bar"], [data-testid="search-overlay-top-bar"]',
+    )
+    expect(overlayTopBar?.className).toContain("left-5")
+    expect(overlayTopBar?.className).toContain("right-5")
+    expect(overlayTopBar?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(
+      document.querySelector('[data-testid="floating-header"]')?.className,
+    ).toContain("translate-y-0")
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('[data-testid="search-overlay-instant-close"]'),
+    ).toBeNull()
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      delayedLanguageOptions.resolve({
+        ok: true,
+        algoliaEnabled: false,
+        options: [],
+        countrySuggestion: null,
+        recommendedLanguage: null,
+        countryCode: null,
+        countryName: null,
+      })
+      await delayedLanguageOptions.promise
+      await Promise.resolve()
+    })
+  })
+
+  it("reuses language metadata when reopening the search modal", async () => {
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      algoliaEnabled: false,
+      options: [englishSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushSearchControllerMount()
+
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
+
+    const firstInput = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement
+    act(() => {
+      setInputValue(firstInput, "jesus")
+    })
+    expect(firstInput.value).toBe("jesus")
+
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement | null
+    await act(async () => {
+      close?.click()
+      await new Promise((resolve) => setTimeout(resolve, 220))
+    })
+
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    const reopenedInput = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement | null
+    expect(reopenedInput?.value).toBe("")
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ),
+    ).not.toBeNull()
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
+  })
+
+  it("resets the search field when Escape closes the modal", async () => {
+    const input = await openSearchOverlay()
+    act(() => {
+      setInputValue(input, "jesus")
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 220))
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Search videos"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+    })
+
+    const reopenedInput = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement | null
+    expect(reopenedInput?.value).toBe("")
+  })
+
+  it("ignores an in-flight search response after the modal closes", async () => {
+    vi.useFakeTimers()
+    const delayedSearch = deferred<SearchActionResult>()
+    mockedRunSearch.mockReturnValueOnce(delayedSearch.promise)
+
+    const input = await openSearchOverlay()
+    await submitDebouncedSearch(input, "jesus")
+
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      close.click()
+      await Promise.resolve()
+    })
+    expect(input.value).toBe("")
+
+    await act(async () => {
+      delayedSearch.resolve(
+        makeSearchResponse([makeSearchResult("late", "Late Result")], false),
+      )
+      await delayedSearch.promise
+      await Promise.resolve()
+      vi.advanceTimersByTime(220)
+    })
+
+    expect(document.body.textContent).not.toContain("Late Result")
+  })
+
   it("ignores direct query URLs on initial render", async () => {
     window.history.replaceState(null, "", "/?q=jesus")
 
@@ -1714,7 +1912,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(document.activeElement).toBe(input)
   })
 
-  it("aligns the search overlay close button with the watch modal close control", async () => {
+  it("keeps the floating header stable while rendering search overlay controls below it", async () => {
+    const onLanguageClick = vi.fn()
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -1725,10 +1924,25 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     await act(async () => {
       await Promise.resolve()
     })
+    act(() => {
+      dispatchLanguageSwitcher({ visible: true, onClick: onLanguageClick })
+    })
 
     const searchButton = document.querySelector(
       '[aria-label="Search videos"]',
     ) as HTMLButtonElement
+    const headerBeforeOpen = document.querySelector(
+      '[data-testid="floating-header"]',
+    )
+    const searchButtonBeforeOpen = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    expect(headerBeforeOpen?.className).toContain("translate-y-0")
+    expect(headerBeforeOpen?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(searchButtonBeforeOpen?.className).toContain("opacity-100")
+
     await act(async () => {
       searchButton.click()
       await Promise.resolve()
@@ -1738,35 +1952,70 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     await flushSearchControllerMount()
 
     const close = document.querySelector(
-      '[data-testid="search-overlay-close"]',
+      '[data-testid="floating-header-search-close"]',
     ) as HTMLButtonElement | null
     const pageWrapper = document.querySelector("[inert]")
     const topBar = document.querySelector(
       '[data-testid="search-overlay-top-bar"]',
     )
+    const header = document.querySelector('[data-testid="floating-header"]')
+    const hiddenSearchButton = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    )
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
     const overlay = document.querySelector(
       '[aria-label="Search and browse videos"]',
-    )
+    ) as HTMLElement | null
     const overlayField = document.querySelector('[role="search"]')
     const overlayFieldShell = document.querySelector(
       '[data-testid="search-overlay-field-shell"]',
     )
-    const mobileLogo = document.querySelector(
-      '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
-    )
-    const mobileLogoImage = mobileLogo?.querySelector("img")
     const bottomBackdrop = document.querySelector(
       '[data-testid="search-overlay-bottom-backdrop"]',
     )
     const scrollBody = document.querySelector(".search-overlay-scroll")
     expect(close).not.toBeNull()
+    expect(languageButton).not.toBeNull()
+    expect(
+      document.querySelector('[data-testid="watch-account-control"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="search-overlay-close"]'),
+    ).toBeNull()
     expect(pageWrapper?.className).toContain("blur-[12px]")
     expect(pageWrapper?.className).not.toContain("brightness-50")
-    expect(overlay?.contains(close)).toBe(true)
+    expect(overlay?.contains(close)).toBe(false)
     expect(overlay?.className).toContain("h-dvh")
     expect(overlay?.className).toContain("min-h-dvh")
+    expect(overlay?.style.zIndex).toBe("45")
+    expect(header?.className).toContain("z-50")
+    expect(header?.className).toContain("translate-y-0")
+    expect(header?.className).toContain("opacity-100")
+    expect(header?.className).not.toContain("-translate-y-[calc(100%+2rem)]")
+    expect(hiddenSearchButton?.className).toContain("opacity-0")
+    expect(hiddenSearchButton?.className).toContain("pointer-events-none")
     expect(topBar?.className).toContain("left-5")
     expect(topBar?.className).toContain("right-5")
+    expect(topBar?.className).toContain(
+      "xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(topBar?.className).toContain(
+      "xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]",
+    )
+    expect(topBar?.className).toContain(
+      "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
+    )
+    expect(topBar?.className).toContain(
+      "md:top-[calc(env(safe-area-inset-top,0px)+3rem)]",
+    )
+    expect(topBar?.className).toContain("gap-3")
+    expect(topBar?.className).toContain("md:gap-5")
+    expect(topBar?.className).not.toContain(
+      "pt-[calc(env(safe-area-inset-top,0px)+2rem)]",
+    )
+    expect(topBar?.className).not.toContain("sm:pt-12")
     expect(topBar?.className).toContain("md:left-16")
     expect(topBar?.className).toContain("md:right-16")
     expect(topBar?.className).toContain(FLOATING_HEADER_TOP_CLASS)
@@ -1774,11 +2023,11 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(topBar?.className).toContain(FLOATING_HEADER_GAP_CLASS)
     expect(topBar?.className).toContain("items-start")
     expect(topBar?.className).not.toContain("items-center")
-    expect(topBar?.className).not.toContain("sm:pt-12")
-    expect(mobileLogo?.className).toContain(FLOATING_HEADER_LOGO_SLOT_CLASS)
-    expect(mobileLogoImage?.getAttribute("src")).toBe(
-      "/watch/images/jesusfilm-sign.svg",
-    )
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-top-bar"] a[aria-label="JesusFilm home"]',
+      ),
+    ).toBeNull()
     expect(bottomBackdrop).not.toBeNull()
     expect(bottomBackdrop?.className).toContain("absolute")
     expect(bottomBackdrop?.className).toContain("bottom-[-14rem]")
@@ -1798,14 +2047,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(
       document.querySelector('[data-testid="search-overlay-input-icon"]'),
     ).not.toBeNull()
-    expect(close?.className).toContain("fixed")
-    expect(close?.className).toContain("top-6")
-    expect(close?.className).toContain("right-4")
-    expect(close?.className).toContain("md:top-12")
-    expect(close?.className).toContain("md:right-10")
-    expect(close?.className).toContain("h-[52px]")
-    expect(close?.className).toContain("w-12")
-    expect(close?.className).toContain("z-[60]")
+    expect(close?.className).toContain("h-11")
+    expect(close?.className).toContain("w-11")
+    expect(close?.className).toContain("md:h-[52px]")
+    expect(close?.className).toContain("md:w-12")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("h-6")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("w-6")
   })
@@ -1934,11 +2179,14 @@ describe("FloatingSearchProvider — search pagination", () => {
       mockedRunSearch.mock.calls[0]?.[0].analytics?.searchRequestId
 
     expect(link).not.toBeUndefined()
-    act(() => {
+    await act(async () => {
       link?.dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       )
+      await Promise.resolve()
     })
+
+    expect(input.value).toBe("")
 
     expect(reportDatadogRumAction).toHaveBeenCalledWith(
       WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,

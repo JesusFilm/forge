@@ -174,6 +174,16 @@ export const TIME_BUDGET_MS = {
   section: 60_000,
   /** Background auto-enrich agent's full run on one experience locale. */
   backgroundAutoEnrich: 300_000,
+  /**
+   * ai-chat history reads (feat-241): per-request wall-clock cap for the
+   * listing/replay route handlers. These are millisecond-class store queries —
+   * they must NOT inherit the 90s chatTurn envelope (a slow-not-down Postgres
+   * would otherwise hang a sidebar fetch for minutes). Held strictly BELOW the
+   * chat proxy's read window (clamped to [9s, 10s] in history-proxy.ts) per
+   * the outbound-timeout-shorter-than-caller-budget rule, so the route's
+   * clean timeout reason — not the proxy's abort classifier — wins the race.
+   */
+  historyRead: 8_000,
 } as const
 
 /**
@@ -184,4 +194,34 @@ export type BudgetShape = keyof typeof TIME_BUDGET_MS
 
 export function getTimeBudgetMs(shape: BudgetShape): number {
   return TIME_BUDGET_MS[shape]
+}
+
+/**
+ * Resolve `promise`, but reject if `signal` aborts first. Bounds opaque calls
+ * that honor no per-call timeout — the pinned `@mastra/pg` store runs no
+ * `statement_timeout`, so without this a slow (not down) Postgres would hang
+ * a request past its wall-clock budget with no terminal outcome (the repo's
+ * outbound-timeout-shorter-than-caller-budget rule). A budget abort surfaces
+ * through the caller's catch as its fail-closed timeout mapping. Shared by
+ * the ai-chat send route and the feat-241 history read routes.
+ */
+export function settleWithinBudget<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error("budget_aborted"))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error("budget_aborted"))
+    signal.addEventListener("abort", onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort)
+        resolve(value)
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort)
+        reject(error)
+      },
+    )
+  })
 }

@@ -3,14 +3,7 @@
 // R1: resolved leaf replace-bounces ONCE to /watch via resolveLeafBounce (shares watch's isSeriesRecord predicate, U5).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
+import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
@@ -41,7 +34,7 @@ import {
 } from "../../src/lib/datadog"
 import { isSeriesLabel } from "../../src/lib/isSeriesRecord"
 import { EpisodeRail } from "../../src/components/series/EpisodeRail"
-import { RetryButton } from "../../src/components/RetryButton"
+import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { SeriesActionRow } from "../../src/components/series/SeriesActionRow"
 import { SeriesLanguagePanel } from "../../src/components/series/SeriesLanguagePanel"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
@@ -263,23 +256,23 @@ export default function SeriesScreen() {
 
   if (screenState === "loading") {
     return (
-      <View style={[styles.screen, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={styles.screen}>
+        <ScreenStateView kind="loading" accent={COLORS.primary} />
       </View>
     )
   }
 
   if (screenState === "error") {
     return (
-      <View style={[styles.screen, styles.centered]}>
-        <Text style={styles.errorMessage}>
-          This series is temporarily unavailable.
-        </Text>
-        <RetryButton
-          onPress={() => {
+      <View style={styles.screen}>
+        <ScreenStateView
+          kind="error"
+          message="This series is temporarily unavailable."
+          onRetry={() => {
             void refetch()
           }}
-          accessibilityHint="Reloads this series"
+          retryHint="Reloads this series"
+          accent={COLORS.primary}
         />
       </View>
     )
@@ -433,12 +426,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: scale(120),
   },
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: scale(20),
-    paddingHorizontal: scale(80),
-  },
 
   // ── Hero ──────────────────────────────────────────────────────────
   hero: {
@@ -530,14 +517,5 @@ const styles = StyleSheet.create({
     backgroundColor: WATCH_THEME.below,
     // Tightened (was 48) so the rail sits closer under the hero action row.
     paddingTop: scale(24),
-  },
-
-  // ── Error state ───────────────────────────────────────────────────
-  errorMessage: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    fontWeight: "600",
-    color: COLORS.text,
-    textAlign: "center",
   },
 })

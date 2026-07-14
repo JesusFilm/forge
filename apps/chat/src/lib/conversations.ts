@@ -64,10 +64,40 @@ export type Message = {
   error?: ReplyFailureReason
 }
 
+// Where a conversation came from (feat-241): "local" = created this session
+// (the pre-241 shape; the field is absent on those too), "server" = hydrated
+// from the history listing — its transcript lazy-loads via replay.
+export type ConversationOrigin = "local" | "server"
+
+// Per-conversation replay lifecycle (feat-241, KTD11). Single-flight and
+// session-cached: loaded/not_available never refetch; failed retries only via
+// the explicit retry action. Sends are blocked unless "loaded" (R22).
+export type ReplayState =
+  | "idle"
+  | "loading"
+  | "loaded"
+  | "failed"
+  | "not_available"
+
 export type Conversation = {
   id: string
   title: string
   messages: Message[]
+  // feat-241 additive fields (all optional so pre-241 call sites stay valid):
+  /** Absent = "local". Server-origin rows skip the deriveTitle retitle branch
+   * and gate sends on their replay state (KTD9/KTD11). */
+  origin?: ConversationOrigin
+  /** KTD10 predicate: true once hydrated from history OR after a send's
+   * SUCCESS finalize with engine "seeker" — never from the engine tag alone
+   * (the failure branch stamps it on turns that never reached the server).
+   * Persisted conversations fail visibly on gate_denied instead of
+   * stub-degrading. */
+  serverPersisted?: boolean
+  /** ISO ordering key: server `updatedAt` at hydration, re-stamped on every
+   * send. Also the fallback-label input for untitled threads (R11). */
+  lastActivityAt?: string
+  /** Replay state — set (starting "idle") on server-origin rows only. */
+  replay?: ReplayState
 }
 
 export const NEW_CONVERSATION_TITLE = "New conversation"
@@ -85,4 +115,20 @@ export function deriveTitle(text: string): string {
   const normalized = text.trim().replace(/\s+/g, " ")
   if (normalized.length <= 40) return normalized
   return `${normalized.slice(0, 39).trimEnd()}…`
+}
+
+/**
+ * Deterministic label for an untitled server thread (R11/AE6): derived from
+ * its last-activity date in the user's timezone, e.g. "Conversation — Jul 10",
+ * so pre-existing, generation-pending, and generation-failed threads stay
+ * distinguishable by date. Unparseable input degrades to the bare noun.
+ */
+export function fallbackTitle(updatedAt: string): string {
+  const parsed = new Date(updatedAt)
+  if (Number.isNaN(parsed.getTime())) return "Conversation"
+  const label = parsed.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })
+  return `Conversation — ${label}`
 }

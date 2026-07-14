@@ -14,7 +14,7 @@
  * integration surface.
  */
 
-import { act, useImperativeHandle } from "react"
+import { act, useImperativeHandle, type ComponentProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -322,7 +322,9 @@ function installIdleCallbackStub() {
   const originalSetTimeout = window.setTimeout
   const originalClearTimeout = window.clearTimeout
   const previewDelayTimers = new Map<number, () => void>()
+  const fastPreviewTimers = new Map<number, () => void>()
   let previewDelayTimerId = 0
+  let fastPreviewTimerId = 10_000
 
   Object.defineProperty(windowWithIdle, "requestIdleCallback", {
     configurable: true,
@@ -347,6 +349,11 @@ function installIdleCallbackStub() {
           callback(...args)
           return handle
         }
+        if (timeout === 700 && typeof callback === "function") {
+          const handle = ++fastPreviewTimerId
+          fastPreviewTimers.set(handle, () => callback(...args))
+          return handle
+        }
         return originalSetTimeout(callback, timeout, ...args)
       },
     ) as unknown as typeof window.setTimeout,
@@ -357,6 +364,9 @@ function installIdleCallbackStub() {
       if (typeof handle === "number" && previewDelayTimers.delete(handle)) {
         return
       }
+      if (typeof handle === "number" && fastPreviewTimers.delete(handle)) {
+        return
+      }
       return originalClearTimeout(handle)
     }) as typeof window.clearTimeout,
   })
@@ -364,6 +374,16 @@ function installIdleCallbackStub() {
   return {
     get pending() {
       return idleCallbacks.length
+    },
+    get pendingFastTimers() {
+      return fastPreviewTimers.size
+    },
+    runNextFastTimer: async () => {
+      const [handle, callback] = fastPreviewTimers.entries().next().value ?? []
+      if (handle != null) fastPreviewTimers.delete(handle)
+      await act(async () => {
+        callback?.()
+      })
     },
     runNext: async () => {
       const callback = idleCallbacks.shift()
@@ -813,6 +833,185 @@ describe("HeroPlayer — initial mount", () => {
     })
     expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
+  })
+
+  it("mounts the visible mobile muted preview after load and the short mobile timer", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalReadyState = document.readyState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      get: () => "complete",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      expect(muxVideoMock).not.toHaveBeenCalled()
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(1)
+
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => originalReadyState,
+      })
+      idle.restore()
+    }
+  })
+
+  it("waits for page load before scheduling the fast mobile muted preview", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalReadyState = document.readyState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      get: () => "loading",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      expect(muxVideoMock).not.toHaveBeenCalled()
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(0)
+
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => "complete",
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(1)
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => originalReadyState,
+      })
+      idle.restore()
+    }
+  })
+
+  it("rechecks the mobile fast path when load fires", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalReadyState = document.readyState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1024,
+    })
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      get: () => "loading",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      expect(muxVideoMock).not.toHaveBeenCalled()
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(0)
+
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: 390,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => "complete",
+      })
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+
+      expect(idle.pending).toBe(0)
+      expect(idle.pendingFastTimers).toBe(1)
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "readyState", {
+        configurable: true,
+        get: () => originalReadyState,
+      })
+      idle.restore()
+    }
+  })
+
+  it("defers the fast mobile muted preview while the document is hidden", async () => {
+    const idle = installIdleCallbackStub()
+    const originalInnerWidth = window.innerWidth
+    const originalVisibility = document.visibilityState
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    })
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    })
+
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).not.toHaveBeenCalled()
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "visible",
+      })
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"))
+      })
+      expect(idle.pendingFastTimers).toBe(1)
+      await idle.runNextFastTimer()
+      expect(muxVideoMock).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: originalInnerWidth,
+      })
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => originalVisibility,
+      })
+      idle.restore()
+    }
   })
 
   it("defers idle muted activation while the document is hidden", async () => {
@@ -1573,9 +1772,12 @@ describe("HeroPlayer — fallback HLS source", () => {
 // volume slider mute/unmute heuristics, and the auto-dim timer lifecycle.
 // ---------------------------------------------------------------------------
 
-async function revealChrome(block = makeBlock()): Promise<void> {
+async function revealChrome(
+  block = makeBlock(),
+  props: Omit<ComponentProps<typeof HeroPlayer>, "block"> = {},
+): Promise<void> {
   act(() => {
-    root.render(<HeroPlayer block={block} />)
+    root.render(<HeroPlayer block={block} {...props} />)
   })
   const pill = container.querySelector(
     '[data-testid="hero-player-unmute-pill"]',
@@ -1619,6 +1821,53 @@ describe("HeroPlayer — custom chrome render", () => {
     ).not.toBeNull()
   })
 
+  it("renders subtitle access independently of the multi-audio gate", async () => {
+    await revealChrome(makeBlock(), {
+      onLanguageClick: vi.fn(),
+      playableLanguageCount: 1,
+      hasSubtitleOptions: true,
+      subtitleLanguageCode: "ES",
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-chrome-language"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-subtitles"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="hero-chrome-subtitle-language-code"]',
+      )?.textContent,
+    ).toBe("ES")
+  })
+
+  it.each([
+    { hasSubtitleOptions: true, subtitleLanguageCode: "EN" },
+    { hasSubtitleOptions: true, subtitleLanguageCode: null },
+    { hasSubtitleOptions: false, subtitleLanguageCode: "ES" },
+  ])(
+    "suppresses the subtitle code for $subtitleLanguageCode with availability $hasSubtitleOptions",
+    async ({ hasSubtitleOptions, subtitleLanguageCode }) => {
+      await revealChrome(makeBlock(), {
+        onLanguageClick: vi.fn(),
+        playableLanguageCount: 2,
+        hasSubtitleOptions,
+        subtitleLanguageCode,
+      })
+
+      const subtitleButton = container.querySelector(
+        '[data-testid="hero-chrome-subtitles"]',
+      )
+      expect(subtitleButton === null).toBe(!hasSubtitleOptions)
+      expect(
+        container.querySelector(
+          '[data-testid="hero-chrome-subtitle-language-code"]',
+        ),
+      ).toBeNull()
+    },
+  )
+
   it("uses the full-width watch rail layout for the chrome bar", async () => {
     await revealChrome()
     const chrome = container.querySelector(
@@ -1628,7 +1877,7 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(chrome.className).toContain("inset-x-0")
     expect(chrome.className).toContain("w-full")
     expect(chrome.className).toContain("flex-wrap")
-    expect(chrome.className).toContain("gap-x-2")
+    expect(chrome.className).toContain("gap-x-1")
     expect(chrome.className).toContain("gap-y-0")
     expect(chrome.className).toContain("pb-3")
     expect(chrome.className).toContain("md:flex-nowrap")
@@ -1644,10 +1893,6 @@ describe("HeroPlayer — custom chrome render", () => {
     const timeline = container.querySelector(
       '[data-testid="hero-chrome-timeline"]',
     ) as HTMLElement
-    const spacer = container.querySelector(
-      '[data-testid="hero-chrome-mobile-spacer"]',
-    ) as HTMLElement
-
     expect(timeline.className).toContain("relative")
     expect(timeline.className).toContain("order-first")
     expect(timeline.className).toContain("h-5")
@@ -1655,8 +1900,6 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(timeline.className).toContain("md:order-none")
     expect(timeline.className).toContain("md:h-8")
     expect(timeline.className).toContain("md:basis-auto")
-    expect(spacer.className).toContain("flex-1")
-    expect(spacer.className).toContain("md:hidden")
   })
 
   it("uses a subtle focus-visible treatment for the timeline instead of the white glow", async () => {
@@ -3169,6 +3412,7 @@ describe("HeroPlayer — language switch button", () => {
     const latest = listener.updates.at(-1)
     expect(latest?.visible).toBe(true)
     expect(latest?.onClick).toBe(onLanguageClick)
+    expect(latest?.languageCode).toBe("EN")
     latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
     listener.cleanup()

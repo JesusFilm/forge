@@ -14,11 +14,12 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
-import { Globe } from "lucide-react"
+import { Globe, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { FloatingSearchControllerProps } from "./FloatingSearchController"
 import { FloatingSearchBar } from "./FloatingSearchBar"
+import { SearchOverlayInstantShell } from "./SearchOverlayInstantShell"
 import {
   FloatingSearchPinnedContext,
   type FloatingSearchPinnedContextValue,
@@ -32,6 +33,7 @@ import {
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -68,6 +70,7 @@ const LazyFloatingSearchController = dynamic<FloatingSearchControllerProps>(
 type HeaderLanguageSwitcherState = {
   visible: boolean
   onClick: (() => void) | null
+  languageCode: string | null
 }
 
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
@@ -78,6 +81,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const [closing, setClosing] = useState<boolean>(false)
   const [query, setQuery] = useState<string>("")
   const [searchControllerEnabled, setSearchControllerEnabled] = useState(false)
+  const [searchControllerReady, setSearchControllerReady] = useState(false)
   const [searchResetToken, setSearchResetToken] = useState(0)
   const [pinned, setPinned] = useState<boolean>(false)
   const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
@@ -92,6 +96,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     useState<HeaderLanguageSwitcherState>({
       visible: false,
       onClick: null,
+      languageCode: null,
     })
   const [headerHovered, setHeaderHovered] = useState(false)
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
@@ -99,23 +104,32 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScrollYRef = useRef(0)
 
-  const setOpen = useCallback((next: boolean) => {
-    if (closingTimerRef.current) {
-      clearTimeout(closingTimerRef.current)
-      closingTimerRef.current = null
-    }
-    if (next) {
-      setClosing(false)
-      setOpenState(true)
-    } else {
-      setClosing(true)
-      closingTimerRef.current = setTimeout(() => {
-        setOpenState(false)
-        setClosing(false)
-        closingTimerRef.current = null
-      }, 200)
-    }
+  const resetSearch = useCallback(() => {
+    setQuery("")
+    setSearchResetToken((token) => token + 1)
   }, [])
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (closingTimerRef.current) {
+        clearTimeout(closingTimerRef.current)
+        closingTimerRef.current = null
+      }
+      if (next) {
+        setClosing(false)
+        setOpenState(true)
+      } else {
+        resetSearch()
+        setClosing(true)
+        closingTimerRef.current = setTimeout(() => {
+          setOpenState(false)
+          setClosing(false)
+          closingTimerRef.current = null
+        }, 200)
+      }
+    },
+    [resetSearch],
+  )
 
   useEffect(() => {
     return () => {
@@ -133,10 +147,22 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     setOpen(true)
   }, [enableSearchController, setOpen])
 
+  const markSearchControllerReady = useCallback(() => {
+    setSearchControllerReady(true)
+  }, [])
+
   useEffect(() => {
     if (!searchControllerEnabled) return
     void loadWatchInteraction("search").catch(() => {})
   }, [searchControllerEnabled])
+
+  useEffect(() => {
+    if (!open) return
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [open])
 
   // Scroll-driven pinned state. Shared between the floating searchbar and
   // the floating logo so they track together. Listener registers only while
@@ -248,6 +274,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       setHeaderLanguageSwitcher({
         visible: detail.visible && typeof detail.onClick === "function",
         onClick: typeof detail.onClick === "function" ? detail.onClick : null,
+        languageCode: detail.languageCode ?? null,
       })
     }
 
@@ -311,31 +338,37 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const headerBackdropHidden = modalChromeHidden
+  const headerLanguageClick = headerLanguageSwitcher.onClick ?? undefined
+  const headerLanguageControlVisible =
+    headerLanguageSwitcher.visible && headerLanguageClick != null
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
   const effectiveHeaderHovered = headerHoverZoneActive && headerHovered
   const headerChromeOpacity =
     effectiveHeaderHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
-  const headerChromeUnavailable = modalChromeHidden || headerChromeOpacity <= 0
-  const headerChromeHidden = headerChromeUnavailable || !headerScrollVisible
-  const headerChromeDimmed = !headerChromeHidden && headerChromeOpacity < 1
+  const headerChromeUnavailable = !modalChromeHidden && headerChromeOpacity <= 0
+  const headerChromeHidden =
+    headerChromeUnavailable || (!modalChromeHidden && !headerScrollVisible)
+  const headerChromeDimmed =
+    !modalChromeHidden && !headerChromeHidden && headerChromeOpacity < 1
   const searchChromeVisible = !headerChromeUnavailable
   const searchChromeDimmed = headerChromeDimmed
   const headerCanBrightenLocally = playerChromeOpacity <= 0
   const headerPointerRevealAllowed = playerChromeOpacity < 1
-  const headerSurfaceSolid = !headerOverHero || pinned
+  const headerSurfaceSolid = modalChromeHidden || !headerOverHero || pinned
   const headerTopClass = pinned
     ? FLOATING_HEADER_PINNED_TOP_CLASS
     : FLOATING_HEADER_TOP_CLASS
-  const headerMotionClass = headerChromeUnavailable
-    ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
-    : !headerScrollVisible
-      ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
-      : headerChromeDimmed
-        ? "pointer-events-auto translate-y-0 opacity-30"
-        : "pointer-events-auto translate-y-0 opacity-100"
+  const headerMotionClass = modalChromeHidden
+    ? "pointer-events-none translate-y-0 opacity-100"
+    : headerChromeUnavailable
+      ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
+      : !headerScrollVisible
+        ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
+        : headerChromeDimmed
+          ? "pointer-events-auto translate-y-0 opacity-30"
+          : "pointer-events-auto translate-y-0 opacity-100"
   const headerBackdropMotionClass = headerChromeUnavailable
     ? "-translate-y-[calc(100%+2rem)] opacity-0"
     : !headerScrollVisible
@@ -418,7 +451,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           headerSurfaceSolid
             ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
             : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-        } ${headerBackdropHidden ? "opacity-0" : headerBackdropMotionClass}`}
+        } ${headerBackdropMotionClass}`}
       />
       <div
         aria-hidden="true"
@@ -438,11 +471,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           href={"/" as Route}
           aria-label={t("home")}
           data-testid="floating-header-logo"
-          onClick={() => {
-            setQuery("")
-            setSearchResetToken((token) => token + 1)
-          }}
-          className={`flex ${FLOATING_HEADER_LOGO_SLOT_CLASS} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
+          onClick={resetSearch}
+          className={`pointer-events-auto flex ${FLOATING_HEADER_LOGO_SLOT_CLASS} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
         >
           <Image
             src="/watch/images/jesusfilm-sign.svg"
@@ -463,24 +493,51 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         </div>
         <div
           data-testid="floating-header-trailing-controls"
-          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+          className={`pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`}
         >
-          {headerLanguageSwitcher.visible && headerLanguageSwitcher.onClick ? (
+          {headerLanguageControlVisible ? (
             <button
               type="button"
               data-testid="floating-header-language-button"
-              onClick={headerLanguageSwitcher.onClick}
+              onClick={headerLanguageClick}
               aria-label={t("changeAudioLanguage")}
               title={t("changeAudioLanguage")}
-              className={`inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
+              className={`inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+                headerLanguageSwitcher.languageCode
+                  ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
+                  : ""
+              }`}
             >
               <Globe
                 aria-hidden
                 className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
               />
+              {headerLanguageSwitcher.languageCode ? (
+                <span
+                  data-testid="floating-header-language-code"
+                  className="text-[10px] font-bold tracking-[0.14em]"
+                >
+                  {headerLanguageSwitcher.languageCode}
+                </span>
+              ) : null}
             </button>
           ) : null}
-          <AccountControl />
+          {modalChromeHidden ? (
+            <button
+              type="button"
+              aria-label="Close search"
+              data-testid="floating-header-search-close"
+              onClick={() => setOpen(false)}
+              className={`inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
+            >
+              <X
+                aria-hidden
+                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+              />
+            </button>
+          ) : (
+            <AccountControl />
+          )}
         </div>
       </header>
       {searchControllerEnabled ? (
@@ -491,8 +548,21 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpen={setOpen}
           setQuery={setQuery}
           headerLanguageSwitcherVisible={headerLanguageSwitcher.visible}
+          headerLanguageCode={headerLanguageSwitcher.languageCode}
           headerPinned={pinned}
           resetToken={searchResetToken}
+          onReady={markSearchControllerReady}
+        />
+      ) : null}
+      {modalChromeHidden && !searchControllerReady ? (
+        <SearchOverlayInstantShell
+          open={open}
+          closing={closing}
+          query={query}
+          setOpen={setOpen}
+          setQuery={setQuery}
+          headerTopClass={headerTopClass}
+          headerLanguageControlVisible={headerLanguageControlVisible}
         />
       ) : null}
     </FloatingSearchPinnedContext.Provider>

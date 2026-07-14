@@ -1,23 +1,20 @@
 import {
   FlatList,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native"
 import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
-import { BLACK, hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
+import { rewriteSeedPosterUrl } from "../../lib/mediaImageUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
   card,
   carousel,
-  feedback,
   layout,
   text,
   CARD_GAP,
@@ -25,6 +22,7 @@ import {
 } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { PressableCard } from "../ui/PressableCard"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,10 +45,6 @@ export interface MediaCollectionRendererProps {
 
 const CARD_WIDTH_RATIO = 0.37
 const CARD_ASPECT = 3 / 4
-const GRADIENT_COLORS: [string, string] = [
-  hexToRgba(BLACK, 0),
-  hexToRgba(BLACK, 0.85),
-]
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -60,7 +54,7 @@ export function MediaCollectionRenderer({
   const router = useRouter()
   const typography = useTypography()
   const { width: screenWidth } = useWindowDimensions()
-  const { getVideoThumbnail } = useExperienceContext()
+  const { getVideoThumbnail, getVideoTitle } = useExperienceContext()
 
   const s = section as Record<string, unknown>
   const mcTitle = s.title as string | null
@@ -74,10 +68,18 @@ export function MediaCollectionRenderer({
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
     const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
-    const thumbnailUrl = resolveImageUrl(
-      resolvedThumb ?? item.imageUrl ?? item.imageOverrideUrl,
-    )
-    const title = item.titleOverride ?? item.labelOverride ?? ""
+    // Match TV: the curated override poster (rewritten to the watch origin — the
+    // seed 404s on jesusfilm.org) wins over the video's own landscape thumbnail.
+    const thumbnailUrl =
+      resolveThumbnailUrl(rewriteSeedPosterUrl(item.imageOverrideUrl)) ??
+      resolveThumbnailUrl(item.imageUrl) ??
+      resolveThumbnailUrl(resolvedThumb)
+    // Match TV: flat items carry no titleOverride, so fall back to the linked
+    // video's localized title before the generic label. `||` so an empty
+    // override (admin clears to "") falls through instead of blanking the card.
+    const resolvedTitle = item.videoId ? getVideoTitle(item.videoId) : null
+    const title =
+      item.titleOverride || resolvedTitle || item.labelOverride || ""
     const label = item.labelOverride ?? categoryLabel
 
     const handlePress = () => {
@@ -88,23 +90,14 @@ export function MediaCollectionRenderer({
     }
 
     return (
-      <Pressable
-        style={({ pressed }) => [
-          card.surface,
-          { width: cardWidth },
-          pressed && Platform.OS === "ios" && feedback.pressed,
-        ]}
-        android_ripple={{
-          color: "rgba(255, 255, 255, 0.2)",
-          foreground: true,
-        }}
+      <PressableCard
         onPress={handlePress}
-        accessibilityRole="button"
         accessibilityLabel={`${label ?? ""} ${title}`.trim()}
         accessibilityHint="Opens this video"
-      >
-        <View style={styles.cardInner}>
-          {thumbnailUrl != null && (
+        style={[card.surface, { width: cardWidth }]}
+        surfaceStyle={styles.cardInner}
+        background={
+          thumbnailUrl != null ? (
             <Image
               source={thumbnailUrl}
               style={StyleSheet.absoluteFill}
@@ -113,38 +106,31 @@ export function MediaCollectionRenderer({
               accessibilityLabel={title}
               priority="low"
             />
-          )}
-          <LinearGradient
-            colors={GRADIENT_COLORS}
-            locations={[0.4, 1]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          {item.collectionSize != null && (
-            <View style={card.badge}>
-              <Text style={[card.badgeText, typography.caption]}>
-                {item.collectionSize}
-              </Text>
-            </View>
-          )}
-          <View style={styles.textContent}>
-            {label != null && (
-              <Text
-                style={[styles.label, typography.caption]}
-                numberOfLines={1}
-              >
-                {label}
-              </Text>
-            )}
-            <Text
-              style={[styles.cardTitle, typography.bodySmall]}
-              numberOfLines={2}
-            >
-              {title}
+          ) : undefined
+        }
+        scrim="standard"
+      >
+        {item.collectionSize != null && (
+          <View style={card.badge}>
+            <Text style={[card.badgeText, typography.caption]}>
+              {item.collectionSize}
             </Text>
           </View>
+        )}
+        <View style={styles.textContent}>
+          {label != null && (
+            <Text style={[styles.label, typography.caption]} numberOfLines={1}>
+              {label}
+            </Text>
+          )}
+          <Text
+            style={[styles.cardTitle, typography.bodySmall]}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
         </View>
-      </Pressable>
+      </PressableCard>
     )
   }
 

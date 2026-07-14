@@ -15,9 +15,10 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Check `docs/roadmap/` for a relevant ticket before starting.
 - If a ticket exists, set `status: "in-progress"` before making changes.
 - If no ticket exists, create one in the correct lane using the next sequential `feat-NNN` ID and the format defined in `CLAUDE.md`.
-- Check `docs/solutions/` for prior patterns and `todos/` for unresolved findings when they apply to your scope.
+- `docs/solutions/` is the searchable knowledge store for past bugs, patterns, and decisions, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`); relevant when implementing or debugging documented areas. Check `todos/` for unresolved findings when they apply to your scope.
 - Use `CONCEPTS.md` for shared domain vocabulary when orienting to content, search, embeddings, and media concepts.
 - Read the package-local guide for the area you are changing before editing.
+- For frontend changes, verify the change did not degrade page-loading performance; visual smoke alone is not enough when rendering, hydration, media, routing, or client-side initialization changed.
 - Before pushing or opening/updating a PR, run PR-focused validation for the touched scope, including format and CI-sensitive checks.
 - When the work is done, update the roadmap ticket to `status: "complete"`. Create a follow-up `feat-NNN` ticket if additional work is discovered.
 

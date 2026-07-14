@@ -412,7 +412,6 @@ export function buildWatchHomeHeroQueue({
 }: WatchHomeHeroQueueInput): {
   slides: WatchHomeSlide[]
   videos: WatchHomeVideoSlide[]
-  nextPoolIndex: number
   wrapped: boolean
 } {
   let result = buildWatchHomeVideoQueue({
@@ -437,7 +436,6 @@ export function buildWatchHomeHeroQueue({
   return {
     slides: mergeWatchHomeMuxInserts(result.videos, inserts, now, sessionSeed),
     videos: result.videos,
-    nextPoolIndex: result.nextPoolIndex,
     wrapped,
   }
 }

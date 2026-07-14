@@ -6,6 +6,7 @@ import {
   __resetAiChatMemoryForTesting,
   __resetAiChatStorageForTesting,
   AI_CHAT_SCHEMA_NAME,
+  AI_CHAT_TITLE_MODEL,
   buildAiChatMemory,
   getAiChatMemory,
 } from "./memory"
@@ -57,11 +58,27 @@ vi.mock("@mastra/pg", async () => {
   return { ...actual, PostgresStore: SpyingPostgresStore }
 })
 
+// Passive constructor spy so tests can assert the options Memory receives
+// (feat-241: the generateTitle wiring on BOTH ai-chat backend branches).
+const memoryCtorSpy = vi.hoisted(() => vi.fn())
+vi.mock("@mastra/memory", async () => {
+  const actual =
+    await vi.importActual<typeof import("@mastra/memory")>("@mastra/memory")
+  class SpyingMemory extends actual.Memory {
+    constructor(options: ConstructorParameters<typeof actual.Memory>[0]) {
+      memoryCtorSpy(options)
+      super(options)
+    }
+  }
+  return { ...actual, Memory: SpyingMemory }
+})
+
 afterEach(() => {
   __resetAiChatMemoryForTesting()
   __resetAiChatStorageForTesting()
   mockEnv.aiChatBackend = "memory"
   postgresStoreSpy.mockClear()
+  memoryCtorSpy.mockClear()
 })
 
 describe("ai-chat memory (feat-208)", () => {
@@ -99,6 +116,26 @@ describe("ai-chat memory (feat-208)", () => {
     // never share tables with runtime storage / experience-chat memory.
     expect(AI_CHAT_SCHEMA_NAME).toBe("ai_chat")
     expect(AI_CHAT_SCHEMA_NAME).not.toBe("mastra")
+  })
+
+  it("wires top-level generateTitle with the pinned title model on BOTH backends (feat-241, KTD12)", () => {
+    // Postgres-branch wiring has no other coverage — the titling behavior
+    // tests run on the memory backend only, so this pins the config shape
+    // both branches hand the Memory constructor.
+    memoryCtorSpy.mockClear()
+    buildAiChatMemory({ getBackend: () => "memory" })
+    buildAiChatMemory({ getBackend: () => "postgres" })
+    expect(memoryCtorSpy).toHaveBeenCalledTimes(2)
+    for (const call of memoryCtorSpy.mock.calls) {
+      const args = call[0] as {
+        options?: { generateTitle?: unknown; threads?: unknown }
+      }
+      expect(args.options?.generateTitle).toEqual({
+        model: AI_CHAT_TITLE_MODEL,
+      })
+      // The deprecated nesting would throw mid-turn — it must never appear.
+      expect(args.options?.threads).toBeUndefined()
+    }
   })
 
   it("honors the injectable backend seam on the singleton path", () => {

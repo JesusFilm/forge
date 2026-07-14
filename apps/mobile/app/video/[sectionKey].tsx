@@ -1,12 +1,5 @@
+import { useCallback, useEffect, useLayoutEffect, useState } from "react"
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react"
-import {
-  AppState,
   Pressable,
   ScrollView,
   Share,
@@ -16,10 +9,11 @@ import {
 } from "react-native"
 import { useLocalSearchParams, useNavigation } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { useEvent } from "expo"
 import { Image } from "expo-image"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
@@ -120,50 +114,19 @@ function VideoDetailContent({
 
   const [hasStarted, setHasStarted] = useState(false)
   const [showFullDescription, setShowFullDescription] = useState(false)
-  const appActiveRef = useRef(true)
 
-  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
-    p.muted = false
-    p.loop = false
-  })
-
-  // Defensive cleanup
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause()
-      } catch {
-        // Already released
-      }
-    }
-  }, [player])
-
-  const { isPlaying } = useEvent(player, "playingChange", {
-    isPlaying: player.playing,
-  })
+  // Shared lifecycle adapter (todo 016). Deliberate convergence: foreground now
+  // resumes only if playback was active at background — the old inline handler
+  // called play() unconditionally, starting videos the user paused/never played.
+  const { player, isPlaying } = useManagedVideoPlayer(
+    hasValidStream ? streamingUrl : null,
+  )
 
   useEffect(() => {
     if (isPlaying && !hasStarted) {
       setHasStarted(true)
     }
   }, [isPlaying, hasStarted])
-
-  // AppState handling
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      appActiveRef.current = nextState === "active"
-      if (appActiveRef.current) {
-        player.play()
-      } else {
-        try {
-          player.pause()
-        } catch {
-          // Released
-        }
-      }
-    })
-    return () => subscription.remove()
-  }, [player])
 
   const handlePlay = useCallback(() => {
     player.play()

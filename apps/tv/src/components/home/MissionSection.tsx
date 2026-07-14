@@ -3,13 +3,15 @@
 // Must stay in flexbox flow, never absolute on a focusable (react-native-tvos-porting-pitfalls-20260414.md §3).
 
 import { useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
+import { FOCUS_RING_COLOR } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import {
   MISSION_CARDS,
@@ -48,7 +50,14 @@ export function MissionSection({
   onQrFocus,
   onFocusNode,
 }: MissionSectionProps) {
-  const [qrFocused, setQrFocused] = useState(false)
+  // Shared focus engine ("tile" role): subtle grow + neutral drop shadow.
+  const {
+    focused: qrFocused,
+    setFocused: setQrFocused,
+    transform: qrTransform,
+    focusedShadow: qrFocusedShadow,
+    androidFocusProps,
+  } = useFocusVisual("tile")
   // State (not a ref) so the guide re-renders with its destination once the
   // QR node mounts — a plain ref leaves destinations empty on first render.
   const [qrNode, setQrNode] = useState<ViewType | null>(null)
@@ -130,21 +139,30 @@ export function MissionSection({
             accessibilityRole="image"
             accessibilityLabel="Beta signup QR code"
             accessibilityHint={QR_SCAN_HINT}
-            style={[styles.qrFocusable, qrFocused && styles.qrFocused]}
           >
-            {/* Frosted ember→burgundy wash behind the beta card, clipped to the
+            <Animated.View
+              {...androidFocusProps}
+              style={[
+                styles.qrFocusable,
+                qrFocused && styles.qrFocused,
+                qrFocused && qrFocusedShadow,
+                { transform: qrTransform },
+              ]}
+            >
+              {/* Frosted ember→burgundy wash behind the beta card, clipped to the
                 card radius (borderRadius on the gradient, not overflow:hidden,
                 so the focus glow shadow isn't clipped). */}
-            <LinearGradient
-              colors={[
-                hexToRgba(MISSION_WASH.ember, 0.34),
-                hexToRgba(MISSION_WASH.burgundy, 0.6),
-              ]}
-              start={WASH_START}
-              end={WASH_END}
-              style={styles.qrWash}
-            />
-            <QrPanel />
+              <LinearGradient
+                colors={[
+                  hexToRgba(MISSION_WASH.ember, 0.34),
+                  hexToRgba(MISSION_WASH.burgundy, 0.6),
+                ]}
+                start={WASH_START}
+                end={WASH_END}
+                style={styles.qrWash}
+              />
+              <QrPanel />
+            </Animated.View>
           </Pressable>
         </View>
       </TVFocusGuideView>
@@ -253,14 +271,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: scale(24),
   },
+  // White ring recolor + brighter fill; grow/shadow come from the shared
+  // "tile" focus role.
   qrFocused: {
     backgroundColor: "rgba(255,255,255,0.12)",
-    // White ring + neutral dark shadow (the WATCH_THEME focus look).
-    borderColor: "rgba(255,255,255,0.9)",
-    transform: [{ scale: 1.02 }],
-    shadowColor: "#000000",
-    shadowRadius: scale(22),
-    shadowOpacity: 0.6,
-    shadowOffset: { width: 0, height: scale(10) },
+    borderColor: FOCUS_RING_COLOR,
   },
 })

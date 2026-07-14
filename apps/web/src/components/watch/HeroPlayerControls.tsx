@@ -1,6 +1,6 @@
 "use client"
 
-import { Globe } from "lucide-react"
+import { AudioLines, Captions } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -81,7 +81,10 @@ export function HeroPlayerControls({
   overlayAnchor,
   playbackId,
   onLanguageClick,
+  languageCode,
+  subtitleLanguageCode,
   showLanguageButton,
+  showSubtitleButton,
   onVisibilityChange,
   onWatchNextInteraction,
 }: {
@@ -98,18 +101,25 @@ export function HeroPlayerControls({
    */
   overlayAnchor: HTMLDivElement | null
   playbackId?: string
-  /** Click handler for the in-chrome globe (mirrors the top-right globe). */
+  /** Click handler for the in-chrome audio and subtitle controls. */
   onLanguageClick?: () => void
+  /** Active audio language code displayed beside the in-chrome voice icon. */
+  languageCode?: string | null
+  /** Active subtitle language code; null when subtitles are disabled. */
+  subtitleLanguageCode?: string | null
   /**
-   * Whether to render the in-chrome globe button. The parent applies the
+   * Whether to render the in-chrome audio button. The parent applies the
    * same gate it uses for the top-right globe (>= 2 playable variants AND
    * a callback is provided), so both surfaces appear together.
    */
   showLanguageButton?: boolean
+  /** Whether the current video exposes subtitle options. */
+  showSubtitleButton?: boolean
   onVisibilityChange?: (detail: WatchPlayerChromeVisibilityDetail) => void
   onWatchNextInteraction?: () => void
 }) {
   const t = useTranslations("HeroPlayerControls")
+  const languagePickerT = useTranslations("LanguagePickerModal")
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -161,6 +171,11 @@ export function HeroPlayerControls({
       : chromeVisibility === "dim"
         ? "opacity-100"
         : "opacity-0"
+  const showSubtitleLanguageCode = Boolean(
+    languageCode &&
+    subtitleLanguageCode &&
+    subtitleLanguageCode !== languageCode,
+  )
 
   useEffect(() => {
     onVisibilityChange?.({
@@ -950,7 +965,7 @@ export function HeroPlayerControls({
         }
       }}
       onPointerLeave={() => setHoveringControls(false)}
-      className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-2 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
+      className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-1 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
         chromeOpacityClass
       }`}
     >
@@ -1056,19 +1071,18 @@ export function HeroPlayerControls({
         data-testid="hero-chrome-time"
         data-current-time={Math.floor(displayTime)}
         data-duration={Math.floor(duration)}
-        className="shrink-0 text-sm font-medium tabular-nums text-white drop-shadow md:text-base"
+        className="shrink-0 text-xs font-medium tabular-nums text-white drop-shadow md:text-base"
       >
-        {formatTime(displayTime)} / {formatTime(duration)}
+        <span className="md:hidden">
+          {formatTime(displayTime)}/{formatTime(duration)}
+        </span>
+        <span className="hidden md:inline">
+          {formatTime(displayTime)} / {formatTime(duration)}
+        </span>
       </div>
 
       <div
-        aria-hidden="true"
-        data-testid="hero-chrome-mobile-spacer"
-        className="flex-1 md:hidden"
-      />
-
-      <div
-        className="relative flex shrink-0 items-center"
+        className="relative ml-auto flex shrink-0 items-center"
         onMouseEnter={() => setVolumeOpen(true)}
         onMouseLeave={() => setVolumeOpen(false)}
         onFocus={() => setVolumeOpen(true)}
@@ -1128,23 +1142,64 @@ export function HeroPlayerControls({
         </ChromeButton>
       </div>
 
-      {showLanguageButton && onLanguageClick ? (
-        <ChromeButton
-          onClick={onLanguageClick}
-          ariaLabel={t("changeAudioLanguage")}
-          testId="hero-chrome-language"
-        >
-          <Globe aria-hidden className="h-6 w-6" />
-        </ChromeButton>
-      ) : null}
-
-      <ChromeButton
-        onClick={toggleFullscreen}
-        ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
-        testId="hero-chrome-fullscreen"
+      <div
+        data-testid="hero-chrome-language-controls"
+        className="flex shrink-0 items-center gap-1 md:gap-4"
       >
-        {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
-      </ChromeButton>
+        {showLanguageButton && onLanguageClick ? (
+          <ChromeButton
+            onClick={onLanguageClick}
+            ariaLabel={t("changeAudioLanguage")}
+            testId="hero-chrome-language"
+            className={
+              languageCode
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
+                : undefined
+            }
+          >
+            <AudioLines aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
+            {languageCode ? (
+              <span
+                data-testid="hero-chrome-language-code"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+              >
+                {languageCode}
+              </span>
+            ) : null}
+          </ChromeButton>
+        ) : null}
+
+        {showSubtitleButton && onLanguageClick ? (
+          <ChromeButton
+            onClick={onLanguageClick}
+            ariaLabel={languagePickerT("subtitlesHeading")}
+            testId="hero-chrome-subtitles"
+            className={
+              showSubtitleLanguageCode
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
+                : undefined
+            }
+          >
+            <Captions aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
+            {showSubtitleLanguageCode ? (
+              <span
+                data-testid="hero-chrome-subtitle-language-code"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+              >
+                {subtitleLanguageCode}
+              </span>
+            ) : null}
+          </ChromeButton>
+        ) : null}
+
+        <ChromeButton
+          onClick={toggleFullscreen}
+          ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
+          testId="hero-chrome-fullscreen"
+        >
+          {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
+        </ChromeButton>
+      </div>
     </div>
   )
 

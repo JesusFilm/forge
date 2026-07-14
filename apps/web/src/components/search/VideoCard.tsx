@@ -6,6 +6,7 @@ import { Play } from "lucide-react"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
+import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
   asLocaleSlug,
   searchPath,
@@ -106,8 +107,6 @@ export function formatVideoLabel(label: AdminVideoLabel | null): string {
 // actually their parent-count). The old heuristic `childCount > 0 ⇒ series`
 // then mislabels every episode as "1 episode". Gating on label removes
 // that coupling entirely.
-const SERIES_SHAPED_LABELS = new Set<AdminVideoLabel>(["SERIES", "COLLECTION"])
-
 // Decide what to render in the top-right pill. Series-shaped rows
 // (label SERIES / COLLECTION with childCount > 0) get `{n} episodes`;
 // every other video shows duration. Experiences carry null label and are
@@ -116,8 +115,7 @@ const SERIES_SHAPED_LABELS = new Set<AdminVideoLabel>(["SERIES", "COLLECTION"])
 export function pickCardPill(
   result: SearchResult,
 ): { kind: "count"; text: string } | { kind: "duration"; text: string } | null {
-  const isSeriesShaped =
-    result.label != null && SERIES_SHAPED_LABELS.has(result.label)
+  const isSeriesShaped = isSeriesRecord({ label: result.label })
   if (isSeriesShaped && result.childCount != null && result.childCount > 0) {
     const noun = result.childCount === 1 ? "episode" : "episodes"
     return { kind: "count", text: `${result.childCount} ${noun}` }

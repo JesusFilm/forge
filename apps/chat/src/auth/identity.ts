@@ -16,9 +16,11 @@ import {
  * named-person feature gating via the SEEKER_ALLOWED_EMAILS env allowlist —
  * internal staff dogfooders only (see src/lib/seeker-gate.ts). Beyond that
  * they MUST NEVER gate authorization or a per-user decision — the session is
- * a snapshot with an 8h TTL and no revocation (KTD5), so rule-based gating,
- * allowlist entries outside the org, or reuse beyond seeker dogfooding
- * requires revocation + a membership gate FIRST.
+ * a snapshot with an 8h TTL (KTD5), so rule-based gating, allowlist entries
+ * outside the org, or reuse beyond seeker dogfooding requires a membership
+ * gate FIRST. Revocation is deliberately NOT required (feat-240 Decision
+ * Record — accepted for an 8h cookie scoped to self-reads; revisit if the
+ * session gets longer or the cookie starts gating more than that).
  */
 export async function getChatIdentity(): Promise<ChatIdentity | null> {
   const cookieStore = await cookies()

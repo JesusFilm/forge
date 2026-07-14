@@ -9,17 +9,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const {
   checkDownloadSessionMock,
   downloadModalProps,
+  getCachedWatchLanguageOptionsMock,
   languageModalProps,
   loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
+  shouldRefreshCachedWatchLanguageOptionsMock,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
   downloadModalProps: [] as unknown[],
+  getCachedWatchLanguageOptionsMock: vi.fn(),
   languageModalProps: [] as unknown[],
   loadWatchInteractionMock: vi.fn(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
+  shouldRefreshCachedWatchLanguageOptionsMock: vi.fn(),
 }))
 
 vi.mock("next/dynamic", () => {
@@ -74,23 +78,29 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     downloadError,
     downloadHref,
     downloadPending,
+    hasSubtitleOptions,
     languageSlug,
     modalCallbacks,
     shareHref,
     subtitleVttSrc,
+    subtitleLanguageCode,
   }: {
     downloadError?: string | null
     downloadHref?: string
     downloadPending?: boolean
+    hasSubtitleOptions?: boolean
     languageSlug?: string
     modalCallbacks: { openDownload: () => void; openLanguage: () => void }
     shareHref?: string
     subtitleVttSrc?: string | null
+    subtitleLanguageCode?: string | null
   }) => (
     <div
       data-testid="watch-section-renderer"
       data-download-href={downloadHref ?? ""}
       data-language-slug={languageSlug ?? ""}
+      data-has-subtitle-options={hasSubtitleOptions ? "true" : "false"}
+      data-subtitle-language-code={subtitleLanguageCode ?? ""}
       data-share-href={shareHref ?? ""}
       data-subtitle-vtt-src={subtitleVttSrc ?? ""}
     >
@@ -125,9 +135,11 @@ vi.mock("@/components/watch/download-session-client", () => ({
 }))
 
 vi.mock("@/lib/watch-interaction-loader", () => ({
-  getCachedWatchLanguageOptions: () => null,
+  getCachedWatchLanguageOptions: getCachedWatchLanguageOptionsMock,
   loadWatchInteraction: loadWatchInteractionMock,
   loadWatchLanguageOptionsForVideo: loadWatchLanguageOptionsMock,
+  shouldRefreshCachedWatchLanguageOptions:
+    shouldRefreshCachedWatchLanguageOptionsMock,
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
@@ -148,9 +160,13 @@ beforeEach(() => {
   downloadModalProps.length = 0
   languageModalProps.length = 0
   checkDownloadSessionMock.mockReset()
+  getCachedWatchLanguageOptionsMock.mockReset()
+  getCachedWatchLanguageOptionsMock.mockReturnValue(null)
   loadWatchInteractionMock.mockClear()
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
+  shouldRefreshCachedWatchLanguageOptionsMock.mockReset()
+  shouldRefreshCachedWatchLanguageOptionsMock.mockReturnValue(false)
 })
 
 afterEach(() => {
@@ -164,9 +180,11 @@ afterEach(() => {
 function renderWatchPage({
   languageSlug = "english",
   subtitles = [],
+  videoSlug = "jesus-is-brought-to-pilate",
 }: {
   languageSlug?: string
   subtitles?: unknown[]
+  videoSlug?: string
 } = {}) {
   const variant = {
     documentId: "5fc705b9-1b3b-4a58-abef-755b98457de6",
@@ -190,7 +208,7 @@ function renderWatchPage({
   }
   const video = {
     documentId: "video-1",
-    slug: "jesus-is-brought-to-pilate",
+    slug: videoSlug,
     title: "Jesus Is Brought to Pilate",
     snippet: null,
     description: null,
@@ -249,6 +267,7 @@ describe("WatchPageClient download boundary", () => {
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
+      accountGateEnabled: false,
       authenticated: true,
     })
     renderWatchPage()
@@ -268,7 +287,9 @@ describe("WatchPageClient download boundary", () => {
       languageSlug: string
       variantId: string
       videoSlug: string
+      accountGateEnabled: boolean
     }
+    expect(latestProps.accountGateEnabled).toBe(false)
     expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
     expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.languageCode).toBe("eng")
@@ -296,6 +317,7 @@ describe("WatchPageClient download boundary", () => {
       "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch%2Fjesus"
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
+      accountGateEnabled: true,
       authenticated: false,
       loginUrl,
     })
@@ -318,6 +340,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: true,
+        accountGateEnabled: true,
         authRequiredLoginUrl: loginUrl,
       }),
     )
@@ -337,6 +360,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: false,
+        accountGateEnabled: true,
         authRequiredLoginUrl: loginUrl,
       }),
     )
@@ -348,6 +372,11 @@ describe("WatchPageClient download boundary", () => {
       "",
       "/watch/jesus-is-brought-to-pilate.html/english.html?download=1&t=12",
     )
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: false,
+      authenticated: false,
+    })
     renderWatchPage()
 
     await vi.waitFor(() => {
@@ -360,6 +389,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: true,
+        accountGateEnabled: false,
         authRequiredLoginUrl: null,
       }),
     )
@@ -408,6 +438,155 @@ describe("WatchPageClient download boundary", () => {
           expect.objectContaining({
             documentId: "variant-es",
             language: expect.objectContaining({ slug: "spanish" }),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it("opens the language modal instantly with cached rows while refresh is pending", async () => {
+    const cachedVariants = [
+      {
+        documentId: "variant-es",
+        hls: "https://stream.mux.com/es.m3u8",
+        published: true,
+        language: {
+          coreId: "es",
+          bcp47: "es",
+          slug: "spanish",
+          name: "Spanish",
+          nativeName: "Espanol",
+        },
+        videoEdition: null,
+      },
+    ]
+    getCachedWatchLanguageOptionsMock.mockReturnValue(cachedVariants)
+    shouldRefreshCachedWatchLanguageOptionsMock.mockReturnValue(true)
+    const refresh = deferred<unknown[]>()
+    loadWatchLanguageOptionsMock.mockReturnValueOnce(refresh.promise)
+    renderWatchPage()
+
+    act(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith(
+      "jesus-is-brought-to-pilate",
+      { forceRefresh: true },
+    )
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        languageOptionsLoading: false,
+        languageOptionsError: false,
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-es",
+            language: expect.objectContaining({ slug: "spanish" }),
+          }),
+        ],
+      }),
+    )
+
+    await act(async () => {
+      refresh.reject(new Error("offline"))
+    })
+
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        languageOptionsLoading: false,
+        languageOptionsError: false,
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-es",
+            language: expect.objectContaining({ slug: "spanish" }),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it("ignores a language options refresh that resolves after the video changes", async () => {
+    const cachedFirstVideo = [
+      {
+        documentId: "variant-es",
+        hls: "https://stream.mux.com/es.m3u8",
+        published: true,
+        language: {
+          coreId: "es",
+          bcp47: "es",
+          slug: "spanish",
+          name: "Spanish",
+          nativeName: "Espanol",
+        },
+        videoEdition: null,
+      },
+    ]
+    const cachedSecondVideo = [
+      {
+        documentId: "variant-fr",
+        hls: "https://stream.mux.com/fr.m3u8",
+        published: true,
+        language: {
+          coreId: "fr",
+          bcp47: "fr",
+          slug: "french",
+          name: "French",
+          nativeName: "Francais",
+        },
+        videoEdition: null,
+      },
+    ]
+    const refreshedFirstVideo = [
+      {
+        documentId: "variant-de",
+        hls: "https://stream.mux.com/de.m3u8",
+        published: true,
+        language: {
+          coreId: "de",
+          bcp47: "de",
+          slug: "german",
+          name: "German",
+          nativeName: "Deutsch",
+        },
+        videoEdition: null,
+      },
+    ]
+    const refresh = deferred<unknown[]>()
+    getCachedWatchLanguageOptionsMock.mockImplementation((slug: string) =>
+      slug === "video-one" ? cachedFirstVideo : cachedSecondVideo,
+    )
+    shouldRefreshCachedWatchLanguageOptionsMock.mockImplementation(
+      (slug: string) => slug === "video-one",
+    )
+    loadWatchLanguageOptionsMock.mockReturnValueOnce(refresh.promise)
+    renderWatchPage({ videoSlug: "video-one" })
+
+    act(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    renderWatchPage({ videoSlug: "video-two" })
+
+    await act(async () => {
+      refresh.resolve(refreshedFirstVideo)
+    })
+
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-fr",
+            language: expect.objectContaining({ slug: "french" }),
           }),
         ],
       }),
@@ -493,6 +672,11 @@ describe("WatchPageClient download boundary", () => {
     expect(latestProps.subtitles).toHaveLength(1)
     expect(latestProps.currentSubtitleEnabled).toBe(true)
     expect(latestProps.currentSubtitleSlug).toBe("spanish")
+    const renderer = document.querySelector(
+      '[data-testid="watch-section-renderer"]',
+    )
+    expect(renderer?.getAttribute("data-has-subtitle-options")).toBe("true")
+    expect(renderer?.getAttribute("data-subtitle-language-code")).toBe("ES")
   })
 
   it("passes selected subtitle VTTs through the same-origin media proxy", () => {
@@ -557,6 +741,7 @@ describe("WatchPageClient download boundary", () => {
       .mockResolvedValueOnce({ ok: false, reason: "session-unavailable" })
       .mockResolvedValueOnce({
         ok: true,
+        accountGateEnabled: false,
         authenticated: true,
       })
     renderWatchPage()
@@ -584,4 +769,67 @@ describe("WatchPageClient download boundary", () => {
         ?.getAttribute("data-modal-state"),
     ).toBe("download")
   })
+
+  it("ignores stale download session responses after opening another modal", async () => {
+    let resolveSession:
+      | ((value: {
+          ok: true
+          accountGateEnabled: false
+          authenticated: false
+        }) => void)
+      | undefined
+    checkDownloadSessionMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("language")
+
+    await act(async () => {
+      resolveSession?.({
+        ok: true,
+        accountGateEnabled: false,
+        authenticated: false,
+      })
+      await Promise.resolve()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("language")
+  })
 })
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, reject, resolve }
+}

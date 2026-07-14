@@ -56,6 +56,7 @@ export const watchVideoFragment = graphql(`
             documentId: id
             slug
             label
+            muxPlaybackId
             locales(locale: $locale) {
               documentId: id
               languageSlug
@@ -201,6 +202,7 @@ export const GET_SERIES_BY_SLUG = graphql(
             documentId: id
             slug
             label
+            muxPlaybackId
             locales(locale: $locale) {
               documentId: id
               languageSlug

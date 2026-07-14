@@ -33,7 +33,7 @@ import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "./watch/useFocusAnimation"
+import { useFocusAnimation, useFocusVisual } from "./focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./watch/AnimatedFocusIcon"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
@@ -185,7 +185,9 @@ function BackPill({
   hasTVPreferredFocus: boolean
   accessibilityLabel: string
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every host re-render (1Hz timeUpdate) — matches
   // DetailsActionRow's pills.
@@ -199,9 +201,9 @@ function BackPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   const inkStyle = useMemo(
     () => ({
@@ -256,7 +258,9 @@ function CircleControl({
   dimmed: boolean
   accessibilityLabel: string
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: interpolations built once per mount, not per 1Hz host render.
   const circleStyle = useMemo(
     () => ({
@@ -268,9 +272,9 @@ function CircleControl({
         inputRange: [0, 1],
         outputRange: [0, 0.6],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
@@ -316,7 +320,9 @@ function PlayCircle({
   dimmed: boolean
   hasTVPreferredFocus: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: interpolations built once per mount, not per 1Hz host render.
   const ringStyle = useMemo(
     () => ({
@@ -324,9 +330,9 @@ function PlayCircle({
         inputRange: [0, 1],
         outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
@@ -376,7 +382,9 @@ function MenuPill({
   focusable: boolean
   dimmed: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: interpolations built once per mount, not per 1Hz host render.
   const pillStyle = useMemo(
     () => ({
@@ -388,9 +396,9 @@ function MenuPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   const labelInk = useMemo(
     () => ({

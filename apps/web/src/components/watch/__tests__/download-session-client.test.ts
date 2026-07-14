@@ -2,12 +2,58 @@
  * @vitest-environment jsdom
  */
 
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   DOWNLOAD_RETURN_INTENT_PARAM,
+  checkDownloadSession,
   withDownloadReturnIntent,
 } from "@/components/watch/download-session-client"
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe("checkDownloadSession", () => {
+  it("parses the dynamic account-gate mode", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          accountGateEnabled: false,
+          authenticated: false,
+        }),
+      ),
+    )
+    window.history.replaceState({}, "", "/watch/jesus.html/english.html")
+
+    await expect(checkDownloadSession()).resolves.toEqual({
+      ok: true,
+      accountGateEnabled: false,
+      authenticated: false,
+    })
+  })
+
+  it("keeps loginUrl when the gate is enabled and the viewer is signed out", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          accountGateEnabled: true,
+          authenticated: false,
+          loginUrl: "http://localhost:3000/watch/api/auth/login",
+        }),
+      ),
+    )
+
+    await expect(checkDownloadSession()).resolves.toEqual({
+      ok: true,
+      accountGateEnabled: true,
+      authenticated: false,
+      loginUrl: "http://localhost:3000/watch/api/auth/login",
+    })
+  })
+})
 
 describe("withDownloadReturnIntent", () => {
   it("adds the download reopen intent to the nested auth returnTo URL", () => {

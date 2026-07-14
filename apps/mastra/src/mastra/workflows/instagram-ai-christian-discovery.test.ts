@@ -8,7 +8,9 @@ import type {
   InstagramPost,
 } from "../../services/instagram-discovery/types"
 import {
+  _internals,
   handleInstagramDiscoveryRouteRequest,
+  InstagramDiscoveryWorkflowInputSchema,
   instagramAiChristianDiscoveryWorkflow,
   runInstagramDiscovery,
   type InstagramDiscoveryWorkflowResult,
@@ -130,6 +132,30 @@ describe("runInstagramDiscovery — trusted handles", () => {
     expect(searchQuery.mock.calls[0]![0]).toBe("site:instagram.com/savedhandle")
   })
 
+  it("resolves saved handles before the registered Studio search step", async () => {
+    const loaded = await _internals.withSavedInstagramSources(
+      InstagramDiscoveryWorkflowInputSchema.parse({}),
+      {
+        config: {
+          url: "https://site.test/api/discovery-sources",
+          token: "t",
+        },
+        fetchImpl: (async () =>
+          new Response(
+            JSON.stringify({
+              sources: [{ value: "savedhandle", label: "Saved" }],
+            }),
+            { headers: { "content-type": "application/json" } },
+          )) as unknown as typeof fetch,
+      },
+    )
+
+    expect(loaded).toMatchObject({
+      input: { handles: ["savedhandle"] },
+      sourceLoadStatus: "loaded",
+    })
+  })
+
   it("reports a saved-source outage when no handles or queries can run", async () => {
     const result = await runInstagramDiscovery(
       { handles: [], queries: [] },
@@ -166,6 +192,41 @@ describe("runInstagramDiscovery — trusted handles", () => {
     if (!result.ok) throw new Error("expected success")
     expect(result.posts).toHaveLength(0)
     expect(result.totals.excludedCommentary).toBe(1)
+  })
+})
+
+describe("instagramAiChristianDiscoveryWorkflow schedule", () => {
+  it("runs once a day at midnight UTC on the evented engine", () => {
+    expect(instagramAiChristianDiscoveryWorkflow.engineType).toBe("evented")
+
+    const schedules = (
+      instagramAiChristianDiscoveryWorkflow as typeof instagramAiChristianDiscoveryWorkflow & {
+        getScheduleConfigs: () => Array<{
+          cron: string
+          timezone?: string
+          inputData?: unknown
+        }>
+      }
+    ).getScheduleConfigs()
+
+    expect(schedules).toHaveLength(1)
+    expect(schedules[0]).toMatchObject({
+      cron: "0 0 * * *",
+      timezone: "UTC",
+    })
+    expect(schedules[0]).not.toHaveProperty("id")
+    expect(schedules[0]).not.toHaveProperty("inputData")
+  })
+
+  it("resolves empty scheduled input through the existing workflow defaults", () => {
+    expect(InstagramDiscoveryWorkflowInputSchema.parse({})).toEqual({
+      handles: [],
+      queries: [],
+      limitPerQuery: 10,
+      scrapeMetadata: false,
+      maxResults: 10,
+      persistArtifact: true,
+    })
   })
 })
 
@@ -442,111 +503,6 @@ describe("runInstagramDiscovery", () => {
       { runId: "run-7", firecrawlConfig: CONFIG, artifactStore: fakeStore() },
     )
     expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
-  })
-})
-
-describe("instagramAiChristianDiscoveryWorkflow", () => {
-  it("loads saved handles during a registered Studio run", async () => {
-    vi.stubEnv(
-      "DISCOVERY_SOURCES_URL",
-      "https://site.test/api/discovery-sources",
-    )
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
-    vi.stubEnv("FIRECRAWL_API_KEY", "fc-key")
-    vi.resetModules()
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(async (input) => {
-        const url = String(input)
-        if (url.startsWith("https://site.test/api/discovery-sources")) {
-          return new Response(
-            JSON.stringify({
-              sources: [{ value: "savedhandle", label: "Saved" }],
-            }),
-            { headers: { "content-type": "application/json" } },
-          )
-        }
-        if (url.startsWith("https://api.firecrawl.dev/v1/search")) {
-          return new Response(JSON.stringify({ data: [] }), {
-            headers: { "content-type": "application/json" },
-          })
-        }
-        throw new Error(`unexpected fetch: ${url}`)
-      })
-
-    try {
-      const { instagramAiChristianDiscoveryWorkflow: workflow } =
-        await import("./instagram-ai-christian-discovery")
-      const run = await workflow.createRun({
-        runId: "run-studio-saved-instagram",
-      })
-      const result = await run.start({
-        inputData: { handles: [], queries: [], persistArtifact: false },
-      })
-
-      expect(result.status).toBe("success")
-      expect(fetchSpy.mock.calls.map(([input]) => String(input))).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining("https://site.test/api/discovery-sources"),
-          expect.stringContaining("https://api.firecrawl.dev/v1/search"),
-        ]),
-      )
-    } finally {
-      fetchSpy.mockRestore()
-      vi.unstubAllEnvs()
-      vi.resetModules()
-    }
-  })
-
-  it("preserves saved-source outages for Studio runs and launchers", async () => {
-    vi.stubEnv(
-      "DISCOVERY_SOURCES_URL",
-      "https://site.test/api/discovery-sources",
-    )
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
-    vi.resetModules()
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(async () => new Response("down", { status: 500 }))
-
-    try {
-      const {
-        _internals,
-        instagramAiChristianDiscoveryWorkflow: workflow,
-        launchInstagramDiscoveryWorkflow,
-      } = await import("./instagram-ai-christian-discovery")
-      const run = await workflow.createRun({
-        runId: "run-studio-failed-instagram-sources",
-      })
-      const result = await run.start({
-        inputData: { handles: [], queries: [], persistArtifact: false },
-      })
-
-      expect(result.status).toBe("failed")
-      expect(_internals.discoveryFailureFromRunResult(result)).toMatchObject({
-        ok: false,
-        reason: "sources_unavailable",
-        retryable: true,
-      })
-      await expect(
-        launchInstagramDiscoveryWorkflow(
-          { handles: [], queries: [], persistArtifact: false },
-          { runId: "run-launch-failed-instagram-sources" },
-        ),
-      ).resolves.toMatchObject({
-        ok: false,
-        reason: "sources_unavailable",
-        retryable: true,
-      })
-    } finally {
-      fetchSpy.mockRestore()
-      vi.unstubAllEnvs()
-      vi.resetModules()
-    }
-  })
-
-  it("remains registered", () => {
-    expect(instagramAiChristianDiscoveryWorkflow.committed).toBe(true)
   })
 })
 

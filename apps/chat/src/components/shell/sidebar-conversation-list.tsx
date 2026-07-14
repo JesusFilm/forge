@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn"
-import { type Conversation } from "@/lib/conversations"
+import { fallbackTitle, type Conversation } from "@/lib/conversations"
+import { type HistoryListUi } from "@/lib/use-conversations"
 
 import { type CollapsedStyles } from "./sidebar-collapsed-styles"
 
@@ -8,22 +9,35 @@ type ConversationListProps = {
   activeId: string
   pendingIds: ReadonlySet<string>
   styles: CollapsedStyles
+  history: HistoryListUi
   onSelect: (id: string) => void
   onCloseMobile: () => void
+  onRetryHistory: () => void
+  onLoadMore: () => void
 }
 
 /**
  * The conversation history rail: a labeled nav whose rows select a conversation
  * (and close the mobile drawer). The active row is highlighted; a row awaiting a
  * reply shows a pulsing dot. Hidden entirely when the desktop rail is collapsed.
+ *
+ * feat-241 additions, all presentational: a polite loading skeleton while the
+ * server history hydrates, an error state with retry, a Load-more control with
+ * inline pending/retry (already-rendered rows always stay), date-derived
+ * fallback labels for untitled server threads (R11), and a muted presentation
+ * (+ sr-only note) for rows whose transcript is no longer available. An empty
+ * server list renders nothing extra — today's client-only look (R16).
  */
 export function ConversationList({
   conversations,
   activeId,
   pendingIds,
   styles,
+  history,
   onSelect,
   onCloseMobile,
+  onRetryHistory,
+  onLoadMore,
 }: ConversationListProps) {
   return (
     <nav
@@ -34,6 +48,13 @@ export function ConversationList({
         {conversations.map((conversation) => {
           const active = conversation.id === activeId
           const replying = pendingIds.has(conversation.id)
+          const notAvailable = conversation.replay === "not_available"
+          // Untitled server threads (title "" — pre-existing, generation
+          // pending, or generation failed) get the date-derived label (AE6).
+          const displayTitle =
+            conversation.title.trim().length > 0
+              ? conversation.title
+              : fallbackTitle(conversation.lastActivityAt ?? "")
           return (
             <li key={conversation.id}>
               <button
@@ -48,12 +69,14 @@ export function ConversationList({
                   active
                     ? "bg-linen/[0.06] text-linen"
                     : "text-ash hover:bg-linen/[0.03] hover:text-linen",
+                  notAvailable && "opacity-50",
                 )}
-                title={conversation.title}
+                title={displayTitle}
               >
-                <span className="min-w-0 flex-1 truncate">
-                  {conversation.title}
-                </span>
+                <span className="min-w-0 flex-1 truncate">{displayTitle}</span>
+                {notAvailable ? (
+                  <span className="sr-only">(unavailable)</span>
+                ) : null}
                 {replying ? (
                   <>
                     <span
@@ -69,6 +92,61 @@ export function ConversationList({
           )
         })}
       </ul>
+
+      {history.loading ? (
+        // Polite announcement + a visual skeleton while the first page loads
+        // (same aria treatment as replay loading in the chat pane).
+        <div aria-live="polite" data-history="loading" className="mt-2 px-3.5">
+          <span className="sr-only">Loading conversations</span>
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <span className="block h-4 w-4/5 rounded bg-linen/[0.06] [animation:vigil-pulse_2s_var(--ease-vigil)_infinite]" />
+            <span className="block h-4 w-3/5 rounded bg-linen/[0.06] [animation:vigil-pulse_2s_var(--ease-vigil)_infinite]" />
+            <span className="block h-4 w-2/3 rounded bg-linen/[0.06] [animation:vigil-pulse_2s_var(--ease-vigil)_infinite]" />
+          </div>
+        </div>
+      ) : null}
+
+      {history.error ? (
+        <div data-history="error" className="mt-2 flex flex-col gap-2 px-3.5">
+          {/* role="alert" so AT users hear the failure, not just the loading
+              announcement that preceded it. */}
+          <p role="alert" className="text-xs text-ash">
+            Your conversations couldn&apos;t be loaded.
+          </p>
+          <button
+            type="button"
+            onClick={onRetryHistory}
+            className="self-start rounded-full border border-linen/15 px-3 py-1 text-xs text-linen transition-colors duration-300 hover:bg-linen/[0.06]"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {history.hasMore ? (
+        <div
+          data-history="load-more"
+          className="mt-2 flex flex-col gap-1 px-3.5"
+        >
+          {history.loadMoreError ? (
+            <p role="alert" className="text-xs text-ash">
+              Couldn&apos;t load more.
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={history.loadingMore}
+            className="self-start rounded-full border border-linen/15 px-3 py-1 text-xs text-linen transition-colors duration-300 hover:bg-linen/[0.06] disabled:opacity-50"
+          >
+            {history.loadingMore
+              ? "Loading…"
+              : history.loadMoreError
+                ? "Retry"
+                : "Load more"}
+          </button>
+        </div>
+      ) : null}
     </nav>
   )
 }

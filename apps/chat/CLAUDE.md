@@ -7,11 +7,15 @@ follows the "Vigil" design direction (see below) — a starting point handed to
 us to get going, not a locked-in convention; expect it to evolve. Replies come
 from the client stub by default, or stream from Seeker behind the
 `SEEKER_CHAT_ENABLED` kill switch composed with the per-user seeker dogfood
-email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-205, feat-233). Conversation state in the UI is still
-client-only and resets on refresh, but on the Seeker path the SERVER side now
-persists (feat-208): Mastra stores threads/messages in its `ai_chat` Postgres
-schema, keyed by a proxy-resolved per-user resource. UI restore/deep-linking
-is feat-209.
+email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-205, feat-233). On the Seeker
+path the SERVER side persists (feat-208): Mastra stores threads/messages in
+its `ai_chat` Postgres schema, keyed by a proxy-resolved per-user resource —
+and since feat-241 signed-in, gate-granted users get that history BACK: the
+sidebar hydrates from a paginated server listing, threads carry LLM titles,
+and selecting a thread replays its transcript and resumes in the same server
+thread (see "Server-side conversation history" below). Anonymous and
+gate-denied users keep the ephemeral client-only sidebar that resets on
+refresh. Per-conversation URLs/deep-linking is feat-209.
 
 ## Architecture
 
@@ -23,20 +27,23 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame the client maps to the stub). Testable core handleSeekerProxyRequest
-      auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; no-op home redirect when unconfigured (feat-207)
-      auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie, 302 return_to; single catch → non-PII log + ?signin=failed
-      auth/logout/route.ts   POST → clear session cookie, 303 home (POST so it isn't prefetchable)
+      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, hostAllowed reuse, min(seekerTimeoutMs,10s) budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
+      history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
+      history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
+      auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
+      auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie + consume the feat-240 force-login marker (success only), 302 return_to; single catch → non-PII log + ?signin=failed (marker kept armed)
+      auth/logout/route.ts   POST → clear session cookie + set the 30-day single-use force-login marker (feat-240), 303 home (POST so it isn't prefetchable)
   auth/                  Chat auth (feat-207), adapted from apps/admin/src/auth/* — SDL of the OAuth flow, no DB, no authorization
     oauth-state.ts       state + PKCE (S256) via node:crypto (verbatim port)
     oauth-client.ts      authorize URL + token exchange + verifyChatIdToken (JWKS-derived alg allowlist, NO access-token fallback — R9 divergence)
-    session-cookie.ts    signed identity cookie create/read + option helpers; fail-closed to anonymous without a real secret
+    session-cookie.ts    signed identity cookie create/read + option helpers (session / transient / feat-240 force-login marker) + readRequestCookie; fail-closed to anonymous without a real secret
     origins.ts           resolveChatReturnToURL — post-login return-target validated against chat's own origin (R10)
     identity.ts          getChatIdentity() server reader (next/headers); never redirects; display-only
     anon-id.ts           feat-208: anonymous continuity id — resolveSeekerResource (user:/anon: namespacing, prefix-check only), UUID validation, rolling 30-day hardened cookie serialization
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
-    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
@@ -61,8 +68,9 @@ src/
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
-    conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types + createConversation / deriveTitle
-    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation
+    conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
+    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
+    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation. feat-241: post-mount history hydration (gated on seekerEnabled), merge by conversation id, Load more, lazy single-flight replay, R22 send blocking, KTD10 allowStubFallback wiring; pure merge/order helpers exported for tests
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
     jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx)
@@ -138,7 +146,10 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   path), still the single swap point. The `Message` type + `SeekerSource` +
   `ReplyFailureReason` live in `src/lib/conversations.ts` so they outlive the seam.
 - **The proxy** is `src/app/api/seeker/route.ts` (+ `src/lib/sse.ts` parser). It
-  holds the bearer server-side, SSRF-checks the base host + enforces `https:`
+  holds the bearer server-side (`AI_CHAT_MASTRA_API_KEY`, the single ai-chat
+  lane bearer since feat-250 — Mastra's `/forge-seeker` accepts only its
+  `AI_CHAT_SERVICE_API_KEYS` lane CSV, so the shared pool never reaches
+  conversation data), SSRF-checks the base host + enforces `https:`
   (exempting loopback for local dev AND `*.railway.internal` — the prod
   transport: Railway private networking is plain HTTP over a
   WireGuard-encrypted mesh, and Mastra has no public domain),
@@ -178,6 +189,57 @@ timeout, single-file async seam) are now **implemented**: failures render a
 `role="alert"` notice keeping partial text; the call is timeout-bounded; the seam
 is async (`streamReply`) and the hook only awaits it.
 
+## Server-side conversation history (feat-241)
+
+The read path for feat-208's persisted threads. Plan:
+`docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.md`; feat-236
+owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
+
+- **Three refusal layers before any message bytes move:** chat proxy (signed
+  session → `user:<sub>` resource, dogfood gate surface `"history"`) → Mastra
+  history routes (dedicated `AI_CHAT_SERVICE_API_KEYS` lane bearer, `user:`
+  resource refusal) → thread-ownership gate on replay.
+- **Proxies** (`src/app/api/history/*`): POST-shaped (thread ids never in
+  URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
+  (since feat-250 the send path presents the same lane bearer — chat holds no
+  pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the exported
+  `hostAllowed`. Read budget `min(seekerTimeoutMs(), 10s)`; upstream status
+  classified before any body parse; byte-capped buffered reads (2 MiB list /
+  8 MiB thread — sized for the worst-case UTF-8 inflation of the 8,192
+  UTF-16-unit per-message text cap). Deny wire (KTD8): 401 `invalid_session` (anonymous ≡ expired
+  ≡ tampered), 403 `gate_denied` / `thread_forbidden`, 404 `thread_not_found`
+  (only when the upstream body carries the reason — a reasonless 404 is
+  `unavailable`, so config outages never read as data loss), 502/504.
+- **Client mapping** (`lib/history-client.ts`): `access` (401/gate_denied) →
+  silent fall-back to the client-only sidebar, no nudge (R16; the sign-in
+  nudge is deferred to feat-236); `not_available` → the "no longer available"
+  state; `unavailable` → error state with retry.
+- **Hook semantics** (`lib/use-conversations.ts`): hydration fires once
+  post-mount when `seekerEnabled` (= full gate grant — anonymous/denied users
+  never fetch; the server render path gains no awaits); merge by conversation
+  id (client conversation id === server thread id): in-session messages
+  authoritative, non-empty server LLM title beats the `deriveTitle` snippet,
+  server-origin conversations skip the retitle branch; ordering =
+  fresh-empty-local pinned, then activity-desc. Replay is per-conversation
+  single-flight and session-cached (`idle → loading → loaded | failed |
+not_available`; failed retries only via the explicit action); sends into a
+  server-origin conversation are BLOCKED unless its replay is `loaded` (R22 —
+  the composer keeps the draft, only the send action is disabled). Replayed
+  turns render as bare text — no engine/grounded/source badges (R21).
+- **Denied sends fail visibly on persisted conversations (KTD10):** a
+  conversation counts as server-persisted once hydrated from history OR after
+  a send's SUCCESS finalize with engine `"seeker"` (never from the engine tag
+  alone). The hook passes `allowStubFallback: false` for those, so
+  `gate_denied` renders the access-changed failure copy instead of silently
+  stub-forking; never-persisted conversations keep the feat-233 stub
+  downgrade.
+- **Titles:** LLM-generated server-side (Mastra `generateTitle`, signed-in
+  threads only); untitled rows (`title: ""`) render the deterministic
+  `fallbackTitle(lastActivityAt)` date label. No in-session polling — new
+  titles appear on the next hydration.
+- Logging is enum-only plain-string `[history-proxy] event=… reason=…` —
+  never conversation ids, titles, or upstream body fragments.
+
 ## Authentication (feat-207)
 
 Optional sign-in / sign-out against `apps/auth` (Better Auth OIDC), reusing
@@ -198,8 +260,14 @@ emailVerified? }`) read from the id_token at callback — chat writes no user
   exposure); the cookie's own lifetime is authoritative (the id_token's ~1h `exp`
   is verified once at callback, not carried onto the session). The one gated
   decision — the feat-233 seeker dogfood gate — rides the cookie's 8h claim
-  snapshot (`email` + `emailVerified`), not token freshness; revocation within
-  that window is the plan's accepted residual (R13).
+  snapshot (`email` + `emailVerified`), not token freshness. A live session
+  cannot be ended early per-user — no revocation, a deliberate decision
+  (feat-240's Decision Record), not an oversight. The honest mitigations are
+  the 8h TTL (the repo's shortest), server-side self-scoped reads, and chat's
+  plain-text message rendering discipline: message content renders as
+  React-escaped text only — no `dangerouslySetInnerHTML`, no HTML, no
+  markdown; keep it that way. The everyone-at-once incident lever is rotating
+  `CHAT_SESSION_SECRET`.
 - **Config-gated, default off.** `chatAuthConfigured()` (`config/env.ts`) is true
   only when `AUTH_ISSUER_URL`, `AUTH_CHAT_CLIENT_ID`, `CHAT_BASE_URL`, and a REAL
   `CHAT_SESSION_SECRET` (rejects empty, the `.env.example` placeholder, and
@@ -224,8 +292,9 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   (`src/lib/seeker-gate.ts`) may consume the claims for named-person feature
   gating via the `SEEKER_ALLOWED_EMAILS` env allowlist — internal staff
   dogfooders only. Anything broader (rule-based gating, allowlist entries
-  outside the org, or reuse beyond seeker dogfooding) still requires
-  revocation + a membership gate first (see the code comment).
+  outside the org, or reuse beyond seeker dogfooding) still requires a
+  membership gate first — revocation is deliberately not required (see the
+  code comment + feat-240's Decision Record and its scope tripwire).
 - **R9 divergence from admin's verifier (net-new, so it carries its own tests):**
   `verifyChatIdToken` verifies the **id_token only** (no `idToken ?? accessToken`
   fallback — admin is safe without this only because it also gates on
@@ -243,7 +312,18 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   rule), `Path=/`. The transient `state`/`verifier`/`return_to` cookies share the
   hardening with a ~10m TTL and are cleared on callback. Sign-out is a **POST
   form** (not a GET link — a GET logout is prefetchable/crawlable); it clears
-  chat's cookie only, leaving `apps/auth`'s SSO session untouched.
+  chat's session cookie and sets the **force-login marker** (feat-240):
+  `forge_chat_force_login`, same hardening, 30-day TTL. Every sign-in on
+  that browser within 30 days sends `prompt=login` to `apps/auth` — a real
+  login page renders instead of a silent SSO re-auth — until one COMPLETES:
+  the marker is consumed by the callback's success path only, so a failed or
+  abandoned attempt keeps it armed (review-hardened; web deletes on the login
+  redirect instead, which lets an abandoned attempt burn the marker).
+  `apps/auth`'s SSO session itself stays untouched, and the marker is
+  deliberately 30 days (not web's 10 minutes): the SSO session is rolling, so
+  no finite marker covers the whole silent-re-auth window; lifetime is
+  cost-free under consume-on-success. See feat-240's Decision Record for the
+  dropped lease/revocation design.
 - **No PII in logs or surfaces (KTD7):** the callback logs only fixed non-PII
   reason codes in the `[chat-auth] event=callback_failed reason=<code>`
   plain-string format (Railway logsV2 silences JSON stdout); it never logs the
@@ -264,7 +344,8 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   the `SEEKER_ALLOWED_EMAILS` env allowlist, internal staff dogfooders only.
   No other role/permission checks and no gating of any other surface;
   rule-based gating, non-org entries, or reuse beyond seeker dogfooding
-  requires revocation + a membership gate first. Sign-in itself stays optional
+  requires a membership gate first (revocation deliberately not required —
+  feat-240's Decision Record). Sign-in itself stays optional
   (feat-207) and default-off.
 - No rate/concurrency cap on `/api/seeker` or the auth routes (lands later,
   alongside Cloudflare fronting — see the access-posture notes above). Inbound
@@ -273,9 +354,12 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
 - No chat-side database (the auth session is a cookie, not a DB row; chat
   writes no user record). Since feat-208 the SERVER side does persist: Seeker
   threads/messages live in Mastra's `ai_chat` Postgres schema (30d anon / 180d
-  signed-in retention). What's still absent here is UI restore — conversations
-  in the client reset on refresh; per-conversation URLs + sidebar history are
-  feat-209 (gated on session revocation, see that ticket's preconditions)
+  signed-in retention), and since feat-241 signed-in gate-granted users get
+  sidebar history + replay/resume back from it (see "Server-side conversation
+  history"). Still absent: per-conversation URLs / deep-link restore
+  (feat-209), thread delete/rename (feat-247), and anonymous ephemerality
+  stays deliberate — the anon continuity cookie never becomes a
+  history-reading credential
 - No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`
 
@@ -286,7 +370,9 @@ behind `chatAuthConfigured()`, default off): optional OAuth sign-in/out against
 control. Now present (feat-233, default deny): the per-user seeker dogfood
 gate — `src/lib/seeker-gate.ts` (`SEEKER_ALLOWED_EMAILS` membership), enforced
 at the page and on every `/api/seeker` request. Authentication now feeds that
-one gate; everything else stays ungated.
+one gate; everything else stays ungated. Now present (feat-240): sign-out sets
+the 30-day single-use force-login marker, so the next sign-in shows a real
+login page instead of silently re-authenticating via the SSO session.
 
 ## Key Conventions
 
@@ -363,7 +449,14 @@ Mastra base URL + bearer, configure chat auth against a local `apps/auth`,
 sign in with a session whose email is verified (`emailVerified === true`), and
 put that email in `SEEKER_ALLOWED_EMAILS`. The mechanism is identical locally
 and deployed — no dev-only override exists. Anonymous, unverified email, or an
-email not on the allowlist → stub.
+email not on the allowlist → stub. The one Mastra bearer is
+`AI_CHAT_MASTRA_API_KEY` (feat-250) — set it to a value in Mastra's
+`AI_CHAT_SERVICE_API_KEYS` CSV; it covers sends AND the feat-241 sidebar
+history. Unset, sends get the `config_missing` failure notice and the history
+routes refuse (502 `unavailable`) — a GRANTED user's sidebar shows the history
+error state with Retry until the key is provisioned (per KTD8: 5xx renders
+the error state — a config gap is an outage to a granted user, never silently
+hidden); anonymous/denied users are unaffected.
 
 ## Deployment
 

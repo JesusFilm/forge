@@ -7,6 +7,7 @@ import type {
   WatchDubData,
   SeriesVideoData,
 } from "./videoQueries"
+import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
 
 // ── Consumer types ─────────────────────────────────────────────────
@@ -57,6 +58,8 @@ export type WatchSibling = {
   label: string | null
   title: string | null
   posterUrl: string | null
+  // Mux playback id for the hover-preview, or null (series parent / lean series path).
+  muxPlaybackId: string | null
 }
 
 // A child video of a series, rendered as a card in the episode rail — a
@@ -131,9 +134,7 @@ type RawImage = {
 function pickPosterUrl(
   images: readonly RawImage[] | undefined | null,
 ): string | null {
-  if (!images || images.length === 0) return null
-  const img = images[0]
-  return img.mobileCinematicHigh ?? img.url ?? img.thumbnail ?? null
+  return pickCardImage(images, "poster")
 }
 
 function compareLanguageSlug(
@@ -331,6 +332,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         label: child.label ?? null,
         title: pickFirstLocale(child.locales).title,
         posterUrl: pickPosterUrl(child.images),
+        muxPlaybackId: child.muxPlaybackId ?? null,
       })) ?? []
   const siblings = dedupeByDocumentId(rawSiblings)
 
@@ -409,6 +411,7 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
         description: locale.description,
         imageAlt: locale.imageAlt,
         posterUrl: pickPosterUrl(rel.child.images),
+        muxPlaybackId: rel.child.muxPlaybackId ?? null,
       }
     })
   return dedupeByDocumentId(episodes)

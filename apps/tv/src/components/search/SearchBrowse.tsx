@@ -123,7 +123,6 @@ function RecentRow({
             // Generic action name keeps the user's typed query out of telemetry
             // (same privacy rule as KeyButton's keyboard-key).
             ddActionName="recent-search"
-            focusRing="white"
             style={styles.chip}
           >
             <View style={styles.chipInner}>
@@ -139,7 +138,6 @@ function RecentRow({
           onPress={onClearHistory}
           accessibilityLabel="Clear search history"
           accessibilityHint="Removes every entry in the recent searches list"
-          focusRing="white"
           style={styles.clearChip}
         >
           <View style={styles.chipInner}>
@@ -165,7 +163,6 @@ function CategoryCard({
       onPress={onPress}
       accessibilityLabel={`${category.title} category`}
       accessibilityHint={`Searches for "${category.searchTerm}"`}
-      focusRing="white"
       style={styles.categoryCard}
     >
       <View style={styles.categoryInner}>

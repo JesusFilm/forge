@@ -14,16 +14,17 @@ import {
 } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
+import { isSeriesLabel, isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import {
-  focusTransform,
   THUMB_SHADOW,
-  useFocusAnimation,
+  useFocusVisual,
   useThumbFocusRing,
-} from "../watch/useFocusAnimation"
+} from "../focus/useFocusVisual"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export const HOME_CARD_WIDTH = scale(400)
@@ -71,7 +72,7 @@ export const HomeCard = memo(function HomeCard({
   nextFocusUp,
   nodeRef,
 }: HomeCardProps) {
-  const { focused, setFocused, progress } = useFocusAnimation({
+  const { focused, setFocused, progress, transform } = useFocusVisual("thumb", {
     nativeDriver: IS_ANDROID,
   })
   // Own this card's host node so onFocus can report it upward, while still
@@ -95,15 +96,18 @@ export const HomeCard = memo(function HomeCard({
     label: card.rawLabel,
     childCount: card.childCount,
   })
+  // Animated hover-preview, once focus dwells. Gate on the LABEL not childCount:
+  // a feature film WITH episodes (JESUS, 61 eps) is playable and previews; only
+  // COLLECTION/SERIES-labeled cards are excluded (they carry a null id anyway).
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: !isSeriesLabel(card.rawLabel),
+    playbackId: card.muxPlaybackId,
+  })
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
-  const liftStyle = useMemo(
-    () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
-    }),
-    [progress],
-  )
+  const liftStyle = useMemo(() => ({ transform }), [transform])
   const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
     progress,
     HOME_CARD_WIDTH,
@@ -157,6 +161,9 @@ export const HomeCard = memo(function HomeCard({
                 // skipped, so focus can still traverse this rail.
                 <View style={[StyleSheet.absoluteFill, styles.thumbFallback]} />
               )}
+
+              {/* Above the poster, below the chip + focus ring (KTD6 z-order). */}
+              <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
 
               {/* Hairline edge (design: 1px white .07). Dropped on Android —
                   one fewer view per card to redraw during a scroll. */}
@@ -214,7 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: WATCH_THEME.scrim(1),
   },
   thumbFallback: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: WATCH_THEME.cardFallback,
   },
   thumbEdge: {
     ...StyleSheet.absoluteFillObject,

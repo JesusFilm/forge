@@ -48,6 +48,7 @@ export type DownloadModalProps = {
   languageSlug?: string | null
   variantId: string
   videoSlug: string
+  accountGateEnabled?: boolean
   authRequiredLoginUrl?: string | null
   onClose: () => void
 }
@@ -114,6 +115,7 @@ export function DownloadModal({
   languageSlug,
   variantId,
   videoSlug,
+  accountGateEnabled = false,
   authRequiredLoginUrl = null,
   onClose,
 }: DownloadModalProps) {
@@ -191,7 +193,7 @@ export function DownloadModal({
       : defaultTier
   const selected = tiers.find((t) => t.tier === effectiveTier) ?? null
   const effectiveAuthLoginUrl = authRequiredLoginUrl ?? localAuthLoginUrl
-  const authRequired = effectiveAuthLoginUrl != null
+  const authRequired = accountGateEnabled && effectiveAuthLoginUrl != null
   const canDownload = selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
@@ -343,20 +345,22 @@ export function DownloadModal({
     downloadInFlight.current = true
     setAuthChecking(true)
 
-    const session = await resolveDownloadSessionAccess()
-    if (requestVersionRef.current !== requestVersion) return
-    if (!session.ok && session.reason === "session-unavailable") {
-      downloadInFlight.current = false
-      setAuthChecking(false)
-      setError(t("errorSessionUnavailable"))
-      return
-    }
-    if (!session.ok) {
-      downloadInFlight.current = false
-      setAuthChecking(false)
-      setError(null)
-      setLocalAuthLoginUrl(session.loginUrl)
-      return
+    if (accountGateEnabled) {
+      const session = await resolveDownloadSessionAccess()
+      if (requestVersionRef.current !== requestVersion) return
+      if (!session.ok && session.reason === "session-unavailable") {
+        downloadInFlight.current = false
+        setAuthChecking(false)
+        setError(t("errorSessionUnavailable"))
+        return
+      }
+      if (!session.ok) {
+        downloadInFlight.current = false
+        setAuthChecking(false)
+        setError(null)
+        setLocalAuthLoginUrl(session.loginUrl)
+        return
+      }
     }
     setAuthChecking(false)
 
@@ -482,38 +486,39 @@ export function DownloadModal({
 
             <div
               data-testid="watch-download-modal-auth-required"
-              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-5"
+              className="flex flex-col gap-4"
             >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  variant="pill"
+                  onClick={() =>
+                    redirectToAuth(effectiveAuthLoginUrl, {
+                      reopenDownload: true,
+                    })
+                  }
+                  aria-label={t("signInToDownload")}
+                  data-testid="watch-download-modal-sign-in"
+                  className="w-full px-6 py-4 text-xs sm:w-auto sm:px-7 sm:text-sm"
+                >
+                  <LogIn size={16} aria-hidden />
+                  <span>{t("signInToDownload")}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleOpenChange(false)}
+                  data-testid="watch-download-modal-keep-watching"
+                  className="h-auto w-full cursor-pointer rounded-full border border-transparent px-7 py-4 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:border-white/30 hover:bg-transparent hover:text-stone-100 focus-visible:border-white/50 sm:w-auto"
+                >
+                  {t("keepWatching")}
+                </Button>
+              </div>
+
               <h3 className="text-lg font-semibold text-stone-50">
                 {t("authRequiredTitle")}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-stone-300">
+              <p className="text-sm leading-6 text-stone-400">
                 {t("authRequiredBody")}
               </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-5 pt-2">
-              <Button
-                variant="ghost"
-                onClick={() => handleOpenChange(false)}
-                className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
-              >
-                {t("close")}
-              </Button>
-              <Button
-                variant="pill"
-                onClick={() =>
-                  redirectToAuth(effectiveAuthLoginUrl, {
-                    reopenDownload: true,
-                  })
-                }
-                aria-label={t("signInToDownload")}
-                data-testid="watch-download-modal-sign-in"
-                className="px-7 py-4 text-sm"
-              >
-                <LogIn size={16} />
-                <span>{t("signInToDownload")}</span>
-              </Button>
             </div>
           </div>
         </DialogContent>

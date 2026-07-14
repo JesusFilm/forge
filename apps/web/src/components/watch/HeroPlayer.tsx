@@ -36,6 +36,7 @@ import {
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { languageCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import {
@@ -193,6 +194,8 @@ function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
 // window. The poster is already the intentional LCP surface, and user intent
 // still activates the player synchronously through the click/pointer handlers.
 const IDLE_PREVIEW_FALLBACK_DELAY_MS = 8000
+const MOBILE_VISIBLE_PREVIEW_DELAY_MS = 700
+const MOBILE_PREVIEW_MAX_WIDTH_PX = 767
 const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
 
 type IdleWindow = Window & {
@@ -212,6 +215,10 @@ function isHeroNearViewport(wrapper: HTMLElement, windowRef: Window): boolean {
   )
 }
 
+function shouldUseFastMobilePreview(windowRef: Window): boolean {
+  return windowRef.innerWidth <= MOBILE_PREVIEW_MAX_WIDTH_PX
+}
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
@@ -227,7 +234,7 @@ function isAutoplayBlockedError(err: unknown): boolean {
 }
 
 // Minimum number of playable language variants before the language-switch
-// globe button appears. With only one variant there's nothing to switch to.
+// audio button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
 export function HeroPlayer({
@@ -237,6 +244,8 @@ export function HeroPlayer({
   onLanguageClick,
   languageSlug,
   playableLanguageCount,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode,
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
@@ -250,6 +259,8 @@ export function HeroPlayer({
   onLanguageClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
@@ -361,6 +372,7 @@ export function HeroPlayer({
   }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [playerActivated, setPlayerActivated] = useState(
@@ -384,6 +396,7 @@ export function HeroPlayer({
 
   const handleControlsVisibilityChange = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
+      setControlsVisible(detail.visible)
       publishChromeVisibility(detail)
     },
     [publishChromeVisibility],
@@ -674,7 +687,7 @@ export function HeroPlayer({
       setPlayerActivated(true)
     }
 
-    const scheduleIdleActivation = () => {
+    const scheduleConservativeActivation = () => {
       if (cancelled || idleHandle != null || timeoutHandle != null) return
       timeoutHandle = window.setTimeout(() => {
         timeoutHandle = null
@@ -689,21 +702,38 @@ export function HeroPlayer({
       }, IDLE_PREVIEW_FALLBACK_DELAY_MS)
     }
 
-    const scheduleAfterLoad = () => {
+    const scheduleFastMobileActivation = () => {
+      if (cancelled || idleHandle != null || timeoutHandle != null) return
+      timeoutHandle = window.setTimeout(() => {
+        timeoutHandle = null
+        tryActivatePreview()
+      }, MOBILE_VISIBLE_PREVIEW_DELAY_MS)
+    }
+
+    const handleLoad = () => {
+      loadListenerInstalled = false
+      scheduleActivation()
+    }
+
+    const scheduleActivation = () => {
       if (document.readyState === "complete") {
-        scheduleIdleActivation()
+        if (shouldUseFastMobilePreview(window)) {
+          scheduleFastMobileActivation()
+          return
+        }
+        scheduleConservativeActivation()
         return
       }
+      if (loadListenerInstalled) return
       loadListenerInstalled = true
-      window.addEventListener("load", scheduleIdleActivation, { once: true })
+      window.addEventListener("load", handleLoad, { once: true })
     }
 
     const retryIfEligible = () => {
-      if (document.readyState !== "complete") return
-      scheduleIdleActivation()
+      scheduleActivation()
     }
 
-    scheduleAfterLoad()
+    scheduleActivation()
     document.addEventListener("visibilitychange", retryIfEligible)
     window.addEventListener("scroll", retryIfEligible, { passive: true })
     window.addEventListener("resize", retryIfEligible, { passive: true })
@@ -712,7 +742,7 @@ export function HeroPlayer({
       cancelled = true
       clearScheduledWork()
       if (loadListenerInstalled) {
-        window.removeEventListener("load", scheduleIdleActivation)
+        window.removeEventListener("load", handleLoad)
       }
       document.removeEventListener("visibilitychange", retryIfEligible)
       window.removeEventListener("scroll", retryIfEligible)
@@ -1270,7 +1300,7 @@ export function HeroPlayer({
       ? "watch-hero-cover-black-bridge"
       : "watch-hero-cover-to-black"
 
-  // Hide the language-switch globe while the player is in fullscreen so it
+  // Hide the floating language switch while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
   // exits fullscreen. Listen for both the standard event and the webkit
   // prefix so Safari is covered.
@@ -1279,7 +1309,7 @@ export function HeroPlayer({
   // initial fullscreenchange event.
   const isFullscreen = useIsFullscreen()
 
-  // Both globe surfaces (top-right floating + in-chrome) share this gate:
+  // Both audio-language surfaces (top-right floating + in-chrome) share this gate:
   // a wired callback AND enough variants to warrant a switcher. The
   // top-right surface adds `!isFullscreen` because it overlaps the
   // browser's fullscreen chrome; the in-chrome surface intentionally
@@ -1287,8 +1317,15 @@ export function HeroPlayer({
   const hasLanguageSwitcher =
     typeof onLanguageClick === "function" &&
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+  const hasSubtitleSwitcher =
+    typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
+  const languageCode = languageCodeFor({
+    bcp47: variant.language?.bcp47,
+    iso3: variant.language?.iso3,
+    slug: variant.language?.slug ?? languageSlug,
+  })
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1361,19 +1398,24 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            languageCode: showTopLanguageSwitch ? languageCode : null,
           },
         },
       ),
     )
+  }, [languageCode, onLanguageClick, showTopLanguageSwitch])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     return () => {
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null } },
+          { detail: { visible: false, onClick: null, languageCode: null } },
         ),
       )
     }
-  }, [onLanguageClick, showTopLanguageSwitch])
+  }, [])
 
   return (
     <>
@@ -1604,9 +1646,12 @@ export function HeroPlayer({
             overlayAnchor={overlayAnchor}
             playbackId={playbackId}
             onLanguageClick={onLanguageClick}
-            // In-chrome globe intentionally stays visible in fullscreen
+            languageCode={languageCode}
+            subtitleLanguageCode={subtitleLanguageCode}
+            // In-chrome audio control intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
+            showSubtitleButton={hasSubtitleSwitcher}
             onVisibilityChange={handleControlsVisibilityChange}
             onWatchNextInteraction={cancelWatchNextAutoAdvance}
           />
@@ -1615,6 +1660,7 @@ export function HeroPlayer({
           playerRef={playerRef}
           wrapperRef={wrapperRef}
           player={player}
+          controlsVisible={controlsVisible}
         />
         {showWatchNextButton ? (
           <button

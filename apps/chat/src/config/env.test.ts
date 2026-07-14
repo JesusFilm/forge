@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const SEEKER_KEYS = [
   "SEEKER_CHAT_ENABLED",
   "SEEKER_MASTRA_BASE_URL",
-  "SEEKER_MASTRA_API_KEY",
   "SEEKER_MASTRA_ALLOWED_HOSTS",
   "SEEKER_TIMEOUT_MS",
+  "AI_CHAT_MASTRA_API_KEY",
 ] as const
 
 const AUTH_KEYS = [
@@ -74,15 +74,15 @@ describe("env parsing", () => {
     await expect(importEnv()).resolves.toBeDefined()
     const { env } = await importEnv()
     expect(env.SEEKER_MASTRA_BASE_URL).toBeUndefined()
-    expect(env.SEEKER_MASTRA_API_KEY).toBeUndefined()
+    expect(env.AI_CHAT_MASTRA_API_KEY).toBeUndefined()
   })
 
   it("normalizes empty-string vars to undefined", async () => {
     process.env.SEEKER_MASTRA_BASE_URL = ""
-    process.env.SEEKER_MASTRA_API_KEY = ""
+    process.env.AI_CHAT_MASTRA_API_KEY = ""
     const { env } = await importEnv()
     expect(env.SEEKER_MASTRA_BASE_URL).toBeUndefined()
-    expect(env.SEEKER_MASTRA_API_KEY).toBeUndefined()
+    expect(env.AI_CHAT_MASTRA_API_KEY).toBeUndefined()
   })
 })
 
