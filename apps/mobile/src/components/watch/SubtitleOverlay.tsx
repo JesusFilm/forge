@@ -10,6 +10,7 @@ import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { datadogLog } from "../../lib/datadog"
 import { parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
@@ -57,6 +58,17 @@ function findActiveCue(cues: VttCue[], t: number): VttCue | undefined {
     if (t < cues[i].end) return cues[i]
   }
   return undefined
+}
+
+// Classify a remote VTT fetch rejection into a stable, low-cardinality reason.
+// AbortError is the 8s deadline; `vtt_http_<status>` is the non-2xx guard throw.
+export function classifyVttFetchError(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") return "timeout"
+    const status = error.message.match(/^vtt_http_(\d+)$/)?.[1]
+    if (status) return `http_${status}`
+  }
+  return "network_error"
 }
 
 export function SubtitleOverlay({
@@ -124,16 +136,23 @@ export function SubtitleOverlay({
       if (!validateLocalMediaUrl(vttSrc, OFFLINE_ROOT)) {
         setCues([])
         setActiveText("")
+        datadogLog.warn("subtitle.vtt_failed", { reason: "unsafe_url" })
         return
       }
       readAsStringAsync(vttSrc)
         .then((text) => {
-          if (!cancelled) {
-            setCues([...parseVtt(text)].sort((a, b) => a.start - b.start))
+          if (cancelled) return
+          const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
+          setCues(parsed)
+          if (parsed.length === 0) {
+            datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
           }
         })
         .catch(() => {
-          if (!cancelled) setCues([])
+          if (!cancelled) {
+            setCues([])
+            datadogLog.warn("subtitle.vtt_failed", { reason: "read_error" })
+          }
         })
       return () => {
         cancelled = true
@@ -146,6 +165,7 @@ export function SubtitleOverlay({
     if (!validateActionUrl(vttSrc)) {
       setCues([])
       setActiveText("")
+      datadogLog.warn("subtitle.vtt_failed", { reason: "unsafe_url" })
       return
     }
     // AbortController so switching language (or unmounting) actually cancels
@@ -161,12 +181,20 @@ export function SubtitleOverlay({
         return r.text()
       })
       .then((text) => {
-        if (!cancelled) {
-          setCues([...parseVtt(text)].sort((a, b) => a.start - b.start))
+        if (cancelled) return
+        const parsed = [...parseVtt(text)].sort((a, b) => a.start - b.start)
+        setCues(parsed)
+        if (parsed.length === 0) {
+          datadogLog.warn("subtitle.vtt_failed", { reason: "parse_empty" })
         }
       })
-      .catch(() => {
-        if (!cancelled) setCues([])
+      .catch((err) => {
+        if (!cancelled) {
+          setCues([])
+          datadogLog.warn("subtitle.vtt_failed", {
+            reason: classifyVttFetchError(err),
+          })
+        }
       })
       .finally(() => clearTimeout(timeout))
     return () => {
