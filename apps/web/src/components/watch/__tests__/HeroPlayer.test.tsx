@@ -606,6 +606,7 @@ describe("HeroPlayer — initial mount", () => {
       "hero-player-quality-tag",
       "hero-player-language-tag",
       "hero-player-captions-tag",
+      "hero-player-subtitle-language-count",
     ])
 
     const languageTag = container.querySelector(
@@ -639,6 +640,11 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.textContent,
     ).toBe("CC")
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-subtitle-language-count"]',
+      )?.textContent,
+    ).toBe("1 language")
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,

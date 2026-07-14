@@ -19,7 +19,7 @@ import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
-import { Languages, Share2 } from "lucide-react"
+import { Share2, Volume2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -1418,6 +1418,15 @@ export function HeroPlayer({
     languageCount > 0
       ? tLanguagePicker("languageCount", { count: languageCount })
       : null
+  const subtitleLanguageCount = new Set(
+    video.subtitles
+      .filter(({ vttSrc, language }) => vttSrc.length > 0 && language.slug)
+      .map(({ language }) => language.slug),
+  ).size
+  const subtitleLanguageCountLabel =
+    subtitleLanguageCount > 0
+      ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
+      : null
   const releaseMetadata = [
     releaseYearFrom(video.publishedAt),
     formatHeroRuntime(variant.duration, locale),
@@ -1900,7 +1909,7 @@ export function HeroPlayer({
                             onClick={onLanguageClick}
                             className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
-                            <Languages
+                            <Volume2
                               className="h-3.5 w-3.5 shrink-0"
                               aria-hidden
                             />
@@ -1911,7 +1920,7 @@ export function HeroPlayer({
                             data-testid="hero-player-language-tag"
                             className={`${HERO_LANGUAGE_TAG_CLASS} uppercase`}
                           >
-                            <Languages
+                            <Volume2
                               className="h-3.5 w-3.5 shrink-0"
                               aria-hidden
                             />
@@ -1925,6 +1934,14 @@ export function HeroPlayer({
                           className={`${HERO_CAPTIONS_TAG_CLASS} uppercase`}
                         >
                           CC
+                        </span>
+                      ) : null}
+                      {subtitleLanguageCountLabel != null ? (
+                        <span
+                          data-testid="hero-player-subtitle-language-count"
+                          className="px-1 text-xs font-normal text-white/85 md:text-sm"
+                        >
+                          {subtitleLanguageCountLabel}
                         </span>
                       ) : null}
                     </div>
