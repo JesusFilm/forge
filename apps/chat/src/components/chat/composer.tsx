@@ -1,12 +1,16 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useId, useRef } from "react"
 
 type ComposerProps = {
   draft: string
   pending: boolean
   placeholder: string
   seekerEnabled?: boolean
+  /** feat-241 (R22): non-null while the active conversation's transcript is
+   * not loaded — only the SEND action is blocked (the textarea stays editable
+   * so the draft survives), with a visible per-state reason. */
+  sendBlockedReason?: "loading" | "unavailable" | null
   onChange: (value: string) => void
   onSend: (text: string) => void
 }
@@ -18,10 +22,12 @@ export function Composer({
   pending,
   placeholder,
   seekerEnabled = false,
+  sendBlockedReason = null,
   onChange,
   onSend,
 }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const blockedHintId = useId()
 
   // Auto-grow the textarea up to a ceiling, like the design kit's Composer.
   useEffect(() => {
@@ -35,12 +41,14 @@ export function Composer({
     if (!pending) textareaRef.current?.focus()
   }, [pending])
 
-  const canSend = draft.trim().length > 0 && !pending
+  const sendBlocked = sendBlockedReason !== null
+  const canSend = draft.trim().length > 0 && !pending && !sendBlocked
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
+        if (sendBlocked) return
         onSend(draft)
       }}
       className="rounded-[20px] border border-linen/10 bg-nightglass/90 px-5 pt-4 pb-3 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.65)] backdrop-blur-xl transition-colors duration-300 focus-within:border-linen/20"
@@ -49,6 +57,7 @@ export function Composer({
         <textarea
           ref={textareaRef}
           aria-label="Message"
+          aria-describedby={sendBlocked ? blockedHintId : undefined}
           placeholder={placeholder}
           rows={1}
           value={draft}
@@ -61,6 +70,7 @@ export function Composer({
               !event.nativeEvent.isComposing
             ) {
               event.preventDefault()
+              if (sendBlocked) return
               onSend(draft)
             }
           }}
@@ -81,11 +91,25 @@ export function Composer({
       </div>
       <div className="mt-2.5 flex items-center justify-between border-t border-linen/5 pt-2.5 text-xs text-ash">
         <span>Enter to send · Shift + Enter for a new line</span>
-        <span>
-          {seekerEnabled
-            ? "Seeker — grounded answers"
-            : "Stub — no agent connected"}
-        </span>
+        {sendBlocked ? (
+          // Visually distinct from the reply-pending disabled state (Vesper,
+          // not Ash) and referenced from the textarea via aria-describedby.
+          <span
+            id={blockedHintId}
+            data-send-blocked={sendBlockedReason}
+            className="text-vesper"
+          >
+            {sendBlockedReason === "loading"
+              ? "Loading conversation…"
+              : "This conversation is unavailable"}
+          </span>
+        ) : (
+          <span>
+            {seekerEnabled
+              ? "Seeker — grounded answers"
+              : "Stub — no agent connected"}
+          </span>
+        )}
       </div>
     </form>
   )

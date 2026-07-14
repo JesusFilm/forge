@@ -12,28 +12,34 @@ export type CardImageSource = {
 
 export type CardImageIntent = "poster" | "card"
 
-// Best image for an intent: "poster" (watch/series) takes the FIRST image only
-// — high → url → thumbnail (later images are alternates, not fallbacks); "card"
-// (home rails) scans ALL images — high → low → videoStill → url → thumbnail.
+// Cloudflare Images "flexible variant" fields (mobileCinematic*/thumbnail/
+// videoStill) carry a /f=… transform and load; the bare `url` is the variant-
+// less delivery base and 400s — so it ranks LAST, never above a real image.
+const FIELD_ORDER: Record<CardImageIntent, readonly (keyof CardImageSource)[]> =
+  {
+    poster: ["mobileCinematicHigh", "mobileCinematicLow", "thumbnail", "url"],
+    card: [
+      "mobileCinematicHigh",
+      "mobileCinematicLow",
+      "videoStill",
+      "thumbnail",
+      "url",
+    ],
+  }
+
+// Field-major, image-minor: for each field in priority order, scan ALL images and
+// return the first hit. images[0] still wins when it carries the field, but a
+// videoStill-first entry falls through to a sibling's cinematic art, not its url.
 export function pickCardImage(
   images: readonly CardImageSource[] | null | undefined,
   intent: CardImageIntent,
 ): string | null {
   if (!images || images.length === 0) return null
-
-  if (intent === "poster") {
-    const img = images[0]
-    return img.mobileCinematicHigh ?? img.url ?? img.thumbnail ?? null
-  }
-
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
+  for (const field of FIELD_ORDER[intent]) {
+    for (const image of images) {
+      const candidate = image[field]
+      if (candidate) return candidate
+    }
   }
   return null
 }

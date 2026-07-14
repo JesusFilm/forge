@@ -18,6 +18,7 @@ type AccountUser = {
 
 type AccountState =
   | { status: "loading" }
+  | { status: "hidden" }
   | { status: "signed-out" }
   | { status: "signed-in"; user?: AccountUser }
 
@@ -49,8 +50,10 @@ export function AccountControl() {
       headers: { accept: "application/json" },
     })
       .then(async (response) => {
-        if (!response.ok) return { authenticated: false }
+        if (!response.ok)
+          return { accountGateEnabled: true, authenticated: false }
         return (await response.json()) as {
+          accountGateEnabled?: boolean
           authenticated?: boolean
           user?: AccountUser
         }
@@ -65,7 +68,9 @@ export function AccountControl() {
         setState(
           session.authenticated
             ? { status: "signed-in", user: session.user }
-            : { status: "signed-out" },
+            : session.accountGateEnabled
+              ? { status: "signed-out" }
+              : { status: "hidden" },
         )
       })
       .catch(() => {
@@ -135,6 +140,8 @@ export function AccountControl() {
     : state.status === "signed-in"
       ? "Account menu"
       : action.label
+
+  if (state.status === "hidden") return null
 
   return (
     <div ref={rootRef} className="relative inline-flex">

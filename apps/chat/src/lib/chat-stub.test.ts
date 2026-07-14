@@ -341,3 +341,62 @@ describe("streamReply — seeker path (flag on)", () => {
     })
   })
 })
+
+describe("streamReply — allowStubFallback (feat-241, KTD10)", () => {
+  it("fails visibly on gate_denied when the stub fallback is withheld (persisted conversation)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse([{ event: "error", data: { reason: "gate_denied" } }]),
+      )
+    const result = await streamReply({
+      text: "hi",
+      conversationId: "c1",
+      seekerEnabled: true,
+      allowStubFallback: false,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(result).toEqual({
+      ok: false,
+      reason: "gate_denied",
+      partialText: "",
+    })
+  })
+
+  it("keeps the stub downgrade when allowStubFallback is omitted (never-persisted default)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse([{ event: "error", data: { reason: "gate_denied" } }]),
+      )
+    const result = await streamReply({
+      text: "hi",
+      conversationId: "c1",
+      seekerEnabled: true,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(result).toEqual({
+      ok: true,
+      text: buildStubReply("hi"),
+      sources: [],
+      grounded: false,
+      engine: "stub",
+    })
+  })
+
+  it("withholding the fallback changes gate_denied ONLY — other failures are unaffected", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse([{ event: "error", data: { reason: "timeout" } }]),
+      )
+    const result = await streamReply({
+      text: "hi",
+      conversationId: "c1",
+      seekerEnabled: true,
+      allowStubFallback: false,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(result).toEqual({ ok: false, reason: "timeout", partialText: "" })
+  })
+})

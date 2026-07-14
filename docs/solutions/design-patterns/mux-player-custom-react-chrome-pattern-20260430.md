@@ -1,7 +1,7 @@
 ---
 title: Mux Player + custom React-rendered chrome (HeroPlayerControls pattern)
 date: 2026-04-30
-last_updated: 2026-05-04
+last_updated: 2026-07-14
 category: docs/solutions/design-patterns
 module: apps/web, packages/video-player
 problem_type: design_pattern
@@ -332,7 +332,9 @@ Pointermove on the chrome bar bubbles through chrome → anchor → reveal handl
 
 #### 5e. Frosted-glass body slides over the pinned hero
 
-The body section sibling-rendered after the hero already had `bg-stone-800` overridden with `rgb(var(--color-section-default) / 0.65)` plus `backdrop-blur-2xl`. With sticky hero behind it in paint order and `backdrop-filter: blur(40px)` on the body, the browser samples the playing video texture through the translucent body — the dark frosted-glass effect "for free." No JavaScript or canvas compositing is required.
+The body section sibling-rendered after the hero already had `bg-stone-800` overridden with `rgb(var(--color-section-default) / 0.35)` plus `backdrop-blur-2xl`. With sticky hero behind it in paint order and `backdrop-filter: blur(40px)` on the body, reliable browser compositors sample the playing video texture through the translucent body — the dark frosted-glass effect without JavaScript or canvas compositing.
+
+**Firefox rendering caveat.** Firefox can retain the expected `backdrop-filter` computed style while dropping the painted blur as this sheet scrolls over the sticky video. Keep the structural pattern, but scope a Firefox-only near-opaque, neutral-dark fallback to the body backdrop hook; reliable browsers should retain the glass treatment. See [`firefox-backdrop-filter-sticky-hero-scroll-fallback.md`](../ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md) for the reproduction evidence, Mozilla bug reports, and current CSS workaround.
 
 **Stacking-context caveat.** The pattern depends on the sticky hero and the body section sharing a stacking context rooted at or near the page root. Any ancestor with `transform`, `filter`, `backdrop-filter`, `will-change`, `opacity < 1`, or `isolation: isolate` between page root and the hero will silently create a new stacking context and can flip paint order — breaking the glass effect or trapping the chrome bar under the body. Cross-reference [`docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md`](../best-practices/nextjs-search-overlay-ui-patterns-20260415.md) §2 for the full list of stacking-context-creating CSS properties; portaling out of trapping subtrees is the same escape hatch used by the search overlay.
 
@@ -713,3 +715,4 @@ The `HeroPlayerControls` test suite lives in `apps/web/src/components/watch/__te
 - [`docs/solutions/logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md`](../logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md) — sibling fix from the same PR (#878). The `aspect-video` + `useLayoutEffect` + `onCanPlay`+`onError` combination in section 5a/5f was added as part of fixing the wrong-language-variant bug, because the original watch page used `useEffect` for the ResizeObserver and had no loading-state coverage at all. Read together for the full context of PR #878.
 - PR [#878](https://github.com/JesusFilm/forge/pull/878) — `feat(web): fix English variant selection + redesign watch share modal + harden hero loading`. Source of the 2026-05-04 updates to sections 5a and 5f.
 - [`docs/solutions/design-patterns/watch-language-player-chrome-layout-20260609.md`](./watch-language-player-chrome-layout-20260609.md) — current watch-page UX refinements layered on top of this pattern: language-picker icons/tooltips/I/O switch, 0.3 player/header opacity states, pointer lockout, and measured muted-preview episode-rail overlap. Read before changing the files touched in that branch.
+- [`docs/solutions/ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md`](../ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md) — Firefox-specific rendering failure and neutral dark fallback for the frosted body sheet in section 5e.

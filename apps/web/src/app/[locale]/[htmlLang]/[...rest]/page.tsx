@@ -5,6 +5,7 @@ import { setRequestLocale } from "next-intl/server"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
@@ -585,6 +586,7 @@ async function renderEpisode(shape: {
         questionPanelEnabled={questionPanelEnabled}
         initialTranscript={initialTranscript}
       />
+      <WatchHomeFooter />
     </>
   )
 }
@@ -674,6 +676,7 @@ async function renderVideo(shape: {
           questionPanelEnabled={questionPanelEnabled}
           initialTranscript={initialTranscript}
         />
+        <WatchHomeFooter />
       </>
     )
   }

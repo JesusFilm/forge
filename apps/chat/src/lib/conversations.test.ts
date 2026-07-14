@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   createConversation,
   deriveTitle,
+  fallbackTitle,
   NEW_CONVERSATION_TITLE,
 } from "./conversations"
 
@@ -52,5 +53,31 @@ describe("deriveTitle", () => {
     const result = deriveTitle(text)
     expect(result).toBe(`${"a".repeat(38)}…`)
     expect(result).not.toContain(" …")
+  })
+})
+
+describe("fallbackTitle (feat-241, R11/AE6)", () => {
+  it("derives a date label from the last-activity timestamp", () => {
+    const title = fallbackTitle("2026-07-10T08:00:00.000Z")
+    expect(title).toMatch(/^Conversation — /)
+    // The label carries a real date fragment (month rendered per locale).
+    expect(title.length).toBeGreaterThan("Conversation — ".length)
+  })
+
+  it("yields distinguishable labels for threads with different activity dates", () => {
+    const a = fallbackTitle("2026-07-10T12:00:00.000Z")
+    const b = fallbackTitle("2026-06-02T12:00:00.000Z")
+    expect(a).not.toBe(b)
+  })
+
+  it("is deterministic for the same input", () => {
+    expect(fallbackTitle("2026-07-10T08:00:00.000Z")).toBe(
+      fallbackTitle("2026-07-10T08:00:00.000Z"),
+    )
+  })
+
+  it("degrades to the bare noun for empty or unparseable input", () => {
+    expect(fallbackTitle("")).toBe("Conversation")
+    expect(fallbackTitle("not-a-date")).toBe("Conversation")
   })
 })

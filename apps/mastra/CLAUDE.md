@@ -94,7 +94,10 @@ Origin documents:
 - Keep service-bearer auth receiver-side. Callers present a bearer; this app
   validates explicit `/forge-*` service routes against
   `MASTRA_SERVICE_API_KEYS`; Studio's built-in `/api/workflows` routes must
-  remain reachable by the Mastra runtime.
+  remain reachable by the Mastra runtime. Exception: the ai-chat lane —
+  `/forge-ai-chat-history-*` (feat-241) and `/forge-seeker` (feat-250)
+  validate only the dedicated `AI_CHAT_SERVICE_API_KEYS` CSV, so pool keys
+  never reach conversation data.
 - Keep health checks unauthenticated and non-sensitive.
 
 ## Development
@@ -131,6 +134,7 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `MASTRA_SERVICE_API_KEYS`                    | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `AI_CHAT_SERVICE_API_KEYS`                   | Dedicated CSV bearer allowlist for the ai-chat lane: the history read routes (`/forge-ai-chat-history-*`, feat-241) and `/forge-seeker` sends (feat-250 — the only bearer that route accepts). Deliberately NOT the shared pool above, so embedding/eval pool keys never reach conversation data. Optional, **no default** — unset = empty allowlist = the lane routes fail closed (401) until provisioned. Boot asserts it shares no key value with `MASTRA_SERVICE_API_KEYS` (`assertAiChatServiceKeysDisjoint`). Holder: the chat service (`AI_CHAT_MASTRA_API_KEY`). Deploy receiver-first: set this CSV before chat's key.                |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `AI_GATEWAY_SEEKER_ENABLED`                  | Default-off gate that prepends the JesusFilm gateway chat model to the seeker agent's fallback chain (feat-237). Optional, **no default** — the seeker stays on the free-Gemma chain unless this is exactly `"true"` AND `AI_GATEWAY_CHAT_API_KEY` is set (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot. Coupling: `AI_GATEWAY_CHAT_MODEL` and `AI_GATEWAY_CHAT_BASE_URL` are SHARED with the experience surface — changing either while this flag is `"true"` swaps the seeker's model (or retargets its gateway endpoint) too, so re-run the feat-237 smoke checklist before deploying such a change. |
@@ -521,6 +525,50 @@ ai_chat.mastra_threads WHERE "resourceId" = $1;` (plus
 - Plan + verified package-behavior citations:
   `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md`.
 
+### ai-chat history read surface (feat-241)
+
+`POST /forge-ai-chat-history-list` + `POST /forge-ai-chat-history-replay`
+(handlers: `src/mastra/ai-chat-history-route.ts`) — the bearer-gated read path
+for persisted seeker conversations, consumed by chat's `/api/history/*`
+proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.md`.
+
+- **Gate ladder (KTD2):** `SEEKER_ROUTE_ENABLED` flag (reused — history is
+  meaningless with sends off; flipping it off during a send-path incident also
+  darkens reads) → the DEDICATED `AI_CHAT_SERVICE_API_KEYS` lane bearer (never
+  the shared pool; see the env table) → body guard → `user:`-prefix resource
+  refusal (R2: `anon:*` and the dogfood fallback are never listable or
+  replayable; prefix-check only, never split on `:`).
+- **Listing:** explicit `updatedAt DESC` ordering (the dist default is
+  `createdAt`), server-side clamps (`perPage` default 20, max 50), rows
+  projected field-by-field to `{ id, title, updatedAt }` — `""` is the
+  untitled sentinel the client turns into a date fallback label.
+- **Replay (KTD4/KTD5):** `authorizeAiChatThreadAccess` → explicit
+  `getThreadById` existence check (the gate's missing-thread branch is a
+  write-path concept and would admit it) → `recall({ threadId, resourceId,
+perPage: 200 })` — `resourceId` ALWAYS passed (omitting it disables the
+  store's own ownership throw), `perPage` explicit (dist default 10). Wire
+  projection is `{ id, role, text, createdAt }`, user/assistant text parts
+  only, capped at 8,192 UTF-16 units per message (≤3 UTF-8 bytes each —
+  the chat proxy's 8 MiB thread byte-cap covers the worst case) — tool internals and provider metadata are
+  unrepresentable. The gate's `thread_limit` maps to `thread_not_found` on
+  this read wire; a store failure is a generic `store_failed` (fail closed —
+  never `thread_not_found`). Transcript order relies on `recall`'s
+  chronological return order — a pinned dist fact, CI-guarded by the
+  real-memory smoke's user-before-assistant assertion; re-verify on
+  `@mastra/*` bumps.
+- **Budget:** `TIME_BUDGET_MS.historyRead` (8s) via the `settleWithinBudget`
+  pattern — millisecond-class store reads never inherit the 90s turn envelope,
+  and the cap sits strictly below the chat proxy's 10s read ceiling.
+- **Titles (KTD12):** `buildAiChatMemory` enables top-level
+  `generateTitle: { model: AI_CHAT_TITLE_MODEL }` (free-Gemma model-router
+  string; rides `OPENROUTER_API_KEY`, absent key = benign no-op; NEVER the
+  deprecated `threads.generateTitle` nesting — it throws mid-turn). Signed-in
+  scope: the send route passes a per-call `options: { generateTitle: false }`
+  override for non-`user:` resources. Fire-and-forget after the turn; `""`
+  stays the untitled sentinel and generation retries on the next turn.
+- Logging is enum-only plain-string `[ai-chat-history] event=… reason=…` —
+  never thread ids, titles, transcript text, or exception text (KTD13).
+
 ### Local run
 
 The seeker agent's model routes through OpenRouter, so `OPENROUTER_API_KEY` must
@@ -570,6 +618,11 @@ or `error {reason}` (fixed-vocabulary reason only — no raw text on the wire).
 - **Default-off**: gated on `SEEKER_ROUTE_ENABLED === "true"`, checked FIRST →
   404 when disabled (KTD7). It is **more** locked down than the built-in
   `/api/agents/*` surface, not a replacement for the network boundary.
+- **Bearer (feat-250)**: the dedicated ai-chat lane CSV
+  (`AI_CHAT_SERVICE_API_KEYS`) ONLY — never the shared
+  `MASTRA_SERVICE_API_KEYS` pool — so ONE narrow credential covers the whole
+  ai-chat lane and a leaked pool key never reaches conversation data. Fail
+  closed: an unprovisioned lane CSV 401s every send.
 - **Body**: `{ prompt, threadId }` required; `resourceId` optional + opaque.
   The route ALWAYS supplies a memory `resource` (the caller's `resourceId` else
   the constant `SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"`) because a
@@ -711,6 +764,17 @@ signal **both** AI-generation and Christian content **and** do not read as
 commentary/news/tutorial (a conservative `COMMENTARY_KEYWORDS` exclusion in
 `classifier.ts`, e.g. "should we", "here's my", "tutorial", "went viral"). The
 report's `totals.excludedCommentary` counts posts dropped by that filter.
+
+Mastra schedules this workflow once a day at `00:00 UTC`. The single
+declarative schedule is persisted as
+`wf_instagram-ai-christian-discovery` when the Mastra process boots; scheduled
+runs do not override input, so they use the same defaults listed above. Manual
+Studio runs and `POST /forge-instagram-discovery` remain available. To stop a
+bad automatic run, open **Workflows → Schedules** in Studio, select
+`wf_instagram-ai-christian-discovery` (detail path
+`/workflows/schedules/wf_instagram-ai-christian-discovery`), and choose
+**Pause** before investigating. **Resume** calculates the next regular UTC
+midnight and does not backfill missed runs.
 
 Results are returned in the response and, by default, written to a validated
 JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`

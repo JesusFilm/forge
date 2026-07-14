@@ -155,6 +155,14 @@ flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
 renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
 and Railway envs unless intentionally testing the fallback path.
 
+`forge.watch.downloadAccountGate` is a LaunchDarkly-backed product rollout flag
+for requiring a Web account before Watch downloads. `false` is the product
+default and keeps anonymous downloads available through opaque download IDs;
+`true` restores the account-required modal and route gate. Keep
+`FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false` unless intentionally testing
+the gated path. Do not use this flag as restricted-content authorization; it is
+a UX/product rollout gate with a fail-open fallback.
+
 Watch Bible passage text is resolved by Admin through
 `BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
 YouVersion API directly. If the passage is absent, the watch page falls back to
