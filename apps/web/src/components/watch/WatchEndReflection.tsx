@@ -50,6 +50,9 @@ type NextStepAction = {
   testId: string
 }
 
+const CHAPTER_DURATION_MS = 5_000
+const INACTIVITY_RESUME_MS = 6_000
+
 const PRIMARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] hover:scale-[1.035] hover:bg-brand-red/90 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none"
 
@@ -85,11 +88,16 @@ export function WatchEndReflection({
       ? cleanedPrompts
       : [tStudyQuestions("placeholderQuestion")]
   ).slice(0, 3)
-  const [selectedActionId, setSelectedActionId] = useState<string | null>(null)
+  const [selectedActionId, setSelectedActionId] = useState<string>("ask")
+  const [isGuiding, setIsGuiding] = useState(true)
+  const [interactionVersion, setInteractionVersion] = useState(0)
   const [customQuestion, setCustomQuestion] = useState("")
+  const isAutoCycling = isGuiding
 
   const resetStory = () => {
-    setSelectedActionId(null)
+    setSelectedActionId("ask")
+    setIsGuiding(true)
+    setInteractionVersion(0)
     setCustomQuestion("")
   }
 
@@ -201,6 +209,7 @@ export function WatchEndReflection({
   const selectedAction = actions.find(
     (action) => action.id === selectedActionId,
   )
+  const actionIdSequence = actions.map((action) => action.id).join("|")
 
   useEffect(() => {
     if (!open) return
@@ -219,7 +228,34 @@ export function WatchEndReflection({
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open || !isAutoCycling || actionIdSequence.length === 0) return
+    const actionIds = actionIdSequence.split("|")
+
+    const timeout = window.setTimeout(() => {
+      const currentIndex = actionIds.indexOf(selectedActionId)
+      const nextIndex = Math.max(0, currentIndex + 1) % actionIds.length
+      setSelectedActionId(actionIds[nextIndex]!)
+      setCustomQuestion("")
+    }, CHAPTER_DURATION_MS)
+
+    return () => window.clearTimeout(timeout)
+  }, [actionIdSequence, isAutoCycling, open, selectedActionId])
+
+  useEffect(() => {
+    if (!open || isGuiding || interactionVersion === 0) return
+    const timeout = window.setTimeout(() => {
+      setIsGuiding(true)
+    }, INACTIVITY_RESUME_MS)
+    return () => window.clearTimeout(timeout)
+  }, [interactionVersion, isGuiding, open])
+
   if (!open) return null
+
+  const markInteraction = () => {
+    setIsGuiding(false)
+    setInteractionVersion((current) => current + 1)
+  }
 
   return (
     <div
@@ -228,7 +264,13 @@ export function WatchEndReflection({
       aria-modal="true"
       aria-label={t("bibleChatTitle")}
       data-testid="watch-end-reflection"
+      data-auto-cycling={isAutoCycling ? "true" : "false"}
       tabIndex={-1}
+      onPointerDownCapture={markInteraction}
+      onInputCapture={markInteraction}
+      onFocusCapture={(event) => {
+        if (event.target !== event.currentTarget) markInteraction()
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           resetStory()
@@ -296,6 +338,7 @@ export function WatchEndReflection({
           <ReflectionChat
             actions={actions}
             selectedAction={selectedAction}
+            isGuiding={isAutoCycling}
             customQuestion={customQuestion}
             fieldLabel={tQuestionPanel("fieldLabel")}
             chatInvitation={t("chatInvitation")}
@@ -303,6 +346,7 @@ export function WatchEndReflection({
             nextStepsSupport={t("nextStepsSupport")}
             onQuestionChange={setCustomQuestion}
             onSelect={(actionId) => {
+              markInteraction()
               setSelectedActionId(actionId)
               setCustomQuestion("")
             }}
@@ -328,6 +372,7 @@ export function WatchEndReflection({
 function ReflectionChat({
   actions,
   selectedAction,
+  isGuiding,
   customQuestion,
   fieldLabel,
   chatInvitation,
@@ -338,6 +383,7 @@ function ReflectionChat({
 }: {
   actions: NextStepAction[]
   selectedAction?: NextStepAction
+  isGuiding: boolean
   customQuestion: string
   fieldLabel: string
   chatInvitation: string
@@ -423,10 +469,30 @@ function ReflectionChat({
               >
                 <span
                   className={
-                    "grid size-7 shrink-0 place-items-center transition-[color,transform] group-hover:scale-105 " +
+                    "relative grid size-8 shrink-0 place-items-center transition-[color,transform] group-hover:scale-105 " +
                     (selected ? "text-brand-red" : "text-brand-red/85")
                   }
                 >
+                  {selected && isGuiding ? (
+                    <svg
+                      key={action.id}
+                      aria-hidden
+                      data-testid="watch-end-reflection-auto-progress"
+                      viewBox="0 0 48 48"
+                      className="pointer-events-none absolute inset-0 size-8 -rotate-90 overflow-visible text-brand-red animate-watch-story-progress motion-reduce:hidden"
+                    >
+                      <circle
+                        cx="24"
+                        cy="24"
+                        r="21"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeDasharray="132"
+                      />
+                    </svg>
+                  ) : null}
                   {action.icon}
                 </span>
                 <span className="min-w-0 flex-1 text-xs leading-tight font-medium sm:text-sm">

@@ -133,9 +133,9 @@ describe("WatchEndReflection", () => {
     ).toBe(8)
     expect(ask.className).toContain("min-h-11")
     expect(ask.className).not.toContain("border")
-    expect(ask.className).toContain("bg-white/[0.06]")
+    expect(ask.className).toContain("bg-white/[0.12]")
     expect(ask.firstElementChild?.className).not.toContain("bg-")
-    expect(ask.getAttribute("aria-pressed")).toBe("false")
+    expect(ask.getAttribute("aria-pressed")).toBe("true")
     const initialComposer = container.querySelector(
       '[data-testid="watch-end-reflection-chat-composer"]',
     )
@@ -149,8 +149,13 @@ describe("WatchEndReflection", () => {
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-user-selection"]',
+      )?.textContent,
+    ).toBe("Ask a Bible question")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-auto-progress"]',
       ),
-    ).toBeNull()
+    ).not.toBeNull()
 
     act(() => {
       ask.click()
@@ -245,6 +250,75 @@ describe("WatchEndReflection", () => {
     expect(suggested.getAttribute("aria-pressed")).toBe("true")
   })
 
+  it("automatically activates each option for five seconds and loops", () => {
+    vi.useFakeTimers()
+
+    try {
+      renderReflection()
+      const actions = Array.from(
+        container.querySelectorAll<HTMLButtonElement>("[data-action-id]"),
+      )
+
+      expect(actions[0]?.getAttribute("aria-pressed")).toBe("true")
+
+      act(() => {
+        vi.advanceTimersByTime(4_999)
+      })
+      expect(actions[0]?.getAttribute("aria-pressed")).toBe("true")
+
+      act(() => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(actions[1]?.getAttribute("aria-pressed")).toBe("true")
+
+      for (let index = 1; index < actions.length; index += 1) {
+        act(() => {
+          vi.advanceTimersByTime(5_000)
+        })
+      }
+      expect(actions[0]?.getAttribute("aria-pressed")).toBe("true")
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
+  it("pauses the guide while a viewer interacts, then resumes after inactivity", () => {
+    vi.useFakeTimers()
+
+    try {
+      renderReflection()
+      const prayer = container.querySelector(
+        '[data-testid="watch-end-reflection-request-prayer"]',
+      ) as HTMLButtonElement
+      const share = container.querySelector(
+        '[data-testid="watch-end-reflection-share"]',
+      ) as HTMLButtonElement
+      const reflection = container.querySelector(
+        '[data-testid="watch-end-reflection"]',
+      ) as HTMLElement
+
+      act(() => {
+        prayer.click()
+      })
+      expect(reflection.dataset.autoCycling).toBe("false")
+
+      act(() => {
+        vi.advanceTimersByTime(6_000)
+      })
+      expect(reflection.dataset.autoCycling).toBe("true")
+      expect(prayer.getAttribute("aria-pressed")).toBe("true")
+
+      act(() => {
+        vi.advanceTimersByTime(5_000)
+      })
+      expect(share.getAttribute("aria-pressed")).toBe("true")
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
+  })
+
   it("keeps Watch next as the final quick reply and confirms before advancing", () => {
     const callbacks = renderReflection()
     const actions = Array.from(
@@ -277,7 +351,7 @@ describe("WatchEndReflection", () => {
     expect(callbacks.onNext).toHaveBeenCalledOnce()
   })
 
-  it("resets the selected conversation after the reflection is reopened", () => {
+  it("resets to the first guided conversation after the reflection is reopened", () => {
     const callbacks = {
       onDismiss: vi.fn(),
       onDownload: vi.fn(),
@@ -325,8 +399,8 @@ describe("WatchEndReflection", () => {
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-user-selection"]',
-      ),
-    ).toBeNull()
+      )?.textContent,
+    ).toBe("Ask a Bible question")
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-talk-person"]')
