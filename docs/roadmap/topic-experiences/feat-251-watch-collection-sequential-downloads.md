@@ -17,6 +17,10 @@ tags:
   - "ux"
 ---
 
+## Resolution
+
+**Status:** Complete via [PR #1559](https://github.com/JesusFilm/forge/pull/1559). The roadmap status change rides the same PR branch, so it becomes complete on `main` when the implementation lands.
+
 ## Problem
 
 Watch collection pages list ordered episodes but require viewers to open every
