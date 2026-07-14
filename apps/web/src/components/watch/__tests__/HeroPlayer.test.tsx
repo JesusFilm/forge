@@ -647,6 +647,11 @@ describe("HeroPlayer — initial mount", () => {
       )?.textContent,
     ).toBe("1 language")
     expect(
+      container.querySelector(
+        '[data-testid="hero-player-subtitle-language-count"] svg',
+      ),
+    ).not.toBeNull()
+    expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
     ).toContain("border-white/45")

@@ -19,7 +19,7 @@ import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
-import { Share2, Volume2 } from "lucide-react"
+import { Captions, Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -70,7 +70,7 @@ import {
   type DownloadResolutionLabel,
 } from "./download-options"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
-import { MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
+import { ChromeVolumeIcon, MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
@@ -1909,10 +1909,7 @@ export function HeroPlayer({
                             onClick={onLanguageClick}
                             className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
-                            <Volume2
-                              className="h-3.5 w-3.5 shrink-0"
-                              aria-hidden
-                            />
+                            <ChromeVolumeIcon />
                             <span>{languageCountLabel}</span>
                           </button>
                         ) : (
@@ -1920,10 +1917,7 @@ export function HeroPlayer({
                             data-testid="hero-player-language-tag"
                             className={`${HERO_LANGUAGE_TAG_CLASS} uppercase`}
                           >
-                            <Volume2
-                              className="h-3.5 w-3.5 shrink-0"
-                              aria-hidden
-                            />
+                            <ChromeVolumeIcon />
                             <span>{languageCountLabel}</span>
                           </span>
                         )
@@ -1939,8 +1933,12 @@ export function HeroPlayer({
                       {subtitleLanguageCountLabel != null ? (
                         <span
                           data-testid="hero-player-subtitle-language-count"
-                          className="px-1 text-xs font-normal text-white/85 md:text-sm"
+                          className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
                         >
+                          <Captions
+                            className="h-3.5 w-3.5 shrink-0"
+                            aria-hidden
+                          />
                           {subtitleLanguageCountLabel}
                         </span>
                       ) : null}
