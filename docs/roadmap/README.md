@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 13, 2026)
+## Status (July 14, 2026)
 
-- **Total tickets:** 319
-- **Complete:** 229
+- **Total tickets:** 320
+- **Complete:** 230
 - **In progress:** 19
 - **Not started:** 27
 - **Blocked:** 44
-- **Overdue and not complete:** 71
+- **Overdue and not complete:** 72
 
 ## Feature Index
 
@@ -302,6 +302,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-240](platform/feat-240-watch-chapter-thumbnail-outline.md)                     | Watch Chapter Thumbnail Outline                                                  | codex      | P2       | 2026-07-08 | 1    | 2026-07-08 | complete    |
 | [feat-228](platform/feat-228-tv-perf-tooling-mcp-and-profiler.md)                    | TV perf tooling: Datadog MCP for agents and Hermes profiler pairing              | urim       | P2       | 2026-07-10 | 2    | 2026-07-11 | not-started |
 | [feat-250](platform/feat-250-web-global-feedback-modal.md)                           | Web global feedback modal                                                        | urim       | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
+| [feat-251](platform/feat-251-web-retire-demo-search-screen.md)                       | Web retire demo-search production screen                                         | urim       | P2       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-249](platform/feat-249-web-force-login-marker-consume-on-success.md)           | Web force-login marker: consume on callback success, not login redirect          | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)              | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |

@@ -45,7 +45,7 @@ embedded presentation for it.
 
 ## What To Build
 
-1. Add a lightweight right-edge `FeedbackLauncher` to both web root layouts
+1. Add a lightweight bottom-left `FeedbackLauncher` to both web root layouts
    inside `FloatingSearchProvider`.
 2. Dynamically load `FeedbackModal` only after first user intent and keep an
    immediate accessible loading state in the launcher.
@@ -60,7 +60,7 @@ embedded presentation for it.
    removes the feedback portal and iframe, suppresses the launcher through the
    search close animation, and does not return focus to the hidden trigger.
 6. Render the feedback backdrop and content above the Watch question panel's
-   `z-[57]` layer while keeping the trigger clear of bottom chrome and right
+   `z-[57]` layer while keeping the trigger clear of the left and bottom
    safe-area insets.
 
 ## Constraints
@@ -79,8 +79,8 @@ embedded presentation for it.
   loading state, close paths, focus behavior, fallback link, and search mutual
   exclusion.
 - Web lint, typecheck, format check, and production build.
-- Desktop and mobile browser smoke on both localized and demo route families,
-  with screenshots.
+- Desktop and mobile browser smoke on both localized and remaining demo route
+  families, with screenshots.
 - Resource timing proves neither the `FeedbackModal` JavaScript chunk nor a
   Google Forms request occurs before activation, and both appear only after
   activation.

@@ -226,7 +226,7 @@ describe("proxy — reserved-subtree pass-through", () => {
     expect(rewritePath(response)).toBeNull()
   })
 
-  it("does not rewrite demo route-group surfaces", async () => {
+  it("does not rewrite the remaining demo surface or retired demo-search path", async () => {
     for (const path of ["/demo-search", "/demo-recommendations/jesus/en"]) {
       const response = await proxy(makeRequest(path))
       expect(response.status).not.toBe(307)

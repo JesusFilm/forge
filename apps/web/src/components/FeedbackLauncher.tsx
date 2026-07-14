@@ -30,7 +30,7 @@ export function FeedbackLoadNotice({
       role={error ? "alert" : "status"}
       aria-live={error ? "assertive" : "polite"}
       data-testid="feedback-modal-loading"
-      className="fixed top-[calc(50%+3.5rem)] right-[calc(.75rem+env(safe-area-inset-right,0px))] z-[46] w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 text-sm text-stone-100 shadow-2xl backdrop-blur-md"
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 text-sm text-stone-100 shadow-2xl backdrop-blur-md"
     >
       <div className="flex items-start gap-3">
         {!error ? (
@@ -130,7 +130,7 @@ export function FeedbackLauncher() {
           disabled={open && !modalReady}
           data-testid="feedback-launcher"
           onClick={openFeedback}
-          className="fixed top-1/2 right-[env(safe-area-inset-right,0px)] z-[46] inline-flex min-h-11 min-w-11 -translate-y-1/2 cursor-pointer items-center justify-center gap-2 rounded-l-full border border-r-0 border-white/15 bg-stone-950/90 px-3 py-3 text-sm font-semibold text-stone-100 shadow-2xl backdrop-blur-md transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none sm:px-4"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/15 bg-stone-950/90 px-3 py-3 text-sm font-semibold text-stone-100 shadow-2xl backdrop-blur-md transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none sm:px-4"
         >
           <MessageSquareText aria-hidden className="size-5 shrink-0" />
           <span className="sr-only sm:not-sr-only">Feedback</span>

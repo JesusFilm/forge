@@ -87,7 +87,17 @@ describe("FeedbackLauncher", () => {
     expect(button?.getAttribute("aria-label")).toBe("Open feedback form")
     expect(button?.className).toContain("min-h-11")
     expect(button?.className).toContain("min-w-11")
-    expect(button?.className).toContain("safe-area-inset-right")
+    expect(button?.className).toContain(
+      "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]",
+    )
+    expect(button?.className).toContain(
+      "left-[calc(1rem+env(safe-area-inset-left,0px))]",
+    )
+    expect(button?.className).toContain("safe-area-inset-bottom")
+    expect(button?.className).toContain("safe-area-inset-left")
+    expect(button?.className).toContain("rounded-full")
+    expect(button?.className).not.toContain("top-1/2")
+    expect(button?.className).not.toContain("safe-area-inset-right")
     expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
     expect(iframe()).toBeNull()
   })
@@ -124,6 +134,8 @@ describe("FeedbackLauncher", () => {
     )
     expect(loading?.getAttribute("role")).toBe("status")
     expect(loading?.textContent).toContain("Loading feedback form")
+    expect(loading?.className).toContain("safe-area-inset-bottom")
+    expect(loading?.className).toContain("safe-area-inset-left")
 
     act(() => {
       root.render(
