@@ -21,6 +21,7 @@ describe("Firecrawl Mastra tools", () => {
             description: "Web data API",
             markdown: null,
             markdownTruncated: false,
+            metadata: { "og:image": "https://example.com/image.jpg" },
           },
         ],
       },

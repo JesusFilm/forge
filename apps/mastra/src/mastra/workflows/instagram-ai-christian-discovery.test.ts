@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { FirecrawlConfig } from "../../config/env"
 import {
@@ -73,6 +73,11 @@ const commentaryHit = {
     "Should we be listening to AI generated Christian music? Here's my thoughts",
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
+
 describe("runInstagramDiscovery", () => {
   it("returns only qualifying posts and writes an artifact", async () => {
     const store = fakeStore()
@@ -109,10 +114,11 @@ describe("runInstagramDiscovery", () => {
   })
 
   it("submits only qualified posts to the site review queue", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {})
     const submitPosts = vi.fn(async (_posts: InstagramPost[]) => ({
       ok: true,
-      inserted: 1,
-      skipped: 0,
+      inserted: 0,
+      skipped: 1,
     }))
 
     const result = await runInstagramDiscovery(
@@ -131,6 +137,110 @@ describe("runInstagramDiscovery", () => {
     const submitted = submitPosts.mock.calls[0]![0]
     expect(submitted).toHaveLength(1)
     expect(submitted[0]!.shortcode).toBe("ABC123")
+    expect(result.siteIngest).toEqual({
+      runId: "run-submit",
+      inserted: 0,
+      skipped: 1,
+    })
+    expect(log).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest runId=run-submit inserted=0 skipped=1",
+    )
+  })
+
+  it("preserves Firecrawl og:image through the real adapter and submitted post", async () => {
+    const thumbnailUrl = "https://cdn.example.com/instagram-thumbnail.jpg"
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              web: [
+                {
+                  url: "https://www.instagram.com/reel/THUMB123/",
+                  description: "AI generated film of Jesus #aiart #faith",
+                  metadata: {
+                    "og:image": thumbnailUrl,
+                    ignored: "not forwarded across the workflow boundary",
+                  },
+                },
+              ],
+            },
+            creditsUsed: 1,
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      ),
+    )
+    vi.stubGlobal("fetch", fetchImpl)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const submitPosts = vi.fn(async (_posts: InstagramPost[]) => ({
+      ok: true,
+      inserted: 1,
+      skipped: 0,
+    }))
+
+    const result = await runInstagramDiscovery(
+      { queries: ["q"], persistArtifact: false },
+      {
+        runId: "run-real-adapter",
+        firecrawlConfig: CONFIG,
+        artifactStore: fakeStore(),
+        submitPosts,
+      },
+    )
+
+    expectSuccess(result)
+    expect(result.posts[0]!.thumbnailUrl).toBe(thumbnailUrl)
+    expect(submitPosts).toHaveBeenCalledWith([
+      expect.objectContaining({
+        shortcode: "THUMB123",
+        thumbnailUrl,
+      }),
+    ])
+    expect(result.siteIngest).toEqual({
+      runId: "run-real-adapter",
+      inserted: 1,
+      skipped: 0,
+    })
+    const requestBody = JSON.parse(
+      String(fetchImpl.mock.calls[0]![1]!.body),
+    ) as { scrapeOptions?: unknown }
+    expect(requestBody.scrapeOptions).toEqual({
+      formats: ["markdown"],
+      onlyMainContent: true,
+      timeout: 60_000,
+    })
+  })
+
+  it("reports zero ingest counts without submitting an empty candidate set", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {})
+    const submitPosts = vi.fn()
+
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-empty-submit",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiOnlyHit],
+        artifactStore: fakeStore(),
+        submitPosts,
+      },
+    )
+
+    expectSuccess(result)
+    expect(submitPosts).not.toHaveBeenCalled()
+    expect(result.siteIngest).toEqual({
+      runId: "run-empty-submit",
+      inserted: 0,
+      skipped: 0,
+    })
+    expect(log).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest runId=run-empty-submit inserted=0 skipped=0",
+    )
   })
 
   it("does not submit when site ingest is explicitly disabled", async () => {
@@ -149,9 +259,11 @@ describe("runInstagramDiscovery", () => {
 
     expectSuccess(result)
     expect(submitPosts).not.toHaveBeenCalled()
+    expect(result.siteIngest).toBeNull()
   })
 
   it("keeps discovery successful when site submission fails", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
     const submitPosts = vi.fn(async () => {
       throw new TestWorkflowError("site down")
     })
@@ -168,6 +280,30 @@ describe("runInstagramDiscovery", () => {
 
     expectSuccess(result)
     expect(result.posts).toHaveLength(1)
+    expect(result.siteIngest).toBeNull()
+    expect(errorLog).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest_failed runId=run-submit-failed message=site down",
+    )
+  })
+
+  it("does not report counts from an unsuccessful injected submission", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-submit-unsuccessful",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: fakeStore(),
+        submitPosts: async () => ({ ok: false, inserted: 0, skipped: 0 }),
+      },
+    )
+
+    expectSuccess(result)
+    expect(result.siteIngest).toBeNull()
+    expect(errorLog).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest_failed runId=run-submit-unsuccessful message=site ingest returned an unsuccessful result",
+    )
   })
 
   it("excludes commentary posts and counts them", async () => {
@@ -456,7 +592,26 @@ describe("runInstagramDiscovery", () => {
     expectSuccess(result)
     expect(searchQuery).toHaveBeenCalledWith(
       "q",
-      expect.objectContaining({ limit: 5 }),
+      expect.objectContaining({ includeMarkdown: true, limit: 5 }),
+    )
+  })
+
+  it("allows operators to opt out of Firecrawl result hydration", async () => {
+    const searchQuery = vi.fn(async () => [aiChristianHit])
+    const result = await runInstagramDiscovery(
+      { queries: ["q"], scrapeMetadata: false },
+      {
+        runId: "run-no-hydration",
+        firecrawlConfig: CONFIG,
+        searchQuery,
+        artifactStore: fakeStore(),
+      },
+    )
+
+    expectSuccess(result)
+    expect(searchQuery).toHaveBeenCalledWith(
+      "q",
+      expect.objectContaining({ includeMarkdown: false }),
     )
   })
 })
@@ -474,6 +629,7 @@ describe("handleInstagramDiscoveryRouteRequest", () => {
     },
     posts: [],
     queryFailures: [],
+    siteIngest: null,
   }
 
   it("rejects requests without a valid bearer", async () => {

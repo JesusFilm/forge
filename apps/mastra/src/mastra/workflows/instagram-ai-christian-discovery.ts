@@ -21,7 +21,10 @@ import {
   classifyPost,
   qualifies,
 } from "../../services/instagram-discovery/classifier"
-import { parseInstagramPost } from "../../services/instagram-discovery/post-parser"
+import {
+  INSTAGRAM_DISCOVERY_METADATA_KEYS,
+  parseInstagramPost,
+} from "../../services/instagram-discovery/post-parser"
 import {
   DiscoveryQueryFailureSchema,
   DiscoveryTotalsSchema,
@@ -64,7 +67,7 @@ export const InstagramDiscoveryWorkflowInputSchema = z
       .positive()
       .max(MAX_LIMIT_PER_QUERY)
       .default(DEFAULT_LIMIT_PER_QUERY),
-    scrapeMetadata: z.boolean().default(false),
+    scrapeMetadata: z.boolean().default(true),
     maxResults: z.number().int().positive().max(200).default(50),
     persistArtifact: z.boolean().default(true),
   })
@@ -74,6 +77,14 @@ export type InstagramDiscoveryWorkflowInput = z.infer<
   typeof InstagramDiscoveryWorkflowInputSchema
 >
 
+const SiteIngestSummarySchema = z
+  .object({
+    runId: z.string(),
+    inserted: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+  })
+  .strict()
+
 const WorkflowSuccessSchema = z
   .object({
     ok: z.literal(true),
@@ -82,6 +93,7 @@ const WorkflowSuccessSchema = z
     posts: z.array(InstagramPostSchema),
     queryFailures: z.array(DiscoveryQueryFailureSchema),
     artifactPath: z.string().optional(),
+    siteIngest: SiteIngestSummarySchema.nullable(),
   })
   .strict()
 
@@ -110,6 +122,7 @@ export type InstagramDiscoveryWorkflowResult = z.infer<
 >
 type InstagramDiscoveryWorkflowFailure = z.infer<typeof WorkflowFailureSchema>
 type InstagramDiscoveryWorkflowSuccess = z.infer<typeof WorkflowSuccessSchema>
+type SiteIngestSummary = z.infer<typeof SiteIngestSummarySchema> | null
 
 export type InstagramDiscoverySearchHit = {
   url: string
@@ -163,27 +176,43 @@ export type InstagramDiscoveryOptions = {
 }
 
 async function submitToReviewQueue(
+  runId: string,
   posts: readonly InstagramPost[],
   options: Pick<InstagramDiscoveryOptions, "siteIngest" | "submitPosts">,
-): Promise<void> {
-  if (posts.length === 0 || options.siteIngest === null) return
+): Promise<SiteIngestSummary> {
+  if (options.siteIngest === null) return null
 
   const config = options.siteIngest ?? getInstagramSiteIngestConfig()
-  if (!config && !options.submitPosts) return
+  if (!config && !options.submitPosts) return null
 
   try {
-    const result = options.submitPosts
-      ? await options.submitPosts([...posts])
-      : await submitPostsToSite(posts, config!)
+    let result: SiteIngestResult
+    if (posts.length === 0) {
+      result = { ok: true, inserted: 0, skipped: 0 }
+    } else if (options.submitPosts) {
+      result = await options.submitPosts([...posts])
+    } else {
+      result = await submitPostsToSite(posts, config!)
+    }
+    if (!result.ok) {
+      throw new Error("site ingest returned an unsuccessful result")
+    }
+    const summary = SiteIngestSummarySchema.parse({
+      runId,
+      inserted: result.inserted,
+      skipped: result.skipped,
+    })
     console.log(
-      `[instagram-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
+      `[instagram-discovery] event=site_ingest runId=${runId} inserted=${result.inserted} skipped=${result.skipped}`,
     )
+    return summary
   } catch (error) {
     console.error(
-      `[instagram-discovery] event=site_ingest_failed message=${
+      `[instagram-discovery] event=site_ingest_failed runId=${runId} message=${
         error instanceof Error ? error.message : String(error)
       }`,
     )
+    return null
   }
 }
 
@@ -249,6 +278,20 @@ function boundedOptionalText(value: string | null | undefined): string | null {
   return boundedText(value)
 }
 
+function sanitizeSearchMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!metadata) return undefined
+  const sanitized: Record<string, unknown> = {}
+  for (const key of INSTAGRAM_DISCOVERY_METADATA_KEYS) {
+    const value = metadata[key]
+    if (typeof value === "string" && value.trim().length > 0) {
+      sanitized[key] = boundedText(value)
+    }
+  }
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined
+}
+
 function sanitizeSearchHit(
   hit: InstagramDiscoverySearchHit,
 ): InstagramDiscoverySearchHit {
@@ -257,7 +300,7 @@ function sanitizeSearchHit(
     title: boundedOptionalText(hit.title),
     description: boundedOptionalText(hit.description),
     markdown: boundedOptionalText(hit.markdown),
-    metadata: hit.metadata,
+    metadata: sanitizeSearchMetadata(hit.metadata),
   }
 }
 
@@ -331,6 +374,7 @@ async function requestInstagramDiscoverySearch(
     title: hit.title,
     description: hit.description,
     markdown: hit.markdown,
+    ...(hit.metadata == null ? {} : { metadata: hit.metadata }),
   }))
 }
 
@@ -608,7 +652,7 @@ export async function runInstagramDiscovery(
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(posts, options)
+    const siteIngest = await submitToReviewQueue(mastraRunId, posts, options)
 
     return {
       ok: true,
@@ -616,6 +660,7 @@ export async function runInstagramDiscovery(
       totals,
       posts,
       queryFailures,
+      siteIngest,
       ...(artifactPath ? { artifactPath } : {}),
     } satisfies InstagramDiscoveryWorkflowSuccess
   } catch (error) {
@@ -745,7 +790,7 @@ const reportStep = createStep({
       artifactPath = written.path
     }
 
-    await submitToReviewQueue(inputData.posts, {})
+    const siteIngest = await submitToReviewQueue(runId, inputData.posts, {})
 
     return {
       ok: true as const,
@@ -753,6 +798,7 @@ const reportStep = createStep({
       totals: inputData.totals,
       posts: inputData.posts,
       queryFailures: inputData.queryFailures,
+      siteIngest,
       ...(artifactPath ? { artifactPath } : {}),
     }
   },

@@ -42,6 +42,9 @@ describe("Firecrawl client", () => {
               description: "First result",
               url: "https://example.com/one",
               markdown: "abcdefghijklmnop",
+              metadata: {
+                "og:image": "https://example.com/thumbnail.jpg",
+              },
             },
             {
               title: "Two",
@@ -79,6 +82,9 @@ describe("Firecrawl client", () => {
             url: "https://example.com/one",
             markdown: "abcdefghi...",
             markdownTruncated: true,
+            metadata: {
+              "og:image": "https://example.com/thumbnail.jpg",
+            },
           },
           {
             title: "Two",
@@ -86,6 +92,7 @@ describe("Firecrawl client", () => {
             url: "https://example.com/two",
             markdown: null,
             markdownTruncated: false,
+            metadata: null,
           },
         ],
       },

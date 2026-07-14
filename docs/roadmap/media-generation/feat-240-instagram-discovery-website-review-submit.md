@@ -9,7 +9,8 @@ duration: 1
 depends_on:
   - "feat-175"
   - "feat-194"
-blocks: []
+blocks:
+  - "feat-252"
 tags:
   - "mastra"
   - "instagram"

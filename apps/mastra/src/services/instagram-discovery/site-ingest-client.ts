@@ -113,10 +113,25 @@ export async function submitPostsToSite(
     )
   })) as { ok?: unknown; inserted?: unknown; skipped?: unknown }
 
+  if (
+    body.ok !== true ||
+    typeof body.inserted !== "number" ||
+    !Number.isInteger(body.inserted) ||
+    body.inserted < 0 ||
+    typeof body.skipped !== "number" ||
+    !Number.isInteger(body.skipped) ||
+    body.skipped < 0
+  ) {
+    throw new SiteIngestError(
+      "invalid_response",
+      "site ingest returned an invalid result",
+    )
+  }
+
   return {
-    ok: body.ok === true,
-    inserted: typeof body.inserted === "number" ? body.inserted : 0,
-    skipped: typeof body.skipped === "number" ? body.skipped : 0,
+    ok: true,
+    inserted: body.inserted,
+    skipped: body.skipped,
   }
 }
 

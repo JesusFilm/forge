@@ -108,4 +108,19 @@ describe("submitPostsToSite", () => {
       }),
     ).rejects.toMatchObject({ code: "upstream_failed", retryable: true })
   })
+
+  it.each([
+    { ok: false, inserted: 1, skipped: 0 },
+    { ok: true, skipped: 0 },
+    { ok: true, inserted: 1, skipped: -1 },
+    { ok: true, inserted: 0.5, skipped: 0 },
+  ])("rejects an invalid success body: %o", async (body) => {
+    const fetchImpl = vi.fn(async () => jsonResponse(body))
+    await expect(
+      submitPostsToSite([post()], {
+        ...CONFIG,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_response" })
+  })
 })

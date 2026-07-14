@@ -755,8 +755,9 @@ plus title/snippet that the keyword heuristic acts on.
 
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
 `queries` (defaults to two Instagram-targeted AI/Christian queries),
-`limitPerQuery` (5, max 20), `scrapeMetadata` (false — set true to request bounded
-markdown hydration for each search hit, slower), `maxResults` (50),
+`limitPerQuery` (5, max 20), `scrapeMetadata` (true — requests bounded markdown
+and thumbnail-capable metadata for each search hit; set false to reduce Firecrawl
+latency/credits), `maxResults` (50),
 `persistArtifact` (true). The
 workflow searches each query (tolerant to per-query failures), parses Instagram
 permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
@@ -773,6 +774,9 @@ When `INSTAGRAM_DISCOVERY_SITE_INGEST_URL` and
 `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN` are both set, qualified posts are also
 submitted best-effort to the website review queue. Website ingest failures are
 logged and do not fail discovery; the website dedupes by Instagram shortcode.
+Successful workflow output includes a nullable `siteIngest` summary with the
+Mastra `runId` plus the website's `inserted` and `skipped` counts. The same
+values appear in the `site_ingest` log for run-to-write correlation.
 
 Limitations to keep in mind:
 
