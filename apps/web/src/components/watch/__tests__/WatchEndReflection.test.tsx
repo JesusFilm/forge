@@ -133,6 +133,7 @@ describe("WatchEndReflection", () => {
     ).toBe(8)
     expect(ask.className).toContain("min-h-11")
     expect(ask.className).not.toContain("border")
+    expect(ask.className).toContain("bg-white/[0.06]")
     expect(ask.firstElementChild?.className).not.toContain("bg-")
     expect(ask.getAttribute("aria-pressed")).toBe("false")
     expect(

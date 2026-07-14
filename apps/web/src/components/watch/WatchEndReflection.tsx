@@ -410,7 +410,7 @@ function ReflectionChat({
                   "group flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left animate-watch-chat-incoming transition-[background-color,color,transform] hover:translate-x-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:animate-none motion-reduce:transform-none " +
                   (selected
                     ? "bg-white/[0.12] text-white"
-                    : "bg-transparent text-white/75 hover:bg-white/[0.06] hover:text-white")
+                    : "bg-white/[0.06] text-white/75 hover:bg-white/[0.10] hover:text-white")
                 }
                 style={{ animationDelay: String(360 + index * 55) + "ms" }}
               >
