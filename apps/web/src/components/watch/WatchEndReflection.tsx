@@ -651,7 +651,11 @@ function AskChapter({
           data-testid="watch-end-reflection-chat-messages"
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 sm:px-5 sm:py-5"
         >
-          <div className="flex max-w-[90%] items-end gap-2.5 sm:max-w-[78%]">
+          <div
+            data-testid="watch-end-reflection-chat-invitation"
+            className="flex max-w-[90%] items-end gap-2.5 animate-watch-chat-incoming sm:max-w-[78%] motion-reduce:animate-none"
+            style={{ animationDelay: "260ms" }}
+          >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
               {action.icon}
             </span>
@@ -661,7 +665,7 @@ function AskChapter({
           </div>
 
           <div className="ml-auto flex max-w-[92%] flex-col items-end gap-2 sm:max-w-[78%]">
-            {prompts.map((prompt) => {
+            {prompts.map((prompt, index) => {
               const selected = customQuestion === prompt
               return (
                 <button
@@ -670,11 +674,12 @@ function AskChapter({
                   data-testid="watch-end-reflection-suggested-question"
                   aria-pressed={selected}
                   onClick={() => onQuestionChange(prompt)}
-                  className={`cursor-pointer rounded-2xl rounded-br-sm px-4 py-2.5 text-left text-xs leading-snug transition-[background-color,color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm ${
+                  className={`cursor-pointer rounded-2xl rounded-br-sm px-4 py-2.5 text-left text-xs leading-snug animate-watch-chat-outgoing transition-[background-color,color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm motion-reduce:animate-none ${
                     selected
                       ? "bg-brand-red text-white shadow-lg shadow-brand-red/15"
                       : "bg-white text-black/80 hover:bg-white/90"
                   }`}
+                  style={{ animationDelay: `${520 + index * 160}ms` }}
                 >
                   {prompt}
                 </button>
@@ -812,7 +817,11 @@ function HandoffChatChapter({
           data-testid={`${chatTestId}-messages`}
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 sm:px-5 sm:py-5"
         >
-          <div className="flex max-w-[90%] items-end gap-2.5 sm:max-w-[78%]">
+          <div
+            data-testid={`${chatTestId}-invitation`}
+            className="flex max-w-[90%] items-end gap-2.5 animate-watch-chat-incoming sm:max-w-[78%] motion-reduce:animate-none"
+            style={{ animationDelay: "260ms" }}
+          >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
               {action.icon}
             </span>
@@ -820,7 +829,15 @@ function HandoffChatChapter({
               <p>{action.detail}</p>
             </div>
           </div>
-          {children}
+          {children ? (
+            <div
+              data-testid={`${chatTestId}-follow-up`}
+              className="animate-watch-chat-incoming motion-reduce:animate-none"
+              style={{ animationDelay: "520ms" }}
+            >
+              {children}
+            </div>
+          ) : null}
         </div>
 
         <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">

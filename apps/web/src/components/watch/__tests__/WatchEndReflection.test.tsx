@@ -209,6 +209,18 @@ describe("WatchEndReflection", () => {
         )?.className,
       ).toContain("overflow-y-auto")
       expect(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-chat-invitation"]',
+        )?.className,
+      ).toContain("animate-watch-chat-incoming")
+      expect(
+        (
+          container.querySelector(
+            '[data-testid="watch-end-reflection-chat-invitation"]',
+          ) as HTMLElement
+        ).style.animationDelay,
+      ).toBe("260ms")
+      expect(
         container.querySelector('[data-testid="watch-end-reflection-chat"]')
           ?.className,
       ).toContain("flex-1")
@@ -226,6 +238,14 @@ describe("WatchEndReflection", () => {
       const suggested = container.querySelector(
         '[data-testid="watch-end-reflection-suggested-question"]',
       ) as HTMLButtonElement
+      const suggestedQuestions = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          '[data-testid="watch-end-reflection-suggested-question"]',
+        ),
+      )
+      expect(
+        suggestedQuestions.map((item) => item.style.animationDelay),
+      ).toEqual(["520ms", "680ms"])
       act(() => {
         suggested.click()
       })
@@ -467,6 +487,20 @@ describe("WatchEndReflection", () => {
       )?.className,
     ).toContain("overflow-y-auto")
     expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-end-reflection-talk-chat-invitation"]',
+        ) as HTMLElement
+      ).style.animationDelay,
+    ).toBe("260ms")
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-end-reflection-talk-chat-follow-up"]',
+        ) as HTMLElement
+      ).style.animationDelay,
+    ).toBe("520ms")
+    expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-talk-input"]',
       ),
@@ -513,6 +547,13 @@ describe("WatchEndReflection", () => {
         '[data-testid="watch-end-reflection-prayer-chat-messages"]',
       )?.className,
     ).toContain("overflow-y-auto")
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-end-reflection-prayer-chat-invitation"]',
+        ) as HTMLElement
+      ).style.animationDelay,
+    ).toBe("260ms")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-prayer-input"]',
