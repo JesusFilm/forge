@@ -1,125 +1,105 @@
 ---
-title: "fix: Scale Watch home portrait cards at smaller widths"
+title: "fix: Restore the Watch authored media carousel"
 type: "fix"
 status: "completed"
 date: "2026-07-14"
 ---
 
-# fix: Scale Watch home portrait cards at smaller widths
+# fix: Restore the Watch authored media carousel
 
 ## Summary
 
-Increase the Watch home rail from three to four columns at the tablet breakpoint
-while retaining six columns on wide screens, so portrait cards remain
-appropriately scaled on tablets and small laptops.
+Render Experience `MediaCollection.variant: "carousel"` as the drag-free,
+single-row carousel used before June 20 instead of a wrapping responsive grid.
+Keep the current cinematic card visuals, hover backdrop, progress, links, and
+non-carousel variants.
 
 ## Problem Frame
 
-The Video Bible collection uses three columns from the medium breakpoint until
-the extra-large breakpoint. At a 1024px-class viewport this makes each portrait
-tile roughly 300 CSS pixels wide, matching the oversized section shown in the
-request rather than the denser wide-screen composition.
+The backend Experience still authors the Video Bible collection as
+`variant: "carousel"`, but the current web renderer treats that value as a
+wrapping grid. Git history immediately before June 20 shows the intended
+contract: an Embla carousel aligned to the content rail, fixed-width portrait
+slides, drag-free scrolling, trimmed snap containment, and a trailing gutter
+spacer.
 
 ## Requirements
 
-- R1. Watch home rail sections render four portrait cards per row from the
-  standard medium breakpoint.
-- R2. The current two-column mobile and six-column extra-large layouts remain
-  unchanged.
-- R3. Card content, ordering, navigation, aspect ratio, crop, and hover behavior
-  remain unchanged.
-- R4. The change adds no client-side viewport logic, runtime work, or network
-  requests.
-- R5. Focused automated coverage and browser screenshots verify the compact and
-  wide layouts.
+- R1. Backend `variant: "carousel"` renders one horizontally scrollable row.
+- R2. Carousel slides retain the historical `max-w-[200px]` width and portrait
+  card orientation.
+- R3. The carousel is drag-free, start-aligned, trims snap containment, and
+  disables dragging when there is no overflow.
+- R4. Current card content, image treatment, hover preview/backdrop, progress,
+  links, focus behavior, and CTA remain unchanged.
+- R5. `collection`, `grid`, `hero`, and `player` variants keep their current
+  grid behavior.
+- R6. The rail aligns with the current Watch content gutters and keeps a real
+  trailing spacer so the last card clears the right edge.
+- R7. Focused automated coverage and browser proof verify the carousel markup,
+  overflow interaction, compact layout, and wide layout.
+- R8. Reuse the existing carousel dependency and add no new initial data or
+  media requests.
 
-## Assumptions
+## Historical Reference
 
-- The first supplied screenshot represents a 1024px-class CSS viewport where
-  the current medium three-column rule applies.
-- Four columns at the existing medium breakpoint provide the intended
-  intermediate density across tablets and small desktops.
-- The responsive correction applies to all Watch home rail sections because
-  they share the same portrait-card layout contract.
-
-## Key Technical Decisions
-
-- **Adjust the existing Tailwind breakpoint sequence:** Change the medium rail
-  step from three to four columns instead of introducing CSS calculations or
-  JavaScript viewport state. This keeps layout server-renderable and consistent
-  with the component's current responsive pattern.
-- **Keep the card component unchanged:** The oversized presentation originates
-  in the rail column count, while the portrait aspect ratio, image crop, and
-  overlay behavior already match the wide-screen reference.
-- **Assert the responsive contract on the authored component:** Extend the
-  existing `MediaCollection` component test so the rendered carousel rail's
-  intermediate and extra-large column classes are explicit.
+- `git show 5aa833998e602da9b8aee67d24e2400a1912769f:apps/web/src/components/sections/MediaCollection.tsx`
+- The pre–June 20 implementation used `Carousel`, `CarouselContent`, and
+  `CarouselItem` with `dragFree`, `align: "start"`,
+  `containScroll: "trimSnaps"`, `max-w-[200px]`, and a trailing spacer.
 
 ## Scope Boundaries
 
-- In scope: Watch home rail grid density, its focused class assertion, compact
-  and wide browser proof, and the associated roadmap status.
-- Out of scope: non-rail grids, card typography, content truncation, image
-  assets, collection data, hero layout, hover-backdrop behavior, and navigation.
+- In scope: the authored `carousel` branch, focused tests, responsive browser
+  proof, roadmap status, and durable solution documentation.
+- Out of scope: Experience schema/data changes, non-carousel collection
+  variants, card redesign, content ordering, hero layout, and navigation URLs.
 
 ## Implementation Units
 
-### U1. Add the intermediate rail density
+### U1. Restore the authored carousel renderer
 
-- **Goal:** Keep Watch home portrait cards from becoming oversized on
-  large-tablet and small-desktop viewports.
-- **Requirements:** R1, R2, R3, R4
-- **Dependencies:** None
+- **Requirements:** R1-R6, R8
 - **Files:**
   - Modify `apps/web/src/components/sections/MediaCollection.tsx`
-  - Modify `apps/web/src/components/sections/MediaCollection.test.tsx`
-- **Approach:** Extend the rail grid's existing responsive class sequence with a
-  four-column medium breakpoint. Add a focused assertion beside the existing
-  extra-large assertion so both intermediate and wide-screen contracts are
-  explicit.
-- **Patterns to follow:** The `cn`-composed Tailwind grid classes in
-  `MediaCollection` and its existing variant-focused component tests.
-- **Test scenarios:**
-  - Render the configured Video Bible rail and verify its grid includes the
-    four-column medium-breakpoint class.
-  - Verify the same grid retains the six-column extra-large class so the wide
-    composition does not regress.
-  - Verify no responsive change is applied to a non-rail grid by keeping the
-    change scoped to the rail branch.
-- **Verification:** The focused Watch home test passes and the rendered class
-  sequence expresses two, four, and six columns at increasing breakpoints.
+- **Approach:** Reuse the shared Embla wrappers. Render carousel items only for
+  `variant === "carousel"`; keep the existing grid branch for every other
+  variant. Use current Watch rail padding and an explicit matching end spacer.
+- **Verification:** Rendered markup exposes the carousel region and slides,
+  cards remain fixed-width and vertical, and non-carousel classes are unchanged.
 
-### U2. Prove responsive layout and page-load neutrality
+### U2. Lock the contract and prove the interaction
 
-- **Goal:** Confirm the visual correction at the affected width and preserve
-  the wide layout without degrading initial page load.
-- **Requirements:** R4, R5
-- **Dependencies:** U1
+- **Requirements:** R7, R8
 - **Files:**
+  - Modify `apps/web/src/components/sections/MediaCollection.test.tsx`
   - Modify `docs/roadmap/platform/feat-252-watch-home-portrait-card-sizing.md`
-- **Approach:** Run the focused web validation, inspect the section in a browser
-  at 1024px and a wide viewport, and capture screenshots. Confirm the change is
-  CSS-class-only and does not add scripts, requests, timers, observers, or
-  hydration behavior, matching the frontend performance verification
-  convention.
-- **Patterns to follow:**
-  `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`
-  and the repo's browser-facing completion guidance.
-- **Test expectation:** No new automated test file; U1 owns the responsive
-  contract coverage and this unit supplies runtime visual and performance
-  evidence.
-- **Verification:** The compact screenshot shows four smaller portrait cards,
-  the wide screenshot keeps six cards, the page remains usable, and runtime
-  inspection shows no additional initial-load work.
+- **Approach:** Replace the grid-column assertion with carousel structure and
+  sizing assertions. Run focused test, typecheck, lint, compact/wide browser
+  smoke, and demonstrate horizontal movement on the real `/watch` route.
+- **Performance proof:** The change reuses an already-installed client
+  component and does not add data fetching, media sources, timers, or observers
+  beyond Embla's existing carousel behavior.
+
+## Verification
+
+- `pnpm --filter @forge/web test -- MediaCollection.test.tsx`
+- `pnpm --filter @forge/web typecheck`
+- `pnpm --filter @forge/web lint`
+- Browser smoke at compact and wide viewports on `/watch`.
+- Verify horizontal drag/scroll changes the visible cards and the last card can
+  clear the right content gutter.
 
 ## Completion Evidence
 
-- `pnpm --filter @forge/web test -- MediaCollection.test.tsx` — 11 tests passed.
+- `pnpm --filter @forge/web test -- MediaCollection.test.tsx` — 12 tests passed.
 - `pnpm --filter @forge/web typecheck` — passed.
 - `pnpm --filter @forge/web lint` — passed.
-- Browser smoke at `http://127.0.0.1:3020/watch` — four cards at the compact
-  viewport, six cards at the wide viewport, expected section heading present,
-  and no visible error state.
-- Performance proof — the production change is one responsive Tailwind class
-  substitution; it adds no JavaScript, requests, timers, observers, hydration,
-  or media-loading behavior.
+- Compact browser proof at `http://127.0.0.1:3020/watch` — six 200px cards in
+  one row; horizontal input moved the first slide from `x=44` to approximately
+  `x=-253`, and the final card cleared the 64px compact end gutter.
+- Wide browser proof at 1600px — six 200px cards remained in one row with a
+  96px trailing gutter and no console errors.
+- Performance proof — the implementation reuses the existing Embla carousel
+  and current card component; it adds no dependency, data request, media source,
+  timer, or observer.

@@ -80,7 +80,7 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
 }
 
 describe("MediaCollection VideoCard href", () => {
-  it("uses four columns from the tablet breakpoint", () => {
+  it("renders the carousel variant as a fixed-width horizontal rail", () => {
     act(() => {
       root.render(
         <MediaCollection
@@ -90,11 +90,49 @@ describe("MediaCollection VideoCard href", () => {
       )
     })
 
-    const grid = container.querySelector(
-      '[data-testid="media-collection-section"] .grid',
+    const carousel = container.querySelector(
+      '[data-testid="media-collection-carousel"]',
     )
-    expect(grid?.getAttribute("class")).toContain("md:grid-cols-4")
-    expect(grid?.getAttribute("class")).toContain("xl:grid-cols-6")
+    const content = container.querySelector(
+      '[data-testid="media-collection-carousel-content"]',
+    )
+    const items = container.querySelectorAll(
+      '[data-testid="media-collection-carousel-item"]',
+    )
+    const endSpacer = container.querySelector(
+      '[data-testid="media-collection-carousel-end-spacer"]',
+    )
+
+    expect(carousel?.getAttribute("role")).toBe("region")
+    expect(carousel?.getAttribute("aria-label")).toBe("Related")
+    expect(content?.getAttribute("class")).toContain("md:pl-16")
+    expect(items).toHaveLength(1)
+    expect(items[0]?.getAttribute("class")).toContain("max-w-[200px]")
+    expect(endSpacer?.getAttribute("class")).toContain("basis-auto")
+    expect(endSpacer?.firstElementChild?.getAttribute("class")).toContain(
+      "xl:w-24",
+    )
+  })
+
+  it("keeps non-carousel variants on the grid renderer", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({ mediaCollectionVariant: "grid" })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const section = container.querySelector(
+      '[data-testid="media-collection-section"]',
+    )
+    expect(
+      section?.querySelector('[data-testid="media-collection-carousel"]'),
+    ).toBeNull()
+    expect(section?.querySelector(".grid")?.getAttribute("class")).toContain(
+      "md:grid-cols-3",
+    )
   })
 
   it("lazy-loads a Mux animated preview for route video child cards", () => {

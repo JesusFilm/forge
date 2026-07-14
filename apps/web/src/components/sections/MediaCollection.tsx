@@ -6,7 +6,10 @@ import { useEffect, useRef, useState } from "react"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
-import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
+} from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
@@ -22,6 +25,11 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel"
 
 // Collections carry no per-item language today, so card deep links default
 // to the English variant and rely on the watch route to re-resolve locale.
@@ -406,34 +414,79 @@ function WatchHomeMediaCollection({
         </div>
       </div>
 
-      <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
-        <div
-          className={cn(
-            "grid",
-            isVerticalGrid ? "gap-4" : "gap-5",
-            isRail
-              ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-6"
-              : isVerticalGrid
+      {isRail ? (
+        <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
+          <Carousel
+            aria-label={title ?? "Media collection"}
+            data-testid="media-collection-carousel"
+            opts={{
+              align: "start",
+              dragFree: true,
+              containScroll: "trimSnaps",
+              watchDrag: (api) => api.scrollSnapList().length > 1,
+            }}
+            className="w-full"
+          >
+            <CarouselContent
+              data-testid="media-collection-carousel-content"
+              className="-ml-5 pl-5 md:pl-16 xl:pl-24"
+            >
+              {items.map((item: EnrichedMediaItem, index: number) => (
+                <CarouselItem
+                  key={`${item.id}-${index}`}
+                  data-testid="media-collection-carousel-item"
+                  className="max-w-[200px] py-1 pl-5"
+                >
+                  <VideoCard
+                    item={item}
+                    index={index}
+                    orientation="vertical"
+                    showItemNumbers={showItemNumbers}
+                    onHover={() =>
+                      updateHoverBackground(mediaItemBackdropImageUrl(item))
+                    }
+                  />
+                </CarouselItem>
+              ))}
+              <CarouselItem
+                aria-hidden="true"
+                tabIndex={-1}
+                data-testid="media-collection-carousel-end-spacer"
+                className="basis-auto pl-0"
+              >
+                <div className="w-5 md:w-16 xl:w-24" />
+              </CarouselItem>
+            </CarouselContent>
+          </Carousel>
+        </div>
+      ) : (
+        <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
+          <div
+            className={cn(
+              "grid",
+              isVerticalGrid ? "gap-4" : "gap-5",
+              isVerticalGrid
                 ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
                 : variant === "hero" || variant === "player"
                   ? "grid-cols-1 md:grid-cols-2"
                   : "grid-cols-1 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
-          )}
-        >
-          {items.map((item: EnrichedMediaItem, index: number) => (
-            <VideoCard
-              key={`${item.id}-${index}`}
-              item={item}
-              index={index}
-              orientation={isVertical ? "vertical" : "horizontal"}
-              showItemNumbers={showItemNumbers}
-              onHover={() =>
-                updateHoverBackground(mediaItemBackdropImageUrl(item))
-              }
-            />
-          ))}
+            )}
+          >
+            {items.map((item: EnrichedMediaItem, index: number) => (
+              <VideoCard
+                key={`${item.id}-${index}`}
+                item={item}
+                index={index}
+                orientation={isVertical ? "vertical" : "horizontal"}
+                showItemNumbers={showItemNumbers}
+                onHover={() =>
+                  updateHoverBackground(mediaItemBackdropImageUrl(item))
+                }
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {description || footerText ? (
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
