@@ -73,6 +73,21 @@ function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
+function isAnonymousInlineSubtitleRequest(
+  searchParams: URLSearchParams,
+): boolean {
+  if (searchParams.get("disposition") !== "inline") return false
+
+  const target = searchParams.get("url")
+  if (!target || !isAllowedDownloadOrigin(target)) return false
+
+  try {
+    return new URL(target).pathname.toLowerCase().endsWith(".vtt")
+  } catch {
+    return false
+  }
+}
+
 async function requireDownloadAccount(request: Request): Promise<
   | {
       ok: true
@@ -321,10 +336,15 @@ function buildUpstreamSignal(
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const authGate = await requireDownloadAccount(request)
-  if (!authGate.ok) return authGate.response
-
   const { searchParams } = new URL(request.url)
+  const anonymousInlineSubtitleRequest =
+    isAnonymousInlineSubtitleRequest(searchParams)
+  const authGate = anonymousInlineSubtitleRequest
+    ? null
+    : await requireDownloadAccount(request)
+  if (authGate && !authGate.ok) return authGate.response
+  const authSession = authGate?.ok ? authGate.session : null
+
   const rawFilename = searchParams.get("filename")
   const contentDisposition =
     searchParams.get("disposition") === "inline" ? "inline" : "attachment"
@@ -423,12 +443,25 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError(`Upstream ${upstream.status}`, upstream.status)
   }
 
+  const upstreamMediaType = upstream.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase()
+  if (anonymousInlineSubtitleRequest && upstreamMediaType !== "text/vtt") {
+    console.error("[api/download] rejected non-VTT anonymous response", {
+      target: safeLogUrl(safeUrl),
+      contentType: upstream.headers.get("content-type"),
+    })
+    return jsonError("Upstream subtitle response was not VTT", 502)
+  }
+
   if (!upstream.body) {
     return jsonError("Upstream had no body", 502)
   }
 
-  if (authGate.session.accessToken && resolvedTarget.event) {
-    void recordWatchEventWithAccessToken(authGate.session.accessToken, {
+  if (authSession?.accessToken && resolvedTarget.event) {
+    void recordWatchEventWithAccessToken(authSession.accessToken, {
       eventType: "download",
       videoId: resolvedTarget.event.videoId,
       videoDubId: resolvedTarget.event.videoDubId,
