@@ -131,6 +131,9 @@ describe("WatchEndReflection", () => {
     expect(
       container.querySelectorAll<HTMLElement>("[data-action-id]").length,
     ).toBe(8)
+    expect(ask.className).toContain("min-h-11")
+    expect(ask.className).not.toContain("border")
+    expect(ask.firstElementChild?.className).not.toContain("bg-")
     expect(ask.getAttribute("aria-pressed")).toBe("false")
     expect(
       container.querySelector(

@@ -392,7 +392,7 @@ function ReflectionChat({
           role="group"
           aria-label={nextStepsSupport}
           data-testid="watch-end-reflection-chat-options"
-          className="ml-10 grid w-[calc(94%_-_2.5rem)] grid-cols-1 gap-2 min-[440px]:grid-cols-2 sm:w-[calc(82%_-_2.5rem)]"
+          className="ml-10 grid w-[calc(94%_-_2.5rem)] grid-cols-1 gap-x-3 gap-y-1 min-[440px]:grid-cols-2 sm:w-[calc(82%_-_2.5rem)]"
         >
           {actions.map((action, index) => {
             const selected = selectedAction?.id === action.id
@@ -407,31 +407,29 @@ function ReflectionChat({
                 data-final-action={action.id === "next" ? "true" : "false"}
                 onClick={() => onSelect(action.id)}
                 className={
-                  "group flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border px-3 py-2.5 text-left animate-watch-chat-incoming transition-[background-color,border-color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:animate-none motion-reduce:transform-none " +
+                  "group flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left animate-watch-chat-incoming transition-[background-color,color,transform] hover:translate-x-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:animate-none motion-reduce:transform-none " +
                   (selected
-                    ? "border-white/30 bg-white text-black"
-                    : "border-white/10 bg-white/[0.07] text-white hover:border-white/20 hover:bg-white/[0.11]")
+                    ? "bg-white/[0.12] text-white"
+                    : "bg-transparent text-white/75 hover:bg-white/[0.06] hover:text-white")
                 }
                 style={{ animationDelay: String(360 + index * 55) + "ms" }}
               >
                 <span
                   className={
-                    "grid size-9 shrink-0 place-items-center rounded-xl transition-colors " +
-                    (selected
-                      ? "bg-brand-red text-white"
-                      : "bg-brand-red/15 text-brand-red group-hover:bg-brand-red group-hover:text-white")
+                    "grid size-7 shrink-0 place-items-center transition-[color,transform] group-hover:scale-105 " +
+                    (selected ? "text-brand-red" : "text-brand-red/85")
                   }
                 >
                   {action.icon}
                 </span>
-                <span className="min-w-0 flex-1 text-xs leading-tight font-semibold sm:text-sm">
+                <span className="min-w-0 flex-1 text-xs leading-tight font-medium sm:text-sm">
                   {action.label}
                 </span>
                 <ArrowRight
                   aria-hidden
                   className={
-                    "size-3.5 shrink-0 " +
-                    (selected ? "text-black/45" : "text-white/30")
+                    "size-3 shrink-0 " +
+                    (selected ? "text-white/55" : "text-white/25")
                   }
                 />
               </button>
