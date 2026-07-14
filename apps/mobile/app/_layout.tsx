@@ -21,6 +21,8 @@ let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCa
 let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
 let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
 let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
+let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
+let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -50,6 +52,10 @@ try {
   restoreApolloCache = cachePersistence.restoreApolloCache
   startCachePersistence = cachePersistence.startCachePersistence
   lockPortrait = require("../src/lib/orientation").lockPortrait
+  MobileDatadogProvider =
+    require("../src/components/DatadogRum").MobileDatadogProvider
+  DatadogRouteTracker =
+    require("../src/components/DatadogRouteTracker").DatadogRouteTracker
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
@@ -201,135 +207,138 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1 }}>
       <ErrorBoundary>
-        <ApolloProvider client={clientRef.current}>
-          <SafeAreaProvider>
-            <ExperienceSelectionProvider>
-              <WatchPreferencesProvider>
-                <DownloadsProvider>
-                  <ExperienceShell>
-                    <StatusBar style="light" />
-                    <Stack
-                      screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: BG_COLOR },
-                      }}
-                    >
-                      <Stack.Screen name="(tabs)" />
-                      <Stack.Screen
-                        name="video/[sectionKey]"
-                        options={{
-                          headerShown: true,
-                          headerTintColor: ACCENT,
-                          headerTitle: "",
-                          headerStyle: { backgroundColor: BG_COLOR },
-                          headerShadowVisible: false,
-                          headerTitleAlign: "center",
-                          headerLeft: () => (
-                            <Pressable
-                              onPress={() => router.back()}
-                              accessibilityRole="button"
-                              accessibilityLabel="Go back"
-                              hitSlop={12}
-                            >
-                              <Ionicons
-                                name="chevron-back"
-                                size={28}
-                                color={ACCENT}
-                              />
-                            </Pressable>
-                          ),
+        <MobileDatadogProvider>
+          <ApolloProvider client={clientRef.current}>
+            <SafeAreaProvider>
+              <ExperienceSelectionProvider>
+                <WatchPreferencesProvider>
+                  <DownloadsProvider>
+                    <ExperienceShell>
+                      <StatusBar style="light" />
+                      <DatadogRouteTracker />
+                      <Stack
+                        screenOptions={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: BG_COLOR },
                         }}
-                      />
-                      <Stack.Screen
-                        name="collection/[sectionKey]"
-                        options={{
-                          headerShown: true,
-                          headerTintColor: ACCENT,
-                          headerTitle: "",
-                          headerStyle: { backgroundColor: BG_COLOR },
-                          headerShadowVisible: false,
-                          headerTitleAlign: "center",
-                          headerLeft: () => (
-                            <Pressable
-                              onPress={() => router.back()}
-                              accessibilityRole="button"
-                              accessibilityLabel="Go back"
-                              hitSlop={12}
-                            >
-                              <Ionicons
-                                name="chevron-back"
-                                size={28}
-                                color={ACCENT}
-                              />
-                            </Pressable>
-                          ),
-                        }}
-                      />
-                      <Stack.Screen
-                        name="experience/[slug]"
-                        options={{
-                          headerShown: true,
-                          headerTintColor: ACCENT,
-                          headerTitle: "",
-                          headerStyle: { backgroundColor: BG_COLOR },
-                          headerShadowVisible: false,
-                          headerTitleAlign: "center",
-                          headerLeft: () => (
-                            <Pressable
-                              onPress={() => router.back()}
-                              accessibilityRole="button"
-                              accessibilityLabel="Go back"
-                              hitSlop={12}
-                            >
-                              <Ionicons
-                                name="chevron-back"
-                                size={28}
-                                color={ACCENT}
-                              />
-                            </Pressable>
-                          ),
-                        }}
-                      />
-                      <Stack.Screen
-                        name="mission"
-                        options={{
-                          headerShown: true,
-                          headerTintColor: ACCENT,
-                          headerTitle: "",
-                          headerStyle: { backgroundColor: BG_COLOR },
-                          headerShadowVisible: false,
-                          headerTitleAlign: "center",
-                          headerLeft: () => (
-                            <Pressable
-                              onPress={() => router.back()}
-                              accessibilityRole="button"
-                              accessibilityLabel="Go back"
-                              hitSlop={12}
-                            >
-                              <Ionicons
-                                name="chevron-back"
-                                size={28}
-                                color={ACCENT}
-                              />
-                            </Pressable>
-                          ),
-                        }}
-                      />
-                      <Stack.Screen
-                        name="watch"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="series"
-                        options={{ headerShown: false }}
-                      />
-                    </Stack>
-                  </ExperienceShell>
-                </DownloadsProvider>
-              </WatchPreferencesProvider>
-            </ExperienceSelectionProvider>
-          </SafeAreaProvider>
-        </ApolloProvider>
+                      >
+                        <Stack.Screen name="(tabs)" />
+                        <Stack.Screen
+                          name="video/[sectionKey]"
+                          options={{
+                            headerShown: true,
+                            headerTintColor: ACCENT,
+                            headerTitle: "",
+                            headerStyle: { backgroundColor: BG_COLOR },
+                            headerShadowVisible: false,
+                            headerTitleAlign: "center",
+                            headerLeft: () => (
+                              <Pressable
+                                onPress={() => router.back()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Go back"
+                                hitSlop={12}
+                              >
+                                <Ionicons
+                                  name="chevron-back"
+                                  size={28}
+                                  color={ACCENT}
+                                />
+                              </Pressable>
+                            ),
+                          }}
+                        />
+                        <Stack.Screen
+                          name="collection/[sectionKey]"
+                          options={{
+                            headerShown: true,
+                            headerTintColor: ACCENT,
+                            headerTitle: "",
+                            headerStyle: { backgroundColor: BG_COLOR },
+                            headerShadowVisible: false,
+                            headerTitleAlign: "center",
+                            headerLeft: () => (
+                              <Pressable
+                                onPress={() => router.back()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Go back"
+                                hitSlop={12}
+                              >
+                                <Ionicons
+                                  name="chevron-back"
+                                  size={28}
+                                  color={ACCENT}
+                                />
+                              </Pressable>
+                            ),
+                          }}
+                        />
+                        <Stack.Screen
+                          name="experience/[slug]"
+                          options={{
+                            headerShown: true,
+                            headerTintColor: ACCENT,
+                            headerTitle: "",
+                            headerStyle: { backgroundColor: BG_COLOR },
+                            headerShadowVisible: false,
+                            headerTitleAlign: "center",
+                            headerLeft: () => (
+                              <Pressable
+                                onPress={() => router.back()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Go back"
+                                hitSlop={12}
+                              >
+                                <Ionicons
+                                  name="chevron-back"
+                                  size={28}
+                                  color={ACCENT}
+                                />
+                              </Pressable>
+                            ),
+                          }}
+                        />
+                        <Stack.Screen
+                          name="mission"
+                          options={{
+                            headerShown: true,
+                            headerTintColor: ACCENT,
+                            headerTitle: "",
+                            headerStyle: { backgroundColor: BG_COLOR },
+                            headerShadowVisible: false,
+                            headerTitleAlign: "center",
+                            headerLeft: () => (
+                              <Pressable
+                                onPress={() => router.back()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Go back"
+                                hitSlop={12}
+                              >
+                                <Ionicons
+                                  name="chevron-back"
+                                  size={28}
+                                  color={ACCENT}
+                                />
+                              </Pressable>
+                            ),
+                          }}
+                        />
+                        <Stack.Screen
+                          name="watch"
+                          options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                          name="series"
+                          options={{ headerShown: false }}
+                        />
+                      </Stack>
+                    </ExperienceShell>
+                  </DownloadsProvider>
+                </WatchPreferencesProvider>
+              </ExperienceSelectionProvider>
+            </SafeAreaProvider>
+          </ApolloProvider>
+        </MobileDatadogProvider>
       </ErrorBoundary>
     </View>
   )
