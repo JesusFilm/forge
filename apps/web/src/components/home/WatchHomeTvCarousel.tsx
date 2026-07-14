@@ -180,7 +180,7 @@ function PrimaryAction({
   const primaryClassName =
     "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
   const secondaryClassName =
-    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full border border-white/35 bg-black/30 px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.22)] backdrop-blur transition hover:border-white/60 hover:bg-white/12 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
+    "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-md px-1 text-sm font-bold text-white/90 transition hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-2 sm:text-lg"
 
   const secondaryAction =
     slide.kind === "mux" && slide.secondaryAction && slide.src ? (

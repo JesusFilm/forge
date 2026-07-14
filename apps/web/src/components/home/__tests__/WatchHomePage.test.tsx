@@ -731,7 +731,9 @@ describe("WatchHomePage", () => {
       "Watch Now",
     )
     expect(shareButton?.textContent).toContain("Share")
-    expect(shareButton?.getAttribute("class")).toContain("border-white/35")
+    expect(shareButton?.getAttribute("class")).toContain("hover:underline")
+    expect(shareButton?.getAttribute("class")).not.toContain("border")
+    expect(shareButton?.getAttribute("class")).not.toContain("bg-black/30")
     expect(shareButton?.getAttribute("aria-label")).toBe("Share")
 
     const heroVideo = container.querySelector(
