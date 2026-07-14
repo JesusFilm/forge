@@ -26,11 +26,29 @@ export type SmartCropPlanForPlayer = {
   segments: SmartCropPlanSegment[]
 }
 
+export type SmartCropQaIssueForPlayer = {
+  severity: "info" | "warning" | "critical"
+  description: string
+  atSeconds?: number
+  shotId?: string
+}
+
+export type SmartCropQaMarkerForPlayer = SmartCropQaIssueForPlayer & {
+  markerId: string
+  seconds: number
+  percent: number
+  segment?: SmartCropPlanSegment
+}
+
 export type CropBoxPercent = {
   left: number
   top: number
   width: number
   height: number
+}
+
+export function isSmartCropAttemptSelectableForReview(status: string): boolean {
+  return ["approved", "complete", "qa_unavailable"].includes(status)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,6 +61,33 @@ function asFiniteNumber(value: unknown): number | null {
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null
+}
+
+function parseQaIssue(value: unknown): SmartCropQaIssueForPlayer | null {
+  if (!isRecord(value)) return null
+  if (
+    value.severity !== "info" &&
+    value.severity !== "warning" &&
+    value.severity !== "critical"
+  ) {
+    return null
+  }
+  if (typeof value.description !== "string") return null
+
+  return {
+    severity: value.severity,
+    description: value.description,
+    atSeconds: asFiniteNumber(value.atSeconds) ?? undefined,
+    shotId: asString(value.shotId) ?? undefined,
+  }
+}
+
+export function parseSmartCropQaIssuesForPlayer(
+  value: unknown,
+): SmartCropQaIssueForPlayer[] {
+  if (!isRecord(value) || !Array.isArray(value.issues)) return []
+
+  return value.issues.map(parseQaIssue).filter((issue) => issue != null)
 }
 
 function parseKeyframe(value: unknown): SmartCropPlanKeyframe | null {
@@ -158,6 +203,43 @@ export function findActiveSmartCropSegment(
   }
 
   return segments[segments.length - 1]!
+}
+
+export function buildSmartCropQaMarkers(
+  segments: readonly SmartCropPlanSegment[],
+  issues: readonly SmartCropQaIssueForPlayer[],
+  durationSeconds: number,
+): SmartCropQaMarkerForPlayer[] {
+  if (segments.length === 0 || durationSeconds <= 0) return []
+
+  return issues
+    .map((issue, index): SmartCropQaMarkerForPlayer | null => {
+      const explicitSeconds = asFiniteNumber(issue.atSeconds)
+      const shotSegment = issue.shotId
+        ? segments.find((segment) => segment.shotId === issue.shotId)
+        : undefined
+      const seconds =
+        explicitSeconds ??
+        (shotSegment
+          ? (shotSegment.canonicalStart + shotSegment.canonicalEnd) / 2
+          : null)
+
+      if (seconds == null) return null
+
+      const clampedSeconds = Math.min(durationSeconds, Math.max(0, seconds))
+      const activeSegment =
+        shotSegment ?? findActiveSmartCropSegment(segments, clampedSeconds)
+
+      return {
+        ...issue,
+        markerId: `${issue.shotId ?? "time"}-${index}-${issue.severity}`,
+        seconds: clampedSeconds,
+        percent: (clampedSeconds / durationSeconds) * 100,
+        ...(activeSegment ? { segment: activeSegment } : {}),
+      }
+    })
+    .filter((marker) => marker != null)
+    .sort((left, right) => left.seconds - right.seconds)
 }
 
 function interpolate(start: number, end: number, progress: number): number {

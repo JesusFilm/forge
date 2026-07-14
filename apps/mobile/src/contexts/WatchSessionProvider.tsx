@@ -17,16 +17,19 @@ import {
 } from "../lib/normalizeVideo"
 import { ensureDubMedia } from "../lib/dubMediaFetch"
 import { GET_VIDEO_DUB } from "../lib/queries"
-import { resolveDefaultSlug } from "../lib/resolveDefaultLanguage"
+import {
+  INITIAL_RECONCILER_STATE,
+  markUserChoice,
+  reconcileDefault,
+  resetReconciler,
+} from "../lib/preferenceReconciler"
+import { subtitleNameToCache } from "../lib/subtitleSelection"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
- * Shared selection state for the watch screen and its formSheet routes.
- *
- * The sheets (Language/Subtitle/Download) are separate navigation routes, so
- * they cannot receive callback props from the player screen. Instead the player
- * publishes the normalized video here and all routes read/write the active
- * variant + subtitle selection through this context.
+ * Shared selection state across the watch screen and its formSheet routes
+ * (Language/Subtitle/Download). Sheets are separate routes so can't take props;
+ * the player publishes the video here and all routes read/write selection.
  */
 type WatchSessionContextValue = {
   video: WatchVideoRecord | null
@@ -37,30 +40,36 @@ type WatchSessionContextValue = {
   setSubtitleEnabled: (enabled: boolean) => void
   activeSubtitleSlug: string | null
   setActiveSubtitleSlug: (slug: string | null) => void
+  /**
+   * The persisted display name of the preferred subtitle language, available
+   * immediately on mount (before the lazy per-dub media lands). Lets the
+   * Subtitles control show the name on a cold load instead of a placeholder.
+   */
+  preferredSubtitleName: string | null
   /** Convenience: the variant currently selected, or null. */
   activeVariant: WatchVideoRecord["variants"][number] | null
   /**
-   * The active variant's downloads + subtitles, fetched lazily (one dub at a
-   * time) via {@link ensureActiveVariantMedia}. `null` until that dub's media
-   * has loaded — distinct from "loaded, empty" (`{ downloads: [], subtitles: [] }`).
+   * Active variant's downloads + subtitles, fetched lazily per dub via
+   * {@link ensureActiveVariantMedia}. `null` until loaded — distinct from
+   * "loaded, empty" (`{ downloads: [], subtitles: [] }`).
    */
   activeVariantMedia: VariantMedia | null
   /** True while the active variant's media request is in flight. */
   activeVariantMediaLoading: boolean
   /**
-   * True when the active variant's media fetch failed (vs. loaded-but-empty).
-   * Lets sheets show a retry affordance instead of a misleading empty list.
+   * True when the media fetch failed (vs. loaded-but-empty), so sheets can show
+   * a retry affordance instead of a misleading empty list.
    */
   activeVariantMediaError: boolean
   /**
-   * Fetch the active variant's downloads + subtitles if not already loaded /
-   * in flight. Call when the Download/Subtitle sheet opens or captions turn on.
+   * Fetch the active variant's downloads + subtitles unless already loaded/in
+   * flight; call when the Download/Subtitle sheet opens or captions turn on.
    * Deduped per dub id; a failed fetch is retried on the next call.
    */
   ensureActiveVariantMedia: () => void
   /**
-   * Cross-route snackbar signal. The download sheet route sets this on
-   * completion and dismisses itself; the player screen renders the snackbar.
+   * Cross-route snackbar signal: the download sheet sets it on completion and
+   * dismisses itself; the player screen renders the snackbar.
    */
   snackbarMessage: string | null
   setSnackbarMessage: (message: string | null) => void
@@ -72,10 +81,12 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const {
     audioLanguageSlug: preferredAudioSlug,
     subtitleLanguageSlug: preferredSubtitleSlug,
+    subtitleLanguageName: preferredSubtitleName,
     subtitlesEnabled,
     isReady: preferencesReady,
     setPreferredAudioLanguage,
     setPreferredSubtitleLanguage,
+    setPreferredSubtitleName,
     setSubtitlesEnabled,
   } = useWatchPreferences()
 
@@ -90,31 +101,24 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // straight from the persisted store so it carries across videos and restarts.
   const subtitleEnabled = subtitlesEnabled
 
-  // Latest-render snapshot of the video so the persisting audio setter can read
-  // the chosen variant's language slug without taking `video` as a dep (which
-  // would re-create the setter — and the context memo — every render). Read only
-  // inside the event handler, so the latest value is always in hand.
+  // Latest-render video snapshot so the audio setter reads the chosen variant's
+  // language slug without taking `video` as a dep (which would re-create the
+  // setter and context memo every render). Read only inside the event handler.
   const videoRef = useRef<WatchVideoRecord | null>(null)
   videoRef.current = video
 
-  // Whether the user has explicitly chosen a variant / subtitle for the current
-  // video. Guards the default-resolution effects from overriding a user's
-  // choice when partial → full data enrichment republishes the same video.
-  const userChoseVariantRef = useRef(false)
-  const userChoseSubtitleRef = useRef(false)
-  // The video / variant identity defaults were last resolved for, so the
-  // resolution effects fire once per identity even though they now also re-run
-  // when variants arrive (partial data lands variants after the documentId).
-  const resolvedVariantForRef = useRef<string | null>(null)
-  const resolvedSubtitleForRef = useRef<string | null>(null)
+  // Guard state for the default-resolution effects, held per concern so a user's
+  // explicit pick survives partial→full republish and each default resolves once
+  // per identity. See preferenceReconciler; the effects below dispatch into it.
+  const audioReconcilerRef = useRef(INITIAL_RECONCILER_STATE)
+  const subtitleReconcilerRef = useRef(INITIAL_RECONCILER_STATE)
 
-  // Exposed setters mark explicit user intent (so the resolution effects below,
-  // which call the raw state setters, never trip these guards) AND persist the
-  // choice app-wide by unique language slug. A new video re-resolves to a
-  // concrete variant/subtitle from that slug via resolveDefaultSlug.
+  // Exposed setters mark explicit user intent (the resolution effects call the
+  // raw setters, so never trip these guards) AND persist the choice app-wide by
+  // language slug; a new video re-resolves that slug via resolveDefaultSlug.
   const setActiveVariantIndex = useCallback(
     (index: number) => {
-      userChoseVariantRef.current = true
+      audioReconcilerRef.current = markUserChoice(audioReconcilerRef.current)
       setActiveVariantIndexState(index)
       const slug = videoRef.current?.variants[index]?.languageSlug ?? null
       if (slug) setPreferredAudioLanguage(slug)
@@ -123,14 +127,18 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   )
   const setSubtitleEnabled = useCallback(
     (enabled: boolean) => {
-      userChoseSubtitleRef.current = true
+      subtitleReconcilerRef.current = markUserChoice(
+        subtitleReconcilerRef.current,
+      )
       setSubtitlesEnabled(enabled)
     },
     [setSubtitlesEnabled],
   )
   const setActiveSubtitleSlug = useCallback(
     (slug: string | null) => {
-      userChoseSubtitleRef.current = true
+      subtitleReconcilerRef.current = markUserChoice(
+        subtitleReconcilerRef.current,
+      )
       setActiveSubtitleSlugState(slug)
       // The subtitle slug IS the unique language slug — persist it directly so
       // the choice maps onto other videos' subtitles. Only on a real selection;
@@ -140,10 +148,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     [setPreferredSubtitleLanguage],
   )
 
-  // Clamp against the active index: when navigating to a different video, the
-  // index from the previous one can briefly exceed the new variant list before
-  // the default-resolution effect re-runs. Clamping avoids a one-frame
-  // undefined variant.
+  // Clamp the active index: on navigating to a new video, the previous index
+  // can briefly exceed the new variant list before the resolution effect
+  // re-runs. Clamping avoids a one-frame undefined variant.
   const activeVariant =
     video && video.variants.length > 0
       ? (video.variants[
@@ -151,10 +158,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         ] ?? null)
       : null
 
-  // Lazily-fetched per-dub media (downloads + subtitles), keyed by dub id so a
-  // language the user already opened stays warm across switches and re-entry.
-  // `requestedRef` dedupes in-flight + completed fetches; a failed one is
-  // dropped from it so the next ensure() retries.
+  // Lazily-fetched per-dub media keyed by dub id so an already-opened language
+  // stays warm across switches/re-entry. `requestedRef` dedupes in-flight +
+  // completed fetches; a failed one is dropped so the next ensure() retries.
   const client = useApolloClient()
   const [mediaById, setMediaById] = useState<Record<string, VariantMedia>>({})
   const [loadingIds, setLoadingIds] = useState<Record<string, true>>({})
@@ -212,10 +218,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // New video identity → reset choice tracking + subtitle state. Declared
   // before the resolution effects so their guards see a clean slate.
   useEffect(() => {
-    userChoseVariantRef.current = false
-    userChoseSubtitleRef.current = false
-    resolvedVariantForRef.current = null
-    resolvedSubtitleForRef.current = null
+    audioReconcilerRef.current = resetReconciler()
+    subtitleReconcilerRef.current = resetReconciler()
     // subtitleEnabled is now an app-wide pref (persists across videos); only the
     // per-video subtitle slug resets — it re-resolves once this dub's media lands.
     setActiveSubtitleSlugState(null)
@@ -228,29 +232,30 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     requestedRef.current.clear()
   }, [video?.documentId])
 
-  // Default the dubbing language once per video, as soon as variants are
-  // available (they may arrive after the documentId via partial data), unless
-  // the user already chose. Gated on preferencesReady so the persisted choice is
-  // applied on the first resolution (avoids a default→preferred snap on cold
-  // start). Persisted preference → device locale → video primary → English → first.
+  // Default the dubbing language once per video as variants arrive (may land
+  // after documentId via partial data), unless the user chose. The reconciler
+  // gates on preferencesReady so the persisted choice applies first (no snap).
   useEffect(() => {
-    if (!preferencesReady) return
-    if (!video || video.variants.length === 0) return
-    if (userChoseVariantRef.current) return
-    if (resolvedVariantForRef.current === video.documentId) return
-    resolvedVariantForRef.current = video.documentId
-    const options = video.variants.map((v) => ({
-      slug: v.slug,
-      bcp47: v.languageBcp47,
-      languageSlug: v.languageSlug,
-    }))
-    const best = resolveDefaultSlug(
+    const options =
+      video?.variants.map((v) => ({
+        slug: v.slug,
+        bcp47: v.languageBcp47,
+        languageSlug: v.languageSlug,
+      })) ?? []
+    const { nextState, apply } = reconcileDefault(audioReconcilerRef.current, {
+      ready: preferencesReady,
+      identity: video?.documentId ?? null,
       options,
-      video.primaryLanguageBcp47,
-      preferredAudioSlug,
-    )
-    const idx = best ? video.variants.findIndex((v) => v.slug === best) : -1
-    setActiveVariantIndexState(idx >= 0 ? idx : 0)
+      primaryBcp47: video?.primaryLanguageBcp47 ?? null,
+      preferredSlug: preferredAudioSlug,
+    })
+    audioReconcilerRef.current = nextState
+    if (apply && video) {
+      const idx = apply.slug
+        ? video.variants.findIndex((v) => v.slug === apply.slug)
+        : -1
+      setActiveVariantIndexState(idx >= 0 ? idx : 0)
+    }
   }, [
     video?.documentId,
     video?.variants.length,
@@ -259,35 +264,54 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     preferredAudioSlug,
   ])
 
-  // Pre-select the subtitle language for the active variant once, unless the
-  // user already chose. Honors the persisted subtitle preference first so it
-  // tracks the user's app-wide choice across videos; whether subtitles actually
-  // show is the separate subtitleEnabled pref. Subtitles arrive lazily, so this
-  // runs when the active dub's media lands (keyed on the dub id), not at load.
-  // Persisted preference → device locale → video primary → English → first.
+  // Pre-select the subtitle language once per variant unless the user chose,
+  // honoring the persisted pref first (visibility is the separate subtitleEnabled
+  // pref). Subtitles arrive lazily, so this runs when the dub's media lands.
   useEffect(() => {
-    if (!preferencesReady) return
     const subtitles = activeVariantMedia?.subtitles
-    if (!activeVariant || !subtitles || subtitles.length === 0) return
-    if (userChoseSubtitleRef.current) return
-    if (resolvedSubtitleForRef.current === activeVariant.documentId) return
-    resolvedSubtitleForRef.current = activeVariant.documentId
-    const options = subtitles.map((s) => ({
-      slug: s.languageSlug,
-      bcp47: s.languageBcp47,
-      languageSlug: s.languageSlug,
-    }))
-    const best = resolveDefaultSlug(
-      options,
-      video?.primaryLanguageBcp47 ?? null,
-      preferredSubtitleSlug,
+    const options =
+      subtitles?.map((s) => ({
+        slug: s.languageSlug,
+        bcp47: s.languageBcp47,
+        languageSlug: s.languageSlug,
+      })) ?? []
+    const { nextState, apply } = reconcileDefault(
+      subtitleReconcilerRef.current,
+      {
+        ready: preferencesReady,
+        identity: activeVariant?.documentId ?? null,
+        options,
+        primaryBcp47: video?.primaryLanguageBcp47 ?? null,
+        preferredSlug: preferredSubtitleSlug,
+      },
     )
-    if (best) setActiveSubtitleSlugState(best)
+    subtitleReconcilerRef.current = nextState
+    if (apply?.slug) setActiveSubtitleSlugState(apply.slug)
   }, [
     activeVariant?.documentId,
     activeVariantMedia,
     preferencesReady,
     preferredSubtitleSlug,
+  ])
+
+  // Cache the preferred subtitle's display NAME once a dub's media lands, so the
+  // next cold load paints the pill instead of flashing "Subtitles". Keyed on the
+  // PREFERRED slug (a video lacking it can't overwrite) and gated on hydration.
+  useEffect(() => {
+    if (!preferencesReady || !preferredSubtitleSlug || !activeVariantMedia)
+      return
+    const next = subtitleNameToCache(
+      preferredSubtitleSlug,
+      activeVariantMedia.subtitles,
+      preferredSubtitleName,
+    )
+    if (next != null) setPreferredSubtitleName(next)
+  }, [
+    preferencesReady,
+    preferredSubtitleSlug,
+    preferredSubtitleName,
+    activeVariantMedia,
+    setPreferredSubtitleName,
   ])
 
   const value = useMemo<WatchSessionContextValue>(
@@ -300,6 +324,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       setSubtitleEnabled,
       activeSubtitleSlug,
       setActiveSubtitleSlug,
+      preferredSubtitleName,
       activeVariant,
       activeVariantMedia,
       activeVariantMediaLoading,
@@ -316,6 +341,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       setSubtitleEnabled,
       activeSubtitleSlug,
       setActiveSubtitleSlug,
+      preferredSubtitleName,
       activeVariant,
       activeVariantMedia,
       activeVariantMediaLoading,

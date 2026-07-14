@@ -1,14 +1,8 @@
-// Visual tokens originally ported for the /watch/[slug] detail page from the
-// Claude Design handoff ("Forge TV Video Page"), then adopted as the shared look
-// for the Home and Search screens via the "Forge TV Home" redesign. WATCH_THEME
-// now governs watch detail, Home, and Search — it deliberately diverges from the
-// app-wide Crimson Gallery system (brighter red accent, frosted-glass pills,
-// white-fill focus, near-black scrims). The SDUI experience renderer, series, and
-// the remaining legacy surfaces keep their Crimson Gallery look (COLORS in
-// lib/colors.ts).
-//
-// No expo-blur dependency on TV, so the "frosted glass" pills are approximated
-// with a translucent white fill over the dark scrim — no actual backdrop blur.
+// Visual tokens (Claude Design handoff) governing watch detail, Home, and Search.
+// Diverges from Crimson Gallery (brighter accent, white-fill focus, near-black
+// scrims); SDUI/series/legacy keep COLORS in lib/colors.ts. No expo-blur on TV.
+
+import { scale } from "../../lib/scale"
 
 /** Near-black surface/ink shared by WATCH_THEME (focusInk) and SEARCH_THEME. */
 export const NEAR_BLACK = "#0a0a0b"
@@ -29,6 +23,8 @@ export const WATCH_THEME = {
   scrim: (a: number) => `rgba(7,7,8,${a})`,
   /** Opaque background for the "below the fold" content section. */
   below: "#08080a",
+  /** No-artwork thumbnail fallback tint (matches HomeCard.thumbFallback). */
+  cardFallback: "rgba(255,255,255,0.06)",
 
   /** Text on the cinematic backdrop. */
   text: "#ffffff",
@@ -41,6 +37,13 @@ export const WATCH_THEME = {
   /** Translucent chip behind the kicker badge ("SERIES"). */
   badgeBg: "rgba(255,255,255,0.16)",
 } as const
+
+// ── Hero layout (shared by the watch + series detail screens) ──────
+// Hero LAYOUT stops short of full height by HERO_PEEK so the next rail peeks above
+// the fold (TV next-row-peek affordance; we deliberately ship no scroll chevron).
+// HERO_BOTTOM_FADE_HEIGHT is the gradient fading the hero into the rail bg, killing the seam.
+export const HERO_PEEK = scale(170)
+export const HERO_BOTTOM_FADE_HEIGHT = scale(220)
 
 // SECTION_HEADING moved to ../sections/sectionHeading (a generic SDUI section
 // renderer must not depend on this watch-only token file).

@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "Închide",
     "download": "Descarcă",
+    "authRequiredTitle": "Doriți să descărcați acest videoclip?",
+    "authRequiredBody": "Este necesar un cont gratuit Jesus Film pentru a descărca videoclipuri.",
+    "signInToDownload": "Conectați-vă pentru a descărca",
+    "keepWatching": "Continuați vizionarea",
     "checking": "Se verifică",
     "closeTermsOfUse": "Închide Termenii de utilizare",
     "cancel": "Anulează",
@@ -193,7 +197,10 @@
     "searchSuggestionWithLanguage": "Caută {suggestion} în {language}",
     "inLanguage": "în {language}",
     "browseByRegion": "Răsfoiește după regiune",
-    "clearLanguages": "Șterge"
+    "clearLanguages": "Șterge",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",

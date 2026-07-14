@@ -2,7 +2,7 @@ import type {
   FragmentOf,
   LegacyFragmentValue,
 } from "@/lib/legacy-fragment-types"
-import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
@@ -187,7 +187,7 @@ export function Section({ data, routeVideo }: SectionProps) {
           />
         )}
         <div
-          className={`${hasStaticOverlay || backgroundImageUrl ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+          className={`${hasStaticOverlay || backgroundImageUrl ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${WATCH_PAGE_CONTENT_CLASSES}`}
         >
           {content}
         </div>

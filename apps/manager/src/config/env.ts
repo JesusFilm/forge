@@ -54,11 +54,11 @@ export const env = createEnv({
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
-    // /api/admin-embeds/{scene,transcript} which forward to admin's
-    // GraphQL trigger mutations using the bearer key below. Both vars
-    // are optional at boot so manager keeps starting in environments
-    // that don't have the proxy configured; the route handlers throw
-    // a clean 500 with a clear message if invoked without these set.
+    // /api/admin-embeds/transcript, which forwards to admin's GraphQL
+    // trigger mutation using the bearer key below. Both vars are optional
+    // at boot so manager keeps starting in environments that don't have the
+    // proxy configured; the route handler throws a clean 500 with a clear
+    // message if invoked without these set.
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
@@ -76,6 +76,11 @@ export const env = createEnv({
       .int()
       .positive()
       .default(300_000),
+    MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
 
     // Smart Crop (plan 2026-06-09-002). All optional opt-in scaffolding —
     // default deploys must not require these. The smart-crop job creation
@@ -162,6 +167,8 @@ export const env = createEnv({
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
     MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
       process.env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+    MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS:
+      process.env.MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS,
     CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
     CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
     MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,

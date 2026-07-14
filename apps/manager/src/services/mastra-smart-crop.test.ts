@@ -3,6 +3,7 @@ import {
   launchSmartCropAlign,
   launchSmartCropPlan,
   launchSmartCropQa,
+  launchSmartCropRepair,
 } from "@/services/mastra-smart-crop"
 
 const CLIENT = { baseUrl: "https://mastra.internal", bearer: "secret" }
@@ -13,11 +14,16 @@ const planSegment = {
   shotId: "shot_00421",
   canonicalStart: 124.2,
   canonicalEnd: 139.8,
-  mode: "group",
+  mode: "group" as const,
   primarySubject: "Jesus",
   secondarySubjects: ["disciples"],
   avoidCutting: ["faces"],
   confidence: 0.94,
+  faceVisible: true,
+  faceCenter: {
+    start: { cx: 0.72, cy: 0.24 },
+    end: { cx: 0.73, cy: 0.24 },
+  },
   cropKeyframes: [
     { progress: 0, x: 520, y: 0, width: 606, height: 1080 },
     { progress: 1, x: 560, y: 0, width: 606, height: 1080 },
@@ -224,6 +230,7 @@ describe("launchSmartCropQa", () => {
               severity: "warning",
               description: "Subject slightly off-center in opening shot",
               atSeconds: 4,
+              shotId: "shot_00421",
             },
           ],
           usage: { inputTokens: 900, outputTokens: 120 },
@@ -242,6 +249,7 @@ describe("launchSmartCropQa", () => {
           severity: "warning",
           description: "Subject slightly off-center in opening shot",
           atSeconds: 4,
+          shotId: "shot_00421",
         },
       ],
       usage: { inputTokens: 900, outputTokens: 120 },
@@ -270,5 +278,71 @@ describe("launchSmartCropQa", () => {
     await expect(
       launchSmartCropQa(qaInput, { ...CLIENT, fetchImpl }),
     ).resolves.toEqual({ ok: false, reason: "parse_error", retryable: true })
+  })
+})
+
+describe("launchSmartCropRepair", () => {
+  const repairInput = {
+    asset: { assetId: "asset123", playbackId: "pb_abc" },
+    source: { width: 1920, height: 1080, durationSeconds: 7200 },
+    target: { aspectRatio: "9:16" as const, width: 1080, height: 1920 },
+    attempt: {
+      index: 1,
+      previousPlanGeneratedAt: "2026-06-09T00:00:00.000Z",
+    },
+    issues: [
+      {
+        severity: "warning" as const,
+        description: "Subject face is cut off",
+        shotId: "shot_00421",
+      },
+    ],
+    shots: [
+      {
+        shotId: "shot_00421",
+        start: 124.2,
+        end: 139.8,
+        previousSegment: planSegment,
+        frameUrls: ["https://image.mux.com/pb_abc/thumbnail.webp?width=768"],
+      },
+    ],
+    model: "qwen/qwen2.5-vl-72b-instruct",
+  }
+
+  it("posts to /forge-smart-crop-repair and parses replacement segments", async () => {
+    const repairedSegment = {
+      ...planSegment,
+      cropKeyframes: [
+        { progress: 0, x: 640, y: 0, width: 606, height: 1080 },
+        { progress: 1, x: 680, y: 0, width: 606, height: 1080 },
+      ],
+    }
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        result: {
+          ok: true,
+          segments: [repairedSegment],
+          usage: { inputTokens: 700, outputTokens: 80 },
+          model: "qwen/qwen2.5-vl-72b-instruct",
+        },
+      }),
+    )
+
+    await expect(
+      launchSmartCropRepair(repairInput, { ...CLIENT, fetchImpl }),
+    ).resolves.toEqual({
+      ok: true,
+      segments: [repairedSegment],
+      usage: { inputTokens: 700, outputTokens: 80 },
+      model: "qwen/qwen2.5-vl-72b-instruct",
+    })
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      new URL("https://mastra.internal/forge-smart-crop-repair"),
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ authorization: "Bearer secret" }),
+      }),
+    )
   })
 })

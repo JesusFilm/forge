@@ -35,6 +35,11 @@
  * yt-video-mapper backend to read the flat catalog sync projection. It is
  * intentionally separate from `WORKFLOW_TRIGGER` so existing manager/workflow
  * bearers do not inherit whole-catalog media URL access.
+ *
+ * `WEB_USER` is a request-bound human identity minted only after Admin
+ * introspects a user-delegated Auth access token issued to apps/web. It is
+ * intentionally narrower than editorial roles and exists for watch-event
+ * writes, not content reads or admin UI access.
  */
 export type Role =
   | "ADMIN"
@@ -45,6 +50,7 @@ export type Role =
   | "WORKFLOW_TRIGGER"
   | "MANAGER_BACKEND"
   | "VIDEO_MAPPER"
+  | "WEB_USER"
   | "CONSUMER_BEARER"
 
 export type Principal = {
@@ -60,6 +66,12 @@ export type Principal = {
    * Never logged.
    */
   rateLimitBucketKey?: string
+  /**
+   * True on a fleet consumer bearer (`FLEET_ADMIN_API_KEYS`). The rate-limit
+   * identifyFn buckets a fleet principal per-IP (`consumer:<key>:<ip>`) instead
+   * of the flat per-key `consumer:<key>`. Bucketing-only; never a permission.
+   */
+  fleet?: boolean
 }
 
 export type ManagerRole = "OPERATOR"
@@ -112,13 +124,28 @@ export const VIDEO_MAPPER_PRINCIPAL = {
  */
 export function CONSUMER_BEARER_PRINCIPAL({
   rateLimitBucketKey,
+  fleet = false,
 }: {
   rateLimitBucketKey: string
+  fleet?: boolean
 }): Principal {
   return {
     id: null,
     role: "CONSUMER_BEARER",
     rateLimitBucketKey,
+    fleet,
+  }
+}
+
+export function WEB_USER_PRINCIPAL({
+  subject,
+}: {
+  subject: string
+}): Principal {
+  return {
+    id: subject,
+    role: "WEB_USER",
+    rateLimitBucketKey: subject,
   }
 }
 

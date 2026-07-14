@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "Sluiten",
     "download": "Downloaden",
+    "authRequiredTitle": "Deze video downloaden?",
+    "authRequiredBody": "Je hebt een gratis Jesus Film-account nodig om video's te downloaden.",
+    "signInToDownload": "Aanmelden om te downloaden",
+    "keepWatching": "Blijven kijken",
     "checking": "Controleren",
     "closeTermsOfUse": "Gebruiksvoorwaarden sluiten",
     "cancel": "Annuleren",
@@ -193,7 +197,10 @@
     "searchSuggestionWithLanguage": "Zoek {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Bladeren op regio",
-    "clearLanguages": "Wissen"
+    "clearLanguages": "Wissen",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kijken",

@@ -1,10 +1,8 @@
 import { nextControlsState, type ControlsState } from "../controlsVisibility"
 
-// The useControlsVisibility hook wires Animated / timers / native listeners
-// around this table; that orchestration is verified in the simulator (R19).
-// Here we lock the logical (visible, mounted) transitions — in particular the
-// fade-race invariants from ce-code-review #7, which are otherwise only
-// reachable by tapping inside a ~150ms fade window on a device.
+// Locks the logical (visible, mounted) transitions — notably the fade-race
+// invariants from ce-code-review #7, only reachable by tapping inside a ~150ms
+// fade window on device. The hook's Animated/timer orchestration is sim-verified (R19).
 
 const SHOWN: ControlsState = { visible: true, mounted: true }
 const FADING: ControlsState = { visible: false, mounted: true } // hidden, mid fade-out

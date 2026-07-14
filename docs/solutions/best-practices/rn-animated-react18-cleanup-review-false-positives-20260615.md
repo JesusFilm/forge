@@ -45,6 +45,11 @@ The two findings:
 Both are non-bugs. The rules below say when each pattern is actually a bug and
 when it is not, so reviews stop re-raising the non-bug cases.
 
+(A sibling false-positive class — synchronous-guard "double-submit" and
+ref-drift races, a JS run-to-completion concern rather than an unmount one —
+lives in its own doc:
+`docs/solutions/best-practices/synchronous-guard-run-to-completion-false-positive-20260615.md`.)
+
 ## Guidance
 
 ### Rule 1 — A finite native-driver tween with no JS callback needs no unmount cleanup
@@ -214,6 +219,10 @@ continuous animation. (auto memory [claude])
 - `docs/solutions/design-patterns/mobile-auto-hide-overlay-fade-race-ref-sync.md`
   — the complementary case where an in-flight Animated handle DOES need
   `.stop()` (its completion writes React state at force-reveal sites).
+- `docs/solutions/best-practices/synchronous-guard-run-to-completion-false-positive-20260615.md`
+  — the sibling false-positive class for synchronous-guard double-submit and
+  ref-drift races (a JS run-to-completion concern, not an unmount one); same
+  "verify the mechanism" discipline, different mechanism.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
   — the same "verify the mechanism, don't accept the pattern at face value"
   discipline.

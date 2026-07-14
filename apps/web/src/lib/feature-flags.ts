@@ -21,8 +21,6 @@ const webFeatureFlagClient = createFeatureFlagClient({
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
-      env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
@@ -32,7 +30,6 @@ const webFeatureFlagClient = createFeatureFlagClient({
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     "forge.watch.ctaTextCopy": false,
     "forge.watch.downloadAccountGate": false,
-    "forge.watch.youVersionBibleQuotes": false,
     "forge.watch.hideBibleQuotes": false,
     "forge.watch.questionPanel": false,
     "forge.watch.algoliaSearch": false,
@@ -40,6 +37,12 @@ const webFeatureFlagClient = createFeatureFlagClient({
   timeoutSeconds: 0.25,
   logger: console,
 })
+
+export const watchDownloadAccountGateFlagContext = {
+  custom: {
+    surface: "watch-download",
+  },
+} satisfies WebFeatureFlagContextInput
 
 export function createWebFeatureFlagContext(
   input: WebFeatureFlagContextInput = {},
@@ -81,15 +84,6 @@ export async function isWatchDownloadAccountGateEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchDownloadAccountGate,
-    createWebFeatureFlagContext(context),
-  )
-}
-
-export async function isWatchYouVersionBibleQuotesEnabled(
-  context: WebFeatureFlagContextInput = {},
-): Promise<boolean> {
-  return webFeatureFlagClient.booleanVariation(
-    featureFlags.watchYouVersionBibleQuotes,
     createWebFeatureFlagContext(context),
   )
 }

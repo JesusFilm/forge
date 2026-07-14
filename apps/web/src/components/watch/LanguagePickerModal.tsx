@@ -40,6 +40,9 @@ import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type LanguagePickerVariant = WatchLanguagePickerVariant
 
+const MODAL_FOCUS_RING_CLASS =
+  "focus-visible:border-stone-100/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-100 focus-visible:outline-none"
+
 export type LanguagePickerModalProps = {
   open: boolean
   variants: LanguagePickerVariant[]
@@ -676,7 +679,7 @@ export function LanguagePickerModal({
       />
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        className="top-0 left-0 h-[100svh] w-screen max-w-none translate-x-0 translate-y-0 overflow-x-hidden overflow-y-auto border-0 bg-transparent px-3 py-24 text-stone-100 ring-0 sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[calc(100svh-6rem)] sm:w-full sm:max-w-[608px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-0"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
         portalContainer={portalContainer}
@@ -687,7 +690,7 @@ export function LanguagePickerModal({
             : t("dialogTitle")}
         </DialogTitle>
 
-        <div className="relative flex flex-col gap-10">
+        <div className="relative mx-auto flex min-h-full w-full max-w-[608px] flex-col justify-center gap-10 sm:min-h-0">
           <MultilingualTooltipPanel
             copy={activeTooltipCopy}
             excludedLanguage={excludedTooltipLanguage}
@@ -743,7 +746,7 @@ export function LanguagePickerModal({
                   title="Retry loading languages"
                   data-testid="watch-language-picker-retry-languages"
                   onClick={onRetryLanguageOptions}
-                  className="size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white"
+                  className={`size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
                 >
                   <RefreshCw aria-hidden className="size-4" />
                 </Button>
@@ -760,6 +763,7 @@ export function LanguagePickerModal({
                 onOpenChange={(next) =>
                   setOpenComboboxState(next ? "language" : null)
                 }
+                popoverPortalContainer={portalContainer}
                 triggerWrapper={(trigger) => (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.language}
@@ -776,7 +780,10 @@ export function LanguagePickerModal({
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3">
+            <div
+              data-testid="watch-language-picker-subtitles-header"
+              className="flex min-w-0 items-center justify-between gap-3"
+            >
               <MultilingualTooltip
                 copy={MULTILINGUAL_TOOLTIPS.subtitles}
                 testId="watch-language-picker-tooltip-subtitles"
@@ -784,15 +791,15 @@ export function LanguagePickerModal({
                 onActivate={setActiveTooltipCopy}
                 onDeactivate={clearActiveTooltip}
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <span
                       data-testid="watch-language-picker-subtitles-icon"
                       className="flex size-8 shrink-0 items-center justify-center text-stone-200"
                     >
                       <Captions aria-hidden className="size-4" />
                     </span>
-                    <h2 className="text-xl font-semibold text-stone-100">
+                    <h2 className="min-w-0 text-xl font-semibold text-stone-100">
                       {t("subtitlesHeading")}
                     </h2>
                   </div>
@@ -806,7 +813,7 @@ export function LanguagePickerModal({
                   </span>
                 </div>
               </MultilingualTooltip>
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-3">
                 {sameLanguageSubtitleOptions.length === 0 ? (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
@@ -820,7 +827,7 @@ export function LanguagePickerModal({
                       data-testid="watch-language-picker-request-ai-translation"
                       disabled={translationRequestSent}
                       onClick={() => setTranslationRequestSent(true)}
-                      className="gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-[11px] font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
+                      className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none sm:whitespace-nowrap ${MODAL_FOCUS_RING_CLASS}`}
                     >
                       {translationRequestSent ? (
                         <Check
@@ -860,7 +867,7 @@ export function LanguagePickerModal({
                     data-testid="watch-language-picker-subtitles-toggle"
                     disabled={!hasSelectableSubtitleOptions}
                     onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                    className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-100 disabled:cursor-not-allowed disabled:opacity-45 ${
+                    className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${MODAL_FOCUS_RING_CLASS} ${
                       draftSubtitleEnabled
                         ? "bg-stone-100 text-stone-950"
                         : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
@@ -898,6 +905,7 @@ export function LanguagePickerModal({
                 onOpenChange={(next) =>
                   setOpenComboboxState(next ? "subtitles" : null)
                 }
+                popoverPortalContainer={portalContainer}
                 triggerWrapper={(trigger) => (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.subtitles}
@@ -921,7 +929,7 @@ export function LanguagePickerModal({
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-6 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3 pt-3">
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.close}
               testId="watch-language-picker-tooltip-close"
@@ -932,7 +940,7 @@ export function LanguagePickerModal({
                 variant="ghost"
                 data-testid="watch-language-picker-close-action"
                 onClick={onClose}
-                className="gap-1.5 cursor-pointer rounded-full px-4 py-2.5 text-xs font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+                className={`h-auto w-40 gap-1.5 cursor-pointer rounded-full px-5 py-3 text-xs font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100 ${MODAL_FOCUS_RING_CLASS}`}
               >
                 <X
                   aria-hidden
@@ -953,7 +961,7 @@ export function LanguagePickerModal({
                 data-testid="watch-language-picker-apply"
                 disabled={!isDirty || navigating || subtitleSelectionRequired}
                 onClick={handleApply}
-                className="inline-flex min-w-28 items-center justify-center gap-1.5 bg-stone-300 px-5 py-3 text-xs text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
+                className={`inline-flex w-40 items-center justify-center gap-1.5 bg-stone-300 px-5 py-3 text-xs text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950 ${MODAL_FOCUS_RING_CLASS}`}
               >
                 {navigating ? (
                   <>

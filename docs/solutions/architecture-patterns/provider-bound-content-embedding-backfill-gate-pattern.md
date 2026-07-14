@@ -36,7 +36,7 @@ related:
 
 ## Context
 
-The AI Gateway content embedding migration moves transcript, scene, and
+The AI Gateway content embedding migration moves active transcript and
 experience embedding generation away from OpenRouter/OpenAI-compatible
 credentials and onto the Jesus Film AI Gateway endpoint. The current production
 gateway returns native 1536-dimensional unit vectors for `model: embeddings`,
@@ -78,12 +78,14 @@ bind the gate report to the 4096/native transform tuple instead. Do this for
 every content type that writes vectors, not only the first workflow you migrate.
 
 Admin should persist both native and final provenance. The final pgvector column
-stays `vector(1536)`, but transcript, scene, and experience rows should also
+stays `vector(1536)`, but active transcript and experience rows should also
 track the embedding provider, native dimensions, and transform version. Healthy
 idempotent checks must compare that provenance so a gateway migration does not
-mistake legacy OpenAI rows for current gateway rows. If old rows predate
-provider columns, support only narrow legacy compatibility for known OpenAI
-model stamps; do not use null provider fields as a generic match.
+mistake legacy OpenAI rows for current gateway rows. Historical scene rows are
+retained for feat-199 and should not be rewritten by this active content
+backfill path. If old active rows predate provider columns, support only narrow
+legacy compatibility for known OpenAI model stamps; do not use null provider
+fields as a generic match.
 
 Require a full, provider-bound gate report before production all-content
 backfill. The Admin runner should validate more than a truthy `backfillReady`
@@ -103,7 +105,7 @@ records the active Mastra provider config proves what query embeddings and new
 workflow writes are configured to use; it does not, by itself, prove the
 searched Admin rows have already been rewritten. For destructive production
 work, pair the eval gate with row-level provenance counts for the evaluated
-scene, transcript, and experience corpus, or expose a sanitized Admin internal
+transcript and experience corpus, or expose a sanitized Admin internal
 provenance summary and embed that summary in the gate report. Do not authorize a
 wipe or backfill from a config-only tuple when the production question is
 "which stored rows did this eval actually search?"
@@ -159,10 +161,10 @@ legacy OpenAI rows, current gateway rows, and future provider upgrades without
 inspecting vector values or relying on model-name strings alone.
 
 Embedding more multilingual rows is better when it is bounded by this evidence:
-it improves retrieval coverage for localized queries because the scene and
-transcript retrievers have real same-locale vectors to rank instead of leaning
-on lexical matches or unrelated locales. It is not automatically "better" just
-because the row count increased. Quality evidence comes from the eval delta:
+it improves retrieval coverage for localized queries because transcript
+retrievers have real same-locale vectors to rank instead of leaning on lexical
+matches or unrelated locales. It is not automatically "better" just because the
+row count increased. Quality evidence comes from the eval delta:
 English post-batch comparison against the production seed baseline produced
 `8` wins and `0` losses; the fresh multilingual baseline comparison produced
 `6` ties, `0` losses, `0` search failures, `0` judge failures, and `0` judge
@@ -173,7 +175,7 @@ multilingual baseline because that baseline did not exist.
 
 ## When to Apply
 
-- A provider migration will rewrite transcript, scene, experience, or other
+- A provider migration will rewrite transcript, experience, or other
   pgvector-backed content rows.
 - The provider's native output and transform status are part of the production
   backfill gate.
@@ -196,7 +198,6 @@ Then pass the emitted docs report to the all-content backfill:
 ```bash
 pnpm --filter @forge/admin run-embeds -- \
   --pipeline=all \
-  --scene-mode=model-upgrade \
   --transcript-mode=model-upgrade \
   --experience-mode=model-upgrade \
   --gate-report=docs/search-eval-reports/<reportId>.json \
@@ -215,12 +216,11 @@ TSX_TSCONFIG_PATH=apps/admin/tsconfig.json \
   node --env-file=apps/admin/.env --import tsx \
   apps/admin/src/scripts/run-core-sync.ts
 
-# 2. Run bounded per-language scene + transcript batches.
+# 2. Run bounded per-language transcript batches.
 TSX_TSCONFIG_PATH=apps/admin/tsconfig.json \
   node --env-file=apps/admin/.env --import tsx \
   apps/admin/src/scripts/run-embeds.ts \
-  --pipeline=both \
-  --scene-mode=model-upgrade \
+  --pipeline=transcript \
   --transcript-mode=model-upgrade \
   --locale=de \
   --language=de \

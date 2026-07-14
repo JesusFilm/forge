@@ -61,7 +61,7 @@ describe("auth env", () => {
         "https://auth.jesusfilm.org",
         "https://jesusfilm.org",
         "https://www.jesusfilm.org",
-        "https://web.jesusfilm.org",
+        "https://watch.jesusfilm.org",
         "https://preview.jesusfilm.org",
         "https://branch.example.test",
       ]),

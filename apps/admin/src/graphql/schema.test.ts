@@ -48,6 +48,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videoBySlug",
         "videos",
         "watchHomeVideos",
+        "watchLanguageInventory",
         "videosByCoreIds",
         // Experience
         "experience",
@@ -152,6 +153,48 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(nonNull("subtitleUrl")).toBe(false)
   })
 
+  it("WatchLanguageInventory type exposes the localized /videos card contract", () => {
+    const inventoryFields = fieldsOf("WatchLanguageInventory")
+    expect(Object.keys(inventoryFields)).toEqual(
+      expect.arrayContaining([
+        "language",
+        "counts",
+        "promoted",
+        "audioCollections",
+        "audioVideos",
+        "subtitleOnlyVideos",
+      ]),
+    )
+
+    const itemFields = fieldsOf("WatchLanguageInventoryItem")
+    expect(Object.keys(itemFields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "slug",
+        "title",
+        "description",
+        "imageUrl",
+        "imageAlt",
+        "label",
+        "availability",
+        "watchLanguageSlug",
+        "parentSlug",
+        "parentTitle",
+        "durationSeconds",
+        "childCount",
+        "publishedAt",
+      ]),
+    )
+
+    const query = schema.getQueryType()!.getFields().watchLanguageInventory
+    expect(String(query.type)).toBe("WatchLanguageInventory!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "languageSlug",
+      "limit",
+    ])
+  })
+
   it("Query root no longer exposes the Unit 3 Ping spike fields", () => {
     const fields = schema.getQueryType()!.getFields()
     expect(fields.pingAll).toBeUndefined()
@@ -173,6 +216,13 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.updateManagerJob).toBeDefined()
   })
 
+  it("Mutation root exposes the private watch-event write contract", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.recordWatchEvent).toBeDefined()
+  })
+
   it("Mutation root exposes media asset write entry points", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
@@ -187,22 +237,11 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.deleteMediaFolder).toBeDefined()
   })
 
-  it("Mutation root exposes the scene embedding backfill trigger", () => {
+  it("Mutation root does not expose the retired scene embedding backfill trigger", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
-    expect(fields.triggerSceneEmbeddingBackfill).toBeDefined()
-  })
-
-  it("triggerSceneEmbeddingBackfill.mappingS3Key is optional with the canonical default", () => {
-    const mutation = schema.getMutationType()!
-    const field = mutation.getFields().triggerSceneEmbeddingBackfill!
-    const arg = field.args.find((a) => a.name === "mappingS3Key")
-    expect(arg).toBeDefined()
-    // Nullable (String, not String!) so clients may omit or pass null;
-    // defaultValue holds the canonical admin-migrations/ snapshot.
-    expect(String(arg!.type)).toBe("String")
-    expect(arg!.defaultValue).toBe("admin-migrations/core-id-mapping.json")
+    expect(fields.triggerSceneEmbeddingBackfill).toBeUndefined()
   })
 
   it("Mutation root exposes the transcript embedding backfill trigger", () => {
@@ -607,6 +646,8 @@ describe("Hybrid search — R4 query + response types", () => {
         "slug",
         "title",
         "imageUrl",
+        "imageBlurDataUrl",
+        "muxThumbnailBlurDataUrl",
         "snippet",
         "startSeconds",
         "playbackId",
@@ -616,6 +657,8 @@ describe("Hybrid search — R4 query + response types", () => {
     expect(fields.score.type.toString()).toBe("Float!")
     expect(fields.startSeconds.type.toString()).toBe("Float")
     expect(fields.playbackId.type.toString()).toBe("String")
+    expect(fields.imageBlurDataUrl.type.toString()).toBe("String")
+    expect(fields.muxThumbnailBlurDataUrl.type.toString()).toBe("String")
   })
 
   it("HybridSearchResult exposes no embedding/vector/similarity-shaped field", () => {

@@ -5,6 +5,8 @@ topic: forge-algolia-search-modal
 
 # Forge Algolia Search Modal
 
+> Superseded on 2026-06-24 for Watch search URL state: the modal remains canonical, but search no longer reads from or writes to `?q=`. Use `docs/brainstorms/2026-06-24-watch-search-local-state-requirements.md` for the current Watch search query-state contract.
+
 ## Summary
 
 Forge's global search modal remains the canonical search surface. A LaunchDarkly flag switches modal result data from Forge semantic search to the same Algolia Watch video source Core uses, while flag-off behavior keeps the current semantic search including experience results. The modal also gains Core-style language discovery: likely language suggestions, region-grouped language filters, and a shared preferred search language that applies to semantic search as well as Algolia.

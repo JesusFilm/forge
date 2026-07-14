@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest"
 
 import {
   ADMIN_APP_SEED,
+  CHAT_APP_KEY,
+  CHAT_APP_SEED,
   FIRST_PARTY_APP_SEEDS,
   MASTRA_STUDIO_APP_KEY,
   MASTRA_STUDIO_APP_SEED,
   MANAGER_APP_KEY,
   MANAGER_APP_SEED,
+  WEB_APP_KEY,
+  WEB_APP_SEED,
 } from "./apps"
 
 describe("first-party app seeds", () => {
@@ -14,7 +18,9 @@ describe("first-party app seeds", () => {
     expect(FIRST_PARTY_APP_SEEDS.map((app) => app.key)).toEqual([
       ADMIN_APP_SEED.key,
       MANAGER_APP_KEY,
+      WEB_APP_KEY,
       MASTRA_STUDIO_APP_KEY,
+      CHAT_APP_KEY,
     ])
     expect(MANAGER_APP_SEED).toEqual(
       expect.objectContaining({
@@ -57,6 +63,87 @@ describe("first-party app seeds", () => {
     )
   })
 
+  it("registers Web OAuth clients with watch-event scope and audience metadata", () => {
+    expect(WEB_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "preview",
+      "staging",
+      "production",
+    ])
+    expect(WEB_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "local",
+          clientId: "jfp_web_local",
+          redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
+          postLogoutRedirectUris: ["http://localhost:3000/watch"],
+          allowedOrigins: ["http://localhost:3000"],
+          defaultScopes: expect.arrayContaining(["web:watch-events:write"]),
+          autoApprove: true,
+        }),
+        expect.objectContaining({
+          key: "production",
+          clientId: "jfp_web_production",
+          redirectUris: [
+            "https://www.jesusfilm.org/watch/api/auth/callback",
+            "https://watch.jesusfilm.org/watch/api/auth/callback",
+          ],
+          postLogoutRedirectUris: [
+            "https://www.jesusfilm.org/watch",
+            "https://watch.jesusfilm.org/watch",
+          ],
+          allowedOrigins: [
+            "https://www.jesusfilm.org",
+            "https://watch.jesusfilm.org",
+          ],
+          defaultScopes: expect.arrayContaining(["web:watch-events:write"]),
+          autoApprove: true,
+        }),
+      ]),
+    )
+  })
+
+  it("keeps every seeded clientId globally unique across first-party apps", () => {
+    const clientIds = FIRST_PARTY_APP_SEEDS.flatMap((app) =>
+      app.environments.flatMap((env) => [
+        env.clientId,
+        ...(env.managerSessionServiceClientId
+          ? [env.managerSessionServiceClientId]
+          : []),
+      ]),
+    )
+    expect(new Set(clientIds).size).toBe(clientIds.length)
+  })
+
+  it("registers the Chat OAuth clients for local development and production", () => {
+    expect(CHAT_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "production",
+    ])
+    expect(CHAT_APP_SEED.environments).toEqual([
+      expect.objectContaining({
+        key: "local",
+        clientId: "jfp_chat_local",
+        redirectUris: ["http://localhost:3200/api/auth/callback"],
+        postLogoutRedirectUris: ["http://localhost:3200"],
+        allowedOrigins: ["http://localhost:3200"],
+        // Identity-only — no *:access, no membership:read (feat-207 R7).
+        defaultScopes: ["openid", "profile:read", "email:read"],
+        autoApprove: true,
+      }),
+      expect.objectContaining({
+        key: "production",
+        clientId: "jfp_chat_production",
+        redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+        postLogoutRedirectUris: ["https://chat.jesusfilm.ai"],
+        allowedOrigins: ["https://chat.jesusfilm.ai"],
+        // Identity-only — no *:access, no membership:read (feat-207 R7).
+        defaultScopes: ["openid", "profile:read", "email:read"],
+        autoApprove: true,
+      }),
+    ])
+  })
+
   it("registers Mastra Studio OAuth clients for the gateway", () => {
     expect(MASTRA_STUDIO_APP_SEED.environments.map((env) => env.key)).toEqual([
       "local",
@@ -97,6 +184,59 @@ describe("first-party app seeds", () => {
           ],
           allowedOrigins: ["https://forgemastra-gateway.up.railway.app"],
           defaultScopes: expect.arrayContaining(["mastra-studio:access"]),
+          autoApprove: true,
+        }),
+      ]),
+    )
+  })
+
+  it("registers Web OAuth clients for public watch sign-in", () => {
+    expect(WEB_APP_SEED).toEqual(
+      expect.objectContaining({
+        key: "web",
+        displayName: "Jesus Film Web",
+        trustTier: "first_party",
+        ownerType: "jesus_film",
+      }),
+    )
+    expect(WEB_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "preview",
+      "staging",
+      "production",
+    ])
+    expect(WEB_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "local",
+          clientId: "jfp_web_local",
+          redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
+          postLogoutRedirectUris: ["http://localhost:3000/watch"],
+          allowedOrigins: ["http://localhost:3000"],
+          defaultScopes: expect.arrayContaining([
+            "openid",
+            "profile:read",
+            "email:read",
+            "web:watch-events:write",
+          ]),
+          autoApprove: true,
+        }),
+        expect.objectContaining({
+          key: "production",
+          clientId: "jfp_web_production",
+          redirectUris: [
+            "https://www.jesusfilm.org/watch/api/auth/callback",
+            "https://watch.jesusfilm.org/watch/api/auth/callback",
+          ],
+          postLogoutRedirectUris: [
+            "https://www.jesusfilm.org/watch",
+            "https://watch.jesusfilm.org/watch",
+          ],
+          allowedOrigins: [
+            "https://www.jesusfilm.org",
+            "https://watch.jesusfilm.org",
+          ],
+          defaultScopes: expect.arrayContaining(["web:watch-events:write"]),
           autoApprove: true,
         }),
       ]),

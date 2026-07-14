@@ -15,6 +15,7 @@ import { prisma } from "@/db/client"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
 import { env } from "@/config/env"
 import {
+  formatSearchTimingLogLine,
   HybridSearchService,
   isContentType,
   type ContentType,
@@ -61,6 +62,16 @@ SearchResultRef.implement({
     slug: t.exposeString("slug", { nullable: false }),
     title: t.exposeString("title", { nullable: false }),
     imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageBlurDataUrl: t.exposeString("imageBlurDataUrl", {
+      nullable: true,
+      description:
+        "Base64 blur data URL generated from the selected VideoImage. Null for experiences or video images without generated placeholder metadata yet.",
+    }),
+    muxThumbnailBlurDataUrl: t.exposeString("muxThumbnailBlurDataUrl", {
+      nullable: true,
+      description:
+        "Base64 blur data URL for the Watch-card Mux thumbnail recipe. Null for experiences or when no playable Mux-backed dub is available.",
+    }),
     snippet: t.exposeString("snippet", { nullable: false }),
     startSeconds: t.exposeFloat("startSeconds", { nullable: true }),
     playbackId: t.exposeString("playbackId", { nullable: true }),
@@ -254,7 +265,7 @@ builder.queryFields((t) => ({
       const service = new HybridSearchService({ prisma })
       const startedAt = new Date()
       try {
-        const { response, trace } = await service.searchWithTrace({
+        const { response, trace, timings } = await service.searchWithTrace({
           query,
           locale: args.locale,
           limit: args.limit ?? undefined,
@@ -263,6 +274,7 @@ builder.queryFields((t) => ({
           mode,
           debug,
         })
+        const traceWriteStartedAt = performance.now()
         await recordSearchTraceSafely({
           query,
           locale: args.locale,
@@ -275,6 +287,22 @@ builder.queryFields((t) => ({
           startedAt,
           completedAt: new Date(),
         }).catch(() => {})
+        const traceWriteMs = Math.max(
+          0,
+          Math.round((performance.now() - traceWriteStartedAt) * 10) / 10,
+        )
+        console.error(
+          formatSearchTimingLogLine({
+            route: "graphql",
+            locale: args.locale,
+            requestedMode: mode ?? null,
+            searchMode: trace.searchMode,
+            outcome: trace.outcome,
+            resultCount: trace.resultCount,
+            timings,
+            traceWriteMs,
+          }),
+        )
         return response
       } catch (error) {
         await recordSearchTraceSafely({

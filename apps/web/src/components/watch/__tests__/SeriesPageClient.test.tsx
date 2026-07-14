@@ -187,6 +187,7 @@ function makeChildren(count: number): Series["children"] {
     images: [],
     durationSeconds: null,
     muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   })) as Series["children"]
 }
 
@@ -422,7 +423,10 @@ describe("SeriesPageClient — globe button + language modal", () => {
 
   it("renders the globe button when 2+ languages are available", () => {
     const childDubLanguages = makeChildDubLanguages([
-      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
+      [
+        { languageSlug: "english", bcp47: "en" },
+        { languageSlug: "spanish", bcp47: "es" },
+      ],
     ])
     act(() => {
       root.render(
@@ -433,9 +437,14 @@ describe("SeriesPageClient — globe button + language modal", () => {
         />,
       )
     })
+    const languageButton = container.querySelector(
+      '[data-testid="series-page-language-button"]',
+    )
+    expect(languageButton).not.toBeNull()
     expect(
-      container.querySelector('[data-testid="series-page-language-button"]'),
-    ).not.toBeNull()
+      languageButton?.querySelector('[data-testid="series-page-language-code"]')
+        ?.textContent,
+    ).toBe("EN")
   })
 
   it("opens the language modal when the globe button is clicked", () => {

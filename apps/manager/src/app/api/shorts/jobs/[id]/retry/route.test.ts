@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { JobRecord, JobStepState, ShortsPhase } from "@/types/job"
 
 const {
@@ -125,6 +125,8 @@ const sessionActor = {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(new Date("2026-06-11T00:04:00.000Z"))
   authenticateManagerOverrideRequestMock.mockReset()
   getJobMock.mockReset()
   updateJobMock.mockReset()
@@ -138,6 +140,10 @@ beforeEach(() => {
 
   envMutable.SHORTS_WORKER_BASE_URL = "https://shorts-worker.internal"
   envMutable.SHORTS_WORKER_API_KEY = "shorts-key"
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("POST /api/shorts/jobs/[id]/retry", () => {
@@ -237,6 +243,36 @@ describe("POST /api/shorts/jobs/[id]/retry", () => {
       kind: "prepare",
     })
     expect(launchShortsMock).toHaveBeenCalledWith("prepare", "job-1")
+  })
+
+  it("relaunches prepare for a stale queued launch", async () => {
+    getJobMock.mockResolvedValue(
+      buildShortsJob("queued", { status: "pending" }),
+    )
+    vi.setSystemTime(new Date("2026-06-11T00:10:00.000Z"))
+
+    const response = await POST(postRequest(), routeParams)
+    expect(response.status).toBe(202)
+    await expect(response.json()).resolves.toEqual({
+      launched: true,
+      kind: "prepare",
+    })
+    expect(launchShortsMock).toHaveBeenCalledWith("prepare", "job-1")
+  })
+
+  it("relaunches render for a stale render phase", async () => {
+    getJobMock.mockResolvedValue(
+      buildShortsJob("rendering", { status: "running" }),
+    )
+    vi.setSystemTime(new Date("2026-06-11T01:30:00.000Z"))
+
+    const response = await POST(postRequest(), routeParams)
+    expect(response.status).toBe(202)
+    await expect(response.json()).resolves.toEqual({
+      launched: true,
+      kind: "render",
+    })
+    expect(launchShortsMock).toHaveBeenCalledWith("render", "job-1")
   })
 
   it("does not claim a workflow is running when rejecting a non-running phase", async () => {

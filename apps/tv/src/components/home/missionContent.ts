@@ -1,19 +1,13 @@
-// TV-local mission copy for the Home feed's closing band — adapted from
-// apps/mobile/src/components/home/missionContent.ts (itself ported from
-// apps/web/src/components/home/WatchHomePromo.tsx). Mirror copy changes there.
-//
-// TV note: no external-link actions — the beta CTA is a couch-scannable QR
-// (QrPanel), so the invitation card's body points at the code instead of a tap
-// target (R15). The cards carry a gradient `wash` + faint `icon` so the band
-// reads in the same colourful language as the mobile rail and web promo.
+// TV-local mission copy for Home's closing band — adapted from mobile's
+// missionContent.ts (ported from web's WatchHomePromo.tsx); mirror copy changes
+// there. TV beta CTA is a scannable QR (QrPanel), not a tap target (R15).
 
 import type { ComponentProps } from "react"
 import type Ionicons from "@expo/vector-icons/Ionicons"
 
-// Shared mission "wash" palette — the exact hexes the mobile rail
-// (missionContent.ts MISSION_WASH) and web promo (WatchHomePromo.tsx section
-// gradient) use: linear-gradient(135deg, burgundy → purple → ember). Keeping
-// the same palette here makes the three platforms read as one design.
+// Mission "wash" palette — the exact hexes mobile (MISSION_WASH) and web
+// (WatchHomePromo.tsx) use so all three platforms read as one design:
+// linear-gradient(135deg, burgundy → purple → ember).
 export const MISSION_WASH = {
   burgundy: "#450a1d",
   purple: "#581c87",
@@ -60,8 +54,7 @@ export const MISSION_CARDS: readonly MissionCard[] = [
 ] as const
 
 /**
- * The beta signup target the QR encodes — the exact URL web
- * (WatchHomePromo.tsx) and mobile (missionContent.ts BETA_SIGNUP_URL) use.
+ * Beta signup target the QR encodes — the exact URL web and mobile use.
  * A JFP-owned redirect is deferred follow-up work (plan scope boundary).
  */
 export const BETA_SIGNUP_URL = "https://mailchi.mp/jesusfilm/beta"

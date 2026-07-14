@@ -14,11 +14,17 @@ export type WatchHomeMuxInsertConfig = {
   title: string
   collectionTitle: string | null
   description: string | null
-  action: { label: string; url: string } | null
+  action: WatchHomeMuxInsertAction | null
   logo: boolean
   posterOverride: string | null
   trigger: { type: "sequence-start" } | { type: "after-count"; count: number }
   conditionalOverlays?: readonly WatchHomeConditionalOverlay[]
+}
+
+export type WatchHomeMuxInsertAction = {
+  label: string
+  url: string
+  icon?: "join" | "share"
 }
 
 export type WatchHomeConditionalOverlay = {
@@ -32,7 +38,7 @@ export type WatchHomeConditionalOverlay = {
     title: string
     collectionTitle: string | null
     description: string | null
-    action?: { label: string; url: string } | null
+    action?: WatchHomeMuxInsertAction | null
   }
 }
 
@@ -49,7 +55,7 @@ export type WatchHomeSectionConfig = {
   childLimit?: number
 }
 
-export const WATCH_HOME_CACHE_VERSION = "v3-carousel-sequence"
+export const WATCH_HOME_CACHE_VERSION = "v6-real-images-with-dominant-colors"
 
 export const collectionShowcaseSources = [
   { id: "1_jf-0-0", limitChildren: 0 },
@@ -186,6 +192,7 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
     action: {
       label: "Join Us",
       url: "https://your.nextstep.is/joinus",
+      icon: "join",
     },
     logo: false,
     posterOverride: null,
@@ -204,6 +211,7 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
     action: {
       label: "Share in Our Mission",
       url: "https://www.jesusfilm.org/partners/",
+      icon: "share",
     },
     logo: false,
     posterOverride: null,

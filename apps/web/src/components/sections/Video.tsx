@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
+import { formatDuration } from "@/lib/format-duration"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
+import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 
 export { videoSectionFragment }
 
@@ -163,13 +165,21 @@ function MuxBackedVideoPlayer({
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadingSrc, setLoadingSrc] = useState(src)
 
-  const formatTime = useCallback((seconds: number) => {
-    const safe = Number.isFinite(seconds) ? seconds : 0
-    const mins = Math.floor(safe / 60)
-    const secs = Math.floor(safe % 60)
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }, [])
+  if (loadingSrc !== src) {
+    setLoadingSrc(src)
+    setIsLoading(true)
+  }
+
+  const formatTime = useCallback(
+    (seconds: number) =>
+      Number.isFinite(seconds) && seconds >= 0
+        ? formatDuration(seconds)
+        : "0:00",
+    [],
+  )
 
   const syncPlaybackUi = useCallback(() => {
     const video = videoRef.current
@@ -194,17 +204,42 @@ function MuxBackedVideoPlayer({
     const onVolume = () => setIsMuted(video.muted)
     const onTime = () => syncPlaybackUi()
     const onDuration = () => syncPlaybackUi()
+    const showLoading = () => setIsLoading(true)
+    const hideLoading = () => setIsLoading(false)
+    const hideLoadingIfReady = () => {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        setIsLoading(false)
+      }
+    }
     video.addEventListener("play", onPlay)
     video.addEventListener("pause", onPause)
     video.addEventListener("volumechange", onVolume)
     video.addEventListener("timeupdate", onTime)
     video.addEventListener("durationchange", onDuration)
+    video.addEventListener("loadstart", showLoading)
+    video.addEventListener("waiting", showLoading)
+    video.addEventListener("stalled", showLoading)
+    video.addEventListener("seeking", showLoading)
+    video.addEventListener("loadeddata", hideLoading)
+    video.addEventListener("canplay", hideLoading)
+    video.addEventListener("playing", hideLoading)
+    video.addEventListener("seeked", hideLoadingIfReady)
+    video.addEventListener("error", hideLoading)
     return () => {
       video.removeEventListener("play", onPlay)
       video.removeEventListener("pause", onPause)
       video.removeEventListener("volumechange", onVolume)
       video.removeEventListener("timeupdate", onTime)
       video.removeEventListener("durationchange", onDuration)
+      video.removeEventListener("loadstart", showLoading)
+      video.removeEventListener("waiting", showLoading)
+      video.removeEventListener("stalled", showLoading)
+      video.removeEventListener("seeking", showLoading)
+      video.removeEventListener("loadeddata", hideLoading)
+      video.removeEventListener("canplay", hideLoading)
+      video.removeEventListener("playing", hideLoading)
+      video.removeEventListener("seeked", hideLoadingIfReady)
+      video.removeEventListener("error", hideLoading)
     }
   }, [syncPlaybackUi])
 
@@ -308,6 +343,15 @@ function MuxBackedVideoPlayer({
           isFullscreen={isFullscreen}
           onClick={handleFullscreen}
         />
+
+        {isLoading ? (
+          <div
+            data-testid="video-player-loading"
+            className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
+          >
+            <WatchPlayerLoadingIndicator />
+          </div>
+        ) : null}
 
         {isMuted && <CenterUnmute onClick={handleMuteToggle} />}
         {!isMuted && <CornerMute onClick={handleMuteToggle} />}

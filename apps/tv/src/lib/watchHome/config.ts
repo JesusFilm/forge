@@ -1,18 +1,9 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (mirrored via
- * apps/mobile/src/lib/watchHome/config.ts) — do not edit without syncing the
- * web source. Any curation change on web (sections, hero sources, blacklist)
- * must be mirrored here until the curation moves to a shared package or admin
- * (roadmap feat-160) and this copy is deleted.
- *
- * TV cuts vs the web/mobile config:
- *   - WATCH_HOME_PLAYLIST_SEQUENCE and WATCH_HOME_MUX_INSERTS do not port —
- *     TV's showcase is image-only (no autoplay hero playlist, no Mux insert
- *     slides; tvOS decode slots are scarce).
- *   - WATCH_HOME_FEATURED_RAIL is TV-only: the hero pool renders as the first
- *     rail, and its `titleVariants` carry the time-of-day greeting copy
- *     adapted from web's Mux-insert conditionalOverlays — TV's only
- *     time-of-day surface.
+ * ADAPTED COPY of apps/web/src/lib/watch-home-config.ts (via mobile). Two halves with
+ * different sync obligations — see the LIVE / FROZEN markers on WATCH_HOME_HERO_SOURCE_IDS
+ * and WATCH_HOME_SECTIONS below. The hero is a config-mirrored deterministic pool queue
+ * (heroQueue.ts) built from WATCH_HOME_PLAYLIST_SEQUENCE, mirroring mobile; TV still cuts
+ * the Mux-insert config (no web-link/promo slides — the hero shows videos/series only).
  */
 
 // The hardcoded home locale pair: query locale + language identity, keyed on
@@ -41,25 +32,18 @@ export type WatchHomeSectionConfig = {
 export type WatchHomeFeaturedRailConfig = {
   id: string
   eyebrow: string
-  /** Fallback display label when no time-of-day variant applies. */
   title: string
-  titleVariants?: { morning: string; afternoon: string; evening: string }
 }
 
 /**
- * TV-only: the hero pool's rail definition. Base copy is web's Mux-insert
- * base overlay ("Faith & Scripture" / "Today's Video Picks"); the variants are
- * web's time-range conditionalOverlays titles.
+ * TV-only hero-pool rail. Base copy is web's Mux-insert base overlay
+ * ("Faith & Scripture" / "Today's Video Picks"). The time-of-day title
+ * variants were never wired on TV and were removed with resolveFeaturedTitle.
  */
 export const WATCH_HOME_FEATURED_RAIL: WatchHomeFeaturedRailConfig = {
   id: "home-featured",
   eyebrow: "Faith & Scripture",
   title: "Today's Video Picks",
-  titleVariants: {
-    morning: "Good Morning! Today's Bible Moments Await.",
-    afternoon: "Good Afternoon! Bible Moments for Your Day.",
-    evening: "Good Evening! Wind Down with Bible Moments.",
-  },
 }
 
 export const collectionShowcaseSources = [
@@ -100,6 +84,9 @@ export const newBelieverCourse = [
   { id: "8_NBC", limitChildren: 10 },
 ] as const satisfies readonly WatchHomeSourceConfig[]
 
+// LIVE (client-owned): mirror web hero curation here until feat-160 moves it to admin.
+// WATCH_HOME_HERO_SOURCE_IDS is now the empty-queue FALLBACK only (see heroQueue.ts /
+// buildFeatured). The live hero rotates through WATCH_HOME_PLAYLIST_SEQUENCE below.
 export const WATCH_HOME_HERO_SOURCE_IDS = [
   "1_jf-0-0",
   "2_GOJ-0-0",
@@ -107,8 +94,34 @@ export const WATCH_HOME_HERO_SOURCE_IDS = [
   "LUMOCollection",
 ] as const
 
+export type WatchHomePlaylistGroup = readonly string[]
+
+// LIVE (client-owned): mirror mobile's apps/mobile/src/lib/watchHome/heroConfig.ts
+// (ported from JesusFilm/core apps/watch/config/video-playlist.json). Core/Arclight
+// ids stored in admin as Video.coreId. Each group becomes one hero pool.
+export const WATCH_HOME_PLAYLIST_SEQUENCE: readonly WatchHomePlaylistGroup[] = [
+  ["1_jf-0-0"],
+  ["JFP-Featured"],
+  ["8_NBC"],
+  [
+    "GOJohnCollection",
+    "GOLukeCollection",
+    "GOMarkCollection",
+    "GOMattCollection",
+  ],
+  ["7_Origins", "Nua", "2_ElCamWaySJEN"],
+  ["MAG1"],
+  ["11_Sermon", "11_Shema", "11_ReadBible", "11_Advent"],
+  ["2_GOJ-0-0"],
+  ["CS1"],
+  ["9_CreationtoChrist"],
+  ["2_FileZero-0-0"],
+  ["10_DarkroomFaith"],
+] as const
+
 export const WATCH_HOME_COLLECTION_BLACKLIST = new Set(["7_Origins4Connect"])
 
+// FROZEN emergency fallback: the live body is the admin Experience; may drift.
 export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
   {
     id: "home-video-gospels",
@@ -186,6 +199,7 @@ export const WATCH_HOME_SECTIONS: readonly WatchHomeSectionConfig[] = [
 export function getWatchHomeCoreIds(): string[] {
   const ids = [
     ...WATCH_HOME_HERO_SOURCE_IDS,
+    ...WATCH_HOME_PLAYLIST_SEQUENCE.flat(),
     ...WATCH_HOME_SECTIONS.flatMap((section) => [
       section.primaryCollectionId,
       ...(section.sources ?? []).map((source) => source.id),

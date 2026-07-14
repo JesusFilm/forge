@@ -1,15 +1,15 @@
-import { useMemo, useRef, useState, type ReactNode } from "react"
+import { useMemo, type ReactNode } from "react"
 import {
   Animated,
-  Platform,
   Pressable,
   StyleSheet,
   View,
   type ViewStyle,
 } from "react-native"
 
-import { COLORS } from "../lib/colors"
 import { scale as scaleSize } from "../lib/scale"
+import { FOCUS_RING_COLOR, FOCUS_RING_WIDTH } from "./focus/focusVisual"
+import { useFocusVisual } from "./focus/useFocusVisual"
 
 /** Properties that control size and position in the parent layout. */
 const LAYOUT_KEYS = new Set<keyof ViewStyle>([
@@ -46,19 +46,19 @@ type FocusableCardProps = {
   hasTVPreferredFocus?: boolean
   focusScale?: number
   /**
-   * Focus highlight style. "crimson" (default) is the app-wide Crimson Gallery
-   * glow — keep it on SDUI / series / legacy surfaces. "white" draws the
-   * WATCH_THEME white ring (a white border + neutral shadow) used by Home, the
-   * watch detail page, and Search; pass it on those surfaces so the focus
-   * treatment stays consistent. Matches ResultCard / HomeCard's white ring.
+   * Where the focus scale grows from. "center" (default) scales symmetrically;
+   * "left" pins the left edge (grows rightward only) so a rail's first card stays
+   * flush with the inset instead of bleeding toward the screen edge.
    */
-  focusRing?: "crimson" | "white"
+  focusAnchor?: "center" | "left"
   accessibilityLabel?: string
-  /** VoiceOver / TalkBack reads this after the label, on a short pause,
-   *  to describe what activating the card does (e.g., "Opens this
-   *  experience"). Optional — labels alone are sufficient when the
-   *  action is self-evident (single-letter keyboard cells). */
+  /** VoiceOver/TalkBack reads this after the label to describe what activating
+   *  the card does (e.g. "Opens this experience"). Optional when the action is
+   *  self-evident (single-letter keyboard cells). */
   accessibilityHint?: string
+  /** Overrides Datadog RUM's tap-action name (which defaults to the accessibility
+   *  label). Set a generic value when the label carries user-typed text. */
+  ddActionName?: string
   style?: ViewStyle
   children: ReactNode
 }
@@ -69,16 +69,16 @@ export function FocusableCard({
   onBlur,
   hasTVPreferredFocus,
   focusScale,
-  focusRing = "crimson",
+  focusAnchor = "center",
   accessibilityLabel,
   accessibilityHint,
+  ddActionName,
   style,
   children,
 }: FocusableCardProps) {
-  const [isFocused, setIsFocused] = useState(false)
-  const scale = useRef(new Animated.Value(1)).current
-  const targetScale = focusScale ?? 1.05
-  const whiteRing = focusRing === "white"
+  // Shared focus engine ("card" role): one curve, white ring + neutral shadow.
+  const { focused, setFocused, transform, focusedShadow, androidFocusProps } =
+    useFocusVisual("card", { magnify: focusScale })
 
   const { layoutStyle, visualStyle } = useMemo(() => {
     if (style == null) return { layoutStyle: undefined, visualStyle: undefined }
@@ -97,51 +97,39 @@ export function FocusableCard({
     }
   }, [style])
 
-  const animateIn = () => {
-    setIsFocused(true)
-    Animated.spring(scale, {
-      toValue: targetScale,
-      useNativeDriver: true,
-      tension: 150,
-      friction: 10,
-    }).start()
-  }
-
-  const animateOut = () => {
-    setIsFocused(false)
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 150,
-      friction: 10,
-    }).start()
-  }
+  // The white ring must follow the card's OWN corner radius (e.g. a pill at
+  // borderRadius 999), not a fixed 16 — otherwise a square-ish ring frames a
+  // rounded card. Falls back to the default card radius.
+  const cardRadius = visualStyle?.borderRadius
+  const ringRadius = typeof cardRadius === "number" ? cardRadius : scaleSize(16)
 
   return (
     <Pressable
       onPress={onPress}
       onFocus={() => {
-        animateIn()
+        setFocused(true)
         onFocus?.()
       }}
       onBlur={() => {
-        animateOut()
+        setFocused(false)
         onBlur?.()
       }}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityRole="button"
+      // Non-typed prop spread (KeyButton's pattern) — Pressable's TS types
+      // don't declare dd-action-name.
+      {...(ddActionName ? { "dd-action-name": ddActionName } : {})}
     >
       <Animated.View
-        needsOffscreenAlphaCompositing={Platform.OS === "android" && isFocused}
-        renderToHardwareTextureAndroid={isFocused}
+        {...androidFocusProps}
         style={[
           styles.outer,
           layoutStyle,
-          isFocused &&
-            (whiteRing ? styles.focusShadowNeutral : styles.focusGlow),
-          { transform: [{ scale }] },
+          focused && focusedShadow,
+          focusAnchor === "left" && styles.focusAnchorLeft,
+          { transform },
         ]}
       >
         <View
@@ -150,12 +138,14 @@ export function FocusableCard({
         >
           {children}
         </View>
-        {/* White focus ring — an inset border overlay on the non-clipping
-            outer (matches ResultCard / HomeCard). Mounted only while focused;
-            its constant geometry means toggling it never reflows the content
-            underneath. */}
-        {whiteRing && isFocused ? (
-          <View style={styles.whiteRing} pointerEvents="none" />
+        {/* White focus ring — inset border overlay on the non-clipping outer
+            (matches ResultCard/HomeCard). Mounted only while focused; constant
+            geometry means toggling it never reflows content underneath. */}
+        {focused ? (
+          <View
+            style={[styles.whiteRing, { borderRadius: ringRadius }]}
+            pointerEvents="none"
+          />
         ) : null}
       </Animated.View>
     </Pressable>
@@ -167,30 +157,17 @@ const styles = StyleSheet.create({
     borderRadius: scaleSize(16),
     overflow: "visible",
   },
+  // Scale from the left edge instead of the center, so a focused card grows
+  // rightward only — keeps a left-aligned rail's first card flush with its inset.
+  focusAnchorLeft: {
+    transformOrigin: "0% 50%",
+  },
   inner: {
     borderRadius: scaleSize(16),
     overflow: "hidden",
   },
-  focusGlow: {
-    shadowColor: COLORS.primary,
-    shadowRadius: scaleSize(16),
-    shadowOpacity: 0.6,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  // White-ring variant: a neutral dark drop shadow (no crimson) for depth,
-  // paired with the white border overlay below — the WATCH_THEME focus look.
-  focusShadowNeutral: {
-    shadowColor: "#000000",
-    shadowRadius: scaleSize(20),
-    shadowOpacity: 0.6,
-    shadowOffset: { width: 0, height: scaleSize(12) },
-    // Android TV renders shadows via elevation, not the iOS shadow* props
-    // (matches ResultCard's focused thumb).
-    elevation: 8,
-  },
-  // Inset white border hugging the card edge (design: 0 0 0 5px rgba white;
-  // SEARCH_THEME.ring / ResultCard use 0.88 — matched here at 0.9). borderRadius
-  // tracks styles.inner so the ring follows the rounded corners.
+  // Inset white border hugging the card edge; borderRadius tracks styles.inner
+  // so the ring follows the rounded corners.
   whiteRing: {
     position: "absolute",
     top: 0,
@@ -198,8 +175,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: scaleSize(16),
-    // Match the established white ring width (ResultCard / HomeCard use 5).
-    borderWidth: scaleSize(5),
-    borderColor: "rgba(255,255,255,0.9)",
+    borderWidth: FOCUS_RING_WIDTH,
+    borderColor: FOCUS_RING_COLOR,
   },
 })

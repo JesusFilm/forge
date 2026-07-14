@@ -1,7 +1,7 @@
 ---
 title: "TV home rail — column-preserving D-pad focus with invisible pad-cell over-hang bounce"
 date: 2026-06-16
-last_refreshed: 2026-06-16
+last_refreshed: 2026-06-19
 category: docs/solutions/design-patterns
 module: apps/tv
 problem_type: design_pattern
@@ -70,6 +70,8 @@ const [searchTabNode, setSearchTabNode] = useState<ViewType | null>(null)
 ```
 
 `FocusDestination` accepts a **component instance** directly (`Pressable` forwards it via `tagForComponentOrHandle`) — no `findNodeHandle` / native-tag lookup needed. This works because the target (the top bar) is **not** inside a FlatList (see Why This Matters #1).
+
+**The reverse direction is asymmetric — do not mirror it with `nextFocusDown` on the tab.** Down from the top-bar tab back to the content below cannot be wired with `nextFocusDown` on the tab: the tab lives in the ScrollView's **sticky header** (`stickyHeaderIndices`), and re-parented sticky-header children silently lose `nextFocus*` hints (distinct from the cross-FlatList drop in #3 — this is a sticky-header _source_ constraint). Bridge Down with a `TVFocusGuideView destinations` wrapping the destination region instead (the `MissionSection` pattern). So: `nextFocusUp` on the scroll-body child for Up, a guide on the destination for Down. See [`tv-sticky-header-nextfocus-asymmetry-bridge-20260619.md`](./tv-sticky-header-nextfocus-asymmetry-bridge-20260619.md).
 
 ### 2. Column-preserving vertical nav — drop `autoFocus`
 
@@ -193,6 +195,7 @@ Aligned columns are untouched: from column 1, Down lands on the 3-card rail's ca
 ## Related
 
 - [`tv-home-row-anchored-scroll-native-focus-scroll-disabled-20260615.md`](./tv-home-row-anchored-scroll-native-focus-scroll-disabled-20260615.md) — **companion, same screen.** That doc is the row-anchored _scroll_ layer (`scrollEnabled={false}` + `handleRowFocus`); this doc is the _column-focus_ layer. Together they describe the redesigned home's navigation.
+- [`tv-sticky-header-nextfocus-asymmetry-bridge-20260619.md`](./tv-sticky-header-nextfocus-asymmetry-bridge-20260619.md) — **the reverse-direction complement.** §1 here handles Up from edge cards/hero to the centered tab via `nextFocusUp` ref-as-state; that doc handles **Down** from the sticky-header tabs back to the hero (the tabs drop `nextFocusDown`, so a `TVFocusGuideView destinations` bridges Down to the hero CTA). Same `onSearchTabNode` / `ctaNode` ref-as-state contract.
 - [`../best-practices/tv-focus-driven-hero-patterns-20260420.md`](../best-practices/tv-focus-driven-hero-patterns-20260420.md) — the prior home focus model (non-interactive hero / rail-owns-focus via `TVFocusGuideView autoFocus`). This doc **extends and partially supersedes** it: `autoFocus` is correct for first-mount initial focus but is the _wrong ongoing model_ for a multi-rail feed (it teleports columns), and its "full-width guide traps DOWN" note generalises to "a full-width `destinations` guide hijacks aligned lateral moves for sibling rails."
 - [`../best-practices/react-native-tvos-porting-pitfalls-20260414.md`](../best-practices/react-native-tvos-porting-pitfalls-20260414.md) — general tvOS catalog. **Refresh candidate:** Pitfall 4's invisible focus anchor uses `opacity: 0`; this doc establishes that `opacity:0` is unfocusable for _geometric_ catch. Whether the anchor's explicit `setNativeProps({ hasTVPreferredFocus })` claim still works on an `opacity:0` view is unverified — worth a focused check before trusting that recipe. Pitfall 3's "`nextFocus*` failed" is refined here: it fails _across FlatList boundaries_, not universally.
 - [`../best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md`](../best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md) — FlatList focus discipline; the one-shot `hasTVPreferredFocus` and re-render rules are cousins of the `extraData`-for-async-focus-target rule here.

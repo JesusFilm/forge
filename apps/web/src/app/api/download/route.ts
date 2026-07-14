@@ -18,8 +18,12 @@ import {
   isAllowedDownloadOrigin,
 } from "@/lib/download-allowlist"
 import { resolveWatchDownloadTarget } from "@/lib/download-target"
+import {
+  isWatchDownloadAccountGateEnabled,
+  watchDownloadAccountGateFlagContext,
+} from "@/lib/feature-flags"
 import { verifyAuthSession } from "@/lib/auth-session"
-import { evaluateDownloadAccountGate } from "@/lib/download-gate-flag"
+import { recordWatchEventWithAccessToken } from "@/lib/watch-event-actions"
 
 // Use the Node runtime so streaming bodies are fully supported across
 // hosts. The Edge runtime would also work, but Node gives us long
@@ -67,48 +71,55 @@ const BIDI_CONTROL_RE = /[‪-‮⁦-⁩]/g
 // Path separators and shell-meta characters that have no business in a
 // `Content-Disposition: filename` value.
 const FILENAME_UNSAFE_RE = /[\\/;,"]/g
+const MAX_DOWNLOAD_FILENAME_LENGTH = 200
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
-function withOptionalSetCookie(
-  response: Response,
-  setCookieHeader: string | undefined,
-): Response {
-  if (!setCookieHeader) return response
+function isAnonymousInlineSubtitleRequest(
+  searchParams: URLSearchParams,
+): boolean {
+  if (searchParams.get("disposition") !== "inline") return false
 
-  const headers = new Headers(response.headers)
-  headers.append("set-cookie", setCookieHeader)
-  return new Response(response.body, {
-    headers,
-    status: response.status,
-    statusText: response.statusText,
-  })
+  const target = searchParams.get("url")
+  if (!target || !isAllowedDownloadOrigin(target)) return false
+
+  try {
+    return new URL(target).pathname.toLowerCase().endsWith(".vtt")
+  } catch {
+    return false
+  }
 }
 
-async function requireDownloadAccountIfEnabled(
+async function resolveDownloadAccountGate(
   request: Request,
+  allowAnonymousInlineSubtitle: boolean,
 ): Promise<
-  { ok: true; setCookieHeader?: string } | { ok: false; response: Response }
+  | {
+      ok: true
+      accountGateEnabled: boolean
+      session?: Awaited<ReturnType<typeof verifyAuthSession>> & {
+        authenticated: true
+      }
+    }
+  | { ok: false; response: Response }
 > {
-  const gate = await evaluateDownloadAccountGate(request)
-  const ok = gate.setCookieHeader
-    ? ({ ok: true, setCookieHeader: gate.setCookieHeader } as const)
-    : ({ ok: true } as const)
-  if (!gate.enabled) return ok
+  const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
+    watchDownloadAccountGateFlagContext,
+  )
+  if (!accountGateEnabled || allowAnonymousInlineSubtitle) {
+    return { ok: true, accountGateEnabled }
+  }
 
   const session = await verifyAuthSession(request.headers)
   if (session.authenticated) {
-    return ok
+    return { ok: true, accountGateEnabled: true, session }
   }
 
   return {
     ok: false,
-    response: withOptionalSetCookie(
-      jsonError("Authentication required", 401),
-      gate.setCookieHeader,
-    ),
+    response: jsonError("Authentication required", 401),
   }
 }
 
@@ -188,17 +199,24 @@ function sanitizeFilename(raw: string): string {
     .trim()
   // After stripping, optionally trim trailing dots/spaces (Windows-hostile)
   // and clamp length to prevent absurd filenames in error logs.
-  const clamped = stripped.replace(/[.\s]+$/, "").slice(0, 200)
-  if (clamped.length === 0) return "download"
+  const trimmed = stripped.replace(/[.\s]+$/, "")
+  if (trimmed.length === 0) return "download"
+
   // Enforce extension allowlist tied to media-only payloads.
-  const lastDot = clamped.lastIndexOf(".")
-  if (lastDot > 0 && lastDot < clamped.length - 1) {
-    const ext = clamped.slice(lastDot + 1).toLowerCase()
-    if (!SAFE_DOWNLOAD_EXTENSIONS.has(ext)) {
-      return `${clamped.slice(0, lastDot)}.mp4`
-    }
-  }
-  return clamped
+  const lastDot = trimmed.lastIndexOf(".")
+  const hasExtension = lastDot > 0 && lastDot < trimmed.length - 1
+  const rawExtension = hasExtension ? trimmed.slice(lastDot) : ""
+  const normalizedExtension = rawExtension.slice(1).toLowerCase()
+  const extension = hasExtension
+    ? SAFE_DOWNLOAD_EXTENSIONS.has(normalizedExtension)
+      ? rawExtension
+      : ".mp4"
+    : ""
+  const rawBasename = hasExtension ? trimmed.slice(0, lastDot) : trimmed
+  const maxBasenameLength = MAX_DOWNLOAD_FILENAME_LENGTH - extension.length
+  const basename =
+    rawBasename.slice(0, maxBasenameLength).replace(/[.\s]+$/, "") || "download"
+  return `${basename}${extension}`
 }
 
 // Logs origin + path only; signed-URL JWTs and other secrets in query
@@ -221,14 +239,29 @@ type ValidateTargetResult =
   | { ok: false; errorResponse: NextResponse }
 
 type ResolveTargetResult =
-  | { ok: true; target: string }
+  | {
+      ok: true
+      target: string
+      event?: {
+        videoId: string
+        videoDubId: string
+        languageId: string | null
+      }
+    }
   | { ok: false; errorResponse: NextResponse }
 
 async function resolveRequestedTarget(
   searchParams: URLSearchParams,
+  options: { allowLegacyTarget: boolean } = { allowLegacyTarget: true },
 ): Promise<ResolveTargetResult> {
   const legacyTarget = searchParams.get("url")
-  if (legacyTarget) return { ok: true, target: legacyTarget }
+  if (legacyTarget) {
+    if (options.allowLegacyTarget) return { ok: true, target: legacyTarget }
+    return {
+      ok: false,
+      errorResponse: jsonError("Download identifiers required", 400),
+    }
+  }
 
   const resolved = await resolveWatchDownloadTarget({
     downloadId: searchParams.get("downloadId"),
@@ -236,7 +269,9 @@ async function resolveRequestedTarget(
     videoSlug: searchParams.get("videoSlug"),
   })
 
-  if (resolved.ok) return { ok: true, target: resolved.url }
+  if (resolved.ok) {
+    return { ok: true, target: resolved.url, event: resolved.event }
+  }
   if (resolved.reason === "missing-params") {
     return {
       ok: false,
@@ -323,26 +358,31 @@ function buildUpstreamSignal(
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const authGate = await requireDownloadAccountIfEnabled(request)
+  const { searchParams } = new URL(request.url)
+  const anonymousInlineSubtitleRequest =
+    isAnonymousInlineSubtitleRequest(searchParams)
+  const authGate = await resolveDownloadAccountGate(
+    request,
+    anonymousInlineSubtitleRequest,
+  )
   if (!authGate.ok) return authGate.response
 
-  const { searchParams } = new URL(request.url)
   const rawFilename = searchParams.get("filename")
+  const contentDisposition =
+    searchParams.get("disposition") === "inline" ? "inline" : "attachment"
+  const allowLegacyTarget =
+    contentDisposition === "inline" || authGate.accountGateEnabled
 
-  const resolvedTarget = await resolveRequestedTarget(searchParams)
+  const resolvedTarget = await resolveRequestedTarget(searchParams, {
+    allowLegacyTarget,
+  })
   if (!resolvedTarget.ok) {
-    return withOptionalSetCookie(
-      resolvedTarget.errorResponse,
-      authGate.setCookieHeader,
-    )
+    return resolvedTarget.errorResponse
   }
 
   const validation = await validateTarget(resolvedTarget.target)
   if (!validation.ok) {
-    return withOptionalSetCookie(
-      validation.errorResponse,
-      authGate.setCookieHeader,
-    )
+    return validation.errorResponse
   }
   const { safeUrl } = validation
 
@@ -398,19 +438,13 @@ export async function GET(request: Request): Promise<Response> {
     if (request.signal.aborted) {
       // Client disconnected first — no point logging or returning a body
       // the client will never read.
-      return withOptionalSetCookie(
-        new NextResponse(null, { status: 499 }),
-        authGate.setCookieHeader,
-      )
+      return new NextResponse(null, { status: 499 })
     }
     console.error("[api/download] upstream fetch failed", {
       target: safeLogUrl(safeUrl),
       err: err instanceof Error ? err.message : String(err),
     })
-    return withOptionalSetCookie(
-      jsonError("Upstream fetch failed", 502),
-      authGate.setCookieHeader,
-    )
+    return jsonError("Upstream fetch failed", 502)
   } finally {
     clearUpstreamTimeout()
   }
@@ -424,10 +458,7 @@ export async function GET(request: Request): Promise<Response> {
     console.error("[api/download] upstream attempted redirect", {
       target: safeLogUrl(safeUrl),
     })
-    return withOptionalSetCookie(
-      jsonError("Upstream redirected; refusing to follow", 502),
-      authGate.setCookieHeader,
-    )
+    return jsonError("Upstream redirected; refusing to follow", 502)
   }
 
   if (!upstream.ok && upstream.status !== 206) {
@@ -435,17 +466,41 @@ export async function GET(request: Request): Promise<Response> {
       target: safeLogUrl(safeUrl),
       status: upstream.status,
     })
-    return withOptionalSetCookie(
-      jsonError(`Upstream ${upstream.status}`, upstream.status),
-      authGate.setCookieHeader,
-    )
+    return jsonError(`Upstream ${upstream.status}`, upstream.status)
+  }
+
+  const upstreamMediaType = upstream.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase()
+  if (anonymousInlineSubtitleRequest && upstreamMediaType !== "text/vtt") {
+    console.error("[api/download] rejected non-VTT anonymous response", {
+      target: safeLogUrl(safeUrl),
+      contentType: upstream.headers.get("content-type"),
+    })
+    return jsonError("Upstream subtitle response was not VTT", 502)
   }
 
   if (!upstream.body) {
-    return withOptionalSetCookie(
-      jsonError("Upstream had no body", 502),
-      authGate.setCookieHeader,
-    )
+    return jsonError("Upstream had no body", 502)
+  }
+
+  if (authGate.session?.accessToken && resolvedTarget.event) {
+    void recordWatchEventWithAccessToken(authGate.session.accessToken, {
+      eventType: "download",
+      videoId: resolvedTarget.event.videoId,
+      videoDubId: resolvedTarget.event.videoDubId,
+      languageId: resolvedTarget.event.languageId,
+    }).then((result) => {
+      if (!result.ok) {
+        console.warn("[api/download] failed to record download watch event", {
+          videoId: resolvedTarget.event?.videoId,
+          videoDubId: resolvedTarget.event?.videoDubId,
+          reason: result.reason,
+        })
+      }
+    })
   }
 
   const headers = new Headers()
@@ -459,19 +514,16 @@ export async function GET(request: Request): Promise<Response> {
   const encodedName = encodeURIComponent(filename)
   headers.set(
     "Content-Disposition",
-    `attachment; filename="${filename}"; filename*=UTF-8''${encodedName}`,
+    `${contentDisposition}; filename="${filename}"; filename*=UTF-8''${encodedName}`,
   )
   headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate")
   // Don't let the browser/CDN sniff the response and override our content type.
   headers.set("X-Content-Type-Options", "nosniff")
 
-  return withOptionalSetCookie(
-    new NextResponse(upstream.body, {
-      status: upstream.status,
-      headers,
-    }),
-    authGate.setCookieHeader,
-  )
+  return new NextResponse(upstream.body, {
+    status: upstream.status,
+    headers,
+  })
 }
 
 // HEAD probes the upstream for `Content-Length` only — used by the
@@ -479,25 +531,16 @@ export async function GET(request: Request): Promise<Response> {
 // is missing or zero. Reuses the same SSRF defenses as GET (allowlist,
 // DNS pre-flight, manual redirect handling); body is never read.
 export async function HEAD(request: Request): Promise<Response> {
-  const authGate = await requireDownloadAccountIfEnabled(request)
-  if (!authGate.ok) return authGate.response
-
   const { searchParams } = new URL(request.url)
 
   const resolvedTarget = await resolveRequestedTarget(searchParams)
   if (!resolvedTarget.ok) {
-    return withOptionalSetCookie(
-      resolvedTarget.errorResponse,
-      authGate.setCookieHeader,
-    )
+    return resolvedTarget.errorResponse
   }
 
   const validation = await validateTarget(resolvedTarget.target)
   if (!validation.ok) {
-    return withOptionalSetCookie(
-      validation.errorResponse,
-      authGate.setCookieHeader,
-    )
+    return validation.errorResponse
   }
   const { safeUrl } = validation
 
@@ -520,19 +563,13 @@ export async function HEAD(request: Request): Promise<Response> {
     })
   } catch (err) {
     if (request.signal.aborted) {
-      return withOptionalSetCookie(
-        new NextResponse(null, { status: 499 }),
-        authGate.setCookieHeader,
-      )
+      return new NextResponse(null, { status: 499 })
     }
     console.error("[api/download] HEAD upstream fetch failed", {
       target: safeLogUrl(safeUrl),
       err: err instanceof Error ? err.message : String(err),
     })
-    return withOptionalSetCookie(
-      jsonError("Upstream fetch failed", 502),
-      authGate.setCookieHeader,
-    )
+    return jsonError("Upstream fetch failed", 502)
   } finally {
     clearUpstreamTimeout()
   }
@@ -544,20 +581,14 @@ export async function HEAD(request: Request): Promise<Response> {
     console.error("[api/download] HEAD upstream attempted redirect", {
       target: safeLogUrl(safeUrl),
     })
-    return withOptionalSetCookie(
-      jsonError("Upstream redirected; refusing to follow", 502),
-      authGate.setCookieHeader,
-    )
+    return jsonError("Upstream redirected; refusing to follow", 502)
   }
 
   // Mirror GET: a 206 Partial Content is a valid metadata response from
   // some CDNs, not an error. Returning 502 here would make legitimate
   // sizes invisible to the client.
   if (!upstream.ok && upstream.status !== 206) {
-    return withOptionalSetCookie(
-      jsonError(`Upstream ${upstream.status}`, upstream.status),
-      authGate.setCookieHeader,
-    )
+    return jsonError(`Upstream ${upstream.status}`, upstream.status)
   }
 
   const headers = new Headers()
@@ -574,8 +605,5 @@ export async function HEAD(request: Request): Promise<Response> {
 
   // Forward upstream's status (200 or 206) so callers see exactly what
   // the CDN reported — mirroring GET's pass-through behavior.
-  return withOptionalSetCookie(
-    new NextResponse(null, { status: upstream.status, headers }),
-    authGate.setCookieHeader,
-  )
+  return new NextResponse(null, { status: upstream.status, headers })
 }

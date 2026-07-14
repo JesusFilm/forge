@@ -40,7 +40,12 @@ EAS returns a public install URL for an **APK** (the `preview` profile forces
 Give stakeholders the link. They install it by either:
 
 - **Downloader app** (by AFTVnews, from the Play Store): open the EAS URL, install.
-- `adb connect <tv-ip>:5555 && adb install <file>.apk` over the network.
+- `adb connect <tv-ip>:<port> && adb install <file>.apk` over the network. The
+  port is `5555` only on Android 11 and earlier; **Android 13/14 randomizes the
+  Wireless-debugging port on every reboot** — read the current `IP:port` from
+  _Settings → System → Developer options → Wireless debugging_ (and pair once via
+  "Pair device with pairing code"). See the `/build-android` command for the full
+  Android-14 `adb pair`/`adb connect` flow.
 - A Google Drive link → a file manager on the TV.
 
 First they must enable _Settings → Developer options → Install unknown apps_ for
@@ -80,12 +85,50 @@ as-is instead of re-resolving the platform (which would flip back to iOS).
 
 ```bash
 cd apps/tv
-npx eas-cli build  --platform ios --profile production   # store-signed tvOS build
-npx eas-cli submit --platform ios --profile production   # uploads to App Store Connect → TestFlight
+npx eas-cli build --platform ios --profile production   # store-signed tvOS build (.ipa)
 ```
 
-Requires the Apple Developer Program ($99/yr) and an App Store Connect app record
-for bundle id `org.jesusfilm.forgetv` (EAS can create the credentials interactively).
+Requires the Apple Developer Program ($99/yr) and a **tvOS** App Store Connect app
+record for `org.jesusfilm.forgetv` (Apple ID `6781137518`). The app MUST support
+tvOS — if it was auto-created iOS-only, add the platform in App Store Connect
+(**Add Platform → tvOS**). Note `appleTVImages` requires no alpha channel and
+exact sizes; the `withTVInfoPlistFixes` config plugin (`apps/tv/plugins/`) strips
+the stray `LSRequiresIPhoneOS` key that config-tv leaves in (tvOS hygiene).
+
+### Gotcha (CRITICAL): do NOT use `eas submit` for tvOS — it delivers as iOS
+
+`eas submit --platform ios` uploads the tvOS `.ipa` **declaring the platform as
+iOS**, so App Store Connect runs iOS validation against a tvOS binary and rejects
+every delivery — the build never registers, you just get an email:
+
+```
+ITMS-90508  DTPlatformName 'appletvos' is invalid
+ITMS-90545  provisioning profile is not compatible with iOS apps
+ITMS-90713  CFBundleIconName missing            (iOS-only key)
+ITMS-90039  CFBundleIcons.CFBundlePrimaryIcon type mismatch   (iOS dict form)
+```
+
+The binary is correct tvOS — only the delivery platform is wrong. **Submit with
+Apple's `altool`, explicitly typed `appletvos`.** Put the ASC API key at
+`~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, then:
+
+```bash
+# download the latest build's .ipa by CLI (no browser needed):
+URL=$(npx eas-cli build:list --platform ios --profile production --limit 1 --json --non-interactive \
+  | node -e "process.stdin.once('data',d=>process.stdout.write(JSON.parse(d)[0].artifacts.applicationArchiveUrl))")
+curl -fL "$URL" -o /tmp/jfw.ipa
+# <KeyID> and <IssuerID> are the ASC API key identifiers (NOT the app/team id),
+# kept alongside the .p8 in ~/.appstoreconnect/private_keys/ (e.g. an info.txt). Then:
+xcrun altool --validate-app -f /tmp/jfw.ipa -t appletvos \
+  --apiKey <KeyID> --apiIssuer <IssuerID>   # dry run: SAME ITMS checks, no upload
+xcrun altool --upload-app   -f /tmp/jfw.ipa -t appletvos \
+  --apiKey <KeyID> --apiIssuer <IssuerID>   # the real upload
+```
+
+**Always `--validate-app` first** — it runs every ITMS check without spending a
+delivery, so you confirm a clean "VERIFY SUCCEEDED" before uploading. The
+Transporter Mac app also works (it auto-detects tvOS from the binary).
+`eas submit` does not, and there is no flag to make it.
 
 - **Internal testing**: up to 100 testers who are members of your App Store
   Connect team. No Beta App Review; builds are ready in minutes.

@@ -7,8 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { datadogRumMock, mockEnv, reactPluginMock } = vi.hoisted(() => {
   const datadogRumMock = {
+    addAction: vi.fn(),
     addError: vi.fn(),
+    clearUser: vi.fn(),
     init: vi.fn(),
+    setUser: vi.fn(),
   }
   const reactPlugin = { name: "react-plugin" }
   const reactPluginMock = vi.fn(() => reactPlugin)
@@ -37,6 +40,9 @@ vi.mock("@/env", () => ({
 
 import DatadogRum, {
   getDatadogRumInitConfig,
+  clearDatadogRumUser,
+  identifyDatadogRumUser,
+  reportDatadogRumAction,
   reportDatadogRumError,
 } from "@/components/DatadogRum"
 
@@ -102,7 +108,7 @@ describe("DatadogRum", () => {
         applicationId: "rum-app-id",
         clientToken: "rum-client-token",
         site: "datadoghq.com",
-        service: "watch",
+        service: "forge-web",
         env: "prod",
         version: "abc123",
         sessionSampleRate: 50,
@@ -179,6 +185,61 @@ describe("DatadogRum", () => {
 
     expect(consoleError).toHaveBeenCalledWith(
       "[datadog-rum] failed to report error:",
+      expect.any(Error),
+    )
+    consoleError.mockRestore()
+  })
+
+  it("reports supplemental RUM actions", () => {
+    reportDatadogRumAction("watch_search.result_clicked", {
+      "watch_search.result_position": 3,
+      "watch_search.search_request_id": "search_12345678",
+    })
+
+    expect(datadogRumMock.addAction).toHaveBeenCalledWith(
+      "watch_search.result_clicked",
+      {
+        "watch_search.result_position": 3,
+        "watch_search.search_request_id": "search_12345678",
+      },
+    )
+  })
+
+  it("identifies signed-in users in RUM without image data", () => {
+    identifyDatadogRumUser({
+      id: " auth-user-123 ",
+      email: " viewer@example.test ",
+      name: " Viewer Example ",
+    })
+
+    expect(datadogRumMock.setUser).toHaveBeenCalledWith({
+      id: "auth-user-123",
+      email: "viewer@example.test",
+      name: "Viewer Example",
+    })
+  })
+
+  it("clears the RUM user when the session is anonymous", () => {
+    identifyDatadogRumUser(undefined)
+    clearDatadogRumUser()
+
+    expect(datadogRumMock.clearUser).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not let Datadog action failures cascade", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    datadogRumMock.addAction.mockImplementationOnce(() => {
+      throw new Error("sdk failed")
+    })
+
+    expect(() =>
+      reportDatadogRumAction("watch_search.result_clicked", {
+        "watch_search.result_position": 3,
+      }),
+    ).not.toThrow()
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[datadog-rum] failed to report action:",
       expect.any(Error),
     )
     consoleError.mockRestore()

@@ -1,20 +1,8 @@
 /**
- * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (itself ported from
- * apps/web/src/lib/watch-home.ts) — sync obligation in ./config.ts. TV
- * adaptations on top of mobile's cuts:
- *
- *   - No carousel/pager machinery: the playlist sequence, carousel pools, and
- *     Mux inserts do not port. The hero pool surfaces as `model.featured` —
- *     WATCH_HOME_HERO_SOURCE_IDS through the card normalizer (web's
- *     heroSlides recipe) — rendered as the first rail with an image-only
- *     showcase.
- *   - No playbackId on cards: TV cards carry slug/coreId routing data only;
- *     playable streams resolve lazily at selection time (the 9.5MB lean-bulk
- *     rule).
- *   - Time-of-day: `resolveFeaturedTitle` picks the featured rail's title
- *     variant from an INJECTED Date — no clock reads inside the builder.
- *
- * Pure TypeScript only — no React/React Native imports.
+ * ADAPTED COPY of apps/mobile/src/lib/watchHome/model.ts (ported from apps/web/src/lib/watch-home.ts)
+ * — sync obligation in ./config.ts. TV cuts: no carousel/pager (hero → `model.featured`), no
+ * playbackId on the lean-bulk fragment (9.5MB; the preview muxPlaybackId rides the Experience item,
+ * not the bulk query), time-of-day title from an INJECTED Date. Pure TS.
  */
 
 import {
@@ -22,15 +10,15 @@ import {
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_FEATURED_RAIL,
   WATCH_HOME_SECTIONS,
-  type WatchHomeFeaturedRailConfig,
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
+import { pickCardImage } from "../cardImage"
+import { buildHeroFeatured, buildHeroSourceMap } from "./heroQueue"
 
 /**
- * Lean bulk-video input shape: card fields only, no dubs/variants. Mirrors
- * the `WatchHomeVideo` fragment in ./homeQueries.ts, using the codebase-wide
- * `documentId: id` alias convention.
+ * Lean bulk-video input: card fields only, no dubs/variants. Mirrors the
+ * `WatchHomeVideo` fragment in ./homeQueries.ts (`documentId: id` alias).
  */
 export type WatchHomeImageInput = {
   url?: string | null
@@ -89,15 +77,16 @@ export type WatchHomeCard = {
   description: string | null
   label: string
   /**
-   * The raw wire enum (e.g. "SERIES") behind the display-text `label`. Shape
-   * predicates (isSeriesSearchResult) match the uppercase wire literals, so
-   * routing must read THIS field — feeding it display text silently breaks
-   * the label branch and leaves childCount as the only signal.
+   * Raw wire enum (e.g. "SERIES") behind display-text `label`. Routing must
+   * read THIS — shape predicates (isSeriesSearchResult) match uppercase wire
+   * literals; display text silently breaks the branch, leaving only childCount.
    */
   rawLabel: string | null
   metaLabel: string | null
   imageUrl: string | null
   imageAlt: string
+  // Mux playback id for the animated hover-preview, or null (config path / series parent).
+  muxPlaybackId: string | null
   durationSeconds: number | null
   childCount: number
   parentCoreId: string | null
@@ -140,16 +129,7 @@ function labelText(label: string | null | undefined): string {
 }
 
 function pickAdminImage(images: readonly WatchHomeImageInput[]): string | null {
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
-  }
-  return null
+  return pickCardImage(images, "card")
 }
 
 /**
@@ -180,32 +160,9 @@ function buildMetaLabel(args: {
   return args.label
 }
 
-/**
- * Resolve the featured rail's display title for an injected clock. The clock
- * is ALWAYS a parameter — consumers re-evaluate on screen focus; the model
- * never reads Date.now().
- *
- * Boundaries: morning < 12:00, afternoon < 17:00, evening otherwise. Web's
- * overlay windows (5–9 / 12–17 / 17–21, base title in the gaps) only pin the
- * afternoon→evening boundary at 17:00; TV totalizes the rest because the rail
- * always needs a label.
- */
-export function resolveFeaturedTitle(
-  config: Pick<WatchHomeFeaturedRailConfig, "title" | "titleVariants">,
-  date: Date,
-): string {
-  const variants = config.titleVariants
-  if (!variants) return config.title
-  const hours = date.getHours()
-  if (hours < 12) return variants.morning
-  if (hours < 17) return variants.afternoon
-  return variants.evening
-}
-
-// KTD5: the admin Video.parents/children relation is inverted on main and can
-// surface self-references/duplicates. All children reads self-filter + dedupe
-// (BEFORE any limit slice) so cards are correct the moment the relation is
-// fixed, with no further change here.
+// KTD5: admin Video.parents/children relation is inverted on main and can
+// surface self-refs/duplicates. Self-filter + dedupe BEFORE any limit slice so
+// cards are correct the moment the relation is fixed, no further change here.
 function resolvedChildren(
   parent: WatchHomeVideoInput,
 ): WatchHomeChildVideoInput[] {
@@ -221,12 +178,16 @@ function resolvedChildren(
   return children
 }
 
-function normalizeCard(args: {
+// Exported for the Experience adapter (experienceAdapter.ts): it hydrates each
+// curated item by coreId and builds its card through this same normalizer, so
+// rawLabel/childCount/metaLabel/title stay identical to the config path.
+export function normalizeCard(args: {
   sectionId: string
   sourceId: string
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
   languageSlug: string
   parent?: WatchHomeVideoInput | null
+  muxPlaybackId?: string | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
@@ -276,6 +237,7 @@ function normalizeCard(args: {
     }),
     imageUrl: adminImageUrl,
     imageAlt: locale?.imageAlt ?? title,
+    muxPlaybackId: args.muxPlaybackId ?? null,
     durationSeconds: args.video.durationSeconds ?? null,
     childCount,
     parentCoreId: args.parent?.coreId ?? null,
@@ -402,16 +364,24 @@ function buildSections(args: {
   }).filter((section) => section.cards.length > 0)
 }
 
-// Web's heroSlides recipe: each hero source id resolves to its own record's
-// card (never a child). Unresolved sources are omitted and recorded.
+// Primary: the day-seeded hero pool queue (heroQueue.ts) for web/mobile parity.
+// Fallback: the hero-source-id cards, only when the queue is empty.
 function buildFeatured(args: {
-  videoByCoreId: Map<string, WatchHomeVideoInput>
+  videos: readonly WatchHomeVideoInput[]
   languageSlug: string
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
+  const queue = buildHeroFeatured({
+    videos: args.videos,
+    languageSlug: args.languageSlug,
+    missingData: args.missingData,
+  })
+  if (queue.length > 0) return queue
+
+  const videoByCoreId = buildHeroSourceMap(args.videos)
   const featured: WatchHomeCard[] = []
   for (const sourceId of WATCH_HOME_HERO_SOURCE_IDS) {
-    const video = args.videoByCoreId.get(sourceId)
+    const video = videoByCoreId.get(sourceId)
     if (!video) {
       args.missingData.push({
         sectionId: WATCH_HOME_FEATURED_RAIL.id,
@@ -455,6 +425,28 @@ function hasCoreId(video: WatchHomeVideoInput): video is WatchHomeVideoInput & {
   return typeof video.coreId === "string" && video.coreId.length > 0
 }
 
+/**
+ * KTD4: index BOTH the top-level records AND every `children[].child` by coreId, so
+ * the Experience adapter can hydrate a curated item that lives only as another
+ * collection's child (20 of prod's 42 unique item ids). On a coreId present both
+ * ways the TOP-LEVEL record wins (inserted last) so normalizeCard sees `children`
+ * and reports a real childCount. Both the config model and the adapter consume this.
+ */
+export function buildVideoByCoreIdIndex(
+  videos: readonly WatchHomeVideoInput[],
+): Map<string, WatchHomeVideoInput> {
+  const index = new Map<string, WatchHomeVideoInput>()
+  for (const video of videos) {
+    for (const child of resolvedChildren(video)) {
+      if (hasCoreId(child)) index.set(child.coreId, child)
+    }
+  }
+  for (const video of videos) {
+    if (hasCoreId(video)) index.set(video.coreId, video)
+  }
+  return index
+}
+
 export function buildWatchHomeModelFromVideos(args: {
   videos: readonly WatchHomeVideoInput[]
   languageSlug?: string | null
@@ -472,11 +464,13 @@ export function buildWatchHomeModelFromVideos(args: {
         "Ingest source thumbnail overrides into admin/Core image data or configure editor-owned poster assets.",
     },
   ]
-  const videoByCoreId = new Map(
-    args.videos.filter(hasCoreId).map((video) => [video.coreId, video]),
-  )
+  const videoByCoreId = buildVideoByCoreIdIndex(args.videos)
 
-  const featured = buildFeatured({ videoByCoreId, languageSlug, missingData })
+  const featured = buildFeatured({
+    videos: args.videos,
+    languageSlug,
+    missingData,
+  })
   const sections = buildSections({ videoByCoreId, languageSlug, missingData })
   const cardMissing = [
     ...featured.flatMap((card) => card.missingData),

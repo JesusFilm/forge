@@ -4,6 +4,14 @@
 // smart-crop-presenter.ts.
 
 import { SHORT_CLIP_DURATION } from "@forge/shorts-compositions/schema"
+import {
+  getShortsActiveStall,
+  type ShortsActiveStall,
+} from "@/lib/shorts-stale"
+import {
+  countryIdToCircleFlagUrl,
+  resolveLanguageFlagCountryId,
+} from "@/features/coverage/language-flags"
 import { getShortsReport } from "@/lib/shorts-report"
 import type { JobRecord, ShortsJobReport, ShortsPhase } from "@/types/job"
 
@@ -250,7 +258,13 @@ export type ShortsJobSummary = {
   assetId: string
   sourceMuxAssetId: string
   sourceCoreId?: string
+  sourceSlug: string | null
+  sourceVideoTitle: string | null
   title: string
+  languageBcp47: string | null
+  languageLabel: string
+  languageShortLabel: string
+  languageFlagUrl: string
   clip: { startSec: number; endSec: number }
   clipRangeLabel: string
   phase: ShortsPhase
@@ -258,12 +272,126 @@ export type ShortsJobSummary = {
   phaseTone: ShortsPhaseTone
   /** Phase "queued" + job status "failed": the create launch never ran. */
   isLaunchFailed: boolean
+  activeStall: ShortsActiveStall | null
   annotationLabel: string | null
   isStale: boolean
   report: ShortsJobReport | null
 }
 
-export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
+// SYNC: mirrors WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE in
+// apps/admin/src/app/dashboard/experiences/experience-editor.tsx and
+// PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE in apps/web/src/lib/locale.ts.
+const WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE: Readonly<Record<string, string>> = {
+  en: "english",
+  es: "spanish-castilian",
+  fr: "french",
+  pt: "portuguese-brazil",
+  de: "german-standard",
+  ar: "arabic-modern-standard",
+  id: "indonesian-isa",
+  ja: "japanese",
+  ko: "korean",
+  ms: "malay",
+  ne: "nepali",
+  ru: "russian",
+  th: "thai",
+  tl: "tagalog",
+  tr: "turkish",
+  vi: "vietnamese",
+  zh: "mandarin-china",
+  "zh-hans": "chinese-simplified",
+  "zh-hant": "chinese-traditional",
+}
+
+function watchLanguageSlugForLocale(locale: string | null): string | null {
+  const normalized = locale?.trim().replaceAll("_", "-").toLowerCase()
+  if (!normalized) return null
+
+  return (
+    WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE[normalized] ??
+    WATCH_AUDIO_LANGUAGE_SLUG_BY_LOCALE[normalized.split("-")[0] ?? ""] ??
+    null
+  )
+}
+
+function cleanWatchOrigin(value: string): string | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    return url.origin
+  } catch {
+    return null
+  }
+}
+
+export function buildSourceWatchHref(
+  summary: Pick<ShortsJobSummary, "sourceSlug" | "languageBcp47">,
+  watchOrigin = process.env.NEXT_PUBLIC_WATCH_URL ??
+    "https://www.jesusfilm.org",
+): string | null {
+  const sourceSlug = summary.sourceSlug?.trim()
+  if (!sourceSlug) return null
+
+  const origin = cleanWatchOrigin(watchOrigin)
+  if (!origin) return null
+
+  const languageSlug = watchLanguageSlugForLocale(summary.languageBcp47)
+  if (!languageSlug) return null
+
+  return `${origin}/watch/${encodeURIComponent(sourceSlug)}.html/${languageSlug}.html`
+}
+
+function formatLanguageShortLabel(language: {
+  bcp47: string | null
+  whisper: string | null
+}): string {
+  const rawCode = (language.bcp47 ?? language.whisper)?.trim()
+  if (!rawCode) return "UNK"
+
+  const [languageCode, regionCode] = rawCode.replaceAll("_", "-").split("-")
+  if (!languageCode) return "UNK"
+  if (regionCode && /^[a-zA-Z]{2}$/.test(regionCode)) {
+    return `${languageCode.slice(0, 3)}-${regionCode}`.toUpperCase()
+  }
+
+  return languageCode.slice(0, 3).toUpperCase()
+}
+
+function formatLanguageLabel(language: {
+  bcp47: string | null
+  whisper: string | null
+}): string {
+  const rawCode = (language.bcp47 ?? language.whisper)?.trim()
+  if (!rawCode) return "Language unknown"
+
+  try {
+    const displayName = new Intl.DisplayNames(["en"], { type: "language" }).of(
+      rawCode,
+    )
+    return displayName ? `${displayName} (${rawCode})` : rawCode
+  } catch {
+    return rawCode
+  }
+}
+
+function getLanguageFlagUrl(language: {
+  bcp47: string | null
+  whisper: string | null
+}): string {
+  const countryId = resolveLanguageFlagCountryId({
+    bcp47: language.bcp47,
+    iso3: language.whisper,
+    countryIds: [],
+    countrySpeakers: {},
+  })
+
+  return countryIdToCircleFlagUrl(countryId)
+}
+
+export function getShortsJobSummary(
+  job: JobRecord,
+  options: { now?: Date } = {},
+): ShortsJobSummary | null {
   const shorts = job.options.shorts
   if (!shorts) {
     return null
@@ -277,18 +405,36 @@ export function getShortsJobSummary(job: JobRecord): ShortsJobSummary | null {
   // a workflow that is about to run.
   const phase = report?.phase ?? "queued"
   const isLaunchFailed = isShortsLaunchFailed(phase, job.status)
+  const activeStall =
+    isLaunchFailed || job.status === "failed"
+      ? null
+      : getShortsActiveStall(job, report, options.now)
+  const sourceVideoTitle =
+    job.sourceMediaTitle?.trim() || shorts.sourceTitle || null
 
   return {
     assetId: shorts.assetId,
     sourceMuxAssetId: shorts.sourceMuxAssetId,
     sourceCoreId: shorts.sourceCoreId,
-    title: shorts.sourceTitle ?? shorts.assetId,
+    sourceSlug: shorts.sourceSlug ?? null,
+    sourceVideoTitle,
+    title: shorts.sourceTitle ?? sourceVideoTitle ?? shorts.assetId,
+    languageBcp47: shorts.language.bcp47,
+    languageLabel: formatLanguageLabel(shorts.language),
+    languageShortLabel: formatLanguageShortLabel(shorts.language),
+    languageFlagUrl: getLanguageFlagUrl(shorts.language),
     clip: shorts.clip,
     clipRangeLabel: formatClipRange(shorts.clip),
     phase,
-    phaseLabel: isLaunchFailed ? "Launch failed" : formatShortsPhase(phase),
-    phaseTone: isLaunchFailed ? "failed" : shortsPhaseTone(phase),
+    phaseLabel: isLaunchFailed
+      ? "Launch failed"
+      : activeStall
+        ? activeStall.label
+        : formatShortsPhase(phase),
+    phaseTone:
+      isLaunchFailed || activeStall ? "failed" : shortsPhaseTone(phase),
     isLaunchFailed,
+    activeStall,
     annotationLabel: formatShortsAnnotation(report?.annotation ?? null),
     isStale: isShortsDraftStale(report),
     report,

@@ -3,3 +3,7 @@ ios/
 android/
 .env.local
 node_modules/
+
+# EAS build artifacts downloaded locally (e.g. by /build-android)
+*.apk
+*.aab

@@ -1,6 +1,8 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+import { normalizeDatadogEnv } from "./datadog-env"
+
 // Doppler sends empty strings for unconfigured vars. Zod's `.optional()`
 // only matches `undefined`, so `""` fails `.min(1)`. Coerce empties to
 // `undefined` before validation.
@@ -8,6 +10,44 @@ const emptyToUndefined = (v: string | undefined) => (v === "" ? undefined : v)
 
 export const DEFAULT_WEB_CANONICAL_ORIGIN = "https://www.jesusfilm.org"
 export const DEFAULT_WATCH_CANONICAL_ORIGIN = "https://watch.jesusfilm.org"
+
+const DATADOG_SITE_VALUES = [
+  "datadoghq.com",
+  "us3.datadoghq.com",
+  "us5.datadoghq.com",
+  "datadoghq.eu",
+  "ddog-gov.com",
+  "ap1.datadoghq.com",
+  "ap2.datadoghq.com",
+] as const
+
+function datadogPublicEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogServerEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.DD_ENV ??
+      process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogVersionFallback(): string | undefined {
+  return (
+    emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
+    emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.VERCEL_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.GIT_COMMIT_SHA)
+  )
+}
 
 const httpOriginEnvSchema = (varName: string) =>
   z
@@ -29,8 +69,8 @@ export const watchCanonicalOriginEnvSchema = httpOriginEnvSchema(
 
 /**
  * Shared schema fragment for env vars representing a positive-int
- * concurrency cap (e.g. `SCENE_EMBEDDING_CONCURRENCY`,
- * `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so test code and the
+ * concurrency cap (e.g. `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so
+ * test code and the
  * `run-embeds` CLI can parse via the same shape rather than
  * hand-rolling a parallel parser. Contract: undefined → undefined,
  * positive int (coerced from string) → number, anything else throws.
@@ -48,6 +88,20 @@ export const searchTraceRawRetentionDaysEnvSchema = z.coerce
   .max(29)
   .optional()
   .default(29)
+
+export const workflowStartupTransientAttemptsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(12)
+
+export const workflowStartupTransientDelayMsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(10_000)
 
 /**
  * AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED — enum-of-strings (not a
@@ -84,6 +138,13 @@ export const experienceAiMaxRepairAttemptsEnvSchema = z.coerce
   .optional()
   .default(2)
 
+export const youVersionPassageCacheTtlSecondsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(60 * 60 * 24 * 14)
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -108,6 +169,12 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional(),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_WEB_USER_CLIENT_IDS: z.string().min(1).optional(),
+    AUTH_WEB_USER_TOKEN_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
@@ -162,12 +229,15 @@ export const env = createEnv({
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: z.string().min(1).optional(),
-    // Narrow receiver-side CSV for Mastra -> Admin scene vector ingest.
-    // Kept separate from transcript ingest and workflow launch credentials.
-    MASTRA_SCENE_INGEST_API_KEYS: z.string().min(1).optional(),
     // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
-    // Kept separate from transcript/scene ingest and workflow launch credentials.
+    // Kept separate from transcript ingest and workflow launch credentials.
     MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Narrow receiver-side CSV for the standalone Mastra chat agent's tool
+    // callbacks (consolidation U7): search-videos / lookup-bible-verse /
+    // fetch-video-image. A DIFFERENT capability than vector ingest or workflow
+    // launch (read-only catalog reads), so it gets its own CSV and joins the
+    // disjointness invariant below. Optional so an unprovisioned env still boots.
+    ADMIN_AGENT_TOOLS_API_KEYS: z.string().min(1).optional(),
     // Plan 003 — consumer-app bearer allowlist (apps/web SSR).
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
@@ -182,6 +252,19 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Fleet consumer-bearer allowlist (apps/tv + apps/mobile). Mints the same
+    // CONSUMER_BEARER principal as WEB_ADMIN_API_KEYS but flagged `fleet`, so
+    // identifyForRateLimit buckets per-IP (consumer:<key>:<ip>), not per-key.
+    FLEET_ADMIN_API_KEYS: z.string().optional(),
+    // Dedicated receiver-side CSV for consumer watch-progress persistence.
+    // This endpoint accepts caller-supplied consumer user ids, so it must stay
+    // narrower than the general web SSR consumer bearer.
+    WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Admin-owned YouVersion integration for Watch Bible passages. Web
+    // reads cached passage data through GraphQL and never receives this key.
+    YOUVERSION_APP_KEY: z.string().min(1).optional(),
+    YOUVERSION_PASSAGE_CACHE_TTL_SECONDS:
+      youVersionPassageCacheTtlSecondsEnvSchema,
     // Video DB backup download signer. Production admin uses this CSV
     // to authorize non-production callers that need a short-lived GET
     // URL for the latest reviewed video backup. Keep separate from
@@ -213,6 +296,10 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS:
+      workflowStartupTransientAttemptsEnvSchema,
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS:
+      workflowStartupTransientDelayMsEnvSchema,
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
     WORKFLOW_POSTGRES_JOB_PREFIX: z.string().min(1).optional(),
     WORKFLOW_POSTGRES_WORKER_CONCURRENCY: z.coerce
@@ -225,22 +312,20 @@ export const env = createEnv({
       .int()
       .positive()
       .optional(),
-    // Per-target concurrency caps for the R1 / R2 embed-backfill
-    // workflows (sceneEmbeddingBackfill / transcriptEmbeddingBackfill).
-    // Each workflow uses `p-limit(N) + Promise.allSettled` to fan out
-    // the per-target loop; one rejection never aborts siblings (cf.
+    // Per-target concurrency cap for transcript embed backfills. The workflow
+    // uses `p-limit(N) + Promise.allSettled` to fan out the per-target loop;
+    // one rejection never aborts siblings (cf.
     // docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md).
-    // Default at the call site is 10. Tune up locally (20+); tune down
-    // in prod (start at 5, ramp after observation).
-    SCENE_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
+    // Default at the call site is 10. Tune up locally (20+); tune down in prod
+    // (start at 5, ramp after observation).
     TRANSCRIPT_EMBEDDING_CONCURRENCY: concurrencyEnvSchema,
     RAILWAY_S3_ENDPOINT: z.string().url().optional(),
     RAILWAY_S3_REGION: z.string().min(1).optional(),
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-    // Manager artifacts bucket — admin reads {assetId}/scene-analysis.json
-    // and {assetId}/transcript.json from apps/manager's S3 bucket via
+    // Manager artifacts bucket — admin reads manager-produced artifacts such as
+    // {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
     // RAILWAY_S3_*, which is admin's own write bucket (cms-storage,
     // used for admin-migrations/core-id-mapping.json etc.). Read-only
@@ -270,11 +355,6 @@ export const env = createEnv({
     MASTRA_GATEWAY_BASE_URL: z.string().url().optional(),
     MASTRA_GATEWAY_ADMIN_API_KEY: z.string().min(1).optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(120_000),
-    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
       .positive()
@@ -341,6 +421,87 @@ export const env = createEnv({
     // Cap on the U5 validate→repair loop (default 2). See
     // experienceAiMaxRepairAttemptsEnvSchema above.
     EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: experienceAiMaxRepairAttemptsEnvSchema,
+    // Flag-gated one-shot draft cutover (consolidation U6). When "true",
+    // `runGenerateDraftAction` runs the draft via the standalone
+    // `/forge-experience-draft` route (reusing MASTRA_BASE_URL +
+    // MASTRA_SERVICE_API_KEY) instead of the in-process workflow; the
+    // in-process path stays the fallback (unset/"false", or when those caller
+    // vars are unset → the client returns config_missing → in-process).
+    // Enum-of-strings + `.optional().default("false")` so an unprovisioned
+    // Railway env still boots (opt-in scaffolding env var).
+    EXPERIENCE_AI_REMOTE_DRAFT: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget for the remote draft call. MUST stay strictly
+    // LARGER than mastra's internal multi-step-workflow budget (180s) so the
+    // mastra-side timeout wins the race and returns a clean { reason:"timeout" }
+    // envelope rather than admin's fetch aborting as a generic network_error
+    // and triggering a retry storm (cf.
+    // docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md).
+    MASTRA_DRAFT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200_000),
+    // Flag-gated video-anchored section cutover. When "true",
+    // `runGenerateSectionAction` calls the standalone
+    // `/forge-experience-section` route (reusing MASTRA_BASE_URL +
+    // MASTRA_SERVICE_API_KEY); there is NO admin in-process fallback for the
+    // section path (it is remote-first by design, to avoid expanding the
+    // consolidation's U10 deletion scope). Opt-in scaffolding: optional +
+    // defaulted so an unprovisioned env still boots.
+    EXPERIENCE_AI_REMOTE_SECTION: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget for the remote section call. MUST stay strictly
+    // LARGER than mastra's internal section budget (TIME_BUDGET_MS.section,
+    // 60s) so the mastra-side timeout wins the race (same invariant as
+    // MASTRA_DRAFT_TIMEOUT_MS).
+    MASTRA_SECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(75_000),
+    // Persona-aware variant generation (persona-variants v1). When "true", the
+    // operator script calls the standalone `/forge-experience-variant` route
+    // (reusing MASTRA_BASE_URL + MASTRA_SERVICE_API_KEY) to generate one tailored
+    // experience per persona. Remote-only, like the section path. Opt-in
+    // scaffolding: optional + defaulted so an unprovisioned env still boots.
+    EXPERIENCE_AI_REMOTE_VARIANTS: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Outbound HTTP budget per persona-variant call. MUST stay strictly LARGER
+    // than mastra's internal multi-step budget (TIME_BUDGET_MS.multiStepWorkflow,
+    // 180s) so the mastra-side timeout wins the race (same invariant as
+    // MASTRA_DRAFT_TIMEOUT_MS).
+    MASTRA_VARIANTS_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(200_000),
+    // Flag-gated streaming chat cutover (consolidation U9). When "true",
+    // `runMastraChat` relays the token stream from the standalone
+    // `/forge-experience-chat` route instead of running the agent in-process;
+    // the in-process path stays the fallback. All optional so an unprovisioned
+    // env still boots.
+    EXPERIENCE_AI_REMOTE_CHAT: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    MASTRA_CHAT_BASE_URL: z.string().url().optional(),
+    MASTRA_CHAT_API_KEY: z.string().min(1).optional(),
+    // SSRF allowlist for the chat base URL host. When set, the base URL host
+    // MUST be listed (else the relay is rejected before fetch). Unset → the
+    // operator-configured base host is implicitly trusted (redirect:"error"
+    // still blocks off-host hops).
+    MASTRA_CHAT_ALLOWED_HOSTS: z.string().min(1).optional(),
+    // Outbound budget for the chat relay. Strictly LARGER than mastra's
+    // internal chatTurn budget (90s) so the mastra-side timeout wins; under the
+    // ~100s Cloudflare 524 ceiling fronting admin.
+    MASTRA_CHAT_TIMEOUT_MS: z.coerce.number().int().positive().default(95_000),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: z.string().url().optional(),
     AI_GATEWAY_EMBEDDINGS_API_KEY: z.string().min(1).optional(),
     AI_GATEWAY_EMBEDDINGS_MODEL: z.string().min(1).optional(),
@@ -358,11 +519,43 @@ export const env = createEnv({
     OLLAMA_BASE_URL: z.string().url().optional(),
     OLLAMA_EMBEDDING_MODEL: z.string().min(1).optional(),
     OLLAMA_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().optional(),
+    DD_AGENT_HOST: z.string().min(1).optional(),
+    DD_AGENT_SYSLOG_PORT: z.coerce.number().int().positive().optional(),
+    DD_ENV: z.string().min(1).optional(),
+    DD_SERVICE: z.string().min(1).optional(),
+    DD_VERSION: z.string().min(1).optional(),
   },
-  client: {},
+  client: {
+    // Optional Datadog RUM configuration. Application id + client token gate
+    // initialization; when absent, the client component no-ops so local and
+    // preview environments can boot before Datadog is provisioned.
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_SITE: z
+      .enum(DATADOG_SITE_VALUES)
+      .default("datadoghq.com"),
+    NEXT_PUBLIC_DATADOG_ENV: z.string().default("development"),
+    NEXT_PUBLIC_DATADOG_VERSION: z.string().optional(),
+  },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
+    ),
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
+    ),
+    NEXT_PUBLIC_DATADOG_SITE: emptyToUndefined(
+      process.env.NEXT_PUBLIC_DATADOG_SITE,
+    ),
+    NEXT_PUBLIC_DATADOG_ENV: datadogPublicEnvFallback(),
+    NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
+    DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
+    DD_AGENT_SYSLOG_PORT: emptyToUndefined(process.env.DD_AGENT_SYSLOG_PORT),
+    DD_ENV: datadogServerEnvFallback(),
+    DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
+    DD_VERSION: datadogVersionFallback(),
     DATABASE_URL_SYNC: emptyToUndefined(process.env.DATABASE_URL_SYNC),
     ADMIN_SESSION_SECRET: emptyToUndefined(process.env.ADMIN_SESSION_SECRET),
     AUTH_COOKIE_PREFIX: emptyToUndefined(process.env.AUTH_COOKIE_PREFIX),
@@ -382,6 +575,18 @@ export const env = createEnv({
     ),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
+    ),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_ID: emptyToUndefined(
+      process.env.AUTH_WEB_USER_INTROSPECTION_CLIENT_ID,
+    ),
+    AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET: emptyToUndefined(
+      process.env.AUTH_WEB_USER_INTROSPECTION_CLIENT_SECRET,
+    ),
+    AUTH_WEB_USER_CLIENT_IDS: emptyToUndefined(
+      process.env.AUTH_WEB_USER_CLIENT_IDS,
+    ),
+    AUTH_WEB_USER_TOKEN_ENVIRONMENT: emptyToUndefined(
+      process.env.AUTH_WEB_USER_TOKEN_ENVIRONMENT,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     WEB_CANONICAL_ORIGIN:
@@ -425,11 +630,11 @@ export const env = createEnv({
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
-    MASTRA_SCENE_INGEST_API_KEYS: emptyToUndefined(
-      process.env.MASTRA_SCENE_INGEST_API_KEYS,
-    ),
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
+    ADMIN_AGENT_TOOLS_API_KEYS: emptyToUndefined(
+      process.env.ADMIN_AGENT_TOOLS_API_KEYS,
     ),
     EXPERIENCE_EXEMPLAR_MAX_DISTANCE: emptyToUndefined(
       process.env.EXPERIENCE_EXEMPLAR_MAX_DISTANCE,
@@ -438,6 +643,14 @@ export const env = createEnv({
       process.env.EXPERIENCE_EXEMPLAR_FALLBACK_SLUG,
     ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    FLEET_ADMIN_API_KEYS: emptyToUndefined(process.env.FLEET_ADMIN_API_KEYS),
+    WATCH_PROGRESS_ADMIN_API_KEYS: emptyToUndefined(
+      process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
+    ),
+    YOUVERSION_APP_KEY: emptyToUndefined(process.env.YOUVERSION_APP_KEY),
+    YOUVERSION_PASSAGE_CACHE_TTL_SECONDS: emptyToUndefined(
+      process.env.YOUVERSION_PASSAGE_CACHE_TTL_SECONDS,
+    ),
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
@@ -453,6 +666,12 @@ export const env = createEnv({
     WORKFLOW_RUNNER_ENABLED: emptyToUndefined(
       process.env.WORKFLOW_RUNNER_ENABLED,
     ),
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: emptyToUndefined(
+      process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS,
+    ),
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: emptyToUndefined(
+      process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS,
+    ),
     WORKFLOW_POSTGRES_URL: emptyToUndefined(process.env.WORKFLOW_POSTGRES_URL),
     WORKFLOW_POSTGRES_JOB_PREFIX: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_JOB_PREFIX,
@@ -462,9 +681,6 @@ export const env = createEnv({
     ),
     WORKFLOW_POSTGRES_MAX_POOL_SIZE: emptyToUndefined(
       process.env.WORKFLOW_POSTGRES_MAX_POOL_SIZE,
-    ),
-    SCENE_EMBEDDING_CONCURRENCY: emptyToUndefined(
-      process.env.SCENE_EMBEDDING_CONCURRENCY,
     ),
     TRANSCRIPT_EMBEDDING_CONCURRENCY: emptyToUndefined(
       process.env.TRANSCRIPT_EMBEDDING_CONCURRENCY,
@@ -510,9 +726,6 @@ export const env = createEnv({
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
     ),
-    MASTRA_SCENE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
-      process.env.MASTRA_SCENE_EMBEDDING_TIMEOUT_MS,
-    ),
     MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS,
     ),
@@ -546,6 +759,35 @@ export const env = createEnv({
     ),
     EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS: emptyToUndefined(
       process.env.EXPERIENCE_AI_MAX_REPAIR_ATTEMPTS,
+    ),
+    EXPERIENCE_AI_REMOTE_DRAFT: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_DRAFT,
+    ),
+    MASTRA_DRAFT_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_DRAFT_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_SECTION: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_SECTION,
+    ),
+    MASTRA_SECTION_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_SECTION_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_VARIANTS: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_VARIANTS,
+    ),
+    MASTRA_VARIANTS_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_VARIANTS_TIMEOUT_MS,
+    ),
+    EXPERIENCE_AI_REMOTE_CHAT: emptyToUndefined(
+      process.env.EXPERIENCE_AI_REMOTE_CHAT,
+    ),
+    MASTRA_CHAT_BASE_URL: emptyToUndefined(process.env.MASTRA_CHAT_BASE_URL),
+    MASTRA_CHAT_API_KEY: emptyToUndefined(process.env.MASTRA_CHAT_API_KEY),
+    MASTRA_CHAT_ALLOWED_HOSTS: emptyToUndefined(
+      process.env.MASTRA_CHAT_ALLOWED_HOSTS,
+    ),
+    MASTRA_CHAT_TIMEOUT_MS: emptyToUndefined(
+      process.env.MASTRA_CHAT_TIMEOUT_MS,
     ),
     AI_GATEWAY_EMBEDDINGS_BASE_URL: emptyToUndefined(
       process.env.AI_GATEWAY_EMBEDDINGS_BASE_URL,
@@ -605,10 +847,12 @@ const BEARER_CSV_KEYS = [
   "WORKFLOW_API_KEYS",
   "VIDEO_MAPPER_ADMIN_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
-  "MASTRA_SCENE_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
+  "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
+  "FLEET_ADMIN_API_KEYS",
+  "WATCH_PROGRESS_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
   "SEARCH_TRACE_SAMPLING_API_KEYS",
 ] as const
@@ -682,10 +926,12 @@ assertBearerCsvsDisjoint({
   WORKFLOW_API_KEYS: env.WORKFLOW_API_KEYS,
   VIDEO_MAPPER_ADMIN_API_KEYS: env.VIDEO_MAPPER_ADMIN_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
-  MASTRA_SCENE_INGEST_API_KEYS: env.MASTRA_SCENE_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  FLEET_ADMIN_API_KEYS: env.FLEET_ADMIN_API_KEYS,
+  WATCH_PROGRESS_ADMIN_API_KEYS: env.WATCH_PROGRESS_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
   SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,
 })

@@ -412,10 +412,9 @@ describe("normalizeVideo", () => {
   })
 
   it("sorts a frozen bibleCitations array without mutating it", () => {
-    // Apollo's InMemoryCache hands back frozen arrays; Array.sort mutates in
-    // place, so normalizeVideo must copy before sorting or it throws "Cannot
-    // assign to read-only property". Order is inverted so the sort MUST swap
-    // (touch the frozen array) — without the copy this whole call throws.
+    // Apollo's InMemoryCache returns frozen arrays and Array.sort mutates in
+    // place, so normalizeVideo must copy before sorting (else "Cannot assign to
+    // read-only property"). Inverted order forces a swap, so no copy = throw.
     const frozenCitations = Object.freeze([
       {
         documentId: "bc-2",
@@ -691,6 +690,35 @@ describe("normalizeSeries", () => {
     expect(result.streamingUrl).toBe("https://stream.mux.com/trailer.m3u8")
     expect(result.muxPlaybackId).toBe("trailer123")
     expect(result.variants).toHaveLength(1)
+  })
+
+  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo omits the
+  // player-only duration/muxVideo, so those keys are absent (undefined), not null.
+  // Builder must still make a trailer from hls; dropping `?? null` should fail here.
+  it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "dub-lean",
+            slug: "english",
+            published: true,
+            hls: "https://stream.mux.com/lean.m3u8",
+            language: {
+              coreId: "529",
+              bcp47: "en",
+              slug: "english",
+              name: { en: "English" },
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/lean.m3u8")
+    expect(result.duration).toBeNull()
+    expect(result.muxPlaybackId).toBeNull()
+    expect(result.variants[0].duration).toBeNull()
+    expect(result.variants[0].muxPlaybackId).toBeNull()
   })
 
   it("has no trailer streamingUrl when no dub is playable", () => {

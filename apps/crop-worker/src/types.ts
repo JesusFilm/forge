@@ -67,14 +67,26 @@ export type RenderSegment = {
   keyframes: CropKeyframe[]
 }
 
+export type RenderedReportSegment = {
+  shotId: string
+  sourceStartSeconds: number
+  sourceEndSeconds: number
+  outputStartSeconds: number
+  outputEndSeconds: number
+  durationSeconds: number
+}
+
 export type RenderReport = {
   version: 1
   kind: "smart-crop-render-report"
   assetId: string
   mode: RenderMode
+  cropPlanArtifactType: string
+  artifactSuffix?: string
   target: { aspectRatio: "9:16"; width: number; height: number }
   segmentsRendered: number
   segmentsPlanned: number
+  renderedSegments: RenderedReportSegment[]
   outputDurationSeconds: number
   outputBytes: number
   renderSeconds: number

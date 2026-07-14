@@ -3,11 +3,20 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { getFirecrawlConfig, type FirecrawlConfig } from "../../config/env"
+import {
+  getFirecrawlConfig,
+  getInstagramSiteIngestConfig,
+  type FirecrawlConfig,
+} from "../../config/env"
 import {
   searchFirecrawl,
   type FirecrawlSearchInput,
 } from "../../services/firecrawl-client"
+import {
+  submitPostsToSite,
+  type SiteIngestConfig,
+  type SiteIngestResult,
+} from "../../services/instagram-discovery/site-ingest-client"
 import {
   classifyPost,
   qualifies,
@@ -149,6 +158,33 @@ export type InstagramDiscoveryOptions = {
   firecrawlConfig?: FirecrawlConfig
   searchQuery?: SearchQueryFn
   artifactStore?: InstagramDiscoveryArtifactStore
+  siteIngest?: SiteIngestConfig | null
+  submitPosts?: (posts: InstagramPost[]) => Promise<SiteIngestResult>
+}
+
+async function submitToReviewQueue(
+  posts: readonly InstagramPost[],
+  options: Pick<InstagramDiscoveryOptions, "siteIngest" | "submitPosts">,
+): Promise<void> {
+  if (posts.length === 0 || options.siteIngest === null) return
+
+  const config = options.siteIngest ?? getInstagramSiteIngestConfig()
+  if (!config && !options.submitPosts) return
+
+  try {
+    const result = options.submitPosts
+      ? await options.submitPosts([...posts])
+      : await submitPostsToSite(posts, config!)
+    console.log(
+      `[instagram-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
+    )
+  } catch (error) {
+    console.error(
+      `[instagram-discovery] event=site_ingest_failed message=${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+  }
 }
 
 class InstagramDiscoveryFailureError extends Error {
@@ -572,6 +608,8 @@ export async function runInstagramDiscovery(
       artifactPath = written.path
     }
 
+    await submitToReviewQueue(posts, options)
+
     return {
       ok: true,
       mastraRunId,
@@ -707,6 +745,8 @@ const reportStep = createStep({
       artifactPath = written.path
     }
 
+    await submitToReviewQueue(inputData.posts, {})
+
     return {
       ok: true as const,
       mastraRunId: runId,
@@ -724,6 +764,10 @@ export const instagramAiChristianDiscoveryWorkflow = createWorkflow({
     "Discover AI-generated Christian videos on Instagram via Firecrawl web search.",
   inputSchema: InstagramDiscoveryWorkflowInputSchema,
   outputSchema: InstagramDiscoveryWorkflowOutputSchema,
+  schedule: {
+    cron: "0 0 * * *",
+    timezone: "UTC",
+  },
 })
   .then(searchStep)
   .then(filterStep)

@@ -111,6 +111,6 @@ The batched post-fusion query is also bounded by page size, so it avoids N+1 car
 
 ## Related Issues
 
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md` documents the retrieval-side rule that scene and transcript evidence should stay inside `semantic-video`.
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md` documents the retrieval-side rule that enriched transcript evidence stays inside `semantic-video` without reintroducing scene retrieval.
 - `docs/solutions/platform/admin-hybrid-search-r4-pattern.md` documents the broader admin hybrid-search port invariants.
 - GitHub issue search for `semantic search video card snippet thumbnail` returned no related issues.

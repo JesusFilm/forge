@@ -19,6 +19,8 @@ import {
   type OfficialMediaSignatureExtractor,
   type OfficialMediaSignatureVariant,
 } from "./media-signature-extraction.js"
+import { FfmpegVisualFrameExtractor } from "./ffmpeg-visual-frame-extraction.js"
+import { OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION } from "./visual-fingerprint.js"
 
 const MAX_FAILURE_SUMMARIES = 10
 
@@ -248,11 +250,12 @@ export class MediaIndexingService {
   private readonly now: () => Date
 
   constructor(private readonly options: MediaIndexingOptions) {
-    this.fetcher = options.fetcher ?? new FetchOfficialMediaFetcher()
-    this.extractor =
-      options.extractor ?? new DeterministicOfficialMediaSignatureExtractor()
     this.algorithmVersion =
       options.algorithmVersion ?? OFFICIAL_MEDIA_SIGNATURE_ALGORITHM_VERSION
+    this.fetcher = options.fetcher ?? new FetchOfficialMediaFetcher()
+    this.extractor =
+      options.extractor ??
+      createDefaultOfficialMediaSignatureExtractor(this.algorithmVersion)
     this.pageSize = options.pageSize ?? env.MEDIA_INDEX_PAGE_SIZE
     this.maxMediaBytes =
       options.maxMediaBytes ?? env.MEDIA_INDEX_MAX_FETCH_BYTES
@@ -351,13 +354,17 @@ export class MediaIndexingService {
   }
 
   private async indexVariant(variant: IndexableCatalogVariant): Promise<void> {
-    const mediaSample = await this.fetcher.fetch({
-      url: variant.mediaSourceUrl,
-      maxBytes: this.maxMediaBytes,
-    })
+    const mediaSample =
+      this.algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+        ? undefined
+        : await this.fetcher.fetch({
+            url: variant.mediaSourceUrl,
+            maxBytes: this.maxMediaBytes,
+          })
     const signatures = await this.extractor.extract({
       variant,
       mediaSample,
+      sourceMediaUrl: variant.mediaSourceUrl,
       algorithmVersion: this.algorithmVersion,
     })
 
@@ -373,10 +380,20 @@ export class MediaIndexingService {
         ...signature,
         sourceMediaUrl: sanitizeSourceMediaUrl(variant.mediaSourceUrl),
         sourceMediaHash:
-          signature.sourceMediaHash ?? mediaSample.sourceMediaHash ?? null,
+          signature.sourceMediaHash ?? mediaSample?.sourceMediaHash ?? null,
       })),
     )
   }
+}
+
+function createDefaultOfficialMediaSignatureExtractor(
+  algorithmVersion: string,
+): OfficialMediaSignatureExtractor {
+  return algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+    ? new DeterministicOfficialMediaSignatureExtractor({
+        visualFrameExtractor: new FfmpegVisualFrameExtractor(),
+      })
+    : new DeterministicOfficialMediaSignatureExtractor()
 }
 
 export class PrismaMediaIndexRepository implements MediaIndexRepository {
@@ -870,9 +887,10 @@ function isLocalHostname(hostname: string): boolean {
 }
 
 function isPrivateIpHostname(hostname: string): boolean {
-  const ipVersion = isIP(hostname)
+  const ipv4Mapped = ipv4FromMappedIpv6(hostname)
+  const ipVersion = isIP(ipv4Mapped ?? hostname)
   if (ipVersion === 0) return false
-  if (ipVersion === 4) return isPrivateIpv4(hostname)
+  if (ipVersion === 4) return isPrivateIpv4(ipv4Mapped ?? hostname)
 
   return (
     hostname === "::" ||
@@ -881,6 +899,15 @@ function isPrivateIpHostname(hostname: string): boolean {
     hostname.startsWith("fd") ||
     hostname.startsWith("fe80:")
   )
+}
+
+function ipv4FromMappedIpv6(hostname: string): string | null {
+  const match = hostname.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i)
+  if (!match) return null
+
+  const high = Number.parseInt(match[1]!, 16)
+  const low = Number.parseInt(match[2]!, 16)
+  return `${(high >> 8) & 255}.${high & 255}.${(low >> 8) & 255}.${low & 255}`
 }
 
 function isPrivateIpv4(hostname: string): boolean {

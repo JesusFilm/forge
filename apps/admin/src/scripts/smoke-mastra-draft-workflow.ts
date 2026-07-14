@@ -56,8 +56,10 @@ import { getMastra } from "@/mastra"
 import { env } from "@/config/env"
 import { TIME_BUDGET_MS } from "@/mastra/budgets"
 import { BlocksSchema } from "@/domain/blocks"
-import { DraftExperienceSchema } from "@/services/experience-ai/experience-ai.schemas"
-import type { VideoCandidate } from "@/services/experience-ai/experience-ai.schemas"
+import {
+  DraftExperienceSchema,
+  type VideoCandidate,
+} from "@forge/experience-schema"
 import {
   ExperienceAiNormalizationError,
   normalizeExperienceDraft,

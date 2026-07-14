@@ -1,7 +1,7 @@
 ---
 title: TV focus-driven hero patterns — non-interactive hero, rail owns focus, poster-hold during HLS swap
 date: 2026-04-20
-last_refreshed: 2026-06-15
+last_refreshed: 2026-06-19
 category: docs/solutions/best-practices
 module: apps/tv
 problem_type: best_practice
@@ -34,6 +34,8 @@ related_components:
 ## Context
 
 > **Update (2026-06-15):** the TV home was later redesigned — the video-preview hero in `HomeHero.tsx` (now removed) became an **image-only** billboard + ambient backdrop (`HomeBillboard.tsx` + `HomeBackdrop.tsx`), so the home no longer exercises Section 2's `expo-video` poster-hold / HLS-swap patterns. Those video patterns now apply to the surviving video surfaces — the watch screen's `VideoBackdrop` and the `/experience` `VideoHeroRenderer`. The focus patterns below (non-interactive media layer, rail-owns-focus, debounce, `TVFocusGuideView` destinations, close-over-item, `collapsable={false}`) remain valid and are embodied in the redesigned home. For the image backdrop's own crossfade gotcha and the home's scroll model, see `docs/solutions/ui-bugs/tv-home-backdrop-crossfade-aba-stall-20260615.md` and `docs/solutions/design-patterns/tv-home-row-anchored-scroll-native-focus-scroll-disabled-20260615.md`.
+
+> **Update (2026-06-19):** the home hero was later **re-interactivated**. `HomeBillboard` is now driven by `HomeHeroCarousel.tsx` — a paged carousel with a focusable **See more** CTA + next-slide chevron — so the rail no longer owns 100% of home focus. Section 1's "background media-driven heroes must be fully non-interactive / rail owns 100% focus" rule now scopes to surfaces with a background `expo-video` `VideoView` (the thing that hijacks focus); the **image-only** home hero has no video to hijack, so an interactive CTA is safe. The §1 `HomeHero.tsx` snippet below is historical (that file is removed). For how the re-interactivated hero bridges D-pad Up/Down to the sticky top bar — `nextFocusUp` on the hero buttons (Up) + a `TVFocusGuideView destinations` (Down) — see `docs/solutions/design-patterns/tv-sticky-header-nextfocus-asymmetry-bridge-20260619.md`. That doc also shows Section 3's "destinations must be siblings, not descendants" is a **per-instance check, not a blanket prohibition**: the re-interactivated hero's guide uses a _descendant_ `ctaNode` destination and works single-press (matching `MissionSection`).
 
 The TV home hero (top ~55% of the screen on Apple TV + Android TV) was hardcoded to a single Experience. We reworked it so the hero tracks whichever Experience card is focused in the rail below, swapping the hero's poster, title, subtitle, and HLS video to match the focused card — a standard 10-foot "browse with a background preview" pattern.
 

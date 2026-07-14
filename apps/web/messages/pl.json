@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "Zamknij",
     "download": "Pobierz",
+    "authRequiredTitle": "Chcesz pobrać to wideo?",
+    "authRequiredBody": "Do pobierania filmów wideo wymagane jest bezpłatne konto Jesus Film.",
+    "signInToDownload": "Zaloguj się, aby pobrać",
+    "keepWatching": "Kontynuuj oglądanie",
     "checking": "Sprawdzanie",
     "closeTermsOfUse": "Zamknij Warunki korzystania",
     "cancel": "Anuluj",
@@ -193,7 +197,10 @@
     "searchSuggestionWithLanguage": "Szukaj {suggestion} w języku {language}",
     "inLanguage": "w języku {language}",
     "browseByRegion": "Przeglądaj według regionu",
-    "clearLanguages": "Wyczyść"
+    "clearLanguages": "Wyczyść",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Obejrzyj teraz",

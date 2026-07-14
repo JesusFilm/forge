@@ -23,6 +23,7 @@
       }
     },
     "production": {
+      "autoIncrement": true,
       "environment": "production",
       "env": {
         "EXPO_TV": "1"

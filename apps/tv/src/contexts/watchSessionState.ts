@@ -1,18 +1,14 @@
-// Pure, React-free state logic for WatchSessionProvider — extracted so the
-// bug-prone transitions can be unit-tested directly. TV has no
-// @testing-library/react-native (and no react-test-renderer), and the jest
-// transform can't load the provider's JSX/React module graph, so the testable
-// logic lives here and the provider is a thin React shell over it (U3:
-// "test the reducer/helper logic directly without rendering").
+// Pure, React-free state logic for WatchSessionProvider, extracted so transitions
+// are unit-testable directly: TV has no @testing-library/react-native and jest
+// can't load the provider's JSX graph, so the provider is a thin shell over this.
 
 import { type VariantMedia, type WatchVideoRecord } from "../lib/normalizeVideo"
 import { resolveDefaultSlug } from "../lib/resolveDefaultLanguage"
 
 /**
- * Clamp an active variant index into the variant list. When navigating to a
- * different video, the index from the previous one can briefly exceed the new
- * variant list before the default-resolution effect re-runs; clamping avoids a
- * one-frame undefined variant. Returns -1 when there are no variants.
+ * Clamp an active variant index into the variant list; returns -1 when empty.
+ * A stale index from the previous video can briefly exceed the new list before
+ * the default-resolution effect re-runs, which would yield a one-frame undefined.
  */
 export function clampVariantIndex(index: number, variantCount: number): number {
   if (variantCount <= 0) return -1
@@ -21,9 +17,8 @@ export function clampVariantIndex(index: number, variantCount: number): number {
 }
 
 /**
- * The active variant for a video + (unclamped) index, or null when the video is
- * absent or has no variants. Mirrors the clamp above so the exposed
- * `activeVariant` never points past the list.
+ * The active variant for a video + (unclamped) index, or null when absent/empty.
+ * Mirrors the clamp above so the exposed `activeVariant` never points past the list.
  */
 export function selectActiveVariant(
   video: WatchVideoRecord | null,
@@ -35,10 +30,9 @@ export function selectActiveVariant(
 }
 
 /**
- * Resolve the default audio-dub index for a video. Slug-keyed via
- * resolveDefaultSlug (persisted → device → primary → English → first). TV passes
- * `null` for the persisted preference (no cross-restart store in v1). Returns 0
- * when nothing resolves so a video always opens on a concrete dub.
+ * Resolve the default audio-dub index, slug-keyed via resolveDefaultSlug
+ * (persisted → device → primary → English → first). TV passes null for persisted
+ * (no v1 store). Returns 0 when nothing resolves so a video always opens on a dub.
  */
 export function resolveDefaultVariantIndex(
   video: WatchVideoRecord,
@@ -60,9 +54,9 @@ export function resolveDefaultVariantIndex(
 }
 
 /**
- * Resolve the default subtitle slug for the active dub's loaded subtitles, or
- * null when there are none. Slug-keyed (the subtitle slug IS the unique language
- * slug). TV passes `null` for the persisted preference.
+ * Resolve the default subtitle slug for the active dub's subtitles, or null when
+ * none. Slug-keyed (subtitle slug IS the unique language slug); TV passes null
+ * for the persisted preference.
  */
 export function resolveDefaultSubtitleSlug(
   subtitles: VariantMedia["subtitles"] | null | undefined,
@@ -86,10 +80,9 @@ export type DubMediaState = {
 }
 
 /**
- * Derive the active dub's media state (null / loading / error / loaded[-empty])
- * from the per-id maps and the active dub id. A loaded-empty dub is
- * `{ downloads: [], subtitles: [] }` in `mediaById` — distinct from a null
- * (not-loaded) result, which is the absence of an entry.
+ * Derive the active dub's media state from the per-id maps and active dub id.
+ * Loaded-empty (`{ downloads: [], subtitles: [] }` in mediaById) is distinct from
+ * null (not-loaded), which is the absence of an entry.
  */
 export function selectDubMediaState(
   activeVariantId: string | null,

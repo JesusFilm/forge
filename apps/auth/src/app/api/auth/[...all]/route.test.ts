@@ -86,7 +86,7 @@ describe("Auth route wrapper", () => {
     vi.unstubAllEnvs()
   })
 
-  it("blocks public email signup", async () => {
+  it("blocks malformed email signup", async () => {
     const { POST } = await import("./route")
     const response = await POST(
       new Request("http://localhost:3004/api/auth/sign-up/email", {
@@ -150,28 +150,86 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
-  it("keeps public email signup blocked for new emails", async () => {
+  it("allows email signup for new emails", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(
+      Response.json(
+        { redirect: true },
+        { headers: { "set-cookie": "better-auth.session=abc; Path=/" } },
+      ),
+    )
 
     const { POST } = await import("./route")
     const response = await POST(
       new Request("http://localhost:3004/api/auth/sign-up/email", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "new@example.com" }),
+        body: JSON.stringify({
+          email: "new@example.com",
+          password: "correct horse battery staple",
+        }),
       }),
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: "Not found" })
-    expect(authPost).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      email: "new@example.com",
+      name: "new",
+      password: "correct horse battery staple",
+    })
   })
 
-  it("keeps public web signup blocked for trusted watch callbacks", async () => {
+  it("forwards OAuth continuation through email signup", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(
+      Response.json(
+        { redirect: true },
+        { headers: { "set-cookie": "better-auth.session=abc; Path=/" } },
+      ),
+    )
+
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          email: "NEW@example.com",
+          oauth_query: "client_id=jfp_web_production&sig=signed",
+          password: "correct horse battery staple",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["sign-up", "email"] }) },
+    )
+
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL:
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_production&sig=signed",
+      email: "new@example.com",
+    })
+    expect(response.status).toBe(303)
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_production&sig=signed",
+    )
+    expect(response.headers.get("set-cookie")).toContain(
+      "forge_auth_last_login_method=email",
+    )
+  })
+
+  it("allows trusted watch callbacks through email signup", async () => {
+    const { prisma } = await import("@/db/client")
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(
+      Response.json(
+        { redirect: true },
+        { headers: { "set-cookie": "better-auth.session=abc; Path=/" } },
+      ),
+    )
 
     const { POST } = await import("./route")
     const response = await POST(
@@ -181,21 +239,24 @@ describe("Auth route wrapper", () => {
         body: JSON.stringify({
           callbackURL: "http://localhost:3000/watch/jesus/english",
           email: "NEW@example.com",
-          name: "New Viewer",
           password: "correct horse battery staple",
         }),
       }),
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(404)
-    await expect(response.json()).resolves.toEqual({ error: "Not found" })
-    expect(authPost).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.toMatchObject({
+      callbackURL: "http://localhost:3000/watch/jesus/english",
+      email: "new@example.com",
+    })
   })
 
-  it("keeps public signup blocked when callback targets watch API routes", async () => {
+  it("strips unsafe watch API callbacks from email signup", async () => {
     const { prisma } = await import("@/db/client")
     vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    authPost.mockResolvedValueOnce(Response.json({ ok: true }))
 
     const { POST } = await import("./route")
     const response = await POST(
@@ -213,8 +274,11 @@ describe("Auth route wrapper", () => {
       { params: Promise.resolve({ all: ["sign-up", "email"] }) },
     )
 
-    expect(response.status).toBe(404)
-    expect(authPost).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    const forwardedRequest = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwardedRequest.json()).resolves.not.toHaveProperty(
+      "callbackURL",
+    )
   })
 
   it("passes unrelated auth routes through to Better Auth", async () => {

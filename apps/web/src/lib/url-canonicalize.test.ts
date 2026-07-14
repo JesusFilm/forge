@@ -226,7 +226,7 @@ describe("Rule 4: per-segment .html append → 307", () => {
     })
   })
 
-  it("keeps language video indexes in /lang.html/videos shape", () => {
+  it("keeps localized /videos indexes .html-free on the final segment", () => {
     expect(
       canonical({ rawPathname: "/spanish-latin-american/videos" }),
     ).toEqual({
@@ -235,13 +235,8 @@ describe("Rule 4: per-segment .html append → 307", () => {
       status: 307,
       cache: "short",
     })
-  })
-
-  it("strips a stale suffix from language video index /videos segment", () => {
     expect(
-      canonical({
-        rawPathname: "/spanish-latin-american.html/videos.html",
-      }),
+      canonical({ rawPathname: "/spanish-latin-american.html/videos.html" }),
     ).toEqual({
       kind: "redirect",
       pathname: "/spanish-latin-american.html/videos",
@@ -451,6 +446,7 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/russian.html",
     "/portuguese-brazil.html",
     "/languages",
+    "/spanish-latin-american.html/videos",
   ]
 
   for (const url of canonicalUrls) {

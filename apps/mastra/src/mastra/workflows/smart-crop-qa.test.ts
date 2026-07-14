@@ -13,7 +13,11 @@ const baseInput = {
   renderMode: "preview",
   planSummary: { segmentCount: 412, modes: { speaker: 250, group: 100 } },
   frames: [
-    { atSeconds: 4, url: "https://image.mux.com/pb_abc/frame-001.jpg" },
+    {
+      atSeconds: 4,
+      url: "https://image.mux.com/pb_abc/frame-001.jpg",
+      shotId: "shot_00421",
+    },
     { atSeconds: 44, url: "https://image.mux.com/pb_abc/frame-002.jpg" },
   ],
   model: QA_MODEL,
@@ -98,7 +102,10 @@ describe("smart crop qa workflow", () => {
     const textParts = body.messages[0]!.content.filter(
       (part) => part.type === "text",
     )
-    expect(textParts.map((part) => part.text)).toContain("frame at 4s:")
+    expect(textParts.map((part) => part.text)).toContain(
+      "frame at 4s (shotId shot_00421):",
+    )
+    expect(textParts.map((part) => part.text)).toContain("frame at 44s:")
     expect(String(textParts[0]!.text)).toContain('"segmentCount":412')
     const imageParts = body.messages[0]!.content.filter(
       (part) => part.type === "image_url",

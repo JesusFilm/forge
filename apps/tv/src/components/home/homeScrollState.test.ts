@@ -25,10 +25,14 @@ describe("resolveBrowseState", () => {
 describe("resolveRowScrollTarget", () => {
   const rowLayoutYs = [116, 700, 1124, 1548]
 
-  it("pins row 0 to the top of the feed", () => {
+  it("anchors the featured rail (row 0) up to reveal it from its peek", () => {
     expect(
-      resolveRowScrollTarget({ rowIndex: 0, rowLayoutYs, anchorOffset: 120 }),
-    ).toBe(0)
+      resolveRowScrollTarget({
+        rowIndex: 0,
+        rowLayoutYs: [840, 1170],
+        anchorOffset: 120,
+      }),
+    ).toBe(720)
   })
 
   it("anchors a deep row at its layout y minus the anchor offset", () => {

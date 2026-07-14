@@ -9,13 +9,12 @@ import {
 import client from "@/lib/admin-client"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichRouteRelatedVideo } from "@/lib/enrichment"
-import type { YouVersionBibleQuotePassage } from "@/lib/youversion-passage"
 import {
   getVideoChildDubLanguagesBySlugOperation,
+  getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
-  getWatchVideoShellBySlugOperation,
   watchExperienceFragment,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -23,6 +22,10 @@ import {
 } from "@/lib/fragments"
 import { slugToBcp47Tag } from "@/lib/locale"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import { isWatchBlock } from "@/lib/watch-blocks"
+import { isSeriesRecord } from "@/lib/watch-content-kind"
+
+export { isSeriesRecord } from "@/lib/watch-content-kind"
 
 // Keep gql.tada introspection types live for the watch-page fragments.
 void watchVideoShellFragment
@@ -66,8 +69,8 @@ const GET_WATCH_SETTINGS = adminGraphql(
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
-type GetWatchVideoShellData = AdminResultOf<
-  typeof getWatchVideoShellBySlugOperation
+type GetWatchLanguagePickerVariantsData = AdminResultOf<
+  typeof getWatchLanguagePickerVariantsBySlugOperation
 >
 type GetWatchVideoLocalizedCopyData = AdminResultOf<
   typeof getWatchVideoLocalizedCopyBySlugOperation
@@ -75,7 +78,9 @@ type GetWatchVideoLocalizedCopyData = AdminResultOf<
 type GetWatchVideoDubDetailData = AdminResultOf<
   typeof getWatchVideoDubDetailOperation
 >
-type AdminVideoShellRaw = NonNullable<GetWatchVideoShellData["videoBySlug"]>
+type AdminLanguagePickerVideoRaw = NonNullable<
+  GetWatchLanguagePickerVariantsData["videoBySlug"]
+>
 type AdminVideoLocalizedCopyRaw = NonNullable<
   GetWatchVideoLocalizedCopyData["videoBySlug"]
 >
@@ -125,6 +130,8 @@ export type WatchImage = {
   thumbnail: string | null
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 // One distinct playable dub language available across a series' children,
@@ -155,6 +162,11 @@ export type WatchChild = {
   // back server-side to a primary/longest playable Mux dub. Lets the carousel
   // render frame thumbnails without projecting every child's dubs.
   muxPlaybackId: string | null
+  // Base64 blur data URL for the exact Watch carousel Mux thumbnail recipe,
+  // generated and stored admin-side. Only applies when muxPlaybackId is present.
+  muxThumbnailBlurDataUrl: string | null
+  // Base64 blur data URL for the exact Watch hero poster Mux thumbnail recipe.
+  muxHeroPosterBlurDataUrl?: string | null
 }
 
 export type WatchParent = {
@@ -170,6 +182,7 @@ export type WatchParent = {
 export type WatchVariantLanguage = {
   coreId: string | null
   bcp47: string | null
+  iso3?: string | null
   slug: string | null
   name: string | null
   nativeName: string | null
@@ -177,6 +190,7 @@ export type WatchVariantLanguage = {
 
 export type WatchVariantDownload = {
   documentId: string
+  height?: number | null
   quality: string | null
   size: string | null
 }
@@ -190,6 +204,7 @@ export type WatchVariant = {
   language: WatchVariantLanguage | null
   downloads: WatchVariantDownload[]
   muxVideo: { playbackId: string | null } | null
+  muxHeroPosterBlurDataUrl?: string | null
   videoEdition?: {
     subtitles: {
       documentId: string | null
@@ -222,6 +237,19 @@ export type WatchStudyQuestion = {
   order: number | null
 }
 
+export type WatchBibleCitationPassage = {
+  citationDocumentId: string
+  content: string
+  copyright: string
+  humanReference: string
+  provider: string
+  publisherUrl: string | null
+  reference: string
+  versionAbbreviation: string | null
+  versionId: number
+  versionTitle: string | null
+}
+
 export type WatchBibleCitation = {
   documentId: string
   chapterStart: number | null
@@ -231,6 +259,7 @@ export type WatchBibleCitation = {
   order: number | null
   osisId: string | null
   bibleBook: { documentId: string; name: string | null } | null
+  passage: WatchBibleCitationPassage | null
 }
 
 export type WatchSubtitle = {
@@ -249,6 +278,7 @@ export type WatchSubtitle = {
 export type WatchVideoRecord = {
   documentId: string
   slug: string | null
+  publishedAt: string | null
   title: string | null
   snippet: string | null
   description: string | null
@@ -266,6 +296,7 @@ export type WatchVideoRecord = {
   // walking `children[].variants`.
   childDubLanguages: WatchChildLanguage[]
   variants: WatchVariant[]
+  playableLanguageCount?: number
   subtitles: WatchSubtitle[]
   studyQuestions: WatchStudyQuestion[]
   bibleCitations: WatchBibleCitation[]
@@ -430,11 +461,14 @@ type AdminImageRaw = {
   thumbnail?: string | null
   mobileCinematicHigh?: string | null
   mobileCinematicLow?: string | null
+  blurDataUrl?: string | null
+  dominantColor?: string | null
 }
 
 type AdminLanguageRaw = {
   coreId?: string | null
   bcp47?: string | null
+  iso3?: string | null
   slug?: string | null
   name?: unknown
 }
@@ -458,11 +492,13 @@ type AdminVideoVariantRaw = {
   downloads?:
     | {
         documentId: string | null
+        height?: number | null
         quality?: string | null
         size?: string | null
       }[]
     | null
   muxVideo?: { playbackId?: string | null } | null
+  muxHeroPosterBlurDataUrl?: string | null
   videoEdition?: { subtitles?: AdminSubtitleRaw[] | null } | null
 }
 
@@ -472,6 +508,8 @@ type AdminChildRelationRaw = {
     slug?: string | null
     label?: string | null
     muxPlaybackId?: string | null
+    muxThumbnailBlurDataUrl?: string | null
+    muxHeroPosterBlurDataUrl?: string | null
     locales?: AdminLocaleRaw[] | null
     images?: AdminImageRaw[] | null
     durationSeconds?: number | null
@@ -499,6 +537,17 @@ type AdminBibleCitationRaw = {
   order?: number | null
   osisId?: string | null
   bibleBook?: { documentId: string | null; name?: unknown } | null
+  passage?: {
+    content?: string | null
+    copyright?: string | null
+    humanReference?: string | null
+    provider?: string | null
+    publisherUrl?: string | null
+    reference?: string | null
+    versionAbbreviation?: string | null
+    versionId?: number | null
+    versionTitle?: string | null
+  } | null
 }
 
 type AdminStudyQuestionRaw = {
@@ -511,6 +560,7 @@ type AdminStudyQuestionRaw = {
 type AdminVideoRaw = {
   documentId: string | null
   slug?: string | null
+  publishedAt?: string | null
   noIndex?: boolean | null
   label?: string | null
   images?: AdminImageRaw[] | null
@@ -519,6 +569,7 @@ type AdminVideoRaw = {
   parents?: AdminParentRelationRaw[] | null
   children?: AdminChildRelationRaw[] | null
   variants?: AdminVideoVariantRaw[] | null
+  playableDubLanguageCount?: number | null
   studyQuestions?: AdminStudyQuestionRaw[] | null
   bibleCitations?: AdminBibleCitationRaw[] | null
 }
@@ -553,9 +604,11 @@ type AdminVideoRouteSnapshotParentRelation = {
     | null
 }
 
-type AdminVideoRouteSnapshotRaw = AdminVideoShellRaw &
+type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
+    preferredVariant?: AdminVideoVariantRaw | null
+    playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
     children?: AdminVideoRouteSnapshotChildRelation[] | null
   }
@@ -568,6 +621,8 @@ function normalizeImage(img: AdminImageRaw): WatchImage | null {
     thumbnail: img.thumbnail ?? null,
     mobileCinematicHigh: img.mobileCinematicHigh ?? null,
     mobileCinematicLow: img.mobileCinematicLow ?? null,
+    blurDataUrl: img.blurDataUrl ?? null,
+    dominantColor: img.dominantColor ?? null,
   }
 }
 
@@ -682,6 +737,8 @@ function normalizeChild(
     images: normalizeImages(child.images),
     durationSeconds: child.durationSeconds ?? null,
     muxPlaybackId: child.muxPlaybackId ?? null,
+    muxThumbnailBlurDataUrl: child.muxThumbnailBlurDataUrl ?? null,
+    muxHeroPosterBlurDataUrl: child.muxHeroPosterBlurDataUrl ?? null,
   }
 }
 
@@ -710,6 +767,8 @@ function normalizeParent(
           label: c.label ?? null,
           images: normalizeImages(c.images),
           muxPlaybackId: c.muxPlaybackId ?? null,
+          muxThumbnailBlurDataUrl: c.muxThumbnailBlurDataUrl ?? null,
+          muxHeroPosterBlurDataUrl: c.muxHeroPosterBlurDataUrl ?? null,
           // Nested children inside `parent.children` feed only the
           // SiblingCarousel (thumbnails + titles), which never reads a
           // runtime. The fragment doesn't project durationSeconds here, so
@@ -735,6 +794,7 @@ function normalizeVariant(
       ? {
           coreId: v.language.coreId ?? null,
           bcp47: v.language.bcp47 ?? null,
+          iso3: v.language.iso3 ?? null,
           slug: v.language.slug ?? null,
           name: pickLocalizedName(v.language.name),
           nativeName: pickNativeName(v.language.name),
@@ -745,12 +805,14 @@ function normalizeVariant(
         if (!d.documentId) return null
         return {
           documentId: d.documentId,
+          height: d.height ?? null,
           quality: d.quality ?? null,
           size: d.size ?? null,
         }
       })
       .filter((d): d is WatchVariantDownload => d != null),
     muxVideo: v.muxVideo ? { playbackId: v.muxVideo.playbackId ?? null } : null,
+    muxHeroPosterBlurDataUrl: v.muxHeroPosterBlurDataUrl ?? null,
     videoEdition: v.videoEdition
       ? {
           subtitles: (v.videoEdition.subtitles ?? []).map((subtitle) => ({
@@ -763,6 +825,7 @@ function normalizeVariant(
               ? {
                   coreId: subtitle.language.coreId ?? null,
                   bcp47: subtitle.language.bcp47 ?? null,
+                  iso3: subtitle.language.iso3 ?? null,
                   slug: subtitle.language.slug ?? null,
                   name: pickLocalizedName(subtitle.language.name),
                   nativeName: pickNativeName(subtitle.language.name),
@@ -816,6 +879,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
   return {
     documentId: raw.documentId,
     slug: raw.slug ?? null,
+    publishedAt: raw.publishedAt ?? null,
     title: localeRow?.title ?? null,
     snippet: localeRow?.snippet ?? null,
     description: localeRow?.description ?? null,
@@ -855,6 +919,8 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
     // getVideoChildDubLanguagesBySlugOperation.
     childDubLanguages: [],
     variants,
+    playableLanguageCount:
+      raw.playableDubLanguageCount ?? countPlayableWatchVariants(variants),
     subtitles: normalizeSubtitlesFromVariants(variants),
     studyQuestions: (raw.studyQuestions ?? [])
       .map((q): WatchStudyQuestion | null => {
@@ -887,6 +953,27 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
                   // rows admin still emits as a plain string the helper
                   // returns it verbatim.
                   name: pickLocalizedName(c.bibleBook.name),
+                }
+              : null,
+          passage:
+            c.passage &&
+            c.passage.content &&
+            c.passage.copyright &&
+            c.passage.humanReference &&
+            c.passage.provider &&
+            c.passage.reference &&
+            c.passage.versionId
+              ? {
+                  citationDocumentId: c.documentId,
+                  content: c.passage.content,
+                  copyright: c.passage.copyright,
+                  humanReference: c.passage.humanReference,
+                  provider: c.passage.provider,
+                  publisherUrl: c.passage.publisherUrl ?? null,
+                  reference: c.passage.reference,
+                  versionAbbreviation: c.passage.versionAbbreviation ?? null,
+                  versionId: c.passage.versionId,
+                  versionTitle: c.passage.versionTitle ?? null,
                 }
               : null,
         }
@@ -947,7 +1034,12 @@ function normalizeRelatedRouteItems(
         title: child.title,
         slug: child.slug,
         label: child.label,
-        images: child.images.map((img) => ({ url: img.url })),
+        muxPlaybackId: child.muxPlaybackId,
+        images: child.images.map((img) => ({
+          url: img.url,
+          blurDataUrl: img.blurDataUrl,
+          dominantColor: img.dominantColor,
+        })),
       }),
     )
     .filter((item): item is EnrichedMediaItem => item != null)
@@ -1052,7 +1144,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page"],
+  ["watch-page", "v3-media-dominant-colors"],
   {
     revalidate: 60,
     tags: [
@@ -1416,11 +1508,11 @@ function snapshotLocalizedCopyWithFallback({
   return merged
 }
 
-async function queryWatchVideoShellBySlug(
+async function queryWatchLanguagePickerVariantsBySlug(
   videoSlug: string,
-): Promise<AdminVideoShellRaw | null> {
+): Promise<AdminLanguagePickerVideoRaw | null> {
   const result = await client.query({
-    query: getWatchVideoShellBySlugOperation,
+    query: getWatchLanguagePickerVariantsBySlugOperation,
     variables: { videoSlug },
     fetchPolicy: "no-cache",
   })
@@ -1452,7 +1544,16 @@ async function queryWatchVideoRouteSnapshotBySlug(
   )
   if (error) throw error
 
-  return (result.data?.videoBySlug ??
+  const data = result.data as
+    | {
+        watchVideoRouteSnapshotBySlug?: unknown
+        videoBySlug?: unknown
+      }
+    | null
+    | undefined
+
+  return (data?.watchVideoRouteSnapshotBySlug ??
+    data?.videoBySlug ??
     null) as unknown as AdminVideoRouteSnapshotRaw | null
 }
 
@@ -1473,9 +1574,9 @@ async function queryWatchVideoDubDetail(
   return result.data?.videoDub ?? null
 }
 
-const fetchWatchVideoShell = unstable_cache(
-  queryWatchVideoShellBySlug,
-  ["watch-video-shell"],
+const fetchWatchLanguagePickerVariants = unstable_cache(
+  queryWatchLanguagePickerVariantsBySlug,
+  ["watch-language-picker-variants"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.video] },
 )
 
@@ -1501,7 +1602,7 @@ function countPlayableWatchVariants(variants: WatchVariant[]): number {
 
 export const resolveWatchLanguagePickerVariants = cache(
   async (videoSlug: string): Promise<WatchLanguagePickerVariant[]> => {
-    const shell = await fetchWatchVideoShell(videoSlug)
+    const shell = await fetchWatchLanguagePickerVariants(videoSlug)
     if (!shell) return []
 
     const seenLanguageSlugs = new Set<string>()
@@ -1571,7 +1672,7 @@ function mergeChildRelationsShellAndCopy(
 }
 
 function mergeParentRelationsShellAndCopy(
-  relations: AdminVideoShellRaw["parents"],
+  relations: AdminVideoRaw["parents"],
   copyRelations: AdminVideoLocalizedCopyRaw["parents"] | undefined,
 ): AdminParentRelationRaw[] {
   const copyByParentId = new Map(
@@ -1605,7 +1706,11 @@ function mergeParentRelationsShellAndCopy(
 }
 
 function mergeWatchVideoShellWithCopy(
-  shell: AdminVideoShellRaw,
+  shell: AdminVideoRaw & {
+    preferredVariant?: AdminVideoVariantRaw | null
+    playableDubLanguageCount?: number | null
+    variants?: AdminVideoVariantRaw[] | null
+  },
   copy: AdminVideoLocalizedCopyRaw | null,
 ): AdminVideoRaw {
   return {
@@ -1613,7 +1718,11 @@ function mergeWatchVideoShellWithCopy(
     locales: (copy?.locales as AdminLocaleRaw[] | null | undefined) ?? [],
     parents: mergeParentRelationsShellAndCopy(shell.parents, copy?.parents),
     children: mergeChildRelationsShellAndCopy(shell.children, copy?.children),
-    variants: (shell.variants ?? []).map((variant) => ({
+    playableDubLanguageCount: shell.playableDubLanguageCount ?? null,
+    variants: (shell.preferredVariant
+      ? [shell.preferredVariant]
+      : (shell.variants ?? [])
+    ).map((variant) => ({
       ...variant,
       downloads: [],
       muxVideo: null,
@@ -2112,33 +2221,9 @@ export const resolveSeriesEpisodeBySlug = cache(
 // resolveWatchVideoBySlug rejects (no playable variant). Used by the series
 // details page when a slug points at a parent record (collection / series).
 //
-// The discriminator is intentionally defensive (case-insensitive label match
-// against the known series-shaped enum values, OR null label with children
-// present). Admin's `VideoLabel` enum uses uppercase values
-// (`COLLECTION`, `SERIES`); legacy Strapi data used camelCase
-// (`collection`, `series`). The defensive OR survives either shape and
-// degrades gracefully for editor records that pre-date the label taxonomy.
-
-// Explicit `Set<string>` annotation so the deliberate widening to string
-// (to accept admin-uppercase labels via the `String(label).toLowerCase()`
-// normalization below) is declared on the container, not buried in the
-// call-site cast. Without this annotation the Set is inferred as
-// `Set<"collection" | "series">` and a future typo in the contents
-// (e.g. `"collectionn"`) would still pass the literal-union check.
-const SERIES_LABEL_VALUES = new Set<string>(["collection", "series"])
-
-// Consumed by `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx`
-// (routing branch + `generateMetadata`) AND by unit tests that exercise
-// the discriminator without standing up Apollo.
-export function isSeriesRecord(record: {
-  label?: string | null
-  children?: { documentId: string }[] | null
-}): boolean {
-  const label = record.label
-  if (label) return SERIES_LABEL_VALUES.has(String(label).toLowerCase())
-  return (record.children?.length ?? 0) > 0
-}
-
+// `isSeriesRecord` is consumed by the Watch route and re-exported here for
+// existing server callers. Its client-safe implementation lives in
+// watch-content-kind.ts.
 // Returns null when the slug doesn't match a record OR the record is not
 // series-shaped. Caller falls through to resolveWatchPage / Experience.
 export const resolveSeriesBySlug = cache(
@@ -2170,6 +2255,15 @@ export type WatchHeroPlayerBlock = {
   video: WatchVideoRecord
   variant: WatchVariant
   playableLanguageCount?: number
+  nextWatchItem?: WatchNextWatchItem | null
+}
+
+export type WatchNextWatchItem = {
+  parentSlug: string
+  slug: string
+  title: string | null
+  documentId: string
+  kind: "chapter" | "episode"
 }
 
 /**
@@ -2206,7 +2300,7 @@ export type WatchStudyQuestionsBlock = {
 export type WatchBibleQuotesBlock = {
   kind: "BibleQuotes"
   bibleCitations: WatchBibleCitation[]
-  youVersionPassages?: YouVersionBibleQuotePassage[]
+  passages?: WatchBibleCitationPassage[]
 }
 
 export type WatchShareBlock = {
@@ -2248,12 +2342,72 @@ const HERO_PLAYER_REJECTION_MESSAGE =
 export function buildHeroBlock(
   video: WatchVideoRecord,
   variant: WatchVariant,
+  canonicalParent: WatchParent | null = null,
 ): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
     video,
     variant,
-    playableLanguageCount: countPlayableWatchVariants(video.variants),
+    playableLanguageCount:
+      video.playableLanguageCount ?? countPlayableWatchVariants(video.variants),
+    nextWatchItem: buildNextWatchItem(canonicalParent, video),
+  }
+}
+
+export function buildNextWatchItem(
+  canonicalParent: WatchParent | null,
+  video: WatchVideoRecord,
+): WatchNextWatchItem | null {
+  const ownChildren = video.children.filter(
+    (child): child is WatchChild & { slug: string } =>
+      isPlayableWatchChild(child),
+  )
+  const currentSlug =
+    typeof video.slug === "string" && video.slug.length > 0 ? video.slug : null
+
+  if (ownChildren.length > 0 && currentSlug != null) {
+    return nextWatchItemFromChild(currentSlug, ownChildren[0]!)
+  }
+
+  if (!canonicalParent?.slug) return null
+  const activeIndex = canonicalParent.children.findIndex(
+    (child) => child.documentId === video.documentId,
+  )
+  if (activeIndex < 0 || activeIndex >= canonicalParent.children.length - 1) {
+    return null
+  }
+  const nextChild = canonicalParent.children
+    .slice(activeIndex + 1)
+    .find(isPlayableWatchChild)
+  if (!nextChild) return null
+
+  return nextWatchItemFromChild(canonicalParent.slug, nextChild)
+}
+
+function isPlayableWatchChild(
+  child: WatchChild,
+): child is WatchChild & { slug: string } {
+  return (
+    child.slug != null &&
+    child.slug.length > 0 &&
+    child.muxPlaybackId != null &&
+    child.muxPlaybackId.length > 0
+  )
+}
+
+function nextWatchItemFromChild(
+  parentSlug: string,
+  child: WatchChild & { slug: string },
+): WatchNextWatchItem {
+  return {
+    parentSlug,
+    slug: child.slug,
+    title: child.title,
+    documentId: child.documentId,
+    kind:
+      child.label === "EPISODE" || child.label === "episode"
+        ? "episode"
+        : "chapter",
   }
 }
 
@@ -2334,12 +2488,19 @@ export function buildStudyQuestionsBlock(
  */
 export function buildBibleQuotesBlock(
   bibleCitations: WatchVideoRecord["bibleCitations"] | null | undefined,
-  youVersionPassages: YouVersionBibleQuotePassage[] = [],
 ): WatchBibleQuotesBlock {
   const items = (bibleCitations ?? []).filter(
     (c): c is WatchBibleCitation => c != null,
   )
-  return { kind: "BibleQuotes", bibleCitations: items, youVersionPassages }
+  return {
+    kind: "BibleQuotes",
+    bibleCitations: items,
+    passages: items
+      .map((citation) => citation.passage)
+      .filter(
+        (passage): passage is WatchBibleCitationPassage => passage != null,
+      ),
+  }
 }
 
 /** Always returns a Share block — every video is shareable. */
@@ -2406,14 +2567,7 @@ function blockSlot(block: MergedWatchBlock): WatchSlotKey | null {
   return null
 }
 
-/**
- * Type guard distinguishing synthetic watch blocks from Experience blocks.
- * Synthetic blocks carry a `kind` discriminator; Experience blocks carry
- * `__typename`.
- */
-export function isWatchBlock(block: MergedWatchBlock): block is WatchBlock {
-  return "kind" in block
-}
+export { isWatchBlock } from "@/lib/watch-blocks"
 
 // Merge -----------------------------------------------------------------------
 
@@ -2427,8 +2581,6 @@ type MergeWatchExperienceArgs = {
    * the SiblingCarousel slot is omitted from the merged block array.
    */
   canonicalParent: WatchParent | null
-  /** Server-fetched YouVersion passage payloads for the synthetic BibleQuotes slot. */
-  youVersionPassages?: YouVersionBibleQuotePassage[]
   /** Optional Experience override — when omitted, all 6 slots auto-template. */
   experience?: WatchExperience | null
 }
@@ -2457,7 +2609,6 @@ export function mergeWatchExperience({
   video,
   variant,
   canonicalParent,
-  youVersionPassages = [],
   experience,
 }: MergeWatchExperienceArgs): MergedWatchBlock[] {
   const overrides = new Map<WatchSlotKey, MergedWatchBlock>()
@@ -2496,14 +2647,11 @@ export function mergeWatchExperience({
     if (fallback !== null) result.push(fallback)
   }
 
-  pushSlot("HeroPlayer", buildHeroBlock(video, variant))
+  pushSlot("HeroPlayer", buildHeroBlock(video, variant, canonicalParent))
   pushSlot("SiblingCarousel", buildSiblingCarouselBlock(canonicalParent, video))
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))
-  pushSlot(
-    "BibleQuotes",
-    buildBibleQuotesBlock(video.bibleCitations, youVersionPassages),
-  )
+  pushSlot("BibleQuotes", buildBibleQuotesBlock(video.bibleCitations))
   pushSlot("Share", buildShareBlock(video))
 
   for (const block of passthrough) result.push(block)

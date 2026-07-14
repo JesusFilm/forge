@@ -12,7 +12,6 @@
 // for durable execution. Each step is idempotent.
 
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
-import { buildSceneEmbeddingSyncArtifact } from "@/lib/scene-embedding-sync-report"
 import { getMuxSyncReport, setMuxSyncReport } from "@/lib/mux-sync-report"
 import { setTranscriptionRoutingReport } from "@/lib/transcription-routing-report"
 import type { WorkflowStepName } from "@/types/job"
@@ -32,6 +31,11 @@ import type {
   MastraSubtitleTranslationContext,
 } from "@/services/mastra-subtitle-enrichment"
 import type { MastraTranscriptEmbeddingResult } from "@/services/mastra-transcript-embeddings"
+import type {
+  CleanedAudioTranscriptionSource,
+  TranscriptionResult,
+} from "@/services/transcription"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   stepGetJob,
   stepMergeJobArtifacts,
@@ -42,6 +46,16 @@ import {
 type SubtitleTranslationStepResult = {
   mastraRunId: string
   languages: LanguageResult[]
+}
+
+type TranscriptScriptureCorrectionStepResult = {
+  transcription: TranscriptionResult
+  artifactKeys: string[]
+  summary: TranscriptScriptureCorrectionStepSummary
+  mastraRunId?: string
+  mastraStatus?: string
+  mastraReason?: string
+  retryable?: boolean
 }
 
 type MastraStepDetailsError = Error & {
@@ -411,6 +425,24 @@ function getTranscriptEmbeddingsStepDetails(
   }
 }
 
+function getTranscriptCorrectionStepDetails(
+  result: TranscriptScriptureCorrectionStepResult,
+): JobStepDetails {
+  return {
+    transcriptCorrection: result.summary,
+    ...(result.mastraRunId || result.mastraReason
+      ? {
+          mastra: {
+            runId: result.mastraRunId ?? "unavailable",
+            status: result.mastraStatus,
+            reason: result.mastraReason,
+            retryable: result.retryable,
+          },
+        }
+      : {}),
+  }
+}
+
 export async function runVideoEnrichment(
   input: VideoEnrichmentInput,
 ): Promise<VideoEnrichmentOutput> {
@@ -433,6 +465,80 @@ export async function runVideoEnrichment(
   })
 
   try {
+    async function runAudioCleanupStep(): Promise<CleanedAudioTranscriptionSource> {
+      try {
+        await markStepRunning(input.jobId, "audio_cleanup")
+        const audioCleanupResult = await stepAudioCleanup({
+          assetId: input.assetId,
+          muxAssetId: input.muxAssetId,
+          playbackId: input.playbackId,
+        })
+        await persistMergedArtifacts(
+          input.jobId,
+          buildDownloadableArtifactManifest(audioCleanupResult.artifactKeys),
+        )
+        await markStepComplete(input.jobId, "audio_cleanup")
+        return {
+          assetId: input.assetId,
+          artifactType: "cleaned-audio",
+          ext: "mp3",
+        }
+      } catch (audioError) {
+        const audioCleanupArtifactKeys =
+          getPersistedAudioCleanupArtifactKeys(audioError)
+
+        try {
+          await persistMergedArtifacts(
+            input.jobId,
+            buildDownloadableArtifactManifest(audioCleanupArtifactKeys),
+          )
+        } catch (persistError) {
+          console.error(
+            JSON.stringify({
+              event: "audio_cleanup_artifact_manifest_failed",
+              jobId: input.jobId,
+              error:
+                persistError instanceof Error
+                  ? persistError.message
+                  : "Unknown artifact persistence error",
+            }),
+          )
+        }
+
+        const msg =
+          audioError instanceof Error ? audioError.message : "Unknown error"
+        try {
+          await markStepFailed(input.jobId, "audio_cleanup", msg)
+        } catch (statusError) {
+          console.error(
+            JSON.stringify({
+              event: "audio_cleanup_status_update_failed",
+              jobId: input.jobId,
+              error:
+                statusError instanceof Error
+                  ? statusError.message
+                  : "Unknown status update error",
+            }),
+          )
+        }
+        console.error(
+          JSON.stringify({
+            event: "audio_cleanup_failed_before_transcription",
+            jobId: input.jobId,
+            error: msg,
+          }),
+        )
+        throw audioError
+      }
+    }
+
+    const cleanedAudioArtifact = input.runAudioCleanup
+      ? await runAudioCleanupStep()
+      : undefined
+    if (!input.runAudioCleanup) {
+      await markStepSkipped(input.jobId, "audio_cleanup")
+    }
+
     // Step 1: Transcription
     await markStepRunning(input.jobId, "transcription")
     let transcription: Awaited<ReturnType<typeof stepTranscribe>>
@@ -443,6 +549,7 @@ export async function runVideoEnrichment(
         language,
         input.requestedTranscriptionProvider,
         artifactManifest,
+        cleanedAudioArtifact,
       )
       const transcriptionArtifacts = transcription.routingReport
         ? mergeArtifactEntries(
@@ -467,6 +574,40 @@ export async function runVideoEnrichment(
         await persistArtifacts(input.jobId, artifactManifest)
       }
       await markStepFailed(input.jobId, "transcription", msg)
+      throw err
+    }
+
+    let transcriptCorrectionResult: TranscriptScriptureCorrectionStepResult
+    await markStepRunning(input.jobId, "structured_transcript")
+    try {
+      transcriptCorrectionResult = await stepTranscriptScriptureCorrection({
+        assetId: input.assetId,
+        sourceLanguage: transcription.language,
+        transcription,
+        translationContext: buildSubtitleTranslationContext({
+          videoTitle: input.videoTitle,
+          videoLabel: input.videoLabel,
+          bibleVerses: input.bibleVerses,
+        }),
+      })
+      transcription = transcriptCorrectionResult.transcription
+      if (transcriptCorrectionResult.artifactKeys.length > 0) {
+        artifactManifest = mergeArtifactEntries(
+          artifactManifest,
+          buildDownloadableArtifactManifest(
+            transcriptCorrectionResult.artifactKeys,
+          ),
+        )
+        await persistArtifacts(input.jobId, artifactManifest)
+      }
+      await markStepComplete(
+        input.jobId,
+        "structured_transcript",
+        getTranscriptCorrectionStepDetails(transcriptCorrectionResult),
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      await markStepFailed(input.jobId, "structured_transcript", msg)
       throw err
     }
 
@@ -512,71 +653,6 @@ export async function runVideoEnrichment(
         throw err
       }
     }
-
-    async function runAudioCleanupStep(): Promise<void> {
-      try {
-        await markStepRunning(input.jobId, "audio_cleanup")
-        const audioCleanupResult = await stepAudioCleanup({
-          assetId: input.assetId,
-          muxAssetId: input.muxAssetId,
-          playbackId: input.playbackId,
-        })
-        await persistMergedArtifacts(
-          input.jobId,
-          buildDownloadableArtifactManifest(audioCleanupResult.artifactKeys),
-        )
-        await markStepComplete(input.jobId, "audio_cleanup")
-      } catch (audioError) {
-        const audioCleanupArtifactKeys =
-          getPersistedAudioCleanupArtifactKeys(audioError)
-
-        try {
-          await persistMergedArtifacts(
-            input.jobId,
-            buildDownloadableArtifactManifest(audioCleanupArtifactKeys),
-          )
-        } catch (persistError) {
-          console.error(
-            JSON.stringify({
-              event: "audio_cleanup_artifact_manifest_failed",
-              jobId: input.jobId,
-              error:
-                persistError instanceof Error
-                  ? persistError.message
-                  : "Unknown artifact persistence error",
-            }),
-          )
-        }
-
-        const msg =
-          audioError instanceof Error ? audioError.message : "Unknown error"
-        try {
-          await markStepFailed(input.jobId, "audio_cleanup", msg)
-        } catch (statusError) {
-          console.error(
-            JSON.stringify({
-              event: "audio_cleanup_status_update_failed",
-              jobId: input.jobId,
-              error:
-                statusError instanceof Error
-                  ? statusError.message
-                  : "Unknown status update error",
-            }),
-          )
-        }
-        console.error(
-          JSON.stringify({
-            event: "audio_cleanup_failed_in_enrichment",
-            jobId: input.jobId,
-            error: msg,
-          }),
-        )
-      }
-    }
-
-    const audioCleanupPromise = input.runAudioCleanup
-      ? runAudioCleanupStep()
-      : undefined
 
     const translationPromise = runParallelStep(
       "translation",
@@ -641,19 +717,15 @@ export async function runVideoEnrichment(
     ])
 
     if (translationResult.status === "rejected") {
-      await audioCleanupPromise
       throw translationResult.reason
     }
     if (chaptersResult.status === "rejected") {
-      await audioCleanupPromise
       throw chaptersResult.reason
     }
     if (metadataResult.status === "rejected") {
-      await audioCleanupPromise
       throw metadataResult.reason
     }
     if (embeddingsResult.status === "rejected") {
-      await audioCleanupPromise
       throw embeddingsResult.reason
     }
 
@@ -696,14 +768,7 @@ export async function runVideoEnrichment(
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error"
       await markStepFailed(input.jobId, "mux_upload", msg)
-      await audioCleanupPromise
       throw err
-    }
-
-    if (audioCleanupPromise) {
-      await audioCleanupPromise
-    } else {
-      await markStepSkipped(input.jobId, "audio_cleanup")
     }
 
     // Optional: Scene analysis (chapters → scene boundaries → OpenRouter + stills)
@@ -711,9 +776,8 @@ export async function runVideoEnrichment(
     // Error-isolated: scene analysis failure does not block core enrichment.
     if (input.runSceneAnalysis) {
       try {
-        const sceneEmbeddingSyncReport = await stepSceneAnalysisAndSync({
+        await stepSceneAnalysis({
           assetId: input.assetId,
-          videoDocumentId: input.videoDocumentId,
           muxAssetId: input.muxAssetId,
           language: transcription.language,
           transcript: transcription.text,
@@ -721,25 +785,6 @@ export async function runVideoEnrichment(
           videoLabel: input.videoLabel ?? "unknown",
           bibleVerses: input.bibleVerses,
         })
-
-        if (
-          sceneEmbeddingSyncReport.status === "failed" ||
-          sceneEmbeddingSyncReport.status === "unsupported"
-        ) {
-          console.error(
-            JSON.stringify({
-              event: "scene_embedding_sync_issue_in_enrichment",
-              jobId: input.jobId,
-              status: sceneEmbeddingSyncReport.status,
-              reason: sceneEmbeddingSyncReport.reason ?? "unknown",
-            }),
-          )
-        }
-
-        await persistMergedArtifacts(
-          input.jobId,
-          buildSceneEmbeddingSyncArtifact(sceneEmbeddingSyncReport),
-        )
       } catch (sceneError) {
         console.error(
           JSON.stringify({
@@ -805,6 +850,7 @@ async function stepTranscribe(
   language: string,
   requestedProvider: RequestedTranscriptionProvider | undefined,
   artifacts: JobArtifactManifest,
+  cleanedAudioArtifact?: CleanedAudioTranscriptionSource,
 ) {
   "use step"
   const { getTranscriptionRoutingReport } =
@@ -814,6 +860,7 @@ async function stepTranscribe(
   return transcribe(assetId, muxAssetId, language, {
     requestedProvider,
     sourceInputUrl: priorRoutingReport?.sourceInputUrl,
+    cleanedAudioArtifact,
     priorRoutingReport,
   })
 }
@@ -850,6 +897,149 @@ async function stepSubtitleTranslation(
   return {
     mastraRunId: result.mastraRunId,
     languages: result.languages,
+  }
+}
+
+async function stepTranscriptScriptureCorrection(input: {
+  assetId: string
+  sourceLanguage: string
+  transcription: TranscriptionResult
+  translationContext?: MastraSubtitleTranslationContext
+}): Promise<TranscriptScriptureCorrectionStepResult> {
+  "use step"
+  const { writeArtifact } = await import("@/services/storage")
+  const { segmentsToVTT } = await import("@/lib/vtt")
+  const { launchMastraTranscriptScriptureCorrection } =
+    await import("@/services/mastra-transcript-scripture-correction")
+  const {
+    applyTranscriptScriptureCorrections,
+    buildTranscriptCorrectionReport,
+  } = await import("@/services/transcript-scripture-correction")
+
+  const mastraResult = await launchMastraTranscriptScriptureCorrection({
+    assetId: input.assetId,
+    sourceLanguage: input.sourceLanguage,
+    segments: input.transcription.segments,
+    ...(input.translationContext
+      ? { translationContext: input.translationContext }
+      : {}),
+    provider: { name: input.transcription.resolvedProvider },
+  })
+  const correction = mastraResult.ok
+    ? mastraResult.correction
+    : {
+        status: "unavailable" as const,
+        basis: "unavailable" as const,
+        contentDomain: "christian_general" as const,
+        confidence: 0,
+        checkedReferenceCount: 0,
+        candidateCount: 0,
+        flaggedCount: 0,
+        unavailableReason: mastraResult.reason,
+        likelyBibleReferences: [],
+        findings: [],
+      }
+  const application = applyTranscriptScriptureCorrections({
+    text: input.transcription.text,
+    segments: input.transcription.segments,
+    correction,
+  })
+  const artifactKeys = ["transcript-correction-report"]
+
+  if (application.changed) {
+    await writeArtifact({
+      assetId: input.assetId,
+      artifactType: "transcript-raw",
+      ext: "json",
+      body: JSON.stringify(
+        {
+          text: input.transcription.text,
+          segments: input.transcription.segments,
+          language: input.transcription.language,
+          resolvedProvider: input.transcription.resolvedProvider,
+          routingReport: input.transcription.routingReport,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    })
+    artifactKeys.push("transcript-raw")
+
+    if (input.transcription.segments.length > 0) {
+      await writeArtifact({
+        assetId: input.assetId,
+        artifactType: "subtitles-raw",
+        ext: "vtt",
+        body: segmentsToVTT(input.transcription.segments),
+        contentType: "text/vtt",
+      })
+      artifactKeys.push("subtitles-raw")
+    }
+
+    await writeArtifact({
+      assetId: input.assetId,
+      artifactType: "transcript",
+      ext: "json",
+      body: JSON.stringify(
+        {
+          text: application.text,
+          segments: application.segments,
+          language: input.transcription.language,
+          resolvedProvider: input.transcription.resolvedProvider,
+          routingReport: input.transcription.routingReport,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    })
+    artifactKeys.push("transcript")
+
+    if (application.segments.length > 0) {
+      await writeArtifact({
+        assetId: input.assetId,
+        artifactType: "subtitles",
+        ext: "vtt",
+        body: segmentsToVTT(application.segments),
+        contentType: "text/vtt",
+      })
+      artifactKeys.push("subtitles")
+    }
+  }
+
+  await writeArtifact({
+    assetId: input.assetId,
+    artifactType: "transcript-correction-report",
+    ext: "json",
+    body: JSON.stringify(
+      buildTranscriptCorrectionReport(application.summary),
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  })
+
+  return {
+    transcription: {
+      ...input.transcription,
+      text: application.text,
+      segments: application.segments,
+      artifactKeys: Array.from(
+        new Set([...input.transcription.artifactKeys, ...artifactKeys]),
+      ),
+    },
+    artifactKeys,
+    summary: application.summary,
+    ...(mastraResult.ok
+      ? {
+          mastraRunId: mastraResult.mastraRunId,
+          mastraStatus: mastraResult.correction.status,
+        }
+      : {
+          mastraReason: mastraResult.reason,
+          retryable: mastraResult.retryable,
+        }),
   }
 }
 
@@ -936,9 +1126,8 @@ async function stepAudioCleanup(input: {
   })
 }
 
-async function stepSceneAnalysisAndSync(input: {
+async function stepSceneAnalysis(input: {
   assetId: string
-  videoDocumentId?: string
   muxAssetId: string
   language: string
   transcript: string
@@ -951,8 +1140,6 @@ async function stepSceneAnalysisAndSync(input: {
   const { extractAndStoreSceneBoundaries } =
     await import("@/services/sceneBoundaries")
   const { analyzeAllScenes } = await import("@/services/sceneAnalysis")
-  const { syncSceneAnalysisEmbeddings } =
-    await import("@/services/sceneEmbeddingSync")
   const { getMuxAsset } = await import("@/services/mux")
 
   const boundaries = await extractAndStoreSceneBoundaries(
@@ -962,7 +1149,7 @@ async function stepSceneAnalysisAndSync(input: {
   )
 
   const muxAsset = await getMuxAsset(input.muxAssetId)
-  const analysisResult = await analyzeAllScenes(
+  return analyzeAllScenes(
     input.assetId,
     muxAsset.playbackId,
     boundaries.scenes,
@@ -978,13 +1165,4 @@ async function stepSceneAnalysisAndSync(input: {
       },
     },
   )
-
-  return syncSceneAnalysisEmbeddings({
-    assetId: input.assetId,
-    videoDocumentId: input.videoDocumentId,
-    muxAssetId: input.muxAssetId,
-    playbackId: muxAsset.playbackId,
-    language: input.language,
-    analysisResult,
-  })
 }

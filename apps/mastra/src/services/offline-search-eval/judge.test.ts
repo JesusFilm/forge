@@ -50,6 +50,8 @@ describe("offline search eval judge", () => {
 
     const firstCall = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit]
     const body = JSON.parse(String(firstCall[1].body))
+    expect(body.messages[0].content).toContain("Caller track: public-watch")
+    expect(body.messages[0].content).toContain("Public Watch search reviewer")
     expect(body.messages[1].content).toContain("Query: Jesus")
   })
 

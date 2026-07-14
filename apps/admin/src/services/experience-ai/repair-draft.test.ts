@@ -6,7 +6,7 @@ import {
   DraftExperienceSchema,
   type DraftExperience,
   type VideoCandidate,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 import {
   classifyRepairability,
   isRepairEligible,

@@ -15,20 +15,12 @@ import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionPr
 import { TEXT_SECONDARY } from "../../src/lib/color"
 import { button, layout, text } from "../../src/styles/shared"
 
-// Experience detail screen. Points the root ExperienceProvider at this slug
-// via selectExperience, then renders the SDUI layout from that provider — so
-// /video/[sectionKey] and /collection/[sectionKey] (which read the same root
-// provider) keep working when pushed from here.
+// Experience detail screen. Points the root ExperienceProvider at this slug, then
+// renders its SDUI layout — so /video/[sectionKey] and /collection/[sectionKey],
+// which read the same root provider, keep working when pushed from here.
 export default function ExperienceScreen() {
-  const { slug, source } = useLocalSearchParams<{
-    slug: string
-    source?: string
-  }>()
+  const { slug } = useLocalSearchParams<{ slug: string }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
-
-  // Reached from search results: render the hero full-bleed (suppress the
-  // native nav bar) with a floating back button instead of the offset header.
-  const fromSearch = source === "search"
 
   const { currentSlug, selectExperience } = useExperienceSelection()
   const { experience, loading, error, refetch } = useExperienceContext()
@@ -89,9 +81,12 @@ export default function ExperienceScreen() {
 
   return (
     <>
-      {fromSearch && <Stack.Screen options={{ headerShown: false }} />}
+      {/* Full-bleed: the hero runs edge-to-edge under the status bar with a
+          floating back button, suppressing the native nav bar for every entry
+          point (search, library, deep link). */}
+      <Stack.Screen options={{ headerShown: false }} />
       {content}
-      {fromSearch && <FloatingBackButton />}
+      <FloatingBackButton />
     </>
   )
 }

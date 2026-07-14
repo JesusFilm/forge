@@ -15,6 +15,7 @@ import {
   type ShortsReportPatch,
 } from "@/lib/shorts-report"
 import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
+import { normalizeTranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -441,6 +442,7 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   const candidate = raw as {
     languageResults?: unknown
     subtitleValidation?: unknown
+    transcriptCorrection?: unknown
     mastra?: unknown
     progress?: unknown
     message?: unknown
@@ -458,10 +460,15 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   const subtitleValidation = normalizeSubtitleValidationStepSummary(
     candidate.subtitleValidation,
   )
+  const transcriptCorrection =
+    normalizeTranscriptScriptureCorrectionStepSummary(
+      candidate.transcriptCorrection,
+    )
 
   if (
     languageResults.length === 0 &&
     subtitleValidation === undefined &&
+    transcriptCorrection === undefined &&
     mastra === undefined &&
     progress === undefined &&
     !message
@@ -472,6 +479,7 @@ function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   return {
     ...(languageResults.length > 0 ? { languageResults } : {}),
     ...(subtitleValidation !== undefined ? { subtitleValidation } : {}),
+    ...(transcriptCorrection !== undefined ? { transcriptCorrection } : {}),
     ...(mastra !== undefined ? { mastra } : {}),
     ...(progress !== undefined ? { progress } : {}),
     ...(message !== undefined ? { message } : {}),

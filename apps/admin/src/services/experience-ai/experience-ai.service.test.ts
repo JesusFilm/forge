@@ -5,23 +5,15 @@ const { generateExperienceEmbeddingMock } = vi.hoisted(() => ({
   generateExperienceEmbeddingMock: vi.fn(),
 }))
 
-const { generateOllamaEmbeddingMock } = vi.hoisted(() => ({
-  generateOllamaEmbeddingMock: vi.fn(),
-}))
-
 vi.mock("@/services/embeddings.service", () => ({
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
-}))
-
-vi.mock("@/services/ollama-embedding.service", () => ({
-  generateOllamaEmbedding: generateOllamaEmbeddingMock,
 }))
 
 import { loadExperienceAiVideoCandidates } from "./experience-ai.service"
 import {
   buildDraftExperienceJsonSchema,
   DraftExperienceSchema,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 type MockPrisma = PrismaClient & {
   experienceLocale: {
@@ -72,6 +64,22 @@ function makePrisma(): MockPrisma {
     videoImage,
     $transaction,
   } as unknown as MockPrisma
+}
+
+function sqlTextFromQueryRawCall(args: readonly unknown[]): string {
+  return args
+    .flatMap((part) => {
+      if (Array.isArray(part)) return part
+      if (
+        part != null &&
+        typeof part === "object" &&
+        Array.isArray((part as { strings?: unknown }).strings)
+      ) {
+        return (part as { strings: string[] }).strings
+      }
+      return []
+    })
+    .join(" ")
 }
 
 function seedCatalog(prisma: MockPrisma) {
@@ -151,8 +159,6 @@ describe("loadExperienceAiVideoCandidates", () => {
     generateExperienceEmbeddingMock.mockRejectedValue(
       new Error("not configured"),
     )
-    generateOllamaEmbeddingMock.mockReset()
-    generateOllamaEmbeddingMock.mockRejectedValue(new Error("not running"))
   })
 
   it("returns bounded candidates with stable aliases in ranked order", async () => {
@@ -302,7 +308,7 @@ describe("loadExperienceAiVideoCandidates", () => {
     )
   })
 
-  it("uses scene/transcript vector hits before token ranking", async () => {
+  it("uses transcript vector hits before token ranking", async () => {
     const prisma = makePrisma()
     seedCatalog(prisma)
     generateExperienceEmbeddingMock.mockResolvedValue({
@@ -310,13 +316,14 @@ describe("loadExperienceAiVideoCandidates", () => {
       dimensions: 2048,
       embedding: Array.from({ length: 2048 }, () => 0.01),
     })
+    const queryRaw = vi.fn().mockResolvedValue([
+      { videoId: "video-2", distance: 0.1 },
+      { videoId: "video-1", distance: 0.2 },
+    ])
     prisma.$transaction.mockImplementationOnce(async (callback) =>
       callback({
         $executeRawUnsafe: vi.fn(),
-        $queryRaw: vi.fn().mockResolvedValue([
-          { videoId: "video-2", distance: 0.1 },
-          { videoId: "video-1", distance: 0.2 },
-        ]),
+        $queryRaw: queryRaw,
       }),
     )
 
@@ -329,6 +336,18 @@ describe("loadExperienceAiVideoCandidates", () => {
     expect(generateExperienceEmbeddingMock).toHaveBeenCalledWith(
       "hope and prayer",
     )
+    const sql = sqlTextFromQueryRawCall(queryRaw.mock.calls[0] ?? [])
+    expect(sql).toContain("video_transcript_chunk")
+    expect(sql).toContain("vt.embedding_provider =")
+    expect(sql).toContain("vt.model =")
+    expect(sql).toContain("vt.dimensions =")
+    expect(sql).toContain("vt.embedding_native_dimensions =")
+    expect(sql).toContain("vt.embedding_transform_version IS NULL")
+    expect(sql).toContain("vtc.model =")
+    expect(sql).toContain("vtc.dimensions =")
+    expect(sql).not.toContain("scene_hits")
+    expect(sql).not.toContain("video_scene_locale")
+    expect(sql).not.toContain("video_scene")
     expect(prisma.video.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -344,33 +363,18 @@ describe("loadExperienceAiVideoCandidates", () => {
     ])
   })
 
-  it("uses the local Ollama vector index when primary embeddings are unavailable", async () => {
+  it("uses catalog token ranking when primary embeddings are unavailable", async () => {
     const prisma = makePrisma()
     seedCatalog(prisma)
-    generateOllamaEmbeddingMock.mockResolvedValue(
-      Array.from({ length: 768 }, () => 0.01),
-    )
-    prisma.$transaction.mockImplementationOnce(async (callback) =>
-      callback({
-        $executeRawUnsafe: vi.fn(),
-        $queryRaw: vi.fn().mockResolvedValue([
-          { videoId: "video-2", distance: 0.1 },
-          { videoId: "video-1", distance: 0.2 },
-        ]),
-      }),
-    )
 
     const candidates = await loadExperienceAiVideoCandidates(prisma, {
       locale: "en",
-      prompt: "Jesus",
+      prompt: "prayer",
       limit: 2,
     })
 
-    expect(generateOllamaEmbeddingMock).toHaveBeenCalledWith("Jesus")
-    expect(candidates.map((candidate) => candidate.videoId)).toEqual([
-      "video-2",
-      "video-1",
-    ])
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(candidates[0]?.videoId).toBe("video-2")
   })
 })
 

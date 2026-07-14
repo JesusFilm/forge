@@ -3,6 +3,7 @@ import {
   pickPlayableTrailer,
   resolveLeafBounce,
   resolveScreenState,
+  shouldFireFirstRailTiming,
 } from "./seriesScreenState"
 
 // ── pickPlayableTrailer ────────────────────────────────────────────
@@ -108,10 +109,9 @@ describe("pickDefaultTrailer", () => {
     expect(pickDefaultTrailer(null)).toBeNull()
   })
 
-  // Chain order is device locale -> video primary -> English -> first. With no
-  // English dub (and a non-de/-fr test device locale), the video's primary
-  // language is the decider — the branch every other case skipped because they
-  // passed primaryLanguageBcp47: null and let the English/first arm win.
+  // Chain: device locale -> video primary -> English -> first. With no English
+  // dub (non-de/-fr device locale), video primary decides — the branch other
+  // cases skipped by passing primaryLanguageBcp47: null (English/first arm won).
   it("falls back to the video's primary language when the chain has no English", () => {
     const german = langDub("d1", "german-standard", "de")
     const french = langDub("d2", "french", "fr")
@@ -156,13 +156,9 @@ describe("resolveLeafBounce", () => {
   })
 
   it("is pending for a warm watch-fragment partial, even when it carries a leaf label", () => {
-    // Regression (review finding #1): a prior watch-screen visit caches
-    // videoBySlug with a label but NO series selection; cache-first +
-    // returnPartialData replays it with loading=false. A labeled-with-children
-    // series (e.g. FEATURE_FILM with 49 episodes) looks leaf-shaped on that
-    // partial — bouncing here would eject it to /watch unrecoverably (the
-    // replace is once-guarded). It must stay pending until the series query
-    // delivers the children.
+    // Regression (review finding #1): a warm videoBySlug partial (label, no series
+    // selection) replays loading=false and looks leaf-shaped; a labeled-with-children
+    // series would be ejected to /watch unrecoverably (once-guarded). Stay pending.
     expect(
       resolveLeafBounce({ label: "FEATURE_FILM", episodes: [] }, false),
     ).toBe("pending")
@@ -240,5 +236,31 @@ describe("resolveScreenState", () => {
         loading: true,
       }),
     ).toBe("loading")
+  })
+})
+
+// ── shouldFireFirstRailTiming ──────────────────────────────────────
+
+describe("shouldFireFirstRailTiming", () => {
+  const withEpisodes = { episodes: [{ id: "e1" }] }
+  const noEpisodes = { episodes: [] }
+
+  it("fires when a record with episodes is present at first evaluation (cache-synchronous)", () => {
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
+  })
+
+  it("fires on the null -> record-with-episodes transition (network arrival)", () => {
+    expect(shouldFireFirstRailTiming(null)).toBe(false)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
+  })
+
+  it("waits on a partial record with zero episodes, then fires when episodes arrive", () => {
+    expect(shouldFireFirstRailTiming(noEpisodes)).toBe(false)
+    expect(shouldFireFirstRailTiming(withEpisodes)).toBe(true)
+  })
+
+  it("never fires while there is no record (error / no data)", () => {
+    expect(shouldFireFirstRailTiming(null)).toBe(false)
+    expect(shouldFireFirstRailTiming(undefined)).toBe(false)
   })
 })

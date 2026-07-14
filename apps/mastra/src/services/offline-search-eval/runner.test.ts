@@ -44,6 +44,7 @@ function baselineArtifact(): BaselineArtifact {
       startedAt: "2026-05-27T00:00:00.000Z",
       finishedAt: "2026-05-27T00:00:00.000Z",
       baselineName: "default",
+      callerTrack: "public-watch",
       promptSetVersion: "seed/v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
       judgeModel: null,
@@ -55,6 +56,7 @@ function baselineArtifact(): BaselineArtifact {
         locale: "en",
         queryText: "Jesus",
         source: "seed",
+        callerTrack: "public-watch",
         tags: ["core"],
         results: [resultA],
       },
@@ -112,15 +114,17 @@ function memoryStore(baseline?: BaselineArtifact): SearchEvalArtifactStore & {
 describe("runOfflineSearchEval", () => {
   it("captures seed-only baselines while keeping generated candidates exploratory", async () => {
     const store = memoryStore()
-    const searchClient = vi.fn(async () => ({
-      ok: true as const,
-      result: {
-        results: [resultA],
-        hasMore: false,
-        query: "Jesus",
-        searchMode: "hybrid" as const,
-      },
-    }))
+    const searchClient = vi.fn(
+      async (_input: { payload: Record<string, unknown> }) => ({
+        ok: true as const,
+        result: {
+          results: [resultA],
+          hasMore: false,
+          query: "Jesus",
+          searchMode: "hybrid" as const,
+        },
+      }),
+    )
     const candidateListClient = vi.fn(async () => ({
       ok: true as const,
       result: {
@@ -151,6 +155,7 @@ describe("runOfflineSearchEval", () => {
         mode: "capture-baseline",
         baselineName: "default",
         locales: ["en"],
+        searchMode: "keyword-first",
         includeGeneratedCandidates: true,
       },
       {
@@ -175,12 +180,155 @@ describe("runOfflineSearchEval", () => {
         entry.queryText.includes("generated"),
       ),
     ).toBe(false)
+    expect(store.baselines[0]?.cases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: "seed-french-route-english-who-is-jesus",
+          locale: "en",
+          languageSlug: "english",
+          websiteLocale: "fr",
+        }),
+      ]),
+    )
+    expect(searchClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          query: "bible project",
+          locale: "en",
+          languageSlug: "english",
+          mode: "keyword-first",
+        }),
+      }),
+    )
+    expect(
+      searchClient.mock.calls.every(
+        (call) => call[0]?.payload.mode === "keyword-first",
+      ),
+    ).toBe(true)
+    for (const call of searchClient.mock.calls) {
+      expect(call[0]?.payload).not.toHaveProperty("websiteLocale")
+    }
     expect(result.ok && result.report.generatedCandidateBehavior).toMatchObject(
       {
         included: 1,
         searched: 1,
       },
     )
+  })
+
+  it("uses caller-track defaults for AI experience-generation captures", async () => {
+    const store = memoryStore()
+    const searchClient = vi.fn(
+      async (_input: { payload: Record<string, unknown> }) => ({
+        ok: true as const,
+        result: {
+          results: [resultA],
+          hasMore: false,
+          query: "agent query",
+          searchMode: "hybrid" as const,
+        },
+      }),
+    )
+
+    const result = await runOfflineSearchEval(
+      {
+        mode: "capture-baseline",
+        callerTrack: "ai-experience-generation",
+        locales: ["en"],
+      },
+      {
+        runId: "run-ai-track",
+        artifactStore: store,
+        adminBearer: "eval-key",
+        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient,
+        now: () => new Date("2026-05-27T00:00:00.000Z"),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      baselineName: "seed-baseline-ai-experience-generation",
+      report: {
+        metadata: {
+          callerTrack: "ai-experience-generation",
+          search: { mode: "hybrid" },
+        },
+        callerTrackMix: { "ai-experience-generation": expect.any(Number) },
+      },
+    })
+    expect(store.baselines[0]).toMatchObject({
+      name: "seed-baseline-ai-experience-generation",
+      metadata: { callerTrack: "ai-experience-generation" },
+    })
+    expect(
+      store.baselines[0]?.cases.every(
+        (entry) => entry.callerTrack === "ai-experience-generation",
+      ),
+    ).toBe(true)
+    expect(
+      searchClient.mock.calls.every(
+        (call) => call[0]?.payload.mode === "hybrid",
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects caller-track and search-mode combinations before Admin search", async () => {
+    const searchClient = vi.fn()
+    const result = await runOfflineSearchEval(
+      {
+        mode: "capture-baseline",
+        callerTrack: "ai-experience-generation",
+        searchMode: "keyword-first",
+        locales: ["en"],
+      },
+      {
+        runId: "run-invalid-track-mode",
+        artifactStore: memoryStore(),
+        adminBearer: "eval-key",
+        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient,
+      },
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      adminReason:
+        "searchMode 'keyword-first' is not suitable for callerTrack 'ai-experience-generation'",
+    })
+    expect(searchClient).not.toHaveBeenCalled()
+  })
+
+  it("rejects comparing a baseline under a different caller track", async () => {
+    const searchClient = vi.fn()
+    const judgePair = vi.fn()
+    const result = await runOfflineSearchEval(
+      {
+        mode: "compare",
+        baselineName: "default",
+        callerTrack: "semantic-diagnostic",
+      },
+      {
+        runId: "run-wrong-track",
+        artifactStore: memoryStore(baselineArtifact()),
+        adminBearer: "eval-key",
+        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient,
+        judge: { model: "judge", judgePair },
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      adminReason:
+        "baseline 'default' belongs to callerTrack 'public-watch', not 'semantic-diagnostic'",
+    })
+    expect(searchClient).not.toHaveBeenCalled()
+    expect(judgePair).not.toHaveBeenCalled()
   })
 
   it("compares seed baselines and keeps trace-derived candidates away from search and judge", async () => {

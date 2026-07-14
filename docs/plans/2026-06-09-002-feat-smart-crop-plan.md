@@ -423,12 +423,19 @@ Shared failure reasons: `invalid_input | provider_config_missing | provider_auth
     "segmentCount": 412,
     "modes": { "speaker": 250, "group": 100 }
   },
-  "frames": [{ "atSeconds": 4, "url": "https://<presigned-or-mux-url>" }],
+  "frames": [
+    {
+      "atSeconds": 4,
+      "url": "https://<presigned-or-mux-url>",
+      "shotId": "shot_00421"
+    }
+  ],
   "model": "google/gemini-2.5-flash"
 }
 ```
 
 - Success: `{ "ok": true, "verdict": "pass", "issues": [...], "usage": {...}, "model": "..." }`.
+- `frames[].shotId` is optional context for shot-scoped QA issues.
 - ≤ 8 frames per call. Same https/host allowlist as plan route (S3 endpoint
   host must be added to the allowlist in production).
 

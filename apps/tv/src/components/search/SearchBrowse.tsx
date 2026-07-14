@@ -1,11 +1,31 @@
+import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
-import { SEARCH_THEME } from "./searchTheme"
+import { SEARCH_PAGE_GUTTER, SEARCH_THEME } from "./searchTheme"
+import { useCategoryThumbnails } from "./useCategoryThumbnails"
+
+// Soft scrim over the blurred thumbnail: short, low-opacity dark bands feathered
+// at the top + bottom edges (bottom a touch stronger for title legibility) over a
+// wide clear middle. hexToRgba(...,0) for clear stops, never "transparent".
+const SCRIM_COLORS = [
+  hexToRgba("#000000", 0.24),
+  hexToRgba("#000000", 0.05),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0.07),
+  hexToRgba("#000000", 0.4),
+] as const
+const SCRIM_LOCATIONS = [0, 0.16, 0.32, 0.68, 0.84, 1] as const
+
+// expo-image blurRadius isn't calibrated equally across platforms (the same
+// value blurs harder on Android), so tvOS bumps up to match Android TV — mirrors
+// apps/mobile's TopicCard.
+const THUMBNAIL_BLUR_RADIUS = Platform.OS === "ios" ? 12 : 4
 
 type Props = {
   recents: string[]
@@ -15,21 +35,29 @@ type Props = {
   onRunQuery: (query: string) => void
   /** Called when the user presses the "Clear" chip in the Recent rail. */
   onClearHistory: () => void
+  /**
+   * Break out of the parent's horizontal page padding so this view is full-bleed
+   * (the rail/chip/grid gutters below encode the 80dp gutter, landing content on
+   * the page edges). Apple TV stacked layout sets this; two-pane leaves it off.
+   */
+  fullBleed?: boolean
 }
 
-// The search-empty browse view: Recent searches + Browse-topics categories.
-// Both are sourced locally / statically (recents from history, categories from
-// the static CATEGORIES list), so this view needs no GraphQL query and works
-// for the unauthenticated public app. (It previously showed a "Popular
-// experiences" rail backed by the editor-gated Query.experiences, which 401'd
-// for the public TV app and silently rendered empty — removed with the home's
-// migration off that gated query.)
-export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
+// Search-empty browse view: Recent searches + Browse-topics (static CATEGORIES,
+// each backed by a blurred thumbnail of its first search result). Works for the
+// public app — only the anonymous `search` surface is used, no editor-gated query.
+export function SearchBrowse({
+  recents,
+  onRunQuery,
+  onClearHistory,
+  fullBleed,
+}: Props) {
   const showRecent = recents.length > 0
+  const thumbnails = useCategoryThumbnails()
 
   return (
     <ScrollView
-      style={styles.scroll}
+      style={[styles.scroll, fullBleed === true && styles.fullBleed]}
       contentContainerStyle={styles.scrollContent}
     >
       {showRecent ? (
@@ -49,11 +77,9 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
         <Text style={styles.railTitle} accessibilityRole="header">
           Browse topics
         </Text>
-        {/* 3-column grid (not a horizontal carousel that ran off-screen): the
-            categories wrap to rows of three, each card filling a third of the
-            results pane. tvOS spatial navigation handles row/column D-pad moves
-            by geometry; each cell's padding gives the focus glow + 1.05x lift
-            room so the grid never clips it. */}
+        {/* 3-column wrapping grid (not a carousel that ran off-screen). tvOS
+            handles D-pad moves by geometry; each cell's padding gives the focus
+            glow + 1.05x lift room so the grid never clips it. */}
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
             <View
@@ -63,6 +89,7 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
               <CategoryCard
                 category={cat}
                 onPress={() => onRunQuery(cat.searchTerm)}
+                thumbnailUrl={thumbnails[cat.searchTerm]}
               />
             </View>
           ))}
@@ -93,7 +120,9 @@ function RecentRow({
             onPress={() => onRunQuery(q)}
             accessibilityLabel={`Recent search: ${q}`}
             accessibilityHint="Re-runs this search"
-            focusRing="white"
+            // Generic action name keeps the user's typed query out of telemetry
+            // (same privacy rule as KeyButton's keyboard-key).
+            ddActionName="recent-search"
             style={styles.chip}
           >
             <View style={styles.chipInner}>
@@ -109,7 +138,6 @@ function RecentRow({
           onPress={onClearHistory}
           accessibilityLabel="Clear search history"
           accessibilityHint="Removes every entry in the recent searches list"
-          focusRing="white"
           style={styles.clearChip}
         >
           <View style={styles.chipInner}>
@@ -124,29 +152,54 @@ function RecentRow({
 function CategoryCard({
   category,
   onPress,
+  thumbnailUrl,
 }: {
   category: SearchCategory
   onPress: () => void
+  thumbnailUrl?: string | null
 }) {
   return (
     <FocusableCard
       onPress={onPress}
       accessibilityLabel={`${category.title} category`}
       accessibilityHint={`Searches for "${category.searchTerm}"`}
-      focusRing="white"
       style={styles.categoryCard}
     >
-      <LinearGradient
-        colors={[
-          hexToRgba(category.colors[0], 1),
-          hexToRgba(category.colors[1], 1),
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.categoryGradient}
-      >
-        <Text style={styles.categoryTitle}>{category.title}</Text>
-      </LinearGradient>
+      <View style={styles.categoryInner}>
+        <LinearGradient
+          colors={[
+            hexToRgba(category.colors[0], 1),
+            hexToRgba(category.colors[1], 1),
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Blurred art of the category's first search result, faint over the
+            brand gradient. Absent until the limit:1 query resolves (and forever
+            if none) so the gradient base keeps the card from ever being blank. */}
+        {thumbnailUrl != null ? (
+          <Image
+            source={thumbnailUrl}
+            style={[StyleSheet.absoluteFill, styles.categoryThumbnail]}
+            contentFit="cover"
+            blurRadius={THUMBNAIL_BLUR_RADIUS}
+            transition={400}
+            cachePolicy="memory-disk"
+            recyclingKey={category.searchTerm}
+          />
+        ) : null}
+        <LinearGradient
+          colors={[...SCRIM_COLORS]}
+          locations={[...SCRIM_LOCATIONS]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.categoryContent}>
+          <Text style={styles.categoryTitle}>{category.title}</Text>
+        </View>
+      </View>
     </FocusableCard>
   )
 }
@@ -154,6 +207,12 @@ function CategoryCard({
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
+  },
+  // Cancels the parent screen's page padding for full-bleed. Shares
+  // SEARCH_PAGE_GUTTER with app/search.tsx styles.screen.paddingHorizontal so
+  // it can't drift; rail/chip/grid gutters then place content on the page edges.
+  fullBleed: {
+    marginHorizontal: -scale(SEARCH_PAGE_GUTTER),
   },
   scrollContent: {
     paddingVertical: scale(8),
@@ -174,11 +233,9 @@ const styles = StyleSheet.create({
     marginLeft: scale(80),
   },
   chipRowContent: {
-    // Start/end gutter so the leftmost / rightmost chip has room for
-    // its focus glow inside the ScrollView's clip region. Inter-chip
-    // spacing comes from chipCellWrapper.paddingHorizontal — see
-    // categoryCellWrapper for the same pattern's rationale. Sized so
-    // the first chip's edge lands at the 80px page gutter (68 + 12).
+    // Start/end gutter for the edge chips' focus glow inside the clip region;
+    // inter-chip spacing is chipCellWrapper.paddingHorizontal. Sized so the
+    // first chip's edge lands at the 80px page gutter (68 + 12).
     paddingHorizontal: scale(68),
   },
   chipCellWrapper: {
@@ -220,24 +277,28 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     paddingHorizontal: scale(64),
   },
-  // One third of the grid per cell → three columns. The padding is the
-  // inter-card gap AND the focus-glow / 1.05x-lift breathing room
-  // (shadowRadius scale(16)); RN's border-box width keeps three cells at
-  // exactly 100%.
+  // One third per cell → three columns. Padding is the inter-card gap AND the
+  // focus-glow / 1.05x-lift room; RN's border-box width keeps three cells at 100%.
   categoryCellWrapper: {
     width: "33.333%",
     padding: scale(16),
   },
-  // Fills its cell — roughly a third of the results pane, far larger than the
-  // old fixed 220dp carousel card. A definite height (not aspectRatio) is what
-  // sizes it: FocusableCard routes width/height to its outer layout box but
-  // aspectRatio only to the inner, which can't size the box.
+  // Fills its cell. Needs a definite height (not aspectRatio): FocusableCard
+  // routes width/height to its outer layout box but aspectRatio only to the
+  // inner, which can't size the box.
   categoryCard: {
     width: "100%",
     height: scale(210),
   },
-  categoryGradient: {
+  categoryInner: {
     flex: 1,
+  },
+  // Faint over the brand gradient — mirrors mobile's 0.3 thumbnail opacity.
+  categoryThumbnail: {
+    opacity: 0.3,
+  },
+  categoryContent: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
     padding: scale(22),
   },

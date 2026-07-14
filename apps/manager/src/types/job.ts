@@ -11,6 +11,7 @@ import type {
   SubtitleValidationStepSummary,
   SubtitleValidationVerdict,
 } from "@/lib/subtitle-validation"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 
 export type StepStatus =
   | "pending"
@@ -84,6 +85,7 @@ export type ShortsJobOptions = {
   sourceMuxAssetId: string
   sourcePlaybackId: string
   sourceCoreId?: string
+  sourceSlug?: string
   sourceTitle?: string
   clip: { startSec: number; endSec: number }
   language: { bcp47: string | null; whisper: string | null }
@@ -139,6 +141,14 @@ export type SmartCropUsageSummary = {
   outputTokens: number
 }
 
+export type SmartCropAttemptsSummary = {
+  latestAttemptIndex: number
+  selectedAttemptIndex?: number
+  maxRepairAttempts: number
+  repairCount: number
+  manifestDigest?: string
+}
+
 // `qa` carries either a real verdict or the reason the QA step was skipped
 // as advisory (mastra config gap such as frame_host_not_allowed — a config
 // problem, not a content verdict).
@@ -154,6 +164,7 @@ export type SmartCropJobReport = {
   alignment?: SmartCropAlignmentSummary
   qa?: SmartCropQaSummary
   plan?: SmartCropPlanSummary
+  attempts?: SmartCropAttemptsSummary
   output?: SmartCropOutputSummary
   usage?: SmartCropUsageSummary
 }
@@ -221,21 +232,6 @@ export type MastraStepCorrelation = {
   totalTokens?: number
   sourceContentHash?: string
   languages?: string[]
-}
-
-export type SceneEmbeddingSyncStatus =
-  | "source_ready"
-  | "skipped_empty"
-  | "failed"
-  | "unsupported"
-
-export type SceneEmbeddingSyncReport = {
-  domain: "scene_embeddings"
-  status: SceneEmbeddingSyncStatus
-  reason?: string
-  generatedSceneCount: number
-  indexableSceneCount: number
-  skippedEmptySceneIndexes?: number[]
 }
 
 export type MuxSyncStatus =
@@ -323,6 +319,7 @@ export type TranscriptionRoutingReport = {
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
   subtitleValidation?: SubtitleValidationStepSummary
+  transcriptCorrection?: TranscriptScriptureCorrectionStepSummary
   mastra?: MastraStepCorrelation
   // Live crop-worker render progress (0..1) + human-readable message,
   // written throttled by the smart-crop workflow steps.

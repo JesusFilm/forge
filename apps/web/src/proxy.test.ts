@@ -72,6 +72,18 @@ function rewritePath(response: Response): string | null {
   return target ? new URL(target).pathname : null
 }
 
+function expectNotFoundRewrite(response: Response): void {
+  expect(response.status).toBe(200)
+  expect(rewritePath(response)).toBe("/en/en/404")
+  expect(response.headers.get("content-security-policy")).toBe(
+    "frame-ancestors 'self'",
+  )
+  expect(response.headers.get("referrer-policy")).toBe("strict-origin")
+  expect(
+    rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
+  ).toBe("1")
+}
+
 function rewrittenRequestHeaders(response: Response): Headers {
   const headers = new Headers()
   const overrideHeaderNames =
@@ -162,12 +174,12 @@ describe("proxy — canonicalize integration (§5.4)", () => {
 
   it("404s bcp47 catalog keys in public audio slots", async () => {
     const response = await proxy(makeRequest("/jesus.html/en.html"))
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 
   it("404s bcp47 regional tags in public audio slots", async () => {
     const response = await proxy(makeRequest("/jesus.html/pt-br.html"))
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 
   it("rewrites legacy 4-segment episode shape into canonical 3-segment → 307", async () => {
@@ -191,8 +203,7 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     // through proxy should NOT produce another redirect; the app boundary can
     // reject the duplicated non-language audio slot as a terminal 404.
     const second = await proxy(makeRequest("/jesus.html/jesus.html"))
-    expect(second.status).toBe(404)
-    expect(rewritePath(second)).toBeNull()
+    expectNotFoundRewrite(second)
   })
 })
 
@@ -329,7 +340,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       ["/languages", "/en/en/languages"],
       [
         "/spanish-latin-american.html/videos",
-        "/es/es-419/spanish-latin-american.html/videos",
+        "/es/es-419/videos/spanish-latin-american",
       ],
     ] as const) {
       const response = await proxy(
@@ -348,19 +359,20 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBeNull()
   })
 
-  it("redirects deprecated /search into the root search modal without synthetic .html", async () => {
-    const response = await proxy(makeRequest("/search?q=forgiveness"))
+  it("redirects deprecated /search into the root surface without preserving q", async () => {
+    const response = await proxy(
+      makeRequest("/search?q=forgiveness&utm=campaign"),
+    )
     expect(response.status).toBe(307)
     const location = new URL(response.headers.get("location") ?? "")
     expect(location.pathname).toBe("/")
-    expect(location.search).toBe("?q=forgiveness")
+    expect(location.search).toBe("?utm=campaign")
     expect(rewritePath(response)).toBeNull()
   })
 
   it("404s the stale synthetic search shape", async () => {
     const response = await proxy(makeRequest("/search.html/search.html"))
-    expect(response.status).toBe(404)
-    expect(rewritePath(response)).toBeNull()
+    expectNotFoundRewrite(response)
   })
 
   it("preserves one-segment collection pages as default-locale collections", async () => {
@@ -375,8 +387,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
   it("404s one-segment slugs outside the manifest collection set", async () => {
     const response = await proxy(makeRequest("/jesus.html"))
-    expect(response.status).toBe(404)
-    expect(rewritePath(response)).toBeNull()
+    expectNotFoundRewrite(response)
   })
 
   it("rewrites one-segment public language homes with locale/htmlLang matching the slug", async () => {
@@ -384,16 +395,29 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/es/es-ES/spanish-castilian.html")
   })
 
+  it("rewrites localized videos indexes while preserving the raw language slug", async () => {
+    const response = await proxy(
+      makeRequest("/spanish-latin-american.html/videos"),
+    )
+    expect(rewritePath(response)).toBe(
+      "/es/es-419/videos/spanish-latin-american",
+    )
+  })
+
+  it("rewrites unsupported-language videos indexes with English chrome fallback", async () => {
+    const response = await proxy(makeRequest("/aari.html/videos"))
+    expect(rewritePath(response)).toBe("/en/en/videos/aari")
+  })
+
   it("404s bcp47 catalog keys as one-segment public homes", async () => {
     const response = await proxy(makeRequest("/en.html"))
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 
   it("404s stale language-home aliases that current production no longer serves", async () => {
     for (const path of ["/german.html", "/swahili.html"]) {
       const response = await proxy(makeRequest(path))
-      expect(response.status).toBe(404)
-      expect(rewritePath(response)).toBeNull()
+      expectNotFoundRewrite(response)
     }
   })
 
@@ -423,28 +447,34 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
   it("404s unknown public audio slugs before they reach the app route", async () => {
     const response = await proxy(makeRequest("/easter.html/non-existent.html"))
-    expect(response.status).toBe(404)
-    expect(rewritePath(response)).toBeNull()
+    expectNotFoundRewrite(response)
   })
 
   it("404s stale public audio aliases that current production no longer serves", async () => {
     const response = await proxy(makeRequest("/jesus.html/swahili.html"))
-    expect(response.status).toBe(404)
-    expect(rewritePath(response)).toBeNull()
+    expectNotFoundRewrite(response)
   })
 
   it("404s safe-looking unknown content slugs before catch-all page resolution", async () => {
     const response = await proxy(makeRequest("/anything.html/english.html"))
-    expect(response.status).toBe(404)
-    expect(rewritePath(response)).toBeNull()
+    expectNotFoundRewrite(response)
   })
 
   it("404s safe-looking unknown episode pairs before catch-all page resolution", async () => {
     const response = await proxy(
       makeRequest("/lumo-the-gospel-of-john.html/anything/english.html"),
     )
-    expect(response.status).toBe(404)
-    expect(rewritePath(response)).toBeNull()
+    expectNotFoundRewrite(response)
+  })
+
+  it("keeps the fixed 404 sentinel internal", async () => {
+    const visible = await proxy(makeRequest("/en/en/404"))
+    expect(visible.status).toBe(308)
+    expect(new URL(visible.headers.get("location") ?? "").pathname).toBe("/404")
+
+    const publicRequest = await proxy(makeRequest("/404"))
+    expect(publicRequest.status).toBe(307)
+    expect(rewritePath(publicRequest)).toBeNull()
   })
 
   it("internally rewrites legacy public episode aliases to current admin episode slugs", async () => {
@@ -490,12 +520,12 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
         "/lumo-the-gospel-of-luke.html/birth-of-jesus/spanish-castilian.html",
       ),
     )
-    expect(missingDub.status).toBe(404)
+    expectNotFoundRewrite(missingDub)
 
     const otherMissingDub = await proxy(
       makeRequest("/lumo-the-gospel-of-mark.html/jesus-baptism/english.html"),
     )
-    expect(otherMissingDub.status).toBe(404)
+    expectNotFoundRewrite(otherMissingDub)
   })
 })
 
@@ -551,7 +581,7 @@ describe("proxy — visible internal-prefix policy", () => {
     const response = await proxy(
       makeRequest("/en/es-419/jesus.html/english.html"),
     )
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 
   it("404s invalid marked internal prefix pairs instead of treating the marker as a bypass", async () => {
@@ -560,7 +590,7 @@ describe("proxy — visible internal-prefix policy", () => {
         headers: new Headers([[WATCH_INTERNAL_REWRITE_HEADER, "1"]]),
       }),
     )
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 })
 
@@ -584,7 +614,7 @@ describe("proxy — resilience on malformed inputs", () => {
     const response = await proxy(makeRequest("/jesus%20test/english"))
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 
   it("does not rewrite cyrillic slugs (positive allowlist rejects non-ASCII)", async () => {
@@ -593,11 +623,11 @@ describe("proxy — resilience on malformed inputs", () => {
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 
   it("404s four-segment paths in proxy before they can mint route cache entries", async () => {
     const response = await proxy(makeRequest("/a.html/b/c.html/d.html"))
-    expect(response.status).toBe(404)
+    expectNotFoundRewrite(response)
   })
 })

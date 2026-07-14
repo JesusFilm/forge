@@ -11,6 +11,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchMock = vi.fn()
+const makeTimings = () => ({
+  pipelineMode: "hybrid" as const,
+  totalMs: 1,
+  embeddingMs: 1,
+  retrievalsMs: 0,
+  retrievalWaitMs: 0,
+  fusionMs: 0,
+  dilutionCapMs: 0,
+  dedupeMs: 0,
+  mappingMs: 0,
+  hydrationMs: 0,
+  retrievers: [],
+  db: [],
+})
 const searchWithTraceMock = vi.fn(async (params) => {
   const response = await searchMock(params)
   return {
@@ -26,6 +40,7 @@ const searchWithTraceMock = vi.fn(async (params) => {
       failedRetrievers: [],
       contributingRetrievers: [],
     },
+    timings: makeTimings(),
   }
 })
 vi.mock("@/services/hybrid-search.service", async () => {

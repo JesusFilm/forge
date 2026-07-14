@@ -9,17 +9,19 @@ import React, { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { Check, RefreshCw, X } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
-import { buildJobArtifactHref, getArtifactsForStep } from "@/lib/job-artifacts"
+import { getArtifactsForStep } from "@/lib/job-artifacts"
 import { formatStepName } from "@/lib/workflow-steps"
 import type { JobRecord } from "@/types/job"
 import {
   canRetrySmartCropJob,
   canReviewSmartCropPlan,
   getSmartCropJobSummary,
-  hasSmartCropPreviewVideo,
   listSmartCropArtifactLinks,
 } from "./smart-crop-presenter"
-import { SmartCropPlanReviewPlayer } from "./smart-crop-plan-review-player"
+import {
+  SmartCropPlanReviewPlayer,
+  type SmartCropAttemptSelection,
+} from "./smart-crop-plan-review-player"
 
 const SMART_CROP_POLL_INTERVAL_MS = 5_000
 
@@ -48,6 +50,8 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
     "approve" | "reject" | "retry" | null
   >(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [attemptSelection, setAttemptSelection] =
+    useState<SmartCropAttemptSelection | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -85,7 +89,15 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action }),
+            body: JSON.stringify({
+              action,
+              ...(attemptSelection
+                ? {
+                    attemptIndex: attemptSelection.attemptIndex,
+                    manifestDigest: attemptSelection.manifestDigest,
+                  }
+                : {}),
+            }),
           },
         )
         if (!response.ok) {
@@ -101,7 +113,7 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
         setPendingAction(null)
       }
     },
-    [job.id, refresh],
+    [attemptSelection, job.id, refresh],
   )
 
   const handleRetry = useCallback(async () => {
@@ -140,6 +152,11 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
   const report = summary.report
   const artifactLinks = listSmartCropArtifactLinks(job)
   const showReviewButtons = canReviewSmartCropPlan(job)
+  const reviewRequiresAttemptSelection =
+    job.artifacts["smart-crop-attempts"]?.kind === "downloadable"
+  const reviewActionDisabled =
+    pendingAction !== null ||
+    (reviewRequiresAttemptSelection && attemptSelection === null)
   const showRetryButton = canRetrySmartCropJob(job)
   const latestError = job.errors.at(-1)
   // Live render progress mirrored into the running step's details by the
@@ -171,7 +188,7 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
               <button
                 type="button"
                 className="jobs-primary-button"
-                disabled={pendingAction !== null}
+                disabled={reviewActionDisabled}
                 onClick={() => void handleReview("approve")}
               >
                 {pendingAction === "approve" ? (
@@ -184,7 +201,7 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
               <button
                 type="button"
                 className="jobs-primary-button"
-                disabled={pendingAction !== null}
+                disabled={reviewActionDisabled}
                 onClick={() => void handleReview("reject")}
               >
                 {pendingAction === "reject" ? (
@@ -285,7 +302,10 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
         </dl>
       </section>
 
-      <SmartCropPlanReviewPlayer job={job} />
+      <SmartCropPlanReviewPlayer
+        job={job}
+        onSelectedAttemptChange={setAttemptSelection}
+      />
 
       <section className="collection-card jobs-card">
         <div className="jobs-card-header">
@@ -350,20 +370,6 @@ export function SmartCropJobDetail({ initialJob }: SmartCropJobDetailProps) {
           </table>
         </div>
       </section>
-
-      {hasSmartCropPreviewVideo(job) ? (
-        <section className="collection-card jobs-card">
-          <div className="jobs-card-header">
-            <h3 className="jobs-section-title">9:16 preview</h3>
-          </div>
-          <video
-            controls
-            preload="metadata"
-            style={{ maxHeight: 480, maxWidth: "100%" }}
-            src={buildJobArtifactHref(job.id, "smart-crop-preview")}
-          />
-        </section>
-      ) : null}
 
       {artifactLinks.length > 0 ? (
         <section className="collection-card jobs-card">

@@ -1,0 +1,29 @@
+# Railway only reads this file if the @forge/web service's Config-as-code Path
+# is set to apps/web/railway.toml. Without that service setting, this file is
+# ignored and the Railway dashboard remains canonical.
+#
+# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# service variables are present during Railpack/mise build setup, before
+# dependencies are installed. Keep the Datadog preload scoped to startCommand.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/web build"
+watchPatterns = [
+  "/apps/web/**",
+  "/packages/admin-graphql/**",
+  "/packages/feature-flags/**",
+  "/packages/video-player/**",
+  "/packages/watch-url-policy/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+startCommand = "cd apps/web && HOSTNAME=0.0.0.0 NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start"
+healthcheckPath = "/watch"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

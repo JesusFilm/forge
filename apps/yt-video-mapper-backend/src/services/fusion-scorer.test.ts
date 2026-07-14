@@ -135,6 +135,72 @@ describe("fuseRankedCandidates", () => {
     ])
   })
 
+  it("keeps visual-only source evidence from overclaiming variant confidence", () => {
+    expect(
+      fuseRankedCandidates(
+        [
+          {
+            coreId: "core-jesus-film",
+            videoVariantId: "variant-en",
+            visualScore: 1,
+          },
+          {
+            coreId: "core-jesus-film",
+            videoVariantId: "variant-es",
+            visualScore: 0.96,
+          },
+        ],
+        { capVisualOnlyVariantConfidence: true },
+      ),
+    ).toEqual([
+      {
+        coreId: "core-jesus-film",
+        videoVariantId: "variant-en",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+      {
+        coreId: "core-jesus-film",
+        videoVariantId: "variant-es",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+    ])
+  })
+
+  it("preserves visual similarity order when visual-only confidence is capped", () => {
+    expect(
+      fuseRankedCandidates(
+        [
+          {
+            coreId: "z-exact-source",
+            videoVariantId: "z-exact-variant",
+            visualScore: 1,
+          },
+          {
+            coreId: "a-near-source",
+            videoVariantId: "a-near-variant",
+            visualScore: 0.96,
+          },
+        ],
+        { capVisualOnlyVariantConfidence: true },
+      ),
+    ).toEqual([
+      {
+        coreId: "z-exact-source",
+        videoVariantId: "z-exact-variant",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+      {
+        coreId: "a-near-source",
+        videoVariantId: "a-near-variant",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+    ])
+  })
+
   it("can return high confidence from visual and audio without text or duration", () => {
     expect(
       fuseRankedCandidates([

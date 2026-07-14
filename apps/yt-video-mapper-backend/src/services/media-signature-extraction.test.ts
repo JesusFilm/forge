@@ -4,6 +4,10 @@ import {
   durationFromVariant,
   type OfficialMediaSignatureVariant,
 } from "./media-signature-extraction.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  VISUAL_FRAME_FINGERPRINT_KIND,
+} from "./visual-fingerprint.js"
 
 describe("DeterministicOfficialMediaSignatureExtractor", () => {
   it("emits deterministic structural hints from catalog metadata and media bytes", async () => {
@@ -59,20 +63,70 @@ describe("DeterministicOfficialMediaSignatureExtractor", () => {
     })
   })
 
-  it("carries a new algorithm version without changing signature identity fields", async () => {
+  it("emits v2 visual frame signatures from real official media frames", async () => {
+    const calls: Array<{
+      url: string
+      durationMilliseconds?: number | null
+    }> = []
+    const extractor = new DeterministicOfficialMediaSignatureExtractor({
+      visualFrameExtractor: {
+        async extractFromUrl(input) {
+          calls.push(input)
+          return [
+            {
+              offsetMilliseconds: 5_000,
+              durationMilliseconds: null,
+              payload: {
+                kind: VISUAL_FRAME_FINGERPRINT_KIND,
+                phash: "ffffffff00000000",
+                frameWidth: 8,
+                frameHeight: 8,
+              },
+            },
+          ]
+        },
+      },
+    })
+
+    const signatures = await extractor.extract({
+      variant: variant(),
+      sourceMediaUrl: "https://media.example.com/video.mp4",
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+    })
+
+    expect(calls).toEqual([
+      {
+        url: "https://media.example.com/video.mp4",
+        mediaSourceType: "DOWNLOAD",
+        durationMilliseconds: 120_000,
+      },
+    ])
+    expect(signatures).toEqual([
+      expect.objectContaining({
+        signatureType: "VISUAL_FRAME",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        offsetMilliseconds: 5_000,
+        durationMilliseconds: null,
+        sourceMediaHash: null,
+        signature: {
+          kind: VISUAL_FRAME_FINGERPRINT_KIND,
+          phash: "ffffffff00000000",
+          frameWidth: 8,
+          frameHeight: 8,
+        },
+      }),
+    ])
+  })
+
+  it("does not emit v1 structural hints for v2 when no visual frames exist", async () => {
     const signatures =
       await new DeterministicOfficialMediaSignatureExtractor().extract({
         variant: variant(),
         mediaSample: { bytes: new Uint8Array([9]) },
-        algorithmVersion: "official-media-signature-v2",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
       })
 
-    expect(signatures).toEqual([
-      expect.objectContaining({
-        signatureType: "STRUCTURAL_HINT",
-        algorithmVersion: "official-media-signature-v2",
-      }),
-    ])
+    expect(signatures).toEqual([])
   })
 
   it("does not emit audio or visual placeholders without real source data", async () => {

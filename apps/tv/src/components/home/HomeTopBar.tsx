@@ -1,30 +1,21 @@
-// The redesigned Home's top chrome: brandmark left, a centered tab bar
-// (Search · Home), clock right. Replaces HomeHeader/SearchChip ON THE HOME
-// SCREEN ONLY — those files stay for other consumers.
-//
-// Rendered as the sticky first child of Home's ScrollView (normal flex flow —
-// never position:absolute on focusables; the tvOS focus engine skips
-// absolutely-positioned focusables). It hides (opacity 0, translateY -18,
-// ~400ms, tabs unfocusable) while focus is deep in the feed.
-//
-// The design also shows Collections/Saved tabs — omitted: those surfaces
-// don't exist yet. TODO: add Collections / Saved tabs when those screens
-// ship.
+// Home's top chrome (centered Search/Home tabs · clock; left slot is an empty spacer); replaces HomeHeader/SearchChip on Home only.
+// Sticky first child of the ScrollView in normal flex flow — never position:absolute on focusables (tvOS focus engine skips them).
+// Hides (opacity 0, translateY -18, ~400ms) while deep in the feed. TODO: add Collections / Saved tabs when those screens ship.
 
-import { memo, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 
 import { scale } from "../../lib/scale"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { useFocusAnimation } from "../watch/useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { formatClock } from "./clockFormat"
 
 /**
- * In-flow height of the bar: paddingTop 40 + tab bar (8 padding ×2 + 60 tab).
- * HomeBillboard subtracts this from the design's 700px hero region so the
- * billboard bottom lands where the mockup puts it.
+ * In-flow bar height: paddingTop 40 + tab bar (8 padding ×2 + 60 tab).
+ * HomeBillboard subtracts this from the 700px hero region so the billboard
+ * bottom lands where the mockup puts it.
  */
 export const TOP_BAR_HEIGHT = scale(40) + scale(8) * 2 + scale(60)
 
@@ -40,29 +31,26 @@ const TAB_BG_REST = "rgba(255,255,255,0)"
 type HomeTopBarProps = {
   /** Deep-in-feed: fade the bar out and make its tabs unfocusable. */
   hidden: boolean
-  /**
-   * When true, the Search tab claims focus on mount — the tvos#852
-   * back-from-/search focus restore, re-keyed from the old SearchChip.
-   */
-  searchTabPreferredFocus?: boolean
   onSearchPress: () => void
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
-   * Receives the Search tab's native node so the featured rail can wire it as
-   * its cards' `nextFocusUp` target — the centered tab bar has no horizontal
-   * overlap with the rail's edge cards, so D-pad up from them needs an
-   * explicit destination (the focus engine finds nothing directly above).
+   * Receives the Search tab's native node so the hero/featured rail can wire it as `nextFocusUp`
+   * (centered bar doesn't overlap the left-anchored hero buttons). The reverse (Down to hero) is NOT
+   * wired here: `nextFocusDown` on sticky-header tabs is dropped; the hero owns that bridge via TVFocusGuideView — see app/index.tsx.
    */
   onSearchTabNode?: (node: ViewType | null) => void
+  /** Reports the focused tab's node so the screen can re-focus it after a nav
+   *  push/pop — subsumes the old back-from-/search restore (last focus = Search tab). */
+  onFocusNode?: (node: ViewType | null) => void
 }
 
 export const HomeTopBar = memo(function HomeTopBar({
   hidden,
-  searchTabPreferredFocus,
   onSearchPress,
   onChromeFocus,
   onSearchTabNode,
+  onFocusNode,
 }: HomeTopBarProps) {
   // ── Hide animation ──
   const hideProgress = useRef(new Animated.Value(hidden ? 1 : 0)).current
@@ -109,9 +97,9 @@ export const HomeTopBar = memo(function HomeTopBar({
       pointerEvents={hidden ? "none" : "box-none"}
       accessibilityElementsHidden={hidden}
     >
-      <View style={styles.sideLeft} pointerEvents="none">
-        <Brandmark />
-      </View>
+      {/* Empty left spacer — balances the centered tab bar against the
+          right-side clock (the FORGE brandmark was removed). */}
+      <View style={styles.sideLeft} pointerEvents="none" />
 
       <View style={styles.tabBar}>
         <TopBarTab
@@ -122,8 +110,8 @@ export const HomeTopBar = memo(function HomeTopBar({
           onPress={onSearchPress}
           onChromeFocus={onChromeFocus}
           focusable={!hidden}
-          hasTVPreferredFocus={searchTabPreferredFocus}
           nodeRef={onSearchTabNode}
+          onFocusNode={onFocusNode}
         />
         <TopBarTab
           testID="home-topbar-home-tab"
@@ -133,6 +121,7 @@ export const HomeTopBar = memo(function HomeTopBar({
           onPress={NO_ACTION}
           onChromeFocus={onChromeFocus}
           focusable={!hidden}
+          onFocusNode={onFocusNode}
         />
         {/* TODO: Collections / Saved tabs (in the design) once those
             surfaces exist in the app. */}
@@ -166,9 +155,10 @@ type TopBarTabProps = {
   onPress: () => void
   onChromeFocus: () => void
   focusable: boolean
-  hasTVPreferredFocus?: boolean
-  /** Lifts this tab's native node up so a rail can target it via nextFocusUp. */
+  /** Lifts this tab's native node up so the hero can target it via nextFocusUp. */
   nodeRef?: (node: ViewType | null) => void
+  /** Reports this tab's node on focus so the screen can re-focus it after a nav push/pop. */
+  onFocusNode?: (node: ViewType | null) => void
 }
 
 function TopBarTab({
@@ -181,10 +171,22 @@ function TopBarTab({
   onPress,
   onChromeFocus,
   focusable,
-  hasTVPreferredFocus,
   nodeRef,
+  onFocusNode,
 }: TopBarTabProps) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("tab", {
+    nativeDriver: false,
+  })
+  // Own this tab's host node so onFocus can report it, while still forwarding to
+  // nodeRef (Search tab lifts its node up to the hero's nextFocusUp).
+  const localRef = useRef<ViewType | null>(null)
+  const setRef = useCallback(
+    (node: ViewType | null) => {
+      localRef.current = node
+      nodeRef?.(node)
+    },
+    [nodeRef],
+  )
 
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
@@ -201,16 +203,9 @@ function TopBarTab({
         inputRange: [0, 1],
         outputRange: [0, 0.7],
       }),
-      transform: [
-        {
-          scale: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 1.07],
-          }),
-        },
-      ],
+      transform,
     }),
-    [progress, selected],
+    [progress, selected, transform],
   )
   const ink = useMemo(
     () =>
@@ -226,15 +221,15 @@ function TopBarTab({
 
   return (
     <Pressable
-      ref={nodeRef}
+      ref={setRef}
       onPress={onPress}
       onFocus={() => {
         setFocused(true)
         onChromeFocus()
+        onFocusNode?.(localRef.current)
       }}
       onBlur={() => setFocused(false)}
       focusable={focusable}
-      hasTVPreferredFocus={hasTVPreferredFocus}
       testID={testID}
       accessibilityRole="tab"
       accessibilityLabel={accessibilityLabel}
@@ -261,23 +256,6 @@ function TopBarTab({
     </Pressable>
   )
 }
-
-// The circle-dot brandmark, recreated with Views/borders (no SVG dependency):
-// a 34px ring with an off-center right-hand arc inside, plus the wordmark.
-function Brandmark() {
-  return (
-    <View style={styles.brandmark}>
-      <View style={styles.brandDot}>
-        <View style={styles.brandDotArc} />
-      </View>
-      <Text style={styles.wordmark} numberOfLines={1}>
-        FORGE
-      </Text>
-    </View>
-  )
-}
-
-const BRAND_STROKE = "rgba(255,255,255,0.85)"
 
 const styles = StyleSheet.create({
   bar: {
@@ -328,41 +306,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: Math.round(scale(23)),
     fontWeight: "600",
-  },
-
-  // ── Brandmark ──
-  brandmark: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(14),
-    opacity: 0.9,
-  },
-  brandDot: {
-    width: scale(34),
-    height: scale(34),
-    borderRadius: scale(17),
-    borderWidth: scale(2),
-    borderColor: BRAND_STROKE,
-  },
-  // Decorative absolute layer (non-focusable) — the off-center inner arc.
-  brandDotArc: {
-    position: "absolute",
-    top: scale(5),
-    bottom: scale(5),
-    left: scale(3),
-    right: scale(7),
-    borderRightWidth: scale(2),
-    borderColor: BRAND_STROKE,
-    borderTopRightRadius: scale(10),
-    borderBottomRightRadius: scale(10),
-  },
-  wordmark: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(20)),
-    fontWeight: "600",
-    // .42em of the 20px wordmark.
-    letterSpacing: scale(8.4),
-    color: WATCH_THEME.text82,
   },
 
   // ── Clock ──

@@ -31,7 +31,11 @@ Web reads from admin via the typed `adminGraphql()` factory exported from `@forg
 
 Required env vars (both flipped from `.optional()` in U13):
 
-- `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Host-allowlist rejects `auth.jesusfilm.org` (PR #909 trap).
+- `ADMIN_GRAPHQL_URL` — admin's GraphQL endpoint. Production Web should use
+  Railway private networking, e.g.
+  `http://forgeadmin.railway.internal:8080/api/graphql`, so SSR/RSC calls avoid
+  public DNS, Cloudflare, and TLS hops. Host-allowlist rejects
+  `auth.jesusfilm.org` (PR #909 trap).
 - `WEB_ADMIN_API_KEYS` — single key or CSV; web reads the first entry as the outbound bearer so traffic identifies as `consumer:<key>` at admin's rate limiter.
 
 `REVALIDATION_SECRET` remains required for the `/api/revalidate` route. `STRAPI_PREVIEW_SECRET` remains required for the `/api/preview` Next draft-mode entry token (Strapi-era surface that hasn't migrated yet; out of data-layer scope).
@@ -86,6 +90,35 @@ Production proof on 2026-06-10 showed `@forge/web` online in Railway US West beh
 
 See `docs/plans/2026-06-10-001-fix-watch-cache-invalidation-plan.md`.
 
+## Datadog observability
+
+`src/instrumentation.ts` configures `dd-trace` for the Node runtime and enables
+Datadog's built-in `graphql` plugin with source and variables disabled. Keep
+query source, variables, bearer keys, cookies, IPs, slugs, and user identifiers
+out of trace tags.
+
+`src/observability/datadog-logs.ts` forwards server console logs to the shared
+Datadog Agent over syslog UDP when `DD_AGENT_HOST` is configured. Railway still
+receives normal stdout. Forwarded logs include service/env/version plus active
+trace/span ids when a span is active.
+
+Production Web Railway config lives in `apps/web/railway.toml` once the
+service's Config-as-code Path is set to that file. For server APM, production
+must set Datadog service env (`DD_SERVICE=forge-web`, `DD_ENV=prod`,
+`DD_VERSION=<git sha>`), point at the private Datadog Agent
+(`DD_AGENT_HOST`, `DD_TRACE_AGENT_PORT=8126`, `DD_AGENT_SYSLOG_PORT=514`), and
+load the tracer before application modules through the `startCommand`:
+`cd apps/web && NODE_OPTIONS='--require ./node_modules/dd-trace/init' pnpm start`.
+Do not set `NODE_OPTIONS` as a global Railway service variable because service
+variables are also present during Railpack setup before dependencies are
+installed.
+
+Production readiness gates for `@forge/web` live in
+`docs/operations/web-production-readiness.md`. Use that runbook before launch
+or before broadening production traffic; it ties together local checks, Railway
+config verification, URL parity, revalidation, Datadog evidence, source maps,
+and gated third-party smokes.
+
 ## Feature flags
 
 LaunchDarkly server-side feature flag evaluation is available through
@@ -122,13 +155,18 @@ flag for the watch-page Download CTA copy. `false` keeps `Download`; `true`
 renders `Save Video`. Keep `FORGE_WATCH_CTA_TEXT_COPY_DEFAULT=false` in local
 and Railway envs unless intentionally testing the fallback path.
 
-`forge.watch.youVersionBibleQuotes` is a temporary LaunchDarkly-backed rollout
-flag for the server-rendered YouVersion passage panel below the watch-page
-Bible Quotes carousel. `false` preserves the existing carousel-only behavior
-and skips YouVersion API calls; `true` enables the server fetch when
-`YOUVERSION_APP_KEY` is configured. Keep
-`FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=false` unless intentionally
-smoke-testing the panel locally.
+`forge.watch.downloadAccountGate` is a LaunchDarkly-backed product rollout flag
+for requiring a Web account before Watch downloads. `false` is the product
+default and keeps anonymous downloads available through opaque download IDs;
+`true` restores the account-required modal and route gate. Keep
+`FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false` unless intentionally testing
+the gated path. Do not use this flag as restricted-content authorization; it is
+a UX/product rollout gate with a fail-open fallback.
+
+Watch Bible passage text is resolved by Admin through
+`BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
+YouVersion API directly. If the passage is absent, the watch page falls back to
+the existing citation carousel and promo card behavior.
 
 `forge.watch.hideBibleQuotes` is a temporary LaunchDarkly-backed release flag
 for hiding the full watch-page Bible Quotes band. `false` keeps the existing

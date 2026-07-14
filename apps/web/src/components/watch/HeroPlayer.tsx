@@ -4,17 +4,19 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react"
 import { flushSync } from "react-dom"
-import Image from "next/image"
-import { useSearchParams } from "next/navigation"
+import Image, { type ImageLoaderProps } from "next/image"
+import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
 import type {
@@ -29,10 +31,26 @@ const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
 
 import { env } from "@/env"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
-import { WATCH_PAGE_LEFT_RAIL_CLASSES } from "@/lib/content-width"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_LEFT_RAIL_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+} from "@/lib/content-width"
+import { languageCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
+import {
+  ensureWatchProgressAuth,
+  getWatchProgress,
+  getWatchProgressRatio,
+  useWatchProgressRecorder,
+} from "@/lib/watch-progress-client"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+} from "@/lib/routes"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -42,7 +60,8 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
-import { SpinnerIcon } from "@/components/ui/spinner"
+import { resolveMuxHeroPosterUrl } from "@/lib/url"
+import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
@@ -66,12 +85,12 @@ function getViewerIdServerSnapshot(): string {
 // the sound-on player as tall as the browser can show without exceeding the
 // video aspect ratio's needed height.
 const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
+const HERO_FRAME_TRANSITION_CLASS =
+  "transition-[height,margin-bottom,top] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 const MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
-const MOBILE_PORTRAIT_PREVIEW_BAND_CLASS =
-  "hidden h-24 shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]"
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100"
 
@@ -114,28 +133,69 @@ const HERO_HLS_CONFIG = {
   maxBufferLength: 10,
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
+  // Mux assets can include generated WebVTT subtitle renditions. Forge owns
+  // subtitle selection through the injected track below, so keep HLS.js from
+  // creating/auto-selecting Mux's generated caption tracks.
+  enableWebVTT: false,
 }
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
+const HERO_POSTER_MAX_WIDTH = 1280
 const WATCH_NOW_LINK_CLASS =
   "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
+const WATCH_NEXT_WINDOW_SECONDS = 5
+
+function isResumableProgress(videoId: string): boolean {
+  const savedProgress = getWatchProgress(videoId)
+  const ratio = getWatchProgressRatio(savedProgress)
+  return ratio > 0 && ratio < 1
+}
 
 function buildHeroPosterUrl(
   playbackId: string | undefined,
 ): string | undefined {
-  return playbackId
-    ? `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&time=${HERO_POSTER_TIME_SECONDS}`
-    : undefined
+  return resolveMuxHeroPosterUrl(playbackId) ?? undefined
 }
 
-function buildHeroPlaybackFallbackHref(playbackId: string | undefined): string {
-  return playbackId
-    ? `https://stream.mux.com/${encodeURIComponent(playbackId)}.m3u8`
-    : `#${HERO_PLAYER_MEDIA_ID}`
+function isMuxImageUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  try {
+    return new URL(url).hostname === "image.mux.com"
+  } catch {
+    return false
+  }
 }
 
-const IDLE_PREVIEW_FALLBACK_DELAY_MS = 1200
+export function getHeroPosterBlurDataURL({
+  heroPosterUrl,
+  muxHeroPosterBlurDataUrl,
+  shouldOptimizeMuxPoster,
+  visualHeroPosterUrl,
+}: {
+  heroPosterUrl: string | undefined
+  muxHeroPosterBlurDataUrl: string | null | undefined
+  shouldOptimizeMuxPoster: boolean
+  visualHeroPosterUrl: string | undefined
+}): string | null {
+  return visualHeroPosterUrl === heroPosterUrl && shouldOptimizeMuxPoster
+    ? (muxHeroPosterBlurDataUrl ?? null)
+    : null
+}
+
+function muxHeroPosterLoader({ src, width }: ImageLoaderProps): string {
+  const url = new URL(src)
+  url.searchParams.set("width", String(Math.min(width, HERO_POSTER_MAX_WIDTH)))
+  url.searchParams.set("time", String(HERO_POSTER_TIME_SECONDS))
+  return url.toString()
+}
+
+// Keep automatic muted-preview activation out of the critical first-load
+// window. The poster is already the intentional LCP surface, and user intent
+// still activates the player synchronously through the click/pointer handlers.
+const IDLE_PREVIEW_FALLBACK_DELAY_MS = 8000
+const MOBILE_VISIBLE_PREVIEW_DELAY_MS = 700
+const MOBILE_PREVIEW_MAX_WIDTH_PX = 767
 const IDLE_PREVIEW_VIEWPORT_MARGIN_PX = 200
 
 type IdleWindow = Window & {
@@ -155,6 +215,10 @@ function isHeroNearViewport(wrapper: HTMLElement, windowRef: Window): boolean {
   )
 }
 
+function shouldUseFastMobilePreview(windowRef: Window): boolean {
+  return windowRef.innerWidth <= MOBILE_PREVIEW_MAX_WIDTH_PX
+}
+
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
@@ -170,14 +234,18 @@ function isAutoplayBlockedError(err: unknown): boolean {
 }
 
 // Minimum number of playable language variants before the language-switch
-// globe button appears. With only one variant there's nothing to switch to.
+// audio button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
 export function HeroPlayer({
   block,
   onPlayerReady,
+  onPlayerActivated,
   onLanguageClick,
+  languageSlug,
   playableLanguageCount,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode,
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
@@ -187,8 +255,12 @@ export function HeroPlayer({
 }: {
   block: WatchHeroPlayerBlock
   onPlayerReady?: (player: MuxPlayerRef | null) => void
+  onPlayerActivated?: () => void
   onLanguageClick?: () => void
+  languageSlug?: string | null
   playableLanguageCount?: number
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
@@ -202,17 +274,24 @@ export function HeroPlayer({
   const playbackId = variant.muxVideo?.playbackId ?? undefined
   const hlsSrc = variant.hls ?? undefined
   const heroPosterUrl = buildHeroPosterUrl(playbackId)
-  const heroPlaybackFallbackHref = buildHeroPlaybackFallbackHref(playbackId)
   const searchParams = useSearchParams()
+  const router = useRouter()
   const tParam = searchParams?.get("t")
   const autoplayParam = searchParams?.get("autoplay")
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  const [nextPlaybackState, setNextPlaybackState] = useState({
+    currentTime: 0,
+    duration: 0,
+    paused: true,
+    ended: false,
+  })
+  const nextNavigationStartedRef = useRef(false)
   const setPlayerRef = useCallback(
     (next: MuxPlayerRef | null) => {
       playerRef.current = next
-      setPlayer(next)
+      setPlayer((current) => (current === next ? current : next))
       onPlayerReady?.(next)
     },
     [onPlayerReady],
@@ -293,12 +372,14 @@ export function HeroPlayer({
   }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [playerActivated, setPlayerActivated] = useState(
     () => autoplayParam === "1" || heroPosterUrl == null,
   )
   const pendingSoundIntentRef = useRef<PillState | null>(null)
+  const pointerDownHandledSoundIntentRef = useRef(false)
 
   const publishChromeVisibility = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
@@ -315,6 +396,7 @@ export function HeroPlayer({
 
   const handleControlsVisibilityChange = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
+      setControlsVisible(detail.visible)
       publishChromeVisibility(detail)
     },
     [publishChromeVisibility],
@@ -328,6 +410,11 @@ export function HeroPlayer({
       publishChromeVisibility({ visible: true, opacity: 1 })
     }
   }, [chromeRevealed, publishChromeVisibility])
+
+  useEffect(() => {
+    if (!chromeRevealed) return
+    onPlayerActivated?.()
+  }, [chromeRevealed, onPlayerActivated])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -360,13 +447,209 @@ export function HeroPlayer({
   // hero — the viewport/aspect-ratio height class below pins the layout, this
   // hides the empty box behind a spinner until there's something to show.
   const [videoReady, setVideoReady] = useState(false)
+  const [playbackBuffering, setPlaybackBuffering] = useState(false)
   const [playerFrameRevealed, setPlayerFrameRevealed] = useState(false)
+  const [watchNextModeState, setWatchNextModeState] = useState<{
+    videoId: string
+    mode: "armed" | "manual"
+  } | null>(null)
+  const watchNextModeRef = useRef<typeof watchNextModeState>(null)
+  const previousNextPlaybackRef = useRef<{
+    currentTime: number
+    duration: number
+    remainingSeconds: number
+    paused: boolean
+  } | null>(null)
+  const seekInProgressRef = useRef(false)
+  const suppressNextThresholdRef = useRef(false)
   const handleCanPlay = useCallback(() => {
     setVideoReady(true)
+    setPlaybackBuffering(false)
   }, [])
   const handlePlaying = useCallback(() => {
     setPlayerFrameRevealed(true)
+    setPlaybackBuffering(false)
   }, [])
+  const handlePlaybackBuffering = useCallback(() => {
+    setPlaybackBuffering(true)
+  }, [])
+  const handlePlaybackReady = useCallback(() => {
+    setPlaybackBuffering(false)
+  }, [])
+
+  const nextWatchHref = useMemo(() => {
+    const nextWatchItem = block.nextWatchItem
+    const parentSlug =
+      nextWatchItem != null ? tryAsContentSlug(nextWatchItem.parentSlug) : null
+    const slug =
+      nextWatchItem != null ? tryAsContentSlug(nextWatchItem.slug) : null
+    const lang = languageSlug != null ? tryAsLocaleSlug(languageSlug) : null
+    if (!nextWatchItem || !parentSlug || !slug || !lang) return null
+    return watchEpisodePath(parentSlug, slug, lang, { autoplay: true })
+  }, [block.nextWatchItem, languageSlug])
+
+  const navigateToNextWatchItem = useCallback(() => {
+    if (nextWatchHref == null || nextNavigationStartedRef.current) return
+    nextNavigationStartedRef.current = true
+    router.push(nextWatchHref)
+  }, [nextWatchHref, router])
+
+  useEffect(() => {
+    nextNavigationStartedRef.current = false
+  }, [video.documentId])
+
+  const watchNextMode =
+    watchNextModeState?.videoId === video.documentId
+      ? watchNextModeState.mode
+      : null
+  const watchNextManual = watchNextMode === "manual"
+  const watchNextAutoArmed = watchNextMode === "armed"
+
+  useEffect(() => {
+    watchNextModeRef.current = watchNextModeState
+  }, [watchNextModeState])
+
+  useEffect(() => {
+    if (!player || typeof player.addEventListener !== "function") {
+      return
+    }
+
+    previousNextPlaybackRef.current = null
+    seekInProgressRef.current = false
+    suppressNextThresholdRef.current = false
+
+    const sync = (eventName: string) => {
+      const duration = Number.isFinite(player.duration) ? player.duration : 0
+      const currentTime = Number.isFinite(player.currentTime)
+        ? player.currentTime
+        : 0
+      const remainingSeconds =
+        duration > 0 ? duration - currentTime : Number.POSITIVE_INFINITY
+      const previous = previousNextPlaybackRef.current
+      const currentMode = watchNextModeRef.current
+      const currentModeApplies = currentMode?.videoId === video.documentId
+      const crossingCountdownThreshold =
+        eventName === "timeupdate" &&
+        previous != null &&
+        previous.duration > 0 &&
+        previous.remainingSeconds > WATCH_NEXT_WINDOW_SECONDS &&
+        remainingSeconds >= 0 &&
+        remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS &&
+        currentTime >= previous.currentTime &&
+        !player.paused &&
+        !seekInProgressRef.current &&
+        !suppressNextThresholdRef.current
+      const seekedIntoCountdownWindow =
+        (eventName === "seeked" ||
+          seekInProgressRef.current ||
+          suppressNextThresholdRef.current) &&
+        remainingSeconds >= 0 &&
+        remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS
+      const outsideCountdownWindow =
+        remainingSeconds < 0 || remainingSeconds > WATCH_NEXT_WINDOW_SECONDS
+
+      if (currentModeApplies && outsideCountdownWindow) {
+        watchNextModeRef.current = null
+        setWatchNextModeState(null)
+      } else if (
+        seekedIntoCountdownWindow &&
+        nextWatchHref != null &&
+        (!currentModeApplies || currentMode.mode !== "manual")
+      ) {
+        const nextMode = { videoId: video.documentId, mode: "manual" } as const
+        watchNextModeRef.current = nextMode
+        setWatchNextModeState(nextMode)
+      } else if (
+        crossingCountdownThreshold &&
+        nextWatchHref != null &&
+        (!currentModeApplies || currentMode.mode !== "manual")
+      ) {
+        const nextMode = { videoId: video.documentId, mode: "armed" } as const
+        watchNextModeRef.current = nextMode
+        setWatchNextModeState(nextMode)
+      }
+
+      if (eventName === "timeupdate" && suppressNextThresholdRef.current) {
+        suppressNextThresholdRef.current = false
+      }
+
+      previousNextPlaybackRef.current = {
+        currentTime,
+        duration,
+        remainingSeconds,
+        paused: player.paused,
+      }
+      setNextPlaybackState((current) => {
+        if (
+          current.currentTime === currentTime &&
+          current.duration === duration &&
+          current.paused === player.paused &&
+          current.ended === player.ended
+        ) {
+          return current
+        }
+        return {
+          currentTime,
+          duration,
+          paused: player.paused,
+          ended: player.ended,
+        }
+      })
+    }
+    const handleEnded = () => {
+      sync("ended")
+      if (
+        watchNextModeRef.current?.videoId === video.documentId &&
+        watchNextModeRef.current.mode === "armed"
+      ) {
+        navigateToNextWatchItem()
+      }
+    }
+    const handleSeeking = () => {
+      seekInProgressRef.current = true
+      sync("seeking")
+    }
+    const handleSeeked = () => {
+      sync("seeked")
+      seekInProgressRef.current = false
+      const duration = Number.isFinite(player.duration) ? player.duration : 0
+      const currentTime = Number.isFinite(player.currentTime)
+        ? player.currentTime
+        : 0
+      const remainingSeconds =
+        duration > 0 ? duration - currentTime : Number.POSITIVE_INFINITY
+      suppressNextThresholdRef.current =
+        remainingSeconds >= 0 && remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS
+    }
+    const handleTimeUpdate = () => sync("timeupdate")
+    const handleDurationChange = () => sync("durationchange")
+    const handleLoadedMetadata = () => sync("loadedmetadata")
+    const handlePlay = () => sync("play")
+    const handlePause = () => sync("pause")
+    const events = [
+      ["timeupdate", handleTimeUpdate],
+      ["durationchange", handleDurationChange],
+      ["loadedmetadata", handleLoadedMetadata],
+      ["play", handlePlay],
+      ["pause", handlePause],
+    ] as const
+
+    sync("init")
+    events.forEach(([event, listener]) =>
+      player.addEventListener(event, listener),
+    )
+    player.addEventListener("seeking", handleSeeking)
+    player.addEventListener("seeked", handleSeeked)
+    player.addEventListener("ended", handleEnded)
+    return () => {
+      events.forEach(([event, listener]) =>
+        player.removeEventListener(event, listener),
+      )
+      player.removeEventListener("seeking", handleSeeking)
+      player.removeEventListener("seeked", handleSeeked)
+      player.removeEventListener("ended", handleEnded)
+    }
+  }, [navigateToNextWatchItem, nextWatchHref, player, video.documentId])
 
   useEffect(() => {
     if (playerActivated || autoplayParam === "1" || heroPosterUrl == null) {
@@ -404,35 +687,53 @@ export function HeroPlayer({
       setPlayerActivated(true)
     }
 
-    const scheduleIdleActivation = () => {
+    const scheduleConservativeActivation = () => {
       if (cancelled || idleHandle != null || timeoutHandle != null) return
-      if (idleWindow.requestIdleCallback) {
-        idleHandle = idleWindow.requestIdleCallback(tryActivatePreview, {
-          timeout: IDLE_PREVIEW_FALLBACK_DELAY_MS,
-        })
-        return
-      }
-      timeoutHandle = window.setTimeout(
-        tryActivatePreview,
-        IDLE_PREVIEW_FALLBACK_DELAY_MS,
-      )
+      timeoutHandle = window.setTimeout(() => {
+        timeoutHandle = null
+        if (cancelled) return
+        if (idleWindow.requestIdleCallback) {
+          idleHandle = idleWindow.requestIdleCallback(tryActivatePreview, {
+            timeout: 1000,
+          })
+          return
+        }
+        tryActivatePreview()
+      }, IDLE_PREVIEW_FALLBACK_DELAY_MS)
     }
 
-    const scheduleAfterLoad = () => {
+    const scheduleFastMobileActivation = () => {
+      if (cancelled || idleHandle != null || timeoutHandle != null) return
+      timeoutHandle = window.setTimeout(() => {
+        timeoutHandle = null
+        tryActivatePreview()
+      }, MOBILE_VISIBLE_PREVIEW_DELAY_MS)
+    }
+
+    const handleLoad = () => {
+      loadListenerInstalled = false
+      scheduleActivation()
+    }
+
+    const scheduleActivation = () => {
       if (document.readyState === "complete") {
-        scheduleIdleActivation()
+        if (shouldUseFastMobilePreview(window)) {
+          scheduleFastMobileActivation()
+          return
+        }
+        scheduleConservativeActivation()
         return
       }
+      if (loadListenerInstalled) return
       loadListenerInstalled = true
-      window.addEventListener("load", scheduleIdleActivation, { once: true })
+      window.addEventListener("load", handleLoad, { once: true })
     }
 
     const retryIfEligible = () => {
-      if (document.readyState !== "complete") return
-      scheduleIdleActivation()
+      scheduleActivation()
     }
 
-    scheduleAfterLoad()
+    scheduleActivation()
     document.addEventListener("visibilitychange", retryIfEligible)
     window.addEventListener("scroll", retryIfEligible, { passive: true })
     window.addEventListener("resize", retryIfEligible, { passive: true })
@@ -441,7 +742,7 @@ export function HeroPlayer({
       cancelled = true
       clearScheduledWork()
       if (loadListenerInstalled) {
-        window.removeEventListener("load", scheduleIdleActivation)
+        window.removeEventListener("load", handleLoad)
       }
       document.removeEventListener("visibilitychange", retryIfEligible)
       window.removeEventListener("scroll", retryIfEligible)
@@ -604,13 +905,10 @@ export function HeroPlayer({
       // Otherwise visible = the wrapper's own height.
       const viewportHeight = window.innerHeight
       const visibleVideoHeight = Math.min(heroHeight, viewportHeight)
-      // The body section sits right after the hero in flow at doc-y =
-      // heroHeight plus the current bottom margin; in the muted-preview
-      // layout that margin is negative so the episode rail starts above
-      // the hero's natural bottom edge.
-      // Body covers everything BELOW that line; the unobscured part of
-      // the visible video is from the wrapper's visible top down to
-      // that line.
+      // Body covers everything BELOW its viewport top; the unobscured
+      // part of the visible video is from the wrapper's visible top down
+      // to that line. Prefer the real body position so layout wrappers
+      // around the hero chrome/backdrop cannot drift this calculation.
       const wrapper = wrapperRef.current
       const computedMarginBottom = wrapper
         ? Number.parseFloat(window.getComputedStyle(wrapper).marginBottom)
@@ -618,7 +916,14 @@ export function HeroPlayer({
       const bodyOverlap = Number.isFinite(computedMarginBottom)
         ? Math.max(0, -computedMarginBottom)
         : 0
-      const bodyTopInViewport = heroHeight - bodyOverlap - window.scrollY
+      const bodyZone = document.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement | null
+      const measuredBodyTop = bodyZone?.getBoundingClientRect().top
+      const bodyTopInViewport =
+        typeof measuredBodyTop === "number" && Number.isFinite(measuredBodyTop)
+          ? measuredBodyTop
+          : heroHeight - bodyOverlap - window.scrollY
       const unobscuredHeight = Math.max(
         0,
         Math.min(visibleVideoHeight, bodyTopInViewport),
@@ -674,18 +979,47 @@ export function HeroPlayer({
     getViewerId,
     getViewerIdServerSnapshot,
   )
+  const [resumeFromSavedProgress, setResumeFromSavedProgress] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ensureWatchProgressAuth().then((authenticated) => {
+      if (cancelled) return
+      if (!authenticated || tParam != null || autoplayParam === "1") return
+      if (!isResumableProgress(video.documentId)) return
+      setResumeFromSavedProgress(true)
+      setPlayerActivated(true)
+      setChromeRevealed(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [autoplayParam, tParam, video.documentId])
+
+  useWatchProgressRecorder({
+    player: player as HTMLMediaElement | null,
+    videoId: video.documentId,
+    languageSlug,
+    enabled: chromeRevealed,
+  })
 
   const handleLoadedMetadata = useCallback(() => {
     const player = playerRef.current
     if (!player) return
-    if (tParam == null) return
-    const parsed = Number.parseFloat(tParam)
+    const savedProgress =
+      tParam == null && isResumableProgress(video.documentId)
+        ? getWatchProgress(video.documentId)
+        : null
+    const parsed =
+      tParam != null
+        ? Number.parseFloat(tParam)
+        : (savedProgress?.positionSeconds ?? Number.NaN)
     if (!Number.isFinite(parsed) || parsed < 0) return
     const duration = Number.isFinite(player.duration) ? player.duration : 0
     const safeDuration = duration > 1 ? duration - 1 : duration
     player.currentTime =
       safeDuration > 0 ? Math.min(parsed, safeDuration) : parsed
-  }, [tParam])
+  }, [tParam, video.documentId])
 
   // One-shot autoplay-with-sound when the URL carries `?autoplay=1`.
   // LanguagePickerModal appends this signal so the new page knows the
@@ -740,18 +1074,16 @@ export function HeroPlayer({
         setChromeRevealed(true)
         setAutoplayBlocked(false)
       })
-      .catch((err: unknown) => {
+      .catch(() => {
         // Browser blocked unmuted play (no MEI grant). Player is still
         // muted (we never set it false), so the existing muted-preview
         // + "Watch now" pill flow takes over — the user can still
         // commit playback manually.
         //
-        // Under MuxVideo (bare <video>) the same condition also catches
-        // initial autoplay-muted rejections — `NotAllowedError` is the
-        // standard signal for autoplay refusal.
-        if (isAutoplayBlockedError(err)) {
-          setAutoplayBlocked(true)
-        }
+        // Some browser/media shims reject with a generic Error rather
+        // than a named NotAllowedError. Either way, restore the explicit
+        // user-action fallback so the page is never left with hidden chrome.
+        setAutoplayBlocked(true)
       })
     // Intentionally omits chromeRevealed and setChromeRevealed: the ref
     // guard above is the idempotency lock; chromeRevealed in deps would
@@ -775,28 +1107,28 @@ export function HeroPlayer({
         return
       }
 
-      // Initial click commits playback from the beginning, not from wherever the
-      // muted preview loop happened to be when the user clicked.
-      player.currentTime = 0
+      const savedProgress =
+        tParam == null ? getWatchProgress(video.documentId) : null
+      player.currentTime = savedProgress?.positionSeconds ?? 0
       player.muted = false
       const result = player.play()
+      setChromeRevealed(true)
+      setAutoplayBlocked(false)
       if (result && typeof result.then === "function") {
         result
           .then(() => {
-            setChromeRevealed(true)
             setAutoplayBlocked(false)
           })
           .catch((err: unknown) => {
             setPillState("tap-to-unmute")
+            setChromeRevealed(false)
             if (isAutoplayBlockedError(err)) {
               setAutoplayBlocked(true)
             }
           })
-      } else {
-        setChromeRevealed(true)
       }
     },
-    [],
+    [tParam, video.documentId],
   )
 
   useEffect(() => {
@@ -820,6 +1152,11 @@ export function HeroPlayer({
   // ref is available in the same click task whenever the dynamic chunk is
   // already loaded; otherwise keep the user's intent queued for attach.
   const handleUnmuteClick = useCallback(() => {
+    if (pointerDownHandledSoundIntentRef.current) {
+      pointerDownHandledSoundIntentRef.current = false
+      return
+    }
+
     let player = playerRef.current
     if (!playerActivated) {
       activatePlayerForIntent()
@@ -834,8 +1171,23 @@ export function HeroPlayer({
     runSoundIntent(player, pillState)
   }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
 
+  const handleWatchNowPointerDown = useCallback(() => {
+    if (playerActivated) return
+
+    activatePlayerForIntent()
+    const player = playerRef.current
+    if (!player) {
+      pendingSoundIntentRef.current = pillState
+      return
+    }
+
+    pendingSoundIntentRef.current = null
+    pointerDownHandledSoundIntentRef.current = true
+    runSoundIntent(player, pillState)
+  }, [activatePlayerForIntent, pillState, playerActivated, runSoundIntent])
+
   const handleWatchNowClick = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>) => {
+    (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault()
       handleUnmuteClick()
     },
@@ -843,7 +1195,7 @@ export function HeroPlayer({
   )
 
   const handleWatchNowKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLAnchorElement>) => {
+    (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === " ") {
         event.preventDefault()
         handleUnmuteClick()
@@ -874,6 +1226,7 @@ export function HeroPlayer({
     // element so the underlying media element can render its native error UI.
     setVideoReady(true)
     setPlayerFrameRevealed(true)
+    setPlaybackBuffering(false)
   }, [])
 
   // Reset the buffered/ready spinner when the playable identity changes
@@ -889,6 +1242,7 @@ export function HeroPlayer({
   if (prevVariantKey !== variant.documentId) {
     setPrevVariantKey(variant.documentId)
     setVideoReady(false)
+    setPlaybackBuffering(false)
     setPlayerFrameRevealed(false)
     setPlayerActivated(autoplayParam === "1" || heroPosterUrl == null)
   }
@@ -903,6 +1257,7 @@ export function HeroPlayer({
 
   const loop = !chromeRevealed
   const muted = !chromeRevealed
+  const shouldAutoplay = !resumeFromSavedProgress
   const canUseOptimisticVisual = !chromeRevealed
   const visualHeroPosterUrl = canUseOptimisticVisual
     ? (optimisticVisual?.posterUrl ?? heroPosterUrl)
@@ -918,25 +1273,34 @@ export function HeroPlayer({
   const showPendingPosterTransition =
     showOptimisticPoster && optimisticVisual?.loading === true
   const posterIdentity = visualHeroPosterUrl ?? "none"
+  const shouldOptimizeMuxPoster = isMuxImageUrl(visualHeroPosterUrl)
+  const optimisticPosterBlurDataURL = showOptimisticPoster
+    ? (optimisticVisual?.posterBlurDataUrl ?? null)
+    : null
+  const heroPosterBlurDataURL =
+    optimisticPosterBlurDataURL ??
+    getHeroPosterBlurDataURL({
+      heroPosterUrl,
+      muxHeroPosterBlurDataUrl: variant.muxHeroPosterBlurDataUrl,
+      shouldOptimizeMuxPoster,
+      visualHeroPosterUrl,
+    })
   const coverLoading =
     showPendingPosterTransition || (playerActivated && !videoReady)
-  const showPosterBlackBridge =
-    visualHeroPosterUrl != null && showPendingPosterTransition
+  const showPosterBlackBridge = false
   const posterLayerKey = posterIdentity
   const posterOpacityClass =
     playerFrameRevealed && !showOptimisticPoster ? "opacity-0" : "opacity-100"
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-[1000ms]"
-  const posterImageMotionClass = showPosterBlackBridge
-    ? "watch-hero-cover-reveal"
-    : ""
+  const posterImageMotionClass = ""
   const coverBlackoutMotionClass =
     coverBlackoutPhase === "revealing"
       ? "watch-hero-cover-black-bridge"
       : "watch-hero-cover-to-black"
 
-  // Hide the language-switch globe while the player is in fullscreen so it
+  // Hide the floating language switch while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
   // exits fullscreen. Listen for both the standard event and the webkit
   // prefix so Safari is covered.
@@ -945,7 +1309,7 @@ export function HeroPlayer({
   // initial fullscreenchange event.
   const isFullscreen = useIsFullscreen()
 
-  // Both globe surfaces (top-right floating + in-chrome) share this gate:
+  // Both audio-language surfaces (top-right floating + in-chrome) share this gate:
   // a wired callback AND enough variants to warrant a switcher. The
   // top-right surface adds `!isFullscreen` because it overlaps the
   // browser's fullscreen chrome; the in-chrome surface intentionally
@@ -953,19 +1317,29 @@ export function HeroPlayer({
   const hasLanguageSwitcher =
     typeof onLanguageClick === "function" &&
     (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+  const hasSubtitleSwitcher =
+    typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
+  const languageCode = languageCodeFor({
+    bcp47: variant.language?.bcp47,
+    iso3: variant.language?.iso3,
+    slug: variant.language?.slug ?? languageSlug,
+  })
+  const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
-  const effectivePreviewBodyOverlapPx = chromeRevealed
+  const playbackFrameActive =
+    chromeRevealed || (autoplayParam === "1" && !autoplayBlocked)
+  const effectivePreviewBodyOverlapPx = playbackFrameActive
     ? 0
     : previewBodyOverlapPx
-  const mobilePortraitPreviewEnabled = !chromeRevealed && overlay == null
+  const mobilePortraitPreviewEnabled = !playbackFrameActive && overlay == null
   const mediaFrameClassName = `relative h-full w-full ${
     mobilePortraitPreviewEnabled ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS : ""
   }`
-  const playerClassName = `block h-full w-full origin-top ${
-    chromeRevealed
+  const playerClassName = `watch-hero-player-video block h-full w-full origin-top ${
+    playbackFrameActive
       ? ""
       : `scale-y-110 ${
           mobilePortraitPreviewEnabled
@@ -973,6 +1347,47 @@ export function HeroPlayer({
             : ""
         }`
   }`
+  const remainingSeconds =
+    nextPlaybackState.duration > 0
+      ? nextPlaybackState.duration - nextPlaybackState.currentTime
+      : Number.POSITIVE_INFINITY
+  const watchNextWindowActive =
+    remainingSeconds >= 0 && remainingSeconds <= WATCH_NEXT_WINDOW_SECONDS
+  const watchNextProgressPct = watchNextWindowActive
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          ((WATCH_NEXT_WINDOW_SECONDS - remainingSeconds) /
+            WATCH_NEXT_WINDOW_SECONDS) *
+            100,
+        ),
+      )
+    : 0
+  const showWatchNextButton =
+    chromeRevealed && nextWatchHref != null && watchNextWindowActive
+  const cancelWatchNextAutoAdvance = useCallback(() => {
+    if (watchNextWindowActive) {
+      const nextMode = { videoId: video.documentId, mode: "manual" } as const
+      watchNextModeRef.current = nextMode
+      setWatchNextModeState(nextMode)
+    }
+  }, [video.documentId, watchNextWindowActive])
+
+  const handleWatchNextSurfaceInteract = useCallback(
+    (event: PointerEvent<HTMLDivElement> | KeyboardEvent<HTMLDivElement>) => {
+      const target = event.target
+      if (
+        target instanceof Element &&
+        target.closest('[data-testid="hero-player-watch-next"]')
+      ) {
+        return
+      }
+
+      cancelWatchNextAutoAdvance()
+    },
+    [cancelWatchNextAutoAdvance],
+  )
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -983,19 +1398,24 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            languageCode: showTopLanguageSwitch ? languageCode : null,
           },
         },
       ),
     )
+  }, [languageCode, onLanguageClick, showTopLanguageSwitch])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
     return () => {
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null } },
+          { detail: { visible: false, onClick: null, languageCode: null } },
         ),
       )
     }
-  }, [onLanguageClick, showTopLanguageSwitch])
+  }, [])
 
   return (
     <>
@@ -1013,8 +1433,10 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
-        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${
-          chromeRevealed
+        onPointerDownCapture={handleWatchNextSurfaceInteract}
+        onKeyDownCapture={handleWatchNextSurfaceInteract}
+        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} ${
+          playbackFrameActive
             ? "overflow-hidden"
             : `overflow-x-clip ${
                 mobilePortraitPreviewEnabled
@@ -1038,26 +1460,26 @@ export function HeroPlayer({
               : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
-        {mobilePortraitPreviewEnabled ? (
-          <div
-            aria-hidden="true"
-            data-testid="hero-player-mobile-header-band"
-            className={MOBILE_PORTRAIT_PREVIEW_BAND_CLASS}
-          />
-        ) : null}
-
         <div
           id={HERO_PLAYER_MEDIA_ID}
           data-testid="hero-player-media-frame"
           className={mediaFrameClassName}
         >
+          <style>{`
+            .watch-hero-player-video::cue {
+              color: transparent;
+              background: transparent;
+              text-shadow: none;
+              visibility: hidden;
+            }
+          `}</style>
           {playerActivated ? (
             <MuxVideo
               ref={setPlayerRef as React.Ref<MuxVideoRef>}
               playbackId={playbackId}
               src={playbackId ? undefined : hlsSrc}
               // Native <video> takes boolean `autoPlay` + separate `muted`.
-              autoPlay
+              autoPlay={shouldAutoplay}
               muted={muted}
               loop={loop}
               preload="metadata"
@@ -1080,13 +1502,17 @@ export function HeroPlayer({
               }}
               _hlsConfig={HERO_HLS_CONFIG}
               style={
-                chromeRevealed
+                playbackFrameActive
                   ? REVEALED_VIDEO_OBJECT_FIT_STYLE
                   : PRE_REVEAL_VIDEO_OBJECT_FIT_STYLE
               }
               onLoadedMetadata={handleLoadedMetadata}
               onCanPlay={handleCanPlay}
               onPlaying={handlePlaying}
+              onWaiting={handlePlaybackBuffering}
+              onStalled={handlePlaybackBuffering}
+              onSeeking={handlePlaybackBuffering}
+              onSeeked={handlePlaybackReady}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
               // runtime; cast bridges the type-system difference.
@@ -1108,13 +1534,23 @@ export function HeroPlayer({
               <Image
                 data-testid="hero-player-poster"
                 src={visualHeroPosterUrl}
+                loader={
+                  shouldOptimizeMuxPoster ? muxHeroPosterLoader : undefined
+                }
                 alt=""
                 aria-hidden="true"
                 fill
-                unoptimized
+                unoptimized={!shouldOptimizeMuxPoster}
                 loading="eager"
                 fetchPriority="high"
+                preload={shouldOptimizeMuxPoster}
                 sizes="100vw"
+                {...(heroPosterBlurDataURL
+                  ? {
+                      placeholder: "blur" as const,
+                      blurDataURL: heroPosterBlurDataURL,
+                    }
+                  : {})}
                 className={`object-cover ${posterImageMotionClass}`}
               />
               {!chromeRevealed ? (
@@ -1168,13 +1604,14 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {playerActivated && !videoReady ? (
+          {playbackFrameActive &&
+          playerActivated &&
+          (!videoReady || playbackBuffering) ? (
             <div
               data-testid="hero-player-loading"
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35"
+              className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
             >
-              <SpinnerIcon className="h-12 w-12 animate-spin text-white/80" />
+              <WatchPlayerLoadingIndicator />
             </div>
           ) : null}
 
@@ -1207,18 +1644,53 @@ export function HeroPlayer({
             playerRef={playerRef}
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
+            playbackId={playbackId}
             onLanguageClick={onLanguageClick}
-            // In-chrome globe intentionally stays visible in fullscreen
+            languageCode={languageCode}
+            subtitleLanguageCode={subtitleLanguageCode}
+            // In-chrome audio control intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
+            showSubtitleButton={hasSubtitleSwitcher}
             onVisibilityChange={handleControlsVisibilityChange}
+            onWatchNextInteraction={cancelWatchNextAutoAdvance}
           />
         ) : null}
         <SubtitleOverlay
           playerRef={playerRef}
           wrapperRef={wrapperRef}
           player={player}
+          controlsVisible={controlsVisible}
         />
+        {showWatchNextButton ? (
+          <button
+            type="button"
+            data-testid="hero-player-watch-next"
+            data-kind={block.nextWatchItem?.kind ?? "chapter"}
+            data-manual={watchNextManual ? "true" : "false"}
+            data-auto-armed={watchNextAutoArmed ? "true" : "false"}
+            aria-label="Next Episode"
+            onClick={navigateToNextWatchItem}
+            className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
+              watchNextManual
+                ? "bg-white text-black ring-white hover:bg-white"
+                : "bg-black/70 text-white ring-white/20 hover:bg-black/80"
+            }`}
+          >
+            {!watchNextManual ? (
+              <span
+                aria-hidden="true"
+                data-testid="hero-player-watch-next-progress"
+                className="absolute inset-y-0 left-0 -z-10 bg-brand-red transition-[width] duration-200 ease-linear"
+                style={{ width: `${watchNextProgressPct}%` }}
+              />
+            ) : null}
+            <PlayIcon />
+            <span className="relative text-base font-bold leading-none">
+              Next Episode
+            </span>
+          </button>
+        ) : null}
       </div>
 
       {/*
@@ -1233,9 +1705,9 @@ export function HeroPlayer({
       <div
         ref={setOverlayAnchor}
         data-testid="hero-player-overlay-anchor"
-        className="relative z-10 h-0 w-full"
+        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
       >
-        {!chromeRevealed
+        {!chromeRevealed && !suppressPreRevealOverlay
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"
@@ -1257,13 +1729,13 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <a
-                  href={heroPlaybackFallbackHref}
+                <button
+                  type="button"
                   data-testid="hero-player-unmute-pill"
                   data-state={pillState}
                   aria-label={preRevealActionLabel}
                   aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={activatePlayerForIntent}
+                  onPointerDown={handleWatchNowPointerDown}
                   onKeyDown={handleWatchNowKeyDown}
                   onClick={handleWatchNowClick}
                   className={
@@ -1278,7 +1750,7 @@ export function HeroPlayer({
                     <PlayIcon />
                   )}
                   <span>{preRevealActionLabel}</span>
-                </a>
+                </button>
               </div>
             ))
           : null}

@@ -15,16 +15,16 @@ import {
 
 export type WatchHomeCarouselMemory = {
   /**
-   * Caller-held played set the queue builders take as input. Mutable ref —
-   * the queue reads it at build time; markVideoPlayed/resetPlayedIds mutate it.
+   * Caller-held played set the queue builders read at build time; mutated by
+   * markVideoPlayed/resetPlayedIds.
    */
   playedIdsRef: React.RefObject<Set<string>>
   /** Pool-rotation position queue rebuilds resume from (web's session resume). */
   startPoolIndexRef: React.RefObject<number>
   /**
-   * Flips true once persisted state is merged into the refs (or loading
-   * failed and the empty defaults stand). Include in queue-build memo deps so
-   * the first hydrated build excludes already-played slides.
+   * True once persisted state is merged into the refs (or loading failed and
+   * defaults stand). Include in queue-build deps so the first hydrated build
+   * excludes already-played slides.
    */
   hydrated: boolean
   /** Persist a video slide id as played (mux insert ids are never persisted). */
@@ -36,18 +36,9 @@ export type WatchHomeCarouselMemory = {
 }
 
 /**
- * Cross-restart memory for the Home hero carousel — the AsyncStorage-backed
- * replacement for web's browser-storage layer (closes KTD-3):
- *
- *   - played ids exclude already-seen videos from queue rebuilds, reset
- *     monthly (web's localStorage carousel-played-ids rule)
- *   - the active slide's pool position is the resume point for the next
- *     launch's queue build, expired after 24h (web's session resume rule)
- *
- * The pure sequencing module stays storage-free: it takes `playedIds` and
- * `startPoolIndex` as caller-held inputs, and this hook is the Home screen's
- * owner of those inputs. Storage failures degrade to empty state — the
- * carousel still rotates, it just repeats sooner.
+ * Cross-restart memory for the Home hero carousel — AsyncStorage replacement for
+ * web's browser-storage (closes KTD-3): played ids (reset monthly) exclude seen
+ * videos; the active slide's pool position is the resume point (expires 24h).
  */
 export function useWatchHomeCarouselMemory(): WatchHomeCarouselMemory {
   const playedIdsRef = useRef<Set<string>>(new Set())
@@ -59,10 +50,9 @@ export function useWatchHomeCarouselMemory(): WatchHomeCarouselMemory {
   const [hydrated, setHydrated] = useState(false)
   // Write-time mirror of `hydrated` for the stable callbacks below.
   const hydratedRef = useRef(false)
-  // Pre-hydration buffers. A write that fires before the disk state is merged
-  // must not touch storage: the played blob would be clobbered with a subset
-  // of itself, and the stored session would later regress a fresher
-  // in-session position. Buffer, then flush once hydration lands.
+  // Pre-hydration buffers: a write before disk state is merged must not touch
+  // storage (would clobber the played blob with a subset and regress a fresher
+  // session position). Buffer, then flush once hydration lands.
   const pendingPlayedFlushRef = useRef(false)
   const pendingSessionRef = useRef<WatchHomeCarouselSession | null>(null)
 

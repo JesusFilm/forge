@@ -1,7 +1,7 @@
 ---
 title: "Expo TV Platform Setup in an SDUI Monorepo"
 date: "2026-04-10"
-last_updated: "2026-06-15"
+last_updated: "2026-06-25"
 category: best-practices
 module: tv-app
 problem_type: best_practice
@@ -158,6 +158,8 @@ export function getGraphQLUrl(): string {
 
 This is a known Android emulator behavior — `10.0.2.2` maps to the host machine's loopback interface.
 
+**Use `localhost`, not `127.0.0.1`, in `EXPO_PUBLIC_GRAPHQL_URL` for simulator/emulator dev.** The swap above only matches the literal string `"localhost"`, so `127.0.0.1` silently bypasses it and breaks the Android emulator. `localhost` is correct for _both_ the Apple TV simulator (shares the Mac's loopback directly) and the Android emulator (swapped to `10.0.2.2`). A **physical** Apple TV cannot resolve `localhost`/`127.0.0.1` (they resolve to the TV itself) — point its `.env.local` at the Mac's LAN IP instead. `EXPO_PUBLIC_*` is inlined by Metro at startup, so restart Metro (`--clear`) after editing `.env.local`. See `docs/solutions/runtime-errors/tv-rctfatal-network-request-failed-admin-down-20260626.md` and the `tv-mobile-sim-local-admin-use-localhost` memory.
+
 ### 2. Separate App, Shared Logic
 
 Create `apps/tv/` as a new Expo app -- do NOT add TV as a platform target inside the mobile app. Touch UX assumptions (gestures, small screen, portrait) conflict with 10-foot TV UX (D-pad, focus rings, landscape).
@@ -237,7 +239,7 @@ const focusMemory = new Map<string, number>() // railId -> itemIndex
 
 **Overlay VideoView focus pattern:** In fullscreen video overlays where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already constrains D-pad navigation, do NOT wrap `VideoView` in `<View pointerEvents="none">`. The wrapper blocks AVPlayerLayer rendering on tvOS (black screen, controls work). Use `focusable={false}` directly on the `VideoView` instead. The `pointerEvents="none"` wrapper is only correct for inline VideoViews without focus trapping. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`.
 
-**Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). Workaround: restore focus via `hasTVPreferredFocus` in a `useEffect` on screen focus.
+**Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). For a screen with one fixed control to restore, set a one-shot `hasTVPreferredFocus` on re-entry. For a screen with **many** focusables (rails, hero, tabs) where the user should land back on the _exact_ element, use a screen-level focus memory (`requestTVFocus` on the remembered node, on `useFocusEffect` re-entry) instead — see [`../design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md`](../design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md).
 
 **Focus-driven background media heroes (rail-owns-focus pattern):** If a hero reacts to rail focus with a background `VideoView`, prefer making the hero subtree fully non-interactive (no `Pressable`/`focusable`/`hasTVPreferredFocus` anywhere in the hero) and letting the rail's `TVFocusGuideView autoFocus` own focus outright. Wrapping the hero in `TVFocusGuideView` with `destinations` is fragile once the video is actively playing — `VideoView` continues to intercept focus despite `focusable={false}` + `pointerEvents="none"` + `isTVSelectable={false}`. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` for the full pattern (including the poster-hold technique that hides the black flash during HLS source swap).
 

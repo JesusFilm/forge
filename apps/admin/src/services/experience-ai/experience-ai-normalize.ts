@@ -5,7 +5,7 @@ import type {
   SectionContentBlock,
 } from "@/domain/blocks"
 import { BlocksSchema } from "@/domain/blocks"
-import { GENERATION_MIN_BLOCKS } from "./experience-ai.schemas"
+import { GENERATION_MIN_BLOCKS } from "@forge/experience-schema"
 import type {
   DraftAnyBlock,
   DraftBlock,
@@ -15,7 +15,7 @@ import type {
   DraftSectionBlock,
   DraftSectionContentBlock,
   VideoCandidate,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 const HERO_DEFAULTS = {
   clipStartSeconds: 0,
@@ -238,7 +238,16 @@ function normalizeDraftBlock(
         quotes: block.quotes.map((quote) =>
           compactRecord({
             reference: quote.reference,
+            // Reference-first scripture: `text` is optional and absent on
+            // generated quotes (apps/web resolves verse text at render).
             text: quote.text,
+            // Structured citation identity passes through so the web renderer
+            // can resolve verse text by stable book/chapter/verse.
+            osisId: quote.osisId,
+            chapterStart: quote.chapterStart,
+            chapterEnd: quote.chapterEnd,
+            verseStart: quote.verseStart,
+            verseEnd: quote.verseEnd,
             attribution: quote.attribution,
             ctaEnabled: quote.ctaEnabled,
             ctaLabel: quote.ctaLabel,

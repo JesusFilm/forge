@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { JobRecord, ShortsPhase } from "@/types/job"
 import {
+  buildSourceWatchHref,
   buildShortsCloneHref,
   buildShortsMediaHref,
   canDownloadShortsOutput,
@@ -253,6 +254,7 @@ function buildJob(overrides: Partial<JobRecord> = {}): JobRecord {
     id: "job-1",
     muxAssetId: "mux-1",
     muxPlaybackId: "pb1",
+    sourceMediaTitle: "The Source Film",
     languages: [],
     options: {
       shorts: {
@@ -260,6 +262,7 @@ function buildJob(overrides: Partial<JobRecord> = {}): JobRecord {
         sourceMuxAssetId: "mux-1",
         sourcePlaybackId: "pb1",
         sourceCoreId: "core-1",
+        sourceSlug: "the-source-film",
         sourceTitle: "The Source Film",
         clip: { startSec: 65, endSec: 95 },
         language: { bcp47: "en", whisper: "en" },
@@ -304,7 +307,13 @@ describe("getShortsJobSummary", () => {
       assetId: "mux-1-short-abcd1234",
       sourceMuxAssetId: "mux-1",
       sourceCoreId: "core-1",
+      sourceSlug: "the-source-film",
+      sourceVideoTitle: "The Source Film",
       title: "The Source Film",
+      languageBcp47: "en",
+      languageLabel: "English (en)",
+      languageShortLabel: "EN",
+      languageFlagUrl: "https://hatscripts.github.io/circle-flags/flags/us.svg",
       clipRangeLabel: "1:05–1:35",
       phase: "ready_for_review",
       phaseLabel: "Ready for review",
@@ -313,8 +322,33 @@ describe("getShortsJobSummary", () => {
     })
   })
 
+  it("keeps the cropped source title separate from a custom short title", () => {
+    const job = buildJob({ sourceMediaTitle: "Original Source Video" })
+    if (job.options.shorts) {
+      job.options.shorts.sourceTitle = "Custom Short Title"
+    }
+
+    const summary = getShortsJobSummary(job)
+    expect(summary?.title).toBe("Custom Short Title")
+    expect(summary?.sourceVideoTitle).toBe("Original Source Video")
+  })
+
+  it("projects a regional language into a compact flag chip", () => {
+    const job = buildJob()
+    if (job.options.shorts) {
+      job.options.shorts.language = { bcp47: "pt-BR", whisper: "pt" }
+    }
+
+    const summary = getShortsJobSummary(job)
+    expect(summary).toMatchObject({
+      languageLabel: "Brazilian Portuguese (pt-BR)",
+      languageShortLabel: "PT-BR",
+      languageFlagUrl: "https://hatscripts.github.io/circle-flags/flags/br.svg",
+    })
+  })
+
   it("falls back to the short assetId as title and queued without a report", () => {
-    const job = buildJob({ artifacts: {} })
+    const job = buildJob({ artifacts: {}, sourceMediaTitle: undefined })
     if (job.options.shorts) {
       delete job.options.shorts.sourceTitle
     }
@@ -339,12 +373,27 @@ describe("getShortsJobSummary", () => {
   it("keeps a genuinely queued job presented as queued", () => {
     const summary = getShortsJobSummary(
       buildJob({ artifacts: {}, status: "pending" }),
+      { now: new Date("2026-06-11T00:01:00.000Z") },
     )
     expect(summary).toMatchObject({
       phase: "queued",
       phaseLabel: "Queued",
       phaseTone: "pending",
       isLaunchFailed: false,
+    })
+  })
+
+  it("presents stale queued work as launch stalled", () => {
+    const summary = getShortsJobSummary(
+      buildJob({ artifacts: {}, status: "pending" }),
+      { now: new Date("2026-06-11T00:10:00.000Z") },
+    )
+    expect(summary).toMatchObject({
+      phase: "queued",
+      phaseLabel: "Launch stalled",
+      phaseTone: "failed",
+      isLaunchFailed: false,
+      activeStall: expect.objectContaining({ retryKind: "prepare" }),
     })
   })
 
@@ -361,6 +410,41 @@ describe("getShortsJobSummary", () => {
 })
 
 describe("output + clone helpers", () => {
+  it("builds public Watch hrefs for source videos", () => {
+    expect(
+      buildSourceWatchHref(
+        {
+          sourceSlug: "the-source-film",
+          languageBcp47: "en",
+        },
+        "https://www.jesusfilm.org/watch",
+      ),
+    ).toBe("https://www.jesusfilm.org/watch/the-source-film.html/english.html")
+  })
+
+  it("maps regional source languages to public Watch language slugs", () => {
+    expect(
+      buildSourceWatchHref(
+        {
+          sourceSlug: "jesus-film",
+          languageBcp47: "pt-BR",
+        },
+        "https://preview.example",
+      ),
+    ).toBe(
+      "https://preview.example/watch/jesus-film.html/portuguese-brazil.html",
+    )
+  })
+
+  it("returns null for source Watch hrefs when the slug is missing", () => {
+    expect(
+      buildSourceWatchHref({
+        sourceSlug: null,
+        languageBcp47: "en",
+      }),
+    ).toBeNull()
+  })
+
   it("only offers downloads on completed", () => {
     expect(canDownloadShortsOutput({ phase: "completed" })).toBe(true)
     for (const phase of ALL_PHASES.filter((p) => p !== "completed")) {

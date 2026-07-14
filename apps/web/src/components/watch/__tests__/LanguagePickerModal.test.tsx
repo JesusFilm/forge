@@ -72,6 +72,23 @@ function $$(selector: string): HTMLElement[] {
   return Array.from(document.querySelectorAll(selector)) as HTMLElement[]
 }
 
+function elementClassName(
+  element: HTMLElement | SVGElement | null | undefined,
+): string {
+  const className = element?.className
+  return typeof className === "string" ? className : (className?.baseVal ?? "")
+}
+
+function expectNonCroppingFocusRing(
+  element: HTMLElement | SVGElement | null | undefined,
+) {
+  const className = elementClassName(element)
+  expect(className).toContain("focus-visible:ring-2")
+  expect(className).toContain("focus-visible:ring-inset")
+  expect(className).toContain("focus-visible:outline-none")
+  expect(className).not.toContain("focus-visible:ring-3")
+}
+
 function expectMultilingualTooltip(
   testId: string,
   expected: string[],
@@ -187,6 +204,8 @@ function renderModal({
   currentSubtitleEnabled,
   currentSubtitleSlug,
   onSubtitleChange,
+  languageOptionsError,
+  onRetryLanguageOptions,
 }: {
   open: boolean
   currentLanguageSlug?: string
@@ -200,6 +219,8 @@ function renderModal({
   currentSubtitleEnabled?: boolean
   currentSubtitleSlug?: string | null
   onSubtitleChange?: (enabled: boolean, slug: string | null) => void
+  languageOptionsError?: boolean
+  onRetryLanguageOptions?: () => void
 }) {
   act(() => {
     root.render(
@@ -216,6 +237,8 @@ function renderModal({
         currentSubtitleEnabled={currentSubtitleEnabled}
         currentSubtitleSlug={currentSubtitleSlug}
         onSubtitleChange={onSubtitleChange}
+        languageOptionsError={languageOptionsError}
+        onRetryLanguageOptions={onRetryLanguageOptions}
       />,
     )
   })
@@ -452,7 +475,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(languageIcon?.querySelector("svg")).not.toBeNull()
     expect(languageIcon?.className).toContain("size-8")
     expect(languageIcon?.className).not.toContain("size-10")
-    expect(languageIcon?.querySelector("svg")?.className.baseVal).toContain(
+    expect(elementClassName(languageIcon?.querySelector("svg"))).toContain(
       "size-4",
     )
     expect(languageIcon?.className).not.toContain("rounded-full")
@@ -554,6 +577,12 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     const modal = $('[data-testid="watch-language-picker-modal"]')
     expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("h-[100svh]")
+    expect(modal?.className).toContain("w-screen")
+    expect(modal?.className).toContain("max-w-none")
+    expect(modal?.className).toContain("overflow-x-hidden")
+    expect(modal?.className).toContain("overflow-y-auto")
+    expect(modal?.className).not.toContain("max-w-[min(90vw,608px)]")
     expect(modal?.className).toContain("sm:max-w-[608px]")
 
     expect(
@@ -574,7 +603,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(subtitlesIcon?.querySelector("svg")).not.toBeNull()
     expect(subtitlesIcon?.className).toContain("size-8")
     expect(subtitlesIcon?.className).not.toContain("size-10")
-    expect(subtitlesIcon?.querySelector("svg")?.className.baseVal).toContain(
+    expect(elementClassName(subtitlesIcon?.querySelector("svg"))).toContain(
       "size-4",
     )
     expect(subtitlesIcon?.className).not.toContain("rounded-full")
@@ -598,6 +627,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggle.className).toContain("h-9")
     expect(toggle.className).toContain("w-16")
     expect(toggle.className).toContain("bg-stone-100")
+    expectNonCroppingFocusRing(toggle)
+    expect(toggle.className).not.toContain("focus-visible:outline-offset-2")
     const toggleState = $(
       '[data-testid="watch-language-picker-subtitles-toggle-state"]',
     )
@@ -611,6 +642,20 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggle.parentElement?.parentElement?.className).toContain(
       "items-center",
     )
+    expect(toggle.parentElement?.parentElement?.className).toContain(
+      "flex-wrap",
+    )
+    expect(toggle.parentElement?.parentElement?.className).toContain("min-w-0")
+    expect(toggle.parentElement?.parentElement?.className).toContain("shrink-0")
+    const subtitleHeader = $(
+      '[data-testid="watch-language-picker-subtitles-header"]',
+    )
+    expect(subtitleHeader?.contains(subtitlesTooltip)).toBe(true)
+    expect(subtitleHeader?.contains(toggle)).toBe(true)
+    expect(subtitleHeader?.className).toContain("items-center")
+    expect(subtitleHeader?.className).toContain("justify-between")
+    expect(subtitleHeader?.className).not.toContain("flex-col")
+    expect(subtitleHeader?.className).not.toContain("sm:flex-row")
     const thumb = toggle.querySelector('span[aria-hidden="true"]')
     expect(thumb?.className).toContain("size-7")
     expect(thumb?.className).toContain("translate-x-7")
@@ -627,9 +672,11 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
+    expectNonCroppingFocusRing(triggers[0])
     expect(triggers[1]?.textContent).toContain("English")
     expect(triggers[1]?.className).toContain("w-full")
     expect(triggers[1]?.className).toContain("min-h-12")
+    expectNonCroppingFocusRing(triggers[1])
     const subtitlesSelectTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-select",
       ["字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
@@ -644,6 +691,11 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(subtitlePopover).not.toBeNull()
     expect(subtitlesSelectTooltip?.contains(subtitlePopover)).toBe(false)
     expect(
+      $('[data-testid="watch-language-picker-modal"]')?.contains(
+        subtitlePopover,
+      ),
+    ).toBe(false)
+    expect(
       $('[data-testid="watch-language-picker-tooltip-subtitle-language"]'),
     ).toBeNull()
     expect(
@@ -654,8 +706,28 @@ describe("LanguagePickerModal — globe overlay", () => {
       $('[data-testid="watch-language-picker-close-action"]')?.className,
     ).toContain("text-xs")
     expect(
+      $('[data-testid="watch-language-picker-close-action"]')?.className,
+    ).toContain("h-auto")
+    expect(
+      $('[data-testid="watch-language-picker-close-action"]')?.className,
+    ).toContain("w-40")
+    expect(
+      $('[data-testid="watch-language-picker-close-action"]')?.className,
+    ).toContain("px-5")
+    expect(
+      $('[data-testid="watch-language-picker-close-action"]')?.className,
+    ).toContain("py-3")
+    expectNonCroppingFocusRing(
+      $('[data-testid="watch-language-picker-close-action"]'),
+    )
+    expect(
+      $('[data-testid="watch-language-picker-apply"]')?.className,
+    ).toContain("w-40")
+    expect(
       $('[data-testid="watch-language-picker-apply"]')?.className,
     ).toContain("px-5")
+    expectNonCroppingFocusRing($('[data-testid="watch-language-picker-apply"]'))
+    expectNonCroppingFocusRing($('[data-testid="watch-language-picker-close"]'))
     expectMultilingualTooltip(
       "watch-language-picker-tooltip-close",
       ["关闭", "बंद करें", "Cerrar", "إغلاق"],
@@ -817,6 +889,13 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(button.className).toContain("px-3")
     expect(button.className).toContain("py-1.5")
     expect(button.className).toContain("text-[11px]")
+    expect(button.className).toContain("min-w-0")
+    expect(button.className).toContain("max-w-full")
+    expect(button.className).toContain("flex-1")
+    expect(button.className).toContain("sm:flex-none")
+    expect(button.className).toContain("shrink")
+    expect(button.className).toContain("whitespace-normal")
+    expectNonCroppingFocusRing(button)
     expect(
       $('[data-testid="watch-language-picker-request-icon"]'),
     ).not.toBeNull()
@@ -852,6 +931,10 @@ describe("LanguagePickerModal — globe overlay", () => {
       ["Subtitles unavailable"],
     )
     expect(button.parentElement?.parentElement?.contains(toggle)).toBe(true)
+    expect(button.parentElement?.parentElement?.className).toContain(
+      "flex-wrap",
+    )
+    expect(button.parentElement?.parentElement?.className).toContain("min-w-0")
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
 
     act(() => {
@@ -865,9 +948,30 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-request-sent-icon"]',
     )
     expect(sentIcon).not.toBeNull()
-    expect(sentIcon?.getAttribute("class")).toContain("text-emerald-400")
+    expect(elementClassName(sentIcon)).toContain("text-emerald-400")
     expect(routerPushMock).not.toHaveBeenCalled()
     expect(writePreferredLanguageSlugMock).not.toHaveBeenCalled()
+  })
+
+  it("uses a non-cropping focus ring on the language retry control", () => {
+    const onRetryLanguageOptions = vi.fn()
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      languageOptionsError: true,
+      onRetryLanguageOptions,
+    })
+
+    const retry = $(
+      '[data-testid="watch-language-picker-retry-languages"]',
+    ) as HTMLButtonElement
+    expect(retry).not.toBeNull()
+    expectNonCroppingFocusRing(retry)
+
+    act(() => {
+      retry.click()
+    })
+    expect(onRetryLanguageOptions).toHaveBeenCalledTimes(1)
   })
 
   it("resets the AI translation request state when the modal reopens", () => {

@@ -8,8 +8,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { queryMock } = vi.hoisted(() => ({
+const { queryMock, recordWatchEventWithAccessTokenMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  recordWatchEventWithAccessTokenMock: vi.fn(),
 }))
 
 vi.mock("node:dns", () => ({
@@ -25,6 +26,10 @@ vi.mock("@/lib/admin-client", () => ({
   default: {
     query: queryMock,
   },
+}))
+
+vi.mock("@/lib/watch-event-actions", () => ({
+  recordWatchEventWithAccessToken: recordWatchEventWithAccessTokenMock,
 }))
 
 import { promises as dns } from "node:dns"
@@ -46,7 +51,9 @@ function adminVideoDub() {
   return {
     videoDub: {
       documentId: "variant-1",
+      videoId: "video-1",
       downloadable: true,
+      language: { documentId: "language-1" },
       downloads: [
         {
           documentId: "download-1",
@@ -59,12 +66,42 @@ function adminVideoDub() {
   }
 }
 
-async function importRouteWithGate(enabled: boolean) {
+async function importRoute() {
   vi.resetModules()
   vi.stubEnv("WEB_AUTH_BASE_URL", "http://localhost:3004")
-  vi.stubEnv("FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT", String(enabled))
+  vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
+  vi.stubEnv(
+    "WEB_SESSION_SECRET",
+    "test-session-secret-at-least-thirty-two-chars",
+  )
   vi.stubEnv("LAUNCHDARKLY_SDK_KEY", "")
+  vi.stubEnv("FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT", "true")
   return import("./route")
+}
+
+async function importRouteWithAccountGateDisabled() {
+  vi.resetModules()
+  vi.stubEnv("WEB_AUTH_BASE_URL", "http://localhost:3004")
+  vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
+  vi.stubEnv(
+    "WEB_SESSION_SECRET",
+    "test-session-secret-at-least-thirty-two-chars",
+  )
+  vi.stubEnv("LAUNCHDARKLY_SDK_KEY", "")
+  vi.stubEnv("FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT", "false")
+  return import("./route")
+}
+
+async function webSessionCookie() {
+  const { WEB_AUTH_SESSION_COOKIE, createWebAuthSessionCookie } =
+    await import("@/auth/web-session")
+  const value = await createWebAuthSessionCookie({
+    subject: "user_123",
+    scopes: ["openid", "web:watch-events:write"],
+    accessToken: "jfp_at_secret",
+    expiresAt: Math.floor(Date.now() / 1000) + 60,
+  })
+  return `${WEB_AUTH_SESSION_COOKIE}=${value}`
 }
 
 beforeEach(() => {
@@ -73,6 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   queryMock.mockReset()
+  recordWatchEventWithAccessTokenMock.mockReset()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -83,11 +121,11 @@ describe("GET /watch/api/download - account gate", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined)
   })
 
-  it("returns 401 before DNS or upstream fetch when the gate is enabled and the request has no auth cookie", async () => {
+  it("returns 401 before DNS or upstream fetch when the request has no auth cookie", async () => {
     const fetchMock = vi.fn(async () => new Response("should not happen"))
     vi.stubGlobal("fetch", fetchMock)
 
-    const { GET } = await importRouteWithGate(true)
+    const { GET } = await importRoute()
     const response = await GET(
       makeRequest({
         filename: "jesus-highest.mp4",
@@ -103,36 +141,12 @@ describe("GET /watch/api/download - account gate", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("preserves legacy unauthenticated downloads while the gate flag is disabled", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("video-bytes", { status: 200 })),
-    )
-
-    const { GET } = await importRouteWithGate(false)
-    const response = await GET(
-      makeRequest({
-        filename: "jesus-highest.mp4",
-        url: "https://stream.mux.com/abc.mp4",
-      }),
-    )
-
-    expect(response.status).toBe(200)
-    expect(response.headers.get("set-cookie")).toContain(
-      "forge_download_gate_rollout=",
-    )
-    expect(dns.resolve4).toHaveBeenCalled()
-  })
-
-  it("resolves signed-in downloads by opaque IDs instead of requiring the browser to send a CDN URL", async () => {
+  it("streams anonymous opaque-ID downloads when the account gate is disabled", async () => {
     queryMock.mockResolvedValueOnce({
       data: adminVideoDub(),
     })
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.includes("/api/auth/get-session")) {
-        return Response.json({ user: { id: "user_123" } })
-      }
+      expect(String(input)).toBe("https://stream.mux.com/abc.mp4")
       return new Response("video-bytes", {
         status: 200,
         headers: { "content-type": "video/mp4" },
@@ -140,7 +154,153 @@ describe("GET /watch/api/download - account gate", () => {
     })
     vi.stubGlobal("fetch", fetchMock)
 
-    const { GET } = await importRouteWithGate(true)
+    const { GET } = await importRouteWithAccountGateDisabled()
+    const response = await GET(
+      makeRequest({
+        downloadId: "download-1",
+        filename: "jesus-highest.mp4",
+        variantId: "variant-1",
+        videoSlug: "jesus",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { variantId: "variant-1" },
+      }),
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects anonymous raw-URL attachment downloads when the account gate is disabled", async () => {
+    const fetchMock = vi.fn(async () => new Response("should not happen"))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRouteWithAccountGateDisabled()
+    const response = await GET(
+      makeRequest({
+        filename: "jesus-highest.mp4",
+        url: "https://stream.mux.com/abc.mp4",
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: "Download identifiers required",
+    })
+    expect(dns.resolve4).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("streams allowlisted inline VTT subtitles without an auth cookie", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe(
+        "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      )
+      return new Response("WEBVTT\n\n", {
+        status: 200,
+        headers: { "content-type": "Text/VTT; charset=utf-8" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest({
+        disposition: "inline",
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-disposition")).toContain("inline;")
+    expect(response.headers.get("content-type")).toBe("Text/VTT; charset=utf-8")
+    expect(await response.text()).toBe("WEBVTT\n\n")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects a non-VTT response on the anonymous subtitle path", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("video-bytes", {
+          status: 200,
+          headers: { "content-type": "video/mp4" },
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const consoleErrorMock = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest({
+        disposition: "inline",
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      }),
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toEqual({
+      error: "Upstream subtitle response was not VTT",
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(consoleErrorMock).toHaveBeenCalledWith(
+      "[api/download] rejected non-VTT anonymous response",
+      expect.objectContaining({ contentType: "video/mp4" }),
+    )
+  })
+
+  it.each([
+    {
+      name: "inline video",
+      query: {
+        disposition: "inline",
+        url: "https://stream.mux.com/example.mp4",
+      },
+    },
+    {
+      name: "subtitle attachment",
+      query: {
+        disposition: "attachment",
+        url: "https://api-media-core.jesusfilm.org/subtitles/example.vtt",
+      },
+    },
+  ])(
+    "keeps anonymous $name requests behind the account gate",
+    async ({ query }) => {
+      const fetchMock = vi.fn(async () => new Response("should not happen"))
+      vi.stubGlobal("fetch", fetchMock)
+
+      const { GET } = await importRoute()
+      const response = await GET(makeRequest(query))
+
+      expect(response.status).toBe(401)
+      expect(dns.resolve4).not.toHaveBeenCalled()
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it("resolves signed-in downloads by opaque IDs instead of requiring the browser to send a CDN URL", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: adminVideoDub(),
+    })
+    recordWatchEventWithAccessTokenMock.mockResolvedValueOnce({
+      ok: true,
+      recorded: true,
+    })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe("https://stream.mux.com/abc.mp4")
+      return new Response("video-bytes", {
+        status: 200,
+        headers: { "content-type": "video/mp4" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRoute()
     const response = await GET(
       makeRequest(
         {
@@ -149,7 +309,7 @@ describe("GET /watch/api/download - account gate", () => {
           variantId: "variant-1",
           videoSlug: "jesus",
         },
-        { headers: { cookie: "better-auth.session=abc" } },
+        { headers: { cookie: await webSessionCookie() } },
       ),
     )
 
@@ -159,8 +319,61 @@ describe("GET /watch/api/download - account gate", () => {
         variables: { variantId: "variant-1" },
       }),
     )
-    expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
       "https://stream.mux.com/abc.mp4",
+    )
+    await vi.waitFor(() =>
+      expect(recordWatchEventWithAccessTokenMock).toHaveBeenCalledWith(
+        "jfp_at_secret",
+        {
+          eventType: "download",
+          videoId: "video-1",
+          videoDubId: "variant-1",
+          languageId: "language-1",
+        },
+      ),
+    )
+  })
+
+  it("does not let watch-event recording block signed-in flagged downloads", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: adminVideoDub(),
+    })
+    recordWatchEventWithAccessTokenMock.mockReturnValueOnce(
+      new Promise(() => undefined),
+    )
+    const fetchMock = vi.fn(async () => {
+      return new Response("video-bytes", {
+        status: 200,
+        headers: { "content-type": "video/mp4" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest(
+        {
+          downloadId: "download-1",
+          filename: "jesus-highest.mp4",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe("video-bytes")
+    expect(recordWatchEventWithAccessTokenMock).toHaveBeenCalledWith(
+      "jfp_at_secret",
+      {
+        eventType: "download",
+        videoId: "video-1",
+        videoDubId: "variant-1",
+        languageId: "language-1",
+      },
     )
   })
 
@@ -169,14 +382,17 @@ describe("GET /watch/api/download - account gate", () => {
     const fetchMock = vi.fn(async () => new Response("should not happen"))
     vi.stubGlobal("fetch", fetchMock)
 
-    const { GET } = await importRouteWithGate(false)
+    const { GET } = await importRoute()
     const response = await GET(
-      makeRequest({
-        downloadId: "download-1",
-        filename: "jesus-highest.mp4",
-        variantId: "variant-1",
-        videoSlug: "jesus",
-      }),
+      makeRequest(
+        {
+          downloadId: "download-1",
+          filename: "jesus-highest.mp4",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
     )
 
     expect(response.status).toBe(503)
@@ -192,14 +408,17 @@ describe("GET /watch/api/download - account gate", () => {
     const fetchMock = vi.fn(async () => new Response("should not happen"))
     vi.stubGlobal("fetch", fetchMock)
 
-    const { GET } = await importRouteWithGate(false)
+    const { GET } = await importRoute()
     const response = await GET(
-      makeRequest({
-        downloadId: "download-1",
-        filename: "jesus-highest.mp4",
-        variantId: "variant-1",
-        videoSlug: "jesus",
-      }),
+      makeRequest(
+        {
+          downloadId: "download-1",
+          filename: "jesus-highest.mp4",
+          variantId: "variant-1",
+          videoSlug: "jesus",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
     )
 
     expect(response.status).toBe(404)
@@ -210,7 +429,38 @@ describe("GET /watch/api/download - account gate", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("streams the proxy download when the gate is enabled and Auth confirms the session", async () => {
+  it("streams the proxy download when the gate is enabled and the Web session is valid", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => {
+      return new Response("video-bytes", {
+        status: 200,
+        headers: { "content-type": "video/mp4" },
+      })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { GET } = await importRoute()
+    const response = await GET(
+      makeRequest(
+        {
+          filename: "jesus-highest.mp4",
+          url: "https://stream.mux.com/abc.mp4",
+        },
+        { headers: { cookie: await webSessionCookie() } },
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-disposition")).toContain(
+      'attachment; filename="jesus-highest.mp4"',
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "https://stream.mux.com/abc.mp4",
+    )
+    expect(recordWatchEventWithAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps the legacy Better Auth session verifier as a rollout fallback", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.includes("/api/auth/get-session")) {
@@ -223,7 +473,7 @@ describe("GET /watch/api/download - account gate", () => {
     })
     vi.stubGlobal("fetch", fetchMock)
 
-    const { GET } = await importRouteWithGate(true)
+    const { GET } = await importRoute()
     const response = await GET(
       makeRequest(
         {
@@ -270,7 +520,7 @@ describe("HEAD /watch/api/download - opaque download target", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
 
-    const { HEAD } = await importRouteWithGate(false)
+    const { HEAD } = await importRoute()
     const response = await HEAD(
       makeRequest({
         downloadId: "download-1",
@@ -299,7 +549,7 @@ describe("HEAD /watch/api/download - opaque download target", () => {
     const fetchMock = vi.fn(async () => new Response(null))
     vi.stubGlobal("fetch", fetchMock)
 
-    const { HEAD } = await importRouteWithGate(false)
+    const { HEAD } = await importRoute()
     const response = await HEAD(
       makeRequest({
         downloadId: "download-1",

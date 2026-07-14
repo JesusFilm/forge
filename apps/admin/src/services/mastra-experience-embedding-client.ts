@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 import { env } from "@/config/env"
+import { resolveMastraLaunchTimeoutMs } from "@/services/mastra-launch-timeout"
 import { prisma as defaultPrisma } from "@/db/client"
 import { buildExperienceEmbeddingSource } from "@/services/embeddings.service"
 
@@ -167,9 +168,9 @@ export async function launchMastraExperienceEmbedding(
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(
-          options.timeoutMs ??
-            env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS ??
-            120_000,
+          resolveMastraLaunchTimeoutMs(
+            options.timeoutMs ?? env.MASTRA_EXPERIENCE_EMBEDDING_TIMEOUT_MS,
+          ),
         ),
       },
     )

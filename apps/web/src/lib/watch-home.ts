@@ -1,9 +1,11 @@
 import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
-import type { AdminResultOf } from "@forge/admin-graphql"
+import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
+import { localWatchHomeBlurDataUrl } from "@/lib/enrichment"
 import { publicWatchHomeLanguageSlugForLocale } from "@/lib/locale"
 import {
   asLocaleSlug,
@@ -32,6 +34,21 @@ import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
 type WatchHomeVideosData = AdminResultOf<typeof getWatchHomeVideosOperation>
+const getWatchHomeEditorialOverridesOperation = adminGraphql(
+  `
+    query GetWatchHomeEditorialOverrides($locale: String!) {
+      watchSetting(locale: $locale) {
+        homepageExperience {
+          ...AdminWatchExperience
+        }
+      }
+    }
+  `,
+  [adminWatchExperienceFragment],
+)
+type WatchHomeEditorialOverridesData = AdminResultOf<
+  typeof getWatchHomeEditorialOverridesOperation
+>
 type AdminHomeVideo = WatchHomeVideosData["watchHomeVideos"][number]
 type AdminHomeChildRelation = NonNullable<AdminHomeVideo["children"]>[number]
 type AdminHomeChildVideo = NonNullable<AdminHomeChildRelation["child"]>
@@ -65,9 +82,13 @@ export type WatchHomeCard = {
   metaLabel: string | null
   href: string | null
   imageUrl: string | null
+  blurDataUrl: string | null
+  dominantColor: string | null
   imageAlt: string
   hls: string | null
   playbackId: string | null
+  subtitleVttSrc?: string | null
+  subtitleLanguageBcp47?: string | null
   durationSeconds: number | null
   childCount: number
   parentCoreId: string | null
@@ -100,6 +121,25 @@ export type WatchHomeModel = {
 export type WatchHomeResult =
   | { data: WatchHomeModel; error: null }
   | { data: null; error: ErrorLike | Error }
+
+type WatchHomeExperienceBlock = NonNullable<
+  NonNullable<
+    NonNullable<
+      WatchHomeEditorialOverridesData["watchSetting"]
+    >["homepageExperience"]
+  >["blocks"]
+>[number]
+
+type MediaOverride = {
+  imageUrl: string
+  blurDataUrl: string | null
+  dominantColor: string | null
+}
+type MediaOverrideMap = Map<string, MediaOverride>
+type VideoOverrideRef = {
+  documentId?: string | null
+  coreId?: string | null
+}
 
 const ENGLISH_LANGUAGE_SLUG = asLocaleSlug("english")
 
@@ -135,6 +175,102 @@ function selectedLanguageSlug(locale: string): string {
   return publicWatchHomeLanguageSlugForLocale(locale) ?? ENGLISH_LANGUAGE_SLUG
 }
 
+function overrideKey(sectionId: string, videoId: string) {
+  return `${sectionId}:${videoId}`
+}
+
+function recordValue(value: unknown, key: string) {
+  return typeof value === "object" && value != null
+    ? (value as Record<string, unknown>)[key]
+    : null
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.length > 0 ? value : null
+}
+
+function collectMediaOverrides(
+  blocks: readonly WatchHomeExperienceBlock[] | null | undefined,
+): MediaOverrideMap {
+  const overrides: MediaOverrideMap = new Map()
+
+  function visit(value: unknown) {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item)
+      return
+    }
+    if (typeof value !== "object" || value == null) return
+
+    const sectionId =
+      stringValue(recordValue(value, "sectionKey")) ??
+      stringValue(recordValue(value, "id"))
+    const items = recordValue(value, "items")
+    if (sectionId && Array.isArray(items)) {
+      for (const item of items) {
+        const videoId = stringValue(recordValue(item, "videoId"))
+        const imageUrl =
+          stringValue(recordValue(item, "imageOverrideUrl")) ??
+          stringValue(recordValue(item, "imageUrl"))
+        const blurDataUrl =
+          stringValue(recordValue(item, "imageOverrideBlurDataUrl")) ??
+          stringValue(recordValue(item, "imageBlurDataUrl"))
+        const dominantColor =
+          stringValue(recordValue(item, "imageOverrideDominantColor")) ??
+          stringValue(recordValue(item, "imageDominantColor"))
+        if (videoId && imageUrl) {
+          overrides.set(overrideKey(sectionId, videoId), {
+            imageUrl,
+            blurDataUrl,
+            dominantColor,
+          })
+        }
+      }
+    }
+
+    for (const child of Object.values(value)) {
+      if (Array.isArray(child)) visit(child)
+    }
+  }
+
+  visit(blocks)
+  return overrides
+}
+
+function applyMediaOverride(
+  card: WatchHomeCard,
+  args: {
+    sectionId: string
+    mediaOverrides: MediaOverrideMap
+    video?: VideoOverrideRef | null
+    sourceVideo?: VideoOverrideRef | null
+  },
+): WatchHomeCard {
+  const candidates = [
+    args.video?.documentId,
+    args.video?.coreId,
+    args.sourceVideo?.documentId,
+    args.sourceVideo?.coreId,
+    card.id,
+    card.coreId,
+    card.sourceId,
+  ]
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    const override = args.mediaOverrides.get(
+      overrideKey(args.sectionId, candidate),
+    )
+    if (override) {
+      return {
+        ...card,
+        imageUrl: override.imageUrl,
+        blurDataUrl: override.blurDataUrl,
+        dominantColor: override.dominantColor,
+      }
+    }
+  }
+  return card
+}
+
 function labelText(label: string | null | undefined): string {
   return label ? (LABEL_TEXT[label] ?? "Video") : "Video"
 }
@@ -163,17 +299,18 @@ function selectPlayableVariant(
   return localeMatch ?? primaryMatch ?? playable[0] ?? null
 }
 
-function pickAdminImage(images: readonly AdminHomeImage[]): string | null {
-  for (const image of images) {
-    const candidate =
-      image.mobileCinematicHigh ??
-      image.mobileCinematicLow ??
-      image.videoStill ??
-      image.url ??
-      image.thumbnail
-    if (candidate) return candidate
-  }
-  return null
+function adminImageUrl(image: AdminHomeImage) {
+  return (
+    image.mobileCinematicHigh ??
+    image.mobileCinematicLow ??
+    image.videoStill ??
+    image.url ??
+    image.thumbnail
+  )
+}
+
+function pickAdminImage(images: readonly AdminHomeImage[]) {
+  return images.find((image) => adminImageUrl(image)) ?? null
 }
 
 function buildMetaLabel(args: {
@@ -206,6 +343,32 @@ function buildHref(args: {
     : watchVideoPath(slug, lang)
 }
 
+function selectSubtitleTrack(
+  variant: AdminHomeVariant | null,
+  languageSlug: string,
+): { vttSrc: string; bcp47: string | null } | null {
+  const subtitles =
+    variant?.videoEdition?.subtitles?.filter((subtitle) =>
+      Boolean(subtitle.vttSrc),
+    ) ?? []
+  if (!subtitles.length) return null
+
+  const selected =
+    subtitles.find(
+      (subtitle) => subtitle.language?.slug === variant?.language?.slug,
+    ) ??
+    subtitles.find((subtitle) => subtitle.language?.slug === languageSlug) ??
+    subtitles.find((subtitle) => subtitle.primary === true) ??
+    subtitles[0]
+
+  return selected?.vttSrc
+    ? {
+        vttSrc: selected.vttSrc,
+        bcp47: selected.language?.bcp47 ?? null,
+      }
+    : null
+}
+
 function missingEntry(args: WatchHomeMissingData): WatchHomeMissingData {
   return args
 }
@@ -230,9 +393,17 @@ function normalizeCard(args: {
       ? (args.video.primaryLanguage?.coreId ?? null)
       : null,
   )
+  const subtitleTrack = selectSubtitleTrack(selectedVariant, args.languageSlug)
   const playbackId = selectedVariant?.muxVideo?.playbackId ?? null
-  const adminImageUrl = pickAdminImage(args.video.images ?? [])
-  const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
+  const adminImage = pickAdminImage(args.video.images ?? [])
+  const sourceImageUrl = adminImage
+    ? adminImageUrl(adminImage)
+    : muxThumbnail(playbackId)
+  const imageBlurDataUrl = adminImage?.blurDataUrl ?? null
+  const dominantColor = adminImage?.dominantColor ?? null
+  const imageUrl = sourceImageUrl
+  const blurDataUrl =
+    imageBlurDataUrl ?? localWatchHomeBlurDataUrl(args.video.coreId)
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video && Array.isArray(args.video.children)
@@ -259,14 +430,14 @@ function normalizeCard(args: {
       }),
     )
   }
-  if (!adminImageUrl) {
+  if (!adminImage) {
     missingData.push(
       missingEntry({
         sectionId: args.sectionId,
         sourceId: args.sourceId,
         field: "image",
         detail: `Admin returned ${args.video.coreId} without a usable cinematic/still image.`,
-        fallback: imageUrl ? "Mux thumbnail" : "Styled placeholder",
+        fallback: sourceImageUrl ? "Mux thumbnail" : "Styled placeholder",
         followUp:
           "Ingest the source app local thumbnail override or enrich admin/Core image fields.",
       }),
@@ -300,9 +471,13 @@ function normalizeCard(args: {
     }),
     href,
     imageUrl,
+    blurDataUrl,
+    dominantColor,
     imageAlt: locale?.imageAlt ?? title,
     hls: selectedVariant?.hls ?? null,
     playbackId,
+    subtitleVttSrc: subtitleTrack?.vttSrc ?? null,
+    subtitleLanguageBcp47: subtitleTrack?.bcp47 ?? null,
     durationSeconds:
       selectedVariant?.duration ?? args.video.durationSeconds ?? null,
     childCount,
@@ -318,6 +493,7 @@ function cardEntriesForSource(args: {
   videoByCoreId: Map<string, AdminHomeVideo>
   languageSlug: string
   missingData: WatchHomeMissingData[]
+  mediaOverrides: MediaOverrideMap
 }): WatchHomeCard[] {
   const parent = args.videoByCoreId.get(args.source.id)
   if (!parent) {
@@ -338,8 +514,8 @@ function cardEntriesForSource(args: {
   if ((args.source.limitChildren ?? 0) > 0) {
     return (parent.children ?? [])
       .slice(0, args.source.limitChildren)
-      .map((rel) =>
-        rel.child
+      .map((rel) => {
+        const card = rel.child
           ? normalizeCard({
               sectionId: args.sectionId,
               sourceId: args.source.id,
@@ -347,8 +523,16 @@ function cardEntriesForSource(args: {
               parent,
               languageSlug: args.languageSlug,
             })
-          : null,
-      )
+          : null
+        return card
+          ? applyMediaOverride(card, {
+              sectionId: args.sectionId,
+              mediaOverrides: args.mediaOverrides,
+              video: rel.child,
+              sourceVideo: parent,
+            })
+          : null
+      })
       .filter((card): card is WatchHomeCard => card != null)
   }
 
@@ -358,7 +542,16 @@ function cardEntriesForSource(args: {
     video: parent,
     languageSlug: args.languageSlug,
   })
-  return card ? [card] : []
+  return card
+    ? [
+        applyMediaOverride(card, {
+          sectionId: args.sectionId,
+          mediaOverrides: args.mediaOverrides,
+          video: parent,
+          sourceVideo: parent,
+        }),
+      ]
+    : []
 }
 
 function cardsForPrimaryCollection(args: {
@@ -366,6 +559,7 @@ function cardsForPrimaryCollection(args: {
   videoByCoreId: Map<string, AdminHomeVideo>
   languageSlug: string
   missingData: WatchHomeMissingData[]
+  mediaOverrides: MediaOverrideMap
 }): WatchHomeCard[] {
   const collectionId = args.section.primaryCollectionId
   if (!collectionId) return []
@@ -387,8 +581,8 @@ function cardsForPrimaryCollection(args: {
 
   return (parent.children ?? [])
     .slice(0, args.section.childLimit ?? 12)
-    .map((rel) =>
-      rel.child
+    .map((rel) => {
+      const card = rel.child
         ? normalizeCard({
             sectionId: args.section.id,
             sourceId: collectionId,
@@ -396,8 +590,16 @@ function cardsForPrimaryCollection(args: {
             parent,
             languageSlug: args.languageSlug,
           })
-        : null,
-    )
+        : null
+      return card
+        ? applyMediaOverride(card, {
+            sectionId: args.section.id,
+            mediaOverrides: args.mediaOverrides,
+            video: rel.child,
+            sourceVideo: parent,
+          })
+        : null
+    })
     .filter((card): card is WatchHomeCard => card != null)
 }
 
@@ -405,6 +607,7 @@ function buildSections(args: {
   videoByCoreId: Map<string, AdminHomeVideo>
   languageSlug: string
   missingData: WatchHomeMissingData[]
+  mediaOverrides: MediaOverrideMap
 }): WatchHomeSection[] {
   return WATCH_HOME_SECTIONS.map((section) => {
     const cards =
@@ -416,6 +619,7 @@ function buildSections(args: {
               videoByCoreId: args.videoByCoreId,
               languageSlug: args.languageSlug,
               missingData: args.missingData,
+              mediaOverrides: args.mediaOverrides,
             }),
           )
         : cardsForPrimaryCollection({
@@ -423,6 +627,7 @@ function buildSections(args: {
             videoByCoreId: args.videoByCoreId,
             languageSlug: args.languageSlug,
             missingData: args.missingData,
+            mediaOverrides: args.mediaOverrides,
           })
 
     return {
@@ -456,6 +661,8 @@ function cardToCarouselSlide(
     imageAlt: card.imageAlt,
     src: card.hls,
     playbackId: card.playbackId,
+    subtitleVttSrc: card.subtitleVttSrc,
+    subtitleLanguageBcp47: card.subtitleLanguageBcp47,
     durationSeconds: card.durationSeconds,
   }
 }
@@ -603,6 +810,7 @@ export function buildWatchHomeModelFromVideos(args: {
   videos: readonly AdminHomeVideo[]
   locale: string
   languageSlug?: string | null
+  experienceBlocks?: readonly WatchHomeExperienceBlock[] | null
 }): WatchHomeModel {
   const languageSlug = args.languageSlug ?? selectedLanguageSlug(args.locale)
   const missingData: WatchHomeMissingData[] = [
@@ -630,6 +838,7 @@ export function buildWatchHomeModelFromVideos(args: {
   const videoByCoreId = new Map(
     args.videos.filter(hasCoreId).map((video) => [video.coreId, video]),
   )
+  const mediaOverrides = collectMediaOverrides(args.experienceBlocks)
 
   const heroSlides = WATCH_HOME_HERO_SOURCE_IDS.flatMap((sourceId) => {
     const video = videoByCoreId.get(sourceId)
@@ -657,7 +866,12 @@ export function buildWatchHomeModelFromVideos(args: {
     return card ? [{ ...card, eyebrow: "Featured" }] : []
   })
 
-  const sections = buildSections({ videoByCoreId, languageSlug, missingData })
+  const sections = buildSections({
+    videoByCoreId,
+    languageSlug,
+    missingData,
+    mediaOverrides,
+  })
   const carousel = {
     pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
     muxInserts: WATCH_HOME_MUX_INSERTS,
@@ -681,25 +895,38 @@ async function fetchWatchHomeModel(
   locale: string,
   languageSlug: string,
 ): Promise<WatchHomeModel> {
-  const result = await client.query({
-    query: getWatchHomeVideosOperation,
-    variables: {
-      coreIds: getWatchHomeCoreIds(),
-      locale,
-      languageSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+  const [videosResult, overridesResult] = await Promise.all([
+    client.query({
+      query: getWatchHomeVideosOperation,
+      variables: {
+        coreIds: getWatchHomeCoreIds(),
+        locale,
+        languageSlug,
+      },
+      fetchPolicy: "no-cache",
+    }),
+    client.query({
+      query: getWatchHomeEditorialOverridesOperation,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    }),
+  ])
 
   const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
+    videosResult as { error?: ErrorLike; errors?: unknown[] },
   )
   if (error) throw error
+  const overridesError = graphqlError(
+    overridesResult as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (overridesError) throw overridesError
 
   return buildWatchHomeModelFromVideos({
-    videos: result.data?.watchHomeVideos ?? [],
+    videos: videosResult.data?.watchHomeVideos ?? [],
     locale,
     languageSlug,
+    experienceBlocks:
+      overridesResult.data?.watchSetting?.homepageExperience?.blocks ?? null,
   })
 }
 
@@ -710,9 +937,12 @@ const getCachedWatchHomeModel = unstable_cache(
 )
 
 export const resolveWatchHome = cache(
-  async (locale: string): Promise<WatchHomeResult> => {
+  async (
+    locale: string,
+    languageSlugOverride?: string | null,
+  ): Promise<WatchHomeResult> => {
     try {
-      const languageSlug = selectedLanguageSlug(locale)
+      const languageSlug = languageSlugOverride ?? selectedLanguageSlug(locale)
       const model = await getCachedWatchHomeModel(locale, languageSlug)
       return {
         data: JSON.parse(JSON.stringify(model)) as WatchHomeModel,

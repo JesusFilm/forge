@@ -22,8 +22,23 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "transcript-raw": {
+    artifactType: "transcript-raw",
+    ext: "json",
+    contentType: "application/json",
+  },
+  "transcript-correction-report": {
+    artifactType: "transcript-correction-report",
+    ext: "json",
+    contentType: "application/json",
+  },
   subtitles: {
     artifactType: "subtitles",
+    ext: "vtt",
+    contentType: "text/vtt; charset=utf-8",
+  },
+  "subtitles-raw": {
+    artifactType: "subtitles-raw",
     ext: "vtt",
     contentType: "text/vtt; charset=utf-8",
   },
@@ -81,6 +96,11 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
     ext: "json",
     contentType: "application/json",
   },
+  "smart-crop-attempts": {
+    artifactType: "smart-crop-attempts-9x16-v1",
+    ext: "json",
+    contentType: "application/json",
+  },
   "smart-crop-timeline-map": {
     artifactType: "smart-crop-timeline-map-v1",
     ext: "json",
@@ -114,8 +134,11 @@ const EXACT_JOB_ARTIFACTS: Record<string, JobArtifactDescriptor> = {
 }
 
 const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
-  transcript: "Transcript raw",
-  subtitles: "Subtitles processed",
+  transcript: "Transcript JSON",
+  "transcript-raw": "Transcript raw",
+  "transcript-correction-report": "Transcript correction report",
+  subtitles: "Subtitles VTT",
+  "subtitles-raw": "Subtitles raw",
   subtitlesVtt: "Subtitles processed",
   chapters: "Chapters JSON",
   "chapters-vtt": "Chapters VTT",
@@ -126,6 +149,7 @@ const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
   "cleaned-audio": "Audio clean",
   "smart-crop-fingerprint": "Smart Crop fingerprint",
   "smart-crop-plan": "Smart Crop plan",
+  "smart-crop-attempts": "Smart Crop attempts",
   "smart-crop-timeline-map": "Smart Crop timeline map",
   "smart-crop-qa": "Smart Crop QA report",
   "smart-crop-preview": "Smart Crop preview video",
@@ -135,15 +159,28 @@ const EXACT_JOB_ARTIFACT_LABELS: Record<string, string> = {
 }
 
 const SMART_CROP_PREVIEW_FRAME_PATTERN = /^smart-crop-preview-frame-9x16-\d{3}$/
+const SMART_CROP_ATTEMPT_PATTERN = /-attempt-(\d{3})(?:-|$)/
+const SMART_CROP_PLAN_ATTEMPT_PATTERN = /^smart-crop-plan-attempt-\d{3}$/
+const SMART_CROP_QA_ATTEMPT_PATTERN = /^smart-crop-qa-attempt-\d{3}$/
+const SMART_CROP_PREVIEW_ATTEMPT_PATTERN = /^smart-crop-preview-attempt-\d{3}$/
+const SMART_CROP_RENDER_REPORT_PREVIEW_ATTEMPT_PATTERN =
+  /^smart-crop-render-report-preview-attempt-\d{3}$/
+const SMART_CROP_PREVIEW_FRAME_ATTEMPT_PATTERN =
+  /^smart-crop-preview-frame-9x16-\d{3}-attempt-\d{3}$/
 
 const STEP_ARTIFACT_KEYS: Partial<Record<WorkflowStepName, string[]>> = {
   transcription: ["transcript", "subtitles", "subtitlesVtt"],
+  structured_transcript: [
+    "transcript-correction-report",
+    "transcript-raw",
+    "subtitles-raw",
+  ],
   chapters: ["chapters", "chapters-vtt"],
   metadata: ["metadata"],
   embeddings: ["embeddings"],
   audio_cleanup: ["original-audio", "cleaned-audio"],
   smart_crop_fingerprint: ["smart-crop-fingerprint"],
-  smart_crop_plan: ["smart-crop-plan"],
+  smart_crop_plan: ["smart-crop-plan", "smart-crop-attempts"],
   smart_crop_align: ["smart-crop-timeline-map"],
   smart_crop_preview_render: [
     "smart-crop-preview",
@@ -168,6 +205,29 @@ function buildDynamicArtifactLabel(logicalKey: string): string {
 
   if (SMART_CROP_PREVIEW_FRAME_PATTERN.test(logicalKey)) {
     return `Smart Crop preview frame ${logicalKey.slice(-3)}`
+  }
+
+  const attemptMatch = logicalKey.match(SMART_CROP_ATTEMPT_PATTERN)
+  const attemptLabel = attemptMatch ? `attempt ${attemptMatch[1]}` : null
+
+  if (SMART_CROP_PLAN_ATTEMPT_PATTERN.test(logicalKey)) {
+    return `Smart Crop plan (${attemptLabel})`
+  }
+  if (SMART_CROP_QA_ATTEMPT_PATTERN.test(logicalKey)) {
+    return `Smart Crop QA report (${attemptLabel})`
+  }
+  if (SMART_CROP_PREVIEW_ATTEMPT_PATTERN.test(logicalKey)) {
+    return `Smart Crop preview video (${attemptLabel})`
+  }
+  if (SMART_CROP_RENDER_REPORT_PREVIEW_ATTEMPT_PATTERN.test(logicalKey)) {
+    return `Smart Crop render report preview (${attemptLabel})`
+  }
+  if (SMART_CROP_PREVIEW_FRAME_ATTEMPT_PATTERN.test(logicalKey)) {
+    const [, frame, attempt] =
+      logicalKey.match(
+        /^smart-crop-preview-frame-9x16-(\d{3})-attempt-(\d{3})$/,
+      ) ?? []
+    return `Smart Crop preview frame ${frame} (attempt ${attempt})`
   }
 
   return logicalKey
@@ -213,7 +273,10 @@ function buildTranslationArtifactDescriptor(
 function buildSmartCropPreviewFrameDescriptor(
   logicalKey: string,
 ): JobArtifactDescriptor | null {
-  if (!SMART_CROP_PREVIEW_FRAME_PATTERN.test(logicalKey)) {
+  if (
+    !SMART_CROP_PREVIEW_FRAME_PATTERN.test(logicalKey) &&
+    !SMART_CROP_PREVIEW_FRAME_ATTEMPT_PATTERN.test(logicalKey)
+  ) {
     return null
   }
 
@@ -224,13 +287,58 @@ function buildSmartCropPreviewFrameDescriptor(
   }
 }
 
+function buildSmartCropAttemptDescriptor(
+  logicalKey: string,
+): JobArtifactDescriptor | null {
+  const planMatch = logicalKey.match(/^smart-crop-plan-attempt-(\d{3})$/)
+  if (planMatch) {
+    return {
+      artifactType: `smart-crop-plan-9x16-attempt-${planMatch[1]}-v1`,
+      ext: "json",
+      contentType: "application/json",
+    }
+  }
+
+  const qaMatch = logicalKey.match(/^smart-crop-qa-attempt-(\d{3})$/)
+  if (qaMatch) {
+    return {
+      artifactType: `smart-crop-qa-9x16-attempt-${qaMatch[1]}-v1`,
+      ext: "json",
+      contentType: "application/json",
+    }
+  }
+
+  const previewMatch = logicalKey.match(/^smart-crop-preview-attempt-(\d{3})$/)
+  if (previewMatch) {
+    return {
+      artifactType: `smart-crop-preview-9x16-attempt-${previewMatch[1]}`,
+      ext: "mp4",
+      contentType: "video/mp4",
+    }
+  }
+
+  const reportMatch = logicalKey.match(
+    /^smart-crop-render-report-preview-attempt-(\d{3})$/,
+  )
+  if (reportMatch) {
+    return {
+      artifactType: `smart-crop-render-report-9x16-preview-attempt-${reportMatch[1]}`,
+      ext: "json",
+      contentType: "application/json",
+    }
+  }
+
+  return null
+}
+
 export function resolveJobArtifactDescriptor(
   logicalKey: string,
 ): JobArtifactDescriptor | null {
   return (
     EXACT_JOB_ARTIFACTS[logicalKey] ??
     buildTranslationArtifactDescriptor(logicalKey) ??
-    buildSmartCropPreviewFrameDescriptor(logicalKey)
+    buildSmartCropPreviewFrameDescriptor(logicalKey) ??
+    buildSmartCropAttemptDescriptor(logicalKey)
   )
 }
 

@@ -41,6 +41,13 @@ const sectionKey = z.string().min(1).max(200).optional()
 /** Explicit union of Strapi heading levels so downstream renderers are narrow. */
 const headingLevel = z.enum(["h1", "h2", "h3", "h4", "h5", "h6"])
 const assetId = z.string().min(1).optional()
+const mediaUrl = z.string().refine(
+  (value) => {
+    if (value.startsWith("/")) return true
+    return URL.canParse(value)
+  },
+  { message: "Invalid URL" },
+)
 
 // -----------------------------------------------------------------------------
 // Leaf components (embedded inside blocks; not top-level)
@@ -50,14 +57,30 @@ const assetId = z.string().min(1).optional()
 export const BibleQuoteItemSchema = z
   .object({
     reference: z.string().min(1),
-    text: z.string().min(1),
-    backgroundImageUrl: z.string().url().optional(),
+    /**
+     * Verse text. Optional because reference-first scripture (video-anchored
+     * generation) stores only the reference + structured citation identity and
+     * resolves the actual verse text at web render from the YouVersion / jsdelivr
+     * pipeline — the LLM never authors it. Hand-authored quotes may still carry text.
+     */
+    text: z.string().min(1).optional(),
+    /**
+     * Structured citation identity (from BibleCitation rows) so apps/web can resolve
+     * verse text by stable book/chapter/verse instead of parsing the reference label.
+     * Optional for backward compatibility with existing hand-authored quotes.
+     */
+    osisId: z.string().min(1).optional(),
+    chapterStart: z.number().int().min(1).optional(),
+    chapterEnd: z.number().int().min(1).optional(),
+    verseStart: z.number().int().min(1).optional(),
+    verseEnd: z.number().int().min(1).optional(),
+    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
     ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
     ctaLink: z.string().optional(),
     attribution: z.string().optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
@@ -77,13 +100,15 @@ export const MediaCollectionItemSchema = z
   .object({
     /** Reference to a Video row by id (resolved on read). */
     videoId: z.string().optional(),
-    imageOverrideUrl: z.string().url().optional(),
+    /** Snapshot of the Video route slug so static authored collections can link. */
+    videoSlug: z.string().min(1).optional(),
+    imageOverrideUrl: mediaUrl.optional(),
     imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     labelOverride: z.string().optional(),
     collectionSize: z.string().optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     linkToSectionKey: z.string().optional(),
   })
@@ -95,7 +120,7 @@ export const NavigationCarouselItemSchema = z
     contentId: z.string().min(1),
     title: z.string().min(1),
     category: z.string().optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
@@ -115,9 +140,9 @@ export const VideoCarouselItemSchema = z
   .object({
     videoId: z.string().optional(),
     streamingUrl: z.string().optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
-    imageOverrideUrl: z.string().url().optional(),
+    imageOverrideUrl: mediaUrl.optional(),
     imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
@@ -133,7 +158,7 @@ export const AdventCountdownBlockSchema = z
   .object({
     t: z.literal("adventCountdown"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     title: z.string().min(1),
@@ -147,7 +172,7 @@ export const BibleQuotesCarouselBlockSchema = z
   .object({
     t: z.literal("bibleQuotesCarousel"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -161,7 +186,7 @@ export const CardBlockSchema = z
     sectionKey,
     title: z.string().min(1),
     description: z.string().min(1),
-    mediaUrl: z.string().url().optional(),
+    mediaUrl: mediaUrl.optional(),
     mediaAssetId: assetId,
     backgroundColor: z.string().optional(),
     link: z.string().optional(),
@@ -173,7 +198,7 @@ export const CtaBlockSchema = z
   .object({
     t: z.literal("cta"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -188,7 +213,7 @@ export const EasterDatesBlockSchema = z
   .object({
     t: z.literal("easterDates"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     easterDatesTitle: z.string().min(1),
@@ -206,7 +231,7 @@ export const InfoBlocksBlockSchema = z
   .object({
     t: z.literal("infoBlocks"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
@@ -221,7 +246,7 @@ export const MediaCollectionBlockSchema = z
   .object({
     t: z.literal("mediaCollection"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     categoryLabel: z.string().optional(),
@@ -242,7 +267,7 @@ export const NavigationCarouselBlockSchema = z
   .object({
     t: z.literal("navigationCarousel"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     items: z.array(NavigationCarouselItemSchema).default([]),
@@ -253,7 +278,7 @@ export const PromoBannerBlockSchema = z
   .object({
     t: z.literal("promoBanner"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
@@ -286,7 +311,7 @@ export const RelatedQuestionsBlockSchema = z
   .object({
     t: z.literal("relatedQuestions"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -301,7 +326,7 @@ export const TextBlockSchema = z
   .object({
     t: z.literal("text"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -320,7 +345,7 @@ export const VideoBlockSchema = z
     streamingUrl: z.string().optional(),
     /** Reference to a Video row by id. */
     videoId: z.string().optional(),
-    mediaUrl: z.string().url().optional(),
+    mediaUrl: mediaUrl.optional(),
     mediaAssetId: assetId,
     clipStartSeconds: z.number().min(0).optional(),
     clipEndSeconds: z.number().min(0).optional(),
@@ -339,7 +364,7 @@ export const VideoCarouselBlockSchema = z
   .object({
     t: z.literal("videoCarousel"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
@@ -362,7 +387,7 @@ export const VideoRecommendationsBlockSchema = z
   .object({
     t: z.literal("videoRecommendations"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageUrl: mediaUrl.optional(),
     backgroundColor: z.string().optional(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -399,6 +424,13 @@ export const VideoHeroBlockSchema = z
   })
   .strict()
 
+export const WatchHomeHeroBlockSchema = z
+  .object({
+    t: z.literal("watchHomeHero"),
+    sectionKey,
+  })
+  .strict()
+
 // -----------------------------------------------------------------------------
 // Container composition (no recursion — slot content is a narrower set).
 // -----------------------------------------------------------------------------
@@ -424,7 +456,7 @@ export const ContainerSlotBlockSchema = z
     gridSpan: z.number().int().min(1).max(12).default(6),
     spans: ContainerSlotSpansSchema.optional(),
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: z.string().url().optional(),
+    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
   })
   .strict()
@@ -455,7 +487,7 @@ export const ContainerBlockSchema = z
     t: z.literal("container"),
     sectionKey,
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: z.string().url().optional(),
+    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
     content: z.array(ContainerContentBlockSchema).default([]),
     /** Legacy nested-slot payloads are tolerated so old drafts can be opened. */
@@ -501,7 +533,7 @@ export const SectionBlockSchema = z
     t: z.literal("section"),
     sectionKey,
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: z.string().url().optional(),
+    backgroundImageUrl: mediaUrl.optional(),
     backgroundImageAssetId: assetId,
     blurHash: z.string().optional(),
     backgroundOpacity: z.number().min(0).max(1).optional(),
@@ -540,6 +572,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   VideoCarouselBlockSchema,
   VideoRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
+  WatchHomeHeroBlockSchema,
 ])
 
 export type Block = z.infer<typeof BlockSchema>
@@ -551,7 +584,7 @@ export type Block = z.infer<typeof BlockSchema>
  * Deliberately has NO global `.min()`: this schema governs ALL persistence,
  * including legitimate manual experiences that may have a single block. The
  * AI-generation minimum-block-count rule is single-sourced as
- * `GENERATION_MIN_BLOCKS` in `services/experience-ai/experience-ai.schemas.ts`
+ * `GENERATION_MIN_BLOCKS` in `@forge/experience-schema`
  * and enforced only on the generation path (the workflow's
  * `DraftExperienceSchema` gate + the post-normalize check in
  * `experience-ai-normalize.ts`). Adding a minimum here would reject valid

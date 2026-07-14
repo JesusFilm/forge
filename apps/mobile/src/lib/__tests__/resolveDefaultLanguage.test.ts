@@ -1,9 +1,8 @@
 import { resolveDefaultSlug } from "../resolveDefaultLanguage"
 
 /**
- * Pure-function tests for the default-language resolution used by the watch
- * session (variant + subtitle defaults). Device locale is read from
- * Intl.DateTimeFormat; we override it per-test to exercise each branch of the
+ * Pure-function tests for watch-session default-language resolution. Device
+ * locale (from Intl.DateTimeFormat) is overridden per-test to exercise the
  * priority chain: device locale → video primary → English → first option.
  */
 

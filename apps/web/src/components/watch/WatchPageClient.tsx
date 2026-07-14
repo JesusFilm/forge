@@ -11,8 +11,8 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 import {
-  WATCH_CHAPTER_POSTER_BLACKOUT_MS,
-  WATCH_CHAPTER_POSTER_REVEAL_MS,
+  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  type WatchChapterCarouselPreserveState,
   type WatchChapterNavigationIntent,
 } from "@/components/watch/chapter-navigation"
 // Modals are user-triggered (download / language picker / share). Split
@@ -40,11 +40,13 @@ const ShareModal = dynamic(
   { ssr: false },
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
+import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
-import { redirectToAuth } from "@/components/watch/download-session-client"
+import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
+  buildMediaProxyUrl,
   buildDownloadFilename,
   buildDownloadProxyUrl,
 } from "@/components/watch/download-link"
@@ -56,9 +58,10 @@ import type {
   WatchSiblingCarouselBlock,
   WatchSubtitle,
 } from "@/lib/content"
-import { isWatchBlock } from "@/lib/content"
+import { isWatchBlock } from "@/lib/watch-blocks"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
+import { languageCodeFor } from "@/lib/language-code"
 import {
   WATCH_BASE_PATH,
   tryAsContentSlug,
@@ -80,7 +83,7 @@ import {
   getCachedWatchLanguageOptions,
   loadWatchInteraction,
   loadWatchLanguageOptionsForVideo,
-  scheduleWatchInteractionWarmup,
+  shouldRefreshCachedWatchLanguageOptions,
 } from "@/lib/watch-interaction-loader"
 
 function resolveSubtitleSlug(
@@ -176,8 +179,8 @@ type WatchPageClientProps = {
   collectionSlug?: string | null
   /**
    * Validated ISO locale ("en" | "es" | ...) from the URL `[locale]` segment.
-   * Threaded into `BibleQuotesSection` so the wldeh/bible-api fetch and
-   * BibleGateway "Read more..." link pick the right translation.
+   * Kept on the client boundary for watch UI chrome and routing contracts.
+   * Bible passage translation selection is resolved by Admin before render.
    */
   locale?: string
   hideBibleQuotes?: boolean
@@ -191,13 +194,17 @@ type LanguageOptionsState =
   | { status: "ready"; variants: LanguagePickerVariant[] }
   | { status: "error"; variants: LanguagePickerVariant[] }
 
-type ChapterCoverTransition = {
-  intent: WatchChapterNavigationIntent
-  key: string
-  phase: "covering" | "revealing"
-}
-
 const WATCH_CHAPTER_ROUTE_WARM_TIMEOUT_MS = 10_000
+
+function appendAutoplaySignal(href: string): string {
+  try {
+    const url = new URL(href, "http://watch.local")
+    url.searchParams.set("autoplay", "1")
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return href.includes("?") ? `${href}&autoplay=1` : `${href}?autoplay=1`
+  }
+}
 
 async function warmWatchChapterRoute(href: string): Promise<void> {
   if (typeof window === "undefined") return
@@ -259,7 +266,6 @@ export function WatchPageClient({
   video,
   languageSlug,
   collectionSlug = null,
-  locale,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
@@ -286,13 +292,18 @@ export function WatchPageClient({
   }, [])
 
   const currentLanguageSlug = languageSlug ?? variant.language?.slug ?? ""
+  const selectedLanguageCode =
+    [variant.language?.iso3, variant.language?.bcp47, variant.language?.slug]
+      .map((code) => code?.trim())
+      .find(Boolean) ?? null
   const videoSlug = video.slug ?? ""
   const tDownloadButton = useTranslations("DownloadButton")
+  const downloadSessionErrorMessage = tDownloadButton("sessionError")
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
+  const pendingChapterHrefRef = useRef<string | null>(null)
+  const [chapterAutoplayEnabled, setChapterAutoplayEnabled] = useState(false)
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
-  const [chapterCoverTransition, setChapterCoverTransition] =
-    useState<ChapterCoverTransition | null>(null)
   const validPendingChapter =
     pendingChapter != null &&
     pendingChapter.languageSlug === currentLanguageSlug &&
@@ -314,60 +325,47 @@ export function WatchPageClient({
     return promise
   }, [])
 
-  useEffect(() => {
-    if (chapterCoverTransition == null) return
-
-    let cancelled = false
-    const delay =
-      chapterCoverTransition.phase === "covering"
-        ? WATCH_CHAPTER_POSTER_BLACKOUT_MS
-        : WATCH_CHAPTER_POSTER_REVEAL_MS
-    const timer = window.setTimeout(() => {
-      if (chapterCoverTransition.phase === "covering") {
-        playerRef.current?.pause()
-        setPendingChapter(chapterCoverTransition.intent)
-        setChapterCoverTransition({
-          ...chapterCoverTransition,
-          phase: "revealing",
-        })
-        return
-      }
-
-      const { intent } = chapterCoverTransition
-      const routeWarmPromise = warmChapterRoute(intent.href)
-      void routeWarmPromise.finally(() => {
-        if (cancelled) return
-        router.push(intent.href as Route, { scroll: window.scrollY > 1 })
-      })
-    }, delay)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-    }
-  }, [chapterCoverTransition, router, warmChapterRoute])
+  const handlePlayerActivated = useCallback(() => {
+    setChapterAutoplayEnabled(true)
+  }, [])
 
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
-      warmChapterRoute(intent.href)
+      pendingChapterHrefRef.current = intent.href
+      setPendingChapter(intent)
+      const routeWarmPromise = warmChapterRoute(intent.href)
       try {
         router.prefetch(intent.href as Route)
       } catch {
         // The explicit HTML warm above is the real navigation gate.
       }
-      setPendingChapter(null)
-      setChapterCoverTransition({
-        intent,
-        key: `${intent.targetVideoDocumentId}:${Date.now()}`,
-        phase: "covering",
+      void routeWarmPromise.finally(() => {
+        if (pendingChapterHrefRef.current !== intent.href) return
+        if (typeof window !== "undefined") {
+          const preserveState: WatchChapterCarouselPreserveState = {
+            languageSlug: intent.languageSlug,
+            sourceVideoDocumentId: intent.sourceVideoDocumentId,
+            targetVideoDocumentId: intent.targetVideoDocumentId,
+            sourceCarouselIndex: intent.sourceCarouselIndex ?? null,
+          }
+          window.sessionStorage.setItem(
+            WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+            JSON.stringify(preserveState),
+          )
+        }
+        const nextHref = chapterAutoplayEnabled
+          ? appendAutoplaySignal(intent.href)
+          : intent.href
+        router.push(nextHref as Route, {
+          scroll: false,
+        })
       })
     },
-    [router, warmChapterRoute],
+    [chapterAutoplayEnabled, router, warmChapterRoute],
   )
 
-  const coverBlackoutKey =
-    chapterCoverTransition != null ? chapterCoverTransition.key : null
-  const coverBlackoutPhase = chapterCoverTransition?.phase ?? null
+  const coverBlackoutKey = null
+  const coverBlackoutPhase = null
 
   const subtitles = useMemo(() => video.subtitles ?? [], [video.subtitles])
 
@@ -405,13 +403,20 @@ export function WatchPageClient({
     setSubtitleEnabled(pref.enabled && slugToUse != null)
   }, [currentLanguageSlug, subtitleInit, subtitles])
 
+  const selectedSubtitle = useMemo(() => {
+    if (!subtitleEnabled || !subtitleSlug) return null
+    return subtitles.find((item) => item.language.slug === subtitleSlug) ?? null
+  }, [subtitleEnabled, subtitleSlug, subtitles])
+
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined
-    if (!subtitleEnabled || !subtitleSlug) return null
-    return (
-      subtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ?? null
-    )
-  }, [subtitleEnabled, subtitleSlug, subtitles])
+    const rawVttSrc = selectedSubtitle?.vttSrc ?? null
+    return rawVttSrc ? buildMediaProxyUrl(rawVttSrc) : null
+  }, [selectedSubtitle, subtitles.length])
+
+  const subtitleLanguageCode = selectedSubtitle
+    ? languageCodeFor(selectedSubtitle.language)
+    : null
 
   const handleSubtitleChange = useCallback(
     (enabled: boolean, slug: string | null) => {
@@ -446,6 +451,12 @@ export function WatchPageClient({
               : null
           return {
             documentId: d.documentId,
+            height:
+              typeof d.height === "number" &&
+              Number.isFinite(d.height) &&
+              d.height > 0
+                ? d.height
+                : null,
             quality: d.quality as string,
             size: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
           }
@@ -459,11 +470,27 @@ export function WatchPageClient({
     if (!fallbackTier) return undefined
     return buildDownloadProxyUrl({
       downloadId: fallbackTier.download.documentId,
-      filename: buildDownloadFilename(video.title, fallbackTier.tier),
+      filename: buildDownloadFilename({
+        languageCode: selectedLanguageCode,
+        languageName: variant.language?.name ?? null,
+        languageSlug: variant.language?.slug ?? null,
+        renditionHeight: fallbackTier.download.height,
+        tier: fallbackTier.tier,
+        videoSlug,
+        videoTitle: video.title,
+      }),
       variantId: variant.documentId,
       videoSlug,
     })
-  }, [downloadsForModal, variant.documentId, video.title, videoSlug])
+  }, [
+    downloadsForModal,
+    selectedLanguageCode,
+    variant.documentId,
+    variant.language?.name,
+    variant.language?.slug,
+    video.title,
+    videoSlug,
+  ])
 
   const shareHref = useMemo(
     () =>
@@ -488,7 +515,11 @@ export function WatchPageClient({
   const [modalState, setModalState] = useState<WatchModalState>("none")
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
+  const [downloadAccountGateEnabled, setDownloadAccountGateEnabled] =
+    useState(false)
   const downloadPendingRef = useRef(false)
+  const downloadSessionRequestVersionRef = useRef(0)
   const [enabledModalChunks, setEnabledModalChunks] = useState({
     download: false,
     language: false,
@@ -500,8 +531,68 @@ export function WatchPageClient({
       variants: [],
     })
   const languageOptionsPendingRef = useRef(false)
+  const beginDownloadSessionRequest = useCallback(() => {
+    downloadSessionRequestVersionRef.current += 1
+    return downloadSessionRequestVersionRef.current
+  }, [])
+  const isCurrentDownloadSessionRequest = useCallback((version: number) => {
+    return downloadSessionRequestVersionRef.current === version
+  }, [])
+  const cancelDownloadSessionRequest = useCallback(() => {
+    downloadSessionRequestVersionRef.current += 1
+    downloadPendingRef.current = false
+    setDownloadPending(false)
+  }, [])
+  const languageOptionsVideoSlugRef = useRef(videoSlug)
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(DOWNLOAD_RETURN_INTENT_PARAM) !== "1") return
+
+    url.searchParams.delete(DOWNLOAD_RETURN_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+    setDownloadError(null)
+    setDownloadLoginUrl(null)
+    setDownloadAccountGateEnabled(false)
+    setEnabledModalChunks((prev) => ({ ...prev, download: true }))
+    void loadWatchInteraction("download").catch(() => {})
+    const requestVersion = beginDownloadSessionRequest()
+    void resolveDownloadSessionAccess()
+      .then((session) => {
+        if (!isCurrentDownloadSessionRequest(requestVersion)) return
+        if (session.ok) {
+          setDownloadAccountGateEnabled(session.accountGateEnabled)
+          setModalState("download")
+          return
+        }
+        if (session.reason === "auth-required") {
+          setDownloadAccountGateEnabled(true)
+          setDownloadLoginUrl(session.loginUrl)
+          setModalState("download")
+          return
+        }
+        setDownloadError(downloadSessionErrorMessage)
+      })
+      .catch(() => {
+        if (isCurrentDownloadSessionRequest(requestVersion)) {
+          setDownloadError(downloadSessionErrorMessage)
+        }
+      })
+    return () => {
+      if (isCurrentDownloadSessionRequest(requestVersion)) {
+        cancelDownloadSessionRequest()
+      }
+    }
+  }, [
+    beginDownloadSessionRequest,
+    cancelDownloadSessionRequest,
+    downloadSessionErrorMessage,
+    isCurrentDownloadSessionRequest,
+  ])
+
+  useEffect(() => {
+    languageOptionsVideoSlugRef.current = videoSlug
     languageOptionsPendingRef.current = false
     const cached = videoSlug ? getCachedWatchLanguageOptions(videoSlug) : null
     setLanguageOptionsState(
@@ -511,30 +602,45 @@ export function WatchPageClient({
     )
   }, [videoSlug])
 
-  useEffect(() => {
-    return scheduleWatchInteractionWarmup({ videoSlug })
-  }, [videoSlug])
-
   const loadLanguageOptions = useCallback(async () => {
     if (!videoSlug) return
     if (languageOptionsPendingRef.current) return
-    if (languageOptionsState.status === "ready") return
 
     const cached = getCachedWatchLanguageOptions(videoSlug)
+    const refreshCached = cached
+      ? shouldRefreshCachedWatchLanguageOptions(videoSlug)
+      : false
+
+    if (languageOptionsState.status === "ready" && !refreshCached) return
+
     if (cached) {
       setLanguageOptionsState({ status: "ready", variants: cached })
-      return
     }
 
     languageOptionsPendingRef.current = true
-    setLanguageOptionsState({ status: "loading", variants: [] })
+    const requestVideoSlug = videoSlug
+    if (!cached) {
+      setLanguageOptionsState({ status: "loading", variants: [] })
+    }
     try {
-      const variants = await loadWatchLanguageOptionsForVideo(videoSlug)
+      const variants = refreshCached
+        ? await loadWatchLanguageOptionsForVideo(videoSlug, {
+            forceRefresh: true,
+          })
+        : await loadWatchLanguageOptionsForVideo(videoSlug)
+      if (languageOptionsVideoSlugRef.current !== requestVideoSlug) return
       setLanguageOptionsState({ status: "ready", variants })
     } catch {
-      setLanguageOptionsState({ status: "error", variants: [] })
+      if (languageOptionsVideoSlugRef.current !== requestVideoSlug) return
+      setLanguageOptionsState(
+        cached
+          ? { status: "ready", variants: cached }
+          : { status: "error", variants: [] },
+      )
     } finally {
-      languageOptionsPendingRef.current = false
+      if (languageOptionsVideoSlugRef.current === requestVideoSlug) {
+        languageOptionsPendingRef.current = false
+      }
     }
   }, [languageOptionsState.status, videoSlug])
 
@@ -544,36 +650,53 @@ export function WatchPageClient({
     void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
     setDownloadPending(true)
+    const requestVersion = beginDownloadSessionRequest()
 
     try {
       const session = await resolveDownloadSessionAccess()
+      if (!isCurrentDownloadSessionRequest(requestVersion)) return
       if (!session.ok && session.reason === "session-unavailable") {
-        setDownloadError(tDownloadButton("sessionError"))
+        setDownloadError(downloadSessionErrorMessage)
         return
       }
       setDownloadError(null)
       if (session.ok) {
+        setDownloadAccountGateEnabled(session.accountGateEnabled)
+        setDownloadLoginUrl(null)
         setModalState("download")
         return
       }
-      redirectToAuth(session.loginUrl)
+      setDownloadAccountGateEnabled(true)
+      setDownloadLoginUrl(session.loginUrl)
+      setModalState("download")
     } finally {
-      downloadPendingRef.current = false
-      setDownloadPending(false)
+      if (isCurrentDownloadSessionRequest(requestVersion)) {
+        downloadPendingRef.current = false
+        setDownloadPending(false)
+      }
     }
-  }, [tDownloadButton])
+  }, [
+    beginDownloadSessionRequest,
+    downloadSessionErrorMessage,
+    isCurrentDownloadSessionRequest,
+  ])
   const openLanguage = useCallback(() => {
+    cancelDownloadSessionRequest()
     setEnabledModalChunks((prev) => ({ ...prev, language: true }))
     void loadWatchInteraction("language").catch(() => {})
     setModalState("language")
     void loadLanguageOptions()
-  }, [loadLanguageOptions])
+  }, [cancelDownloadSessionRequest, loadLanguageOptions])
   const openShare = useCallback(() => {
+    cancelDownloadSessionRequest()
     setEnabledModalChunks((prev) => ({ ...prev, share: true }))
     void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
-  }, [])
-  const closeModal = useCallback(() => setModalState("none"), [])
+  }, [cancelDownloadSessionRequest])
+  const closeModal = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("none")
+  }, [cancelDownloadSessionRequest])
 
   // Pause the video whenever any modal (search / language / download / share)
   // opens, and restore the prior playing state on close. Captures the snapshot
@@ -628,8 +751,10 @@ export function WatchPageClient({
         downloadPending={downloadPending}
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
-        locale={locale}
+        onPlayerActivated={handlePlayerActivated}
         languageSlug={currentLanguageSlug}
+        hasSubtitleOptions={subtitles.length > 0}
+        subtitleLanguageCode={subtitleLanguageCode}
         subtitleVttSrc={subtitleVttSrc}
         shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
@@ -637,6 +762,13 @@ export function WatchPageClient({
         coverBlackoutKey={coverBlackoutKey}
         coverBlackoutPhase={coverBlackoutPhase}
         onChapterNavigateIntent={handleChapterNavigateIntent}
+      />
+
+      <WatchEventRecorder
+        playerRef={playerRef}
+        videoId={video.documentId}
+        videoDubId={variant.documentId}
+        durationSeconds={variant.duration ?? null}
       />
 
       <SubtitleTranscript
@@ -654,9 +786,13 @@ export function WatchPageClient({
           videoTitle={video.title ?? null}
           posterUrl={posterUrl}
           durationSeconds={variant.duration ?? null}
+          languageCode={selectedLanguageCode}
           languageName={variant.language?.name ?? null}
+          languageSlug={variant.language?.slug ?? null}
           variantId={variant.documentId}
           videoSlug={videoSlug}
+          accountGateEnabled={downloadAccountGateEnabled}
+          authRequiredLoginUrl={downloadLoginUrl}
           onClose={closeModal}
         />
       ) : null}

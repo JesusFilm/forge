@@ -1,21 +1,11 @@
-// Full-screen ambient backdrop for the redesigned Home — absolutely
-// positioned BEHIND all content (non-focusable, pointerEvents "none"; absolute
-// decorative layers are fine, only focusables must stay in flow). Paints the
-// focused card's artwork full-bleed with a ~600ms crossfade, beneath the
-// design's three ambient gradients and a deep scrim whose opacity tracks the
-// browse state ("top" 0 / "browse" 0.22 / "deep" 1, ~500ms).
-//
-// Crossfade: two stacked expo-image slots swapping opacity. The incoming slot
-// fades in ONLY after its image reports onLoad — expo-image's own `transition`
-// clears to blank between sources on a single layer, which is exactly the
-// flash this two-slot dance avoids. Slot images are keyed by URL so a slot
-// never shows a stale frame from two swaps ago. A generation counter
-// invalidates loads/fades that a newer focus target supersedes.
+// Non-focusable Home backdrop: two stacked expo-image slots crossfade the focused
+// card's artwork. Incoming slot fades in only after onLoad (a single layer flashes
+// blank between sources); slots keyed by URL + generation counter block stale frames.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { Animated, StyleSheet, View } from "react-native"
+import { Animated, Platform, StyleSheet, View } from "react-native"
 
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
@@ -29,42 +19,44 @@ const DEEP_SCRIM_MS = 500
 /** Quick restore when a pending crossfade is cancelled or superseded. */
 const CANCEL_FADE_MS = 200
 
-// The design's ambient scrim — three stacked gradients over the artwork, all
-// on the WATCH_THEME near-black scrim base. Module-scope so the gradient
-// props keep one identity across renders; WATCH_THEME.scrim(0) (never
-// "transparent") avoids dark banding.
-//
+// Android drops the ambient backdrop entirely: the Sabrina GPU can't composite
+// its full-screen layers (artwork + 3 gradients + deep scrim) over the rail tree
+// each frame (~150ms/redraw). Rails sit on the near-black base; tvOS keeps it.
+const IS_ANDROID = Platform.OS === "android"
+
+// Ambient scrim: three module-scope gradients (stable identity; scrim(0) not
+// "transparent" avoids banding), exported so HeroPager paints matching scrims.
 // linear-gradient(90deg, rgba(7,7,8,.9) 0%, rgba(7,7,8,.5) 36%, 0 at 62%)
-const LEFT_SCRIM_COLORS = [
+export const LEFT_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.9),
   WATCH_THEME.scrim(0.5),
   WATCH_THEME.scrim(0),
 ] as const
-const LEFT_SCRIM_LOCATIONS = [0, 0.36, 0.62] as const
-const LEFT_SCRIM_START = { x: 0, y: 0.5 }
-const LEFT_SCRIM_END = { x: 1, y: 0.5 }
+export const LEFT_SCRIM_LOCATIONS = [0, 0.36, 0.62] as const
+export const LEFT_SCRIM_START = { x: 0, y: 0.5 }
+export const LEFT_SCRIM_END = { x: 1, y: 0.5 }
 
 // linear-gradient(0deg, rgba(7,7,8,.96) 6%, rgba(7,7,8,.55) 30%, 0 at 58%)
-const BOTTOM_SCRIM_COLORS = [
+export const BOTTOM_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.96),
   WATCH_THEME.scrim(0.55),
   WATCH_THEME.scrim(0),
 ] as const
-const BOTTOM_SCRIM_LOCATIONS = [0.06, 0.3, 0.58] as const
-const BOTTOM_SCRIM_START = { x: 0.5, y: 1 }
-const BOTTOM_SCRIM_END = { x: 0.5, y: 0 }
+export const BOTTOM_SCRIM_LOCATIONS = [0.06, 0.3, 0.58] as const
+export const BOTTOM_SCRIM_START = { x: 0.5, y: 1 }
+export const BOTTOM_SCRIM_END = { x: 0.5, y: 0 }
 
 // linear-gradient(180deg, rgba(7,7,8,.55) 0%, 0 at 20%)
-const TOP_SCRIM_COLORS = [
+export const TOP_SCRIM_COLORS = [
   WATCH_THEME.scrim(0.55),
   WATCH_THEME.scrim(0),
 ] as const
-const TOP_SCRIM_LOCATIONS = [0, 0.2] as const
-const TOP_SCRIM_START = { x: 0.5, y: 0 }
-const TOP_SCRIM_END = { x: 0.5, y: 1 }
+export const TOP_SCRIM_LOCATIONS = [0, 0.2] as const
+export const TOP_SCRIM_START = { x: 0.5, y: 0 }
+export const TOP_SCRIM_END = { x: 0.5, y: 1 }
 
 /** Deep scrim layer color (design `.deep-scrim`); its OPACITY is animated. */
-const DEEP_SCRIM_COLOR = "rgba(6,6,8,0.9)"
+export const DEEP_SCRIM_COLOR = "rgba(6,6,8,0.9)"
 
 type SlotIndex = 0 | 1
 
@@ -110,10 +102,8 @@ export const HomeBackdrop = memo(function HomeBackdrop({
     if (generation !== generationRef.current) return
     const opacities = slotOpacitiesRef.current
     const other: SlotIndex = slot === 0 ? 1 : 0
-    // Mark intent eagerly: `slot` is the front from now on, even before the
-    // fade finishes. A focus change that supersedes this fade then reads the
-    // correct front/back and crossfades FROM the in-flight target rather than
-    // snapping back to the prior front.
+    // Mark `slot` as front eagerly (before the fade finishes) so a superseding
+    // focus change crossfades FROM the in-flight target, not back to the prior front.
     frontIndexRef.current = slot
     Animated.parallel([
       Animated.timing(opacities[slot], {
@@ -143,6 +133,8 @@ export const HomeBackdrop = memo(function HomeBackdrop({
   )
 
   useEffect(() => {
+    // Android renders the single-slot path below — skip the two-slot dance.
+    if (IS_ANDROID) return
     const opacities = slotOpacitiesRef.current
     const front = frontIndexRef.current
     const back: SlotIndex = front === 0 ? 1 : 0
@@ -168,11 +160,8 @@ export const HomeBackdrop = memo(function HomeBackdrop({
       return
     }
 
-    // Back slot ALREADY holds the target artwork (e.g. A->B->A): its Image is
-    // mounted and loaded, so its URL-keyed onLoad will NOT fire again. Waiting
-    // on pendingRef for that load would stall forever — the backdrop would
-    // stay stuck on the front card while the billboard shows the target.
-    // Crossfade to the back slot directly instead.
+    // Back slot already holds the target (A->B->A): its onLoad won't fire again,
+    // so waiting on pendingRef would stall forever — crossfade to it directly.
     if (imageUrl != null && slotUrlsRef.current[back] === imageUrl) {
       pendingRef.current = null
       startCrossfade(back, generation)
@@ -218,6 +207,11 @@ export const HomeBackdrop = memo(function HomeBackdrop({
   }, [browseState, deepScrim])
 
   const opacities = slotOpacitiesRef.current
+
+  // Android: no ambient backdrop (see IS_ANDROID comment) — rails on the near-black
+  // screen base. All hooks above still run so the rules of hooks hold; the
+  // two-slot effect already no-ops on Android.
+  if (IS_ANDROID) return null
 
   return (
     <View

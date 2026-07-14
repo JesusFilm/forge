@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react"
 import type { WatchExperience, AdminBlock } from "../lib/queries"
 import {
   useVideoThumbnails,
-  type ThumbnailMap,
+  type VideoMetaMap,
 } from "../hooks/useVideoThumbnails"
 
 type ExperienceContextValue = {
@@ -11,6 +11,7 @@ type ExperienceContextValue = {
   error: string | null
   getSectionByKey: (key: string) => AdminBlock | undefined
   getVideoThumbnail: (videoId: string) => string | null
+  getVideoTitle: (videoId: string) => string | null
   refetch: () => void
 }
 
@@ -20,6 +21,7 @@ const ExperienceContext = createContext<ExperienceContextValue>({
   error: null,
   getSectionByKey: () => undefined,
   getVideoThumbnail: () => null,
+  getVideoTitle: () => null,
   refetch: () => {},
 })
 
@@ -36,7 +38,7 @@ export function ExperienceProvider({
   error: string | null
   refetch: () => void
 }) {
-  const thumbnails: ThumbnailMap = useVideoThumbnails(experience)
+  const videoMeta: VideoMetaMap = useVideoThumbnails(experience)
 
   const sectionMap = useMemo(() => {
     const map = new Map<string, AdminBlock>()
@@ -86,8 +88,13 @@ export function ExperienceProvider({
   )
 
   const getVideoThumbnail = useMemo(
-    () => (videoId: string) => thumbnails.get(videoId) ?? null,
-    [thumbnails],
+    () => (videoId: string) => videoMeta.get(videoId)?.thumbnail ?? null,
+    [videoMeta],
+  )
+
+  const getVideoTitle = useMemo(
+    () => (videoId: string) => videoMeta.get(videoId)?.title ?? null,
+    [videoMeta],
   )
 
   const contextValue = useMemo(
@@ -97,9 +104,18 @@ export function ExperienceProvider({
       error,
       getSectionByKey,
       getVideoThumbnail,
+      getVideoTitle,
       refetch,
     }),
-    [experience, loading, error, getSectionByKey, getVideoThumbnail, refetch],
+    [
+      experience,
+      loading,
+      error,
+      getSectionByKey,
+      getVideoThumbnail,
+      getVideoTitle,
+      refetch,
+    ],
   )
 
   return (

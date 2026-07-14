@@ -82,6 +82,7 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
     ],
     durationSeconds: 120,
     muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   }
   return { ...base, ...overrides }
 }
@@ -289,6 +290,45 @@ describe("SeriesEpisodeCard — href", () => {
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
       "/lumo-the-gospel-of-john.html/the-birth-of-jesus/spanish-castilian.html",
+    )
+  })
+
+  it("routes a nested collection to its standalone language page", () => {
+    renderCard({
+      episode: makeEpisode({
+        slug: "lumo-the-gospel-of-matthew",
+        label: "COLLECTION",
+      }),
+      languageSlug: "russian",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo-the-gospel-of-matthew.html/russian.html",
+    )
+  })
+
+  it("routes a nested series without requiring a valid parent slug", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "nested-series", label: "SERIES" }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/nested-series.html/english.html",
+    )
+  })
+
+  it("keeps unlabeled children on the contextual route", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "unlabeled-child", label: null }),
+      languageSlug: "english",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo.html/unlabeled-child/english.html",
     )
   })
 

@@ -1,57 +1,72 @@
-// Focusable "Try again" control for full-screen error states (the watch and
-// series screens). Uses the onFocus / onBlur + state pattern (matching
-// SearchResultsGrid's RetryButton) rather than the `({ focused }) => [...]`
-// callback — `focused` is exposed at runtime by react-native-tvos but not by
-// the upstream PressableStateCallbackType, so the callback form fails the
-// strict tsc check.
+// The one "Try again" CTA (shared "cta" focus role). onFocus/onBlur + state,
+// not the `({ focused }) =>` callback: `focused` exists at runtime in
+// react-native-tvos but not in upstream PressableStateCallbackType (strict tsc).
 
-import { useState } from "react"
-import { Pressable, StyleSheet, Text } from "react-native"
+import { Animated, Pressable, StyleSheet, Text } from "react-native"
 
 import { COLORS } from "../lib/colors"
 import { scale } from "../lib/scale"
+import { FOCUS_RING_COLOR } from "./focus/focusVisual"
+import { useFocusVisual } from "./focus/useFocusVisual"
 
 type RetryButtonProps = {
   onPress: () => void
   accessibilityHint?: string
+  /** Surface accent for the fill + focus glow. Crimson by default (series/legacy);
+   *  WATCH surfaces pass WATCH_THEME.accent. */
+  accent?: string
+  label?: string
+  hasTVPreferredFocus?: boolean
 }
 
 export function RetryButton({
   onPress,
   accessibilityHint = "Reloads this page",
+  accent = COLORS.primary,
+  label = "Try again",
+  hasTVPreferredFocus = true,
 }: RetryButtonProps) {
-  const [isFocused, setIsFocused] = useState(false)
+  const { focused, setFocused, transform, focusedShadow, androidFocusProps } =
+    useFocusVisual("cta", { accentColor: accent })
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Try again"
+      accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
-      hasTVPreferredFocus
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      style={[styles.retryButton, isFocused && styles.retryButtonFocused]}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
       onPress={onPress}
     >
-      <Text style={styles.retryText}>Try again</Text>
+      <Animated.View
+        {...androidFocusProps}
+        style={[
+          styles.pill,
+          { backgroundColor: accent },
+          focused && styles.pillFocused,
+          focused && focusedShadow,
+          { transform },
+        ]}
+      >
+        <Text style={styles.label}>{label}</Text>
+      </Animated.View>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
-  retryButton: {
+  pill: {
     paddingHorizontal: scale(32),
     paddingVertical: scale(14),
     borderRadius: scale(24),
-    backgroundColor: COLORS.primary,
+    // Reserve the focus border so toggling its color never shifts layout.
+    borderWidth: scale(3),
+    borderColor: "transparent",
   },
-  retryButtonFocused: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(20),
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
+  pillFocused: {
+    borderColor: FOCUS_RING_COLOR,
   },
-  retryText: {
+  label: {
     fontFamily: "System",
     fontSize: Math.round(scale(18)),
     fontWeight: "600",

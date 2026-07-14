@@ -11,14 +11,15 @@ const {
   getJobMock,
   mergeJobArtifactsMock,
   metadataMock,
-  sceneEmbeddingSyncMock,
   analyzeAllScenesMock,
   persistedJobArtifacts,
   mastraSubtitleEnrichmentMock,
+  mastraTranscriptCorrectionMock,
   syncTranslatedSubtitlesToMuxMock,
   transcribeMock,
   updateJobMock,
   updateStepStatusMock,
+  writeArtifactMock,
 } = vi.hoisted(() => ({
   audioCleanupMock: vi.fn(),
   runAudioCleanupMock: vi.fn(),
@@ -30,14 +31,15 @@ const {
   getJobMock: vi.fn(),
   mergeJobArtifactsMock: vi.fn(),
   metadataMock: vi.fn(),
-  sceneEmbeddingSyncMock: vi.fn(),
   analyzeAllScenesMock: vi.fn(),
   persistedJobArtifacts: {} as Record<string, unknown>,
   mastraSubtitleEnrichmentMock: vi.fn(),
+  mastraTranscriptCorrectionMock: vi.fn(),
   syncTranslatedSubtitlesToMuxMock: vi.fn(),
   transcribeMock: vi.fn(),
   updateJobMock: vi.fn(),
   updateStepStatusMock: vi.fn(),
+  writeArtifactMock: vi.fn(),
 }))
 
 vi.mock("@/services/audioCleanup", () => ({
@@ -61,8 +63,16 @@ vi.mock("@/services/mastra-subtitle-enrichment", () => ({
   launchMastraSubtitleEnrichment: mastraSubtitleEnrichmentMock,
 }))
 
+vi.mock("@/services/mastra-transcript-scripture-correction", () => ({
+  launchMastraTranscriptScriptureCorrection: mastraTranscriptCorrectionMock,
+}))
+
 vi.mock("@/services/mastra-transcript-embeddings", () => ({
   launchMastraTranscriptEmbeddings: mastraTranscriptEmbeddingsMock,
+}))
+
+vi.mock("@/services/storage", () => ({
+  writeArtifact: writeArtifactMock,
 }))
 
 vi.mock("@/services/mux-sync", () => ({
@@ -75,10 +85,6 @@ vi.mock("@/services/sceneBoundaries", () => ({
 
 vi.mock("@/services/sceneAnalysis", () => ({
   analyzeAllScenes: analyzeAllScenesMock,
-}))
-
-vi.mock("@/services/sceneEmbeddingSync", () => ({
-  syncSceneAnalysisEmbeddings: sceneEmbeddingSyncMock,
 }))
 
 vi.mock("@/services/mux", () => ({
@@ -134,15 +140,33 @@ describe("runVideoEnrichment", () => {
     getJobMock.mockReset()
     mergeJobArtifactsMock.mockReset()
     metadataMock.mockReset()
-    sceneEmbeddingSyncMock.mockReset()
     analyzeAllScenesMock.mockReset()
     audioCleanupMock.mockReset()
     runAudioCleanupMock.mockReset()
     mastraSubtitleEnrichmentMock.mockReset()
+    mastraTranscriptCorrectionMock.mockReset()
     syncTranslatedSubtitlesToMuxMock.mockReset()
     transcribeMock.mockReset()
     updateJobMock.mockReset()
     updateStepStatusMock.mockReset()
+    writeArtifactMock.mockReset()
+    writeArtifactMock.mockResolvedValue("artifact-key")
+    mastraTranscriptCorrectionMock.mockResolvedValue({
+      ok: true,
+      mastraRunId: "transcript-correction-run-1",
+      correction: {
+        status: "skipped",
+        basis: "model_knowledge",
+        contentDomain: "other",
+        confidence: 0.1,
+        checkedReferenceCount: 0,
+        candidateCount: 0,
+        flaggedCount: 0,
+        skippedReason: "no_scripture_context",
+        likelyBibleReferences: [],
+        findings: [],
+      },
+    })
     mastraTranscriptEmbeddingsMock.mockResolvedValue({
       ok: true,
       status: "created",
@@ -191,14 +215,6 @@ describe("runVideoEnrichment", () => {
       totalInputTokens: 12,
       totalOutputTokens: 4,
     })
-    sceneEmbeddingSyncMock.mockResolvedValue({
-      domain: "scene_embeddings",
-      status: "source_ready",
-      videoDocumentId: "video-doc-1",
-      generatedSceneCount: 1,
-      indexableSceneCount: 1,
-    })
-
     for (const key of Object.keys(persistedJobArtifacts)) {
       delete persistedJobArtifacts[key]
     }
@@ -297,6 +313,21 @@ describe("runVideoEnrichment", () => {
       assetId: "asset-1",
       sourceVideoUrl: "https://stream.mux.com/play-1.m3u8",
     })
+    expect(runAudioCleanupMock.mock.invocationCallOrder[0]).toBeLessThan(
+      transcribeMock.mock.invocationCallOrder[0],
+    )
+    expect(transcribeMock).toHaveBeenCalledWith(
+      "asset-1",
+      "mux-1",
+      "en",
+      expect.objectContaining({
+        cleanedAudioArtifact: {
+          assetId: "asset-1",
+          artifactType: "cleaned-audio",
+          ext: "mp3",
+        },
+      }),
+    )
     expect(audioCleanupMock).not.toHaveBeenCalled()
     expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
       "job-1",
@@ -317,7 +348,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("records audio cleanup failure without failing the completed core enrichment job", async () => {
+  it("fails before transcription when required audio cleanup fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -364,10 +395,7 @@ describe("runVideoEnrichment", () => {
         runAudioCleanup: true,
         playbackId: "play-1",
       }),
-    ).resolves.toMatchObject({
-      assetId: "asset-1",
-      language: "en",
-    })
+    ).rejects.toThrow("ElevenLabs offline")
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
@@ -381,10 +409,11 @@ describe("runVideoEnrichment", () => {
         "original-audio": { kind: "downloadable" },
       },
     ])
+    expect(transcribeMock).not.toHaveBeenCalled()
     expect(updateJobMock.mock.calls).toContainEqual([
       "job-1",
       expect.objectContaining({
-        status: "completed",
+        status: "failed",
         currentStep: undefined,
       }),
     ])
@@ -453,7 +482,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("keeps partial audio artifact persistence failure from failing the core job", async () => {
+  it("fails before transcription when partial audio artifact persistence fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -507,10 +536,7 @@ describe("runVideoEnrichment", () => {
         translateTo: ["en"],
         runAudioCleanup: true,
       }),
-    ).resolves.toMatchObject({
-      assetId: "asset-1",
-      language: "en",
-    })
+    ).rejects.toThrow("ElevenLabs offline")
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
@@ -518,10 +544,11 @@ describe("runVideoEnrichment", () => {
       "failed",
       "ElevenLabs offline",
     ])
+    expect(transcribeMock).not.toHaveBeenCalled()
     expect(updateJobMock.mock.calls).toContainEqual([
       "job-1",
       expect.objectContaining({
-        status: "completed",
+        status: "failed",
         currentStep: undefined,
       }),
     ])
@@ -707,6 +734,39 @@ describe("runVideoEnrichment", () => {
           },
         },
       ],
+      ["job-1", { status: "running", currentStep: "structured_transcript" }],
+      [
+        "job-1",
+        {
+          artifacts: {
+            materialization: {
+              kind: "metadata",
+              data: { sourceVideoCoreId: "video-1" },
+            },
+            transcriptionRouting: {
+              kind: "metadata",
+              data: {
+                finalProvider: "mux",
+                finalSourceLanguageCode: "ru",
+                attempts: [
+                  {
+                    attemptId: "mux-automatic-1",
+                    requestedProvider: "automatic",
+                    resolvedProvider: "mux",
+                    status: "completed",
+                    sourceLanguageCode: "ru",
+                    startedAt: "2026-04-12T12:00:00.000Z",
+                    finishedAt: "2026-04-12T12:01:00.000Z",
+                  },
+                ],
+              },
+            },
+            transcript: { kind: "downloadable" },
+            subtitles: { kind: "downloadable" },
+            "transcript-correction-report": { kind: "downloadable" },
+          },
+        },
+      ],
       ["job-1", { status: "running", currentStep: "translation" }],
       ["job-1", { status: "running", currentStep: "chapters" }],
       ["job-1", { status: "running", currentStep: "metadata" }],
@@ -773,6 +833,22 @@ describe("runVideoEnrichment", () => {
 
     expect(updateStepStatusMock.mock.calls).toContainEqual([
       "job-1",
+      "structured_transcript",
+      "completed",
+      undefined,
+      expect.objectContaining({
+        transcriptCorrection: expect.objectContaining({
+          status: "skipped",
+          skippedReason: "no_scripture_context",
+        }),
+        mastra: expect.objectContaining({
+          runId: "transcript-correction-run-1",
+          status: "skipped",
+        }),
+      }),
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
       "translation",
       "completed",
       undefined,
@@ -834,6 +910,13 @@ describe("runVideoEnrichment", () => {
           expect.objectContaining({ lang: "en", status: "completed" }),
           { lang: "fr", status: "failed", error: "bad glossary" },
         ]),
+      }),
+    )
+    expect(writeArtifactMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetId: "asset-1",
+        artifactType: "transcript-correction-report",
+        ext: "json",
       }),
     )
     expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith({
@@ -931,6 +1014,217 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
+  it("applies source transcript scripture corrections before downstream fan-out", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "Son, the demon! Have mercy on me!",
+      segments: [
+        { start: 56, end: 60, text: "Son, the demon! Have mercy on me!" },
+      ],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+      resolvedProvider: "mux",
+      routingReport: {
+        finalProvider: "mux",
+        finalSourceLanguageCode: "en",
+        attempts: [],
+      },
+    })
+    mastraTranscriptCorrectionMock.mockResolvedValue({
+      ok: true,
+      mastraRunId: "transcript-correction-run-2",
+      correction: {
+        status: "reviewed",
+        basis: "model_knowledge",
+        contentDomain: "bible_story",
+        confidence: 0.96,
+        checkedReferenceCount: 1,
+        candidateCount: 1,
+        flaggedCount: 0,
+        likelyBibleReferences: ["Luke 18:38"],
+        findings: [
+          {
+            action: "apply_candidate",
+            category: "proper_name",
+            segmentIndex: 0,
+            start: 56,
+            end: 60,
+            originalText: "Son, the demon",
+            correctedText: "Son of David",
+            reference: "Luke 18:38",
+            confidence: 0.97,
+            basis: "model_knowledge",
+            rationale: "Blind man healing stories use this title for Jesus.",
+          },
+        ],
+      },
+    })
+    mastraSubtitleEnrichmentMock.mockResolvedValue(
+      subtitleSuccess([{ lang: "es", status: "completed" }]),
+    )
+    chaptersMock.mockResolvedValue({
+      chapters: [
+        { title: "Blind man", startSeconds: 0, endSeconds: 90, summary: "" },
+      ],
+      artifactKeys: ["chapters"],
+    })
+    metadataMock.mockResolvedValue({
+      title: "Blind man",
+      description: "Description",
+      topics: [],
+      speakers: [],
+      tags: ["healing"],
+      language: "en",
+      artifactKeys: ["metadata"],
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["es"],
+        videoTitle: "Blind Man",
+        bibleVerses: ["Luke 18:38"],
+      }),
+    ).resolves.toMatchObject({
+      transcript: "Son of David! Have mercy on me!",
+    })
+
+    expect(chaptersMock).toHaveBeenCalledWith("asset-1", {
+      transcriptText: "Son of David! Have mercy on me!",
+      segments: [
+        { start: 56, end: 60, text: "Son of David! Have mercy on me!" },
+      ],
+      language: "en",
+    })
+    expect(metadataMock).toHaveBeenCalledWith(
+      "asset-1",
+      "Son of David! Have mercy on me!",
+      "en",
+    )
+    expect(mastraTranscriptEmbeddingsMock).toHaveBeenCalledWith({
+      assetId: "asset-1",
+      muxAssetId: "mux-1",
+      language: "en",
+      transcript: {
+        text: "Son of David! Have mercy on me!",
+        segments: [
+          { start: 56, end: 60, text: "Son of David! Have mercy on me!" },
+        ],
+        artifactKey: "asset-1/transcript.json",
+        provider: "mux",
+      },
+    })
+    expect(writeArtifactMock.mock.calls).toEqual(
+      expect.arrayContaining([
+        [
+          expect.objectContaining({
+            assetId: "asset-1",
+            artifactType: "transcript-raw",
+            ext: "json",
+            body: expect.stringContaining("Son, the demon"),
+          }),
+        ],
+        [
+          expect.objectContaining({
+            assetId: "asset-1",
+            artifactType: "subtitles-raw",
+            ext: "vtt",
+            body: expect.stringContaining("Son, the demon"),
+          }),
+        ],
+        [
+          expect.objectContaining({
+            assetId: "asset-1",
+            artifactType: "transcript",
+            ext: "json",
+            body: expect.stringContaining("Son of David"),
+          }),
+        ],
+        [
+          expect.objectContaining({
+            assetId: "asset-1",
+            artifactType: "subtitles",
+            ext: "vtt",
+            body: expect.stringContaining("Son of David"),
+          }),
+        ],
+        [
+          expect.objectContaining({
+            assetId: "asset-1",
+            artifactType: "transcript-correction-report",
+            ext: "json",
+            body: expect.stringContaining("Son of David"),
+          }),
+        ],
+      ]),
+    )
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "structured_transcript",
+      "completed",
+      undefined,
+      expect.objectContaining({
+        transcriptCorrection: expect.objectContaining({
+          status: "applied",
+          appliedCount: 1,
+          flaggedCount: 0,
+        }),
+      }),
+    ])
+  })
+
+  it("marks structured transcript failed when correction artifact persistence fails", async () => {
+    transcribeMock.mockResolvedValue({
+      text: "hello world",
+      segments: [{ start: 0, end: 2, text: "hello world" }],
+      language: "en",
+      artifactKeys: ["transcript", "subtitles"],
+      resolvedProvider: "mux",
+    })
+    writeArtifactMock.mockImplementation(async (artifact) => {
+      if (artifact.artifactType === "transcript-correction-report") {
+        throw new Error("correction report write failed")
+      }
+      return "artifact-key"
+    })
+
+    await expect(
+      runVideoEnrichment({
+        jobId: "job-1",
+        assetId: "asset-1",
+        muxAssetId: "mux-1",
+        language: "en",
+        translateTo: ["es"],
+      }),
+    ).rejects.toThrow("correction report write failed")
+
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "structured_transcript",
+      "running",
+    ])
+    expect(updateStepStatusMock.mock.calls).toContainEqual([
+      "job-1",
+      "structured_transcript",
+      "failed",
+      "correction report write failed",
+    ])
+    expect(updateStepStatusMock.mock.calls).not.toContainEqual([
+      "job-1",
+      "translation",
+      "running",
+    ])
+    expect(updateJobMock.mock.calls).toContainEqual([
+      "job-1",
+      expect.objectContaining({
+        status: "failed",
+        currentStep: undefined,
+      }),
+    ])
+  })
+
   it("keeps the embeddings step successful when Mastra ingest succeeds", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
@@ -1004,7 +1298,7 @@ describe("runVideoEnrichment", () => {
     ])
   })
 
-  it("persists scene embedding sync metadata when optional scene analysis is enabled", async () => {
+  it("runs optional scene analysis without syncing scene embeddings", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -1065,31 +1359,9 @@ describe("runVideoEnrichment", () => {
         videoLabel: "unknown",
       }),
     )
-    expect(sceneEmbeddingSyncMock).toHaveBeenCalledWith({
-      assetId: "asset-1",
-      videoDocumentId: "video-doc-1",
-      muxAssetId: "mux-1",
-      playbackId: "play-1",
-      language: "en",
-      analysisResult: expect.objectContaining({
-        scenes: [expect.objectContaining({ sceneIndex: 0 })],
-      }),
-    })
-    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
-      "job-1",
-      {
-        sceneEmbeddingSync: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            domain: "scene_embeddings",
-            status: "source_ready",
-          }),
-        },
-      },
-    ])
   })
 
-  it("records failed scene embedding sync reports without failing the enrichment job", async () => {
+  it("does not fail the enrichment job when optional scene analysis fails", async () => {
     transcribeMock.mockResolvedValue({
       text: "hello world",
       segments: [],
@@ -1121,50 +1393,40 @@ describe("runVideoEnrichment", () => {
       metadata: { generatedAt: "2026-04-10T00:00:00.000Z" },
       artifactKeys: ["embeddings"],
     })
-    sceneEmbeddingSyncMock.mockResolvedValue({
-      domain: "scene_embeddings",
-      status: "failed",
-      reason: "video_not_found",
-      generatedSceneCount: 1,
-      indexableSceneCount: 1,
-      videoDocumentId: "video-doc-1",
-    })
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    analyzeAllScenesMock.mockRejectedValueOnce(new Error("scene analysis boom"))
 
-    await expect(
-      runVideoEnrichment({
-        jobId: "job-1",
+    try {
+      await expect(
+        runVideoEnrichment({
+          jobId: "job-1",
+          assetId: "asset-1",
+          muxAssetId: "mux-1",
+          language: "en",
+          translateTo: ["en"],
+          runSceneAnalysis: true,
+          videoDocumentId: "video-doc-1",
+        }),
+      ).resolves.toMatchObject({
         assetId: "asset-1",
-        muxAssetId: "mux-1",
         language: "en",
-        translateTo: ["en"],
-        runSceneAnalysis: true,
-        videoDocumentId: "video-doc-1",
-      }),
-    ).resolves.toMatchObject({
-      assetId: "asset-1",
-      language: "en",
-    })
+      })
 
-    expect(mergeJobArtifactsMock.mock.calls).toContainEqual([
-      "job-1",
-      {
-        sceneEmbeddingSync: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            domain: "scene_embeddings",
-            status: "failed",
-            reason: "video_not_found",
-          }),
-        },
-      },
-    ])
-    expect(updateJobMock.mock.calls).toContainEqual([
-      "job-1",
-      expect.objectContaining({
-        status: "completed",
-        currentStep: undefined,
-      }),
-    ])
+      expect(updateJobMock.mock.calls).toContainEqual([
+        "job-1",
+        expect.objectContaining({
+          status: "completed",
+          currentStep: undefined,
+        }),
+      ])
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("scene_analysis_failed_in_enrichment"),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it("still runs embeddings with transcript-only fallback when metadata fails", async () => {
@@ -1296,6 +1558,7 @@ describe("runVideoEnrichment", () => {
     ).rejects.toThrow("subtitle fetch failed")
 
     expect(updateStepStatusMock.mock.calls).toEqual([
+      ["job-1", "audio_cleanup", "skipped"],
       ["job-1", "transcription", "running"],
       ["job-1", "transcription", "failed", "subtitle fetch failed"],
     ])

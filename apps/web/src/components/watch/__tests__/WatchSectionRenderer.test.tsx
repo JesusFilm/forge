@@ -150,15 +150,15 @@ const {
   bibleQuotesSectionMock: vi.fn(
     ({
       bibleCitations,
-      youVersionPassages = [],
+      passages = [],
     }: {
       bibleCitations: Array<unknown>
       onShareClick: () => void
-      youVersionPassages?: Array<unknown>
+      passages?: Array<unknown>
     }) => {
       const content = JSON.stringify({
         count: bibleCitations.length,
-        youVersionPassageCount: youVersionPassages.length,
+        passageCount: passages.length,
       })
       return (
         <div data-block-type="BibleQuotes" data-content={content}>
@@ -292,6 +292,18 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
           order: 1,
           osisId: "John.1.1",
           bibleBook: { documentId: "bb-1", name: "John" },
+          passage: {
+            citationDocumentId: "bc-1",
+            content: "Server passage text.",
+            copyright: "Required attribution.",
+            humanReference: "John 1:1",
+            provider: "youversion",
+            publisherUrl: null,
+            reference: "JHN.1.1",
+            versionAbbreviation: "BSB",
+            versionId: 3034,
+            versionTitle: "Berean Standard Bible",
+          },
         },
       ],
     })
@@ -307,20 +319,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       )!,
       buildBibleQuotesBlock(
         (video as { bibleCitations?: unknown[] }).bibleCitations as never,
-        [
-          {
-            citationDocumentId: "bc-1",
-            content: "Server passage text.",
-            copyright: "Required attribution.",
-            humanReference: "John 1:1",
-            publisherUrl: null,
-            reference: "JHN.1.1",
-            versionAbbreviation: "BSB",
-            versionId: 3034,
-            versionTitle: "Berean Standard Bible",
-          },
-        ],
-      )!,
+      ),
       buildShareBlock(video),
     ]
 
@@ -361,6 +360,16 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     // here so a future refactor doesn't silently regress.
     const bodyZone = container.querySelector("[data-testid='watch-body-zone']")
     expect(bodyZone).not.toBeNull()
+    const bodyBackdrop = bodyZone!.querySelector(
+      "[data-testid='watch-body-backdrop']",
+    )
+    // Preserve the Firefox fallback hook. Browser-level proof covers rendering
+    // because jsdom cannot observe WebRender/compositor output.
+    expect(bodyBackdrop?.getAttribute("class")).toContain("watch-body-backdrop")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("w-full")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("overflow-visible")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("md:overflow-hidden")
+    expect(bodyBackdrop?.getAttribute("class")).not.toContain("max-w-[1920px]")
     const siblingInsideBody = bodyZone!.querySelector(
       "[data-block-type='SiblingCarousel']",
     )
@@ -387,7 +396,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     )
     expect(bibleQuotesContent).toEqual({
       count: 1,
-      youVersionPassageCount: 1,
+      passageCount: 1,
     })
   })
 
@@ -397,7 +406,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     const block = buildHeroBlock(video, variant)
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={[block]} />)
+      root.render(
+        <WatchSectionRenderer
+          blocks={[block]}
+          hasSubtitleOptions
+          subtitleLanguageCode="ES"
+        />,
+      )
     })
 
     const heroEl = container.querySelector('[data-block-type="HeroPlayer"]')
@@ -406,6 +421,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(content.playbackId).toBe("playback-id-123")
     expect(content.hls).toBe("https://cdn.example/jesus.m3u8")
     expect(content.videoDocumentId).toBe("video-1")
+    expect(heroPlayerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hasSubtitleOptions: true,
+        subtitleLanguageCode: "ES",
+      }),
+      undefined,
+    )
   })
 
   it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {
@@ -459,6 +481,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       title: "Clicked Child",
       label: "SEGMENT",
       posterUrl: "https://cdn.test/clicked.jpg",
+      posterBlurDataUrl: null,
       loading: true,
       transitionKey: "child-2",
     })

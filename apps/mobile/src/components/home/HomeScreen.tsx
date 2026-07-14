@@ -1,15 +1,7 @@
 /**
- * The Home tab: curated watch-home content composed in the three-layer
- * architecture (CuratedHomeLayout is the structural reference; data comes
- * from the ported curation config via useWatchHome, not an Experience).
- *
- * Layer ordering (z-index): heroLayer (0) → FlashList feed (scrolls over the
- * hero) → heroInteractiveLayer (2, box-none, hosts the hero's interactive
- * chrome: Watch Now / insert CTA / mute) → HomeHeader (10, owns its own
- * absolute positioning). The chrome lives HERE, not in the pager — anything
- * tappable inside the hero layer sits behind the FlashList, which swallows
- * the taps. Hero swipes are claimed by a capture-phase PanResponder on the
- * root and forwarded to the pager's swipeToSlide.
+ * Curated Home tab (config via useWatchHome, not an Experience). Z-order:
+ * heroLayer(0) → FlashList → heroInteractiveLayer(2, box-none chrome) →
+ * HomeHeader(10). Chrome lives in the overlay (FlashList swallows hero taps).
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -74,9 +66,8 @@ type HomeFeedItem =
 const EMPTY_SLIDES: readonly WatchHomeSlide[] = []
 
 /**
- * HomeHeader's visual height below the safe-area inset (4 top offset + 40
- * button + 8 bottom padding). The hero-less degraded feed pads down by
- * inset + this so the first shelf clears the absolute header.
+ * HomeHeader's visual height below the safe-area inset (4+40+8). The hero-less
+ * degraded feed pads by inset + this so the first shelf clears the header.
  */
 const HEADER_ALLOWANCE = 52
 
@@ -102,12 +93,9 @@ export function HomeScreen() {
 
   // ── Hero queue (referentially stable per model identity) ──────────────────
 
-  // AsyncStorage-backed carousel memory (web's localStorage/session parity).
-  // playedIdsRef is a ref, not state: it only feeds queue REBUILDS (new model
-  // identity or hydration landing); the live pager tracks its own progress
-  // internally. Intentionally duplicates the reducer's playedIds: the
-  // reducer's set signals wrap for the pager; this ref feeds queue rebuilds
-  // across model refreshes and resets on wrap.
+  // AsyncStorage carousel memory (web parity). playedIdsRef is a ref so it only
+  // feeds queue REBUILDS, not the live pager; the build signals exhaustion via
+  // queue.wrapped and the ref resets then.
   const {
     playedIdsRef,
     startPoolIndexRef,
@@ -122,10 +110,9 @@ export function HomeScreen() {
     `home-${Math.random().toString(36).slice(2, 10)}`,
   )
 
-  // memoryHydrated is a rebuild trigger, not data: hydration (a local disk
-  // read) normally resolves before the model fetch, so the first model-driven
-  // build already sees the persisted exclusions. When it loses that race the
-  // queue rebuilds once, leading with unseen content.
+  // memoryHydrated is a rebuild trigger, not data: hydration usually resolves
+  // before the model fetch (first build sees persisted exclusions); if it loses
+  // that race the queue rebuilds once, leading with unseen content.
   const heroSlides = useMemo<readonly WatchHomeSlide[]>(() => {
     if (model == null) return EMPTY_SLIDES
     const queue = buildWatchHomeHeroQueue({
@@ -136,12 +123,9 @@ export function HomeScreen() {
       sessionSeed: sessionSeedRef.current,
     })
     if (queue.wrapped && queue.videos.length > 0) {
-      // Helper contract: wrapped=true means every eligible slide was already
-      // in the played set and the returned queue was rebuilt ignoring it.
-      // Reset the set (memory + storage) so the next rebuild starts a fresh
-      // played cycle instead of wrapping forever. The videos.length guard
-      // keeps a degenerate model (no eligible videos at all — a content
-      // outage, not a wrap) from wiping the persisted monthly memory.
+      // wrapped=true means every eligible slide was already played and the queue was rebuilt
+      // ignoring the set; reset it so the next rebuild starts fresh. The videos.length guard stops
+      // a content outage (no eligible videos) from wiping persisted memory.
       resetPlayedIds()
     }
     return queue.slides
@@ -163,10 +147,9 @@ export function HomeScreen() {
     kind: WatchHomeSlide["kind"]
   } | null>(null)
 
-  // A queue rebuild resets the pager to slide 0 WITHOUT re-firing
-  // onSlideChange when the index is unchanged (its real-index-change guard),
-  // so the stored slide can go stale. Drop it so the chrome renders from
-  // heroSlides[0] instead of an evicted slide.
+  // A rebuild resets the pager to slide 0 without re-firing onSlideChange (its
+  // index-unchanged guard), so the stored slide can go stale. Drop it so the
+  // chrome renders from heroSlides[0] instead of an evicted slide.
   useEffect(() => {
     setActiveHero(null)
   }, [heroSlides])
@@ -189,9 +172,8 @@ export function HomeScreen() {
       setActiveHero({ index, slide })
       swipeStateRef.current.activeIndex = index
       // Mark the VIDEO slide we LEFT as played (persisted, monthly reset) so
-      // queue rebuilds — pull-to-refresh AND the next app launch — lead with
-      // unseen content. Mux insert ids never appear in the pools, so they are
-      // skipped rather than stored.
+      // rebuilds (refresh + next launch) lead with unseen content. Mux insert
+      // ids never appear in the pools, so they are skipped rather than stored.
       const prev = prevSlideRef.current
       if (prev != null && prev.id !== slide.id && prev.kind === "video") {
         markVideoPlayed(prev.id)
@@ -234,10 +216,9 @@ export function HomeScreen() {
   const heroPanResponder = useMemo(
     () =>
       PanResponder.create({
-        // Claim ONLY horizontal-dominant moves over the VISIBLE hero portion,
-        // before the FlashList can take them. Vertical drags and taps return
-        // false, so feed scrolling and every Pressable stay untouched. Never
-        // claims while the hero is hidden or has nothing to swipe to.
+        // Claim ONLY horizontal-dominant moves over the VISIBLE hero, before the FlashList takes
+        // them; vertical drags and taps return false so feed scroll + Pressables stay untouched.
+        // Never claims when the hero is hidden or has <2 slides (nothing to swipe to).
         onMoveShouldSetPanResponderCapture: (evt, gesture) => {
           const { scrollY, slideCount, heroHeight: h } = swipeStateRef.current
           if (slideCount < 2) return false
@@ -278,10 +259,9 @@ export function HomeScreen() {
 
   const [focused, setFocused] = useState(true)
   useEffect(() => {
-    // Mirror CuratedHomeLayout's session-mute rule: leaving the tab resets to
-    // muted; an unmute persists across slide advances while the tab stays
-    // focused. The focus flag also suspends the pager on tab blur (AE6) —
-    // AppState backgrounding is handled inside HomeHeroPager.
+    // CuratedHomeLayout session-mute rule: blur resets to muted; an unmute
+    // persists across slide advances while focused. The focus flag also suspends
+    // the pager on blur (AE6); AppState backgrounding is handled in HomeHeroPager.
     const unsubscribeBlur = navigation.addListener("blur", () => {
       setMuted(true)
       setFocused(false)
@@ -377,10 +357,9 @@ export function HomeScreen() {
         )
 
       return (
-        // Translucent per-item background (feedItemBackground convention) —
-        // the mission section carries its own. Never on contentContainerStyle:
-        // an opaque content container fills the padding region and hides the
-        // absolute hero behind it.
+        // Translucent per-item background (mission carries its own). Never on
+        // contentContainerStyle: an opaque container fills the padding region
+        // and hides the absolute hero behind it.
         <View
           style={item.kind === "mission" ? null : styles.feedItemBackground}
         >
@@ -488,9 +467,8 @@ export function HomeScreen() {
       />
 
       {heroVisible && (
-        // The hero's interactive chrome. It must live ABOVE the FlashList
-        // (which swallows any tap aimed at the hero layer) but visually
-        // belong to the hero — so it fades out with scroll and stops taking
+        // Hero chrome must live ABOVE the FlashList (which swallows hero-layer
+        // taps) but belong to the hero: it fades with scroll and stops taking
         // touches once faded, letting feed taps pass through.
         <View
           style={[styles.heroInteractiveLayer, { height: heroHeight }]}
@@ -613,10 +591,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   heroChrome: {
-    // Mirrors the chrome's old in-pager position: CTA bottom-left with the
-    // content column's 16 padding, mute circle bottom-right at right 16 —
-    // both bottom edges HERO_CHROME_BOTTOM above the hero bottom (shared
-    // geometry with the pager's reserved text-block padding).
+    // Mirrors the chrome's old in-pager position: CTA bottom-left, mute circle
+    // bottom-right, both at 16 padding and HERO_CHROME_BOTTOM above the hero
+    // bottom (shared geometry with the pager's reserved text-block padding).
     position: "absolute",
     left: 0,
     right: 0,

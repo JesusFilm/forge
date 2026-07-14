@@ -94,6 +94,16 @@ function datadogEnvFallback(): string | undefined {
   )
 }
 
+function datadogServerEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.DD_ENV ??
+      process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
 function datadogVersionFallback(): string | undefined {
   return (
     emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
@@ -103,8 +113,13 @@ function datadogVersionFallback(): string | undefined {
   )
 }
 
+function datadogServerVersionFallback(): string | undefined {
+  return emptyToUndefined(process.env.DD_VERSION) ?? datadogVersionFallback()
+}
+
 const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
   ".jesusfilm.org",
+  ".railway.internal",
   ".railway.app",
   ".local",
 ] as const
@@ -155,7 +170,6 @@ export const env = createEnv({
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: z.string().optional(),
@@ -199,22 +213,32 @@ export const env = createEnv({
     // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
     // Required — flipped from optional in U13.
     WEB_ADMIN_API_KEYS: z.string().min(1),
+    // Optional narrower bearer for admin's watch-progress receiver. When unset,
+    // local development falls back to WEB_ADMIN_API_KEYS until the dedicated
+    // secret is provisioned in the target environment.
+    WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
     // Shared Auth host used by server routes to verify Better Auth sessions
-    // over HTTP. Production/stage callers validate this before forwarding
-    // cookies; local/test default to the standalone auth dev port.
-    WEB_AUTH_BASE_URL: z
+    // over HTTP. Local development mirrors Admin and uses production Auth by
+    // default; CI overrides this to the standalone auth dev port.
+    WEB_AUTH_BASE_URL: z.url().default("https://auth.jesusfilm.org"),
+    WEB_AUTH_ISSUER_URL: z.url().optional(),
+    WEB_AUTH_CLIENT_ID: z.string().min(1).optional(),
+    WEB_BASE_URL: z
       .url()
       .default(
-        productionDefault(
-          "https://auth.jesusfilm.org",
-          "http://localhost:3004",
-        ),
+        productionDefault("https://web.jesusfilm.org", "http://localhost:3000"),
       ),
-    // Optional: server-side YouVersion Platform access for the watch-page
-    // Bible Quotes passage panel. Kept server-only so the app key is never
-    // serialized into browser JS or request headers from the client.
-    YOUVERSION_APP_KEY: z.string().optional(),
-    YOUVERSION_DEFAULT_VERSION_ID: optionalPositiveIntDefault(3034),
+    WEB_SESSION_SECRET: z.string().min(32).optional(),
+    // Optional server-side Datadog APM/log forwarding configuration. Keep
+    // NODE_OPTIONS scoped to Railway's start command; these vars only tell the
+    // tracer where to report and how to tag web spans/logs.
+    DD_AGENT_HOST: z.string().min(1).optional(),
+    DD_TRACE_AGENT_PORT: optionalPositiveIntDefault(8126),
+    DD_AGENT_SYSLOG_PORT: optionalPositiveIntDefault(514),
+    DD_ENV: z.string().min(1).optional(),
+    DD_SERVICE: z.string().min(1).optional(),
+    DD_VERSION: z.string().min(1).optional(),
+    WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT: booleanEnv(true),
   },
   client: {
     // U12 — Mux watch-page player migration flag.
@@ -278,8 +302,6 @@ export const env = createEnv({
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
-      process.env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
@@ -291,9 +313,20 @@ export const env = createEnv({
     ALGOLIA_INDEX: process.env.ALGOLIA_INDEX,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
     WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
-    YOUVERSION_APP_KEY: process.env.YOUVERSION_APP_KEY,
-    YOUVERSION_DEFAULT_VERSION_ID: process.env.YOUVERSION_DEFAULT_VERSION_ID,
+    WEB_AUTH_ISSUER_URL: emptyToUndefined(process.env.WEB_AUTH_ISSUER_URL),
+    WEB_AUTH_CLIENT_ID: emptyToUndefined(process.env.WEB_AUTH_CLIENT_ID),
+    WEB_BASE_URL: emptyToUndefined(process.env.WEB_BASE_URL),
+    WEB_SESSION_SECRET: emptyToUndefined(process.env.WEB_SESSION_SECRET),
+    DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
+    DD_TRACE_AGENT_PORT: process.env.DD_TRACE_AGENT_PORT,
+    DD_AGENT_SYSLOG_PORT: process.env.DD_AGENT_SYSLOG_PORT,
+    DD_ENV: datadogServerEnvFallback(),
+    DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
+    DD_VERSION: datadogServerVersionFallback(),
+    WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT:
+      process.env.WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     NEXT_PUBLIC_DATADOG_APPLICATION_ID:

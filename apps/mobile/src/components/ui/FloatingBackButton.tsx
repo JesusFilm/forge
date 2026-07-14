@@ -14,13 +14,9 @@ type FloatingBackButtonProps = {
   sideOffset?: number
 }
 
-// A back button that floats over full-bleed content (no native header). Used on
-// the Experience screen reached from search and over the video details player
-// (inside the player corner). Mirrors HomeHeader's glass button so the chrome
-// reads as one design language. The pressed scale gives the tap its feedback;
-// `isInteractive` is intentionally NOT set — inside a Pressable it flashes white
-// on remount (this button conditionally mounts on fullscreen toggle / route
-// entry). See docs/solutions/best-practices/expo-glass-effect-interactive-flash.
+// Back button floating over full-bleed content; mirrors HomeHeader's glass button.
+// `isInteractive` intentionally NOT set — inside a Pressable it flashes white on
+// remount. See docs/solutions/best-practices/expo-glass-effect-interactive-flash.
 export function FloatingBackButton({
   topOffset = 4,
   sideOffset = HORIZONTAL_PADDING,

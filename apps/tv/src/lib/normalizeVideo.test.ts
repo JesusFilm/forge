@@ -5,16 +5,21 @@ import {
 } from "./normalizeVideo"
 
 // ── Builders ────────────────────────────────────────────────────────
-//
 // makeChild builds one parent.children[] entry (a { child } relation wrapper).
-// The whole makeRawVideo return is cast to the normalizer's param type, so this
-// stays as an inferred object literal whose concrete field types overlap it.
-function makeChild(documentId: string, slug: string, title: string) {
+// makeRawVideo's return is cast to the normalizer's param type, so builders stay
+// inferred object literals whose concrete field types overlap it.
+function makeChild(
+  documentId: string,
+  slug: string,
+  title: string,
+  muxPlaybackId: string | null = `${documentId}-pb`,
+) {
   return {
     child: {
       documentId,
       slug,
       label: "SEGMENT",
+      muxPlaybackId,
       locales: [
         { documentId: `${documentId}-loc`, languageSlug: "english", title },
       ],
@@ -351,6 +356,31 @@ describe("normalizeVideo — Up Next siblings", () => {
     expect(result.siblings).toEqual([])
   })
 
+  it("carries each sibling's muxPlaybackId, null when the child has none (R5, R6)", () => {
+    const raw = makeRawVideo({
+      parents: [
+        {
+          parent: {
+            documentId: "parent-1",
+            slug: "easter-story",
+            label: "COLLECTION",
+            locales: [],
+            images: [],
+            children: [
+              makeChild("vid-2", "the-resurrection", "The Resurrection"),
+              makeChild("vid-3", "the-ascension", "The Ascension", null),
+            ],
+          },
+        },
+      ],
+    })
+    const result = normalizeVideo(raw)!
+    expect(result.siblings.map((s) => s.muxPlaybackId)).toEqual([
+      "vid-2-pb",
+      null,
+    ])
+  })
+
   it("uses the first parent's children when a video has multiple parents", () => {
     const raw = makeRawVideo({
       parents: [
@@ -410,6 +440,7 @@ function makeEpisodeRel(
   slug: string,
   title: string,
   order: number,
+  muxPlaybackId: string | null = `${documentId}-pb`,
 ) {
   return {
     order,
@@ -417,6 +448,7 @@ function makeEpisodeRel(
       documentId,
       slug,
       label: "EPISODE",
+      muxPlaybackId,
       locales: [
         {
           documentId: `${documentId}-loc`,
@@ -439,8 +471,9 @@ function makeEpisodeRel(
   }
 }
 
-// makeRawSeries layers the series-only selections (own children +
-// childDubLanguages) over the base fixture. The series documentId stays
+// makeRawSeries layers the series-only selection (own children) over the base
+// fixture. childDubLanguages moved to the lazy GET_SERIES_LANGUAGES query (U1), so
+// it is no longer part of the lean series record. The series documentId stays
 // "vid-1", so a child with documentId "vid-1" is a self-reference.
 function makeRawSeries(overrides: Record<string, unknown> = {}) {
   return {
@@ -449,10 +482,6 @@ function makeRawSeries(overrides: Record<string, unknown> = {}) {
     children: [
       makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2),
       makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
-    ],
-    childDubLanguages: [
-      { slug: "english", name: { en: "English" }, bcp47: "en" },
-      { slug: "spanish", name: { en: "Spanish", es: "Español" }, bcp47: "es" },
     ],
     ...overrides,
   } as Parameters<typeof normalizeSeries>[0]
@@ -477,6 +506,35 @@ describe("normalizeSeries — base record + trailer", () => {
     expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
     expect(result.variants).toHaveLength(2)
   })
+
+  // Contract guard: SeriesWatchVideo selects dubs WITHOUT player-only
+  // duration/muxVideo, so those keys are ABSENT (undefined), not null. Builder
+  // must still play a trailer from hls; deleting `?? null` in buildWatchVideoRecord fails here.
+  it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "dub-lean",
+            slug: "english",
+            published: true,
+            hls: "https://stream.mux.com/lean.m3u8",
+            language: {
+              coreId: "c-en",
+              bcp47: "en",
+              slug: "english",
+              name: { en: "English" },
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/lean.m3u8")
+    expect(result.duration).toBeNull()
+    expect(result.muxPlaybackId).toBeNull()
+    expect(result.variants[0].duration).toBeNull()
+    expect(result.variants[0].muxPlaybackId).toBeNull()
+  })
 })
 
 describe("normalizeSeries — episodes (own children)", () => {
@@ -498,6 +556,7 @@ describe("normalizeSeries — episodes (own children)", () => {
       description: "Episode One description",
       imageAlt: "Episode One art",
       posterUrl: "https://img.example.com/episode-1.jpg",
+      muxPlaybackId: "ep-1-pb",
     })
   })
 
@@ -558,39 +617,26 @@ describe("normalizeSeries — episodes (own children)", () => {
     )!
     expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1"])
   })
-})
 
-describe("normalizeSeries — languages (childDubLanguages union)", () => {
-  it("maps the language union with localized names, keyed on slug", () => {
-    const result = normalizeSeries(makeRawSeries())!
-    expect(result.languages).toEqual([
-      { slug: "english", name: "English", bcp47: "en" },
-      { slug: "spanish", name: "Spanish", bcp47: "es" },
-    ])
-  })
-
-  it("dedupes on slug and skips entries with a missing/empty slug", () => {
+  it("carries each episode's muxPlaybackId, null when absent (R5, R6)", () => {
     const result = normalizeSeries(
       makeRawSeries({
-        childDubLanguages: [
-          { slug: "english", name: { en: "English" }, bcp47: "en" },
-          { slug: "english", name: { en: "English (dup)" }, bcp47: "en" },
-          { slug: null, name: { en: "Ghost" }, bcp47: "xx" },
-          { slug: "", name: { en: "Empty" }, bcp47: "yy" },
+        children: [
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
+          makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2, null),
         ],
       }),
     )!
-    expect(result.languages).toEqual([
-      { slug: "english", name: "English", bcp47: "en" },
+    expect(result.episodes.map((e) => e.muxPlaybackId)).toEqual([
+      "ep-1-pb",
+      null,
     ])
   })
-
-  it("yields empty languages when childDubLanguages is missing", () => {
-    expect(
-      normalizeSeries(makeRawSeries({ childDubLanguages: null }))!.languages,
-    ).toEqual([])
-  })
 })
+
+// The language union moved off WatchSeriesRecord entirely (U1): it is fetched by
+// GET_SERIES_LANGUAGES and normalized via normalizeChildDubLanguages — see
+// normalizeLanguages.test.ts. normalizeSeries no longer produces languages.
 
 describe("normalizeSeries — memoization (WeakMap on raw reference)", () => {
   it("re-normalizing the same raw reference returns the memoized record", () => {

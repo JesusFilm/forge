@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "Fermer",
     "download": "Télécharger",
+    "authRequiredTitle": "Voulez-vous télécharger cette vidéo ?",
+    "authRequiredBody": "Un compte Jesus Film gratuit est nécessaire pour télécharger des vidéos.",
+    "signInToDownload": "Se connecter pour télécharger",
+    "keepWatching": "Continuer à regarder",
     "checking": "Vérification",
     "closeTermsOfUse": "Fermer les conditions d’utilisation",
     "cancel": "Annuler",
@@ -193,7 +197,10 @@
     "searchSuggestionWithLanguage": "Rechercher {suggestion} en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Parcourir par région",
-    "clearLanguages": "Effacer"
+    "clearLanguages": "Effacer",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Regarder",

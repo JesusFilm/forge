@@ -15,18 +15,26 @@
 This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
-**Exception — the Home tab is config-curated, not Experience-driven.**
-`watchSetting.homepageExperience` is null in prod and web's `/watch` home is
-likewise config-curated, so Home renders from a local curation config instead
-(feat-172). The config + pure model/queue logic live in `src/lib/watchHome/`
-and are an adapted copy of `apps/web/src/lib/watch-home-config.ts` (+ the two
-sibling web modules) — **any curation change on web must be mirrored here**
-until feat-160 moves curation into admin. Data flows
-`useWatchHome` (lean `watchHomeVideos` fetch — never select `dubs` in the bulk
-fragment; a jest guard enforces this) → `buildWatchHomeModelFromVideos` →
-`HomeScreen` (three-layer hero pager / shelves / overlay). Hero streams
-resolve lazily per slide via `useHeroStream`. Experiences still render via the
-SDUI pipeline below, hosted at `/experience/[slug]`.
+**Home tab — Experience-driven body, client-owned hero.** The Home body renders
+from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`,
+locale `en` — the same Experience web renders), adapted into the existing
+`WatchHomeModel`/`HomeShelf` shape by `src/lib/watchHome/experienceAdapter.ts`
+(lean cards from flat `MediaCollectionBlock` items; NOT the SDUI
+`/experience/[slug]` renderers). The hero pager stays client-owned and is never
+Experience-driven (feat-172). Config split by lifecycle in `src/lib/watchHome/`:
+`heroConfig.ts` is LIVE — **mirror any web hero-curation change here** (hero
+sources, playlist sequence, mux inserts) until feat-160 moves curation into
+admin; `fallbackConfig.ts` is a FROZEN emergency body fallback (null / fetch
+error / zero renderable shelves) — do NOT mirror web there. `useWatchHome`
+fetches the Experience and the lean `watchHomeVideos` payload in parallel
+(**never select `dubs` in the bulk fragment; jest guards enforce it on both the
+videos fetch and the `watchSetting` path**), resolves body-from-Experience-else-
+config via `resolveWatchHomeModel` (fallback emits one structured
+`[WatchHome] fallback reason=…` log — never silent), and snapshots the painted
+source for instant cold launch. `buildWatchHomeModelFromVideos` → `HomeScreen`
+(three-layer hero pager / shelves / overlay); hero streams resolve lazily per
+slide via `useHeroStream`. Experiences still render via the SDUI pipeline below,
+hosted at `/experience/[slug]`.
 
 ### SDUI Pipeline
 
@@ -46,7 +54,8 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **Flat container model**: Admin's `ContainerBlock` uses flat `content[]` with `ContainerSlotBlock` markers instead of nested `slots[].slotContent`. `groupBySlotMarker()` reconstructs slot groups.
 - **ExperienceProvider at root layout**: Wraps the root Stack so both tabs and video detail route have access.
 - **Three-layer hero**: the hero (zIndex 0) is absolutely-positioned behind FlashList, with an interactive overlay (zIndex 2, `pointerEvents="box-none"`) above the scroll view for anything tappable. SDUI/CuratedHomeLayout path: visual elements render in the hero layer and invisible overlay Pressables are positioned over them via `measureLayout`. HomeScreen path: visible chrome Pressables (Watch Now / insert CTA / mute) render directly in the overlay and fade with scroll, while hero swipes are claimed by a capture-phase PanResponder on the screen root and forwarded to the pager.
-- **VideoDecoderBudget**: Global context limiting concurrent video decoder slots on Android.
+- **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids raw `useVideoPlayer(` outside it plus a two-file allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`).
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions
@@ -58,6 +67,21 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
+
+## Running on a simulator (env setup)
+
+**Before launching apps/mobile on a simulator, ALWAYS run
+`bash scripts/setup-sim-env.sh mobile` first.** Fresh git worktrees don't
+inherit `.env.local` (gitignored), so `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (the
+`Search`-scoped consumer bearer) is absent and search fails with
+`UNAUTHENTICATED` until it's seeded.
+
+The script is idempotent: it seeds `apps/mobile/.env.local` from the main
+checkout with the search token. It's a shortcut — the canonical way to populate
+the full env (and the fallback on a fresh solo clone with no other checkout) is
+`pnpm --filter @forge/mobile fetch-secrets` (Doppler `forge-mobile`). Run either
+BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
+change made after boot needs a Metro restart to take effect.
 
 ## Common Pitfalls
 

@@ -30,17 +30,17 @@ function workflowStartupState() {
   return state
 }
 
-function positiveIntegerEnv(name: string, fallback: number) {
-  const value = Number.parseInt(process.env[name] ?? "", 10)
-  return Number.isFinite(value) && value > 0 ? value : fallback
+function positiveIntegerValue(value: unknown, fallback: number) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function maxTransientWorkflowStartupAttempts() {
-  return positiveIntegerEnv("WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS", 12)
+  return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS, 12)
 }
 
 function transientWorkflowStartupDelayMs() {
-  return positiveIntegerEnv("WORKFLOW_STARTUP_TRANSIENT_DELAY_MS", 10_000)
+  return positiveIntegerValue(env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS, 10_000)
 }
 
 function errorText(error: unknown) {
@@ -122,6 +122,11 @@ async function startWorkflowWorldWithTransientRetry(
 }
 
 export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { configureDatadog } = await import("@/observability/datadog")
+    configureDatadog()
+  }
+
   if (!shouldStartWorkflowWorld()) return
 
   await startWorkflowWorldWithTransientRetry()

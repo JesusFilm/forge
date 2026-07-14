@@ -18,7 +18,7 @@ export const featureFlags = {
     defaultValue: false,
     localOverrideEnv: "FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT",
     description:
-      "Gradual rollout gate requiring a Jesus Film One account before watch-page video downloads.",
+      "Runtime rollout gate for requiring a Web account before Watch downloads.",
   },
   watchYouVersionBibleQuotes: {
     key: "forge.watch.youVersionBibleQuotes",

@@ -26,8 +26,13 @@ function makeFakePrisma(rowsByModel: Record<string, Array<{ id: string }>>) {
     experience: make("experience"),
     experienceLocale: make("experienceLocale"),
     video: make("video"),
+    videoImage: { findMany: async () => [] },
+    videoLocale: { findMany: async () => [] },
+    videoRelation: { findMany: async () => [] },
+    videoStudyQuestion: { findMany: async () => [] },
+    bibleCitation: { findMany: async () => [] },
     language: make("language"),
-    // Loose typing — DataLoader factory only touches the four above.
+    // Loose typing — each test provides only the delegates it exercises.
   } as unknown as Parameters<typeof createLoaders>[0]
 }
 
@@ -38,9 +43,20 @@ describe("createLoaders", () => {
       "experienceById",
       "experienceLocaleById",
       "languageById",
+      "videoBibleCitationsByVideoId",
       "videoById",
+      "videoByIdWithQuery",
+      "videoChildrenByParentId",
+      "videoImagesByVideoId",
+      "videoLocalesByVideoIdAndFilter",
+      "videoMuxHeroPosterBlurDataUrlByIdAndLanguageSlug",
+      "videoMuxHeroPosterDominantColorByIdAndLanguageSlug",
       "videoMuxPlaybackIdByIdAndLanguageSlug",
+      "videoMuxThumbnailBlurDataUrlByIdAndLanguageSlug",
+      "videoMuxThumbnailDominantColorByIdAndLanguageSlug",
+      "videoParentsByChildId",
       "videoPrimaryDubDurationById",
+      "videoStudyQuestionsByVideoIdAndFilter",
     ])
   })
 
@@ -70,6 +86,7 @@ describe("createLoaders", () => {
       },
       experienceLocale: { findMany: async () => [] },
       video: { findMany: async () => [] },
+      videoRelation: { findMany: async () => [] },
       language: { findMany: async () => [] },
     } as unknown as Parameters<typeof createLoaders>[0]
 
@@ -103,6 +120,152 @@ describe("createLoaders", () => {
       loaders.experienceById.load("x1"), // duplicate; batched + cached
     ])
     expect(calls).toBe(1)
+  })
+
+  it("batches video loads that share a Pothos query selection", async () => {
+    const calls: Array<{ ids: string[]; query: object }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          calls.push({ ids: args.where.id.in, query: args })
+          return args.where.id.in.map((id) => ({ id }))
+        },
+      },
+      videoRelation: { findMany: async () => [] },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const query = { include: { images: true } }
+    await Promise.all([
+      loaders.videoByIdWithQuery.load({ id: "v1", query }),
+      loaders.videoByIdWithQuery.load({ id: "v2", query }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.ids).toEqual(["v1", "v2"])
+    expect(calls[0]?.query).toMatchObject(query)
+  })
+
+  it("does not batch video loads with different Pothos query selections", async () => {
+    const calls: Array<{ ids: string[] }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: {
+        findMany: async (args: { where: { id: { in: string[] } } }) => {
+          calls.push({ ids: args.where.id.in })
+          return args.where.id.in.map((id) => ({ id }))
+        },
+      },
+      videoRelation: { findMany: async () => [] },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    await Promise.all([
+      loaders.videoByIdWithQuery.load({
+        id: "v1",
+        query: { include: { images: true } },
+      }),
+      loaders.videoByIdWithQuery.load({
+        id: "v2",
+        query: { include: { locales: true } },
+      }),
+    ])
+
+    expect(calls).toHaveLength(2)
+    expect(calls.map((call) => call.ids)).toEqual([["v1"], ["v2"]])
+  })
+
+  it("batches parent relation rows by child id with public visibility", async () => {
+    const calls: Array<{ where: unknown }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoRelation: {
+        findMany: async (args: { where: { childId: { in: string[] } } }) => {
+          calls.push({ where: args.where })
+          return args.where.childId.in.map((childId) => ({
+            id: `rel-${childId}`,
+            parentId: `parent-${childId}`,
+            childId,
+          }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const rows = await Promise.all([
+      loaders.videoParentsByChildId.load({
+        videoId: "child-1",
+        visibleOnly: true,
+      }),
+      loaders.videoParentsByChildId.load({
+        videoId: "child-2",
+        visibleOnly: true,
+      }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.where).toMatchObject({
+      childId: { in: ["child-1", "child-2"] },
+      parent: {
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
+      },
+    })
+    expect(rows.map((group) => group.map((row) => row.childId))).toEqual([
+      ["child-1"],
+      ["child-2"],
+    ])
+  })
+
+  it("batches child relation rows by parent id with editor visibility", async () => {
+    const calls: Array<{ where: unknown }> = []
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoRelation: {
+        findMany: async (args: {
+          where: { parentId: { in: string[] }; child?: unknown }
+        }) => {
+          calls.push({ where: args.where })
+          return args.where.parentId.in.map((parentId) => ({
+            id: `rel-${parentId}`,
+            parentId,
+            childId: `child-${parentId}`,
+          }))
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const rows = await Promise.all([
+      loaders.videoChildrenByParentId.load({
+        videoId: "parent-1",
+        visibleOnly: false,
+      }),
+      loaders.videoChildrenByParentId.load({
+        videoId: "parent-2",
+        visibleOnly: false,
+      }),
+    ])
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.where).toEqual({
+      parentId: { in: ["parent-1", "parent-2"] },
+    })
+    expect(rows.map((group) => group.map((row) => row.parentId))).toEqual([
+      ["parent-1"],
+      ["parent-2"],
+    ])
   })
 })
 

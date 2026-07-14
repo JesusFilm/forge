@@ -11,7 +11,7 @@ symptoms:
 root_cause: wrong_api
 resolution_type: code_fix
 severity: medium
-last_updated: "2026-04-20"
+last_updated: "2026-06-25"
 tags:
   - tvos
   - dpad-focus
@@ -95,4 +95,4 @@ The tvOS focus engine uses the view hierarchy and spatial layout to determine fo
 - `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md` — the inline autoplay work that introduced this focus issue
 - `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md` — the wrapper pattern breaks overlay VideoViews; documents when NOT to use it
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` — TV platform setup, documents `TVFocusGuideView` pattern
-- react-native-tvos issue #852 — focus lost on back-navigation (related but distinct)
+- react-native-tvos issue #852 — focus lost on back-navigation (related but distinct). Restoring the exact last-focused element across a multi-focusable screen: `docs/solutions/design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md`

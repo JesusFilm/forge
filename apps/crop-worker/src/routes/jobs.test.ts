@@ -6,6 +6,7 @@ import type { runFingerprint } from "../fingerprint.js"
 import type { runRender, RunRenderInput } from "../render.js"
 import { createHandleRequest } from "../server.js"
 import type { FingerprintSummary, RenderReport } from "../types.js"
+import { jobDedupeKey, jobRequestSchema } from "./jobs.js"
 
 class TestResponse extends Writable {
   statusCode = 200
@@ -94,9 +95,20 @@ const renderReport: RenderReport = {
   kind: "smart-crop-render-report",
   assetId: "asset456",
   mode: "preview",
+  cropPlanArtifactType: "smart-crop-plan-9x16-v1",
   target: { aspectRatio: "9:16", width: 1080, height: 1920 },
   segmentsRendered: 1,
   segmentsPlanned: 1,
+  renderedSegments: [
+    {
+      shotId: "shot_00001",
+      sourceStartSeconds: 0,
+      sourceEndSeconds: 10,
+      outputStartSeconds: 0,
+      outputEndSeconds: 10,
+      durationSeconds: 10,
+    },
+  ],
   outputDurationSeconds: 10,
   outputBytes: 1000,
   renderSeconds: 1.5,
@@ -191,6 +203,56 @@ describe("POST /jobs validation", () => {
         url: "/jobs",
         headers: authedHeaders,
         body: { ...fingerprintBody, source: {} },
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+  })
+
+  it("validates attempt crop plan artifact types and render artifact suffixes", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+    })
+    const renderBody = {
+      kind: "render",
+      jobId: "manager-job-render-validation",
+      assetId: "asset123",
+      source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+      render: {
+        mode: "preview",
+        cropPlan: { assetId: "asset123" },
+      },
+    }
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: {
+          ...renderBody,
+          render: {
+            ...renderBody.render,
+            cropPlan: {
+              assetId: "asset123",
+              artifactType: "smart-crop-plan-9x16-attempt-1-v1",
+            },
+          },
+        },
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: {
+          ...renderBody,
+          render: {
+            ...renderBody.render,
+            artifactSuffix: "attempt-1",
+          },
+        },
       }),
     ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
   })
@@ -314,8 +376,12 @@ describe("render job lifecycle", () => {
         source: { url: "https://stream.mux.com/pb_uk.m3u8" },
         render: {
           mode: "preview",
-          cropPlan: { assetId: "asset123" },
+          cropPlan: {
+            assetId: "asset123",
+            artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+          },
           timelineMap: { assetId: "asset456" },
+          artifactSuffix: "attempt-001",
           previewFrameCount: 6,
         },
       },
@@ -330,7 +396,9 @@ describe("render job lifecycle", () => {
       sourceUrl: "https://stream.mux.com/pb_uk.m3u8",
       mode: "preview",
       cropPlanAssetId: "asset123",
+      cropPlanArtifactType: "smart-crop-plan-9x16-attempt-001-v1",
       timelineMapAssetId: "asset456",
+      artifactSuffix: "attempt-001",
       previewFrameCount: 6,
     })
     expect(inputs[0]!.onProgress).toBeTypeOf("function")
@@ -363,9 +431,11 @@ describe("render job lifecycle", () => {
 
     expect(inputs[0]).toMatchObject({
       mode: "full",
+      cropPlanArtifactType: "smart-crop-plan-9x16-v1",
       previewFrameCount: 0,
     })
     expect(inputs[0]!.timelineMapAssetId).toBeUndefined()
+    expect(inputs[0]!.artifactSuffix).toBeUndefined()
   })
 
   it("surfaces job failure through GET /jobs/{id}", async () => {
@@ -459,6 +529,28 @@ describe("in-flight dedupe", () => {
     source: { url: "https://stream.mux.com/pb_abc.m3u8" },
     render: { mode: "preview", cropPlan: { assetId: "asset123" } },
   }
+
+  it("includes crop plan artifact type and artifact suffix in render keys", () => {
+    const legacy = jobRequestSchema.parse(renderBody)
+    const attempt = jobRequestSchema.parse({
+      ...renderBody,
+      render: {
+        ...renderBody.render,
+        cropPlan: {
+          assetId: "asset123",
+          artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+        },
+        artifactSuffix: "attempt-001",
+      },
+    })
+
+    expect(jobDedupeKey(legacy)).toBe(
+      "render:asset123:preview:asset123:smart-crop-plan-9x16-v1::",
+    )
+    expect(jobDedupeKey(attempt)).toBe(
+      "render:asset123:preview:asset123:smart-crop-plan-9x16-attempt-001-v1::attempt-001",
+    )
+  })
 
   it("re-attaches a duplicate POST to the ACTIVE job (202 with the original workerJobId and current status)", async () => {
     const handler = createHandleRequest({
@@ -558,6 +650,63 @@ describe("in-flight dedupe", () => {
     expect(preview.statusCode).toBe(202)
     expect(full.statusCode).toBe(202)
     expect(full.body.workerJobId).not.toBe(preview.body.workerJobId)
+  })
+
+  it("does not dedupe render jobs across distinct attempt artifact inputs and suffixes", async () => {
+    const handler = createHandleRequest({
+      queue: createJobQueue({ concurrency: 1, limit: 10 }),
+      auth,
+      runRenderImpl: (async () =>
+        neverResolves()) as unknown as typeof runRender,
+    })
+    const attempt1 = {
+      ...renderBody,
+      render: {
+        ...renderBody.render,
+        cropPlan: {
+          assetId: "asset123",
+          artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+        },
+        artifactSuffix: "attempt-001",
+      },
+    }
+    const attempt2 = {
+      ...renderBody,
+      jobId: "manager-job-render-2",
+      render: {
+        ...renderBody.render,
+        cropPlan: {
+          assetId: "asset123",
+          artifactType: "smart-crop-plan-9x16-attempt-002-v1",
+        },
+        artifactSuffix: "attempt-002",
+      },
+    }
+
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: attempt1,
+    })
+    const duplicate = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...attempt1, jobId: "manager-job-render-retry" },
+    })
+    const second = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: attempt2,
+    })
+
+    expect(first.statusCode).toBe(202)
+    expect(duplicate.statusCode).toBe(202)
+    expect(duplicate.body.workerJobId).toBe(first.body.workerJobId)
+    expect(second.statusCode).toBe(202)
+    expect(second.body.workerJobId).not.toBe(first.body.workerJobId)
   })
 
   it("does not collide fingerprint and render keys for the same assetId", async () => {

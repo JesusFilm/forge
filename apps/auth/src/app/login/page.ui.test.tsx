@@ -191,6 +191,7 @@ describe("auth login UI", () => {
       "Sign up to Jesus Film One to continue to Jesus Film Admin.",
     )
     expect(html).toContain("Sign up")
+    expect(html).toContain('action="/api/auth/sign-up/email"')
     expect(html).toContain("Already have an account?")
     expect(html).toContain(
       'href="/login?client_id=jfp_admin_local&amp;sig=signed"',

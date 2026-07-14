@@ -1,11 +1,17 @@
 import { Image } from "expo-image"
 import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import type { View as ViewType } from "react-native"
 
+import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { type SearchResult } from "../../lib/queries"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { scale } from "../../lib/scale"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { FOCUS_RING_WIDTH } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
+import { ExperienceFallback } from "./ExperienceFallback"
 import { resultChipLabel, resultKindLabel } from "./searchDisplay"
 import { SEARCH_THEME } from "./searchTheme"
 
@@ -16,49 +22,49 @@ type Props = {
   /** When true, this card claims focus on mount. The SearchResultsGrid
    *  assigns this to the first result after results land. */
   hasTVPreferredFocus?: boolean
+  /**
+   * Forced D-pad-up destination. The stacked (Apple TV) layout wires the
+   * grid's TOP ROW to the keyboard's first key so up-escape lands there.
+   * Undefined elsewhere (and in the two-pane layout) → default geometry.
+   */
+  nextFocusUp?: ViewType | null
 }
 
 /**
- * Single search-result tile (design: .card in the s-grid). 16:9 art with
- * a 1px outline and an episode-count chip, labels below the art (title +
- * kind line). Focus lifts the card (translateY −8, scale 1.06), swaps the
- * title to full white, and draws a 5px white ring + deep shadow on the
- * thumb.
- *
- * onFocus and hasTVPreferredFocus pass through so SearchResultsGrid can
- * orchestrate focus claims without this component knowing the grid layout.
+ * Single search-result tile: 16:9 art + episode-count chip + title/kind labels.
+ * Focus lifts/whitens it; onFocus + hasTVPreferredFocus pass through so
+ * SearchResultsGrid orchestrates focus claims without knowing the grid layout.
  */
 export function ResultCard({
   result,
   onPress,
   onFocus,
   hasTVPreferredFocus,
+  nextFocusUp,
 }: Props) {
   const imageUrl = resolveImageUrl(result.imageUrl)
   const chip = resultChipLabel(result)
   const kind = resultKindLabel(result)
 
-  // Close over `result` rather than re-indexing by id in onFocus /
-  // onPress — Apollo cache changes can shrink the results array
-  // between render and callback invocation. See
+  // Close over `result`, not re-index by id: Apollo cache changes can shrink the
+  // results array between render and callback. See
   // docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md.
   const handlePress = () => onPress(result)
 
-  // Focus lift driven by the shared useFocusAnimation hook (same as
-  // HomeCard): one 0→1 `progress` feeds focusTransform (native-driver
-  // translateY + scale), and it stops the prior timing before starting
-  // the next so a rapid D-pad sweep can't orphan animations. `focused`
-  // gates the non-animated focus styles (shadow, ring, title color).
-  const { focused, setFocused, progress } = useFocusAnimation()
+  // Shared focus module ("thumb" role); `focused` gates the non-animated focus
+  // styles (shadow, ring, title color).
+  const { focused, setFocused, transform } = useFocusVisual("thumb", {
+    nativeDriver: false,
+  })
+  const previewUrl = useHoverPreview({
+    focused,
+    // Gate on the LABEL not childCount so a playable feature film with episodes
+    // still previews; pure COLLECTION/SERIES results stay out.
+    enabled: !isSeriesLabel(result.label),
+    playbackId: result.playbackId,
+  })
 
-  // Memoized: progress is a stable ref, so the interpolations are built
-  // once rather than on every focus/blur re-render.
-  const liftStyle = useMemo(
-    () => ({
-      transform: focusTransform(progress, { lift: scale(8), magnify: 1.06 }),
-    }),
-    [progress],
-  )
+  const liftStyle = useMemo(() => ({ transform }), [transform])
 
   return (
     <Pressable
@@ -69,18 +75,20 @@ export function ResultCard({
       }}
       onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      nextFocusUp={nextFocusUp}
       accessibilityRole="button"
       accessibilityLabel={result.title}
+      // Stable, low-cardinality RUM action name (auto-tracker would use the title).
+      {...{ "dd-action-name": "search-result" }}
       accessibilityHint="Opens this experience"
       testID={`search-result-${result.type}-${result.id}`}
     >
       {/* Width comes from the grid cell wrapper via cross-axis stretch;
           height is content-driven (16:9 art + two text lines). */}
       <Animated.View style={liftStyle}>
-        {/* Outer/inner split (same pattern as FocusableCard): iOS sets
-            masksToBounds for overflow:"hidden", which would clip the
-            focused layer's own shadow — so the shadow lives on this
-            non-clipping wrapper and the art clips inside. */}
+        {/* Outer/inner split: iOS overflow:"hidden" (masksToBounds) would clip
+            the focused shadow, so the shadow lives on this non-clipping wrapper
+            and the art clips inside. */}
         <View style={[styles.thumbShadow, focused && styles.thumbFocused]}>
           <View style={styles.thumb}>
             {imageUrl != null ? (
@@ -88,21 +96,24 @@ export function ResultCard({
                 source={{ uri: imageUrl }}
                 style={styles.image}
                 contentFit="cover"
+                contentPosition="top left"
                 recyclingKey={`search-${result.type}-${result.id}`}
               />
+            ) : result.type === "EXPERIENCE" ? (
+              <ExperienceFallback slug={result.slug} title={result.title} />
             ) : (
               <View style={[styles.image, styles.imageFallback]} />
             )}
+            <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
             {chip != null ? (
               <View style={styles.chip} pointerEvents="none">
                 <Text style={styles.chipText}>{chip}</Text>
               </View>
             ) : null}
           </View>
-          {/* Focus ring — decorative overlay, NOT a focusable. Drawn as
-              an absolute inset border so toggling it never reflows the
-              image underneath (a borderWidth change on the thumb itself
-              would shrink the art by 2×ring while focused). */}
+          {/* Focus ring: decorative absolute inset border so toggling it never
+              reflows the art (a borderWidth change on the thumb would shrink it
+              by 2×ring while focused). */}
           {focused ? <View style={styles.ring} pointerEvents="none" /> : null}
         </View>
         <View style={styles.meta}>
@@ -124,9 +135,9 @@ export function ResultCard({
 const styles = StyleSheet.create({
   thumbShadow: {
     width: "100%",
-    // Design thumb is 400×225 — exactly 16:9 — expressed as a ratio so
-    // the fluid cell width keeps the art proportionate.
-    aspectRatio: 16 / 9,
+    // Match the cinematic thumbnails (mobileCinematicHigh = 1280×600 = 32:15)
+    // so cover doesn't side-crop the art; fluid cell width keeps it proportionate.
+    aspectRatio: 32 / 15,
     borderRadius: scale(16),
     // Solid bg gives the iOS shadow a clean opaque shape to project.
     backgroundColor: SEARCH_THEME.bg,
@@ -177,7 +188,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: scale(16),
-    borderWidth: scale(5),
+    borderWidth: FOCUS_RING_WIDTH,
     borderColor: SEARCH_THEME.ring,
   },
   meta: {

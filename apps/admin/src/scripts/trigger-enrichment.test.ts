@@ -128,9 +128,8 @@ describe("extractMissingArtifactsFromReport", () => {
             { assetId: 1, coreId: "c-1", kind: "transcript" },
             { assetId: 2, coreId: "c-2", kind: "scene-analysis" },
           ],
-          // Note: in production sceneEmbeddingBackfill only emits
-          // kind: "scene-analysis"; the mixed shape here is purely
-          // a defensive filter test.
+          // Mixed shapes are purely defensive; active transcript reports
+          // emit kind: "transcript".
         },
       },
     }

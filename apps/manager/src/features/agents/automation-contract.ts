@@ -5,7 +5,6 @@ export const AUTOMATION_TEMPLATES = [
   "target_subtitles_missing",
   "metadata_missing",
   "transcript_embeddings_missing",
-  "scene_embeddings_missing",
 ] as const
 
 export type AutomationTemplate = (typeof AUTOMATION_TEMPLATES)[number]
@@ -21,7 +20,6 @@ export const AUTOMATION_TEMPLATE_LABELS: Record<AutomationTemplate, string> = {
   target_subtitles_missing: "Target subtitles",
   metadata_missing: "Metadata",
   transcript_embeddings_missing: "Transcript embeddings",
-  scene_embeddings_missing: "Scene embeddings",
 }
 
 export type AutomationStatus = "active" | "paused"

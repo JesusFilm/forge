@@ -5,10 +5,15 @@ import {
   InstagramDiscoveryArtifactError,
   type InstagramDiscoveryArtifactStore,
 } from "../../services/instagram-discovery/artifacts"
-import type { DiscoveryReport } from "../../services/instagram-discovery/types"
+import type {
+  DiscoveryReport,
+  InstagramPost,
+} from "../../services/instagram-discovery/types"
 import {
   handleInstagramDiscoveryRouteRequest,
+  InstagramDiscoveryWorkflowInputSchema,
   InstagramDiscoverySearchError,
+  instagramAiChristianDiscoveryWorkflow,
   runInstagramDiscovery,
   type InstagramDiscoveryWorkflowResult,
 } from "./instagram-ai-christian-discovery"
@@ -70,6 +75,43 @@ const commentaryHit = {
     "Should we be listening to AI generated Christian music? Here's my thoughts",
 }
 
+describe("instagramAiChristianDiscoveryWorkflow schedule", () => {
+  it("runs once a day at midnight UTC on the evented engine", () => {
+    expect(instagramAiChristianDiscoveryWorkflow.engineType).toBe("evented")
+
+    const schedules = (
+      instagramAiChristianDiscoveryWorkflow as typeof instagramAiChristianDiscoveryWorkflow & {
+        getScheduleConfigs: () => Array<{
+          cron: string
+          timezone?: string
+          inputData?: unknown
+        }>
+      }
+    ).getScheduleConfigs()
+
+    expect(schedules).toHaveLength(1)
+    expect(schedules[0]).toMatchObject({
+      cron: "0 0 * * *",
+      timezone: "UTC",
+    })
+    expect(schedules[0]).not.toHaveProperty("id")
+    expect(schedules[0]).not.toHaveProperty("inputData")
+  })
+
+  it("resolves empty scheduled input through the existing workflow defaults", () => {
+    expect(InstagramDiscoveryWorkflowInputSchema.parse({})).toEqual({
+      queries: [
+        "AI generated Jesus video site:instagram.com",
+        "AI generated Christian reel site:instagram.com",
+      ],
+      limitPerQuery: 5,
+      scrapeMetadata: false,
+      maxResults: 50,
+      persistArtifact: true,
+    })
+  })
+})
+
 describe("runInstagramDiscovery", () => {
   it("returns only qualifying posts and writes an artifact", async () => {
     const store = fakeStore()
@@ -103,6 +145,68 @@ describe("runInstagramDiscovery", () => {
     })
     expect(result.artifactPath).toBe("/tmp/fake/reports/run-1.json")
     expect(store.written).toHaveLength(1)
+  })
+
+  it("submits only qualified posts to the site review queue", async () => {
+    const submitPosts = vi.fn(async (_posts: InstagramPost[]) => ({
+      ok: true,
+      inserted: 1,
+      skipped: 0,
+    }))
+
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-submit",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit, aiOnlyHit, nonInstagramHit],
+        artifactStore: fakeStore(),
+        submitPosts,
+      },
+    )
+
+    expectSuccess(result)
+    expect(submitPosts).toHaveBeenCalledTimes(1)
+    const submitted = submitPosts.mock.calls[0]![0]
+    expect(submitted).toHaveLength(1)
+    expect(submitted[0]!.shortcode).toBe("ABC123")
+  })
+
+  it("does not submit when site ingest is explicitly disabled", async () => {
+    const submitPosts = vi.fn()
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-nosubmit",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: fakeStore(),
+        siteIngest: null,
+        submitPosts,
+      },
+    )
+
+    expectSuccess(result)
+    expect(submitPosts).not.toHaveBeenCalled()
+  })
+
+  it("keeps discovery successful when site submission fails", async () => {
+    const submitPosts = vi.fn(async () => {
+      throw new TestWorkflowError("site down")
+    })
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-submit-failed",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: fakeStore(),
+        submitPosts,
+      },
+    )
+
+    expectSuccess(result)
+    expect(result.posts).toHaveLength(1)
   })
 
   it("excludes commentary posts and counts them", async () => {

@@ -1,25 +1,10 @@
-// Video-details screen — /watch/[slug].
-//
-// Paints from an (untrusted, sanitized) seed for instant first paint, then
-// fills in from GET_VIDEO_BY_SLUG (cache-first + returnPartialData so re-entry
-// reads the warm cache without a blocking refetch — R3, R21). The normalized
-// video is published into the shared WatchSession so the action row's pickers
-// (and the in-player menu) read one source of truth.
-//
-// Layout (Claude Design handoff, "match the mockup exactly"): a full-screen
-// cinematic VideoBackdrop with the hero content anchored bottom-left over it —
-// a SERIES badge + meta kicker, large title, 2-line teaser, and a single
-// left-aligned action row (DetailsActionRow: Play + Language/Subtitles/Share/
-// Download pills). Below the fold (opaque #08080a): the Up Next rail, an About
-// block, then Related Questions and Bible Quotes.
-//
-// DEGRADED (R14–R17): a section with zero items is omitted entirely. Below-fold
-// sections render only once the full query has resolved (the seed paints
-// title/poster first; no per-section spinners).
+// Video-details screen (/watch/[slug]): sanitized seed for instant first paint,
+// then GET_VIDEO_BY_SLUG (cache-first + returnPartialData, R3/R21) into the shared
+// WatchSession. DEGRADED (R14–R17): empty sections omitted; below-fold last.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
@@ -30,8 +15,8 @@ import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
-import { RetryButton } from "../../src/components/RetryButton"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
+import { ScreenStateView } from "../../src/components/ScreenStateView"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
 import { LanguagePanel } from "../../src/components/watch/LanguagePanel"
@@ -41,12 +26,14 @@ import {
   buildRelatedQuestionsBlock,
 } from "../../src/components/watch/detailsAdapters"
 import { buildMetadataLine } from "../../src/components/watch/detailsHelpers"
-import { WATCH_THEME } from "../../src/components/watch/watchDetailTheme"
+import {
+  WATCH_THEME,
+  HERO_PEEK,
+} from "../../src/components/watch/watchDetailTheme"
 import { SECTION_HEADING } from "../../src/components/sections/sectionHeading"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
-import { COLORS } from "../../src/lib/colors"
 import type { WatchBibleCitation } from "../../src/lib/normalizeVideo"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
@@ -99,15 +86,9 @@ export default function WatchVideoScreen() {
     [seed],
   )
 
-  // A series reached via /watch (deep link, stale recommendation) redirects to
-  // the dedicated series screen — replace (not push) so Menu pops to the
-  // pre-watch origin. resolveWatchRedirect decides only on complete data
-  // (never off a partial cache read); detection is label-only at this seam, so
-  // an unlabeled-with-children deep link stays here (accepted gap, mirrors
-  // mobile). Deep-linked series show one watch-skeleton frame before the
-  // replace lands (the render below skips the backdrop on that frame). The
-  // seed carries through with playbackId nulled so the series side never
-  // derives a stream from it. Once-guarded per slug so it can't loop.
+  // A series reached via /watch replaces (not pushes) to the series screen so Menu
+  // pops to origin. Decides on complete data only, label-only (unlabeled-with-
+  // children stays here, mirrors mobile); seed playbackId nulled, once-guarded.
   const redirectDecision = resolveWatchRedirect(normalized, { loading })
   const redirectedRef = useRef<string | null>(null)
   useEffect(() => {
@@ -123,12 +104,14 @@ export default function WatchVideoScreen() {
     router.replace(target)
   }, [redirectDecision, decodedSlug, seed, router])
 
-  // Publish the fetched video into the shared session; keyed on the normalized
-  // object so partial → full enrichment republishes (the session guards user
-  // selections across these republishes).
-  useEffect(() => {
-    if (normalized) setVideo(normalized)
-  }, [normalized, setVideo])
+  // Re-publish into the shared session WHILE FOCUSED so a child screen's pop (its
+  // unmount clears the singleton below) doesn't strand this still-mounted parent at
+  // video=null, blanking everything session-driven (Up Next/About/RQ/pills).
+  useFocusEffect(
+    useCallback(() => {
+      if (normalized) setVideo(normalized)
+    }, [normalized, setVideo]),
+  )
 
   // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
   // the previous video from the session so its stale variants don't leak.
@@ -178,10 +161,9 @@ export default function WatchVideoScreen() {
   )
   const descriptionText = video?.description ?? null
 
-  // Below-fold section blocks — built from the resolved video only (adapters
-  // return null for empty input so the whole section is omitted: R14–R17).
-  // Verse text is fetched per citation (useBibleVerses) and threaded into the
-  // quote cards; until it resolves the cards render reference-only.
+  // Below-fold blocks from the resolved video only (adapters return null for empty
+  // input so the section is omitted, R14–R17). Verse text is fetched per citation
+  // (useBibleVerses) into the quote cards; until it resolves cards are ref-only.
   const bibleVerses = useBibleVerses(video?.bibleCitations ?? NO_CITATIONS)
   const relatedQuestionsBlock = hasVideo
     ? buildRelatedQuestionsBlock(video.studyQuestions)
@@ -199,15 +181,14 @@ export default function WatchVideoScreen() {
 
   if (showErrorState) {
     return (
-      <View style={[styles.screen, styles.errorCentered]}>
-        <Text style={styles.errorMessage}>
-          This video is temporarily unavailable.
-        </Text>
-        <RetryButton
-          onPress={() => {
+      <View style={styles.screen}>
+        <ScreenStateView
+          kind="error"
+          message="This video is temporarily unavailable."
+          onRetry={() => {
             void refetch()
           }}
-          accessibilityHint="Reloads this video"
+          retryHint="Reloads this video"
         />
       </View>
     )
@@ -220,12 +201,15 @@ export default function WatchVideoScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero: full-screen cinematic backdrop with content anchored bottom-left. */}
+        {/* Hero: backdrop fills the HERO_PEEK-shortened hero so video clips by
+            construction (full-height VideoView punches through Up Next on Android —
+            SurfaceView ignores overflow:hidden). bottomFadeColor fades inside it. */}
         <View style={styles.hero}>
           <VideoBackdrop
             streamingUrl={backdropSource ?? null}
             posterUrl={displayPoster}
             overlayVisible={playerState.isVisible}
+            bottomFadeColor={WATCH_THEME.below}
           />
 
           <View style={styles.heroContent}>
@@ -268,11 +252,9 @@ export default function WatchVideoScreen() {
         <View style={styles.below}>
           {hasVideo ? <UpNextRail siblings={video.siblings} /> : null}
 
-          {/* About + Related Questions share one two-column row; either column
-              alone stretches across the full row width. The TVFocusGuideView
-              spans the full row so vertical D-pad traversal over the
-              non-focusable About column redirects into the question rows
-              (offset focusables are otherwise skipped by the focus engine). */}
+          {/* About + Related Questions share a two-column row. TVFocusGuideView
+              spans the row so vertical D-pad over the non-focusable About column
+              redirects into the question rows (offset focusables are else skipped). */}
           {descriptionText != null || relatedQuestionsBlock != null ? (
             <TVFocusGuideView autoFocus style={styles.aboutRow}>
               {descriptionText != null ? (
@@ -327,7 +309,10 @@ const styles = StyleSheet.create({
 
   // ── Hero ──────────────────────────────────────────────────────────
   hero: {
-    height: SCREEN_HEIGHT,
+    // Shortened by HERO_PEEK so Up Next peeks above the fold. The VideoBackdrop
+    // fills this (not full-screen) so its VideoView clips by construction on both
+    // platforms; overflow:hidden still guards the poster/scrim layers.
+    height: SCREEN_HEIGHT - HERO_PEEK,
     justifyContent: "flex-end",
     backgroundColor: "#000000",
     overflow: "hidden",
@@ -335,7 +320,9 @@ const styles = StyleSheet.create({
   heroContent: {
     alignItems: "flex-start",
     paddingHorizontal: scale(80),
-    paddingBottom: scale(96),
+    // Tightened (was 96) to shrink the dead band between the action row and the
+    // Up Next rail below.
+    paddingBottom: scale(52),
   },
   kicker: {
     flexDirection: "row",
@@ -379,16 +366,17 @@ const styles = StyleSheet.create({
     marginTop: scale(22),
     maxWidth: scale(980),
     fontFamily: "System",
-    fontSize: Math.round(scale(25)),
-    lineHeight: Math.round(scale(36)),
+    fontSize: Math.round(scale(27)),
+    lineHeight: Math.round(scale(39)),
     fontWeight: "400",
-    color: WATCH_THEME.text74,
+    color: WATCH_THEME.text,
   },
 
   // ── Below the fold ────────────────────────────────────────────────
   below: {
     backgroundColor: WATCH_THEME.below,
-    paddingTop: scale(48),
+    // Tightened (was 48) so the rail sits closer under the hero action row.
+    paddingTop: scale(24),
   },
   aboutRow: {
     flexDirection: "row",
@@ -410,23 +398,8 @@ const styles = StyleSheet.create({
   },
   aboutText: {
     fontFamily: "System",
-    fontSize: Math.round(scale(23)),
-    lineHeight: Math.round(scale(34)),
-    color: WATCH_THEME.text66,
-  },
-
-  // ── Error state ───────────────────────────────────────────────────
-  errorCentered: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: scale(20),
-    paddingHorizontal: scale(80),
-  },
-  errorMessage: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    fontWeight: "600",
-    color: COLORS.text,
-    textAlign: "center",
+    fontSize: Math.round(scale(25)),
+    lineHeight: Math.round(scale(37)),
+    color: WATCH_THEME.text,
   },
 })

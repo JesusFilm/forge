@@ -55,6 +55,7 @@ const cannedIntentResponse = {
                 start: { cx: 0.1, cy: 0.5 },
                 end: { cx: 0.9, cy: 0.5 },
               },
+              faceVisible: false,
             },
             {
               shotId: "shot_00421",
@@ -66,6 +67,11 @@ const cannedIntentResponse = {
               subjectCenter: {
                 start: { cx: 0.5, cy: 0.4 },
                 end: { cx: 0.52, cy: 0.4 },
+              },
+              faceVisible: true,
+              faceCenter: {
+                start: { cx: 0.75, cy: 0.22 },
+                end: { cx: 0.76, cy: 0.22 },
               },
             },
           ],
@@ -105,9 +111,14 @@ describe("smart crop plan workflow", () => {
           secondarySubjects: ["disciples"],
           avoidCutting: ["faces"],
           confidence: 0.94,
+          faceVisible: true,
+          faceCenter: {
+            start: { cx: 0.75, cy: 0.22 },
+            end: { cx: 0.76, cy: 0.22 },
+          },
           cropKeyframes: [
-            { progress: 0, x: 656, y: 0, width: 606, height: 1080 },
-            { progress: 1, x: 656, y: 0, width: 606, height: 1080 },
+            { progress: 0, x: 1136, y: 0, width: 606, height: 1080 },
+            { progress: 1, x: 1136, y: 0, width: 606, height: 1080 },
           ],
         },
         {
@@ -119,6 +130,7 @@ describe("smart crop plan workflow", () => {
           secondarySubjects: [],
           avoidCutting: [],
           confidence: 0.9,
+          faceVisible: false,
           cropKeyframes: [
             { progress: 0, x: 0, y: 0, width: 606, height: 1080 },
             { progress: 1, x: 480, y: 0, width: 606, height: 1080 },
@@ -152,6 +164,9 @@ describe("smart crop plan workflow", () => {
     expect(textParts.map((part) => part.text)).toContain(
       "shotId shot_00421 (124.2s-139.8s):",
     )
+    expect(textParts.map((part) => String(part.text)).join("\n")).toContain(
+      "faceCenter",
+    )
     const imageParts = body.messages[0]!.content.filter(
       (part) => part.type === "image_url",
     )
@@ -177,6 +192,11 @@ describe("smart crop plan workflow", () => {
                       start: { cx: 0.5, cy: 0.4 },
                       end: { cx: 0.5, cy: 0.4 },
                     },
+                    faceVisible: true,
+                    faceCenter: {
+                      start: { cx: 0.5, cy: 0.25 },
+                      end: { cx: 0.5, cy: 0.25 },
+                    },
                   },
                 ],
               }),
@@ -198,6 +218,67 @@ describe("smart crop plan workflow", () => {
       reason: "provider_invalid_output",
       retryable: false,
       mastraRunId: "run-missing-shot",
+    })
+  })
+
+  it("fails with provider_invalid_output when a visible face center is malformed", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                shots: [
+                  {
+                    shotId: "shot_00421",
+                    mode: "speaker",
+                    primarySubject: "Jesus",
+                    secondarySubjects: [],
+                    avoidCutting: ["faces"],
+                    confidence: 0.94,
+                    subjectCenter: {
+                      start: { cx: 0.5, cy: 0.4 },
+                      end: { cx: 0.5, cy: 0.4 },
+                    },
+                    faceVisible: true,
+                    faceCenter: {
+                      start: { cx: 1.2, cy: 0.25 },
+                      end: { cx: 0.5, cy: 0.25 },
+                    },
+                  },
+                  {
+                    shotId: "shot_00422",
+                    mode: "action",
+                    primarySubject: "runner",
+                    secondarySubjects: [],
+                    avoidCutting: [],
+                    confidence: 0.9,
+                    subjectCenter: {
+                      start: { cx: 0.1, cy: 0.5 },
+                      end: { cx: 0.9, cy: 0.5 },
+                    },
+                    faceVisible: false,
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    )
+
+    const result = await runSmartCropPlanWorkflow(baseInput, {
+      runId: "run-malformed-face-center",
+      apiKey: "test-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "provider_invalid_output",
+      retryable: false,
+      mastraRunId: "run-malformed-face-center",
     })
   })
 

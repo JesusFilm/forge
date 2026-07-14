@@ -45,6 +45,10 @@ type BibleCitation {
   id: ID
   order: Int
   osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
   verseEnd: Int
   verseStart: Int
 }
@@ -55,13 +59,18 @@ type BibleQuoteItem {
   backgroundColor: String
   backgroundImageAssetId: String
   backgroundImageUrl: String
+  chapterEnd: Int
+  chapterStart: Int
   ctaEnabled: Boolean
   ctaLabel: String
   ctaLink: String
   imageAssetId: String
   imageUrl: String
+  osisId: String
   reference: String
   text: String
+  verseEnd: Int
+  verseStart: Int
 }
 
 """Carousel of Bible quote items."""
@@ -267,7 +276,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -338,11 +347,19 @@ type HybridSearchResult {
   """
   durationSeconds: Int
   id: String!
+  """
+  Base64 blur data URL generated from the selected VideoImage. Null for experiences or video images without generated placeholder metadata yet.
+  """
+  imageBlurDataUrl: String
   imageUrl: String
   """
   Admin VideoLabel for video-type results (`EPISODE`, `SERIES`, `SHORT_FILM`, …). Always null for `type=EXPERIENCE`. Drives the type badge on the search result card.
   """
   label: VideoLabel
+  """
+  Base64 blur data URL for the Watch-card Mux thumbnail recipe. Null for experiences or when no playable Mux-backed dub is available.
+  """
+  muxThumbnailBlurDataUrl: String
   playbackId: String
   score: Float!
   slug: String!
@@ -758,15 +775,37 @@ type MediaCollectionBlock {
 """Single entry in MediaCollectionBlock.items."""
 type MediaCollectionItem {
   collectionSize: String
+  """
+  The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.
+  """
+  coreId: String
   imageAssetId: String
+  imageBlurDataUrl: String
+  imageDominantColor: String
   imageOverrideAssetId: String
+  imageOverrideBlurDataUrl: String
+  imageOverrideDominantColor: String
   imageOverrideUrl: String
   imageUrl: String
   labelOverride: String
   linkToSectionKey: String
+  """
+  Best playable Mux playback id for this media collection item when it references a Video row.
+  """
+  muxPlaybackId(languageSlug: String): String
   subtitleOverride: String
   titleOverride: String
   videoId: String
+  """
+  Best generated LQIP for the linked Video image. Falls back to null when the item is not linked to a Video or no video image has blur metadata.
+  """
+  videoImageBlurDataUrl: String
+  """Dominant color for the linked Video image used by this item."""
+  videoImageDominantColor: String
+  """
+  Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.
+  """
+  videoSlug: String
 }
 
 enum MediaCollectionVariant {
@@ -818,6 +857,7 @@ type Mutation {
   Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
+  recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
@@ -848,7 +888,7 @@ type Mutation {
     mode: String
   ): JSON
   """
-  Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.
+  Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerTranscriptEmbeddingBackfill`. ADMIN-only.
   """
   triggerManagerEnrichment(
     """
@@ -871,25 +911,6 @@ type Mutation {
   """
   triggerMediaImageEnrichment(id: ID!): MediaAsset
   """
-  Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. One target per (video, edition, locale) where the locale set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
-  """
-  triggerSceneEmbeddingBackfill(
-    """Restrict to these coreIds. Omitted = all mapped videos."""
-    coreIds: [String!]
-    """
-    Restrict to these BCP-47 tags. Omitted = every locale that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name).
-    """
-    locales: [String!]
-    """
-    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
-    """
-    mappingS3Key: String = "admin-migrations/core-id-mapping.json"
-    """
-    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing scene vectors.
-    """
-    mode: SceneBackfillMode
-  ): JSON
-  """
   Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.
   """
   triggerSync(
@@ -906,11 +927,11 @@ type Mutation {
     """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
     """
-    Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.
+    Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` because the filter axis is source transcription language, not per-locale publish state.
     """
     languages: [String!]
     """
-    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.
+    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
     """
@@ -958,6 +979,21 @@ type NavigationCarouselItem {
   imageAssetId: String
   imageUrl: String
   title: String
+}
+
+"""
+Cached Bible passage text for a video citation, fetched server-side from an approved provider.
+"""
+type Passage {
+  content: String
+  copyright: String
+  humanReference: String
+  provider: String
+  publisherUrl: String
+  reference: String
+  versionAbbreviation: String
+  versionId: Int
+  versionTitle: String
 }
 
 """Promotional banner with heading, description, and CTA."""
@@ -1013,7 +1049,7 @@ type Query {
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
   """
-  Per-scene cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
+  Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: ID): [SceneRecommendation!]!
   """
@@ -1072,9 +1108,24 @@ type Query {
   """
   watchHomeVideos(coreIds: [String!]!): [Video!]!
   """
+  Flat localized Watch /videos inventory grouped as audio collections, audio videos, and subtitle-only videos. Returns counts plus bounded card rows for regional leads and missionaries.
+  """
+  watchLanguageInventory(
+    """
+    Public Watch language slug, e.g. 'english' or 'spanish-latin-american'.
+    """
+    languageSlug: String!
+    """Maximum rows returned per bucket. Defaults to the service cap."""
+    limit: Int
+  ): WatchLanguageInventory!
+  """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
   watchSetting(locale: String!): WatchSetting
+  """
+  Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.
+  """
+  watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!): WatchRouteSnapshot
 }
 
 """Quiz launcher button. Only valid inside SectionContent."""
@@ -1106,17 +1157,7 @@ type RelatedQuestionsBlock {
 }
 
 """
-Overwrite intent for Mastra scene embedding backfills. Idempotent is the default.
-"""
-enum SceneBackfillMode {
-  FORCE
-  IDEMPOTENT
-  MODEL_UPGRADE
-  REPAIR
-}
-
-"""
-A single scene-similarity recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
+A single transcript-backed recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
 """
 type SceneRecommendation {
   demographics: [String!]!
@@ -1221,15 +1262,39 @@ type Video {
   locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
   """
+  Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxHeroPosterBlurDataUrl(languageSlug: String): String
+  """
+  Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxHeroPosterDominantColor(languageSlug: String): String
+  """
   Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.
   """
   muxPlaybackId(languageSlug: String): String
+  """
+  Base64 blur data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxThumbnailBlurDataUrl(languageSlug: String): String
+  """
+  Dominant color for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxThumbnailDominantColor(languageSlug: String): String
   noIndex: Boolean
   origin: VideoOrigin
   """
   Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
   """
   parents: [VideoRelation!]
+  """
+  Distinct playable audio-language count for this video. Used by Watch to decide whether to render language switching without loading every VideoDub in the cold route snapshot.
+  """
+  playableDubLanguageCount: Int!
+  """
+  One playable VideoDub for a Watch route. Prefers the requested language slug/BCP-47, then the video's primary language, then the longest playable dub. Lets consumer routes choose the initial player without projecting every dub.
+  """
+  preferredPlayableDub(languageSlug: String): VideoDub
   primaryLanguage: Language
   publishedAt: String
   slug: String
@@ -1300,11 +1365,20 @@ type VideoDub {
   id: ID
   language: Language
   lengthInMilliseconds: String
+  """
+  Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxHeroPosterBlurDataUrl: String
+  """
+  Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxHeroPosterDominantColor: String
   muxVideo: MuxVideo
   published: Boolean
   share: String
   slug: String
   videoEdition: VideoEdition
+  videoId: String
 }
 
 """A downloadable quality tier for a Core-sourced video dub."""
@@ -1396,7 +1470,8 @@ enum VideoHeroSubheadingSource {
 
 type VideoImage {
   aspectRatio: String
-  blurhash: String
+  blurDataUrl: String
+  dominantColor: String
   height: Int
   id: ID
   kind: String
@@ -1654,6 +1729,221 @@ type VideoTranscriptChunk {
   tokenCount: Int
   transcriptId: ID
   updatedAt: String
+}
+
+type WatchEvent {
+  createdAt: String
+  durationSeconds: Int
+  eventType: String
+  id: ID
+  languageId: String
+  occurredAt: String
+  positionSeconds: Int
+  progress: Float
+  videoDubId: String
+  videoId: String
+}
+
+enum WatchEventType {
+  download
+  meaningful_playback
+}
+
+"""Top-level placeholder that renders the Web-owned Watch Home hero."""
+type WatchHomeHeroBlock {
+  sectionKey: String
+  t: String
+}
+
+"""
+Localized Watch inventory grouped for regional leads: audio collections, audio videos, then subtitle-only videos.
+"""
+type WatchLanguageInventory {
+  audioCollections: [WatchLanguageInventoryItem!]!
+  audioVideos: [WatchLanguageInventoryItem!]!
+  counts: WatchLanguageInventoryCounts!
+  language: WatchLanguageInventoryLanguage
+  promoted: [WatchLanguageInventoryItem!]!
+  subtitleOnlyVideos: [WatchLanguageInventoryItem!]!
+}
+
+"""
+Whether the requested language has playable audio or subtitles only for this inventory row.
+"""
+enum WatchLanguageInventoryAvailability {
+  AUDIO
+  SUBTITLE_ONLY
+}
+
+"""Complete counts for the localized Watch inventory buckets."""
+type WatchLanguageInventoryCounts {
+  audioCollections: Int!
+  audioVideos: Int!
+  subtitleOnlyVideos: Int!
+  total: Int!
+}
+
+"""
+Card-ready Watch inventory row for a single video or parent collection in one requested language.
+"""
+type WatchLanguageInventoryItem {
+  availability: WatchLanguageInventoryAvailability!
+  childCount: Int!
+  coreId: String!
+  createdAt: String
+  description: String
+  durationSeconds: Int
+  id: ID!
+  imageAlt: String
+  imageUrl: String
+  """
+  VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).
+  """
+  label: String
+  """
+  Zero-based order of this video inside the selected parent collection. Null for standalone videos and parent collection rows.
+  """
+  parentOrder: Int
+  parentSlug: String
+  parentTitle: String
+  publishedAt: String
+  slug: String!
+  title: String!
+  updatedAt: String
+  """
+  Public Watch audio-language slug to use in hrefs. Equals the requested language for audio rows; subtitle-only rows use a playable fallback audio language.
+  """
+  watchLanguageSlug: String!
+}
+
+"""Requested public Watch language for a localized inventory."""
+type WatchLanguageInventoryLanguage {
+  bcp47: String
+  name: JSON
+  slug: String!
+}
+
+"""
+Route-shaped Watch video snapshot assembled by the video service in bounded batches. Designed for the public Watch single-video cold path.
+"""
+type WatchRouteSnapshot {
+  bibleCitations: [WatchRouteSnapshotBibleCitation!]!
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  broadStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  children: [WatchRouteSnapshotChildRelation!]!
+  documentId: ID!
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  englishStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  exactStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  noIndex: Boolean
+  parents: [WatchRouteSnapshotParentRelation!]!
+  playableDubLanguageCount: Int!
+  preferredVariant: WatchRouteSnapshotPreferredVariant
+  primaryLanguage: WatchRouteSnapshotLanguage
+  publishedAt: String
+  slug: String
+}
+
+type WatchRouteSnapshotBibleBook {
+  documentId: ID!
+  name: JSON
+}
+
+type WatchRouteSnapshotBibleCitation {
+  bibleBook: WatchRouteSnapshotBibleBook
+  chapterEnd: Int
+  chapterStart: Int
+  documentId: ID!
+  order: Int
+  osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
+  verseEnd: Int
+  verseStart: Int
+}
+
+type WatchRouteSnapshotChild {
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  documentId: ID!
+  durationSeconds: Int
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  muxHeroPosterBlurDataUrl: String
+  muxHeroPosterDominantColor: String
+  muxPlaybackId: String
+  muxThumbnailBlurDataUrl: String
+  muxThumbnailDominantColor: String
+  slug: String
+}
+
+type WatchRouteSnapshotChildRelation {
+  child: WatchRouteSnapshotChild
+}
+
+type WatchRouteSnapshotImage {
+  documentId: ID!
+  dominantColor: String
+  mobileCinematicHigh: String
+  mobileCinematicLow: String
+  thumbnail: String
+  url: String
+}
+
+type WatchRouteSnapshotLanguage {
+  bcp47: String
+  coreId: String
+  name: JSON
+  slug: String
+}
+
+type WatchRouteSnapshotLocale {
+  description: String
+  documentId: ID!
+  imageAlt: String
+  languageSlug: String
+  snippet: String
+  title: String
+}
+
+type WatchRouteSnapshotParent {
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  children: [WatchRouteSnapshotChildRelation!]!
+  documentId: ID!
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  noIndex: Boolean
+  slug: String
+}
+
+type WatchRouteSnapshotParentRelation {
+  parent: WatchRouteSnapshotParent
+}
+
+type WatchRouteSnapshotPreferredVariant {
+  documentId: ID!
+  duration: Int
+  hls: String
+  language: WatchRouteSnapshotLanguage
+  muxHeroPosterBlurDataUrl: String
+  muxHeroPosterDominantColor: String
+  published: Boolean
+  slug: String
+}
+
+type WatchRouteSnapshotStudyQuestion {
+  documentId: ID!
+  languageSlug: String
+  order: Int
+  value: String
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""

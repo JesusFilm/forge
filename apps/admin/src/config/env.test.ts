@@ -11,6 +11,9 @@ import {
   experienceAiMaxRepairAttemptsEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
+  workflowStartupTransientAttemptsEnvSchema,
+  workflowStartupTransientDelayMsEnvSchema,
+  youVersionPassageCacheTtlSecondsEnvSchema,
 } from "@/config/env"
 
 describe("env", () => {
@@ -47,8 +50,7 @@ describe("env", () => {
   // `createEnv` is bypassed under CI (`skipValidation`), so we test
   // the exported schema fragment directly. Importing it (rather than
   // re-declaring the zod chain inline) binds the test to the real
-  // contract used by `SCENE_EMBEDDING_CONCURRENCY` /
-  // `TRANSCRIPT_EMBEDDING_CONCURRENCY`. Tightening the schema later
+  // contract used by `TRANSCRIPT_EMBEDDING_CONCURRENCY`. Tightening the schema later
   // (e.g. `.max(N)`) will land here too instead of silently passing.
   describe("concurrencyEnvSchema", () => {
     it("treats unset as undefined", () => {
@@ -138,11 +140,81 @@ describe("env", () => {
     })
   })
 
+  describe("workflowStartupTransientAttemptsEnvSchema", () => {
+    it("defaults to 12 attempts", () => {
+      expect(workflowStartupTransientAttemptsEnvSchema.parse(undefined)).toBe(
+        12,
+      )
+    })
+
+    it("coerces a positive integer attempt count", () => {
+      expect(workflowStartupTransientAttemptsEnvSchema.parse("3")).toBe(3)
+    })
+
+    it("rejects invalid attempt counts", () => {
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientAttemptsEnvSchema.parse("nope"),
+      ).toThrow()
+    })
+  })
+
+  describe("workflowStartupTransientDelayMsEnvSchema", () => {
+    it("defaults to a ten-second retry delay", () => {
+      expect(workflowStartupTransientDelayMsEnvSchema.parse(undefined)).toBe(
+        10_000,
+      )
+    })
+
+    it("coerces a positive integer delay", () => {
+      expect(workflowStartupTransientDelayMsEnvSchema.parse("250")).toBe(250)
+    })
+
+    it("rejects invalid delay values", () => {
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("1.5"),
+      ).toThrow()
+      expect(() =>
+        workflowStartupTransientDelayMsEnvSchema.parse("nope"),
+      ).toThrow()
+    })
+  })
+
+  describe("youVersionPassageCacheTtlSecondsEnvSchema", () => {
+    it("defaults to a two-week cache ttl", () => {
+      expect(youVersionPassageCacheTtlSecondsEnvSchema.parse(undefined)).toBe(
+        60 * 60 * 24 * 14,
+      )
+    })
+
+    it("coerces positive integer ttl seconds", () => {
+      expect(youVersionPassageCacheTtlSecondsEnvSchema.parse("60")).toBe(60)
+    })
+
+    it("rejects invalid ttl values", () => {
+      expect(() =>
+        youVersionPassageCacheTtlSecondsEnvSchema.parse("0"),
+      ).toThrow()
+      expect(() =>
+        youVersionPassageCacheTtlSecondsEnvSchema.parse("abc"),
+      ).toThrow()
+    })
+  })
+
   // Bearer-CSV disjointness invariant. The bearer CSVs
   // (WORKFLOW_API_KEYS, VIDEO_MAPPER_ADMIN_API_KEYS,
   // MASTRA_TRANSCRIPT_INGEST_API_KEYS,
-  // MASTRA_SCENE_INGEST_API_KEYS, MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  // MASTRA_EXPERIENCE_INGEST_API_KEYS,
   // WEB_ADMIN_API_KEYS,
+  // WATCH_PROGRESS_ADMIN_API_KEYS,
   // BACKUP_DOWNLOAD_API_KEYS, SEARCH_TRACE_SAMPLING_API_KEYS)
   // MUST NOT share any value; the auth chains mint distinct
   // principals / passports, so a duplicated key silently widens
@@ -159,6 +231,11 @@ describe("env", () => {
         assertBearerCsvsDisjoint({ WEB_ADMIN_API_KEYS: "key-a,key-b" }),
       ).not.toThrow()
       expect(() =>
+        assertBearerCsvsDisjoint({
+          WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a",
+        }),
+      ).not.toThrow()
+      expect(() =>
         assertBearerCsvsDisjoint({ WORKFLOW_API_KEYS: "wf-a" }),
       ).not.toThrow()
       expect(() =>
@@ -169,11 +246,6 @@ describe("env", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a",
-        }),
-      ).not.toThrow()
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          MASTRA_SCENE_INGEST_API_KEYS: "scene-a",
         }),
       ).not.toThrow()
       expect(() =>
@@ -197,13 +269,25 @@ describe("env", () => {
           WORKFLOW_API_KEYS: "wf-a,wf-b",
           VIDEO_MAPPER_ADMIN_API_KEYS: "mapper-a,mapper-b",
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a,mastra-b",
-          MASTRA_SCENE_INGEST_API_KEYS: "scene-a,scene-b",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a,experience-b",
           WEB_ADMIN_API_KEYS: "web-a,web-b",
+          FLEET_ADMIN_API_KEYS: "fleet-a,fleet-b",
+          WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a,watch-progress-b",
           BACKUP_DOWNLOAD_API_KEYS: "backup-a,backup-b",
           SEARCH_TRACE_SAMPLING_API_KEYS: "trace-sampling-a,trace-sampling-b",
         }),
       ).not.toThrow()
+    })
+
+    it("throws when FLEET_ADMIN and WEB_ADMIN share a value", () => {
+      // The fleet CSV must stay disjoint from the web SSR CSV — sharing a
+      // value would give a fleet key web's per-key bucket (or vice versa).
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-fleet-key",
+          FLEET_ADMIN_API_KEYS: "shared-fleet-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and FLEET_ADMIN_API_KEYS/)
     })
 
     it("throws when WORKFLOW and WEB_ADMIN share a value", () => {
@@ -233,26 +317,36 @@ describe("env", () => {
       ).toThrow(/WORKFLOW_API_KEYS and MASTRA_TRANSCRIPT_INGEST_API_KEYS/)
     })
 
-    it("throws when transcript and scene Mastra ingest keys share a value", () => {
+    it("throws when transcript and experience Mastra ingest keys share a value", () => {
       expect(() =>
         assertBearerCsvsDisjoint({
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "shared-key",
-          MASTRA_SCENE_INGEST_API_KEYS: "shared-key",
-        }),
-      ).toThrow(
-        /MASTRA_TRANSCRIPT_INGEST_API_KEYS and MASTRA_SCENE_INGEST_API_KEYS/,
-      )
-    })
-
-    it("throws when scene and experience Mastra ingest keys share a value", () => {
-      expect(() =>
-        assertBearerCsvsDisjoint({
-          MASTRA_SCENE_INGEST_API_KEYS: "shared-key",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "shared-key",
         }),
       ).toThrow(
-        /MASTRA_SCENE_INGEST_API_KEYS and MASTRA_EXPERIENCE_INGEST_API_KEYS/,
+        /MASTRA_TRANSCRIPT_INGEST_API_KEYS and MASTRA_EXPERIENCE_INGEST_API_KEYS/,
       )
+    })
+
+    it("throws when ADMIN_AGENT_TOOLS shares a value with experience ingest (U7)", () => {
+      // The new agent-tools receiver CSV joins the disjointness invariant — an
+      // operator who pastes the same value into two CSVs hits a fail-fast boot.
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          ADMIN_AGENT_TOOLS_API_KEYS: "shared-key",
+          MASTRA_EXPERIENCE_INGEST_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/ADMIN_AGENT_TOOLS_API_KEYS|MASTRA_EXPERIENCE_INGEST_API_KEYS/)
+    })
+
+    it("does not throw when ADMIN_AGENT_TOOLS is disjoint from the other CSVs (U7)", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WORKFLOW_API_KEYS: "wf-a",
+          MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a",
+          ADMIN_AGENT_TOOLS_API_KEYS: "agent-tools-a,agent-tools-b",
+        }),
+      ).not.toThrow()
     })
 
     it("throws when WORKFLOW and BACKUP_DOWNLOAD share a value", () => {
@@ -271,6 +365,15 @@ describe("env", () => {
           BACKUP_DOWNLOAD_API_KEYS: "shared-key",
         }),
       ).toThrow(/WEB_ADMIN_API_KEYS and BACKUP_DOWNLOAD_API_KEYS/)
+    })
+
+    it("throws when WATCH_PROGRESS_ADMIN_API_KEYS overlaps another bearer capability", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WEB_ADMIN_API_KEYS: "shared-key",
+          WATCH_PROGRESS_ADMIN_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and WATCH_PROGRESS_ADMIN_API_KEYS/)
     })
 
     it("throws when SEARCH_TRACE_SAMPLING overlaps another bearer capability", () => {
@@ -294,9 +397,9 @@ describe("env", () => {
           WORKFLOW_API_KEYS: "shared-1",
           VIDEO_MAPPER_ADMIN_API_KEYS: "mapper-a",
           MASTRA_TRANSCRIPT_INGEST_API_KEYS: "mastra-a",
-          MASTRA_SCENE_INGEST_API_KEYS: "scene-a",
           MASTRA_EXPERIENCE_INGEST_API_KEYS: "experience-a",
           WEB_ADMIN_API_KEYS: "shared-1,shared-2",
+          WATCH_PROGRESS_ADMIN_API_KEYS: "watch-progress-a",
           BACKUP_DOWNLOAD_API_KEYS: "shared-2",
           SEARCH_TRACE_SAMPLING_API_KEYS: "shared-1",
         })
@@ -349,12 +452,18 @@ describe("env", () => {
         /MASTRA_TRANSCRIPT_INGEST_API_KEYS:\s*env\.MASTRA_TRANSCRIPT_INGEST_API_KEYS/,
       )
       expect(source).toMatch(
-        /MASTRA_SCENE_INGEST_API_KEYS:\s*env\.MASTRA_SCENE_INGEST_API_KEYS/,
-      )
-      expect(source).toMatch(
         /MASTRA_EXPERIENCE_INGEST_API_KEYS:\s*env\.MASTRA_EXPERIENCE_INGEST_API_KEYS/,
       )
       expect(source).toMatch(/WEB_ADMIN_API_KEYS:\s*env\.WEB_ADMIN_API_KEYS/)
+      // Boot-call arg is load-bearing: the `satisfies` guard only aligns the
+      // mapped type, so a missing arg here silently skips the fleet disjointness
+      // check. This grep fails if FLEET_ADMIN_API_KEYS is dropped from the call.
+      expect(source).toMatch(
+        /FLEET_ADMIN_API_KEYS:\s*env\.FLEET_ADMIN_API_KEYS/,
+      )
+      expect(source).toMatch(
+        /WATCH_PROGRESS_ADMIN_API_KEYS:\s*env\.WATCH_PROGRESS_ADMIN_API_KEYS/,
+      )
       expect(source).toMatch(
         /BACKUP_DOWNLOAD_API_KEYS:\s*env\.BACKUP_DOWNLOAD_API_KEYS/,
       )

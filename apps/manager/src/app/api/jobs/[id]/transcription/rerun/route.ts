@@ -16,6 +16,7 @@ import type {
   TranscriptionRoutingReport,
 } from "@/types/job"
 import { isSupportedElevenLabsLanguage } from "@/services/elevenlabs-transcription"
+import { isAudioCleanupConfigured } from "@/services/audioCleanup"
 import { getMuxAsset, getMuxStaticRenditionSourceUrl } from "@/services/mux"
 import { normalizeSourceLanguageCode } from "@/services/transcription"
 import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
@@ -48,9 +49,11 @@ function pruneArtifactsForTranscriptionRerun(
   delete nextArtifacts.chapters
   delete nextArtifacts.metadata
   delete nextArtifacts.embeddings
-  delete nextArtifacts.sceneEmbeddingSync
   delete nextArtifacts.translations
   delete nextArtifacts.muxSync
+  delete nextArtifacts["transcript-raw"]
+  delete nextArtifacts["subtitles-raw"]
+  delete nextArtifacts["transcript-correction-report"]
 
   for (const key of Object.keys(nextArtifacts)) {
     if (
@@ -279,6 +282,8 @@ export async function POST(
       translateTo: job.languages,
       initialArtifacts: updatedJob.artifacts,
       requestedTranscriptionProvider: provider,
+      runAudioCleanup:
+        provider === "elevenlabs" ? isAudioCleanupConfigured() : false,
     })
   } catch (error) {
     console.error(`Transcription rerun failed for job ${updatedJob.id}:`, error)

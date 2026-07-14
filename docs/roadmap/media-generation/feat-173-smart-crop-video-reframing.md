@@ -65,6 +65,8 @@ asset creation from presigned artifact URLs.
 - Job/step statuses stay within existing closed enums; no admin schema changes.
 - New env vars `.optional()` at schema load; production enforcement at runtime.
 - 9:16 only in MVP; no frame-level tracking; no manual crop editor.
+- For speaker/person shots, Mastra should prefer visible face/head centers
+  over broader body centers when emitting deterministic 9:16 crop keyframes.
 
 ## Verification
 

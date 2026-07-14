@@ -468,7 +468,21 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return Response.json({ error: "Not found" }, { status: 404 })
   }
 
-  const { email } = await parseLoginMethodRequest(request)
+  let parsed: Awaited<ReturnType<typeof parseEmailPasswordRequest>>
+  try {
+    parsed = await parseEmailPasswordRequest(request)
+  } catch {
+    audit("auth.signup.rejected.public")
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const {
+    callbackURL: webCallbackURL,
+    email,
+    isFormPost,
+    oauthQuery,
+    password,
+  } = parsed
   if (!email) {
     audit("auth.signup.rejected.public")
     return Response.json({ error: "Not found" }, { status: 404 })
@@ -488,8 +502,30 @@ async function handleEmailSignUp(request: Request): Promise<Response> {
     return existingAccountSignUpResponse()
   }
 
-  audit("auth.signup.rejected.public", email)
-  return Response.json({ error: "Not found" }, { status: 404 })
+  if (!password) {
+    audit("auth.signup.rejected.public", email)
+    return Response.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const callbackURL = webCallbackURL ?? buildOAuthContinuationURL(oauthQuery)
+  const response = await authRouteHandlers.POST(
+    toJsonRequest(request, {
+      ...(callbackURL ? { callbackURL } : {}),
+      email,
+      password,
+      name: email.split("@")[0] || "user",
+    }),
+  )
+
+  if (!response.ok) return response
+
+  audit("auth.signup.success", email)
+  return isFormPost
+    ? withLastLoginMethodCookie(
+        redirectFormPostAfterSignIn(response, callbackURL),
+        "email",
+      )
+    : withLastLoginMethodCookie(response, "email")
 }
 
 function redirectFormPostAfterSignIn(

@@ -11,7 +11,7 @@
  * prompt and pipes the whole thing to Codex on stdin.
  */
 
-import type { VideoCandidate } from "./experience-ai.schemas"
+import type { VideoCandidate } from "@forge/experience-schema"
 
 export type ChatHistoryTurn = {
   role: "user" | "assistant" | "system"

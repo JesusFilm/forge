@@ -1,26 +1,17 @@
-// The Home feed's closing band (R15): mission storytelling cards left
-// (~60% of the band), the beta-signup QR right. The band wears the shared
-// mission "wash" (burgundy → purple → ember) so it reads in the same colourful
-// language as the mobile rail (HomeMissionSection) and web promo
-// (WatchHomePromo) — not the flat Crimson Gallery surface it used before.
-// Nothing here performs an external-link action on-device — the QR is the only
-// bridge off the TV.
-//
-// Exactly ONE focusable element: a non-actioning wrapper on the QR tile so
-// D-pad traversal can pull the tail into view (the focus engine auto-scrolls
-// to keep the focused element visible). It dispatches no card-focus events,
-// so the showcase retains the last focused card automatically (R10/AE4). The
-// wrapper sits in normal flexbox flow — never position:absolute on a
-// focusable (react-native-tvos-porting-pitfalls-20260414.md §3).
+// Home feed's closing band (R15): mission cards + beta-signup QR (only off-TV bridge), shared mission wash.
+// One focusable: a non-actioning QR wrapper (scrolls tail in, keeps last card R10/AE4).
+// Must stay in flexbox flow, never absolute on a focusable (react-native-tvos-porting-pitfalls-20260414.md §3).
 
 import { useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { COLORS, hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
+import { FOCUS_RING_COLOR } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import {
   MISSION_CARDS,
@@ -39,10 +30,8 @@ const NO_ACTION = () => {}
 const WASH_START = { x: 0, y: 0 } as const
 const WASH_END = { x: 1, y: 1 } as const
 
-// Section wash drawn over the band's deep base. Kept close to web's subtle
-// 0.6/0.2/0.1 alphas so the colour reads without overpowering the band — more
-// transparent here lets the dark base show through, keeping the background
-// restrained while the per-card washes carry the colour.
+// Section wash over the band's deep base. Subtle alphas (near web's 0.6/0.2/0.1)
+// keep the dark base showing through, so per-card washes carry the colour.
 const SECTION_WASH = [
   hexToRgba(MISSION_WASH.burgundy, 0.58),
   hexToRgba(MISSION_WASH.purple, 0.28),
@@ -53,10 +42,22 @@ type MissionSectionProps = {
   /** Fires when the QR tile gains focus — the home screen scrolls the tail
       into view itself now that the ScrollView's native focus-scroll is off. */
   onQrFocus?: () => void
+  /** Reports the QR tile's node so the screen can re-focus it after a nav push/pop. */
+  onFocusNode?: (node: ViewType | null) => void
 }
 
-export function MissionSection({ onQrFocus }: MissionSectionProps) {
-  const [qrFocused, setQrFocused] = useState(false)
+export function MissionSection({
+  onQrFocus,
+  onFocusNode,
+}: MissionSectionProps) {
+  // Shared focus engine ("tile" role): subtle grow + neutral drop shadow.
+  const {
+    focused: qrFocused,
+    setFocused: setQrFocused,
+    transform: qrTransform,
+    focusedShadow: qrFocusedShadow,
+    androidFocusProps,
+  } = useFocusVisual("tile")
   // State (not a ref) so the guide re-renders with its destination once the
   // QR node mounts — a plain ref leaves destinations empty on first render.
   const [qrNode, setQrNode] = useState<ViewType | null>(null)
@@ -86,11 +87,9 @@ export function MissionSection({ onQrFocus }: MissionSectionProps) {
         </Text>
       </View>
 
-      {/* Full-width guide with an explicit destination: the QR sits right of
-          the non-focusable text column, so down-moves from a left-positioned
-          rail card have no horizontal projection overlap with it — autoFocus
-          alone never catches the move (verified in sim). destinations is the
-          app's established bridge for horizontally-offset focusables. */}
+      {/* Explicit destination: the QR sits right of the text column, so down-moves
+          from a left rail card have no projection overlap and autoFocus alone misses
+          them (verified in sim); destinations bridges horizontally-offset focusables. */}
       <TVFocusGuideView
         autoFocus
         destinations={qrNode != null ? [qrNode] : undefined}
@@ -131,30 +130,39 @@ export function MissionSection({ onQrFocus }: MissionSectionProps) {
             onFocus={() => {
               setQrFocused(true)
               onQrFocus?.()
+              onFocusNode?.(qrNode)
             }}
             onBlur={() => setQrFocused(false)}
-            // role "image", not "button": the tile is focusable only so D-pad
-            // traversal can scroll the tail into view — Select does nothing
-            // (NO_ACTION). "button" would tell a screen reader it is
-            // actionable; "image" honestly names it (a QR you scan).
+            // role "image" not "button": tile is focusable only to scroll the tail
+            // in (Select is NO_ACTION). "button" would tell a screen reader it's
+            // actionable; "image" honestly names a QR you scan.
             accessibilityRole="image"
             accessibilityLabel="Beta signup QR code"
             accessibilityHint={QR_SCAN_HINT}
-            style={[styles.qrFocusable, qrFocused && styles.qrFocused]}
           >
-            {/* Frosted ember→burgundy wash behind the beta card, clipped to the
+            <Animated.View
+              {...androidFocusProps}
+              style={[
+                styles.qrFocusable,
+                qrFocused && styles.qrFocused,
+                qrFocused && qrFocusedShadow,
+                { transform: qrTransform },
+              ]}
+            >
+              {/* Frosted ember→burgundy wash behind the beta card, clipped to the
                 card radius (borderRadius on the gradient, not overflow:hidden,
                 so the focus glow shadow isn't clipped). */}
-            <LinearGradient
-              colors={[
-                hexToRgba(MISSION_WASH.ember, 0.34),
-                hexToRgba(MISSION_WASH.burgundy, 0.6),
-              ]}
-              start={WASH_START}
-              end={WASH_END}
-              style={styles.qrWash}
-            />
-            <QrPanel />
+              <LinearGradient
+                colors={[
+                  hexToRgba(MISSION_WASH.ember, 0.34),
+                  hexToRgba(MISSION_WASH.burgundy, 0.6),
+                ]}
+                start={WASH_START}
+                end={WASH_END}
+                style={styles.qrWash}
+              />
+              <QrPanel />
+            </Animated.View>
           </Pressable>
         </View>
       </TVFocusGuideView>
@@ -248,11 +256,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Frosted beta card: a translucent white panel (matches the mission cards)
-  // with the ember→burgundy wash behind the QR. The border width is constant
-  // so focus only changes its colour (no reflow); focus turns it into the
-  // WATCH_THEME white ring — matching Home cards and the watch detail page,
-  // not a crimson glow.
+  // Frosted beta card matching the mission cards. Constant border width so focus
+  // only recolours it (no reflow), into the WATCH_THEME white ring used by Home
+  // cards and watch detail, not a crimson glow.
   qrFocusable: {
     borderRadius: scale(24),
     padding: scale(28),
@@ -265,14 +271,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: scale(24),
   },
+  // White ring recolor + brighter fill; grow/shadow come from the shared
+  // "tile" focus role.
   qrFocused: {
     backgroundColor: "rgba(255,255,255,0.12)",
-    // White ring + neutral dark shadow (the WATCH_THEME focus look).
-    borderColor: "rgba(255,255,255,0.9)",
-    transform: [{ scale: 1.02 }],
-    shadowColor: "#000000",
-    shadowRadius: scale(22),
-    shadowOpacity: 0.6,
-    shadowOffset: { width: 0, height: scale(10) },
+    borderColor: FOCUS_RING_COLOR,
   },
 })
