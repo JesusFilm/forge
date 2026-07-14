@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 import "../globals.css"
+import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { DEFAULT_LOCALE } from "@/lib/locale"
 import { cn } from "@/lib/utils"
@@ -53,7 +54,10 @@ export default function DemoRootLayout({ children }: { children: ReactNode }) {
     >
       <body className="overflow-x-clip bg-black">
         <NextIntlClientProvider>
-          <FloatingSearchProvider>{children}</FloatingSearchProvider>
+          <FloatingSearchProvider>
+            <FeedbackLauncher />
+            {children}
+          </FloatingSearchProvider>
         </NextIntlClientProvider>
       </body>
     </html>
