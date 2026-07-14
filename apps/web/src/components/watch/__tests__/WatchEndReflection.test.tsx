@@ -190,6 +190,16 @@ describe("WatchEndReflection", () => {
         container.querySelector('[data-testid="watch-end-reflection-chat"]')
           ?.className,
       ).toContain("flex-1")
+      expect(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-stage-title"]',
+        )?.className,
+      ).toContain("sr-only")
+      expect(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-stage-title"]',
+        )?.textContent,
+      ).toBe("Ask a Bible question")
 
       const suggested = container.querySelector(
         '[data-testid="watch-end-reflection-suggested-question"]',

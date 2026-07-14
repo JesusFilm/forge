@@ -199,10 +199,6 @@ export function WatchEndReflection({
   ]
 
   const activeAction = actions[Math.min(activeIndex, actions.length - 1)]!
-  const activeActionIsChat =
-    activeAction.kind === "ask" ||
-    activeAction.kind === "talk" ||
-    activeAction.kind === "prayer"
   const finalActionId = actions.at(-1)!.id
   const finalActionOnClick = actions.at(-1)!.onClick
 
@@ -384,11 +380,7 @@ export function WatchEndReflection({
           aria-live="polite"
           onPointerEnter={markInteraction}
           data-testid="watch-end-reflection-panel"
-          className={`mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col ${
-            activeActionIsChat
-              ? "justify-start py-5 sm:py-7 lg:py-8"
-              : "justify-center py-8 sm:py-10 lg:py-12"
-          }`}
+          className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col justify-start py-5 sm:py-7 lg:py-8"
         >
           <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/45 uppercase">
             <span>{String(activeIndex + 1).padStart(2, "0")}</span>
@@ -521,20 +513,13 @@ function ActionStage({
 }) {
   return (
     <>
-      <div className="mt-5 grid size-12 place-items-center rounded-full bg-brand-red text-white animate-watch-story-icon sm:size-14 motion-reduce:animate-none">
-        {action.icon}
-      </div>
       <h2
         id="watch-end-reflection-title"
-        className="mt-5 max-w-[17ch] text-[clamp(2.25rem,7vw,4.75rem)] leading-[0.96] font-semibold tracking-[-0.045em] text-balance animate-watch-story-copy motion-reduce:animate-none"
+        data-testid="watch-end-reflection-stage-title"
+        className="sr-only"
       >
         {action.label}
       </h2>
-      {action.kind !== "talk" && action.kind !== "prayer" ? (
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 animate-watch-story-detail sm:text-lg motion-reduce:animate-none">
-          {action.detail}
-        </p>
-      ) : null}
 
       {action.kind === "ask" ? (
         <AskChapter
