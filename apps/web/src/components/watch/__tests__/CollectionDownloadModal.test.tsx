@@ -348,11 +348,18 @@ describe("CollectionDownloadModal", () => {
     expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
     expect(summary?.className).not.toContain("border")
     expect(summary?.className).not.toContain("bg-white")
-    expect(
-      summary?.querySelectorAll(
-        '[data-testid="watch-collection-download-thumbnail"]',
-      ),
-    ).toHaveLength(2)
+    const thumbnailStack = summary?.querySelector(
+      '[data-testid="watch-collection-download-thumbnail-stack"]',
+    )
+    expect(thumbnailStack?.className).toContain("relative")
+    expect(thumbnailStack?.className).not.toContain("-space-x")
+    const thumbnails = summary?.querySelectorAll(
+      '[data-testid="watch-collection-download-thumbnail"]',
+    )
+    expect(thumbnails).toHaveLength(2)
+    thumbnails?.forEach((thumbnail) => {
+      expect(thumbnail.className).toContain("absolute")
+    })
     expect(
       summary?.querySelector(
         '[data-testid="watch-collection-download-ready-count"]',

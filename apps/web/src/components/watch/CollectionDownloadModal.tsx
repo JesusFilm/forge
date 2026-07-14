@@ -54,6 +54,11 @@ type StoredCollectionDownloadResume = Pick<
 >
 
 const COLLECTION_DOWNLOAD_RESUME_KEY = "forge.watch.collection-download-resume"
+const COLLECTION_THUMBNAIL_STACK_TRANSFORMS = [
+  "translate(0px, 10px) rotate(-2deg)",
+  "translate(4px, 5px) rotate(2deg)",
+  "translate(8px, 0px) rotate(-1deg)",
+] as const
 
 function collectionDownloadResumeKey(
   collectionSlug: string,
@@ -457,13 +462,20 @@ export function CollectionDownloadModal({
                 })}
                 className="flex shrink-0 items-center gap-3 min-[520px]:pb-1"
               >
-                <div className="flex -space-x-3" aria-hidden="true">
+                <div
+                  data-testid="watch-collection-download-thumbnail-stack"
+                  className="relative h-12 w-[4.5rem] shrink-0"
+                  aria-hidden="true"
+                >
                   {options.candidates.slice(0, 3).map((episode, index) => (
                     <div
                       key={episode.documentId}
                       data-testid="watch-collection-download-thumbnail"
-                      className="relative aspect-video w-14 overflow-hidden rounded-lg border-2 border-stone-950 bg-stone-800 shadow-lg sm:w-16"
-                      style={{ zIndex: 3 - index }}
+                      className="absolute top-0 left-0 aspect-video w-16 overflow-hidden rounded-lg border-2 border-stone-950 bg-stone-800 shadow-lg"
+                      style={{
+                        zIndex: 3 - index,
+                        transform: COLLECTION_THUMBNAIL_STACK_TRANSFORMS[index],
+                      }}
                     >
                       {episode.thumbnailUrl ? (
                         <Image
