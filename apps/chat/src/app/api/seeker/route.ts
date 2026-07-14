@@ -396,7 +396,7 @@ export async function POST(request: Request): Promise<Response> {
     readJson: () => request.json(),
     config: {
       baseUrl: env.SEEKER_MASTRA_BASE_URL,
-      apiKey: env.SEEKER_MASTRA_API_KEY,
+      apiKey: env.AI_CHAT_MASTRA_API_KEY,
       allowedHosts: env.SEEKER_MASTRA_ALLOWED_HOSTS,
       timeoutMs: seekerTimeoutMs(),
     },

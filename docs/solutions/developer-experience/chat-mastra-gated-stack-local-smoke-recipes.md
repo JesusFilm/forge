@@ -181,14 +181,18 @@ base64 + dots, so no encoding gymnastics are needed.
 ```bash
 SEEKER_CHAT_ENABLED=true
 SEEKER_MASTRA_BASE_URL=http://localhost:4111
-SEEKER_MASTRA_API_KEY=local-mastra-service-key      # in Mastra's MASTRA_SERVICE_API_KEYS
-AI_CHAT_MASTRA_API_KEY=local-ai-chat-lane-key       # in Mastra's AI_CHAT_SERVICE_API_KEYS (feat-241 history lane)
+AI_CHAT_MASTRA_API_KEY=local-ai-chat-lane-key       # in Mastra's AI_CHAT_SERVICE_API_KEYS — the ONLY bearer chat presents since feat-250 (sends AND history)
 AUTH_ISSUER_URL=http://localhost:9999/dummy          # presence-checked only
 AUTH_CHAT_CLIENT_ID=local-dummy-client               # presence-checked only
 CHAT_BASE_URL=http://localhost:3200
 CHAT_SESSION_SECRET=<real random 32+ chars — NOT the .env.example placeholder>
 SEEKER_ALLOWED_EMAILS=you@example.org                # the minted email
 ```
+
+> Superseded detail (2026-07-14, feat-250): this block previously also set
+> `SEEKER_MASTRA_API_KEY` (the shared-pool send bearer). That var was retired —
+> chat's env schema no longer reads it, and `/forge-seeker` accepts only the
+> `AI_CHAT_SERVICE_API_KEYS` lane CSV.
 
 See `apps/chat/CLAUDE.md` "Development" for what each of the seeker/history
 vars does — this recipe changes only the auth trio + the minted cookie.

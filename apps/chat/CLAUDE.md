@@ -43,7 +43,7 @@ src/
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
-    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
@@ -146,7 +146,10 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   path), still the single swap point. The `Message` type + `SeekerSource` +
   `ReplyFailureReason` live in `src/lib/conversations.ts` so they outlive the seam.
 - **The proxy** is `src/app/api/seeker/route.ts` (+ `src/lib/sse.ts` parser). It
-  holds the bearer server-side, SSRF-checks the base host + enforces `https:`
+  holds the bearer server-side (`AI_CHAT_MASTRA_API_KEY`, the single ai-chat
+  lane bearer since feat-250 — Mastra's `/forge-seeker` accepts only its
+  `AI_CHAT_SERVICE_API_KEYS` lane CSV, so the shared pool never reaches
+  conversation data), SSRF-checks the base host + enforces `https:`
   (exempting loopback for local dev AND `*.railway.internal` — the prod
   transport: Railway private networking is plain HTTP over a
   WireGuard-encrypted mesh, and Mastra has no public domain),
@@ -197,9 +200,9 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   history routes (dedicated `AI_CHAT_SERVICE_API_KEYS` lane bearer, `user:`
   resource refusal) → thread-ownership gate on replay.
 - **Proxies** (`src/app/api/history/*`): POST-shaped (thread ids never in
-  URLs), no anon-cookie minting, `AI_CHAT_MASTRA_API_KEY` lane bearer (NOT the
-  send path's `SEEKER_MASTRA_API_KEY` pool key — Mastra holds the two in
-  disjoint CSVs), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the exported
+  URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
+  (since feat-250 the send path presents the same lane bearer — chat holds no
+  pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the exported
   `hostAllowed`. Read budget `min(seekerTimeoutMs(), 10s)`; upstream status
   classified before any body parse; byte-capped buffered reads (2 MiB list /
   8 MiB thread — sized for the worst-case UTF-8 inflation of the 8,192
@@ -446,13 +449,14 @@ Mastra base URL + bearer, configure chat auth against a local `apps/auth`,
 sign in with a session whose email is verified (`emailVerified === true`), and
 put that email in `SEEKER_ALLOWED_EMAILS`. The mechanism is identical locally
 and deployed — no dev-only override exists. Anonymous, unverified email, or an
-email not on the allowlist → stub. For sidebar history (feat-241) also set
-`AI_CHAT_MASTRA_API_KEY` to a value in Mastra's `AI_CHAT_SERVICE_API_KEYS`
-CSV — unset, the history routes refuse (502 `unavailable`) and a GRANTED
-user's sidebar shows the history error state with Retry until the key is
-provisioned (per KTD8: 5xx renders the error state — a config gap is an
-outage to a granted user, never silently hidden); sends keep working, and
-anonymous/denied users are unaffected.
+email not on the allowlist → stub. The one Mastra bearer is
+`AI_CHAT_MASTRA_API_KEY` (feat-250) — set it to a value in Mastra's
+`AI_CHAT_SERVICE_API_KEYS` CSV; it covers sends AND the feat-241 sidebar
+history. Unset, sends get the `config_missing` failure notice and the history
+routes refuse (502 `unavailable`) — a GRANTED user's sidebar shows the history
+error state with Retry until the key is provisioned (per KTD8: 5xx renders
+the error state — a config gap is an outage to a granted user, never silently
+hidden); anonymous/denied users are unaffected.
 
 ## Deployment
 
