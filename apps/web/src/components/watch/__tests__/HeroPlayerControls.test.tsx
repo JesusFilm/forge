@@ -211,6 +211,35 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     ).toBe(true)
   })
 
+  it("uses the compact mobile chrome spacing needed for a single control row", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+      languageCode: "EN",
+      subtitleLanguageCode: "ES",
+    })
+    const chrome = overlayAnchor.querySelector(
+      '[data-testid="hero-player-custom-chrome"]',
+    )
+    const cluster = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-language-controls"]',
+    )
+    const timeVariants = overlayAnchor.querySelectorAll(
+      '[data-testid="hero-chrome-time"] span',
+    )
+    expect(chrome?.className).toContain("gap-x-1")
+    expect(cluster?.className).toContain("gap-1")
+    expect(
+      overlayAnchor
+        .querySelector('[data-testid="hero-chrome-language"] svg')
+        ?.getAttribute("class"),
+    ).toContain("h-5")
+    expect(timeVariants).toHaveLength(2)
+    expect(timeVariants[0]?.className).toContain("md:hidden")
+    expect(timeVariants[1]?.className).toContain("hidden md:inline")
+  })
+
   it("shows the subtitle code only when it differs from audio", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: true,
@@ -549,10 +578,11 @@ describe("HeroPlayerControls — chrome layout", () => {
       )
     })
 
-    expect(
-      overlayAnchor.querySelector('[data-testid="hero-chrome-time"]')
-        ?.textContent,
-    ).toBe("1:02:05 / 2:07:54")
+    const timeVariants = overlayAnchor.querySelectorAll(
+      '[data-testid="hero-chrome-time"] span',
+    )
+    expect(timeVariants[0]?.textContent).toBe("1:02:05/2:07:54")
+    expect(timeVariants[1]?.textContent).toBe("1:02:05 / 2:07:54")
     expect(
       overlayAnchor
         .querySelector('[data-testid="hero-chrome-timeline"]')

@@ -965,7 +965,7 @@ export function HeroPlayerControls({
         }
       }}
       onPointerLeave={() => setHoveringControls(false)}
-      className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-2 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
+      className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-1 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
         chromeOpacityClass
       }`}
     >
@@ -1071,16 +1071,15 @@ export function HeroPlayerControls({
         data-testid="hero-chrome-time"
         data-current-time={Math.floor(displayTime)}
         data-duration={Math.floor(duration)}
-        className="shrink-0 text-sm font-medium tabular-nums text-white drop-shadow md:text-base"
+        className="shrink-0 text-xs font-medium tabular-nums text-white drop-shadow md:text-base"
       >
-        {formatTime(displayTime)} / {formatTime(duration)}
+        <span className="md:hidden">
+          {formatTime(displayTime)}/{formatTime(duration)}
+        </span>
+        <span className="hidden md:inline">
+          {formatTime(displayTime)} / {formatTime(duration)}
+        </span>
       </div>
-
-      <div
-        aria-hidden="true"
-        data-testid="hero-chrome-mobile-spacer"
-        className="flex-1 md:hidden"
-      />
 
       <div
         className="relative flex shrink-0 items-center"
@@ -1145,7 +1144,7 @@ export function HeroPlayerControls({
 
       <div
         data-testid="hero-chrome-language-controls"
-        className="flex shrink-0 items-center gap-2 md:gap-4"
+        className="flex shrink-0 items-center gap-1 md:gap-4"
       >
         {showLanguageButton && onLanguageClick ? (
           <ChromeButton
@@ -1154,15 +1153,15 @@ export function HeroPlayerControls({
             testId="hero-chrome-language"
             className={
               languageCode
-                ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
                 : undefined
             }
           >
-            <AudioLines aria-hidden className="h-6 w-6" />
+            <AudioLines aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
             {languageCode ? (
               <span
                 data-testid="hero-chrome-language-code"
-                className="text-[10px] font-bold tracking-[0.14em]"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
               >
                 {languageCode}
               </span>
@@ -1177,15 +1176,15 @@ export function HeroPlayerControls({
             testId="hero-chrome-subtitles"
             className={
               showSubtitleLanguageCode
-                ? "w-auto min-w-10 gap-1.5 px-2 md:w-auto md:min-w-12"
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
                 : undefined
             }
           >
-            <Captions aria-hidden className="h-6 w-6" />
+            <Captions aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
             {showSubtitleLanguageCode ? (
               <span
                 data-testid="hero-chrome-subtitle-language-code"
-                className="text-[10px] font-bold tracking-[0.14em]"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
               >
                 {subtitleLanguageCode}
               </span>
