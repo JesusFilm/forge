@@ -211,6 +211,26 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     ).toBe(true)
   })
 
+  it("starts the right-aligned control group at mute", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+      languageCode: "EN",
+      subtitleLanguageCode: "ES",
+    })
+    const muteControls = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-mute"]',
+    )?.parentElement
+    const time = overlayAnchor.querySelector('[data-testid="hero-chrome-time"]')
+    const languageControls = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-language-controls"]',
+    )
+    expect(muteControls?.className).toContain("ml-auto")
+    expect(muteControls?.previousElementSibling).toBe(time)
+    expect(muteControls?.nextElementSibling).toBe(languageControls)
+  })
+
   it("uses the compact mobile chrome spacing needed for a single control row", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: true,

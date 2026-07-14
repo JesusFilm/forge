@@ -1082,7 +1082,7 @@ export function HeroPlayerControls({
       </div>
 
       <div
-        className="relative flex shrink-0 items-center"
+        className="relative ml-auto flex shrink-0 items-center"
         onMouseEnter={() => setVolumeOpen(true)}
         onMouseLeave={() => setVolumeOpen(false)}
         onFocus={() => setVolumeOpen(true)}
