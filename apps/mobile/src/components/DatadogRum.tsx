@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useCallback, useEffect } from "react"
 import type { ReactNode } from "react"
 import {
   DatadogProvider,
@@ -6,6 +6,12 @@ import {
   SdkVerbosity,
   TrackingConsent,
 } from "@datadog/mobile-react-native"
+import {
+  ImagePrivacyLevel,
+  SessionReplay,
+  TextAndInputPrivacyLevel,
+  TouchPrivacyLevel,
+} from "@datadog/mobile-react-native-session-replay"
 
 import {
   DATADOG_SERVICE,
@@ -13,9 +19,6 @@ import {
   getDatadogRumConfig,
   toFirstPartyHostConfigs,
 } from "../lib/datadog"
-
-// Module-scope so the prop stays referentially stable across re-renders.
-const handleDatadogInitialized = () => datadogInitWatchdog.markInitialized()
 
 /**
  * Wraps the app in Datadog RUM when provisioned; transparent pass-through otherwise.
@@ -38,6 +41,27 @@ export function MobileDatadogProvider({ children }: { children: ReactNode }) {
     }
     datadogInitWatchdog.arm()
   }, [provisioned])
+
+  // Session Replay must start only after native SDK init, so it rides the
+  // provider's onInitialization callback (never a mount effect, which can race
+  // ahead of init). config is null on unprovisioned builds → replay never enables.
+  const replaySampleRate = config?.replaySampleRate ?? 100
+  const handleInitialization = useCallback(() => {
+    datadogInitWatchdog.markInitialized()
+    try {
+      // MASK_ALL_INPUTS blanks the search field in the visual replay (raw terms
+      // still go to Logs by design); the native video texture is uncapturable, so
+      // it never leaks frames — no per-view mask needed (U11).
+      void SessionReplay.enable({
+        replaySampleRate,
+        textAndInputPrivacyLevel: TextAndInputPrivacyLevel.MASK_ALL_INPUTS,
+        imagePrivacyLevel: ImagePrivacyLevel.MASK_NONE,
+        touchPrivacyLevel: TouchPrivacyLevel.SHOW,
+      }).catch(() => undefined)
+    } catch {
+      // Replay must never break the app.
+    }
+  }, [replaySampleRate])
 
   if (!config) return <>{children}</>
 
@@ -71,7 +95,7 @@ export function MobileDatadogProvider({ children }: { children: ReactNode }) {
   return (
     <DatadogProvider
       configuration={configuration}
-      onInitialization={handleDatadogInitialized}
+      onInitialization={handleInitialization}
     >
       {children}
     </DatadogProvider>

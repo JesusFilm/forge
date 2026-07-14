@@ -152,6 +152,7 @@ describe("getDatadogRumConfig (provisioning gate)", () => {
       envName: "development",
       version: undefined,
       sessionSampleRate: 100,
+      replaySampleRate: 100,
       firstPartyHosts: ["admin.jesusfilm.org"],
     })
   })
@@ -161,6 +162,13 @@ describe("getDatadogRumConfig (provisioning gate)", () => {
     mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
     mockEnv.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE = "20"
     expect(getDatadogRumConfig()?.sessionSampleRate).toBe(20)
+  })
+
+  it("reads replaySampleRate from its own env var (prod dial-down, U11)", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+    mockEnv.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE = "20"
+    expect(getDatadogRumConfig()?.replaySampleRate).toBe(20)
   })
 
   it("honors explicit site / env / version overrides", () => {

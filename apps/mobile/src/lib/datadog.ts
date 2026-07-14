@@ -21,6 +21,7 @@ export type DatadogRumConfig = {
   envName: string
   version?: string
   sessionSampleRate: number
+  replaySampleRate: number
   firstPartyHosts: string[]
 }
 
@@ -82,6 +83,12 @@ export function getDatadogRumConfig(): DatadogRumConfig | null {
     // web's 50% once mobile's volume and cost are known.
     sessionSampleRate: parseSampleRate(
       env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
+      100,
+    ),
+    // Session Replay rate — same env-tunable posture as sessions (100% dev/preview,
+    // dialed toward ~20% in prod via the per-EAS-env var). Masked at capture (U11).
+    replaySampleRate: parseSampleRate(
+      env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
       100,
     ),
     // Point trace propagation at admin's GraphQL host → links mobile RUM resources
