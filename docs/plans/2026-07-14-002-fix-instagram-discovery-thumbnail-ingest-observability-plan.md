@@ -5,7 +5,7 @@ status: completed
 created: 2026-07-14
 deepened: 2026-07-14
 depth: standard
-roadmap: docs/roadmap/media-generation/feat-252-instagram-discovery-thumbnail-ingest-observability.md
+roadmap: docs/roadmap/media-generation/feat-253-instagram-discovery-thumbnail-ingest-observability.md
 ---
 
 # fix: Preserve Instagram Thumbnails and Correlate Review Ingest
@@ -299,7 +299,7 @@ fixtures and proves neither can reach media-artifact or content-item inserts.
 **Files:**
 
 - Modify:
-  `docs/roadmap/media-generation/feat-252-instagram-discovery-thumbnail-ingest-observability.md`
+  `docs/roadmap/media-generation/feat-253-instagram-discovery-thumbnail-ingest-observability.md`
 - Modify:
   `docs/plans/2026-07-14-002-fix-instagram-discovery-thumbnail-ingest-observability-plan.md`
 - Forge and Embers pull-request descriptions/checks
@@ -396,5 +396,5 @@ clearly identified with evidence.
 - Complete code-review and residual-risk passes for both diffs.
 - Open one Forge PR and one Embers PR with cross-links.
 - Monitor required checks and fix failures attributable to these changes.
-- Mark `feat-252` complete only after implementation and local validation are
+- Mark `feat-253` complete only after implementation and local validation are
   complete; record any production-only verification as follow-up, not as done.

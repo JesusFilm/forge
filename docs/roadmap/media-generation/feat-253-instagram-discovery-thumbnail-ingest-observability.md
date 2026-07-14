@@ -1,5 +1,5 @@
 ---
-id: "feat-252"
+id: "feat-253"
 title: "Instagram discovery thumbnails and ingest observability"
 owner: "vlad"
 priority: "P1"

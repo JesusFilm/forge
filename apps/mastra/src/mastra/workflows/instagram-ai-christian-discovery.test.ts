@@ -11,7 +11,9 @@ import type {
 } from "../../services/instagram-discovery/types"
 import {
   handleInstagramDiscoveryRouteRequest,
+  InstagramDiscoveryWorkflowInputSchema,
   InstagramDiscoverySearchError,
+  instagramAiChristianDiscoveryWorkflow,
   runInstagramDiscovery,
   type InstagramDiscoveryWorkflowResult,
 } from "./instagram-ai-christian-discovery"
@@ -76,6 +78,43 @@ const commentaryHit = {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+})
+
+describe("instagramAiChristianDiscoveryWorkflow schedule", () => {
+  it("runs once a day at midnight UTC on the evented engine", () => {
+    expect(instagramAiChristianDiscoveryWorkflow.engineType).toBe("evented")
+
+    const schedules = (
+      instagramAiChristianDiscoveryWorkflow as typeof instagramAiChristianDiscoveryWorkflow & {
+        getScheduleConfigs: () => Array<{
+          cron: string
+          timezone?: string
+          inputData?: unknown
+        }>
+      }
+    ).getScheduleConfigs()
+
+    expect(schedules).toHaveLength(1)
+    expect(schedules[0]).toMatchObject({
+      cron: "0 0 * * *",
+      timezone: "UTC",
+    })
+    expect(schedules[0]).not.toHaveProperty("id")
+    expect(schedules[0]).not.toHaveProperty("inputData")
+  })
+
+  it("resolves empty scheduled input through the existing workflow defaults", () => {
+    expect(InstagramDiscoveryWorkflowInputSchema.parse({})).toEqual({
+      queries: [
+        "AI generated Jesus video site:instagram.com",
+        "AI generated Christian reel site:instagram.com",
+      ],
+      limitPerQuery: 5,
+      scrapeMetadata: true,
+      maxResults: 50,
+      persistArtifact: true,
+    })
+  })
 })
 
 describe("runInstagramDiscovery", () => {

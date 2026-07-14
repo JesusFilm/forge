@@ -766,6 +766,17 @@ commentary/news/tutorial (a conservative `COMMENTARY_KEYWORDS` exclusion in
 `classifier.ts`, e.g. "should we", "here's my", "tutorial", "went viral"). The
 report's `totals.excludedCommentary` counts posts dropped by that filter.
 
+Mastra schedules this workflow once a day at `00:00 UTC`. The single
+declarative schedule is persisted as
+`wf_instagram-ai-christian-discovery` when the Mastra process boots; scheduled
+runs do not override input, so they use the same defaults listed above. Manual
+Studio runs and `POST /forge-instagram-discovery` remain available. To stop a
+bad automatic run, open **Workflows → Schedules** in Studio, select
+`wf_instagram-ai-christian-discovery` (detail path
+`/workflows/schedules/wf_instagram-ai-christian-discovery`), and choose
+**Pause** before investigating. **Resume** calculates the next regular UTC
+midnight and does not backfill missed runs.
+
 Results are returned in the response and, by default, written to a validated
 JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
 (`<storage>/instagram-discovery/reports/<runId>.json`).

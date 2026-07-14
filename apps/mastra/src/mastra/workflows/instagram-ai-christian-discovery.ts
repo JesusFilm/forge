@@ -810,6 +810,10 @@ export const instagramAiChristianDiscoveryWorkflow = createWorkflow({
     "Discover AI-generated Christian videos on Instagram via Firecrawl web search.",
   inputSchema: InstagramDiscoveryWorkflowInputSchema,
   outputSchema: InstagramDiscoveryWorkflowOutputSchema,
+  schedule: {
+    cron: "0 0 * * *",
+    timezone: "UTC",
+  },
 })
   .then(searchStep)
   .then(filterStep)
