@@ -79,6 +79,18 @@ describe("submitCandidatesToSite", () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
+  it("rejects a malformed endpoint before it can receive the bearer", async () => {
+    const fetchImpl = vi.fn()
+    await expect(
+      submitCandidatesToSite([candidate()], {
+        ...CONFIG,
+        url: "not a URL",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ code: "config_missing" })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("rejects a 2xx response that does not confirm the ingest", async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({ ok: false, inserted: 0, skipped: 0 }),
