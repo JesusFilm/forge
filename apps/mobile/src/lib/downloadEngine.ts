@@ -10,6 +10,7 @@ import { mapNativeError } from "./downloadErrors"
 import {
   classifyInterruption,
   type OutcomeClassification,
+  type TransferInterruption,
 } from "./downloadOutcome"
 
 /**
@@ -50,12 +51,24 @@ export function __resetEngineConfigForTest(): void {
   appliedWifiOnly = undefined
 }
 
+/**
+ * U8/R25/R31: the un-collapsed native error + interruption, so the lifecycle can
+ * emit the raw code/message and reachability before classification flattens them.
+ */
+export type NativeInterruptionMeta = {
+  raw: { error: string; errorCode: number }
+  interruption: TransferInterruption
+}
+
 export type MediaDownloadHandlers = {
   /** Fires once when the transfer begins, carrying the OS-reported size. */
   onBegin?: (p: { expectedBytes: number }) => void
   onProgress: (p: { bytesDownloaded: number; bytesTotal: number }) => void
   onDone: (p: { location: string; bytesTotal: number }) => void
-  onInterruption: (classification: OutcomeClassification) => void
+  onInterruption: (
+    classification: OutcomeClassification,
+    meta?: NativeInterruptionMeta,
+  ) => void
 }
 
 /**
@@ -75,9 +88,13 @@ function attachHandlers(
     .done(({ location, bytesTotal }) =>
       handlers.onDone({ location, bytesTotal }),
     )
-    .error((params) =>
-      handlers.onInterruption(classifyInterruption(mapNativeError(params))),
-    )
+    .error((params) => {
+      const interruption = mapNativeError(params)
+      handlers.onInterruption(classifyInterruption(interruption), {
+        raw: params,
+        interruption,
+      })
+    })
 }
 
 export type MediaDownloadSpec = {

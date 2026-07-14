@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import { getApolloClient } from "../lib/apolloClient"
+import { datadogLog } from "../lib/datadog"
 import { GET_WATCH_HOME_VIDEOS, GET_WATCH_SETTING } from "../lib/queries"
 import {
   ENGLISH_LANGUAGE_SLUG,
@@ -60,6 +61,7 @@ function persistHomeSnapshot(videosJson: string, blocksJson: string): void {
   if (blob.length > WATCH_HOME_SNAPSHOT_MAX_BYTES) return
   AsyncStorage.setItem(WATCH_HOME_SNAPSHOT_STORAGE_KEY, blob).catch(() => {
     // Write failures lose the fast next launch, nothing else.
+    datadogLog.warn("home_snapshot.write_failed", {})
   })
 }
 
@@ -86,6 +88,10 @@ export function useWatchHome(): WatchHomeState {
   // Last Experience blocks that yielded >=1 shelf; reused when a transient
   // Experience fetch error would otherwise downgrade a good body to config (#1).
   const lastGoodExperienceBlocksRef = useRef<ExperienceBlockList | null>(null)
+  // Home-ready fires once per source so the network paint's real admin TTFB
+  // stays distinct from the ~50ms snapshot paint (R21).
+  const homeReadySnapshotEmittedRef = useRef(false)
+  const homeReadyNetworkEmittedRef = useRef(false)
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
     const thisRequest = ++requestIdRef.current
@@ -124,6 +130,13 @@ export function useWatchHome(): WatchHomeState {
       // The required videos source failed — keep any painted model (snapshot
       // included) and surface a retry affordance, not a blank screen.
       if (videosOutcome.status === "rejected") {
+        // R14/R22: record the failed required-videos load so slow/retried loads
+        // stay in the home-ready distribution, not only fast successes.
+        datadogLog.warn("watch_home.videos_failed", {})
+        datadogLog.info("home_feed_ready", {
+          source: "network",
+          outcome: "failed",
+        })
         setError(RETRYABLE_ERROR_MESSAGE)
         return
       }
@@ -153,6 +166,9 @@ export function useWatchHome(): WatchHomeState {
       let experienceBlocks: ExperienceBlockList | null = null
       let fallbackReason: WatchHomeFallbackReason = "null"
       if (experienceOutcome.status === "rejected") {
+        // R14: the ~8s Experience deadline tripped (or the query rejected) —
+        // the client gave up and the body degrades to last-good/config.
+        datadogLog.warn("watch_home.experience_deadline", {})
         fallbackReason = "error"
         experienceBlocks = lastGoodExperienceBlocksRef.current
       } else {
@@ -198,6 +214,12 @@ export function useWatchHome(): WatchHomeState {
         videosJson === snapshotVideosJsonRef.current &&
         blocksJson === snapshotBlocksJsonRef.current
       if (!snapshotStillCurrent) setModel(nextModel)
+      if (!homeReadyNetworkEmittedRef.current) {
+        // R21: the network paint carries the real admin TTFB, kept distinct
+        // from the snapshot paint so an instant snapshot can't mask a slow fetch.
+        homeReadyNetworkEmittedRef.current = true
+        datadogLog.info("home_feed_ready", { source: "network" })
+      }
       if (!usedExperience) {
         logWatchHomeFallback({ reason: fallbackReason })
       } else if (experienceOutcome.status === "rejected") {
@@ -258,12 +280,17 @@ export function useWatchHome(): WatchHomeState {
           lastGoodExperienceBlocksRef.current = snapshot.blocks
         }
         setModel(snapshotModel)
+        if (!homeReadySnapshotEmittedRef.current) {
+          homeReadySnapshotEmittedRef.current = true
+          datadogLog.info("home_feed_ready", { source: "snapshot" })
+        }
         // A painted model ends the spinner phase; the still-running initial
         // fetch is a background revalidation, not a loading state.
         setLoading(false)
       } catch {
         // A snapshot the model builder rejects is corrupt — drop it so the
         // next launch goes back to a clean network-first start.
+        datadogLog.warn("home_snapshot.corrupt", {})
         AsyncStorage.removeItem(WATCH_HOME_SNAPSHOT_STORAGE_KEY).catch(() => {})
       }
     })()

@@ -56,6 +56,7 @@ import {
 } from "../lib/downloadLifecycle"
 import { STORAGE_RESERVE_BYTES } from "../lib/offlineConstants"
 import { getApolloClient } from "../lib/apolloClient"
+import { datadogLog } from "../lib/datadog"
 import { resolveFromMedia } from "../lib/downloadUrlResolution"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
@@ -151,19 +152,32 @@ async function reresolveMediaUrl(args: {
       context: { fetchOptions: { signal: controller.signal } },
     })
     const media = normalizeDubMedia(res.data?.videoDub ?? null)
-    if (!media) return null
+    if (!media) {
+      // R28: a null re-resolution is the pre-transfer step that leaves a download
+      // "stuck queued / never starts" — surface each null branch distinctly.
+      datadogLog.warn("downloads.reresolve_failed", { reason: "no-media" })
+      return null
+    }
     const resolution = resolveFromMedia(media, {
       renditionDocumentId: args.renditionDocumentId,
       qualityLabel: args.qualityLabel,
       totalBytes: args.totalBytes || undefined,
       subtitleLanguageSlug: args.subtitleLanguageSlug,
     })
-    if (resolution.kind !== "resolved") return null
+    if (resolution.kind !== "resolved") {
+      datadogLog.warn("downloads.reresolve_failed", { reason: "unresolved" })
+      return null
+    }
     return {
       mediaUrl: resolution.mediaUrl,
       subtitleUrl: resolution.subtitleUrl,
     }
   } catch {
+    // R14/R28: the aborted flag separates the 10s give-up budget from a transport
+    // error — a distinction the RUM↔APM durations would otherwise contradict.
+    datadogLog.warn("downloads.reresolve_failed", {
+      reason: controller.signal.aborted ? "timeout" : "error",
+    })
     return null
   } finally {
     clearTimeout(timer)
@@ -263,6 +277,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         for (const [slug, record] of entries) if (record) next[slug] = record
         setRecords(next)
       } catch {
+        // R17: a swallowed manifest read degrades the whole offline library to
+        // empty until a good read lands — the "my downloads disappeared" class.
+        datadogLog.warn("manifest.hydrate_failed", {})
         // First launch or read failure — empty manifest already applied.
       } finally {
         if (!cancelled) setIsReady(true)
@@ -296,7 +313,11 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         )
       }
     } catch {
-      // Best-effort; the in-memory record still applies this session.
+      // R17: a swallowed write means the record won't survive a relaunch — the
+      // "my downloads disappeared" class; in-memory still applies this session.
+      datadogLog.warn("manifest.persist_failed", {
+        op: isNew ? "create" : "update",
+      })
     }
   }, [])
 
@@ -312,7 +333,9 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         serializeOfflineIndex(Object.keys(next)),
       )
     } catch {
-      // Best-effort; the in-memory removal already took effect this session.
+      // R17: swallowed removal — the record may resurrect on relaunch; in-memory
+      // removal already took effect this session.
+      datadogLog.warn("manifest.persist_failed", { op: "remove" })
     }
   }, [])
 
@@ -330,6 +353,8 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       onLeaveBatchScope: removeFromBatchScope,
       onSupersedeScope,
       offlineRoot: OFFLINE_ROOT,
+      // U8: the provider owns the Datadog import; the lifecycle stays SDK-free.
+      telemetry: datadogLog,
       engine: {
         start: startMediaDownload,
         wire: wireExistingTask,
@@ -419,6 +444,17 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           liveTaskSlugs,
           pendingFileSlugs,
           committedFileSlugs,
+        })
+
+        // R27: one disposition tally per cold start — the diagnostic for
+        // "downloads lost / stuck / duplicated after relaunch."
+        const reconcileTally = actions.reduce<Record<string, number>>(
+          (acc, a) => ({ ...acc, [a.action]: (acc[a.action] ?? 0) + 1 }),
+          {},
+        )
+        datadogLog.info("downloads.reconcile", {
+          total: actions.length,
+          ...reconcileTally,
         })
 
         const droppedSlugs = new Set<string>()
@@ -522,7 +558,12 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                 batchSlugsRef.current.has(r.videoSlug) &&
                 (r.state === "downloading" || r.state === "paused"),
             )
-            if (!stillActive) batchSlugsRef.current = new Set()
+            if (!stillActive) {
+              batchSlugsRef.current = new Set()
+              datadogLog.info("batch.pump", {
+                disposition: "occupancy-released",
+              })
+            }
             return
           }
           if (action.kind === "wait") return
@@ -530,6 +571,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             // Terminal disposition (stale/failed/gone head, occupancy already 0):
             // leave the whole batch scope so a pending-swap flag can't leak and
             // pin the ring at "Downloading…" (review: correctness/reliability).
+            datadogLog.info("batch.pump", {
+              disposition: "drop",
+              content_id: action.videoSlug,
+            })
             removeFromBatchScope(action.videoSlug)
             continue
           }
@@ -542,6 +587,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
           const result = isSwap
             ? await lifecycle.swap(action.request)
             : await lifecycle.start(action.request)
+          // R30: the per-episode disposition — the diagnostic for "download-all
+          // stopped at N of M."
+          datadogLog.info("batch.pump", {
+            disposition: isSwap ? "swap" : "start",
+            content_id: action.request.videoSlug,
+            result: result.ok ? "ok" : result.reason,
+          })
           // A pump-time failure removes the adopted placeholder, silently erasing
           // the episode the sheet accepted — resurface it as `failed` so the badge
           // /Library offer delete/retry (review #4; a failed swap reverts instead).
@@ -551,6 +603,10 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
             result.reason !== "canceled" &&
             !recordsRef.current[action.request.videoSlug]
           ) {
+            datadogLog.info("batch.pump", {
+              disposition: "failed-resurface",
+              content_id: action.request.videoSlug,
+            })
             await writeRecord(buildRequestRecord(action.request, "failed"))
           }
           // Processed → no longer a pending swap. Done AFTER the swap wrote its

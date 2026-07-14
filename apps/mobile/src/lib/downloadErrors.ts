@@ -26,3 +26,16 @@ export function mapNativeError(params: {
   }
   return { kind: "connectivity" }
 }
+
+/**
+ * R25: bound a native error message before it reaches telemetry — replace any
+ * url/path-shaped run and cap length, so a signed download URL can never leak
+ * into a log line.
+ */
+export function sanitizeNativeErrorMessage(message: string): string {
+  const stripped = (message ?? "")
+    .replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "<url>")
+    .replace(/\/\S+/g, "<path>")
+    .trim()
+  return stripped.length > 200 ? `${stripped.slice(0, 200)}…` : stripped
+}
