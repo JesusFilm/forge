@@ -88,5 +88,17 @@ The populated local Spanish route returned HTTP 200 in 90-307 ms across warm
 requests; the direct GraphQL resolver returned in 26 ms, and browser proof
 showed both Spanish inventory cards with no console warnings or errors.
 
-Production Spanish and English canaries still await the normal Admin-to-Web
-deployment. No local code was published directly to production.
+The normal Admin-to-Web deployment reached production at `f0a04a6d` through
+PR #1548. Direct Admin canaries returned the unchanged English inventory
+(1,092 total: 109 collections and 983 audio videos) in 623-668 ms and Spanish
+inventory (689 total: 62 collections, 625 audio videos, and 2 subtitle-only
+videos) in 520-644 ms. The first uncached `/watch/videos` request returned HTTP
+200 in 7.85 seconds with the expected `/watch/en/en/videos` rewrite; three
+repeat requests returned HTTP 200 in 1.03-1.48 seconds. A bounded production-log
+check found no subsequent PostgreSQL `57014` statement timeout, and neither the
+Admin canaries nor the Watch route reproduced the GraphQL error or Web 500.
+An isolated production browser session rendered the English page in 1.24
+seconds and the Spanish page in 7.31 seconds cold / 514 ms warm. Both pages
+showed the expected inventory headings and section counts with no browser
+console or page errors. Visual proof is captured locally at
+`output/playwright/watch-videos-production-restored.png`.

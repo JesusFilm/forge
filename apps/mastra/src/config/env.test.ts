@@ -19,6 +19,30 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("refuses boot when a key value appears in BOTH the pool and ai-chat lane CSVs (feat-241, KTD2)", async () => {
+    // Wiring pin: assertMastraRuntimeEnv() itself must invoke the
+    // disjointness assertion with the real env-sourced defaults.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a,shared-overlap-key")
+    vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "shared-overlap-key,lane-b")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /must not share key values/,
+    )
+  })
+
+  it("boots clean with disjoint pool and ai-chat lane CSVs", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a")
+    vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "lane-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
   it("requires service keys in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")

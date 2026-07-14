@@ -35,10 +35,13 @@ const envSchema = z.object({
   // string-boolean (repo convention): only the literal "true" enables Seeker.
   SEEKER_CHAT_ENABLED: z.string().optional(),
   SEEKER_MASTRA_BASE_URL: z.string().optional(),
-  SEEKER_MASTRA_API_KEY: z.string().optional(),
   // CSV SSRF allowlist; unset → operator-set base host trusted (redirect:"error"
   // still guards). Matches admin's hostAllowed.
   SEEKER_MASTRA_ALLOWED_HOSTS: z.string().optional(),
+  // The ai-chat lane bearer (Mastra's AI_CHAT_SERVICE_API_KEYS CSV) — since
+  // feat-250 the ONLY bearer chat presents: sends AND the history proxies.
+  // Optional + fail-closed: unset → config_missing / history refusal.
+  AI_CHAT_MASTRA_API_KEY: z.string().optional(),
   // Kept as a raw string here (NOT z.coerce.number): a non-numeric value must
   // NOT crash envSchema.parse() at module load — that would break the
   // "every var optional, boots clean" guarantee. seekerTimeoutMs() does the
@@ -68,10 +71,10 @@ export const env = envSchema.parse({
   NODE_ENV: emptyToUndefined(process.env.NODE_ENV),
   SEEKER_CHAT_ENABLED: emptyToUndefined(process.env.SEEKER_CHAT_ENABLED),
   SEEKER_MASTRA_BASE_URL: emptyToUndefined(process.env.SEEKER_MASTRA_BASE_URL),
-  SEEKER_MASTRA_API_KEY: emptyToUndefined(process.env.SEEKER_MASTRA_API_KEY),
   SEEKER_MASTRA_ALLOWED_HOSTS: emptyToUndefined(
     process.env.SEEKER_MASTRA_ALLOWED_HOSTS,
   ),
+  AI_CHAT_MASTRA_API_KEY: emptyToUndefined(process.env.AI_CHAT_MASTRA_API_KEY),
   SEEKER_TIMEOUT_MS: emptyToUndefined(process.env.SEEKER_TIMEOUT_MS),
   AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),
   AUTH_CHAT_CLIENT_ID: emptyToUndefined(process.env.AUTH_CHAT_CLIENT_ID),

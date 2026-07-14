@@ -23,9 +23,12 @@ function failureNotice(reason: ReplyFailureReason): string {
     case "model_key_missing":
     case "config_missing":
     case "ssrf_blocked":
-    case "gate_denied":
-      // gate_denied is a defensive fallback only — the seam maps it to a stub reply.
       return "Seeker is unavailable right now. Please try again later."
+    case "gate_denied":
+      // Reaches the UI only on server-persisted conversations (KTD10) — on
+      // never-persisted ones the seam still maps the denial to a stub reply.
+      // Access-changed copy, deliberately without a sign-in nudge (feat-236).
+      return "Your access to Seeker has changed, so this message wasn't answered. This conversation is kept as it was."
     case "auth_failed":
       return "Seeker rejected the request. Please try again later."
     case "invalid_request":

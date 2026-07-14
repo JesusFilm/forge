@@ -403,7 +403,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     const block = buildHeroBlock(video, variant)
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={[block]} />)
+      root.render(
+        <WatchSectionRenderer
+          blocks={[block]}
+          hasSubtitleOptions
+          subtitleLanguageCode="ES"
+        />,
+      )
     })
 
     const heroEl = container.querySelector('[data-block-type="HeroPlayer"]')
@@ -412,6 +418,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(content.playbackId).toBe("playback-id-123")
     expect(content.hls).toBe("https://cdn.example/jesus.m3u8")
     expect(content.videoDocumentId).toBe("video-1")
+    expect(heroPlayerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hasSubtitleOptions: true,
+        subtitleLanguageCode: "ES",
+      }),
+      undefined,
+    )
   })
 
   it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {

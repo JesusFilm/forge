@@ -37,6 +37,14 @@ export type StreamReplyInput = {
   conversationId: string
   seekerEnabled: boolean
   signal?: AbortSignal
+  /**
+   * KTD10 (feat-241): whether a gate_denied turn may degrade to a successful
+   * local stub reply. Defaults to true (the pre-241 behavior — correct for
+   * never-persisted conversations). The hook passes false for server-persisted
+   * conversations, where a silent stub would fork the thread: the turn instead
+   * fails visibly as `{ ok: false, reason: "gate_denied" }`.
+   */
+  allowStubFallback?: boolean
   /** Called per streamed token (Seeker path only). */
   onToken?: (text: string) => void
   /** Injectable for tests; defaults to global fetch. */
@@ -174,11 +182,11 @@ async function streamSeekerReply(
       }
       if (event === "error") {
         const reason = toReason((data as { reason?: unknown }).reason)
-        // feat-233 (F3/AE5): a gate denial degrades to a SUCCESSFUL local stub
-        // reply — the gate fires before any upstream call, so no meaningful
-        // partial text exists. No artificial STUB_REPLY_DELAY on this path.
+        // feat-233 (F3/AE5): a gate denial degrades to a SUCCESSFUL local
+        // stub reply (the gate fires pre-upstream, no partial text). feat-241
+        // (KTD10): the hook withholds that fallback on persisted conversations.
         terminal =
-          reason === "gate_denied"
+          reason === "gate_denied" && input.allowStubFallback !== false
             ? {
                 ok: true,
                 text: buildStubReply(input.text),

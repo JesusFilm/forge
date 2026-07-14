@@ -5,6 +5,7 @@ import {
   EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
 } from "../services/embedding-provider"
+import { parseServiceApiKeys } from "../server/service-bearer"
 
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value
@@ -195,6 +196,13 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  // Dedicated bearer allowlist for the ai-chat history read routes (feat-241,
+  // KTD2) — NOT the shared MASTRA_SERVICE_API_KEYS pool. Bulk conversation read
+  // is scoped to its one intended holder (the chat service) so pool keys
+  // (admin/manager pipelines) never silently gain transcript access.
+  // `.optional()`: unset = empty allowlist = the history routes fail closed
+  // (401) until provisioned; no new required-at-boot var.
+  AI_CHAT_SERVICE_API_KEYS: z.string().min(1).optional(),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: z.string().min(1).optional(),
   MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE: z
     .enum(["legacy", "gateway"])
@@ -453,6 +461,9 @@ export const env = envSchema.parse({
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),
+  AI_CHAT_SERVICE_API_KEYS: emptyToUndefined(
+    process.env.AI_CHAT_SERVICE_API_KEYS,
+  ),
   MASTRA_NATIVE_EVAL_ENVIRONMENT: emptyToUndefined(
     process.env.MASTRA_NATIVE_EVAL_ENVIRONMENT,
   ),
@@ -649,7 +660,32 @@ export function getContentEmbeddingsProviderMode(): ContentEmbeddingsProviderMod
   return "legacy"
 }
 
+/**
+ * Boot-time disjointness assertion between the shared service-bearer pool and
+ * the ai-chat lane bearer CSV (feat-241, KTD2; admin's assertBearerCsvsDisjoint
+ * precedent). A key value present in both CSVs would silently grant every pool
+ * holder bulk conversation-read access — refuse to boot instead. Runs in every
+ * environment via assertMastraRuntimeEnv(); parameters are injectable so tests
+ * exercise the overlap branch without mutating the parsed env.
+ */
+export function assertAiChatServiceKeysDisjoint(
+  poolCsv: string | undefined = env.MASTRA_SERVICE_API_KEYS,
+  laneCsv: string | undefined = env.AI_CHAT_SERVICE_API_KEYS,
+): void {
+  const pool = new Set(parseServiceApiKeys(poolCsv))
+  if (parseServiceApiKeys(laneCsv).some((key) => pool.has(key))) {
+    // Names only — never the overlapping key value.
+    throw new Error(
+      "AI_CHAT_SERVICE_API_KEYS and MASTRA_SERVICE_API_KEYS must not share key values",
+    )
+  }
+}
+
 export function assertMastraRuntimeEnv() {
+  // Every-environment invariant (feat-241, KTD2): an overlapping pool/lane
+  // bearer is a misconfiguration everywhere, not just in production.
+  assertAiChatServiceKeysDisjoint()
+
   if (
     env.NODE_ENV === "production" &&
     env.MASTRA_STORAGE_BACKEND === "memory"

@@ -39,6 +39,8 @@ export function WatchSectionRenderer({
   onPlayerReady,
   onPlayerActivated,
   languageSlug,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode,
   shareHref,
   subtitleVttSrc,
   hideBibleQuotes = false,
@@ -56,6 +58,8 @@ export function WatchSectionRenderer({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
   languageSlug?: string
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
   shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
@@ -98,6 +102,8 @@ export function WatchSectionRenderer({
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
           languageSlug={languageSlug}
+          hasSubtitleOptions={hasSubtitleOptions}
+          subtitleLanguageCode={subtitleLanguageCode}
           shareHref={shareHref}
           subtitleVttSrc={subtitleVttSrc}
           hideBibleQuotes={hideBibleQuotes}
@@ -142,6 +148,8 @@ export function WatchSectionRenderer({
                   onPlayerReady={onPlayerReady}
                   onPlayerActivated={onPlayerActivated}
                   languageSlug={languageSlug}
+                  hasSubtitleOptions={hasSubtitleOptions}
+                  subtitleLanguageCode={subtitleLanguageCode}
                   shareHref={shareHref}
                   hideBibleQuotes={hideBibleQuotes}
                   pendingChapter={pendingChapter}
@@ -170,6 +178,8 @@ function WatchBlockEntry({
   onPlayerReady,
   onPlayerActivated,
   languageSlug,
+  hasSubtitleOptions,
+  subtitleLanguageCode,
   shareHref,
   subtitleVttSrc,
   hideBibleQuotes,
@@ -189,6 +199,8 @@ function WatchBlockEntry({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
   languageSlug?: string
+  hasSubtitleOptions: boolean
+  subtitleLanguageCode?: string | null
   shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
@@ -210,6 +222,8 @@ function WatchBlockEntry({
         onPlayerReady={onPlayerReady}
         onPlayerActivated={onPlayerActivated}
         languageSlug={languageSlug}
+        hasSubtitleOptions={hasSubtitleOptions}
+        subtitleLanguageCode={subtitleLanguageCode}
         shareHref={shareHref}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
@@ -234,6 +248,8 @@ function SyntheticBlock({
   onPlayerReady,
   onPlayerActivated,
   languageSlug,
+  hasSubtitleOptions,
+  subtitleLanguageCode,
   shareHref,
   subtitleVttSrc,
   hideBibleQuotes,
@@ -252,6 +268,8 @@ function SyntheticBlock({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
   languageSlug?: string
+  hasSubtitleOptions: boolean
+  subtitleLanguageCode?: string | null
   shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
@@ -285,6 +303,8 @@ function SyntheticBlock({
           onLanguageClick={modalCallbacks?.openLanguage}
           languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}
+          hasSubtitleOptions={hasSubtitleOptions}
+          subtitleLanguageCode={subtitleLanguageCode}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
           coverBlackoutKey={coverBlackoutKey}

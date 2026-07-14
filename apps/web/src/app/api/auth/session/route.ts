@@ -3,6 +3,10 @@ import { NextResponse } from "next/server"
 
 import { verifyAuthSession } from "@/lib/auth-session"
 import { getRequestOrigin } from "@/auth/request-origin"
+import {
+  isWatchDownloadAccountGateEnabled,
+  watchDownloadAccountGateFlagContext,
+} from "@/lib/feature-flags"
 import { resolveWatchCallbackURL } from "@/lib/watch-callback"
 
 export const runtime: ServerRuntime = "nodejs"
@@ -10,16 +14,20 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: Request): Promise<NextResponse> {
   const session = await verifyAuthSession(request.headers)
+  const requestURL = new URL(request.url)
+  const requestOrigin = getRequestOrigin(request)
+  const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
+    watchDownloadAccountGateFlagContext,
+  )
 
   if (session.authenticated) {
     return NextResponse.json({
+      accountGateEnabled,
       authenticated: true,
       user: session.user,
     })
   }
 
-  const requestURL = new URL(request.url)
-  const requestOrigin = getRequestOrigin(request)
   const { searchParams } = requestURL
   const callbackURL = resolveWatchCallbackURL(
     toAbsoluteWatchURL(searchParams.get("callbackURL"), requestOrigin),
@@ -36,6 +44,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   loginUrl.searchParams.set("returnTo", callbackURL)
 
   return NextResponse.json({
+    accountGateEnabled,
     authenticated: false,
     loginUrl: loginUrl.toString(),
   })

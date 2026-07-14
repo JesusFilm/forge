@@ -44,10 +44,14 @@ export function AppShell({
     pending,
     pendingIds,
     streamingMessageId,
+    history,
     setDraft,
     send,
     newConversation,
     selectConversation,
+    retryHistory,
+    loadMoreHistory,
+    retryReplay,
   } = useConversations(seekerEnabled)
 
   const [collapsed, setCollapsed] = useState(false)
@@ -103,10 +107,13 @@ export function AppShell({
         authConfigured={authConfigured}
         identity={identity}
         signInError={signInError}
+        history={history}
         onNew={newConversation}
         onSelect={selectConversation}
         onToggleCollapsed={() => setCollapsed((value) => !value)}
         onCloseMobile={closeMobile}
+        onRetryHistory={retryHistory}
+        onLoadMore={loadMoreHistory}
       />
       {/* `inert` while the drawer is open traps focus inside it and blocks
           interaction with the content behind the scrim (mobile only — the
@@ -133,8 +140,15 @@ export function AppShell({
           pending={pending}
           streamingMessageId={streamingMessageId}
           seekerEnabled={seekerEnabled}
+          replayState={
+            activeConversation.origin === "server"
+              ? (activeConversation.replay ?? null)
+              : null
+          }
           onDraftChange={setDraft}
           onSend={send}
+          onRetryReplay={retryReplay}
+          onStartNew={newConversation}
         />
       </main>
     </div>
