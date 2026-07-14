@@ -436,14 +436,62 @@ export function CollectionDownloadModal({
       >
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
         <div className="flex max-h-[86vh] flex-col gap-6 overflow-y-auto p-6 sm:p-8">
-          <div>
-            <p className="text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
-              {t("eyebrow")}
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-              {collectionTitle ?? t("dialogTitle")}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-stone-300">
+          <div
+            data-testid="watch-collection-download-header"
+            className="grid gap-x-4 gap-y-3 min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-end"
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
+                {t("eyebrow")}
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+                {collectionTitle ?? t("dialogTitle")}
+              </h2>
+            </div>
+            {options && options.candidates.length > 0 ? (
+              <div
+                data-testid="watch-collection-download-ready"
+                role="status"
+                aria-label={t("availableCount", {
+                  count: options.candidates.length,
+                })}
+                className="flex shrink-0 items-center gap-3 min-[520px]:pb-1"
+              >
+                <div className="flex -space-x-3" aria-hidden="true">
+                  {options.candidates.slice(0, 3).map((episode, index) => (
+                    <div
+                      key={episode.documentId}
+                      data-testid="watch-collection-download-thumbnail"
+                      className="relative aspect-video w-14 overflow-hidden rounded-lg border-2 border-stone-950 bg-stone-800 shadow-lg sm:w-16"
+                      style={{ zIndex: 3 - index }}
+                    >
+                      {episode.thumbnailUrl ? (
+                        <Image
+                          src={episode.thumbnailUrl}
+                          alt=""
+                          fill
+                          sizes="64px"
+                          className="object-cover object-left-top"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-stone-700 to-stone-900" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <span
+                  data-testid="watch-collection-download-ready-count"
+                  aria-hidden="true"
+                  className="whitespace-nowrap text-stone-300"
+                >
+                  <span className="text-2xl font-semibold tabular-nums text-white">
+                    {options.candidates.length}
+                  </span>{" "}
+                  <span className="text-sm font-medium">videos</span>
+                </span>
+              </div>
+            ) : null}
+            <p className="text-sm leading-6 text-stone-300 min-[520px]:col-span-2">
               {t("description")}
             </p>
           </div>
@@ -525,65 +573,19 @@ export function CollectionDownloadModal({
                   {t("noDownloads")}
                 </p>
               ) : null}
-              {options && options.candidates.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  <div
-                    data-testid="watch-collection-download-ready"
-                    role="status"
-                    aria-label={t("availableCount", {
-                      count: options.candidates.length,
-                    })}
-                    className="flex items-center justify-between gap-5 rounded-2xl border border-white/10 bg-white/5 p-4"
+              {options && options.skipped.length > 0 ? (
+                <div className="text-sm text-amber-300">
+                  <p>{t("skippedCount", { count: options.skipped.length })}</p>
+                  <ul
+                    data-testid="watch-collection-download-skipped"
+                    className="mt-2 list-disc space-y-1 pl-5"
                   >
-                    <div className="flex -space-x-5" aria-hidden="true">
-                      {options.candidates.slice(0, 3).map((episode, index) => (
-                        <div
-                          key={episode.documentId}
-                          data-testid="watch-collection-download-thumbnail"
-                          className="relative aspect-video w-20 overflow-hidden rounded-lg border-2 border-stone-900 bg-stone-800 shadow-lg sm:w-24"
-                          style={{ zIndex: 3 - index }}
-                        >
-                          {episode.thumbnailUrl ? (
-                            <Image
-                              src={episode.thumbnailUrl}
-                              alt=""
-                              fill
-                              sizes="96px"
-                              className="object-cover object-left-top"
-                            />
-                          ) : (
-                            <div className="absolute inset-0 bg-gradient-to-br from-stone-700 to-stone-900" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <span
-                      data-testid="watch-collection-download-ready-count"
-                      aria-hidden="true"
-                      className="text-3xl font-semibold tabular-nums text-white sm:text-4xl"
-                    >
-                      {options.candidates.length}
-                    </span>
-                  </div>
-                  {options.skipped.length > 0 ? (
-                    <div className="text-sm text-amber-300">
-                      <p>
-                        {t("skippedCount", { count: options.skipped.length })}
-                      </p>
-                      <ul
-                        data-testid="watch-collection-download-skipped"
-                        className="mt-2 list-disc space-y-1 pl-5"
-                      >
-                        {options.skipped.map((episode) => (
-                          <li key={episode.documentId}>
-                            {episode.title ??
-                              episode.slug ??
-                              episode.documentId}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
+                    {options.skipped.map((episode) => (
+                      <li key={episode.documentId}>
+                        {episode.title ?? episode.slug ?? episode.documentId}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
 

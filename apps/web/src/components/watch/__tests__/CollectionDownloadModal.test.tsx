@@ -322,7 +322,14 @@ describe("CollectionDownloadModal", () => {
     const summary = container.querySelector(
       '[data-testid="watch-collection-download-ready"]',
     )
+    expect(
+      container
+        .querySelector('[data-testid="watch-collection-download-header"]')
+        ?.contains(summary),
+    ).toBe(true)
     expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
+    expect(summary?.className).not.toContain("border")
+    expect(summary?.className).not.toContain("bg-white")
     expect(
       summary?.querySelectorAll(
         '[data-testid="watch-collection-download-thumbnail"]',
@@ -332,7 +339,7 @@ describe("CollectionDownloadModal", () => {
       summary?.querySelector(
         '[data-testid="watch-collection-download-ready-count"]',
       )?.textContent,
-    ).toBe("2")
+    ).toBe("2 videos")
   })
 
   it("recovers when loading availability rejects", async () => {
