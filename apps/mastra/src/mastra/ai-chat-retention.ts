@@ -37,6 +37,7 @@ import { Memory } from "@mastra/memory"
 
 import { canAiChatDataPersist } from "../config/env"
 
+import { USER_RESOURCE_PREFIX } from "./ai-chat-thread-ownership"
 import { getAiChatStorage } from "./memory"
 
 export const AI_CHAT_ANON_RETENTION_DAYS = 30
@@ -52,9 +53,6 @@ const PURGE_MAX_DELETES_PER_SWEEP = 500
  */
 const PURGE_MAX_SWEEPS_PER_RUN = 20
 const DAY_MS = 24 * 60 * 60 * 1000
-
-/** Resource-key prefix for signed-in users (chat proxy contract, feat-208). */
-const USER_RESOURCE_PREFIX = "user:"
 
 /**
  * Sentinel thread id for the per-run connectivity probe. `listThreads` swallows

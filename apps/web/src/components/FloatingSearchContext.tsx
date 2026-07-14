@@ -43,6 +43,9 @@ export type FloatingSearchContextValue = {
   selectedSearchLanguageOption: SearchLanguageOption | null
   searchResultAnalytics: FloatingSearchResultAnalyticsContext | null
   defaultSearchLanguageOption: SearchLanguageOption | null
+  headerLanguageSwitcherVisible: boolean
+  headerLanguageCode: string | null
+  headerPinned: boolean
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
   search: (
@@ -60,7 +63,6 @@ export type FloatingSearchContextValue = {
   ) => void
   resetSearchLanguageToDefault: () => void
   clearSearchLanguages: () => void
-  closeAndKeepQuery: () => void
 }
 
 export type FloatingSearchPinnedContextValue = {

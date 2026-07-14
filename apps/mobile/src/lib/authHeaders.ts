@@ -21,7 +21,12 @@ export const SEARCH_OPERATION_NAME = "Search"
 export function authHeadersForOperation(
   operationName: string | undefined,
   token: string | undefined,
+  viewerId?: string,
 ): Record<string, string> {
   if (operationName !== SEARCH_OPERATION_NAME) return {}
-  return buildAuthHeaders(token)
+  const headers = buildAuthHeaders(token)
+  // x-viewer-id lets admin bucket per-install (CGNAT-immune) instead of per-IP;
+  // spoofable, so admin treats it as an availability label only.
+  if (viewerId) headers["x-viewer-id"] = viewerId
+  return headers
 }

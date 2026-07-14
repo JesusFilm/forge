@@ -23,6 +23,8 @@ export const WATCH_THEME = {
   scrim: (a: number) => `rgba(7,7,8,${a})`,
   /** Opaque background for the "below the fold" content section. */
   below: "#08080a",
+  /** No-artwork thumbnail fallback tint (matches HomeCard.thumbFallback). */
+  cardFallback: "rgba(255,255,255,0.06)",
 
   /** Text on the cinematic backdrop. */
   text: "#ffffff",

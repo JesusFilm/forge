@@ -21,11 +21,23 @@ tags:
 
 **What landed.** The swap shipped exactly as scoped: membership moved to the `SEEKER_ALLOWED_EMAILS` env CSV (normalized both sides, fail-closed on unset/empty), outcomes collapsed to `granted | kill_switch | not_allowlisted | no_email`, and the feat-236 keep-list held — `booleanVariationDetail` + suite survive in `@forge/feature-flags` re-fixtured onto `watchPlayerMigration`, the `emailVerified` threading and kill switch untouched. An independent fresh-session review passed implementation, docs, and security with no blockers; its four findings (feat-233 supersession note, removal-recipe exemplar note, whitespace-only allowlist test, comment reflow) are in the PR. This ticket's ID coincidentally duplicates the platform lane's `feat-239` hotfix ticket that landed on main in parallel — acceptable per this lane's cross-lane-duplicate rule.
 
-**Compound docs.** None new — the two feat-233 learnings were refreshed in place instead (exemplar-status notes on `docs/solutions/architecture-patterns/fail-closed-by-construction-feature-flag-gate-20260708.md` and `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`).
+**Compound docs.** None new in the PR itself — the two feat-233 learnings were refreshed in place instead (exemplar-status notes on `docs/solutions/architecture-patterns/fail-closed-by-construction-feature-flag-gate-20260708.md` and `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`). Follow-up (2026-07-08, [PR #1543](https://github.com/JesusFilm/forge/pull/1543)): the review near-miss this arc surfaced was subsequently compounded as `docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`.
 
 **Residual risk / follow-ups.** The flip itself remains operator work (What To Build step 6), including the carried-over `email_verified` trustworthiness blocker. Delist now costs a Railway env edit + redeploy; the 8h session-snapshot residual (R13) and the absent `/api/seeker` rate cap are unchanged pre-existing accepted risks. Phase-end removal stays [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md), re-pointed at this mechanism.
 
 **Unblocked.** [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md)'s `depends_on` edge on this ticket is satisfied (it still awaits the phase-end decision and its step-0 rate cap).
+
+## Amendment (2026-07-13)
+
+The Constraints entry below stating that rule-based gating or widening
+"requires session revocation + a membership gate first" is superseded on the
+revocation half: feat-240 dropped the session-lease/revocation design by
+decision (see the Decision Record in
+[feat-240](feat-240-chat-sign-out-force-login.md)). The membership-gate
+requirement stands unchanged; revocation is deliberately not required —
+accepted for an 8h cookie whose only power is reading the holder's own
+conversation history; revisit if the session gets longer or the cookie starts
+gating more than that. The body below is the unmodified historical record.
 
 ## Problem
 

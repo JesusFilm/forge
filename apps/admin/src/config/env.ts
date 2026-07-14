@@ -252,6 +252,10 @@ export const env = createEnv({
     // widen the other; the `WEB_ADMIN_API_KEYS !== WORKFLOW_API_KEYS`
     // invariant is asserted at unit-test time.
     WEB_ADMIN_API_KEYS: z.string().optional(),
+    // Fleet consumer-bearer allowlist (apps/tv + apps/mobile). Mints the same
+    // CONSUMER_BEARER principal as WEB_ADMIN_API_KEYS but flagged `fleet`, so
+    // identifyForRateLimit buckets per-IP (consumer:<key>:<ip>), not per-key.
+    FLEET_ADMIN_API_KEYS: z.string().optional(),
     // Dedicated receiver-side CSV for consumer watch-progress persistence.
     // This endpoint accepts caller-supplied consumer user ids, so it must stay
     // narrower than the general web SSR consumer bearer.
@@ -639,6 +643,7 @@ export const env = createEnv({
       process.env.EXPERIENCE_EXEMPLAR_FALLBACK_SLUG,
     ),
     WEB_ADMIN_API_KEYS: emptyToUndefined(process.env.WEB_ADMIN_API_KEYS),
+    FLEET_ADMIN_API_KEYS: emptyToUndefined(process.env.FLEET_ADMIN_API_KEYS),
     WATCH_PROGRESS_ADMIN_API_KEYS: emptyToUndefined(
       process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
     ),
@@ -846,6 +851,7 @@ const BEARER_CSV_KEYS = [
   "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
+  "FLEET_ADMIN_API_KEYS",
   "WATCH_PROGRESS_ADMIN_API_KEYS",
   "BACKUP_DOWNLOAD_API_KEYS",
   "SEARCH_TRACE_SAMPLING_API_KEYS",
@@ -924,6 +930,7 @@ assertBearerCsvsDisjoint({
   ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
+  FLEET_ADMIN_API_KEYS: env.FLEET_ADMIN_API_KEYS,
   WATCH_PROGRESS_ADMIN_API_KEYS: env.WATCH_PROGRESS_ADMIN_API_KEYS,
   BACKUP_DOWNLOAD_API_KEYS: env.BACKUP_DOWNLOAD_API_KEYS,
   SEARCH_TRACE_SAMPLING_API_KEYS: env.SEARCH_TRACE_SAMPLING_API_KEYS,

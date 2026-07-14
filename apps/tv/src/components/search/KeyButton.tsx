@@ -1,10 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text } from "react-native"
 import type { View as ViewType } from "react-native"
 
 import { scale } from "../../lib/scale"
-import { focusTransform, useFocusAnimation } from "../watch/useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import type { KeyCell, KeyDims } from "./keyGrid"
 import { SEARCH_THEME } from "./searchTheme"
 
@@ -34,11 +33,10 @@ export function KeyButton({
   dims,
   nodeRef,
 }: Props) {
-  const { focused, setFocused, progress } = useFocusAnimation()
-
-  const keyTransform = useMemo(
-    () => focusTransform(progress, { lift: 0, magnify: 1.1 }),
-    [progress],
+  // Shared focus module ("key" role): strongest pop, preset drop shadow.
+  const { focused, setFocused, transform, focusedShadow } = useFocusVisual(
+    "key",
+    { nativeDriver: false },
   )
 
   const inkColor = focused ? SEARCH_THEME.keyFocusText : SEARCH_THEME.keyText
@@ -65,7 +63,8 @@ export function KeyButton({
             borderRadius: scale(dims.radius),
           },
           focused && styles.keyFocused,
-          { transform: keyTransform },
+          focused && focusedShadow,
+          { transform },
         ]}
       >
         {cell.action.kind === "backspace" ? (
@@ -98,14 +97,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Shadow comes from the shared "key" focus role.
   keyFocused: {
     backgroundColor: SEARCH_THEME.keyFocusBg,
-    // Design: 0 12px 28px -10px rgba(0,0,0,.7).
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: scale(12) },
-    shadowRadius: scale(14),
-    shadowOpacity: 0.7,
-    elevation: 8,
   },
   keyLabel: {
     fontFamily: "System",

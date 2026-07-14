@@ -77,7 +77,25 @@ function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
-async function resolveDownloadAccountGate(request: Request): Promise<
+function isAnonymousInlineSubtitleRequest(
+  searchParams: URLSearchParams,
+): boolean {
+  if (searchParams.get("disposition") !== "inline") return false
+
+  const target = searchParams.get("url")
+  if (!target || !isAllowedDownloadOrigin(target)) return false
+
+  try {
+    return new URL(target).pathname.toLowerCase().endsWith(".vtt")
+  } catch {
+    return false
+  }
+}
+
+async function resolveDownloadAccountGate(
+  request: Request,
+  allowAnonymousInlineSubtitle: boolean,
+): Promise<
   | {
       ok: true
       accountGateEnabled: boolean
@@ -90,8 +108,8 @@ async function resolveDownloadAccountGate(request: Request): Promise<
   const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
     watchDownloadAccountGateFlagContext,
   )
-  if (!accountGateEnabled) {
-    return { ok: true, accountGateEnabled: false }
+  if (!accountGateEnabled || allowAnonymousInlineSubtitle) {
+    return { ok: true, accountGateEnabled }
   }
 
   const session = await verifyAuthSession(request.headers)
@@ -340,10 +358,15 @@ function buildUpstreamSignal(
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const authGate = await resolveDownloadAccountGate(request)
+  const { searchParams } = new URL(request.url)
+  const anonymousInlineSubtitleRequest =
+    isAnonymousInlineSubtitleRequest(searchParams)
+  const authGate = await resolveDownloadAccountGate(
+    request,
+    anonymousInlineSubtitleRequest,
+  )
   if (!authGate.ok) return authGate.response
 
-  const { searchParams } = new URL(request.url)
   const rawFilename = searchParams.get("filename")
   const contentDisposition =
     searchParams.get("disposition") === "inline" ? "inline" : "attachment"
@@ -444,6 +467,19 @@ export async function GET(request: Request): Promise<Response> {
       status: upstream.status,
     })
     return jsonError(`Upstream ${upstream.status}`, upstream.status)
+  }
+
+  const upstreamMediaType = upstream.headers
+    .get("content-type")
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase()
+  if (anonymousInlineSubtitleRequest && upstreamMediaType !== "text/vtt") {
+    console.error("[api/download] rejected non-VTT anonymous response", {
+      target: safeLogUrl(safeUrl),
+      contentType: upstream.headers.get("content-type"),
+    })
+    return jsonError("Upstream subtitle response was not VTT", 502)
   }
 
   if (!upstream.body) {

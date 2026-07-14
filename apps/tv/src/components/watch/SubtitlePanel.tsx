@@ -2,7 +2,6 @@
 // (GET_VIDEO_DUB), renders loading/error/empty/list states; "Subtitles off" and
 // Close stay focusable in EVERY state. Media→UI mapping lives in panelState.ts (jest-expo can't load .tsx).
 
-import { useEffect } from "react"
 import { Modal, ScrollView, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
@@ -20,17 +19,11 @@ export function SubtitlePanel({
 }) {
   const {
     activeVariantMediaState,
-    ensureActiveVariantMedia,
     subtitleEnabled,
     setSubtitleEnabled,
     activeSubtitleSlug,
     setActiveSubtitleSlug,
   } = useWatchSession()
-
-  // Lazy-fetch the active dub's media when the panel opens (GET_VIDEO_DUB).
-  useEffect(() => {
-    if (visible) ensureActiveVariantMedia()
-  }, [visible, ensureActiveVariantMedia])
 
   // Re-derive the discriminated UI state from the session's media struct; the
   // pure mapping in panelState.ts owns the loading/error/loaded precedence.

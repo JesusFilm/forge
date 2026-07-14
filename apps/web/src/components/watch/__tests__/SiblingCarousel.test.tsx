@@ -15,6 +15,10 @@ import { act, type MouseEventHandler, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { linkDefaultPrevented } = vi.hoisted(() => ({
+  linkDefaultPrevented: [] as boolean[],
+}))
+
 // Embla browser-API polyfills (matchMedia / IntersectionObserver /
 // ResizeObserver) live in vitest.setup.ts so every Embla-backed test inherits
 // them automatically.
@@ -76,6 +80,7 @@ vi.mock("next/link", () => ({
       data-prefetch={String(prefetch)}
       onClick={(event) => {
         onClick?.(event)
+        linkDefaultPrevented.push(event.defaultPrevented)
         event.preventDefault()
       }}
       {...props}
@@ -121,6 +126,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  linkDefaultPrevented.length = 0
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -277,8 +283,16 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-end-spacer']",
     )
     expect(endSpacer).not.toBeNull()
-    expect(endSpacer?.className).toContain("basis-[52%]")
-    expect(endSpacer?.className).toContain("md:basis-[66.666%]")
+    expect(endSpacer?.getAttribute("data-slot")).toBe("carousel-item")
+    expect(endSpacer?.getAttribute("aria-hidden")).toBe("true")
+    expect(endSpacer?.getAttribute("tabindex")).toBe("-1")
+    expect(endSpacer?.className).toContain("basis-auto")
+    expect(endSpacer?.className).toContain("pl-0")
+    expect(endSpacer?.className).not.toContain("basis-[52%]")
+    expect(endSpacer?.className).not.toContain("md:basis-[66.666%]")
+    const endGutter = endSpacer?.querySelector("div")
+    expect(endGutter?.className).toContain("w-4")
+    expect(endGutter?.className).toContain("sm:w-6")
 
     // Active item carries data-active="true" and renders the "Playing now" pill.
     const active = container.querySelector(
@@ -526,6 +540,7 @@ describe("SiblingCarousel — happy path", () => {
       )
     })
 
+    expect(linkDefaultPrevented).toEqual([false])
     expect(target!.getAttribute("data-pending")).toBe("true")
     expect(target!.getAttribute("data-active")).toBe("true")
     expect(target!.getAttribute("aria-busy")).toBe("true")
@@ -726,6 +741,7 @@ describe("SiblingCarousel — happy path", () => {
     })
 
     expect(target!.getAttribute("data-pending")).toBe("false")
+    expect(linkDefaultPrevented).toEqual([false])
     expect(onChapterNavigateIntent).not.toHaveBeenCalled()
     expect(target!.getAttribute("aria-busy")).toBeNull()
     expect(
@@ -856,6 +872,29 @@ describe("SiblingCarousel — happy path", () => {
 })
 
 describe("SiblingCarousel — edge cases", () => {
+  it("keeps a final active child on the filled terminal page", () => {
+    act(() => {
+      root.render(
+        <SiblingCarousel block={makeBlock(5, 4)} languageSlug="english" />,
+      )
+    })
+
+    const active = container.querySelector(
+      "[data-testid='sibling-carousel-item'][data-active='true']",
+    )
+    expect(active?.getAttribute("data-href")).toBe(
+      "/jesus-collection.html/child-5-slug/english.html",
+    )
+
+    const endSpacer = container.querySelector(
+      "[data-testid='sibling-carousel-end-spacer']",
+    )
+    expect(endSpacer?.getAttribute("aria-hidden")).toBe("true")
+    expect(endSpacer?.getAttribute("tabindex")).toBe("-1")
+    expect(endSpacer?.className).toContain("basis-auto")
+    expect(endSpacer?.className).not.toContain("basis-[52%]")
+  })
+
   it("returns null when the canonical parent has fewer than 2 children", () => {
     const block: WatchSiblingCarouselBlock = {
       kind: "SiblingCarousel",

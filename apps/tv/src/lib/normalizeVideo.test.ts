@@ -8,12 +8,18 @@ import {
 // makeChild builds one parent.children[] entry (a { child } relation wrapper).
 // makeRawVideo's return is cast to the normalizer's param type, so builders stay
 // inferred object literals whose concrete field types overlap it.
-function makeChild(documentId: string, slug: string, title: string) {
+function makeChild(
+  documentId: string,
+  slug: string,
+  title: string,
+  muxPlaybackId: string | null = `${documentId}-pb`,
+) {
   return {
     child: {
       documentId,
       slug,
       label: "SEGMENT",
+      muxPlaybackId,
       locales: [
         { documentId: `${documentId}-loc`, languageSlug: "english", title },
       ],
@@ -350,6 +356,31 @@ describe("normalizeVideo — Up Next siblings", () => {
     expect(result.siblings).toEqual([])
   })
 
+  it("carries each sibling's muxPlaybackId, null when the child has none (R5, R6)", () => {
+    const raw = makeRawVideo({
+      parents: [
+        {
+          parent: {
+            documentId: "parent-1",
+            slug: "easter-story",
+            label: "COLLECTION",
+            locales: [],
+            images: [],
+            children: [
+              makeChild("vid-2", "the-resurrection", "The Resurrection"),
+              makeChild("vid-3", "the-ascension", "The Ascension", null),
+            ],
+          },
+        },
+      ],
+    })
+    const result = normalizeVideo(raw)!
+    expect(result.siblings.map((s) => s.muxPlaybackId)).toEqual([
+      "vid-2-pb",
+      null,
+    ])
+  })
+
   it("uses the first parent's children when a video has multiple parents", () => {
     const raw = makeRawVideo({
       parents: [
@@ -409,6 +440,7 @@ function makeEpisodeRel(
   slug: string,
   title: string,
   order: number,
+  muxPlaybackId: string | null = `${documentId}-pb`,
 ) {
   return {
     order,
@@ -416,6 +448,7 @@ function makeEpisodeRel(
       documentId,
       slug,
       label: "EPISODE",
+      muxPlaybackId,
       locales: [
         {
           documentId: `${documentId}-loc`,
@@ -523,6 +556,7 @@ describe("normalizeSeries — episodes (own children)", () => {
       description: "Episode One description",
       imageAlt: "Episode One art",
       posterUrl: "https://img.example.com/episode-1.jpg",
+      muxPlaybackId: "ep-1-pb",
     })
   })
 
@@ -582,6 +616,21 @@ describe("normalizeSeries — episodes (own children)", () => {
       }),
     )!
     expect(result.episodes.map((e) => e.documentId)).toEqual(["ep-1"])
+  })
+
+  it("carries each episode's muxPlaybackId, null when absent (R5, R6)", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          makeEpisodeRel("ep-1", "episode-1", "Episode One", 1),
+          makeEpisodeRel("ep-2", "episode-2", "Episode Two", 2, null),
+        ],
+      }),
+    )!
+    expect(result.episodes.map((e) => e.muxPlaybackId)).toEqual([
+      "ep-1-pb",
+      null,
+    ])
   })
 })
 

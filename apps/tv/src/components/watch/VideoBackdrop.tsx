@@ -1,16 +1,23 @@
-// Muted, non-interactive cinematic backdrop: poster-hold → video-fade-in (no
-// black flash), paused while the overlay player is open (R6). Zero focusables
-// (KTD4/KTD8); collapsable={false} on Android vs VideoView SurfaceView z-order.
+// Cinematic backdrop: poster-hold → video-fade-in (no black flash), gated by
+// computeBackdropGate. Muted + overlay-only for siblings; the Experience hero adds
+// sound + slot-release on scroll-off/nav/background. collapsable={false}=Android z-order.
 
 import { useEffect, useRef, useState } from "react"
-import { AccessibilityInfo, Animated, StyleSheet, View } from "react-native"
+import {
+  AccessibilityInfo,
+  Animated,
+  AppState,
+  StyleSheet,
+  View,
+} from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useVideoPlayer, VideoView } from "expo-video"
 
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
+import { computeBackdropGate, isAppStateForeground } from "./videoBackdropGate"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -34,6 +41,18 @@ type VideoBackdropProps = {
    * VideoView SurfaceView (see apps/tv/CLAUDE.md "Android TV VideoView z-order").
    */
   bottomFadeColor?: string | null
+  /**
+   * Mute the backdrop audio. Defaults to true — every sibling hero (watch, Home,
+   * Search) is muted. The Experience hero opts into sound with muted={false}.
+   */
+  muted?: boolean
+  /**
+   * External play gate (default true = today's behavior). When provided, the
+   * backdrop plays only while active AND no overlay is open. The Experience hero
+   * passes onScreen && screen-focused so it pauses when scrolled off or navigated
+   * away; siblings omit it and stay gated by the overlay alone.
+   */
+  active?: boolean
 }
 
 export function VideoBackdrop({
@@ -41,6 +60,8 @@ export function VideoBackdrop({
   posterUrl,
   overlayVisible,
   bottomFadeColor,
+  muted = true,
+  active = true,
 }: VideoBackdropProps) {
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
@@ -64,17 +85,49 @@ export function VideoBackdrop({
       : null
   const hasValidStream = validStream !== null
 
+  // Background release for the sound hero's slot + audio (R15). Only the unmuted
+  // hero subscribes; transient "inactive" (app-switcher peek, Siri, Control Center)
+  // is NOT teardown — only genuine "background" releases (screensaver a known gap).
+  const [appForeground, setAppForeground] = useState(
+    isAppStateForeground(AppState.currentState),
+  )
+  useEffect(() => {
+    if (muted) return
+    const sub = AppState.addEventListener("change", (next) => {
+      setAppForeground(isAppStateForeground(next))
+    })
+    return () => sub.remove()
+  }, [muted])
+
+  // Single source of truth for play + mount so overlay/scroll/lifecycle never race
+  // into two decoders (KTD4). Muted siblings ignore appForeground (default-inert).
+  const { shouldPlay, shouldMountVideo } = computeBackdropGate({
+    muted,
+    active,
+    overlayVisible,
+    appForeground,
+  })
+
   // Freeze the useVideoPlayer source: a changing source RELEASES + recreates the
   // player (black/stuck frame). Seed with the first source and route later swaps
   // (e.g. dub switches) through replaceAsync — mirrors VideoPlayer.tsx.
   const creationSource = useRef(validStream).current
   const player = useVideoPlayer(creationSource, (p) => {
-    p.muted = true
+    p.muted = muted
     // Looped manually via the playToEnd listener below — the native `loop` left a
     // long black pause before restarting (it re-buffers the HLS seek). With the
     // VideoView kept mounted (videoReady latches), replay() restarts instantly.
     p.loop = false
   })
+
+  // Keep muted in sync if the prop flips after creation (the initializer runs once).
+  useEffect(() => {
+    try {
+      player.muted = muted
+    } catch {
+      // Native player already released; benign.
+    }
+  }, [player, muted])
 
   const loadedSourceRef = useRef(creationSource)
   useEffect(() => {
@@ -88,9 +141,9 @@ export function VideoBackdrop({
   // first frame — avoids the black-flash window during HLS init.
   const [videoReady, setVideoReady] = useState(false)
   const videoOpacity = useRef(new Animated.Value(0)).current
-  // Mirrors overlayVisible for the playToEnd listener (reads it at call time
-  // without re-registering the listener on every overlay toggle).
-  const overlayVisibleRef = useRef(overlayVisible)
+  // Mirrors shouldPlay for the playToEnd listener (reads it at call time without
+  // re-registering the listener on every gate change).
+  const shouldPlayRef = useRef(shouldPlay)
 
   useEffect(() => {
     if (!hasValidStream) {
@@ -117,10 +170,10 @@ export function VideoBackdrop({
   useEffect(() => {
     if (!hasValidStream) return
     const sub = player.addListener("playToEnd", () => {
-      // Guard the overlay-pause race: if the fullscreen player opened right at
-      // the loop seam, a queued playToEnd must not resume the backdrop (two
-      // concurrent decoders — R6). The overlay-pause effect already paused us.
-      if (overlayVisibleRef.current) return
+      // Guard the pause race: if we were paused (overlay opened, hero scrolled
+      // off, or app backgrounded) right at the loop seam, a queued playToEnd must
+      // not resume the backdrop into two concurrent decoders (R11).
+      if (!shouldPlayRef.current) return
       try {
         player.replay()
       } catch {
@@ -130,19 +183,19 @@ export function VideoBackdrop({
     return () => sub.remove()
   }, [player, hasValidStream])
 
-  // Play unless the overlay is open. Pausing while the overlay plays keeps a
-  // single decoder active and frees the backdrop's frame budget for the
-  // fullscreen player (R6). Resume on close.
+  // One play/pause effect driven by the single shouldPlay gate. Pausing while the
+  // overlay plays (or the hero is scrolled off) keeps a single decoder active and
+  // frees the backdrop's frame budget for the fullscreen player (R11/KTD4).
   useEffect(() => {
-    overlayVisibleRef.current = overlayVisible
+    shouldPlayRef.current = shouldPlay
     if (!hasValidStream) return
     try {
-      if (overlayVisible) player.pause()
-      else player.play()
+      if (shouldPlay) player.play()
+      else player.pause()
     } catch {
       // Native player already released; benign.
     }
-  }, [player, hasValidStream, overlayVisible])
+  }, [player, hasValidStream, shouldPlay])
 
   useEffect(() => {
     return () => {
@@ -191,10 +244,10 @@ export function VideoBackdrop({
         <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
       )}
 
-      {/* Video — crossfaded in over the poster once ready; KTD4 pointerEvents.
-          UNMOUNTED (not paused) while overlay is open: a mounted tvOS VideoView
-          holds a decode slot even paused, starving the overlay (black at 0:00). */}
-      {hasValidStream && videoReady && !overlayVisible ? (
+      {/* Video crossfaded over the poster once ready (KTD4 pointerEvents). Unmounts
+          (not just pauses) on overlay-open, background, or nav-away to free the
+          decode slot; scroll-off only pauses, staying mounted for instant resume. */}
+      {hasValidStream && videoReady && shouldMountVideo ? (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: videoOpacity }]}
           pointerEvents="none"
@@ -277,7 +330,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fallbackBg: {
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.below,
   },
   bottomFade: {
     position: "absolute",

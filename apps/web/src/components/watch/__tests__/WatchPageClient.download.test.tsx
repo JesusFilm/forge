@@ -9,17 +9,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const {
   checkDownloadSessionMock,
   downloadModalProps,
+  getCachedWatchLanguageOptionsMock,
   languageModalProps,
   loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
+  shouldRefreshCachedWatchLanguageOptionsMock,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
   downloadModalProps: [] as unknown[],
+  getCachedWatchLanguageOptionsMock: vi.fn(),
   languageModalProps: [] as unknown[],
   loadWatchInteractionMock: vi.fn(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
+  shouldRefreshCachedWatchLanguageOptionsMock: vi.fn(),
 }))
 
 vi.mock("next/dynamic", () => {
@@ -125,9 +129,11 @@ vi.mock("@/components/watch/download-session-client", () => ({
 }))
 
 vi.mock("@/lib/watch-interaction-loader", () => ({
-  getCachedWatchLanguageOptions: () => null,
+  getCachedWatchLanguageOptions: getCachedWatchLanguageOptionsMock,
   loadWatchInteraction: loadWatchInteractionMock,
   loadWatchLanguageOptionsForVideo: loadWatchLanguageOptionsMock,
+  shouldRefreshCachedWatchLanguageOptions:
+    shouldRefreshCachedWatchLanguageOptionsMock,
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
@@ -148,9 +154,13 @@ beforeEach(() => {
   downloadModalProps.length = 0
   languageModalProps.length = 0
   checkDownloadSessionMock.mockReset()
+  getCachedWatchLanguageOptionsMock.mockReset()
+  getCachedWatchLanguageOptionsMock.mockReturnValue(null)
   loadWatchInteractionMock.mockClear()
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
+  shouldRefreshCachedWatchLanguageOptionsMock.mockReset()
+  shouldRefreshCachedWatchLanguageOptionsMock.mockReturnValue(false)
 })
 
 afterEach(() => {
@@ -164,9 +174,11 @@ afterEach(() => {
 function renderWatchPage({
   languageSlug = "english",
   subtitles = [],
+  videoSlug = "jesus-is-brought-to-pilate",
 }: {
   languageSlug?: string
   subtitles?: unknown[]
+  videoSlug?: string
 } = {}) {
   const variant = {
     documentId: "5fc705b9-1b3b-4a58-abef-755b98457de6",
@@ -190,7 +202,7 @@ function renderWatchPage({
   }
   const video = {
     documentId: "video-1",
-    slug: "jesus-is-brought-to-pilate",
+    slug: videoSlug,
     title: "Jesus Is Brought to Pilate",
     snippet: null,
     description: null,
@@ -426,6 +438,155 @@ describe("WatchPageClient download boundary", () => {
     )
   })
 
+  it("opens the language modal instantly with cached rows while refresh is pending", async () => {
+    const cachedVariants = [
+      {
+        documentId: "variant-es",
+        hls: "https://stream.mux.com/es.m3u8",
+        published: true,
+        language: {
+          coreId: "es",
+          bcp47: "es",
+          slug: "spanish",
+          name: "Spanish",
+          nativeName: "Espanol",
+        },
+        videoEdition: null,
+      },
+    ]
+    getCachedWatchLanguageOptionsMock.mockReturnValue(cachedVariants)
+    shouldRefreshCachedWatchLanguageOptionsMock.mockReturnValue(true)
+    const refresh = deferred<unknown[]>()
+    loadWatchLanguageOptionsMock.mockReturnValueOnce(refresh.promise)
+    renderWatchPage()
+
+    act(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledWith(
+      "jesus-is-brought-to-pilate",
+      { forceRefresh: true },
+    )
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        languageOptionsLoading: false,
+        languageOptionsError: false,
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-es",
+            language: expect.objectContaining({ slug: "spanish" }),
+          }),
+        ],
+      }),
+    )
+
+    await act(async () => {
+      refresh.reject(new Error("offline"))
+    })
+
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        open: true,
+        languageOptionsLoading: false,
+        languageOptionsError: false,
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-es",
+            language: expect.objectContaining({ slug: "spanish" }),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it("ignores a language options refresh that resolves after the video changes", async () => {
+    const cachedFirstVideo = [
+      {
+        documentId: "variant-es",
+        hls: "https://stream.mux.com/es.m3u8",
+        published: true,
+        language: {
+          coreId: "es",
+          bcp47: "es",
+          slug: "spanish",
+          name: "Spanish",
+          nativeName: "Espanol",
+        },
+        videoEdition: null,
+      },
+    ]
+    const cachedSecondVideo = [
+      {
+        documentId: "variant-fr",
+        hls: "https://stream.mux.com/fr.m3u8",
+        published: true,
+        language: {
+          coreId: "fr",
+          bcp47: "fr",
+          slug: "french",
+          name: "French",
+          nativeName: "Francais",
+        },
+        videoEdition: null,
+      },
+    ]
+    const refreshedFirstVideo = [
+      {
+        documentId: "variant-de",
+        hls: "https://stream.mux.com/de.m3u8",
+        published: true,
+        language: {
+          coreId: "de",
+          bcp47: "de",
+          slug: "german",
+          name: "German",
+          nativeName: "Deutsch",
+        },
+        videoEdition: null,
+      },
+    ]
+    const refresh = deferred<unknown[]>()
+    getCachedWatchLanguageOptionsMock.mockImplementation((slug: string) =>
+      slug === "video-one" ? cachedFirstVideo : cachedSecondVideo,
+    )
+    shouldRefreshCachedWatchLanguageOptionsMock.mockImplementation(
+      (slug: string) => slug === "video-one",
+    )
+    loadWatchLanguageOptionsMock.mockReturnValueOnce(refresh.promise)
+    renderWatchPage({ videoSlug: "video-one" })
+
+    act(() => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    renderWatchPage({ videoSlug: "video-two" })
+
+    await act(async () => {
+      refresh.resolve(refreshedFirstVideo)
+    })
+
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        variants: [
+          expect.objectContaining({
+            documentId: "variant-fr",
+            language: expect.objectContaining({ slug: "french" }),
+          }),
+        ],
+      }),
+    )
+  })
+
   it("keeps legacy translated subtitle preferences from auto-enabling", async () => {
     document.cookie =
       "forge_watch_subs=arabic-modern-standard; path=/watch; max-age=31536000"
@@ -651,3 +812,13 @@ describe("WatchPageClient download boundary", () => {
     ).toBe("language")
   })
 })
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, reject, resolve }
+}

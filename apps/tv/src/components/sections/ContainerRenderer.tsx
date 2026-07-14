@@ -1,16 +1,16 @@
 import { StyleSheet, View } from "react-native"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import {
+  blockKey,
+  type ContainerBlockModel,
+  type NormalizedSlot,
+} from "../../lib/normalizer"
 import { SectionDispatcher } from "./SectionDispatcher"
 
-type Slot = {
-  gridSpan?: unknown
-  spans?: unknown
-  slotContent?: NormalizedBlock[]
-}
+type Slot = NormalizedSlot
 
 export interface ContainerRendererProps {
-  section: NormalizedBlock
+  section: ContainerBlockModel
 }
 
 type GridBreakpoint = "xs" | "sm" | "md" | "lg" | "xl"
@@ -31,7 +31,7 @@ function tvSpan(slot: Slot) {
 }
 
 export function ContainerRenderer({ section }: ContainerRendererProps) {
-  const slots = (section.slots as Slot[] | undefined) ?? []
+  const slots: Slot[] = section.slots ?? []
 
   if (slots.length === 0) return null
 
@@ -47,7 +47,7 @@ export function ContainerRenderer({ section }: ContainerRendererProps) {
             >
               {content.map((child, index) => (
                 <SectionDispatcher
-                  key={`${child.kind}-${child.id}-${index}`}
+                  key={`${child.kind}-${blockKey(child) ?? "block"}-${index}`}
                   section={child}
                 />
               ))}

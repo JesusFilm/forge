@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  AppState,
   FlatList,
   Platform,
   Pressable,
@@ -11,10 +10,11 @@ import {
 } from "react-native"
 import { useLocalSearchParams, useNavigation } from "expo-router"
 import { Image } from "expo-image"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { VideoView } from "expo-video"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
+import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
 import {
   ACCENT,
   BLACK,
@@ -129,52 +129,17 @@ function CollectionPlayerContent({
 
   const [currentIndex, setCurrentIndex] = useState(safeInitialIndex)
 
-  // Stable initial source for useVideoPlayer (must not change across renders)
-  const initialSourceRef = useRef<string | null>(
-    safeInitialIndex >= 0
-      ? (items[safeInitialIndex]?.streamingUrl ?? null)
-      : null,
-  )
+  // The active playable source; the shared adapter freezes the first value as
+  // the creation source and swaps (replaceAsync + Mux-ID compare) on change.
+  const activeStreamingUrl = useMemo(() => {
+    if (currentIndex < 0 || currentIndex >= items.length) return null
+    const url = items[currentIndex]?.streamingUrl
+    return url && validateStreamingUrl(url) ? url : null
+  }, [currentIndex, items])
 
-  const player = useVideoPlayer(initialSourceRef.current, (p) => {
-    p.muted = false
-    p.loop = false
-  })
+  const { player } = useManagedVideoPlayer(activeStreamingUrl)
 
   const flatListRef = useRef<FlatList<CollectionItem>>(null)
-  const appActiveRef = useRef(true)
-  const wasPlayingRef = useRef(false)
-
-  // Defensive cleanup
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause()
-      } catch {
-        // Already released
-      }
-    }
-  }, [player])
-
-  // AppState handling — pause on background, resume only if was playing
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      appActiveRef.current = nextState === "active"
-      if (appActiveRef.current) {
-        if (wasPlayingRef.current) {
-          player.play()
-        }
-      } else {
-        wasPlayingRef.current = player.playing
-        try {
-          player.pause()
-        } catch {
-          // Released
-        }
-      }
-    })
-    return () => subscription.remove()
-  }, [player])
 
   // Pause when screen loses focus (stack navigator keeps screens mounted)
   useEffect(() => {
@@ -203,22 +168,6 @@ function CollectionPlayerContent({
 
     return () => subscription.remove()
   }, [player, playableIndices])
-
-  // Source swap when currentIndex changes (but not on initial mount)
-  const isInitialMount = useRef(true)
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-    if (currentIndex < 0 || currentIndex >= items.length) return
-    const url = items[currentIndex]?.streamingUrl
-    if (url && validateStreamingUrl(url)) {
-      player.replaceAsync(url).catch(() => {
-        // Network error or decoder failure — stay on current state
-      })
-    }
-  }, [currentIndex, items, player])
 
   // Auto-scroll playlist to active item
   useEffect(() => {

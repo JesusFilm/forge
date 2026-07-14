@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/config/env", () => ({
   env: {} as {
     WEB_ADMIN_API_KEYS?: string
+    FLEET_ADMIN_API_KEYS?: string
     WORKFLOW_API_KEYS?: string
     BACKUP_DOWNLOAD_API_KEYS?: string
   },
@@ -24,6 +25,7 @@ const { isAnyKnownBearer } = await import("@/auth/search-bearer")
 
 const envMutable = env as {
   WEB_ADMIN_API_KEYS?: string
+  FLEET_ADMIN_API_KEYS?: string
   WORKFLOW_API_KEYS?: string
   BACKUP_DOWNLOAD_API_KEYS?: string
 }
@@ -40,6 +42,7 @@ describe("isAnyKnownBearer", () => {
 
   afterEach(() => {
     envMutable.WEB_ADMIN_API_KEYS = undefined
+    envMutable.FLEET_ADMIN_API_KEYS = undefined
     envMutable.WORKFLOW_API_KEYS = undefined
   })
 
@@ -50,6 +53,17 @@ describe("isAnyKnownBearer", () => {
     await expect(isAnyKnownBearer("Bearer consumer-key-bbb")).resolves.toEqual({
       valid: true,
       source: "consumer",
+    })
+  })
+
+  it("accepts a FLEET_ADMIN_API_KEYS bearer with source=fleet", async () => {
+    // The fleet key must pass the SEARCH_AUTH_REQUIRED gate (so TV/mobile
+    // search returns 200) and log as source=fleet so F1 can distinguish fleet
+    // traffic from web SSR in prod (AE2, R4).
+    envMutable.FLEET_ADMIN_API_KEYS = "fleet-key-zzz"
+    await expect(isAnyKnownBearer("Bearer fleet-key-zzz")).resolves.toEqual({
+      valid: true,
+      source: "fleet",
     })
   })
 

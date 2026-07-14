@@ -30,12 +30,14 @@ function callbackRequest({
   stateCookie = STATE,
   verifierCookie = VERIFIER,
   returnToCookie = "https://chat.example.com/thread/9",
+  forceLoginCookie = null,
 }: {
   code?: string | null
   state?: string | null
   stateCookie?: string | null
   verifierCookie?: string | null
   returnToCookie?: string | null
+  forceLoginCookie?: string | null
 } = {}) {
   const url = new URL("https://chat.example.com/api/auth/callback")
   if (code !== null) url.searchParams.set("code", code)
@@ -56,6 +58,8 @@ function callbackRequest({
     cookieParts.push(
       `forge_chat_oauth_return_to=${encodeURIComponent(returnToCookie)}`,
     )
+  if (forceLoginCookie !== null)
+    cookieParts.push(`forge_chat_force_login=${forceLoginCookie}`)
   return new Request(url, { headers: { cookie: cookieParts.join("; ") } })
 }
 
@@ -152,6 +156,42 @@ describe("GET /api/auth/callback — email_verified pass-through (KTD6)", () => 
       email: "ada@example.com",
       emailVerified: true,
     })
+  })
+})
+
+describe("GET /api/auth/callback — force-login marker consumption (feat-240)", () => {
+  it("deletes the marker on SUCCESS (sign-in completed)", async () => {
+    vi.mocked(oauth.exchangeChatAuthorizationCode).mockResolvedValue({
+      access_token: "at",
+      id_token: "idt",
+    })
+    vi.mocked(oauth.verifyChatIdToken).mockResolvedValue({ subject: "u1" })
+
+    const { GET } = await loadRoute()
+    const res = await GET(callbackRequest({ forceLoginCookie: "1" }))
+
+    expect(res.headers.get("location")).toBe(
+      "https://chat.example.com/thread/9",
+    )
+    expect(res.headers.getSetCookie().join("\n")).toMatch(
+      /forge_chat_force_login=;[^\n]*(Max-Age=0|Expires=Thu, 01 Jan 1970)/i,
+    )
+  })
+
+  it("keeps the marker armed on failure so the retry still forces a login page", async () => {
+    const { GET } = await loadRoute()
+    const res = await GET(
+      callbackRequest({
+        state: "attacker",
+        stateCookie: STATE,
+        forceLoginCookie: "1",
+      }),
+    )
+
+    expect(res.headers.get("location")).toContain("signin=failed")
+    expect(res.headers.getSetCookie().join("\n")).not.toContain(
+      "forge_chat_force_login=",
+    )
   })
 })
 
