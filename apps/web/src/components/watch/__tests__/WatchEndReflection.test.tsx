@@ -31,7 +31,7 @@ vi.mock("next-intl", () => ({
         askBibleQuestion: "Ask a Bible question",
         askBibleQuestionDetail: "Get help exploring Scripture.",
         chatInvitation:
-          "Have a question about this video or another topic? Share your thoughts or comments.",
+          "Have a question or comments about this video or another topic?",
         bibleChatTitle: "Bible Chat",
         talkToPerson: "Talk to a person",
         talkToPersonDetail: "Connect with someone ready to listen.",
@@ -109,245 +109,185 @@ function renderReflection(
 }
 
 describe("WatchEndReflection", () => {
-  it("shows every chapter, auto-advances while idle, and pauses after intent", () => {
-    vi.useFakeTimers()
-    try {
-      renderReflection()
+  it("presents every next step as a chat quick reply and opens a selected thread", () => {
+    renderReflection()
 
-      const ask = container.querySelector(
-        '[data-testid="watch-end-reflection-ask-bible"]',
-      ) as HTMLButtonElement
-      const talk = container.querySelector(
-        '[data-testid="watch-end-reflection-talk-person"]',
-      ) as HTMLButtonElement
+    const ask = container.querySelector(
+      '[data-testid="watch-end-reflection-ask-bible"]',
+    ) as HTMLButtonElement
+    const chatOptions = container.querySelector(
+      '[data-testid="watch-end-reflection-chat-options"]',
+    )
 
-      expect(container.textContent).toContain("Choose your next step")
-      expect(ask.getAttribute("data-highlighted")).toBe("true")
-      expect(talk).not.toBeNull()
-      expect(
-        container
-          .querySelector('[data-testid="watch-end-reflection-ask-bible-timer"]')
-          ?.getAttribute("data-progress-state"),
-      ).toBe("running")
-      expect(
-        container.querySelectorAll<HTMLElement>("[data-action-id]").length,
-      ).toBe(8)
+    expect(container.textContent).toContain(
+      "Have a question or comments about this video or another topic?",
+    )
+    expect(chatOptions).not.toBeNull()
+    expect(
+      container.querySelectorAll<HTMLElement>("[data-action-id]").length,
+    ).toBe(8)
+    expect(ask.getAttribute("aria-pressed")).toBe("false")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-user-selection"]',
+      ),
+    ).toBeNull()
 
-      act(() => {
-        vi.advanceTimersByTime(5_000)
-      })
+    act(() => {
+      ask.click()
+    })
 
-      expect(talk.getAttribute("data-highlighted")).toBe("true")
-      expect(
-        container
-          .querySelector('[data-testid="watch-end-reflection-ask-bible-timer"]')
-          ?.getAttribute("data-progress-state"),
-      ).toBe("complete")
-      expect(
-        container
-          .querySelector(
-            '[data-testid="watch-end-reflection-talk-person-timer"]',
-          )
-          ?.getAttribute("data-progress-state"),
-      ).toBe("running")
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-talk-panel"]',
-        ),
-      ).not.toBeNull()
-
-      act(() => {
-        ask.click()
-      })
-      expect(
-        container
-          .querySelector('[data-testid="watch-end-reflection-ask-bible-timer"]')
-          ?.getAttribute("data-progress-state"),
-      ).toBe("paused")
-      act(() => {
-        vi.advanceTimersByTime(5_000)
-      })
-      expect(ask.getAttribute("data-highlighted")).toBe("true")
-
-      act(() => {
-        vi.advanceTimersByTime(6_000)
-      })
-      act(() => {
-        vi.advanceTimersByTime(5_000)
-      })
-      expect(talk.getAttribute("data-highlighted")).toBe("true")
-
-      act(() => {
-        ask.click()
-      })
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-ask-panel"]',
-        ),
-      ).not.toBeNull()
-      expect(container.textContent).toContain("What did this story show you?")
-      expect(container.textContent).toContain("What could change next?")
-      expect(container.textContent).toContain(
-        "Have a question about this video or another topic? Share your thoughts or comments.",
-      )
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-question-input"]',
-        ),
-      ).not.toBeNull()
-      expect(
-        container.querySelector('[data-testid="watch-end-reflection-chat"]'),
-      ).not.toBeNull()
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-chat-title"]',
-        )?.textContent,
-      ).toBe("Bible Chat")
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-chat-messages"]',
-        )?.className,
-      ).toContain("overflow-y-auto")
-      expect(
+    expect(ask.getAttribute("aria-pressed")).toBe("true")
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection-ask-panel"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-user-selection"]',
+      )?.textContent,
+    ).toBe("Ask a Bible question")
+    expect(container.textContent).toContain("What did this story show you?")
+    expect(container.textContent).toContain("What could change next?")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-question-input"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection-chat"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection-chat-title"]')
+        ?.textContent,
+    ).toContain("Bible Chat")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-chat-messages"]',
+      )?.className,
+    ).toContain("overflow-y-auto")
+    expect(
+      (
         container.querySelector(
           '[data-testid="watch-end-reflection-chat-invitation"]',
-        )?.className,
-      ).toContain("animate-watch-chat-incoming")
-      expect(
-        (
-          container.querySelector(
-            '[data-testid="watch-end-reflection-chat-invitation"]',
-          ) as HTMLElement
-        ).style.animationDelay,
-      ).toBe("260ms")
-      expect(
-        container.querySelector('[data-testid="watch-end-reflection-chat"]')
-          ?.className,
-      ).toContain("flex-1")
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-stage-title"]',
-        )?.className,
-      ).toContain("sr-only")
-      expect(
-        container.querySelector(
-          '[data-testid="watch-end-reflection-stage-title"]',
-        )?.textContent,
-      ).toBe("Ask a Bible question")
+        ) as HTMLElement
+      ).style.animationDelay,
+    ).toBe("120ms")
 
-      const suggested = container.querySelector(
+    const suggested = container.querySelector(
+      '[data-testid="watch-end-reflection-suggested-question"]',
+    ) as HTMLButtonElement
+    const suggestedQuestions = Array.from(
+      container.querySelectorAll<HTMLElement>(
         '[data-testid="watch-end-reflection-suggested-question"]',
-      ) as HTMLButtonElement
-      const suggestedQuestions = Array.from(
-        container.querySelectorAll<HTMLElement>(
-          '[data-testid="watch-end-reflection-suggested-question"]',
-        ),
-      )
-      expect(
-        suggestedQuestions.map((item) => item.style.animationDelay),
-      ).toEqual(["520ms", "680ms"])
-      act(() => {
-        suggested.click()
-      })
-      expect(
-        (
-          container.querySelector(
-            '[data-testid="watch-end-reflection-question-input"]',
-          ) as HTMLTextAreaElement
-        ).value,
-      ).toBe("What did this story show you?")
-      expect(suggested.getAttribute("aria-pressed")).toBe("true")
-    } finally {
-      vi.useRealTimers()
-    }
+      ),
+    )
+    expect(suggestedQuestions.map((item) => item.style.animationDelay)).toEqual(
+      ["360ms", "510ms"],
+    )
+
+    act(() => {
+      suggested.click()
+    })
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-end-reflection-question-input"]',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("What did this story show you?")
+    expect(suggested.getAttribute("aria-pressed")).toBe("true")
   })
 
-  it("makes Watch next the final timed chapter and advances after it", () => {
-    vi.useFakeTimers()
-    try {
-      const callbacks = renderReflection()
-      const actions = Array.from(
-        container.querySelectorAll<HTMLElement>("[data-action-id]"),
-      )
+  it("keeps Watch next as the final quick reply and confirms before advancing", () => {
+    const callbacks = renderReflection()
+    const actions = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-action-id]"),
+    )
+    const watchNext = actions.at(-1) as HTMLButtonElement
 
-      expect(actions.at(-2)?.dataset.actionId).toBe("download")
-      expect(actions.at(-1)?.dataset.actionId).toBe("next")
-      expect(actions.at(-1)?.dataset.finalAction).toBe("true")
+    expect(actions.at(-2)?.dataset.actionId).toBe("download")
+    expect(watchNext.dataset.actionId).toBe("next")
+    expect(watchNext.dataset.finalAction).toBe("true")
+    expect(callbacks.onNext).not.toHaveBeenCalled()
 
-      for (let chapter = 0; chapter < actions.length; chapter += 1) {
-        act(() => {
-          vi.advanceTimersByTime(5_000)
-        })
-      }
+    act(() => {
+      watchNext.click()
+    })
+    expect(callbacks.onNext).not.toHaveBeenCalled()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-user-selection"]',
+      )?.textContent,
+    ).toBe("Watch next")
 
-      expect(callbacks.onNext).toHaveBeenCalledOnce()
-    } finally {
-      vi.useRealTimers()
-    }
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-active-action"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(callbacks.onNext).toHaveBeenCalledOnce()
   })
 
-  it("restarts the guided story after the reflection is reopened", () => {
-    vi.useFakeTimers()
-    try {
-      const callbacks = {
-        onDismiss: vi.fn(),
-        onDownload: vi.fn(),
-        onNext: vi.fn(),
-        onReplay: vi.fn(),
-        onShare: vi.fn(),
-      }
-      const renderOpenState = (open: boolean) => {
-        act(() => {
-          root.render(
-            <WatchEndReflection
-              open={open}
-              prompts={["What did this story show you?"]}
-              bibleReadHref="https://www.bible.com/bible/111/John.3.16.NIV"
-              {...callbacks}
-            />,
-          )
-        })
-      }
-
-      renderOpenState(true)
-      act(() => {
-        ;(
-          container.querySelector(
-            '[data-testid="watch-end-reflection-talk-person"]',
-          ) as HTMLButtonElement
-        ).click()
-      })
-      act(() => {
-        ;(
-          container.querySelector(
-            '[data-testid="watch-end-reflection-dismiss"]',
-          ) as HTMLButtonElement
-        ).click()
-      })
-      renderOpenState(false)
-      renderOpenState(true)
-
-      expect(
-        container
-          .querySelector('[data-testid="watch-end-reflection-ask-bible"]')
-          ?.getAttribute("data-highlighted"),
-      ).toBe("true")
-
-      act(() => {
-        vi.advanceTimersByTime(5_000)
-      })
-      expect(
-        container
-          .querySelector('[data-testid="watch-end-reflection-talk-person"]')
-          ?.getAttribute("data-highlighted"),
-      ).toBe("true")
-    } finally {
-      vi.useRealTimers()
+  it("resets the selected conversation after the reflection is reopened", () => {
+    const callbacks = {
+      onDismiss: vi.fn(),
+      onDownload: vi.fn(),
+      onNext: vi.fn(),
+      onReplay: vi.fn(),
+      onShare: vi.fn(),
     }
+    const renderOpenState = (open: boolean) => {
+      act(() => {
+        root.render(
+          <WatchEndReflection
+            open={open}
+            prompts={["What did this story show you?"]}
+            bibleReadHref="https://www.bible.com/bible/111/John.3.16.NIV"
+            {...callbacks}
+          />,
+        )
+      })
+    }
+
+    renderOpenState(true)
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-talk-person"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-user-selection"]',
+      )?.textContent,
+    ).toBe("Talk to a person")
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-dismiss"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    renderOpenState(false)
+    renderOpenState(true)
+
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-user-selection"]',
+      ),
+    ).toBeNull()
+    expect(
+      container
+        .querySelector('[data-testid="watch-end-reflection-talk-person"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false")
   })
 
-  it("keeps the selected chapter stationary when reduced motion is requested", () => {
-    vi.useFakeTimers()
+  it("keeps the chat immediately accessible when reduced motion is requested", () => {
     const originalMatchMedia = window.matchMedia
     window.matchMedia = vi.fn().mockReturnValue({ matches: true })
 
@@ -357,19 +297,20 @@ describe("WatchEndReflection", () => {
         '[data-testid="watch-end-reflection-ask-bible"]',
       ) as HTMLButtonElement
 
+      expect(ask.className).toContain("motion-reduce:animate-none")
+
       act(() => {
-        vi.advanceTimersByTime(30_000)
+        ask.click()
       })
 
-      expect(ask.getAttribute("data-highlighted")).toBe("true")
+      expect(ask.getAttribute("aria-pressed")).toBe("true")
       expect(
-        container.querySelectorAll(
-          '[aria-controls="watch-end-reflection-stage"]',
-        ).length,
-      ).toBe(8)
+        container.querySelector(
+          '[data-testid="watch-end-reflection-ask-response"]',
+        )?.className,
+      ).toContain("motion-reduce:animate-none")
     } finally {
       window.matchMedia = originalMatchMedia
-      vi.useRealTimers()
     }
   })
 
@@ -474,32 +415,20 @@ describe("WatchEndReflection", () => {
     expect(container.textContent).toContain("Español")
     expect(container.textContent).toContain("Français")
     expect(
-      container.querySelector('[data-testid="watch-end-reflection-talk-chat"]'),
+      container.querySelector(
+        '[data-testid="watch-end-reflection-talk-response"]',
+      ),
     ).not.toBeNull()
     expect(
       container.querySelector(
-        '[data-testid="watch-end-reflection-talk-chat-title"]',
+        '[data-testid="watch-end-reflection-user-selection"]',
       )?.textContent,
     ).toBe("Talk to a person")
     expect(
       container.querySelector(
-        '[data-testid="watch-end-reflection-talk-chat-messages"]',
+        '[data-testid="watch-end-reflection-chat-messages"]',
       )?.className,
     ).toContain("overflow-y-auto")
-    expect(
-      (
-        container.querySelector(
-          '[data-testid="watch-end-reflection-talk-chat-invitation"]',
-        ) as HTMLElement
-      ).style.animationDelay,
-    ).toBe("260ms")
-    expect(
-      (
-        container.querySelector(
-          '[data-testid="watch-end-reflection-talk-chat-follow-up"]',
-        ) as HTMLElement
-      ).style.animationDelay,
-    ).toBe("520ms")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-talk-input"]',
@@ -534,26 +463,19 @@ describe("WatchEndReflection", () => {
     ).not.toBeNull()
     expect(
       container.querySelector(
-        '[data-testid="watch-end-reflection-prayer-chat"]',
+        '[data-testid="watch-end-reflection-prayer-response"]',
       ),
     ).not.toBeNull()
     expect(
       container.querySelector(
-        '[data-testid="watch-end-reflection-prayer-chat-title"]',
+        '[data-testid="watch-end-reflection-user-selection"]',
       )?.textContent,
     ).toBe("Request a prayer")
     expect(
       container.querySelector(
-        '[data-testid="watch-end-reflection-prayer-chat-messages"]',
+        '[data-testid="watch-end-reflection-chat-messages"]',
       )?.className,
     ).toContain("overflow-y-auto")
-    expect(
-      (
-        container.querySelector(
-          '[data-testid="watch-end-reflection-prayer-chat-invitation"]',
-        ) as HTMLElement
-      ).style.animationDelay,
-    ).toBe("260ms")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-prayer-input"]',

@@ -48,13 +48,8 @@ type NextStepAction = {
   testId: string
 }
 
-const CHAPTER_DURATION_MS = 5_000
-const INACTIVITY_RESUME_MS = 6_000
-
 const PRIMARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] hover:scale-[1.035] hover:bg-brand-red/90 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none"
-const STEP_ACTION_CLASS =
-  "group relative flex min-h-20 w-full min-w-0 cursor-pointer flex-row items-center gap-3 overflow-hidden rounded-xl border px-3 py-3 text-left text-white transition-[background-color,border-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -82,25 +77,17 @@ export function WatchEndReflection({
   const tStudyQuestions = useTranslations("WatchStudyQuestions")
   const tQuestionPanel = useTranslations("WatchQuestionPanel")
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const chapterListRef = useRef<HTMLOListElement>(null)
   const cleanedPrompts = prompts.filter((prompt) => prompt.trim().length > 0)
   const reflectionPrompts = (
     cleanedPrompts.length > 0
       ? cleanedPrompts
       : [tStudyQuestions("placeholderQuestion")]
   ).slice(0, 3)
-  const reducedMotion =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [isGuiding, setIsGuiding] = useState(!reducedMotion)
-  const [interactionVersion, setInteractionVersion] = useState(0)
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null)
   const [customQuestion, setCustomQuestion] = useState("")
 
   const resetStory = () => {
-    setActiveIndex(0)
-    setIsGuiding(!reducedMotion)
-    setInteractionVersion(0)
+    setSelectedActionId(null)
     setCustomQuestion("")
   }
 
@@ -198,9 +185,9 @@ export function WatchEndReflection({
       : []),
   ]
 
-  const activeAction = actions[Math.min(activeIndex, actions.length - 1)]!
-  const finalActionId = actions.at(-1)!.id
-  const finalActionOnClick = actions.at(-1)!.onClick
+  const selectedAction = actions.find(
+    (action) => action.id === selectedActionId,
+  )
 
   useEffect(() => {
     if (!open) return
@@ -219,58 +206,7 @@ export function WatchEndReflection({
     }
   }, [open])
 
-  useEffect(() => {
-    if (!open || reducedMotion || !isGuiding) return
-    const timeout = window.setTimeout(() => {
-      if (activeIndex === actions.length - 1 && finalActionId === "next") {
-        finalActionOnClick?.()
-        return
-      }
-      setActiveIndex((current) => (current + 1) % actions.length)
-    }, CHAPTER_DURATION_MS)
-    return () => window.clearTimeout(timeout)
-  }, [
-    actions.length,
-    activeIndex,
-    finalActionId,
-    finalActionOnClick,
-    isGuiding,
-    open,
-    reducedMotion,
-  ])
-
-  useEffect(() => {
-    if (!open) return
-    const activeChapter = chapterListRef.current?.querySelector<HTMLElement>(
-      '[data-highlighted="true"]',
-    )
-    activeChapter?.scrollIntoView?.({
-      behavior: reducedMotion ? "auto" : "smooth",
-      block: "nearest",
-      inline: "center",
-    })
-  }, [activeIndex, open, reducedMotion])
-
-  useEffect(() => {
-    if (!open || reducedMotion || isGuiding || interactionVersion === 0) return
-    const timeout = window.setTimeout(() => {
-      setIsGuiding(true)
-    }, INACTIVITY_RESUME_MS)
-    return () => window.clearTimeout(timeout)
-  }, [interactionVersion, isGuiding, open, reducedMotion])
-
   if (!open) return null
-
-  const markInteraction = () => {
-    if (reducedMotion) return
-    setIsGuiding(false)
-    setInteractionVersion((current) => current + 1)
-  }
-
-  const selectChapter = (index: number) => {
-    markInteraction()
-    setActiveIndex(index)
-  }
 
   return (
     <div
@@ -280,11 +216,6 @@ export function WatchEndReflection({
       aria-labelledby="watch-end-reflection-title"
       data-testid="watch-end-reflection"
       tabIndex={-1}
-      onPointerDownCapture={markInteraction}
-      onInputCapture={markInteraction}
-      onFocusCapture={(event) => {
-        if (event.target !== event.currentTarget) markInteraction()
-      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           resetStory()
@@ -330,9 +261,6 @@ export function WatchEndReflection({
             <p className="text-[10px] font-semibold tracking-[0.2em] text-white/45 uppercase sm:text-xs">
               {t("nextStepsEyebrow")}
             </p>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-white/60 sm:text-sm">
-              {t("nextStepsSupport")}
-            </p>
           </div>
           <button
             type="button"
@@ -348,55 +276,25 @@ export function WatchEndReflection({
           </button>
         </div>
 
-        <nav
-          aria-label={t("nextStepsTitle")}
-          className="-mx-4 mt-4 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-color:rgba(255,255,255,0.22)_transparent] [scrollbar-width:thin] sm:-mx-8 sm:mt-6 sm:px-8 lg:-mx-12 lg:px-12"
-        >
-          <ol
-            ref={chapterListRef}
-            className="flex w-max min-w-full snap-x snap-mandatory gap-2"
-          >
-            {actions.map((action, index) => (
-              <li
-                key={action.id}
-                className="w-[9.5rem] shrink-0 snap-start sm:w-[10.5rem] xl:min-w-[9.5rem] xl:flex-1"
-              >
-                <ChapterButton
-                  action={action}
-                  index={index}
-                  active={index === activeIndex}
-                  complete={index < activeIndex}
-                  guiding={isGuiding}
-                  onSelect={() => selectChapter(index)}
-                />
-              </li>
-            ))}
-          </ol>
-        </nav>
-
         <main
-          id="watch-end-reflection-stage"
-          key={activeAction.id}
-          aria-live="polite"
-          onPointerEnter={markInteraction}
           data-testid="watch-end-reflection-panel"
-          className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col justify-start py-5 sm:py-7 lg:py-8"
+          className="mx-auto flex min-h-[32rem] w-full max-w-4xl flex-1 flex-col py-4 sm:py-6"
         >
-          <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/45 uppercase">
-            <span>{String(activeIndex + 1).padStart(2, "0")}</span>
-            <span aria-hidden="true" className="text-white/20">
-              /
-            </span>
-            <span>{String(actions.length).padStart(2, "0")}</span>
-          </div>
-          <ActionStage
-            action={activeAction}
+          <ReflectionChat
+            actions={actions}
+            selectedAction={selectedAction}
             prompts={reflectionPrompts}
             customQuestion={customQuestion}
             fieldLabel={tQuestionPanel("fieldLabel")}
             chatInvitation={t("chatInvitation")}
-            bibleChatTitle={t("bibleChatTitle")}
+            chatTitle={t("bibleChatTitle")}
+            nextStepsTitle={t("nextStepsTitle")}
+            nextStepsSupport={t("nextStepsSupport")}
             onQuestionChange={setCustomQuestion}
+            onSelect={(actionId) => {
+              setSelectedActionId(actionId)
+              setCustomQuestion("")
+            }}
           />
         </main>
 
@@ -416,163 +314,368 @@ export function WatchEndReflection({
   )
 }
 
-function ChapterButton({
-  action,
-  index,
-  active,
-  complete,
-  guiding,
-  onSelect,
-}: {
-  action: NextStepAction
-  index: number
-  active: boolean
-  complete: boolean
-  guiding: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-label={action.label}
-      aria-current={active ? "step" : undefined}
-      aria-controls="watch-end-reflection-stage"
-      data-testid={action.testId}
-      data-action-id={action.id}
-      data-highlighted={active ? "true" : "false"}
-      data-final-action={action.id === "next" ? "true" : "false"}
-      className={`${STEP_ACTION_CLASS} ${
-        active
-          ? "scale-[1.02] border-white/25 bg-white/[0.12] opacity-100"
-          : "border-white/[0.07] bg-white/[0.035] opacity-75 hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.07] hover:opacity-100"
-      }`}
-    >
-      <span className="relative grid size-11 shrink-0 place-items-center sm:size-12">
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 48 48"
-          className="absolute inset-0 size-full -rotate-90 overflow-visible"
-        >
-          <circle
-            cx="24"
-            cy="24"
-            r="21"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="text-white/15"
-          />
-          <circle
-            key={`${action.id}-${active}-${guiding}`}
-            cx="24"
-            cy="24"
-            r="21"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeDasharray="132"
-            data-testid={`${action.testId}-timer`}
-            data-progress-state={
-              complete
-                ? "complete"
-                : active && guiding
-                  ? "running"
-                  : active
-                    ? "paused"
-                    : "idle"
-            }
-            className={`transition-[stroke,stroke-dashoffset] duration-300 motion-reduce:animate-none ${
-              complete
-                ? "text-white/55 [stroke-dashoffset:0]"
-                : active
-                  ? guiding
-                    ? "animate-watch-story-progress text-brand-red"
-                    : "text-brand-red [stroke-dashoffset:119]"
-                  : "text-transparent [stroke-dashoffset:132]"
-            }`}
-          />
-        </svg>
-        <span
-          className={`relative grid size-8 place-items-center rounded-full transition-[background-color,transform] sm:size-9 ${
-            active
-              ? "animate-watch-story-icon bg-brand-red text-white"
-              : "bg-white/10 text-white/75 group-hover:scale-105"
-          }`}
-        >
-          {action.icon}
-        </span>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={`block text-[9px] font-semibold tracking-[0.12em] uppercase sm:text-[10px] ${
-            active ? "text-white/70" : "text-white/35"
-          }`}
-        >
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <span
-          className={`mt-0.5 line-clamp-2 min-h-[2.2em] text-[11px] leading-[1.1] font-semibold text-balance lg:text-xs ${
-            active ? "text-white" : "text-white/80"
-          }`}
-        >
-          {action.label}
-        </span>
-      </span>
-    </button>
-  )
-}
-
-function ActionStage({
-  action,
+function ReflectionChat({
+  actions,
+  selectedAction,
   prompts,
   customQuestion,
   fieldLabel,
   chatInvitation,
-  bibleChatTitle,
+  chatTitle,
+  nextStepsTitle,
+  nextStepsSupport,
+  onQuestionChange,
+  onSelect,
+}: {
+  actions: NextStepAction[]
+  selectedAction?: NextStepAction
+  prompts: string[]
+  customQuestion: string
+  fieldLabel: string
+  chatInvitation: string
+  chatTitle: string
+  nextStepsTitle: string
+  nextStepsSupport: string
+  onQuestionChange: (question: string) => void
+  onSelect: (actionId: string) => void
+}) {
+  const messagesRef = useRef<HTMLDivElement>(null)
+  const selectedActionId = selectedAction?.id
+
+  useEffect(() => {
+    if (!selectedActionId) return
+    const frame = window.requestAnimationFrame(() => {
+      const messages = messagesRef.current
+      if (!messages || typeof messages.scrollTo !== "function") return
+      messages.scrollTo({
+        top: messages.scrollHeight,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [selectedActionId])
+
+  return (
+    <section
+      role="region"
+      aria-label={chatTitle}
+      data-testid="watch-end-reflection-chat"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
+    >
+      <header
+        data-testid="watch-end-reflection-chat-title"
+        className="flex min-h-14 shrink-0 items-center gap-3 border-b border-white/10 px-4 sm:px-5"
+      >
+        <span className="relative grid size-8 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
+          <MessageCircleHeart aria-hidden className="size-4.5" />
+          <span className="absolute right-0 bottom-0 size-2 rounded-full border-2 border-[#171717] bg-emerald-400" />
+        </span>
+        <div>
+          <h2
+            id="watch-end-reflection-title"
+            className="text-sm font-semibold tracking-[-0.01em] text-white sm:text-base"
+          >
+            {chatTitle}
+          </h2>
+          <p className="text-[10px] text-white/45 sm:text-xs">
+            {nextStepsTitle}
+          </p>
+        </div>
+      </header>
+
+      <div
+        ref={messagesRef}
+        aria-live="polite"
+        data-testid="watch-end-reflection-chat-messages"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] sm:px-5 sm:py-5"
+      >
+        <GuideBubble
+          testId="watch-end-reflection-chat-invitation"
+          icon={<MessageCircleHeart aria-hidden className="size-4.5" />}
+          delay={120}
+        >
+          <p className="font-semibold text-white">{chatInvitation}</p>
+          <p className="mt-1.5 text-xs text-white/55 sm:text-sm">
+            {nextStepsSupport}
+          </p>
+        </GuideBubble>
+
+        <div
+          role="group"
+          aria-label={nextStepsSupport}
+          data-testid="watch-end-reflection-chat-options"
+          className="ml-10 grid grid-cols-1 gap-2 min-[440px]:grid-cols-2"
+        >
+          {actions.map((action, index) => {
+            const selected = selectedAction?.id === action.id
+            return (
+              <button
+                key={action.id}
+                type="button"
+                aria-pressed={selected}
+                data-testid={action.testId}
+                data-action-id={action.id}
+                data-highlighted={selected ? "true" : "false"}
+                data-final-action={action.id === "next" ? "true" : "false"}
+                onClick={() => onSelect(action.id)}
+                className={
+                  "group flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border px-3 py-2.5 text-left animate-watch-chat-incoming transition-[background-color,border-color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:animate-none motion-reduce:transform-none " +
+                  (selected
+                    ? "border-white/30 bg-white text-black"
+                    : "border-white/10 bg-white/[0.07] text-white hover:border-white/20 hover:bg-white/[0.11]")
+                }
+                style={{ animationDelay: String(360 + index * 55) + "ms" }}
+              >
+                <span
+                  className={
+                    "grid size-9 shrink-0 place-items-center rounded-xl transition-colors " +
+                    (selected
+                      ? "bg-brand-red text-white"
+                      : "bg-brand-red/15 text-brand-red group-hover:bg-brand-red group-hover:text-white")
+                  }
+                >
+                  {action.icon}
+                </span>
+                <span className="min-w-0 flex-1 text-xs leading-tight font-semibold sm:text-sm">
+                  {action.label}
+                </span>
+                <ArrowRight
+                  aria-hidden
+                  className={
+                    "size-3.5 shrink-0 " +
+                    (selected ? "text-black/45" : "text-white/30")
+                  }
+                />
+              </button>
+            )
+          })}
+        </div>
+
+        {selectedAction ? (
+          <SelectedConversation
+            key={selectedAction.id}
+            action={selectedAction}
+            prompts={prompts}
+            customQuestion={customQuestion}
+            onQuestionChange={onQuestionChange}
+          />
+        ) : null}
+      </div>
+
+      {selectedAction &&
+      (selectedAction.kind === "ask" ||
+        selectedAction.kind === "talk" ||
+        selectedAction.kind === "prayer") ? (
+        <ChatComposer
+          action={selectedAction}
+          value={customQuestion}
+          fieldLabel={fieldLabel}
+          onChange={onQuestionChange}
+        />
+      ) : null}
+    </section>
+  )
+}
+
+function GuideBubble({
+  icon,
+  children,
+  delay = 0,
+  testId,
+}: {
+  icon: ReactNode
+  children: ReactNode
+  delay?: number
+  testId?: string
+}) {
+  return (
+    <div
+      data-testid={testId}
+      className="flex max-w-[94%] items-end gap-2.5 animate-watch-chat-incoming sm:max-w-[82%] motion-reduce:animate-none"
+      style={{ animationDelay: String(delay) + "ms" }}
+    >
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
+        {icon}
+      </span>
+      <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function SelectedConversation({
+  action,
+  prompts,
+  customQuestion,
   onQuestionChange,
 }: {
   action: NextStepAction
   prompts: string[]
   customQuestion: string
-  fieldLabel: string
-  chatInvitation: string
-  bibleChatTitle: string
   onQuestionChange: (question: string) => void
 }) {
+  const panelTestId =
+    action.kind === "ask"
+      ? "watch-end-reflection-ask-panel"
+      : action.kind === "talk"
+        ? "watch-end-reflection-talk-panel"
+        : action.kind === "prayer"
+          ? "watch-end-reflection-prayer-panel"
+          : action.kind === "share"
+            ? "watch-end-reflection-share-panel"
+            : "watch-end-reflection-action-panel"
+
   return (
-    <>
-      <h2
-        id="watch-end-reflection-title"
-        data-testid="watch-end-reflection-stage-title"
-        className="sr-only"
+    <div data-testid={panelTestId} className="space-y-4 pt-1">
+      <div className="ml-auto flex max-w-[88%] justify-end animate-watch-chat-outgoing motion-reduce:animate-none">
+        <div
+          data-testid="watch-end-reflection-user-selection"
+          className="rounded-2xl rounded-br-sm bg-white px-4 py-2.5 text-xs leading-snug font-semibold text-black/80 shadow-sm sm:text-sm"
+        >
+          {action.label}
+        </div>
+      </div>
+
+      <GuideBubble
+        testId={"watch-end-reflection-" + action.id + "-response"}
+        icon={action.icon}
+        delay={180}
       >
-        {action.label}
-      </h2>
+        <p className="font-semibold text-white">{action.detail}</p>
+        {action.kind === "talk" ? <PeopleAvailability /> : null}
+      </GuideBubble>
 
       {action.kind === "ask" ? (
-        <AskChapter
-          prompts={prompts}
-          customQuestion={customQuestion}
-          fieldLabel={fieldLabel}
-          chatInvitation={chatInvitation}
-          chatTitle={bibleChatTitle}
-          action={action}
-          onQuestionChange={onQuestionChange}
-        />
+        <div
+          data-testid="watch-end-reflection-question-prompts"
+          className="ml-auto flex max-w-[92%] flex-col items-end gap-2 sm:max-w-[78%]"
+        >
+          {prompts.map((prompt, index) => {
+            const selected = customQuestion === prompt
+            return (
+              <button
+                key={prompt}
+                type="button"
+                data-testid="watch-end-reflection-suggested-question"
+                aria-pressed={selected}
+                onClick={() => onQuestionChange(prompt)}
+                className={
+                  "cursor-pointer rounded-2xl rounded-br-sm px-4 py-2.5 text-left text-xs leading-snug animate-watch-chat-outgoing transition-[background-color,color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm motion-reduce:animate-none " +
+                  (selected
+                    ? "bg-brand-red text-white shadow-lg shadow-brand-red/15"
+                    : "bg-white text-black/80 hover:bg-white/90")
+                }
+                style={{ animationDelay: String(360 + index * 150) + "ms" }}
+              >
+                {prompt}
+              </button>
+            )
+          })}
+        </div>
       ) : null}
-      {action.kind === "talk" ? <TalkChapter action={action} /> : null}
-      {action.kind === "prayer" ? <PrayerChapter action={action} /> : null}
-      {action.kind === "share" ? <ShareChapter action={action} /> : null}
-      {action.kind === "link" || action.kind === "callback" ? (
-        <StageAction action={action} />
+
+      {action.kind === "share" ||
+      action.kind === "link" ||
+      action.kind === "callback" ? (
+        <ConversationAction action={action} />
       ) : null}
-    </>
+    </div>
   )
 }
 
-function StageAction({ action }: { action: NextStepAction }) {
+function PeopleAvailability() {
+  const languages = ["EN", "ES", "FR", "PT"]
+  const languageNames = ["English", "Español", "Français", "Português"]
+
+  return (
+    <div className="mt-3 border-t border-white/10 pt-3">
+      <div className="flex -space-x-2" aria-hidden="true">
+        {languages.map((language) => (
+          <span
+            key={language}
+            className="relative grid size-9 place-items-center rounded-full border-2 border-[#2d2d2d] bg-stone-800 text-white shadow-xl"
+          >
+            <UserRound className="size-4.5 text-white/80" />
+            <span className="absolute right-0 bottom-0 rounded-full bg-brand-red px-1 py-0.5 text-[6px] font-bold tracking-wide">
+              {language}
+            </span>
+          </span>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1">
+        {languageNames.map((language) => (
+          <span
+            key={language}
+            className="rounded-full bg-white/[0.08] px-2 py-0.5 text-[9px] font-medium text-white/65"
+          >
+            {language}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ChatComposer({
+  action,
+  value,
+  fieldLabel,
+  onChange,
+}: {
+  action: NextStepAction
+  value: string
+  fieldLabel: string
+  onChange: (value: string) => void
+}) {
+  const inputId = "watch-end-reflection-" + action.id + "-message"
+  const label = action.kind === "ask" ? fieldLabel : action.detail
+  const inputTestId =
+    action.kind === "ask"
+      ? "watch-end-reflection-question-input"
+      : action.kind === "talk"
+        ? "watch-end-reflection-talk-input"
+        : "watch-end-reflection-prayer-input"
+  const submitTestId =
+    action.kind === "ask"
+      ? "watch-end-reflection-ask-submit"
+      : action.kind === "talk"
+        ? "watch-end-reflection-talk-submit"
+        : "watch-end-reflection-prayer-submit"
+
+  return (
+    <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
+      <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
+        <label htmlFor={inputId} className="sr-only">
+          {label}
+        </label>
+        <textarea
+          id={inputId}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          rows={1}
+          placeholder={label}
+          data-testid={inputTestId}
+          className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
+        />
+        <a
+          href={action.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={action.label}
+          data-testid={submitTestId}
+          className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-brand-red text-white transition-[background-color,transform] hover:scale-105 hover:bg-brand-red/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+        >
+          <SendHorizontal aria-hidden className="size-4" />
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function ConversationAction({ action }: { action: NextStepAction }) {
   const content = (
     <>
       {action.label}
@@ -583,315 +686,36 @@ function StageAction({ action }: { action: NextStepAction }) {
       )}
     </>
   )
+  const testId =
+    action.kind === "share"
+      ? "watch-end-reflection-share-submit"
+      : "watch-end-reflection-active-action"
 
   if (action.href) {
     return (
-      <a
-        href={action.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-testid="watch-end-reflection-active-action"
-        className={`${PRIMARY_ACTION_CLASS} mt-7 animate-watch-story-action motion-reduce:animate-none`}
-      >
-        {content}
-      </a>
+      <div className="ml-10 animate-watch-chat-incoming motion-reduce:animate-none">
+        <a
+          href={action.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid={testId}
+          className={PRIMARY_ACTION_CLASS}
+        >
+          {content}
+        </a>
+      </div>
     )
   }
 
   return (
-    <button
-      type="button"
-      onClick={action.onClick}
-      data-testid="watch-end-reflection-active-action"
-      className={`${PRIMARY_ACTION_CLASS} mt-7 animate-watch-story-action motion-reduce:animate-none`}
-    >
-      {content}
-    </button>
-  )
-}
-
-function AskChapter({
-  prompts,
-  customQuestion,
-  fieldLabel,
-  chatInvitation,
-  chatTitle,
-  action,
-  onQuestionChange,
-}: {
-  prompts: string[]
-  customQuestion: string
-  fieldLabel: string
-  chatInvitation: string
-  chatTitle: string
-  action: NextStepAction
-  onQuestionChange: (question: string) => void
-}) {
-  return (
-    <div
-      data-testid="watch-end-reflection-ask-panel"
-      className="mt-6 flex min-h-[22rem] w-full max-w-2xl flex-1 flex-col animate-watch-story-action motion-reduce:animate-none"
-    >
-      <div
-        role="region"
-        aria-label={action.label}
-        data-testid="watch-end-reflection-chat"
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
-      >
-        <header
-          data-testid="watch-end-reflection-chat-title"
-          className="flex min-h-12 shrink-0 items-center border-b border-white/10 px-4 sm:px-5"
-        >
-          <p className="text-sm font-semibold tracking-[-0.01em] text-white/85 sm:text-base">
-            {chatTitle}
-          </p>
-        </header>
-
-        <div
-          data-testid="watch-end-reflection-chat-messages"
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 sm:px-5 sm:py-5"
-        >
-          <div
-            data-testid="watch-end-reflection-chat-invitation"
-            className="flex max-w-[90%] items-end gap-2.5 animate-watch-chat-incoming sm:max-w-[78%] motion-reduce:animate-none"
-            style={{ animationDelay: "260ms" }}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
-              {action.icon}
-            </span>
-            <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
-              <p>{chatInvitation}</p>
-            </div>
-          </div>
-
-          <div className="ml-auto flex max-w-[92%] flex-col items-end gap-2 sm:max-w-[78%]">
-            {prompts.map((prompt, index) => {
-              const selected = customQuestion === prompt
-              return (
-                <button
-                  key={prompt}
-                  type="button"
-                  data-testid="watch-end-reflection-suggested-question"
-                  aria-pressed={selected}
-                  onClick={() => onQuestionChange(prompt)}
-                  className={`cursor-pointer rounded-2xl rounded-br-sm px-4 py-2.5 text-left text-xs leading-snug animate-watch-chat-outgoing transition-[background-color,color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm motion-reduce:animate-none ${
-                    selected
-                      ? "bg-brand-red text-white shadow-lg shadow-brand-red/15"
-                      : "bg-white text-black/80 hover:bg-white/90"
-                  }`}
-                  style={{ animationDelay: `${520 + index * 160}ms` }}
-                >
-                  {prompt}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
-          <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
-            <label htmlFor="watch-end-reflection-question" className="sr-only">
-              {fieldLabel}
-            </label>
-            <textarea
-              id="watch-end-reflection-question"
-              value={customQuestion}
-              onChange={(event) => onQuestionChange(event.target.value)}
-              rows={1}
-              placeholder={fieldLabel}
-              data-testid="watch-end-reflection-question-input"
-              className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
-            />
-            <a
-              href={action.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={action.label}
-              data-testid="watch-end-reflection-ask-submit"
-              className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-brand-red text-white transition-[background-color,transform] hover:scale-105 hover:bg-brand-red/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
-            >
-              <SendHorizontal aria-hidden className="size-4" />
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TalkChapter({ action }: { action: NextStepAction }) {
-  const languages = ["EN", "ES", "FR", "PT"]
-  const languageNames = ["English", "Español", "Français", "Português"]
-
-  return (
-    <HandoffChatChapter
-      action={action}
-      panelTestId="watch-end-reflection-talk-panel"
-      chatTestId="watch-end-reflection-talk-chat"
-      inputTestId="watch-end-reflection-talk-input"
-      submitTestId="watch-end-reflection-talk-submit"
-      composerLabel={action.label}
-    >
-      <div className="ml-10 max-w-[88%] rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.07] p-3.5 sm:max-w-[72%] sm:p-4">
-        <div className="flex -space-x-2" aria-hidden="true">
-          {languages.map((language) => (
-            <span
-              key={language}
-              className="relative grid size-10 place-items-center rounded-full border-2 border-[#171717] bg-stone-800 text-white shadow-xl sm:size-11"
-            >
-              <UserRound className="size-5 text-white/80" />
-              <span className="absolute right-0 bottom-0 rounded-full bg-brand-red px-1.5 py-0.5 text-[7px] font-bold tracking-wide">
-                {language}
-              </span>
-            </span>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {languageNames.map((language) => (
-            <span
-              key={language}
-              className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-medium text-white/65"
-            >
-              {language}
-            </span>
-          ))}
-        </div>
-      </div>
-    </HandoffChatChapter>
-  )
-}
-
-function PrayerChapter({ action }: { action: NextStepAction }) {
-  return (
-    <HandoffChatChapter
-      action={action}
-      panelTestId="watch-end-reflection-prayer-panel"
-      chatTestId="watch-end-reflection-prayer-chat"
-      inputTestId="watch-end-reflection-prayer-input"
-      submitTestId="watch-end-reflection-prayer-submit"
-      composerLabel={action.detail}
-    />
-  )
-}
-
-function HandoffChatChapter({
-  action,
-  panelTestId,
-  chatTestId,
-  inputTestId,
-  submitTestId,
-  composerLabel,
-  children,
-}: {
-  action: NextStepAction
-  panelTestId: string
-  chatTestId: string
-  inputTestId: string
-  submitTestId: string
-  composerLabel: string
-  children?: ReactNode
-}) {
-  const inputId = `watch-end-reflection-${action.id}-message`
-
-  return (
-    <div
-      data-testid={panelTestId}
-      className="mt-5 flex min-h-[22rem] w-full max-w-2xl flex-1 flex-col animate-watch-story-action motion-reduce:animate-none"
-    >
-      <div
-        role="region"
-        aria-label={action.label}
-        data-testid={chatTestId}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
-      >
-        <header
-          data-testid={`${chatTestId}-title`}
-          className="flex min-h-12 shrink-0 items-center border-b border-white/10 px-4 sm:px-5"
-        >
-          <p className="text-sm font-semibold tracking-[-0.01em] text-white/85 sm:text-base">
-            {action.label}
-          </p>
-        </header>
-
-        <div
-          data-testid={`${chatTestId}-messages`}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 sm:px-5 sm:py-5"
-        >
-          <div
-            data-testid={`${chatTestId}-invitation`}
-            className="flex max-w-[90%] items-end gap-2.5 animate-watch-chat-incoming sm:max-w-[78%] motion-reduce:animate-none"
-            style={{ animationDelay: "260ms" }}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
-              {action.icon}
-            </span>
-            <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
-              <p>{action.detail}</p>
-            </div>
-          </div>
-          {children ? (
-            <div
-              data-testid={`${chatTestId}-follow-up`}
-              className="animate-watch-chat-incoming motion-reduce:animate-none"
-              style={{ animationDelay: "520ms" }}
-            >
-              {children}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
-          <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
-            <label htmlFor={inputId} className="sr-only">
-              {composerLabel}
-            </label>
-            <textarea
-              id={inputId}
-              rows={1}
-              placeholder={composerLabel}
-              data-testid={inputTestId}
-              className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
-            />
-            <a
-              href={action.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={action.label}
-              data-testid={submitTestId}
-              className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-brand-red text-white transition-[background-color,transform] hover:scale-105 hover:bg-brand-red/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
-            >
-              <SendHorizontal aria-hidden className="size-4" />
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ShareChapter({ action }: { action: NextStepAction }) {
-  return (
-    <div
-      data-testid="watch-end-reflection-share-panel"
-      className="mt-7 animate-watch-story-action motion-reduce:animate-none"
-    >
-      <div className="flex items-center gap-3" aria-hidden="true">
-        <span className="grid size-11 place-items-center rounded-full bg-white/[0.08]">
-          <UserRound className="size-5 text-white/65" />
-        </span>
-        <span className="h-px w-10 bg-gradient-to-r from-white/20 to-brand-red" />
-        <span className="grid size-11 place-items-center rounded-full bg-brand-red text-white">
-          <Share2 className="size-5" />
-        </span>
-      </div>
+    <div className="ml-10 animate-watch-chat-incoming motion-reduce:animate-none">
       <button
         type="button"
-        data-testid="watch-end-reflection-share-submit"
         onClick={action.onClick}
-        className={`${PRIMARY_ACTION_CLASS} mt-6`}
+        data-testid={testId}
+        className={PRIMARY_ACTION_CLASS}
       >
-        <Share2 aria-hidden className="size-4" />
-        {action.label}
+        {content}
       </button>
     </div>
   )
