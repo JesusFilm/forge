@@ -626,6 +626,22 @@
   will-change: opacity;
 }
 
+.watch-body-backdrop {
+  background-color: rgb(var(--color-section-default) / 0.35);
+}
+
+/* Firefox can retain blur(40px) in computed style while failing to paint it
+   as this sheet scrolls over the sticky hero. Disable the unreliable filter
+   and preserve contrast with a neutral dark fill. Other browsers keep the
+   glass treatment. Investigation and Mozilla reports:
+   docs/solutions/ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md */
+@supports (-moz-appearance: none) {
+  .watch-body-backdrop {
+    background-color: rgb(24 24 24 / 0.94);
+    backdrop-filter: none;
+  }
+}
+
 /* Series episodes grid — ported from core/apps/watch's SectionVideoGrid:
    a slow horizontal pan + scale pulse over a wider-than-canvas blurred
    image (paired with `background-size: 200% 200%`) gives the Ken-Burns

@@ -10,6 +10,7 @@ depends_on: []
 blocks:
   - "feat-194"
   - "feat-240"
+  - "feat-252"
 tags:
   - "mastra"
   - "firecrawl"

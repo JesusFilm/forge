@@ -14,7 +14,7 @@
  * integration surface.
  */
 
-import { act, useImperativeHandle } from "react"
+import { act, useImperativeHandle, type ComponentProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -1776,9 +1776,12 @@ describe("HeroPlayer — fallback HLS source", () => {
 // volume slider mute/unmute heuristics, and the auto-dim timer lifecycle.
 // ---------------------------------------------------------------------------
 
-async function revealChrome(block = makeBlock()): Promise<void> {
+async function revealChrome(
+  block = makeBlock(),
+  props: Omit<ComponentProps<typeof HeroPlayer>, "block"> = {},
+): Promise<void> {
   act(() => {
-    root.render(<HeroPlayer block={block} />)
+    root.render(<HeroPlayer block={block} {...props} />)
   })
   const pill = container.querySelector(
     '[data-testid="hero-player-unmute-pill"]',
@@ -1822,6 +1825,53 @@ describe("HeroPlayer — custom chrome render", () => {
     ).not.toBeNull()
   })
 
+  it("renders subtitle access independently of the multi-audio gate", async () => {
+    await revealChrome(makeBlock(), {
+      onLanguageClick: vi.fn(),
+      playableLanguageCount: 1,
+      hasSubtitleOptions: true,
+      subtitleLanguageCode: "ES",
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-chrome-language"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-subtitles"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="hero-chrome-subtitle-language-code"]',
+      )?.textContent,
+    ).toBe("ES")
+  })
+
+  it.each([
+    { hasSubtitleOptions: true, subtitleLanguageCode: "EN" },
+    { hasSubtitleOptions: true, subtitleLanguageCode: null },
+    { hasSubtitleOptions: false, subtitleLanguageCode: "ES" },
+  ])(
+    "suppresses the subtitle code for $subtitleLanguageCode with availability $hasSubtitleOptions",
+    async ({ hasSubtitleOptions, subtitleLanguageCode }) => {
+      await revealChrome(makeBlock(), {
+        onLanguageClick: vi.fn(),
+        playableLanguageCount: 2,
+        hasSubtitleOptions,
+        subtitleLanguageCode,
+      })
+
+      const subtitleButton = container.querySelector(
+        '[data-testid="hero-chrome-subtitles"]',
+      )
+      expect(subtitleButton === null).toBe(!hasSubtitleOptions)
+      expect(
+        container.querySelector(
+          '[data-testid="hero-chrome-subtitle-language-code"]',
+        ),
+      ).toBeNull()
+    },
+  )
+
   it("uses the full-width watch rail layout for the chrome bar", async () => {
     await revealChrome()
     const chrome = container.querySelector(
@@ -1831,7 +1881,7 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(chrome.className).toContain("inset-x-0")
     expect(chrome.className).toContain("w-full")
     expect(chrome.className).toContain("flex-wrap")
-    expect(chrome.className).toContain("gap-x-2")
+    expect(chrome.className).toContain("gap-x-1")
     expect(chrome.className).toContain("gap-y-0")
     expect(chrome.className).toContain("pb-3")
     expect(chrome.className).toContain("md:flex-nowrap")
@@ -1847,10 +1897,6 @@ describe("HeroPlayer — custom chrome render", () => {
     const timeline = container.querySelector(
       '[data-testid="hero-chrome-timeline"]',
     ) as HTMLElement
-    const spacer = container.querySelector(
-      '[data-testid="hero-chrome-mobile-spacer"]',
-    ) as HTMLElement
-
     expect(timeline.className).toContain("relative")
     expect(timeline.className).toContain("order-first")
     expect(timeline.className).toContain("h-5")
@@ -1858,8 +1904,6 @@ describe("HeroPlayer — custom chrome render", () => {
     expect(timeline.className).toContain("md:order-none")
     expect(timeline.className).toContain("md:h-8")
     expect(timeline.className).toContain("md:basis-auto")
-    expect(spacer.className).toContain("flex-1")
-    expect(spacer.className).toContain("md:hidden")
   })
 
   it("uses a subtle focus-visible treatment for the timeline instead of the white glow", async () => {

@@ -61,6 +61,7 @@ import type {
 import { isWatchBlock } from "@/lib/watch-blocks"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
+import { languageCodeFor } from "@/lib/language-code"
 import {
   WATCH_BASE_PATH,
   tryAsContentSlug,
@@ -402,13 +403,20 @@ export function WatchPageClient({
     setSubtitleEnabled(pref.enabled && slugToUse != null)
   }, [currentLanguageSlug, subtitleInit, subtitles])
 
+  const selectedSubtitle = useMemo(() => {
+    if (!subtitleEnabled || !subtitleSlug) return null
+    return subtitles.find((item) => item.language.slug === subtitleSlug) ?? null
+  }, [subtitleEnabled, subtitleSlug, subtitles])
+
   const subtitleVttSrc = useMemo((): string | null | undefined => {
     if (subtitles.length === 0) return undefined
-    if (!subtitleEnabled || !subtitleSlug) return null
-    const rawVttSrc =
-      subtitles.find((s) => s.language.slug === subtitleSlug)?.vttSrc ?? null
+    const rawVttSrc = selectedSubtitle?.vttSrc ?? null
     return rawVttSrc ? buildMediaProxyUrl(rawVttSrc) : null
-  }, [subtitleEnabled, subtitleSlug, subtitles])
+  }, [selectedSubtitle, subtitles.length])
+
+  const subtitleLanguageCode = selectedSubtitle
+    ? languageCodeFor(selectedSubtitle.language)
+    : null
 
   const handleSubtitleChange = useCallback(
     (enabled: boolean, slug: string | null) => {
@@ -745,6 +753,8 @@ export function WatchPageClient({
         onPlayerReady={handlePlayerReady}
         onPlayerActivated={handlePlayerActivated}
         languageSlug={currentLanguageSlug}
+        hasSubtitleOptions={subtitles.length > 0}
+        subtitleLanguageCode={subtitleLanguageCode}
         subtitleVttSrc={subtitleVttSrc}
         shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
