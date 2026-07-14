@@ -55,9 +55,9 @@ type StoredCollectionDownloadResume = Pick<
 
 const COLLECTION_DOWNLOAD_RESUME_KEY = "forge.watch.collection-download-resume"
 const COLLECTION_THUMBNAIL_STACK_TRANSFORMS = [
-  "translate(0px, 10px) rotate(-2deg)",
-  "translate(4px, 5px) rotate(2deg)",
-  "translate(8px, 0px) rotate(-1deg)",
+  "translate(0px, 14px) rotate(-2deg)",
+  "translate(6px, 7px) rotate(2deg)",
+  "translate(12px, 0px) rotate(-1deg)",
 ] as const
 
 function collectionDownloadResumeKey(
@@ -460,18 +460,18 @@ export function CollectionDownloadModal({
                 aria-label={t("availableCount", {
                   count: options.candidates.length,
                 })}
-                className="flex w-fit shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-sm"
+                className="flex w-fit shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 shadow-lg shadow-black/20 backdrop-blur-sm"
               >
                 <div
                   data-testid="watch-collection-download-thumbnail-stack"
-                  className="relative h-12 w-[4.5rem] shrink-0"
+                  className="relative h-[4.5rem] w-[6.75rem] shrink-0"
                   aria-hidden="true"
                 >
                   {options.candidates.slice(0, 3).map((episode, index) => (
                     <div
                       key={episode.documentId}
                       data-testid="watch-collection-download-thumbnail"
-                      className="absolute top-0 left-0 aspect-video w-16 overflow-hidden rounded-lg border-2 border-stone-950 bg-stone-800 shadow-lg"
+                      className="absolute top-0 left-0 aspect-video w-24 overflow-hidden rounded-lg border-2 border-stone-950 bg-stone-800 shadow-lg"
                       style={{
                         zIndex: 3 - index,
                         transform: COLLECTION_THUMBNAIL_STACK_TRANSFORMS[index],
@@ -482,7 +482,7 @@ export function CollectionDownloadModal({
                           src={episode.thumbnailUrl}
                           alt=""
                           fill
-                          sizes="64px"
+                          sizes="96px"
                           className="object-cover object-left-top"
                         />
                       ) : (
@@ -494,7 +494,7 @@ export function CollectionDownloadModal({
                 <span
                   data-testid="watch-collection-download-ready-count"
                   aria-hidden="true"
-                  className="whitespace-nowrap text-stone-300"
+                  className="whitespace-nowrap text-center text-stone-300"
                 >
                   <span className="text-2xl font-semibold tabular-nums text-white">
                     {options.candidates.length}

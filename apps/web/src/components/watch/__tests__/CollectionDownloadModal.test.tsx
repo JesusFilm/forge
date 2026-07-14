@@ -347,14 +347,17 @@ describe("CollectionDownloadModal", () => {
     ).toBe(true)
     expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
     expect(summary?.className).toContain("rounded-2xl")
+    expect(summary?.className).toContain("flex-col")
     expect(summary?.className).toContain("border")
     expect(summary?.className).toContain("bg-white/5")
-    expect(summary?.className).toContain("px-4")
-    expect(summary?.className).toContain("py-3")
+    expect(summary?.className).toContain("px-5")
+    expect(summary?.className).toContain("py-4")
     const thumbnailStack = summary?.querySelector(
       '[data-testid="watch-collection-download-thumbnail-stack"]',
     )
     expect(thumbnailStack?.className).toContain("relative")
+    expect(thumbnailStack?.className).toContain("h-[4.5rem]")
+    expect(thumbnailStack?.className).toContain("w-[6.75rem]")
     expect(thumbnailStack?.className).not.toContain("-space-x")
     const thumbnails = summary?.querySelectorAll(
       '[data-testid="watch-collection-download-thumbnail"]',
@@ -362,12 +365,13 @@ describe("CollectionDownloadModal", () => {
     expect(thumbnails).toHaveLength(2)
     thumbnails?.forEach((thumbnail) => {
       expect(thumbnail.className).toContain("absolute")
+      expect(thumbnail.className).toContain("w-24")
     })
-    expect(
-      summary?.querySelector(
-        '[data-testid="watch-collection-download-ready-count"]',
-      )?.textContent,
-    ).toBe("2 videos")
+    const count = summary?.querySelector(
+      '[data-testid="watch-collection-download-ready-count"]',
+    )
+    expect(count?.className).toContain("text-center")
+    expect(count?.textContent).toBe("2 videos")
   })
 
   it("recovers when loading availability rejects", async () => {
