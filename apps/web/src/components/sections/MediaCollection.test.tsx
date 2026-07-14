@@ -208,7 +208,7 @@ describe("MediaCollection VideoCard href", () => {
     )
   })
 
-  it("uses the watch videos index as the default CTA target", () => {
+  it("uses the watch languages index as the default CTA target", () => {
     act(() => {
       root.render(
         <MediaCollection
@@ -231,7 +231,7 @@ describe("MediaCollection VideoCard href", () => {
     })
 
     expect(
-      container.querySelector<HTMLAnchorElement>("a[href='/watch/videos']"),
+      container.querySelector<HTMLAnchorElement>("a[href='/watch/languages']"),
     ).not.toBeNull()
   })
 

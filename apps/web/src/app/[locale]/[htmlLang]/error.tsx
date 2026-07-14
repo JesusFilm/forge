@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
 
-// Segment-level fallback for unexpected root/home/videos render errors.
+// Segment-level fallback for unexpected root/home/languages render errors.
 // Resolver errors are handled inline in the page components when possible.
 export default function WatchLocaleError({
   error,

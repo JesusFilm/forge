@@ -25,7 +25,7 @@ const ROOTS: readonly string[] = [
   "/watch",
   // NOTE: `/watch/` (trailing slash) lives in REDIRECTS — it 308s to `/watch`
   // per §5.4, so it is probed as a redirect, not a root 200.
-  "/watch/videos",
+  "/watch/languages",
   "/watch/english.html",
   "/watch/russian.html",
   "/watch/portuguese-brazil.html",
@@ -123,6 +123,7 @@ const EPISODES: readonly string[] = [
 // §5.3 legacy 4-segment + §5.4 normalization — must REDIRECT (3xx), not 404.
 const REDIRECTS: readonly string[] = [
   "/watch/search",
+  "/watch/videos",
   "/watch/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
   "/watch/jesus/the-beginning.html/english.html",
   "/watch/",
