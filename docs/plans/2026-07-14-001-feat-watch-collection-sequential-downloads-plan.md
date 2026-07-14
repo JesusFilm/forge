@@ -1,7 +1,7 @@
 ---
 title: "feat: Add sequential Watch collection downloads"
 type: "feat"
-status: "active"
+status: "completed"
 date: "2026-07-14"
 deepened: "2026-07-14"
 ---

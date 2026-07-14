@@ -3,7 +3,7 @@ id: "feat-251"
 title: "Watch collection sequential downloads"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-14"
 duration: 3
 depends_on:

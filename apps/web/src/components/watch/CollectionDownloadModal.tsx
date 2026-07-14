@@ -377,11 +377,11 @@ export function CollectionDownloadModal({
 
               {directoryPickerSupported ? (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   data-testid="watch-collection-download-folder"
                   disabled={busy}
                   onClick={chooseDirectory}
-                  className="justify-start"
+                  className="justify-start border-white/15 bg-white/5 text-stone-100 hover:bg-white/10 hover:text-white"
                 >
                   <FolderOpen size={17} />
                   {directory?.name
