@@ -265,10 +265,9 @@ const envSchema = z.object({
     .default(DEFAULT_FIRECRAWL_TIMEOUT_MS),
   FIRECRAWL_USER_AGENT: z.string().min(1).default(DEFAULT_FIRECRAWL_USER_AGENT),
   INSTAGRAM_DISCOVERY_ARTIFACT_DIR: z.string().min(1).optional(),
-  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().url().optional(),
+  INSTAGRAM_DISCOVERY_SITE_INGEST_URL: z.string().min(1).optional(),
   INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN: z.string().min(1).optional(),
-  DISCOVERY_SOURCES_URL: z.string().url().optional(),
-  DISCOVERY_SITE_ALLOWED_HOSTS: z.string().min(1).optional(),
+  DISCOVERY_SOURCES_URL: z.string().min(1).optional(),
   RAILWAY_S3_ENDPOINT: z.string().url().optional(),
   RAILWAY_S3_REGION: z.string().min(1).default("auto"),
   RAILWAY_S3_BUCKET: z.string().min(1).optional(),
@@ -543,9 +542,6 @@ export const env = envSchema.parse({
     process.env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN,
   ),
   DISCOVERY_SOURCES_URL: emptyToUndefined(process.env.DISCOVERY_SOURCES_URL),
-  DISCOVERY_SITE_ALLOWED_HOSTS: emptyToUndefined(
-    process.env.DISCOVERY_SITE_ALLOWED_HOSTS,
-  ),
   RAILWAY_S3_ENDPOINT: emptyToUndefined(process.env.RAILWAY_S3_ENDPOINT),
   RAILWAY_S3_REGION: emptyToUndefined(process.env.RAILWAY_S3_REGION),
   RAILWAY_S3_BUCKET: emptyToUndefined(process.env.RAILWAY_S3_BUCKET),
@@ -643,53 +639,6 @@ function assertFirecrawlApiUrlAllowedForProduction() {
   if (apiUrl.protocol !== "https:" || !allowedHosts.has(apiUrl.hostname)) {
     throw new Error(
       "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
-    )
-  }
-}
-
-function assertUrlAllowedForProduction({
-  value,
-  allowedHostsValue,
-  label,
-}: {
-  value: string | undefined
-  allowedHostsValue: string | undefined
-  label: string
-}) {
-  if (!value) return
-  const url = new URL(value)
-  const allowedHosts = allowedHostsValue
-    ? csvSet(allowedHostsValue)
-    : new Set<string>()
-  if (url.protocol !== "https:" || !allowedHosts.has(url.hostname)) {
-    throw new Error(
-      `${label} must use https and a host listed in DISCOVERY_SITE_ALLOWED_HOSTS for Mastra production`,
-    )
-  }
-}
-
-/**
- * The website ingest endpoint and saved-source endpoint share one bearer.
- * Keep the three settings opt-in as a group, but reject a partially configured
- * group in production so a missing token cannot quietly disable automation.
- */
-function assertDiscoveryEndpointsConfiguredForProduction() {
-  const hasIngestUrl = Boolean(env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL)
-  const hasSourcesUrl = Boolean(env.DISCOVERY_SOURCES_URL)
-  const hasToken = Boolean(env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN)
-
-  if (!hasIngestUrl && !hasSourcesUrl) {
-    if (hasToken) {
-      throw new Error(
-        "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN requires INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL in Mastra production",
-      )
-    }
-    return
-  }
-
-  if (!hasToken) {
-    throw new Error(
-      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN is required when INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL is set in Mastra production",
     )
   }
 }
@@ -799,17 +748,6 @@ export function assertMastraRuntimeEnv() {
   ]
   assertFirecrawlApiUrlAllowedForProduction()
   if (env.YOUTUBE_API_KEY) assertYouTubeBaseUrlAllowedForProduction()
-  assertDiscoveryEndpointsConfiguredForProduction()
-  assertUrlAllowedForProduction({
-    value: env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL,
-    allowedHostsValue: env.DISCOVERY_SITE_ALLOWED_HOSTS,
-    label: "INSTAGRAM_DISCOVERY_SITE_INGEST_URL",
-  })
-  assertUrlAllowedForProduction({
-    value: env.DISCOVERY_SOURCES_URL,
-    allowedHostsValue: env.DISCOVERY_SITE_ALLOWED_HOSTS,
-    label: "DISCOVERY_SOURCES_URL",
-  })
   // The only RAG-driven boot throw (a security control). A missing
   // JESUSFILM_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
   // state degrades at runtime via the client's `config_missing` short-circuit,
@@ -864,8 +802,8 @@ export function getDiscoverySiteIngestConfig(): InstagramSiteIngestConfig | null
 
 /**
  * Config for reading the website's saved trusted-source list. Opt-in: returns
- * null unless DISCOVERY_SOURCES_URL is set. Reuses the shared site-ingest token
- * (same website, same bearer) so no new secret is needed.
+ * null unless DISCOVERY_SOURCES_URL and the shared site-ingest token are both
+ * set (same website, same bearer), so no new secret is needed.
  */
 export function getDiscoverySourcesConfig(): InstagramSiteIngestConfig | null {
   const url = env.DISCOVERY_SOURCES_URL

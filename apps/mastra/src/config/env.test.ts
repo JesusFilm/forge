@@ -724,67 +724,104 @@ describe("Mastra env", () => {
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
   }
 
-  it("rejects a production discovery URL without the shared bearer", async () => {
-    stubProductionBaseline()
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", "")
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "")
-    vi.stubEnv(
-      "DISCOVERY_SOURCES_URL",
-      "https://site.internal/api/discovery-sources",
-    )
-    vi.stubEnv("DISCOVERY_SITE_ALLOWED_HOSTS", "site.internal")
+  it.each([
+    {
+      name: "all settings are absent",
+      ingestUrl: "",
+      sourcesUrl: "",
+      token: "",
+    },
+    {
+      name: "only the review-queue URL is set",
+      ingestUrl: "https://site.internal/api/review-queue",
+      sourcesUrl: "",
+      token: "",
+    },
+    {
+      name: "only the saved-sources URL is set",
+      ingestUrl: "",
+      sourcesUrl: "https://site.internal/api/discovery-sources",
+      token: "",
+    },
+    {
+      name: "only the shared bearer is set",
+      ingestUrl: "",
+      sourcesUrl: "",
+      token: "discovery-token",
+    },
+  ])(
+    "boots production when $name",
+    async ({ ingestUrl, sourcesUrl, token }) => {
+      stubProductionBaseline()
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", ingestUrl)
+      vi.stubEnv("DISCOVERY_SOURCES_URL", sourcesUrl)
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", token)
 
-    const { assertMastraRuntimeEnv } = await import("./env")
+      const {
+        assertMastraRuntimeEnv,
+        getDiscoverySiteIngestConfig,
+        getDiscoverySourcesConfig,
+      } = await import("./env")
 
-    expect(() => assertMastraRuntimeEnv()).toThrow(
-      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN is required when INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL is set in Mastra production",
-    )
-  })
+      expect(() => assertMastraRuntimeEnv()).not.toThrow()
+      expect(getDiscoverySiteIngestConfig()).toBeNull()
+      expect(getDiscoverySourcesConfig()).toBeNull()
+    },
+  )
 
-  it("rejects a production review-queue URL without the shared bearer", async () => {
-    stubProductionBaseline()
-    vi.stubEnv(
-      "INSTAGRAM_DISCOVERY_SITE_INGEST_URL",
-      "https://site.internal/api/review-queue",
-    )
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "")
-    vi.stubEnv("DISCOVERY_SOURCES_URL", "")
-    vi.stubEnv("DISCOVERY_SITE_ALLOWED_HOSTS", "site.internal")
+  it.each([
+    {
+      name: "only the review-queue endpoint is active",
+      ingestUrl: "https://site.internal/api/review-queue",
+      sourcesUrl: "",
+      expectedIngest: {
+        url: "https://site.internal/api/review-queue",
+        token: "discovery-token",
+      },
+      expectedSources: null,
+    },
+    {
+      name: "only the saved-sources endpoint is active",
+      ingestUrl: "",
+      sourcesUrl: "https://site.internal/api/discovery-sources",
+      expectedIngest: null,
+      expectedSources: {
+        url: "https://site.internal/api/discovery-sources",
+        token: "discovery-token",
+      },
+    },
+    {
+      name: "endpoint syntax is invalid",
+      ingestUrl: "not a URL",
+      sourcesUrl: "http://site.internal/api/discovery-sources",
+      expectedIngest: {
+        url: "not a URL",
+        token: "discovery-token",
+      },
+      expectedSources: {
+        url: "http://site.internal/api/discovery-sources",
+        token: "discovery-token",
+      },
+    },
+  ])(
+    "boots production without a host allowlist when $name",
+    async ({ ingestUrl, sourcesUrl, expectedIngest, expectedSources }) => {
+      stubProductionBaseline()
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", ingestUrl)
+      vi.stubEnv("DISCOVERY_SOURCES_URL", sourcesUrl)
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
 
-    const { assertMastraRuntimeEnv } = await import("./env")
+      const {
+        assertMastraRuntimeEnv,
+        getDiscoverySiteIngestConfig,
+        getDiscoverySourcesConfig,
+      } = await import("./env")
 
-    expect(() => assertMastraRuntimeEnv()).toThrow(
-      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN is required when INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL is set in Mastra production",
-    )
-  })
-
-  it("rejects a production discovery bearer without an endpoint", async () => {
-    stubProductionBaseline()
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", "")
-    vi.stubEnv("DISCOVERY_SOURCES_URL", "")
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
-
-    const { assertMastraRuntimeEnv } = await import("./env")
-
-    expect(() => assertMastraRuntimeEnv()).toThrow(
-      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN requires INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL in Mastra production",
-    )
-  })
-
-  it("accepts a complete production saved-sources configuration", async () => {
-    stubProductionBaseline()
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", "")
-    vi.stubEnv(
-      "DISCOVERY_SOURCES_URL",
-      "https://site.internal/api/discovery-sources",
-    )
-    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
-    vi.stubEnv("DISCOVERY_SITE_ALLOWED_HOSTS", "site.internal")
-
-    const { assertMastraRuntimeEnv } = await import("./env")
-
-    expect(() => assertMastraRuntimeEnv()).not.toThrow()
-  })
+      expect(() => assertMastraRuntimeEnv()).not.toThrow()
+      expect(getDiscoverySiteIngestConfig()).toEqual(expectedIngest)
+      expect(getDiscoverySourcesConfig()).toEqual(expectedSources)
+    },
+  )
 
   it("imports cleanly with all RAG vars unset (no boot failure)", async () => {
     vi.stubEnv("NODE_ENV", "development")

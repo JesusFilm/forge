@@ -11,6 +11,7 @@ depends_on:
   - "feat-194"
 blocks:
   - "feat-252"
+  - "feat-253"
 tags:
   - "mastra"
   - "instagram"

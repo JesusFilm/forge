@@ -1,25 +1,26 @@
 ---
-title: "Required Zod env var without default broke Railway deploy of opt-in scaffolding"
+title: "Optional integration env validation must not block Railway service startup"
 category: "runtime-errors"
 problem_type: "runtime_error"
 component: "tooling"
 root_cause: "config_error"
 resolution_type: "code_fix"
 severity: "high"
-module: "apps/web"
+module: "apps/web, apps/mastra"
 tags:
-  - admin-migration
-  - t3-env
   - railway-deploy
   - env-schema
-  - feat-104
-  - consumer-migration
   - opt-in-scaffolding
+  - optional-integration
+  - mastra
+  - discovery
+  - bearer-safety
   - code-review-followup
 date: "2026-05-11"
-last_updated: "2026-05-11"
+last_updated: "2026-07-14"
 related_prs:
   - "JesusFilm/forge#915" # the canary PR where this bit
+  - "JesusFilm/forge#1566" # Mastra discovery startup regression
 related_docs:
   - "docs/solutions/auth/better-auth-secret-must-not-fallback-to-hardcoded-value.md"
   - "docs/solutions/developer-experience/env-matrix-drift-from-runtime-requirements-20260421.md"
@@ -28,11 +29,27 @@ related_docs:
   - "docs/solutions/architecture-patterns/dual-client-gql-tada-multi-schema-codegen-pattern-20260507.md"
   - "docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md"
   - "docs/solutions/workflow-issues/ce-code-review-tier-2-mandatory-before-push-20260511.md"
+  - "docs/solutions/conventions/single-service-http-client-result-union-convention.md"
 ---
 
 ## Problem
 
+This pattern has now caused two Railway incidents: an opt-in Web migration URL
+became required at module load, and later an optional Mastra website discovery
+integration became a production boot invariant. In both cases, configuration
+that only the feature consumer needed took down the whole service before that
+feature ran.
+
 PR #915 added `ADMIN_GRAPHQL_URL` to `apps/web/src/env.ts` as a required `z.url()` with no `.optional()` and no `.default()`, even though the default `FORGE_CONTENT_API=strapi` code path never invokes the admin Apollo client. Railway's `forge - @forge/web` deploy failed at boot because the service hadn't been provisioned with the new var. The fail-fast design was intentional (the U5 plan explicitly named the trade-off and prescribed "deploy env var to all environments BEFORE PR merge" as the operational mitigation), but the mitigation wasn't executed and the boot-fast became a deploy block.
+
+### Mastra recurrence (2026-07-14)
+
+PR #1566 added production assertions that treated the optional website review
+queue and saved-source integration as one required configuration group. A
+missing or mismatched `DISCOVERY_SITE_ALLOWED_HOSTS`, partial URL/token pair, or
+malformed optional URL could stop `@forge/mastra` during module startup. Studio
+and unrelated agents/workflows disappeared even though website discovery
+handoff is best-effort and is not a core runtime dependency.
 
 ## Symptoms
 
@@ -42,6 +59,9 @@ PR #915 added `ADMIN_GRAPHQL_URL` to `apps/web/src/env.ts` as a required `z.url(
 - Local dev unaffected (developer `.env` has the var)
 - Vitest unaffected (`apps/web/vitest.setup.ts` pre-stubs the var)
 - `pnpm build` unaffected (Next.js build-phase env mocking)
+- Mastra logged
+  `INSTAGRAM_DISCOVERY_SITE_INGEST_URL must use https and a host listed in DISCOVERY_SITE_ALLOWED_HOSTS for Mastra production`
+  and exited before Studio could start
 
 ## What Didn't Work
 
@@ -96,11 +116,32 @@ Behavior matrix (default mode unchanged byte-for-byte):
 | `dual-read`         | set                 | Canary works as designed                                                                                                              |
 | `dual-read`         | unset               | Fetch fails with non-URL error → caught by `fetchAdminSlugExperience` → emits `forge.parity.harness_error subkind: admin_fetch_error` |
 
+### Mastra recurrence fix
+
+The Mastra fix removed discovery URL/token grouping and host-allowlist checks
+from `assertMastraRuntimeEnv()`, removed `DISCOVERY_SITE_ALLOWED_HOSTS`, and
+parses both optional endpoint values as non-empty strings rather than URLs at
+module load. The existing accessors still return `null` unless the relevant URL
+and shared token are both present, so incomplete pairs disable only that
+integration.
+
+URL safety stays at the credential-bearing request boundary. The discovery
+ingest and saved-source clients call `requireHttpsUrl()` before `fetch`, attach
+the bearer only after that check, and set `redirect: "error"`. Malformed and
+HTTP values therefore fail the optional workflow operation without exposing the
+token or blocking Mastra startup.
+
 ## Why This Works
 
 The default mode (`FORGE_CONTENT_API=strapi`) doesn't invoke the admin Apollo client at all. The empty-string URL is set at module load but Apollo HttpLink is never asked to make a fetch in default mode, so the empty URI is inert. The misconfiguration that previously bricked boot now surfaces to operators as a structured log event (`forge.parity.harness_error subkind: admin_fetch_error`) when they explicitly opt into `dual-read` mode without setting the URL — visible in logs at the moment the operator activates the canary, exactly when they have context to fix it.
 
 The deeper "why" is about which layer should hold the precondition. The U5 plan correctly identified `ADMIN_GRAPHQL_URL must be set before this PR merges` as a real precondition; it incorrectly assigned that precondition to the operator's deploy-checklist discipline rather than to the schema. Schemas are checked automatically on every boot; deploy checklists are checked only when humans remember to read them. The fix moves the precondition into the code path that consumes it: schema accepts absence, runtime detects activation, structured log reports the gap. The class of failure moves from "silent deploy block" to "explicit operator-visible signal."
+
+The Mastra recurrence sharpens the rule: optional credentialed endpoints may
+still need strict URL validation, but that validation belongs immediately
+before the outbound request. The service boot path should validate only
+always-on dependencies; a best-effort integration should fail at its own typed
+boundary.
 
 ## Prevention
 
@@ -111,6 +152,11 @@ The deeper "why" is about which layer should hold the precondition. The U5 plan 
 3. **Code-review heuristic**: when a reliability persona flags "boot-fail when unset" on a new env var, the question is _"does the default code path consume this var?"_ If no, it must be optional. Do not rationalize "operators will set it" — the failure mode is a broken deploy in a service operators haven't touched yet, with no signal to know they need to.
 
 4. **Test addition**: add a `vi.stubEnv` / `vi.unstubAllEnvs`-scoped test that imports `@/env` with the new var unset in `process.env` and asserts the import succeeds. This is the gate that would catch the same trap on the next scaffolding env var.
+
+   For optional endpoint integrations, cover the full matrix: absent, URL-only,
+   token-only, malformed, and non-HTTPS values must not block startup. Pair
+   those boot tests with client tests proving malformed/non-HTTPS values never
+   call `fetch` and redirects remain rejected.
 
 ```ts
 // apps/web/src/env.test.ts (illustrative shape)
