@@ -82,9 +82,9 @@ type HeroMetadataQuality = {
 }
 
 const HERO_CAPTIONS_TAG_CLASS =
-  "inline-flex h-5 items-center rounded-md border border-white/45 bg-transparent px-0.5 text-[0.6rem] font-normal tracking-wide text-white/95"
+  "inline-flex h-5 items-center rounded-sm border border-white/45 bg-transparent px-1 text-[0.6rem] font-normal tracking-wide text-white/95"
 const HERO_QUALITY_TAG_CLASS =
-  "inline-flex h-5 items-center rounded-md border border-white/80 bg-white/80 px-0.5 text-[0.6rem] font-medium tracking-wide text-stone-950"
+  "inline-flex h-5 items-center rounded-sm border border-white/80 bg-white/80 px-1 text-[0.6rem] font-medium tracking-wide text-stone-950"
 const HERO_LANGUAGE_TAG_CLASS =
   "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.625rem] font-normal tracking-wide text-white/95"
 

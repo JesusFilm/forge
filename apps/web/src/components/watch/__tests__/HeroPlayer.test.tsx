@@ -666,7 +666,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.className,
-    ).toContain("px-0.5")
+    ).toContain("px-1")
+    expect(
+      container.querySelector('[data-testid="hero-player-captions-tag"]')
+        ?.className,
+    ).toContain("rounded-sm")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
@@ -678,7 +682,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.className,
-    ).toContain("px-0.5")
+    ).toContain("px-1")
+    expect(
+      container.querySelector('[data-testid="hero-player-quality-tag"]')
+        ?.className,
+    ).toContain("rounded-sm")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.className,
