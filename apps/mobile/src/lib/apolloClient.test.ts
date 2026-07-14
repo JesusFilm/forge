@@ -44,12 +44,18 @@ import {
   Observable,
 } from "@apollo/client"
 import type { DocumentNode } from "graphql"
-import { DdLogs } from "@datadog/mobile-react-native"
+import { DdLogs, DdRum } from "@datadog/mobile-react-native"
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { env } from "../env"
-import { createRequestChain, fetchWithTimeout } from "./apolloClient"
+import {
+  createRequestChain,
+  fetchWithTimeout,
+  reportGraphqlOperationError,
+} from "./apolloClient"
 
 const mockEnv = env as unknown as Record<string, string | undefined>
 const mockWarn = DdLogs.warn as jest.Mock
+const mockAddError = DdRum.addError as jest.Mock
 
 // Terminating link captures the composed headers as the request reaches the
 // transport slot; the chain runs synchronously so no network is involved.
@@ -80,6 +86,7 @@ beforeEach(() => {
   mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
   jest.clearAllMocks()
   mockWarn.mockResolvedValue(undefined)
+  mockAddError.mockResolvedValue(undefined)
 })
 
 describe("createRequestChain (auth + Datadog header composition)", () => {
@@ -153,5 +160,53 @@ describe("fetchWithTimeout (client-timeout-abort marker, R12)", () => {
       "graphql.client_timeout_abort",
       expect.anything(),
     )
+  })
+})
+
+describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)", () => {
+  it("reports a GraphQL-in-200 error keyed by operation + code", () => {
+    const err = new CombinedGraphQLErrors({
+      errors: [
+        { message: "rate limited", extensions: { code: "RATE_LIMITED" } },
+      ],
+    })
+    reportGraphqlOperationError(err, "Search")
+    expect(mockAddError).toHaveBeenCalledWith(
+      expect.any(String),
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_error", operation: "Search", code: "RATE_LIMITED" },
+    )
+  })
+
+  it("falls back to 'unknown' code when the error has no extensions.code", () => {
+    const err = new CombinedGraphQLErrors({ errors: [{ message: "boom" }] })
+    reportGraphqlOperationError(err, "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalledWith(
+      expect.any(String),
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_error", operation: "GetVideoBySlug", code: "unknown" },
+    )
+  })
+
+  it("reports a network error under the network origin", () => {
+    reportGraphqlOperationError(
+      new Error("socket hang up"),
+      "GetWatchHomeVideos",
+    )
+    expect(mockAddError).toHaveBeenCalledWith(
+      "socket hang up",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
+    )
+  })
+
+  it("no-ops when unprovisioned", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = undefined
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = undefined
+    reportGraphqlOperationError(new Error("x"), "Search")
+    expect(mockAddError).not.toHaveBeenCalled()
   })
 })

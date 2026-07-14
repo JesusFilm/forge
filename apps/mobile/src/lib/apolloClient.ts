@@ -4,6 +4,8 @@ import {
   HttpLink,
   InMemoryCache,
 } from "@apollo/client"
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
+import { ErrorLink } from "@apollo/client/link/error"
 import { getMainDefinition } from "@apollo/client/utilities"
 import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
@@ -12,6 +14,7 @@ import {
   datadogGraphqlHeaders,
   datadogLog,
   isDatadogProvisioned,
+  reportDatadogError,
 } from "./datadog"
 
 const REQUEST_TIMEOUT_MS = 15_000
@@ -97,6 +100,36 @@ export function createRequestChain(): ApolloLink {
   return isDatadogProvisioned() ? authLink.concat(datadogLink) : authLink
 }
 
+/**
+ * Surfaces GraphQL failures that arrive inside an HTTP-200 body (unauthenticated,
+ * rate-limited, service-unavailable, partial `errors[]`) and network errors —
+ * both invisible to RUM's resource tracking, which only sees the 200 (R13). Keyed
+ * by operation name + error code so the agent can slice by operation and cause.
+ * Pure + exported so the branch logic is unit-testable without driving the link.
+ */
+export function reportGraphqlOperationError(
+  error: unknown,
+  operationName: string | undefined,
+): void {
+  if (!isDatadogProvisioned()) return
+  const operation = operationName ?? "anonymous"
+  if (CombinedGraphQLErrors.is(error)) {
+    const code =
+      (error.errors[0]?.extensions?.code as string | undefined) ?? "unknown"
+    reportDatadogError(error, { origin: "graphql_error", operation, code })
+    return
+  }
+  reportDatadogError(error, { origin: "graphql_network_error", operation })
+}
+
+// onError-style link (v4 ErrorLink): every operation's downstream failure routes
+// through the pure reporter. Self-gates on provisioning, so always safe in-chain.
+function createErrorLink(): ErrorLink {
+  return new ErrorLink(({ error, operation }) => {
+    reportGraphqlOperationError(error, operation.operationName)
+  })
+}
+
 let _client: ApolloClient | undefined
 
 /**
@@ -106,12 +139,15 @@ let _client: ApolloClient | undefined
 export function getApolloClient(): ApolloClient {
   if (_client) return _client
 
-  const link = createRequestChain().concat(
+  // errorLink is outermost so it observes failures from every downstream link.
+  const link = ApolloLink.from([
+    createErrorLink(),
+    createRequestChain(),
     new HttpLink({
       uri: getGraphQLUrl(),
       fetch: fetchWithTimeout,
     }),
-  )
+  ])
 
   _client = new ApolloClient({
     link,
