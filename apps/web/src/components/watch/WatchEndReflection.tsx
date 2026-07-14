@@ -54,7 +54,7 @@ const INACTIVITY_RESUME_MS = 6_000
 const PRIMARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] hover:scale-[1.035] hover:bg-brand-red/90 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none"
 const STEP_ACTION_CLASS =
-  "group relative flex min-h-20 w-full min-w-0 cursor-pointer flex-row items-center gap-3 overflow-hidden rounded-xl border px-3 pt-4 pb-3 text-left text-white transition-[background-color,border-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
+  "group relative flex min-h-20 w-full min-w-0 cursor-pointer flex-row items-center gap-3 overflow-hidden rounded-xl border px-3 py-3 text-left text-white transition-[background-color,border-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -448,31 +448,61 @@ function ChapterButton({
           : "border-white/[0.07] bg-white/[0.035] opacity-75 hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.07] hover:opacity-100"
       }`}
     >
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-2 top-0 h-1 overflow-hidden rounded-full bg-white/15"
-      >
+      <span className="relative grid size-11 shrink-0 place-items-center sm:size-12">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 48 48"
+          className="absolute inset-0 size-full -rotate-90 overflow-visible"
+        >
+          <circle
+            cx="24"
+            cy="24"
+            r="21"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="text-white/15"
+          />
+          <circle
+            key={`${action.id}-${active}-${guiding}`}
+            cx="24"
+            cy="24"
+            r="21"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray="132"
+            data-testid={`${action.testId}-timer`}
+            data-progress-state={
+              complete
+                ? "complete"
+                : active && guiding
+                  ? "running"
+                  : active
+                    ? "paused"
+                    : "idle"
+            }
+            className={`transition-[stroke,stroke-dashoffset] duration-300 motion-reduce:animate-none ${
+              complete
+                ? "text-white/55 [stroke-dashoffset:0]"
+                : active
+                  ? guiding
+                    ? "animate-watch-story-progress text-brand-red"
+                    : "text-brand-red [stroke-dashoffset:119]"
+                  : "text-transparent [stroke-dashoffset:132]"
+            }`}
+          />
+        </svg>
         <span
-          key={`${action.id}-${active}-${guiding}`}
-          className={`block h-full origin-left rounded-full ${
-            complete
-              ? "scale-x-100 bg-white/55"
-              : active
-                ? guiding
-                  ? "animate-watch-story-progress bg-brand-red"
-                  : "scale-x-[0.1] bg-brand-red"
-                : "scale-x-0 bg-white"
+          className={`relative grid size-8 place-items-center rounded-full transition-[background-color,transform] sm:size-9 ${
+            active
+              ? "animate-watch-story-icon bg-brand-red text-white"
+              : "bg-white/10 text-white/75 group-hover:scale-105"
           }`}
-        />
-      </span>
-      <span
-        className={`grid size-8 shrink-0 place-items-center rounded-full transition-[background-color,transform] sm:size-9 ${
-          active
-            ? "animate-watch-story-icon bg-brand-red text-white"
-            : "bg-white/10 text-white/75 group-hover:scale-105"
-        }`}
-      >
-        {action.icon}
+        >
+          {action.icon}
+        </span>
       </span>
       <span className="min-w-0 flex-1">
         <span

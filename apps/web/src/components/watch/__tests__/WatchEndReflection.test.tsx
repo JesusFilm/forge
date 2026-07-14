@@ -125,6 +125,11 @@ describe("WatchEndReflection", () => {
       expect(ask.getAttribute("data-highlighted")).toBe("true")
       expect(talk).not.toBeNull()
       expect(
+        container
+          .querySelector('[data-testid="watch-end-reflection-ask-bible-timer"]')
+          ?.getAttribute("data-progress-state"),
+      ).toBe("running")
+      expect(
         container.querySelectorAll<HTMLElement>("[data-action-id]").length,
       ).toBe(8)
 
@@ -134,6 +139,18 @@ describe("WatchEndReflection", () => {
 
       expect(talk.getAttribute("data-highlighted")).toBe("true")
       expect(
+        container
+          .querySelector('[data-testid="watch-end-reflection-ask-bible-timer"]')
+          ?.getAttribute("data-progress-state"),
+      ).toBe("complete")
+      expect(
+        container
+          .querySelector(
+            '[data-testid="watch-end-reflection-talk-person-timer"]',
+          )
+          ?.getAttribute("data-progress-state"),
+      ).toBe("running")
+      expect(
         container.querySelector(
           '[data-testid="watch-end-reflection-talk-panel"]',
         ),
@@ -142,6 +159,11 @@ describe("WatchEndReflection", () => {
       act(() => {
         ask.click()
       })
+      expect(
+        container
+          .querySelector('[data-testid="watch-end-reflection-ask-bible-timer"]')
+          ?.getAttribute("data-progress-state"),
+      ).toBe("paused")
       act(() => {
         vi.advanceTimersByTime(5_000)
       })
