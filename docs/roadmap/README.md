@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 14, 2026)
 
-- **Total tickets:** 332
-- **Complete:** 241
+- **Total tickets:** 334
+- **Complete:** 243
 - **In progress:** 19
 - **Not started:** 28
 - **Blocked:** 44
@@ -286,6 +286,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-250](platform/feat-250-watch-single-video-subtitles.md)                        | Restore subtitles on single-video Watch pages                                    | unassigned | P1       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-229](platform/feat-229-web-auth-watch-history.md)                              | Web Auth Sign-In and Watch Events                                                | urim       | P1       | 2026-07-14 | 7    | 2026-07-20 | complete    |
 | [feat-251](platform/feat-251-watch-subtitle-auto-hide-position.md)                   | Watch subtitle position follows player chrome visibility                         | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
+| [feat-252](platform/feat-252-watch-header-control-overlap.md)                        | Watch header control overlap                                                     | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -313,6 +314,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-250](platform/feat-250-watch-single-page-footer.md)                            | Watch single-video page footer parity                                            | urim       | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-250](platform/feat-250-web-global-feedback-modal.md)                           | Web global feedback modal                                                        | urim       | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-251](platform/feat-251-web-retire-demo-search-screen.md)                       | Web retire demo-search production screen                                         | urim       | P2       | 2026-07-14 | 1    | 2026-07-14 | complete    |
+| [feat-252](platform/feat-252-watch-home-portrait-card-sizing.md)                     | Restore the Watch authored media carousel                                        | unassigned | P2       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-249](platform/feat-249-web-force-login-marker-consume-on-success.md)           | Web force-login marker: consume on callback success, not login redirect          | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)             | Scope Watch media resource hints to media routes                                 | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
