@@ -1424,8 +1424,12 @@ export function HeroPlayer({
     video.parents[0]?.label ??
     null
   const parentCollectionHref =
-    block.parentCollectionSlug != null && languageSlug != null
-      ? watchVideoPath(block.parentCollectionSlug, languageSlug)
+    block.parentCollectionSlug != null &&
+    (languageSlug ?? variant.language?.slug) != null
+      ? watchVideoPath(
+          block.parentCollectionSlug,
+          (languageSlug ?? variant.language?.slug)!,
+        )
       : null
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
