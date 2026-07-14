@@ -230,6 +230,28 @@ describe("SeriesEpisodesGrid — hover backdrop", () => {
       "https://cdn.example/series.jpg",
     )
   })
+
+  it("uses the shared Watch backdrop motion utility on both animated stacks", () => {
+    act(() => {
+      root.render(
+        <SeriesEpisodesGrid
+          episodes={[makeEpisode()]}
+          languageSlug="english"
+          parentSlug="storyclubs"
+          seriesPosterUrl="https://cdn.example/series.jpg"
+        />,
+      )
+    })
+
+    for (const stack of ["A", "B"]) {
+      const motionLayer = container.querySelector(
+        `[data-testid="series-episodes-grid-backdrop-${stack}-layer-2"]`,
+      )
+      expect(motionLayer?.className).toContain(
+        "animate-watch-backdrop-pan-zoom",
+      )
+    }
+  })
 })
 
 describe("SeriesEpisodesGrid — crossfade reducer state machine", () => {

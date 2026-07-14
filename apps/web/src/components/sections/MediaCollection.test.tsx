@@ -79,6 +79,20 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
   }
 }
 
+function makeManualItem(overrides: Record<string, unknown> = {}) {
+  return {
+    videoId: "v-1",
+    videoSlug: "episode-one",
+    titleOverride: "Episode One",
+    subtitleOverride: null,
+    labelOverride: null,
+    collectionSize: null,
+    imageUrl: "https://cdn.example/episode-one.jpg",
+    imageBlurDataUrl: "https://cdn.example/episode-one-blur.jpg",
+    ...overrides,
+  }
+}
+
 describe("MediaCollection VideoCard href", () => {
   it("renders the carousel variant as a fixed-width horizontal rail", () => {
     act(() => {
@@ -408,5 +422,109 @@ describe("MediaCollection VideoCard href", () => {
       '[data-testid="media-collection-card-text-scrim"]',
     )
     expect(scrim?.style.background).toContain("rgb(18,52,86)")
+  })
+
+  it("renders the default artwork on a nested shared motion layer", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const backdrop = container.querySelector(
+      '[data-testid="media-collection-default-backdrop"]',
+    )
+    const motionLayer = container.querySelector(
+      '[data-testid="media-collection-default-backdrop-motion"]',
+    )
+    const imageLayer = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-default-backdrop-image"]',
+    )
+
+    expect(backdrop?.className).not.toContain("animate-watch-backdrop-pan-zoom")
+    expect(motionLayer?.className).toContain("animate-watch-backdrop-pan-zoom")
+    expect(imageLayer?.getAttribute("style")).toContain("episode-one-blur.jpg")
+    expect(imageLayer?.style.backgroundSize).toBe("200% 200%")
+    expect(imageLayer?.style.backgroundPosition).toBe("center")
+  })
+
+  it("keeps crossfade and pan-zoom animations on separate layers during card changes", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            items: [
+              makeManualItem(),
+              makeManualItem({
+                videoId: "v-2",
+                videoSlug: "episode-two",
+                titleOverride: "Episode Two",
+                imageUrl: "https://cdn.example/episode-two.jpg",
+                imageBlurDataUrl: "https://cdn.example/episode-two-blur.jpg",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const cards = container.querySelectorAll('[aria-label="VideoCard"]')
+    act(() => {
+      cards[0]?.dispatchEvent(new Event("pointerover", { bubbles: true }))
+    })
+    act(() => {
+      cards[1]?.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+    })
+
+    const entering = container.querySelector(
+      '[data-testid="media-collection-hover-backdrop"]',
+    )
+    const exiting = container.querySelector(
+      '[data-testid="media-collection-hover-backdrop-previous"]',
+    )
+    const enteringMotion = container.querySelector(
+      '[data-testid="media-collection-hover-backdrop-motion"]',
+    )
+    const enteringImage = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-hover-backdrop-image"]',
+    )
+
+    expect(entering?.className).toContain("watch-home-section-backdrop-enter")
+    expect(entering?.className).not.toContain("animate-watch-backdrop-pan-zoom")
+    expect(exiting?.className).toContain("watch-home-section-backdrop-exit")
+    expect(enteringMotion?.className).toContain(
+      "animate-watch-backdrop-pan-zoom",
+    )
+    expect(enteringImage?.getAttribute("style")).toContain(
+      "episode-two-blur.jpg",
+    )
+  })
+
+  it("does not render an animated backdrop when no item artwork resolves", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData()}
+          routeVideo={makeRouteVideo("episode-one")}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector(
+        '[data-testid="media-collection-default-backdrop"]',
+      ),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid$="-backdrop-motion"]'),
+    ).toBeNull()
   })
 })

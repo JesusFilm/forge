@@ -227,7 +227,7 @@ export function SeriesEpisodesGrid({
       <div
         aria-hidden="true"
         data-testid="series-episodes-grid-backdrop-A-layer-2"
-        className={`animate-series-backdrop-pan-zoom absolute inset-0 z-0 transition-opacity duration-700 ease-in-out ${
+        className={`animate-watch-backdrop-pan-zoom absolute inset-0 z-0 transition-opacity duration-700 ease-in-out ${
           stackAVisible ? "opacity-40" : "opacity-0"
         }`}
       >
@@ -270,7 +270,7 @@ export function SeriesEpisodesGrid({
       <div
         aria-hidden="true"
         data-testid="series-episodes-grid-backdrop-B-layer-2"
-        className={`animate-series-backdrop-pan-zoom absolute inset-0 z-0 transition-opacity duration-700 ease-in-out ${
+        className={`animate-watch-backdrop-pan-zoom absolute inset-0 z-0 transition-opacity duration-700 ease-in-out ${
           stackBVisible ? "opacity-40" : "opacity-0"
         }`}
       >

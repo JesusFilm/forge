@@ -64,8 +64,12 @@ const MEDIA_COLLECTION_TINTS: Record<string, string> = {
   amber: "#92400e",
 }
 
-function backgroundImageStyle(imageUrl: string | null) {
-  return imageUrl ? { backgroundImage: `url("${imageUrl}")` } : undefined
+function backdropImageStyle(imageUrl: string): CSSProperties {
+  return {
+    backgroundImage: `url(${imageUrl})`,
+    backgroundSize: "200% 200%",
+    backgroundPosition: "center",
+  }
 }
 
 function normalizeTintColor(value: unknown): string | null {
@@ -122,16 +126,48 @@ function tintOverlayStyle(
   }
 }
 
-function backdropLayerStyle(
-  imageUrl: string | null,
-  opacity: string,
-  extraStyle?: CSSProperties,
-): CSSProperties {
-  return {
-    ...backgroundImageStyle(imageUrl),
-    ...extraStyle,
-    "--watch-home-backdrop-opacity": opacity,
-  } as CSSProperties
+function MediaCollectionBackdrop({
+  imageUrl,
+  testId,
+  isRail,
+  transitionClassName,
+}: {
+  imageUrl: string
+  testId: string
+  isRail: boolean
+  transitionClassName?: string
+}) {
+  const transitionStyle = transitionClassName
+    ? ({ "--watch-home-backdrop-opacity": "1" } as CSSProperties)
+    : undefined
+
+  return (
+    <div
+      data-testid={testId}
+      className={cn(
+        "pointer-events-none absolute inset-0 z-0",
+        transitionClassName ?? "opacity-100",
+      )}
+      style={transitionStyle}
+      aria-hidden
+    >
+      <div
+        data-testid={`${testId}-motion`}
+        className="animate-watch-backdrop-pan-zoom absolute inset-0"
+      >
+        <div
+          data-testid={`${testId}-image`}
+          className={cn(
+            "absolute inset-0 bg-no-repeat blur-2xl",
+            isRail
+              ? "brightness-80 saturate-125"
+              : "brightness-75 saturate-110",
+          )}
+          style={backdropImageStyle(imageUrl)}
+        />
+      </div>
+    </div>
+  )
 }
 
 export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
@@ -336,39 +372,32 @@ function WatchHomeMediaCollection({
       style={{ backgroundColor: sectionBackgroundColor }}
     >
       {settledBackgroundUrl ? (
-        <div
-          data-testid="media-collection-default-backdrop"
-          className={cn(
-            "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat opacity-100 blur-2xl",
-            isRail
-              ? "brightness-80 saturate-125"
-              : "brightness-75 saturate-110",
-          )}
-          style={backgroundImageStyle(settledBackgroundUrl)}
-          aria-hidden
+        <MediaCollectionBackdrop
+          imageUrl={settledBackgroundUrl}
+          testId="media-collection-default-backdrop"
+          isRail={isRail}
         />
       ) : null}
-      {hoverBackdropLayers.map((layer) => (
-        <div
-          key={`media-collection-hover-backdrop-${layer.id}`}
-          data-testid={
-            layer.state === "entering"
-              ? "media-collection-hover-backdrop"
-              : "media-collection-hover-backdrop-previous"
-          }
-          className={cn(
-            "absolute inset-0 z-0 scale-105 bg-cover bg-center bg-no-repeat blur-2xl",
-            layer.state === "entering"
-              ? "watch-home-section-backdrop-enter"
-              : "watch-home-section-backdrop-exit",
-            isRail
-              ? "brightness-80 saturate-125"
-              : "brightness-75 saturate-110",
-          )}
-          style={backdropLayerStyle(layer.imageUrl, "1")}
-          aria-hidden
-        />
-      ))}
+      {hoverBackdropLayers.map((layer) => {
+        const testId =
+          layer.state === "entering"
+            ? "media-collection-hover-backdrop"
+            : "media-collection-hover-backdrop-previous"
+
+        return (
+          <MediaCollectionBackdrop
+            key={`media-collection-hover-backdrop-${layer.id}`}
+            imageUrl={layer.imageUrl}
+            testId={testId}
+            isRail={isRail}
+            transitionClassName={
+              layer.state === "entering"
+                ? "watch-home-section-backdrop-enter"
+                : "watch-home-section-backdrop-exit"
+            }
+          />
+        )
+      })}
       <div
         aria-hidden
         className={cn(
