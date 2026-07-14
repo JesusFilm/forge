@@ -27,6 +27,7 @@ import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
+  watchVideoPath,
   watchEpisodePath,
 } from "@/lib/routes"
 import {
@@ -119,6 +120,10 @@ export function SiblingCarousel({
   const parentSlug =
     typeof canonicalParent.slug === "string"
       ? tryAsContentSlug(canonicalParent.slug)
+      : null
+  const parentHref =
+    parentSlug != null && tryAsLocaleSlug(languageSlug) != null
+      ? watchVideoPath(parentSlug, tryAsLocaleSlug(languageSlug)!)
       : null
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
@@ -245,7 +250,13 @@ export function SiblingCarousel({
     >
       <header className="mb-4 px-5 md:px-0">
         <p className="text-sm font-normal text-stone-300">
-          <span className="font-medium text-stone-100">{parentTitle}</span>
+          {parentHref != null ? (
+            <Link href={parentHref} className="text-stone-100 hover:underline">
+              <span className="font-medium">{parentTitle}</span>
+            </Link>
+          ) : (
+            <span className="font-medium text-stone-100">{parentTitle}</span>
+          )}
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
             {isParentMode ? (
