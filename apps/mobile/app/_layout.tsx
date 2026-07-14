@@ -23,6 +23,13 @@ let startCachePersistence: typeof import("../src/lib/cachePersistence").startCac
 let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
+// `| undefined`: this one is read at module scope after the try/catch, where a
+// require failure could leave it unassigned — the R15 guard tolerates that.
+let reportDatadogError:
+  | typeof import("../src/lib/datadog").reportDatadogError
+  | undefined
+let addDatadogTiming: typeof import("../src/lib/datadog").addDatadogTiming
+let datadogLog: typeof import("../src/lib/datadog").datadogLog
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -56,11 +63,25 @@ try {
     require("../src/components/DatadogRum").MobileDatadogProvider
   DatadogRouteTracker =
     require("../src/components/DatadogRouteTracker").DatadogRouteTracker
+  const datadog = require("../src/lib/datadog")
+  reportDatadogError = datadog.reportDatadogError
+  addDatadogTiming = datadog.addDatadogTiming
+  datadogLog = datadog.datadogLog
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
   moduleError = `${err.message}\n\n${err.stack ?? ""}`
 }
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+// R15: the module-init boot failure is invisible to the RUM crash path and the
+// React ErrorBoundary. Best-effort report — never re-throw; the SDK may be down.
+if (moduleError && typeof reportDatadogError === "function") {
+  try {
+    reportDatadogError(new Error(moduleError), { origin: "module_init" })
+  } catch {
+    // Telemetry must never mask the Startup Error screen.
+  }
+}
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -192,12 +213,24 @@ export default function RootLayout() {
     let cancelled = false
     restoreApolloCache(clientRef.current.cache).finally(() => {
       if (cancelled) return
+      // R23: mark the cold-start restore gate finished; the granular
+      // hit/miss/timeout outcome is emitted inside restoreApolloCache.
+      datadogLog.info("cache_restore", { outcome: "hydration_complete" })
       startCachePersistence(clientRef.current)
       setHydrated(true)
     })
     return () => {
       cancelled = true
     }
+  }, [hydrated])
+
+  // R20: js-thread time-to-interactive — the first real-tree paint past the
+  // hydration gate. Fires once; native app-start hides this Hermes stall.
+  const jsTtiEmittedRef = useRef(false)
+  useEffect(() => {
+    if (!hydrated || jsTtiEmittedRef.current) return
+    jsTtiEmittedRef.current = true
+    addDatadogTiming("js_tti")
   }, [hydrated])
 
   if (!hydrated) {
