@@ -1,7 +1,7 @@
 ---
 title: "feat: Instagram discovery commentary exclusion filter"
 type: feat
-status: completed
+status: active
 created: 2026-06-11
 depth: lightweight
 ---

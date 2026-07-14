@@ -43,6 +43,7 @@ const {
       optimisticVisual,
       reflectionPrompts,
       reflectionBibleReadHref,
+      onShareClick,
     }: {
       block: {
         variant: {
@@ -60,6 +61,7 @@ const {
       } | null
       reflectionPrompts?: string[]
       reflectionBibleReadHref?: string | null
+      onShareClick?: () => void
     }) => {
       // Mirror the original placeholder's data attributes so the renderer
       // contract assertions below (data-block-type + data-content JSON
@@ -75,6 +77,15 @@ const {
       return (
         <div data-block-type="HeroPlayer" data-content={content}>
           HeroPlayer mock
+          {onShareClick ? (
+            <button
+              type="button"
+              data-testid="hero-player-share-proxy"
+              onClick={onShareClick}
+            >
+              Share
+            </button>
+          ) : null}
         </div>
       )
     },
@@ -443,6 +454,31 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       }),
       undefined,
     )
+  })
+
+  it("passes the page Share modal callback to HeroPlayer", () => {
+    const openShare = vi.fn()
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={[buildHeroBlock(makeVideo(), makeVariant())]}
+          modalCallbacks={{
+            closeModal: vi.fn(),
+            openDownload: vi.fn(),
+            openLanguage: vi.fn(),
+            openShare,
+          }}
+        />,
+      )
+    })
+
+    const share = container.querySelector(
+      '[data-testid="hero-player-share-proxy"]',
+    ) as HTMLButtonElement
+    expect(share).not.toBeNull()
+    share.click()
+    expect(openShare).toHaveBeenCalledTimes(1)
   })
 
   it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {

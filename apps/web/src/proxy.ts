@@ -127,10 +127,15 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   }
 
   const publicPath = rest.length > 0 ? `/${rest.join("/")}` : "/"
-  if (isUnsafeRedirectPath(publicPath) || !isSafeCanonicalPath(publicPath)) {
+  const canonicalPublicPath =
+    publicPath === "/videos" ? "/languages" : publicPath
+  if (
+    isUnsafeRedirectPath(canonicalPublicPath) ||
+    !isSafeCanonicalPath(canonicalPublicPath)
+  ) {
     return { kind: "not-found" }
   }
-  return { kind: "redirect", pathname: publicPath }
+  return { kind: "redirect", pathname: canonicalPublicPath }
 }
 
 function classifyRewrite(pathname: string): RewriteDecision {
@@ -148,15 +153,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "history") {
-      return {
-        kind: "rewrite",
-        locale: DEFAULT_LOCALE,
-        htmlLang: DEFAULT_LOCALE,
-        pathname,
-      }
-    }
-    if (segment === "videos") {
+    if (segment === "history" || segment === "languages") {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,
@@ -187,7 +184,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
       if (!rawLanguageSlug) return { kind: "not-found" }
-      if (!isPublicWatchHomeLanguageSlug(rawLanguageSlug)) {
+      if (!isPublicWatchLanguageSlug(rawLanguageSlug)) {
         return { kind: "not-found" }
       }
       return {

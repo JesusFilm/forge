@@ -105,6 +105,14 @@ import {
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
 import {
+  handleYouTubeDiscoveryRouteRequest,
+  youtubeAiChristianDiscoveryWorkflow,
+} from "./workflows/youtube-ai-christian-discovery"
+import {
+  handlePinterestDiscoveryRouteRequest,
+  pinterestAiChristianDiscoveryWorkflow,
+} from "./workflows/pinterest-ai-christian-discovery"
+import {
   handleSubtitleEnrichmentRouteRequest,
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
@@ -188,6 +196,8 @@ export const mastra = new Mastra({
     smartCropQaWorkflow,
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    youtubeAiChristianDiscoveryWorkflow,
+    pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
@@ -582,6 +592,36 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-youtube-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleYouTubeDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-pinterest-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePinterestDiscoveryRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
