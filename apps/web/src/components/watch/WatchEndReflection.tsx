@@ -6,6 +6,7 @@ import {
   BookOpenText,
   Download,
   ExternalLink,
+  HandHeart,
   HeartHandshake,
   MessageCircleHeart,
   Play,
@@ -34,7 +35,7 @@ type WatchEndReflectionProps = {
   onDismiss: () => void
 }
 
-type ActionKind = "ask" | "talk" | "share" | "link" | "callback"
+type ActionKind = "ask" | "talk" | "prayer" | "share" | "link" | "callback"
 
 type NextStepAction = {
   id: string
@@ -121,6 +122,15 @@ export function WatchEndReflection({
       detail: t("talkToPersonDetail"),
       href: CHAT_WITH_PERSON_URL,
       testId: "watch-end-reflection-talk-person",
+    },
+    {
+      id: "prayer",
+      kind: "prayer",
+      icon: <HandHeart aria-hidden className="size-5" />,
+      label: tQuestionPanel("prompts.prayerRequest.label"),
+      detail: tQuestionPanel("prompts.prayerRequest.description"),
+      href: CHAT_WITH_PERSON_URL,
+      testId: "watch-end-reflection-request-prayer",
     },
     ...(onShare
       ? [
@@ -506,9 +516,11 @@ function ActionStage({
       >
         {action.label}
       </h2>
-      <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 animate-watch-story-detail sm:text-lg motion-reduce:animate-none">
-        {action.detail}
-      </p>
+      {action.kind !== "prayer" ? (
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 animate-watch-story-detail sm:text-lg motion-reduce:animate-none">
+          {action.detail}
+        </p>
+      ) : null}
 
       {action.kind === "ask" ? (
         <AskChapter
@@ -520,6 +532,7 @@ function ActionStage({
         />
       ) : null}
       {action.kind === "talk" ? <TalkChapter action={action} /> : null}
+      {action.kind === "prayer" ? <PrayerChapter action={action} /> : null}
       {action.kind === "share" ? <ShareChapter action={action} /> : null}
       {action.kind === "link" || action.kind === "callback" ? (
         <StageAction action={action} />
@@ -697,6 +710,34 @@ function TalkChapter({ action }: { action: NextStepAction }) {
         className={`${PRIMARY_ACTION_CLASS} mt-6`}
       >
         <HeartHandshake aria-hidden className="size-4" />
+        {action.label}
+      </a>
+    </div>
+  )
+}
+
+function PrayerChapter({ action }: { action: NextStepAction }) {
+  return (
+    <div
+      data-testid="watch-end-reflection-prayer-panel"
+      className="mt-5 w-full max-w-xl animate-watch-story-action motion-reduce:animate-none"
+    >
+      <div className="flex items-start gap-3 rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.07] p-4 text-white/75 backdrop-blur-md sm:p-5">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
+          <HandHeart aria-hidden className="size-5" />
+        </span>
+        <p className="pt-2 text-sm leading-relaxed sm:text-base">
+          {action.detail}
+        </p>
+      </div>
+      <a
+        href={action.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-testid="watch-end-reflection-prayer-submit"
+        className={`${PRIMARY_ACTION_CLASS} mt-5`}
+      >
+        <HandHeart aria-hidden className="size-4" />
         {action.label}
       </a>
     </div>

@@ -42,6 +42,8 @@ vi.mock("next-intl", () => ({
         downloadDetail: "Save a copy to watch later.",
         moreReflection: "Return to reflection",
         fieldLabel: "Ask a question about this video",
+        "prompts.prayerRequest.label": "Request a prayer",
+        "prompts.prayerRequest.description": "Share what you want prayer for",
       }
       if (namespace === "WatchStudyQuestions") {
         return key === "placeholderQuestion"
@@ -121,7 +123,7 @@ describe("WatchEndReflection", () => {
       expect(talk).not.toBeNull()
       expect(
         container.querySelectorAll<HTMLElement>("[data-action-id]").length,
-      ).toBe(7)
+      ).toBe(8)
 
       act(() => {
         vi.advanceTimersByTime(5_000)
@@ -292,7 +294,7 @@ describe("WatchEndReflection", () => {
         container.querySelectorAll(
           '[aria-controls="watch-end-reflection-stage"]',
         ).length,
-      ).toBe(7)
+      ).toBe(8)
     } finally {
       window.matchMedia = originalMatchMedia
       vi.useRealTimers()
@@ -406,6 +408,33 @@ describe("WatchEndReflection", () => {
     expect(chat.href).toContain("chataboutjesus.com/chat/")
     expect(chat.target).toBe("_blank")
     expect(chat.rel).toContain("noopener")
+  })
+
+  it("offers a dedicated prayer handoff before Watch next", () => {
+    renderReflection()
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-request-prayer"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(container.textContent).toContain("Request a prayer")
+    expect(container.textContent).toContain("Share what you want prayer for")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-prayer-panel"]',
+      ),
+    ).not.toBeNull()
+
+    const prayer = container.querySelector(
+      '[data-testid="watch-end-reflection-prayer-submit"]',
+    ) as HTMLAnchorElement
+    expect(prayer.href).toContain("chataboutjesus.com/chat/")
+    expect(prayer.target).toBe("_blank")
+    expect(prayer.rel).toContain("noopener")
   })
 
   it("uses the translated study-question fallback and supports Escape dismissal", () => {
