@@ -18,7 +18,7 @@ import { flushSync } from "react-dom"
 import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Languages, Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
@@ -131,6 +131,28 @@ function highestDownloadQualityLabel(
       return candidate
     }, null)?.label ?? null
   )
+}
+
+function releaseYearFrom(
+  publishedAt: string | null | undefined,
+): string | null {
+  if (publishedAt == null) return null
+  const timestamp = Date.parse(publishedAt)
+  if (!Number.isFinite(timestamp)) return null
+  return String(new Date(timestamp).getUTCFullYear())
+}
+
+function formatHeroRuntime(
+  seconds: number | null | undefined,
+  locale: string,
+): string | null {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "minute",
+    unitDisplay: "short",
+  }).format(minutes)
 }
 
 function subscribeViewerId(_onStoreChange: () => void): () => void {
@@ -329,6 +351,7 @@ export function HeroPlayer({
   coverBlackoutPhase?: "covering" | "revealing" | null
 }) {
   const t = useTranslations("HeroPlayer")
+  const locale = useLocale()
   const tLanguagePicker = useTranslations("LanguagePickerModal")
   const tBibleQuotes = useTranslations("BibleQuotes")
   const videoLabels = useTranslations("VideoLabels")
@@ -1393,12 +1416,21 @@ export function HeroPlayer({
     languageCount > 0
       ? tLanguagePicker("languageCount", { count: languageCount })
       : null
+  const releaseMetadata = [
+    releaseYearFrom(video.publishedAt),
+    formatHeroRuntime(variant.duration, locale),
+  ]
+    .filter((value): value is string => value != null)
+    .join(" · ")
   const qualityLabel = highestDownloadQualityLabel(variant.downloads)
   const hasSubtitleTrack = video.subtitles.some(
     ({ vttSrc }) => vttSrc.length > 0,
   )
   const hasHeroMetadataTags =
-    languageCountLabel != null || hasSubtitleTrack || qualityLabel != null
+    releaseMetadata !== "" ||
+    languageCountLabel != null ||
+    hasSubtitleTrack ||
+    qualityLabel != null
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1841,6 +1873,14 @@ export function HeroPlayer({
                       data-testid="hero-player-metadata-tags"
                       className="flex flex-wrap items-center gap-2"
                     >
+                      {releaseMetadata !== "" ? (
+                        <span
+                          data-testid="hero-player-release-metadata"
+                          className="px-1 text-sm font-medium text-white/85 md:text-base"
+                        >
+                          {releaseMetadata}
+                        </span>
+                      ) : null}
                       {languageCountLabel != null ? (
                         hasLanguageSwitcher ? (
                           <button

@@ -82,6 +82,7 @@ vi.mock("@forge/video-player", () => ({
 }))
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en",
   useTranslations:
     (
       namespace:
@@ -249,6 +250,7 @@ function makeBlock({
   duration = null,
   downloads = [],
   subtitles = [],
+  publishedAt = null,
 }: {
   muxHeroPosterBlurDataUrl?: string | null
   playbackId?: string | null
@@ -256,6 +258,7 @@ function makeBlock({
   duration?: number | null
   downloads?: WatchHeroPlayerBlock["variant"]["downloads"]
   subtitles?: WatchHeroPlayerBlock["video"]["subtitles"]
+  publishedAt?: string | null
 } = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
@@ -264,6 +267,7 @@ function makeBlock({
       label: "EPISODE",
       slug: "jesus",
       title: "Jesus",
+      publishedAt,
       children: [],
       parents: [],
       subtitles,
@@ -547,13 +551,14 @@ describe("HeroPlayer — initial mount", () => {
     ).toBeNull()
   })
 
-  it("renders ordered factual metadata without a runtime tag and opens the language picker", async () => {
+  it("renders release metadata before the language tag and opens the language picker", async () => {
     const onLanguageClick = vi.fn()
     act(() => {
       root.render(
         <HeroPlayer
           block={makeBlock({
-            duration: 394,
+            duration: 1740,
+            publishedAt: "2023-06-01T12:00:00.000Z",
             downloads: [
               {
                 documentId: "download-hd",
@@ -596,6 +601,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       Array.from(tags.children).map((tag) => tag.getAttribute("data-testid")),
     ).toEqual([
+      "hero-player-release-metadata",
       "hero-player-language-tag",
       "hero-player-captions-tag",
       "hero-player-quality-tag",
@@ -604,6 +610,10 @@ describe("HeroPlayer — initial mount", () => {
     const languageTag = container.querySelector(
       '[data-testid="hero-player-language-tag"]',
     ) as HTMLButtonElement
+    expect(
+      container.querySelector('[data-testid="hero-player-release-metadata"]')
+        ?.textContent,
+    ).toBe("2023 · 29 min")
     expect(languageTag.tagName).toBe("BUTTON")
     expect(languageTag.getAttribute("aria-label")).toBe("3 languages")
     expect(languageTag.querySelector("svg")).not.toBeNull()
