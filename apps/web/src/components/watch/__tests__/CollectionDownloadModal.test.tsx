@@ -231,4 +231,46 @@ describe("CollectionDownloadModal", () => {
     ).not.toBeNull()
     expect(runCollectionDownloadQueueMock).not.toHaveBeenCalled()
   })
+
+  it("shows the unavailable state when the collection has no languages", async () => {
+    renderModal({ languages: [], currentLanguageSlug: "" })
+    await flush()
+
+    expect(loadWatchCollectionDownloadsMock).not.toHaveBeenCalled()
+    expect(container.textContent).toContain(
+      "No downloadable episodes are available in this language.",
+    )
+  })
+
+  it("cancels a pending session preflight before the queue can start", async () => {
+    let resolveSession: ((value: { ok: true }) => void) | undefined
+    resolveDownloadSessionAccessMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+    renderModal()
+    await flush()
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-collection-download-start"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-collection-download-cancel"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    await act(async () => {
+      resolveSession?.({ ok: true })
+      await Promise.resolve()
+    })
+
+    expect(runCollectionDownloadQueueMock).not.toHaveBeenCalled()
+  })
 })

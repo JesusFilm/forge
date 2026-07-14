@@ -61,9 +61,12 @@ export function buildCollectionDownloadOptions(
     })
   }
 
-  const commonTiers = TIER_ORDER.filter((tier) =>
-    candidates.every((candidate) => candidate.tiers[tier] != null),
-  )
+  const commonTiers =
+    candidates.length === 0
+      ? []
+      : TIER_ORDER.filter((tier) =>
+          candidates.every((candidate) => candidate.tiers[tier] != null),
+        )
   return { candidates, skipped, commonTiers }
 }
 

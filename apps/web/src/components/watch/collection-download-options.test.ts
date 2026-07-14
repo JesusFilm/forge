@@ -12,6 +12,14 @@ const episodes = [
 ]
 
 describe("collection download options", () => {
+  it("returns an empty quality list when no episodes are downloadable", () => {
+    expect(buildCollectionDownloadOptions(episodes, [])).toEqual({
+      candidates: [],
+      skipped: episodes,
+      commonTiers: [],
+    })
+  })
+
   it("keeps episode order, reports skipped children, and intersects tiers", () => {
     const result = buildCollectionDownloadOptions(episodes, [
       {

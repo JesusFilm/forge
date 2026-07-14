@@ -48,7 +48,9 @@ export async function loadWatchCollectionDownloads(input: {
       dubs: dubs.flatMap((dub) => {
         if (!dub?.documentId || !dub.videoId) return []
         const downloads = (dub.downloads ?? []).flatMap((download) => {
-          if (!download?.documentId || !download.quality) return []
+          if (!download?.documentId || !download.quality || !download.url) {
+            return []
+          }
           const rawSize: unknown = download.size
           const parsedSize =
             typeof rawSize === "string"

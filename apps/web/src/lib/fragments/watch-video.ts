@@ -570,6 +570,7 @@ export const getWatchCollectionDownloadDubsBySlugOperation = adminGraphql(`
           height
           quality
           size
+          url
         }
       }
     }

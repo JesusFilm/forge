@@ -82,7 +82,9 @@ export function CollectionDownloadModal({
   )
   const [error, setError] = useState<string | null>(null)
   const [authLoginUrl, setAuthLoginUrl] = useState<string | null>(null)
+  const [starting, setStarting] = useState(false)
   const requestVersionRef = useRef(0)
+  const startVersionRef = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
   const selectedLanguage = useMemo(
@@ -95,6 +97,7 @@ export function CollectionDownloadModal({
       ? selectedTier
       : (options?.commonTiers[0] ?? null)
   const running = progress?.active != null
+  const busy = starting || running
   const effectiveAuthLoginUrl = authRequiredLoginUrl ?? authLoginUrl
   const directoryPickerSupported =
     typeof window !== "undefined" &&
@@ -102,7 +105,17 @@ export function CollectionDownloadModal({
       "function"
 
   const loadOptions = useCallback(async () => {
-    if (!collectionSlug || !languageSlug) return
+    if (!collectionSlug) {
+      setLoadState({ status: "error" })
+      return
+    }
+    if (!languageSlug) {
+      setLoadState({
+        status: "ready",
+        options: buildCollectionDownloadOptions(episodes, []),
+      })
+      return
+    }
     const requestVersion = ++requestVersionRef.current
     setLoadState({ status: "loading" })
     setProgress(null)
@@ -131,18 +144,29 @@ export function CollectionDownloadModal({
     return () => {
       canceled = true
       requestVersionRef.current += 1
+      startVersionRef.current += 1
       controllerRef.current?.abort()
       controllerRef.current = null
     }
   }, [loadOptions, open])
 
   const close = useCallback(() => {
-    if (controllerRef.current) return
+    if (starting || controllerRef.current) return
+    startVersionRef.current += 1
     setProgress(null)
     setResult(null)
     setError(null)
     onClose()
-  }, [onClose])
+  }, [onClose, starting])
+
+  const cancelDownload = useCallback(() => {
+    startVersionRef.current += 1
+    if (controllerRef.current) {
+      controllerRef.current.abort()
+      return
+    }
+    setStarting(false)
+  }, [])
 
   async function chooseDirectory() {
     const picker = (window as WindowWithDirectoryPicker).showDirectoryPicker
@@ -164,20 +188,26 @@ export function CollectionDownloadModal({
   async function startDownload(
     retryItems?: ReturnType<typeof failedCollectionDownloadItems>,
   ) {
-    if (!options || !effectiveTier || running) return
+    if (!options || !effectiveTier || busy) return
+    const startVersion = ++startVersionRef.current
+    setStarting(true)
     setError(null)
     setResult(null)
 
     const session = await resolveDownloadSessionAccess()
+    if (startVersion !== startVersionRef.current) return
     if (!session.ok && session.reason === "session-unavailable") {
+      setStarting(false)
       setError(t("sessionError"))
       return
     }
     if (!session.ok) {
+      setStarting(false)
       setAuthLoginUrl(session.loginUrl)
       return
     }
     setAuthLoginUrl(null)
+    setStarting(false)
 
     const items =
       retryItems ??
@@ -278,7 +308,7 @@ export function CollectionDownloadModal({
                   <select
                     data-testid="watch-collection-download-language"
                     value={languageSlug}
-                    disabled={running}
+                    disabled={busy}
                     onChange={(event) => setLanguageSlug(event.target.value)}
                     className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-stone-100 outline-none focus:ring-2 focus:ring-amber-400"
                   >
@@ -294,7 +324,7 @@ export function CollectionDownloadModal({
                   <select
                     data-testid="watch-collection-download-quality"
                     value={effectiveTier ?? ""}
-                    disabled={running || !effectiveTier}
+                    disabled={busy || !effectiveTier}
                     onChange={(event) =>
                       setSelectedTier(event.target.value as DownloadTier)
                     }
@@ -349,7 +379,7 @@ export function CollectionDownloadModal({
                 <Button
                   variant="outline"
                   data-testid="watch-collection-download-folder"
-                  disabled={running}
+                  disabled={busy}
                   onClick={chooseDirectory}
                   className="justify-start"
                 >
@@ -414,11 +444,11 @@ export function CollectionDownloadModal({
                 <Button variant="ghost" onClick={close}>
                   {t("close")}
                 </Button>
-                {running ? (
+                {busy ? (
                   <Button
                     variant="pill"
                     data-testid="watch-collection-download-cancel"
-                    onClick={() => controllerRef.current?.abort()}
+                    onClick={cancelDownload}
                   >
                     <Square size={15} />
                     {t("cancel")}
