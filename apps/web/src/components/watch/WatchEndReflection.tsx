@@ -440,7 +440,7 @@ function ChapterButton({
       >
         {action.icon}
       </span>
-      <span className="mt-1 min-w-0 md:mt-2">
+      <span className="mt-1 min-w-0 w-full md:mt-2">
         <span
           className={`block text-[9px] font-semibold tracking-[0.12em] uppercase sm:text-[10px] ${
             active ? "text-white/70" : "text-white/35"
@@ -448,7 +448,11 @@ function ChapterButton({
         >
           {String(index + 1).padStart(2, "0")}
         </span>
-        <span className="mt-0.5 hidden text-[11px] leading-tight font-semibold text-balance md:block lg:text-xs">
+        <span
+          className={`mt-0.5 line-clamp-3 min-h-[3.3em] text-[8px] leading-[1.1] font-semibold text-balance sm:text-[10px] md:line-clamp-2 md:min-h-[2.2em] md:text-[11px] lg:text-xs ${
+            active ? "text-white" : "text-white/80"
+          }`}
+        >
           {action.label}
         </span>
       </span>
