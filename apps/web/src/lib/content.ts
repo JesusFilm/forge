@@ -2254,8 +2254,6 @@ export type WatchHeroPlayerBlock = {
   kind: "HeroPlayer"
   video: WatchVideoRecord
   variant: WatchVariant
-  parentCollectionLabel?: string | null
-  parentCollectionSlug?: string | null
   playableLanguageCount?: number
   nextWatchItem?: WatchNextWatchItem | null
 }
@@ -2350,14 +2348,6 @@ export function buildHeroBlock(
     kind: "HeroPlayer",
     video,
     variant,
-    parentCollectionLabel:
-      canonicalParent?.title ??
-      canonicalParent?.label ??
-      video.parents[0]?.title ??
-      video.parents[0]?.label ??
-      null,
-    parentCollectionSlug:
-      canonicalParent?.slug ?? video.parents[0]?.slug ?? null,
     playableLanguageCount:
       video.playableLanguageCount ?? countPlayableWatchVariants(video.variants),
     nextWatchItem: buildNextWatchItem(canonicalParent, video),

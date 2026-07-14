@@ -16,7 +16,6 @@ import {
 } from "react"
 import { flushSync } from "react-dom"
 import Image, { type ImageLoaderProps } from "next/image"
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
@@ -51,7 +50,6 @@ import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchVideoPath,
   watchEpisodePath,
 } from "@/lib/routes"
 import {
@@ -1418,19 +1416,6 @@ export function HeroPlayer({
     subtitleLanguageCount > 0
       ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
       : null
-  const parentCollectionLabel =
-    block.parentCollectionLabel ??
-    video.parents[0]?.title ??
-    video.parents[0]?.label ??
-    null
-  const parentCollectionHref =
-    block.parentCollectionSlug != null &&
-    (languageSlug ?? variant.language?.slug) != null
-      ? watchVideoPath(
-          block.parentCollectionSlug,
-          (languageSlug ?? variant.language?.slug)!,
-        )
-      : null
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")
@@ -1880,24 +1865,6 @@ export function HeroPlayer({
                       </button>
                     ) : null}
                   </div>
-                  {parentCollectionLabel != null ? (
-                    <div
-                      data-testid="hero-player-parent-collection"
-                      className="mt-3 px-1 text-xs font-normal text-white/85 md:text-sm"
-                    >
-                      <span>Part of collection: </span>
-                      {parentCollectionHref != null ? (
-                        <Link
-                          href={parentCollectionHref}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {parentCollectionLabel}
-                        </Link>
-                      ) : (
-                        parentCollectionLabel
-                      )}
-                    </div>
-                  ) : null}
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
