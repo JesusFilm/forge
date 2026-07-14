@@ -111,7 +111,7 @@
   },
   "WatchQuestionPanel": {
     "messageType": "Message type",
-    "fieldLabel": "Ask a question or request a prayer",
+    "fieldLabel": "Leave a comment, ask a question or request a prayer",
     "send": "Send question",
     "prompts": {
       "bibleQuestion": {
