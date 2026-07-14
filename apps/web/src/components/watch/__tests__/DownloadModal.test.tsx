@@ -584,9 +584,16 @@ describe("DownloadModal — account-authenticated downloads", () => {
       expect.objectContaining({ credentials: "include" }),
     )
     expect(created).toHaveLength(0)
-    expect(
-      $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
-    ).toContain("Downloads are available after you sign in")
+    const authRequiredCopy =
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent ?? ""
+    expect(authRequiredCopy).toContain("Want to download this video?")
+    expect(authRequiredCopy.indexOf("Sign in to download")).toBeLessThan(
+      authRequiredCopy.indexOf("Want to download this video?"),
+    )
+    expect(authRequiredCopy).toContain(
+      "A free Jesus Film account is required to download videos.",
+    )
+    expect(authRequiredCopy).toContain("Keep watching")
     expect($('[data-testid="watch-download-modal-error"]')).toBeNull()
     expect(redirectToAuth).not.toHaveBeenCalled()
 
@@ -603,6 +610,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
   it("shows a sign-in explanation when opened for a signed-out viewer", async () => {
     const loginUrl =
       "http://localhost/api/auth/login?returnTo=http%3A%2F%2Flocalhost%2Fwatch%2Fjesus.html%2Fenglish.html"
+    const onClose = vi.fn()
     act(() => {
       root.render(
         <TestDownloadModal
@@ -611,16 +619,35 @@ describe("DownloadModal — account-authenticated downloads", () => {
           authRequiredLoginUrl={loginUrl}
           downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
           videoTitle="JESUS"
-          onClose={vi.fn()}
+          onClose={onClose}
         />,
       )
     })
 
-    expect(
-      $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
-    ).toContain("Sign in to download")
+    const authRequiredCopy =
+      $('[data-testid="watch-download-modal-auth-required"]')?.textContent ?? ""
+    expect(authRequiredCopy).toContain("Want to download this video?")
+    expect(authRequiredCopy.indexOf("Sign in to download")).toBeLessThan(
+      authRequiredCopy.indexOf("Want to download this video?"),
+    )
+    expect(authRequiredCopy).toContain(
+      "A free Jesus Film account is required to download videos.",
+    )
+    expect(authRequiredCopy).toContain("Keep watching")
+    expect($('[data-testid="watch-download-modal-sign-in"]')?.textContent).toBe(
+      "Sign in to download",
+    )
     expect($('[data-testid="watch-download-modal-tos"]')).toBeNull()
     expect($('[data-testid="watch-download-modal-confirm"]')).toBeNull()
+
+    await act(async () => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-keep-watching"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(onClose).toHaveBeenCalledOnce()
 
     await act(async () => {
       ;(
@@ -659,7 +686,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
 
     expect(
       $('[data-testid="watch-download-modal-auth-required"]')?.textContent,
-    ).toContain("Sign in to download")
+    ).toContain("Want to download this video?")
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
