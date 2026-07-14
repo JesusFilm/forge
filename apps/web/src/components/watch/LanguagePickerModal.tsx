@@ -780,11 +780,14 @@ export function LanguagePickerModal({
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              data-testid="watch-language-picker-subtitles-header"
+              className="flex min-w-0 items-center justify-between gap-3"
+            >
               <MultilingualTooltip
                 copy={MULTILINGUAL_TOOLTIPS.subtitles}
                 testId="watch-language-picker-tooltip-subtitles"
-                className="w-full min-w-0 sm:flex-1"
+                className="min-w-0 flex-1"
                 onActivate={setActiveTooltipCopy}
                 onDeactivate={clearActiveTooltip}
               >
@@ -810,7 +813,7 @@ export function LanguagePickerModal({
                   </span>
                 </div>
               </MultilingualTooltip>
-              <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-3">
                 {sameLanguageSubtitleOptions.length === 0 ? (
                   <MultilingualTooltip
                     copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}

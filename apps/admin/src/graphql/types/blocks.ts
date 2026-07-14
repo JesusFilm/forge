@@ -236,6 +236,7 @@ const TextVariantEnum = builder.enumType("TextVariant", {
     default: { value: "default" },
     lead: { value: "lead" },
     small: { value: "small" },
+    promotional: { value: "promotional" },
   } as const,
 })
 

@@ -10,6 +10,7 @@ function setRequiredWebEnv() {
   delete process.env.LAUNCHDARKLY_SDK_KEY
   delete process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT
   delete process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT
+  delete process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT
   delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
   delete process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT
   delete process.env.FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT
@@ -67,6 +68,25 @@ describe("web feature flag helpers", () => {
     await expect(isWatchCtaTextCopyEnabled()).resolves.toBe(true)
   })
 
+  it("keeps the watch download account gate disabled by default", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+
+    const { isWatchDownloadAccountGateEnabled } =
+      await import("./feature-flags")
+
+    await expect(isWatchDownloadAccountGateEnabled()).resolves.toBe(false)
+  })
+
+  it("evaluates the watch download account gate from the server-side fallback", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+    process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT = "true"
+
+    const { isWatchDownloadAccountGateEnabled } =
+      await import("./feature-flags")
+
+    await expect(isWatchDownloadAccountGateEnabled()).resolves.toBe(true)
+  })
+
   it("evaluates the watch Bible Quotes visibility flag from the server-side fallback and defaults off", async () => {
     delete process.env.LAUNCHDARKLY_SDK_KEY
 
@@ -122,6 +142,7 @@ describe("web feature flag helpers", () => {
     process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION = "false"
     process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT = "true"
     process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT = "false"
+    process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT = "true"
     process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
     process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT = "false"
     process.env.FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT = "false"
@@ -147,6 +168,7 @@ describe("web feature flag helpers", () => {
         localEnv: {
           FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
           FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: "false",
+          FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: "true",
           FORGE_WATCH_QUESTION_PANEL_DEFAULT: "true",
           FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: "false",
           FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: "false",
@@ -154,6 +176,7 @@ describe("web feature flag helpers", () => {
         defaultValues: {
           "forge.watch.playerMigration": false,
           "forge.watch.ctaTextCopy": false,
+          "forge.watch.downloadAccountGate": false,
           "forge.watch.questionPanel": false,
           "forge.watch.hideBibleQuotes": false,
           "forge.watch.algoliaSearch": false,

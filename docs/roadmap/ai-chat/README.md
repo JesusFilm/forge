@@ -11,11 +11,11 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 13, 2026)
+## Status (July 14, 2026)
 
-- **Total tickets:** 23
-- ✅ **Complete:** 18
-- 🟡 **In progress:** 1
+- **Total tickets:** 24
+- ✅ **Complete:** 20
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 4
 - 🔴 **Blocked:** 0
 
@@ -43,6 +43,7 @@ from the main DS Year 1 roadmap.
 | [feat-237](feat-237-seeker-gateway-model.md)                 | Seeker agent JesusFilm gateway model (opt-in primary)                     | jian wei | P2       | 2026-07-07 | 2    | ✅ complete    | [#1491](https://github.com/JesusFilm/forge/pull/1491) |
 | [feat-239](feat-239-chat-seeker-env-allowlist-gate.md)       | Replace the chat seeker LaunchDarkly gate with an env-var email allowlist | jian wei | P1       | 2026-07-08 | 1    | ✅ complete    | [#1498](https://github.com/JesusFilm/forge/pull/1498) |
 | [feat-240](feat-240-chat-sign-out-force-login.md)            | Chat sign-out force-login marker (no silent re-auth)                      | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1539](https://github.com/JesusFilm/forge/pull/1539) |
-| [feat-241](feat-241-chat-server-history-sidebar.md)          | Chat server-side conversation history + sidebar hydration                 | jian wei | P2       | 2026-07-20 | 3    | 🟡 in-progress | —                                                     |
+| [feat-241](feat-241-chat-server-history-sidebar.md)          | Chat server-side conversation history + sidebar hydration                 | jian wei | P2       | 2026-07-20 | 3    | ✅ complete    | [#1552](https://github.com/JesusFilm/forge/pull/1552) |
 | [feat-247](feat-247-chat-history-management.md)              | Chat conversation history management (delete/rename) — stub               | jian wei | P2       | 2026-09-08 | 2    | 🔵 not-started | —                                                     |
 | [feat-248](feat-248-chat-anon-thread-migration.md)           | Anonymous-to-account conversation migration — stub, future consideration  | jian wei | P2       | 2026-09-15 | 3    | 🔵 not-started | —                                                     |
+| [feat-250](feat-250-seeker-route-lane-key-migration.md)      | Migrate /forge-seeker onto the ai-chat lane service key                   | jian wei | P2       | 2026-08-03 | 1    | ✅ complete    | [#1554](https://github.com/JesusFilm/forge/pull/1554) |

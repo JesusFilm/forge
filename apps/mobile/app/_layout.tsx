@@ -310,28 +310,9 @@ export default function RootLayout() {
                         />
                         <Stack.Screen
                           name="experience/[slug]"
-                          options={{
-                            headerShown: true,
-                            headerTintColor: ACCENT,
-                            headerTitle: "",
-                            headerStyle: { backgroundColor: BG_COLOR },
-                            headerShadowVisible: false,
-                            headerTitleAlign: "center",
-                            headerLeft: () => (
-                              <Pressable
-                                onPress={() => router.back()}
-                                accessibilityRole="button"
-                                accessibilityLabel="Go back"
-                                hitSlop={12}
-                              >
-                                <Ionicons
-                                  name="chevron-back"
-                                  size={28}
-                                  color={ACCENT}
-                                />
-                              </Pressable>
-                            ),
-                          }}
+                          // Full-bleed: the screen renders its own floating back
+                          // button over the edge-to-edge hero (no native nav bar).
+                          options={{ headerShown: false }}
                         />
                         <Stack.Screen
                           name="mission"

@@ -21,11 +21,13 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
+import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
+  watchVideoPath,
   watchEpisodePath,
 } from "@/lib/routes"
 import {
@@ -118,6 +120,10 @@ export function SiblingCarousel({
   const parentSlug =
     typeof canonicalParent.slug === "string"
       ? tryAsContentSlug(canonicalParent.slug)
+      : null
+  const parentHref =
+    parentSlug != null && tryAsLocaleSlug(languageSlug) != null
+      ? watchVideoPath(parentSlug, tryAsLocaleSlug(languageSlug)!)
       : null
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
@@ -244,7 +250,13 @@ export function SiblingCarousel({
     >
       <header className="mb-4 px-5 md:px-0">
         <p className="text-sm font-normal text-stone-300">
-          <span className="font-medium text-stone-100">{parentTitle}</span>
+          {parentHref != null ? (
+            <Link href={parentHref} className="text-stone-100 hover:underline">
+              <span className="font-medium">{parentTitle}</span>
+            </Link>
+          ) : (
+            <span className="font-medium text-stone-100">{parentTitle}</span>
+          )}
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
             {isParentMode ? (
@@ -514,11 +526,14 @@ export function SiblingCarousel({
               </CarouselItem>
             )
           })}
-          <div
+          <CarouselItem
             aria-hidden="true"
             data-testid="sibling-carousel-end-spacer"
-            className="min-w-0 shrink-0 grow-0 basis-[52%] sm:basis-[64%] md:basis-[66.666%] lg:basis-[75%] xl:basis-[80%] 2xl:basis-[83.333%]"
-          />
+            tabIndex={-1}
+            className="basis-auto pl-0"
+          >
+            <div className={CAROUSEL_END_SPACER} />
+          </CarouselItem>
         </CarouselContent>
 
         {/* The shared `outline` Button variant only sets text color on

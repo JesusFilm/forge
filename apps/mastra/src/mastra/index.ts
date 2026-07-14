@@ -105,6 +105,14 @@ import {
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
 import {
+  handleYouTubeDiscoveryRouteRequest,
+  youtubeAiChristianDiscoveryWorkflow,
+} from "./workflows/youtube-ai-christian-discovery"
+import {
+  handlePinterestDiscoveryRouteRequest,
+  pinterestAiChristianDiscoveryWorkflow,
+} from "./workflows/pinterest-ai-christian-discovery"
+import {
   handleSubtitleEnrichmentRouteRequest,
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
@@ -116,11 +124,18 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import {
+  handleAiChatHistoryListRequest,
+  handleAiChatHistoryReplayRequest,
+} from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+// /forge-seeker accepts ONLY the ai-chat lane CSV (feat-250); every other
+// /forge-* route stays on the pool. Unset lane CSV = fail closed (all 401).
+const seekerServiceKeys = parseServiceApiKeys(env.AI_CHAT_SERVICE_API_KEYS)
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -181,6 +196,8 @@ export const mastra = new Mastra({
     smartCropQaWorkflow,
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    youtubeAiChristianDiscoveryWorkflow,
+    pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
@@ -382,11 +399,42 @@ export const mastra = new Mastra({
         handler: async (c) =>
           handleSeekerRouteRequest({
             authHeader: c.req.header("authorization"),
-            serviceKeys,
+            serviceKeys: seekerServiceKeys,
             readJson: () => c.req.json(),
             getMastra: () => mastra as unknown as SeekerRouteMastra,
             requestSignal: c.req.raw.signal,
           }),
+      }),
+      // ai-chat history read surface (feat-241). Bearer + gate ladder live in
+      // the handlers; both validate the dedicated AI_CHAT_SERVICE_API_KEYS
+      // lane CSV (KTD2), so no key list is threaded through here.
+      registerApiRoute("/forge-ai-chat-history-list", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryListRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-ai-chat-history-replay", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryReplayRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
       }),
       registerApiRoute("/forge-eval-query-generation", {
         method: "POST",
@@ -544,6 +592,36 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleInstagramDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-youtube-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleYouTubeDiscoveryRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-pinterest-discovery", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePinterestDiscoveryRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

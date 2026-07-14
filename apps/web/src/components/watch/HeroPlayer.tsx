@@ -18,7 +18,8 @@ import { flushSync } from "react-dom"
 import Image, { type ImageLoaderProps } from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { Captions, Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -30,7 +31,7 @@ const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
 }) as typeof MuxVideoType
 
 import { env } from "@/env"
-import type { WatchHeroPlayerBlock } from "@/lib/content"
+import type { WatchHeroPlayerBlock, WatchVariantDownload } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
@@ -64,12 +65,86 @@ import { resolveMuxHeroPosterUrl } from "@/lib/url"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
+import {
+  downloadQualityResolutionLabel,
+  type DownloadResolutionLabel,
+} from "./download-options"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
-import { MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
+import { AudioLanguagesIcon, MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
 type PillState = "play-with-sound" | "tap-to-unmute"
+
+type HeroMetadataQuality = {
+  label: DownloadResolutionLabel
+  rank: number
+}
+
+const HERO_QUALITY_TAG_CLASS =
+  "inline-flex h-4 items-center rounded-sm border border-white/80 bg-white/80 px-0.5 text-[0.6rem] font-medium tracking-wide text-stone-950"
+const HERO_LANGUAGE_TAG_CLASS =
+  "inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
+
+const HERO_METADATA_QUALITY_RANK: Record<DownloadResolutionLabel, number> = {
+  "4K": 5,
+  "2K": 4,
+  FHD: 3,
+  HD: 2,
+  SD: 1,
+}
+
+function withHeroMetadataQualityRank(
+  label: DownloadResolutionLabel,
+): HeroMetadataQuality {
+  return { label, rank: HERO_METADATA_QUALITY_RANK[label] }
+}
+
+function downloadQualityBadge(
+  download: WatchVariantDownload,
+): HeroMetadataQuality | null {
+  const height = download.height
+  if (typeof height === "number" && Number.isFinite(height) && height > 0) {
+    if (height >= 2160) return withHeroMetadataQualityRank("4K")
+    if (height >= 1440) return withHeroMetadataQualityRank("2K")
+    if (height >= 1080) return withHeroMetadataQualityRank("FHD")
+    if (height >= 720) return withHeroMetadataQualityRank("HD")
+    return withHeroMetadataQualityRank("SD")
+  }
+
+  const label = downloadQualityResolutionLabel(download.quality)
+  return label == null ? null : withHeroMetadataQualityRank(label)
+}
+
+function highestDownloadQualityLabel(
+  downloads: WatchVariantDownload[],
+): HeroMetadataQuality["label"] | null {
+  return (
+    downloads.reduce<HeroMetadataQuality | null>((highest, download) => {
+      const candidate = downloadQualityBadge(download)
+      if (
+        candidate == null ||
+        (highest != null && highest.rank >= candidate.rank)
+      ) {
+        return highest
+      }
+      return candidate
+    }, null)?.label ?? null
+  )
+}
+
+function formatHeroRuntime(
+  seconds: number | null | undefined,
+  locale: string,
+): string | null {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "minute",
+    unitDisplay: "short",
+  }).format(minutes)
+}
 
 function subscribeViewerId(_onStoreChange: () => void): () => void {
   return () => {}
@@ -234,7 +309,7 @@ function isAutoplayBlockedError(err: unknown): boolean {
 }
 
 // Minimum number of playable language variants before the language-switch
-// globe button appears. With only one variant there's nothing to switch to.
+// audio button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
 
 export function HeroPlayer({
@@ -242,8 +317,11 @@ export function HeroPlayer({
   onPlayerReady,
   onPlayerActivated,
   onLanguageClick,
+  onShareClick,
   languageSlug,
   playableLanguageCount,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode,
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
@@ -255,8 +333,11 @@ export function HeroPlayer({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
   onLanguageClick?: () => void
+  onShareClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
@@ -265,6 +346,9 @@ export function HeroPlayer({
   coverBlackoutPhase?: "covering" | "revealing" | null
 }) {
   const t = useTranslations("HeroPlayer")
+  const locale = useLocale()
+  const tLanguagePicker = useTranslations("LanguagePickerModal")
+  const tBibleQuotes = useTranslations("BibleQuotes")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
   const playbackId = variant.muxVideo?.playbackId ?? undefined
@@ -368,6 +452,7 @@ export function HeroPlayer({
   }, [subtitleVttSrc, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
   const [pillState, setPillState] = useState<PillState>("play-with-sound")
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [playerActivated, setPlayerActivated] = useState(
@@ -391,6 +476,7 @@ export function HeroPlayer({
 
   const handleControlsVisibilityChange = useCallback(
     (detail: WatchPlayerChromeVisibilityDetail) => {
+      setControlsVisible(detail.visible)
       publishChromeVisibility(detail)
     },
     [publishChromeVisibility],
@@ -1294,7 +1380,7 @@ export function HeroPlayer({
       ? "watch-hero-cover-black-bridge"
       : "watch-hero-cover-to-black"
 
-  // Hide the language-switch globe while the player is in fullscreen so it
+  // Hide the floating language switch while the player is in fullscreen so it
   // doesn't sit on top of the playing video chrome. Restores when the user
   // exits fullscreen. Listen for both the standard event and the webkit
   // prefix so Safari is covered.
@@ -1303,14 +1389,21 @@ export function HeroPlayer({
   // initial fullscreenchange event.
   const isFullscreen = useIsFullscreen()
 
-  // Both globe surfaces (top-right floating + in-chrome) share this gate:
+  const languageCount = Math.max(
+    0,
+    playableLanguageCount ?? block.playableLanguageCount ?? 0,
+  )
+
+  // Both audio-language surfaces (top-right floating + in-chrome) share this gate:
   // a wired callback AND enough variants to warrant a switcher. The
   // top-right surface adds `!isFullscreen` because it overlaps the
   // browser's fullscreen chrome; the in-chrome surface intentionally
   // stays visible in fullscreen so the user can still reach the picker.
   const hasLanguageSwitcher =
     typeof onLanguageClick === "function" &&
-    (playableLanguageCount ?? 0) >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+    languageCount >= MIN_VARIANTS_FOR_LANGUAGE_SWITCH
+  const hasSubtitleSwitcher =
+    typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
   const languageCode = languageCodeFor({
@@ -1318,6 +1411,31 @@ export function HeroPlayer({
     iso3: variant.language?.iso3,
     slug: variant.language?.slug ?? languageSlug,
   })
+  const languageCountLabel =
+    languageCount > 0
+      ? tLanguagePicker("languageCount", { count: languageCount })
+      : null
+  const subtitleLanguageCount = new Set(
+    video.subtitles
+      .filter(({ vttSrc, language }) => vttSrc.length > 0 && language.slug)
+      .map(({ language }) => language.slug),
+  ).size
+  const subtitleLanguageCountLabel =
+    subtitleLanguageCount > 0
+      ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
+      : null
+  const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
+    .filter((value): value is string => value != null)
+    .join(" · ")
+  const qualityLabel = highestDownloadQualityLabel(variant.downloads)
+  const hasSubtitleTrack = video.subtitles.some(
+    ({ vttSrc }) => vttSrc.length > 0,
+  )
+  const hasHeroMetadataTags =
+    releaseMetadata !== "" ||
+    languageCountLabel != null ||
+    hasSubtitleTrack ||
+    qualityLabel != null
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1639,9 +1757,11 @@ export function HeroPlayer({
             playbackId={playbackId}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
-            // In-chrome globe intentionally stays visible in fullscreen
+            subtitleLanguageCode={subtitleLanguageCode}
+            // In-chrome audio control intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
+            showSubtitleButton={hasSubtitleSwitcher}
             onVisibilityChange={handleControlsVisibilityChange}
             onWatchNextInteraction={cancelWatchNextAutoAdvance}
           />
@@ -1650,6 +1770,7 @@ export function HeroPlayer({
           playerRef={playerRef}
           wrapperRef={wrapperRef}
           player={player}
+          controlsVisible={controlsVisible}
         />
         {showWatchNextButton ? (
           <button
@@ -1718,28 +1839,119 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <button
-                  type="button"
-                  data-testid="hero-player-unmute-pill"
-                  data-state={pillState}
-                  aria-label={preRevealActionLabel}
-                  aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={handleWatchNowPointerDown}
-                  onKeyDown={handleWatchNowKeyDown}
-                  onClick={handleWatchNowClick}
-                  className={
-                    pillState === "tap-to-unmute"
-                      ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
-                      : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
-                  }
-                >
-                  {pillState === "tap-to-unmute" ? (
-                    <MutedSpeakerIcon />
-                  ) : (
-                    <PlayIcon />
-                  )}
-                  <span>{preRevealActionLabel}</span>
-                </button>
+                <div className="flex flex-col items-start gap-3">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                    <button
+                      type="button"
+                      data-testid="hero-player-unmute-pill"
+                      data-state={pillState}
+                      aria-label={preRevealActionLabel}
+                      aria-controls={HERO_PLAYER_MEDIA_ID}
+                      onPointerDown={handleWatchNowPointerDown}
+                      onKeyDown={handleWatchNowKeyDown}
+                      onClick={handleWatchNowClick}
+                      className={
+                        pillState === "tap-to-unmute"
+                          ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                          : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
+                      }
+                    >
+                      {pillState === "tap-to-unmute" ? (
+                        <MutedSpeakerIcon />
+                      ) : (
+                        <PlayIcon />
+                      )}
+                      <span>{preRevealActionLabel}</span>
+                    </button>
+                    {onShareClick ? (
+                      <button
+                        type="button"
+                        data-testid="hero-player-share-button"
+                        aria-label={tBibleQuotes("share")}
+                        onClick={onShareClick}
+                        className={`${WATCH_NOW_LINK_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`}
+                      >
+                        <Share2 className="h-5 w-5 shrink-0" aria-hidden />
+                        <span className="hidden sm:inline">
+                          {tBibleQuotes("share")}
+                        </span>
+                      </button>
+                    ) : null}
+                  </div>
+                  {hasHeroMetadataTags ? (
+                    <div
+                      data-testid="hero-player-metadata-tags"
+                      className="mt-3 flex flex-wrap items-center gap-2 opacity-75"
+                    >
+                      {releaseMetadata !== "" ? (
+                        <span
+                          data-testid="hero-player-release-metadata"
+                          className="px-1 text-xs font-normal text-white/85 md:text-sm"
+                        >
+                          {releaseMetadata}
+                        </span>
+                      ) : null}
+                      {qualityLabel != null ? (
+                        <span
+                          data-testid="hero-player-quality-tag"
+                          className={`${HERO_QUALITY_TAG_CLASS} uppercase`}
+                        >
+                          {qualityLabel}
+                        </span>
+                      ) : null}
+                      {languageCountLabel != null ? (
+                        hasLanguageSwitcher ? (
+                          <button
+                            type="button"
+                            data-testid="hero-player-language-tag"
+                            aria-label={languageCountLabel}
+                            onClick={onLanguageClick}
+                            className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
+                          >
+                            <AudioLanguagesIcon />
+                            <span>{languageCountLabel}</span>
+                          </button>
+                        ) : (
+                          <span
+                            data-testid="hero-player-language-tag"
+                            className={HERO_LANGUAGE_TAG_CLASS}
+                          >
+                            <AudioLanguagesIcon />
+                            <span>{languageCountLabel}</span>
+                          </span>
+                        )
+                      ) : null}
+                      {subtitleLanguageCountLabel != null ? (
+                        hasLanguageSwitcher ? (
+                          <button
+                            type="button"
+                            data-testid="hero-player-subtitle-language-count"
+                            aria-label={subtitleLanguageCountLabel}
+                            onClick={onLanguageClick}
+                            className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:text-sm"
+                          >
+                            <Captions
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                            {subtitleLanguageCountLabel}
+                          </button>
+                        ) : (
+                          <span
+                            data-testid="hero-player-subtitle-language-count"
+                            className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
+                          >
+                            <Captions
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                            {subtitleLanguageCountLabel}
+                          </span>
+                        )
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ))
           : null}

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
-import { getMuxAnimatedPreviewUrl } from "../../lib/muxUrl"
+import {
+  getMuxAnimatedPreviewUrl,
+  type MuxAnimatedPreviewOpts,
+} from "../../lib/muxUrl"
 import {
   computeHoverPreviewActive,
   createHoverPreviewDwell,
@@ -13,6 +16,9 @@ export type UseHoverPreviewArgs = {
   // Surface-level gate: !isSeriesShaped. The hook adds the id + reduce-motion checks.
   enabled: boolean
   playbackId: string | null | undefined
+  // Mux preview transform overrides. Omit for the web-warm 448/8 default (instant,
+  // cache-shared); the large experience-details card passes HD opts (cold ~5s).
+  previewOpts?: MuxAnimatedPreviewOpts
 }
 
 /**
@@ -23,6 +29,7 @@ export function useHoverPreview({
   focused,
   enabled,
   playbackId,
+  previewOpts,
 }: UseHoverPreviewArgs): string | null {
   const reduceMotion = useReduceMotion()
   const active = computeHoverPreviewActive({
@@ -34,14 +41,22 @@ export function useHoverPreview({
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  // Latest id for the deferred dwell callback, without re-creating the controller.
+  // Latest id + opts for the deferred dwell callback, without re-creating the controller.
   const playbackIdRef = useRef(playbackId)
   playbackIdRef.current = playbackId
+  const previewOptsRef = useRef(previewOpts)
+  previewOptsRef.current = previewOpts
 
   const dwellRef = useRef<HoverPreviewDwell | null>(null)
   if (dwellRef.current == null) {
     dwellRef.current = createHoverPreviewDwell(
-      () => setPreviewUrl(getMuxAnimatedPreviewUrl(playbackIdRef.current)),
+      () =>
+        setPreviewUrl(
+          getMuxAnimatedPreviewUrl(
+            playbackIdRef.current,
+            previewOptsRef.current,
+          ),
+        ),
       () => setPreviewUrl(null),
     )
   }

@@ -6,18 +6,50 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("next/dynamic", () => ({
-  default: () => () => null,
-}))
-
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }))
 
-const { routerPushMock, routerPrefetchMock } = vi.hoisted(() => ({
-  routerPrefetchMock: vi.fn(),
-  routerPushMock: vi.fn(),
-}))
+const { routerPushMock, routerPrefetchMock, shareModalProps, watchPlayer } =
+  vi.hoisted(() => ({
+    routerPrefetchMock: vi.fn(),
+    routerPushMock: vi.fn(),
+    shareModalProps: [] as Array<{
+      currentLanguageSlug: string
+      onClose: () => void
+      open: boolean
+      videoSlug: string
+    }>,
+    watchPlayer: {
+      paused: false,
+      pause: vi.fn(),
+      play: vi.fn(() => Promise.resolve()),
+    },
+  }))
+
+vi.mock("next/dynamic", () => {
+  let modalIndex = 0
+
+  return {
+    default: () => {
+      const index = modalIndex++
+      if (index !== 2) return () => null
+
+      return (props: (typeof shareModalProps)[number]) => {
+        shareModalProps.push(props)
+        return props.open ? (
+          <button
+            type="button"
+            data-testid="watch-share-modal"
+            onClick={props.onClose}
+          >
+            Close Share
+          </button>
+        ) : null
+      }
+    },
+  }
+})
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ prefetch: routerPrefetchMock, push: routerPushMock }),
@@ -40,7 +72,9 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     pendingChapter,
     coverBlackoutKey,
     onPlayerActivated,
+    onPlayerReady,
     onChapterNavigateIntent,
+    modalCallbacks,
   }: {
     pendingChapter?: {
       targetVideoDocumentId: string
@@ -49,6 +83,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     } | null
     coverBlackoutKey?: string | null
     onPlayerActivated?: () => void
+    onPlayerReady?: (player: typeof watchPlayer) => void
     onChapterNavigateIntent?: (intent: {
       href: string
       languageSlug: string
@@ -60,6 +95,7 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       posterUrl: string | null
       sourceCarouselIndex?: number | null
     }) => void
+    modalCallbacks: { openShare: () => void }
   }) => (
     <>
       <button
@@ -92,6 +128,20 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       >
         Activate player
       </button>
+      <button
+        type="button"
+        data-testid="set-watch-player"
+        onClick={() => onPlayerReady?.(watchPlayer)}
+      >
+        Set player
+      </button>
+      <button
+        type="button"
+        data-testid="open-share"
+        onClick={modalCallbacks.openShare}
+      >
+        Share
+      </button>
     </>
   ),
 }))
@@ -112,6 +162,9 @@ let root: Root
 beforeEach(() => {
   routerPushMock.mockClear()
   routerPrefetchMock.mockClear()
+  shareModalProps.length = 0
+  watchPlayer.pause.mockClear()
+  watchPlayer.play.mockClear()
   Object.defineProperty(window, "fetch", {
     configurable: true,
     value: vi.fn(async () => ({
@@ -371,5 +424,42 @@ describe("WatchPageClient chapter navigation", () => {
         scroll: false,
       },
     )
+  })
+
+  it("opens Share through the page modal and restores active playback", () => {
+    renderWatchPage()
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="set-watch-player"]',
+        ) as HTMLButtonElement
+      ).click()
+      ;(
+        container.querySelector(
+          '[data-testid="open-share"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    const page = container.querySelector('[data-testid="watch-page-client"]')
+    expect(page?.getAttribute("data-modal-state")).toBe("share")
+    expect(watchPlayer.pause).toHaveBeenCalledTimes(1)
+    expect(shareModalProps.at(-1)).toMatchObject({
+      currentLanguageSlug: "english",
+      open: true,
+      videoSlug: "current-video",
+    })
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-share-modal"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(page?.getAttribute("data-modal-state")).toBe("none")
+    expect(watchPlayer.play).toHaveBeenCalledTimes(1)
   })
 })

@@ -133,11 +133,7 @@ export default function DiscoverScreen() {
       })
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
-        // source=search tells the Experience screen to render the hero
-        // full-bleed (no native header) with a floating back button.
-        router.push(
-          `/experience/${encodeURIComponent(result.slug)}?source=search`,
-        )
+        router.push(`/experience/${encodeURIComponent(result.slug)}`)
         return
       }
       // Carry seed data forward so the detail screen paints instantly.

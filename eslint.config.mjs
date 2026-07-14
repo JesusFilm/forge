@@ -40,6 +40,21 @@ export default defineConfig(
     },
   },
   {
+    // Keep exhaustive-deps enabled here so it matches apps/chat's own
+    // next/core-web-vitals config — a directive valid in one lint pass
+    // must not be an unknown rule or unused suppression in the other.
+    files: ["apps/chat/**/*.tsx", "apps/chat/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",

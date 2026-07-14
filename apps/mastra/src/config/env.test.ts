@@ -19,6 +19,30 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("refuses boot when a key value appears in BOTH the pool and ai-chat lane CSVs (feat-241, KTD2)", async () => {
+    // Wiring pin: assertMastraRuntimeEnv() itself must invoke the
+    // disjointness assertion with the real env-sourced defaults.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a,shared-overlap-key")
+    vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "shared-overlap-key,lane-b")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /must not share key values/,
+    )
+  })
+
+  it("boots clean with disjoint pool and ai-chat lane CSVs", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a")
+    vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "lane-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
   it("requires service keys in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
@@ -96,6 +120,82 @@ describe("Mastra env", () => {
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("defaults Firecrawl config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-key")
+    vi.stubEnv("FIRECRAWL_API_URL", "")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "")
+
+    const { getFirecrawlConfig } = await import("./env")
+
+    expect(getFirecrawlConfig()).toEqual({
+      apiKey: "fc-test-key",
+      apiUrl: "https://api.firecrawl.dev",
+      timeoutMs: 60_000,
+      userAgent: "forge-mastra-firecrawl/1.0",
+      maxSearchResults: 5,
+      maxMarkdownCharacters: 16_000,
+    })
+  })
+
+  it("requires Firecrawl credentials in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+
+    const { assertMastraRuntimeEnv, getFirecrawlConfig } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_KEY required for Mastra production",
+    )
+    expect(getFirecrawlConfig().apiKey).toBeUndefined()
+  })
+
+  it("defaults YouTube config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "yt-test-key")
+    vi.stubEnv("YOUTUBE_API_BASE_URL", "")
+    vi.stubEnv("YOUTUBE_SEARCH_TIMEOUT_MS", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig()).toEqual({
+      apiKey: "yt-test-key",
+      baseUrl: "https://www.googleapis.com/youtube/v3",
+      timeoutMs: 30_000,
+    })
+  })
+
+  it("leaves the YouTube API key undefined when unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig().apiKey).toBeUndefined()
   })
 
   it("defaults storage to the local gateway database in development", async () => {
@@ -623,6 +723,105 @@ describe("Mastra env", () => {
     vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
   }
+
+  it.each([
+    {
+      name: "all settings are absent",
+      ingestUrl: "",
+      sourcesUrl: "",
+      token: "",
+    },
+    {
+      name: "only the review-queue URL is set",
+      ingestUrl: "https://site.internal/api/review-queue",
+      sourcesUrl: "",
+      token: "",
+    },
+    {
+      name: "only the saved-sources URL is set",
+      ingestUrl: "",
+      sourcesUrl: "https://site.internal/api/discovery-sources",
+      token: "",
+    },
+    {
+      name: "only the shared bearer is set",
+      ingestUrl: "",
+      sourcesUrl: "",
+      token: "discovery-token",
+    },
+  ])(
+    "boots production when $name",
+    async ({ ingestUrl, sourcesUrl, token }) => {
+      stubProductionBaseline()
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", ingestUrl)
+      vi.stubEnv("DISCOVERY_SOURCES_URL", sourcesUrl)
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", token)
+
+      const {
+        assertMastraRuntimeEnv,
+        getDiscoverySiteIngestConfig,
+        getDiscoverySourcesConfig,
+      } = await import("./env")
+
+      expect(() => assertMastraRuntimeEnv()).not.toThrow()
+      expect(getDiscoverySiteIngestConfig()).toBeNull()
+      expect(getDiscoverySourcesConfig()).toBeNull()
+    },
+  )
+
+  it.each([
+    {
+      name: "only the review-queue endpoint is active",
+      ingestUrl: "https://site.internal/api/review-queue",
+      sourcesUrl: "",
+      expectedIngest: {
+        url: "https://site.internal/api/review-queue",
+        token: "discovery-token",
+      },
+      expectedSources: null,
+    },
+    {
+      name: "only the saved-sources endpoint is active",
+      ingestUrl: "",
+      sourcesUrl: "https://site.internal/api/discovery-sources",
+      expectedIngest: null,
+      expectedSources: {
+        url: "https://site.internal/api/discovery-sources",
+        token: "discovery-token",
+      },
+    },
+    {
+      name: "endpoint syntax is invalid",
+      ingestUrl: "not a URL",
+      sourcesUrl: "http://site.internal/api/discovery-sources",
+      expectedIngest: {
+        url: "not a URL",
+        token: "discovery-token",
+      },
+      expectedSources: {
+        url: "http://site.internal/api/discovery-sources",
+        token: "discovery-token",
+      },
+    },
+  ])(
+    "boots production without a host allowlist when $name",
+    async ({ ingestUrl, sourcesUrl, expectedIngest, expectedSources }) => {
+      stubProductionBaseline()
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", ingestUrl)
+      vi.stubEnv("DISCOVERY_SOURCES_URL", sourcesUrl)
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+
+      const {
+        assertMastraRuntimeEnv,
+        getDiscoverySiteIngestConfig,
+        getDiscoverySourcesConfig,
+      } = await import("./env")
+
+      expect(() => assertMastraRuntimeEnv()).not.toThrow()
+      expect(getDiscoverySiteIngestConfig()).toEqual(expectedIngest)
+      expect(getDiscoverySourcesConfig()).toEqual(expectedSources)
+    },
+  )
 
   it("imports cleanly with all RAG vars unset (no boot failure)", async () => {
     vi.stubEnv("NODE_ENV", "development")

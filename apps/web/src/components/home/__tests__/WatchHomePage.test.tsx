@@ -336,6 +336,9 @@ describe("WatchHomePage", () => {
         ?.textContent,
     ).toContain("Watch Now")
     expect(
+      container.querySelector('[data-testid="watch-home-share-button"]'),
+    ).toBeNull()
+    expect(
       container.querySelector('[data-testid="watch-home-card-text-gradient"]'),
     ).not.toBeNull()
     act(() => {
@@ -737,6 +740,9 @@ describe("WatchHomePage", () => {
       'a[href="https://example.com/join"]',
     )
     expect(primaryCta?.textContent).toContain("Join Us")
+    expect(
+      container.querySelector('[data-testid="watch-home-share-button"]'),
+    ).toBeNull()
     const shortFilmButton = Array.from(
       container.querySelectorAll("button"),
     ).find((button) => button.textContent?.includes("Watch Short Film"))
