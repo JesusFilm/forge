@@ -81,12 +81,29 @@ afterEach(() => {
 })
 
 describe("FeedbackLauncher", () => {
-  it("renders a 44px global launcher without mounting the modal or Google iframe", () => {
+  it("renders a 44px icon launcher that reveals a red feedback label on hover or focus", () => {
     const button = launcher()
+    const label = document.querySelector(
+      '[data-testid="feedback-launcher-label"]',
+    )
     expect(button).not.toBeNull()
     expect(button?.getAttribute("aria-label")).toBe("Open feedback form")
-    expect(button?.className).toContain("min-h-11")
-    expect(button?.className).toContain("min-w-11")
+    expect(button?.querySelector(".lucide-clipboard-pen-line")).not.toBeNull()
+    expect(button?.className).toContain("h-11")
+    expect(button?.className).toContain("w-11")
+    expect(button?.className).toContain("overflow-hidden")
+    expect(button?.className).toContain("hover:w-32")
+    expect(button?.className).toContain("focus-visible:w-32")
+    expect(button?.className).toContain("hover:bg-brand-red")
+    expect(button?.className).toContain("focus-visible:bg-brand-red")
+    expect(label?.textContent).toBe("Feedback")
+    expect(label?.getAttribute("aria-hidden")).not.toBeNull()
+    expect(label?.className).toContain("ml-2")
+    expect(label?.className).toContain("shrink-0")
+    expect(label?.className).toContain("opacity-0")
+    expect(label?.className).toContain("transition-[opacity,transform]")
+    expect(label?.className).toContain("group-hover:opacity-100")
+    expect(label?.className).toContain("group-focus-visible:opacity-100")
     expect(button?.className).toContain(
       "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]",
     )

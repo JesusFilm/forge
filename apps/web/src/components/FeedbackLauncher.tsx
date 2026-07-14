@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic, { type DynamicOptionsLoadingProps } from "next/dynamic"
-import { ExternalLink, Loader2, MessageSquareText } from "lucide-react"
+import { ClipboardPenLine, ExternalLink, Loader2 } from "lucide-react"
 import {
   createContext,
   useCallback,
@@ -130,10 +130,16 @@ export function FeedbackLauncher() {
           disabled={open && !modalReady}
           data-testid="feedback-launcher"
           onClick={openFeedback}
-          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/15 bg-stone-950/90 px-3 py-3 text-sm font-semibold text-stone-100 shadow-2xl backdrop-blur-md transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none sm:px-4"
+          className="group fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] inline-flex h-11 w-11 cursor-pointer items-center justify-start overflow-hidden rounded-full border border-white/15 bg-stone-950/90 p-3 text-sm font-semibold text-stone-100 shadow-2xl backdrop-blur-md transition-[width,background-color,border-color,color] duration-200 ease-out hover:w-32 hover:border-brand-red/60 hover:bg-brand-red hover:text-white focus-visible:w-32 focus-visible:border-brand-red/60 focus-visible:bg-brand-red focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
         >
-          <MessageSquareText aria-hidden className="size-5 shrink-0" />
-          <span className="sr-only sm:not-sr-only">Feedback</span>
+          <ClipboardPenLine aria-hidden className="size-5 shrink-0" />
+          <span
+            aria-hidden
+            data-testid="feedback-launcher-label"
+            className="ml-2 shrink-0 translate-x-1 whitespace-nowrap opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
+          >
+            Feedback
+          </span>
         </button>
       ) : null}
 

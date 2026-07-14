@@ -46,7 +46,9 @@ embedded presentation for it.
 ## What To Build
 
 1. Add a lightweight bottom-left `FeedbackLauncher` to both web root layouts
-   inside `FloatingSearchProvider`.
+   inside `FloatingSearchProvider`. Keep it icon-only at rest, use a
+   clipboard-and-pencil form metaphor, and reveal the `Feedback` label with a
+   red treatment on hover or keyboard focus.
 2. Dynamically load `FeedbackModal` only after first user intent and keep an
    immediate accessible loading state in the launcher.
 3. Embed the public Beta Feedback form at
@@ -76,8 +78,8 @@ embedded presentation for it.
 ## Verification
 
 - Focused Vitest coverage for intent-only mounting, the exact iframe contract,
-  loading state, close paths, focus behavior, fallback link, and search mutual
-  exclusion.
+  launcher hover/focus presentation, loading state, close paths, focus
+  behavior, fallback link, and search mutual exclusion.
 - Web lint, typecheck, format check, and production build.
 - Desktop and mobile browser smoke on both localized and remaining demo route
   families, with screenshots.
