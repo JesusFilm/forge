@@ -53,7 +53,7 @@ const INACTIVITY_RESUME_MS = 6_000
 const PRIMARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] hover:scale-[1.035] hover:bg-brand-red/90 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none"
 const STEP_ACTION_CLASS =
-  "group relative flex min-w-0 cursor-pointer flex-col items-start overflow-hidden rounded-xl px-2 pt-4 pb-2 text-left text-white transition-[background-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:px-3 sm:pt-5 sm:pb-3 motion-reduce:transition-none"
+  "group relative flex min-h-20 w-full min-w-0 cursor-pointer flex-row items-center gap-3 overflow-hidden rounded-xl border px-3 pt-4 pb-3 text-left text-white transition-[background-color,border-color,opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transition-none"
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -81,6 +81,7 @@ export function WatchEndReflection({
   const tStudyQuestions = useTranslations("WatchStudyQuestions")
   const tQuestionPanel = useTranslations("WatchQuestionPanel")
   const surfaceRef = useRef<HTMLDivElement>(null)
+  const chapterListRef = useRef<HTMLOListElement>(null)
   const cleanedPrompts = prompts.filter((prompt) => prompt.trim().length > 0)
   const reflectionPrompts = (
     cleanedPrompts.length > 0
@@ -229,6 +230,18 @@ export function WatchEndReflection({
   ])
 
   useEffect(() => {
+    if (!open) return
+    const activeChapter = chapterListRef.current?.querySelector<HTMLElement>(
+      '[data-highlighted="true"]',
+    )
+    activeChapter?.scrollIntoView?.({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "nearest",
+      inline: "center",
+    })
+  }, [activeIndex, open, reducedMotion])
+
+  useEffect(() => {
     if (!open || reducedMotion || isGuiding || interactionVersion === 0) return
     const timeout = window.setTimeout(() => {
       setIsGuiding(true)
@@ -325,10 +338,19 @@ export function WatchEndReflection({
           </button>
         </div>
 
-        <nav aria-label={t("nextStepsTitle")} className="mt-4 min-w-0 sm:mt-6">
-          <ol className="grid grid-cols-7 gap-1 sm:gap-1.5">
+        <nav
+          aria-label={t("nextStepsTitle")}
+          className="-mx-4 mt-4 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-color:rgba(255,255,255,0.22)_transparent] [scrollbar-width:thin] sm:-mx-8 sm:mt-6 sm:px-8 lg:-mx-12 lg:px-12"
+        >
+          <ol
+            ref={chapterListRef}
+            className="flex w-max min-w-full snap-x snap-mandatory gap-2"
+          >
             {actions.map((action, index) => (
-              <li key={action.id} className="min-w-0">
+              <li
+                key={action.id}
+                className="w-[9.5rem] shrink-0 snap-start sm:w-[10.5rem] xl:min-w-[9.5rem] xl:flex-1"
+              >
                 <ChapterButton
                   action={action}
                   index={index}
@@ -410,13 +432,13 @@ function ChapterButton({
       data-final-action={action.id === "next" ? "true" : "false"}
       className={`${STEP_ACTION_CLASS} ${
         active
-          ? "scale-[1.02] bg-white/[0.12] opacity-100"
-          : "bg-transparent opacity-55 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:opacity-100"
+          ? "scale-[1.02] border-white/25 bg-white/[0.12] opacity-100"
+          : "border-white/[0.07] bg-white/[0.035] opacity-75 hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.07] hover:opacity-100"
       }`}
     >
       <span
         aria-hidden="true"
-        className="absolute inset-x-1 top-0 h-1 overflow-hidden rounded-full bg-white/15 sm:inset-x-2"
+        className="absolute inset-x-2 top-0 h-1 overflow-hidden rounded-full bg-white/15"
       >
         <span
           key={`${action.id}-${active}-${guiding}`}
@@ -440,7 +462,7 @@ function ChapterButton({
       >
         {action.icon}
       </span>
-      <span className="mt-1 min-w-0 w-full md:mt-2">
+      <span className="min-w-0 flex-1">
         <span
           className={`block text-[9px] font-semibold tracking-[0.12em] uppercase sm:text-[10px] ${
             active ? "text-white/70" : "text-white/35"
@@ -449,7 +471,7 @@ function ChapterButton({
           {String(index + 1).padStart(2, "0")}
         </span>
         <span
-          className={`mt-0.5 line-clamp-3 min-h-[3.3em] text-[8px] leading-[1.1] font-semibold text-balance sm:text-[10px] md:line-clamp-2 md:min-h-[2.2em] md:text-[11px] lg:text-xs ${
+          className={`mt-0.5 line-clamp-2 min-h-[2.2em] text-[11px] leading-[1.1] font-semibold text-balance lg:text-xs ${
             active ? "text-white" : "text-white/80"
           }`}
         >
