@@ -3,7 +3,7 @@ id: "feat-250"
 title: "Migrate /forge-seeker onto the dedicated ai-chat lane service key"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-03"
 duration: 1
 depends_on:
@@ -13,6 +13,16 @@ tags:
   - "web"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-14 via [PR #1554](https://github.com/JesusFilm/forge/pull/1554) (`feat(chat,mastra): migrate /forge-seeker onto the dedicated ai-chat lane service key (feat-250)`).
+
+**What landed.** A hard cutover rather than the stub's dual-accept rotation (owner decision, recorded under Decision context): `/forge-seeker` validates only the `AI_CHAT_SERVICE_API_KEYS` lane CSV, chat presents `AI_CHAT_MASTRA_API_KEY` as its single Mastra bearer, and `SEEKER_MASTRA_API_KEY` was removed from chat's env schema entirely — no rotation flag or fallback shipped, so no removal ticket is owed. `seeker-route-isolation.test.ts` pins the registration wiring (lane binding present, pool binding banned) because the handler tests inject key lists and would not catch a revert. The minutes-long deploy-skew 401 window (`auth_failed`) is accepted; rollback and disjointness-trap notes live in Operator follow-through below.
+
+**Residual risk / follow-ups.** Operator follow-through steps below remain (post-deploy verification, deleting the now-unread `SEEKER_MASTRA_API_KEY` from chat's Railway env, lane-key handoff to any out-of-repo `/forge-seeker` caller — none found in-repo).
+
+**Unblocked.** None (`blocks: []`).
 
 ## Problem
 
