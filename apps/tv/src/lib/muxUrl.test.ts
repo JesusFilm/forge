@@ -1,4 +1,5 @@
 import {
+  EXPERIENCE_CARD_PREVIEW_OPTS,
   extractMuxPlaybackId,
   getMuxAnimatedPreviewUrl,
   muxHlsUrlFromPlaybackId,
@@ -83,6 +84,17 @@ describe("getMuxAnimatedPreviewUrl", () => {
     expect(getMuxAnimatedPreviewUrl("x3XKV1Yi01z-dyF_8ZLBM")).toBe(
       "https://image.mux.com/x3XKV1Yi01z-dyF_8ZLBM/animated.webp?start=2&end=6&width=448&fps=8",
     )
+  })
+
+  it("builds the experience-card HD preview (Mux max 640/30, cold ~5s)", () => {
+    // 640 is Mux's animated-width ceiling (1280 → HTTP 400 "Invalid width");
+    // the warm default stays 448/8 so rail cards remain instant.
+    expect(
+      getMuxAnimatedPreviewUrl("abc123XYZ", EXPERIENCE_CARD_PREVIEW_OPTS),
+    ).toBe(
+      "https://image.mux.com/abc123XYZ/animated.webp?start=2&end=6&width=640&fps=30",
+    )
+    expect(EXPERIENCE_CARD_PREVIEW_OPTS).toEqual({ width: 640, fps: 30 })
   })
 
   it("applies opts overrides (spike/test seam) without touching other params", () => {

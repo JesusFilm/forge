@@ -4,6 +4,7 @@
 import { useQuery } from "@apollo/client/react"
 import React, {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -30,6 +31,12 @@ import {
   type NormalizedBlock,
 } from "../lib/normalizer"
 import { GET_WATCH_EXPERIENCE } from "../lib/queries"
+import { GET_WATCH_HOME_VIDEOS } from "../lib/watchHome/homeQueries"
+import {
+  buildVideoByCoreId,
+  collectMediaCollectionCoreIds,
+} from "../lib/experienceHydration"
+import { reportDatadogError } from "../lib/datadog"
 import { scale } from "../lib/scale"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
@@ -65,6 +72,42 @@ export function ExperienceRenderer({ slug, header }: Props) {
     if (!rawExperience) return null
     return normalizeExperience(rawExperience)
   }, [rawExperience])
+
+  // MediaCollection cards carry no usable title/image, so hydrate them by coreId
+  // through the same query the Home rail uses. Skipped until the experience (and
+  // thus its coreIds) resolves; the map defaults empty so cards never wait on it.
+  const coreIds = useMemo(
+    () => collectMediaCollectionCoreIds(experience?.sections),
+    [experience],
+  )
+  const { data: hydrationData, error: hydrationError } = useQuery(
+    GET_WATCH_HOME_VIDEOS,
+    {
+      variables: { coreIds, locale: "en", languageSlug: null },
+      skip: coreIds.length === 0,
+    },
+  )
+  const videoByCoreId = useMemo(
+    () => buildVideoByCoreId(hydrationData?.watchHomeVideos),
+    [hydrationData],
+  )
+
+  // Never-silent: a hydration failure degrades every MediaCollection card to its
+  // authored fallback ("Untitled" / gradient), so surface it instead of hiding it.
+  useEffect(() => {
+    if (!hydrationError) return
+    if (__DEV__) {
+      console.warn(
+        "[experience] MediaCollection hydration failed",
+        hydrationError,
+      )
+    }
+    reportDatadogError(hydrationError, {
+      event: "experience_hydration_failed",
+      slug,
+      coreIds: coreIds.length,
+    })
+  }, [hydrationError, slug, coreIds.length])
 
   const errorMessage = error?.message ?? null
 
@@ -210,6 +253,7 @@ export function ExperienceRenderer({ slug, header }: Props) {
       error={errorMessage}
       scrollToSection={scrollToSection}
       registerNestedLayout={handleNestedLayout}
+      videoByCoreId={videoByCoreId}
       refetch={handleRefetch}
     >
       <HeroVisibilityProvider value={heroOnScreen}>

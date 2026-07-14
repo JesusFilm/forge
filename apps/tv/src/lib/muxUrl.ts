@@ -19,10 +19,9 @@ export function muxHlsUrlFromPlaybackId(
   return `https://stream.mux.com/${playbackId}.m3u8`
 }
 
-// Animated hover-preview still. SYNC: apps/web resolveMuxAnimatedPreviewUrl —
-// same shape AND params (448/8). Mux transcodes animated.webp on-demand per
-// (id, params) then CDN-caches; matching web rides its warm cache = instant
-// (a TV-specific size is a novel combo = ~4.5s cold transcode on every card).
+// Animated hover-preview. SYNC: apps/web resolveMuxAnimatedPreviewUrl — same
+// params (448/8). Mux transcodes animated.webp per (id, params) then CDN-caches;
+// matching web rides its warm cache = instant (a novel size = ~4.5s cold).
 export type MuxAnimatedPreviewOpts = {
   start?: number
   end?: number
@@ -37,10 +36,18 @@ const ANIMATED_PREVIEW_DEFAULTS: Required<MuxAnimatedPreviewOpts> = {
   fps: 8,
 }
 
+// Max-quality preview for the large experience-details card (rail thumbs keep the
+// warm 448/8). 640 is Mux's animated ceiling; a novel combo costs ~5s cold
+// transcode on first hover, then CDN-cached.
+export const EXPERIENCE_CARD_PREVIEW_OPTS: MuxAnimatedPreviewOpts = {
+  width: 640,
+  fps: 30,
+}
+
 /**
  * Mux animated hover-preview URL (looping webp) from a playback ID, or null if
- * missing/unsafe. Same host-injection guard as the HLS builder above; opts is a
- * test/spike seam so production callers pass only the id.
+ * missing/unsafe. Same host-injection guard as the HLS builder above; opts
+ * overrides the warm default (e.g. EXPERIENCE_CARD_PREVIEW_OPTS).
  */
 export function getMuxAnimatedPreviewUrl(
   playbackId: string | null | undefined,

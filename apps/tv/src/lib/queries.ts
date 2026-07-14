@@ -136,8 +136,10 @@ export const MediaCollectionFragment = graphql(`
       labelOverride
       collectionSize
       imageUrl
+      imageOverrideUrl
       linkToSectionKey
       videoId
+      coreId
     }
   }
 `)

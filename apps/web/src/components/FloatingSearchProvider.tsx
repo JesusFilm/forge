@@ -104,23 +104,32 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScrollYRef = useRef(0)
 
-  const setOpen = useCallback((next: boolean) => {
-    if (closingTimerRef.current) {
-      clearTimeout(closingTimerRef.current)
-      closingTimerRef.current = null
-    }
-    if (next) {
-      setClosing(false)
-      setOpenState(true)
-    } else {
-      setClosing(true)
-      closingTimerRef.current = setTimeout(() => {
-        setOpenState(false)
-        setClosing(false)
-        closingTimerRef.current = null
-      }, 200)
-    }
+  const resetSearch = useCallback(() => {
+    setQuery("")
+    setSearchResetToken((token) => token + 1)
   }, [])
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (closingTimerRef.current) {
+        clearTimeout(closingTimerRef.current)
+        closingTimerRef.current = null
+      }
+      if (next) {
+        setClosing(false)
+        setOpenState(true)
+      } else {
+        resetSearch()
+        setClosing(true)
+        closingTimerRef.current = setTimeout(() => {
+          setOpenState(false)
+          setClosing(false)
+          closingTimerRef.current = null
+        }, 200)
+      }
+    },
+    [resetSearch],
+  )
 
   useEffect(() => {
     return () => {
@@ -462,10 +471,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           href={"/" as Route}
           aria-label={t("home")}
           data-testid="floating-header-logo"
-          onClick={() => {
-            setQuery("")
-            setSearchResetToken((token) => token + 1)
-          }}
+          onClick={resetSearch}
           className={`pointer-events-auto flex ${FLOATING_HEADER_LOGO_SLOT_CLASS} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
         >
           <Image

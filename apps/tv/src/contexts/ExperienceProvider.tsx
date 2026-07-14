@@ -1,7 +1,9 @@
-// SYNC: keep in sync with apps/mobile/src/contexts/ExperienceProvider.tsx
+// SYNC: block-indexing/scroll surface stays in sync with apps/mobile's provider;
+// `videoByCoreId` is a deliberate TV-only field (see experienceHydration.ts), not drift.
 
 import { createContext, useContext, useMemo, type ReactNode } from "react"
 import type { NormalizedBlock, NormalizedExperience } from "../lib/normalizer"
+import type { HydratedVideo } from "../lib/experienceHydration"
 
 type ExperienceContextValue = {
   experience: NormalizedExperience | null
@@ -15,8 +17,13 @@ type ExperienceContextValue = {
     parentIndex: number,
     absoluteY: number,
   ) => void
+  /** coreId → video hydrated via GET_WATCH_HOME_VIDEOS (MediaCollection cards). */
+  videoByCoreId: Map<string, HydratedVideo>
   refetch: () => void
 }
+
+// Stable empty default so the prop fallback never churns the useMemo identity.
+const EMPTY_VIDEO_MAP: Map<string, HydratedVideo> = new Map()
 
 const ExperienceContext = createContext<ExperienceContextValue>({
   experience: null,
@@ -24,6 +31,7 @@ const ExperienceContext = createContext<ExperienceContextValue>({
   error: null,
   scrollToSection: () => {},
   registerNestedLayout: () => {},
+  videoByCoreId: EMPTY_VIDEO_MAP,
   refetch: () => {},
 })
 
@@ -34,6 +42,7 @@ export function ExperienceProvider({
   error,
   scrollToSection = () => {},
   registerNestedLayout = () => {},
+  videoByCoreId = EMPTY_VIDEO_MAP,
   refetch,
 }: {
   children: ReactNode
@@ -46,6 +55,7 @@ export function ExperienceProvider({
     parentIndex: number,
     absoluteY: number,
   ) => void
+  videoByCoreId?: Map<string, HydratedVideo>
   refetch: () => void
 }) {
   const contextValue = useMemo(
@@ -55,6 +65,7 @@ export function ExperienceProvider({
       error,
       scrollToSection,
       registerNestedLayout,
+      videoByCoreId,
       refetch,
     }),
     [
@@ -63,6 +74,7 @@ export function ExperienceProvider({
       error,
       scrollToSection,
       registerNestedLayout,
+      videoByCoreId,
       refetch,
     ],
   )
