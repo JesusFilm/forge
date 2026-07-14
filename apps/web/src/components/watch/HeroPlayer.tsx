@@ -70,7 +70,7 @@ import {
   type DownloadResolutionLabel,
 } from "./download-options"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
-import { ChromeVolumeIcon, MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
+import { AudioLanguagesIcon, MutedSpeakerIcon, PlayIcon } from "./chrome-icons"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "./watch-section-styles"
 
@@ -1909,7 +1909,7 @@ export function HeroPlayer({
                             onClick={onLanguageClick}
                             className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer uppercase transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
-                            <ChromeVolumeIcon />
+                            <AudioLanguagesIcon />
                             <span>{languageCountLabel}</span>
                           </button>
                         ) : (
@@ -1917,7 +1917,7 @@ export function HeroPlayer({
                             data-testid="hero-player-language-tag"
                             className={`${HERO_LANGUAGE_TAG_CLASS} uppercase`}
                           >
-                            <ChromeVolumeIcon />
+                            <AudioLanguagesIcon />
                             <span>{languageCountLabel}</span>
                           </span>
                         )

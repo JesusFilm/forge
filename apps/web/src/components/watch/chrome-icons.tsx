@@ -36,6 +36,27 @@ export function ChromeVolumeIcon() {
   )
 }
 
+export function AudioLanguagesIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width={22}
+      height={22}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+    >
+      <line x1="3" y1="10" x2="3" y2="14" />
+      <line x1="7.5" y1="6" x2="7.5" y2="18" />
+      <line x1="12" y1="3" x2="12" y2="21" />
+      <line x1="16.5" y1="6" x2="16.5" y2="18" />
+      <line x1="21" y1="10" x2="21" y2="14" />
+    </svg>
+  )
+}
+
 export function ChromeMutedIcon() {
   return (
     <ChromeGlyph path="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z" />
