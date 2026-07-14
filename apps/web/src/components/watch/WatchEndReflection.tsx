@@ -582,41 +582,77 @@ function AskChapter({
   return (
     <div
       data-testid="watch-end-reflection-ask-panel"
-      className="mt-6 max-w-2xl animate-watch-story-action motion-reduce:animate-none"
+      className="mt-6 w-full max-w-2xl animate-watch-story-action motion-reduce:animate-none"
     >
-      <div className="flex flex-wrap gap-2">
-        {prompts.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            data-testid="watch-end-reflection-suggested-question"
-            onClick={() => onQuestionChange(prompt)}
-            className="cursor-pointer rounded-full border border-white/14 bg-white/[0.05] px-3.5 py-2 text-left text-xs leading-snug text-white/72 transition hover:border-white/30 hover:bg-white/[0.1] hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm"
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
-      <label className="mt-4 block text-sm font-semibold text-white/65">
-        <span>{fieldLabel}</span>
-        <textarea
-          value={customQuestion}
-          onChange={(event) => onQuestionChange(event.target.value)}
-          rows={2}
-          data-testid="watch-end-reflection-question-input"
-          className="mt-2 block min-h-20 w-full resize-y rounded-xl border border-white/15 bg-white/[0.07] px-4 py-3 text-base leading-relaxed text-white placeholder:text-white/35 focus:border-brand-red/80 focus:ring-2 focus:ring-brand-red/30 focus:outline-none"
-        />
-      </label>
-      <a
-        href={action.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-testid="watch-end-reflection-ask-submit"
-        className={`${PRIMARY_ACTION_CLASS} mt-4`}
+      <div
+        role="region"
+        aria-label={action.label}
+        data-testid="watch-end-reflection-chat"
+        className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
       >
-        <SendHorizontal aria-hidden className="size-4" />
-        {action.label}
-      </a>
+        <div className="space-y-4 px-3.5 py-4 sm:px-5 sm:py-5">
+          <div className="flex max-w-[90%] items-end gap-2.5 sm:max-w-[78%]">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
+              {action.icon}
+            </span>
+            <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
+              <p>{action.detail}</p>
+              <p className="mt-1.5 text-xs text-white/50 sm:text-sm">
+                {fieldLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="ml-auto flex max-w-[92%] flex-col items-end gap-2 sm:max-w-[78%]">
+            {prompts.map((prompt) => {
+              const selected = customQuestion === prompt
+              return (
+                <button
+                  key={prompt}
+                  type="button"
+                  data-testid="watch-end-reflection-suggested-question"
+                  aria-pressed={selected}
+                  onClick={() => onQuestionChange(prompt)}
+                  className={`cursor-pointer rounded-2xl rounded-br-sm px-4 py-2.5 text-left text-xs leading-snug transition-[background-color,color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm ${
+                    selected
+                      ? "bg-brand-red text-white shadow-lg shadow-brand-red/15"
+                      : "bg-white text-black/80 hover:bg-white/90"
+                  }`}
+                >
+                  {prompt}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
+          <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
+            <label htmlFor="watch-end-reflection-question" className="sr-only">
+              {fieldLabel}
+            </label>
+            <textarea
+              id="watch-end-reflection-question"
+              value={customQuestion}
+              onChange={(event) => onQuestionChange(event.target.value)}
+              rows={1}
+              placeholder={fieldLabel}
+              data-testid="watch-end-reflection-question-input"
+              className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
+            />
+            <a
+              href={action.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={action.label}
+              data-testid="watch-end-reflection-ask-submit"
+              className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-brand-red text-white transition-[background-color,transform] hover:scale-105 hover:bg-brand-red/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+            >
+              <SendHorizontal aria-hidden className="size-4" />
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

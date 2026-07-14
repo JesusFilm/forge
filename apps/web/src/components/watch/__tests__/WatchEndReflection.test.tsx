@@ -165,6 +165,9 @@ describe("WatchEndReflection", () => {
           '[data-testid="watch-end-reflection-question-input"]',
         ),
       ).not.toBeNull()
+      expect(
+        container.querySelector('[data-testid="watch-end-reflection-chat"]'),
+      ).not.toBeNull()
 
       const suggested = container.querySelector(
         '[data-testid="watch-end-reflection-suggested-question"]',
@@ -179,6 +182,7 @@ describe("WatchEndReflection", () => {
           ) as HTMLTextAreaElement
         ).value,
       ).toBe("What did this story show you?")
+      expect(suggested.getAttribute("aria-pressed")).toBe("true")
     } finally {
       vi.useRealTimers()
     }
