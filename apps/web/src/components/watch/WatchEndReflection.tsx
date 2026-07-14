@@ -250,11 +250,11 @@ export function WatchEndReflection({
           firstElement.focus()
         }
       }}
-      className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/90 text-white backdrop-blur-[14px] animate-overlay-fade-in focus:outline-none motion-reduce:animate-none"
+      className="fixed inset-0 z-[60] overflow-hidden bg-black/90 text-white backdrop-blur-[14px] animate-overlay-fade-in focus:outline-none motion-reduce:animate-none"
     >
       <section
         data-testid="watch-end-reflection-content"
-        className="relative mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-8 lg:px-12"
+        className="relative mx-auto flex h-[100dvh] min-h-0 w-full max-w-7xl flex-col overflow-hidden px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-8 lg:px-12"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 pt-1">
@@ -278,7 +278,7 @@ export function WatchEndReflection({
 
         <main
           data-testid="watch-end-reflection-panel"
-          className="mx-auto flex min-h-[32rem] w-full max-w-4xl flex-1 flex-col py-4 sm:py-6"
+          className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col py-3 sm:py-6"
         >
           <ReflectionChat
             actions={actions}
@@ -305,7 +305,7 @@ export function WatchEndReflection({
             resetStory()
             onReplay()
           }}
-          className="min-h-11 w-fit cursor-pointer px-1 text-sm font-semibold text-white/65 underline decoration-white/30 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+          className="min-h-11 w-fit shrink-0 cursor-pointer px-1 text-sm font-semibold text-white/65 underline decoration-white/30 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
         >
           {t("replay")}
         </button>
@@ -646,7 +646,10 @@ function ChatComposer({
         : "watch-end-reflection-prayer-submit"
 
   return (
-    <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
+    <div
+      data-testid="watch-end-reflection-chat-composer"
+      className="relative z-10 shrink-0 border-t border-white/10 bg-[#101010]/95 p-2.5 shadow-[0_-18px_36px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-3"
+    >
       <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
         <label htmlFor={inputId} className="sr-only">
           {label}

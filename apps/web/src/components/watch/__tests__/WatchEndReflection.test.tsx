@@ -166,6 +166,15 @@ describe("WatchEndReflection", () => {
       )?.className,
     ).toContain("overflow-y-auto")
     expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-chat-composer"]',
+      )?.className,
+    ).toContain("shrink-0")
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection-content"]')
+        ?.className,
+    ).toContain("h-[100dvh]")
+    expect(
       (
         container.querySelector(
           '[data-testid="watch-end-reflection-chat-invitation"]',
@@ -514,7 +523,7 @@ describe("WatchEndReflection", () => {
     expect(callbacks.onDismiss).toHaveBeenCalledOnce()
   })
 
-  it("uses a viewport-fixed scroll surface without a decorated parent shell", () => {
+  it("keeps the viewport shell fixed and delegates scrolling to chat messages", () => {
     renderReflection()
 
     const dialog = container.querySelector(
@@ -523,12 +532,16 @@ describe("WatchEndReflection", () => {
     const content = container.querySelector(
       '[data-testid="watch-end-reflection-content"]',
     ) as HTMLElement
+    const messages = container.querySelector(
+      '[data-testid="watch-end-reflection-chat-messages"]',
+    ) as HTMLElement
 
     expect(dialog.className).toContain("fixed")
-    expect(dialog.className).toContain("overflow-y-auto")
-    expect(dialog.className).toContain("overscroll-contain")
-    expect(content.className).toContain("min-h-full")
-    expect(content.className).not.toContain("overflow-hidden")
+    expect(dialog.className).toContain("overflow-hidden")
+    expect(content.className).toContain("h-[100dvh]")
+    expect(content.className).toContain("overflow-hidden")
+    expect(messages.className).toContain("overflow-y-auto")
+    expect(messages.className).toContain("overscroll-contain")
     expect(content.className).not.toContain("rounded-")
     expect(content.className).not.toContain("border")
     expect(content.className).not.toContain("shadow")
