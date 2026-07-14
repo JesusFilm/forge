@@ -15,8 +15,8 @@ from the main DS Year 1 roadmap.
 
 - **Total tickets:** 24
 - ✅ **Complete:** 19
-- 🟡 **In progress:** 0
-- 🔵 **Not started:** 5
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 4
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -46,4 +46,4 @@ from the main DS Year 1 roadmap.
 | [feat-241](feat-241-chat-server-history-sidebar.md)          | Chat server-side conversation history + sidebar hydration                 | jian wei | P2       | 2026-07-20 | 3    | ✅ complete    | [#1552](https://github.com/JesusFilm/forge/pull/1552) |
 | [feat-247](feat-247-chat-history-management.md)              | Chat conversation history management (delete/rename) — stub               | jian wei | P2       | 2026-09-08 | 2    | 🔵 not-started | —                                                     |
 | [feat-248](feat-248-chat-anon-thread-migration.md)           | Anonymous-to-account conversation migration — stub, future consideration  | jian wei | P2       | 2026-09-15 | 3    | 🔵 not-started | —                                                     |
-| [feat-250](feat-250-seeker-route-lane-key-migration.md)      | Migrate /forge-seeker onto the ai-chat lane service key — stub            | jian wei | P2       | 2026-08-03 | 1    | 🔵 not-started | —                                                     |
+| [feat-250](feat-250-seeker-route-lane-key-migration.md)      | Migrate /forge-seeker onto the ai-chat lane service key                   | jian wei | P2       | 2026-08-03 | 1    | 🟡 in-progress | —                                                     |

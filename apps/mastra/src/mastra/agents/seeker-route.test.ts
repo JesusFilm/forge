@@ -1095,3 +1095,30 @@ describe("handleSeekerRouteRequest — title generation (feat-241, KTD12)", () =
     expect(body).not.toContain("event: error")
   })
 })
+
+// --- feat-250: /forge-seeker lane-key bearer -------------------------------
+
+// The route's allowlist is the ai-chat lane CSV only (wired in index.ts via
+// parseServiceApiKeys(env.AI_CHAT_SERVICE_API_KEYS)); these pin the handler's
+// accept/reject behavior for a lane-shaped list.
+describe("lane-key bearer (feat-250)", () => {
+  it("a lane key in the allowlist authorizes the route", async () => {
+    const { mastra } = makeMastra({ chunks: ["ok"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        authHeader: "Bearer lane-key",
+        serviceKeys: ["lane-key"],
+      }),
+    )
+    expect(res.status).toBe(200)
+  })
+
+  it("a shared-pool key is rejected (401) against the lane-only allowlist", async () => {
+    const { mastra } = makeMastra()
+    const res = await handleSeekerRouteRequest(
+      // AUTH presents the pool-style key; the lane-only allowlist rejects it.
+      baseInput(mastra, { serviceKeys: ["lane-key"] }),
+    )
+    expect(res.status).toBe(401)
+  })
+})

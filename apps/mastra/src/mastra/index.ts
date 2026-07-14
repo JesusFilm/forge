@@ -125,6 +125,9 @@ import { startAiChatRetentionPurge } from "./ai-chat-retention"
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+// /forge-seeker accepts ONLY the ai-chat lane CSV (feat-250); every other
+// /forge-* route stays on the pool. Unset lane CSV = fail closed (all 401).
+const seekerServiceKeys = parseServiceApiKeys(env.AI_CHAT_SERVICE_API_KEYS)
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -386,7 +389,7 @@ export const mastra = new Mastra({
         handler: async (c) =>
           handleSeekerRouteRequest({
             authHeader: c.req.header("authorization"),
-            serviceKeys,
+            serviceKeys: seekerServiceKeys,
             readJson: () => c.req.json(),
             getMastra: () => mastra as unknown as SeekerRouteMastra,
             requestSignal: c.req.raw.signal,
