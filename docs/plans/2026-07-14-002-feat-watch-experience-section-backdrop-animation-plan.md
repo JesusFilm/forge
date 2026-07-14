@@ -1,7 +1,7 @@
 ---
 title: "feat: Animate Watch experience section backdrops"
 type: "feat"
-status: active
+status: complete
 date: 2026-07-14
 roadmap: docs/roadmap/platform/feat-253-watch-experience-section-backdrop-animation.md
 ---
@@ -34,7 +34,7 @@ Series episode grids use a 28-second Ken Burns-style background animation that k
 
 - KTD1. Generalize the existing series-specific CSS utility and keyframe name into a shared Watch backdrop motion utility, then update the series grid and experience renderer to consume that single definition.
 - KTD2. Keep crossfade animation on the outer `MediaCollection` layer and pan-and-zoom animation on a nested visual layer. Both effects set the CSS `animation` property, so putting them on one element would cause one to replace the other.
-- KTD3. Keep the experience section's existing single blurred image, tint, and overlay composition. The request reuses the motion treatment, not the series grid's full three-layer visual stack.
+- KTD3. Keep one resolved experience artwork source and the existing tint/overlay composition, painting that source once as the stationary full-canvas backdrop and once as the lower-opacity animated atmosphere. This avoids the series grid's full three-layer stack while ensuring the wide transform never exposes the section base color.
 - KTD4. Keep image URLs on a non-animated child so background swaps do not reset the shared motion timeline through a `background-image` mutation on the animated element.
 
 ## Assumptions

@@ -3,7 +3,7 @@ id: "feat-253"
 title: "Watch experience section backdrop animation"
 owner: "codex"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-14"
 duration: 1
 depends_on: []
@@ -37,8 +37,8 @@ static and feels inconsistent with the equivalent series grid treatment.
 
 ## Grep These
 
-- `series-backdrop-pan-zoom`
-- `animate-series-backdrop-pan-zoom`
+- `watch-backdrop-pan-zoom`
+- `animate-watch-backdrop-pan-zoom`
 - `media-collection-default-backdrop`
 - `media-collection-hover-backdrop`
 - `watch-home-section-backdrop-enter`
@@ -70,3 +70,33 @@ static and feels inconsistent with the equivalent series grid treatment.
 - Browser smoke a representative Experience media-collection section at narrow
   and desktop widths in normal and reduced-motion modes, with screenshots and
   clean console/network inspection.
+
+## Completion Notes
+
+- Generalized the series-only keyframe/utility into the shared
+  `watch-backdrop-pan-zoom` / `animate-watch-backdrop-pan-zoom` contract while
+  preserving its 28-second transform sequence on both series backdrop stacks.
+- Experience `MediaCollection` backdrops now keep a stationary full-canvas
+  artwork layer beneath a lower-opacity animated layer. Crossfade state remains
+  on the outer wrapper, and reduced motion hides the ambient layer while the
+  stationary artwork remains painted.
+- Added default, hover/focus, overlapping enter/exit, leave-and-settle, no-image,
+  and shared-series-consumer regression coverage. Focused suites pass with 27
+  tests; Web typecheck and lint pass.
+- Browser proof on `http://127.0.0.1:3000/watch` rendered eight experience media
+  sections at 1440x900 and 390x844. Normal mode computed
+  `watch-backdrop-pan-zoom 28s infinite`; reduced-motion mode computed no motion
+  or crossfade animation while focus still changed artwork; each stationary
+  layer covered its section at both widths.
+- Rapid card changes retained entering and exiting layers together with a
+  continuously painted base. Each stationary/moving pair reused the same inline
+  source, producing zero data-URI network requests and no added animation
+  library. A warm local navigation completed `loadEventEnd` in 557 ms.
+- The original local LUMO route retained the shared 28-second animation on both
+  series stacks. Browser page errors were empty; the only console warning was a
+  pre-existing Watch hero `next/image` sticky-parent warning outside this scope.
+- Visual proof:
+  - `output/playwright/watch-experience-backdrop-desktop-initial.png`
+  - `output/playwright/watch-experience-backdrop-desktop-hover.png`
+  - `output/playwright/watch-experience-backdrop-narrow.png`
+  - `output/playwright/watch-experience-backdrop-reduced-motion.png`

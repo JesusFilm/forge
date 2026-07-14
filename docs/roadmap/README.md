@@ -307,6 +307,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-237](platform/feat-237-admin-image-library-picker-scroll.md)                   | Admin Image Library Picker Scroll                                                | codex     | P2       | —     | 1    | —   | complete    |
 | [feat-238](platform/feat-238-admin-image-picker-scroll-frame.md)                     | Admin Image Picker Scroll Frame                                                  | codex     | P2       | —     | 1    | —   | complete    |
 | [feat-240](platform/feat-240-watch-chapter-thumbnail-outline.md)                     | Watch Chapter Thumbnail Outline                                                  | codex     | P2       | —     | 1    | —   | complete    |
+| [feat-253](platform/feat-253-watch-experience-section-backdrop-animation.md)         | Watch experience section backdrop animation                                      | codex     | P2       | —     | 1    | —   | complete    |
 
 ### Topic Experiences
 
