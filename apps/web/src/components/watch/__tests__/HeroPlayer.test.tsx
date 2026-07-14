@@ -684,6 +684,16 @@ describe("HeroPlayer — initial mount", () => {
       languageTag.click()
     })
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
+
+    const subtitleLanguageTag = container.querySelector(
+      '[data-testid="hero-player-subtitle-language-count"]',
+    ) as HTMLButtonElement
+    expect(subtitleLanguageTag.tagName).toBe("BUTTON")
+    expect(subtitleLanguageTag.getAttribute("aria-label")).toBe("1 language")
+    await act(async () => {
+      subtitleLanguageTag.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(2)
   })
 
   it("keeps a one-language count informational and omits unavailable factual tags", () => {

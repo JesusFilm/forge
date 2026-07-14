@@ -1921,16 +1921,32 @@ export function HeroPlayer({
                         )
                       ) : null}
                       {subtitleLanguageCountLabel != null ? (
-                        <span
-                          data-testid="hero-player-subtitle-language-count"
-                          className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
-                        >
-                          <Captions
-                            className="h-3.5 w-3.5 shrink-0"
-                            aria-hidden
-                          />
-                          {subtitleLanguageCountLabel}
-                        </span>
+                        hasLanguageSwitcher ? (
+                          <button
+                            type="button"
+                            data-testid="hero-player-subtitle-language-count"
+                            aria-label={subtitleLanguageCountLabel}
+                            onClick={onLanguageClick}
+                            className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:text-sm"
+                          >
+                            <Captions
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                            {subtitleLanguageCountLabel}
+                          </button>
+                        ) : (
+                          <span
+                            data-testid="hero-player-subtitle-language-count"
+                            className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
+                          >
+                            <Captions
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
+                            {subtitleLanguageCountLabel}
+                          </span>
+                        )
                       ) : null}
                     </div>
                   ) : null}
