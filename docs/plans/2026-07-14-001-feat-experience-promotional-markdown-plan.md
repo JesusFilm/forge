@@ -1,7 +1,7 @@
 ---
 title: "feat: Add Promotional Markdown to Experience Text Blocks"
 type: "feat"
-status: "active"
+status: "completed"
 date: "2026-07-14"
 roadmap: "docs/roadmap/platform/feat-252-experience-promotional-markdown.md"
 ---

@@ -3,7 +3,7 @@ id: "feat-252"
 title: "Experience promotional Markdown sections"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-14"
 duration: 1
 depends_on: []
