@@ -32,6 +32,7 @@ vi.mock("next-intl", () => ({
         askBibleQuestionDetail: "Get help exploring Scripture.",
         chatInvitation:
           "Have a question about this video or another topic? Share your thoughts or comments.",
+        bibleChatTitle: "Bible Chat",
         talkToPerson: "Talk to a person",
         talkToPersonDetail: "Connect with someone ready to listen.",
         goDeeper: "Go deeper",
@@ -175,6 +176,20 @@ describe("WatchEndReflection", () => {
       expect(
         container.querySelector('[data-testid="watch-end-reflection-chat"]'),
       ).not.toBeNull()
+      expect(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-chat-title"]',
+        )?.textContent,
+      ).toBe("Bible Chat")
+      expect(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-chat-messages"]',
+        )?.className,
+      ).toContain("overflow-y-auto")
+      expect(
+        container.querySelector('[data-testid="watch-end-reflection-chat"]')
+          ?.className,
+      ).toContain("flex-1")
 
       const suggested = container.querySelector(
         '[data-testid="watch-end-reflection-suggested-question"]',
@@ -411,6 +426,16 @@ describe("WatchEndReflection", () => {
     ).not.toBeNull()
     expect(
       container.querySelector(
+        '[data-testid="watch-end-reflection-talk-chat-title"]',
+      )?.textContent,
+    ).toBe("Talk to a person")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-talk-chat-messages"]',
+      )?.className,
+    ).toContain("overflow-y-auto")
+    expect(
+      container.querySelector(
         '[data-testid="watch-end-reflection-talk-input"]',
       ),
     ).not.toBeNull()
@@ -446,6 +471,16 @@ describe("WatchEndReflection", () => {
         '[data-testid="watch-end-reflection-prayer-chat"]',
       ),
     ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-prayer-chat-title"]',
+      )?.textContent,
+    ).toBe("Request a prayer")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-prayer-chat-messages"]',
+      )?.className,
+    ).toContain("overflow-y-auto")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-prayer-input"]',

@@ -199,6 +199,10 @@ export function WatchEndReflection({
   ]
 
   const activeAction = actions[Math.min(activeIndex, actions.length - 1)]!
+  const activeActionIsChat =
+    activeAction.kind === "ask" ||
+    activeAction.kind === "talk" ||
+    activeAction.kind === "prayer"
   const finalActionId = actions.at(-1)!.id
   const finalActionOnClick = actions.at(-1)!.onClick
 
@@ -380,7 +384,11 @@ export function WatchEndReflection({
           aria-live="polite"
           onPointerEnter={markInteraction}
           data-testid="watch-end-reflection-panel"
-          className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-8 sm:py-10 lg:py-12"
+          className={`mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col ${
+            activeActionIsChat
+              ? "justify-start py-5 sm:py-7 lg:py-8"
+              : "justify-center py-8 sm:py-10 lg:py-12"
+          }`}
         >
           <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/45 uppercase">
             <span>{String(activeIndex + 1).padStart(2, "0")}</span>
@@ -395,6 +403,7 @@ export function WatchEndReflection({
             customQuestion={customQuestion}
             fieldLabel={tQuestionPanel("fieldLabel")}
             chatInvitation={t("chatInvitation")}
+            bibleChatTitle={t("bibleChatTitle")}
             onQuestionChange={setCustomQuestion}
           />
         </main>
@@ -499,6 +508,7 @@ function ActionStage({
   customQuestion,
   fieldLabel,
   chatInvitation,
+  bibleChatTitle,
   onQuestionChange,
 }: {
   action: NextStepAction
@@ -506,6 +516,7 @@ function ActionStage({
   customQuestion: string
   fieldLabel: string
   chatInvitation: string
+  bibleChatTitle: string
   onQuestionChange: (question: string) => void
 }) {
   return (
@@ -531,6 +542,7 @@ function ActionStage({
           customQuestion={customQuestion}
           fieldLabel={fieldLabel}
           chatInvitation={chatInvitation}
+          chatTitle={bibleChatTitle}
           action={action}
           onQuestionChange={onQuestionChange}
         />
@@ -588,6 +600,7 @@ function AskChapter({
   customQuestion,
   fieldLabel,
   chatInvitation,
+  chatTitle,
   action,
   onQuestionChange,
 }: {
@@ -595,21 +608,34 @@ function AskChapter({
   customQuestion: string
   fieldLabel: string
   chatInvitation: string
+  chatTitle: string
   action: NextStepAction
   onQuestionChange: (question: string) => void
 }) {
   return (
     <div
       data-testid="watch-end-reflection-ask-panel"
-      className="mt-6 w-full max-w-2xl animate-watch-story-action motion-reduce:animate-none"
+      className="mt-6 flex min-h-[22rem] w-full max-w-2xl flex-1 flex-col animate-watch-story-action motion-reduce:animate-none"
     >
       <div
         role="region"
         aria-label={action.label}
         data-testid="watch-end-reflection-chat"
-        className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
       >
-        <div className="space-y-4 px-3.5 py-4 sm:px-5 sm:py-5">
+        <header
+          data-testid="watch-end-reflection-chat-title"
+          className="flex min-h-12 shrink-0 items-center border-b border-white/10 px-4 sm:px-5"
+        >
+          <p className="text-sm font-semibold tracking-[-0.01em] text-white/85 sm:text-base">
+            {chatTitle}
+          </p>
+        </header>
+
+        <div
+          data-testid="watch-end-reflection-chat-messages"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 sm:px-5 sm:py-5"
+        >
           <div className="flex max-w-[90%] items-end gap-2.5 sm:max-w-[78%]">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
               {action.icon}
@@ -642,7 +668,7 @@ function AskChapter({
           </div>
         </div>
 
-        <div className="border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
+        <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
           <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
             <label htmlFor="watch-end-reflection-question" className="sr-only">
               {fieldLabel}
@@ -750,15 +776,27 @@ function HandoffChatChapter({
   return (
     <div
       data-testid={panelTestId}
-      className="mt-5 w-full max-w-2xl animate-watch-story-action motion-reduce:animate-none"
+      className="mt-5 flex min-h-[22rem] w-full max-w-2xl flex-1 flex-col animate-watch-story-action motion-reduce:animate-none"
     >
       <div
         role="region"
         aria-label={action.label}
         data-testid={chatTestId}
-        className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
       >
-        <div className="space-y-4 px-3.5 py-4 sm:px-5 sm:py-5">
+        <header
+          data-testid={`${chatTestId}-title`}
+          className="flex min-h-12 shrink-0 items-center border-b border-white/10 px-4 sm:px-5"
+        >
+          <p className="text-sm font-semibold tracking-[-0.01em] text-white/85 sm:text-base">
+            {action.label}
+          </p>
+        </header>
+
+        <div
+          data-testid={`${chatTestId}-messages`}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3.5 py-4 sm:px-5 sm:py-5"
+        >
           <div className="flex max-w-[90%] items-end gap-2.5 sm:max-w-[78%]">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
               {action.icon}
@@ -770,7 +808,7 @@ function HandoffChatChapter({
           {children}
         </div>
 
-        <div className="border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
+        <div className="shrink-0 border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
           <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
             <label htmlFor={inputId} className="sr-only">
               {composerLabel}
