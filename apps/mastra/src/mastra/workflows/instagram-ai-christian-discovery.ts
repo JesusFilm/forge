@@ -590,6 +590,7 @@ const SearchStepOutputSchema = z.discriminatedUnion("ok", [
   z
     .object({
       ok: z.literal(true),
+      input: InstagramDiscoveryWorkflowInputSchema,
       startedAt: z.string(),
       hits: z.array(TaggedHitSchema),
       queryFailures: z.array(DiscoveryQueryFailureSchema),
@@ -602,6 +603,7 @@ const FilterStepOutputSchema = z.discriminatedUnion("ok", [
   z
     .object({
       ok: z.literal(true),
+      input: InstagramDiscoveryWorkflowInputSchema,
       startedAt: z.string(),
       posts: z.array(InstagramPostSchema),
       totals: DiscoveryTotalsSchema,
@@ -620,16 +622,31 @@ const searchStep = createStep({
   execute: async ({ inputData, runId }) => {
     const startedAt = new Date().toISOString()
     try {
-      const { hits, queryFailures } = await searchInstagramCandidates(
-        inputData,
-        {
-          runId,
-          firecrawlConfig: getFirecrawlConfig(),
-          searchQuery: requestFirecrawlSearch,
-        },
-      )
+      const savedSources = await withSavedInstagramSources(inputData, {
+        config: getDiscoverySourcesConfig(),
+      })
+      const input = savedSources.input
+      if (
+        savedSources.sourceLoadStatus === "failed" &&
+        input.handles.length === 0 &&
+        input.queries.length === 0
+      ) {
+        throwDiscoveryFailure(
+          failure("sources_unavailable", {
+            mastraRunId: runId,
+            retryable: true,
+            details: "saved Instagram sources could not be loaded",
+          }),
+        )
+      }
+      const { hits, queryFailures } = await searchInstagramCandidates(input, {
+        runId,
+        firecrawlConfig: getFirecrawlConfig(),
+        searchQuery: requestFirecrawlSearch,
+      })
       return {
         ok: true as const,
+        input,
         startedAt,
         hits: hits.map(({ hit, trusted }) => ({
           hit: {
@@ -657,13 +674,13 @@ const filterStep = createStep({
     "Parse Instagram hits, dedupe by shortcode, and keep qualifying posts.",
   inputSchema: SearchStepOutputSchema,
   outputSchema: FilterStepOutputSchema,
-  execute: async ({ inputData, getInitData }) => {
+  execute: async ({ inputData }) => {
     if (!inputData.ok) throwDiscoveryFailure(inputData)
-    const input =
-      InstagramDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
+    const input = inputData.input
     const { posts, totals } = selectQualifyingPosts(inputData.hits, input)
     return {
       ok: true as const,
+      input,
       startedAt: inputData.startedAt,
       posts,
       totals,
@@ -677,10 +694,9 @@ const reportStep = createStep({
   description: "Build the discovery report and persist it when requested.",
   inputSchema: FilterStepOutputSchema,
   outputSchema: InstagramDiscoveryWorkflowOutputSchema,
-  execute: async ({ inputData, getInitData, runId }) => {
+  execute: async ({ inputData, runId }) => {
     if (!inputData.ok) throwDiscoveryFailure(inputData)
-    const input =
-      InstagramDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
+    const input = inputData.input
     const finishedAt = new Date().toISOString()
 
     let artifactPath: string | undefined
@@ -735,25 +751,10 @@ export async function launchInstagramDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
-  const savedSources = await withSavedInstagramSources(parsed.data, {
-    config: getDiscoverySourcesConfig(),
-  })
-  if (
-    savedSources.sourceLoadStatus === "failed" &&
-    savedSources.input.handles.length === 0 &&
-    savedSources.input.queries.length === 0
-  ) {
-    return failure("sources_unavailable", {
-      mastraRunId: runId,
-      retryable: true,
-      details: "saved Instagram sources could not be loaded",
-    })
-  }
-
   const run = await instagramAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: savedSources.input })
+    result = await run.start({ inputData: parsed.data })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??

@@ -661,6 +661,7 @@ const CollectStepOutputSchema = z.discriminatedUnion("ok", [
   z
     .object({
       ok: z.literal(true),
+      input: YouTubeDiscoveryWorkflowInputSchema,
       startedAt: z.string(),
       items: z.array(TaggedRawItemSchema),
       sourceFailures: z.array(DiscoverySourceFailureSchema),
@@ -673,6 +674,7 @@ const FilterStepOutputSchema = z.discriminatedUnion("ok", [
   z
     .object({
       ok: z.literal(true),
+      input: YouTubeDiscoveryWorkflowInputSchema,
       startedAt: z.string(),
       videos: z.array(YouTubeVideoSchema),
       totals: YouTubeDiscoveryTotalsSchema,
@@ -691,16 +693,32 @@ const collectStep = createStep({
   execute: async ({ inputData, runId }) => {
     const startedAt = new Date().toISOString()
     try {
-      const { items, sourceFailures } = await collectYouTubeCandidates(
-        inputData,
-        {
-          runId,
-          youtubeConfig: getYouTubeConfig(),
-          client: defaultYouTubeClient,
-        },
-      )
+      const savedSources = await withSavedYouTubeSources(inputData, {
+        config: getDiscoverySourcesConfig(),
+      })
+      const input = savedSources.input
+      if (
+        savedSources.sourceLoadStatus === "failed" &&
+        input.channels.length === 0 &&
+        input.playlists.length === 0 &&
+        input.queries.length === 0
+      ) {
+        throwDiscoveryFailure(
+          failure("sources_unavailable", {
+            mastraRunId: runId,
+            retryable: true,
+            details: "saved YouTube sources could not be loaded",
+          }),
+        )
+      }
+      const { items, sourceFailures } = await collectYouTubeCandidates(input, {
+        runId,
+        youtubeConfig: getYouTubeConfig(),
+        client: defaultYouTubeClient,
+      })
       return {
         ok: true as const,
+        input,
         startedAt,
         items: items.map((it) => ({
           raw: it.raw as Record<string, unknown>,
@@ -722,16 +740,16 @@ const filterStep = createStep({
     "Parse YouTube items, dedupe by videoId, and keep qualifying videos.",
   inputSchema: CollectStepOutputSchema,
   outputSchema: FilterStepOutputSchema,
-  execute: async ({ inputData, getInitData }) => {
+  execute: async ({ inputData }) => {
     if (!inputData.ok) throwDiscoveryFailure(inputData)
-    const input =
-      YouTubeDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
+    const input = inputData.input
     const { videos, totals } = selectQualifyingVideos(
       inputData.items as TaggedRawItem[],
       input,
     )
     return {
       ok: true as const,
+      input,
       startedAt: inputData.startedAt,
       videos,
       totals,
@@ -745,10 +763,9 @@ const reportStep = createStep({
   description: "Build the discovery report and persist it when requested.",
   inputSchema: FilterStepOutputSchema,
   outputSchema: YouTubeDiscoveryWorkflowOutputSchema,
-  execute: async ({ inputData, getInitData, runId }) => {
+  execute: async ({ inputData, runId }) => {
     if (!inputData.ok) throwDiscoveryFailure(inputData)
-    const input =
-      YouTubeDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
+    const input = inputData.input
     const finishedAt = new Date().toISOString()
 
     let artifactPath: string | undefined
@@ -805,28 +822,10 @@ export async function launchYouTubeDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
-  // Route/Studio path: merge the website's saved sources into the input before
-  // the workflow runs, so the daily scheduler can trigger with an empty body.
-  const savedSources = await withSavedYouTubeSources(parsed.data, {
-    config: getDiscoverySourcesConfig(),
-  })
-  if (
-    savedSources.sourceLoadStatus === "failed" &&
-    savedSources.input.channels.length === 0 &&
-    savedSources.input.playlists.length === 0 &&
-    savedSources.input.queries.length === 0
-  ) {
-    return failure("sources_unavailable", {
-      mastraRunId: runId,
-      retryable: true,
-      details: "saved YouTube sources could not be loaded",
-    })
-  }
-
   const run = await youtubeAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: savedSources.input })
+    result = await run.start({ inputData: parsed.data })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??

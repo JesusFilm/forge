@@ -9,6 +9,7 @@ import type {
 } from "../../services/instagram-discovery/types"
 import {
   handleInstagramDiscoveryRouteRequest,
+  instagramAiChristianDiscoveryWorkflow,
   runInstagramDiscovery,
   type InstagramDiscoveryWorkflowResult,
 } from "./instagram-ai-christian-discovery"
@@ -441,6 +442,111 @@ describe("runInstagramDiscovery", () => {
       { runId: "run-7", firecrawlConfig: CONFIG, artifactStore: fakeStore() },
     )
     expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
+  })
+})
+
+describe("instagramAiChristianDiscoveryWorkflow", () => {
+  it("loads saved handles during a registered Studio run", async () => {
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.test/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-key")
+    vi.resetModules()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input)
+        if (url.startsWith("https://site.test/api/discovery-sources")) {
+          return new Response(
+            JSON.stringify({
+              sources: [{ value: "savedhandle", label: "Saved" }],
+            }),
+            { headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.startsWith("https://api.firecrawl.dev/v1/search")) {
+          return new Response(JSON.stringify({ data: [] }), {
+            headers: { "content-type": "application/json" },
+          })
+        }
+        throw new Error(`unexpected fetch: ${url}`)
+      })
+
+    try {
+      const { instagramAiChristianDiscoveryWorkflow: workflow } =
+        await import("./instagram-ai-christian-discovery")
+      const run = await workflow.createRun({
+        runId: "run-studio-saved-instagram",
+      })
+      const result = await run.start({
+        inputData: { handles: [], queries: [], persistArtifact: false },
+      })
+
+      expect(result.status).toBe("success")
+      expect(fetchSpy.mock.calls.map(([input]) => String(input))).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("https://site.test/api/discovery-sources"),
+          expect.stringContaining("https://api.firecrawl.dev/v1/search"),
+        ]),
+      )
+    } finally {
+      fetchSpy.mockRestore()
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
+  it("preserves saved-source outages for Studio runs and launchers", async () => {
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.test/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.resetModules()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("down", { status: 500 }))
+
+    try {
+      const {
+        _internals,
+        instagramAiChristianDiscoveryWorkflow: workflow,
+        launchInstagramDiscoveryWorkflow,
+      } = await import("./instagram-ai-christian-discovery")
+      const run = await workflow.createRun({
+        runId: "run-studio-failed-instagram-sources",
+      })
+      const result = await run.start({
+        inputData: { handles: [], queries: [], persistArtifact: false },
+      })
+
+      expect(result.status).toBe("failed")
+      expect(_internals.discoveryFailureFromRunResult(result)).toMatchObject({
+        ok: false,
+        reason: "sources_unavailable",
+        retryable: true,
+      })
+      await expect(
+        launchInstagramDiscoveryWorkflow(
+          { handles: [], queries: [], persistArtifact: false },
+          { runId: "run-launch-failed-instagram-sources" },
+        ),
+      ).resolves.toMatchObject({
+        ok: false,
+        reason: "sources_unavailable",
+        retryable: true,
+      })
+    } finally {
+      fetchSpy.mockRestore()
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
+  it("remains registered", () => {
+    expect(instagramAiChristianDiscoveryWorkflow.committed).toBe(true)
   })
 })
 

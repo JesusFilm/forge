@@ -11,6 +11,7 @@ import { YouTubeSearchError } from "../../services/youtube-search-client"
 import {
   handleYouTubeDiscoveryRouteRequest,
   runYouTubeDiscovery,
+  youtubeAiChristianDiscoveryWorkflow,
   type YouTubeClient,
   type YouTubeDiscoveryWorkflowResult,
 } from "./youtube-ai-christian-discovery"
@@ -454,6 +455,136 @@ describe("runYouTubeDiscovery", () => {
       { runId: "run-bad", youtubeConfig: CONFIG, artifactStore: fakeStore() },
     )
     expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
+  })
+})
+
+describe("youtubeAiChristianDiscoveryWorkflow", () => {
+  it("loads saved channels during a registered Studio run", async () => {
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.test/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.stubEnv("YOUTUBE_API_KEY", "yt-key")
+    vi.resetModules()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = new URL(String(input))
+        if (url.hostname === "site.test") {
+          return new Response(
+            JSON.stringify({
+              sources: [{ value: "@saved-channel", label: "Saved" }],
+            }),
+            { headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.pathname.endsWith("/channels")) {
+          return new Response(
+            JSON.stringify({
+              items: [
+                {
+                  contentDetails: { relatedPlaylists: { uploads: "UU123" } },
+                },
+              ],
+            }),
+            { headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.pathname.endsWith("/playlistItems")) {
+          return new Response(JSON.stringify({ items: [] }), {
+            headers: { "content-type": "application/json" },
+          })
+        }
+        throw new Error(`unexpected fetch: ${url}`)
+      })
+
+    try {
+      const { youtubeAiChristianDiscoveryWorkflow: workflow } =
+        await import("./youtube-ai-christian-discovery")
+      const run = await workflow.createRun({
+        runId: "run-studio-saved-youtube",
+      })
+      const result = await run.start({
+        inputData: {
+          channels: [],
+          playlists: [],
+          queries: [],
+          persistArtifact: false,
+        },
+      })
+
+      expect(result.status).toBe("success")
+      expect(fetchSpy.mock.calls.map(([input]) => String(input))).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("https://site.test/api/discovery-sources"),
+          expect.stringContaining(
+            "https://www.googleapis.com/youtube/v3/channels",
+          ),
+          expect.stringContaining(
+            "https://www.googleapis.com/youtube/v3/playlistItems",
+          ),
+        ]),
+      )
+    } finally {
+      fetchSpy.mockRestore()
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
+  it("preserves saved-source outages for Studio runs and launchers", async () => {
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.test/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.resetModules()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("down", { status: 500 }))
+
+    try {
+      const {
+        _internals,
+        launchYouTubeDiscoveryWorkflow,
+        youtubeAiChristianDiscoveryWorkflow: workflow,
+      } = await import("./youtube-ai-christian-discovery")
+      const input = {
+        channels: [],
+        playlists: [],
+        queries: [],
+        persistArtifact: false,
+      }
+      const run = await workflow.createRun({
+        runId: "run-studio-failed-youtube-sources",
+      })
+      const result = await run.start({ inputData: input })
+
+      expect(result.status).toBe("failed")
+      expect(_internals.discoveryFailureFromRunResult(result)).toMatchObject({
+        ok: false,
+        reason: "sources_unavailable",
+        retryable: true,
+      })
+      await expect(
+        launchYouTubeDiscoveryWorkflow(input, {
+          runId: "run-launch-failed-youtube-sources",
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        reason: "sources_unavailable",
+        retryable: true,
+      })
+    } finally {
+      fetchSpy.mockRestore()
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
+  it("remains registered", () => {
+    expect(youtubeAiChristianDiscoveryWorkflow.committed).toBe(true)
   })
 })
 

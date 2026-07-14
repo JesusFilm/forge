@@ -657,6 +657,32 @@ function assertUrlAllowedForProduction({
   }
 }
 
+/**
+ * The website ingest endpoint and saved-source endpoint share one bearer.
+ * Keep the three settings opt-in as a group, but reject a partially configured
+ * group in production so a missing token cannot quietly disable automation.
+ */
+function assertDiscoveryEndpointsConfiguredForProduction() {
+  const hasIngestUrl = Boolean(env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL)
+  const hasSourcesUrl = Boolean(env.DISCOVERY_SOURCES_URL)
+  const hasToken = Boolean(env.INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN)
+
+  if (!hasIngestUrl && !hasSourcesUrl) {
+    if (hasToken) {
+      throw new Error(
+        "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN requires INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL in Mastra production",
+      )
+    }
+    return
+  }
+
+  if (!hasToken) {
+    throw new Error(
+      "INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN is required when INSTAGRAM_DISCOVERY_SITE_INGEST_URL or DISCOVERY_SOURCES_URL is set in Mastra production",
+    )
+  }
+}
+
 function assertYouTubeBaseUrlAllowedForProduction() {
   const baseUrl = new URL(env.YOUTUBE_API_BASE_URL)
   const allowedHosts = csvSet(env.YOUTUBE_ALLOWED_HOSTS)
@@ -737,6 +763,7 @@ export function assertMastraRuntimeEnv() {
   ]
   assertFirecrawlApiUrlAllowedForProduction()
   if (env.YOUTUBE_API_KEY) assertYouTubeBaseUrlAllowedForProduction()
+  assertDiscoveryEndpointsConfiguredForProduction()
   assertUrlAllowedForProduction({
     value: env.INSTAGRAM_DISCOVERY_SITE_INGEST_URL,
     allowedHostsValue: env.DISCOVERY_SITE_ALLOWED_HOSTS,

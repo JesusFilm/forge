@@ -486,6 +486,7 @@ const CollectStepOutputSchema = z.discriminatedUnion("ok", [
   z
     .object({
       ok: z.literal(true),
+      input: PinterestDiscoveryWorkflowInputSchema,
       startedAt: z.string(),
       items: z.array(RawItemSchema),
       boardFailures: z.array(BoardFailureSchema),
@@ -498,6 +499,7 @@ const FilterStepOutputSchema = z.discriminatedUnion("ok", [
   z
     .object({
       ok: z.literal(true),
+      input: PinterestDiscoveryWorkflowInputSchema,
       startedAt: z.string(),
       pins: z.array(PinterestPinSchema),
       totals: PinterestDiscoveryTotalsSchema,
@@ -515,12 +517,29 @@ const collectStep = createStep({
   execute: async ({ inputData, runId }) => {
     const startedAt = new Date().toISOString()
     try {
-      const { items, boardFailures } = await collectPinterestCandidates(
-        inputData,
-        { runId, fetchBoard: fetchBoardFeed },
-      )
+      const savedSources = await withSavedPinterestSources(inputData, {
+        config: getDiscoverySourcesConfig(),
+      })
+      const input = savedSources.input
+      if (
+        savedSources.sourceLoadStatus === "failed" &&
+        input.boards.length === 0
+      ) {
+        throwDiscoveryFailure(
+          failure("sources_unavailable", {
+            mastraRunId: runId,
+            retryable: true,
+            details: "saved Pinterest sources could not be loaded",
+          }),
+        )
+      }
+      const { items, boardFailures } = await collectPinterestCandidates(input, {
+        runId,
+        fetchBoard: fetchBoardFeed,
+      })
       return {
         ok: true as const,
+        input,
         startedAt,
         items: items as Record<string, unknown>[],
         boardFailures,
@@ -538,16 +557,16 @@ const filterStep = createStep({
   description: "Parse pins, dedupe by pinId, and keep non-commentary pins.",
   inputSchema: CollectStepOutputSchema,
   outputSchema: FilterStepOutputSchema,
-  execute: async ({ inputData, getInitData }) => {
+  execute: async ({ inputData }) => {
     if (!inputData.ok) throwDiscoveryFailure(inputData)
-    const input =
-      PinterestDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
+    const input = inputData.input
     const { pins, totals } = selectQualifyingPins(
       inputData.items as PinterestRawItem[],
       input,
     )
     return {
       ok: true as const,
+      input,
       startedAt: inputData.startedAt,
       pins,
       totals,
@@ -561,10 +580,9 @@ const reportStep = createStep({
   description: "Build the discovery report and persist it when requested.",
   inputSchema: FilterStepOutputSchema,
   outputSchema: PinterestDiscoveryWorkflowOutputSchema,
-  execute: async ({ inputData, getInitData, runId }) => {
+  execute: async ({ inputData, runId }) => {
     if (!inputData.ok) throwDiscoveryFailure(inputData)
-    const input =
-      PinterestDiscoveryWorkflowInputSchema.parse(getInitData<unknown>())
+    const input = inputData.input
     const finishedAt = new Date().toISOString()
 
     let artifactPath: string | undefined
@@ -619,24 +637,10 @@ export async function launchPinterestDiscoveryWorkflow(
     return failure("invalid_input", { mastraRunId: runId, retryable: false })
   }
 
-  const savedSources = await withSavedPinterestSources(parsed.data, {
-    config: getDiscoverySourcesConfig(),
-  })
-  if (
-    savedSources.sourceLoadStatus === "failed" &&
-    savedSources.input.boards.length === 0
-  ) {
-    return failure("sources_unavailable", {
-      mastraRunId: runId,
-      retryable: true,
-      details: "saved Pinterest sources could not be loaded",
-    })
-  }
-
   const run = await pinterestAiChristianDiscoveryWorkflow.createRun({ runId })
   let result: Awaited<ReturnType<typeof run.start>>
   try {
-    result = await run.start({ inputData: savedSources.input })
+    result = await run.start({ inputData: parsed.data })
   } catch (error) {
     return (
       discoveryFailureFromUnknown(error) ??

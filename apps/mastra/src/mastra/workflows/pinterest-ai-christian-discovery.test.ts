@@ -9,6 +9,7 @@ import type {
 import { PinterestSearchError } from "../../services/pinterest-search-client"
 import {
   handlePinterestDiscoveryRouteRequest,
+  pinterestAiChristianDiscoveryWorkflow,
   runPinterestDiscovery,
   type PinterestDiscoveryWorkflowResult,
 } from "./pinterest-ai-christian-discovery"
@@ -238,6 +239,113 @@ describe("runPinterestDiscovery", () => {
       { runId: "run-bad", artifactStore: fakeStore() },
     )
     expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
+  })
+})
+
+describe("pinterestAiChristianDiscoveryWorkflow", () => {
+  it("loads saved boards during a registered Studio run", async () => {
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.test/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.resetModules()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input)
+        if (url.startsWith("https://site.test/api/discovery-sources")) {
+          return new Response(
+            JSON.stringify({
+              sources: [
+                {
+                  value: "https://www.pinterest.com/saved/board/",
+                  label: "Saved",
+                },
+              ],
+            }),
+            { headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url === "https://www.pinterest.com/saved/board.rss") {
+          return new Response("<rss><channel /></rss>", {
+            headers: { "content-type": "application/rss+xml" },
+          })
+        }
+        throw new Error(`unexpected fetch: ${url}`)
+      })
+
+    try {
+      const { pinterestAiChristianDiscoveryWorkflow: workflow } =
+        await import("./pinterest-ai-christian-discovery")
+      const run = await workflow.createRun({
+        runId: "run-studio-saved-pinterest",
+      })
+      const result = await run.start({
+        inputData: { boards: [], persistArtifact: false },
+      })
+
+      expect(result.status).toBe("success")
+      expect(fetchSpy.mock.calls.map(([input]) => String(input))).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("https://site.test/api/discovery-sources"),
+          "https://www.pinterest.com/saved/board.rss",
+        ]),
+      )
+    } finally {
+      fetchSpy.mockRestore()
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
+  it("preserves saved-source outages for Studio runs and launchers", async () => {
+    vi.stubEnv(
+      "DISCOVERY_SOURCES_URL",
+      "https://site.test/api/discovery-sources",
+    )
+    vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+    vi.resetModules()
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response("down", { status: 500 }))
+
+    try {
+      const {
+        _internals,
+        launchPinterestDiscoveryWorkflow,
+        pinterestAiChristianDiscoveryWorkflow: workflow,
+      } = await import("./pinterest-ai-christian-discovery")
+      const input = { boards: [], persistArtifact: false }
+      const run = await workflow.createRun({
+        runId: "run-studio-failed-pinterest-sources",
+      })
+      const result = await run.start({ inputData: input })
+
+      expect(result.status).toBe("failed")
+      expect(_internals.discoveryFailureFromRunResult(result)).toMatchObject({
+        ok: false,
+        reason: "sources_unavailable",
+        retryable: true,
+      })
+      await expect(
+        launchPinterestDiscoveryWorkflow(input, {
+          runId: "run-launch-failed-pinterest-sources",
+        }),
+      ).resolves.toMatchObject({
+        ok: false,
+        reason: "sources_unavailable",
+        retryable: true,
+      })
+    } finally {
+      fetchSpy.mockRestore()
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
+  it("remains registered", () => {
+    expect(pinterestAiChristianDiscoveryWorkflow.committed).toBe(true)
   })
 })
 
