@@ -207,7 +207,10 @@ describe("WatchEndReflection", () => {
     )
     expect(suggested.className).toContain("animate-watch-chat-incoming")
     expect(suggested.className).not.toContain("animate-watch-chat-outgoing")
-    expect(suggested.className).not.toContain("bg-white text-black")
+    expect(suggested.className).not.toContain("rounded-")
+    expect(suggested.className).not.toContain("border")
+    expect(suggested.className).not.toContain("bg-")
+    expect(suggested.className).not.toContain("ring-")
     expect(suggested.querySelector("svg")).not.toBeNull()
 
     act(() => {

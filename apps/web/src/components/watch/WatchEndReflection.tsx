@@ -528,7 +528,7 @@ function SelectedConversation({
       {action.kind === "ask" ? (
         <div
           data-testid="watch-end-reflection-question-prompts"
-          className="ml-10 flex max-w-2xl flex-col gap-2"
+          className="ml-10 max-w-2xl divide-y divide-white/[0.08] border-y border-white/[0.08]"
         >
           {prompts.map((prompt, index) => {
             const selected = customQuestion === prompt
@@ -540,23 +540,23 @@ function SelectedConversation({
                 aria-pressed={selected}
                 onClick={() => onQuestionChange(prompt)}
                 className={
-                  "group flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left text-xs leading-snug animate-watch-chat-incoming transition-[background-color,border-color,color,transform] hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none sm:text-sm motion-reduce:animate-none motion-reduce:transform-none " +
+                  "group flex min-h-11 w-full cursor-pointer items-center gap-3 px-0.5 py-2.5 text-left text-xs leading-snug animate-watch-chat-incoming transition-colors focus-visible:text-white focus-visible:underline focus-visible:decoration-white/50 focus-visible:underline-offset-4 focus-visible:outline-none sm:text-sm motion-reduce:animate-none " +
                   (selected
-                    ? "border-brand-red/70 bg-brand-red/12 text-white"
-                    : "border-white/10 bg-white/[0.045] text-white/72 hover:border-white/20 hover:bg-white/[0.08] hover:text-white")
+                    ? "text-white"
+                    : "text-white/48 hover:text-white/75")
                 }
                 style={{ animationDelay: String(360 + index * 150) + "ms" }}
               >
                 <span className="min-w-0 flex-1">{prompt}</span>
                 <span
                   className={
-                    "grid size-7 shrink-0 place-items-center rounded-lg transition-colors " +
+                    "shrink-0 transition-[color,transform] group-hover:translate-y-0.5 motion-reduce:transform-none " +
                     (selected
-                      ? "bg-brand-red text-white"
-                      : "bg-white/[0.06] text-white/40 group-hover:bg-brand-red/15 group-hover:text-brand-red")
+                      ? "text-brand-red"
+                      : "text-white/28 group-hover:text-white/55")
                   }
                 >
-                  <ArrowDown aria-hidden className="size-3.5" />
+                  <ArrowDown aria-hidden className="size-3.5 stroke-[1.5]" />
                 </span>
               </button>
             )
