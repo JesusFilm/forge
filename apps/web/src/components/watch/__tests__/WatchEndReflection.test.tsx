@@ -149,8 +149,8 @@ describe("WatchEndReflection", () => {
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Ask a Bible question")
+      ),
+    ).toBeNull()
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-auto-progress"]',
@@ -168,8 +168,8 @@ describe("WatchEndReflection", () => {
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Ask a Bible question")
+      ),
+    ).toBeNull()
     expect(container.textContent).toContain("What did this story show you?")
     expect(container.textContent).toContain("What could change next?")
     expect(
@@ -335,11 +335,7 @@ describe("WatchEndReflection", () => {
       watchNext.click()
     })
     expect(callbacks.onNext).not.toHaveBeenCalled()
-    expect(
-      container.querySelector(
-        '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Watch next")
+    expect(watchNext.getAttribute("aria-pressed")).toBe("true")
 
     act(() => {
       ;(
@@ -381,10 +377,10 @@ describe("WatchEndReflection", () => {
       ).click()
     })
     expect(
-      container.querySelector(
-        '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Talk to a person")
+      container
+        .querySelector('[data-testid="watch-end-reflection-talk-person"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true")
 
     act(() => {
       ;(
@@ -397,10 +393,10 @@ describe("WatchEndReflection", () => {
     renderOpenState(true)
 
     expect(
-      container.querySelector(
-        '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Ask a Bible question")
+      container
+        .querySelector('[data-testid="watch-end-reflection-ask-bible"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-talk-person"]')
@@ -541,10 +537,10 @@ describe("WatchEndReflection", () => {
       ),
     ).not.toBeNull()
     expect(
-      container.querySelector(
-        '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Talk to a person")
+      container
+        .querySelector('[data-testid="watch-end-reflection-talk-person"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-chat-messages"]',
@@ -604,10 +600,10 @@ describe("WatchEndReflection", () => {
       ),
     ).not.toBeNull()
     expect(
-      container.querySelector(
-        '[data-testid="watch-end-reflection-user-selection"]',
-      )?.textContent,
-    ).toBe("Request a prayer")
+      container
+        .querySelector('[data-testid="watch-end-reflection-request-prayer"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true")
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-chat-messages"]',

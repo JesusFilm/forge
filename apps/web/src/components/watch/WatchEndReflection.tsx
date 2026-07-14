@@ -581,15 +581,6 @@ function SelectedConversation({
 
   return (
     <div data-testid={panelTestId} className="space-y-4 pt-1">
-      <div className="ml-auto flex max-w-[88%] justify-end animate-watch-chat-outgoing motion-reduce:animate-none">
-        <div
-          data-testid="watch-end-reflection-user-selection"
-          className="rounded-2xl rounded-br-sm bg-white px-4 py-2.5 text-xs leading-snug font-semibold text-black/80 shadow-sm sm:text-sm"
-        >
-          {action.label}
-        </div>
-      </div>
-
       <GuideBubble
         testId={"watch-end-reflection-" + action.id + "-response"}
         icon={action.icon}
