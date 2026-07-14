@@ -55,6 +55,7 @@ export type CollectionDownloadModalProps = {
   episodes: CollectionDownloadEpisode[]
   languages: LanguageComboboxOption[]
   currentLanguageSlug: string
+  accountGateEnabled: boolean
   authRequiredLoginUrl?: string | null
   onClose: () => void
 }
@@ -66,6 +67,7 @@ export function CollectionDownloadModal({
   episodes,
   languages,
   currentLanguageSlug,
+  accountGateEnabled,
   authRequiredLoginUrl = null,
   onClose,
 }: CollectionDownloadModalProps) {
@@ -194,17 +196,19 @@ export function CollectionDownloadModal({
     setError(null)
     setResult(null)
 
-    const session = await resolveDownloadSessionAccess()
-    if (startVersion !== startVersionRef.current) return
-    if (!session.ok && session.reason === "session-unavailable") {
-      setStarting(false)
-      setError(t("sessionError"))
-      return
-    }
-    if (!session.ok) {
-      setStarting(false)
-      setAuthLoginUrl(session.loginUrl)
-      return
+    if (accountGateEnabled) {
+      const session = await resolveDownloadSessionAccess()
+      if (startVersion !== startVersionRef.current) return
+      if (!session.ok && session.reason === "session-unavailable") {
+        setStarting(false)
+        setError(t("sessionError"))
+        return
+      }
+      if (!session.ok) {
+        setStarting(false)
+        setAuthLoginUrl(session.loginUrl)
+        return
+      }
     }
     setAuthLoginUrl(null)
     setStarting(false)

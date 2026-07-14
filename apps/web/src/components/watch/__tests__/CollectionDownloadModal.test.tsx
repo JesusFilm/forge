@@ -87,6 +87,7 @@ function renderModal(overrides = {}) {
           { slug: "spanish", name: "Spanish", bcp47: "es" },
         ]}
         currentLanguageSlug="english"
+        accountGateEnabled={false}
         onClose={vi.fn()}
         {...overrides}
       />,
@@ -106,7 +107,10 @@ beforeEach(() => {
   resolveDownloadSessionAccessMock.mockReset()
   runCollectionDownloadQueueMock.mockReset()
   loadWatchCollectionDownloadsMock.mockResolvedValue({ ok: true, dubs })
-  resolveDownloadSessionAccessMock.mockResolvedValue({ ok: true })
+  resolveDownloadSessionAccessMock.mockResolvedValue({
+    ok: true,
+    accountGateEnabled: true,
+  })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -160,6 +164,59 @@ describe("CollectionDownloadModal", () => {
         ],
       }),
     )
+    expect(resolveDownloadSessionAccessMock).not.toHaveBeenCalled()
+  })
+
+  it("rechecks the session before starting when the account gate is enabled", async () => {
+    runCollectionDownloadQueueMock.mockImplementationOnce(
+      async ({ items }) => ({
+        active: null,
+        authRequired: false,
+        canceled: false,
+        completed: items,
+        failed: [],
+        total: items.length,
+      }),
+    )
+    renderModal({ accountGateEnabled: true })
+    await flush()
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-collection-download-start"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(resolveDownloadSessionAccessMock).toHaveBeenCalledTimes(1)
+    expect(runCollectionDownloadQueueMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows sign-in instead of starting when the enabled gate rejects the session", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: false,
+      accountGateEnabled: true,
+      reason: "auth-required",
+      loginUrl: "/login",
+    })
+    renderModal({ accountGateEnabled: true })
+    await flush()
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-collection-download-start"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-sign-in"]',
+      ),
+    ).not.toBeNull()
+    expect(runCollectionDownloadQueueMock).not.toHaveBeenCalled()
   })
 
   it("reloads availability when the language changes", async () => {
@@ -222,7 +279,10 @@ describe("CollectionDownloadModal", () => {
   })
 
   it("renders the sign-in state without starting media requests", async () => {
-    renderModal({ authRequiredLoginUrl: "/login" })
+    renderModal({
+      accountGateEnabled: true,
+      authRequiredLoginUrl: "/login",
+    })
     await flush()
     expect(
       container.querySelector(
@@ -243,13 +303,15 @@ describe("CollectionDownloadModal", () => {
   })
 
   it("cancels a pending session preflight before the queue can start", async () => {
-    let resolveSession: ((value: { ok: true }) => void) | undefined
+    let resolveSession:
+      | ((value: { ok: true; accountGateEnabled: true }) => void)
+      | undefined
     resolveDownloadSessionAccessMock.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveSession = resolve
       }),
     )
-    renderModal()
+    renderModal({ accountGateEnabled: true })
     await flush()
 
     act(() => {
@@ -267,7 +329,7 @@ describe("CollectionDownloadModal", () => {
       ).click()
     })
     await act(async () => {
-      resolveSession?.({ ok: true })
+      resolveSession?.({ ok: true, accountGateEnabled: true })
       await Promise.resolve()
     })
 

@@ -158,6 +158,10 @@ beforeEach(() => {
   writePreferredLanguageSlugMock.mockClear()
   collectionDownloadModalMock.mockClear()
   resolveDownloadSessionAccessMock.mockReset()
+  resolveDownloadSessionAccessMock.mockResolvedValue({
+    ok: true,
+    accountGateEnabled: false,
+  })
   window.history.replaceState({}, "", "/")
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -373,8 +377,11 @@ describe("SeriesPageClient — collection downloads", () => {
     ).toBeNull()
   })
 
-  it("checks the session and opens the lazy modal with ordered episodes", async () => {
-    resolveDownloadSessionAccessMock.mockResolvedValueOnce({ ok: true })
+  it("opens the anonymous lazy modal when the account gate is disabled", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: false,
+    })
     act(() => {
       root.render(
         <SeriesPageClient
@@ -406,6 +413,37 @@ describe("SeriesPageClient — collection downloads", () => {
           expect.objectContaining({ documentId: "episode-1" }),
           expect.objectContaining({ documentId: "episode-2" }),
         ],
+        accountGateEnabled: false,
+        authRequiredLoginUrl: null,
+      }),
+      undefined,
+    )
+  })
+
+  it("passes an enabled account gate to the authenticated modal", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: true,
+    })
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        accountGateEnabled: true,
         authRequiredLoginUrl: null,
       }),
       undefined,
@@ -415,6 +453,7 @@ describe("SeriesPageClient — collection downloads", () => {
   it("passes the sign-in URL to the collection modal", async () => {
     resolveDownloadSessionAccessMock.mockResolvedValueOnce({
       ok: false,
+      accountGateEnabled: true,
       reason: "auth-required",
       loginUrl: "/login",
     })
@@ -435,14 +474,17 @@ describe("SeriesPageClient — collection downloads", () => {
       ).click()
     })
     expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ authRequiredLoginUrl: "/login" }),
+      expect.objectContaining({
+        accountGateEnabled: true,
+        authRequiredLoginUrl: "/login",
+      }),
       undefined,
     )
   })
 
-  it("reopens the collection flow after returning from sign-in", () => {
+  it("reopens the collection flow after returning from sign-in", async () => {
     window.history.replaceState({}, "", "/storyclubs.html/en.html?download=1")
-    act(() => {
+    await act(async () => {
       root.render(
         <SeriesPageClient
           series={makeSeries({ children: makeChildren(1) })}

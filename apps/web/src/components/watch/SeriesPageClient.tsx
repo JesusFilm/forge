@@ -65,6 +65,8 @@ export function SeriesPageClient({
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
+  const [downloadAccountGateEnabled, setDownloadAccountGateEnabled] =
+    useState(false)
   const downloadPendingRef = useRef(false)
   const openShare = useCallback(() => setModalState("share"), [])
   const openLanguage = useCallback(() => setModalState("language"), [])
@@ -80,17 +82,6 @@ export function SeriesPageClient({
     if (!url.searchParams.has(LOCALE_RESOLVED_PARAM)) return
     url.searchParams.delete(LOCALE_RESOLVED_PARAM)
     window.history.replaceState(window.history.state, "", url.toString())
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const url = new URL(window.location.href)
-    if (url.searchParams.get(DOWNLOAD_RETURN_INTENT_PARAM) !== "1") return
-    url.searchParams.delete(DOWNLOAD_RETURN_INTENT_PARAM)
-    window.history.replaceState(window.history.state, "", url.toString())
-    setDownloadError(null)
-    setDownloadLoginUrl(null)
-    setModalState("download")
   }, [])
 
   // LanguagePickerModal expects a MuxPlayerRef to read currentTime for
@@ -203,13 +194,28 @@ export function SeriesPageClient({
         return
       }
       setDownloadError(null)
-      setDownloadLoginUrl(session.ok ? null : session.loginUrl)
+      if (session.ok) {
+        setDownloadAccountGateEnabled(session.accountGateEnabled)
+        setDownloadLoginUrl(null)
+      } else {
+        setDownloadAccountGateEnabled(true)
+        setDownloadLoginUrl(session.loginUrl)
+      }
       setModalState("download")
     } finally {
       downloadPendingRef.current = false
       setDownloadPending(false)
     }
   }, [t])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(DOWNLOAD_RETURN_INTENT_PARAM) !== "1") return
+    url.searchParams.delete(DOWNLOAD_RETURN_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+    void openDownload()
+  }, [openDownload])
 
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
@@ -408,6 +414,7 @@ export function SeriesPageClient({
           }))}
           languages={languageOptions}
           currentLanguageSlug={currentLanguageSlug}
+          accountGateEnabled={downloadAccountGateEnabled}
           authRequiredLoginUrl={downloadLoginUrl}
           onClose={closeModal}
         />
