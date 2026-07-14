@@ -261,6 +261,7 @@ describe("WatchPageClient download boundary", () => {
   it("passes opaque download ids to DownloadModal without raw CDN URLs", async () => {
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
+      accountGateEnabled: false,
       authenticated: true,
     })
     renderWatchPage()
@@ -280,7 +281,9 @@ describe("WatchPageClient download boundary", () => {
       languageSlug: string
       variantId: string
       videoSlug: string
+      accountGateEnabled: boolean
     }
+    expect(latestProps.accountGateEnabled).toBe(false)
     expect(latestProps.variantId).toBe("5fc705b9-1b3b-4a58-abef-755b98457de6")
     expect(latestProps.videoSlug).toBe("jesus-is-brought-to-pilate")
     expect(latestProps.languageCode).toBe("eng")
@@ -308,6 +311,7 @@ describe("WatchPageClient download boundary", () => {
       "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch%2Fjesus"
     checkDownloadSessionMock.mockResolvedValueOnce({
       ok: true,
+      accountGateEnabled: true,
       authenticated: false,
       loginUrl,
     })
@@ -330,6 +334,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: true,
+        accountGateEnabled: true,
         authRequiredLoginUrl: loginUrl,
       }),
     )
@@ -349,6 +354,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: false,
+        accountGateEnabled: true,
         authRequiredLoginUrl: loginUrl,
       }),
     )
@@ -360,6 +366,11 @@ describe("WatchPageClient download boundary", () => {
       "",
       "/watch/jesus-is-brought-to-pilate.html/english.html?download=1&t=12",
     )
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: false,
+      authenticated: false,
+    })
     renderWatchPage()
 
     await vi.waitFor(() => {
@@ -372,6 +383,7 @@ describe("WatchPageClient download boundary", () => {
     expect(downloadModalProps.at(-1)).toEqual(
       expect.objectContaining({
         open: true,
+        accountGateEnabled: false,
         authRequiredLoginUrl: null,
       }),
     )
@@ -718,6 +730,7 @@ describe("WatchPageClient download boundary", () => {
       .mockResolvedValueOnce({ ok: false, reason: "session-unavailable" })
       .mockResolvedValueOnce({
         ok: true,
+        accountGateEnabled: false,
         authenticated: true,
       })
     renderWatchPage()
@@ -744,6 +757,59 @@ describe("WatchPageClient download boundary", () => {
         .querySelector('[data-testid="watch-page-client"]')
         ?.getAttribute("data-modal-state"),
     ).toBe("download")
+  })
+
+  it("ignores stale download session responses after opening another modal", async () => {
+    let resolveSession:
+      | ((value: {
+          ok: true
+          accountGateEnabled: false
+          authenticated: false
+        }) => void)
+      | undefined
+    checkDownloadSessionMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("language")
+
+    await act(async () => {
+      resolveSession?.({
+        ok: true,
+        accountGateEnabled: false,
+        authenticated: false,
+      })
+      await Promise.resolve()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("language")
   })
 })
 

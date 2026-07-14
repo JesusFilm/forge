@@ -70,7 +70,9 @@ describe("AccountControl", () => {
   it("links signed-out viewers to the Web-local Auth login route", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => Response.json({ authenticated: false })),
+      vi.fn(async () =>
+        Response.json({ accountGateEnabled: true, authenticated: false }),
+      ),
     )
 
     await act(async () => {
@@ -98,11 +100,37 @@ describe("AccountControl", () => {
     expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
   })
 
+  it("hides the signed-out account control when the download account gate is off", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ accountGateEnabled: false, authenticated: false }),
+      ),
+    )
+
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="watch-account-control"]'),
+      ).toBeNull()
+    })
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/watch/api/auth/session?callbackURL=%2Fwatch%2Fjesus%2Fenglish%3Ft%3D12",
+      expect.any(Object),
+    )
+    expect(clearDatadogRumUserMock).toHaveBeenCalledTimes(1)
+    expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
+  })
+
   it("opens a signed-in account menu with profile details and logout", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         Response.json({
+          accountGateEnabled: false,
           authenticated: true,
           user: {
             id: "auth-user-123",
