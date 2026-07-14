@@ -85,6 +85,16 @@ describe("budgets (U11)", () => {
     it("pins multiStepWorkflow at 180_000ms (regression guard — sized after live smoke runs)", () => {
       expect(TIME_BUDGET_MS.multiStepWorkflow).toBe(180_000)
     })
+
+    it("keeps the history read budget strictly below the chat proxy's 10s ceiling (feat-241)", () => {
+      // apps/chat's /api/history/* proxies bound their upstream read with
+      // min(seekerTimeoutMs(), 10_000) — HISTORY_READ_TIMEOUT_CEILING_MS in
+      // apps/chat/src/app/api/history/history-proxy.ts. The route budget must
+      // settle FIRST so its clean timeout reason (not the proxy's abort
+      // classifier) wins the race. Cross-app literal by necessity: the apps
+      // must not import each other, so this pin names the ceiling explicitly.
+      expect(TIME_BUDGET_MS.historyRead).toBeLessThan(10_000)
+    })
   })
 
   describe("getTimeBudgetMs", () => {

@@ -87,6 +87,30 @@ describe("seeker agent route isolation", () => {
     expect(region).toContain("handleSeekerRouteRequest")
   })
 
+  it("threads the lane-only seekerServiceKeys into /forge-seeker (feat-250)", () => {
+    // The handler tests inject key lists directly, so this source pin is the
+    // ONLY guard against a one-line revert to the adjacent pool binding
+    // (`serviceKeys`) silently re-granting pool keys conversation access.
+    const region = extractApiRoutesRegion(indexSource)
+    const start = region.search(/["']\/forge-seeker["']/)
+    expect(start).toBeGreaterThanOrEqual(0)
+    const next = region.indexOf("registerApiRoute(", start)
+    const seekerBlock =
+      next === -1 ? region.slice(start) : region.slice(start, next)
+    expect(seekerBlock).toContain("serviceKeys: seekerServiceKeys")
+    // Neither the pool-as-value nor the shorthand pool binding may appear.
+    expect(seekerBlock).not.toMatch(/serviceKeys:\s*serviceKeys\b/)
+    expect(seekerBlock).not.toMatch(/[\s{(]serviceKeys,/)
+  })
+
+  it("derives seekerServiceKeys from the ai-chat lane CSV (feat-250)", () => {
+    // Pins the binding itself: the lane list comes from
+    // AI_CHAT_SERVICE_API_KEYS, never MASTRA_SERVICE_API_KEYS.
+    expect(indexSource).toMatch(
+      /const seekerServiceKeys = parseServiceApiKeys\(\s*env\.AI_CHAT_SERVICE_API_KEYS,?\s*\)/,
+    )
+  })
+
   it("does NOT reference seekerAgent inside any custom apiRoute", () => {
     // The route looks the agent up by string id in the handler module (KTD1),
     // so the literal `seekerAgent` token must never appear in the apiRoutes
