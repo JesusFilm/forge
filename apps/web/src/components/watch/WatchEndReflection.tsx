@@ -383,7 +383,7 @@ function ReflectionChat({
           role="group"
           aria-label={nextStepsSupport}
           data-testid="watch-end-reflection-chat-options"
-          className="ml-10 grid grid-cols-1 gap-2 min-[440px]:grid-cols-2"
+          className="ml-10 grid w-[calc(94%_-_2.5rem)] grid-cols-1 gap-2 min-[440px]:grid-cols-2 sm:w-[calc(82%_-_2.5rem)]"
         >
           {actions.map((action, index) => {
             const selected = selectedAction?.id === action.id

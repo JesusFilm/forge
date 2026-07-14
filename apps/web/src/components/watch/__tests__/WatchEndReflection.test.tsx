@@ -123,6 +123,8 @@ describe("WatchEndReflection", () => {
       "Have a question or comments about this video or another topic?",
     )
     expect(chatOptions).not.toBeNull()
+    expect(chatOptions?.className).toContain("w-[calc(94%_-_2.5rem)]")
+    expect(chatOptions?.className).toContain("sm:w-[calc(82%_-_2.5rem)]")
     expect(
       container.querySelectorAll<HTMLElement>("[data-action-id]").length,
     ).toBe(8)
