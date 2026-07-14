@@ -21,7 +21,7 @@
   --animate-watch-panel-swap: watch-panel-swap 360ms ease-out both;
   --animate-watch-reflection-enter: watch-reflection-enter 440ms
     cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-watch-story-progress: watch-story-progress 4s linear both;
+  --animate-watch-story-progress: watch-story-progress 5s linear both;
   --animate-watch-story-copy: watch-story-copy 520ms
     cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-watch-story-detail: watch-story-detail 520ms 90ms

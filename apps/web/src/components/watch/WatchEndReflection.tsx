@@ -47,7 +47,7 @@ type NextStepAction = {
   testId: string
 }
 
-const CHAPTER_DURATION_MS = 4_000
+const CHAPTER_DURATION_MS = 5_000
 const INACTIVITY_RESUME_MS = 6_000
 
 const PRIMARY_ACTION_CLASS =

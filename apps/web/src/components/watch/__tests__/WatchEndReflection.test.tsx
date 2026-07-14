@@ -124,7 +124,7 @@ describe("WatchEndReflection", () => {
       ).toBe(7)
 
       act(() => {
-        vi.advanceTimersByTime(4_000)
+        vi.advanceTimersByTime(5_000)
       })
 
       expect(talk.getAttribute("data-highlighted")).toBe("true")
@@ -138,7 +138,7 @@ describe("WatchEndReflection", () => {
         ask.click()
       })
       act(() => {
-        vi.advanceTimersByTime(4_000)
+        vi.advanceTimersByTime(5_000)
       })
       expect(ask.getAttribute("data-highlighted")).toBe("true")
 
@@ -146,7 +146,7 @@ describe("WatchEndReflection", () => {
         vi.advanceTimersByTime(6_000)
       })
       act(() => {
-        vi.advanceTimersByTime(4_000)
+        vi.advanceTimersByTime(5_000)
       })
       expect(talk.getAttribute("data-highlighted")).toBe("true")
 
@@ -198,7 +198,7 @@ describe("WatchEndReflection", () => {
 
       for (let chapter = 0; chapter < actions.length; chapter += 1) {
         act(() => {
-          vi.advanceTimersByTime(4_000)
+          vi.advanceTimersByTime(5_000)
         })
       }
 
@@ -256,7 +256,7 @@ describe("WatchEndReflection", () => {
       ).toBe("true")
 
       act(() => {
-        vi.advanceTimersByTime(4_000)
+        vi.advanceTimersByTime(5_000)
       })
       expect(
         container
@@ -280,7 +280,7 @@ describe("WatchEndReflection", () => {
       ) as HTMLButtonElement
 
       act(() => {
-        vi.advanceTimersByTime(24_000)
+        vi.advanceTimersByTime(30_000)
       })
 
       expect(ask.getAttribute("data-highlighted")).toBe("true")
