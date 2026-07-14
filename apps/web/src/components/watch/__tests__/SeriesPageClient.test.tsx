@@ -132,6 +132,7 @@ vi.mock("@/components/watch/LanguagePickerModal", () => ({
 }))
 
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
+import { SeriesHero } from "@/components/watch/SeriesHero"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -159,6 +160,7 @@ afterEach(() => {
 })
 
 type Series = ResolvedSeriesBySlug["video"]
+type SelectedVariant = ResolvedSeriesBySlug["selectedVariant"]
 
 function makeSeries(overrides: Partial<Series> = {}): Series {
   return {
@@ -193,6 +195,25 @@ function makeChildren(count: number): Series["children"] {
     muxPlaybackId: null,
     muxThumbnailBlurDataUrl: null,
   })) as Series["children"]
+}
+
+function makeSelectedVariant(): SelectedVariant {
+  return {
+    documentId: "variant-1",
+    slug: "english",
+    published: true,
+    hls: "https://cdn.example/storyclubs.m3u8",
+    duration: 30,
+    language: {
+      coreId: "529",
+      bcp47: "en",
+      slug: "english",
+      name: "English",
+      nativeName: "English",
+    },
+    downloads: [],
+    muxVideo: { playbackId: "playback-id-storyclubs" },
+  } as SelectedVariant
 }
 
 // Helper for tests that exercise the language picker (aggregation, globe
@@ -465,6 +486,28 @@ describe("SeriesPageClient — header language switcher + language modal", () =>
     expect(
       container.querySelector('[data-testid="series-page-language-button"]'),
     ).toBeNull()
+    listener.cleanup()
+  })
+
+  it("delegates the header switcher to HeroPlayer for a playable series trailer", () => {
+    const listener = listenForHeaderLanguageSwitcher()
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ childDubLanguages })}
+          selectedVariant={makeSelectedVariant()}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(listener.updates).toHaveLength(0)
+    const seriesHeroProps = vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]
+    expect(seriesHeroProps?.playableLanguageCount).toBe(2)
+    expect(seriesHeroProps?.onLanguageClick).toEqual(expect.any(Function))
     listener.cleanup()
   })
 

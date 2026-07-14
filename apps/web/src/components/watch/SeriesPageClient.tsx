@@ -176,8 +176,9 @@ export function SeriesPageClient({
   )
 
   const headerLanguageSwitcherVisible = variantsForLanguagePicker.length >= 2
+  const heroOwnsHeaderLanguageSwitcher = Boolean(selectedVariant?.hls)
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined" || heroOwnsHeaderLanguageSwitcher) return
 
     window.dispatchEvent(
       new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
@@ -202,7 +203,12 @@ export function SeriesPageClient({
         ),
       )
     }
-  }, [currentLanguageCode, headerLanguageSwitcherVisible, openLanguage])
+  }, [
+    currentLanguageCode,
+    headerLanguageSwitcherVisible,
+    heroOwnsHeaderLanguageSwitcher,
+    openLanguage,
+  ])
 
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
@@ -232,6 +238,8 @@ export function SeriesPageClient({
       <SeriesHero
         series={series}
         selectedVariant={selectedVariant}
+        onLanguageClick={openLanguage}
+        playableLanguageCount={variantsForLanguagePicker.length}
         overlay={
           // Stack the label on top, then a horizontal row with the title
           // on the left and the share pill on the right. Using

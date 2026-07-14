@@ -9,11 +9,11 @@ date: 2026-07-14
 
 ## Summary
 
-Restore a stable Watch floating-header layout so the active-language globe/code control and the adjacent account control remain distinct, aligned, and usable at production viewport widths. Keep the fix within the existing header geometry contract and add browser-level spatial regression proof.
+Remove the duplicate series-page language control so the global Watch header is the only trailing-control surface. Preserve the existing header geometry, keep the language action available in static and playable series heroes, and add browser-level spatial regression proof.
 
 ## Problem Frame
 
-Production Watch currently renders the language and account icons on top of each other in the floating header. The regression coincides with `feat-245` adding a language code beside the globe: `FloatingSearchProvider` widened that button locally while the shared header contract and adjacent account slot retained the earlier fixed-icon assumptions. Treat that class conflict as the leading hypothesis until a real-browser reproduction confirms the computed layout. Existing component tests assert class names and content, but they do not prove the rendered controls have non-overlapping rectangles.
+Production reproduction at `/watch/lumo-the-gospel-of-matthew.html/english.html` showed the series page rendering two independent fixed controls in the same top-right area: the global header account control and `SeriesPageClient`'s local language button. At 400 px wide their rectangles intersected, while a normal video route using only the global header had positive separation. The bug is duplicate UI ownership, not the shared header width contract.
 
 ## Requirements
 
@@ -26,15 +26,15 @@ Production Watch currently renders the language and account icons on top of each
 
 ## Key Technical Decisions
 
-- **KTD1. Fix the shared trailing-control geometry:** Treat the language-plus-code control as an intrinsically sized flex item and keep the account control as a separate non-shrinking slot. The header and search-overlay mirror should derive from the same contract instead of relying on conflicting fixed-width and automatic-width utilities.
-- **KTD2. Verify rendered rectangles, not only utility strings:** Retain focused component assertions for the shared contract, then use a real browser to assert the controls do not intersect and remain aligned at representative narrow and wide viewports.
-- **KTD3. Preserve the existing header composition:** Keep the language event wiring, account component, search field, logo, and header visibility lifecycle intact; this is a layout regression fix rather than a redesign.
+- **KTD1. Eliminate the duplicate control:** Remove the series-local fixed language button and publish the existing global-header language-switcher event instead. Do not change the already-correct global trailing-control geometry.
+- **KTD2. Keep one event publisher per hero mode:** `SeriesPageClient` owns the event for a static series hero. When a playable trailer renders `HeroPlayer`, pass the language callback and count through `SeriesHero` so the player remains the sole publisher and can preserve fullscreen/chrome visibility behavior.
+- **KTD3. Verify rendered rectangles, not only DOM presence:** Retain focused event-wiring tests, then use a real browser to assert exactly one language control, positive separation from the account control, and aligned centers at representative narrow and wide viewports.
 
 ## Scope Boundaries
 
 - Do not change language-code derivation, language routing, account authentication, player controls, or search behavior.
 - Do not restyle the header, enlarge its safe-area band, or alter the Watch rail edges beyond what is required to prevent overlap.
-- Do not add a new responsive breakpoint or JavaScript measurement when the existing flex layout can express the contract.
+- Do not alter shared header sizing or add a responsive breakpoint to compensate for a duplicate control.
 
 ## Implementation Units
 
@@ -49,28 +49,28 @@ Production Watch currently renders the language and account icons on top of each
 - **Test scenarios:** Test expectation: none -- roadmap-only tracking.
 - **Verification:** The roadmap index contains the in-progress ticket and the ticket names the exact code and browser proof surfaces.
 
-### U2. Make trailing controls collision-safe
+### U2. Route series language switching through the global header
 
-- **Goal:** Give the language-plus-code and account controls an explicit non-overlapping flex contract while keeping the search field fluid.
+- **Goal:** Remove the series-local fixed button and preserve one global language-switcher publisher across static and playable series heroes.
 - **Requirements:** R1, R2, R3, R4, R5, R6.
 - **Dependencies:** U1.
-- **Files:** `apps/web/src/lib/content-width.ts`, `apps/web/src/components/FloatingSearchProvider.tsx`, `apps/web/src/components/SearchOverlay.tsx`, `apps/web/src/components/SearchOverlayInstantShell.tsx`, `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`, `apps/web/src/lib/__tests__/content-width.test.ts`.
-- **Approach:** First reproduce the overlap and inspect computed rectangles and styles for the language button, account wrapper, trailing group, and search field. If the leading class-conflict hypothesis is confirmed, remove the fixed-width/automatic-width conflict from the language slot and encode intrinsic width plus non-shrinking behavior in the shared header geometry. Ensure the closed header, full search overlay, and instant shell reserve the same trailing composition. Keep the account slot and search flex behavior unchanged except where an explicit non-shrinking boundary is needed.
-- **Patterns to follow:** Shared `FLOATING_HEADER_*` constants in `apps/web/src/lib/content-width.ts`; the mirrored closed/open header contract established by `docs/plans/2026-07-09-002-fix-search-modal-focus-alignment-plan.md`; `AccountControl` as the owner of account-button sizing.
+- **Files:** `apps/web/src/components/watch/SeriesPageClient.tsx`, `apps/web/src/components/watch/SeriesHero.tsx`, `apps/web/src/components/watch/__tests__/SeriesPageClient.test.tsx`, `apps/web/src/components/watch/__tests__/SeriesHero.test.tsx`.
+- **Approach:** Remove `series-page-language-button`. In static mode, publish `WATCH_HEADER_LANGUAGE_SWITCHER_EVENT` with the existing modal callback and active code. In playable-trailer mode, delegate the callback and playable-language count through `SeriesHero` to `HeroPlayer`, avoiding competing last-writer-wins publishers and preserving fullscreen visibility behavior.
+- **Patterns to follow:** `HeroPlayer`'s existing `WATCH_HEADER_LANGUAGE_SWITCHER_EVENT` contract and `WatchSectionRenderer`'s `onLanguageClick`/`playableLanguageCount` wiring.
 - **Test scenarios:**
-  - With language code `EN`, the language button uses the expandable shared slot contract and the account control remains a separate fixed slot.
-  - Without a language code, the globe-only state preserves its compact slot and does not change account alignment.
-  - Opening the instant or full search overlay reserves the same language-plus-account trailing width as the closed header.
-  - Hiding language chrome or replacing the account control with the search close button preserves the existing slot count and header motion behavior.
-- **Verification:** Focused component and constant tests prove all three header representations consume the same collision-safe geometry, with no new runtime data or initialization work.
+  - A static series with 2+ languages publishes the global header callback and active code, while no series-local button renders.
+  - A static series with fewer than 2 languages hides the global switcher.
+  - A playable series trailer delegates the callback and count to `HeroPlayer` and does not publish a competing parent event.
+  - Invoking the global callback opens the existing series language modal.
+- **Verification:** Focused series and floating-header tests prove single-owner event wiring with no new runtime data or initialization work.
 
 ### U3. Prove the production layout and close the ticket
 
 - **Goal:** Validate the regression fix in automated checks and a real browser, then mark the roadmap ticket complete.
 - **Requirements:** R1 through R6.
 - **Dependencies:** U2.
-- **Files:** `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`, `docs/roadmap/platform/feat-252-watch-header-control-overlap.md`, `docs/roadmap/README.md`.
-- **Approach:** Run the focused header tests and CI-sensitive web checks. In a local production-like Watch route, inspect the language and account bounding rectangles at narrow mobile and desktop widths, verify a positive horizontal gap and aligned vertical centers, open search to confirm the mirrored header remains stable, and capture screenshots. Compare page requests and initialization behavior to confirm the CSS-only fix adds no loading work.
+- **Files:** `apps/web/src/components/watch/__tests__/SeriesPageClient.test.tsx`, `apps/web/src/components/watch/__tests__/SeriesHero.test.tsx`, `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`, `docs/roadmap/platform/feat-252-watch-header-control-overlap.md`, `docs/roadmap/README.md`.
+- **Approach:** Run the focused series/header tests and CI-sensitive web checks. In the reproduced series route, assert that the obsolete local button is absent, the single global language control has a positive gap from the account control at mobile and desktop widths, and search-open state remains stable. Compare requests and initialization behavior to confirm the event-only integration adds no loading work.
 - **Patterns to follow:** Browser geometry proof from `docs/plans/2026-07-09-002-fix-search-modal-focus-alignment-plan.md` and the Watch frontend completion requirements in `apps/web/AGENTS.md`.
 - **Test scenarios:**
   - At a 390-pixel-wide viewport, the language and account rectangles do not intersect, both controls are fully visible, and the search field stays within its own rectangle.
@@ -81,17 +81,16 @@ Production Watch currently renders the language and account icons on top of each
 
 ## Risks & Dependencies
 
-- Tailwind utility conflicts can look correct in jsdom while the generated stylesheet resolves width utilities differently; real-browser rectangle assertions are required.
-- The overlay shell mirrors the persistent header by placeholder slots, so changing only the visible button would fix the screenshot but reintroduce search-open shift.
-- A very narrow viewport can legitimately compress the search field; the trailing controls must not shrink or overlap even when the search field reaches its minimum useful width.
+- A duplicate fixed control can look harmless at desktop widths; real-browser narrow-viewport rectangle assertions are required.
+- The header event is last-writer-wins. Static and playable hero modes must never publish competing state.
+- A very narrow viewport can legitimately compress the search field, but the one global trailing group must remain separated and aligned.
 
 ## Sources & Research
 
+- `apps/web/src/components/watch/SeriesPageClient.tsx`
+- `apps/web/src/components/watch/SeriesHero.tsx`
+- `apps/web/src/components/watch/HeroPlayer.tsx`
 - `apps/web/src/components/FloatingSearchProvider.tsx`
-- `apps/web/src/components/watch/AccountControl.tsx`
-- `apps/web/src/lib/content-width.ts`
-- `apps/web/src/components/SearchOverlay.tsx`
-- `apps/web/src/components/SearchOverlayInstantShell.tsx`
 - `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx`
 - `docs/roadmap/platform/feat-245-watch-language-code-selectors.md`
 - `docs/plans/2026-07-09-002-fix-search-modal-focus-alignment-plan.md`
