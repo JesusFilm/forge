@@ -615,7 +615,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-release-metadata"]')
         ?.textContent,
-    ).toBe("2023 · 29 min")
+    ).toBe("29 min")
     expect(
       container.querySelector('[data-testid="hero-player-release-metadata"]')
         ?.className,

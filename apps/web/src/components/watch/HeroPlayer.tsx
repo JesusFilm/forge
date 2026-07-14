@@ -133,15 +133,6 @@ function highestDownloadQualityLabel(
   )
 }
 
-function releaseYearFrom(
-  publishedAt: string | null | undefined,
-): string | null {
-  if (publishedAt == null) return null
-  const timestamp = Date.parse(publishedAt)
-  if (!Number.isFinite(timestamp)) return null
-  return String(new Date(timestamp).getUTCFullYear())
-}
-
 function formatHeroRuntime(
   seconds: number | null | undefined,
   locale: string,
@@ -1425,10 +1416,7 @@ export function HeroPlayer({
     subtitleLanguageCount > 0
       ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
       : null
-  const releaseMetadata = [
-    releaseYearFrom(video.publishedAt),
-    formatHeroRuntime(variant.duration, locale),
-  ]
+  const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")
   const qualityLabel = highestDownloadQualityLabel(variant.downloads)
