@@ -34,6 +34,16 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons — persisting or re-selecting a user's chosen language — key on the slug; the BCP-47 tag is only for best-effort device-locale matching.
 
+### Watch Language Inventory
+
+The public language-scoped catalog of indexable Watch Videos, organized into
+fully dubbed collections, fully dubbed standalone videos, and videos available
+only through subtitles in that Language.
+
+Audio availability takes precedence over subtitle-only membership, while
+collection containers and playable leaf Videos remain distinct inventory
+groups even when they share the same underlying language coverage.
+
 ## Video source mapper
 
 ### Video Source Mapper

@@ -69,10 +69,6 @@ function buildRedirect(url: URL, status: 307 | 308): NextResponse {
   return response
 }
 
-function buildNotFound(): NextResponse {
-  return new NextResponse(null, { status: 404 })
-}
-
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   const url = request.nextUrl.clone()
   url.pathname = "/"
@@ -272,8 +268,19 @@ function rewriteToInternal(
     WATCH_INTERNAL_REWRITE_VALUE,
   )
   return applyWatchSecurityHeaders(
-    NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
+    NextResponse.rewrite(url, {
+      request: { headers: requestHeaders },
+    }),
   )
+}
+
+function buildNotFound(request: ProxyRequest): NextResponse {
+  return rewriteToInternal(request, {
+    kind: "rewrite",
+    locale: DEFAULT_LOCALE,
+    htmlLang: DEFAULT_LOCALE,
+    pathname: "/404",
+  })
 }
 
 async function isRewriteAdmittedByManifest(
@@ -304,10 +311,10 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     if (prefix.kind === "redirect") {
       return applyWatchSecurityHeaders(NextResponse.next())
     }
-    if (prefix.kind === "not-found") return buildNotFound()
+    if (prefix.kind === "not-found") return buildNotFound(request)
   }
 
-  if (prefix.kind === "not-found") return buildNotFound()
+  if (prefix.kind === "not-found") return buildNotFound(request)
   if (prefix.kind === "redirect") {
     const url = request.nextUrl.clone()
     url.pathname = prefix.pathname
@@ -334,8 +341,10 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
 
   const rewrite = classifyRewrite(pathname)
   if (rewrite.kind === "pass") return NextResponse.next()
-  if (rewrite.kind === "not-found") return buildNotFound()
-  if (!(await isRewriteAdmittedByManifest(rewrite))) return buildNotFound()
+  if (rewrite.kind === "not-found") return buildNotFound(request)
+  if (!(await isRewriteAdmittedByManifest(rewrite))) {
+    return buildNotFound(request)
+  }
   return rewriteToInternal(request, rewrite)
 }
 

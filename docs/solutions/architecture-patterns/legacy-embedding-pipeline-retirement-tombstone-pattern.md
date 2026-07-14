@@ -162,3 +162,4 @@ model VideoSceneLocale {
 - [Mastra scene embedding workflow pattern](../platform/mastra-scene-embedding-workflow-pattern.md)
 - [Destructive embedding cleanup CLIs need model-provenance targeting](../tooling-decisions/destructive-embedding-cleanup-cli-safety-contract.md)
 - [Migrating Next.js App Router route shapes](../best-practices/nextjs-route-shape-migration-cross-cutting-contract-drift-20260430.md)
+- [Retiring a mechanism: sweep docs prose for its names](../workflow-issues/mechanism-retirement-docs-prose-sweep.md) — the discovery method for the "documentation is part of the retirement surface" scope above: noun-keyed sweep + dated supersession notes on forward-looking instructions.

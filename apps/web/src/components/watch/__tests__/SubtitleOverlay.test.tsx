@@ -154,7 +154,11 @@ describe("SubtitleOverlay", () => {
     await flushEffects()
 
     const overlay = container.querySelector('[data-testid="subtitle-overlay"]')
+    const cue = overlay?.firstElementChild
     expect(overlay?.textContent).toBe("Forge-selected subtitle")
+    expect(cue?.className).not.toContain("bg-black/40")
+    expect(cue?.className).not.toContain("backdrop-blur-sm")
+    expect(cue?.className).toContain("text-shadow")
     expect(forgeTrack.mode).toBe("hidden")
   })
 
