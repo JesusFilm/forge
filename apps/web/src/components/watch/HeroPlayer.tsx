@@ -242,6 +242,7 @@ export function HeroPlayer({
   onPlayerReady,
   onPlayerActivated,
   onLanguageClick,
+  onShareClick,
   languageSlug,
   playableLanguageCount,
   darkenOverlay = false,
@@ -255,6 +256,7 @@ export function HeroPlayer({
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
   onLanguageClick?: () => void
+  onShareClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
   darkenOverlay?: boolean
@@ -265,6 +267,7 @@ export function HeroPlayer({
   coverBlackoutPhase?: "covering" | "revealing" | null
 }) {
   const t = useTranslations("HeroPlayer")
+  const tBibleQuotes = useTranslations("BibleQuotes")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
   const playbackId = variant.muxVideo?.playbackId ?? undefined
@@ -1718,28 +1721,41 @@ export function HeroPlayer({
                     {visualTitle}
                   </h1>
                 ) : null}
-                <button
-                  type="button"
-                  data-testid="hero-player-unmute-pill"
-                  data-state={pillState}
-                  aria-label={preRevealActionLabel}
-                  aria-controls={HERO_PLAYER_MEDIA_ID}
-                  onPointerDown={handleWatchNowPointerDown}
-                  onKeyDown={handleWatchNowKeyDown}
-                  onClick={handleWatchNowClick}
-                  className={
-                    pillState === "tap-to-unmute"
-                      ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
-                      : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
-                  }
-                >
-                  {pillState === "tap-to-unmute" ? (
-                    <MutedSpeakerIcon />
-                  ) : (
-                    <PlayIcon />
-                  )}
-                  <span>{preRevealActionLabel}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                  <button
+                    type="button"
+                    data-testid="hero-player-unmute-pill"
+                    data-state={pillState}
+                    aria-label={preRevealActionLabel}
+                    aria-controls={HERO_PLAYER_MEDIA_ID}
+                    onPointerDown={handleWatchNowPointerDown}
+                    onKeyDown={handleWatchNowKeyDown}
+                    onClick={handleWatchNowClick}
+                    className={
+                      pillState === "tap-to-unmute"
+                        ? `${WATCH_NOW_LINK_CLASS} bg-amber-500 text-stone-950 ring-2 ring-amber-300/60 hover:bg-amber-400`
+                        : `${WATCH_NOW_LINK_CLASS} bg-brand-red text-white hover:bg-brand-red`
+                    }
+                  >
+                    {pillState === "tap-to-unmute" ? (
+                      <MutedSpeakerIcon />
+                    ) : (
+                      <PlayIcon />
+                    )}
+                    <span>{preRevealActionLabel}</span>
+                  </button>
+                  {onShareClick ? (
+                    <button
+                      type="button"
+                      data-testid="hero-player-share-button"
+                      aria-label={tBibleQuotes("share")}
+                      onClick={onShareClick}
+                      className="inline-flex min-h-11 items-center px-1 text-base font-bold text-white/90 transition hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:min-h-14 sm:px-2 sm:text-lg"
+                    >
+                      {tBibleQuotes("share")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ))
           : null}
