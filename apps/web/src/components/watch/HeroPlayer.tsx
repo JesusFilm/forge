@@ -1861,7 +1861,7 @@ export function HeroPlayer({
                         className={`${WATCH_NOW_LINK_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`}
                       >
                         <Share2 className="h-5 w-5 shrink-0" aria-hidden />
-                        <span className="hidden md:inline">
+                        <span className="hidden sm:inline">
                           {tBibleQuotes("share")}
                         </span>
                       </button>
