@@ -1,7 +1,7 @@
 ---
 title: "Migrating a native client's home to a single admin CMS Experience (hydrate-by-coreId, TV home parity)"
 date: "2026-07-12"
-last_refreshed: "2026-07-13"
+last_refreshed: "2026-07-14"
 category: "architecture-patterns"
 module: "apps/tv, apps/admin, packages/admin-graphql"
 problem_type: "architecture_pattern"
@@ -246,4 +246,5 @@ coverage in a codebase that can't render hooks in tests.
 - [Pothos public widening multi-layer coordination](../graphql/pothos-public-widening-multi-layer-coordination-20260511.md) — where the new public `coreId` field must register.
 - [Mocked-shape vs real-contract discipline](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — why live-prod verification caught the videoId≠coreId gap.
 - [Cross-client home-hero web parity via a wire-label eligibility gate](cross-client-hero-parity-eligibility-gate.md) — the follow-up that closed the hero-divergence gap this doc flagged (label-gate approximation of web's hls gate; PR #1534).
+- [TV SDUI MediaCollection card image/title resolution](tv-sdui-mediacollection-card-image-title-resolution.md) — extends this doc's coreId-hydration beyond the Home migration to the general SDUI Experience-Details MediaCollection renderer (`ExperienceProvider` / `experienceHydration.ts`), and adds the card image-resolution layer (imageOverrideUrl origin rewrite, field-major cardImage, Mux 640 ceiling) this doc does not cover; PR #1551.
 - Plan: `docs/plans/2026-07-08-003-feat-tv-home-experience-parity-plan.md`.

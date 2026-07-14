@@ -11,8 +11,9 @@ const thumbnailCache = new Map<string, string | null>()
 
 /**
  * Per-session `searchTerm -> URL` map of each browse category's first result
- * thumbnail, rendered faintly over cards as a real-frame context cue. Uses
- * `limit: 1` and reuses the existing anonymous `search` query (no new surface).
+ * WITH artwork (limit:5, scanned by pickThumbnailUrl — the top hit can be
+ * imageless, e.g. "christmas"), rendered faintly over cards as a real-frame
+ * context cue. Reuses the existing anonymous `search` query (no new surface).
  */
 export function useCategoryThumbnails(): Record<string, string | null> {
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>(
@@ -29,7 +30,7 @@ export function useCategoryThumbnails(): Record<string, string | null> {
           variables: {
             q: topic.searchTerm,
             locale: "en",
-            limit: 1,
+            limit: 5,
             offset: 0,
           },
           fetchPolicy: "cache-first",
