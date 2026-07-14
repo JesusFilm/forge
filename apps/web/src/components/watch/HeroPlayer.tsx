@@ -16,11 +16,10 @@ import {
 } from "react"
 import { flushSync } from "react-dom"
 import Image, { type ImageLoaderProps } from "next/image"
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
-import { Captions, List, Share2 } from "lucide-react"
+import { Captions, Share2 } from "lucide-react"
 import type {
   MuxVideo as MuxVideoType,
   MuxPlayerRef,
@@ -51,7 +50,6 @@ import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchVideoPath,
   watchEpisodePath,
 } from "@/lib/routes"
 import {
@@ -1418,15 +1416,6 @@ export function HeroPlayer({
     subtitleLanguageCount > 0
       ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
       : null
-  const parentCollectionLabel = block.parentCollectionLabel ?? null
-  const parentCollectionHref =
-    block.nextWatchItem?.parentSlug != null &&
-    (languageSlug ?? variant.language?.slug) != null
-      ? watchVideoPath(
-          block.nextWatchItem.parentSlug,
-          (languageSlug ?? variant.language?.slug)!,
-        )
-      : null
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")
@@ -1876,24 +1865,6 @@ export function HeroPlayer({
                       </button>
                     ) : null}
                   </div>
-                  {parentCollectionLabel != null ? (
-                    <div
-                      data-testid="hero-player-parent-collection"
-                      className="mt-3 inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
-                    >
-                      <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      {parentCollectionHref != null ? (
-                        <Link
-                          href={parentCollectionHref}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {parentCollectionLabel}
-                        </Link>
-                      ) : (
-                        parentCollectionLabel
-                      )}
-                    </div>
-                  ) : null}
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
