@@ -1,6 +1,6 @@
 import { Agent } from "@mastra/core/agent"
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { Memory } from "@mastra/memory"
 
@@ -210,27 +210,54 @@ describe("handleSeekerRouteRequest — memory keying", () => {
     )
     await readSse(res)
     expect(streamCalls).toHaveLength(1)
+    // The dogfood fallback is a non-`user:` resource, so titling is disabled
+    // per-call (feat-241/KTD12).
     expect(streamCalls[0].opts.memory).toEqual({
       thread: "thread-A",
       resource: SEEKER_DEFAULT_RESOURCE_ID,
+      options: { generateTitle: false },
     })
   })
 
-  it("passes a provided resourceId straight through, never branching on it (R8)", async () => {
+  it("passes a provided resourceId straight through as the partition key (R8)", async () => {
     const { mastra, streamCalls } = makeMastra({ chunks: ["ok"] })
     const res = await handleSeekerRouteRequest(
       baseInput(mastra, {
         readJson: async () => ({
           prompt: "hi",
           threadId: "thread-A",
+          // Deliberately NOT `user:`-prefixed — an opaque caller-chosen id.
           resourceId: "user-123",
         }),
       }),
     )
     await readSse(res)
+    // The resource value is never validated or rewritten; the ONLY prefix
+    // branch is the sanctioned feat-241 titling scope (options), never the
+    // partition key itself.
     expect(streamCalls[0].opts.memory).toEqual({
       thread: "thread-A",
       resource: "user-123",
+      options: { generateTitle: false },
+    })
+  })
+
+  it("keeps titling enabled (no per-call override) for a user: resource (KTD12)", async () => {
+    const { mastra, streamCalls } = makeMastra({ chunks: ["ok"] })
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        readJson: async () => ({
+          prompt: "hi",
+          threadId: "thread-A",
+          resourceId: "user:sub-42",
+        }),
+      }),
+    )
+    await readSse(res)
+    // No options key at all — the Memory-level generateTitle config applies.
+    expect(streamCalls[0].opts.memory).toEqual({
+      thread: "thread-A",
+      resource: "user:sub-42",
     })
   })
 
@@ -250,6 +277,7 @@ describe("handleSeekerRouteRequest — memory keying", () => {
     expect(streamCalls[0].opts.memory).toEqual({
       thread: "thread-A",
       resource: SEEKER_DEFAULT_RESOURCE_ID,
+      options: { generateTitle: false },
     })
   })
 
@@ -839,5 +867,231 @@ describe("handleSeekerRouteRequest — thread ownership gate", () => {
     expect(body).not.toContain("event: result")
     // The gate is bounded BEFORE agent.stream, so the agent never runs.
     expect(streamCalls).toHaveLength(0)
+  })
+})
+
+// ===========================================================================
+// Title generation (feat-241, KTD12) — verified against the REAL Memory
+// surface (Execution note): the deprecated-key trap and the fire-and-forget
+// titling path only exist in the dist, so mocks would prove nothing here.
+// ===========================================================================
+
+type TitleGenerateResult = Awaited<
+  ReturnType<MockLanguageModelV3["doGenerate"]>
+>
+
+function titleGenerateResult(text: string): TitleGenerateResult {
+  return {
+    content: [{ type: "text", text }],
+    finishReason: { unified: "stop" as const, raw: "stop" },
+    usage: MOCK_USAGE,
+    warnings: [],
+  }
+}
+
+// Mock title model covering both invocation styles (generate + stream), with
+// hang/reject behaviors for the no-delay and benign-failure branches.
+function mockTitleModel(behavior: {
+  title?: string
+  reject?: boolean
+  hang?: boolean
+}): MockLanguageModelV3 {
+  const title = behavior.title ?? "Generated Title"
+  return new MockLanguageModelV3({
+    doGenerate: async () => {
+      if (behavior.hang) return await new Promise<never>(() => {})
+      if (behavior.reject) throw new Error("title model exploded")
+      return titleGenerateResult(title)
+    },
+    doStream: async () => {
+      if (behavior.hang) return await new Promise<never>(() => {})
+      if (behavior.reject) throw new Error("title model exploded")
+      return {
+        stream: simulateReadableStream<SmokeStreamPart>({
+          initialDelayInMs: null,
+          chunkDelayInMs: null,
+          chunks: [
+            { type: "stream-start", warnings: [] },
+            { type: "text-start", id: "0" },
+            { type: "text-delta", id: "0", delta: title },
+            { type: "text-end", id: "0" },
+            {
+              type: "finish",
+              finishReason: { unified: "stop" as const, raw: "stop" },
+              usage: MOCK_USAGE,
+            },
+          ],
+        }),
+      }
+    },
+  })
+}
+
+function titleModelCallCount(model: MockLanguageModelV3): number {
+  return model.doGenerateCalls.length + model.doStreamCalls.length
+}
+
+describe("handleSeekerRouteRequest — title generation (feat-241, KTD12)", () => {
+  it("titles a user: thread after the turn, without failing or delaying it (AE12)", async () => {
+    const titleModel = mockTitleModel({ title: "A Concise Title" })
+    const memory = buildAiChatMemory({ getBackend: () => "memory", titleModel })
+    const agent = buildSmokeAgent(mockModel("a reply"), memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
+        readJson: async () => ({
+          prompt: "What does John 3:16 mean?",
+          threadId: "title-thread-1",
+          resourceId: "user:title-sub",
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    expect(body).not.toContain("event: error")
+
+    // Fire-and-forget: the title lands AFTER the turn settles. Exact-match so
+    // a default/placeholder store title can't satisfy this vacuously.
+    await vi.waitFor(async () => {
+      const thread = await memory.getThreadById({ threadId: "title-thread-1" })
+      expect(thread?.title).toBe("A Concise Title")
+    })
+  })
+
+  it("completes the turn even when the title model hangs (titling never delays)", async () => {
+    const titleModel = mockTitleModel({ hang: true })
+    const memory = buildAiChatMemory({ getBackend: () => "memory", titleModel })
+    const agent = buildSmokeAgent(mockModel("a reply"), memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
+        readJson: async () => ({
+          prompt: "hi",
+          threadId: "title-hang-thread",
+          resourceId: "user:title-sub",
+        }),
+      }),
+    )
+    // The terminal frame arrives while the title call is still pending — the
+    // turn never waits on titling.
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+  })
+
+  it("keeps the turn successful and the title empty when the title model fails (AE12)", async () => {
+    const titleModel = mockTitleModel({ reject: true })
+    const memory = buildAiChatMemory({ getBackend: () => "memory", titleModel })
+    const agent = buildSmokeAgent(mockModel("a reply"), memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
+        readJson: async () => ({
+          prompt: "hi",
+          threadId: "title-fail-thread",
+          resourceId: "user:title-sub",
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    expect(body).not.toContain("event: error")
+
+    // Let the fire-and-forget failure settle, then confirm the untitled
+    // sentinel: the stored title stays empty (retried on the next turn).
+    await vi.waitFor(() =>
+      expect(titleModelCallCount(titleModel)).toBeGreaterThan(0),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    const thread = await memory.getThreadById({ threadId: "title-fail-thread" })
+    expect(thread?.title ?? "").toBe("")
+  })
+
+  it("does not re-title a thread that already has a non-empty title", async () => {
+    const titleModel = mockTitleModel({ title: "Clobbered" })
+    const memory = buildAiChatMemory({ getBackend: () => "memory", titleModel })
+    const now = new Date()
+    await memory.saveThread({
+      thread: {
+        id: "pre-titled-thread",
+        resourceId: "user:title-sub",
+        title: "Existing Title",
+        metadata: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+    })
+    const agent = buildSmokeAgent(mockModel("a reply"), memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
+        readJson: async () => ({
+          prompt: "hi again",
+          threadId: "pre-titled-thread",
+          resourceId: "user:title-sub",
+        }),
+      }),
+    )
+    await readSse(res)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(titleModelCallCount(titleModel)).toBe(0)
+    const thread = await memory.getThreadById({ threadId: "pre-titled-thread" })
+    expect(thread?.title).toBe("Existing Title")
+  })
+
+  it("attempts no titling for a non-user: resource (per-call override, R10)", async () => {
+    const titleModel = mockTitleModel({ title: "Should Never Appear" })
+    const memory = buildAiChatMemory({ getBackend: () => "memory", titleModel })
+    const agent = buildSmokeAgent(mockModel("a reply"), memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
+        readJson: async () => ({
+          prompt: "hi",
+          threadId: "anon-title-thread",
+          resourceId: "anon:3f9a2b10-9c1c-4b5f-a2d5-0e7c66666666",
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(titleModelCallCount(titleModel)).toBe(0)
+    const thread = await memory.getThreadById({ threadId: "anon-title-thread" })
+    expect(thread?.title ?? "").toBe("")
+  })
+
+  it("boots and serves an ordinary turn on the DEFAULT title config (deprecated-key trap pin)", async () => {
+    // The default config carries the model-router string. If the deprecated
+    // `threads.generateTitle` nesting were used instead of the top-level key,
+    // the first merged-config read would throw MID-TURN — this turn (which
+    // passes per-call options, forcing the merge) would emit an error frame.
+    const memory = buildAiChatMemory({ getBackend: () => "memory" })
+    const agent = buildSmokeAgent(mockModel("plain reply"), memory)
+    const mastra: SeekerRouteMastra = { getAgentById: () => agent }
+
+    const res = await handleSeekerRouteRequest(
+      baseInput(mastra, {
+        getMemory: () => memory as unknown as AiChatOwnershipMemory,
+        readJson: async () => ({
+          prompt: "hi",
+          threadId: "default-config-thread",
+        }),
+      }),
+    )
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    expect(body).not.toContain("event: error")
   })
 })

@@ -13,6 +13,7 @@ blocks:
   - "feat-209"
   - "feat-247"
   - "feat-248"
+  - "feat-250"
 tags:
   - "web"
   - "ai-pipeline"

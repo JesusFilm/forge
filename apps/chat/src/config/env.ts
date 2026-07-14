@@ -39,6 +39,11 @@ const envSchema = z.object({
   // CSV SSRF allowlist; unset → operator-set base host trusted (redirect:"error"
   // still guards). Matches admin's hostAllowed.
   SEEKER_MASTRA_ALLOWED_HOSTS: z.string().optional(),
+  // feat-241: the dedicated history lane bearer — the value Mastra holds in its
+  // AI_CHAT_SERVICE_API_KEYS CSV (KTD2; never the shared send-path pool key).
+  // Optional + fail-closed: unset → the history proxies refuse as unavailable
+  // without any upstream call, the seeker send path untouched.
+  AI_CHAT_MASTRA_API_KEY: z.string().optional(),
   // Kept as a raw string here (NOT z.coerce.number): a non-numeric value must
   // NOT crash envSchema.parse() at module load — that would break the
   // "every var optional, boots clean" guarantee. seekerTimeoutMs() does the
@@ -72,6 +77,7 @@ export const env = envSchema.parse({
   SEEKER_MASTRA_ALLOWED_HOSTS: emptyToUndefined(
     process.env.SEEKER_MASTRA_ALLOWED_HOSTS,
   ),
+  AI_CHAT_MASTRA_API_KEY: emptyToUndefined(process.env.AI_CHAT_MASTRA_API_KEY),
   SEEKER_TIMEOUT_MS: emptyToUndefined(process.env.SEEKER_TIMEOUT_MS),
   AUTH_ISSUER_URL: emptyToUndefined(process.env.AUTH_ISSUER_URL),
   AUTH_CHAT_CLIENT_ID: emptyToUndefined(process.env.AUTH_CHAT_CLIENT_ID),

@@ -116,6 +116,10 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import {
+  handleAiChatHistoryListRequest,
+  handleAiChatHistoryReplayRequest,
+} from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 
 assertMastraRuntimeEnv()
@@ -387,6 +391,37 @@ export const mastra = new Mastra({
             getMastra: () => mastra as unknown as SeekerRouteMastra,
             requestSignal: c.req.raw.signal,
           }),
+      }),
+      // ai-chat history read surface (feat-241). Bearer + gate ladder live in
+      // the handlers; both validate the dedicated AI_CHAT_SERVICE_API_KEYS
+      // lane CSV (KTD2), so no key list is threaded through here.
+      registerApiRoute("/forge-ai-chat-history-list", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryListRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-ai-chat-history-replay", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleAiChatHistoryReplayRequest({
+            authHeader: c.req.header("authorization"),
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
       }),
       registerApiRoute("/forge-eval-query-generation", {
         method: "POST",

@@ -142,9 +142,10 @@ function isRailwayInternalHost(host: string): boolean {
  * and Mastra deliberately has no public https domain). When an allowlist is set
  * the host must be in it. An unset allowlist trusts the operator-set host
  * (admin parity; `redirect:"error"` still blocks off-host hops) but the scheme
- * floor applies regardless.
+ * floor applies regardless. Exported for the feat-241 history proxies, which
+ * reuse the same base URL + allowlist.
  */
-function hostAllowed(
+export function hostAllowed(
   baseUrl: string,
   allowedHostsCsv: string | undefined,
 ): boolean {
