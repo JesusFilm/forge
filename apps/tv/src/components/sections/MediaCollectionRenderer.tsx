@@ -8,7 +8,10 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import {
+  resolveMediaItemImageUrl,
+  resolveMediaItemTitle,
+} from "../../lib/experienceHydration"
 import { FocusableCard } from "../FocusableCard"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
@@ -36,15 +39,18 @@ export function MediaCollectionRenderer({
 }: {
   section: MediaCollectionBlockModel
 }) {
-  const { scrollToSection } = useExperienceContext()
+  const { scrollToSection, videoByCoreId } = useExperienceContext()
 
   const { mcTitle, mcSubtitle, categoryLabel } = section
   const items: MediaItem[] = section.items ?? []
 
   const renderItem = useCallback(
     ({ item, index }: { item: MediaItem; index: number }) => {
-      const thumbnailUrl = resolveImageUrl(item.imageUrl ?? null)
-      const title = item.titleOverride ?? "Untitled"
+      // Authored overrides are usually null on these cards; resolve title + image
+      // from the coreId-hydrated video (the Home rail's data), else fall back.
+      const video = item.coreId ? videoByCoreId.get(item.coreId) : undefined
+      const thumbnailUrl = resolveMediaItemImageUrl(item, video)
+      const title = resolveMediaItemTitle(item, video)
       const label = item.labelOverride ?? categoryLabel
 
       // The fragment fetches no video record, so a card's only live action
@@ -99,7 +105,7 @@ export function MediaCollectionRenderer({
         </View>
       )
     },
-    [categoryLabel, scrollToSection],
+    [categoryLabel, scrollToSection, videoByCoreId],
   )
 
   const keyExtractor = useCallback(
