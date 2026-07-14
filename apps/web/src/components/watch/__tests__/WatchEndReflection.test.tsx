@@ -45,6 +45,9 @@ vi.mock("next-intl", () => ({
         downloadDetail: "Save a copy to watch later.",
         moreReflection: "Return to reflection",
         fieldLabel: "Ask a question about this video",
+        "prompts.bibleQuestion.label": "Ask a Bible question",
+        "prompts.comment.description": "Send thoughts about this video",
+        "prompts.personChat.description": "Talk with someone now",
         "prompts.prayerRequest.label": "Request a prayer",
         "prompts.prayerRequest.description": "Share what you want prayer for",
       }
@@ -464,6 +467,22 @@ describe("WatchEndReflection", () => {
         '[data-testid="watch-end-reflection-talk-input"]',
       ),
     ).not.toBeNull()
+    const talkHints = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="watch-end-reflection-talk-suggested-message"]',
+      ),
+    )
+    expect(talkHints).toHaveLength(3)
+    act(() => {
+      talkHints[0]?.click()
+    })
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-end-reflection-talk-input"]',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("Send thoughts about this video")
 
     const chat = container.querySelector(
       '[data-testid="watch-end-reflection-talk-submit"]',
@@ -511,6 +530,22 @@ describe("WatchEndReflection", () => {
         '[data-testid="watch-end-reflection-prayer-input"]',
       ),
     ).not.toBeNull()
+    const prayerHints = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="watch-end-reflection-prayer-suggested-message"]',
+      ),
+    )
+    expect(prayerHints).toHaveLength(3)
+    act(() => {
+      prayerHints[1]?.click()
+    })
+    expect(
+      (
+        container.querySelector(
+          '[data-testid="watch-end-reflection-prayer-input"]',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("Send thoughts about this video")
 
     const prayer = container.querySelector(
       '[data-testid="watch-end-reflection-prayer-submit"]',

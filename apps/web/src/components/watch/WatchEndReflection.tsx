@@ -44,6 +44,7 @@ type NextStepAction = {
   icon: ReactNode
   label: string
   detail: string
+  hints?: string[]
   href?: string
   onClick?: () => void
   testId: string
@@ -99,6 +100,7 @@ export function WatchEndReflection({
       icon: <MessageCircleHeart aria-hidden className="size-5" />,
       label: t("askBibleQuestion"),
       detail: t("askBibleQuestionDetail"),
+      hints: reflectionPrompts,
       href: ASK_BIBLE_QUESTION_URL,
       testId: "watch-end-reflection-ask-bible",
     },
@@ -108,6 +110,11 @@ export function WatchEndReflection({
       icon: <HeartHandshake aria-hidden className="size-5" />,
       label: t("talkToPerson"),
       detail: t("talkToPersonDetail"),
+      hints: [
+        tQuestionPanel("prompts.comment.description"),
+        tQuestionPanel("prompts.bibleQuestion.label"),
+        tQuestionPanel("prompts.prayerRequest.label"),
+      ],
       href: CHAT_WITH_PERSON_URL,
       testId: "watch-end-reflection-talk-person",
     },
@@ -117,6 +124,11 @@ export function WatchEndReflection({
       icon: <HandHeart aria-hidden className="size-5" />,
       label: tQuestionPanel("prompts.prayerRequest.label"),
       detail: tQuestionPanel("prompts.prayerRequest.description"),
+      hints: [
+        tQuestionPanel("prompts.prayerRequest.description"),
+        tQuestionPanel("prompts.comment.description"),
+        tQuestionPanel("prompts.personChat.description"),
+      ],
       href: CHAT_WITH_PERSON_URL,
       testId: "watch-end-reflection-request-prayer",
     },
@@ -284,7 +296,6 @@ export function WatchEndReflection({
           <ReflectionChat
             actions={actions}
             selectedAction={selectedAction}
-            prompts={reflectionPrompts}
             customQuestion={customQuestion}
             fieldLabel={tQuestionPanel("fieldLabel")}
             chatInvitation={t("chatInvitation")}
@@ -317,7 +328,6 @@ export function WatchEndReflection({
 function ReflectionChat({
   actions,
   selectedAction,
-  prompts,
   customQuestion,
   fieldLabel,
   chatInvitation,
@@ -328,7 +338,6 @@ function ReflectionChat({
 }: {
   actions: NextStepAction[]
   selectedAction?: NextStepAction
-  prompts: string[]
   customQuestion: string
   fieldLabel: string
   chatInvitation: string
@@ -434,7 +443,6 @@ function ReflectionChat({
           <SelectedConversation
             key={selectedAction.id}
             action={selectedAction}
-            prompts={prompts}
             customQuestion={customQuestion}
             onQuestionChange={onQuestionChange}
           />
@@ -485,12 +493,10 @@ function GuideBubble({
 
 function SelectedConversation({
   action,
-  prompts,
   customQuestion,
   onQuestionChange,
 }: {
   action: NextStepAction
-  prompts: string[]
   customQuestion: string
   onQuestionChange: (question: string) => void
 }) {
@@ -525,20 +531,28 @@ function SelectedConversation({
         {action.kind === "talk" ? <PeopleAvailability /> : null}
       </GuideBubble>
 
-      {action.kind === "ask" ? (
+      {action.hints && action.hints.length > 0 ? (
         <div
-          data-testid="watch-end-reflection-question-prompts"
+          data-testid={
+            action.kind === "ask"
+              ? "watch-end-reflection-question-prompts"
+              : "watch-end-reflection-" + action.id + "-hints"
+          }
           className="ml-10 max-w-2xl divide-y divide-white/[0.08] border-y border-white/[0.08]"
         >
-          {prompts.map((prompt, index) => {
-            const selected = customQuestion === prompt
+          {action.hints.map((hint, index) => {
+            const selected = customQuestion === hint
             return (
               <button
-                key={prompt}
+                key={hint}
                 type="button"
-                data-testid="watch-end-reflection-suggested-question"
+                data-testid={
+                  action.kind === "ask"
+                    ? "watch-end-reflection-suggested-question"
+                    : "watch-end-reflection-" + action.id + "-suggested-message"
+                }
                 aria-pressed={selected}
-                onClick={() => onQuestionChange(prompt)}
+                onClick={() => onQuestionChange(hint)}
                 className={
                   "group flex min-h-11 w-full cursor-pointer items-center gap-3 px-0.5 py-2.5 text-left text-xs leading-snug animate-watch-chat-incoming transition-colors focus-visible:text-white focus-visible:underline focus-visible:decoration-white/50 focus-visible:underline-offset-4 focus-visible:outline-none sm:text-sm motion-reduce:animate-none " +
                   (selected
@@ -547,7 +561,7 @@ function SelectedConversation({
                 }
                 style={{ animationDelay: String(360 + index * 150) + "ms" }}
               >
-                <span className="min-w-0 flex-1">{prompt}</span>
+                <span className="min-w-0 flex-1">{hint}</span>
                 <span
                   className={
                     "shrink-0 transition-[color,transform] group-hover:translate-y-0.5 motion-reduce:transform-none " +
