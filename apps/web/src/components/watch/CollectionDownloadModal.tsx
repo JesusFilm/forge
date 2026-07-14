@@ -23,7 +23,10 @@ import { resolveDownloadSessionAccess } from "@/components/watch/download-sessio
 import { redirectToAuth } from "@/components/watch/download-session-client"
 import { DOWNLOAD_PROXY_PATH } from "@/components/watch/download-link"
 import type { DownloadTier } from "@/components/watch/download-options"
-import type { LanguageComboboxOption } from "@/components/watch/LanguageCombobox"
+import {
+  LanguageCombobox,
+  type LanguageComboboxOption,
+} from "@/components/watch/LanguageCombobox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { languageCodeFor } from "@/lib/language-code"
 import { loadWatchCollectionDownloads } from "@/lib/watch-collection-download-actions"
@@ -467,22 +470,16 @@ export function CollectionDownloadModal({
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="flex flex-col gap-2 text-sm font-semibold">
+                <div className="flex flex-col gap-2 text-sm font-semibold">
                   <span>{t("languageLabel")}</span>
-                  <select
-                    data-testid="watch-collection-download-language"
+                  <LanguageCombobox
+                    options={languages}
                     value={languageSlug}
                     disabled={busy}
-                    onChange={(event) => setLanguageSlug(event.target.value)}
-                    className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-stone-100 outline-none focus:ring-2 focus:ring-amber-400"
-                  >
-                    {languages.map((language) => (
-                      <option key={language.slug} value={language.slug}>
-                        {language.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    onChange={setLanguageSlug}
+                    compact
+                  />
+                </div>
                 <label className="flex flex-col gap-2 text-sm font-semibold">
                   <span>{t("qualityLabel")}</span>
                   <select
@@ -492,7 +489,7 @@ export function CollectionDownloadModal({
                     onChange={(event) =>
                       setSelectedTier(event.target.value as DownloadTier)
                     }
-                    className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-stone-100 outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
+                    className="scheme-dark h-14 rounded-xl border border-white/10 bg-white/5 px-4 text-stone-100 outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
                   >
                     {(options?.commonTiers ?? []).map((tier) => (
                       <option key={tier} value={tier}>

@@ -143,12 +143,9 @@ describe("CollectionDownloadModal", () => {
       languageSlug: "english",
     })
     expect(
-      (
-        container.querySelector(
-          '[data-testid="watch-collection-download-language"]',
-        ) as HTMLSelectElement
-      ).value,
-    ).toBe("english")
+      container.querySelector('[data-testid="language-combobox-trigger"]')
+        ?.textContent,
+    ).toContain("English")
 
     await act(async () => {
       ;(
@@ -263,18 +260,42 @@ describe("CollectionDownloadModal", () => {
   it("reloads availability when the language changes", async () => {
     renderModal()
     await flush()
-    const select = container.querySelector(
-      '[data-testid="watch-collection-download-language"]',
-    ) as HTMLSelectElement
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-language"]',
+      ),
+    ).toBeNull()
+
+    const trigger = container.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    expect(trigger.textContent).toContain("English")
+
+    act(() => trigger.click())
+    const spanishOption = document.querySelector(
+      '[data-testid="language-combobox-option"][data-language-slug="spanish"]',
+    ) as HTMLButtonElement
+    expect(spanishOption).not.toBeNull()
+
     act(() => {
-      select.value = "spanish"
-      select.dispatchEvent(new Event("change", { bubbles: true }))
+      spanishOption.click()
     })
     await flush()
     expect(loadWatchCollectionDownloadsMock).toHaveBeenLastCalledWith({
       collectionSlug: "lumo-luke",
       languageSlug: "spanish",
     })
+  })
+
+  it("uses a dark native menu for video quality options", async () => {
+    renderModal()
+    await flush()
+
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-quality"]',
+      )?.className,
+    ).toContain("scheme-dark")
   })
 
   it("recovers when loading availability rejects", async () => {
