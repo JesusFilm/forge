@@ -47,7 +47,7 @@ embedded presentation for it.
 
 1. Add a lightweight bottom-left `FeedbackLauncher` to both web root layouts
    inside `FloatingSearchProvider`. Keep it icon-only at rest, use a
-   clipboard-and-pencil form metaphor, and reveal the `Feedback` label with a
+   triangular warning-sign cue, and reveal the `Feedback` label with a
    red treatment on hover or keyboard focus.
 2. Dynamically load `FeedbackModal` only after first user intent and keep an
    immediate accessible loading state in the launcher.

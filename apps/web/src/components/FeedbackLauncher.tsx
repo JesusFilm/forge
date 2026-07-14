@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic, { type DynamicOptionsLoadingProps } from "next/dynamic"
-import { ClipboardPenLine, ExternalLink, Loader2 } from "lucide-react"
+import { ExternalLink, Loader2, TriangleAlert } from "lucide-react"
 import {
   createContext,
   useCallback,
@@ -132,7 +132,7 @@ export function FeedbackLauncher() {
           onClick={openFeedback}
           className="group fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] inline-flex h-11 w-11 cursor-pointer items-center justify-start overflow-hidden rounded-full border border-white/15 bg-stone-950/90 p-3 text-sm font-semibold text-stone-100 shadow-2xl backdrop-blur-md transition-[width,background-color,border-color,color] duration-200 ease-out hover:w-32 hover:border-brand-red/60 hover:bg-brand-red hover:text-white focus-visible:w-32 focus-visible:border-brand-red/60 focus-visible:bg-brand-red focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
         >
-          <ClipboardPenLine aria-hidden className="size-5 shrink-0" />
+          <TriangleAlert aria-hidden className="size-5 shrink-0" />
           <span
             aria-hidden
             data-testid="feedback-launcher-label"

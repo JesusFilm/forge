@@ -88,7 +88,7 @@ describe("FeedbackLauncher", () => {
     )
     expect(button).not.toBeNull()
     expect(button?.getAttribute("aria-label")).toBe("Open feedback form")
-    expect(button?.querySelector(".lucide-clipboard-pen-line")).not.toBeNull()
+    expect(button?.querySelector(".lucide-triangle-alert")).not.toBeNull()
     expect(button?.className).toContain("h-11")
     expect(button?.className).toContain("w-11")
     expect(button?.className).toContain("overflow-hidden")
