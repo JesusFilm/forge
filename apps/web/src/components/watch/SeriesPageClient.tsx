@@ -68,9 +68,31 @@ export function SeriesPageClient({
   const [downloadAccountGateEnabled, setDownloadAccountGateEnabled] =
     useState(false)
   const downloadPendingRef = useRef(false)
-  const openShare = useCallback(() => setModalState("share"), [])
-  const openLanguage = useCallback(() => setModalState("language"), [])
-  const closeModal = useCallback(() => setModalState("none"), [])
+  const downloadSessionRequestVersionRef = useRef(0)
+  const cancelDownloadSessionRequest = useCallback(() => {
+    downloadSessionRequestVersionRef.current += 1
+    downloadPendingRef.current = false
+    setDownloadPending(false)
+  }, [])
+  const openShare = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("share")
+  }, [cancelDownloadSessionRequest])
+  const openLanguage = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("language")
+  }, [cancelDownloadSessionRequest])
+  const closeModal = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("none")
+  }, [cancelDownloadSessionRequest])
+
+  useEffect(
+    () => () => {
+      downloadSessionRequestVersionRef.current += 1
+    },
+    [],
+  )
 
   // Mirror `WatchPageClient`'s `LOCALE_RESOLVED_PARAM` strip — series
   // pages can also receive the server-side URL-↔-variant sync redirect
@@ -187,8 +209,10 @@ export function SeriesPageClient({
     if (downloadPendingRef.current) return
     downloadPendingRef.current = true
     setDownloadPending(true)
+    const requestVersion = ++downloadSessionRequestVersionRef.current
     try {
       const session = await resolveDownloadSessionAccess()
+      if (downloadSessionRequestVersionRef.current !== requestVersion) return
       if (!session.ok && session.reason === "session-unavailable") {
         setDownloadError(t("downloadSessionError"))
         return
@@ -203,8 +227,10 @@ export function SeriesPageClient({
       }
       setModalState("download")
     } finally {
-      downloadPendingRef.current = false
-      setDownloadPending(false)
+      if (downloadSessionRequestVersionRef.current === requestVersion) {
+        downloadPendingRef.current = false
+        setDownloadPending(false)
+      }
     }
   }, [t])
 

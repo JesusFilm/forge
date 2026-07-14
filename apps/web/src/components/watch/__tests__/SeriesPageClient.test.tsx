@@ -378,10 +378,6 @@ describe("SeriesPageClient — collection downloads", () => {
   })
 
   it("opens the anonymous lazy modal when the account gate is disabled", async () => {
-    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
-      ok: true,
-      accountGateEnabled: false,
-    })
     act(() => {
       root.render(
         <SeriesPageClient
@@ -482,7 +478,56 @@ describe("SeriesPageClient — collection downloads", () => {
     )
   })
 
+  it("does not replace a newer share modal when session checking finishes", async () => {
+    let resolveSession:
+      | ((value: { ok: true; accountGateEnabled: false }) => void)
+      | undefined
+    resolveDownloadSessionAccessMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ children: makeChildren(1) })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-download-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-share-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    await act(async () => {
+      resolveSession?.({ ok: true, accountGateEnabled: false })
+      await Promise.resolve()
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("share")
+  })
+
   it("reopens the collection flow after returning from sign-in", async () => {
+    resolveDownloadSessionAccessMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: true,
+    })
     window.history.replaceState({}, "", "/storyclubs.html/en.html?download=1")
     await act(async () => {
       root.render(
@@ -498,6 +543,11 @@ describe("SeriesPageClient — collection downloads", () => {
         .querySelector('[data-testid="series-page-client"]')
         ?.getAttribute("data-modal-state"),
     ).toBe("download")
+    expect(resolveDownloadSessionAccessMock).toHaveBeenCalledTimes(1)
+    expect(collectionDownloadModalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ accountGateEnabled: true }),
+      undefined,
+    )
     expect(window.location.search).toBe("")
   })
 })

@@ -192,11 +192,11 @@ export function CollectionDownloadModal({
   ) {
     if (!options || !effectiveTier || busy) return
     const startVersion = ++startVersionRef.current
-    setStarting(true)
     setError(null)
     setResult(null)
 
     if (accountGateEnabled) {
+      setStarting(true)
       const session = await resolveDownloadSessionAccess()
       if (startVersion !== startVersionRef.current) return
       if (!session.ok && session.reason === "session-unavailable") {
@@ -209,9 +209,9 @@ export function CollectionDownloadModal({
         setAuthLoginUrl(session.loginUrl)
         return
       }
+      setAuthLoginUrl(null)
+      setStarting(false)
     }
-    setAuthLoginUrl(null)
-    setStarting(false)
 
     const items =
       retryItems ??
