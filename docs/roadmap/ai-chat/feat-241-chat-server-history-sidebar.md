@@ -3,7 +3,7 @@ id: "feat-241"
 title: "Chat server-side conversation history + sidebar hydration"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-20"
 duration: 3
 depends_on:
@@ -18,6 +18,33 @@ tags:
   - "web"
   - "ai-pipeline"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-14 via [PR #1552](https://github.com/JesusFilm/forge/pull/1552) (`feat(chat): server-side conversation history + sidebar hydration (feat-241)`).
+
+**What landed.** The full read path: two bearer-gated Mastra routes (listing with explicit `updatedAt DESC` + clamped pagination; replay through the ownership gate + existence check with a text-only 8,192-UTF-16-unit-per-message projection) behind a NEW dedicated `AI_CHAT_SERVICE_API_KEYS` lane bearer (boot-asserted disjoint from the shared pool), LLM thread titles via Mastra `generateTitle` (signed-in resources only, per-call override on the send route), two POST-shaped chat proxies with the KTD8 closed deny vocabulary, and `useConversations` hydration/merge/Load-more/lazy-replay/resume with sends blocked until a transcript loads. Review-driven deltas from the brief, recorded in the plan's Implementation Deviations addendum: thread byte-cap 4→8 MiB (UTF-16 sizing math), read budgets 8s route / [9s,10s] proxy / 15s client, the KTD10 persisted predicate widened to failed turns with partial text, and access loss reverting silently to the client-only sidebar on every surface (KTD8 uniformity). The dogfood gate rides the new `"history"` surface; feat-236's removal recipe was refreshed in this PR (AE15) and gained a titling data-flow precondition. Operational tail: provision Mastra `AI_CHAT_SERVICE_API_KEYS` before chat `AI_CHAT_MASTRA_API_KEY` (receiver-first), then triage the expected CodeQL `js/request-forgery` alerts on the two new proxy fetch call sites.
+
+**Compounded learnings.** All six compound artifacts were independently doc-reviewed (six sessions); findings applied — citation-drift fixes plus one substantive correction (the `seekerEnabled` guard in the Mastra corollary's quoted predicate).
+
+New solution docs:
+
+- `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md` — StrictMode remount wedge in `useConversations`: cleanup-mutated hook-lifetime refs must be restored in setup; a jsdom StrictMode render is the only deterministic detector.
+- `docs/solutions/developer-experience/chat-mastra-gated-stack-local-smoke-recipes.md` — local signed-in/gate-granted smoke recipes without `apps/auth` or a model key (hand-minted session cookie + Mastra memory-API seeding).
+- `docs/solutions/build-errors/nextjs-dev-types-validator-corrupt-after-killed-dev-server.md` — killed dev server leaves a corrupt `.next/dev/types/validator.ts` failing tsc with TS1109; `rm -rf .next`.
+
+Fold-ins to existing docs:
+
+- `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md` — sizing corollary: byte caps derived from char-denominated contracts need the 3-bytes-per-UTF-16-unit worst case (the 4 MiB → 8 MiB history-cap correction).
+- `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — 14th worked instance: the reasonless-404 body-conditional classification trap in `history-client.ts`.
+- `docs/solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md` — guidance #7: body-conditional reason passthrough binds EVERY hop of a closed-vocabulary reason chain.
+- `docs/solutions/architecture-patterns/mastra-agent-stream-auto-creates-thread-contract-20260626.md` — consumer-side corollary: auto-create runs before generation, so a failed turn with partial text still persisted a thread (the KTD10 partial-text predicate).
+
+Root `CLAUDE.md` Known Patterns: new StrictMode remount-safety bullet; char-vs-byte sizing corollary appended to the byte-cap bullet; mocked-shape instance count corrected to fourteen.
+
+**Residual risk / follow-ups.** [feat-247](feat-247-chat-history-management.md) (delete/rename), [feat-248](feat-248-chat-anon-thread-migration.md) (anon→account migration, future consideration), [feat-250](feat-250-seeker-route-lane-key-migration.md) (send path stays on the shared pool — pool keys can still WRITE into `user:*` partitions until it lands), [feat-209](feat-209-chat-per-conversation-urls.md) (deep links + explicit session-expired UX), [feat-236](feat-236-chat-remove-seeker-dogfood-gate.md) (gate removal; step-0 rate cap covers the history routes too, plus the new titling data-flow precondition). Accepted day-one: pg `listThreads` fails open (store outage reads as an empty sidebar), replay 403/404 split is a thread-id existence oracle (v4-UUID entropy), offset-page drift until refresh, stolen-cookie blast radius now includes bulk transcript read (8h TTL, feat-240 Decision Record).
+
+**Unblocked.** feat-209, feat-247, feat-248, feat-250 (all `depends_on` this ticket).
 
 ## Problem
 
