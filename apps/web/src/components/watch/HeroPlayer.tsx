@@ -38,7 +38,6 @@ import {
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { languageCodeFor } from "@/lib/language-code"
-import { formatDuration } from "@/lib/format-duration"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { getViewerId } from "@/lib/viewer-id"
 import {
@@ -1392,19 +1391,12 @@ export function HeroPlayer({
     languageCount > 0
       ? tLanguagePicker("languageCount", { count: languageCount })
       : null
-  const runtimeLabel =
-    typeof variant.duration === "number" && variant.duration > 0
-      ? formatDuration(variant.duration)
-      : ""
   const qualityLabel = highestDownloadQualityLabel(variant.downloads)
   const hasSubtitleTrack = video.subtitles.some(
     ({ vttSrc }) => vttSrc.length > 0,
   )
   const hasHeroMetadataTags =
-    languageCountLabel != null ||
-    runtimeLabel !== "" ||
-    hasSubtitleTrack ||
-    qualityLabel != null
+    languageCountLabel != null || hasSubtitleTrack || qualityLabel != null
   const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1874,14 +1866,6 @@ export function HeroPlayer({
                             <span>{languageCountLabel}</span>
                           </span>
                         )
-                      ) : null}
-                      {runtimeLabel !== "" ? (
-                        <span
-                          data-testid="hero-player-runtime-tag"
-                          className={`${HERO_METADATA_TAG_CLASS} uppercase`}
-                        >
-                          {runtimeLabel}
-                        </span>
                       ) : null}
                       {hasSubtitleTrack ? (
                         <span

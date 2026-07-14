@@ -547,7 +547,7 @@ describe("HeroPlayer — initial mount", () => {
     ).toBeNull()
   })
 
-  it("renders ordered factual metadata and opens the language picker from its tag", async () => {
+  it("renders ordered factual metadata without a runtime tag and opens the language picker", async () => {
     const onLanguageClick = vi.fn()
     act(() => {
       root.render(
@@ -597,7 +597,6 @@ describe("HeroPlayer — initial mount", () => {
       Array.from(tags.children).map((tag) => tag.getAttribute("data-testid")),
     ).toEqual([
       "hero-player-language-tag",
-      "hero-player-runtime-tag",
       "hero-player-captions-tag",
       "hero-player-quality-tag",
     ])
@@ -609,9 +608,8 @@ describe("HeroPlayer — initial mount", () => {
     expect(languageTag.getAttribute("aria-label")).toBe("3 languages")
     expect(languageTag.querySelector("svg")).not.toBeNull()
     expect(
-      container.querySelector('[data-testid="hero-player-runtime-tag"]')
-        ?.textContent,
-    ).toBe("6:34")
+      container.querySelector('[data-testid="hero-player-runtime-tag"]'),
+    ).toBeNull()
     expect(
       container.querySelector('[data-testid="hero-player-captions-tag"]')
         ?.textContent,
