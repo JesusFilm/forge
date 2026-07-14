@@ -519,7 +519,7 @@ function ActionStage({
       >
         {action.label}
       </h2>
-      {action.kind !== "prayer" ? (
+      {action.kind !== "talk" && action.kind !== "prayer" ? (
         <p className="mt-4 max-w-xl text-base leading-relaxed text-white/65 animate-watch-story-detail sm:text-lg motion-reduce:animate-none">
           {action.detail}
         </p>
@@ -678,71 +678,123 @@ function TalkChapter({ action }: { action: NextStepAction }) {
   const languageNames = ["English", "Español", "Français", "Português"]
 
   return (
-    <div
-      data-testid="watch-end-reflection-talk-panel"
-      className="mt-7 animate-watch-story-action motion-reduce:animate-none"
+    <HandoffChatChapter
+      action={action}
+      panelTestId="watch-end-reflection-talk-panel"
+      chatTestId="watch-end-reflection-talk-chat"
+      inputTestId="watch-end-reflection-talk-input"
+      submitTestId="watch-end-reflection-talk-submit"
+      composerLabel={action.label}
     >
-      <div className="flex -space-x-2" aria-hidden="true">
-        {languages.map((language) => (
-          <span
-            key={language}
-            className="relative grid size-12 place-items-center rounded-full border-2 border-black bg-stone-800 text-white shadow-xl sm:size-14"
-          >
-            <UserRound className="size-6 text-white/80" />
-            <span className="absolute right-0 bottom-0 rounded-full bg-brand-red px-1.5 py-0.5 text-[8px] font-bold tracking-wide">
+      <div className="ml-10 max-w-[88%] rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.07] p-3.5 sm:max-w-[72%] sm:p-4">
+        <div className="flex -space-x-2" aria-hidden="true">
+          {languages.map((language) => (
+            <span
+              key={language}
+              className="relative grid size-10 place-items-center rounded-full border-2 border-[#171717] bg-stone-800 text-white shadow-xl sm:size-11"
+            >
+              <UserRound className="size-5 text-white/80" />
+              <span className="absolute right-0 bottom-0 rounded-full bg-brand-red px-1.5 py-0.5 text-[7px] font-bold tracking-wide">
+                {language}
+              </span>
+            </span>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {languageNames.map((language) => (
+            <span
+              key={language}
+              className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-medium text-white/65"
+            >
               {language}
             </span>
-          </span>
-        ))}
+          ))}
+        </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {languageNames.map((language) => (
-          <span
-            key={language}
-            className="rounded-full bg-white/[0.07] px-3 py-1.5 text-xs font-medium text-white/65"
-          >
-            {language}
-          </span>
-        ))}
-      </div>
-      <a
-        href={action.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-testid="watch-end-reflection-talk-submit"
-        className={`${PRIMARY_ACTION_CLASS} mt-6`}
-      >
-        <HeartHandshake aria-hidden className="size-4" />
-        {action.label}
-      </a>
-    </div>
+    </HandoffChatChapter>
   )
 }
 
 function PrayerChapter({ action }: { action: NextStepAction }) {
   return (
+    <HandoffChatChapter
+      action={action}
+      panelTestId="watch-end-reflection-prayer-panel"
+      chatTestId="watch-end-reflection-prayer-chat"
+      inputTestId="watch-end-reflection-prayer-input"
+      submitTestId="watch-end-reflection-prayer-submit"
+      composerLabel={action.detail}
+    />
+  )
+}
+
+function HandoffChatChapter({
+  action,
+  panelTestId,
+  chatTestId,
+  inputTestId,
+  submitTestId,
+  composerLabel,
+  children,
+}: {
+  action: NextStepAction
+  panelTestId: string
+  chatTestId: string
+  inputTestId: string
+  submitTestId: string
+  composerLabel: string
+  children?: ReactNode
+}) {
+  const inputId = `watch-end-reflection-${action.id}-message`
+
+  return (
     <div
-      data-testid="watch-end-reflection-prayer-panel"
-      className="mt-5 w-full max-w-xl animate-watch-story-action motion-reduce:animate-none"
+      data-testid={panelTestId}
+      className="mt-5 w-full max-w-2xl animate-watch-story-action motion-reduce:animate-none"
     >
-      <div className="flex items-start gap-3 rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.07] p-4 text-white/75 backdrop-blur-md sm:p-5">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
-          <HandHeart aria-hidden className="size-5" />
-        </span>
-        <p className="pt-2 text-sm leading-relaxed sm:text-base">
-          {action.detail}
-        </p>
-      </div>
-      <a
-        href={action.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-testid="watch-end-reflection-prayer-submit"
-        className={`${PRIMARY_ACTION_CLASS} mt-5`}
+      <div
+        role="region"
+        aria-label={action.label}
+        data-testid={chatTestId}
+        className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/25 backdrop-blur-md"
       >
-        <HandHeart aria-hidden className="size-4" />
-        {action.label}
-      </a>
+        <div className="space-y-4 px-3.5 py-4 sm:px-5 sm:py-5">
+          <div className="flex max-w-[90%] items-end gap-2.5 sm:max-w-[78%]">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-red text-white shadow-lg shadow-brand-red/20">
+              {action.icon}
+            </span>
+            <div className="rounded-2xl rounded-bl-sm bg-white/[0.11] px-4 py-3 text-sm leading-relaxed text-white/85 ring-1 ring-white/[0.06] sm:text-base">
+              <p>{action.detail}</p>
+            </div>
+          </div>
+          {children}
+        </div>
+
+        <div className="border-t border-white/10 bg-black/25 p-2.5 sm:p-3">
+          <div className="flex min-h-13 items-end gap-2 rounded-2xl border border-white/14 bg-white/[0.07] p-1.5 pl-4 transition-[border-color,box-shadow] focus-within:border-brand-red/70 focus-within:ring-2 focus-within:ring-brand-red/20">
+            <label htmlFor={inputId} className="sr-only">
+              {composerLabel}
+            </label>
+            <textarea
+              id={inputId}
+              rows={1}
+              placeholder={composerLabel}
+              data-testid={inputTestId}
+              className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
+            />
+            <a
+              href={action.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={action.label}
+              data-testid={submitTestId}
+              className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-brand-red text-white transition-[background-color,transform] hover:scale-105 hover:bg-brand-red/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
+            >
+              <SendHorizontal aria-hidden className="size-4" />
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

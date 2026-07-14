@@ -406,6 +406,14 @@ describe("WatchEndReflection", () => {
     expect(container.textContent).toContain("English")
     expect(container.textContent).toContain("Español")
     expect(container.textContent).toContain("Français")
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection-talk-chat"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-talk-input"]',
+      ),
+    ).not.toBeNull()
 
     const chat = container.querySelector(
       '[data-testid="watch-end-reflection-talk-submit"]',
@@ -431,6 +439,16 @@ describe("WatchEndReflection", () => {
     expect(
       container.querySelector(
         '[data-testid="watch-end-reflection-prayer-panel"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-prayer-chat"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-end-reflection-prayer-input"]',
       ),
     ).not.toBeNull()
 
