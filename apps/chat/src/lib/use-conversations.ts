@@ -413,6 +413,7 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
     if (!seekerEnabled || historyRef.current.phase !== "idle") return
     startHistoryFirstPage()
     // Intentionally keyed on the (deploy-static) flag only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seekerEnabled])
 
   function retryHistory() {
@@ -495,6 +496,7 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
     }
     // Selection is the trigger; startReplayFetch is render-scoped but stable
     // in behavior (guarded by replayInFlightRef + the idle check).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
 
   function retryReplay() {

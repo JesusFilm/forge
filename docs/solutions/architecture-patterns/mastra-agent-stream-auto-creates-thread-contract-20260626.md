@@ -77,7 +77,7 @@ the stream opened through Mastra ⇒ the thread row exists. The fix marks the
 conversation persisted in the send **failure** branch too, whenever
 `seekerEnabled && result.partialText.length > 0` (the `seekerEnabled` guard is
 load-bearing — the stub path also streams `partialText` but creates no Mastra
-thread) (`apps/chat/src/lib/use-conversations.ts:592-603`); regression suite
+thread) (`apps/chat/src/lib/use-conversations.ts:594-605`); regression suite
 "KTD10 predicate — mid-stream-failed turns count as persisted"
 (`apps/chat/src/components/shell/app-shell.history.test.tsx:530`). This rides
 the same undocumented, semver-unprotected timing as the auto-create contract
