@@ -205,6 +205,10 @@ describe("WatchEndReflection", () => {
     expect(suggestedQuestions.map((item) => item.style.animationDelay)).toEqual(
       ["360ms", "510ms"],
     )
+    expect(suggested.className).toContain("animate-watch-chat-incoming")
+    expect(suggested.className).not.toContain("animate-watch-chat-outgoing")
+    expect(suggested.className).not.toContain("bg-white text-black")
+    expect(suggested.querySelector("svg")).not.toBeNull()
 
     act(() => {
       suggested.click()
