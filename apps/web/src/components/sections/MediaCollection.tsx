@@ -65,8 +65,12 @@ const MEDIA_COLLECTION_TINTS: Record<string, string> = {
 }
 
 function backdropImageStyle(imageUrl: string): CSSProperties {
+  return { backgroundImage: `url("${imageUrl}")` }
+}
+
+function backdropMotionImageStyle(imageUrl: string): CSSProperties {
   return {
-    backgroundImage: `url(${imageUrl})`,
+    ...backdropImageStyle(imageUrl),
     backgroundSize: "200% 200%",
     backgroundPosition: "center",
   }
@@ -152,18 +156,26 @@ function MediaCollectionBackdrop({
       aria-hidden
     >
       <div
+        data-testid={`${testId}-image`}
+        className={cn(
+          "absolute inset-0 scale-105 bg-cover bg-center bg-no-repeat blur-2xl",
+          isRail ? "brightness-80 saturate-125" : "brightness-75 saturate-110",
+        )}
+        style={backdropImageStyle(imageUrl)}
+      />
+      <div
         data-testid={`${testId}-motion`}
-        className="animate-watch-backdrop-pan-zoom absolute inset-0"
+        className="animate-watch-backdrop-pan-zoom absolute inset-0 opacity-40 mix-blend-overlay motion-reduce:hidden"
       >
         <div
-          data-testid={`${testId}-image`}
+          data-testid={`${testId}-motion-image`}
           className={cn(
             "absolute inset-0 bg-no-repeat blur-2xl",
             isRail
               ? "brightness-80 saturate-125"
               : "brightness-75 saturate-110",
           )}
-          style={backdropImageStyle(imageUrl)}
+          style={backdropMotionImageStyle(imageUrl)}
         />
       </div>
     </div>

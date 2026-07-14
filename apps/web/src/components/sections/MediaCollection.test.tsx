@@ -4,7 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { RouteVideo } from "@/lib/content"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
@@ -24,6 +24,7 @@ afterEach(() => {
   act(() => {
     root.unmount()
   })
+  vi.useRealTimers()
   container.remove()
 })
 
@@ -446,12 +447,20 @@ describe("MediaCollection VideoCard href", () => {
     const imageLayer = container.querySelector<HTMLElement>(
       '[data-testid="media-collection-default-backdrop-image"]',
     )
+    const motionImageLayer = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-default-backdrop-motion-image"]',
+    )
 
     expect(backdrop?.className).not.toContain("animate-watch-backdrop-pan-zoom")
     expect(motionLayer?.className).toContain("animate-watch-backdrop-pan-zoom")
+    expect(motionLayer?.className).toContain("motion-reduce:hidden")
     expect(imageLayer?.getAttribute("style")).toContain("episode-one-blur.jpg")
-    expect(imageLayer?.style.backgroundSize).toBe("200% 200%")
-    expect(imageLayer?.style.backgroundPosition).toBe("center")
+    expect(imageLayer?.className).toContain("scale-105")
+    expect(motionImageLayer?.getAttribute("style")).toContain(
+      "episode-one-blur.jpg",
+    )
+    expect(motionImageLayer?.style.backgroundSize).toBe("200% 200%")
+    expect(motionImageLayer?.style.backgroundPosition).toBe("center")
   })
 
   it("keeps crossfade and pan-zoom animations on separate layers during card changes", () => {
@@ -506,6 +515,63 @@ describe("MediaCollection VideoCard href", () => {
     expect(enteringImage?.getAttribute("style")).toContain(
       "episode-two-blur.jpg",
     )
+  })
+
+  it("settles the latest artwork and removes transient layers after leaving", () => {
+    vi.useFakeTimers()
+
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            items: [
+              makeManualItem(),
+              makeManualItem({
+                videoId: "v-2",
+                videoSlug: "episode-two",
+                titleOverride: "Episode Two",
+                imageUrl: "https://cdn.example/episode-two.jpg",
+                imageBlurDataUrl: "https://cdn.example/episode-two-blur.jpg",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector(
+      '[data-testid="media-collection-section"]',
+    )
+    const cards = container.querySelectorAll('[aria-label="VideoCard"]')
+
+    act(() => {
+      cards[1]?.dispatchEvent(new Event("pointerover", { bubbles: true }))
+    })
+    act(() => {
+      section?.dispatchEvent(new Event("pointerout", { bubbles: true }))
+    })
+    act(() => {
+      vi.advanceTimersByTime(1250)
+    })
+
+    const settledImage = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-default-backdrop-image"]',
+    )
+    expect(settledImage?.getAttribute("style")).toContain(
+      "episode-two-blur.jpg",
+    )
+    expect(
+      container.querySelector(
+        '[data-testid="media-collection-hover-backdrop"]',
+      ),
+    ).toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="media-collection-hover-backdrop-previous"]',
+      ),
+    ).toBeNull()
   })
 
   it("does not render an animated backdrop when no item artwork resolves", () => {
