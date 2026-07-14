@@ -41,8 +41,8 @@ export function AudioLanguagesIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      width={22}
-      height={22}
+      width={14}
+      height={14}
       fill="none"
       stroke="currentColor"
       strokeWidth={2.5}

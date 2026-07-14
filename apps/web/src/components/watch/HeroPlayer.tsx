@@ -81,12 +81,10 @@ type HeroMetadataQuality = {
   rank: number
 }
 
-const HERO_CAPTIONS_TAG_CLASS =
-  "inline-flex h-4 items-center rounded-sm border border-white/45 bg-transparent px-0.5 text-[0.6rem] font-normal tracking-wide text-white/95"
 const HERO_QUALITY_TAG_CLASS =
   "inline-flex h-4 items-center rounded-sm border border-white/80 bg-white/80 px-0.5 text-[0.6rem] font-medium tracking-wide text-stone-950"
 const HERO_LANGUAGE_TAG_CLASS =
-  "inline-flex h-7 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-2 text-[0.625rem] font-normal tracking-wide text-white/95"
+  "inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
 
 const HERO_METADATA_QUALITY_RANK: Record<DownloadResolutionLabel, number> = {
   "4K": 5,
@@ -1921,14 +1919,6 @@ export function HeroPlayer({
                             <span>{languageCountLabel}</span>
                           </span>
                         )
-                      ) : null}
-                      {hasSubtitleTrack ? (
-                        <span
-                          data-testid="hero-player-captions-tag"
-                          className={`${HERO_CAPTIONS_TAG_CLASS} uppercase`}
-                        >
-                          CC
-                        </span>
                       ) : null}
                       {subtitleLanguageCountLabel != null ? (
                         <span
