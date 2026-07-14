@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Download, FolderOpen, LoaderCircle, LogIn, Square } from "lucide-react"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 
 import { Button } from "@/components/ui/button"
@@ -525,12 +526,47 @@ export function CollectionDownloadModal({
                 </p>
               ) : null}
               {options && options.candidates.length > 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-stone-300">
-                  <p>
-                    {t("availableCount", { count: options.candidates.length })}
-                  </p>
+                <div className="flex flex-col gap-2">
+                  <div
+                    data-testid="watch-collection-download-ready"
+                    role="status"
+                    aria-label={t("availableCount", {
+                      count: options.candidates.length,
+                    })}
+                    className="flex items-center justify-between gap-5 rounded-2xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="flex -space-x-5" aria-hidden="true">
+                      {options.candidates.slice(0, 3).map((episode, index) => (
+                        <div
+                          key={episode.documentId}
+                          data-testid="watch-collection-download-thumbnail"
+                          className="relative aspect-video w-20 overflow-hidden rounded-lg border-2 border-stone-900 bg-stone-800 shadow-lg sm:w-24"
+                          style={{ zIndex: 3 - index }}
+                        >
+                          {episode.thumbnailUrl ? (
+                            <Image
+                              src={episode.thumbnailUrl}
+                              alt=""
+                              fill
+                              sizes="96px"
+                              className="object-cover object-left-top"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-stone-700 to-stone-900" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <span
+                      data-testid="watch-collection-download-ready-count"
+                      aria-hidden="true"
+                      className="text-3xl font-semibold tabular-nums text-white sm:text-4xl"
+                    >
+                      {options.candidates.length}
+                    </span>
+                  </div>
                   {options.skipped.length > 0 ? (
-                    <div className="mt-1 text-amber-300">
+                    <div className="text-sm text-amber-300">
                       <p>
                         {t("skippedCount", { count: options.skipped.length })}
                       </p>

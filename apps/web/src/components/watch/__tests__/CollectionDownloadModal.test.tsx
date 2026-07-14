@@ -43,6 +43,13 @@ vi.mock("@/components/ui/dialog", () => ({
   ),
 }))
 
+vi.mock("next/image", () => ({
+  default: ({ src, alt }: { src: string; alt: string }) => {
+    const Img = "img"
+    return <Img src={src} alt={alt} />
+  },
+}))
+
 vi.mock("@/components/watch/WatchModalViewportCloseButton", () => ({
   WatchModalViewportCloseButton: () => null,
 }))
@@ -54,8 +61,18 @@ let container: HTMLDivElement
 let root: Root
 
 const episodes = [
-  { documentId: "episode-1", slug: "one", title: "Episode One" },
-  { documentId: "episode-2", slug: "two", title: "Episode Two" },
+  {
+    documentId: "episode-1",
+    slug: "one",
+    title: "Episode One",
+    thumbnailUrl: "https://cdn.example/episode-one.jpg",
+  },
+  {
+    documentId: "episode-2",
+    slug: "two",
+    title: "Episode Two",
+    thumbnailUrl: "https://cdn.example/episode-two.jpg",
+  },
 ]
 
 const dubs = [
@@ -296,6 +313,26 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-quality"]',
       )?.className,
     ).toContain("scheme-dark")
+  })
+
+  it("shows a thumbnail stack with the number of ready episodes", async () => {
+    renderModal()
+    await flush()
+
+    const summary = container.querySelector(
+      '[data-testid="watch-collection-download-ready"]',
+    )
+    expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
+    expect(
+      summary?.querySelectorAll(
+        '[data-testid="watch-collection-download-thumbnail"]',
+      ),
+    ).toHaveLength(2)
+    expect(
+      summary?.querySelector(
+        '[data-testid="watch-collection-download-ready-count"]',
+      )?.textContent,
+    ).toBe("2")
   })
 
   it("recovers when loading availability rejects", async () => {

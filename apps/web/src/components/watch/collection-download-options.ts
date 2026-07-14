@@ -13,12 +13,14 @@ export type CollectionDownloadEpisode = {
   documentId: string
   slug: string | null
   title: string | null
+  thumbnailUrl?: string | null
 }
 
 export type CollectionDownloadCandidate = {
   documentId: string
   slug: string
   title: string
+  thumbnailUrl: string | null
   variantId: string
   tiers: Partial<Record<DownloadTier, WatchDownloadOption>>
 }
@@ -85,6 +87,7 @@ export function buildCollectionDownloadOptions(
       documentId: episode.documentId,
       slug: episode.slug,
       title: episode.title ?? episode.slug,
+      thumbnailUrl: episode.thumbnailUrl ?? null,
       variantId: dub.documentId,
       tiers: Object.fromEntries(
         bucketed.map((option) => [option.tier, option.download]),

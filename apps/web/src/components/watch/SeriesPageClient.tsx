@@ -23,6 +23,7 @@ import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { resolveEpisodeImageUrl } from "@/lib/episode-image"
 import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
@@ -446,6 +447,7 @@ export function SeriesPageClient({
             documentId: episode.documentId,
             slug: episode.slug,
             title: episode.title,
+            thumbnailUrl: resolveEpisodeImageUrl(episode),
           }))}
           languages={languageOptions}
           currentLanguageSlug={currentLanguageSlug}
