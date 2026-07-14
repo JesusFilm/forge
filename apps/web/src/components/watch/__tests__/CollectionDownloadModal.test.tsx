@@ -333,18 +333,24 @@ describe("CollectionDownloadModal", () => {
     expect(modal?.className).not.toContain("bg-stone-950")
   })
 
-  it("shows a thumbnail stack with the number of ready episodes", async () => {
+  it("stacks the heading copy beside the thumbnail summary", async () => {
     renderModal()
     await flush()
 
+    const header = container.querySelector(
+      '[data-testid="watch-collection-download-header"]',
+    )
     const summary = container.querySelector(
       '[data-testid="watch-collection-download-ready"]',
     )
-    expect(
-      container
-        .querySelector('[data-testid="watch-collection-download-header"]')
-        ?.contains(summary),
-    ).toBe(true)
+    expect(header?.contains(summary)).toBe(true)
+    const description = container.querySelector(
+      '[data-testid="watch-collection-download-description"]',
+    )
+    expect(description?.parentElement?.querySelector("h2")?.textContent).toBe(
+      "LUMO Luke",
+    )
+    expect(description?.parentElement?.parentElement).toBe(header)
     expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
     expect(summary?.className).toContain("rounded-2xl")
     expect(summary?.className).toContain("flex-col")

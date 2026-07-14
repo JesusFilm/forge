@@ -452,6 +452,12 @@ export function CollectionDownloadModal({
               <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
                 {collectionTitle ?? t("dialogTitle")}
               </h2>
+              <p
+                data-testid="watch-collection-download-description"
+                className="mt-3 text-sm leading-6 text-stone-300"
+              >
+                {t("description")}
+              </p>
             </div>
             {options && options.candidates.length > 0 ? (
               <div
@@ -503,9 +509,6 @@ export function CollectionDownloadModal({
                 </span>
               </div>
             ) : null}
-            <p className="text-sm leading-6 text-stone-300 min-[520px]:col-span-2">
-              {t("description")}
-            </p>
           </div>
 
           {effectiveAuthLoginUrl ? (
