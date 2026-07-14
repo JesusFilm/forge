@@ -43,6 +43,13 @@ of a ticket in this folder, update `README.md` in the same change:
 3. Bump the `## Status (Month D, YYYY)` date to the day you edited it.
 4. Keep the dependency notes accurate if `depends_on` / `blocks` changed.
 
+**Code PR column format:** every PR entry is a clickable markdown link —
+`[#NNNN](https://github.com/JesusFilm/forge/pull/NNNN)` — never a bare `#NNNN`.
+For multi-PR arcs, list each link comma-separated in the same cell. Tickets
+without a code PR yet use `—`. Fill the cell in the same PR that flips the
+ticket to `complete` (the PR number exists once the PR is open) — with the same
+PRs the ticket's `## Resolution` section cites.
+
 The README's totals block and `Status` column prefix each status with an emoji
 (README-only — frontmatter `status` stays plain text): `✅ complete`,
 `🟡 in-progress`, `🔵 not-started`, `🔴 blocked`.
@@ -70,8 +77,10 @@ break the `depends_on` / `blocks` graph.
 
 When a ticket is created here ahead of its code (the tickets can sometimes land
 on a roadmap PR only), set its status to what's on `main` — so it stays
-`in-progress` even if the work is already finished on a gated branch. Flip it to `complete` when the code PR actually merges. This keeps
-`main`'s roadmap from claiming `complete` for code that isn't there yet.
+`in-progress` even if the work is already finished on a gated branch. Flip it
+to `complete` **inside the code PR itself** — as a final commit once the
+feature is done — so the status and the code land on `main` together. This
+keeps `main`'s roadmap from claiming `complete` for code that isn't there yet.
 
 `blocked` is **manual** in this lane. The viewer auto-computes `blocked` from
 incomplete dependencies for the rendered lanes — but this lane isn't rendered,
@@ -100,9 +109,13 @@ So a cross-boundary link is one-way: the ai-chat side carries the `depends_on` /
 ## Completing a ticket — prepend a `## Resolution` section
 
 When you flip a ticket to `status: "complete"`, prepend a `## Resolution` section
-at the very top of the body (above `## Problem`). The original brief stays below
-as the historical record. A ticket flipped to `complete` without a Resolution is
-not done — the resolution is part of "complete". Template:
+at the very top of the body (above `## Problem`). Write it **in the feature PR
+itself, as its final step before merge** — not in a follow-up PR (for multi-PR
+arcs: in the arc's final PR, the one that flips the status; the PR number and
+title exist once the PR is open; `Shipped:` is the expected merge date). The
+original brief stays below as the historical record. A ticket flipped to
+`complete` without a Resolution is not done — the resolution is part of
+"complete". Template:
 
 ```markdown
 ## Resolution

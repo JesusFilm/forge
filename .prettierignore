@@ -32,3 +32,6 @@ apps/tv/android
 # Impeccable design-hook caches — gitignored machine state
 .impeccable
 apps/*/.impeccable
+
+# Local agent-skills setup — gitignored local tooling, same class as .cursor/.local
+.agents
