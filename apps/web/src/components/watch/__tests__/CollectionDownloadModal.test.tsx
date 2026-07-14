@@ -346,8 +346,11 @@ describe("CollectionDownloadModal", () => {
         ?.contains(summary),
     ).toBe(true)
     expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
-    expect(summary?.className).not.toContain("border")
-    expect(summary?.className).not.toContain("bg-white")
+    expect(summary?.className).toContain("rounded-2xl")
+    expect(summary?.className).toContain("border")
+    expect(summary?.className).toContain("bg-white/5")
+    expect(summary?.className).toContain("px-4")
+    expect(summary?.className).toContain("py-3")
     const thumbnailStack = summary?.querySelector(
       '[data-testid="watch-collection-download-thumbnail-stack"]',
     )

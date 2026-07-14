@@ -460,7 +460,7 @@ export function CollectionDownloadModal({
                 aria-label={t("availableCount", {
                   count: options.candidates.length,
                 })}
-                className="flex shrink-0 items-center gap-3 min-[520px]:pb-1"
+                className="flex w-fit shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-sm"
               >
                 <div
                   data-testid="watch-collection-download-thumbnail-stack"
