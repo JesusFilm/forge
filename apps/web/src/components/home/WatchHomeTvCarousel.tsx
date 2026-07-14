@@ -38,6 +38,7 @@ import {
 } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
 import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
+import { usePauseForBetaTesterModal } from "@/components/watch/BetaTesterModalProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -923,6 +924,7 @@ export function WatchHomeTvCarousel({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const shortFilmTakeoverSlideIdRef = useRef<string | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForBetaTesterModal(player)
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )

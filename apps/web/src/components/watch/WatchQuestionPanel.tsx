@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
+import { useBetaTesterModal } from "@/components/watch/BetaTesterModalProvider"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 
@@ -46,6 +47,9 @@ export function WatchQuestionPanel({
   modalSuppressed = false,
 }: WatchQuestionPanelProps) {
   const t = useTranslations("WatchQuestionPanel")
+  const betaModal = useBetaTesterModal()
+  const betaModalOpen = betaModal?.open ?? false
+  const setBetaQuestionPanelOpen = betaModal?.setQuestionPanelOpen
   const { pinned, searchOpen } = useFloatingSearchPinned()
   const inputRef = useRef<HTMLInputElement>(null)
   const [question, setQuestion] = useState("")
@@ -58,8 +62,14 @@ export function WatchQuestionPanel({
   const selectedPrompt = PROMPT_CONFIGS[selectedPromptIndex]!
   const iconPrompt = chatOpen ? selectedPrompt : currentPrompt
   const PromptIcon = iconPrompt.Icon
-  const visible = enabled && pinned && !searchOpen && !modalSuppressed
+  const visible =
+    enabled && pinned && !searchOpen && !modalSuppressed && !betaModalOpen
   const modalOpen = visible && chatOpen
+
+  useEffect(() => {
+    setBetaQuestionPanelOpen?.(modalOpen)
+    return () => setBetaQuestionPanelOpen?.(false)
+  }, [modalOpen, setBetaQuestionPanelOpen])
 
   useEffect(() => {
     if (!visible || hasQuestion || chatOpen) return

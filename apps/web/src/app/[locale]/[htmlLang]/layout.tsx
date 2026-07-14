@@ -13,6 +13,7 @@ import {
 import { montserrat } from "@/lib/watch-font"
 import DatadogRum from "@/components/DatadogRum"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 
 async function loadMessages(locale: UiLocale) {
   return (await import(`../../../../messages/${locale}.json`)).default
@@ -91,7 +92,9 @@ export default async function RootLayout({
       <body className="overflow-x-clip bg-black">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
-          <FloatingSearchProvider>{children}</FloatingSearchProvider>
+          <FloatingSearchProvider>
+            <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+          </FloatingSearchProvider>
         </NextIntlClientProvider>
       </body>
     </html>

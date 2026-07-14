@@ -62,6 +62,7 @@ import {
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
+import { usePauseForBetaTesterModal } from "@/components/watch/BetaTesterModalProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import type { WatchChapterOptimisticVisual } from "./chapter-navigation"
@@ -277,6 +278,7 @@ export function HeroPlayer({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForBetaTesterModal(player)
   const [nextPlaybackState, setNextPlaybackState] = useState({
     currentTime: 0,
     duration: 0,
