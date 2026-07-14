@@ -532,6 +532,8 @@ const HeroChrome = memo(function HeroChrome({
             onPress={onWatchNow}
             accessibilityRole="button"
             accessibilityLabel={`Watch ${slide.title} now`}
+            // Stable RUM action name — the a11y label leaks the title (KTD10).
+            {...{ "dd-action-name": "hero-card" }}
           >
             <Text style={[styles.ctaText, typography.body]}>Watch Now</Text>
           </Pressable>
