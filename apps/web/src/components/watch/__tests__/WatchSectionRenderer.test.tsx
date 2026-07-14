@@ -363,6 +363,9 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     const bodyBackdrop = bodyZone!.querySelector(
       "[data-testid='watch-body-backdrop']",
     )
+    // Preserve the Firefox fallback hook. Browser-level proof covers rendering
+    // because jsdom cannot observe WebRender/compositor output.
+    expect(bodyBackdrop?.getAttribute("class")).toContain("watch-body-backdrop")
     expect(bodyBackdrop?.getAttribute("class")).toContain("w-full")
     expect(bodyBackdrop?.getAttribute("class")).toContain("overflow-visible")
     expect(bodyBackdrop?.getAttribute("class")).toContain("md:overflow-hidden")
