@@ -34,16 +34,19 @@ replay, so playback frames never leak.
 
 ## Retention / deletion window (committed policy)
 
-| Data                               | Store                             | Retention                                        | Deletion                                                   |
-| ---------------------------------- | --------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
-| `watch_search` term-bearing Logs   | Datadog Logs index `forge-mobile` | **15 days**, then auto-purged by index retention | Retention expiry; ad-hoc via Datadog data-deletion request |
-| RUM events (term/title attributes) | Datadog RUM                       | **30 days** (RUM default), then auto-purged      | Retention expiry                                           |
-| Session Replay                     | Datadog RUM Replay                | **30 days**; inputs masked at capture            | Retention expiry                                           |
+| Data                               | Store                                            | Retention                                   | Deletion                                                   |
+| ---------------------------------- | ------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
+| `watch_search` term-bearing Logs   | Datadog **default Logs index** (shared with web) | **15 days** (org default), then auto-purged | Retention expiry; ad-hoc via Datadog data-deletion request |
+| RUM events (term/title attributes) | Datadog RUM                                      | **30 days** (RUM default), then auto-purged | Retention expiry                                           |
+| Session Replay                     | Datadog RUM Replay                               | **30 days**; inputs masked at capture       | Retention expiry                                           |
 
-These are the values the operator must set on the `forge-mobile` Datadog org
-before flipping production. No raw term is archived beyond the window, no
-long-term cold store, and no Sensitive Data Scanner scrub is applied to the term
-field (the rich posture is intentional — see below).
+These are **already in effect as the org defaults** — verified 2026-07-15: the
+default Logs index is 15 days and RUM/Replay is 30 days, **identical to forge-web**
+(which also has no dedicated per-service index). So **no dedicated `forge-mobile`
+index or per-app retention config is required**; mobile inherits the same retention
+as web by logging into the shared default index. No raw term is archived beyond the
+window, no long-term cold store, and no Sensitive Data Scanner scrub is applied to
+the term field (matching web).
 
 ## Re-identification assessment
 
@@ -82,3 +85,10 @@ assessment before keeping the raw-term posture.
 
 Per the plan DoD, production `forge-mobile` credential provisioning is blocked
 until an owner accepts this assessment and sets the retention values above.
+
+**Signed off:** Urim (@Ur-imazing) — 2026-07-15. As owner, accepts the raw-term
+posture at **parity with web** (per the assessment above) and the committed
+retention window (**15-day Logs / 30-day RUM + Session Replay**). Those values are
+**already in effect as the org defaults**, identical to forge-web (verified
+2026-07-15), so no retention config is outstanding — production credential
+provisioning is unblocked.
