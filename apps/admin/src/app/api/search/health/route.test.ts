@@ -37,12 +37,14 @@ const allowRateLimit = () =>
   vi.mocked(rateLimitAuthRoute).mockResolvedValue({
     allowed: true,
     source: "local",
+    count: 1,
   })
 
 const denyRateLimit = () =>
   vi.mocked(rateLimitAuthRoute).mockResolvedValue({
     allowed: false,
     source: "local",
+    count: 31,
   })
 
 function req(): Request {

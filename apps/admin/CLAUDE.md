@@ -2111,7 +2111,9 @@ credentials now live in admin's `PartnerApiKey` Postgres table. See
      manager → admin proxies + the eval CLI's bearer mint).
 
   `isAnyKnownBearer(authHeader)` in `src/auth/search-bearer.ts`
-  OR-composes them and returns `{ valid, source, keyId? }`.
+  OR-composes them and returns `{ valid, source, keyId?, fleetKeyId? }`
+  (`fleetKeyId` — sha256-prefix of a fleet key — is the bucket id the F1 #2
+  global search ceiling keys on; see "Fleet-aware rate-limit bucketing").
 
 - **The disjointness invariant** (`assertBearerCsvsDisjoint` at
   boot in `src/config/env.ts`) holds for the three remaining env
