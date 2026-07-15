@@ -5,13 +5,18 @@
  */
 
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
-import { StyleSheet, View } from "react-native"
+import { AppState, StyleSheet, View } from "react-native"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import { getApolloClient } from "../../lib/apolloClient"
+import {
+  addDatadogTiming,
+  isDatadogProvisioned,
+  reportDatadogAction,
+} from "../../lib/datadog"
 import { GET_WATCH_EXPERIENCE } from "../../lib/queries"
 import { initialRotationState } from "../../lib/showcaseMode/languageRotation"
 import {
@@ -37,6 +42,17 @@ import {
   type ShowcaseExperienceOutcome,
   type ShowcaseSourceOutput,
 } from "../../lib/showcaseMode/sourceResolution"
+import {
+  SHOWCASE_EXIT_ACTION,
+  SHOWCASE_FIRST_FRAME_TIMING,
+  SHOWCASE_SOURCE_PARAM,
+  SHOWCASE_START_ACTION,
+  createShowcaseOnceLatch,
+  hasShowcaseStarted,
+  resolveShowcaseExitReason,
+  resolveShowcaseStartPath,
+  resolveShowcaseStartSource,
+} from "../../lib/showcaseMode/showcaseTelemetry"
 import { createShowcaseVideoFetcher } from "../../lib/showcaseMode/showcaseVideoQuery"
 import { countDistinctLanguages } from "../../lib/showcaseMode/statLines"
 import type {
@@ -54,6 +70,7 @@ import {
 } from "../../lib/watchHome/topUpFetch"
 import { withTimeout } from "../../lib/withTimeout"
 import { ScreenStateView } from "../ScreenStateView"
+import { isAppStateForeground } from "../watch/videoBackdropGate"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ChapterCard } from "./ChapterCard"
 import { ExcerptChrome } from "./ExcerptChrome"
@@ -132,6 +149,9 @@ async function resolveShowcaseQueue(args: {
 
 export function ShowcaseScreen() {
   const router = useRouter()
+  // Query only — DatadogRouteTracker keys views off usePathname(), so the RUM view
+  // stays `showcase` and the source rides the start action's context instead.
+  const routeParams = useLocalSearchParams()
   const { setDecoderClaimed } = useVideoPlayerContext()
   const { model, loading: poolLoading } = useWatchHome()
   const [state, dispatch] = useReducer(reelReducer, INITIAL_REEL_STATE)
@@ -148,6 +168,27 @@ export function ShowcaseScreen() {
   const mountedRef = useRef(true)
   const rotationRef = useRef(initialRotationState)
   const requestIdRef = useRef(0)
+
+  // R15: one report each per mounted session. Latches rather than booleans, so a
+  // genuine unmount re-arms them with the component instance and a re-run effect or
+  // a double-delivered press cannot report twice.
+  const firstFrameLatchRef = useRef(createShowcaseOnceLatch())
+  const startLatchRef = useRef(createShowcaseOnceLatch())
+  const exitLatchRef = useRef(createShowcaseOnceLatch())
+  /** Set where the press is known — cleanup must not infer the reason from state. */
+  const exitedViaPressRef = useRef(false)
+
+  const reportExit = useCallback(() => {
+    if (!exitLatchRef.current.claim()) return
+    reportDatadogAction(SHOWCASE_EXIT_ACTION, {
+      // AppState read live: a mirrored foreground flag is stale by construction
+      // inside a remount cycle, and this decides at the instant it is asked.
+      "showcase.reason": resolveShowcaseExitReason({
+        exitedViaPress: exitedViaPressRef.current,
+        appForeground: isAppStateForeground(AppState.currentState),
+      }),
+    })
+  }, [])
 
   useEffect(() => {
     stateRef.current = state
@@ -329,13 +370,37 @@ export function ShowcaseScreen() {
     })
   }, [upcoming, state.phase])
 
+  // R15: the first phase presenting content is also the first that can name the path
+  // — `queue` is null until then, and a null queue IS the stills floor (R16).
+  useEffect(() => {
+    if (!hasShowcaseStarted(state.phase)) return
+    if (!startLatchRef.current.claim()) return
+    reportDatadogAction(SHOWCASE_START_ACTION, {
+      "showcase.path": resolveShowcaseStartPath(state.queue),
+      "showcase.source": resolveShowcaseStartSource(
+        routeParams[SHOWCASE_SOURCE_PARAM],
+      ),
+    })
+  }, [state.phase, state.queue, routeParams])
+
+  // Covers the sessions no press ended: a deep link, a route change, or a teardown
+  // while backgrounded (R18). Setup re-arms what cleanup claims, so a remount in
+  // place cannot leave the real exit unreported.
+  useEffect(() => {
+    exitLatchRef.current = createShowcaseOnceLatch()
+    return () => reportExit()
+  }, [reportExit])
+
   // The reducer decides the exit; the screen only performs it. Deep links can land
   // here with no back stack, and R12 promises a way out from every state.
   useEffect(() => {
     if (state.phase !== "exited") return
+    // Report BEFORE navigating: router.back() starts the next RUM view, and an
+    // action emitted after it would land on the origin screen, not the showcase.
+    reportExit()
     if (router.canGoBack()) router.back()
     else router.replace("/")
-  }, [state.phase, router])
+  }, [state.phase, router, reportExit])
 
   /**
    * The player emits from native, outside React's commit, so a callback can arrive
@@ -364,12 +429,22 @@ export function ShowcaseScreen() {
   const handlePlaying = useCallback((token: number) => {
     if (!mountedRef.current) return
     if (stateRef.current.excerptToken !== token) return
+    // R17's ~5s budget, timed from the /showcase view the route tracker started.
+    // Gate before latching (series pattern): an unprovisioned build never burns it.
+    if (isDatadogProvisioned() && firstFrameLatchRef.current.claim()) {
+      addDatadogTiming(SHOWCASE_FIRST_FRAME_TIMING)
+    }
     dispatch({ type: "excerptPlaying" })
   }, [])
 
   // R12: a press must exit from every phase, including the resolving window, so this
   // is an unconditional sibling rather than one of OverlaySlot's branches.
-  const handleExit = useCallback(() => dispatch({ type: "exit" }), [])
+  const handleExit = useCallback(() => {
+    // Recorded here because this is the only place a press is known; the reducer
+    // absorbs the duplicate dispatch, and re-recording the same reason is harmless.
+    exitedViaPressRef.current = true
+    dispatch({ type: "exit" })
+  }, [])
 
   const chapter = currentChapter(state)
 

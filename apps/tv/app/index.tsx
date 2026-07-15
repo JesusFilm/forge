@@ -50,6 +50,10 @@ import {
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { useWatchHome } from "../src/hooks/useWatchHome"
 import { shouldAutoStartShowcase } from "../src/lib/showcaseMode/exitClassification"
+import {
+  SHOWCASE_AUTO_SOURCE,
+  SHOWCASE_SOURCE_PARAM,
+} from "../src/lib/showcaseMode/showcaseTelemetry"
 import { useShowcasePrefs } from "../src/lib/showcaseMode/useShowcasePrefs"
 import { scale } from "../src/lib/scale"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
@@ -130,7 +134,8 @@ export default function HomeScreen() {
       return
     }
     autoStartConsumed = true
-    router.push("/showcase")
+    // Stamped so RUM can separate an unattended recovery from a human start (AE3).
+    router.push(`/showcase?${SHOWCASE_SOURCE_PARAM}=${SHOWCASE_AUTO_SOURCE}`)
   }, [showcasePrefsHydrated, showcasePrefs.autoStart, activePath, router])
 
   // ── Showcase state ── First model seeds; refetches re-reconcile, keeping the

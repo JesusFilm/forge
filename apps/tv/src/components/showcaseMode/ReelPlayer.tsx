@@ -10,8 +10,15 @@ import { useVideoPlayer, VideoView } from "expo-video"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Animated, AppState, StyleSheet, View } from "react-native"
 
+import { datadogLog, reportDatadogError } from "../../lib/datadog"
+import { shouldCountReelRebuffer } from "../../lib/showcaseMode/showcaseTelemetry"
 import type { ShowcaseStream } from "../../lib/showcaseMode/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import {
+  createVideoQoeSession,
+  sanitizeVideoErrorMessage,
+  type VideoQoeReason,
+} from "../../lib/videoQoe"
 import { isAppStateForeground } from "../watch/videoBackdropGate"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { computeReelPlayerGate } from "./reelPlayerGate"
@@ -111,12 +118,33 @@ export function ReelPlayer({
   const shouldPlayRef = useRef(shouldPlay)
   const swapIdRef = useRef(0)
 
+  // KTD-9: one QoE session per excerpt, keyed on the Mux playback id — never the
+  // title (PII). The reel's language rotation means content_id changes per excerpt,
+  // so a single session-wide accumulator would blur every item together.
+  const qoeRef = useRef<ReturnType<typeof createVideoQoeSession> | null>(null)
+  const contentIdRef = useRef<string | null>(null)
+
+  const finalizeQoe = useCallback((reason: VideoQoeReason) => {
+    // Idempotent by construction: finalize returns the summary once, so the swap
+    // and the unmount can both call unconditionally and only one summary lands.
+    const summary = qoeRef.current?.finalize(reason)
+    if (summary != null) datadogLog.info("video_playback.summary", summary)
+  }, [])
+
   useEffect(() => {
     // Keyed on the stream object, not the token: the shell holds the outgoing
     // excerpt's stream until the new one resolves, so a token bump alone must not
     // reload the item that is already playing.
     if (validStream === targetStreamRef.current) return
     targetStreamRef.current = validStream
+    // A swap IS the outgoing excerpt's end, and this mint is the incoming session's
+    // ttff origin — the instant its stream is handed to the player.
+    finalizeQoe("ended")
+    contentIdRef.current = validStream?.muxPlaybackId ?? null
+    qoeRef.current =
+      validStream != null
+        ? createVideoQoeSession({ contentId: contentIdRef.current })
+        : null
     // The token current when a stream lands IS that stream's token — the shell only
     // publishes a stream for the excerpt it is targeting right now.
     const token = excerptToken
@@ -143,10 +171,10 @@ export function ReelPlayer({
         if (swapIdRef.current === swapId) onFailed(token)
       }
     })()
-  }, [player, validStream, excerptToken, onFailed])
+  }, [player, validStream, excerptToken, onFailed, finalizeQoe])
 
   useEffect(() => {
-    const sub = player.addListener("statusChange", ({ status }) => {
+    const sub = player.addListener("statusChange", ({ status, error }) => {
       // Latch through `idle`: every swap blips idle, and unmounting there forces a
       // full HLS re-init — the long black pause KTD-2 exists to avoid.
       if (status === "readyToPlay") setVideoReady(true)
@@ -154,7 +182,28 @@ export function ReelPlayer({
         // A genuine error is never a swap blip. Fall back to the poster and let the
         // reel skip this item (R16) rather than strand it on a frozen frame.
         setVideoReady(false)
+        // Sanitize before it leaves the device: a native HLS message can embed the
+        // failing Mux URL, whose signed query string carries a token.
+        const message = error?.message
+        qoeRef.current?.onError(message)
+        reportDatadogError(
+          message != null
+            ? sanitizeVideoErrorMessage(message)
+            : "reel playback error",
+          { content_id: contentIdRef.current, origin: "showcase_reel" },
+        )
         onFailed(targetTokenRef.current)
+      } else if (status === "loading") {
+        // An initial load and a language-rotation swap both surface as `loading`,
+        // and neither is a stall the viewer suffered (KTD-9).
+        if (
+          shouldCountReelRebuffer({
+            confirmedToken: confirmedTokenRef.current,
+            targetToken: targetTokenRef.current,
+          })
+        ) {
+          qoeRef.current?.onRebuffer()
+        }
       }
     })
     return () => sub.remove()
@@ -166,6 +215,15 @@ export function ReelPlayer({
       const token = loadedTokenRef.current
       confirmedTokenRef.current = token
       setConfirmedToken(token)
+      // Per-excerpt TTFF is a LOG FIELD, never a view timing: addDatadogTiming
+      // measures from the route view's start, folding nav latency in (KTD-9).
+      const ttffMs = qoeRef.current?.onFirstPlaying()
+      if (ttffMs != null) {
+        datadogLog.info("video_playback.ttff", {
+          content_id: contentIdRef.current,
+          ttff_ms: ttffMs,
+        })
+      }
       onPlaying(token)
     })
     return () => sub.remove()
@@ -186,6 +244,9 @@ export function ReelPlayer({
       // long-form item still reports the OUTGOING item's position, which would trip
       // the window end instantly and skip an excerpt nobody watched.
       if (confirmedTokenRef.current !== loadedTokenRef.current) return
+      // Guarded above, so this is the confirmed source's own clock: an unconfirmed
+      // reading is the OUTGOING excerpt's position and would pollute watched_ms.
+      qoeRef.current?.onTimeUpdate(currentTime)
       if (currentTime < loaded.window.endSeconds) return
       // Silence it now — the poster hides the picture, but this excerpt's audio
       // would otherwise run on underneath until the next stream resolves.
@@ -221,6 +282,13 @@ export function ReelPlayer({
       }
     }
   }, [player])
+
+  // Every excerpt but the last finalizes on its swap; this catches that last one plus
+  // every exit, nav-away and background teardown. Without it the reel's abandonment
+  // QoE — which is how most sessions actually end — would never be captured.
+  useEffect(() => {
+    return () => finalizeQoe("abandoned")
+  }, [finalizeQoe])
 
   const posterOpacity = useRef(new Animated.Value(1)).current
   useEffect(() => {
