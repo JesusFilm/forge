@@ -13,6 +13,9 @@ export function getRedisClient(): Redis | null {
   }
 
   if (redisClient === undefined) {
+    // No client-wide `commandTimeout`: this singleton also backs the GraphQL
+    // rate-limit store, which re-throws on Redis error in prod — a global
+    // timeout would fail every query. Per-call timeouts live in rate-limit.ts.
     redisClient = new Redis({
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,
@@ -21,12 +24,10 @@ export function getRedisClient(): Redis | null {
       enableOfflineQueue: false,
     })
     redisClient.on("error", (err: Error) =>
+      // Plain-string per the Railway logsV2 rule (JSON from runtime routes is
+      // silenced). Never include command args / keys.
       console.warn(
-        JSON.stringify({
-          event: "redis.error",
-          message: err.message,
-          service: "forge-admin",
-        }),
+        `[redis] event=redis.error message=${err.message} service=forge-admin`,
       ),
     )
   }
