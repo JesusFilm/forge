@@ -4,13 +4,9 @@
 import type { HomeCardVariant } from "./HomeCard"
 import type { WatchHomeSection } from "../../lib/watchHome/model"
 
-/**
- * Portrait ONLY for a curated poster rail — never `orientation`. `orientation`
- * also reads "vertical" for poster-less `collection` blocks and for two
- * config-declared sections whose art is the video's landscape cinematic; framing
- * those 2:3 crops them to a ~31% sliver. isPosterRail is set from the same
- * resolved poster the cards render, so frame and art cannot disagree.
- */
+// Portrait ONLY for a poster rail — never `orientation`, which also reads
+// "vertical" for poster-less `collection`/config sections whose art is landscape
+// (framing those 2:3 crops them to a sliver — the bug this exists to prevent).
 export function resolveHomeRailVariant(
   section: Pick<WatchHomeSection, "isPosterRail">,
 ): HomeCardVariant {

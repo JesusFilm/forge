@@ -102,13 +102,9 @@ export function resolveMediaItemTitle(
   )
 }
 
-/**
- * The authored override poster alone (curated vertical art), or null. Exported
- * because the Home adapter needs THIS branch by itself: it is BOTH the signal
- * that a rail is portrait and the art those cards show, so one function decides
- * both and they cannot disagree. `imageUrl` must NOT count toward it — that
- * field carries landscape art too.
- */
+// Exported for the Home adapter, which needs this branch alone: it is BOTH the
+// portrait signal and the art, so one function decides both. `imageUrl` must not
+// count toward it — that field carries landscape art too.
 export function resolveOverridePosterUrl(item: MediaItemLike): string | null {
   return resolveImageUrl(
     rewriteSeedPosterUrl(firstNonEmpty(item.imageOverrideUrl)),

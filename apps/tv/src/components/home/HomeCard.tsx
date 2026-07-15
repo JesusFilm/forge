@@ -1,5 +1,4 @@
-// One Home rail card, in one of two shapes (HOME_CARD_DIMS): the 2.13:1
-// cinematic default, or the 2:3 curated-poster card the rail's `variant` selects.
+// One Home rail card in one of two shapes (HOME_CARD_DIMS): 2.13:1 cinematic, or the 2:3 poster card `variant` selects.
 // Focus = white ring overlay + shadow on a separate overflow-visible wrapper.
 // onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
@@ -30,11 +29,9 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 export type HomeCardVariant = "landscape" | "portrait"
 
-/**
- * Landscape is 32:15 (2.13:1) — the cinematic source art (400×15/32). Portrait
- * is 2:3, matching web's `aspect-[2/3]` AND the curated poster art itself
- * (1192×1788, 1024×1536), so the posters fill the frame without cropping.
- */
+// Landscape 32:15 matches the cinematic source art; portrait 2:3 matches web's
+// `aspect-[2/3]` AND the posters themselves (1192×1788, 1024×1536), so they fill
+// the frame uncropped.
 export const HOME_CARD_DIMS: Record<
   HomeCardVariant,
   { readonly width: number; readonly thumbHeight: number }
@@ -118,12 +115,9 @@ export const HomeCard = memo(function HomeCard({
     label: card.rawLabel,
     childCount: card.childCount,
   })
-  // Animated hover-preview, once focus dwells. Gate on the LABEL not childCount:
-  // a feature film WITH episodes (JESUS, 61 eps) is playable and previews; only
-  // COLLECTION/SERIES-labeled cards are excluded (they carry a null id anyway).
-  // Portrait rails opt out entirely: the preview is rendered from the LANDSCAPE
-  // video, so `cover` in a 2:3 frame shows a ~31%-wide slice — replacing the
-  // curated poster that is the whole reason the rail is portrait.
+  // Gate on the LABEL not childCount: a feature film WITH episodes (JESUS, 61 eps)
+  // previews; only COLLECTION/SERIES cards are excluded. Portrait rails opt out —
+  // the preview renders from the LANDSCAPE video and would crop over the poster.
   const previewUrl = useHoverPreview({
     focused,
     enabled: !isPortrait && !isSeriesLabel(card.rawLabel),

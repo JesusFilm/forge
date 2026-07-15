@@ -83,7 +83,11 @@ export type WatchHomeCard = {
    */
   rawLabel: string | null
   metaLabel: string | null
+  /** The card's own art — a curated 2:3 poster on a poster rail, else the cinematic. */
   imageUrl: string | null
+  // The video's 16:9 cinematic, always — what LANDSCAPE consumers (the
+  // watch/series seed) need even when imageUrl is a portrait poster.
+  landscapeImageUrl: string | null
   imageAlt: string
   // Mux playback id for the animated hover-preview, or null (config path / series parent).
   muxPlaybackId: string | null
@@ -99,20 +103,15 @@ export type WatchHomeSection = {
   eyebrow: string
   title: string
   description: string | null
-  // layout/orientation/showSequenceNumbers: sync-parity with mobile's model.
-  // NOT the card-shape signal — `orientation` has producers (config's declared
-  // value, mapVariant's "collection") that mean "vertical grid", NOT "has
-  // portrait art". Render off isPosterRail; never re-wire orientation.
+  // Sync-parity with mobile. NOT the card-shape signal: `orientation` also reads
+  // "vertical" for poster-less config/`collection` sections, whose art is
+  // landscape. Render off isPosterRail (resolveHomeRailVariant); never re-wire.
   layout: "rail" | "grid"
   orientation: "horizontal" | "vertical"
   showSequenceNumbers: boolean
-  /**
-   * Every card carries curated portrait poster art, so the rail may safely
-   * render 2:3. Set ONLY by the Experience adapter's isPortraitPosterRail, which
-   * uses the same resolved poster it puts on the cards — frame and art cannot
-   * disagree. False on the config path (it has no curated posters, only the
-   * video's landscape cinematic).
-   */
+  // Every card carries curated portrait art, so the rail may render 2:3. Set only
+  // from the resolved override poster the cards show, so frame and art cannot
+  // disagree. False on the config path (landscape cinematic only).
   isPosterRail: boolean
   cards: WatchHomeCard[]
 }
@@ -204,8 +203,10 @@ export function normalizeCard(args: {
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
-  const adminImageUrl =
-    args.imageUrlOverride ?? pickAdminImage(args.video.images ?? [])
+  // Keep the cinematic even when a poster outranks it: landscape consumers (the
+  // watch/series seed) still need a 16:9 source.
+  const videoImageUrl = pickAdminImage(args.video.images ?? [])
+  const adminImageUrl = args.imageUrlOverride ?? videoImageUrl
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video ? resolvedChildren(args.video).length : 0
@@ -250,6 +251,7 @@ export function normalizeCard(args: {
       childCount,
     }),
     imageUrl: adminImageUrl,
+    landscapeImageUrl: videoImageUrl,
     imageAlt: locale?.imageAlt ?? title,
     muxPlaybackId: args.muxPlaybackId ?? null,
     durationSeconds: args.video.durationSeconds ?? null,
@@ -373,10 +375,9 @@ function buildSections(args: {
       layout: section.layout,
       orientation: section.orientation ?? "horizontal",
       showSequenceNumbers: section.showSequenceNumbers ?? false,
-      // Config cards are hydrated from the video's landscape cinematic — there
-      // is no curated poster on this path, so a portrait frame would crop.
-      // (config.ts DOES declare orientation "vertical" on two sections; that is
-      // mobile layout parity, not an art guarantee. See WatchHomeSection.)
+      // No curated poster on this path (video cinematic only), so a portrait
+      // frame would crop. config.ts's two `orientation: "vertical"` sections are
+      // mobile layout parity, NOT an art guarantee — see WatchHomeSection.
       isPosterRail: false,
       cards,
     }

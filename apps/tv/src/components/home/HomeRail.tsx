@@ -46,10 +46,9 @@ function visibleColumnsFor(variant: HomeCardVariant): number {
   )
 }
 
-// Card columns spanning the visible width. tvOS treats empty right-hand
-// columns as "nothing there", so a vertical move from an over-hanging column
-// SKIPS short rails; we pad up to this count with invisible focusable cards.
-// Narrower portrait cards fit more columns, so this is per-variant.
+// tvOS treats empty right-hand columns as "nothing there", so a vertical move from
+// an over-hanging column SKIPS short rails; pad to this count with invisible
+// focusable cards. Per-variant: narrower portrait cards fit more columns.
 const VISIBLE_COLUMNS: Record<HomeCardVariant, number> = {
   landscape: visibleColumnsFor("landscape"),
   portrait: visibleColumnsFor("portrait"),
@@ -153,11 +152,7 @@ type HomeRailProps = {
    * focused row + a buffer of neighbours active. Defaults to true (eager).
    */
   active?: boolean
-  /**
-   * Card shape for this rail. "portrait" is chosen by the adapter when every
-   * item carries curated 2:3 poster art (see experienceAdapter's
-   * isPortraitPosterRail); defaults to the cinematic landscape card.
-   */
+  /** Card shape; "portrait" when every item has curated 2:3 poster art. Default landscape. */
   variant?: HomeCardVariant
 }
 

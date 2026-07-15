@@ -6,6 +6,7 @@ function makeCard(overrides: Partial<RoutableHomeCard> = {}): RoutableHomeCard {
     slug: "jesus",
     title: "JESUS",
     imageUrl: "https://images.example/jesus.jpg",
+    landscapeImageUrl: "https://images.example/jesus.jpg",
     rawLabel: "FEATURE_FILM",
     childCount: 0,
     ...overrides,
@@ -16,6 +17,31 @@ describe("resolveHomeCardPath", () => {
   it("routes a leaf card to /watch/[slug] with a seed", () => {
     const path = resolveHomeCardPath(makeCard())
     expect(path?.startsWith("/watch/jesus?seed=")).toBe(true)
+  })
+
+  // REGRESSION GUARD: the seed paints the watch/series LANDSCAPE hero. A poster
+  // rail's card.imageUrl is a 2:3 poster, so seeding it flashed a cropped
+  // portrait into a 16:9 hero. The seed must carry the cinematic.
+  it("seeds the 16:9 cinematic, never a poster rail's portrait card art", () => {
+    const path = resolveHomeCardPath(
+      makeCard({
+        imageUrl: "https://images.example/jesus-PORTRAIT-poster.jpg",
+        landscapeImageUrl: "https://images.example/jesus-cinematic.jpg",
+      }),
+    )
+    const seed = decodeWatchSeed(path!.split("seed=")[1])
+    expect(seed?.imageUrl).toBe("https://images.example/jesus-cinematic.jpg")
+  })
+
+  it("falls back to card art when the video has no cinematic", () => {
+    const path = resolveHomeCardPath(
+      makeCard({
+        imageUrl: "https://images.example/only.jpg",
+        landscapeImageUrl: null,
+      }),
+    )
+    const seed = decodeWatchSeed(path!.split("seed=")[1])
+    expect(seed?.imageUrl).toBe("https://images.example/only.jpg")
   })
 
   it("routes SERIES / COLLECTION raw labels to /series/[slug]", () => {

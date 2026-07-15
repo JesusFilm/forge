@@ -75,14 +75,9 @@ export function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
-/**
- * A rail is PORTRAIT when every item resolves an override poster — those
- * overrides are the curated vertical art a 2.13:1 card would crop to a sliver.
- * Mirrors mobile's isPortraitPosterRail, with one deliberate tightening: mobile
- * tests the raw field, we test the RESOLVED url, so an unusable override can
- * never hand a portrait frame to the landscape fallback art.
- * `imageUrl` deliberately does NOT count — it carries landscape art too.
- */
+// Every item must resolve an override poster: `imageUrl` can't count (it carries
+// landscape art too), and testing the RESOLVED url — mobile tests the raw field —
+// stops an unusable override handing a portrait frame to landscape fallback art.
 function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
   return (
     items.length > 0 &&
@@ -107,12 +102,8 @@ function itemToCard(
     video,
     languageSlug,
     muxPlaybackId: item.muxPlaybackId ?? null,
-    // The curated poster is used ONLY on a poster rail — the same condition that
-    // gives the rail its 2:3 frame. Gating both on one value is what makes
-    // "portrait frame ⇔ portrait art" true by construction: a landscape rail
-    // keeps the video's cinematic (as before this feature), and a portrait rail
-    // shows the poster that qualified it. On a poster rail every item resolves
-    // an override, so this is never null there.
+    // Gated on the SAME value as the 2:3 frame, so frame and art can't diverge:
+    // a landscape rail keeps the video's cinematic (as before this feature).
     imageUrlOverride: posterRail ? resolveOverridePosterUrl(item) : null,
   })
 }

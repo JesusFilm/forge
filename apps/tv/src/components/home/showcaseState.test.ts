@@ -27,6 +27,7 @@ function card(
     rawLabel: "FEATURE_FILM",
     metaLabel: null,
     imageUrl: null,
+    landscapeImageUrl: null,
     imageAlt: `Title ${id}`,
     muxPlaybackId: null,
     durationSeconds: null,
