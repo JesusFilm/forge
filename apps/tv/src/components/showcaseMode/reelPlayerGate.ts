@@ -29,6 +29,12 @@ export type ReelPlayerGate = {
   shouldMountVideo: boolean
   /** Poster covers the VideoView. Must be true across every swap, seek, and unmount. */
   posterVisible: boolean
+  /**
+   * The poster may dissolve IN over the outgoing frame instead of snapping (R11).
+   * Only when the VideoView is still mounted — otherwise there is nothing beneath
+   * it and a fade would bleed the bare screen background through.
+   */
+  posterCrossfade: boolean
   /** U7's `isSourceSwapping`: a language-rotation swap is not a rebuffer (KTD-9). */
   swapInFlight: boolean
 }
@@ -58,6 +64,10 @@ export function computeReelPlayerGate({
     // An unmounted VideoView leaves bare screen background behind it, so the
     // poster covers the lifecycle gaps as well as the swaps.
     posterVisible: swapInFlight || !shouldMountVideo,
+    // An advance holds the outgoing stream mounted until its replacement resolves,
+    // so its last frame is what the poster dissolves over. Android's previous-frame
+    // flash lands on that same frame mid-dissolve, which is what we are showing.
+    posterCrossfade: swapInFlight && shouldMountVideo,
     swapInFlight,
   }
 }

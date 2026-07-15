@@ -85,8 +85,8 @@ export function ReelPlayer({
   const [videoReady, setVideoReady] = useState(false)
   const [confirmedToken, setConfirmedToken] = useState<number | null>(null)
 
-  const { shouldPlay, shouldMountVideo, posterVisible } = computeReelPlayerGate(
-    {
+  const { shouldPlay, shouldMountVideo, posterVisible, posterCrossfade } =
+    computeReelPlayerGate({
       screenFocused,
       appForeground,
       active,
@@ -94,8 +94,7 @@ export function ReelPlayer({
       videoReady,
       excerptToken,
       confirmedToken,
-    },
-  )
+    })
 
   // Created ONCE with a null source: a changing useVideoPlayer source releases and
   // recreates the native player. Every excerpt swap goes through replaceAsync on
@@ -293,10 +292,19 @@ export function ReelPlayer({
   const posterOpacity = useRef(new Animated.Value(1)).current
   useEffect(() => {
     if (posterVisible) {
-      // Instant, never a fade in: an Android source swap flashes the previous frame
-      // (fixed only post-SDK54), so the cover must already be there (KTD-3).
-      posterOpacity.setValue(1)
-      return
+      // Snap whenever nothing is mounted beneath: a fade would bleed bare screen
+      // background through. The gate decides — see posterCrossfade (KTD-3).
+      if (!posterCrossfade) {
+        posterOpacity.setValue(1)
+        return
+      }
+      const fadeIn = Animated.timing(posterOpacity, {
+        toValue: 1,
+        duration: POSTER_FADE_MS,
+        useNativeDriver: true,
+      })
+      fadeIn.start()
+      return () => fadeIn.stop()
     }
     const anim = Animated.sequence([
       Animated.delay(POSTER_HOLD_MS),
@@ -308,7 +316,7 @@ export function ReelPlayer({
     ])
     anim.start()
     return () => anim.stop()
-  }, [posterVisible, posterOpacity])
+  }, [posterVisible, posterCrossfade, posterOpacity])
 
   return (
     // No pointerEvents="none" anywhere above the VideoView: on a fullscreen surface

@@ -4,6 +4,7 @@
  * the reducer — this file only turns events into dispatches and state into render.
  */
 
+import { Image } from "expo-image"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
@@ -356,8 +357,9 @@ export function ShowcaseScreen() {
     }
   }, [excerpt, isFirstOfChapter, state.excerptToken])
 
-  // R17: warm the next excerpt's stream choice while the current one plays. Data
-  // only — a second buffering player is the expo-video leak trigger (KTD-3).
+  // R17: warm the next excerpt's stream choice AND its poster while the current one
+  // plays. Data only — a second buffering player is the expo-video leak trigger
+  // (KTD-3). The poster is what the swap dissolves onto, so a cold one would pop.
   const upcoming = nextExcerpt(state)
   useEffect(() => {
     if (upcoming == null || state.phase !== "excerpt") return
@@ -368,6 +370,11 @@ export function ShowcaseScreen() {
     void fetchVideo(upcoming.slug).catch(() => {
       // A cold cache on arrival is the only cost of a failed warm.
     })
+    if (upcoming.posterUrl != null) {
+      void Image.prefetch(upcoming.posterUrl).catch(() => {
+        // Uncached art still renders; it just arrives during the dissolve.
+      })
+    }
   }, [upcoming, state.phase])
 
   // R15: the first phase presenting content is also the first that can name the path

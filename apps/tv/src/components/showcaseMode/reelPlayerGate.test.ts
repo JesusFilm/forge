@@ -20,6 +20,7 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
       shouldPlay: true,
       shouldMountVideo: true,
       posterVisible: true,
+      posterCrossfade: true,
       swapInFlight: true,
     })
   })
@@ -49,12 +50,61 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
   })
 })
 
+describe("computeReelPlayerGate — the poster dissolve (R11)", () => {
+  it("dissolves in over the outgoing frame when an advance swap starts", () => {
+    // The shell holds the outgoing stream mounted until its replacement resolves,
+    // so there is a real frame underneath to blend away from.
+    expect(
+      computeReelPlayerGate({ ...playing, excerptToken: 8 }).posterCrossfade,
+    ).toBe(true)
+  })
+
+  it("snaps instead of dissolving when the VideoView is unmounted — nothing beneath but bare background", () => {
+    for (const unmounting of [
+      { screenFocused: false },
+      { appForeground: false },
+      { hasStream: false },
+      { videoReady: false },
+    ]) {
+      const gate = computeReelPlayerGate({
+        ...playing,
+        excerptToken: 8,
+        ...unmounting,
+      })
+      expect(gate.posterVisible).toBe(true)
+      expect(gate.posterCrossfade).toBe(false)
+    }
+  })
+
+  it("snaps on the very first cover — there is no outgoing frame to dissolve from", () => {
+    expect(
+      computeReelPlayerGate({
+        ...playing,
+        confirmedToken: null,
+        videoReady: false,
+      }).posterCrossfade,
+    ).toBe(false)
+  })
+
+  it("never claims a dissolve while the poster is down — an uncovered poster has nothing to fade", () => {
+    expect(computeReelPlayerGate(playing).posterCrossfade).toBe(false)
+  })
+
+  it("dissolves behind a chapter card too: the card is opaque, but a bare gap under it is still a bug", () => {
+    expect(
+      computeReelPlayerGate({ ...playing, active: false, excerptToken: 8 })
+        .posterCrossfade,
+    ).toBe(true)
+  })
+})
+
 describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
   it("mounts + plays when the route is active and the app is foreground", () => {
     expect(computeReelPlayerGate(playing)).toEqual({
       shouldPlay: true,
       shouldMountVideo: true,
       posterVisible: false,
+      posterCrossfade: false,
       swapInFlight: false,
     })
   })
@@ -65,6 +115,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         shouldPlay: false,
         shouldMountVideo: false,
         posterVisible: true,
+        posterCrossfade: false,
         swapInFlight: false,
       },
     )
@@ -76,6 +127,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         shouldPlay: false,
         shouldMountVideo: false,
         posterVisible: true,
+        posterCrossfade: false,
         swapInFlight: false,
       },
     )
@@ -92,6 +144,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       shouldPlay: false,
       shouldMountVideo: false,
       posterVisible: true,
+      posterCrossfade: false,
       swapInFlight: false,
     })
   })
@@ -112,6 +165,7 @@ describe("computeReelPlayerGate — silent phases (R8/R10)", () => {
       shouldPlay: false,
       shouldMountVideo: true,
       posterVisible: false,
+      posterCrossfade: false,
       swapInFlight: false,
     })
   })
