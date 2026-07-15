@@ -310,11 +310,11 @@ export default function DiscoverScreen() {
         setResultsKey((k) => k + 1)
 
         const { outcome, result_count } = resolveWatchSearchOutcome({
-          term: trimmed,
           results: newResults,
         })
+        // Raw query term is deliberately NOT logged (privacy parity with web:
+        // result metadata + search_request_id only, never what the user typed).
         datadogLog.info("watch_search", {
-          term: trimmed,
           outcome,
           result_count,
           latency_ms: Date.now() - startedAt,
@@ -342,7 +342,6 @@ export default function DiscoverScreen() {
         setError(parseSearchError(e))
         // Rate-limit/auth reject as a 200-body GraphQL code, not a 429 (R34).
         datadogLog.warn("watch_search_failed", {
-          term: trimmed,
           code: parseSearchErrorCode(e),
           request_type: "initial",
           search_request_id: searchRequestId,
@@ -413,11 +412,9 @@ export default function DiscoverScreen() {
         setHasMore(data.hasMore)
 
         const { outcome, result_count } = resolveWatchSearchOutcome({
-          term,
           results: data.results,
         })
         datadogLog.info("watch_search", {
-          term,
           outcome,
           result_count,
           latency_ms: Date.now() - startedAt,
@@ -429,7 +426,6 @@ export default function DiscoverScreen() {
       if (requestIdRef.current !== thisRequest) return
       setError(parseSearchError(e))
       datadogLog.warn("watch_search_failed", {
-        term,
         code: parseSearchErrorCode(e),
         request_type: "page",
         search_request_id: searchRequestId,

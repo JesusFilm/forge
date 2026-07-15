@@ -33,14 +33,13 @@ export type WatchSearchOutcome = {
 
 /**
  * Classifies one search: an error (with its GraphQL code), an empty result set,
- * or a non-empty one. `term` is part of the search context but does not affect
- * the outcome — it is logged separately at the emit site (R33).
+ * or a non-empty one. The raw query term is intentionally not part of this — it
+ * is never logged (privacy parity with web, which logs result metadata only).
  */
 export function resolveWatchSearchOutcome({
   results,
   error,
 }: {
-  term: string
   results: readonly unknown[] | null | undefined
   error?: unknown
 }): WatchSearchOutcome {
