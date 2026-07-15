@@ -1487,6 +1487,46 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 })
 
 describe("FloatingSearchProvider — language switcher chrome", () => {
+  it("links the logo from Watch home routes to the parent website", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
+
+    navigationMocks.pathname = "/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Localized page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
+  })
+
+  it("links the logo from inner Watch routes back to Watch home", () => {
+    navigationMocks.pathname = "/jesus.html/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    // Next applies the configured `/watch` base path at runtime; jsdom exposes
+    // the base-path-relative route passed to `next/link`.
+    expect(logo?.getAttribute("href")).toBe("/")
+  })
+
   it("renders the language globe as part of the floating header", () => {
     const onLanguageClick = vi.fn()
     act(() => {

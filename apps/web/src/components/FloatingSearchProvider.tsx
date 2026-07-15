@@ -37,6 +37,7 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { parseWatchPath } from "@/lib/routes"
 import { loadWatchInteraction } from "@/lib/watch-interaction-loader"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
@@ -76,6 +77,11 @@ type HeaderLanguageSwitcherState = {
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("FloatingSearch")
   const pathname = usePathname()
+  const parsedPath = parseWatchPath(pathname)
+  const logoHref =
+    parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+      ? "https://www.jesusfilm.org/"
+      : "/"
 
   const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
@@ -468,7 +474,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS} transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
       >
         <Link
-          href={"/" as Route}
+          href={logoHref as Route}
           aria-label={t("home")}
           data-testid="floating-header-logo"
           onClick={resetSearch}
