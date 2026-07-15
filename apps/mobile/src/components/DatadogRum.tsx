@@ -83,6 +83,9 @@ export function MobileDatadogProvider({ children }: { children: ReactNode }) {
         // dd-action-name overrides so no typed/PII text leaks (KTD10).
         trackInteractions: true,
         trackResources: true, // auto-instruments fetch/XHR into per-request RUM
+        // Preview-smoke finding: cancelled/superseded GraphQL requests surface
+        // here as -999 + "Aborted" RUM errors (noise, not real failures). A clean
+        // filter needs errorEventMapper — file-config-only (see the RN mapper doc).
         trackErrors: true,
         nativeCrashReportEnabled: true,
         sessionSampleRate: config.sessionSampleRate,
