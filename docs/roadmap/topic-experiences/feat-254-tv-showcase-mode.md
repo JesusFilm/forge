@@ -3,7 +3,7 @@ id: "feat-254"
 title: "TV Showcase Mode: Settings tab + felt-need excerpt reel"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-20"
 duration: 10
 blocks:
