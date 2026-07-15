@@ -134,4 +134,3 @@ Only the content-alignment anchor receives the shared frame.
   defines the required risk-matched performance evidence.
 - [Roadmap ticket feat-263](../../roadmap/platform/feat-263-watch-container-width-consistency.md)
   records the implementation scope and verification contract.
-
