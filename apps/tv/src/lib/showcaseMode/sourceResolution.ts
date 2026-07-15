@@ -20,6 +20,7 @@ import type {
   ExcerptWindow,
   ShowcaseChapter,
   ShowcaseExcerpt,
+  ShowcaseParseDrops,
   ShowcaseQueue,
   ShowcaseStream,
 } from "./types"
@@ -125,9 +126,14 @@ function parseStatLines(description: string | null | undefined): string[] {
 export function parseShowcaseExperience(
   blocks: readonly ShowcaseExperienceBlock[] | null | undefined,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
-): { chapters: ShowcaseChapter[]; statLines: string[] } {
+): {
+  chapters: ShowcaseChapter[]
+  statLines: string[]
+  drops: ShowcaseParseDrops
+} {
   const chapters: ShowcaseChapter[] = []
   const statLines: string[] = []
+  const drops: ShowcaseParseDrops = { items: 0, chapters: 0 }
 
   // Top level only: KTD-10 authors one MediaCollection per chapter at the root.
   ;(blocks ?? []).forEach((block, index) => {
@@ -143,6 +149,7 @@ export function parseShowcaseExperience(
     }
 
     const chapterId = media.sectionKey ?? `showcase-chapter-${index}`
+    const authored = (media.items ?? []).length
     const excerpts = (media.items ?? [])
       .map((item) =>
         isValidCoreId(item.coreId)
@@ -151,8 +158,14 @@ export function parseShowcaseExperience(
       )
       .map((video) => (video ? videoToExcerpt(video, chapterId) : null))
       .filter((excerpt): excerpt is ShowcaseExcerpt => excerpt != null)
+    drops.items += authored - excerpts.length
 
-    if (excerpts.length === 0) return // drop the chapter whole
+    if (excerpts.length === 0) {
+      // A section the curator authored that reaches no TV — the drop they most
+      // need told about, and the one with no other signal.
+      if (authored > 0) drops.chapters += 1
+      return
+    }
     chapters.push({
       id: chapterId,
       title,
@@ -161,7 +174,7 @@ export function parseShowcaseExperience(
     })
   })
 
-  return { chapters, statLines }
+  return { chapters, statLines, drops }
 }
 
 /** The unique, validated coreIds the Showcase Experience references (top-up input). */

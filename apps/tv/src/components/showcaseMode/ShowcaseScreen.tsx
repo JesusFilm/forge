@@ -54,6 +54,10 @@ import {
   resolveShowcaseStartPath,
   resolveShowcaseStartSource,
 } from "../../lib/showcaseMode/showcaseTelemetry"
+import {
+  logShowcaseFallback,
+  logShowcaseParseDrops,
+} from "../../lib/showcaseMode/logShowcaseFallback"
 import { createShowcaseVideoFetcher } from "../../lib/showcaseMode/showcaseVideoQuery"
 import { countDistinctLanguages } from "../../lib/showcaseMode/statLines"
 import type {
@@ -138,6 +142,9 @@ async function resolveShowcaseQueue(args: {
       )
       chapters = parsed.chapters
       statLines = parsed.statLines
+      // The curator authored these and they never reached a TV; nothing else tells
+      // them, because their whole authoring surface is a title and a coreId.
+      logShowcaseParseDrops(parsed.drops)
     }
   } catch {
     // Hydration failures land here too: either way the curated path yielded nothing.
@@ -257,6 +264,9 @@ export function ShowcaseScreen() {
       } catch {
         output = { kind: "stills", logs: [] }
       }
+      // Emit before the stale-guard: a superseded resolve still degraded, and its
+      // reason is exactly what an operator needs when the office TV looks wrong.
+      for (const reason of output.logs) logShowcaseFallback({ reason })
       if (requestIdRef.current !== thisRequest || !mountedRef.current) return
 
       if (kind === "refresh") {

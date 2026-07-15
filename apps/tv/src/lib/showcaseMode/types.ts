@@ -59,3 +59,14 @@ export type ShowcaseStream = {
    */
   claimsLanguage: boolean
 }
+
+/**
+ * What the Experience parser silently discarded. Counts only — the curator's own
+ * strings never ride a log context (the action-name privacy rule).
+ */
+export type ShowcaseParseDrops = {
+  /** Items whose coreId was missing, malformed, or never hydrated. */
+  items: number
+  /** Chapters left with zero playable excerpts, so the whole section was dropped. */
+  chapters: number
+}

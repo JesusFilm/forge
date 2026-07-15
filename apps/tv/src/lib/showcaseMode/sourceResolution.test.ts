@@ -168,6 +168,51 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
     expect(statLines).toEqual([])
   })
 
+  // The curator's authoring surface is a free-text title and a coreId, and both fail
+  // silently. These counts are the only feedback loop they have.
+  it("counts an item dropped for a coreId that never hydrated", () => {
+    const { drops } = parseShowcaseExperience(
+      [mediaCollection("Hope", ["a", "never-hydrated", "b"])],
+      index,
+    )
+    expect(drops).toEqual({ items: 1, chapters: 0 })
+  })
+
+  it("counts an item dropped for a null or malformed coreId", () => {
+    const { drops } = parseShowcaseExperience(
+      [mediaCollection("Hope", [null, "b; DROP TABLE", "a"])],
+      index,
+    )
+    expect(drops.items).toBe(2)
+  })
+
+  it("counts a whole chapter the curator authored that reaches no TV", () => {
+    const { drops } = parseShowcaseExperience(
+      [
+        mediaCollection("Ghost", ["never-hydrated"]),
+        mediaCollection("Hope", ["a"]),
+      ],
+      index,
+    )
+    expect(drops).toEqual({ items: 1, chapters: 1 })
+  })
+
+  it("does not count an empty section as a dropped chapter — nothing was authored to lose", () => {
+    const { drops } = parseShowcaseExperience(
+      [mediaCollection("Empty", [])],
+      index,
+    )
+    expect(drops.chapters).toBe(0)
+  })
+
+  it("reports no drops when every authored item resolves", () => {
+    const { drops } = parseShowcaseExperience(
+      [mediaCollection("Hope", ["a", "b"])],
+      index,
+    )
+    expect(drops).toEqual({ items: 0, chapters: 0 })
+  })
+
   it("drops a chapter whose items are all unresolvable", () => {
     const blocks = [
       mediaCollection("Ghost", ["never-hydrated"]),
@@ -209,6 +254,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       expect(parseShowcaseExperience(blocks, index)).toEqual({
         chapters: [],
         statLines: [],
+        drops: { items: 0, chapters: 0 },
       })
     }
   })
