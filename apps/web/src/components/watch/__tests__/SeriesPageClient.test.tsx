@@ -162,6 +162,13 @@ afterEach(() => {
 type Series = ResolvedSeriesBySlug["video"]
 type SelectedVariant = ResolvedSeriesBySlug["selectedVariant"]
 
+function getMaxWidthTokens(element: Element | null): string[] {
+  expect(element).not.toBeNull()
+  return (element?.getAttribute("class") ?? "")
+    .split(/\s+/)
+    .filter((token) => /(^|:)max-w-/.test(token))
+}
+
 function makeSeries(overrides: Partial<Series> = {}): Series {
   return {
     documentId: "series-1",
@@ -368,6 +375,24 @@ describe("SeriesPageClient — share modal state machine", () => {
 })
 
 describe("SeriesPageClient — passthrough to children", () => {
+  it("uses the canonical public Watch frame for metadata", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries()}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(
+      getMaxWidthTokens(
+        container.querySelector('[data-testid="series-page-meta"]'),
+      ),
+    ).toEqual(["max-w-[1920px]"])
+  })
+
   it("passes the resolved audio language slug into the episodes grid", () => {
     const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english", bcp47: "en" }],

@@ -84,7 +84,18 @@ function searchLanguages(html: HTMLElement, value: string) {
   })
 }
 
+function maxWidthTokens(element: Element | null): string[] {
+  return Array.from(element?.classList ?? []).filter((token) =>
+    token.includes("max-w-"),
+  )
+}
+
 describe("WatchLanguageIndexBrowser", () => {
+  it("uses the canonical public Watch frame", () => {
+    const html = renderBrowser({ regions: [] })
+    expect(maxWidthTokens(html.firstElementChild)).toEqual(["max-w-[1920px]"])
+  })
+
   it("collapses country languages after the top four", () => {
     const languages = [1, 2, 3, 4, 5].map((index) => language(index))
     const html = renderToString(

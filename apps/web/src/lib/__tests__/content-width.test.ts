@@ -4,6 +4,8 @@ import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
+  CONTENT_MAX_WIDTH,
+  CONTENT_WIDTH_ALIGN_CLASSES,
   CONTENT_WIDTH_CLASSES,
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
@@ -19,6 +21,22 @@ import {
   WATCH_PAGE_RAIL_PADDING_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+
+describe("content-width.ts — shared Watch frame", () => {
+  it("locks public Watch parents and sections to the 1920px frame", () => {
+    expect(CONTENT_MAX_WIDTH).toBe("max-w-[1920px]")
+  })
+
+  it("centers a full-width frame with exactly one maximum-width token", () => {
+    expect(CONTENT_WIDTH_ALIGN_CLASSES).toContain("mx-auto")
+    expect(CONTENT_WIDTH_ALIGN_CLASSES).toContain("w-full")
+    expect(
+      CONTENT_WIDTH_ALIGN_CLASSES.split(/\s+/).filter((token) =>
+        token.includes("max-w-"),
+      ),
+    ).toEqual([CONTENT_MAX_WIDTH])
+  })
+})
 
 // Lockstep invariant: at every breakpoint, the negative bleed margin, the
 // carousel content's padding-left, and the trailing spacer's width must all

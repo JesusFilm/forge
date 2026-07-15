@@ -10,6 +10,7 @@ import type {
   WatchLanguageIndexLanguage,
   WatchLanguageIndexRegion,
 } from "@/lib/language-index"
+import { CONTENT_WIDTH_ALIGN_CLASSES } from "@/lib/content-width"
 
 type WatchLanguageIndexBrowserProps = {
   regions: WatchLanguageIndexRegion[]
@@ -394,7 +395,7 @@ export function WatchLanguageIndexBrowser({
 
   return (
     <section
-      className="relative mx-auto w-full max-w-[112rem] font-sans text-stone-100"
+      className={`${CONTENT_WIDTH_ALIGN_CLASSES} relative font-sans text-stone-100`}
       aria-labelledby="language-index-title"
     >
       <header className="mb-6 flex items-center gap-4">

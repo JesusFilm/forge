@@ -24,6 +24,13 @@ type Episode = NonNullable<Episodes[number]>
 let container: HTMLDivElement
 let root: Root
 
+function getMaxWidthTokens(element: Element | null): string[] {
+  expect(element).not.toBeNull()
+  return (element?.getAttribute("class") ?? "")
+    .split(/\s+/)
+    .filter((token) => /(^|:)max-w-/.test(token))
+}
+
 beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -131,6 +138,24 @@ describe("SeriesEpisodesGrid — happy path", () => {
 })
 
 describe("SeriesEpisodesGrid — grid template", () => {
+  it("uses the canonical public Watch frame for the episode section", () => {
+    act(() => {
+      root.render(
+        <SeriesEpisodesGrid
+          episodes={[]}
+          languageSlug="english"
+          parentSlug="storyclubs"
+        />,
+      )
+    })
+
+    expect(
+      getMaxWidthTokens(
+        container.querySelector('[data-testid="series-episodes-grid-wrapper"]'),
+      ),
+    ).toEqual(["max-w-[1920px]"])
+  })
+
   it("uses a 5-column responsive grid at xl, ladder down to 1-col on mobile", () => {
     act(() => {
       root.render(

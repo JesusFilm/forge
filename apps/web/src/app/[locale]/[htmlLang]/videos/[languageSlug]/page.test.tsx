@@ -41,6 +41,12 @@ const resolveWatchLanguageInventoryMock = vi.mocked(
 )
 const resolveWatchHomeMock = vi.mocked(resolveWatchHome)
 
+function maxWidthTokens(element: Element | null): string[] {
+  return Array.from(element?.classList ?? []).filter((token) =>
+    /(^|:)max-w-/.test(token),
+  )
+}
+
 describe("/{language}.html/videos route", () => {
   beforeEach(() => {
     resolveWatchLanguageInventoryMock.mockReset()
@@ -229,12 +235,31 @@ describe("/{language}.html/videos route", () => {
       }),
     })
     const html = renderToString(page)
+    document.body.innerHTML = html
 
     expect(html).toContain("Spanish, Latin American")
     expect(html).toContain('data-testid="language-inventory-home-sections"')
     expect(html).toContain('data-testid="watch-home-section"')
     expect(html).toContain("Discover the full story")
     expect(html).toContain("/jesus.html/spanish-latin-american.html")
+    expect(html).not.toContain("max-w-7xl")
+
+    const frameSelectors = [
+      '[data-testid="language-inventory-page"] > section:first-child > div.relative',
+      '[data-testid="language-inventory-section-carousel"] > div',
+      '[data-testid="language-inventory-promoted"] > div',
+      '[data-testid="language-inventory-bible-gospels"] > div',
+      '[data-testid="language-inventory-bible-project"] > div',
+      '[data-testid="language-inventory-sports"] > div',
+      '[data-testid="language-inventory-audio-collections"] > div',
+      '[data-testid="language-inventory-subtitle-only"] > div',
+    ]
+
+    expect(
+      frameSelectors.map((selector) =>
+        maxWidthTokens(document.querySelector(selector)),
+      ),
+    ).toEqual(frameSelectors.map(() => ["max-w-[1920px]"]))
     expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
       "es",
       "spanish-latin-american",

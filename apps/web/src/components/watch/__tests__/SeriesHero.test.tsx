@@ -69,6 +69,13 @@ afterEach(() => {
 type Series = ResolvedSeriesBySlug["video"]
 type SelectedVariant = ResolvedSeriesBySlug["selectedVariant"]
 
+function getMaxWidthTokens(element: Element | null): string[] {
+  expect(element).not.toBeNull()
+  return (element?.getAttribute("class") ?? "")
+    .split(/\s+/)
+    .filter((token) => /(^|:)max-w-/.test(token))
+}
+
 function makeSeries(overrides: Partial<Series> = {}): Series {
   return {
     documentId: "series-1",
@@ -155,6 +162,7 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
     expect(wrapper).not.toBeNull()
     expect(wrapper?.className).toContain("sticky")
     expect(wrapper?.className).toContain("aspect-video")
+    expect(getMaxWidthTokens(wrapper)).toEqual([])
 
     // Image rendered from series.images[0].mobileCinematicHigh (per
     // resolvePosterUrl's resolution chain).
@@ -168,9 +176,10 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
 
     // Overlay anchor rides the body section's scroll, same testid as
     // HeroPlayer's anchor for visual parity.
-    expect(
-      container.querySelector('[data-testid="hero-player-overlay-anchor"]'),
-    ).not.toBeNull()
+    const overlayAnchor = container.querySelector(
+      '[data-testid="hero-player-overlay-anchor"]',
+    )
+    expect(getMaxWidthTokens(overlayAnchor)).toEqual(["max-w-[1920px]"])
 
     // Title and label overlay rendered (no Watch now button — there's
     // nothing to play in static mode).

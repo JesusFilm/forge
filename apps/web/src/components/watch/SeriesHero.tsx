@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { CONTENT_WIDTH_ALIGN_CLASSES } from "@/lib/content-width"
 import { resolvePosterUrl } from "@/lib/url"
 import { HeroPlayer } from "./HeroPlayer"
 
@@ -142,7 +143,7 @@ function SeriesHeroStatic({
           to the video page in both modes. */}
       <div
         data-testid="hero-player-overlay-anchor"
-        className="relative z-10 h-0 w-full"
+        className={`${CONTENT_WIDTH_ALIGN_CLASSES} relative z-10 h-0`}
       >
         {overlay ?? (
           <div
