@@ -1496,9 +1496,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )
     })
 
-    const logo = document.querySelector(
-      '[data-testid="floating-header-logo"]',
-    )
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
     expect(logo?.className).toContain("w-20")
     expect(logo?.className).toContain("md:w-[139px]")
     expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
@@ -1538,9 +1536,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )
     })
 
-    const logo = document.querySelector(
-      '[data-testid="floating-header-logo"]',
-    )
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
     expect(logo?.className).toContain("w-11")
     expect(logo?.className).toContain("md:w-12")
     expect(logo?.querySelector("img")?.getAttribute("src")).toBe(

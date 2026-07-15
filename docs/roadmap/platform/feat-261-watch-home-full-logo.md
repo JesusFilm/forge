@@ -83,4 +83,3 @@ inner Watch pages should retain the compact sign and its existing layout.
   with the full SVG and for an inner page with the compact SVG. Focused Vitest
   and package typecheck/lint could not run because the worktree's existing
   dependency tree was incomplete; no package or lockfile change was made.
-
