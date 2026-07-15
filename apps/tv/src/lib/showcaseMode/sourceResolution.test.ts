@@ -78,6 +78,7 @@ function poolCard(
     rawLabel,
     metaLabel: null,
     imageUrl: `https://img/${coreId}.jpg`,
+    landscapeImageUrl: `https://img/${coreId}-landscape.jpg`,
     imageAlt: coreId,
     muxPlaybackId: null,
     durationSeconds: 120,
@@ -339,6 +340,33 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
 
 // ── Fallback composition (R5) ───────────────────────────────────────
 
+describe("buildFallbackChapters — poster shape", () => {
+  it("takes the landscape cinematic, not the card's own art", () => {
+    // On a poster rail `imageUrl` is a curated 2:3 poster; the reel is full-bleed
+    // 16:9, so cover-fitting a portrait poster crops it to a sliver. Both fields
+    // are `string | null`, so only this test separates them.
+    const chapters = buildFallbackChapters({
+      model: modelWithCards([poolCard("v1", "SHORT_FILM")]),
+      now: new Date("2026-07-16T00:00:00Z"),
+    })
+
+    expect(chapters[0]?.excerpts[0]?.posterUrl).toBe(
+      "https://img/v1-landscape.jpg",
+    )
+  })
+
+  it("falls back to the card's art when the video has no cinematic", () => {
+    const chapters = buildFallbackChapters({
+      model: modelWithCards([
+        poolCard("v1", "SHORT_FILM", { landscapeImageUrl: null }),
+      ]),
+      now: new Date("2026-07-16T00:00:00Z"),
+    })
+
+    expect(chapters[0]?.excerpts[0]?.posterUrl).toBe("https://img/v1.jpg")
+  })
+})
+
 describe("buildFallbackChapters — R5/AE1", () => {
   const now = new Date("2026-07-15T12:00:00Z")
 
@@ -391,6 +419,7 @@ describe("buildFallbackChapters — R5/AE1", () => {
           layout: "rail",
           orientation: "horizontal",
           showSequenceNumbers: false,
+          isPosterRail: false,
           cards: [poolCard("in-section", "SHORT_FILM")],
         },
       ],
@@ -412,6 +441,7 @@ describe("buildFallbackChapters — R5/AE1", () => {
           layout: "rail",
           orientation: "horizontal",
           showSequenceNumbers: false,
+          isPosterRail: false,
           cards: [card],
         },
       ],

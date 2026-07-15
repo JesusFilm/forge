@@ -187,7 +187,9 @@ function cardToExcerpt(card: WatchHomeCard): ShowcaseExcerpt | null {
     coreId: card.coreId,
     slug: card.slug,
     title: card.title,
-    posterUrl: card.imageUrl,
+    // Landscape-first: the reel is full-bleed 16:9, and on a poster rail `imageUrl`
+    // is a curated 2:3 poster that contentFit="cover" would crop to a sliver.
+    posterUrl: card.landscapeImageUrl ?? card.imageUrl,
     rawLabel: card.rawLabel,
   }
 }

@@ -393,6 +393,7 @@ Portrait artwork an editor attaches to a single item of an Experience row, overr
 A home row whose every item carries a usable Curated Poster, letting it render tall poster cards instead of the wide Cinematic cards used elsewhere.
 
 Coverage is all-or-nothing: a single item without usable poster art demotes the whole row back to Cinematic cards, because a tall frame filled with wide artwork crops it to a sliver. The check that grants a row its poster shape is the same one that selects its cards' artwork, so a Poster Rail's cards always show the curated art and the two can never disagree. Poster status is distinct from a row's declared layout orientation, which mirrors a sibling client's grid arrangement and implies nothing about artwork — a row can be laid out vertically and still have no poster to show. The guarantee reaches only as far as _authored_ art: nothing verifies a Curated Poster is actually portrait, so a row of wrongly-shaped uploads still claims the tall frame.
+
 ### Showcase Mode
 
 The TV app's public ambient mode: a self-running reel of short catalog excerpts organized as felt-need chapters with per-excerpt language rotation and periodic stat interstitials, started from Home's Settings tab. Built to run unattended on office TVs for visiting stakeholders but shipped as a consumer feature, so any remote press exits and auto-start is opt-in.
