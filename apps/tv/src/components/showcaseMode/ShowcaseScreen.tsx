@@ -4,10 +4,12 @@
  * the reducer — this file only turns events into dispatches and state into render.
  */
 
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useRouter } from "expo-router"
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
+import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import { getApolloClient } from "../../lib/apolloClient"
 import { GET_WATCH_EXPERIENCE } from "../../lib/queries"
@@ -50,11 +52,15 @@ import {
 import { withTimeout } from "../../lib/withTimeout"
 import { ScreenStateView } from "../ScreenStateView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { ReelPlayer } from "./ReelPlayer"
 
 /** KTD-10: the curator authors the reel at this slug. */
 export const SHOWCASE_EXPERIENCE_SLUG = "tv-showcase"
 
 const SHOWCASE_LOCALE = "en"
+
+/** Tag-scoped so no other consumer's deactivate can release the reel's claim. */
+const SHOWCASE_KEEP_AWAKE_TAG = "showcase-mode"
 
 /** A slow admin must degrade to the fallback reel fast — R17's ~5s budget. */
 const EXPERIENCE_FETCH_DEADLINE_MS = 6000
@@ -118,6 +124,7 @@ async function resolveShowcaseQueue(args: {
 
 export function ShowcaseScreen() {
   const router = useRouter()
+  const { setDecoderClaimed } = useVideoPlayerContext()
   const { model, loading: poolLoading } = useWatchHome()
   const [state, dispatch] = useReducer(reelReducer, INITIAL_REEL_STATE)
   const [stream, setStream] = useState<ShowcaseStream | null>(null)
@@ -146,6 +153,36 @@ export function ShowcaseScreen() {
       mountedRef.current = false
     }
   }, [])
+
+  // KTD-6: expo-video's keepScreenOnWhilePlaying only covers moments of ACTIVE
+  // playback — chapter cards, interstitials, stills and swap gaps would let the
+  // screensaver in during a 4h soak (R14/AE6). Screen-scoped, not player-scoped.
+  useEffect(() => {
+    let released = false
+    activateKeepAwakeAsync(SHOWCASE_KEEP_AWAKE_TAG)
+      .then(() => {
+        // Unmount can beat this promise home; without the re-release the claim
+        // outlives the session and the TV never sleeps again.
+        if (released) {
+          void deactivateKeepAwake(SHOWCASE_KEEP_AWAKE_TAG).catch(() => {})
+        }
+      })
+      .catch(() => {
+        // Best-effort: losing keep-awake costs a screensaver, not the reel.
+      })
+    return () => {
+      released = true
+      void deactivateKeepAwake(SHOWCASE_KEEP_AWAKE_TAG).catch(() => {})
+    }
+  }, [])
+
+  // KTD-1: while this is held, /watch's backdrop and the Experience hero UNMOUNT
+  // their VideoViews — a paused view still owns a tvOS decode slot. Setup restores
+  // what cleanup mutates, so a StrictMode remount re-claims (R18 releases on exit).
+  useEffect(() => {
+    setDecoderClaimed(true)
+    return () => setDecoderClaimed(false)
+  }, [setDecoderClaimed])
 
   const runResolve = useCallback(
     async (kind: ResolveKind, fetchPolicy: FetchPolicy) => {
@@ -312,10 +349,13 @@ export function ShowcaseScreen() {
 
   return (
     <View style={styles.screen}>
-      <ReelPlayerSlot
+      <ReelPlayer
         stream={stream}
         posterUrl={excerpt?.posterUrl ?? null}
         excerptToken={state.excerptToken}
+        // Cards and interstitials keep the player loaded but silent, so the card
+        // doubles as the next excerpt's buffer window instead of bleeding its audio.
+        active={state.phase === "excerpt"}
         onPlaying={handlePlaying}
         onEnded={handleEnded}
         onFailed={handleFailed}
@@ -330,27 +370,8 @@ export function ShowcaseScreen() {
 }
 
 // ── Slots owned by sibling units ────────────────────────────────────
-// Placeholders typed against the intended props. U4 replaces ReelPlayerSlot with
-// ReelPlayer (one frozen player, replaceAsync swaps); U5 replaces OverlaySlot with
-// ChapterCard / ExcerptChrome / StatInterstitial / StillsSlideshow.
-
-type ReelPlayerSlotProps = {
-  stream: ShowcaseStream | null
-  posterUrl: string | null
-  /** KTD-9's source-swap guard token; bumps on every new excerpt target. */
-  excerptToken: number
-  /**
-   * Each callback echoes back the token the player was playing. The shell drops any
-   * that no longer matches — a native emitter cannot know the reel moved on.
-   */
-  onPlaying: (excerptToken: number) => void
-  onEnded: (excerptToken: number) => void
-  onFailed: (excerptToken: number) => void
-}
-
-function ReelPlayerSlot(_props: ReelPlayerSlotProps) {
-  return <View style={styles.playerSlot} />
-}
+// U5 replaces OverlaySlot with ChapterCard / ExcerptChrome / StatInterstitial /
+// StillsSlideshow.
 
 type OverlaySlotProps = {
   state: ReelState
@@ -385,9 +406,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: WATCH_THEME.below,
-  },
-  playerSlot: {
-    ...StyleSheet.absoluteFillObject,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
