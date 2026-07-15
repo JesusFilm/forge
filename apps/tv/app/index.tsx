@@ -22,6 +22,7 @@ import { advanceByDelta } from "../src/components/home/heroPagerState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { resolveHomeRailVariant } from "../src/components/home/homeRailVariant"
 import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
 import { ScreenStateView } from "../src/components/ScreenStateView"
 import { isRailActive } from "../src/components/home/homeRailWindow"
@@ -446,6 +447,7 @@ export default function HomeScreen() {
               eyebrow={section.eyebrow}
               title={section.title}
               cards={section.cards}
+              variant={resolveHomeRailVariant(section)}
               onCardFocus={handleCardFocus}
               onRowFocus={handleRowFocus}
               onCardPress={handleCardPress}

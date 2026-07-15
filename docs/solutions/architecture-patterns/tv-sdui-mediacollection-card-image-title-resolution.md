@@ -336,6 +336,13 @@ rather than crashing.
   extends that exact mechanism to the general SDUI Experience-Details
   MediaCollection renderer and adds the image-resolution layer the home doc does
   not cover.
+- `docs/solutions/logic-errors/tv-home-orientation-field-overloaded-card-shape-signal.md`
+  — the **Home rail** sibling. Same landscape-cropped-into-portrait symptom, a
+  different root cause: this precedence chain was extended onto the Home rail,
+  and the bug was that the rail's _shape_ got decided by a sync-parity field
+  (`orientation`) with producers that imply nothing about artwork. Read that one
+  for when a row may show poster art; read this one for how a card's image is
+  resolved once that is settled.
 - `docs/solutions/integration-issues/mobile-relative-image-url-no-base-origin-20260408.md`
   — sibling mechanism for the image half: a native (expo-image) client must
   rewrite origin-relative CMS image paths to a web origin, and Cloudflare
