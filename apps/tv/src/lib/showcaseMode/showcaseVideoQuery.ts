@@ -1,8 +1,7 @@
 /**
- * KTD-4's lean per-video stream operation. Modeled on videoQueries.ts's
- * watchVideoFragment dub selection but WITHOUT its `parents → parent → children`
- * chain (~208 nodes / ~1.6s per video the reel never renders) and without the watch
- * screen's studyQuestions/bibleCitations tails. Client-side only — no schema change.
+ * KTD-4's lean per-video stream operation: watchVideoFragment's dub selection WITHOUT
+ * its `parents → parent → children` chain (~208 nodes / ~1.6s per video the reel never
+ * renders) or the watch screen's studyQuestions/bibleCitations tails.
  */
 
 import {

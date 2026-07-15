@@ -1,8 +1,7 @@
 /**
  * KTD-4: ONE source-resolution pipeline behind both reel paths. Curated parses the
  * Showcase Experience's MediaCollection sections (KTD-10); fallback composes from the
- * Home pool; both then resolve playable, language-rotated streams per video.
- * Parsing, composition, windows, and the ladder are pure — only the fetch seam is async.
+ * Home pool. Everything but the fetch seam is pure.
  */
 
 import { pickCardImage } from "../cardImage"
@@ -120,9 +119,8 @@ function parseStatLines(description: string | null | undefined): string[] {
 
 /**
  * Split the Experience's top-level MediaCollection sections into felt-need chapters
- * plus the reserved stats lines. Drops an item whose coreId is missing/malformed or
- * does not hydrate, and drops a chapter left with zero excerpts (mirrors the Home
- * adapter's per-item / per-section rules).
+ * plus the reserved stats lines. Drops an item whose coreId does not hydrate and a
+ * chapter left with zero excerpts, mirroring the Home adapter's rules.
  */
 export function parseShowcaseExperience(
   blocks: readonly ShowcaseExperienceBlock[] | null | undefined,
