@@ -280,6 +280,10 @@ export default function HomeScreen() {
     router.push("/search")
   }, [router])
 
+  const handleSettingsPress = useCallback(() => {
+    router.push("/settings")
+  }, [router])
+
   // True when the focused element is a rail BELOW the topmost. Gates the topmost
   // rail's autoFocus: ON from topmost/hero CTA/top bar (track + restore last card
   // for Down off CTA), OFF coming Up from below (keep column-preserving geometry).
@@ -328,13 +332,14 @@ export default function HomeScreen() {
   // would dead-end without it (mirrors ctaNode's job for the rail).
   const [searchTabNode, setSearchTabNode] = useState<ViewType | null>(null)
 
-  // The top bar (brandmark · Search/Home tabs · clock), rendered in every state
+  // The top bar (Search/Home/Settings tabs · clock), rendered in every state
   // (loading/error/empty too) so Search stays reachable while the model resolves;
   // in the content state it is the ScrollView's sticky first child.
   const topBar = (
     <HomeTopBar
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
+      onSettingsPress={handleSettingsPress}
       onChromeFocus={handleChromeFocus}
       onSearchTabNode={setSearchTabNode}
       onFocusNode={captureFocusedNode}
