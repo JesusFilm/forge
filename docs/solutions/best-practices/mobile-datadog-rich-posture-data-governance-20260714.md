@@ -15,6 +15,14 @@ diagnostic value:
 - Raw **search terms** (`watch_search` / `watch_search_failed`, `term` field)
 - Content **titles and ids/slugs** (`content_id`, resolution + QoE events)
 
+**Parity with web (context for sign-off).** This is not a mobile-specific
+expansion: the web app logs the raw query to Datadog Logs **by default**
+(`watch_search.query`; flag `WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT` defaults
+`true` — `apps/web/src/lib/watch-search-analytics.ts`). Mobile is at parity with
+web's default on the search-term axis, and **stricter** on identity: web attaches
+`setUser({ email })` for signed-in users; mobile is anonymous with no
+account/email. The "diverges from TV" framing above is about TV (PII-free), not web.
+
 Everything else is standard RUM telemetry: a pseudonymous `viewer_id` (random
 per-install UUID — **not** an account or email; mobile is anonymous), session
 id, device model, OS version, and the IP Datadog derives coarse geo from.
@@ -63,7 +71,10 @@ identifying content**.
 
 **Accepted residual (R42).** A user who types PII into search will have that text
 logged for up to the retention window. This is accepted given the anonymity, the
-masked replay, the bounded retention, and the absence of any account linkage. If
+masked replay, the bounded retention, the absence of any account linkage — and
+because it is **consistent with the web app's existing default** (which logs the
+same raw query): an alignment with existing practice, not a mobile-specific
+expansion. If
 that calculus changes (e.g. mobile gains authenticated accounts), revisit this
 assessment before keeping the raw-term posture.
 
