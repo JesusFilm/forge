@@ -4,6 +4,7 @@
  * raw CMS field, and never `rawLabel`.
  */
 
+import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEffect, useRef } from "react"
 import { Animated, StyleSheet, Text, View } from "react-native"
@@ -11,6 +12,9 @@ import { Animated, StyleSheet, Text, View } from "react-native"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { scale } from "../../lib/scale"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+
+/** Optically matched to the 24pt tag text — a hair larger reads as equal weight. */
+const TAG_ICON_SIZE = Math.round(scale(26))
 
 const CHROME_FADE_MS = 420
 /** R8's "brief": the lower-third holds ~4s, then decays to the tag. */
@@ -126,6 +130,11 @@ export function ExcerptChrome({
           style={[styles.tag, { opacity: tag }]}
           collapsable={false}
         >
+          <Ionicons
+            name="globe-outline"
+            size={TAG_ICON_SIZE}
+            color={WATCH_THEME.text}
+          />
           <Text style={styles.tagText} numberOfLines={1}>
             {claimedLanguage}
           </Text>
@@ -169,15 +178,22 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: scale(80),
     bottom: scale(72),
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(8),
-    backgroundColor: WATCH_THEME.badgeBg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(10),
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    // Near-black, NOT the theme's translucent-white badgeBg: that chip sits on a
+    // controlled scrim, while the reel plays whatever the film is graded like —
+    // white-on-white vanished it. Dark holds white text on any frame.
+    backgroundColor: WATCH_THEME.scrim(0.75),
   },
   tagText: {
     fontFamily: "System",
-    fontSize: Math.round(scale(18)),
+    fontSize: Math.round(scale(24)),
     fontWeight: "600",
-    color: WATCH_THEME.text82,
+    // Full white, not text82: this rides live film, not a fixed dark surface.
+    color: WATCH_THEME.text,
   },
 })
