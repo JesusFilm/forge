@@ -1,0 +1,91 @@
+/**
+ * KTD-4's lean per-video stream operation. Modeled on videoQueries.ts's
+ * watchVideoFragment dub selection but WITHOUT its `parents → parent → children`
+ * chain (~208 nodes / ~1.6s per video the reel never renders) and without the watch
+ * screen's studyQuestions/bibleCitations tails. Client-side only — no schema change.
+ */
+
+import {
+  adminGraphql as graphql,
+  type AdminResultOf as ResultOf,
+} from "@forge/admin-graphql"
+
+import type { FetchShowcaseVideo } from "./sourceResolution"
+
+/** apps/tv convention: hardcoded English locale for every GraphQL query. */
+const SHOWCASE_LOCALE = "en"
+
+export type ShowcaseFetchPolicy = "cache-first" | "network-only"
+
+// `dubs` is selected UNALIASED: the sibling fragments' `variants:` alias exists only
+// for normalizeVideo's mobile-parity WatchVariant type, and renaming a wire field
+// through layers is how producer/consumer contracts drift.
+export const showcaseVideoFragment = graphql(`
+  fragment ShowcaseVideo on Video @_unmask {
+    documentId: id
+    slug
+    label
+    images {
+      documentId: id
+      url
+      thumbnail
+      mobileCinematicHigh
+      mobileCinematicLow
+    }
+    locales(locale: $locale) {
+      documentId: id
+      languageSlug
+      title
+      imageAlt
+    }
+    dubs {
+      published
+      hls
+      duration
+      language {
+        slug
+        name
+      }
+      muxVideo {
+        playbackId
+      }
+    }
+  }
+`)
+
+export const GET_SHOWCASE_VIDEO = graphql(
+  `
+    query GetShowcaseVideo($locale: String!, $slug: String!) {
+      videoBySlug(slug: $slug) {
+        ...ShowcaseVideo
+      }
+    }
+  `,
+  [showcaseVideoFragment],
+)
+
+export type ShowcaseVideoData = ResultOf<typeof GET_SHOWCASE_VIDEO>
+
+// Type-only reference to the app's Apollo client — erased at runtime, so this module
+// stays free of the client's (native-adjacent) import graph and unit-tests cleanly.
+type ShowcaseApolloClient = ReturnType<
+  typeof import("../apolloClient").getApolloClient
+>
+
+/**
+ * Bind the operation to the client as sourceResolution's injectable seam. Rejections
+ * propagate — resolveExcerptStream owns the R16 degrade-to-skip guard.
+ */
+export function createShowcaseVideoFetcher(
+  client: ShowcaseApolloClient,
+  fetchPolicy: ShowcaseFetchPolicy = "cache-first",
+): FetchShowcaseVideo {
+  return async (slug: string) => {
+    const result = await client.query({
+      query: GET_SHOWCASE_VIDEO,
+      variables: { locale: SHOWCASE_LOCALE, slug },
+      fetchPolicy,
+    })
+    return result.data?.videoBySlug ?? null
+  }
+}
