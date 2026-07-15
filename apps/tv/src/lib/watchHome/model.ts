@@ -188,10 +188,14 @@ export function normalizeCard(args: {
   languageSlug: string
   parent?: WatchHomeVideoInput | null
   muxPlaybackId?: string | null
+  /** Authored art that outranks the video's landscape cinematic — the curated
+   *  portrait poster on Experience rails. Null/omitted keeps the video art. */
+  imageUrlOverride?: string | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
-  const adminImageUrl = pickAdminImage(args.video.images ?? [])
+  const adminImageUrl =
+    args.imageUrlOverride ?? pickAdminImage(args.video.images ?? [])
   const label = labelText(args.video.label)
   const childCount =
     "children" in args.video ? resolvedChildren(args.video).length : 0

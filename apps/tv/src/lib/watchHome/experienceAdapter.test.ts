@@ -124,6 +124,139 @@ describe("mapVariant (KTD2)", () => {
       orientation: "horizontal",
     })
   })
+  // MediaCollectionVariant is a 5-literal enum (carousel collection grid hero
+  // player) — the two we don't name must land on the safe default, not crash.
+  it("maps the unhandled hero/player enum members → horizontal grid", () => {
+    expect(mapVariant("hero")).toEqual({
+      layout: "grid",
+      orientation: "horizontal",
+    })
+    expect(mapVariant("player")).toEqual({
+      layout: "grid",
+      orientation: "horizontal",
+    })
+  })
+})
+
+// Prod's "Discover the full story" is a `carousel` (→ horizontal by variant)
+// whose every item carries a curated 2:3 poster, and web renders it PORTRAIT.
+// The poster override is what promotes it — mirrors mobile's isPortraitPosterRail.
+describe("portrait poster rails", () => {
+  const POSTER_A =
+    "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
+  const POSTER_B =
+    "https://admin.jesusfilm.org/api/public/media-assets/b/preview"
+
+  function posterBlock(
+    items: readonly Record<string, unknown>[],
+    variant = "carousel",
+  ) {
+    return mediaBlock({ mediaCollectionVariant: variant, items })
+  }
+
+  function sectionFor(
+    items: readonly Record<string, unknown>[],
+    variant = "carousel",
+  ): WatchHomeSection {
+    return buildWatchHomeSectionsFromExperience(
+      [posterBlock(items, variant)],
+      HYDRATED,
+    )[0]
+  }
+
+  it("promotes an all-poster carousel to vertical despite variant=carousel", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single", imageOverrideUrl: POSTER_B },
+    ])
+    expect(section.orientation).toBe("vertical")
+    // layout still follows the variant — only orientation is overridden.
+    expect(section.layout).toBe("rail")
+  })
+
+  it("keeps a carousel horizontal when only SOME items have a poster", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single" },
+    ])
+    expect(section.orientation).toBe("horizontal")
+  })
+
+  it("keeps a poster-less carousel horizontal", () => {
+    const section = sectionFor([
+      { coreId: "core-series" },
+      { coreId: "core-single" },
+    ])
+    expect(section.orientation).toBe("horizontal")
+  })
+
+  // Tightening vs mobile (which tests the raw field): an override that cannot
+  // resolve yields NO poster, so the rail must not claim a portrait frame — that
+  // is exactly how landscape art ends up cropped into 2:3.
+  it("does NOT go vertical when an override is present but unresolvable", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single", imageOverrideUrl: "javascript:alert(1)" },
+    ])
+    expect(section.orientation).toBe("horizontal")
+  })
+
+  it("still honours variant=collection with no posters at all", () => {
+    const section = sectionFor(
+      [{ coreId: "core-series" }, { coreId: "core-single" }],
+      "collection",
+    )
+    expect(section.orientation).toBe("vertical")
+  })
+
+  // The invariant the whole feature rests on: a portrait FRAME implies portrait
+  // ART on every rendered card. If this can fail, cards crop.
+  it("gives every card in a vertical rail its curated poster", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single", imageOverrideUrl: POSTER_B },
+    ])
+    expect(section.orientation).toBe("vertical")
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
+  })
+})
+
+describe("card image precedence (web parity: override → imageUrl → video art)", () => {
+  const POSTER = "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
+  const ITEM_IMAGE = "https://cdn.example/item.jpg"
+
+  function cardFor(item: Record<string, unknown>) {
+    return buildWatchHomeSectionsFromExperience(
+      [mediaBlock({ items: [item] })],
+      HYDRATED,
+    )[0].cards[0]
+  }
+
+  it("prefers the override poster over the hydrated video art", () => {
+    expect(
+      cardFor({ coreId: "core-single", imageOverrideUrl: POSTER }).imageUrl,
+    ).toBe(POSTER)
+  })
+
+  it("falls back to the item imageUrl when there is no override", () => {
+    expect(
+      cardFor({ coreId: "core-single", imageUrl: ITEM_IMAGE }).imageUrl,
+    ).toBe(ITEM_IMAGE)
+  })
+
+  it("falls back to the hydrated video art when the item carries neither", () => {
+    // singleVideo's videoStill — the pre-existing behaviour, unchanged.
+    expect(cardFor({ coreId: "core-single" }).imageUrl).toBe(
+      "https://img/single.jpg",
+    )
+  })
+
+  it("ignores an unresolvable override rather than blanking the card", () => {
+    expect(
+      cardFor({ coreId: "core-single", imageOverrideUrl: "javascript:x" })
+        .imageUrl,
+    ).toBe("https://img/single.jpg")
+  })
 })
 
 describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {

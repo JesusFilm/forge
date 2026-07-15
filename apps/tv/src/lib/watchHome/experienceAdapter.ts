@@ -2,6 +2,10 @@
 // hydrating each item by coreId through model.ts's normalizeCard — so meta chips
 // and series routing are exact (TV DIVERGES from mobile's flat, unhydrated render).
 
+import {
+  resolveCuratedItemImageUrl,
+  resolveOverridePosterUrl,
+} from "../experienceHydration"
 import { ENGLISH_LANGUAGE_SLUG } from "./config"
 import type { WatchHomeFallbackReason } from "./logWatchHomeFallback"
 import {
@@ -20,6 +24,10 @@ type ExperienceItem = {
   readonly coreId?: string | null
   // Threaded onto the card for the animated hover-preview (U5); already on the wire.
   readonly muxPlaybackId?: string | null
+  // Authored art. Already on the wire via the SHARED AdminMediaCollection
+  // fragment — TV simply ignored it until portrait rails needed the poster.
+  readonly imageOverrideUrl?: string | null
+  readonly imageUrl?: string | null
 }
 
 type MediaCollectionBlockLike = {
@@ -70,6 +78,21 @@ export function mapVariant(variant: string | null | undefined): LayoutShape {
   }
 }
 
+/**
+ * A rail is PORTRAIT when every item resolves an override poster — those
+ * overrides are the curated vertical art a 2.13:1 card would crop to a sliver.
+ * Mirrors mobile's isPortraitPosterRail, with one deliberate tightening: mobile
+ * tests the raw field, we test the RESOLVED url, so an unusable override can
+ * never hand a portrait frame to the landscape fallback art.
+ * `imageUrl` deliberately does NOT count — it carries landscape art too.
+ */
+function isPortraitPosterRail(items: readonly ExperienceItem[]): boolean {
+  return (
+    items.length > 0 &&
+    items.every((item) => resolveOverridePosterUrl(item) != null)
+  )
+}
+
 function itemToCard(
   item: ExperienceItem,
   sectionId: string,
@@ -86,6 +109,10 @@ function itemToCard(
     video,
     languageSlug,
     muxPlaybackId: item.muxPlaybackId ?? null,
+    // Web's precedence (imageOverrideUrl → imageUrl → video art): the curated
+    // poster outranks the hydrated cinematic, so a portrait rail shows the
+    // portrait art rather than a centre-cropped landscape still.
+    imageUrlOverride: resolveCuratedItemImageUrl(item),
   })
 }
 
@@ -96,7 +123,8 @@ function blockToSection(
   languageSlug: string,
 ): WatchHomeSection | null {
   const sectionId = block.sectionKey ?? `home-experience-section-${index}`
-  const cards = (block.items ?? [])
+  const rawItems = block.items ?? []
+  const cards = rawItems
     .map((item) => itemToCard(item, sectionId, videoByCoreId, languageSlug))
     .filter((card): card is WatchHomeCard => card != null)
   if (cards.length === 0) return null // per-section skip: zero renderable cards (R2)
@@ -110,7 +138,11 @@ function blockToSection(
     title: blockTitle || categoryLabel, // never a headless rail
     description: block.subtitle ?? null,
     layout,
-    orientation,
+    // Poster rails override the variant's orientation: `carousel` maps to
+    // horizontal, yet prod's "Discover the full story" is an all-poster
+    // carousel that web renders portrait. Tested against rawItems, not cards —
+    // a dropped item must not turn a mixed rail portrait.
+    orientation: isPortraitPosterRail(rawItems) ? "vertical" : orientation,
     showSequenceNumbers: block.showItemNumbers ?? false,
     cards,
   }

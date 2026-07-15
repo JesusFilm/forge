@@ -446,6 +446,11 @@ export default function HomeScreen() {
               eyebrow={section.eyebrow}
               title={section.title}
               cards={section.cards}
+              // Curated poster rails render 2:3 like web; everything else keeps
+              // the cinematic landscape card (see model's WatchHomeSection).
+              variant={
+                section.orientation === "vertical" ? "portrait" : "landscape"
+              }
               onCardFocus={handleCardFocus}
               onRowFocus={handleRowFocus}
               onCardPress={handleCardPress}
