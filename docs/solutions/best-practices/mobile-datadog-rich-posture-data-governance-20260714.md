@@ -82,3 +82,9 @@ assessment before keeping the raw-term posture.
 
 Per the plan DoD, production `forge-mobile` credential provisioning is blocked
 until an owner accepts this assessment and sets the retention values above.
+
+**Signed off:** Urim (@Ur-imazing) — 2026-07-15. As owner, accepts the raw-term
+posture at **parity with web** (per the assessment above) and the committed
+retention window (**15-day Logs / 30-day RUM + Session Replay**). Production
+credential provisioning is unblocked once those retention values are set on the
+`forge-mobile` Datadog org.
