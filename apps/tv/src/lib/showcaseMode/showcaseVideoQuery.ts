@@ -9,10 +9,14 @@ import {
   type AdminResultOf as ResultOf,
 } from "@forge/admin-graphql"
 
+import { withTimeout } from "../withTimeout"
 import type { FetchShowcaseVideo } from "./sourceResolution"
 
 /** apps/tv convention: hardcoded English locale for every GraphQL query. */
 const SHOWCASE_LOCALE = "en"
+
+/** Under AE5's "few seconds" so a stalled fetch degrades rather than parks the reel. */
+const SHOWCASE_VIDEO_FETCH_DEADLINE_MS = 5000
 
 export type ShowcaseFetchPolicy = "cache-first" | "network-only"
 
@@ -80,11 +84,17 @@ export function createShowcaseVideoFetcher(
   fetchPolicy: ShowcaseFetchPolicy = "cache-first",
 ): FetchShowcaseVideo {
   return async (slug: string) => {
-    const result = await client.query({
-      query: GET_SHOWCASE_VIDEO,
-      variables: { locale: SHOWCASE_LOCALE, slug },
-      fetchPolicy,
-    })
+    // AE5 promises a dead item is skipped in a few seconds, but R16 only degrades on
+    // a REPORTED failure — an unbounded hang here reports nothing and parks the reel
+    // on one poster indefinitely, which is the opposite of the ladder's floor.
+    const result = await withTimeout(
+      client.query({
+        query: GET_SHOWCASE_VIDEO,
+        variables: { locale: SHOWCASE_LOCALE, slug },
+        fetchPolicy,
+      }),
+      SHOWCASE_VIDEO_FETCH_DEADLINE_MS,
+    )
     return result.data?.videoBySlug ?? null
   }
 }

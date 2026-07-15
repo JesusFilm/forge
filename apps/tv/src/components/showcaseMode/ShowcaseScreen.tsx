@@ -90,6 +90,7 @@ const SHOWCASE_KEEP_AWAKE_TAG = "showcase-mode"
 
 /** A slow admin must degrade to the fallback reel fast — R17's ~5s budget. */
 const EXPERIENCE_FETCH_DEADLINE_MS = 6000
+const TOPUP_FETCH_DEADLINE_MS = 6000
 
 type ResolveKind = "resolve" | "refresh"
 
@@ -121,9 +122,15 @@ async function resolveShowcaseQueue(args: {
     if (blocks != null) {
       outcome = "present"
       const coreIds = showcaseExperienceCoreIds(blocks)
+      // Bounded like its sibling above: R16 only degrades on a REPORTED failure, so
+      // an unbounded hydration hang left the reel in `resolving` forever — a spinner
+      // with the fallback reel and the stills floor both sitting unreachable.
       const videos =
         coreIds.length > 0
-          ? await fetchTopUpVideos(client, coreIds, args.fetchPolicy)
+          ? await withTimeout(
+              fetchTopUpVideos(client, coreIds, args.fetchPolicy),
+              TOPUP_FETCH_DEADLINE_MS,
+            )
           : []
       const parsed = parseShowcaseExperience(
         blocks,

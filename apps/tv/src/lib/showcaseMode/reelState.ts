@@ -301,12 +301,27 @@ export function reelReducer(state: ReelState, event: ReelEvent): ReelState {
       return advanceExcerpt(state, state.queue)
 
     case "excerptFailed": {
-      if (state.phase !== "excerpt" || state.queue == null) return state
+      // A curated chapter enters on its card while the token already armed the
+      // resolve, so the excerpt can fail BEFORE its phase — dropping that here
+      // wedged the reel on the card's poster with nothing left to re-arm it.
+      const canFail = state.phase === "excerpt" || state.phase === "chapterCard"
+      if (!canFail || state.queue == null) return state
       const consecutiveFailures = state.consecutiveFailures + 1
       if (consecutiveFailures >= REEL_FAILURE_BREAKER_THRESHOLD) {
         return { ...state, phase: "stills", consecutiveFailures }
       }
-      return advanceExcerpt({ ...state, consecutiveFailures }, state.queue)
+      const advanced = advanceExcerpt(
+        { ...state, consecutiveFailures },
+        state.queue,
+      )
+      // Stay on the card while retrying behind it: the card IS the resolve window
+      // (KTD-2/R17), and its timer keys on phase+chapterIndex, so holding both
+      // lets it run its full 5s instead of flashing past a dead first item.
+      return state.phase === "chapterCard" &&
+        advanced.phase === "excerpt" &&
+        advanced.chapterIndex === state.chapterIndex
+        ? { ...advanced, phase: "chapterCard" }
+        : advanced
     }
   }
 }

@@ -276,6 +276,74 @@ describe("fallback reels", () => {
 
 // ── AE5: an item failure advances the reel ──────────────────────────
 
+// Every other failure test elapses the card first, which encodes "the shell never
+// fails during a card" — the exact assumption the resolve effect breaks, since the
+// card's own token bump is what arms it.
+describe("item failure DURING the chapter card (R16)", () => {
+  it("accepts the failure the resolve dispatches before the card lifts", () => {
+    const state = started(curatedQueue(threeChapters()))
+    expect(state.phase).toBe("chapterCard")
+
+    const failed = reelReducer(state, { type: "excerptFailed" })
+
+    expect(failed.consecutiveFailures).toBe(1)
+    expect(currentExcerpt(failed)?.coreId).toBe("v2")
+  })
+
+  it("holds the card while it retries behind it, rather than flashing past a dead item", () => {
+    const failed = reelReducer(started(curatedQueue(threeChapters())), {
+      type: "excerptFailed",
+    })
+
+    expect(failed.phase).toBe("chapterCard")
+    expect(failed.chapterIndex).toBe(0)
+  })
+
+  it("re-arms the resolve by bumping the token, so the reel cannot wedge on the card", () => {
+    const state = started(curatedQueue(threeChapters()))
+    const failed = reelReducer(state, { type: "excerptFailed" })
+
+    expect(failed.excerptToken).toBeGreaterThan(state.excerptToken)
+  })
+
+  it("reaches stills when every first-of-chapter item fails from its card", () => {
+    let state = started(
+      curatedQueue([
+        chapter("a", ["v1"]),
+        chapter("b", ["v2"]),
+        chapter("c", ["v3"]),
+      ]),
+    )
+    for (let i = 0; i < REEL_FAILURE_BREAKER_THRESHOLD; i++) {
+      state = reelReducer(state, { type: "excerptFailed" })
+    }
+
+    expect(state.phase).toBe("stills")
+  })
+
+  it("leaves the card for the next chapter's own card, not a stale one", () => {
+    // A one-excerpt chapter has nothing to retry behind the card, so the failure
+    // must carry to the next chapter and that chapter's card.
+    const failed = reelReducer(
+      started(curatedQueue([chapter("a", ["v1"]), chapter("b", ["v2", "v3"])])),
+      { type: "excerptFailed" },
+    )
+
+    expect(failed.phase).toBe("chapterCard")
+    expect(failed.chapterIndex).toBe(1)
+    expect(currentExcerpt(failed)?.coreId).toBe("v2")
+  })
+
+  it("still ignores a failure from a phase that has no excerpt in flight", () => {
+    const stills = {
+      ...started(curatedQueue(threeChapters())),
+      phase: "stills" as const,
+    }
+
+    expect(reelReducer(stills, { type: "excerptFailed" })).toBe(stills)
+  })
+})
+
 describe("item failure (AE5)", () => {
   it("advances to the next excerpt in one transition and counts the failure", () => {
     const state = run(started(curatedQueue(threeChapters())), {

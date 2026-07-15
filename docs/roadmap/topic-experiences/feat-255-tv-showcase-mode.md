@@ -1,5 +1,5 @@
 ---
-id: "feat-254"
+id: "feat-255"
 title: "TV Showcase Mode: Settings tab + felt-need excerpt reel"
 owner: "urim"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-07-20"
 duration: 10
 blocks:
-  - "feat-255"
+  - "feat-256"
 tags:
   - "tv"
   - "cms"

@@ -62,6 +62,13 @@ export function ReelPlayer({
   const validStream =
     stream != null && validateStreamingUrl(stream.hls) ? stream : null
 
+  // Dropping it silently starved R16's ladder: the reducer only degrades on a
+  // reported failure, so an unplayable URL parked the reel on its poster forever.
+  const rejected = stream != null && validStream == null
+  useEffect(() => {
+    if (rejected) onFailed(excerptToken)
+  }, [rejected, excerptToken, onFailed])
+
   const [appForeground, setAppForeground] = useState(
     isAppStateForeground(AppState.currentState),
   )
