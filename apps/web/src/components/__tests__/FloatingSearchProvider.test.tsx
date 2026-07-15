@@ -1487,7 +1487,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 })
 
 describe("FloatingSearchProvider — language switcher chrome", () => {
-  it("links the logo from Watch home routes to the parent website", () => {
+  it("renders the full ministry logo on Watch home routes", async () => {
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -1498,6 +1498,13 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
     expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
+    expect(logo?.className).toContain("w-20")
+    expect(logo?.className).toContain("md:w-[139px]")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesus-film-logo-full.svg",
+    )
+    expect(logo?.querySelector("img")?.getAttribute("width")).toBe("139")
+    expect(logo?.querySelector("img")?.getAttribute("height")).toBe("36")
 
     navigationMocks.pathname = "/english.html"
     act(() => {
@@ -1509,9 +1516,19 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     })
 
     expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesus-film-logo-full.svg",
+    )
+
+    await openSearchOverlay()
+    const overlayLogoSlot = document.querySelector(
+      '[data-testid="search-overlay-top-bar"] > [aria-hidden="true"]',
+    )
+    expect(overlayLogoSlot?.className).toContain("w-20")
+    expect(overlayLogoSlot?.className).toContain("md:w-[139px]")
   })
 
-  it("links the logo from inner Watch routes back to Watch home", () => {
+  it("keeps the compact logo on inner Watch routes", () => {
     navigationMocks.pathname = "/jesus.html/english.html"
     act(() => {
       root.render(
@@ -1525,6 +1542,14 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     // Next applies the configured `/watch` base path at runtime; jsdom exposes
     // the base-path-relative route passed to `next/link`.
     expect(logo?.getAttribute("href")).toBe("/")
+    expect(logo?.className).toContain("w-11")
+    expect(logo?.className).toContain("md:w-12")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
+    expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
+      "max-w-[38px]",
+    )
   })
 
   it("renders the language globe as part of the floating header", () => {
@@ -1588,12 +1613,6 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(logo?.className).toContain("md:h-[52px]")
     expect(logo?.className).toContain("flex")
     expect(logo?.className).not.toContain("hidden")
-    expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
-      "max-w-[38px]",
-    )
-    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
-      "/watch/images/jesusfilm-sign.svg",
-    )
 
     act(() => {
       languageButton?.click()

@@ -28,6 +28,7 @@ import { AccountControl } from "@/components/watch/AccountControl"
 import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
@@ -78,10 +79,12 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("FloatingSearch")
   const pathname = usePathname()
   const parsedPath = parseWatchPath(pathname)
-  const logoHref =
+  const isWatchHome =
     parsedPath.kind === "home" || parsedPath.kind === "localized-home"
-      ? "https://www.jesusfilm.org/"
-      : "/"
+  const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
+  const logoSlotClass = isWatchHome
+    ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
+    : FLOATING_HEADER_LOGO_SLOT_CLASS
 
   const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
@@ -478,15 +481,23 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           aria-label={t("home")}
           data-testid="floating-header-logo"
           onClick={resetSearch}
-          className={`pointer-events-auto flex ${FLOATING_HEADER_LOGO_SLOT_CLASS} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
+          className={`pointer-events-auto flex ${logoSlotClass} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
         >
           <Image
-            src="/watch/images/jesusfilm-sign.svg"
+            src={
+              isWatchHome
+                ? "/watch/images/jesus-film-logo-full.svg"
+                : "/watch/images/jesusfilm-sign.svg"
+            }
             alt="JesusFilm"
-            width={70}
-            height={70}
+            width={isWatchHome ? 139 : 70}
+            height={isWatchHome ? 36 : 70}
             unoptimized
-            className="h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+            className={
+              isWatchHome
+                ? "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px]"
+                : "h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+            }
           />
         </Link>
         <div className="min-w-0 flex-1">
@@ -568,6 +579,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpen={setOpen}
           setQuery={setQuery}
           headerTopClass={headerTopClass}
+          logoSlotClass={logoSlotClass}
           headerLanguageControlVisible={headerLanguageControlVisible}
         />
       ) : null}

@@ -70,6 +70,8 @@ export function WatchHomeFooter() {
                 <a
                   key={link.label}
                   href={link.href}
+                  target="_blank"
+                  rel="nofollow noopener noreferrer"
                   aria-label={link.label}
                   className="inline-flex h-7 w-7 items-center justify-center text-[#3c3c3c] transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
                 >
