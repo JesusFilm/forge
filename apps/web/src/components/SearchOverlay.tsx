@@ -11,6 +11,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import {
   ChevronDown,
@@ -35,6 +36,7 @@ import { CATEGORIES } from "@/lib/search-categories"
 import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
@@ -50,6 +52,7 @@ import {
   type SearchLanguageOption,
 } from "@/lib/search-language"
 import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
+import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 
@@ -95,6 +98,12 @@ const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
 
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
+  const pathname = usePathname()
+  const parsedPath = parseWatchPath(pathname)
+  const logoSlotClass =
+    parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+      ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
+      : FLOATING_HEADER_LOGO_SLOT_CLASS
   const {
     open,
     closing,
@@ -593,7 +602,7 @@ export function SearchOverlay() {
         data-testid="search-overlay-top-bar"
         className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
       >
-        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
+        <div aria-hidden="true" className={logoSlotClass} />
         <div
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
