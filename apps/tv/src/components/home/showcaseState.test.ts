@@ -51,6 +51,7 @@ function section(
     layout: "rail",
     orientation: "horizontal",
     showSequenceNumbers: false,
+    isPosterRail: false,
     cards,
     ...overrides,
   }

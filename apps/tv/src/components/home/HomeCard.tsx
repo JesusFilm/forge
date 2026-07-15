@@ -1,6 +1,7 @@
-// One Home rail card: 2.13:1 thumb + metaLabel chip, fixed width (exported for
-// HomeRail's getItemLayout). Focus = white ring overlay + shadow on a separate
-// overflow-visible wrapper. onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
+// One Home rail card, in one of two shapes (HOME_CARD_DIMS): the 2.13:1
+// cinematic default, or the 2:3 curated-poster card the rail's `variant` selects.
+// Focus = white ring overlay + shadow on a separate overflow-visible wrapper.
+// onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
 import { memo, useCallback, useMemo, useRef } from "react"
 import { Image } from "expo-image"

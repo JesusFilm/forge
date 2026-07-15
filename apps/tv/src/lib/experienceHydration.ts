@@ -103,22 +103,15 @@ export function resolveMediaItemTitle(
 }
 
 /**
- * The authored override poster alone (curated vertical art), or null. Split out
- * because the Home adapter needs THIS branch by itself: it is the signal that a
- * rail is portrait, and `imageUrl` must not count toward it (that field carries
- * landscape art too).
+ * The authored override poster alone (curated vertical art), or null. Exported
+ * because the Home adapter needs THIS branch by itself: it is BOTH the signal
+ * that a rail is portrait and the art those cards show, so one function decides
+ * both and they cannot disagree. `imageUrl` must NOT count toward it — that
+ * field carries landscape art too.
  */
 export function resolveOverridePosterUrl(item: MediaItemLike): string | null {
   return resolveImageUrl(
     rewriteSeedPosterUrl(firstNonEmpty(item.imageOverrideUrl)),
-  )
-}
-
-/** The authored image for an item, ignoring the linked video: override, else imageUrl. */
-export function resolveCuratedItemImageUrl(item: MediaItemLike): string | null {
-  return (
-    resolveOverridePosterUrl(item) ??
-    resolveImageUrl(firstNonEmpty(item.imageUrl))
   )
 }
 
@@ -130,7 +123,8 @@ export function resolveMediaItemImageUrl(
   video: HydratedVideo | undefined,
 ): string | null {
   return (
-    resolveCuratedItemImageUrl(item) ??
+    resolveOverridePosterUrl(item) ??
+    resolveImageUrl(firstNonEmpty(item.imageUrl)) ??
     resolveImageUrl(pickCardImage(video?.images ?? null, "card"))
   )
 }

@@ -99,11 +99,21 @@ export type WatchHomeSection = {
   eyebrow: string
   title: string
   description: string | null
-  // layout/orientation/showSequenceNumbers: sync-parity with mobile's model —
-  // not yet wired to any TV renderer; TV renders all sections as rails.
+  // layout/orientation/showSequenceNumbers: sync-parity with mobile's model.
+  // NOT the card-shape signal — `orientation` has producers (config's declared
+  // value, mapVariant's "collection") that mean "vertical grid", NOT "has
+  // portrait art". Render off isPosterRail; never re-wire orientation.
   layout: "rail" | "grid"
   orientation: "horizontal" | "vertical"
   showSequenceNumbers: boolean
+  /**
+   * Every card carries curated portrait poster art, so the rail may safely
+   * render 2:3. Set ONLY by the Experience adapter's isPortraitPosterRail, which
+   * uses the same resolved poster it puts on the cards — frame and art cannot
+   * disagree. False on the config path (it has no curated posters, only the
+   * video's landscape cinematic).
+   */
+  isPosterRail: boolean
   cards: WatchHomeCard[]
 }
 
@@ -363,6 +373,11 @@ function buildSections(args: {
       layout: section.layout,
       orientation: section.orientation ?? "horizontal",
       showSequenceNumbers: section.showSequenceNumbers ?? false,
+      // Config cards are hydrated from the video's landscape cinematic — there
+      // is no curated poster on this path, so a portrait frame would crop.
+      // (config.ts DOES declare orientation "vertical" on two sections; that is
+      // mobile layout parity, not an art guarantee. See WatchHomeSection.)
+      isPosterRail: false,
       cards,
     }
   }).filter((section) => section.cards.length > 0)
