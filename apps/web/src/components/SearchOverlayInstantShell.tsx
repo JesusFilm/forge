@@ -27,7 +27,6 @@ type SearchOverlayInstantShellProps = {
   setQuery: (query: string) => void
   setOpen: (open: boolean) => void
   headerTopClass: string
-  headerLanguageControlVisible: boolean
 }
 
 export function SearchOverlayInstantShell({
@@ -37,7 +36,6 @@ export function SearchOverlayInstantShell({
   setQuery,
   setOpen,
   headerTopClass,
-  headerLanguageControlVisible,
 }: SearchOverlayInstantShellProps) {
   const t = useTranslations("SearchOverlay")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -109,9 +107,7 @@ export function SearchOverlayInstantShell({
           data-testid="search-overlay-instant-trailing-controls-spacer"
           className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
         >
-          {headerLanguageControlVisible ? (
-            <span className={FLOATING_HEADER_LANGUAGE_SLOT_CLASS} />
-          ) : null}
+          <span className={FLOATING_HEADER_LANGUAGE_SLOT_CLASS} />
           <span className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
         </div>
       </div>

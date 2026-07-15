@@ -121,7 +121,6 @@ export function SearchOverlay() {
     selectedSearchLanguageOption,
     searchResultAnalytics,
     defaultSearchLanguageOption,
-    headerLanguageSwitcherVisible,
     headerLanguageCode,
     headerPinned,
     setOpen,
@@ -714,15 +713,13 @@ export function SearchOverlay() {
           data-testid="search-overlay-trailing-controls-spacer"
           className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
         >
-          {headerLanguageSwitcherVisible ? (
-            <div
-              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
-                headerLanguageCode
-                  ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
-                  : ""
-              }`}
-            />
-          ) : null}
+          <div
+            className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+              headerLanguageCode
+                ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
+                : ""
+            }`}
+          />
           <div className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
         </div>
       </div>

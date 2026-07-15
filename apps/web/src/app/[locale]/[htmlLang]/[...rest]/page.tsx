@@ -414,7 +414,7 @@ async function renderOneSegment(shape: {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
     const [heroResult, pageResult] = await Promise.all([
-      resolveWatchHome(locale),
+      resolveWatchHome(locale, slug),
       resolveWatchPage(locale),
     ])
     if (heroResult.error) {

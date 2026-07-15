@@ -496,7 +496,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
 
-  it("dispatches one-segment public language slugs to the modern localized home", async () => {
+  it("passes the exact public language slug to localized-home content while retaining the resolved UI locale", async () => {
     resolveWatchHomeMock.mockResolvedValue({
       data: {
         heroSlides: [{ id: "hero-es" }],
@@ -509,9 +509,9 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     await render1Seg("spanish-castilian.html")
 
-    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
     expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         heroModel: {
           heroSlides: [{ id: "hero-es" }],
           sections: [],
@@ -519,7 +519,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           missingData: [],
         },
         blocks: [],
-      },
+      }),
       undefined,
     )
     expect(resolveWatchPageMock).toHaveBeenCalledWith("es")

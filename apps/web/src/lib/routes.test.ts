@@ -6,6 +6,8 @@ import {
   asContentSlug,
   asLocaleSlug,
   languagesIndexPath,
+  localizedHistoryPath,
+  localizedLanguagesPath,
   languageVideosIndexPath,
   localizedHomeAbsolute,
   localizedHomePath,
@@ -149,6 +151,15 @@ describe("languagesIndexPath", () => {
   })
 })
 
+describe("localized utility paths", () => {
+  it("builds language-bearing all-languages and history paths", () => {
+    expect(localizedLanguagesPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/languages",
+    )
+    expect(localizedHistoryPath(russian)).toBe("/russian.html/history")
+  })
+})
+
 describe("languageVideosIndexPath", () => {
   it("returns /lang.html/videos", () => {
     expect(languageVideosIndexPath(portugueseBrazil)).toBe(
@@ -231,6 +242,17 @@ describe("parseWatchPath", () => {
 
   it("parses /languages as languages", () => {
     expect(parseWatchPath("/languages")).toEqual({ kind: "languages" })
+  })
+
+  it("parses localized utility routes without treating them as videos", () => {
+    expect(parseWatchPath("/french.html/languages")).toEqual({
+      kind: "localized-languages",
+      lang: "french",
+    })
+    expect(parseWatchPath("/spanish-latin-american.html/history")).toEqual({
+      kind: "localized-history",
+      lang: "spanish-latin-american",
+    })
   })
 
   it("parses legacy /videos as languages", () => {
