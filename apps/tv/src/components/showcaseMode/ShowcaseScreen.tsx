@@ -7,7 +7,7 @@
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useRouter } from "expo-router"
 import { useCallback, useEffect, useReducer, useRef, useState } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { StyleSheet, View } from "react-native"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { useWatchHome } from "../../hooks/useWatchHome"
@@ -33,12 +33,15 @@ import {
   resolveExcerptStream,
   resolveShowcaseSource,
   showcaseExperienceCoreIds,
+  type FetchShowcaseVideo,
   type ShowcaseExperienceOutcome,
   type ShowcaseSourceOutput,
 } from "../../lib/showcaseMode/sourceResolution"
 import { createShowcaseVideoFetcher } from "../../lib/showcaseMode/showcaseVideoQuery"
+import { countDistinctLanguages } from "../../lib/showcaseMode/statLines"
 import type {
   ShowcaseChapter,
+  ShowcaseExcerpt,
   ShowcaseStream,
 } from "../../lib/showcaseMode/types"
 import {
@@ -52,7 +55,12 @@ import {
 import { withTimeout } from "../../lib/withTimeout"
 import { ScreenStateView } from "../ScreenStateView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { ChapterCard } from "./ChapterCard"
+import { ExcerptChrome } from "./ExcerptChrome"
 import { ReelPlayer } from "./ReelPlayer"
+import { ShowcaseInput } from "./ShowcaseInput"
+import { StatInterstitial } from "./StatInterstitial"
+import { StillsSlideshow } from "./StillsSlideshow"
 
 /** KTD-10: the curator authors the reel at this slug. */
 export const SHOWCASE_EXPERIENCE_SLUG = "tv-showcase"
@@ -128,6 +136,10 @@ export function ShowcaseScreen() {
   const { model, loading: poolLoading } = useWatchHome()
   const [state, dispatch] = useReducer(reelReducer, INITIAL_REEL_STATE)
   const [stream, setStream] = useState<ShowcaseStream | null>(null)
+  /** R9's live claim, for the video the reel is on. Null when it can't support one. */
+  const [liveLanguageCount, setLiveLanguageCount] = useState<number | null>(
+    null,
+  )
 
   // Native emitters (U4's player listeners) fire outside React's commit, so every
   // gating read they make must come from a ref, never a render closure.
@@ -268,10 +280,18 @@ export function ShowcaseScreen() {
   useEffect(() => {
     if (excerpt == null) return
     let cancelled = false
-    const fetchVideo = createShowcaseVideoFetcher(
+    const baseFetch = createShowcaseVideoFetcher(
       getApolloClient(),
       "cache-first",
     )
+    // Decorate the seam rather than fetch twice: resolveExcerptStream keeps only the
+    // chosen dub, and R9's live line needs the whole list's language count.
+    let languageCount = 0
+    const fetchVideo: FetchShowcaseVideo = async (slug) => {
+      const video = await baseFetch(slug)
+      languageCount = countDistinctLanguages(video?.dubs)
+      return video
+    }
     void (async () => {
       const resolved = await resolveExcerptStream({
         excerpt,
@@ -282,11 +302,13 @@ export function ShowcaseScreen() {
       if (cancelled || !mountedRef.current) return
       if (resolved == null) {
         setStream(null)
+        setLiveLanguageCount(null)
         dispatch({ type: "excerptFailed" })
         return
       }
       rotationRef.current = resolved.rotation
       setStream(resolved.stream)
+      setLiveLanguageCount(languageCount)
     })()
     return () => {
       cancelled = true
@@ -345,6 +367,10 @@ export function ShowcaseScreen() {
     dispatch({ type: "excerptPlaying" })
   }, [])
 
+  // R12: a press must exit from every phase, including the resolving window, so this
+  // is an unconditional sibling rather than one of OverlaySlot's branches.
+  const handleExit = useCallback(() => dispatch({ type: "exit" }), [])
+
   const chapter = currentChapter(state)
 
   return (
@@ -360,62 +386,92 @@ export function ShowcaseScreen() {
         onEnded={handleEnded}
         onFailed={handleFailed}
       />
+      <ShowcaseInput onExit={handleExit} />
       <OverlaySlot
         state={state}
-        chapterTitle={chapter?.title ?? ""}
-        chapterSubtitle={chapter?.subtitle ?? null}
+        chapter={chapter}
+        excerpt={excerpt}
+        stream={stream}
+        liveLanguageCount={liveLanguageCount}
       />
     </View>
   )
 }
 
-// ── Slots owned by sibling units ────────────────────────────────────
-// U5 replaces OverlaySlot with ChapterCard / ExcerptChrome / StatInterstitial /
-// StillsSlideshow.
+// ── Overlays (U5) ───────────────────────────────────────────────────
 
 type OverlaySlotProps = {
   state: ReelState
-  chapterTitle: string
-  chapterSubtitle: string | null
+  chapter: ShowcaseChapter | null
+  excerpt: ShowcaseExcerpt | null
+  stream: ShowcaseStream | null
+  liveLanguageCount: number | null
 }
 
-function OverlaySlot({ state, chapterTitle }: OverlaySlotProps) {
-  if (state.phase === "resolving") {
-    return <ScreenStateView kind="loading" />
+/** Every reel phase's presentation. A pure projection of state — no decisions here. */
+function OverlaySlot({
+  state,
+  chapter,
+  excerpt,
+  stream,
+  liveLanguageCount,
+}: OverlaySlotProps) {
+  switch (state.phase) {
+    case "resolving":
+      return <ScreenStateView kind="loading" />
+
+    case "stills":
+      return <StillsSlideshow posters={stillsPosters(state)} />
+
+    case "chapterCard": {
+      if (chapter == null) return null
+      // The reducer skips excerpt-less chapters at runtime, so the dots count what
+      // actually plays — the raw queue would promise chapters nobody reaches.
+      const chapters = state.queue?.chapters ?? []
+      const plays = (candidate: ShowcaseChapter) =>
+        candidate.excerpts.length > 0
+      return (
+        <ChapterCard
+          title={chapter.title}
+          subtitle={chapter.subtitle}
+          position={
+            chapters.slice(0, state.chapterIndex).filter(plays).length + 1
+          }
+          total={chapters.filter(plays).length}
+        />
+      )
+    }
+
+    case "interstitial":
+      return (
+        <StatInterstitial
+          authoredLines={state.queue?.statLines ?? []}
+          liveTitle={excerpt?.title ?? null}
+          liveLanguageCount={liveLanguageCount}
+        />
+      )
+
+    case "excerpt":
+      if (excerpt == null) return null
+      return (
+        <ExcerptChrome
+          title={excerpt.title}
+          feltNeed={chapter?.title ?? ""}
+          languageName={stream?.languageName ?? null}
+          // AE4 lives on the resolved stream; re-deriving it here would drift.
+          claimsLanguage={stream?.claimsLanguage ?? false}
+          excerptToken={state.excerptToken}
+        />
+      )
+
+    case "exited":
+      return null
   }
-  if (state.phase === "stills") {
-    return (
-      <View style={styles.overlay}>
-        <Text style={styles.slotText}>
-          {stillsPosters(state).length} stills
-        </Text>
-      </View>
-    )
-  }
-  if (state.phase === "chapterCard" || state.phase === "interstitial") {
-    return (
-      <View style={styles.overlay}>
-        <Text style={styles.slotText}>{chapterTitle}</Text>
-      </View>
-    )
-  }
-  return null
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: WATCH_THEME.below,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  slotText: {
-    fontFamily: "System",
-    fontSize: Math.round(48),
-    fontWeight: "700",
-    color: WATCH_THEME.text,
   },
 })

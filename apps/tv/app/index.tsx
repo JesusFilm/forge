@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from "expo-router"
+import { useFocusEffect, usePathname, useRouter } from "expo-router"
 import {
   useCallback,
   useEffect,
@@ -49,6 +49,8 @@ import {
 } from "../src/components/home/showcaseState"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { useWatchHome } from "../src/hooks/useWatchHome"
+import { shouldAutoStartShowcase } from "../src/lib/showcaseMode/exitClassification"
+import { useShowcasePrefs } from "../src/lib/showcaseMode/useShowcasePrefs"
 import { scale } from "../src/lib/scale"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
 import type { WatchHomeCard } from "../src/lib/watchHome/model"
@@ -67,6 +69,11 @@ const RAIL_WINDOW_BUFFER = 2
 // Android-only. Apple TV had no perf problem and stays on its original eager
 // path — every gated branch below restores main's behavior.
 const IS_ANDROID = Platform.OS === "android"
+
+// AE3 is "once per LAUNCH", so the latch outlives this component. A mount-scoped ref
+// would re-arm when Home remounts beneath a viewer who just exited the reel and bounce
+// them straight back into it — the trap R12 forbids.
+let autoStartConsumed = false
 
 export default function HomeScreen() {
   const router = useRouter()
@@ -104,6 +111,27 @@ export default function HomeScreen() {
       }
     }, []),
   )
+
+  // R13: an office TV that power-cycles recovers without a remote. Gated on `hydrated`
+  // because the pre-hydration default reads as off, and on the ACTIVE path so a deep
+  // link keeps the route it asked for. A brief Home flash is the accepted cost.
+  const { prefs: showcasePrefs, hydrated: showcasePrefsHydrated } =
+    useShowcasePrefs()
+  const activePath = usePathname()
+  useEffect(() => {
+    if (
+      !shouldAutoStartShowcase({
+        hydrated: showcasePrefsHydrated,
+        autoStartEnabled: showcasePrefs.autoStart,
+        alreadyStarted: autoStartConsumed,
+        activePath,
+      })
+    ) {
+      return
+    }
+    autoStartConsumed = true
+    router.push("/showcase")
+  }, [showcasePrefsHydrated, showcasePrefs.autoStart, activePath, router])
 
   // ── Showcase state ── First model seeds; refetches re-reconcile, keeping the
   // current pick if its id survives. Only CARDS dispatch focus, so it retains
