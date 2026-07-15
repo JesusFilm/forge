@@ -380,6 +380,20 @@ The single Experience designated as the watch home for a given locale, resolved 
 
 The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
 
+### Cinematic
+
+A Video's own wide key artwork, framed for a landscape card or hero. It is the fallback every home and search surface falls back to when no editorially curated art is attached, and it is the only artwork the catalog holds for a Video — there is no portrait cut of it.
+
+### Curated Poster
+
+Portrait artwork an editor attaches to a single item of an Experience row, overriding whatever the linked Video's own Cinematic would have supplied. Because the catalog has no portrait art of its own, a Curated Poster is the only way a home row can show tall artwork.
+
+### Poster Rail
+
+A home row whose every item carries a usable Curated Poster, letting it render tall poster cards instead of the wide Cinematic cards used elsewhere.
+
+Coverage is all-or-nothing: a single item without usable poster art demotes the whole row back to Cinematic cards, because a tall frame filled with wide artwork crops it to a sliver. The check that grants a row its poster shape is the same one that selects its cards' artwork, so a Poster Rail's cards always show the curated art and the two can never disagree. Poster status is distinct from a row's declared layout orientation, which mirrors a sibling client's grid arrangement and implies nothing about artwork — a row can be laid out vertically and still have no poster to show. The guarantee reaches only as far as _authored_ art: nothing verifies a Curated Poster is actually portrait, so a row of wrongly-shaped uploads still claims the tall frame.
+
 ### Series-Shaped
 
 The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
