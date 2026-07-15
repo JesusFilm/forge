@@ -306,6 +306,19 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Discover the full story")
     expect(container.textContent).toContain("Built for global missions")
     expect(container.textContent).toContain("Sign Up For Our Newsletter")
+    const socialHrefs = [
+      "https://twitter.com/jesusfilm",
+      "https://www.facebook.com/jesusfilm",
+      "https://www.instagram.com/jesusfilm",
+      "https://www.youtube.com/user/jesusfilm",
+    ]
+    for (const href of socialHrefs) {
+      const socialLink = container.querySelector(`a[href="${href}"]`)
+      expect(socialLink?.getAttribute("target")).toBe("_blank")
+      expect(socialLink?.getAttribute("rel")).toBe(
+        "nofollow noopener noreferrer",
+      )
+    }
     expect(
       container
         .querySelector('[data-section-id="home-video-gospels"] .grid')
