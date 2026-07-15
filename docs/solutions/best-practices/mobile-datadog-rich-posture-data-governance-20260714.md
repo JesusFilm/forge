@@ -15,6 +15,14 @@ diagnostic value:
 - Raw **search terms** (`watch_search` / `watch_search_failed`, `term` field)
 - Content **titles and ids/slugs** (`content_id`, resolution + QoE events)
 
+**Parity with web (context for sign-off).** This is not a mobile-specific
+expansion: the web app logs the raw query to Datadog Logs **by default**
+(`watch_search.query`; flag `WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT` defaults
+`true` — `apps/web/src/lib/watch-search-analytics.ts`). Mobile is at parity with
+web's default on the search-term axis, and **stricter** on identity: web attaches
+`setUser({ email })` for signed-in users; mobile is anonymous with no
+account/email. The "diverges from TV" framing above is about TV (PII-free), not web.
+
 Everything else is standard RUM telemetry: a pseudonymous `viewer_id` (random
 per-install UUID — **not** an account or email; mobile is anonymous), session
 id, device model, OS version, and the IP Datadog derives coarse geo from.
@@ -26,16 +34,19 @@ replay, so playback frames never leak.
 
 ## Retention / deletion window (committed policy)
 
-| Data                               | Store                             | Retention                                        | Deletion                                                   |
-| ---------------------------------- | --------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
-| `watch_search` term-bearing Logs   | Datadog Logs index `forge-mobile` | **15 days**, then auto-purged by index retention | Retention expiry; ad-hoc via Datadog data-deletion request |
-| RUM events (term/title attributes) | Datadog RUM                       | **30 days** (RUM default), then auto-purged      | Retention expiry                                           |
-| Session Replay                     | Datadog RUM Replay                | **30 days**; inputs masked at capture            | Retention expiry                                           |
+| Data                               | Store                                            | Retention                                   | Deletion                                                   |
+| ---------------------------------- | ------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
+| `watch_search` term-bearing Logs   | Datadog **default Logs index** (shared with web) | **15 days** (org default), then auto-purged | Retention expiry; ad-hoc via Datadog data-deletion request |
+| RUM events (term/title attributes) | Datadog RUM                                      | **30 days** (RUM default), then auto-purged | Retention expiry                                           |
+| Session Replay                     | Datadog RUM Replay                               | **30 days**; inputs masked at capture       | Retention expiry                                           |
 
-These are the values the operator must set on the `forge-mobile` Datadog org
-before flipping production. No raw term is archived beyond the window, no
-long-term cold store, and no Sensitive Data Scanner scrub is applied to the term
-field (the rich posture is intentional — see below).
+These are **already in effect as the org defaults** — verified 2026-07-15: the
+default Logs index is 15 days and RUM/Replay is 30 days, **identical to forge-web**
+(which also has no dedicated per-service index). So **no dedicated `forge-mobile`
+index or per-app retention config is required**; mobile inherits the same retention
+as web by logging into the shared default index. No raw term is archived beyond the
+window, no long-term cold store, and no Sensitive Data Scanner scrub is applied to
+the term field (matching web).
 
 ## Re-identification assessment
 
@@ -63,7 +74,10 @@ identifying content**.
 
 **Accepted residual (R42).** A user who types PII into search will have that text
 logged for up to the retention window. This is accepted given the anonymity, the
-masked replay, the bounded retention, and the absence of any account linkage. If
+masked replay, the bounded retention, the absence of any account linkage — and
+because it is **consistent with the web app's existing default** (which logs the
+same raw query): an alignment with existing practice, not a mobile-specific
+expansion. If
 that calculus changes (e.g. mobile gains authenticated accounts), revisit this
 assessment before keeping the raw-term posture.
 
@@ -71,3 +85,10 @@ assessment before keeping the raw-term posture.
 
 Per the plan DoD, production `forge-mobile` credential provisioning is blocked
 until an owner accepts this assessment and sets the retention values above.
+
+**Signed off:** Urim (@Ur-imazing) — 2026-07-15. As owner, accepts the raw-term
+posture at **parity with web** (per the assessment above) and the committed
+retention window (**15-day Logs / 30-day RUM + Session Replay**). Those values are
+**already in effect as the org defaults**, identical to forge-web (verified
+2026-07-15), so no retention config is outstanding — production credential
+provisioning is unblocked.

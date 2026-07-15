@@ -13,6 +13,7 @@ import { GraphQLError } from "graphql"
 import { builder } from "@/graphql/builder"
 import { prisma } from "@/db/client"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { shouldShedFleetRequest } from "@/auth/fleet-ceiling"
 import { env } from "@/config/env"
 import {
   formatSearchTimingLogLine,
@@ -218,6 +219,15 @@ builder.queryFields((t) => ({
             code: "UNAUTHENTICATED",
             http: { status: 401 },
           },
+        })
+      }
+
+      // Global per-fleet-key abuse ceiling (F1 #2) — the sole bound on a holder
+      // of the extracted fleet key who rotates IP + x-viewer-id. Sheds before
+      // query validation / embedding work.
+      if (await shouldShedFleetRequest(authResult, "graphql")) {
+        throw new GraphQLError("Rate limit exceeded", {
+          extensions: { code: "RATE_LIMITED", http: { status: 429 } },
         })
       }
 

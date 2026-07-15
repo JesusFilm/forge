@@ -435,12 +435,12 @@ can use the same admin build/start command, but only the worker should set
 replicas can scale on traffic without also running jobs. When the worker boots,
 `src/instrumentation.ts` starts Postgres World and ensures one
 `src/workflows/videoDbBackup.ts` scheduler workflow is running. That scheduler
-workflow runs one backup immediately when it is first created, then sleeps until
+workflow runs backups immediately when it is first created, then sleeps until
 the next daily UTC run and repeats on that cadence. The actual `pg_dump` and S3
 upload run inside Postgres World, and each backup gets a `workflow_run` ledger
-row visible in `/dashboard/workflows`. The job backs up the default
-`video-core` profile and uploads to the normal Railway S3 bucket env vars
-already managed through Doppler/Railway:
+row visible in `/dashboard/workflows`. The job backs up the scheduled
+`video-core` and `video-search` profiles and uploads to the normal Railway S3
+bucket env vars already managed through Doppler/Railway:
 `RAILWAY_S3_BUCKET`,
 `RAILWAY_S3_ENDPOINT`, `RAILWAY_S3_REGION`, `RAILWAY_S3_ACCESS_KEY_ID`, and
 `RAILWAY_S3_SECRET_ACCESS_KEY`. Backups upload under the fixed
@@ -2111,7 +2111,9 @@ credentials now live in admin's `PartnerApiKey` Postgres table. See
      manager → admin proxies + the eval CLI's bearer mint).
 
   `isAnyKnownBearer(authHeader)` in `src/auth/search-bearer.ts`
-  OR-composes them and returns `{ valid, source, keyId? }`.
+  OR-composes them and returns `{ valid, source, keyId?, fleetKeyId? }`
+  (`fleetKeyId` — sha256-prefix of a fleet key — is the bucket id the F1 #2
+  global search ceiling keys on; see "Fleet-aware rate-limit bucketing").
 
 - **The disjointness invariant** (`assertBearerCsvsDisjoint` at
   boot in `src/config/env.ts`) holds for the three remaining env
