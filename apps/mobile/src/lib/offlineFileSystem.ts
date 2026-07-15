@@ -8,6 +8,7 @@ import {
   moveAsync,
 } from "expo-file-system/legacy"
 
+import { datadogLog } from "./datadog"
 import { sanitizeSegment } from "./offlineFiles"
 
 /**
@@ -72,10 +73,24 @@ export async function downloadToFile(url: string, dest: string): Promise<void> {
   // Race a 30s deadline so a stalled CDN can't block finalize (and the iOS
   // background-completion signal that follows it) indefinitely. Callers treat a
   // throw as a terminal sidecar failure and degrade gracefully.
-  await Promise.race([
-    downloadAsync(url, dest),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("downloadToFile timeout")), 30_000),
-    ),
-  ])
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      downloadAsync(url, dest),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("downloadToFile timeout")),
+          30_000,
+        )
+      }),
+    ])
+  } catch (err) {
+    // R14: surface only the deadline firing; a downloadAsync reject re-throws unlabeled.
+    if (err instanceof Error && err.message === "downloadToFile timeout") {
+      datadogLog.warn("sidecar.download_timeout", {})
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }

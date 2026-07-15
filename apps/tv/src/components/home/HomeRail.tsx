@@ -19,7 +19,12 @@ import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { HOME_CARD_THUMB_HEIGHT, HOME_CARD_WIDTH, HomeCard } from "./HomeCard"
+import {
+  HOME_CARD_DIMS,
+  HOME_CARD_WIDTH,
+  HomeCard,
+  type HomeCardVariant,
+} from "./HomeCard"
 import { buildRailItems, type RailItem } from "./homeRailItems"
 
 const IS_ANDROID = Platform.OS === "android"
@@ -27,15 +32,27 @@ const IS_ANDROID = Platform.OS === "android"
 // Android uses a wider gap (same card size) so the rail shows slightly fewer
 // cards with more spacing — the user-tuned density. tvOS keeps main's 28.
 export const ITEM_GAP = scale(IS_ANDROID ? 48 : 28)
-export const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 export const RAIL_PADDING_LEFT = scale(80)
+/** Landscape column pitch — the default geometry, and the skeleton's. */
+export const COLUMN_WIDTH = HOME_CARD_WIDTH + ITEM_GAP
 
-// Card columns spanning the visible width. tvOS treats empty right-hand
-// columns as "nothing there", so a vertical move from an over-hanging column
-// SKIPS short rails; we pad up to this count with invisible focusable cards.
-const VISIBLE_COLUMNS = Math.ceil(
-  (Dimensions.get("window").width - RAIL_PADDING_LEFT) / COLUMN_WIDTH,
-)
+const columnWidthFor = (variant: HomeCardVariant) =>
+  HOME_CARD_DIMS[variant].width + ITEM_GAP
+
+function visibleColumnsFor(variant: HomeCardVariant): number {
+  return Math.ceil(
+    (Dimensions.get("window").width - RAIL_PADDING_LEFT) /
+      columnWidthFor(variant),
+  )
+}
+
+// tvOS treats empty right-hand columns as "nothing there", so a vertical move from
+// an over-hanging column SKIPS short rails; pad to this count with invisible
+// focusable cards. Per-variant: narrower portrait cards fit more columns.
+const VISIBLE_COLUMNS: Record<HomeCardVariant, number> = {
+  landscape: visibleColumnsFor("landscape"),
+  portrait: visibleColumnsFor("portrait"),
+}
 
 const keyExtractor = (item: RailItem, index: number) =>
   item.kind === "card"
@@ -44,15 +61,23 @@ const keyExtractor = (item: RailItem, index: number) =>
 
 // Fixed card dims → no measuring pass. Last item's length is overstated by
 // ITEM_GAP (no trailing gap) — harmless for virtualization/scrollToIndex
-// (see EpisodeRail). Module-scope: pure function of module constants.
-const getItemLayout = (
-  _: ArrayLike<RailItem> | null | undefined,
-  index: number,
-) => ({
-  length: COLUMN_WIDTH,
-  offset: COLUMN_WIDTH * index,
-  index,
-})
+// (see EpisodeRail). Built once per variant: the pitch follows the card width.
+function makeGetItemLayout(variant: HomeCardVariant) {
+  const pitch = columnWidthFor(variant)
+  return (_: ArrayLike<RailItem> | null | undefined, index: number) => ({
+    length: pitch,
+    offset: pitch * index,
+    index,
+  })
+}
+
+const GET_ITEM_LAYOUT: Record<
+  HomeCardVariant,
+  ReturnType<typeof makeGetItemLayout>
+> = {
+  landscape: makeGetItemLayout("landscape"),
+  portrait: makeGetItemLayout("portrait"),
+}
 
 // react-native-tvos host nodes expose requestTVFocus() (NativeMethods), absent
 // from the bundled View type. Encapsulate the cast in one helper so it stays
@@ -68,8 +93,10 @@ function requestTVFocus(node: ViewType | null): void {
  */
 const RailPad = memo(function RailPad({
   targetNode,
+  variant,
 }: {
   targetNode: ViewType | null
+  variant: HomeCardVariant
 }) {
   return (
     <Pressable
@@ -82,7 +109,13 @@ const RailPad = memo(function RailPad({
         // here; no defer needed.
         requestTVFocus(targetNode)
       }}
-      style={styles.pad}
+      // Sized to the rail's real cards (per-variant) so its focus frame aligns
+      // for vertical geometry. Stays transparent, never opacity:0 — tvOS skips
+      // alpha-0 views, which would make it unfocusable and defeat the bounce.
+      style={{
+        width: HOME_CARD_DIMS[variant].width,
+        height: HOME_CARD_DIMS[variant].thumbHeight,
+      }}
     />
   )
 })
@@ -119,6 +152,8 @@ type HomeRailProps = {
    * focused row + a buffer of neighbours active. Defaults to true (eager).
    */
   active?: boolean
+  /** Card shape; "portrait" when every item has curated 2:3 poster art. Default landscape. */
+  variant?: HomeCardVariant
 }
 
 export const HomeRail = memo(function HomeRail({
@@ -132,6 +167,7 @@ export const HomeRail = memo(function HomeRail({
   upFocusTarget,
   restoreLastFocus,
   active = true,
+  variant = "landscape",
 }: HomeRailProps) {
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
@@ -146,7 +182,10 @@ export const HomeRail = memo(function HomeRail({
   )
 
   // Real cards + invisible over-hang pads (see homeRailItems.buildRailItems).
-  const items = useMemo(() => buildRailItems(cards, VISIBLE_COLUMNS), [cards])
+  const items = useMemo(
+    () => buildRailItems(cards, VISIBLE_COLUMNS[variant]),
+    [cards, variant],
+  )
 
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<RailItem>) => {
@@ -154,7 +193,7 @@ export const HomeRail = memo(function HomeRail({
       if (item.kind === "pad") {
         return (
           <View style={[styles.itemWrapper, !isLastColumn && styles.itemGap]}>
-            <RailPad targetNode={lastCardNode} />
+            <RailPad targetNode={lastCardNode} variant={variant} />
           </View>
         )
       }
@@ -176,6 +215,7 @@ export const HomeRail = memo(function HomeRail({
             // Off-window rails mount their cards (so focus always has a target)
             // but skip the image decode — that's the image-window perf win.
             loadImage={active}
+            variant={variant}
           />
         </View>
       )
@@ -188,6 +228,7 @@ export const HomeRail = memo(function HomeRail({
       upFocusTarget,
       lastCardNode,
       active,
+      variant,
     ],
   )
 
@@ -223,7 +264,7 @@ export const HomeRail = memo(function HomeRail({
           contentContainerStyle={styles.listContent}
           keyExtractor={keyExtractor}
           onScrollToIndexFailed={() => {}}
-          getItemLayout={getItemLayout}
+          getItemLayout={GET_ITEM_LAYOUT[variant]}
           renderItem={renderItem}
         />
       </TVFocusGuideView>
@@ -265,12 +306,5 @@ const styles = StyleSheet.create({
   },
   itemGap: {
     marginRight: ITEM_GAP,
-  },
-  // Over-hang catcher: card-sized focusable in empty right columns. Transparent
-  // (not opacity:0 — tvOS skips alpha-0 views, making them unfocusable); matches
-  // thumb height so its focus frame aligns with real cards for vertical geometry.
-  pad: {
-    width: HOME_CARD_WIDTH,
-    height: HOME_CARD_THUMB_HEIGHT,
   },
 })

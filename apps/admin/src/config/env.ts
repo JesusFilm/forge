@@ -145,6 +145,23 @@ export const youVersionPassageCacheTtlSecondsEnvSchema = z.coerce
   .optional()
   .default(60 * 60 * 24 * 14)
 
+// feat-240 abuse ceiling (F1 #2): global per-fleet-key search cap/min. .min(0)
+// with 0 = operator kill-switch (a well-meant `=0` can't brick boot). Tune from
+// event=fleet_ceiling.near logs; catastrophic backstop above aggregate peak.
+export const fleetSearchGlobalCeilingPerMinEnvSchema = z.coerce
+  .number()
+  .int()
+  .min(0)
+  .optional()
+  .default(6000)
+
+// Alert-first rollout: "false" = compute + WARN only (no 429); "true" =
+// hard-block. Ship "false", calibrate, then flip. Mirrors SEARCH_AUTH_REQUIRED.
+export const fleetSearchCeilingEnforceEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -280,6 +297,9 @@ export const env = createEnv({
     // treats "false" as truthy). Decoded at call sites with
     // `env.SEARCH_AUTH_REQUIRED === "true"`.
     SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
+    FLEET_SEARCH_GLOBAL_CEILING_PER_MIN:
+      fleetSearchGlobalCeilingPerMinEnvSchema,
+    FLEET_SEARCH_CEILING_ENFORCE: fleetSearchCeilingEnforceEnvSchema,
     // Admin-owned production search trace sampling. Future Mastra eval jobs
     // call the internal Admin sampling route with a dedicated bearer from
     // this CSV; it must stay disjoint from public search, workflow launch,
@@ -655,6 +675,12 @@ export const env = createEnv({
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
     SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
+    FLEET_SEARCH_GLOBAL_CEILING_PER_MIN: emptyToUndefined(
+      process.env.FLEET_SEARCH_GLOBAL_CEILING_PER_MIN,
+    ),
+    FLEET_SEARCH_CEILING_ENFORCE: emptyToUndefined(
+      process.env.FLEET_SEARCH_CEILING_ENFORCE,
+    ),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
     ),

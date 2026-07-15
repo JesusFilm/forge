@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { FirecrawlConfig } from "../../config/env"
 import { FirecrawlSearchError } from "../../services/firecrawl-search-client"
@@ -11,6 +11,7 @@ import {
   _internals,
   handleInstagramDiscoveryRouteRequest,
   InstagramDiscoveryWorkflowInputSchema,
+  InstagramDiscoveryWorkflowOutputSchema,
   instagramAiChristianDiscoveryWorkflow,
   runInstagramDiscovery,
   type InstagramDiscoveryWorkflowResult,
@@ -65,6 +66,11 @@ const christianOnlyHit = {
   title: "biblewithlife • Instagram",
   description: "The parable of the lost sheep, retold #faith #jesus",
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 describe("runInstagramDiscovery — trusted handles", () => {
   it("scopes each handle to an account search and trusts the results", async () => {
@@ -223,7 +229,7 @@ describe("instagramAiChristianDiscoveryWorkflow schedule", () => {
       handles: [],
       queries: [],
       limitPerQuery: 10,
-      scrapeMetadata: false,
+      scrapeMetadata: true,
       maxResults: 10,
       persistArtifact: true,
     })
@@ -248,7 +254,26 @@ describe("runInstagramDiscovery", () => {
       expect.objectContaining({
         limit: 5,
         maxMarkdownCharacters: 16_000,
+        scrape: true,
       }),
+    )
+  })
+
+  it("allows operators to opt out of Firecrawl result hydration", async () => {
+    const searchQuery = vi.fn(async () => [])
+    await runInstagramDiscovery(
+      { queries: ["q"], scrapeMetadata: false },
+      {
+        runId: "run-no-hydration",
+        firecrawlConfig: CONFIG,
+        searchQuery,
+        artifactStore: fakeStore(),
+      },
+    )
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      "q",
+      expect.objectContaining({ scrape: false }),
     )
   })
 
@@ -288,10 +313,11 @@ describe("runInstagramDiscovery", () => {
   })
 
   it("submits only qualified posts to the site review queue", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {})
     const submitPosts = vi.fn(async (_posts: InstagramPost[]) => ({
       ok: true,
-      inserted: 1,
-      skipped: 0,
+      inserted: 0,
+      skipped: 1,
     }))
     const result = await runInstagramDiscovery(
       { queries: ["q"] },
@@ -310,10 +336,80 @@ describe("runInstagramDiscovery", () => {
     expect(submitted).toHaveLength(1)
     expect(submitted[0]!.shortcode).toBe("ABC123")
     if (!result.ok) throw new Error("expected success")
+    expect(result.mastraRunId).toBe("run-submit")
     expect(result.reviewQueue).toEqual({
       status: "submitted",
+      inserted: 0,
+      skipped: 1,
+    })
+    expect(InstagramDiscoveryWorkflowOutputSchema.parse(result)).toMatchObject({
+      mastraRunId: "run-submit",
+      reviewQueue: { status: "submitted", inserted: 0, skipped: 1 },
+    })
+    expect(log).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest runId=run-submit inserted=0 skipped=1",
+    )
+  })
+
+  it("preserves Firecrawl og:image through the real adapter and submitted post", async () => {
+    const thumbnailUrl = "https://cdn.example.com/instagram-thumbnail.jpg"
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: [
+              {
+                url: "https://www.instagram.com/reel/THUMB123/",
+                description: "AI generated film of Jesus #aiart #faith",
+                metadata: { "og:image": thumbnailUrl },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      ),
+    )
+    vi.stubGlobal("fetch", fetchImpl)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const submitPosts = vi.fn(async (_posts: InstagramPost[]) => ({
+      ok: true,
       inserted: 1,
       skipped: 0,
+    }))
+
+    const result = await runInstagramDiscovery(
+      { queries: ["q"], persistArtifact: false },
+      {
+        runId: "run-real-adapter",
+        firecrawlConfig: CONFIG,
+        artifactStore: fakeStore(),
+        submitPosts,
+      },
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.posts[0]!.thumbnailUrl).toBe(thumbnailUrl)
+    expect(submitPosts).toHaveBeenCalledWith([
+      expect.objectContaining({
+        shortcode: "THUMB123",
+        thumbnailUrl,
+      }),
+    ])
+    expect(result).toMatchObject({
+      mastraRunId: "run-real-adapter",
+      reviewQueue: { status: "submitted", inserted: 1, skipped: 0 },
+    })
+    const requestBody = JSON.parse(
+      String(fetchImpl.mock.calls[0]![1]!.body),
+    ) as { scrapeOptions?: unknown }
+    expect(requestBody.scrapeOptions).toEqual({
+      formats: ["markdown"],
+      onlyMainContent: true,
     })
   })
 
@@ -334,6 +430,7 @@ describe("runInstagramDiscovery", () => {
   })
 
   it("records a review-queue failure without discarding discovery results", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
     const result = await runInstagramDiscovery(
       { queries: ["q"] },
       {
@@ -350,6 +447,31 @@ describe("runInstagramDiscovery", () => {
       ok: true,
       reviewQueue: { status: "failed", reason: "upstream_failed" },
     })
+    expect(errorLog).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest_failed runId=run-submit-failure message=site offline",
+    )
+  })
+
+  it("does not report counts from an unsuccessful injected submission", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
+    const result = await runInstagramDiscovery(
+      { queries: ["q"] },
+      {
+        runId: "run-submit-unsuccessful",
+        firecrawlConfig: CONFIG,
+        searchQuery: async () => [aiChristianHit],
+        artifactStore: fakeStore(),
+        submitPosts: async () => ({ ok: false, inserted: 0, skipped: 0 }),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      reviewQueue: { status: "failed", reason: "invalid_response" },
+    })
+    expect(errorLog).toHaveBeenCalledWith(
+      "[instagram-discovery] event=site_ingest_failed runId=run-submit-unsuccessful message=site ingest returned an unsuccessful result",
+    )
   })
 
   it("excludes commentary posts and counts them", async () => {

@@ -9,7 +9,12 @@ import { encodeWatchSeed } from "../../lib/watchSeed"
 /** The card fields routing needs — WatchHomeCard satisfies this. */
 export type RoutableHomeCard = Pick<
   WatchHomeCard,
-  "slug" | "title" | "imageUrl" | "rawLabel" | "childCount"
+  | "slug"
+  | "title"
+  | "imageUrl"
+  | "landscapeImageUrl"
+  | "rawLabel"
+  | "childCount"
 >
 
 /**
@@ -22,7 +27,9 @@ export function resolveHomeCardPath(card: RoutableHomeCard): string | null {
   const seed = encodeWatchSeed({
     slug: card.slug,
     title: card.title,
-    imageUrl: card.imageUrl,
+    // The 16:9 cinematic, NOT card.imageUrl — a poster rail's card art is a 2:3
+    // poster, and the seed paints the watch/series screen's landscape hero.
+    imageUrl: card.landscapeImageUrl ?? card.imageUrl,
     playbackId: null,
   })
   const base = isSeriesSearchResult({

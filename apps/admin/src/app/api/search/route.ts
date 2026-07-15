@@ -9,6 +9,7 @@
 import { prisma } from "@/db/client"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { shouldShedFleetRequest } from "@/auth/fleet-ceiling"
 import { env } from "@/config/env"
 import {
   formatSearchTimingLogLine,
@@ -151,6 +152,13 @@ export async function GET(request: Request): Promise<Response> {
     // authTag here is "invalid_bearer" or "anonymous" (the `bearer`
     // case satisfies authResult.valid). TS narrows after the guard.
     return authenticationRequired(authTag as "invalid_bearer" | "anonymous")
+  }
+
+  // Global per-fleet-key abuse ceiling (F1 #2) — a SECOND gate after auth. The
+  // per-IP gate above can't bound an IP-rotating attacker holding the extracted
+  // fleet key; this counter spans all IPs/viewer_ids for the key.
+  if (await shouldShedFleetRequest(authResult, "rest")) {
+    return tooManyRequests()
   }
 
   const { searchParams } = new URL(request.url)

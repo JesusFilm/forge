@@ -27,6 +27,7 @@ function card(
     rawLabel: "FEATURE_FILM",
     metaLabel: null,
     imageUrl: null,
+    landscapeImageUrl: null,
     imageAlt: `Title ${id}`,
     muxPlaybackId: null,
     durationSeconds: null,
@@ -51,6 +52,7 @@ function section(
     layout: "rail",
     orientation: "horizontal",
     showSequenceNumbers: false,
+    isPosterRail: false,
     cards,
     ...overrides,
   }
