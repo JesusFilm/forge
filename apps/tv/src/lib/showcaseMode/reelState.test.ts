@@ -364,23 +364,29 @@ describe("item failure (AE5)", () => {
     expect(state.consecutiveFailures).toBe(1)
   })
 
-  it("resets the failure counter once an excerpt actually plays", () => {
+  it("resets the failure counter once an excerpt PLAYS THROUGH", () => {
     let state = run(started(curatedQueue(threeChapters())), {
       type: "cardTimerElapsed",
     })
     state = reelReducer(state, { type: "excerptFailed" })
     expect(state.consecutiveFailures).toBe(1)
 
-    state = reelReducer(state, { type: "excerptPlaying" })
+    state = reelReducer(state, { type: "excerptEnded" })
     expect(state.consecutiveFailures).toBe(0)
   })
 
-  it("does not re-render when a playing excerpt reports success twice", () => {
-    let state = run(started(curatedQueue(threeChapters())), {
+  // The reason the reset lives on completion. On a degrading network an item paints a
+  // frame and then freezes, so anything that cleared the breaker at first frame would
+  // let three such items churn forever instead of reaching stills (AE7).
+  it("does not clear the breaker for an item that starts and then fails", () => {
+    let state = run(started(curatedQueue([chapter("a", ["v1", "v2", "v3"])])), {
       type: "cardTimerElapsed",
     })
-    state = reelReducer(state, { type: "excerptPlaying" })
-    expect(reelReducer(state, { type: "excerptPlaying" })).toBe(state)
+
+    state = reelReducer(state, { type: "excerptFailed" })
+    state = reelReducer(state, { type: "excerptFailed" })
+
+    expect(state.consecutiveFailures).toBe(2)
   })
 })
 

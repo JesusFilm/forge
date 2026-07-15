@@ -22,11 +22,15 @@ import {
 import { isAppStateForeground } from "../watch/videoBackdropGate"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { computeReelPlayerGate } from "./reelPlayerGate"
+import { classifyReelWatchdog } from "./reelWatchdog"
 
 // Hold the poster briefly over the confirmed video, then fade: absorbs the seek
 // settle and gives the eye a still instead of a mid-load pop (VideoBackdrop's curve).
 const POSTER_HOLD_MS = 500
 const POSTER_FADE_MS = 500
+
+/** Matches the player's own 1s timeUpdate cadence — no point sampling finer. */
+const WATCHDOG_TICK_MS = 1000
 
 export type ReelPlayerProps = {
   /** The shell's resolved stream (KTD-4). Null until this excerpt's choice lands. */
@@ -122,6 +126,12 @@ export function ReelPlayer({
   const loadedTokenRef = useRef(excerptToken)
   const confirmedTokenRef = useRef<number | null>(null)
   const shouldPlayRef = useRef(shouldPlay)
+  // Watchdog clocks. `playRequestedAt` starts when we ASK for playback, not when the
+  // stream lands: the fetch owns its own timeout, and the player cannot start while a
+  // chapter card holds it paused.
+  const playRequestedAtRef = useRef<number | null>(null)
+  const lastAdvanceAtRef = useRef<number | null>(null)
+  const lastPositionRef = useRef<number | null>(null)
   const swapIdRef = useRef(0)
 
   // KTD-9: one QoE session per excerpt, keyed on the Mux playback id — never the
@@ -244,6 +254,12 @@ export function ReelPlayer({
 
   useEffect(() => {
     const sub = player.addListener("timeUpdate", ({ currentTime }) => {
+      // The watchdog's heartbeat: position MOVED, not merely an event arrived — a
+      // frozen player still emits on the interval, reporting the same currentTime.
+      if (currentTime !== lastPositionRef.current) {
+        lastPositionRef.current = currentTime
+        lastAdvanceAtRef.current = Date.now()
+      }
       const loaded = loadedStreamRef.current
       if (loaded == null) return
       // Only a confirmed source's clock means anything: before its seek lands, a
@@ -295,6 +311,48 @@ export function ReelPlayer({
   useEffect(() => {
     return () => finalizeQoe("abandoned")
   }, [finalizeQoe])
+
+  // R16's ladder is event-driven, and the two faults office wifi actually produces —
+  // a source that never starts, and one that starts then freezes — emit no failure at
+  // all. This clock is what turns that silence into a skip instead of a dead screen.
+  useEffect(() => {
+    // Re-armed per excerpt AND per pause: a card, an interstitial or a background
+    // stops the player deliberately, and none of them is a stall.
+    if (!shouldPlay) {
+      playRequestedAtRef.current = null
+      return
+    }
+    playRequestedAtRef.current = Date.now()
+    lastAdvanceAtRef.current = null
+    lastPositionRef.current = null
+
+    const timer = setInterval(() => {
+      const requestedAt = playRequestedAtRef.current
+      if (requestedAt == null) return
+      const now = Date.now()
+      const verdict = classifyReelWatchdog({
+        shouldPlay: shouldPlayRef.current,
+        confirmed: confirmedTokenRef.current === excerptToken,
+        msSincePlayRequested: now - requestedAt,
+        msSincePlayheadAdvance:
+          lastAdvanceAtRef.current == null
+            ? null
+            : now - lastAdvanceAtRef.current,
+      })
+      if (verdict === "ok") return
+      // Stop the clock before reporting: the reel may hold this source loaded until
+      // its replacement resolves, and a second verdict would double-count the failure.
+      playRequestedAtRef.current = null
+      datadogLog.warn("showcase_reel_watchdog", {
+        content_id: contentIdRef.current,
+        verdict,
+      })
+      // The live token, not an echoed one: this is a synchronous decision about the
+      // excerpt the reel wants NOW, not a late native event about one it has left.
+      onFailed(excerptToken)
+    }, WATCHDOG_TICK_MS)
+    return () => clearInterval(timer)
+  }, [shouldPlay, excerptToken, onFailed])
 
   const posterOpacity = useRef(new Animated.Value(1)).current
   useEffect(() => {

@@ -458,7 +458,6 @@ export function ShowcaseScreen() {
     if (isDatadogProvisioned() && firstFrameLatchRef.current.claim()) {
       addDatadogTiming(SHOWCASE_FIRST_FRAME_TIMING)
     }
-    dispatch({ type: "excerptPlaying" })
   }, [])
 
   // R12: a press must exit from every phase, including the resolving window, so this

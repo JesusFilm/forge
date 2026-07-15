@@ -56,9 +56,7 @@ export type ReelEvent =
   | { type: "cardTimerElapsed" }
   /** The stat interstitial's dwell elapsed. */
   | { type: "interstitialTimerElapsed" }
-  /** Playback confirmed for the current excerpt — the breaker's reset signal. */
-  | { type: "excerptPlaying" }
-  /** playToEnd, or the bounded window's end. */
+  /** playToEnd, or the bounded window's end — and the breaker's only reset. */
   | { type: "excerptEnded" }
   /** The current item is unplayable — skip it (R16). */
   | { type: "excerptFailed" }
@@ -290,15 +288,12 @@ export function reelReducer(state: ReelState, event: ReelEvent): ReelState {
       return advanceToNextChapter(state, state.queue)
     }
 
-    case "excerptPlaying":
-      if (state.phase !== "excerpt" || state.consecutiveFailures === 0) {
-        return state
-      }
-      return { ...state, consecutiveFailures: 0 }
-
     case "excerptEnded":
       if (state.phase !== "excerpt" || state.queue == null) return state
-      return advanceExcerpt(state, state.queue)
+      // Completion is the ONLY proof the path works, so it is the only thing that
+      // clears the breaker. A first frame proves nothing — an item can paint one and
+      // freeze, and resetting there means three such items never reach stills.
+      return advanceExcerpt({ ...state, consecutiveFailures: 0 }, state.queue)
 
     case "excerptFailed": {
       // A curated chapter enters on its card while the token already armed the
