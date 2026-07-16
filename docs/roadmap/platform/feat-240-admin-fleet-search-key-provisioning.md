@@ -3,7 +3,7 @@ id: feat-240
 title: "Admin fleet search key provisioning + rollout preconditions"
 owner: urim
 priority: P1
-status: not-started
+status: in-progress
 start_date: "2026-07-09"
 duration: 3
 depends_on: []
@@ -31,9 +31,14 @@ ticket is the admin-side rollout; feat-241 is the client side.
 Doppler, admin deploy) are the admin CMS owner's to execute. `owner: urim` here tracks
 coordination of the end-to-end search unblock, not admin ownership.
 
-> **Status 2026-07-13:** PR #1493 is MERGED (per-IP + per-`viewer_id` fleet bucketing, dormant
-> until provisioned). Precondition #1 (origin bypass) has been PROBED and is **CONFIRMED OPEN** —
-> see What To Do step 1; it is now active remediation, not a verification checkbox.
+> **Status 2026-07-16:** Preconditions #2–#4 DONE — abuse ceiling shipped (PR #1577, `enforce=false`),
+> two distinct fleet keys minted in `forge-admin` Doppler + admin deployed, fleet requests verified `200`
+> with `source=fleet`. Alerting monitors added as code (PR #1591, `infra/datadog-monitors/`) but NOT yet
+> created in Datadog (operator runs `create.sh`). **Precondition #1 (origin bypass) RE-CONFIRMED OPEN
+> 2026-07-16** — `forgeadmin-production-f4d1.up.railway.app/api/graphql` still returns `200` (`server:
+railway-hikari`, no `cf-ray`); it is the top blocking item (tracked in `todos/021`). REMAINING: close the
+> origin bypass, calibrate + flip `FLEET_SEARCH_CEILING_ENFORCE=true`, confirm `SEARCH_AUTH_REQUIRED=true`,
+> and run `create.sh`.
 
 ## Entry Points - Read These First
 
