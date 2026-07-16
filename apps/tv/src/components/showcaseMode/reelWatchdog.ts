@@ -1,12 +1,11 @@
-// R16's ladder only degrades on a REPORTED failure, and the two faults most likely
-// on office wifi report nothing: a source that never starts, and one that starts then
-// freezes. This is the clock that turns silence into a failure the ladder can answer.
-// React-free and colocated so it is unit-testable (KTD-8, mirrors reelPlayerGate).
+// R16's ladder only degrades on a REPORTED failure, and the two faults most likely on
+// office wifi report nothing: a source that never starts, and one that starts then
+// freezes. This clock turns that silence into a failure the ladder can answer.
 
 /**
- * Time to first frame after we ASK the player to play. Generous on purpose: the
- * poster covers this whole window, so waiting looks like a slow transition, while a
- * false skip discards an excerpt that would have played (HLS start is ~1-3s, ~8s slow).
+ * Time to first frame after the reel asks for playback. Generous on purpose: the poster
+ * covers this whole window, so waiting looks like a slow transition, while a false skip
+ * discards an excerpt that would have played (HLS start is ~1-3s, ~8s slow).
  */
 export const REEL_LOAD_DEADLINE_MS = 12_000
 
@@ -19,17 +18,18 @@ export const REEL_STALL_DEADLINE_MS = 6_000
 
 export type ReelWatchdogInputs = {
   /**
-   * The reel wants this excerpt audible NOW. Every deadline hangs off this: the reel
-   * PAUSES the player under chapter cards, interstitials and background, so a bare
-   * "the playhead isn't moving" would fire on every chapter.
+   * The reel WANTS this excerpt playing — deliberately not "the player is playing it".
+   * Gating on readiness would disarm the clock for the never-starts fault it exists to
+   * catch, because a source that never starts never reports itself ready.
    */
-  shouldPlay: boolean
+  playIntended: boolean
   /** The player confirmed THIS excerpt playing — the first frame landed. */
   confirmed: boolean
-  /** Since shouldPlay went true for this excerpt, not since the stream resolved: the
-   *  fetch owns its own timeout, and the player cannot start while we hold it paused. */
+  /** Since playIntended went true for this excerpt. Covers the load, which is why it is
+   *  read only before confirmation — after that it would still be counting the load. */
   msSincePlayRequested: number
-  /** Since the playhead last moved; null until it moves at all. */
+  /** Since the playhead last moved. Seeded at confirmation, so null means no heartbeat
+   *  has landed yet — at most one timeUpdate interval, never a freeze. */
   msSincePlayheadAdvance: number | null
 }
 
@@ -40,22 +40,20 @@ export type ReelWatchdogVerdict = "ok" | "load-timeout" | "stalled"
  * and are kept distinct only so the reason is legible in telemetry and tests.
  */
 export function classifyReelWatchdog({
-  shouldPlay,
+  playIntended,
   confirmed,
   msSincePlayRequested,
   msSincePlayheadAdvance,
 }: ReelWatchdogInputs): ReelWatchdogVerdict {
-  if (!shouldPlay) return "ok"
+  if (!playIntended) return "ok"
 
   if (!confirmed) {
     return msSincePlayRequested >= REEL_LOAD_DEADLINE_MS ? "load-timeout" : "ok"
   }
 
-  // Confirmed but the playhead has never moved is still a stall, not a load: the
-  // player claimed it was playing, so the load deadline no longer applies.
-  if (msSincePlayheadAdvance == null) {
-    return msSincePlayRequested >= REEL_STALL_DEADLINE_MS ? "stalled" : "ok"
-  }
+  // The load clock stops at confirmation. Reading it here would charge a healthy slow
+  // start its own load time over again and skip an excerpt one tick after its first frame.
+  if (msSincePlayheadAdvance == null) return "ok"
 
   return msSincePlayheadAdvance >= REEL_STALL_DEADLINE_MS ? "stalled" : "ok"
 }

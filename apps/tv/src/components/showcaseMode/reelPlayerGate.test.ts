@@ -14,6 +14,30 @@ const playing = {
   confirmedToken: 7,
 }
 
+// The watchdog arms on playIntended. If this ever collapsed into shouldPlay, the load
+// half of the watchdog would go dead for the one fault it exists to catch — silently,
+// because a never-starting source produces no failure of its own to notice.
+describe("computeReelPlayerGate — what the watchdog arms on", () => {
+  it("still intends playback for a source that has not reported itself ready", () => {
+    const gate = computeReelPlayerGate({ ...playing, videoReady: false })
+    expect(gate.shouldPlay).toBe(false)
+    expect(gate.playIntended).toBe(true)
+  })
+
+  it("drops intent for each of the reel's own reasons to hold the player silent", () => {
+    for (const paused of [
+      { active: false },
+      { screenFocused: false },
+      { appForeground: false },
+      { hasStream: false },
+    ]) {
+      expect(
+        computeReelPlayerGate({ ...playing, ...paused }).playIntended,
+      ).toBe(false)
+    }
+  })
+})
+
 describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
   it("covers with the poster while a swap is in flight — the reel targets an excerpt the player has not confirmed", () => {
     expect(computeReelPlayerGate({ ...playing, excerptToken: 8 })).toEqual({
@@ -21,6 +45,7 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
       shouldMountVideo: true,
       posterVisible: true,
       posterCrossfade: true,
+      playIntended: true,
       swapInFlight: true,
     })
   })
@@ -105,6 +130,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       shouldMountVideo: true,
       posterVisible: false,
       posterCrossfade: false,
+      playIntended: true,
       swapInFlight: false,
     })
   })
@@ -116,6 +142,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         shouldMountVideo: false,
         posterVisible: true,
         posterCrossfade: false,
+        playIntended: false,
         swapInFlight: false,
       },
     )
@@ -128,6 +155,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         shouldMountVideo: false,
         posterVisible: true,
         posterCrossfade: false,
+        playIntended: false,
         swapInFlight: false,
       },
     )
@@ -145,6 +173,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       shouldMountVideo: false,
       posterVisible: true,
       posterCrossfade: false,
+      playIntended: false,
       swapInFlight: false,
     })
   })
@@ -166,6 +195,7 @@ describe("computeReelPlayerGate — silent phases (R8/R10)", () => {
       shouldMountVideo: true,
       posterVisible: false,
       posterCrossfade: false,
+      playIntended: false,
       swapInFlight: false,
     })
   })

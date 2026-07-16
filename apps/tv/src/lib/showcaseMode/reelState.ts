@@ -174,8 +174,10 @@ function enterQueue(
     {
       ...state,
       queue,
-      // Carrying the count in would re-trip the breaker on the first failure.
-      consecutiveFailures: 0,
+      // A wrap is the SAME queue continuing, so its failures still count — zeroing
+      // here let a short all-dead reel loop forever, never reaching stills. Only a
+      // fresh attempt (cold start, stills re-entry) has earned a clean slate.
+      consecutiveFailures: opts.keepCadence ? state.consecutiveFailures : 0,
       chaptersSinceInterstitial: opts.keepCadence
         ? state.chaptersSinceInterstitial
         : 0,

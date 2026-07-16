@@ -35,6 +35,12 @@ export type ReelPlayerGate = {
    * it and a fade would bleed the bare screen background through.
    */
   posterCrossfade: boolean
+  /**
+   * The reel WANTS this excerpt playing — shouldPlay minus videoReady. The watchdog
+   * arms on this: a source that never starts never emits readyToPlay, so gating its
+   * clock on videoReady would disarm it for the exact fault it exists to catch.
+   */
+  playIntended: boolean
   /** U7's `isSourceSwapping`: a language-rotation swap is not a rebuffer (KTD-9). */
   swapInFlight: boolean
 }
@@ -61,6 +67,8 @@ export function computeReelPlayerGate({
   return {
     shouldPlay: shouldMountVideo && active,
     shouldMountVideo,
+    // Deliberately NOT gated on videoReady — see the type's doc.
+    playIntended: active && hasStream && screenFocused && appForeground,
     // An unmounted VideoView leaves bare screen background behind it, so the
     // poster covers the lifecycle gaps as well as the swaps.
     posterVisible: swapInFlight || !shouldMountVideo,

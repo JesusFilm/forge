@@ -297,6 +297,9 @@ describe("item failure DURING the chapter card (R16)", () => {
 
     expect(failed.phase).toBe("chapterCard")
     expect(failed.chapterIndex).toBe(0)
+    // Holding, not dropping: the guard that ignored card-phase failures outright left
+    // the same phase and index, so only the advance behind the card tells them apart.
+    expect(currentExcerpt(failed)?.coreId).toBe("v2")
   })
 
   it("re-arms the resolve by bumping the token, so the reel cannot wedge on the card", () => {
@@ -435,6 +438,32 @@ describe("failure breaker (AE7)", () => {
     )
     expect(state.phase).toBe("stills")
     expect(state.consecutiveFailures).toBe(REEL_FAILURE_BREAKER_THRESHOLD)
+  })
+
+  it("trips across a loop wrap — a short all-dead reel must still reach stills", () => {
+    // Two one-item chapters wrap before three failures can land. The wrap used to
+    // launder the counter, which made stills unreachable and looped a dead reel forever.
+    expect(REEL_FAILURE_BREAKER_THRESHOLD).toBe(3)
+    const queue = curatedQueue([chapter("a", ["v1"]), chapter("b", ["v2"])])
+    let state = run(started(queue), { type: "cardTimerElapsed" })
+    state = reelReducer(state, { type: "excerptFailed" })
+    state = run(state, { type: "cardTimerElapsed" }, { type: "excerptFailed" })
+    // The final chapter armed a refresh, so the boundary waits on it.
+    expect(state.phase).toBe("resolving")
+    state = reelReducer(state, { type: "queueRefreshFailed" })
+    expect(state.consecutiveFailures).toBe(2)
+    state = run(state, { type: "cardTimerElapsed" }, { type: "excerptFailed" })
+    expect(state.phase).toBe("stills")
+  })
+
+  it("gives a fresh attempt from stills a clean slate — it is not the same run", () => {
+    const queue = deadChapter()
+    const state = reelReducer(failUntilStills(queue), {
+      type: "resolved",
+      queue,
+    })
+    expect(state.consecutiveFailures).toBe(0)
+    expect(state.phase).toBe("chapterCard")
   })
 
   it("keeps the last-good queue in stills so posters can render", () => {

@@ -44,9 +44,10 @@ export type ReelPlayerProps = {
    */
   active: boolean
   /**
-   * Each echoes back the token of the source the PLAYER held, never the live prop —
-   * a native emitter cannot know the reel moved on, and the shell's guard needs the
-   * stale value to drop it.
+   * A native emitter cannot know the reel moved on, so it echoes back the token of the
+   * source the PLAYER held and the shell's guard drops it. Decisions made HERE and now
+   * — a rejected URL, a watchdog verdict — pass the live token instead; they are about
+   * the excerpt the reel is asking for, not one a late event has left behind.
    */
   onPlaying: (excerptToken: number) => void
   onEnded: (excerptToken: number) => void
@@ -69,9 +70,18 @@ export function ReelPlayer({
   // Dropping it silently starved R16's ladder: the reducer only degrades on a
   // reported failure, so an unplayable URL parked the reel on its poster forever.
   const rejected = stream != null && validStream == null
+  // Keyed on the stream OBJECT, not on `rejected`: the shell holds a rejected stream
+  // until a replacement resolves, so a bare boolean re-fires on every token bump and
+  // fails the next excerpts sight-unseen — three bumps and the reel is in stills.
+  const reportedRejectRef = useRef<ShowcaseStream | null>(null)
   useEffect(() => {
-    if (rejected) onFailed(excerptToken)
-  }, [rejected, excerptToken, onFailed])
+    if (!rejected || reportedRejectRef.current === stream) return
+    reportedRejectRef.current = stream
+    datadogLog.warn("showcase_reel_rejected_stream", {
+      content_id: stream?.muxPlaybackId ?? null,
+    })
+    onFailed(excerptToken)
+  }, [rejected, stream, excerptToken, onFailed])
 
   const [appForeground, setAppForeground] = useState(
     isAppStateForeground(AppState.currentState),
@@ -96,16 +106,21 @@ export function ReelPlayer({
   const [videoReady, setVideoReady] = useState(false)
   const [confirmedToken, setConfirmedToken] = useState<number | null>(null)
 
-  const { shouldPlay, shouldMountVideo, posterVisible, posterCrossfade } =
-    computeReelPlayerGate({
-      screenFocused,
-      appForeground,
-      active,
-      hasStream: validStream !== null,
-      videoReady,
-      excerptToken,
-      confirmedToken,
-    })
+  const {
+    shouldPlay,
+    shouldMountVideo,
+    posterVisible,
+    posterCrossfade,
+    playIntended,
+  } = computeReelPlayerGate({
+    screenFocused,
+    appForeground,
+    active,
+    hasStream: validStream !== null,
+    videoReady,
+    excerptToken,
+    confirmedToken,
+  })
 
   // Created ONCE with a null source: a changing useVideoPlayer source releases and
   // recreates the native player. Every excerpt swap goes through replaceAsync on
@@ -320,9 +335,10 @@ export function ReelPlayer({
   // a source that never starts, and one that starts then freezes — emit no failure at
   // all. This clock is what turns that silence into a skip instead of a dead screen.
   useEffect(() => {
-    // Re-armed per excerpt AND per pause: a card, an interstitial or a background
-    // stops the player deliberately, and none of them is a stall.
-    if (!shouldPlay) {
+    // Armed on INTENT, not readiness: a source that never starts never reports itself
+    // ready, so arming on the play gate would disarm the load half of this watchdog
+    // for the very fault it exists to catch. Re-armed per excerpt and per pause.
+    if (!playIntended) {
       playRequestedAtRef.current = null
       return
     }
@@ -335,7 +351,9 @@ export function ReelPlayer({
       if (requestedAt == null) return
       const now = Date.now()
       const verdict = classifyReelWatchdog({
-        shouldPlay: shouldPlayRef.current,
+        // The interval exists only while intent holds — the effect tears it down
+        // otherwise — so the closure value is current by construction, never stale.
+        playIntended,
         confirmed: confirmedTokenRef.current === excerptToken,
         msSincePlayRequested: now - requestedAt,
         msSincePlayheadAdvance:
@@ -356,7 +374,7 @@ export function ReelPlayer({
       onFailed(excerptToken)
     }, WATCHDOG_TICK_MS)
     return () => clearInterval(timer)
-  }, [shouldPlay, excerptToken, onFailed])
+  }, [playIntended, excerptToken, onFailed])
 
   const posterOpacity = useRef(new Animated.Value(1)).current
   useEffect(() => {

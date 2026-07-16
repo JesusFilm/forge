@@ -7,7 +7,7 @@ import {
 // Steady state: the reel is playing and the playhead is moving. Every case perturbs
 // one axis away from it.
 const playing = {
-  shouldPlay: true,
+  playIntended: true,
   confirmed: true,
   msSincePlayRequested: 30_000,
   msSincePlayheadAdvance: 500,
@@ -35,6 +35,19 @@ describe("classifyReelWatchdog — a source that never starts", () => {
       }),
     ).toBe("load-timeout")
   })
+
+  it("holds the load budget open past the stall deadline, which does not apply yet", () => {
+    // A slow HLS start is the common case on office wifi, not a fault. Charging it the
+    // tighter freeze deadline would skip an excerpt that was seconds from playing.
+    expect(
+      classifyReelWatchdog({
+        ...playing,
+        confirmed: false,
+        msSincePlayRequested: REEL_STALL_DEADLINE_MS + 1,
+        msSincePlayheadAdvance: null,
+      }),
+    ).toBe("ok")
+  })
 })
 
 describe("classifyReelWatchdog — a source that freezes mid-play", () => {
@@ -53,15 +66,16 @@ describe("classifyReelWatchdog — a source that freezes mid-play", () => {
     ).toBe("stalled")
   })
 
-  it("calls it stalled, not a load timeout, when the player claimed to play but never moved", () => {
-    // playingChange fired, so the load deadline is spent; the playhead is the truth.
+  it("spares a slow start that has only just confirmed and not yet reported a beat", () => {
+    // The regression this pins: reading the play-request clock here charged a healthy
+    // excerpt its own load time as freeze time and killed it one tick after first frame.
     expect(
       classifyReelWatchdog({
         ...playing,
         msSincePlayheadAdvance: null,
-        msSincePlayRequested: REEL_STALL_DEADLINE_MS,
+        msSincePlayRequested: REEL_LOAD_DEADLINE_MS - 1,
       }),
-    ).toBe("stalled")
+    ).toBe("ok")
   })
 
   it("does not fail a confirmed excerpt on the load deadline it already beat", () => {
@@ -86,7 +100,7 @@ describe("classifyReelWatchdog — the reel's own deliberate pauses", () => {
     ]) {
       expect(
         classifyReelWatchdog({
-          shouldPlay: false,
+          playIntended: false,
           confirmed: false,
           msSincePlayRequested: elapsed,
           msSincePlayheadAdvance: elapsed,
@@ -99,7 +113,7 @@ describe("classifyReelWatchdog — the reel's own deliberate pauses", () => {
     expect(
       classifyReelWatchdog({
         ...playing,
-        shouldPlay: false,
+        playIntended: false,
         msSincePlayheadAdvance: REEL_STALL_DEADLINE_MS * 5,
       }),
     ).toBe("ok")
@@ -109,10 +123,5 @@ describe("classifyReelWatchdog — the reel's own deliberate pauses", () => {
 describe("classifyReelWatchdog — deadline shape", () => {
   it("gives a freeze less rope than a load, because the viewer sees a stuck frame", () => {
     expect(REEL_STALL_DEADLINE_MS).toBeLessThan(REEL_LOAD_DEADLINE_MS)
-  })
-
-  it("leaves the load deadline clear of the chapter card it waits behind", () => {
-    // The card holds the player paused; the load clock only starts when it lifts.
-    expect(REEL_LOAD_DEADLINE_MS).toBeGreaterThan(REEL_STALL_DEADLINE_MS)
   })
 })
