@@ -25,7 +25,12 @@ Set them as EAS environment variables per environment (do NOT commit them):
 # point preview + production builds at prod admin GraphQL
 npx eas-cli env:create --environment preview    --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
 npx eas-cli env:create --environment production --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
-# add EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN the same way only if prod admin requires a token
+# prod admin REQUIRES a search token: set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN to TV's OWN fleet key
+# (a dedicated entry in admin's FLEET_ADMIN_API_KEYS CSV — never mobile's value).
+# Use --visibility sensitive, NOT secret: EAS rejects `secret` for EXPO_PUBLIC_* vars (they inline
+# into the bundle, so the value is extractable by design — the abuse ceiling is the guard, not secrecy).
+npx eas-cli env:create --environment preview    --name EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN --value <tv-fleet-key> --visibility sensitive
+npx eas-cli env:create --environment production --name EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN --value <tv-fleet-key> --visibility sensitive
 ```
 
 ## Android TV / Google TV — sideloadable APK (easiest, no review)

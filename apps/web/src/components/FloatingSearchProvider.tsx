@@ -81,6 +81,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const parsedPath = parseWatchPath(pathname)
   const isWatchHome =
     parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+  const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
   const logoSlotClass = isWatchHome
     ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
     : FLOATING_HEADER_LOGO_SLOT_CLASS
@@ -476,7 +477,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS} transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
       >
         <Link
-          href={"/" as Route}
+          href={logoHref as Route}
           aria-label={t("home")}
           data-testid="floating-header-logo"
           onClick={resetSearch}
