@@ -758,6 +758,10 @@ type MediaCollectionBlock {
   categoryLabel: String
   ctaLabel: String
   ctaLink: String
+  """
+  First visible parent collection slug shared by every linked manual item, in the first item's relation order. Null when items are empty, unlinked, or mixed.
+  """
+  defaultCollectionSlug: String
   description: String
   footerText: String
   imageAssetId: String

@@ -510,6 +510,177 @@ describe("MediaCollectionItem videoSlug resolver", () => {
   })
 })
 
+describe("MediaCollectionBlock defaultCollectionSlug resolver", () => {
+  const resolveDefaultCollectionSlug = fieldResolver(
+    "MediaCollectionBlock",
+    "defaultCollectionSlug",
+  )
+
+  it("resolves the first visible parent shared by every item through batched loaders", async () => {
+    const loadRelations = vi
+      .fn()
+      .mockResolvedValue([
+        [{ parentId: "parent-lumo" }, { parentId: "parent-gospels" }],
+        [{ parentId: "parent-lumo" }],
+      ])
+    const loadMany = vi.fn().mockResolvedValue([
+      { id: "parent-lumo", slug: "lumo", deletedAt: null },
+      { id: "parent-gospels", slug: "gospel-films", deletedAt: null },
+    ])
+
+    const result = await resolveDefaultCollectionSlug(
+      {
+        itemsSource: "manual",
+        items: [{ videoId: "video-1" }, { videoId: "video-2" }],
+      },
+      {},
+      {
+        loaders: {
+          videoParentsByChildId: { loadMany: loadRelations },
+          videoById: { loadMany },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBe("lumo")
+    expect(loadRelations).toHaveBeenCalledWith([
+      { videoId: "video-1", visibleOnly: true },
+      { videoId: "video-2", visibleOnly: true },
+    ])
+    expect(loadMany).toHaveBeenCalledWith(["parent-lumo", "parent-gospels"])
+  })
+
+  it("returns null when items do not share a visible parent", async () => {
+    const result = await resolveDefaultCollectionSlug(
+      {
+        itemsSource: "manual",
+        items: [{ videoId: "video-1" }, { videoId: "video-2" }],
+      },
+      {},
+      {
+        loaders: {
+          videoParentsByChildId: {
+            loadMany: vi
+              .fn()
+              .mockResolvedValue([
+                [{ parentId: "parent-lumo" }],
+                [{ parentId: "parent-chosen" }],
+              ]),
+          },
+          videoById: {
+            loadMany: vi.fn().mockResolvedValue([
+              { id: "parent-lumo", slug: "lumo", deletedAt: null },
+              { id: "parent-chosen", slug: "the-chosen", deletedAt: null },
+            ]),
+          },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null without loaders when an item is not linked", async () => {
+    const loadRelations = vi.fn()
+    const loadMany = vi.fn()
+
+    const result = await resolveDefaultCollectionSlug(
+      {
+        itemsSource: "manual",
+        items: [{ videoId: "video-1" }, { videoId: null }],
+      },
+      {},
+      {
+        loaders: {
+          videoParentsByChildId: { loadMany: loadRelations },
+          videoById: { loadMany },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(loadRelations).not.toHaveBeenCalled()
+    expect(loadMany).not.toHaveBeenCalled()
+  })
+
+  it("propagates relation loader failures", async () => {
+    await expect(
+      resolveDefaultCollectionSlug(
+        {
+          itemsSource: "manual",
+          items: [{ videoId: "video-1" }],
+        },
+        {},
+        {
+          loaders: {
+            videoParentsByChildId: {
+              loadMany: vi
+                .fn()
+                .mockResolvedValue([new Error("relation load failed")]),
+            },
+            videoById: { loadMany: vi.fn() },
+          },
+        },
+        fakeInfo,
+      ),
+    ).rejects.toThrow("relation load failed")
+  })
+
+  it("propagates parent loader failures", async () => {
+    await expect(
+      resolveDefaultCollectionSlug(
+        {
+          itemsSource: "manual",
+          items: [{ videoId: "video-1" }],
+        },
+        {},
+        {
+          loaders: {
+            videoParentsByChildId: {
+              loadMany: vi
+                .fn()
+                .mockResolvedValue([[{ parentId: "parent-lumo" }]]),
+            },
+            videoById: {
+              loadMany: vi
+                .fn()
+                .mockResolvedValue([new Error("parent load failed")]),
+            },
+          },
+        },
+        fakeInfo,
+      ),
+    ).rejects.toThrow("parent load failed")
+  })
+
+  it("does not load parents for route-video-children blocks", async () => {
+    const loadRelations = vi.fn()
+    const loadMany = vi.fn()
+
+    const result = await resolveDefaultCollectionSlug(
+      {
+        itemsSource: "routeVideoChildren",
+        items: [{ videoId: "video-1" }],
+      },
+      {},
+      {
+        loaders: {
+          videoParentsByChildId: { loadMany: loadRelations },
+          videoById: { loadMany },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toBeNull()
+    expect(loadRelations).not.toHaveBeenCalled()
+    expect(loadMany).not.toHaveBeenCalled()
+  })
+})
+
 // -----------------------------------------------------------------------------
 // Union dispatch happy path — mixed-kind array (mimics what a real
 // ExperienceLocale.blocks JSON column holds). A SectionBlock inside the array
@@ -618,6 +789,12 @@ describe("Edge cases", () => {
     expect(fields?.coreId).toBeDefined()
     expect(fields?.imageBlurDataUrl).toBeDefined()
     expect(fields?.imageOverrideBlurDataUrl).toBeDefined()
+  })
+
+  it("exposes the inferred default collection slug on MediaCollectionBlock", () => {
+    const type = schema.getType("MediaCollectionBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.defaultCollectionSlug).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {
