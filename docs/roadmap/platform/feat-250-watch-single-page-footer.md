@@ -8,7 +8,8 @@ start_date: "2026-07-13"
 duration: 1
 depends_on:
   - "feat-235"
-blocks: []
+blocks:
+  - "feat-254"
 tags:
   - "web"
   - "watch"
