@@ -52,11 +52,10 @@ admin (Railway)  --syslog/UDP:514-->  @forge/datadog-agent (Railway)  --HTTPS-->
 > ⚠️ **Precondition — do this before building any monitor.** In Datadog → Logs,
 > run `service:forge-admin` and confirm recent admin logs are arriving. If none,
 > the syslog forwarding isn't active (admin Railway service needs `DD_AGENT_HOST`
->
-> - `DD_AGENT_SYSLOG_PORT=514`) and every monitor below will be silently green.
->   Fix the pipeline first. Also note: `.near`/`.exceeded` only appear once a key
->   nears/crosses 6000/min — at current traffic they may **never fire**, which is
->   healthy (you're well under ceiling), not a broken pipeline.
+> and `DD_AGENT_SYSLOG_PORT=514`) and every monitor below will be silently green.
+> Fix the pipeline first. Also note: `.near`/`.exceeded` only appear once a key
+> nears/crosses 6000/min — at current traffic they may **never fire**, which is
+> healthy (you're well under ceiling), not a broken pipeline.
 
 ---
 
@@ -157,6 +156,11 @@ alert channel. Replace `team:forge` with your real team tag if different.
 ---
 
 ## 4. How to create them
+
+> **The committed payloads in [`infra/datadog-monitors/`](../../infra/datadog-monitors/)
+> are canonical** (M1–M3 + `create.sh` + README, with an error-checked apply). The
+> inline JSON/curl below is illustrative; if it drifts from the committed files,
+> the committed files win.
 
 ### Option A — Datadog UI (quickest)
 

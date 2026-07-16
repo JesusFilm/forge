@@ -18,16 +18,27 @@ if command -v jq >/dev/null 2>&1; then
   done
 fi
 
+rc=0
 for f in "${files[@]}"; do
   echo "→ creating from $f.json"
+  # Keys ride a curl config on a process-substitution FD, never argv: printf is a shell
+  # builtin, so the key values never surface in `ps`/proc cmdline the way -H "...$KEY" would.
   resp="$(curl -sS -X POST "https://api.${DD_SITE}/api/v1/monitor" \
-    -H "DD-API-KEY: ${DD_API_KEY}" \
-    -H "DD-APPLICATION-KEY: ${DD_APP_KEY}" \
     -H "Content-Type: application/json" \
-    --data-binary @"$here/$f.json")"
+    --data-binary @"$here/$f.json" \
+    -K <(printf 'header = "DD-API-KEY: %s"\nheader = "DD-APPLICATION-KEY: %s"\n' "$DD_API_KEY" "$DD_APP_KEY"))"
+  # curl -sS exits 0 even on 4xx/5xx, so detect a rejected create by the ABSENCE of .id
+  # (Datadog returns {id,...} on success, {errors:[...]} on failure) and fail the run.
   if command -v jq >/dev/null 2>&1; then
-    printf '%s' "$resp" | jq '{id, name, errors}'
+    if id="$(printf '%s' "$resp" | jq -re '.id')" && [ -n "$id" ]; then
+      printf '%s' "$resp" | jq '{id, name}'
+    else
+      echo "  x create FAILED for $f.json:" >&2
+      printf '%s\n' "$resp" >&2
+      rc=1
+    fi
   else
     printf '%s\n' "$resp"
   fi
 done
+exit "$rc"

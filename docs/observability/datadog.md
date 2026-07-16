@@ -270,6 +270,15 @@ Regression-hunt loop against `service:forge-tv`:
 
 "Did telemetry arrive in the last N minutes?" — query `search_datadog_rum_events` for `service:forge-tv` over the window, or `curl` the RUM search API with a read-scoped key. Provisioning (RUM app, tokens, monitors) stays in the Datadog UI; the MCP is read-only.
 
+## Monitors as code (feat-240)
+
+`infra/datadog-monitors/` holds repo-owned Datadog **monitors-as-code** — Monitor
+API JSON payloads plus `create.sh` to apply them (operator supplies `DD_API_KEY` +
+`DD_APP_KEY`). First set: the feat-240 fleet-ceiling alerts
+(`event=fleet_ceiling.*` on `service:forge-admin`). Prefer adding new monitors
+there over hand-creating them in the UI. Spec:
+`docs/observability/fleet-ceiling-datadog-monitors.md`.
+
 ## Future app pattern
 
 Reuse the `Forge-production` API key and `@forge/datadog-agent` Railway
