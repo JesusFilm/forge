@@ -124,6 +124,174 @@ describe("mapVariant (KTD2)", () => {
       orientation: "horizontal",
     })
   })
+  // MediaCollectionVariant is a 5-literal enum (carousel collection grid hero
+  // player) — the two we don't name must land on the safe default, not crash.
+  it("maps the unhandled hero/player enum members → horizontal grid", () => {
+    expect(mapVariant("hero")).toEqual({
+      layout: "grid",
+      orientation: "horizontal",
+    })
+    expect(mapVariant("player")).toEqual({
+      layout: "grid",
+      orientation: "horizontal",
+    })
+  })
+})
+
+// Prod's "Discover the full story" is a `carousel` (→ horizontal by variant)
+// whose every item carries a curated 2:3 poster, and web renders it PORTRAIT.
+// The poster override is what promotes it — mirrors mobile's isPortraitPosterRail.
+describe("portrait poster rails", () => {
+  const POSTER_A =
+    "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
+  const POSTER_B =
+    "https://admin.jesusfilm.org/api/public/media-assets/b/preview"
+
+  function posterBlock(
+    items: readonly Record<string, unknown>[],
+    variant = "carousel",
+  ) {
+    return mediaBlock({ mediaCollectionVariant: variant, items })
+  }
+
+  function sectionFor(
+    items: readonly Record<string, unknown>[],
+    variant = "carousel",
+  ): WatchHomeSection {
+    return buildWatchHomeSectionsFromExperience(
+      [posterBlock(items, variant)],
+      HYDRATED,
+    )[0]
+  }
+
+  it("promotes an all-poster carousel to a poster rail despite variant=carousel", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single", imageOverrideUrl: POSTER_B },
+    ])
+    expect(section.isPosterRail).toBe(true)
+    // layout still follows the variant; orientation mirrors mobile's model.
+    expect(section.layout).toBe("rail")
+    expect(section.orientation).toBe("vertical")
+  })
+
+  it("is not a poster rail when only SOME items have a poster", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single" },
+    ])
+    expect(section.isPosterRail).toBe(false)
+  })
+
+  it("is not a poster rail when no item has a poster", () => {
+    const section = sectionFor([
+      { coreId: "core-series" },
+      { coreId: "core-single" },
+    ])
+    expect(section.isPosterRail).toBe(false)
+  })
+
+  // Tightening vs mobile (which tests the raw field): an override that cannot
+  // resolve yields NO poster, so the rail must not claim a portrait frame — that
+  // is exactly how landscape art ends up cropped into 2:3.
+  it("is not a poster rail when an override is present but unresolvable", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single", imageOverrideUrl: "javascript:alert(1)" },
+    ])
+    expect(section.isPosterRail).toBe(false)
+  })
+
+  // REGRESSION GUARD: `collection` maps to orientation "vertical" for mobile
+  // layout parity, but that says NOTHING about art. Rendering off orientation
+  // put a 2:3 frame around the landscape cinematic — the exact bug this feature
+  // exists to prevent. isPosterRail must stay false here.
+  it("does NOT make a poster-less variant=collection a poster rail", () => {
+    const section = sectionFor(
+      [{ coreId: "core-series" }, { coreId: "core-single" }],
+      "collection",
+    )
+    expect(section.orientation).toBe("vertical") // mobile parity, unchanged
+    expect(section.isPosterRail).toBe(false) // but the frame stays landscape
+    // ...and the cards keep the hydrated landscape art, as before the feature.
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([
+      "https://img/series.jpg",
+      "https://img/single.jpg",
+    ])
+  })
+
+  // The invariant the whole feature rests on: a poster rail implies portrait ART
+  // on every rendered card. If this can fail, cards crop.
+  it("gives every card in a poster rail its curated poster", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single", imageOverrideUrl: POSTER_B },
+    ])
+    expect(section.isPosterRail).toBe(true)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
+  })
+
+  // The converse: a landscape rail must never adopt a portrait poster, or the
+  // 2.13:1 frame crops it. Frame and art are gated on the SAME value.
+  it("keeps landscape art on a mixed rail, ignoring the stray poster", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-single" },
+    ])
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([
+      "https://img/series.jpg",
+      "https://img/single.jpg",
+    ])
+  })
+})
+
+// Card art is gated on the SAME poster-rail decision as the frame, so the two
+// can never disagree: poster rail → the curated override; anything else → the
+// hydrated video art, exactly as before this feature existed.
+describe("card image source", () => {
+  const POSTER = "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
+  const ITEM_IMAGE = "https://cdn.example/item.jpg"
+  const VIDEO_ART = "https://img/single.jpg" // singleVideo's videoStill
+
+  function cardFor(item: Record<string, unknown>) {
+    return buildWatchHomeSectionsFromExperience(
+      [mediaBlock({ items: [item] })],
+      HYDRATED,
+    )[0].cards[0]
+  }
+
+  it("uses the override poster on a poster rail (outranks the video art)", () => {
+    expect(
+      cardFor({ coreId: "core-single", imageOverrideUrl: POSTER }).imageUrl,
+    ).toBe(POSTER)
+  })
+
+  it("uses the hydrated video art when the item has no override", () => {
+    expect(cardFor({ coreId: "core-single" }).imageUrl).toBe(VIDEO_ART)
+  })
+
+  // item.imageUrl is deliberately NOT a poster signal (it carries landscape art
+  // too), so it can't promote a rail — and a landscape rail keeps its video art.
+  it("ignores the item imageUrl — it cannot make a rail portrait", () => {
+    const section = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({
+          items: [{ coreId: "core-single", imageUrl: ITEM_IMAGE }],
+        }),
+      ],
+      HYDRATED,
+    )[0]
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards[0].imageUrl).toBe(VIDEO_ART)
+  })
+
+  it("ignores an unresolvable override rather than blanking the card", () => {
+    expect(
+      cardFor({ coreId: "core-single", imageOverrideUrl: "javascript:x" })
+        .imageUrl,
+    ).toBe(VIDEO_ART)
+  })
 })
 
 describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {

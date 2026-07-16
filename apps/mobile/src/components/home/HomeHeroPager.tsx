@@ -34,7 +34,9 @@ import {
 } from "../../lib/color"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
+import { datadogLog } from "../../lib/datadog"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { sanitizeVideoErrorMessage } from "../../lib/videoQoe"
 import {
   muxSlideDisplayCopy,
   type WatchHomeSlide,
@@ -180,10 +182,20 @@ export function HomeHeroPager({
   // videoReady latch survives. Only video slides consume the error — a stale
   // background source must not skip an active mux slide (those run a 7s timer).
   useEffect(() => {
-    const sub = player.addListener("statusChange", ({ status }) => {
+    const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status !== "error") return
       const current = stateRef.current
-      if (current.slides[current.currentIndex]?.kind !== "video") return
+      const slide = current.slides[current.currentIndex]
+      if (slide?.kind !== "video") return
+      // R37: the hero is a distinct player the managed-player QoE excludes.
+      datadogLog.warn("video.playback_error", {
+        surface: "hero",
+        content_id: slide.slug,
+        message:
+          error?.message != null
+            ? sanitizeVideoErrorMessage(error.message)
+            : "video playback error",
+      })
       dispatch({ type: "STREAM_ERROR" })
     })
     return () => sub.remove()
@@ -618,6 +630,10 @@ const HeroPage = memo(function HeroPage({
             contentFit="cover"
             recyclingKey={slide.id}
             accessibilityLabel={slide.imageAlt}
+            // R18: a silently-dropped hero poster is a content-quality loss.
+            onError={() =>
+              datadogLog.warn("image.load_failed", { surface: "hero" })
+            }
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.posterFallback]} />

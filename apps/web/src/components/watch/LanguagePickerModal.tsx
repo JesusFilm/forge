@@ -1,7 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
+  ArrowRight,
   Captions,
   Check,
   Globe,
@@ -30,6 +32,8 @@ import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import {
+  languagesIndexPath,
+  languageVideosIndexPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchEpisodePath,
@@ -339,6 +343,14 @@ export function LanguagePickerModal({
     () => options.find((option) => option.slug === draftSlug) ?? null,
     [draftSlug, options],
   )
+  const draftLanguageDisplay = useMemo(
+    () => draftLanguageOption ?? deriveLanguageDisplay(draftSlug, null),
+    [draftLanguageOption, draftSlug],
+  )
+  const draftLanguageInventoryPath = useMemo(() => {
+    const slug = tryAsLocaleSlug(draftSlug)
+    return slug ? languageVideosIndexPath(slug) : null
+  }, [draftSlug])
   const excludedTooltipLanguage = useMemo(
     () =>
       tooltipLanguageKeyForCurrentLanguage({
@@ -703,31 +715,45 @@ export function LanguagePickerModal({
               onActivate={setActiveTooltipCopy}
               onDeactivate={clearActiveTooltip}
             >
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2.5">
+              <div
+                data-testid="watch-language-picker-language-header"
+                className="flex w-full min-w-0 flex-wrap items-center justify-between gap-1.5"
+              >
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      data-testid="watch-language-picker-language-icon"
+                      className="flex size-8 shrink-0 items-center justify-center text-stone-200"
+                    >
+                      <Languages aria-hidden className="size-4" />
+                    </span>
+                    <h2 className="text-xl font-semibold text-stone-100">
+                      {t("languageHeading")}
+                    </h2>
+                  </div>
                   <span
-                    data-testid="watch-language-picker-language-icon"
-                    className="flex size-8 shrink-0 items-center justify-center text-stone-200"
+                    data-testid="watch-language-picker-count"
+                    className="hidden text-xs font-normal text-stone-400 sm:inline sm:text-sm"
                   >
-                    <Languages aria-hidden className="size-4" />
+                    {t("languageCount", { count: options.length })}
                   </span>
-                  <h2 className="text-xl font-semibold text-stone-100">
-                    {t("languageHeading")}
-                  </h2>
+                  {languageOptionsLoading ? (
+                    <LoaderCircle
+                      aria-hidden
+                      data-testid="watch-language-picker-loading"
+                      className="size-5 animate-spin text-stone-400"
+                    />
+                  ) : null}
                 </div>
-                <span
-                  data-testid="watch-language-picker-count"
-                  className="text-xs font-normal text-stone-400 sm:text-sm"
+                <Link
+                  href={languagesIndexPath()}
+                  prefetch={false}
+                  data-testid="watch-language-picker-all-languages-link"
+                  className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
                 >
-                  {t("languageCount", { count: options.length })}
-                </span>
-                {languageOptionsLoading ? (
-                  <LoaderCircle
-                    aria-hidden
-                    data-testid="watch-language-picker-loading"
-                    className="size-5 animate-spin text-stone-400"
-                  />
-                ) : null}
+                  <Globe aria-hidden className="size-3.5" />
+                  <span>See all languages</span>
+                </Link>
               </div>
             </MultilingualTooltip>
             {languageOptionsError ? (
@@ -777,6 +803,28 @@ export function LanguagePickerModal({
                 )}
               />
             )}
+            {draftLanguageInventoryPath ? (
+              <div
+                data-testid="watch-language-picker-selected-language-action"
+                className="-mt-2 flex min-w-0 justify-start"
+              >
+                <Link
+                  href={draftLanguageInventoryPath}
+                  prefetch={false}
+                  data-testid="watch-language-picker-selected-language-link"
+                  aria-label={`See all videos in ${draftLanguageDisplay.name}`}
+                  className={`group inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-stone-400 underline decoration-stone-500 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-stone-200 ${MODAL_FOCUS_RING_CLASS}`}
+                >
+                  <span className="truncate">
+                    See all videos in {draftLanguageDisplay.name}
+                  </span>
+                  <ArrowRight
+                    aria-hidden
+                    className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                  />
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-4">
@@ -929,7 +977,10 @@ export function LanguagePickerModal({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3 pt-3">
+          <div
+            data-testid="watch-language-picker-actions"
+            className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3 pt-3"
+          >
             <MultilingualTooltip
               copy={MULTILINGUAL_TOOLTIPS.close}
               testId="watch-language-picker-tooltip-close"

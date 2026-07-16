@@ -15,6 +15,7 @@ import {
   type VariantMedia,
   type WatchVideoRecord,
 } from "../lib/normalizeVideo"
+import { datadogLog } from "../lib/datadog"
 import { ensureDubMedia } from "../lib/dubMediaFetch"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import {
@@ -122,6 +123,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       setActiveVariantIndexState(index)
       const slug = videoRef.current?.variants[index]?.languageSlug ?? null
       if (slug) setPreferredAudioLanguage(slug)
+      // User-intent seam only — the reconciler uses the raw setter (R32).
+      datadogLog.info("content.language_change", { language_slug: slug })
     },
     [setPreferredAudioLanguage],
   )
@@ -144,6 +147,8 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       // the choice maps onto other videos' subtitles. Only on a real selection;
       // turning subtitles off keeps the last language so re-enabling restores it.
       if (slug) setPreferredSubtitleLanguage(slug)
+      // User-intent seam only — the reconciler uses the raw setter (R32).
+      datadogLog.info("content.subtitle_change", { language_slug: slug })
     },
     [setPreferredSubtitleLanguage],
   )
@@ -204,7 +209,14 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         },
         onSuccess: (id, media) =>
           setMediaById((prev) => ({ ...prev, [id]: media })),
-        onError: (id) => setErrorIds((prev) => ({ ...prev, [id]: true })),
+        onError: (id) => {
+          setErrorIds((prev) => ({ ...prev, [id]: true }))
+          // Silent content-quality loss: this dub's downloads/subtitles never
+          // resolved (R18); id is the fetched (active) variant's dub.
+          datadogLog.warn("dub.media_fetch_failed", {
+            language_slug: activeVariant?.languageSlug ?? null,
+          })
+        },
         onSettled: (id) =>
           setLoadingIds((prev) => {
             const next = { ...prev }

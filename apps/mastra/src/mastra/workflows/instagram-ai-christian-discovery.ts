@@ -73,7 +73,7 @@ export const InstagramDiscoveryWorkflowInputSchema = z
     handles: z.array(z.string().min(1)).max(MAX_HANDLES).default([]),
     queries: z.array(z.string().min(1)).max(20).default(DEFAULT_QUERIES),
     limitPerQuery: z.number().int().positive().max(50).default(10),
-    scrapeMetadata: z.boolean().default(false),
+    scrapeMetadata: z.boolean().default(true),
     maxResults: z.number().int().positive().max(200).default(10),
     persistArtifact: z.boolean().default(true),
   })
@@ -197,10 +197,12 @@ async function withSavedInstagramSources(
  * in the plain-string format the rest of the app uses.
  */
 async function submitToReviewQueue(
+  runId: string,
   posts: readonly InstagramPost[],
   options: Pick<InstagramDiscoveryOptions, "siteIngest" | "submitPosts">,
 ): Promise<ReviewQueueOutcome> {
   if (posts.length === 0) return { status: "empty" }
+  if (options.siteIngest === null) return { status: "not_configured" }
   const config = options.siteIngest ?? getInstagramSiteIngestConfig()
   if (!options.submitPosts && !config) return { status: "not_configured" }
   try {
@@ -210,8 +212,14 @@ async function submitToReviewQueue(
         ? await submitPostsToSite(posts, config)
         : null
     if (result) {
+      if (!result.ok) {
+        throw new SiteIngestError(
+          "invalid_response",
+          "site ingest returned an unsuccessful result",
+        )
+      }
       console.log(
-        `[instagram-discovery] event=site_ingest inserted=${result.inserted} skipped=${result.skipped}`,
+        `[instagram-discovery] event=site_ingest runId=${runId} inserted=${result.inserted} skipped=${result.skipped}`,
       )
       return {
         status: "submitted",
@@ -222,7 +230,7 @@ async function submitToReviewQueue(
     return { status: "not_configured" }
   } catch (error) {
     console.error(
-      `[instagram-discovery] event=site_ingest_failed message=${
+      `[instagram-discovery] event=site_ingest_failed runId=${runId} message=${
         error instanceof Error ? error.message : String(error)
       }`,
     )
@@ -561,7 +569,7 @@ export async function runInstagramDiscovery(
       artifactPath = written.path
     }
 
-    const reviewQueue = await submitToReviewQueue(posts, options)
+    const reviewQueue = await submitToReviewQueue(mastraRunId, posts, options)
 
     return {
       ok: true,
@@ -715,7 +723,7 @@ const reportStep = createStep({
       artifactPath = written.path
     }
 
-    const reviewQueue = await submitToReviewQueue(inputData.posts, {})
+    const reviewQueue = await submitToReviewQueue(runId, inputData.posts, {})
 
     return {
       ok: true as const,

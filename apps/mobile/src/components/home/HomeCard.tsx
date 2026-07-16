@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
 import { BLACK, hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
+import { datadogLog } from "../../lib/datadog"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
@@ -121,6 +122,9 @@ export const HomeCard = memo(function HomeCard({
       onPress={interactive ? handlePress : undefined}
       accessibilityRole={interactive ? "button" : "image"}
       accessibilityLabel={card.title}
+      // Stable, low-cardinality RUM action name (auto-tracker would leak the
+      // title from accessibilityLabel) — KTD10. Spread: Pressable omits the type.
+      {...{ "dd-action-name": "home-card" }}
       accessibilityHint={
         interactive
           ? isSeries
@@ -137,6 +141,9 @@ export const HomeCard = memo(function HomeCard({
           recyclingKey={card.id}
           accessibilityLabel={card.imageAlt}
           priority="low"
+          onError={() =>
+            datadogLog.warn("image.load_failed", { surface: "home-card" })
+          }
         />
       )}
       <LinearGradient

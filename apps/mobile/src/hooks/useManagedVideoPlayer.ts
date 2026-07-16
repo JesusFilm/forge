@@ -1,9 +1,24 @@
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { AppState } from "react-native"
 import { useEvent } from "expo"
 import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
 import { extractMuxPlaybackId } from "../lib/muxThumbnail"
+import { datadogLog } from "../lib/datadog"
+import {
+  createVideoQoeSession,
+  shouldCountRebuffer,
+  type VideoQoeReason,
+  type VideoQoeSession,
+} from "../lib/videoQoe"
+
+// Playhead watchdog (R39): poll currentTime while the player reports playing and
+// is NOT buffering; if it stays frozen this long, emit one stall. 3s (not sub-1s)
+// keeps normal ≤1s hitches out — the target is the black-frame/stuck-at-0:00 freeze.
+const STALL_POLL_MS = 1000
+const STALL_THRESHOLD_MS = 3000
+// Float jitter: an advance under this counts as "not moving".
+const POSITION_EPSILON_S = 0.25
 
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
@@ -34,6 +49,52 @@ export function useManagedVideoPlayer(
   // the background after the AppState listener already paused.
   const isForegroundRef = useRef(true)
 
+  // ── Playback QoE session (R36/R38) ──────────────────────────────────
+  // Pure accumulator (createVideoQoeSession) fed from the listeners below; the
+  // summary emits once on session end (unmount / cross-asset swap). content_id
+  // is the Mux playback id (PII-free); source is offline vs network per R38.
+  const qoeRef = useRef<VideoQoeSession | null>(null)
+  const sessionContentIdRef = useRef<string | null>(null)
+  const sessionSourceRef = useRef<"offline" | "network">("network")
+  const sessionStartedRef = useRef(false)
+  // Rebuffer gate: has playback begun, and is a source swap mid-flight.
+  const hasStartedRef = useRef(false)
+  const isSwappingRef = useRef(false)
+
+  const emitQoeSummary = useCallback((reason: VideoQoeReason) => {
+    const summary = qoeRef.current?.finalize(reason)
+    qoeRef.current = null
+    if (summary == null) return
+    // Skip an empty session (e.g. a null→real source swap before any playback).
+    if (
+      summary.ttff_ms == null &&
+      summary.rebuffer_count === 0 &&
+      summary.error_count === 0 &&
+      (summary.watched_ms ?? 0) === 0
+    )
+      return
+    datadogLog.info("video.qoe", {
+      ...summary,
+      source: sessionSourceRef.current,
+    })
+  }, [])
+
+  const startQoeSession = useCallback((url: string | null) => {
+    sessionContentIdRef.current = extractMuxPlaybackId(url)
+    // R38: a completed download plays from file://, a stream from https.
+    sessionSourceRef.current =
+      url != null && url.startsWith("file://") ? "offline" : "network"
+    hasStartedRef.current = false
+    qoeRef.current = createVideoQoeSession({
+      contentId: sessionContentIdRef.current,
+    })
+  }, [])
+
+  if (!sessionStartedRef.current) {
+    sessionStartedRef.current = true
+    startQoeSession(creationSource)
+  }
+
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
 
@@ -45,6 +106,12 @@ export function useManagedVideoPlayer(
     loadedUrlRef.current = sourceUrl
     if (currentId != null && nextId != null && currentId === nextId) return
 
+    // A genuine cross-asset swap ends this QoE session and opens a new one so
+    // watched_ms/rebuffers/source attribute to the right asset (R36/R38).
+    emitQoeSummary("abandoned")
+    startQoeSession(sourceUrl)
+    isSwappingRef.current = true
+
     // Preserve playback across the swap: replace() drops the playing state, so
     // a mid-play swap would strand a paused frame. Resume after load.
     const wasPlaying = player.playing
@@ -55,7 +122,12 @@ export function useManagedVideoPlayer(
       try {
         player.play()
       } catch {
-        // Player already released.
+        // R16: a genuine resume failure (player released mid-swap) — the
+        // "came back and it was frozen" bug; not the unmount-pause noise.
+        datadogLog.warn("video.resume_failed", {
+          content_id: nextId,
+          surface: "swap",
+        })
       }
     }
 
@@ -65,14 +137,18 @@ export function useManagedVideoPlayer(
       .replaceAsync(sourceUrl)
       .then(resume)
       .catch(() => {
+        datadogLog.warn("video.swap_fallback", { content_id: nextId })
         try {
           player.replace(sourceUrl, true)
           resume()
         } catch {
-          // Player already released.
+          datadogLog.error("video.swap_failed", { content_id: nextId })
         }
       })
-  }, [sourceUrl, player])
+      .finally(() => {
+        isSwappingRef.current = false
+      })
+  }, [sourceUrl, player, emitQoeSummary, startQoeSession])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -84,6 +160,12 @@ export function useManagedVideoPlayer(
   const isPlayingRef = useRef(isPlaying)
   useEffect(() => {
     isPlayingRef.current = isPlaying
+    // R36: first play records TTFF (creation→now) into the session summary and
+    // opens the rebuffer gate. onFirstPlaying is idempotent per session.
+    if (isPlaying) {
+      hasStartedRef.current = true
+      qoeRef.current?.onFirstPlaying()
+    }
   }, [isPlaying])
 
   // Background pauses; foreground resumes ONLY if playback was active when the
@@ -97,7 +179,12 @@ export function useManagedVideoPlayer(
           try {
             player.play()
           } catch {
-            // Already released
+            // R16: resume-after-background play() failed (released while
+            // suspended) — the silent "frozen after foregrounding" complaint.
+            datadogLog.warn("video.resume_failed", {
+              content_id: extractMuxPlaybackId(loadedUrlRef.current),
+              surface: "foreground",
+            })
           }
         }
       } else {
@@ -122,6 +209,75 @@ export function useManagedVideoPlayer(
       }
     }
   }, [player])
+
+  // R36: statusChange feeds the QoE session — 'error' is a sanitized error, and
+  // a post-start 'loading' that is not a seek/swap is a genuine rebuffer.
+  useEffect(() => {
+    const sub = player.addListener("statusChange", ({ status, error }) => {
+      if (status === "error") {
+        qoeRef.current?.onError(error?.message)
+      } else if (
+        status === "loading" &&
+        shouldCountRebuffer(hasStartedRef.current, isSwappingRef.current)
+      ) {
+        qoeRef.current?.onRebuffer()
+      }
+    })
+    return () => sub.remove()
+  }, [player])
+
+  // R39 playhead watchdog: while playing and NOT buffering (a real rebuffer
+  // flips status to 'loading', excluded), a frozen currentTime past the
+  // threshold is the stuck-at-0:00 bug. Emit once, re-arm on recovery.
+  const lastPollPositionRef = useRef(0)
+  const lastAdvanceAtRef = useRef(0)
+  const stallEmittedRef = useRef(false)
+  useEffect(() => {
+    // Poll only while playing (matches the comment above): the player ref is
+    // stable for the whole mount, so keying on it alone would poll native every
+    // 1s even while paused. Re-arms the stall window on each resume.
+    if (!isPlaying) return
+    lastAdvanceAtRef.current = Date.now()
+    const id = setInterval(() => {
+      let position: number
+      let status: string
+      try {
+        position = player.currentTime
+        status = player.status
+      } catch {
+        return // Native player already released
+      }
+      // Same poll feeds watched_ms, so no native timeUpdate event is needed.
+      qoeRef.current?.onTimeUpdate(position)
+
+      const now = Date.now()
+      const advanced =
+        position - lastPollPositionRef.current > POSITION_EPSILON_S
+      lastPollPositionRef.current = position
+      if (advanced || status === "loading" || !isPlayingRef.current) {
+        lastAdvanceAtRef.current = now
+        stallEmittedRef.current = false
+        return
+      }
+      if (
+        !stallEmittedRef.current &&
+        now - lastAdvanceAtRef.current >= STALL_THRESHOLD_MS
+      ) {
+        stallEmittedRef.current = true
+        datadogLog.warn("video.playhead_stall", {
+          content_id: sessionContentIdRef.current,
+          source: sessionSourceRef.current,
+        })
+      }
+    }, STALL_POLL_MS)
+    return () => clearInterval(id)
+  }, [player, isPlaying])
+
+  // R36: emit the QoE summary on session end. Distinct from the pause try/catch
+  // above — that catch is unmount noise and stays silent (KTD4).
+  useEffect(() => {
+    return () => emitQoeSummary("abandoned")
+  }, [emitQoeSummary])
 
   return { player, isPlaying }
 }

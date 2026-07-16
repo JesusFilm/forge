@@ -9,6 +9,8 @@ import {
   DEFAULT_WEB_CANONICAL_ORIGIN,
   env,
   experienceAiMaxRepairAttemptsEnvSchema,
+  fleetSearchCeilingEnforceEnvSchema,
+  fleetSearchGlobalCeilingPerMinEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   webCanonicalOriginEnvSchema,
   workflowStartupTransientAttemptsEnvSchema,
@@ -23,6 +25,38 @@ describe("env", () => {
 
   it("defaults visitor-facing web links to the canonical www watch origin", () => {
     expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
+  })
+
+  describe("fleetSearchGlobalCeilingPerMinEnvSchema", () => {
+    it("defaults to 6000 when unset", () => {
+      expect(fleetSearchGlobalCeilingPerMinEnvSchema.parse(undefined)).toBe(
+        6000,
+      )
+    })
+    it("coerces a numeric string", () => {
+      expect(fleetSearchGlobalCeilingPerMinEnvSchema.parse("4800")).toBe(4800)
+    })
+    it("accepts 0 as the operator kill-switch", () => {
+      expect(fleetSearchGlobalCeilingPerMinEnvSchema.parse("0")).toBe(0)
+    })
+    it("rejects a negative ceiling", () => {
+      expect(() =>
+        fleetSearchGlobalCeilingPerMinEnvSchema.parse("-1"),
+      ).toThrow()
+    })
+  })
+
+  describe("fleetSearchCeilingEnforceEnvSchema", () => {
+    it("defaults to false (alert-first)", () => {
+      expect(fleetSearchCeilingEnforceEnvSchema.parse(undefined)).toBe("false")
+    })
+    it("accepts the two enum values", () => {
+      expect(fleetSearchCeilingEnforceEnvSchema.parse("true")).toBe("true")
+      expect(fleetSearchCeilingEnforceEnvSchema.parse("false")).toBe("false")
+    })
+    it("rejects any other string", () => {
+      expect(() => fleetSearchCeilingEnforceEnvSchema.parse("yes")).toThrow()
+    })
   })
 
   describe("webCanonicalOriginEnvSchema", () => {

@@ -768,14 +768,15 @@ search work against the same seed snapshot without logging into production.
 The service route `POST /forge-instagram-discovery` is protected by
 `MASTRA_SERVICE_API_KEYS` and launches the `instagram-ai-christian-discovery`
 workflow. It discovers AI-generated Christian videos on Instagram using
-the shared **Firecrawl web search** client (`POST /v2/search`) — Instagram is
+the shared **Firecrawl web search** client (`POST /v1/search`) — Instagram is
 heavily gated, so direct crawling is unreliable; search returns post/reel URLs
 plus title/snippet that the keyword heuristic acts on.
 
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
 `queries` (defaults to none; the daily run relies on saved trusted handles),
-`limitPerQuery` (10, max 50), `scrapeMetadata` (false — set true to request bounded
-markdown hydration for each search hit, slower), `maxResults` (10),
+`limitPerQuery` (10, max 50), `scrapeMetadata` (true — requests bounded markdown
+and thumbnail-capable metadata for each search hit; set false to reduce Firecrawl
+latency/credits), `maxResults` (10),
 `persistArtifact` (true). The
 workflow searches each query (tolerant to per-query failures), parses Instagram
 permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
@@ -801,10 +802,13 @@ JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
 
 When `INSTAGRAM_DISCOVERY_SITE_INGEST_URL` and
 `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN` are both set, qualified posts are also
-submitted best-effort to the website review queue. Website ingest failures are
-reported in the returned `reviewQueue` result and do not fail discovery; the
-website dedupes by Instagram shortcode. The client requires HTTPS before
-sending the bearer and rejects redirects.
+submitted best-effort to the website review queue. The Studio result pairs the
+top-level `mastraRunId` with the submitted `reviewQueue.inserted` and
+`reviewQueue.skipped` counts; successful and failed ingest logs include the same
+run id for correlation. Website ingest failures are reported in the returned
+`reviewQueue` result and do not fail discovery; the website dedupes by Instagram
+shortcode. The client requires HTTPS before sending the bearer and rejects
+redirects.
 
 When `DISCOVERY_SOURCES_URL` and
 `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN` are both configured, the workflow

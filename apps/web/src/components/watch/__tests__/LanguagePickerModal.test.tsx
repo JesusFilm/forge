@@ -161,7 +161,7 @@ function makeVariant(
     language: {
       coreId: languageSlug,
       slug: languageSlug,
-      name: languageSlug,
+      name: languageSlug.replace(/^./, (letter) => letter.toUpperCase()),
     },
   }
   return { ...base, ...rest }
@@ -252,6 +252,78 @@ const baseVariants = [
 ]
 
 describe("LanguagePickerModal — globe overlay", () => {
+  it("places catalog links at the header edge and below the selector", () => {
+    renderModal({ open: true, variants: baseVariants })
+
+    const languageHeader = $(
+      '[data-testid="watch-language-picker-language-header"]',
+    )
+    const languageSelect = $(
+      '[data-testid="watch-language-picker-tooltip-language-select"]',
+    )
+    const selectedLanguageAction = $(
+      '[data-testid="watch-language-picker-selected-language-action"]',
+    )
+    const allLanguagesLink = $(
+      '[data-testid="watch-language-picker-all-languages-link"]',
+    ) as HTMLAnchorElement
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+
+    expect(allLanguagesLink.getAttribute("href")).toBe("/languages")
+    expect(selectedLanguageLink.getAttribute("href")).toBe(
+      "/english.html/videos",
+    )
+    expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
+      "See all videos in English",
+    )
+    expect(allLanguagesLink.textContent).toContain("See all languages")
+    expect(selectedLanguageLink.textContent).toContain(
+      "See all videos in English",
+    )
+    expect(languageHeader?.contains(allLanguagesLink)).toBe(true)
+    expect(languageHeader?.className).toContain("w-full")
+    expect(allLanguagesLink.className).toContain("ml-auto")
+    expect(
+      selectedLanguageAction?.previousElementSibling?.contains(languageSelect),
+    ).toBe(true)
+    expect(selectedLanguageAction?.contains(selectedLanguageLink)).toBe(true)
+    expect(selectedLanguageLink.className).toContain("min-h-11")
+    expect(selectedLanguageLink.className).toContain("underline")
+    expect(selectedLanguageLink.className).toContain("px-2")
+    expect(selectedLanguageLink.className).toContain("py-2")
+    expectNonCroppingFocusRing(allLanguagesLink)
+    expectNonCroppingFocusRing(selectedLanguageLink)
+  })
+
+  it("updates the inventory link when the draft language changes", () => {
+    renderModal({ open: true, variants: baseVariants })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const spanish = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === "spanish",
+    )!
+    act(() => {
+      spanish.click()
+    })
+
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+    expect(selectedLanguageLink.getAttribute("href")).toBe(
+      "/spanish.html/videos",
+    )
+    expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
+      "See all videos in Spanish",
+    )
+    expect(selectedLanguageLink.textContent).toContain(
+      "See all videos in Spanish",
+    )
+  })
+
   it("Apply is disabled when the modal first opens", () => {
     renderModal({ open: true, variants: baseVariants })
     const apply = $(
