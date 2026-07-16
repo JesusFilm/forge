@@ -5,6 +5,7 @@ import {
 import type { WatchHomeModel } from "../watchHome/model"
 import { initialRotationState } from "./languageRotation"
 import {
+  CREDITS_TAIL_SECONDS,
   EXCERPT_MAX_SECONDS,
   EXCERPT_MIN_SECONDS,
   SHOWCASE_STATS_SECTION_TITLE,
@@ -631,17 +632,18 @@ describe("resolveShowcaseSource — the ladder", () => {
 // ── Excerpt windows (R6) ────────────────────────────────────────────
 
 describe("resolveExcerptWindow — R6: bounded excerpts", () => {
-  it("plays a short-form item from the start, to its natural end", () => {
+  it("plays a short-form item from the start, stopping clear of the credits", () => {
     expect(resolveExcerptWindow(25)).toEqual({
       startSeconds: 0,
-      endSeconds: 25,
+      endSeconds: 20,
     })
   })
 
   it("plays an item exactly at the max window from the start", () => {
+    // 40s item, less the 5s credits tail.
     expect(resolveExcerptWindow(EXCERPT_MAX_SECONDS)).toEqual({
       startSeconds: 0,
-      endSeconds: EXCERPT_MAX_SECONDS,
+      endSeconds: 35,
     })
   })
 
@@ -698,6 +700,89 @@ describe("resolveExcerptWindow — R6: bounded excerpts", () => {
   })
 })
 
+// ── The credits tail ────────────────────────────────────────────────
+
+describe("resolveExcerptWindow — never reaches the end credits", () => {
+  // The product rule is literally five seconds, so these assert against 5 and NOT
+  // against CREDITS_TAIL_SECONDS: a self-referential bound moves with the constant
+  // and would pass vacuously if the guard were ever tuned to zero.
+  const TAIL = 5
+
+  // Every duration where the trim leaves a worthwhile excerpt, across both branches.
+  const TRIMMABLE = [
+    25, 26, 30, 39, 40, 41, 45, 47, 50, 53, 60, 120, 600, 3600, 7200,
+  ]
+
+  it("pins the credits tail to the five seconds the product rule asks for", () => {
+    expect(CREDITS_TAIL_SECONDS).toBe(TAIL)
+  })
+
+  it("stops at least five seconds short of the end", () => {
+    for (const duration of TRIMMABLE) {
+      expect(resolveExcerptWindow(duration).endSeconds).toBeLessThanOrEqual(
+        duration - TAIL,
+      )
+    }
+  })
+
+  // Every one of these ran INTO the tail before the guard (41/45/47 to the literal
+  // last frame, 50 to 48s of 50). 53 is deliberately absent: min(start+40, d) already
+  // stopped it at exactly d-5, so it would pass with the guard reverted.
+  it("covers the durations whose window used to reach the credits", () => {
+    for (const duration of [41, 45, 47, 50]) {
+      const { startSeconds, endSeconds } = resolveExcerptWindow(duration)
+      expect(endSeconds).toBeLessThanOrEqual(duration - TAIL)
+      expect(endSeconds - startSeconds).toBeGreaterThanOrEqual(
+        EXCERPT_MIN_SECONDS,
+      )
+    }
+  })
+
+  // A fractional duration must not round the end back into the tail.
+  it("floors the trimmed end rather than rounding into the credits", () => {
+    for (const duration of [25.6, 30.9, 45.7, 101.5]) {
+      expect(resolveExcerptWindow(duration).endSeconds).toBeLessThanOrEqual(
+        duration - TAIL,
+      )
+    }
+  })
+
+  // Below the trim threshold the MIN floor wins: a 6s item trimmed to 1s would be
+  // a flash, and a 5s item would be an empty window that skips instantly.
+  it("plays an item out in full when the trim would leave less than the floor", () => {
+    expect(resolveExcerptWindow(24)).toEqual({
+      startSeconds: 0,
+      endSeconds: 24,
+    })
+    expect(resolveExcerptWindow(6)).toEqual({ startSeconds: 0, endSeconds: 6 })
+    expect(resolveExcerptWindow(5)).toEqual({ startSeconds: 0, endSeconds: 5 })
+    expect(resolveExcerptWindow(1)).toEqual({ startSeconds: 0, endSeconds: 1 })
+  })
+
+  it("switches to trimming at exactly the duration where the floor still fits", () => {
+    // 24s: trimming would leave 19s, under the floor -> plays out.
+    expect(resolveExcerptWindow(24).endSeconds).toBe(24)
+    // 25s: trimming leaves exactly the floor -> trims.
+    expect(resolveExcerptWindow(25).endSeconds).toBe(EXCERPT_MIN_SECONDS)
+  })
+
+  it("never yields an empty, negative, or backwards window at any duration", () => {
+    for (let duration = 1; duration <= 400; duration += 1) {
+      const { startSeconds, endSeconds } = resolveExcerptWindow(duration)
+      expect(startSeconds).toBeGreaterThanOrEqual(0)
+      expect(endSeconds).toBeGreaterThan(startSeconds)
+      expect(endSeconds).toBeLessThanOrEqual(duration)
+    }
+  })
+
+  it("leaves the unbounded unknown-duration window alone — no tail to find", () => {
+    expect(resolveExcerptWindow(null)).toEqual({
+      startSeconds: 0,
+      endSeconds: EXCERPT_MAX_SECONDS,
+    })
+  })
+})
+
 // ── Playable stream resolution (the injectable fetch seam) ──────────
 
 describe("resolveExcerptStream", () => {
@@ -729,7 +814,8 @@ describe("resolveExcerptStream", () => {
       languageSlug: "english",
       languageName: "English",
       muxPlaybackId: "pb-en",
-      window: { startSeconds: 0, endSeconds: 30 },
+      // 30s dub, less the credits tail.
+      window: { startSeconds: 0, endSeconds: 25 },
       claimsLanguage: false,
     })
   })

@@ -11,6 +11,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Animated, AppState, StyleSheet, View } from "react-native"
 
 import { datadogLog, reportDatadogError } from "../../lib/datadog"
+import {
+  AUDIO_FADE_IN_MS,
+  AUDIO_FADE_TICK_MS,
+  fadeOutVolumeAt,
+  shouldDriveFadeOut,
+  volumeAtElapsed,
+} from "../../lib/showcaseMode/audioFade"
 import { shouldCountReelRebuffer } from "../../lib/showcaseMode/showcaseTelemetry"
 import type { ShowcaseStream } from "../../lib/showcaseMode/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -166,6 +173,83 @@ export function ReelPlayer({
     if (summary != null) datadogLog.info("video_playback.summary", summary)
   }, [])
 
+  // R11's crossfade is audible as well as visible. expo-video exposes no volume ramp,
+  // so it is stepped from a timer; the curve and arming rule live in audioFade.ts.
+  const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // The reveal's fade-in waits out the poster hold, so it is PENDING, not running.
+  // stopFade has to cancel it too, or an armed fade-out is overrun by a fade-in that
+  // was scheduled before it and swells the excerpt back up as it ends.
+  const fadeInDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The TOKEN this fade-out armed for, never a bare boolean. The outgoing stream keeps
+  // emitting timeUpdate past its own end, and a flag reset at swap time is re-armed by
+  // one of those late events — poisoning the latch so the NEXT excerpt never fades.
+  const fadeOutArmedForRef = useRef<number | null>(null)
+
+  const stopFade = useCallback(() => {
+    if (fadeTimerRef.current != null) {
+      clearInterval(fadeTimerRef.current)
+      fadeTimerRef.current = null
+    }
+    if (fadeInDelayRef.current != null) {
+      clearTimeout(fadeInDelayRef.current)
+      fadeInDelayRef.current = null
+    }
+  }, [])
+
+  const setVolume = useCallback(
+    (value: number) => {
+      try {
+        player.volume = value
+      } catch {
+        // Native player already released; benign.
+      }
+    },
+    [player],
+  )
+
+  const fadeVolumeTo = useCallback(
+    (to: number, durationMs: number) => {
+      stopFade()
+      let from = to
+      try {
+        from = player.volume
+      } catch {
+        return // Released mid-transition; nothing to ramp.
+      }
+      const startedAt = Date.now()
+      fadeTimerRef.current = setInterval(() => {
+        const elapsedMs = Date.now() - startedAt
+        setVolume(volumeAtElapsed({ from, to, elapsedMs, durationMs }))
+        if (elapsedMs >= durationMs) stopFade()
+      }, AUDIO_FADE_TICK_MS)
+    },
+    [player, stopFade, setVolume],
+  )
+
+  // Driven off MEDIA time, not the reveal's wall-clock fade-in: re-based on every
+  // timeUpdate that moved, so whichever sample arms it — and however the platform's
+  // clock drifts — the 50ms tick still interpolates it down to silence at the end.
+  const driveFadeOut = useCallback(
+    (mediaTime: number, endSeconds: number) => {
+      stopFade()
+      const basedAtMedia = mediaTime
+      const basedAtWall = Date.now()
+      const tick = () => {
+        const projected = basedAtMedia + (Date.now() - basedAtWall) / 1000
+        const volume = fadeOutVolumeAt({
+          remainingSeconds: endSeconds - projected,
+        })
+        setVolume(volume)
+        if (volume <= 0) stopFade()
+      }
+      tick()
+      fadeTimerRef.current = setInterval(tick, AUDIO_FADE_TICK_MS)
+    },
+    [stopFade, setVolume],
+  )
+
+  useEffect(() => stopFade, [stopFade])
+
   useEffect(() => {
     // Keyed on the stream object, not the token: the shell holds the outgoing
     // excerpt's stream until the new one resolves, so a token bump alone must not
@@ -199,6 +283,10 @@ export function ReelPlayer({
         if (target.window.startSeconds > 0) {
           player.currentTime = target.window.startSeconds
         }
+        // Silent BEFORE play: the poster still has a hold and a fade to run, and
+        // starting at full volume is what made the incoming excerpt pop in early.
+        stopFade()
+        setVolume(0)
         // Re-read the gate at execution time. The app can background across the
         // load, and a pre-await snapshot would force audio out of a hidden screen.
         if (shouldPlayRef.current) player.play()
@@ -206,7 +294,15 @@ export function ReelPlayer({
         if (swapIdRef.current === swapId) onFailed(token)
       }
     })()
-  }, [player, validStream, excerptToken, onFailed, finalizeQoe])
+  }, [
+    player,
+    validStream,
+    excerptToken,
+    onFailed,
+    finalizeQoe,
+    stopFade,
+    setVolume,
+  ])
 
   useEffect(() => {
     const sub = player.addListener("statusChange", ({ status, error }) => {
@@ -280,7 +376,8 @@ export function ReelPlayer({
     const sub = player.addListener("timeUpdate", ({ currentTime }) => {
       // The watchdog's heartbeat: position MOVED, not merely an event arrived — a
       // frozen player still emits on the interval, reporting the same currentTime.
-      if (currentTime !== lastPositionRef.current) {
+      const positionMoved = currentTime !== lastPositionRef.current
+      if (positionMoved) {
         lastPositionRef.current = currentTime
         lastAdvanceAtRef.current = Date.now()
       }
@@ -293,9 +390,25 @@ export function ReelPlayer({
       // Guarded above, so this is the confirmed source's own clock: an unconfirmed
       // reading is the OUTGOING excerpt's position and would pollute watched_ms.
       qoeRef.current?.onTimeUpdate(currentTime)
+      // Ramp down INTO the end, not out of it: the pause below is the hard cut the
+      // viewer hears, and a fade past the end would play the credits R6 keeps clear.
+      if (
+        shouldDriveFadeOut({
+          armedForToken: fadeOutArmedForRef.current,
+          loadedToken: loadedTokenRef.current,
+          positionMoved,
+          currentTime,
+          window: loaded.window,
+        })
+      ) {
+        fadeOutArmedForRef.current = loadedTokenRef.current
+        driveFadeOut(currentTime, loaded.window.endSeconds)
+      }
       if (currentTime < loaded.window.endSeconds) return
       // Silence it now — the poster hides the picture, but this excerpt's audio
       // would otherwise run on underneath until the next stream resolves.
+      stopFade()
+      setVolume(0)
       try {
         player.pause()
       } catch {
@@ -304,7 +417,7 @@ export function ReelPlayer({
       onEnded(loadedTokenRef.current)
     })
     return () => sub.remove()
-  }, [player, onEnded])
+  }, [player, onEnded, driveFadeOut, stopFade, setVolume])
 
   useEffect(() => {
     shouldPlayRef.current = shouldPlay
@@ -413,8 +526,24 @@ export function ReelPlayer({
       }),
     ])
     anim.start()
-    return () => anim.stop()
-  }, [posterVisible, posterCrossfade, posterOpacity])
+    // The audio rides the reveal, not the play() that precedes it by the whole hold.
+    // Volume is a JS property, so it cannot share the native-driven opacity value —
+    // it mirrors that sequence's timing instead.
+    fadeInDelayRef.current = setTimeout(() => {
+      fadeInDelayRef.current = null
+      fadeVolumeTo(1, AUDIO_FADE_IN_MS)
+    }, POSTER_HOLD_MS)
+    const scheduled = fadeInDelayRef.current
+    return () => {
+      anim.stop()
+      // Only ever cancel THIS effect's own pending reveal — stopFade clears whatever
+      // is outstanding, and a re-render must not kill a fade another path started.
+      if (fadeInDelayRef.current === scheduled) {
+        clearTimeout(scheduled)
+        fadeInDelayRef.current = null
+      }
+    }
+  }, [posterVisible, posterCrossfade, posterOpacity, fadeVolumeTo])
 
   return (
     // No pointerEvents="none" anywhere above the VideoView: on a fullscreen surface

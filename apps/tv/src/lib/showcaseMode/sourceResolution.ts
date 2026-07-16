@@ -33,6 +33,9 @@ export const EXCERPT_MIN_SECONDS = 20
 export const EXCERPT_MAX_SECONDS = 40
 const LONG_FORM_OFFSET_RATIO = 0.15
 
+/** End credits are dead air on a reel; no excerpt may reach into this tail. */
+export const CREDITS_TAIL_SECONDS = 5
+
 const FALLBACK_CHAPTER_ID = "showcase-fallback"
 const FALLBACK_EXCERPT_TARGET = 24
 
@@ -326,9 +329,9 @@ export function resolveShowcaseSource(
 // ── Excerpt windows (R6) ────────────────────────────────────────────
 
 /**
- * Short-form plays from 0; longer items play one deterministic window ~15% in, the
- * seek hidden by the poster hold. An unknown duration is still capped — unbounded on
- * a 2-hour feature would park the reel on one item.
+ * One deterministic window per item: short-form from 0, longer ~15% in under the
+ * poster hold, unknown duration still capped. Every window stops short of the credits
+ * tail — except under ~25s, where clearing it would dip below MIN, so the item plays out.
  */
 export function resolveExcerptWindow(
   durationSeconds: number | null | undefined,
@@ -340,17 +343,23 @@ export function resolveExcerptWindow(
   ) {
     return { startSeconds: 0, endSeconds: EXCERPT_MAX_SECONDS }
   }
+  // Floored, so a fractional duration can't round the end back into the tail.
+  const creditsFreeEnd = Math.floor(durationSeconds - CREDITS_TAIL_SECONDS)
   if (durationSeconds <= EXCERPT_MAX_SECONDS) {
-    return { startSeconds: 0, endSeconds: Math.round(durationSeconds) }
+    return {
+      startSeconds: 0,
+      endSeconds:
+        creditsFreeEnd >= EXCERPT_MIN_SECONDS
+          ? creditsFreeEnd
+          : Math.round(durationSeconds),
+    }
   }
-  // duration > MAX here, so the window is min(MAX, 0.85 * duration) >= 34s — inside
-  // the 20-40s band without a clamp.
+  // duration > MAX here, so the window is min(MAX, 0.85 * duration - 5) >= 29s —
+  // inside the 20-40s band without a clamp, and always clear of the tail.
   const startSeconds = Math.round(durationSeconds * LONG_FORM_OFFSET_RATIO)
   return {
     startSeconds,
-    endSeconds: Math.round(
-      Math.min(startSeconds + EXCERPT_MAX_SECONDS, durationSeconds),
-    ),
+    endSeconds: Math.min(startSeconds + EXCERPT_MAX_SECONDS, creditsFreeEnd),
   }
 }
 
