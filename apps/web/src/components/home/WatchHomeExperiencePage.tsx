@@ -7,6 +7,7 @@ import type { WatchHomeModel } from "@/lib/watch-home"
 type WatchHomeExperiencePageProps = {
   heroModel: WatchHomeModel
   blocks: readonly Section[]
+  languageSlug: string
 }
 
 function findBackdropImage(model: WatchHomeModel): {
@@ -32,6 +33,7 @@ function isWatchHomeHeroBlock(block: Section) {
 export function WatchHomeExperiencePage({
   heroModel,
   blocks,
+  languageSlug,
 }: WatchHomeExperiencePageProps) {
   const backdrop = findBackdropImage(heroModel)
   const hasHeroBlock = blocks.some(isWatchHomeHeroBlock)
@@ -88,6 +90,7 @@ export function WatchHomeExperiencePage({
                   (block as { sectionKey?: string | null }).sectionKey ?? index
                 }
                 section={block}
+                languageSlug={languageSlug}
               />
             ),
           )}
