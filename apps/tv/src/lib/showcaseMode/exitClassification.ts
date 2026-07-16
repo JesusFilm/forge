@@ -1,7 +1,7 @@
 /**
  * When the showcase starts and stops: the deliberate-press classifier (R12/AE8) and
  * the launch auto-start gate (R13/AE3). React-free .ts so both are unit-testable —
- * apps/tv has no render harness, and a jest test cannot import `react`.
+ * apps/tv installs no renderer, so a component cannot be render-tested here.
  */
 
 export type RemoteEventLike = { eventType?: string | null } | null | undefined

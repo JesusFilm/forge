@@ -1,6 +1,6 @@
 /**
  * The reel's sequencing machine (R8/R16/R17). React-free .ts so it is unit-testable —
- * apps/tv has no render harness by convention, and a jest test cannot import `react`.
+ * apps/tv installs no renderer, so a component cannot be render-tested here.
  * Timers are declarative durations here; the screen owns setTimeout and feeds events back.
  */
 
