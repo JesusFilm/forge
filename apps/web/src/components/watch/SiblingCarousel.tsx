@@ -420,7 +420,7 @@ export function SiblingCarousel({
                   aria-hidden="true"
                   data-testid="sibling-carousel-hover-outline"
                   className={cn(
-                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-brand-red opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-200",
+                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_-4px_22px_rgba(255,255,255,0.22)] transition-opacity duration-200",
                     !isActive &&
                       "group-hover:opacity-100 group-focus-visible:opacity-100",
                     isPending && "opacity-100",
@@ -431,7 +431,7 @@ export function SiblingCarousel({
                   aria-hidden="true"
                   data-testid="sibling-carousel-active-outline"
                   className={cn(
-                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-brand-red transition-[opacity,transform] duration-300 ease-out",
+                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white transition-[opacity,transform] duration-300 ease-out",
                     isActive
                       ? "scale-100 opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]"
                       : "scale-[0.985] opacity-0",
