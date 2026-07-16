@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from "expo-router"
+import { useFocusEffect, usePathname, useRouter } from "expo-router"
 import {
   useCallback,
   useEffect,
@@ -49,6 +49,12 @@ import {
 } from "../src/components/home/showcaseState"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { useWatchHome } from "../src/hooks/useWatchHome"
+import { shouldAutoStartShowcase } from "../src/lib/showcaseMode/exitClassification"
+import {
+  SHOWCASE_AUTO_SOURCE,
+  SHOWCASE_SOURCE_PARAM,
+} from "../src/lib/showcaseMode/showcaseTelemetry"
+import { useShowcasePrefs } from "../src/lib/showcaseMode/useShowcasePrefs"
 import { scale } from "../src/lib/scale"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
 import type { WatchHomeCard } from "../src/lib/watchHome/model"
@@ -67,6 +73,11 @@ const RAIL_WINDOW_BUFFER = 2
 // Android-only. Apple TV had no perf problem and stays on its original eager
 // path — every gated branch below restores main's behavior.
 const IS_ANDROID = Platform.OS === "android"
+
+// AE3 is "once per LAUNCH", so the latch outlives this component. A mount-scoped ref
+// would re-arm when Home remounts beneath a viewer who just exited the reel and bounce
+// them straight back into it — the trap R12 forbids.
+let autoStartConsumed = false
 
 export default function HomeScreen() {
   const router = useRouter()
@@ -104,6 +115,28 @@ export default function HomeScreen() {
       }
     }, []),
   )
+
+  // R13: an office TV that power-cycles recovers without a remote. Gated on `hydrated`
+  // because the pre-hydration default reads as off, and on the ACTIVE path so a deep
+  // link keeps the route it asked for. A brief Home flash is the accepted cost.
+  const { prefs: showcasePrefs, hydrated: showcasePrefsHydrated } =
+    useShowcasePrefs()
+  const activePath = usePathname()
+  useEffect(() => {
+    if (
+      !shouldAutoStartShowcase({
+        hydrated: showcasePrefsHydrated,
+        autoStartEnabled: showcasePrefs.autoStart,
+        alreadyStarted: autoStartConsumed,
+        activePath,
+      })
+    ) {
+      return
+    }
+    autoStartConsumed = true
+    // Stamped so RUM can separate an unattended recovery from a human start (AE3).
+    router.push(`/showcase?${SHOWCASE_SOURCE_PARAM}=${SHOWCASE_AUTO_SOURCE}`)
+  }, [showcasePrefsHydrated, showcasePrefs.autoStart, activePath, router])
 
   // ── Showcase state ── First model seeds; refetches re-reconcile, keeping the
   // current pick if its id survives. Only CARDS dispatch focus, so it retains
@@ -280,6 +313,10 @@ export default function HomeScreen() {
     router.push("/search")
   }, [router])
 
+  const handleSettingsPress = useCallback(() => {
+    router.push("/settings")
+  }, [router])
+
   // True when the focused element is a rail BELOW the topmost. Gates the topmost
   // rail's autoFocus: ON from topmost/hero CTA/top bar (track + restore last card
   // for Down off CTA), OFF coming Up from below (keep column-preserving geometry).
@@ -328,13 +365,14 @@ export default function HomeScreen() {
   // would dead-end without it (mirrors ctaNode's job for the rail).
   const [searchTabNode, setSearchTabNode] = useState<ViewType | null>(null)
 
-  // The top bar (brandmark · Search/Home tabs · clock), rendered in every state
+  // The top bar (Search/Home/Settings tabs · clock), rendered in every state
   // (loading/error/empty too) so Search stays reachable while the model resolves;
   // in the content state it is the ScrollView's sticky first child.
   const topBar = (
     <HomeTopBar
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
+      onSettingsPress={handleSettingsPress}
       onChromeFocus={handleChromeFocus}
       onSearchTabNode={setSearchTabNode}
       onFocusNode={captureFocusedNode}

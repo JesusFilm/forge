@@ -1,4 +1,4 @@
-// Home's top chrome (centered Search/Home tabs · clock; left slot is an empty spacer); replaces HomeHeader/SearchChip on Home only.
+// Home's top chrome (centered Search/Home/Settings tabs · clock; left slot is an empty spacer); replaces HomeHeader/SearchChip on Home only.
 // Sticky first child of the ScrollView in normal flex flow — never position:absolute on focusables (tvOS focus engine skips them).
 // Hides (opacity 0, translateY -18, ~400ms) while deep in the feed. TODO: add Collections / Saved tabs when those screens ship.
 
@@ -32,6 +32,7 @@ type HomeTopBarProps = {
   /** Deep-in-feed: fade the bar out and make its tabs unfocusable. */
   hidden: boolean
   onSearchPress: () => void
+  onSettingsPress: () => void
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
@@ -48,6 +49,7 @@ type HomeTopBarProps = {
 export const HomeTopBar = memo(function HomeTopBar({
   hidden,
   onSearchPress,
+  onSettingsPress,
   onChromeFocus,
   onSearchTabNode,
   onFocusNode,
@@ -125,6 +127,16 @@ export const HomeTopBar = memo(function HomeTopBar({
         />
         {/* TODO: Collections / Saved tabs (in the design) once those
             surfaces exist in the app. */}
+        <TopBarTab
+          testID="home-topbar-settings-tab"
+          iconName="settings-outline"
+          accessibilityLabel="Settings"
+          accessibilityHint="Opens the settings screen"
+          onPress={onSettingsPress}
+          onChromeFocus={onChromeFocus}
+          focusable={!hidden}
+          onFocusNode={onFocusNode}
+        />
       </View>
 
       <View style={styles.sideRight} pointerEvents="none">
@@ -140,13 +152,13 @@ export const HomeTopBar = memo(function HomeTopBar({
 // pressing it does nothing.
 const NO_ACTION = () => {}
 
-const SEARCH_ICON_SIZE = Math.round(scale(24))
+const TAB_ICON_SIZE = Math.round(scale(24))
 
 type TopBarTabProps = {
   /** Stable id for D-pad sim automation (mirrors HomeCard's testID pattern). */
   testID: string
   /** Icon-only tab (60×60) when set; label tab otherwise. */
-  iconName?: "search"
+  iconName?: "search" | "settings-outline"
   label?: string
   /** The design's "sel" state — translucent white fill, white ink at rest. */
   selected?: boolean
@@ -243,7 +255,7 @@ function TopBarTab({
           <AnimatedFocusIcon
             name={iconName}
             progress={progress}
-            size={SEARCH_ICON_SIZE}
+            size={TAB_ICON_SIZE}
             restColor={TAB_INK_REST}
             focusColor={WATCH_THEME.focusInk}
           />
