@@ -55,7 +55,7 @@ export default function WatchVideoScreen() {
   const router = useRouter()
 
   const { video, setVideo, activeVariant } = useWatchSession()
-  const { state: playerState } = useVideoPlayerContext()
+  const { state: playerState, decoderClaimed } = useVideoPlayerContext()
 
   const { data, error, loading, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { locale: "en", slug: decodedSlug },
@@ -208,7 +208,10 @@ export default function WatchVideoScreen() {
           <VideoBackdrop
             streamingUrl={backdropSource ?? null}
             posterUrl={displayPoster}
-            overlayVisible={playerState.isVisible}
+            // decoderClaimed: Showcase Mode holds the only decode slot while it
+            // runs (KTD-1). This backdrop has no focus gate, so the claim is the
+            // one thing that unmounts it if the showcase ever runs above it.
+            overlayVisible={playerState.isVisible || decoderClaimed}
             bottomFadeColor={WATCH_THEME.below}
           />
 

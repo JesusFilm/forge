@@ -394,6 +394,26 @@ A home row whose every item carries a usable Curated Poster, letting it render t
 
 Coverage is all-or-nothing: a single item without usable poster art demotes the whole row back to Cinematic cards, because a tall frame filled with wide artwork crops it to a sliver. The check that grants a row its poster shape is the same one that selects its cards' artwork, so a Poster Rail's cards always show the curated art and the two can never disagree. Poster status is distinct from a row's declared layout orientation, which mirrors a sibling client's grid arrangement and implies nothing about artwork — a row can be laid out vertically and still have no poster to show. The guarantee reaches only as far as _authored_ art: nothing verifies a Curated Poster is actually portrait, so a row of wrongly-shaped uploads still claims the tall frame.
 
+### Showcase Mode
+
+The TV app's public ambient mode: a self-running reel of short catalog excerpts organized as felt-need chapters with per-excerpt language rotation and periodic stat interstitials, started from Home's Settings tab. Built to run unattended on office TVs for visiting stakeholders but shipped as a consumer feature, so any remote press exits and auto-start is opt-in.
+
+### Showcase Experience
+
+The CMS-authored Experience that defines Showcase Mode's reel, fetched by slug through the public Experience query (no admin code involved): its sections name the felt-need chapters and order each chapter's videos. When it is missing or empty, TV composes a fallback reel from the Home pool instead. One section is reserved: a section titled `showcase-stats` supplies the stat interstitials' authored lines and never renders as a chapter.
+
+### Excerpt
+
+A bounded window of a catalog video that Showcase Mode plays in place of the whole title — the reel's unit of playback, not a separate asset. The reel advances at the window's end, not only at the video's, so an excerpt's end is usually a decision the reel makes about a still-playing source. An excerpt that reports itself unplayable is skipped; enough consecutive skips drop the reel to Stills.
+
+### Chapter Card
+
+The titled card Showcase Mode shows when entering a felt-need chapter, naming the need the chapter answers. It doubles as the buffer window: the player is held paused but loaded behind it, so the next excerpt is fetching while the card is on screen. A card that lifts before its excerpt has loaded therefore exposes the gap it exists to cover.
+
+### Stills
+
+Showcase Mode's degradation floor: a slideshow of poster art from the last-good reel, entered when consecutive excerpt failures cross the breaker or when nothing playable resolves at all. It is a holding state rather than an end state — it periodically re-attempts resolution and rejoins the reel when one succeeds, which is what keeps a network blip from ending the session.
+
 ### Series-Shaped
 
 The classification that routes a record to a series surface instead of the single-video watch screen: a Video whose label is SERIES or COLLECTION, or any record with children. The test is label/children-based — there is no separate series type in the schema — and every entry point (search, home cards, deep links) applies the same rule.
@@ -508,3 +528,7 @@ The server-side read surface over persisted Seeker threads: a signed-in user lis
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
+
+## Flagged ambiguities
+
+- "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
