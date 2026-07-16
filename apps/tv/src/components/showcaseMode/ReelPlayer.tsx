@@ -147,6 +147,10 @@ export function ReelPlayer({
   const playRequestedAtRef = useRef<number | null>(null)
   const lastAdvanceAtRef = useRef<number | null>(null)
   const lastPositionRef = useRef<number | null>(null)
+  // Scoped to the ARM, unlike confirmedTokenRef, which holds a source identity for the
+  // whole session. A resume re-arms without a token bump, and reusing that ref there
+  // reported a cold re-buffer as already-confirmed — skipping the load budget it needs.
+  const armConfirmedRef = useRef(false)
   const swapIdRef = useRef(0)
 
   // KTD-9: one QoE session per excerpt, keyed on the Mux playback id — never the
@@ -245,6 +249,7 @@ export function ReelPlayer({
       if (!isPlaying) return
       const token = loadedTokenRef.current
       confirmedTokenRef.current = token
+      armConfirmedRef.current = true
       setConfirmedToken(token)
       // The stall clock starts HERE, not at the play request: a long-form item
       // seeks ~15% in before its first heartbeat, and measuring from the request
@@ -345,6 +350,9 @@ export function ReelPlayer({
     playRequestedAtRef.current = Date.now()
     lastAdvanceAtRef.current = null
     lastPositionRef.current = null
+    // Cleared WITH the heartbeat it is paired to. A resume that never delivers a frame
+    // otherwise reads as confirmed-but-silent, which is the one state no deadline covers.
+    armConfirmedRef.current = false
 
     const timer = setInterval(() => {
       const requestedAt = playRequestedAtRef.current
@@ -354,7 +362,10 @@ export function ReelPlayer({
         // The interval exists only while intent holds — the effect tears it down
         // otherwise — so the closure value is current by construction, never stale.
         playIntended,
-        confirmed: confirmedTokenRef.current === excerptToken,
+        // Both halves: this arm saw a frame, AND it was this excerpt's. Either alone
+        // lets a stale confirmation hand a cold re-buffer the tighter stall budget.
+        confirmed:
+          armConfirmedRef.current && confirmedTokenRef.current === excerptToken,
         msSincePlayRequested: now - requestedAt,
         msSincePlayheadAdvance:
           lastAdvanceAtRef.current == null

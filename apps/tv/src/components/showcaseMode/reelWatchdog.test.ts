@@ -66,16 +66,32 @@ describe("classifyReelWatchdog — a source that freezes mid-play", () => {
     ).toBe("stalled")
   })
 
-  it("spares a slow start that has only just confirmed and not yet reported a beat", () => {
-    // The regression this pins: reading the play-request clock here charged a healthy
-    // excerpt its own load time as freeze time and killed it one tick after first frame.
+  // A resume re-arms the clock without a token bump. If confirmation outlived the
+  // heartbeat it was seeded with, the excerpt would read as confirmed-but-silent and
+  // fall between both deadlines — armed, ticking, and structurally unable to fire.
+  it("charges a re-armed excerpt the load budget, because a resume is a fresh load", () => {
+    for (const elapsed of [
+      0,
+      REEL_STALL_DEADLINE_MS,
+      REEL_LOAD_DEADLINE_MS - 1,
+    ]) {
+      expect(
+        classifyReelWatchdog({
+          ...playing,
+          confirmed: false,
+          msSincePlayheadAdvance: null,
+          msSincePlayRequested: elapsed,
+        }),
+      ).toBe("ok")
+    }
     expect(
       classifyReelWatchdog({
         ...playing,
+        confirmed: false,
         msSincePlayheadAdvance: null,
-        msSincePlayRequested: REEL_LOAD_DEADLINE_MS - 1,
+        msSincePlayRequested: REEL_LOAD_DEADLINE_MS,
       }),
-    ).toBe("ok")
+    ).toBe("load-timeout")
   })
 
   it("does not fail a confirmed excerpt on the load deadline it already beat", () => {

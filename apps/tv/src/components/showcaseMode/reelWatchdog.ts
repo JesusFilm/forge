@@ -23,7 +23,11 @@ export type ReelWatchdogInputs = {
    * catch, because a source that never starts never reports itself ready.
    */
   playIntended: boolean
-  /** The player confirmed THIS excerpt playing — the first frame landed. */
+  /**
+   * This ARM saw a frame for THIS excerpt. Must be cleared whenever the heartbeat is —
+   * a confirmation that outlives its heartbeat reports a cold re-buffer as playing, and
+   * that pair (confirmed, no heartbeat) is the one state no deadline below covers.
+   */
   confirmed: boolean
   /** Since playIntended went true for this excerpt. Covers the load, which is why it is
    *  read only before confirmation — after that it would still be counting the load. */
@@ -51,8 +55,9 @@ export function classifyReelWatchdog({
     return msSincePlayRequested >= REEL_LOAD_DEADLINE_MS ? "load-timeout" : "ok"
   }
 
-  // The load clock stops at confirmation. Reading it here would charge a healthy slow
-  // start its own load time over again and skip an excerpt one tick after its first frame.
+  // Unreachable: confirmation and the heartbeat are seeded together and cleared
+  // together, so confirmed implies a heartbeat. If this ever fires, that pairing broke —
+  // and the caller has a player it believes is playing that no deadline is watching.
   if (msSincePlayheadAdvance == null) return "ok"
 
   return msSincePlayheadAdvance >= REEL_STALL_DEADLINE_MS ? "stalled" : "ok"
