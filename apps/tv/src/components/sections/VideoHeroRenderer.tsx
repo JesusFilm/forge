@@ -30,7 +30,7 @@ export type VideoHeroRendererProps = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
-  const { state: playerState } = useVideoPlayerContext()
+  const { state: playerState, decoderClaimed } = useVideoPlayerContext()
   // Pauses the hero when it scrolls off-screen (R10). heroOnScreen is ONE shared
   // top-anchored scalar assuming a single videoHero authored FIRST — see
   // ExperienceRenderer's HERO_OFFSCREEN_THRESHOLD before adding a second hero.
@@ -57,13 +57,13 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
 
   return (
     <View style={styles.container}>
-      {/* Cinematic backdrop autoplaying WITH SOUND (R9). overlayVisible releases
-          the decode slot on overlay-open (R11) or nav-away (so a pushed screen
-          isn't starved); active gates the scroll-off pause (R10). */}
+      {/* Cinematic backdrop autoplaying WITH SOUND (R9). overlayVisible releases the
+          decode slot on overlay-open (R11), nav-away (so a pushed screen isn't starved),
+          or a Showcase Mode claim (KTD-1); active gates the scroll-off pause (R10). */}
       <VideoBackdrop
         streamingUrl={hasValidStream ? streamingUrl : null}
         posterUrl={posterUrl}
-        overlayVisible={playerState.isVisible || !isFocused}
+        overlayVisible={playerState.isVisible || !isFocused || decoderClaimed}
         bottomFadeColor={WATCH_THEME.below}
         muted={false}
         active={heroOnScreen}

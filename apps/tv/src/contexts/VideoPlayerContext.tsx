@@ -20,6 +20,11 @@ type VideoPlayerContextValue = {
   playVideo: (streamingUrl: string, title?: string, subtitle?: string) => void
   dismissVideo: () => void
   state: VideoPlayerState
+  /** Showcase Mode holds the app's only decode slot while it runs (KTD-1). Kept out
+   *  of VideoPlayerState because dismissVideo resets that object wholesale and would
+   *  drop a claim it knows nothing about. Consumers OR it into overlayVisible. */
+  decoderClaimed: boolean
+  setDecoderClaimed: (claimed: boolean) => void
 }
 
 // ── Context ─────────────────────────────────────────────────────────────────
@@ -37,6 +42,7 @@ const INITIAL_STATE: VideoPlayerState = {
 
 export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<VideoPlayerState>(INITIAL_STATE)
+  const [decoderClaimed, setDecoderClaimed] = useState(false)
 
   const playVideo = useCallback(
     (streamingUrl: string, title?: string, subtitle?: string) => {
@@ -59,8 +65,10 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
       playVideo,
       dismissVideo,
       state,
+      decoderClaimed,
+      setDecoderClaimed,
     }),
-    [playVideo, dismissVideo, state],
+    [playVideo, dismissVideo, state, decoderClaimed],
   )
 
   return (
