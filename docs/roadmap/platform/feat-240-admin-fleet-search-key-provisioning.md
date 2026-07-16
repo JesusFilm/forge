@@ -35,10 +35,17 @@ coordination of the end-to-end search unblock, not admin ownership.
 > two distinct fleet keys minted in `forge-admin` Doppler + admin deployed, fleet requests verified `200`
 > with `source=fleet`. Alerting monitors added as code (PR #1591, `infra/datadog-monitors/`) but NOT yet
 > created in Datadog (operator runs `create.sh`). **Precondition #1 (origin bypass) RE-CONFIRMED OPEN
-> 2026-07-16** — `forgeadmin-production-f4d1.up.railway.app/api/graphql` still returns `200` (`server:
-railway-hikari`, no `cf-ray`); it is the top blocking item (tracked in `todos/021`). REMAINING: close the
-> origin bypass, calibrate + flip `FLEET_SEARCH_CEILING_ENFORCE=true`, confirm `SEARCH_AUTH_REQUIRED=true`,
-> and run `create.sh`.
+> 2026-07-16** — `forgeadmin-production-f4d1.up.railway.app/api/graphql` still returns `200`
+> (`server: railway-hikari`, no `cf-ray`); it is the sole remaining blocker (tracked in `todos/021`),
+> and the admin CMS owner has committed to closing it. REMAINING: close the origin bypass, calibrate +
+> flip `FLEET_SEARCH_CEILING_ENFORCE=true`, confirm `SEARCH_AUTH_REQUIRED=true`, and run `create.sh`.
+>
+> **Pre-flight (2026-07-14, re-verified 2026-07-16):** no in-repo caller depends on the raw origin, so
+> removing the public `*.up.railway.app` domain remains the lowest-blast-radius fix — step 1 stands as
+> written. The runbook's auth-CNAME warning (feat-105's `auth.jesusfilm.org` → f4d1) is **FALSE and
+> must not be acted on**: that domain moved to the standalone `@forge/auth` service on 2026-05-12 and
+> now serves `{"service":"forge-auth"}` — feat-105's line-135 CNAME prose predates the split. Runbook
+> (read with that correction): `docs/handoffs/2026-07-14-feat-240-fleet-search-origin-preflight.md`.
 
 ## Entry Points - Read These First
 
