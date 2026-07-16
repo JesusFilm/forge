@@ -231,6 +231,10 @@ export function ReelPlayer({
       const token = loadedTokenRef.current
       confirmedTokenRef.current = token
       setConfirmedToken(token)
+      // The stall clock starts HERE, not at the play request: a long-form item
+      // seeks ~15% in before its first heartbeat, and measuring from the request
+      // would call that healthy seek a stall and skip an excerpt nobody watched.
+      lastAdvanceAtRef.current = Date.now()
       // Per-excerpt TTFF is a LOG FIELD, never a view timing: addDatadogTiming
       // measures from the route view's start, folding nav latency in (KTD-9).
       const ttffMs = qoeRef.current?.onFirstPlaying()
