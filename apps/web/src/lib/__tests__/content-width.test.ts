@@ -16,6 +16,7 @@ import {
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
   WATCH_PAGE_CONTENT_CLASSES,
+  WATCH_PAGE_CAROUSEL_BLEED_CLASSES,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
@@ -125,9 +126,9 @@ describe("content-width.ts — bleed/padding lockstep", () => {
 
 describe("content-width.ts — watch page rail lockstep", () => {
   const rails = [
-    { padding: "px-5", left: "left-5" },
-    { padding: "md:px-16", left: "md:left-16" },
-    { padding: "xl:px-24", left: "xl:left-24" },
+    { padding: "px-5", left: "left-5", bleed: "-mx-5" },
+    { padding: "md:px-16", left: "md:left-16", bleed: "md:-mx-16" },
+    { padding: "xl:px-24", left: "xl:left-24", bleed: "xl:-mx-24" },
   ]
 
   for (const rail of rails) {
@@ -135,6 +136,8 @@ describe("content-width.ts — watch page rail lockstep", () => {
       expect(WATCH_PAGE_RAIL_PADDING_CLASSES).toContain(rail.padding)
       expect(WATCH_PAGE_CONTENT_CLASSES).toContain(rail.padding)
       expect(WATCH_PAGE_LEFT_RAIL_CLASSES).toContain(rail.left)
+      expect(WATCH_PAGE_CAROUSEL_BLEED_CLASSES).toContain(rail.padding)
+      expect(WATCH_PAGE_CAROUSEL_BLEED_CLASSES).toContain(rail.bleed)
     })
   }
 

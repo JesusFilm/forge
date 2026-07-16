@@ -386,11 +386,29 @@ describe("SeriesPageClient — passthrough to children", () => {
       )
     })
 
+    const meta = container.querySelector('[data-testid="series-page-meta"]')
+    expect(getMaxWidthTokens(meta)).toEqual(["max-w-[1920px]"])
     expect(
-      getMaxWidthTokens(
-        container.querySelector('[data-testid="series-page-meta"]'),
+      Array.from(meta?.classList ?? []).filter((token) =>
+        /(^|:)px-/.test(token),
       ),
-    ).toEqual(["max-w-[1920px]"])
+    ).toEqual(["px-5", "md:px-16", "xl:px-24"])
+
+    const heroOverlay = container.querySelector(
+      '[data-testid="series-page-hero-overlay"]',
+    )
+    expect(Array.from(heroOverlay?.classList ?? [])).toEqual(
+      expect.arrayContaining([
+        "left-5",
+        "right-5",
+        "md:left-16",
+        "md:right-16",
+        "xl:left-24",
+        "xl:right-24",
+      ]),
+    )
+    expect(heroOverlay?.classList).not.toContain("left-10")
+    expect(heroOverlay?.classList).not.toContain("right-10")
   })
 
   it("passes the resolved audio language slug into the episodes grid", () => {

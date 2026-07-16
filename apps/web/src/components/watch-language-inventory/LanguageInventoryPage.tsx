@@ -20,7 +20,10 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
-import { CONTENT_WIDTH_ALIGN_CLASSES } from "@/lib/content-width"
+import {
+  WATCH_PAGE_CAROUSEL_BLEED_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
+} from "@/lib/content-width"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
 import {
@@ -584,7 +587,7 @@ function GroupedVideoListSection({
       className="scroll-mt-80 border-t border-white/10 py-14 xl:scroll-mt-44"
       data-testid={testId}
     >
-      <div className={`${CONTENT_WIDTH_ALIGN_CLASSES} px-5 sm:px-8`}>
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1 text-sm font-semibold text-amber-200">
@@ -669,7 +672,7 @@ function InventorySection({
       className="scroll-mt-80 border-t border-white/10 py-14 xl:scroll-mt-44"
       data-testid={testId}
     >
-      <div className={`${CONTENT_WIDTH_ALIGN_CLASSES} px-5 sm:px-8`}>
+      <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-1 text-sm font-semibold text-amber-200">
@@ -776,7 +779,7 @@ export function LanguageInventoryPage({
           aria-hidden
         />
         <div
-          className={`${CONTENT_WIDTH_ALIGN_CLASSES} relative grid min-h-[72vh] items-end gap-8 px-5 pt-36 pb-10 sm:px-8 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44`}
+          className={`${WATCH_PAGE_CONTENT_CLASSES} relative grid min-h-[72vh] items-end gap-8 pt-36 pb-10 sm:pt-40 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-10 lg:pt-44`}
         >
           <div className="max-w-4xl">
             <h1 className="max-w-3xl text-4xl leading-[1.04] font-bold text-white sm:text-5xl lg:text-6xl">
@@ -805,7 +808,7 @@ export function LanguageInventoryPage({
         className="border-b border-white/10 bg-stone-950/92 py-7 backdrop-blur"
         data-testid="language-inventory-section-carousel"
       >
-        <div className={`${CONTENT_WIDTH_ALIGN_CLASSES} px-5 sm:px-8`}>
+        <div className={WATCH_PAGE_CONTENT_CLASSES}>
           <Carousel
             opts={{
               align: "start",
@@ -880,7 +883,7 @@ export function LanguageInventoryPage({
         className="scroll-mt-80 py-12 xl:scroll-mt-44"
         data-testid="language-inventory-promoted"
       >
-        <div className={`${CONTENT_WIDTH_ALIGN_CLASSES} px-5 sm:px-8`}>
+        <div className={WATCH_PAGE_CONTENT_CLASSES}>
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-300/10 px-3 py-1 text-sm font-semibold text-teal-100">
@@ -898,7 +901,10 @@ export function LanguageInventoryPage({
           </div>
 
           {inventory.promoted.length > 0 ? (
-            <div className="-mx-5 flex gap-5 overflow-x-auto px-5 pb-4 sm:-mx-8 sm:px-8">
+            <div
+              data-testid="language-inventory-promoted-carousel"
+              className={`${WATCH_PAGE_CAROUSEL_BLEED_CLASSES} flex gap-5 overflow-x-auto pb-4`}
+            >
               {inventory.promoted.map((item, index) => (
                 <InventoryCard
                   key={item.id}

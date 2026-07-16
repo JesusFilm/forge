@@ -181,6 +181,14 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
     )
     expect(getMaxWidthTokens(overlayAnchor)).toEqual(["max-w-[1920px]"])
 
+    const overlay = container.querySelector(
+      '[data-testid="series-hero-overlay"]',
+    )
+    expect(Array.from(overlay?.classList ?? [])).toEqual(
+      expect.arrayContaining(["left-5", "md:left-16", "xl:left-24"]),
+    )
+    expect(overlay?.classList).not.toContain("left-10")
+
     // Title and label overlay rendered (no Watch now button — there's
     // nothing to play in static mode).
     expect(

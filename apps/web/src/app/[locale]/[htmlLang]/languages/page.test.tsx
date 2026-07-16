@@ -78,9 +78,22 @@ describe("/languages route", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "en" }),
     })
     const html = renderToString(page)
+    document.body.innerHTML = html
     expect(html).toContain("Choose a language")
     expect(html).toContain("Spanish, Latin American")
     expect(html).toContain("/spanish-latin-american.html/videos")
+
+    const main = document.querySelector("main")
+    const frame = document.querySelector("main > section")
+    const mainClasses = Array.from(main?.classList ?? [])
+    expect(mainClasses).not.toContain("px-4")
+    expect(mainClasses).not.toContain("sm:px-6")
+    expect(mainClasses).not.toContain("md:px-8")
+    const frameClasses = Array.from(frame?.classList ?? [])
+    expect(frameClasses).toContain("max-w-[1920px]")
+    expect(
+      frameClasses.filter((token) => /(^|:)px-/.test(token)),
+    ).toEqual(["px-5", "md:px-16", "xl:px-24"])
   })
 
   it("declares canonical URL with .html-free /languages shape", () => {

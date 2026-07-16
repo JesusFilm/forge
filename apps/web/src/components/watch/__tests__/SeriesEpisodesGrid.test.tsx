@@ -149,11 +149,15 @@ describe("SeriesEpisodesGrid — grid template", () => {
       )
     })
 
+    const wrapper = container.querySelector(
+      '[data-testid="series-episodes-grid-wrapper"]',
+    )
+    expect(getMaxWidthTokens(wrapper)).toEqual(["max-w-[1920px]"])
     expect(
-      getMaxWidthTokens(
-        container.querySelector('[data-testid="series-episodes-grid-wrapper"]'),
+      Array.from(wrapper?.classList ?? []).filter((token) =>
+        /(^|:)px-/.test(token),
       ),
-    ).toEqual(["max-w-[1920px]"])
+    ).toEqual(["px-5", "md:px-16", "xl:px-24"])
   })
 
   it("uses a 5-column responsive grid at xl, ladder down to 1-col on mobile", () => {

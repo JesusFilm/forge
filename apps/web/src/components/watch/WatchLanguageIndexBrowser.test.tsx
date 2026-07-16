@@ -93,7 +93,14 @@ function maxWidthTokens(element: Element | null): string[] {
 describe("WatchLanguageIndexBrowser", () => {
   it("uses the canonical public Watch frame", () => {
     const html = renderBrowser({ regions: [] })
-    expect(maxWidthTokens(html.firstElementChild)).toEqual(["max-w-[1920px]"])
+    const frame = html.firstElementChild
+
+    expect(maxWidthTokens(frame)).toEqual(["max-w-[1920px]"])
+    expect(
+      Array.from(frame?.classList ?? []).filter((token) =>
+        /(^|:)px-/.test(token),
+      ),
+    ).toEqual(["px-5", "md:px-16", "xl:px-24"])
   })
 
   it("collapses country languages after the top four", () => {

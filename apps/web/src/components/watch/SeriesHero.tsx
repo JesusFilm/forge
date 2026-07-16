@@ -4,7 +4,10 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
-import { CONTENT_WIDTH_ALIGN_CLASSES } from "@/lib/content-width"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_LEFT_RAIL_CLASSES,
+} from "@/lib/content-width"
 import { resolvePosterUrl } from "@/lib/url"
 import { HeroPlayer } from "./HeroPlayer"
 
@@ -148,7 +151,7 @@ function SeriesHeroStatic({
         {overlay ?? (
           <div
             data-testid="series-hero-overlay"
-            className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
+            className={`absolute right-6 bottom-0 flex flex-col items-start gap-4 pb-6 md:right-auto ${WATCH_PAGE_LEFT_RAIL_CLASSES}`}
           >
             {series.label ? (
               <span

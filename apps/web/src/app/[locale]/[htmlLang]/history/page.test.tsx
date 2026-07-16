@@ -39,9 +39,12 @@ describe("Watch history page", () => {
     })
     document.body.innerHTML = renderToString(page)
 
-    expect(maxWidthTokens(document.querySelector("main > div"))).toEqual([
-      "max-w-[1920px]",
-    ])
+    const frame = document.querySelector("main > div")
+    expect(maxWidthTokens(frame)).toEqual(["max-w-[1920px]"])
+    const frameClasses = Array.from(frame?.classList ?? [])
+    expect(
+      frameClasses.filter((token) => /(^|:)px-/.test(token)),
+    ).toEqual(["px-5", "md:px-16", "xl:px-24"])
     expect(document.body.innerHTML).not.toContain("max-w-5xl")
   })
 })

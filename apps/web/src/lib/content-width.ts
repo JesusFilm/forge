@@ -16,6 +16,8 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
  */
 export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-5 md:px-16 xl:px-24"
 export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-5 md:left-16 xl:left-24"
+export const WATCH_PAGE_CAROUSEL_BLEED_CLASSES =
+  "-mx-5 px-5 md:-mx-16 md:px-16 xl:-mx-24 xl:px-24"
 export const WATCH_PAGE_LEFT_EDGE_CLASSES =
   "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =

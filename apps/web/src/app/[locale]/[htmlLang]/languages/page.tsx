@@ -36,7 +36,7 @@ export default async function LanguagesPage({ params }: PageProps) {
   const index = await getWatchLanguageIndex()
 
   return (
-    <main className="min-h-screen bg-black px-4 pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-4 font-sans text-stone-100 sm:px-6 sm:pb-6 md:px-8 md:pt-[calc(8rem+env(safe-area-inset-top,0px))] md:pb-8">
+    <main className="min-h-screen bg-black pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-4 font-sans text-stone-100 sm:pb-6 md:pt-[calc(8rem+env(safe-area-inset-top,0px))] md:pb-8">
       <WatchLanguageIndexBrowser regions={index.regions} />
     </main>
   )

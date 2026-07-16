@@ -5,7 +5,7 @@ import { setRequestLocale } from "next-intl/server"
 
 import { WatchHistoryClient } from "@/components/watch/WatchHistoryClient"
 import { verifyAuthSession } from "@/lib/auth-session"
-import { CONTENT_WIDTH_ALIGN_CLASSES } from "@/lib/content-width"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 export const dynamic = "force-dynamic"
 
@@ -28,9 +28,7 @@ export default async function WatchHistoryPage({ params }: HistoryPageProps) {
 
   return (
     <main className="min-h-screen bg-[#050505] pt-24 text-white">
-      <div
-        className={`${CONTENT_WIDTH_ALIGN_CLASSES} px-4 py-10 sm:px-6 sm:py-14`}
-      >
+      <div className={`${WATCH_PAGE_CONTENT_CLASSES} py-10 sm:py-14`}>
         <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
           Watch History
         </h1>

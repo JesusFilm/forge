@@ -13,9 +13,9 @@ roadmap_ticket: "docs/roadmap/platform/feat-263-watch-container-width-consistenc
 
 ## Goal Capsule
 
-Make every public Watch page use the same centered 1920px parent and section frame already used by the home page and single-video experience. Remove narrower route-local outer caps and cap currently unbounded series sections, while retaining intentional inner constraints for prose, cards, modals, overlays, and controls.
+Make every public Watch page use the same centered 1920px parent and section frame and responsive content rail already used by the home page and single-video experience. Remove narrower route-local outer caps and gutters and cap currently unbounded series sections, while retaining intentional inner constraints for prose, cards, modals, overlays, and controls.
 
-Success is observable at greater-than-1920px viewports: the language index, language inventory, history, and series sections all resolve to the same 1920px width and centered horizontal origin as the reference Watch surfaces. At smaller viewports they remain full-width with their existing responsive gutters and behavior.
+Success is observable at greater-than-1920px viewports: the language index, language inventory, history, and series sections all resolve to the same 1920px width and centered horizontal origin as the reference Watch surfaces. At smaller viewports they remain full-width with the same responsive Watch rail and behavior.
 
 ---
 
@@ -35,7 +35,7 @@ Public Watch routes currently expose three incompatible page-frame behaviors. Th
 - **R1:** Every public Watch parent or content section must use the shared 1920px maximum-width contract used by home and single-video pages.
 - **R2:** The language index, language inventory, and history pages must replace their narrower route-local outer caps with the shared contract.
 - **R3:** Series metadata and episode sections must be centered and capped by the shared contract instead of extending beyond 1920px.
-- **R4:** Existing horizontal padding ladders, carousel bleed/spacer relationships, series grid behavior, and atmospheric backdrop layers/transitions must remain unchanged; the series episode backdrop's outer extent follows the newly capped section frame.
+- **R4:** Content-bearing page and section wrappers must use the canonical Watch rail (`px-5 md:px-16 xl:px-24`); dependent carousel bleed must change in lockstep. Series grid behavior and atmospheric backdrop layers/transitions remain unchanged.
 - **R5:** Intentional inner measuresâ€”including prose line lengths, cards, modals, player overlays, buttons, and error messagesâ€”must not be treated as page-frame drift.
 - **R6:** The change must not add client initialization, hydration work, scripts, requests, dependencies, or data-flow changes.
 - **R7:** Tests must fail if the shared width token changes unexpectedly or the migrated public Watch surfaces reintroduce divergent outer width classes.
@@ -45,7 +45,7 @@ Public Watch routes currently expose three incompatible page-frame behaviors. Th
 - **AE1 (R1, R2):** Given a 2200px viewport, when a viewer opens `/watch/languages`, its outer content section is 1920px wide and centered, matching `/watch`.
 - **AE2 (R1, R2):** Given a 2200px viewport, when a viewer opens a language inventory or history route, the principal section is 1920px wide rather than `max-w-7xl` or `max-w-5xl`.
 - **AE3 (R1, R3):** Given a 2200px viewport, when a viewer opens a series route with either a playable trailer or a static hero, the hero overlay, metadata, and episode sections are each 1920px wide and share the same horizontal origin; the static hero media remains full-bleed.
-- **AE4 (R4, R5):** Given mobile and desktop viewports, migrated pages retain their current responsive gutters, grid density, readable text measures, modal sizing, and carousel behavior.
+- **AE4 (R4, R5):** Given mobile and desktop viewports, migrated pages use the canonical Watch rail while retaining grid density, readable text measures, modal sizing, and carousel behavior.
 - **AE5 (R6):** Comparing the implementation to the current render path shows class composition only: no new client component, effect, request, script, or dependency.
 
 ### Scope Boundaries
@@ -59,7 +59,7 @@ In scope:
 Out of scope:
 
 - Changing the canonical 1920px value.
-- Redesigning responsive gutters, carousel bleed, grid density, cards, modals, overlays, or content typography.
+- Redesigning grid density, cards, modals, overlays, or content typography beyond the shared Watch rail correction.
 - GraphQL schema or generated type changes.
 - Content, navigation, localization, playback, preference, or data-fetching behavior.
 - Production deployment; shipping follows the normal PR-to-main flow.
@@ -68,7 +68,7 @@ Out of scope:
 
 - **KTD1 â€” One shared public Watch frame.** `session-settled: user-directed` â€” use the existing exported 1920px content-width contract for public Watch parents and sections, chosen over preserving route-specific outer caps.
 - **KTD2 â€” Distinguish outer frames from inner measures.** Route and section wrappers that define page geometry migrate; intentional inner constraints remain local so readability and component behavior are preserved.
-- **KTD3 â€” Preserve gutter semantics.** Compose the shared alignment/max-width classes with each surface's existing padding ladder instead of replacing the ladder with a different shared padding preset.
+- **KTD3 â€” Standardize gutter semantics.** Use `WATCH_PAGE_CONTENT_CLASSES` for content-bearing frames so both their maximum width and responsive content edge match home and single video. Use the padding-free alignment helper only for full-bleed media and overlay anchors whose descendants own the rail.
 - **KTD4 â€” Keep the change render-only.** Implement through existing server/client JSX class composition without new state, effects, network work, or runtime measurement code.
 
 ### Assumptions
@@ -91,7 +91,7 @@ Out of scope:
 
 ### Implementation Strategy
 
-Use `CONTENT_WIDTH_ALIGN_CLASSES` wherever a surface already owns its responsive padding, and keep those padding classes unchanged. Strengthen the shared contract test, then update each audited page/section callsite and its focused rendering assertions. Add a history route test because that surface currently lacks direct coverage. Finish with an explicit inventory of every public Watch route shape and its primary content-bearing wrappers; use `max-w-*` search as a secondary audit so wrappers with no maximum-width token cannot escape verification.
+Use `WATCH_PAGE_CONTENT_CLASSES` wherever a content-bearing surface should match the canonical Watch rail, and reserve `CONTENT_WIDTH_ALIGN_CLASSES` for padding-free media and overlay anchors. Strengthen the shared contract test, then update each audited page/section callsite and its focused rendering assertions. Add a history route test because that surface currently lacks direct coverage. Finish with an explicit inventory of every public Watch route shape and its primary content-bearing wrappers; use `max-w-*` search as a secondary audit so wrappers with no maximum-width token cannot escape verification.
 
 ### Dependency Order
 
@@ -157,8 +157,8 @@ Use `CONTENT_WIDTH_ALIGN_CLASSES` wherever a surface already owns its responsive
 
 **Approach:**
 
-- Import and compose `CONTENT_WIDTH_ALIGN_CLASSES` on the language index section, all language inventory content-bearing outer wrappers, and the history parent.
-- Preserve each surface's current background, spacing, responsive padding, grid, and inner text/card constraints.
+- Import and compose `WATCH_PAGE_CONTENT_CLASSES` on the language index section, all language inventory content-bearing outer wrappers, and the history parent.
+- Preserve each surface's current background, vertical spacing, grid, and inner text/card constraints while replacing route-local horizontal padding with the canonical Watch rail.
 - Replace assertions for `max-w-[112rem]`, `max-w-7xl`, or `max-w-5xl` with shared-token assertions and explicit negative checks for the retired outer caps.
 - Assert that each migrated outer wrapper's complete `max-w-*` token set contains exactly the canonical shared token and no other maximum-width token; retain the named retired-class checks as readable regression context.
 - Add a focused history render test that verifies the shared frame on both populated and empty/error-safe render states available from the page contract.
@@ -192,7 +192,7 @@ Use `CONTENT_WIDTH_ALIGN_CLASSES` wherever a surface already owns its responsive
 
 **Approach:**
 
-- Compose `CONTENT_WIDTH_ALIGN_CLASSES` into the metadata section and episode wrapper while leaving their existing responsive padding intact.
+- Compose `WATCH_PAGE_CONTENT_CLASSES` into the metadata section and episode wrapper so both use the canonical frame and responsive rail.
 - Compose the same alignment classes into the static hero overlay anchor so the no-playable-trailer path matches `HeroPlayer`; leave the static media wrapper full-bleed.
 - Keep the full-page stone background on the route root and retain the episode section's backdrop stacks, overlay layers, transitions, reducer, delegated events, and grid columns unchanged inside the capped episode wrapper.
 - Add DOM class assertions for the shared centered maximum and exact single-token `max-w-*` invariant while preserving existing interaction assertions.
@@ -200,7 +200,7 @@ Use `CONTENT_WIDTH_ALIGN_CLASSES` wherever a surface already owns its responsive
 **Test scenarios:**
 
 - Series metadata uses `mx-auto w-full max-w-[1920px]` when rendered.
-- Episode wrapper uses the same frame and retains its existing padding, backdrop, and grid classes.
+- Episode wrapper uses the same frame and canonical Watch rail while retaining its backdrop and grid classes.
 - Static series hero overlay anchor uses the same frame while its media wrapper remains full-bleed.
 - Each migrated series content/overlay wrapper exposes exactly one `max-w-*` token: `max-w-[1920px]`.
 - Series without metadata still renders the capped episode section.

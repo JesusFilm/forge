@@ -25,6 +25,9 @@ route-local 112rem, `max-w-7xl`, or `max-w-5xl` caps. Series metadata and
 episode sections have the opposite problem: they remain uncapped beyond the
 shared frame. The drift becomes visible on wide displays and makes navigation
 between Watch pages feel structurally inconsistent.
+The first implementation unified only the maximum-width box; route-local
+horizontal padding still left content edges visibly misaligned at ordinary
+desktop widths.
 
 ## Entry Points - Read These First
 
@@ -46,7 +49,7 @@ between Watch pages feel structurally inconsistent.
 ## What To Build
 
 1. Make one exported 1920px Watch frame the source of truth for public Watch parent and section maximum widths.
-2. Replace route-local outer width caps on the language index, language inventory, and history surfaces with the shared contract while preserving intentional inner text and card width constraints.
+2. Replace route-local outer width caps and gutters on the language index, language inventory, and history surfaces with the shared frame and Watch rail contract while preserving intentional inner text and card width constraints.
 3. Cap series metadata and episode sections with the same shared contract without changing their responsive grid or atmospheric backdrop behavior.
 4. Add regression coverage that fails when a public Watch page reintroduces a divergent outer or section maximum width.
 5. Verify the linked production layout and representative local Watch routes at desktop, ultrawide, and mobile widths.
@@ -84,3 +87,12 @@ between Watch pages feel structurally inconsistent.
   initialization.
 - Structured review run `20260715-173831-62656525` completed with no P0-P3
   findings after strengthening the language-inventory assertions.
+- Follow-up browser geometry caught a remaining gutter mismatch at a 1280px
+  viewport: Languages began at 32px while home and single-video content began
+  at 96px. The affected language, inventory, history, and series wrappers now
+  use `WATCH_PAGE_CONTENT_CLASSES`; the Languages route no longer pads outside
+  its canonical frame.
+- Live local geometry at a 2200px viewport now reports the same `1920px` width,
+  `132.5px` centered origin, and `96px` inner rail for home, Languages,
+  language inventory, and series. The follow-up focused suite passed 40 tests
+  across 6 files, and scoped ESLint passed.

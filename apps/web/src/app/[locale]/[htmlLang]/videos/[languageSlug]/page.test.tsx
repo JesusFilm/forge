@@ -114,7 +114,28 @@ describe("/{language}.html/videos route", () => {
         audioVideos: 3,
         subtitleOnlyVideos: 0,
       },
-      promoted: [],
+      promoted: [
+        {
+          id: "promoted-1",
+          coreId: "core-promoted-1",
+          slug: "jesus",
+          title: "JESUS",
+          description: "The JESUS film in Spanish.",
+          imageUrl: "https://imagedelivery.net/test/jesus/public",
+          imageAlt: "JESUS still",
+          label: "feature film",
+          availability: "AUDIO",
+          href: "/jesus.html/spanish-latin-american.html" as never,
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 7380,
+          childCount: 0,
+          publishedAt: "2026-06-01T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+        },
+      ],
       audioCollections: [
         {
           id: "collection-1",
@@ -255,11 +276,35 @@ describe("/{language}.html/videos route", () => {
       '[data-testid="language-inventory-subtitle-only"] > div',
     ]
 
-    expect(
-      frameSelectors.map((selector) =>
-        maxWidthTokens(document.querySelector(selector)),
-      ),
-    ).toEqual(frameSelectors.map(() => ["max-w-[1920px]"]))
+    const frames = frameSelectors.map((selector) =>
+      document.querySelector(selector),
+    )
+    expect(frames.map(maxWidthTokens)).toEqual(
+      frameSelectors.map(() => ["max-w-[1920px]"]),
+    )
+    for (const frame of frames) {
+      const tokens = Array.from(frame?.classList ?? [])
+      expect(tokens.filter((token) => /(^|:)px-/.test(token))).toEqual([
+        "px-5",
+        "md:px-16",
+        "xl:px-24",
+      ])
+    }
+
+    const promotedCarousel = document.querySelector(
+      '[data-testid="language-inventory-promoted-carousel"]',
+    )
+    expect(Array.from(promotedCarousel?.classList ?? [])).toEqual(
+      expect.arrayContaining([
+        "-mx-5",
+        "px-5",
+        "md:-mx-16",
+        "md:px-16",
+        "xl:-mx-24",
+        "xl:px-24",
+      ]),
+    )
+
     expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
       "es",
       "spanish-latin-american",
