@@ -3,7 +3,7 @@ id: feat-241
 title: "TV/mobile fleet search token provisioning + rebuild"
 owner: urim
 priority: P1
-status: not-started
+status: in-progress
 start_date: "2026-07-09"
 duration: 2
 depends_on:
@@ -24,6 +24,12 @@ ships a build that actually carries the fleet token. The client plumbing already
 operation-scoped consumer bearer attaches to the `SemanticSearch` op only (TV
 `apps/tv/src/lib/apolloClient.ts`; mobile PR #1226) — so only the token value and a rebuild
 remain. This ticket un-embargoes the token and ships the builds.
+
+> **Status 2026-07-16:** Token provisioned in EAS (`EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` per surface) and
+> search verified working (no `401`) on preview builds for **Android TV, Android mobile, and Apple TV**
+> (iOS mobile covered by inference). Stale docs refreshed (PR #1589). REMAINING: production store builds +
+> ship (App Store / Play / Apple TV release) and an iOS-mobile production real-device check. Still gated by
+> feat-240 (origin bypass + the `enforce` flip).
 
 ## Entry Points - Read These First
 

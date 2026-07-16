@@ -56,15 +56,18 @@ describe("isAnyKnownBearer", () => {
     })
   })
 
-  it("accepts a FLEET_ADMIN_API_KEYS bearer with source=fleet", async () => {
+  it("accepts a FLEET_ADMIN_API_KEYS bearer with source=fleet + a non-secret fleetKeyId", async () => {
     // The fleet key must pass the SEARCH_AUTH_REQUIRED gate (so TV/mobile
-    // search returns 200) and log as source=fleet so F1 can distinguish fleet
-    // traffic from web SSR in prod (AE2, R4).
+    // search returns 200) and carry a stable sha256-prefix fleetKeyId the global
+    // ceiling buckets on — never the raw key (AE2, R4, security#5).
     envMutable.FLEET_ADMIN_API_KEYS = "fleet-key-zzz"
-    await expect(isAnyKnownBearer("Bearer fleet-key-zzz")).resolves.toEqual({
-      valid: true,
-      source: "fleet",
-    })
+    const result = await isAnyKnownBearer("Bearer fleet-key-zzz")
+    expect(result.valid).toBe(true)
+    if (!result.valid) throw new Error("expected valid")
+    expect(result.source).toBe("fleet")
+    expect(result.fleetKeyId).toMatch(/^[0-9a-f]{12}$/)
+    expect(result.fleetKeyId).not.toBe("fleet-key-zzz")
+    expect(JSON.stringify(result)).not.toContain("fleet-key-zzz")
   })
 
   it("accepts a WORKFLOW_API_KEYS bearer with source=workflow", async () => {

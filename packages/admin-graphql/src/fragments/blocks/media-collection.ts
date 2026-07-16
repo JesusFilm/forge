@@ -17,6 +17,7 @@ export const adminMediaCollectionFragment = adminGraphql(`
     itemsSource
     mediaCtaLink: ctaLink
     mediaCtaLabel: ctaLabel
+    mediaDefaultCollectionSlug: defaultCollectionSlug
     showItemNumbers
     mediaCollectionVariant: variant
     footerText

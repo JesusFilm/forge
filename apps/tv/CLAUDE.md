@@ -107,8 +107,9 @@ consumer bearer without which admin's `Query.search` returns `UNAUTHENTICATED`
 and search silently breaks.
 
 The script is idempotent: it seeds `apps/tv/.env.local` from the main checkout
-and guarantees the search token is present (tv and mobile share the same
-consumer-bearer value). Run it BEFORE `expo start` — Expo inlines
+and guarantees the search token is present (LOCAL DEV may seed a shared dev
+token; in production tv and mobile each get their OWN dedicated fleet key —
+never shared, see Test builds & distribution). Run it BEFORE `expo start` — Expo inlines
 `EXPO_PUBLIC_*` at bundler startup, so a change made after boot needs a Metro
 restart to take effect.
 
@@ -119,6 +120,11 @@ restart to take effect.
 - Getting stakeholder test builds onto real Apple TV / Android TV: see `DISTRIBUTION.md`
   (Android = `--profile preview` APK link; Apple TV = TestFlight via `xcrun altool -t appletvos`
   — NOT `eas submit`, which delivers tvOS as iOS and is rejected).
+- Search token (production/preview): set `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` to TV's OWN fleet key —
+  a dedicated entry in admin's `FLEET_ADMIN_API_KEYS` CSV (NOT `WEB_ADMIN_API_KEYS`, never mobile's
+  value). Provision per EAS environment (`eas env:create`); it's baked in at build time, so a token
+  change needs a rebuild. Receiver-first: the key must be live in admin's `FLEET_ADMIN_API_KEYS`
+  before the build ships, or the first `Query.search` calls return `UNAUTHENTICATED`.
 
 ## Observability (Datadog)
 

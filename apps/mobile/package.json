@@ -11,10 +11,14 @@
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'",
+    "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
+    "eas-build-on-success": "bash scripts/eas-build-on-success.sh",
     "update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
+    "@datadog/mobile-react-native": "3.5.2",
+    "@datadog/mobile-react-native-session-replay": "3.5.2",
     "@forge/admin-graphql": "workspace:*",
     "@hebcal/hdate": "^0.21.1",
     "@kesha-antonov/react-native-background-downloader": "^4.5.5",
@@ -59,7 +63,7 @@
   "jest": {
     "preset": "jest-expo",
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod))"
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

@@ -250,7 +250,13 @@ function WatchBlockEntry({
       />
     )
   }
-  return <ExperienceSectionRenderer section={block} key={`strapi-${index}`} />
+  return (
+    <ExperienceSectionRenderer
+      section={block}
+      key={`strapi-${index}`}
+      languageSlug={languageSlug}
+    />
+  )
 }
 
 function SyntheticBlock({

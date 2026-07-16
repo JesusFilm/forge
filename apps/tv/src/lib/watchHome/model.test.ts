@@ -1,3 +1,4 @@
+import { resolveHomeRailVariant } from "../../components/home/homeRailVariant"
 import { WATCH_HOME_FEATURED_RAIL, WATCH_HOME_HERO_SOURCE_IDS } from "./config"
 import {
   buildVideoByCoreIdIndex,
@@ -165,6 +166,12 @@ describe("buildWatchHomeModelFromVideos — sections", () => {
     ])
     expect(advent?.cards[0]?.parentCoreId).toBe("11_Advent")
     expect(advent?.cards[0]?.parentSlug).toBe("11_Advent-slug")
+    // REGRESSION GUARD: config.ts declares this section `orientation: "vertical"`
+    // for mobile parity, but its cards are the video's LANDSCAPE cinematic. A
+    // portrait frame here crops them — the exact P1 this feature had.
+    expect(advent?.orientation).toBe("vertical")
+    expect(advent?.isPosterRail).toBe(false)
+    expect(resolveHomeRailVariant(advent!)).toBe("landscape")
   })
 
   it("self-filters and dedupes children reads (KTD5 fix-tolerance)", () => {
@@ -209,6 +216,11 @@ describe("buildWatchHomeModelFromVideos — sections", () => {
 
     expect(lumoVertical?.cards.map((card) => card.coreId)).toEqual(["LUMO_ep1"])
     expect(lumoVertical?.cards[0]?.parentCoreId).toBe("LUMOCollection")
+    // Same guard as the advent section: "vertical" is mobile layout parity, not
+    // an art guarantee, so the config path must never claim a poster rail.
+    expect(lumoVertical?.orientation).toBe("vertical")
+    expect(lumoVertical?.isPosterRail).toBe(false)
+    expect(resolveHomeRailVariant(lumoVertical!)).toBe("landscape")
   })
 })
 

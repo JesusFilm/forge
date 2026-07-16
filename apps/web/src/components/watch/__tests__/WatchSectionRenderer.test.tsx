@@ -30,8 +30,12 @@ const {
   bibleQuotesSectionMock,
 } = vi.hoisted(() => ({
   experienceSectionRendererMock: vi.fn(
-    ({ section }: { section: { __typename?: string } }) =>
-      `STRAPI:${section.__typename ?? "unknown"}`,
+    ({
+      section,
+    }: {
+      section: { __typename?: string }
+      languageSlug?: string | null
+    }) => `STRAPI:${section.__typename ?? "unknown"}`,
   ),
   // U5 — `WatchSectionRenderer` now mounts the real `<HeroPlayer>` instead of
   // a `data-block-type="HeroPlayer"` placeholder div. We mock it here so this
@@ -583,12 +587,20 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     } as never
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={[promo]} />)
+      root.render(
+        <WatchSectionRenderer
+          blocks={[promo]}
+          languageSlug="spanish-castilian"
+        />,
+      )
     })
 
     expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
     expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.section).toBe(
       promo,
+    )
+    expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.languageSlug).toBe(
+      "spanish-castilian",
     )
     // The mock returns a marker string we can find in the DOM.
     expect(container.textContent).toContain(

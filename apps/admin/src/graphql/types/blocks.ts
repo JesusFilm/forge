@@ -236,6 +236,7 @@ const TextVariantEnum = builder.enumType("TextVariant", {
     default: { value: "default" },
     lead: { value: "lead" },
     small: { value: "small" },
+    promotional: { value: "promotional" },
   } as const,
 })
 
@@ -726,6 +727,60 @@ MediaCollectionBlockRef.implement({
     description: t.exposeString("description", { nullable: true }),
     ctaLink: t.exposeString("ctaLink", { nullable: true }),
     ctaLabel: t.exposeString("ctaLabel", { nullable: true }),
+    defaultCollectionSlug: t.string({
+      nullable: true,
+      description:
+        "First visible parent collection slug shared by every linked manual item, in the first item's relation order. Null when items are empty, unlinked, or mixed.",
+      resolve: async (row, _args, ctx) => {
+        if (row.itemsSource !== "manual") return null
+
+        const videoIds = row.items.map((item) => optionalString(item.videoId))
+        if (
+          videoIds.length === 0 ||
+          videoIds.some((videoId) => videoId == null)
+        ) {
+          return null
+        }
+
+        const relationsByItem =
+          await ctx.loaders.videoParentsByChildId.loadMany(
+            videoIds.map((videoId) => ({
+              videoId: videoId as string,
+              visibleOnly: true,
+            })),
+          )
+        const parentIdsByItem: string[][] = []
+        for (const relations of relationsByItem) {
+          if (relations instanceof Error) throw relations
+          if (relations.length === 0) return null
+          parentIdsByItem.push(relations.map((relation) => relation.parentId))
+        }
+
+        const parentIds = Array.from(new Set(parentIdsByItem.flat()))
+        const parents = await ctx.loaders.videoById.loadMany(parentIds)
+        const slugByParentId = new Map<string, string>()
+        parents.forEach((parent, index) => {
+          if (parent instanceof Error) throw parent
+          if (parent == null || parent.deletedAt) return
+          const slug = optionalString(parent.slug)
+          const parentId = parentIds[index]
+          if (slug && parentId) slugByParentId.set(parentId, slug)
+        })
+
+        const parentSlugsByItem = parentIdsByItem.map((ids) =>
+          ids.flatMap((id) => {
+            const slug = slugByParentId.get(id)
+            return slug ? [slug] : []
+          }),
+        )
+        const firstItemParentSlugs = parentSlugsByItem[0] ?? []
+        return (
+          firstItemParentSlugs.find((candidate) =>
+            parentSlugsByItem.every((slugs) => slugs.includes(candidate)),
+          ) ?? null
+        )
+      },
+    }),
     showItemNumbers: t.exposeBoolean("showItemNumbers"),
     footerText: t.exposeString("footerText", { nullable: true }),
     items: t.field({

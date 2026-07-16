@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { datadogLog } from "../lib/datadog"
 
 import {
   DEFAULT_WATCH_PREFERENCES,
@@ -60,7 +61,9 @@ export function WatchPreferencesProvider({
         if (!cancelled) setPrefs(parseStoredPreferences(stored))
       })
       .catch(() => {
-        // Treat read failure as first launch — defaults already applied.
+        // R17: a swallowed read silently resets the user's dub/subtitle language
+        // to defaults — the "my settings reset themselves" class.
+        datadogLog.warn("prefs.read_failed", {})
       })
       .finally(() => {
         if (!cancelled) setIsReady(true)
@@ -81,7 +84,9 @@ export function WatchPreferencesProvider({
       WATCH_PREFERENCES_STORAGE_KEY,
       serializeWatchPreferences(next),
     ).catch(() => {
-      // Best-effort — the in-memory choice still applies for this session.
+      // R17: the in-memory choice still applies this session but won't survive a
+      // relaunch — surface it so silent preference loss is diagnosable.
+      datadogLog.warn("prefs.write_failed", {})
     })
   }, [])
 

@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
+import { datadogLog } from "../../src/lib/datadog"
 import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
@@ -155,6 +156,10 @@ export default function WatchVideoPage() {
     if (redirectedRef.current === decodedSlug) return
     if (!isSeriesRecord(normalized)) return
     redirectedRef.current = decodedSlug
+    datadogLog.info("content.resolution", {
+      outcome: "series-redirect",
+      content_id: decodedSlug,
+    })
     const seedSuffix = seedParam ? `?seed=${seedParam}` : ""
     router.replace(`/series/${encodeURIComponent(decodedSlug)}${seedSuffix}`)
   }, [normalized, decodedSlug, seedParam, router])
@@ -304,6 +309,37 @@ export default function WatchVideoPage() {
   }, [video, activeVariant?.languageSlug])
 
   const hasVideo = video != null
+
+  // Cold external arrival (forgemobile://) carries no seed — in-app navigation
+  // always seeds. Fire once so it's distinct from in-app pushes (R32).
+  const deepLinkEmittedRef = useRef(false)
+  useEffect(() => {
+    if (deepLinkEmittedRef.current || !decodedSlug || seedParam != null) return
+    deepLinkEmittedRef.current = true
+    datadogLog.info("content.deep_link_open", { content_id: decodedSlug })
+  }, [decodedSlug, seedParam])
+
+  // Detail-route resolution outcome (R34), deduped per slug+outcome so a
+  // re-render or a skeleton→hydrated transition each emit at most once. Series
+  // are owned by the redirect effect above.
+  const resolutionEmittedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (normalized && isSeriesRecord(normalized)) return
+    const outcome =
+      offlineSource != null
+        ? "offline-source"
+        : hasVideo
+          ? "hydrated"
+          : seed != null
+            ? "seed-only"
+            : loading
+              ? "cold-skeleton"
+              : "not-found"
+    const key = `${decodedSlug}:${outcome}`
+    if (resolutionEmittedRef.current.has(key)) return
+    resolutionEmittedRef.current.add(key)
+    datadogLog.info("content.resolution", { outcome, content_id: decodedSlug })
+  }, [decodedSlug, normalized, offlineSource, hasVideo, seed, loading])
 
   // Cold deep link with nothing to paint yet → layout-matched skeleton,
   // never a blank full-screen spinner.

@@ -106,6 +106,10 @@ export const VIDEO_DB_BACKUP_PROFILES = {
 } as const
 
 export type VideoDbBackupProfile = keyof typeof VIDEO_DB_BACKUP_PROFILES
+export const SCHEDULED_VIDEO_DB_BACKUP_PROFILES = [
+  "video-core",
+  "video-search",
+] as const satisfies readonly VideoDbBackupProfile[]
 export type TargetEnvironment = "development" | "staging" | "production"
 
 type ParsedArgs = {
@@ -851,8 +855,10 @@ async function executeBackupPlan(
   return result
 }
 
-export async function runScheduledVideoDbBackup(): Promise<VideoDbBackupJobResult> {
-  return executeBackupPlan(parseArgs("backup", []))
+export async function runScheduledVideoDbBackup(
+  profile: VideoDbBackupProfile = "video-core",
+): Promise<VideoDbBackupJobResult> {
+  return executeBackupPlan(parseArgs("backup", [`--profile=${profile}`]))
 }
 
 export async function main(
