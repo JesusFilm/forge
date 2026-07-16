@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowRight,
   BookOpenText,
+  Check,
   Download,
   ExternalLink,
   HandHeart,
@@ -442,7 +443,7 @@ function ReflectionChat({
         </GuideBubble>
 
         <div
-          role="group"
+          role="radiogroup"
           aria-label={nextStepsSupport}
           data-testid="watch-end-reflection-chat-options"
           className="ml-10 grid w-[calc(100%_-_2.5rem)] grid-cols-1 gap-x-3 gap-y-1 min-[440px]:grid-cols-2"
@@ -453,7 +454,8 @@ function ReflectionChat({
               <button
                 key={action.id}
                 type="button"
-                aria-pressed={selected}
+                role="radio"
+                aria-checked={selected}
                 data-testid={action.testId}
                 data-action-id={action.id}
                 data-highlighted={selected ? "true" : "false"}
@@ -498,13 +500,19 @@ function ReflectionChat({
                 <span className="min-w-0 flex-1 text-xs leading-tight font-medium sm:text-sm">
                   {action.label}
                 </span>
-                <ArrowRight
+                <span
                   aria-hidden
+                  data-testid={action.testId + "-selector"}
+                  data-selector-state={selected ? "selected" : "empty"}
                   className={
-                    "size-3 shrink-0 " +
-                    (selected ? "text-white/55" : "text-white/25")
+                    "grid size-5 shrink-0 place-items-center rounded-full transition-[background-color,border-color,color,transform] duration-200 " +
+                    (selected
+                      ? "scale-100 bg-brand-red text-white shadow-sm shadow-brand-red/25"
+                      : "scale-90 border border-white/25 text-transparent group-hover:border-white/45")
                   }
-                />
+                >
+                  {selected ? <Check className="size-3 stroke-[3]" /> : null}
+                </span>
               </button>
             )
           })}

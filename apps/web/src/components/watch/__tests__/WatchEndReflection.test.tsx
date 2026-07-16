@@ -126,6 +126,7 @@ describe("WatchEndReflection", () => {
       "Have a question or comments about this video or another topic?",
     )
     expect(chatOptions).not.toBeNull()
+    expect(chatOptions?.getAttribute("role")).toBe("radiogroup")
     expect(chatOptions?.className).toContain("w-[calc(100%_-_2.5rem)]")
     expect(
       container.querySelectorAll<HTMLElement>("[data-action-id]").length,
@@ -134,7 +135,22 @@ describe("WatchEndReflection", () => {
     expect(ask.className).not.toContain("border")
     expect(ask.className).toContain("bg-white/[0.12]")
     expect(ask.firstElementChild?.className).not.toContain("bg-")
-    expect(ask.getAttribute("aria-pressed")).toBe("true")
+    expect(ask.getAttribute("role")).toBe("radio")
+    expect(ask.getAttribute("aria-checked")).toBe("true")
+    expect(
+      container
+        .querySelector(
+          '[data-testid="watch-end-reflection-ask-bible-selector"]',
+        )
+        ?.getAttribute("data-selector-state"),
+    ).toBe("selected")
+    expect(
+      container
+        .querySelector(
+          '[data-testid="watch-end-reflection-talk-person-selector"]',
+        )
+        ?.getAttribute("data-selector-state"),
+    ).toBe("empty")
     const initialComposer = container.querySelector(
       '[data-testid="watch-end-reflection-chat-composer"]',
     )
@@ -160,7 +176,7 @@ describe("WatchEndReflection", () => {
       ask.click()
     })
 
-    expect(ask.getAttribute("aria-pressed")).toBe("true")
+    expect(ask.getAttribute("aria-checked")).toBe("true")
     expect(
       container.querySelector('[data-testid="watch-end-reflection-ask-panel"]'),
     ).not.toBeNull()
@@ -273,24 +289,24 @@ describe("WatchEndReflection", () => {
         container.querySelectorAll<HTMLButtonElement>("[data-action-id]"),
       )
 
-      expect(actions[0]?.getAttribute("aria-pressed")).toBe("true")
+      expect(actions[0]?.getAttribute("aria-checked")).toBe("true")
 
       act(() => {
         vi.advanceTimersByTime(4_999)
       })
-      expect(actions[0]?.getAttribute("aria-pressed")).toBe("true")
+      expect(actions[0]?.getAttribute("aria-checked")).toBe("true")
 
       act(() => {
         vi.advanceTimersByTime(1)
       })
-      expect(actions[1]?.getAttribute("aria-pressed")).toBe("true")
+      expect(actions[1]?.getAttribute("aria-checked")).toBe("true")
 
       for (let index = 1; index < actions.length; index += 1) {
         act(() => {
           vi.advanceTimersByTime(5_000)
         })
       }
-      expect(actions[0]?.getAttribute("aria-pressed")).toBe("true")
+      expect(actions[0]?.getAttribute("aria-checked")).toBe("true")
     } finally {
       vi.clearAllTimers()
       vi.useRealTimers()
@@ -321,12 +337,12 @@ describe("WatchEndReflection", () => {
         vi.advanceTimersByTime(6_000)
       })
       expect(reflection.dataset.autoCycling).toBe("true")
-      expect(prayer.getAttribute("aria-pressed")).toBe("true")
+      expect(prayer.getAttribute("aria-checked")).toBe("true")
 
       act(() => {
         vi.advanceTimersByTime(5_000)
       })
-      expect(share.getAttribute("aria-pressed")).toBe("true")
+      expect(share.getAttribute("aria-checked")).toBe("true")
     } finally {
       vi.clearAllTimers()
       vi.useRealTimers()
@@ -349,7 +365,7 @@ describe("WatchEndReflection", () => {
       watchNext.click()
     })
     expect(callbacks.onNext).not.toHaveBeenCalled()
-    expect(watchNext.getAttribute("aria-pressed")).toBe("true")
+    expect(watchNext.getAttribute("aria-checked")).toBe("true")
 
     act(() => {
       ;(
@@ -393,7 +409,7 @@ describe("WatchEndReflection", () => {
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-talk-person"]')
-        ?.getAttribute("aria-pressed"),
+        ?.getAttribute("aria-checked"),
     ).toBe("true")
 
     act(() => {
@@ -409,12 +425,12 @@ describe("WatchEndReflection", () => {
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-ask-bible"]')
-        ?.getAttribute("aria-pressed"),
+        ?.getAttribute("aria-checked"),
     ).toBe("true")
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-talk-person"]')
-        ?.getAttribute("aria-pressed"),
+        ?.getAttribute("aria-checked"),
     ).toBe("false")
   })
 
@@ -434,7 +450,7 @@ describe("WatchEndReflection", () => {
         ask.click()
       })
 
-      expect(ask.getAttribute("aria-pressed")).toBe("true")
+      expect(ask.getAttribute("aria-checked")).toBe("true")
       expect(
         container.querySelector(
           '[data-testid="watch-end-reflection-ask-response"]',
@@ -553,7 +569,7 @@ describe("WatchEndReflection", () => {
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-talk-person"]')
-        ?.getAttribute("aria-pressed"),
+        ?.getAttribute("aria-checked"),
     ).toBe("true")
     expect(
       container.querySelector(
@@ -616,7 +632,7 @@ describe("WatchEndReflection", () => {
     expect(
       container
         .querySelector('[data-testid="watch-end-reflection-request-prayer"]')
-        ?.getAttribute("aria-pressed"),
+        ?.getAttribute("aria-checked"),
     ).toBe("true")
     expect(
       container.querySelector(
