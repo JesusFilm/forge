@@ -31,6 +31,17 @@ DD_AGENT_SYSLOG_PORT=514
   `Forge-production` in Datadog; docs may refer to the key name, never its
   value.
 
+## Datadog Monitors
+
+- `infra/datadog-monitors/` holds Datadog **monitors-as-code**: Monitor API JSON
+  payloads plus a `create.sh` that POSTs them. It is a **sibling** of
+  `infra/datadog-agent/`, not part of it — that dir is a deployable Railway
+  service, so monitor payloads must never enter its build context.
+- Apply with `DD_API_KEY` + an application key `DD_APP_KEY`; see that dir's
+  `README.md`. As with the Agent, only key **names** belong here, never a value.
+- First monitors-as-code convention in the repo; port future monitors here rather
+  than hand-creating them in the Datadog UI.
+
 ## Verification
 
 - For config-only infrastructure changes, run `git diff --check` and inspect
