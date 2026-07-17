@@ -396,7 +396,7 @@ Coverage is all-or-nothing: a single item without usable poster art demotes the 
 
 ### Showcase Mode
 
-The TV app's public ambient mode: a self-running reel of short catalog excerpts organized as felt-need chapters with per-excerpt language rotation and periodic stat interstitials, started from Home's Settings tab. Built to run unattended on office TVs for visiting stakeholders but shipped as a consumer feature, so any remote press exits and auto-start is opt-in.
+The TV app's public ambient mode: a self-running reel of short catalog excerpts organized as felt-need chapters with periodic stat interstitials, started from Home's Settings tab. Built to run unattended on office TVs for visiting stakeholders but shipped as a consumer feature, so any remote press exits and auto-start is opt-in. Excerpts shipped with per-excerpt language rotation; the 2026-07-17 contract amendment replaces that with viewer-language playback plus a Language Centerpiece.
 
 ### Showcase Experience
 
@@ -409,6 +409,10 @@ A bounded window of a catalog video that Showcase Mode plays in place of the who
 ### Chapter Card
 
 The titled card Showcase Mode shows when entering a felt-need chapter, naming the need the chapter answers. It doubles as the buffer window: the player is held paused but loaded behind it, so the next excerpt is fetching while the card is on screen. A card that lifts before its excerpt has loaded therefore exposes the gap it exists to cover.
+
+### Language Centerpiece
+
+The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs roughly every ten seconds, naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
 
 ### Stills
 
