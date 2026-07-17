@@ -187,7 +187,7 @@ describe("WatchBody — two-column layout", () => {
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
     expect(titleEl?.className).toContain("flex-1")
-    expect(titleEl?.className).toContain("text-2xl")
+    expect(titleEl?.className).toContain("text-xl")
     expect(titleEl?.className).toContain("sm:text-[27px]")
     expect(titleEl?.className).toContain("md:text-4xl")
     expect(titleEl?.className).toContain("xl:text-5xl")
