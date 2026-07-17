@@ -60,9 +60,10 @@ than at the viewport edge like page scrolling.
 
 ## Verification
 
-- Focused dialog and language-picker tests cover opt-in versus default dialog
-  composition and scroll ownership.
-- Web typecheck and lint pass.
+- `pnpm --filter @forge/web test -- --reporter=dot src/components/ui/__tests__/dialog.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx`
+  covers opt-in versus default dialog composition and scroll ownership.
+- `pnpm --filter @forge/web typecheck` passes.
+- `pnpm --filter @forge/web lint` passes.
 - Safari/iOS WebKit smoke at `1280x543`, plus narrow portrait and tall desktop
   checks, confirms the scrollbar is at the viewport edge and all controls are
   reachable without background-page scrolling.
