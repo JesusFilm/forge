@@ -830,116 +830,119 @@ export function LanguagePickerModal({
           <div className="flex flex-col gap-4">
             <div
               data-testid="watch-language-picker-subtitles-header"
-              className="flex min-w-0 items-center justify-between gap-3"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
             >
               <MultilingualTooltip
                 copy={MULTILINGUAL_TOOLTIPS.subtitles}
                 testId="watch-language-picker-tooltip-subtitles"
-                className="min-w-0 flex-1"
+                className="col-start-1 row-start-1 min-w-0"
                 onActivate={setActiveTooltipCopy}
                 onDeactivate={clearActiveTooltip}
               >
-                <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      data-testid="watch-language-picker-subtitles-icon"
-                      className="flex size-8 shrink-0 items-center justify-center text-stone-200"
-                    >
-                      <Captions aria-hidden className="size-4" />
-                    </span>
-                    <h2 className="min-w-0 text-xl font-semibold text-stone-100">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    data-testid="watch-language-picker-subtitles-icon"
+                    className="flex size-8 shrink-0 items-center justify-center text-stone-200"
+                  >
+                    <Captions aria-hidden className="size-4" />
+                  </span>
+                  <div
+                    data-testid="watch-language-picker-subtitles-copy"
+                    className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-3"
+                  >
+                    <h2 className="min-w-0 break-words text-xl font-semibold text-stone-100">
                       {t("subtitlesHeading")}
                     </h2>
+                    <span
+                      data-testid="watch-language-picker-subtitle-count"
+                      className="text-xs font-normal text-stone-400 sm:text-sm"
+                    >
+                      {t("languageCount", {
+                        count: allSubtitleOptions.length,
+                      })}
+                    </span>
                   </div>
-                  <span
-                    data-testid="watch-language-picker-subtitle-count"
-                    className="text-xs font-normal text-stone-400 sm:text-sm"
-                  >
-                    {t("languageCount", {
-                      count: allSubtitleOptions.length,
-                    })}
-                  </span>
                 </div>
               </MultilingualTooltip>
-              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-3">
-                {sameLanguageSubtitleOptions.length === 0 ? (
-                  <MultilingualTooltip
-                    copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
-                    testId="watch-language-picker-tooltip-request-subtitles"
-                    onActivate={setActiveTooltipCopy}
-                    onDeactivate={clearActiveTooltip}
+              <MultilingualTooltip
+                copy={subtitleToggleTooltip}
+                testId="watch-language-picker-tooltip-subtitles-toggle"
+                className="col-start-2 row-start-1"
+                onActivate={setActiveTooltipCopy}
+                onDeactivate={clearActiveTooltip}
+              >
+                <button
+                  type="button"
+                  role="switch"
+                  aria-label={`${t("subtitlesHeading")} ${
+                    draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")
+                  }`}
+                  aria-checked={draftSubtitleEnabled}
+                  data-state={draftSubtitleEnabled ? "on" : "off"}
+                  data-testid="watch-language-picker-subtitles-toggle"
+                  disabled={!hasSelectableSubtitleOptions}
+                  onClick={() => setDraftSubtitleEnabled((value) => !value)}
+                  className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${MODAL_FOCUS_RING_CLASS} ${
+                    draftSubtitleEnabled
+                      ? "bg-stone-100 text-stone-950"
+                      : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
+                  }`}
+                >
+                  <span
+                    data-testid="watch-language-picker-subtitles-toggle-state"
+                    className={`pointer-events-none absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center ${
+                      draftSubtitleEnabled ? "left-1" : "right-1"
+                    }`}
                   >
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      data-testid="watch-language-picker-request-ai-translation"
-                      disabled={translationRequestSent}
-                      onClick={() => setTranslationRequestSent(true)}
-                      className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none sm:whitespace-nowrap ${MODAL_FOCUS_RING_CLASS}`}
-                    >
-                      {translationRequestSent ? (
-                        <Check
-                          aria-hidden
-                          data-testid="watch-language-picker-request-sent-icon"
-                          className="size-3.5 text-emerald-400"
-                        />
-                      ) : (
-                        <Sparkles
-                          aria-hidden
-                          data-testid="watch-language-picker-request-icon"
-                          className="size-3.5"
-                        />
-                      )}
-                      <span>
-                        {translationRequestSent
-                          ? t("requestSent")
-                          : t("translateWithAi")}
-                      </span>
-                    </Button>
-                  </MultilingualTooltip>
-                ) : null}
+                    {draftSubtitleEnabled ? "I" : "O"}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`relative z-10 size-7 rounded-full shadow-sm transition-transform duration-200 ${
+                      draftSubtitleEnabled
+                        ? "translate-x-7 bg-stone-950"
+                        : "translate-x-0 bg-stone-100"
+                    }`}
+                  />
+                </button>
+              </MultilingualTooltip>
+              {sameLanguageSubtitleOptions.length === 0 ? (
                 <MultilingualTooltip
-                  copy={subtitleToggleTooltip}
-                  testId="watch-language-picker-tooltip-subtitles-toggle"
+                  copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
+                  testId="watch-language-picker-tooltip-request-subtitles"
+                  className="col-span-2 row-start-2 min-w-0 max-w-full justify-self-end sm:col-span-1 sm:col-start-3 sm:row-start-1"
                   onActivate={setActiveTooltipCopy}
                   onDeactivate={clearActiveTooltip}
                 >
-                  <button
+                  <Button
                     type="button"
-                    role="switch"
-                    aria-label={`${t("subtitlesHeading")} ${
-                      draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")
-                    }`}
-                    aria-checked={draftSubtitleEnabled}
-                    data-state={draftSubtitleEnabled ? "on" : "off"}
-                    data-testid="watch-language-picker-subtitles-toggle"
-                    disabled={!hasSelectableSubtitleOptions}
-                    onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                    className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${MODAL_FOCUS_RING_CLASS} ${
-                      draftSubtitleEnabled
-                        ? "bg-stone-100 text-stone-950"
-                        : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
-                    }`}
+                    variant="ghost"
+                    data-testid="watch-language-picker-request-ai-translation"
+                    disabled={translationRequestSent}
+                    onClick={() => setTranslationRequestSent(true)}
+                    className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none ${MODAL_FOCUS_RING_CLASS}`}
                   >
-                    <span
-                      data-testid="watch-language-picker-subtitles-toggle-state"
-                      className={`pointer-events-none absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center ${
-                        draftSubtitleEnabled ? "left-1" : "right-1"
-                      }`}
-                    >
-                      {draftSubtitleEnabled ? "I" : "O"}
+                    {translationRequestSent ? (
+                      <Check
+                        aria-hidden
+                        data-testid="watch-language-picker-request-sent-icon"
+                        className="size-3.5 text-emerald-400"
+                      />
+                    ) : (
+                      <Sparkles
+                        aria-hidden
+                        data-testid="watch-language-picker-request-icon"
+                        className="size-3.5"
+                      />
+                    )}
+                    <span>
+                      {translationRequestSent
+                        ? t("requestSent")
+                        : t("translateWithAi")}
                     </span>
-                    <span
-                      aria-hidden="true"
-                      className={`relative z-10 size-7 rounded-full shadow-sm transition-transform duration-200 ${
-                        draftSubtitleEnabled
-                          ? "translate-x-7 bg-stone-950"
-                          : "translate-x-0 bg-stone-100"
-                      }`}
-                    />
-                  </button>
+                  </Button>
                 </MultilingualTooltip>
-              </div>
+              ) : null}
             </div>
             {draftSubtitleEnabled && subtitleOptions.length > 0 ? (
               <LanguageCombobox
