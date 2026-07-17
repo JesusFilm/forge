@@ -154,6 +154,19 @@ export async function getSearchLanguageOptions(
   }
 }
 
+/** Load the routable catalog without search-only flags or request hints. */
+export async function getSearchLanguageCatalogOptions(): Promise<
+  SearchLanguageOption[]
+> {
+  const metadata = await fetchCachedSearchLanguageMetadata()
+  return buildSearchLanguageOptions({
+    languages: metadata.languages,
+    countries: metadata.countries,
+    countryCode: null,
+    countryName: null,
+  }).options
+}
+
 async function fetchSearchLanguageMetadataUncached(): Promise<SearchLanguageMetadata> {
   const languages: SearchLanguageMetadataLanguage[] = []
   let countries: SearchLanguageMetadataCountry[] = []

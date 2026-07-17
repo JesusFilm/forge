@@ -76,7 +76,6 @@ export type FloatingSearchControllerProps = {
   query: string
   setOpen: (open: boolean) => void
   setQuery: (query: string) => void
-  headerLanguageSwitcherVisible?: boolean
   headerLanguageCode?: string | null
   headerPinned?: boolean
   resetToken?: number
@@ -90,7 +89,6 @@ export function FloatingSearchController({
   query,
   setOpen,
   setQuery: setQueryState,
-  headerLanguageSwitcherVisible = false,
   headerLanguageCode = null,
   headerPinned = false,
   resetToken = 0,
@@ -775,7 +773,6 @@ export function FloatingSearchController({
       selectedSearchLanguageOption,
       searchResultAnalytics,
       defaultSearchLanguageOption: defaultSearchLanguage,
-      headerLanguageSwitcherVisible,
       headerLanguageCode,
       headerPinned,
       setOpen,
@@ -815,7 +812,6 @@ export function FloatingSearchController({
       selectedSearchLanguageOption,
       searchResultAnalytics,
       defaultSearchLanguage,
-      headerLanguageSwitcherVisible,
       headerLanguageCode,
       headerPinned,
       setOpen,

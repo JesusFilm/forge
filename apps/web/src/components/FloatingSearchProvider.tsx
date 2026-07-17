@@ -25,6 +25,7 @@ import {
   type FloatingSearchPinnedContextValue,
 } from "./FloatingSearchContext"
 import { AccountControl } from "@/components/watch/AccountControl"
+import type { GlobalLanguagePickerModalProps } from "@/components/watch/GlobalLanguagePickerModal"
 import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
@@ -39,7 +40,10 @@ import {
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { parseWatchPath } from "@/lib/routes"
-import { loadWatchInteraction } from "@/lib/watch-interaction-loader"
+import {
+  loadWatchInteraction,
+  scheduleWatchInteractionWarmup,
+} from "@/lib/watch-interaction-loader"
 import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   WATCH_PLAYER_CHROME_REVEAL_EVENT,
@@ -69,16 +73,50 @@ const LazyFloatingSearchController = dynamic<FloatingSearchControllerProps>(
   { ssr: false },
 )
 
+const LazyGlobalLanguagePickerModal = dynamic<GlobalLanguagePickerModalProps>(
+  () =>
+    import("@/components/watch/GlobalLanguagePickerModal").then((module) => ({
+      default: module.GlobalLanguagePickerModal,
+    })),
+  { ssr: false },
+)
+
+function routeLanguageSlugCandidate(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean)
+  const bare = (segment: string) => segment.replace(/\.html$/i, "")
+
+  if (segments.length === 1) {
+    const candidate = bare(segments[0])
+    return candidate === "languages" ||
+      candidate === "history" ||
+      candidate === "search"
+      ? "english"
+      : candidate
+  }
+  if (segments.length === 2) {
+    const second = bare(segments[1])
+    return second === "languages" || second === "history" || second === "videos"
+      ? bare(segments[0])
+      : second
+  }
+  if (segments.length === 3) return bare(segments[2])
+  return "english"
+}
+
 type HeaderLanguageSwitcherState = {
   visible: boolean
   onClick: (() => void) | null
   languageCode: string | null
+  ownerToken: symbol | null
+  pathname: string | null
 }
 
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("FloatingSearch")
+  const searchT = useTranslations("SearchOverlay")
   const pathname = usePathname()
   const parsedPath = parseWatchPath(pathname)
+  const currentLanguageSlug = routeLanguageSlugCandidate(pathname)
   const isWatchHome =
     parsedPath.kind === "home" || parsedPath.kind === "localized-home"
   const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
@@ -106,12 +144,39 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       visible: false,
       onClick: null,
       languageCode: null,
+      ownerToken: null,
+      pathname: null,
     })
+  const [globalLanguageOpenPathname, setGlobalLanguageOpenPathname] = useState<
+    string | null
+  >(null)
+  const [globalLanguageLoadingPathname, setGlobalLanguageLoadingPathname] =
+    useState<string | null>(null)
+  const [globalLanguageErrorPathname, setGlobalLanguageErrorPathname] =
+    useState<string | null>(null)
   const [headerHovered, setHeaderHovered] = useState(false)
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScrollYRef = useRef(0)
+  const globalLanguageIntentRef = useRef(0)
+  const globalLanguagePendingPathnameRef = useRef<string | null>(null)
+  const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
+  const pathnameRef = useRef(pathname)
+
+  const invalidateGlobalLanguageIntent = useCallback(() => {
+    globalLanguageIntentRef.current += 1
+    globalLanguagePendingPathnameRef.current = null
+    setGlobalLanguageLoadingPathname(null)
+    setGlobalLanguageErrorPathname(null)
+    setGlobalLanguageOpenPathname(null)
+  }, [])
+
+  useEffect(() => {
+    pathnameRef.current = pathname
+    globalLanguageIntentRef.current += 1
+    globalLanguagePendingPathnameRef.current = null
+  }, [pathname])
 
   const resetSearch = useCallback(() => {
     setQuery("")
@@ -125,6 +190,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         closingTimerRef.current = null
       }
       if (next) {
+        invalidateGlobalLanguageIntent()
         setClosing(false)
         setOpenState(true)
       } else {
@@ -137,14 +203,26 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         }, 200)
       }
     },
-    [resetSearch],
+    [invalidateGlobalLanguageIntent, resetSearch],
   )
 
   useEffect(() => {
     return () => {
+      globalLanguageIntentRef.current += 1
+      globalLanguagePendingPathnameRef.current = null
       if (closingTimerRef.current) clearTimeout(closingTimerRef.current)
     }
   }, [])
+
+  useEffect(
+    () =>
+      scheduleWatchInteractionWarmup({
+        globalLanguage: true,
+        globalLanguageOptions: false,
+        interactionKeys: [],
+      }),
+    [],
+  )
 
   const enableSearchController = useCallback(() => {
     setSearchControllerEnabled(true)
@@ -280,11 +358,34 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       const detail = (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>)
         .detail
       if (typeof detail?.visible !== "boolean") return
-      setHeaderLanguageSwitcher({
-        visible: detail.visible && typeof detail.onClick === "function",
-        onClick: typeof detail.onClick === "function" ? detail.onClick : null,
-        languageCode: detail.languageCode ?? null,
+      const ownerToken = detail.ownerToken ?? null
+      const visible = detail.visible && typeof detail.onClick === "function"
+
+      setHeaderLanguageSwitcher((current) => {
+        if (!visible) {
+          const cleanupMatches = ownerToken
+            ? current.ownerToken === ownerToken
+            : current.ownerToken === null
+          return cleanupMatches
+            ? {
+                visible: false,
+                onClick: null,
+                languageCode: null,
+                ownerToken: null,
+                pathname: null,
+              }
+            : current
+        }
+
+        return {
+          visible: true,
+          onClick: detail.onClick,
+          languageCode: detail.languageCode ?? null,
+          ownerToken,
+          pathname,
+        }
       })
+      if (visible) invalidateGlobalLanguageIntent()
     }
 
     window.addEventListener(
@@ -297,7 +398,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         handleLanguageSwitcherChange,
       )
     }
-  }, [])
+  }, [invalidateGlobalLanguageIntent, pathname])
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return
@@ -344,12 +445,69 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     return () => window.cancelAnimationFrame(frame)
   }, [pathname])
 
+  const globalLanguageOpen = globalLanguageOpenPathname === pathname
+
+  const openGlobalLanguage = useCallback(() => {
+    if (
+      globalLanguagePendingPathnameRef.current === pathname ||
+      globalLanguageOpen
+    ) {
+      return
+    }
+    const intent = globalLanguageIntentRef.current + 1
+    globalLanguageIntentRef.current = intent
+    globalLanguagePendingPathnameRef.current = pathname
+    setGlobalLanguageLoadingPathname(pathname)
+    setGlobalLanguageErrorPathname(null)
+
+    void loadWatchInteraction("global-language")
+      .then(() => {
+        if (
+          globalLanguageIntentRef.current === intent &&
+          pathnameRef.current === pathname
+        ) {
+          setGlobalLanguageOpenPathname(pathname)
+        }
+      })
+      .catch(() => {
+        if (globalLanguageIntentRef.current === intent) {
+          setGlobalLanguageErrorPathname(pathname)
+        }
+      })
+      .finally(() => {
+        if (globalLanguageIntentRef.current === intent) {
+          globalLanguagePendingPathnameRef.current = null
+          setGlobalLanguageLoadingPathname(null)
+        }
+      })
+  }, [globalLanguageOpen, pathname])
+
+  const closeGlobalLanguage = useCallback(() => {
+    setGlobalLanguageOpenPathname(null)
+  }, [])
+
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
-  const headerLanguageClick = headerLanguageSwitcher.onClick ?? undefined
-  const headerLanguageControlVisible =
-    headerLanguageSwitcher.visible && headerLanguageClick != null
+  const pageSpecificLanguageSwitcherActive =
+    headerLanguageSwitcher.pathname === pathname &&
+    headerLanguageSwitcher.visible &&
+    headerLanguageSwitcher.onClick != null
+  const headerLanguageClick = pageSpecificLanguageSwitcherActive
+    ? (headerLanguageSwitcher.onClick ?? openGlobalLanguage)
+    : openGlobalLanguage
+  const headerLanguageCode = pageSpecificLanguageSwitcherActive
+    ? headerLanguageSwitcher.languageCode
+    : null
+  const headerLanguageBusy =
+    !pageSpecificLanguageSwitcherActive &&
+    globalLanguageLoadingPathname === pathname
+  const globalLanguageLoadFailed =
+    !pageSpecificLanguageSwitcherActive &&
+    globalLanguageErrorPathname === pathname
+  const globalLanguageLabel = globalLanguageLoadFailed
+    ? `${t("changeAudioLanguage")}. ${searchT("connectionHint")}`
+    : t("changeAudioLanguage")
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
@@ -512,32 +670,42 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           data-testid="floating-header-trailing-controls"
           className={`pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`}
         >
-          {headerLanguageControlVisible ? (
-            <button
-              type="button"
-              data-testid="floating-header-language-button"
-              onClick={headerLanguageClick}
-              aria-label={t("changeAudioLanguage")}
-              title={t("changeAudioLanguage")}
-              className={`inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
-                headerLanguageSwitcher.languageCode
-                  ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
-                  : ""
-              }`}
+          <button
+            type="button"
+            ref={globalLanguageTriggerRef}
+            data-testid="floating-header-language-button"
+            onClick={headerLanguageClick}
+            aria-busy={headerLanguageBusy}
+            disabled={headerLanguageBusy}
+            aria-label={globalLanguageLabel}
+            title={globalLanguageLabel}
+            className={`inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+              headerLanguageCode
+                ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
+                : ""
+            }`}
+          >
+            <Globe
+              aria-hidden
+              className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+            />
+            {headerLanguageCode ? (
+              <span
+                data-testid="floating-header-language-code"
+                className="text-[10px] font-bold tracking-[0.14em]"
+              >
+                {headerLanguageCode}
+              </span>
+            ) : null}
+          </button>
+          {globalLanguageLoadFailed ? (
+            <span
+              role="status"
+              data-testid="global-language-picker-load-error"
+              className="sr-only"
             >
-              <Globe
-                aria-hidden
-                className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
-              />
-              {headerLanguageSwitcher.languageCode ? (
-                <span
-                  data-testid="floating-header-language-code"
-                  className="text-[10px] font-bold tracking-[0.14em]"
-                >
-                  {headerLanguageSwitcher.languageCode}
-                </span>
-              ) : null}
-            </button>
+              {searchT("connectionHint")}
+            </span>
           ) : null}
           {modalChromeHidden ? (
             <button
@@ -564,8 +732,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           query={query}
           setOpen={setOpen}
           setQuery={setQuery}
-          headerLanguageSwitcherVisible={headerLanguageSwitcher.visible}
-          headerLanguageCode={headerLanguageSwitcher.languageCode}
+          headerLanguageCode={headerLanguageCode}
           headerPinned={pinned}
           resetToken={searchResetToken}
           onReady={markSearchControllerReady}
@@ -580,7 +747,15 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setQuery={setQuery}
           headerTopClass={headerTopClass}
           logoSlotClass={logoSlotClass}
-          headerLanguageControlVisible={headerLanguageControlVisible}
+        />
+      ) : null}
+      {globalLanguageOpen ? (
+        <LazyGlobalLanguagePickerModal
+          open={globalLanguageOpen}
+          pathname={pathname}
+          currentLanguageSlug={currentLanguageSlug}
+          onClose={closeGlobalLanguage}
+          returnFocusRef={globalLanguageTriggerRef}
         />
       ) : null}
     </FloatingSearchPinnedContext.Provider>
