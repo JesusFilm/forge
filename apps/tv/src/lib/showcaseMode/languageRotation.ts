@@ -1,10 +1,12 @@
 /**
- * R7's language-rotation policy as a pure function: consecutive excerpts within a
- * chapter play different languages where available. Identity is `language.slug` and
- * NEVER bcp47 — bcp47 collides in this catalog (ko/ko-kmr, en/en-nai).
+ * KTD-3's ordinary-excerpt language policy as a pure function: every non-centerpiece
+ * excerpt (curated AND fallback reels) plays the viewer's chosen audio language, or the
+ * default chain when they have none / it has no playable dub here. Identity is
+ * `language.slug` and NEVER bcp47 — bcp47 collides in this catalog (ko/ko-kmr, en/en-nai).
  */
 
 import { pickLocalizedName } from "../pickLocalizedName"
+import { resolveDefaultSlug } from "../resolveDefaultLanguage"
 
 /**
  * Structural shape of one dub, loose so tests pass literals and the caller can pass
@@ -32,19 +34,9 @@ export type ShowcaseLanguagePick = {
   claimsLanguage: boolean
 }
 
-export type RotationState = {
-  /** Slugs already spent in this chapter; reset when a video exhausts them. */
-  readonly usedSlugs: readonly string[]
-  /** The last chosen slug — excluded even across a reset, so en,en can't happen. */
-  readonly previousSlug: string | null
-}
-
-export const initialRotationState: RotationState = {
-  usedSlugs: [],
-  previousSlug: null,
-}
-
-type PlayableDub = ShowcaseLanguagePick & { languageSlug: string | null }
+// bcp47 rides the internal playable dub only — the default chain's device-locale and
+// English rungs match on it, but a pick never exposes it (identity stays languageSlug).
+type PlayableDub = ShowcaseLanguagePick & { bcp47: string | null }
 
 // normalizeVideo.ts's contract: an empty-string hls is NOT playable.
 function toPlayable(dub: ShowcaseDubInput): PlayableDub | null {
@@ -56,6 +48,7 @@ function toPlayable(dub: ShowcaseDubInput): PlayableDub | null {
     hls,
     durationSeconds: dub.duration ?? null,
     languageSlug: slug && slug.length > 0 ? slug : null,
+    bcp47: dub.language?.bcp47 ?? null,
     languageName: dub.language?.name
       ? (pickLocalizedName(dub.language.name) ?? null)
       : null,
@@ -73,49 +66,37 @@ export function playableDubs(
 }
 
 /**
- * Pick this excerpt's dub, preferring a language the chapter has not spent yet.
- * Returns null when the video has nothing playable, so the caller skips the item
- * down R16's ladder rather than surfacing an error.
+ * Pick this excerpt's dub for the viewer's chosen audio language. An exact `language.slug`
+ * match among the playable dubs wins; failing that (no preference, or none playable in it)
+ * the default chain resolves it (device locale → English → first). `claimsLanguage` is
+ * always false — an ordinary excerpt does not rotate, so the lower-third claims nothing.
+ * Returns null when the video has nothing playable, so the caller skips the item down
+ * R16's ladder rather than surfacing an error.
  */
-export function rotateLanguage(
+export function pickViewerLanguage(
   dubs: readonly ShowcaseDubInput[] | null | undefined,
-  state: RotationState,
-): { pick: ShowcaseLanguagePick; nextState: RotationState } | null {
+  viewerSlug: string | null,
+): ShowcaseLanguagePick | null {
   const playable = playableDubs(dubs)
   if (playable.length === 0) return null
 
-  const withSlug = playable.filter((dub) => dub.languageSlug != null)
-  const used = new Set(state.usedSlugs)
-
-  const fresh = withSlug.filter(
-    (dub) =>
-      !used.has(dub.languageSlug!) && dub.languageSlug !== state.previousSlug,
-  )
-  const unspentElsewhere = withSlug.filter(
-    (dub) => dub.languageSlug !== state.previousSlug,
-  )
-
-  // Tier 3 is reached only by a single-language or slug-less video, which is
-  // exactly where AE4 says to claim nothing.
-  const exhausted = fresh.length === 0
-  const chosen = fresh[0] ?? unspentElsewhere[0] ?? playable[0]!
-
-  const distinctSlugs = new Set(withSlug.map((dub) => dub.languageSlug!)).size
-  const claimsLanguage =
-    distinctSlugs >= 2 &&
-    chosen.languageSlug != null &&
-    chosen.languageSlug !== state.previousSlug &&
-    chosen.languageName != null
-
-  const slug = chosen.languageSlug
-  const nextUsed = slug
-    ? exhausted
-      ? [slug]
-      : [...new Set([...state.usedSlugs, slug])]
-    : state.usedSlugs
-
-  return {
-    pick: { ...chosen, claimsLanguage },
-    nextState: { usedSlugs: nextUsed, previousSlug: slug ?? null },
+  if (viewerSlug != null) {
+    const exact = playable.find((dub) => dub.languageSlug === viewerSlug)
+    if (exact) return exact
   }
+
+  // The video's primary-language bcp47 is not in the lean per-video query, so that rung
+  // gets null; the device-locale, English, and first rungs stand in. Slug-less dubs can't
+  // be an option (no identity to return), so an all-slug-less video falls to playable[0].
+  const chosenSlug = resolveDefaultSlug(
+    playable
+      .filter((dub) => dub.languageSlug != null)
+      .map((dub) => ({
+        slug: dub.languageSlug!,
+        bcp47: dub.bcp47,
+        languageSlug: dub.languageSlug,
+      })),
+    null,
+  )
+  return playable.find((dub) => dub.languageSlug === chosenSlug) ?? playable[0]!
 }

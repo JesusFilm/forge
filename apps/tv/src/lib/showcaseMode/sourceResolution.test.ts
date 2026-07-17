@@ -3,7 +3,6 @@ import {
   type WatchHomeVideoInput,
 } from "../watchHome/model"
 import type { WatchHomeModel } from "../watchHome/model"
-import { initialRotationState } from "./languageRotation"
 import {
   CREDITS_TAIL_SECONDS,
   EXCERPT_MAX_SECONDS,
@@ -966,13 +965,13 @@ describe("resolveExcerptStream", () => {
     muxVideo: { playbackId: "pb-en" },
   }
 
-  it("resolves a playable, windowed, language-rotated stream", async () => {
+  it("resolves a playable, windowed, viewer-language stream", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => ({ dubs: [englishDub] }),
     })
-    expect(result?.stream).toMatchObject({
+    expect(result).toMatchObject({
       hls: "https://stream/en.m3u8",
       languageSlug: "english",
       languageName: "English",
@@ -981,13 +980,16 @@ describe("resolveExcerptStream", () => {
       window: { startSeconds: 0, endSeconds: 25 },
       claimsLanguage: false,
     })
+    // Rotation retired: the result is the bare stream, no rotation state rides it.
+    expect(result).not.toHaveProperty("rotation")
+    expect(result).not.toHaveProperty("stream")
   })
 
   it("fetches by the excerpt's slug", async () => {
     const fetchVideo = jest.fn(async () => ({ dubs: [englishDub] }))
     await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo,
     })
     expect(fetchVideo).toHaveBeenCalledWith("a-slug")
@@ -996,51 +998,41 @@ describe("resolveExcerptStream", () => {
   it("windows the LONG-FORM dub's own duration, not the pool's durationSeconds", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => ({ dubs: [{ ...englishDub, duration: 3600 }] }),
     })
-    expect(result?.stream.window).toEqual({
+    expect(result?.window).toEqual({
       startSeconds: 540,
       endSeconds: 580,
     })
   })
 
-  it("threads rotation state forward so the next excerpt can differ", async () => {
+  // AE1: the viewer's chosen language plays on an ordinary excerpt when a dub carries it.
+  it("plays the viewer's chosen language when this video has a playable dub for it", async () => {
+    const russianDub = {
+      published: true,
+      hls: "https://stream/ru.m3u8",
+      duration: 30,
+      language: { slug: "russian", name: { en: "Russian" } },
+      muxVideo: { playbackId: "pb-ru" },
+    }
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
-      fetchVideo: async () => ({ dubs: [englishDub] }),
+      viewerLanguageSlug: "russian",
+      fetchVideo: async () => ({ dubs: [englishDub, russianDub] }),
     })
-    expect(result?.rotation.previousSlug).toBe("english")
-  })
-
-  it("rotates language across a 3-excerpt chapter (R7 end to end)", async () => {
-    const dubs = ["english", "spanish", "french"].map((slug) => ({
-      published: true,
-      hls: `https://stream/${slug}.m3u8`,
-      duration: 30,
-      language: { slug, name: { en: slug } },
-      muxVideo: { playbackId: `pb-${slug}` },
-    }))
-    let rotation = initialRotationState
-    const picked: (string | null)[] = []
-    for (const coreId of ["a", "b", "c"]) {
-      const result = await resolveExcerptStream({
-        excerpt: { ...excerpt, coreId, id: `c1:${coreId}` },
-        rotation,
-        fetchVideo: async () => ({ dubs }),
-      })
-      picked.push(result!.stream.languageSlug)
-      rotation = result!.rotation
-    }
-    expect(new Set(picked).size).toBe(3)
+    expect(result).toMatchObject({
+      hls: "https://stream/ru.m3u8",
+      languageSlug: "russian",
+      claimsLanguage: false,
+    })
   })
 
   // R16: every failure degrades to a skip signal — this seam must never throw.
   it("returns null when the video fetch rejects", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => {
         throw new Error("network down")
       },
@@ -1051,7 +1043,7 @@ describe("resolveExcerptStream", () => {
   it("returns null when the video is not found", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => null,
     })
     expect(result).toBeNull()
@@ -1060,23 +1052,9 @@ describe("resolveExcerptStream", () => {
   it("returns null when the video has no playable dub", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => ({ dubs: [{ ...englishDub, published: false }] }),
     })
     expect(result).toBeNull()
-  })
-
-  it("leaves rotation state untouched when resolution fails", async () => {
-    const rotation = { usedSlugs: ["english"], previousSlug: "english" }
-    const result = await resolveExcerptStream({
-      excerpt,
-      rotation,
-      fetchVideo: async () => null,
-    })
-    expect(result).toBeNull()
-    expect(rotation).toEqual({
-      usedSlugs: ["english"],
-      previousSlug: "english",
-    })
   })
 })

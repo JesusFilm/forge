@@ -11,6 +11,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { AppState, StyleSheet, View } from "react-native"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import { getApolloClient } from "../../lib/apolloClient"
 import {
@@ -19,7 +20,6 @@ import {
   reportDatadogAction,
 } from "../../lib/datadog"
 import { GET_WATCH_EXPERIENCE } from "../../lib/queries"
-import { initialRotationState } from "../../lib/showcaseMode/languageRotation"
 import {
   CHAPTER_CARD_DURATION_MS,
   INITIAL_REEL_STATE,
@@ -169,6 +169,7 @@ export function ShowcaseScreen() {
   const routeParams = useLocalSearchParams()
   const { setDecoderClaimed } = useVideoPlayerContext()
   const { model, loading: poolLoading } = useWatchHome()
+  const { audioLanguageSlug } = useWatchPreferences()
   const [state, dispatch] = useReducer(reelReducer, INITIAL_REEL_STATE)
   const [stream, setStream] = useState<ShowcaseStream | null>(null)
   /** R9's live claim, for the video the reel is on. Null when it can't support one. */
@@ -181,7 +182,9 @@ export function ShowcaseScreen() {
   const stateRef = useRef<ReelState>(state)
   const modelRef = useRef(model)
   const mountedRef = useRef(true)
-  const rotationRef = useRef(initialRotationState)
+  // Read live at excerpt-resolution time so a mid-reel language change applies from the
+  // NEXT excerpt without restarting the current one (it stays out of the effect's deps).
+  const audioLanguageSlugRef = useRef(audioLanguageSlug)
   const requestIdRef = useRef(0)
 
   // R15: one report each per mounted session. Latches rather than booleans, so a
@@ -212,6 +215,10 @@ export function ShowcaseScreen() {
   useEffect(() => {
     modelRef.current = model
   }, [model])
+
+  useEffect(() => {
+    audioLanguageSlugRef.current = audioLanguageSlug
+  }, [audioLanguageSlug])
 
   useEffect(() => {
     // Setup restores what cleanup mutates: StrictMode remounts this same hook
@@ -335,7 +342,6 @@ export function ShowcaseScreen() {
   // R17: resolve the target excerpt's stream. Keyed on the token, which changes
   // exactly when the target does — including a one-item reel looping onto itself.
   const excerpt = currentExcerpt(state)
-  const isFirstOfChapter = state.excerptIndex === 0
   useEffect(() => {
     if (excerpt == null) return
     let cancelled = false
@@ -354,8 +360,8 @@ export function ShowcaseScreen() {
     void (async () => {
       const resolved = await resolveExcerptStream({
         excerpt,
-        // R7 scopes language rotation to the chapter, so entry resets it.
-        rotation: isFirstOfChapter ? initialRotationState : rotationRef.current,
+        // Ref, not a dep: a preference change mid-reel applies from the next excerpt.
+        viewerLanguageSlug: audioLanguageSlugRef.current,
         fetchVideo,
       })
       if (cancelled || !mountedRef.current) return
@@ -365,14 +371,13 @@ export function ShowcaseScreen() {
         dispatch({ type: "excerptFailed" })
         return
       }
-      rotationRef.current = resolved.rotation
-      setStream(resolved.stream)
+      setStream(resolved)
       setLiveLanguageCount(languageCount)
     })()
     return () => {
       cancelled = true
     }
-  }, [excerpt, isFirstOfChapter, state.excerptToken])
+  }, [excerpt, state.excerptToken])
 
   // R17: warm the next excerpt's stream choice AND its poster while the current one
   // plays. Data only — a second buffering player is the expo-video leak trigger

@@ -11,11 +11,7 @@ import type {
   WatchHomeModel,
   WatchHomeVideoInput,
 } from "../watchHome/model"
-import {
-  rotateLanguage,
-  type RotationState,
-  type ShowcaseDubInput,
-} from "./languageRotation"
+import { pickViewerLanguage, type ShowcaseDubInput } from "./languageRotation"
 import type {
   ExcerptWindow,
   ShowcaseChapter,
@@ -403,15 +399,15 @@ export type FetchShowcaseVideo = (
 ) => Promise<ShowcaseVideoDubs | null>
 
 /**
- * Resolve one excerpt's playable stream + rotated language + window. Returns null on
- * ANY failure (fetch throw, missing video, nothing playable) so R16's ladder skips the
- * item; the caller's rotation state is left untouched on a miss.
+ * Resolve one ordinary excerpt's playable stream in the viewer's chosen language (or the
+ * default chain) plus its window. Returns null on ANY failure (fetch throw, missing video,
+ * nothing playable) so R16's ladder skips the item rather than surfacing an error.
  */
 export async function resolveExcerptStream(args: {
   excerpt: ShowcaseExcerpt
-  rotation: RotationState
+  viewerLanguageSlug: string | null
   fetchVideo: FetchShowcaseVideo
-}): Promise<{ stream: ShowcaseStream; rotation: RotationState } | null> {
+}): Promise<ShowcaseStream | null> {
   let video: ShowcaseVideoDubs | null
   try {
     video = await args.fetchVideo(args.excerpt.slug)
@@ -420,20 +416,17 @@ export async function resolveExcerptStream(args: {
   }
   if (!video) return null
 
-  const rotated = rotateLanguage(video.dubs, args.rotation)
-  if (!rotated) return null
+  const pick = pickViewerLanguage(video.dubs, args.viewerLanguageSlug)
+  if (!pick) return null
 
   return {
-    stream: {
-      hls: rotated.pick.hls,
-      languageSlug: rotated.pick.languageSlug,
-      languageName: rotated.pick.languageName,
-      muxPlaybackId: rotated.pick.muxPlaybackId,
-      // The DUB's duration is what actually plays — Video.durationSeconds is the
-      // primary language's and drifts per dub.
-      window: resolveExcerptWindow(rotated.pick.durationSeconds),
-      claimsLanguage: rotated.pick.claimsLanguage,
-    },
-    rotation: rotated.nextState,
+    hls: pick.hls,
+    languageSlug: pick.languageSlug,
+    languageName: pick.languageName,
+    muxPlaybackId: pick.muxPlaybackId,
+    // The DUB's duration is what actually plays — Video.durationSeconds is the
+    // primary language's and drifts per dub.
+    window: resolveExcerptWindow(pick.durationSeconds),
+    claimsLanguage: pick.claimsLanguage,
   }
 }
