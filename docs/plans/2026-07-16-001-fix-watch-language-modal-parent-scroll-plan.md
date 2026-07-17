@@ -63,7 +63,7 @@ The current language picker uses a full-viewport scroll surface only below the `
 **Files:**
 
 - Modify: `apps/web/src/components/ui/dialog.tsx`
-- Create: `apps/web/src/components/ui/__tests__/dialog.test.tsx`
+- Create: `apps/web/src/components/ui/dialog.test.tsx`
 - Test through caller: `apps/web/src/components/watch/__tests__/LanguagePickerModal.test.tsx`
 
 **Approach:**

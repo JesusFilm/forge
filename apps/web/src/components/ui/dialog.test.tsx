@@ -40,7 +40,7 @@ function renderDialog(viewportClassName?: string) {
   })
 }
 
-describe("DialogContent", () => {
+describe("DialogContent viewport composition", () => {
   it("keeps the direct popup path when no viewport is requested", () => {
     renderDialog()
 

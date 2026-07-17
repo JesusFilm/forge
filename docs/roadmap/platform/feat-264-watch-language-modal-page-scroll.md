@@ -60,7 +60,7 @@ than at the viewport edge like page scrolling.
 
 ## Verification
 
-- `pnpm --filter @forge/web test -- --reporter=dot src/components/ui/__tests__/dialog.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx`
+- `pnpm --filter @forge/web test -- --reporter=dot src/components/ui/dialog.test.tsx src/components/watch/__tests__/LanguagePickerModal.test.tsx`
   covers opt-in versus default dialog composition and scroll ownership.
 - `pnpm --filter @forge/web typecheck` passes.
 - `pnpm --filter @forge/web lint` passes.
