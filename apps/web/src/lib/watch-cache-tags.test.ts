@@ -15,6 +15,7 @@ describe("watch cache tags", () => {
       series: "watch:series",
       childDubLanguages: "watch:child-dub-languages",
       routeManifest: "watch:route-manifest",
+      seoManifest: "watch:seo-manifest",
     })
   })
 
@@ -49,6 +50,9 @@ describe("watch cache tags", () => {
     ])
     expect(WATCH_CACHE_TAG_GROUPS.watchRouteManifest).toEqual([
       WATCH_CACHE_TAGS.routeManifest,
+    ])
+    expect(WATCH_CACHE_TAG_GROUPS.watchSeoManifest).toEqual([
+      WATCH_CACHE_TAGS.seoManifest,
     ])
   })
 })

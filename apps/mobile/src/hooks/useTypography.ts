@@ -69,14 +69,9 @@ export function computeTypographyScale(screenWidth: number): TypographyScale {
 }
 
 /**
- * Returns responsive typography tokens scaled by screen width.
- *
- * Scaling is based on screen width relative to a 375px baseline (iPhone SE),
- * clamped between 0.85x and 1.15x. Math.round() is applied to all values
- * (critical on Android where sub-pixel font sizes cause blurry text).
- *
- * React Native's Text component applies allowFontScaling (default: true) on
- * top of these values, so accessibility scaling is preserved.
+ * Responsive typography tokens scaled by screen width vs a 375px baseline,
+ * clamped 0.85x-1.15x and Math.round()'d (Android sub-pixel sizes blur).
+ * Text's allowFontScaling still applies on top, preserving a11y scaling.
  */
 export function useTypography(): TypographyScale {
   const { width } = useWindowDimensions()

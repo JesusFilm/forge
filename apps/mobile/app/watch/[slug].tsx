@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
+  Alert,
   Animated,
-  AppState,
-  BackHandler,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -14,10 +13,11 @@ import {
   View,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
+import { datadogLog } from "../../src/lib/datadog"
 import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
@@ -36,10 +36,8 @@ import {
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
-import {
-  enterFullscreenLandscape,
-  exitToPortrait,
-} from "../../src/lib/orientation"
+import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
+import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
@@ -51,9 +49,22 @@ import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQ
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import { Snackbar } from "../../src/components/ui/Snackbar"
+import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
+import {
+  BACK_BUTTON_PROPS,
+  PLAYER_HEIGHT_RATIO,
+  PLAYER_SIDE_PADDING,
+} from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
+import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
+import { buildSubtitlePath } from "../../src/lib/offlineFiles"
+import {
+  resolveActiveSubtitle,
+  resolveSubtitleActionLabel,
+} from "../../src/lib/subtitleSelection"
 
-const PLAYER_HEIGHT_RATIO = 9 / 16
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
 
 export default function WatchVideoPage() {
@@ -64,19 +75,22 @@ export default function WatchVideoPage() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
 
-  const navigation = useNavigation()
   const router = useRouter()
+  const {
+    getRecord,
+    deleteDownload,
+    pauseDownload,
+    resumeDownload,
+    committedFor,
+    isReady: downloadsReady,
+  } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
-  const titleOpacity = useRef(new Animated.Value(0)).current
-  const [showNavTitle, setShowNavTitle] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const insets = useSafeAreaInsets()
-  // Honor reduce-motion for the scroll-to-top FAB and nav-title reveals, the
-  // way the player's chrome/subtitles already do — snap instead of fading.
+  // Honor reduce-motion for the scroll-to-top FAB, the way the player's
+  // chrome/subtitles already do — snap instead of fading.
   const reduceMotionRef = useRef(false)
-
-  const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then((v) => {
@@ -97,51 +111,6 @@ export default function WatchVideoPage() {
     }
   }, [])
 
-  // Fullscreen side-effects: hide the native header + disable the iOS edge-swipe
-  // back (so it can't pop the route mid-fullscreen), and drive orientation.
-  //
-  // Orientation is driven TWO ways because react-native-screens (which
-  // expo-router's native Stack uses) owns the view controller's
-  // supportedInterfaceOrientations and overrides expo-screen-orientation's
-  // lockAsync. Setting the screen's `orientation` option is what actually
-  // rotates the view; the expo-screen-orientation calls re-assert the lock and
-  // cover the global/non-screen paths.
-  useEffect(() => {
-    navigation.setOptions({
-      headerShown: !isFullscreen,
-      gestureEnabled: !isFullscreen,
-      orientation: isFullscreen ? "landscape" : "portrait",
-    })
-    if (isFullscreen) void enterFullscreenLandscape()
-    else void exitToPortrait()
-  }, [isFullscreen, navigation])
-
-  // While fullscreen: Android hardware back exits fullscreen (not the route),
-  // and a foreground resume re-asserts the landscape-follow lock the OS may
-  // have dropped on background.
-  useEffect(() => {
-    if (!isFullscreen) return
-    const back = BackHandler.addEventListener("hardwareBackPress", () => {
-      setIsFullscreen(false)
-      return true
-    })
-    const app = AppState.addEventListener("change", (s) => {
-      if (s === "active") void enterFullscreenLandscape()
-    })
-    return () => {
-      back.remove()
-      app.remove()
-    }
-  }, [isFullscreen])
-
-  // Safety net: re-lock portrait if the screen unmounts while still fullscreen
-  // (e.g. a deep navigation away), so no other screen inherits landscape.
-  useEffect(() => {
-    return () => {
-      void exitToPortrait()
-    }
-  }, [])
-
   const {
     video,
     setVideo,
@@ -150,6 +119,7 @@ export default function WatchVideoPage() {
     ensureActiveVariantMedia,
     subtitleEnabled,
     activeSubtitleSlug,
+    preferredSubtitleName,
     snackbarMessage,
     setSnackbarMessage,
   } = useWatchSession()
@@ -158,15 +128,9 @@ export default function WatchVideoPage() {
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { slug: decodedSlug, locale: "en" },
     skip: !decodedSlug,
-    // cache-first, NOT cache-and-network: this payload is huge for videos with
-    // many dubs (e.g. birth-of-jesus is ~9.5MB / 2,259 dubs). cache-and-network
-    // refetched and re-parsed all of it on every (re-)entry, then re-ran
-    // normalizeVideo over every dub on the JS thread — freezing the whole screen
-    // (player, buttons, expanders all dead). cache-first reads the warm cache on
-    // re-entry with no refetch. First cold load still fetches once.
-    // NOTE: if cache persistence (U7) is enabled, revisit this — a restored
-    // snapshot strips volatile URLs, so cache-first must be paired with a
-    // cold-start revalidation there.
+    // cache-first, NOT cache-and-network: payload is huge (~9.5MB / 2,259 dubs)
+    // and cache-and-network re-parsed it per re-entry, freezing JS. NOTE: if cache
+    // persistence (U7) lands, revisit — restored snapshots need cold-start revalidation.
     fetchPolicy: "cache-first",
     // Render whatever the cache holds (prefetch) the moment it exists.
     returnPartialData: true,
@@ -183,18 +147,19 @@ export default function WatchVideoPage() {
     [data],
   )
 
-  // A series reached via /watch (deep link, recommendation, or a stale search
-  // entry) redirects to the dedicated series page. Detection is label-based —
-  // the lean watch fragment doesn't fetch the video's own children. Fires once
-  // per resolved slug (a ref guard) so it can't loop, and as early as the record
-  // resolves to minimize the brief watch-screen flash (the seed's playbackId is
-  // null for a series, so no stream loads in that window).
+  // A series reached via /watch redirects to the series page. Detection is
+  // label-based (lean fragment doesn't fetch children). Ref-guarded to once per
+  // slug (can't loop), as early as the record resolves to minimize the flash.
   const redirectedRef = useRef<string | null>(null)
   useEffect(() => {
     if (!normalized) return
     if (redirectedRef.current === decodedSlug) return
     if (!isSeriesRecord(normalized)) return
     redirectedRef.current = decodedSlug
+    datadogLog.info("content.resolution", {
+      outcome: "series-redirect",
+      content_id: decodedSlug,
+    })
     const seedSuffix = seedParam ? `?seed=${seedParam}` : ""
     router.replace(`/series/${encodeURIComponent(decodedSlug)}${seedSuffix}`)
   }, [normalized, decodedSlug, seedParam, router])
@@ -207,10 +172,9 @@ export default function WatchVideoPage() {
     [seed],
   )
 
-  // Publish the fetched video into the shared session so the sheet routes can
-  // read variants/subtitles without refetching. Keyed on the normalized object
-  // so partial → full enrichment (returnPartialData) republishes; the session
-  // guards against resetting user selections across these republishes.
+  // Publish video into the shared session so sheet routes read variants/subtitles
+  // without refetching. Keyed on the normalized object so partial→full enrichment
+  // republishes; the session guards user selections across republishes.
   useEffect(() => {
     if (normalized) {
       setVideo(normalized)
@@ -220,10 +184,9 @@ export default function WatchVideoPage() {
     }
   }, [normalized, setVideo, apolloClient])
 
-  // Navigated to a different video that hasn't loaded yet (e.g. Up Next): drop
-  // the previous video from the session so the loading guard shows the spinner
-  // instead of the prior video's content, and the sheets don't read its stale
-  // variants. The publish effect above repopulates once the new data arrives.
+  // Navigated to a not-yet-loaded video (e.g. Up Next): drop the previous video
+  // so the loading guard shows the spinner (not stale content/variants). The
+  // publish effect above repopulates once the new data arrives.
   useEffect(() => {
     if (video && video.slug !== decodedSlug && !normalized) {
       setVideo(null)
@@ -238,15 +201,61 @@ export default function WatchVideoPage() {
     if (subtitleEnabled) ensureActiveVariantMedia()
   }, [subtitleEnabled, ensureActiveVariantMedia])
 
+  // Offline: when a committed local copy exists (manifest hydrated), play it
+  // from disk ahead of the GraphQL source chain. The local URI is validated
+  // against the offline root before it reaches the player / subtitle reader.
+  const offlineRecord = downloadsReady ? getRecord(decodedSlug) : null
+  const offlineCommitted = downloadsReady ? committedFor(decodedSlug) : null
+  const offlineSource =
+    offlineCommitted && validateLocalMediaUrl(offlineCommitted, OFFLINE_ROOT)
+      ? offlineCommitted
+      : null
+  const offlineSubtitle =
+    offlineSource && offlineRecord?.subtitleLanguageSlug
+      ? (() => {
+          const path = buildSubtitlePath(
+            OFFLINE_ROOT,
+            decodedSlug,
+            offlineRecord.subtitleLanguageSlug,
+          )
+          return validateLocalMediaUrl(path, OFFLINE_ROOT) ? path : null
+        })()
+      : null
+
   const subtitleVttSrc = useMemo(() => {
+    // Offline playback reads the locally-saved subtitle from disk, but still
+    // honors the subtitles toggle: the track is always bundled at download
+    // time, yet only shown when captions are on — matching online playback.
+    if (offlineSource) return subtitleEnabled ? offlineSubtitle : null
     if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
       return null
     return (
-      activeVariantMedia.subtitles.find(
-        (s) => s.languageSlug === activeSubtitleSlug,
-      )?.vttSrc ?? null
+      resolveActiveSubtitle(activeSubtitleSlug, activeVariantMedia.subtitles)
+        ?.vttSrc ?? null
     )
-  }, [subtitleEnabled, activeSubtitleSlug, activeVariantMedia])
+  }, [
+    offlineSource,
+    offlineSubtitle,
+    subtitleEnabled,
+    activeSubtitleSlug,
+    activeVariantMedia,
+  ])
+
+  // Action-button labels surface the current selection. The subtitle label is
+  // "Off"/the active name, falling back to the persisted preferred name while the
+  // lazy media loads — so a cold load paints it, not a "Subtitles" placeholder.
+  const languageActionLabel = activeVariant?.languageName ?? null
+  const subtitleActionLabel = resolveSubtitleActionLabel(
+    subtitleEnabled,
+    activeSubtitleSlug,
+    activeVariantMedia?.subtitles ?? null,
+    preferredSubtitleName,
+  )
+  // A loaded dub with no tracks reads as "Off" — mute the pill too, so an enabled
+  // preference carried from another video doesn't paint as active here.
+  const subtitlesAvailable =
+    activeVariantMedia == null || activeVariantMedia.subtitles.length > 0
+  const subtitleActive = subtitleEnabled && subtitlesAvailable
 
   // Prefer the resolved video; fall back to the seed so first paint has
   // content. The player source resolves to the active variant, then the
@@ -254,15 +263,20 @@ export default function WatchVideoPage() {
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
   const playerSource =
-    activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl
+    offlineSource ??
+    activeVariant?.hls ??
+    video?.streamingUrl ??
+    seedStreamingUrl
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
       const screenWidth = e.nativeEvent.layoutMeasurement.width
-      const playerHeight = screenWidth * PLAYER_HEIGHT_RATIO
+      // The inline player is inset PLAYER_SIDE_PADDING per side, so its real
+      // 16:9 height is shorter than the full screen width would imply.
+      const playerHeight =
+        (screenWidth - PLAYER_SIDE_PADDING * 2) * PLAYER_HEIGHT_RATIO
       setShowScrollTop(scrollY > playerHeight)
-      setShowNavTitle(scrollY > playerHeight + 60)
     },
     [],
   )
@@ -280,71 +294,93 @@ export default function WatchVideoPage() {
     }).start()
   }, [showScrollTop, scrollTopOpacity])
 
-  useEffect(() => {
-    const to = showNavTitle ? 1 : 0
-    if (reduceMotionRef.current) {
-      titleOpacity.setValue(to)
-      return
-    }
-    Animated.timing(titleOpacity, {
-      toValue: to,
-      duration: 200,
-      useNativeDriver: true,
-    }).start()
-  }, [showNavTitle, titleOpacity])
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerTitle: () => (
-        <Animated.Text
-          style={[styles.navTitle, { opacity: titleOpacity }]}
-          numberOfLines={1}
-        >
-          {displayTitle ?? ""}
-        </Animated.Text>
-      ),
-    })
-  }, [navigation, displayTitle, titleOpacity])
-
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
 
   const handleShare = useCallback(() => {
     if (!video) return
-    const langSlug = activeVariant?.languageSlug
-    const base = `https://www.jesusfilm.org/watch/${video.slug}`
-    const shareUrl = langSlug ? `${base}/${langSlug}` : base
-    Share.share({ message: shareUrl, title: video.title ?? undefined })
+    // Share.share rejects when the OS share sheet is dismissed/unavailable;
+    // swallow it so it never surfaces as an unhandled rejection.
+    void Share.share({
+      message: buildWatchShareUrl(video.slug, activeVariant?.languageSlug),
+      title: video.title ?? undefined,
+    }).catch(() => {})
   }, [video, activeVariant?.languageSlug])
 
   const hasVideo = video != null
 
+  // Cold external arrival (forgemobile://) carries no seed — in-app navigation
+  // always seeds. Fire once so it's distinct from in-app pushes (R32).
+  const deepLinkEmittedRef = useRef(false)
+  useEffect(() => {
+    if (deepLinkEmittedRef.current || !decodedSlug || seedParam != null) return
+    deepLinkEmittedRef.current = true
+    datadogLog.info("content.deep_link_open", { content_id: decodedSlug })
+  }, [decodedSlug, seedParam])
+
+  // Detail-route resolution outcome (R34), deduped per slug+outcome so a
+  // re-render or a skeleton→hydrated transition each emit at most once. Series
+  // are owned by the redirect effect above.
+  const resolutionEmittedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (normalized && isSeriesRecord(normalized)) return
+    const outcome =
+      offlineSource != null
+        ? "offline-source"
+        : hasVideo
+          ? "hydrated"
+          : seed != null
+            ? "seed-only"
+            : loading
+              ? "cold-skeleton"
+              : "not-found"
+    const key = `${decodedSlug}:${outcome}`
+    if (resolutionEmittedRef.current.has(key)) return
+    resolutionEmittedRef.current.add(key)
+    datadogLog.info("content.resolution", { outcome, content_id: decodedSlug })
+  }, [decodedSlug, normalized, offlineSource, hasVideo, seed, loading])
+
   // Cold deep link with nothing to paint yet → layout-matched skeleton,
   // never a blank full-screen spinner.
-  if (!hasVideo && seed == null && loading) {
+  if (!hasVideo && seed == null && loading && !offlineSource) {
     return (
       <View style={layout.screenContainer}>
-        <VideoDetailSkeleton />
+        <StatusBar style="light" />
+        {/* Match the loaded player's dock (top safe edge + side inset) so the
+            player block doesn't jump when canonical data lands. */}
+        <VideoDetailSkeleton
+          playerTopInset={insets.top}
+          playerHorizontalInset={PLAYER_SIDE_PADDING}
+        />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
   }
 
   // No video, no seed, not loading → genuinely nothing to show.
-  if (!hasVideo && seed == null) {
+  if (!hasVideo && seed == null && !offlineSource) {
     return (
-      <View style={layout.centered}>
-        <Text style={text.errorTitle}>Video Not Found</Text>
-        <Text style={text.errorMessage}>
-          {error?.message ?? "This video could not be loaded."}
-        </Text>
-        <Text
-          style={styles.retryLink}
-          onPress={() => void refetch()}
-          accessibilityRole="button"
-        >
-          Retry
-        </Text>
+      // screenContainer (no horizontal padding) hosts the absolute back button
+      // so it aligns with the loading/loaded states; the centered error content
+      // lives in an inner view that owns the padding.
+      <View style={layout.screenContainer}>
+        <StatusBar style="light" />
+        <View style={layout.centered}>
+          <Text style={text.errorTitle}>Video Not Found</Text>
+          <Text style={text.errorMessage}>
+            {error?.message ?? "This video could not be loaded."}
+          </Text>
+          <Text
+            style={styles.retryLink}
+            onPress={() => void refetch()}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading video"
+          >
+            Retry
+          </Text>
+        </View>
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
   }
@@ -376,19 +412,33 @@ export default function WatchVideoPage() {
     <View style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
-      {/* Player is pinned at the route root (outside the ScrollView) so its
-          custom fullscreen can expand to an absolute-fill window overlay above
-          the page and native header, without ever being reparented (which
-          would release the expo-video player). Inline it occupies a fixed 16:9
-          box at the top; content scrolls beneath it. */}
-      <VideoPlayer
-        streamingUrl={playerSource}
-        posterUrl={displayPoster}
-        subtitleVttSrc={subtitleVttSrc}
-        onPlayingChange={undefined}
-        fullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
-      />
+      {/* Player pinned at route root (outside ScrollView) so its fullscreen can
+          expand to an absolute-fill overlay without reparenting (which would
+          release the expo-video player). Inline: top safe edge + side inset. */}
+      <View
+        style={
+          isFullscreen
+            ? // zIndex lifts the whole dock subtree (incl. the absolutely-
+              // positioned fullscreen player) above the ScrollView — RN zIndex
+              // is sibling-scoped, so the player's own zIndex can't escape this
+              // wrapper to clear the later-painted ScrollView on its own.
+              styles.playerDockFullscreen
+            : {
+                paddingTop: insets.top,
+                paddingHorizontal: PLAYER_SIDE_PADDING,
+              }
+        }
+      >
+        <VideoPlayer
+          streamingUrl={playerSource}
+          posterUrl={displayPoster}
+          subtitleVttSrc={subtitleVttSrc}
+          onPlayingChange={undefined}
+          fullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          horizontalInset={PLAYER_SIDE_PADDING}
+        />
+      </View>
 
       <ScrollView
         ref={scrollViewRef}
@@ -407,10 +457,79 @@ export default function WatchVideoPage() {
         {hasVideo ? (
           <>
             <ActionButtonRow
-              onDownload={() => router.push("/watch/download")}
+              downloadState={getRecord(video.slug)?.state ?? null}
+              downloadProgress={(() => {
+                const record = getRecord(video.slug)
+                return record && record.totalBytes > 0
+                  ? record.bytesWritten / record.totalBytes
+                  : null
+              })()}
+              onDownload={() => {
+                const state = getRecord(video.slug)?.state
+                if (state === "downloaded") {
+                  // Saved: offer a non-destructive quality/language swap or a
+                  // delete (the current copy stays playable during a swap).
+                  Alert.alert(
+                    "Offline download",
+                    "This video is saved for offline viewing.",
+                    [
+                      {
+                        text: "Change quality / language",
+                        onPress: () => router.push("/watch/download?swap=1"),
+                      },
+                      {
+                        text: "Remove download",
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ],
+                  )
+                } else if (state === "paused") {
+                  // Paused (mirrors the series ring): resume, or remove entirely.
+                  Alert.alert("Offline download", "This download is paused.", [
+                    {
+                      text: "Remove download",
+                      style: "destructive",
+                      onPress: () => {
+                        void deleteDownload(video.slug)
+                      },
+                    },
+                    {
+                      text: "Resume",
+                      onPress: () => void resumeDownload(video.slug),
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ])
+                } else if (state === "downloading") {
+                  // In flight → the ring's pause glyph pauses it immediately.
+                  void pauseDownload(video.slug)
+                } else if (state === "queued") {
+                  // Queued in a series batch — no live transfer to pause yet, so
+                  // offer to remove it from the download (matches controlsForState).
+                  Alert.alert("Offline download", "This download is queued.", [
+                    {
+                      text: "Remove download",
+                      style: "destructive",
+                      onPress: () => {
+                        void deleteDownload(video.slug)
+                      },
+                    },
+                    { text: "Cancel", style: "cancel" },
+                  ])
+                } else {
+                  // Idle / failed / canceled → the download picker (retry included).
+                  router.push("/watch/download")
+                }
+              }}
               onLanguage={() => router.push("/watch/language")}
               onSubtitles={() => router.push("/watch/subtitle")}
               onShare={handleShare}
+              languageLabel={languageActionLabel}
+              subtitleLabel={subtitleActionLabel}
+              subtitleActive={subtitleActive}
             />
 
             <VideoDescription description={video.description} />
@@ -447,6 +566,7 @@ export default function WatchVideoPage() {
                   style={styles.retryLink}
                   onPress={() => void refetch()}
                   accessibilityRole="button"
+                  accessibilityLabel="Retry loading video details"
                 >
                   Retry
                 </Text>
@@ -456,6 +576,11 @@ export default function WatchVideoPage() {
           </>
         )}
       </ScrollView>
+
+      {/* Floating back button overlaid on the player's top-right corner —
+          replaces the native header back. Hidden in fullscreen (the player owns
+          its own chrome there). */}
+      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
 
       {showScrollTop && (
         <Animated.View
@@ -476,7 +601,7 @@ export default function WatchVideoPage() {
       )}
 
       <Snackbar
-        message={snackbarMessage ?? "Download complete"}
+        message={snackbarMessage ?? ""}
         visible={snackbarMessage != null}
         onDismiss={() => setSnackbarMessage(null)}
       />
@@ -488,15 +613,11 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
+  playerDockFullscreen: {
+    zIndex: 1000,
+  },
   scrollContent: {
     paddingBottom: 80,
-  },
-  navTitle: {
-    color: TEXT_PRIMARY,
-    fontSize: 17,
-    fontWeight: "600",
-    fontFamily: "System",
-    textAlign: "center",
   },
   sectionGap: {
     marginTop: 16,

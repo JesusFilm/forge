@@ -19,17 +19,39 @@ as mobile, different renderers optimized for 10-foot UI and D-pad navigation.
 ### SDUI Pipeline
 
 ```
-Admin GraphQL → gql.tada typed query → normalizer (adds `kind`) → dispatcher → TV renderers
+Admin GraphQL → gql.tada typed query → normalizer (typed block-model union) → dispatcher → typed TV renderers
 ```
 
 - **Queries**: Imported from mobile or copied with sync comment
-- **Normalizer**: Copied from mobile (identical logic)
-- **Dispatcher**: TV version with subset of block kinds
-- **Renderers**: All new, designed for 10-foot UI with D-pad focus
+- **Normalizer**: TV-owned (`src/lib/normalizer.ts`) — emits a `kind`-discriminated
+  union of block models DERIVED from the query's gql.tada ResultOf, so fragment/alias
+  changes fail at compile time (never a silent `undefined` in a renderer)
+- **Dispatcher**: TV version with subset of block kinds; the switch narrows each
+  renderer to its typed model
+- **Renderers**: All new, designed for 10-foot UI with D-pad focus; props are the
+  typed block models, no `as` casts
 
-## Design System: The Crimson Gallery
+### Home hero (client-owned, not the Experience)
 
-All UI follows the Crimson Gallery design system from the Stitch mockups:
+The topmost home hero is a config-mirrored deterministic pool queue over
+`WATCH_HOME_PLAYLIST_SEQUENCE` (`src/lib/watchHome/heroQueue.ts`) that mirrors mobile's
+algorithm exactly, so TV shows the same day's videos/series as web/mobile (→
+`model.featured`). It is NOT the admin Experience (whose `WatchHomeHeroBlock` the
+adapter skips). Mirror mobile's data path precisely: top-level-only source map + raw
+`parent.children` (never `resolvedChildren`), and dedupe the queue on `coreId`.
+`businessDate` is Intl-free (Hermes; see `clockFormat.ts`), and TV builds NO Mux inserts
+(no web-link/promo slides). `WATCH_HOME_HERO_SOURCE_IDS` is the empty-queue fallback
+only; feat-160 later moves curation into admin.
+
+## Design Systems
+
+The TV app runs two coexisting design systems. Which one applies depends on the
+surface.
+
+### Crimson Gallery (`COLORS` in `src/lib/colors.ts`)
+
+Governs series and the remaining legacy surfaces. (The SDUI Experience Details
+renderer moved to WATCH_THEME — see below.) From the Stitch mockups:
 
 - Background: `#161311` (warm stone, never pure black)
 - Surface container: `#221F1D`
@@ -40,7 +62,30 @@ All UI follows the Crimson Gallery design system from the Stitch mockups:
 - Font: System (SF Pro on tvOS, Roboto on Android TV)
 - No 1px borders — use background color shifts
 - 16px border radius on cards
-- Focus state: 1.05x scale + crimson glow
+- Focus state: 1.05x scale + white ring (the app-wide default). The `focusRing="crimson"` opt-in for near-white surfaces is retired — no active instances; the Related Questions FallbackPill was migrated to the invert-on-focus fill.
+
+### WATCH_THEME (`src/components/watch/watchDetailTheme.ts`)
+
+Governs the watch detail, Home, Search, and Experience Details (SDUI experience)
+screens. Ported from the Claude Design handoff and adopted across those surfaces
+— a deliberate product decision:
+
+- Primary accent: `#E1241E` (brighter red than Crimson Gallery)
+- Near-black surfaces/scrims (`NEAR_BLACK` = `#0a0a0b`); never warm stone
+- Focus state: white-fill focus with near-black ink (white ring, not crimson glow)
+- Frosted-glass pills approximated with translucent white fill (no backdrop blur on TV)
+- Experience Details hero: unlike the muted watch/Home/Search heroes, it autoplays
+  _with sound_ and pauses when scrolled off-screen or on nav-away/background — a
+  deliberate Apple-TV-style divergence. `VideoBackdrop` gates it via its `muted` /
+  `active` props; siblings keep the muted, overlay-only defaults.
+- Experience Details quiz button (`QuizButtonRenderer`) is a deliberate Crimson-palette
+  exception in this WATCH page — its orange→crimson gradient is intentional; do NOT
+  auto-migrate it to WATCH (a U4 sweep did once and it was reverted).
+
+`SEARCH_THEME` (`src/components/search/searchTheme.ts`) extends WATCH_THEME with
+search-layer-specific tokens (letter-strip keys, result-card ring, thumb chips).
+
+- Font: System (SF Pro on tvOS, Roboto on Android TV)
 
 ## Conventions
 
@@ -52,19 +97,106 @@ All UI follows the Crimson Gallery design system from the Stitch mockups:
 - Composite React keys: `key={\`${item.kind}-${item.id}-${index}\`}`.
 - Hardcoded English locale: `{ locale: "en" }` for all GraphQL queries.
 
+## Running on a simulator (env setup)
+
+**Before launching apps/tv on a simulator, ALWAYS run
+`bash scripts/setup-sim-env.sh tv` first.** Fresh git worktrees don't inherit
+`.env.local` (gitignored), and this app's `.env.local` historically ships only
+`EXPO_PUBLIC_GRAPHQL_URL` — missing `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`, the
+consumer bearer without which admin's `Query.search` returns `UNAUTHENTICATED`
+and search silently breaks.
+
+The script is idempotent: it seeds `apps/tv/.env.local` from the main checkout
+and guarantees the search token is present (LOCAL DEV may seed a shared dev
+token; in production tv and mobile each get their OWN dedicated fleet key —
+never shared, see Test builds & distribution). Run it BEFORE `expo start` — Expo inlines
+`EXPO_PUBLIC_*` at bundler startup, so a change made after boot needs a Metro
+restart to take effect.
+
+## Test builds & distribution
+
+- EAS profiles live in `apps/tv/eas.json`; every profile sets `EXPO_TV: "1"` so the
+  managed prebuild produces a TV target (native dirs are gitignored).
+- Getting stakeholder test builds onto real Apple TV / Android TV: see `DISTRIBUTION.md`
+  (Android = `--profile preview` APK link; Apple TV = TestFlight via `xcrun altool -t appletvos`
+  — NOT `eas submit`, which delivers tvOS as iOS and is rejected).
+- Search token (production/preview): set `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` to TV's OWN fleet key —
+  a dedicated entry in admin's `FLEET_ADMIN_API_KEYS` CSV (NOT `WEB_ADMIN_API_KEYS`, never mobile's
+  value). Provision per EAS environment (`eas env:create`); it's baked in at build time, so a token
+  change needs a rebuild. Receiver-first: the key must be live in admin's `FLEET_ADMIN_API_KEYS`
+  before the build ships, or the first `Query.search` calls return `UNAUTHENTICATED`.
+
+## Observability (Datadog)
+
+Client-side Mobile RUM + Logs + native crash via `@datadog/mobile-react-native` (3.5.2).
+Pure config/reporting helpers live in `src/lib/datadog.ts` (`getDatadogRumConfig`,
+`reportDatadogError`, `datadogLog` — no JSX, so they're unit-testable without the native SDK);
+the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is mounted in
+`app/_layout.tsx` below the root `ErrorBoundary`. Service = `forge-tv`.
+
+- **Opt-in / no-op when unprovisioned.** `getDatadogRumConfig()` returns `null` unless BOTH
+  `EXPO_PUBLIC_DATADOG_CLIENT_TOKEN` and `EXPO_PUBLIC_DATADOG_APPLICATION_ID` are set, so an
+  unprovisioned build boots normally (dev builds log a `[datadog] RUM disabled` warning).
+  Provision via `eas env:create` per environment (see `.env.example` and the TV runbook in
+  `docs/observability/datadog.md`). `EXPO_PUBLIC_DATADOG_ENV` defaults by build type
+  (`__DEV__` → development, release → production); the preview EAS environment sets
+  `EXPO_PUBLIC_DATADOG_ENV=preview` explicitly — preview is a release build and would
+  otherwise tag external testers' sessions `env:production`.
+- **Client token, never an API key** — RUM creds ship in the bundle (`EXPO_PUBLIC_*`).
+- **Site is the mobile enum** (`US1`, `EU1`, …), NOT web's `datadoghq.com`. Default `US1`.
+- **firstPartyHosts** targets the admin GraphQL host so RUM resources trace-link to admin APM.
+- **Agent telemetry access (feat-228):** query `service:forge-tv` read-only via the `datadog` MCP in repo `.mcp.json` (see `docs/observability/datadog.md`, "Datadog MCP for agents").
+- **Web parity + TV-native signals (feat-228):** TV mirrors web's non-sensitive signals (content actions, the `watch_search` per-search Log + result-click action) and adds TV-only `video_playback.*` QoE + `focus.restore_failed`. It deliberately skips web's Session Replay, server APM, and `setUser` PII, and samples 100% vs web's 50% (normalize cross-app counts). Full table: `docs/observability/datadog.md`, "TV ↔ web data parity".
+- **Instrumentation depth (feat-226):** route changes become pattern-named RUM views via
+  `DatadogRouteTracker` (name = route pattern e.g. `series/[slug]`, key = literal pathname;
+  mounted in `app/_layout.tsx`); GraphQL resources carry the SDK's operation-name headers via
+  an ApolloLink before HttpLink (spread-merge preserves the SemanticSearch bearer); the series
+  screen reports a `series_first_rail_ready` view timing once per slug instance (latch in
+  `seriesScreenState.ts`, partial-data safe); a one-shot-per-process dev watchdog warns when a
+  provisioned mount never completes SDK init within ~10s (`createDatadogInitWatchdog`).
+- **Action-name privacy:** RUM names tap actions from `accessibilityLabel`. Surfaces whose
+  label carries user-typed text must override with a generic `dd-action-name` — `KeyButton`
+  (`keyboard-key`) and the recent-search chips (`recent-search`, threaded through
+  `FocusableCard`'s `ddActionName` prop, which forwards to its internal Pressable).
+- **tvOS SDK patch (load-bearing):** `@datadog/mobile-react-native@3.5.2` does NOT compile on
+  tvOS out of the box — `patches/@datadog__mobile-react-native@3.5.2.patch` guards two unguarded
+  WebView refs the SDK missed (a stray `import DatadogWebViewTracking` in `DdSdkImplementation.swift`
+  and the `RCT_REMAP_METHOD(consumeWebviewEvent...)` export in `DdSdk.mm`). No SessionReplay /
+  WebViewTracking on tvOS — never add those packages. Re-create this patch on any SDK bump.
+- **`expo-datadog` config plugin is intentionally NOT enabled.** Its build phases run
+  `datadog-ci` dSYM/source-map upload and **hard-fail without `DATADOG_API_KEY` even in Debug**,
+  and its datadog-ci path resolution assumes a hoisted (non-pnpm) layout. Build-time symbol upload
+  is a **deferred, secret-gated CI step** (mirror web/admin's `datadog:sourcemaps` via
+  `pnpm dlx @datadog/datadog-ci`, only when the key is present) — not a mandatory build phase.
+- **Deferred (later):** Datadog does NOT profile the Hermes JS bundle — pair a dedicated Hermes
+  profiler (`react-native-release-profiler`) for client-render root-cause (the ~2.8–3.2s series parse).
+- **Status:** development + preview EAS environments carry credentials; sessions verified from
+  the tvOS simulator. Still pending (runbook in `docs/observability/datadog.md`): the intake
+  alert, real Apple TV / Android TV hardware sessions, and the privacy-gated production
+  provisioning.
+
 ## TV-Specific Patterns
 
 - Every interactive element must be focusable via D-pad.
-- Visible focus ring (crimson glow) on focused elements.
+- Focus visuals come from the one focus module (`src/components/focus/`):
+  `useFocusVisual(role)` with role presets (card/thumb/cta/pill/tab/key/option/tile/row)
+  owns the single 180ms curve, the white ring (`FOCUS_RING_COLOR`, 0.9), shadows, and
+  the Android compositing quirks. Never hand-roll onFocus + Animated scale/ring.
+- Shared state box for loading/error/empty screens: `src/components/ScreenStateView.tsx`
+  (accent-parameterized; Crimson surfaces pass `COLORS.primary`). Shared episode-style
+  rail/card: `src/components/rails/ThumbRail.tsx` + `ThumbCard.tsx`. Card-image
+  precedence lives in `src/lib/cardImage.ts` (named intents poster/card).
+- Visible focus ring on focused elements: a white ring is the app-wide default on all surfaces (cards get a white border ring; the primary red CTA keeps its colored drop shadow). The `focusRing="crimson"` opt-in is retired; pills on dark glass (e.g. the former Related Questions FallbackPill, the hero next-chevron) use the invert-on-focus fill (dark glass -> white fill + near-black ink/icon on focus).
 - `TVFocusGuideView` to constrain focus within horizontal rails.
-- `hasTVPreferredFocus` for initial focus control and back-navigation focus restore.
+- `hasTVPreferredFocus` for initial (first-mount) focus control. For back-navigation focus restore use `createFocusMemory()` + `requestTVFocus()` in a `useFocusEffect` (Home; see `src/components/home/focusMemory.ts`) — `hasTVPreferredFocus` is one-shot mount-only and does not restore on pop.
 - Stack navigation only: Home → Experience Detail → Video Playback.
 - Menu/Back button pops navigation stack.
 
 ## Common Pitfalls
 
 - Android TV VideoView z-order: renders on top of all RN Views.
-- Focus lost on back-navigation (react-native-tvos #852): workaround with `hasTVPreferredFocus` in `useEffect`.
+- Focus lost on back-navigation (react-native-tvos #852): Home remembers the focused node (`createFocusMemory`) and re-focuses it via `requestTVFocus()` on `useFocusEffect` re-entry. `hasTVPreferredFocus` is mount-only and does not restore on pop.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Must run `EXPO_TV=1 npx expo prebuild --clean` when switching between TV and phone targets.
+- `Pressable.onFocus`/`onBlur` (and `FocusableCard`/`HomeCard`/`KeyButton` built on them) only fire on **tvOS** out of the box. On **Android TV** react-native-tvos delivers per-view focus solely as a global `onHWKeyEvent` (`ReactViewGroup.onFocusChanged` is a no-op) and `Pressability` never registers with `tvFocusEventHandler` — so without intervention D-pad focus moves natively but every JS focus visual (ring/scale/showcase) and the focus-driven auto-scroll go dead, looking like "nothing is focusable." Bridged in `patches/react-native-tvos@0.81.5-2.patch` (Pressable registers its host tag with `tvFocusEventHandler` on Android). If a future RN-tvos bump regenerates that patch, re-apply the Pressable bridge or Android focus visuals break again.

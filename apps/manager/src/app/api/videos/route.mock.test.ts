@@ -51,11 +51,30 @@ describe("GET /api/videos in mock mode", () => {
     await expect(response.json()).resolves.toMatchObject({
       collections: [
         {
+          coreId: "collection-1",
+          slug: "hope-stories",
           title: "Hope Stories",
-          videos: [{ title: "Episode 1" }, { title: "Episode 2" }],
+          videos: [
+            {
+              coreId: "ep-1",
+              slug: "hope-stories-episode-1",
+              title: "Episode 1",
+            },
+            {
+              coreId: "ep-2",
+              slug: "hope-stories-episode-2",
+              title: "Episode 2",
+            },
+          ],
         },
       ],
-      standalone: [{ title: "A New Beginning" }],
+      standalone: [
+        {
+          coreId: "standalone-1",
+          slug: "a-new-beginning",
+          title: "A New Beginning",
+        },
+      ],
     })
   })
 
@@ -100,6 +119,44 @@ describe("GET /api/videos in mock mode", () => {
     )
   })
 
+  it("orders collection children by their parent relation order", async () => {
+    const seed = cloneMockCmsSeed(
+      DEFAULT_MOCK_CMS_SEED.readModels.videoCoverage,
+    )
+    const collection = seed[0]
+    const episodeOne = seed[1]
+    const episodeTwo = seed[2]
+
+    getCmsGatewayMock.mockReturnValue({
+      mode: "mock",
+      getVideoCoverage: getVideoCoverageMock.mockResolvedValue([
+        collection,
+        {
+          ...episodeTwo,
+          parentRelations: [
+            { parentDocumentId: collection.documentId, order: 2 },
+          ],
+        },
+        {
+          ...episodeOne,
+          parentRelations: [
+            { parentDocumentId: collection.documentId, order: 1 },
+          ],
+        },
+      ]),
+    })
+
+    const response = await GET(new Request("http://example.test/api/videos"))
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(
+      payload.collections[0].videos.map(
+        (video: { coreId: string }) => video.coreId,
+      ),
+    ).toEqual(["ep-1", "ep-2"])
+  })
+
   it("falls back to the slug when Admin omits a preferred localized title", async () => {
     const standalone = DEFAULT_MOCK_CMS_SEED.readModels.videoCoverage[3]
 
@@ -120,7 +177,7 @@ describe("GET /api/videos in mock mode", () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
-      standalone: [{ title: "stable-video-slug" }],
+      standalone: [{ slug: "stable-video-slug", title: "stable-video-slug" }],
     })
   })
 })

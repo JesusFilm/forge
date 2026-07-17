@@ -29,19 +29,43 @@ import { z } from "zod"
 
 import { env } from "@/config/env"
 import { TOKEN_CAPS } from "../budgets"
-import { DraftExperienceSchema } from "@/services/experience-ai/experience-ai.schemas"
-import type { DraftExperience } from "@/services/experience-ai/experience-ai.schemas"
-import { extractJsonObject } from "@/services/experience-ai/extract-json-object"
+import {
+  coerceDraftEnvelope,
+  DraftExperienceSchema,
+  extractJsonObject,
+  getFillSchemaForType,
+  SkeletonSchema,
+  validateSkeleton,
+} from "@forge/experience-schema"
+import type {
+  DraftExperience,
+  Skeleton,
+  SkeletonNode,
+} from "@forge/experience-schema"
 
 // ---------------------------------------------------------------------------
 // Typed step boundary error
 // ---------------------------------------------------------------------------
 
-export type WorkflowStepName = "plan" | "draft" | "critique" | "revise"
+export type WorkflowStepName =
+  | "plan"
+  | "draft"
+  | "skeleton"
+  | "fill"
+  | "critique"
+  | "revise"
 export type WorkflowStepFailureReason =
   | "schema_mismatch"
   | "agent_error"
   | "timeout"
+  // The provider stopped because it hit the output-token ceiling
+  // (`finishReason === "length"`), so the emitted text/object is a
+  // TRUNCATED prefix. Non-repairable: re-prompting with the same cap
+  // truncates again. Classified to UPSTREAM_ERROR at the action layer,
+  // NOT routed into the repair loop (U5). Guarded strictly on
+  // `=== "length"` — never `!== "stop"` (finishReason is optional, and
+  // providers that omit it must take the normal parse path).
+  | "truncated"
 
 /**
  * Typed error thrown by any step when its body cannot produce valid
@@ -87,6 +111,11 @@ const inputSchema = z.object({
   prompt: z.string().min(1),
   locale: z.string().default("en"),
   candidates: z.array(candidateSchema).default([]),
+  // Optional structure-and-voice reference (a real published page,
+  // video ids already stripped — see experience-ai-exemplar-outline.ts).
+  // Threaded into the planner + drafter prompts. Both quick-draft and
+  // multi-step-draft consume the same builders, so this covers both modes.
+  exemplar: z.string().optional(),
 })
 type WorkflowInput = z.infer<typeof inputSchema>
 
@@ -103,6 +132,24 @@ const draftSchema = planSchema.extend({
 })
 type DraftStepOutput = z.infer<typeof draftSchema>
 
+// Two-phase generation (U3) — skeleton step output carries the plan
+// fields plus the validated structure-only skeleton. The fill step then
+// consumes it and re-emits the SAME `draftSchema` envelope the legacy
+// draft step produced, so `critiqueStep.inputSchema` and the action's
+// `result.draft` cast stay valid for BOTH workflows.
+//
+// `skeleton` is typed loosely as a passthrough object here: the skeleton
+// step has already run `validateSkeleton` (the structural gate) before
+// emitting, so re-asserting the full tree shape in the step boundary
+// schema would be redundant. Mastra's step-boundary parse only needs to
+// carry the value through to the fill step.
+const skeletonSchema = planSchema.extend({
+  skeleton: z.object({ nodes: z.array(z.unknown()) }).passthrough(),
+})
+type SkeletonStepOutput = z.infer<typeof skeletonSchema> & {
+  skeleton: Skeleton
+}
+
 const critiqueSchema = z.object({
   draft: DraftExperienceSchema,
   notes: z.string(),
@@ -118,6 +165,13 @@ type RevisedStepOutput = z.infer<typeof revisedSchema>
 // Mastra runtime surface — the minimum we need from the injected param
 // ---------------------------------------------------------------------------
 
+// `structuredOutput.schema` is a generic Zod schema, not pinned to
+// `DraftExperienceSchema`: the two-phase fill step (U3) threads a
+// per-node flat block schema, and U4 threads per-phase schemas. The
+// agent only forwards it to the provider as the constrained-decoding
+// JSON schema, so the generic `z.ZodType` is the honest type.
+type AgentResult = { text: string; object?: unknown; finishReason?: string }
+
 type MastraAgent = {
   generate: (
     prompt: string,
@@ -125,9 +179,9 @@ type MastraAgent = {
       abortSignal?: AbortSignal
       maxOutputTokens: number
       toolChoice?: "auto" | "none" | "required"
-      structuredOutput?: { schema: typeof DraftExperienceSchema }
+      structuredOutput?: { schema: z.ZodType }
     },
-  ) => Promise<{ text: string; object?: unknown }>
+  ) => Promise<AgentResult>
 }
 
 type MastraSurface = {
@@ -171,10 +225,48 @@ function structuredDraftOutputEnabled(): boolean {
   )
 }
 
-const STRUCTURED_DRAFT_OPTS = {
-  toolChoice: "none",
-  structuredOutput: { schema: DraftExperienceSchema },
-} as const
+/**
+ * Whether per-phase schema-constrained decoding (`structuredOutput`)
+ * may ACTUALLY be sent to the provider (U4). Two preconditions, both
+ * required:
+ *
+ *  1. `structuredDraftOutputEnabled()` — the active provider is the
+ *     JesusFilm gateway (the only provider whose constrained-decoding
+ *     surface we wire here; Gemini/OpenRouter take the free-text path).
+ *  2. `AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED === "true"` — an operator
+ *     flipped the trusted flag, which only happens after the U6
+ *     BlocksSchema smoke gate is green for that provider (R6).
+ *
+ * This is the NEW precondition U4 introduces: even on the gateway path,
+ * structured opts are withheld until the provider's constrained decoding
+ * is verified. The DEFAULT (flag unset/"false", or a non-gateway
+ * provider) takes the free-text + coercion + repair + validator path and
+ * still produces a valid draft — the final guarantee never depends on
+ * constrained decoding (R5).
+ */
+function constrainedDecodingTrusted(): boolean {
+  return (
+    structuredDraftOutputEnabled() &&
+    env.AI_GATEWAY_CONSTRAINED_DECODING_TRUSTED === "true"
+  )
+}
+
+/**
+ * Per-phase structured-output opts. When constrained decoding is trusted
+ * (gateway + trusted flag), constrain the call to `schema` so off-shape
+ * output is prevented at the decoder and keep the model out of tool
+ * round-trips (`toolChoice: "none"`). When NOT trusted, return `{}` so
+ * the agent keeps its free-text path (coercion + schema parse carry
+ * correctness). Skeleton phase passes `SkeletonSchema`, fill passes the
+ * per-node flat block schema, draft/revise pass `DraftExperienceSchema`.
+ */
+function structuredOptsFor(schema: z.ZodType): {
+  toolChoice?: "auto" | "none" | "required"
+  structuredOutput?: { schema: z.ZodType }
+} {
+  if (!constrainedDecodingTrusted()) return {}
+  return { toolChoice: "none", structuredOutput: { schema } }
+}
 
 async function callAgent(
   mastra: MastraSurface,
@@ -185,12 +277,13 @@ async function callAgent(
   abortSignal: AbortSignal | undefined,
   extraOpts: {
     toolChoice?: "auto" | "none" | "required"
-    structuredOutput?: { schema: typeof DraftExperienceSchema }
+    structuredOutput?: { schema: z.ZodType }
   } = {},
-): Promise<{ text: string; object?: unknown }> {
+): Promise<AgentResult> {
   const agent = mastra.getAgentById(agentId)
+  let result: AgentResult
   try {
-    return await agent.generate(prompt, {
+    result = await agent.generate(prompt, {
       abortSignal,
       maxOutputTokens,
       ...extraOpts,
@@ -212,6 +305,28 @@ async function callAgent(
       err,
     )
   }
+  // Truncation guard (U4). A `finishReason === "length"` means the
+  // provider hit the output-token ceiling mid-document, so `result.text`
+  // / `result.object` is a TRUNCATED prefix — parsing it would succeed-
+  // then-fail or silently drop tail blocks. Fail closed BEFORE any parse
+  // so it covers EVERY phase (plan/skeleton/fill/critique/revise). Guard
+  // strictly on the literal `"length"` — `finishReason` is optional and
+  // providers that omit it (or report "stop"/"tool_calls"/etc.) must take
+  // the normal path. This is non-repairable: re-prompting with the same
+  // cap truncates again, so it maps to UPSTREAM_ERROR at the action layer
+  // and never enters the repair loop (U5). Plain-string log (Railway
+  // logsV2 silences JSON.stringify payloads from this runtime path).
+  if (result.finishReason === "length") {
+    console.warn(
+      `[draft-workflow] event=output_truncated step=${step} finish_reason=length`,
+    )
+    throw new WorkflowStepError(
+      step,
+      "truncated",
+      `agent output truncated on step '${step}' (finishReason=length)`,
+    )
+  }
+  return result
 }
 
 /**
@@ -276,10 +391,35 @@ export function liftToDraftExperienceShape(parsed: unknown): unknown {
 }
 
 // `extractJsonObject` is now the shared balanced-brace scanner in
-// `@/services/experience-ai/extract-json-object` — imported above so the
+// `@forge/experience-schema` — imported above so the
 // workflow's first-pass parse handles the SAME envelope shapes the chat
 // path tolerates (free-tier models wrap structured output in prose or
 // ```json fences even when the prompt says JSON-only).
+
+/**
+ * Lift the agent output to the flat DraftExperience shape, then run the
+ * deterministic, pure, LOSSY coercion (U2) BEFORE any
+ * `DraftExperienceSchema` validation. Coercion fixes the cheapest
+ * near-miss drifts (discriminator casing, unknown keys, illegal/unknown
+ * blocks, known-safe defaults) so the post-normalize repair loop (U5)
+ * fires less often.
+ *
+ * Every coercion is emitted as a plain-string `[draft-workflow]
+ * event=coercion_applied kind=<kind>` log line — NOT `JSON.stringify`,
+ * because Railway logsV2 silences JSON-stringified payloads from this
+ * Next.js runtime path (see
+ * `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md`).
+ */
+function liftAndCoerce(parsed: unknown): unknown {
+  const lifted = liftToDraftExperienceShape(parsed)
+  const { draft, coercions } = coerceDraftEnvelope(lifted)
+  for (const coercion of coercions) {
+    console.warn(
+      `[draft-workflow] event=coercion_applied kind=${coercion.kind}`,
+    )
+  }
+  return draft
+}
 
 async function parseDraftEnvelope(
   step: WorkflowStepName,
@@ -330,7 +470,7 @@ async function parseDraftEnvelope(
       parseError,
     )
   }
-  const lifted = liftToDraftExperienceShape(parsed)
+  const lifted = liftAndCoerce(parsed)
   const result = DraftExperienceSchema.safeParse(lifted)
   if (!result.success) {
     throw new WorkflowStepError(
@@ -343,6 +483,22 @@ async function parseDraftEnvelope(
   return result.data
 }
 
+/**
+ * Frame the optional structure-and-voice exemplar. The reference teaches
+ * layout rhythm and copy tone only — the editor prompt stays
+ * authoritative for content, and videos come exclusively from the
+ * candidate list (the exemplar has its video ids stripped upstream).
+ * Returns null when no exemplar was supplied so the default-path prompt
+ * is byte-identical to the pre-feature behaviour.
+ */
+function exemplarSection(exemplar: string | undefined): string | null {
+  if (!exemplar || exemplar.trim().length === 0) return null
+  return [
+    "Structure & voice reference (borrow the layout rhythm and copy tone; write your OWN copy and use ONLY the provided video candidates — do NOT reuse this reference's videos or copy verbatim):",
+    exemplar,
+  ].join("\n")
+}
+
 function buildPlanPrompt(input: WorkflowInput): string {
   const candidateHint =
     input.candidates.length > 0
@@ -352,21 +508,88 @@ function buildPlanPrompt(input: WorkflowInput): string {
           .slice(0, 12)
           .join("; ")}`
       : "No specific video candidates provided."
-  return [
-    `Editor prompt: ${input.prompt}`,
-    `Locale: ${input.locale}`,
-    candidateHint,
-  ].join("\n\n")
+  const parts = [`Editor prompt: ${input.prompt}`, `Locale: ${input.locale}`]
+  const reference = exemplarSection(input.exemplar)
+  if (reference) parts.push(reference)
+  parts.push(candidateHint)
+  return parts.join("\n\n")
 }
 
 function buildDraftPrompt(input: PlanStepOutput): string {
-  return [
+  const parts = [
     "Planning outline (use as narrative-arc context):",
     input.plan || "(no outline provided)",
     "",
     `Editor prompt: ${input.prompt}`,
     `Locale: ${input.locale}`,
-  ].join("\n")
+  ]
+  const reference = exemplarSection(input.exemplar)
+  if (reference) {
+    parts.push("", reference)
+  }
+  return parts.join("\n")
+}
+
+function buildSkeletonPrompt(input: PlanStepOutput): string {
+  const parts = [
+    "Planning outline (use as narrative-arc context):",
+    input.plan || "(no outline provided)",
+    "",
+    `Editor prompt: ${input.prompt}`,
+    `Locale: ${input.locale}`,
+  ]
+  // Exemplar (when supplied) is a structure-and-voice reference — for the
+  // skeleton phase its value is the LAYOUT RHYTHM (block-type ordering/nesting).
+  const reference = exemplarSection(input.exemplar)
+  if (reference) parts.push("", reference)
+  parts.push(
+    "",
+    "Emit the page STRUCTURE only (the ordered block-type tree). No content.",
+  )
+  return parts.join("\n")
+}
+
+/**
+ * Build the per-node fill prompt. Carries the overall context (plan +
+ * editor prompt), the exact block type to fill, and the blocks filled
+ * SO FAR (for coherence — a later fill can see earlier filled blocks).
+ */
+function buildFillPrompt(args: {
+  plan: string
+  prompt: string
+  locale: string
+  nodeType: string
+  sectionRef?: string
+  priorBlocks: readonly unknown[]
+  exemplar?: string
+}): string {
+  const priorContext =
+    args.priorBlocks.length > 0
+      ? JSON.stringify(args.priorBlocks)
+      : "(none yet — this is the first block)"
+  const parts = [
+    "Planning outline (overall narrative-arc context):",
+    args.plan || "(no outline provided)",
+    "",
+    `Editor prompt: ${args.prompt}`,
+    `Locale: ${args.locale}`,
+  ]
+  // Exemplar (when supplied) is a structure-and-voice reference — for the
+  // fill phase its value is the COPY TONE/VOICE (write your own copy in a
+  // comparable register; never reuse its words or videos verbatim).
+  const reference = exemplarSection(args.exemplar)
+  if (reference) parts.push("", reference)
+  parts.push(
+    "",
+    "Blocks already written before this one (continue the narrative; do not contradict or repeat them):",
+    priorContext,
+    "",
+    `Now write exactly ONE block of type "${args.nodeType}"${
+      args.sectionRef ? ` (sectionRef "${args.sectionRef}")` : ""
+    }.`,
+    `Return a single flat block object whose "t" is "${args.nodeType}".`,
+  )
+  return parts.join("\n")
 }
 
 function buildCritiquePrompt(input: DraftStepOutput): string {
@@ -393,12 +616,10 @@ function buildRevisePrompt(input: CritiqueStepOutput): string {
  */
 async function resolveDraft(
   step: WorkflowStepName,
-  result: { text: string; object?: unknown },
+  result: AgentResult,
 ): Promise<DraftExperience> {
   if (result.object !== undefined) {
-    const parsed = DraftExperienceSchema.safeParse(
-      liftToDraftExperienceShape(result.object),
-    )
+    const parsed = DraftExperienceSchema.safeParse(liftAndCoerce(result.object))
     if (parsed.success) return parsed.data
   }
   const text =
@@ -406,6 +627,127 @@ async function resolveDraft(
       ? result.text
       : JSON.stringify(result.object)
   return parseDraftEnvelope(step, text)
+}
+
+// ---------------------------------------------------------------------------
+// Two-phase generation (U3) — JSON parse + per-node fill helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse an agent's JSON output to an unknown object using the same
+ * three-tier resilience ladder `parseDraftEnvelope` uses (raw →
+ * extractJsonObject → jsonrepair). Prefers a provider-validated
+ * structured `object` when present. Throws
+ * `WorkflowStepError(step, "schema_mismatch")` when nothing parses.
+ */
+async function parseAgentJson(
+  step: WorkflowStepName,
+  result: AgentResult,
+): Promise<unknown> {
+  if (result.object !== undefined && typeof result.object === "object") {
+    return result.object
+  }
+  const text =
+    result.text.length > 0 || result.object === undefined
+      ? result.text
+      : JSON.stringify(result.object)
+  let parsed: unknown
+  let parseError: unknown = null
+  try {
+    parsed = JSON.parse(text)
+  } catch (err) {
+    parseError = err
+    const extracted = extractJsonObject(text)
+    if (extracted !== null) {
+      try {
+        parsed = JSON.parse(extracted)
+        parseError = null
+      } catch (innerErr) {
+        parseError = innerErr
+        try {
+          const { jsonrepair } = await import("jsonrepair")
+          parsed = JSON.parse(jsonrepair(extracted))
+          parseError = null
+        } catch (repairErr) {
+          parseError = repairErr
+        }
+      }
+    }
+  }
+  if (parseError !== null) {
+    throw new WorkflowStepError(
+      step,
+      "schema_mismatch",
+      `agent output was not valid JSON on step '${step}'`,
+      parseError,
+    )
+  }
+  return parsed
+}
+
+/**
+ * Lift a skeleton agent's output to the `{ nodes: [...] }` envelope.
+ * Tolerates a bare top-level array (`[node, node]`) and the chat-style
+ * `{ skeleton: { nodes } }` / `{ nodes }` shapes free-tier models emit.
+ */
+function liftSkeletonEnvelope(parsed: unknown): unknown {
+  if (Array.isArray(parsed)) return { nodes: parsed }
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>
+    if (Array.isArray(obj.nodes)) return { nodes: obj.nodes }
+    if (
+      obj.skeleton &&
+      typeof obj.skeleton === "object" &&
+      Array.isArray((obj.skeleton as Record<string, unknown>).nodes)
+    ) {
+      return obj.skeleton
+    }
+  }
+  return parsed
+}
+
+/**
+ * Count the fillable nodes in a skeleton tree (every node EXCEPT the
+ * pure nesting shells `section`/`container`, whose content is filled as
+ * their children). Used only for the structured start log so operators
+ * can see the fill fan-out.
+ */
+function countFillableNodes(nodes: readonly SkeletonNode[]): number {
+  let count = 0
+  for (const node of nodes) {
+    if (node.type === "section" || node.type === "container") {
+      count += countFillableNodes(node.children ?? [])
+    } else {
+      count += 1
+    }
+  }
+  return count
+}
+
+/**
+ * Synthesize a baseline title + metaDescription from the editor prompt
+ * and planning outline. The skeleton/fill phases produce STRUCTURE +
+ * per-block CONTENT — neither owns the page scalars — so the fill step
+ * derives a deterministic, always-non-empty baseline here. The
+ * downstream critique → revise pass polishes these into editorial copy;
+ * `quick-draft` (no revise) keeps the baseline. Both always satisfy
+ * `DraftExperienceSchema`'s `.min(1)` on title + metaDescription.
+ */
+function synthesizeScalars(input: PlanStepOutput): {
+  title: string
+  metaDescription: string
+} {
+  const prompt = input.prompt.trim()
+  const title = (prompt.split(/[.!?\n]/)[0] || prompt || "Untitled experience")
+    .trim()
+    .slice(0, 120)
+  const planFirstSentence = (input.plan || "").trim().split(/[.!?\n]/)[0] || ""
+  const metaSource = planFirstSentence || prompt || title
+  const metaDescription = metaSource.trim().slice(0, 200) || title
+  return {
+    title: title || "Untitled experience",
+    metaDescription: metaDescription || title || "Untitled experience",
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -436,10 +778,217 @@ export async function executeDraftStep(
     buildDraftPrompt(ctx.inputData),
     TOKEN_CAPS.multiStepDraftDraft,
     ctx.abortSignal,
-    structuredDraftOutputEnabled() ? STRUCTURED_DRAFT_OPTS : {},
+    structuredOptsFor(DraftExperienceSchema),
   )
   const draft = await resolveDraft("draft", result)
   return { ...ctx.inputData, draft }
+}
+
+export async function executeSkeletonStep(
+  ctx: StepContext<PlanStepOutput>,
+): Promise<SkeletonStepOutput> {
+  const result = await callAgent(
+    ctx.mastra,
+    "skeleton",
+    "experience-skeleton",
+    buildSkeletonPrompt(ctx.inputData),
+    TOKEN_CAPS.multiStepDraftSkeleton,
+    ctx.abortSignal,
+    structuredOptsFor(SkeletonSchema),
+  )
+  const parsed = await parseAgentJson("skeleton", result)
+  const lifted = liftSkeletonEnvelope(parsed)
+  const validation = validateSkeleton(lifted)
+  if (!validation.ok) {
+    // Plain-string log (Railway logsV2 silences JSON.stringify payloads
+    // from this Next.js runtime path) — the fail-fast structural gate.
+    console.warn(
+      `[draft-workflow] event=skeleton_validation_failed code=${validation.code}`,
+    )
+    throw new WorkflowStepError(
+      "skeleton",
+      "schema_mismatch",
+      `skeleton failed structural validation: ${validation.message}`,
+    )
+  }
+  console.warn(
+    `[draft-workflow] event=skeleton_validated top_level_nodes=${validation.skeleton.nodes.length} fillable_nodes=${countFillableNodes(
+      validation.skeleton.nodes,
+    )}`,
+  )
+  return { ...ctx.inputData, skeleton: validation.skeleton }
+}
+
+/**
+ * Fill a single fillable skeleton node: call the fill agent constrained
+ * to that node's flat block schema, passing prior filled blocks for
+ * coherence. Parses, lifts/coerces, and validates against the per-node
+ * schema. On failure throws `WorkflowStepError("fill", "schema_mismatch")`.
+ *
+ * `sectionRef` from the skeleton is stamped onto the filled block (the
+ * skeleton owns nesting/addressing; the fill owns content).
+ */
+async function fillSingleNode(
+  ctx: StepContext<SkeletonStepOutput>,
+  node: SkeletonNode,
+  priorBlocks: readonly unknown[],
+): Promise<Record<string, unknown>> {
+  const fillSchema = getFillSchemaForType(node.type)
+  if (fillSchema === undefined) {
+    // Should be unreachable — callers only invoke this for fillable
+    // (non-shell) nodes — but keep the boundary honest.
+    throw new WorkflowStepError(
+      "fill",
+      "schema_mismatch",
+      `no fill schema for node type '${node.type}'`,
+    )
+  }
+  const result = await callAgent(
+    ctx.mastra,
+    "fill",
+    "experience-fill",
+    buildFillPrompt({
+      plan: ctx.inputData.plan,
+      prompt: ctx.inputData.prompt,
+      locale: ctx.inputData.locale,
+      nodeType: node.type,
+      sectionRef: node.sectionRef,
+      priorBlocks,
+      exemplar: ctx.inputData.exemplar,
+    }),
+    TOKEN_CAPS.multiStepDraftFill,
+    ctx.abortSignal,
+    structuredOptsFor(fillSchema),
+  )
+  const parsed = await parseAgentJson("fill", result)
+  // The fill agent may wrap its single block in a chat-style envelope;
+  // lift + coerce the same way the draft path does, then unwrap a
+  // single-element blocks array if the model nested it.
+  let candidate: unknown = liftToDraftExperienceShape(parsed)
+  if (
+    candidate &&
+    typeof candidate === "object" &&
+    Array.isArray((candidate as Record<string, unknown>).blocks)
+  ) {
+    const blocks = (candidate as Record<string, unknown>).blocks as unknown[]
+    candidate = blocks[0]
+  }
+  // Coerce the single block (discriminator casing, unknown-key strip)
+  // before the per-node schema parse. Wrap it as a one-block envelope so
+  // the shared coercion (which expects `{ blocks }`) applies, then unwrap.
+  const { draft: coercedEnvelope, coercions } = coerceDraftEnvelope({
+    blocks: [candidate],
+  })
+  for (const coercion of coercions) {
+    console.warn(
+      `[draft-workflow] event=coercion_applied kind=${coercion.kind}`,
+    )
+  }
+  const coercedBlock = Array.isArray(
+    (coercedEnvelope as Record<string, unknown>).blocks,
+  )
+    ? ((coercedEnvelope as Record<string, unknown>).blocks as unknown[])[0]
+    : candidate
+  // Stamp the skeleton's sectionRef when the model omitted it.
+  if (
+    node.sectionRef &&
+    coercedBlock &&
+    typeof coercedBlock === "object" &&
+    (coercedBlock as Record<string, unknown>).sectionRef === undefined
+  ) {
+    ;(coercedBlock as Record<string, unknown>).sectionRef = node.sectionRef
+  }
+  const validated = fillSchema.safeParse(coercedBlock)
+  if (!validated.success) {
+    throw new WorkflowStepError(
+      "fill",
+      "schema_mismatch",
+      `filled block for type '${node.type}' did not satisfy its schema: ${validated.error.message}`,
+    )
+  }
+  return validated.data as Record<string, unknown>
+}
+
+/**
+ * Assemble one skeleton node into a Draft block, filling content
+ * SEQUENTIALLY in document order. `accumulator` is the running flat list
+ * of every block filled so far (top-level + nested), used as coherence
+ * context for each subsequent fill. Returns the assembled block.
+ *
+ *  - `section` shell → `{ t: "section", sectionRef?, content: [...] }`,
+ *    children filled in order as section-scope blocks.
+ *  - `container` shell → `{ t: "container", sectionRef?, slots: [{ content }] }`,
+ *    children filled in order as container-scope blocks, one slot per child.
+ *  - leaf → the filled block itself.
+ */
+async function assembleNode(
+  ctx: StepContext<SkeletonStepOutput>,
+  node: SkeletonNode,
+  accumulator: unknown[],
+): Promise<Record<string, unknown>> {
+  if (node.type === "section") {
+    const content: Record<string, unknown>[] = []
+    for (const child of node.children ?? []) {
+      const childBlock = await assembleNode(ctx, child, accumulator)
+      content.push(childBlock)
+    }
+    const shell: Record<string, unknown> = { t: "section", content }
+    if (node.sectionRef) shell.sectionRef = node.sectionRef
+    return shell
+  }
+  if (node.type === "container") {
+    const slots: Array<{ content: Record<string, unknown>[] }> = []
+    for (const child of node.children ?? []) {
+      const childBlock = await assembleNode(ctx, child, accumulator)
+      slots.push({ content: [childBlock] })
+    }
+    const shell: Record<string, unknown> = { t: "container", slots }
+    if (node.sectionRef) shell.sectionRef = node.sectionRef
+    return shell
+  }
+  // Leaf — fill its content, threading the running accumulator so this
+  // fill can see every block written before it (coherence).
+  const filled = await fillSingleNode(ctx, node, accumulator)
+  accumulator.push(filled)
+  return filled
+}
+
+export async function executeFillStep(
+  ctx: StepContext<SkeletonStepOutput>,
+): Promise<DraftStepOutput> {
+  const { skeleton } = ctx.inputData
+  const accumulator: unknown[] = []
+  const blocks: Record<string, unknown>[] = []
+  // SEQUENTIAL fill in declared skeleton order — no Promise.all. Order is
+  // deterministic (the skeleton array IS the order) and each fill sees
+  // the blocks filled before it via the shared accumulator.
+  for (const node of skeleton.nodes) {
+    const block = await assembleNode(ctx, node, accumulator)
+    blocks.push(block)
+  }
+  const scalars = synthesizeScalars(ctx.inputData)
+  // Run the assembled draft through the SAME coercion + DraftExperienceSchema
+  // machinery the legacy draft path uses. Coercion drops any block that
+  // slipped through (defense in depth); the schema parse is the gate.
+  const lifted = liftAndCoerce({
+    title: scalars.title,
+    metaDescription: scalars.metaDescription,
+    blocks,
+  })
+  const parsed = DraftExperienceSchema.safeParse(lifted)
+  if (!parsed.success) {
+    throw new WorkflowStepError(
+      "fill",
+      "schema_mismatch",
+      `assembled fill draft did not satisfy DraftExperienceSchema: ${parsed.error.message}`,
+      parsed.error,
+    )
+  }
+  // Strip the skeleton field; re-emit the SAME `{ ...planFields, draft }`
+  // envelope the legacy draft step produced (load-bearing contract).
+  const { skeleton: _skeleton, ...planFields } = ctx.inputData
+  void _skeleton
+  return { ...planFields, draft: parsed.data }
 }
 
 export async function executeCritiqueStep(
@@ -466,7 +1015,7 @@ export async function executeReviseStep(
     buildRevisePrompt(ctx.inputData),
     TOKEN_CAPS.multiStepDraftRevise,
     ctx.abortSignal,
-    structuredDraftOutputEnabled() ? STRUCTURED_DRAFT_OPTS : {},
+    structuredOptsFor(DraftExperienceSchema),
   )
   const draft = await resolveDraft("revise", result)
   return { draft }
@@ -490,12 +1039,33 @@ const planStep = createStep({
     executePlanStep(args as unknown as StepContext<WorkflowInput>),
 })
 
-const draftStep = createStep({
-  id: "draft",
+// NOTE: the legacy single-shot `draftStep` createStep was retired in the
+// U3 two-phase rebuild — neither workflow chains it anymore. Its executor
+// `executeDraftStep` is RETAINED (exported) because U5's repair loop
+// re-prompts a single agent directly and the executor + its structured-
+// output path stay unit-tested; only the workflow wiring moved to
+// skeleton → fill.
+
+const skeletonStep = createStep({
+  id: "skeleton",
   inputSchema: planSchema,
-  outputSchema: draftSchema,
+  outputSchema: skeletonSchema,
   execute: async (args: WorkflowExecuteArg<PlanStepOutput>) =>
-    executeDraftStep(args as unknown as StepContext<PlanStepOutput>),
+    executeSkeletonStep(args as unknown as StepContext<PlanStepOutput>),
+})
+
+const fillStep = createStep({
+  id: "fill",
+  inputSchema: skeletonSchema,
+  outputSchema: draftSchema,
+  // Arg typed as `unknown` payload: `skeletonSchema` infers
+  // `skeleton.nodes: unknown[]` (the step-boundary schema is a
+  // passthrough — the structural shape was already asserted by
+  // `validateSkeleton` in the skeleton step), but `SkeletonStepOutput`
+  // narrows `nodes` to `SkeletonNode[]`. The executor re-casts; this
+  // wrapper only needs to forward the runtime value.
+  execute: async (args: WorkflowExecuteArg<unknown>) =>
+    executeFillStep(args as unknown as StepContext<SkeletonStepOutput>),
 })
 
 const critiqueStep = createStep({
@@ -515,15 +1085,19 @@ const reviseStep = createStep({
 })
 
 /**
- * Multi-step draft workflow. Four sequential named steps. Step cap
- * is structural — no `.unless()`, no `.loop()`, no recursion.
+ * Multi-step draft workflow. Five sequential named steps after the U3
+ * two-phase rebuild: plan → skeleton → fill → critique → revise. The
+ * single fragile draft step was split into a structure-only skeleton
+ * step (validated BEFORE any content) plus a sequential per-block fill
+ * step. Step cap is structural — no `.unless()`, no `.loop()`, no
+ * recursion (the fill step's per-node loop is internal to one step).
  */
 export const multiStepDraftWorkflow = createWorkflow({
   id: "multi-step-draft",
   inputSchema,
   outputSchema: revisedSchema,
   // Disable Mastra's default step retry: schema_mismatch on a free-tier
-  // LLM is recoverable via parseDraftEnvelope's three-tier ladder
+  // LLM is recoverable via parseAgentJson's three-tier ladder
   // (raw → extractJsonObject → jsonrepair). Letting the engine retry
   // the step on top of that just stacks another 15–30s LLM call per
   // attempt for the same failure mode the parser already handled.
@@ -532,7 +1106,8 @@ export const multiStepDraftWorkflow = createWorkflow({
   retryConfig: { attempts: 0 },
 })
   .then(planStep)
-  .then(draftStep)
+  .then(skeletonStep)
+  .then(fillStep)
   .then(critiqueStep)
   .then(reviseStep)
 
@@ -542,47 +1117,54 @@ multiStepDraftWorkflow.commit()
  * Maximum number of steps this workflow will execute. Exported so the
  * cost-budget tests can assert structural invariance: any change to
  * the chain length would change this constant, which fails the cap
- * check.
+ * check. 5 after the U3 two-phase rebuild (plan → skeleton → fill →
+ * critique → revise); the fill step's per-node fan-out is internal to
+ * that single step and does not add to the structural step count.
  */
-export const MULTI_STEP_DRAFT_MAX_STEPS = 4
+export const MULTI_STEP_DRAFT_MAX_STEPS = 5
 
 /**
- * Quick-draft workflow — plan → draft only. The "speed mode"
- * counterpart of `multiStepDraftWorkflow`: skips the critique +
- * revise steps so wall-clock drops by roughly half at the cost of
+ * Quick-draft workflow — plan → skeleton → fill (after the U3 two-phase
+ * rebuild). The "speed mode" counterpart of `multiStepDraftWorkflow`:
+ * skips the critique + revise steps so wall-clock drops at the cost of
  * the second-pass refinement (no automatic copy-edit, no structural
- * critique applied).
+ * critique applied). It keeps the SAME structural validity guarantee
+ * the full workflow has — the skeleton is validated and the fill is
+ * per-block schema-constrained either way.
  *
- * Reuses the same `planStep` + `draftStep` executors registered
- * above, so a change to either step's prompt or token cap is picked
- * up by BOTH workflows in lockstep. Action layer
- * (`generate-draft-action.ts`) picks the workflow id by
- * `input.mode` and unwraps the result against the same
- * `DraftExperienceSchema` either way.
+ * Reuses the same `planStep` + `skeletonStep` + `fillStep` executors
+ * registered above, so a change to any step's prompt or token cap is
+ * picked up by BOTH workflows in lockstep. Action layer
+ * (`generate-draft-action.ts`) picks the workflow id by `input.mode`
+ * and unwraps the result against the same `DraftExperienceSchema`
+ * either way.
  *
  * Output shape is `draftSchema` (the planSchema-extended-with-draft
  * envelope), not `revisedSchema`. The action's
  * `(result as { draft: DraftExperience }).draft` cast works for both
  * because both shapes carry `.draft` at the top level — revisedSchema
- * is `{ draft }`, draftSchema is `{ ...planFields, draft }`.
+ * is `{ draft }`, draftSchema is `{ ...planFields, draft }` (the fill
+ * step's load-bearing envelope contract).
  */
 export const quickDraftWorkflow = createWorkflow({
   id: "quick-draft",
   inputSchema,
   outputSchema: draftSchema,
   // Same retry rationale as multiStepDraftWorkflow above —
-  // parseDraftEnvelope's resilient ladder already absorbs the only
+  // parseAgentJson's resilient ladder already absorbs the only
   // recoverable failure mode; an engine-level retry just compounds
   // wall-clock for nothing.
   retryConfig: { attempts: 0 },
 })
   .then(planStep)
-  .then(draftStep)
+  .then(skeletonStep)
+  .then(fillStep)
 
 quickDraftWorkflow.commit()
 
 /**
  * Step count for the quick-draft path. Same structural-invariance
- * role as `MULTI_STEP_DRAFT_MAX_STEPS`.
+ * role as `MULTI_STEP_DRAFT_MAX_STEPS`. 3 after the U3 two-phase
+ * rebuild (plan → skeleton → fill).
  */
-export const QUICK_DRAFT_MAX_STEPS = 2
+export const QUICK_DRAFT_MAX_STEPS = 3

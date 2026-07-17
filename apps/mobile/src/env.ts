@@ -6,6 +6,13 @@ const _inlined = {
   adminGraphqlUrl: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
   adminGraphqlToken: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
   cachePersist: process.env.EXPO_PUBLIC_FORGE_CACHE_PERSIST,
+  datadogClientToken: process.env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN,
+  datadogApplicationId: process.env.EXPO_PUBLIC_DATADOG_APPLICATION_ID,
+  datadogSite: process.env.EXPO_PUBLIC_DATADOG_SITE,
+  datadogEnv: process.env.EXPO_PUBLIC_DATADOG_ENV,
+  datadogVersion: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+  datadogSessionSampleRate: process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
+  datadogReplaySampleRate: process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
 }
 void _inlined
 
@@ -23,6 +30,19 @@ const createAppEnv = () =>
       // Opt-in cache persistence (default off). Optional so default builds need
       // no new env var; the consumer falls back to "disabled".
       EXPO_PUBLIC_FORGE_CACHE_PERSIST: z.string().optional(),
+      // Datadog RUM/Logs — all optional so an unprovisioned build still boots
+      // (datadog.ts null-gates telemetry when creds are absent). Client token is
+      // public (in-bundle); the API key is a build-time EAS secret, never here.
+      EXPO_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_SITE: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_ENV: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_VERSION: z.string().optional(),
+      // Per-environment sample rates (R5) — production dials toward web's 50%
+      // without a code change. Strings (Metro inlines env as strings); parsed
+      // by datadog.ts's parseSampleRate.
+      EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
@@ -30,6 +50,17 @@ const createAppEnv = () =>
         process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
       EXPO_PUBLIC_FORGE_CACHE_PERSIST:
         process.env.EXPO_PUBLIC_FORGE_CACHE_PERSIST,
+      EXPO_PUBLIC_DATADOG_CLIENT_TOKEN:
+        process.env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN,
+      EXPO_PUBLIC_DATADOG_APPLICATION_ID:
+        process.env.EXPO_PUBLIC_DATADOG_APPLICATION_ID,
+      EXPO_PUBLIC_DATADOG_SITE: process.env.EXPO_PUBLIC_DATADOG_SITE,
+      EXPO_PUBLIC_DATADOG_ENV: process.env.EXPO_PUBLIC_DATADOG_ENV,
+      EXPO_PUBLIC_DATADOG_VERSION: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+      EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE:
+        process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
+      EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE:
+        process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
     },
     isServer: false,
     emptyStringAsUndefined: true,

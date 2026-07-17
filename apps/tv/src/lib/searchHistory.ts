@@ -40,10 +40,8 @@ async function loadStoredHistory(): Promise<string[]> {
 type UseSearchHistoryResult = {
   recents: string[]
   /**
-   * Add a successful query to recent history. No-op for empty or
-   * whitespace-only inputs. Deduplicates case-insensitively and moves
-   * the query to the front. Returns the updated list so callers can
-   * chain without awaiting the hook's next render.
+   * Add a query to recent history. No-op for empty/whitespace input;
+   * dedupes case-insensitively and moves the query to the front.
    */
   addRecent: (query: string) => void
   /** Clear all recent-search entries (bound to the "Clear" chip). */
@@ -51,11 +49,9 @@ type UseSearchHistoryResult = {
 }
 
 /**
- * AsyncStorage-backed recent-searches hook. Hydrates on mount, writes
- * on every mutation. Per doc-review, entries are added only after a
- * successful non-empty results submit (callers decide the "successful"
- * predicate); this hook accepts any non-empty query and does not
- * observe search state itself.
+ * AsyncStorage-backed recent-searches hook: hydrates on mount, writes on
+ * every mutation. Accepts any non-empty query; callers decide what counts
+ * as "successful" (this hook doesn't observe search state itself).
  */
 export function useSearchHistory(): UseSearchHistoryResult {
   const [recents, setRecents] = useState<string[]>([])
@@ -65,14 +61,9 @@ export function useSearchHistory(): UseSearchHistoryResult {
     void (async () => {
       const loaded = await loadStoredHistory()
       if (!mountedRef.current) return
-      // Race: a fast user can fire addRecent (e.g. typing + ⏎ on the
-      // first frame) before AsyncStorage hydration resolves. By the
-      // time we get here, addRecent's persist() has already overwritten
-      // disk with the in-memory single-entry list — so we cannot just
-      // pick one side. Merge: prepend the in-memory entries (newer
-      // intent) onto the on-disk list (prior history), dedupe + cap
-      // via the same reducer addRecent uses, then re-persist so disk
-      // matches the merged truth.
+      // Race: a fast addRecent before hydration resolves has already
+      // overwritten disk with its single-entry list. Merge in-memory (newer
+      // intent) onto on-disk (prior history) via addRecent's reducer, then re-persist.
       setRecents((prev) => {
         if (prev.length === 0) return loaded
         const merged = prev.reduceRight<string[]>(

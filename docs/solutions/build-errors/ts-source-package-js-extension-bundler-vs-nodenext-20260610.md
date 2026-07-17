@@ -48,3 +48,8 @@ failures in apps you didn't touch, check whether main's tip is already red
 (`gh run list --branch main`) before assuming your change caused it — and
 if a shared `packages/*` file changed, the affected-matrix failures across
 consumers ARE the signal, not noise.
+
+For the sibling case where the breakage is **already green on main** (affected-gating
+never re-checked it) and a **main-merge** surfaces it in an unrelated PR — diagnosed
+with `git grep <symbol> origin/main` — see
+`docs/solutions/workflow-issues/turborepo-affected-gate-hides-type-errors-between-prs.md`.

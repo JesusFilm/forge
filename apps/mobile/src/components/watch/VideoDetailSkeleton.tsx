@@ -1,25 +1,38 @@
 import { Animated, StyleSheet, View, useWindowDimensions } from "react-native"
 
 import { SURFACE_COLOR } from "../../lib/color"
+import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 
 type VideoDetailSkeletonProps = {
   /**
-   * "full" includes the player block + title (cold deep link with no seed).
-   * "sections" omits them because the real player + seed title render above
-   * this skeleton (seeded navigation) — keeps the layout from shifting when
-   * canonical data lands.
+   * "full" includes player block + title (cold deep link, no seed). "sections"
+   * omits them because the real player + seed title already render above (seeded
+   * nav) — keeps layout from shifting when canonical data lands.
    */
   variant?: "full" | "sections"
+  /**
+   * Top inset for the player block, so a headerless watch screen passes
+   * insets.top to avoid a downward jump when data lands. Default 0 (e.g. series,
+   * which has a native header). Only affects "full".
+   */
+  playerTopInset?: number
+  /**
+   * Per-side horizontal inset for the player block, matching a parent that
+   * insets the real player. Default 0. Only affects "full".
+   */
+  playerHorizontalInset?: number
 }
-
-const PLAYER_HEIGHT_RATIO = 9 / 16
 
 export function VideoDetailSkeleton({
   variant = "full",
+  playerTopInset = 0,
+  playerHorizontalInset = 0,
 }: VideoDetailSkeletonProps) {
   const { width: screenWidth } = useWindowDimensions()
-  const playerHeight = Math.round(screenWidth * PLAYER_HEIGHT_RATIO)
+  const playerHeight = Math.round(
+    (screenWidth - playerHorizontalInset * 2) * PLAYER_HEIGHT_RATIO,
+  )
   const cardWidth = Math.round(screenWidth * 0.45)
   const cardHeight = Math.round(cardWidth / (16 / 9))
 
@@ -31,7 +44,16 @@ export function VideoDetailSkeleton({
       {variant === "full" && (
         <>
           <Animated.View
-            style={[styles.player, { height: playerHeight, opacity }]}
+            style={[
+              styles.player,
+              {
+                width: screenWidth - playerHorizontalInset * 2,
+                height: playerHeight,
+                marginTop: playerTopInset,
+                marginHorizontal: playerHorizontalInset,
+                opacity,
+              },
+            ]}
           />
           <View style={styles.body}>
             <Animated.View style={[styles.block, styles.title, { opacity }]} />
@@ -85,7 +107,8 @@ const RADIUS = 8
 
 const styles = StyleSheet.create({
   player: {
-    width: "100%",
+    // width is set inline (screenWidth - inset*2) so the block matches the
+    // real player's inset width; no static width here to override.
     backgroundColor: SURFACE_COLOR,
   },
   body: {

@@ -10,6 +10,11 @@ type ManagerVideoCoverage = Awaited<
     import("@/services/manager-read-model.service").ManagerReadModelService["getVideoCoverage"]
   >
 >[number]
+type ManagerVideoForEnrichment = Awaited<
+  ReturnType<
+    import("@/services/manager-read-model.service").ManagerReadModelService["getVideosForEnrichment"]
+  >
+>[number]
 type ManagerCoverageSnapshot = Awaited<
   ReturnType<
     import("@/services/manager-read-model.service").ManagerReadModelService["getCoverageSnapshots"]
@@ -40,6 +45,9 @@ const ManagerLanguageRef = builder
   .implement({
     fields: (t) => ({
       id: t.exposeID("id"),
+      coreId: t.exposeString("coreId", { nullable: true }),
+      bcp47: t.exposeString("bcp47", { nullable: true }),
+      iso3: t.exposeString("iso3", { nullable: true }),
       englishLabel: t.exposeString("englishLabel"),
       nativeLabel: t.exposeString("nativeLabel"),
       countryIds: t.field({
@@ -53,6 +61,82 @@ const ManagerLanguageRef = builder
       countrySpeakers: t.field({
         type: "JSON",
         resolve: (row) => row.countrySpeakers,
+      }),
+    }),
+  })
+
+const ManagerEnrichmentLanguageRef = builder
+  .objectRef<
+    NonNullable<ManagerVideoForEnrichment["primaryLanguage"]>
+  >("ManagerEnrichmentLanguage")
+  .implement({
+    fields: (t) => ({
+      coreId: t.exposeString("coreId", { nullable: true }),
+      bcp47: t.exposeString("bcp47", { nullable: true }),
+      iso3: t.exposeString("iso3", { nullable: true }),
+    }),
+  })
+
+const ManagerEnrichmentMuxVideoRef = builder
+  .objectRef<
+    NonNullable<ManagerVideoForEnrichment["variants"][number]["muxVideo"]>
+  >("ManagerEnrichmentMuxVideo")
+  .implement({
+    fields: (t) => ({
+      assetId: t.exposeString("assetId", { nullable: true }),
+      playbackId: t.exposeString("playbackId", { nullable: true }),
+    }),
+  })
+
+const ManagerEnrichmentDownloadRef = builder
+  .objectRef<
+    ManagerVideoForEnrichment["variants"][number]["downloads"][number]
+  >("ManagerEnrichmentDownload")
+  .implement({
+    fields: (t) => ({
+      url: t.exposeString("url", { nullable: true }),
+    }),
+  })
+
+const ManagerEnrichmentVariantRef = builder
+  .objectRef<
+    ManagerVideoForEnrichment["variants"][number]
+  >("ManagerEnrichmentVariant")
+  .implement({
+    fields: (t) => ({
+      language: t.field({
+        type: ManagerEnrichmentLanguageRef,
+        nullable: true,
+        resolve: (row) => row.language,
+      }),
+      muxVideo: t.field({
+        type: ManagerEnrichmentMuxVideoRef,
+        nullable: true,
+        resolve: (row) => row.muxVideo,
+      }),
+      downloads: t.field({
+        type: [ManagerEnrichmentDownloadRef],
+        resolve: (row) => row.downloads,
+      }),
+    }),
+  })
+
+const ManagerVideoForEnrichmentRef = builder
+  .objectRef<ManagerVideoForEnrichment>("ManagerVideoForEnrichment")
+  .implement({
+    fields: (t) => ({
+      documentId: t.exposeID("documentId"),
+      coreId: t.exposeString("coreId", { nullable: true }),
+      title: t.exposeString("title", { nullable: true }),
+      label: t.exposeString("label", { nullable: true }),
+      primaryLanguage: t.field({
+        type: ManagerEnrichmentLanguageRef,
+        nullable: true,
+        resolve: (row) => row.primaryLanguage,
+      }),
+      variants: t.field({
+        type: [ManagerEnrichmentVariantRef],
+        resolve: (row) => row.variants,
       }),
     }),
   })
@@ -100,6 +184,17 @@ const ManagerVideoCoverageBreakdownRef = builder
     }),
   })
 
+const ManagerVideoCoverageParentRelationRef = builder
+  .objectRef<
+    ManagerVideoCoverage["parentRelations"][number]
+  >("ManagerVideoCoverageParentRelation")
+  .implement({
+    fields: (t) => ({
+      parentDocumentId: t.exposeString("parentDocumentId"),
+      order: t.exposeInt("order", { nullable: true }),
+    }),
+  })
+
 const ManagerVideoCoverageRef = builder
   .objectRef<ManagerVideoCoverage>("ManagerVideoCoverage")
   .implement({
@@ -114,6 +209,10 @@ const ManagerVideoCoverageRef = builder
       parentDocumentIds: t.field({
         type: ["String"],
         resolve: (row) => row.parentDocumentIds,
+      }),
+      parentRelations: t.field({
+        type: [ManagerVideoCoverageParentRelationRef],
+        resolve: (row) => row.parentRelations,
       }),
       coverage: t.field({
         type: ManagerVideoCoverageBreakdownRef,
@@ -160,6 +259,18 @@ builder.queryFields((t) => ({
       ctx.services.managerReadModel.getVideoCoverage({
         user: ctx.user,
         languageIds: args.languageIds?.filter(Boolean) ?? [],
+      }),
+  }),
+  managerVideosForEnrichment: t.field({
+    type: [ManagerVideoForEnrichmentRef],
+    authScopes: { hasPermission: "read:manager-read-models" },
+    args: {
+      ids: t.arg.stringList({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.managerReadModel.getVideosForEnrichment({
+        user: ctx.user,
+        ids: args.ids.filter((id): id is string => Boolean(id)),
       }),
   }),
   managerCoverageSnapshots: t.field({

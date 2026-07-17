@@ -5,6 +5,8 @@ import {
   WATCH_CANONICAL_ORIGIN,
   asContentSlug,
   asLocaleSlug,
+  languagesIndexPath,
+  languageVideosIndexPath,
   localizedHomeAbsolute,
   localizedHomePath,
   parseWatchPath,
@@ -136,22 +138,28 @@ describe("watchEpisodePath", () => {
 })
 
 describe("videosIndexPath", () => {
-  it("returns /videos (no .html)", () => {
-    expect(videosIndexPath()).toBe("/videos")
+  it("returns the canonical /languages path for compatibility", () => {
+    expect(videosIndexPath()).toBe("/languages")
+  })
+})
+
+describe("languagesIndexPath", () => {
+  it("returns /languages (no .html)", () => {
+    expect(languagesIndexPath()).toBe("/languages")
+  })
+})
+
+describe("languageVideosIndexPath", () => {
+  it("returns /lang.html/videos", () => {
+    expect(languageVideosIndexPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/videos",
+    )
   })
 })
 
 describe("searchPath", () => {
-  it("returns / when no q", () => {
+  it("returns the root modal fallback path", () => {
     expect(searchPath()).toBe("/")
-  })
-
-  it("returns /?q=... when q is provided", () => {
-    expect(searchPath("jesus")).toBe("/?q=jesus")
-  })
-
-  it("URL-encodes special characters in q", () => {
-    expect(searchPath("jesus & friends")).toBe("/?q=jesus+%26+friends")
   })
 })
 
@@ -221,42 +229,24 @@ describe("parseWatchPath", () => {
     })
   })
 
-  it("parses /videos as videos", () => {
-    expect(parseWatchPath("/videos")).toEqual({ kind: "videos" })
+  it("parses /languages as languages", () => {
+    expect(parseWatchPath("/languages")).toEqual({ kind: "languages" })
   })
 
-  it("parses /search with q from URLSearchParams (proxy.ts caller)", () => {
-    expect(parseWatchPath("/search", new URLSearchParams("q=jesus"))).toEqual({
-      kind: "search",
-      q: "jesus",
+  it("parses legacy /videos as languages", () => {
+    expect(parseWatchPath("/videos")).toEqual({ kind: "languages" })
+  })
+
+  it("parses /spanish-latin-american.html/videos as language videos", () => {
+    expect(parseWatchPath("/spanish-latin-american.html/videos")).toEqual({
+      kind: "language-videos",
+      lang: "spanish-latin-american",
     })
   })
 
-  it("parses /search with q from plain Record (Next 16 page-route caller)", () => {
-    expect(parseWatchPath("/search", { q: "jesus" })).toEqual({
-      kind: "search",
-      q: "jesus",
-    })
-  })
-
-  it("parses /search with array-valued q from plain Record (takes first)", () => {
-    expect(parseWatchPath("/search", { q: ["jesus", "ignored"] })).toEqual({
-      kind: "search",
-      q: "jesus",
-    })
-  })
-
-  it("parses /search with undefined q from plain Record", () => {
-    expect(parseWatchPath("/search", { q: undefined })).toEqual({
-      kind: "search",
-      q: undefined,
-    })
-  })
-
-  it("parses /search without q", () => {
+  it("parses deprecated /search without query state", () => {
     expect(parseWatchPath("/search")).toEqual({
       kind: "search",
-      q: undefined,
     })
   })
 
@@ -316,6 +306,15 @@ describe("parseWatchPath", () => {
       series: "lumo-the-gospel-of-john",
       episode: "wedding-in-cana",
       lang: "english",
+    })
+  })
+
+  it("inverts languageVideosIndexPath", () => {
+    const emitted = languageVideosIndexPath(portugueseBrazil)
+    const parsed = parseWatchPath(emitted)
+    expect(parsed).toEqual({
+      kind: "language-videos",
+      lang: "portuguese-brazil",
     })
   })
 })

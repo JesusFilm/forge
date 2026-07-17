@@ -19,6 +19,7 @@ const {
   launchSmartCropPlanMock,
   launchSmartCropAlignMock,
   launchSmartCropQaMock,
+  launchSmartCropRepairMock,
   createMuxAssetMock,
   getMuxAssetMock,
 } = vi.hoisted(() => ({
@@ -34,6 +35,7 @@ const {
   launchSmartCropPlanMock: vi.fn(),
   launchSmartCropAlignMock: vi.fn(),
   launchSmartCropQaMock: vi.fn(),
+  launchSmartCropRepairMock: vi.fn(),
   createMuxAssetMock: vi.fn(),
   getMuxAssetMock: vi.fn(),
 }))
@@ -64,6 +66,7 @@ vi.mock("@/services/mastra-smart-crop", () => ({
   launchSmartCropPlan: launchSmartCropPlanMock,
   launchSmartCropAlign: launchSmartCropAlignMock,
   launchSmartCropQa: launchSmartCropQaMock,
+  launchSmartCropRepair: launchSmartCropRepairMock,
 }))
 
 vi.mock("@/services/mux", () => ({
@@ -89,6 +92,7 @@ import {
   buildPlanProgressArtifact,
   buildMuxOutputRecord,
   buildTimelineMapArtifact,
+  SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
   SMART_CROP_MUX_OUTPUT_ARTIFACT_TYPE,
   SMART_CROP_PLAN_BATCH_SIZE,
   SMART_CROP_PLAN_PROGRESS_ARTIFACT_TYPE,
@@ -308,18 +312,70 @@ beforeEach(() => {
     "https://s3.example.test/presigned",
   )
 
-  runCropWorkerJobMock.mockResolvedValue({
-    ok: true,
-    data: {
-      workerJobId: "wj_1",
-      kind: "render",
-      status: "completed",
-      progress: 1,
-      message: null,
-      error: null,
-      result: null,
+  runCropWorkerJobMock.mockImplementation(
+    async (options: {
+      body: {
+        kind: string
+        assetId: string
+        render?: {
+          mode: "preview" | "full"
+          artifactSuffix?: string
+          cropPlan?: { artifactType?: string }
+        }
+      }
+    }) => {
+      if (options.body.kind === "render" && options.body.render) {
+        const suffix = options.body.render.artifactSuffix
+          ? `-${options.body.render.artifactSuffix}`
+          : ""
+        const frameSuffix = options.body.render.artifactSuffix
+          ? `-${options.body.render.artifactSuffix}`
+          : ""
+        seedArtifact(
+          options.body.assetId,
+          `smart-crop-render-report-9x16-${options.body.render.mode}${suffix}`,
+          {
+            ...PREVIEW_RENDER_REPORT,
+            assetId: options.body.assetId,
+            mode: options.body.render.mode,
+            cropPlanArtifactType:
+              options.body.render.cropPlan?.artifactType ??
+              "smart-crop-plan-9x16-v1",
+            artifactSuffix: options.body.render.artifactSuffix,
+            previewFrameArtifactTypes:
+              options.body.render.mode === "preview"
+                ? [
+                    `smart-crop-preview-frame-9x16-001${frameSuffix}`,
+                    `smart-crop-preview-frame-9x16-002${frameSuffix}`,
+                  ]
+                : [],
+            renderedSegments: [
+              {
+                shotId: "shot_00001",
+                sourceStartSeconds: 0,
+                sourceEndSeconds: 10,
+                outputStartSeconds: 0,
+                outputEndSeconds: PREVIEW_RENDER_REPORT.outputDurationSeconds,
+                durationSeconds: PREVIEW_RENDER_REPORT.outputDurationSeconds,
+              },
+            ],
+          },
+        )
+      }
+      return {
+        ok: true,
+        data: {
+          workerJobId: "wj_1",
+          kind: options.body.kind,
+          status: "completed",
+          progress: 1,
+          message: null,
+          error: null,
+          result: null,
+        },
+      }
     },
-  })
+  )
   launchSmartCropPlanMock.mockResolvedValue({
     ok: true,
     segments: [SEGMENT],
@@ -344,6 +400,19 @@ beforeEach(() => {
     issues: [],
     usage: { inputTokens: 5, outputTokens: 1 },
     model: "qa-model",
+  })
+  launchSmartCropRepairMock.mockResolvedValue({
+    ok: true,
+    segments: [
+      {
+        ...SEGMENT,
+        cropKeyframes: [
+          { progress: 0, x: 120, y: 0, width: 606, height: 1080 },
+        ],
+      },
+    ],
+    usage: { inputTokens: 7, outputTokens: 2 },
+    model: "repair-model",
   })
   createMuxAssetMock.mockResolvedValue({
     assetId: "mux_new",
@@ -556,6 +625,7 @@ describe("runSmartCropLocalized — QA advisory degradation", () => {
       reason: "provider_invalid_output",
       retryable: false,
       message: "model returned junk",
+      mastraRunId: "run-qa-invalid",
     })
 
     const error = await runSmartCropLocalized(LOCALIZED_INPUT).catch(
@@ -563,7 +633,9 @@ describe("runSmartCropLocalized — QA advisory degradation", () => {
     )
     expect(error).toBeInstanceOf(Error)
     expect((error as Error).name).toBe("FatalError")
-    expect((error as Error).message).toContain("provider_invalid_output")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop QA failed (provider_invalid_output): model returned junk [mastraRunId=run-qa-invalid]",
+    )
   })
 })
 
@@ -745,6 +817,74 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
     expect(plan.usage).toEqual({ inputTokens: 150, outputTokens: 15 })
   })
 
+  it("keeps completed batches when provider recovery exhausts, then resumes on operator retry", async () => {
+    seedCanonicalBase(17)
+    launchSmartCropPlanMock
+      .mockResolvedValueOnce({
+        ok: true,
+        segments: [SEGMENT],
+        usage: { inputTokens: 25, outputTokens: 4 },
+        model: "m",
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        reason: "provider_rate_limited",
+        retryable: false,
+        message: "smart crop vision rate limited after 3 attempts (status 429)",
+        mastraRunId: "run-rate-limit",
+      })
+
+    const error = await runSmartCropCanonical(CANONICAL_INPUT).catch(
+      (caught: unknown) => caught,
+    )
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).name).toBe("FatalError")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop plan failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-rate-limit]",
+    )
+    expect(launchSmartCropPlanMock).toHaveBeenCalledTimes(2)
+    expect(
+      readSeededArtifact("asset123", SMART_CROP_PLAN_PROGRESS_ARTIFACT_TYPE),
+    ).toMatchObject({
+      completedBatches: 1,
+      totalBatches: 3,
+      usage: { inputTokens: 25, outputTokens: 4 },
+    })
+    expect(stepStatusCalls("smart_crop_plan").at(-1)).toEqual([
+      "job-can",
+      "smart_crop_plan",
+      "failed",
+      "mastra smart-crop plan failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-rate-limit]",
+    ])
+
+    launchSmartCropPlanMock.mockReset()
+    launchSmartCropPlanMock.mockImplementation(
+      async (input: { shots: Array<{ shotId: string }> }) => ({
+        ok: true,
+        segments: [{ ...SEGMENT, shotId: input.shots[0]?.shotId }],
+        usage: { inputTokens: 10, outputTokens: 1 },
+        model: "m",
+      }),
+    )
+
+    await runSmartCropCanonical(CANONICAL_INPUT)
+
+    expect(launchSmartCropPlanMock).toHaveBeenCalledTimes(2)
+    const completedPlan = readSeededArtifact(
+      "asset123",
+      "smart-crop-plan-9x16-v1",
+    ) as {
+      segments: Array<{ shotId: string }>
+      usage: { inputTokens: number; outputTokens: number }
+    }
+    expect(completedPlan.segments.map((segment) => segment.shotId)).toEqual([
+      "shot_00001",
+      "shot_00009",
+      "shot_00017",
+    ])
+    expect(completedPlan.usage).toEqual({ inputTokens: 45, outputTokens: 6 })
+  })
+
   it("starts fresh when the checkpoint belongs to a regenerated fingerprint", async () => {
     seedCanonicalBase(17)
     seedArtifact(
@@ -801,9 +941,146 @@ describe("runSmartCropCanonical — plan checkpointing", () => {
     }
     expect(Array.isArray(plan.segments)).toBe(true)
   })
+
+  it("creates a repair attempt for a crop-affecting QA warning", async () => {
+    seedCanonicalBase(2)
+    artifactStore.delete("asset123/smart-crop-qa-9x16-v1")
+    launchSmartCropQaMock
+      .mockResolvedValueOnce({
+        ok: true,
+        verdict: "pass",
+        issues: [
+          {
+            severity: "warning",
+            description: "Speaker face is cut off by the crop",
+            shotId: "shot_00001",
+          },
+        ],
+        usage: { inputTokens: 5, outputTokens: 1 },
+        model: "qa-model",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        verdict: "pass",
+        issues: [],
+        usage: { inputTokens: 5, outputTokens: 1 },
+        model: "qa-model",
+      })
+
+    await runSmartCropCanonical(CANONICAL_INPUT)
+
+    expect(
+      readSeededArtifact("asset123", "smart-crop-plan-9x16-attempt-000-v1"),
+    ).toMatchObject({
+      kind: "smart-crop-canonical-plan",
+      segments: expect.any(Array),
+    })
+    expect(launchSmartCropRepairMock).toHaveBeenCalledTimes(1)
+    expect(
+      readSeededArtifact("asset123", SMART_CROP_ATTEMPTS_ARTIFACT_TYPE),
+    ).toMatchObject({
+      attempts: [
+        expect.objectContaining({
+          attemptIndex: 0,
+          planArtifactType: "smart-crop-plan-9x16-attempt-000-v1",
+          qa: expect.objectContaining({ repairTriggerCount: 1 }),
+        }),
+        expect.objectContaining({ attemptIndex: 1, status: "complete" }),
+      ],
+    })
+  })
+
+  it("preserves the Mastra run id when repair recovery exhausts", async () => {
+    seedCanonicalBase(2)
+    artifactStore.delete("asset123/smart-crop-qa-9x16-v1")
+    launchSmartCropQaMock.mockResolvedValueOnce({
+      ok: true,
+      verdict: "pass",
+      issues: [
+        {
+          severity: "warning",
+          description: "Speaker face is cut off by the crop",
+          shotId: "shot_00001",
+        },
+      ],
+      usage: { inputTokens: 5, outputTokens: 1 },
+      model: "qa-model",
+    })
+    launchSmartCropRepairMock.mockResolvedValueOnce({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-repair-limit",
+    })
+
+    const error = await runSmartCropCanonical(CANONICAL_INPUT).catch(
+      (caught: unknown) => caught,
+    )
+
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).name).toBe("FatalError")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop repair failed (provider_rate_limited): smart crop vision rate limited after 3 attempts (status 429) [mastraRunId=run-repair-limit]",
+    )
+  })
+
+  it("does not repair a report-only QA warning", async () => {
+    seedCanonicalBase(2)
+    artifactStore.delete("asset123/smart-crop-qa-9x16-v1")
+    launchSmartCropQaMock.mockResolvedValueOnce({
+      ok: true,
+      verdict: "pass",
+      issues: [
+        {
+          severity: "warning",
+          description: "Preview compression noise is visible",
+        },
+      ],
+      usage: { inputTokens: 5, outputTokens: 1 },
+      model: "qa-model",
+    })
+
+    await runSmartCropCanonical(CANONICAL_INPUT)
+
+    expect(launchSmartCropRepairMock).not.toHaveBeenCalled()
+    expect(
+      readSeededArtifact("asset123", SMART_CROP_ATTEMPTS_ARTIFACT_TYPE),
+    ).toMatchObject({
+      attempts: [
+        expect.objectContaining({
+          attemptIndex: 0,
+          qa: expect.objectContaining({ repairTriggerCount: 0 }),
+        }),
+      ],
+    })
+  })
 })
 
 describe("step error classification (FatalError vs SmartCropStepError)", () => {
+  it("keeps Manager-to-Mastra network errors retryable", async () => {
+    seedArtifact(
+      "asset123",
+      "smart-crop-fingerprint-v1",
+      buildFingerprint("asset123", CANONICAL_FP_AT),
+    )
+    launchSmartCropPlanMock.mockResolvedValue({
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+    })
+
+    const error = await runSmartCropCanonical(CANONICAL_INPUT).catch(
+      (caught: unknown) => caught,
+    )
+
+    expect(error).toBeInstanceOf(SmartCropStepError)
+    expect((error as SmartCropStepError).code).toBe("network_error")
+    expect((error as Error).message).toBe(
+      "mastra smart-crop plan failed (network_error)",
+    )
+  })
+
   it("maps retryable:false envelope failures to FatalError (no SDK retry)", async () => {
     // Fingerprint artifact absent -> crop-worker runs and fails terminally.
     runCropWorkerJobMock.mockResolvedValue({
@@ -854,11 +1131,15 @@ describe("force retry", () => {
       buildFingerprint("asset123", CANONICAL_FP_AT),
     )
     seedArtifact("asset123", "smart-crop-plan-9x16-v1", buildApprovedPlan())
-    seedArtifact("asset123", "smart-crop-render-report-9x16-preview", {
-      ...PREVIEW_RENDER_REPORT,
-      assetId: "asset123",
-    })
-    seedArtifact("asset123", "smart-crop-qa-9x16-v1", {
+    seedArtifact(
+      "asset123",
+      "smart-crop-render-report-9x16-preview-attempt-000",
+      {
+        ...PREVIEW_RENDER_REPORT,
+        assetId: "asset123",
+      },
+    )
+    seedArtifact("asset123", "smart-crop-qa-9x16-attempt-000-v1", {
       verdict: "fail",
       issues: [{ severity: "critical", description: "old failure" }],
     })
@@ -866,9 +1147,16 @@ describe("force retry", () => {
     await runSmartCropCanonical({ ...CANONICAL_INPUT, force: true })
 
     expect(launchSmartCropQaMock).toHaveBeenCalledTimes(1)
+    const qaInput = launchSmartCropQaMock.mock.calls[0]?.[0] as {
+      frames: Array<{ shotId?: string }>
+    }
+    expect(qaInput.frames.map((frame) => frame.shotId)).toEqual([
+      "shot_00001",
+      "shot_00001",
+    ])
     const qaArtifact = readSeededArtifact(
       "asset123",
-      "smart-crop-qa-9x16-v1",
+      "smart-crop-qa-9x16-attempt-000-v1",
     ) as { verdict: string }
     expect(qaArtifact.verdict).toBe("pass")
     expect(updateJobMock).toHaveBeenCalledWith(
@@ -880,26 +1168,39 @@ describe("force retry", () => {
     expect(launchSmartCropPlanMock).toHaveBeenCalled()
   })
 
-  it("replays the stored verdict on a plain (force:false) retry", async () => {
+  it("repairs a stored canonical fail verdict on a plain (force:false) retry", async () => {
     seedArtifact(
       "asset123",
       "smart-crop-fingerprint-v1",
       buildFingerprint("asset123", CANONICAL_FP_AT),
     )
     seedArtifact("asset123", "smart-crop-plan-9x16-v1", buildApprovedPlan())
-    seedArtifact("asset123", "smart-crop-render-report-9x16-preview", {
-      ...PREVIEW_RENDER_REPORT,
-      assetId: "asset123",
-    })
-    seedArtifact("asset123", "smart-crop-qa-9x16-v1", {
+    seedArtifact(
+      "asset123",
+      "smart-crop-render-report-9x16-preview-attempt-000",
+      {
+        ...PREVIEW_RENDER_REPORT,
+        assetId: "asset123",
+      },
+    )
+    seedArtifact("asset123", "smart-crop-qa-9x16-attempt-000-v1", {
       verdict: "fail",
       issues: [{ severity: "critical", description: "old failure" }],
     })
 
-    await expect(runSmartCropCanonical(CANONICAL_INPUT)).rejects.toMatchObject({
-      name: "SmartCropStepError",
+    await runSmartCropCanonical(CANONICAL_INPUT)
+
+    expect(launchSmartCropQaMock).toHaveBeenCalledTimes(1)
+    expect(launchSmartCropRepairMock).toHaveBeenCalledTimes(1)
+    expect(
+      readSeededArtifact("asset123", "smart-crop-plan-9x16-attempt-001-v1"),
+    ).toMatchObject({
+      strategy: expect.objectContaining({ model: "repair-model" }),
     })
-    expect(launchSmartCropQaMock).not.toHaveBeenCalled()
+    expect(updateJobMock).toHaveBeenCalledWith(
+      "job-can",
+      expect.objectContaining({ status: "completed" }),
+    )
   })
 })
 

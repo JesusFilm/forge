@@ -1,11 +1,6 @@
-// React-free layout tokens for the watch menus' virtualized lists. These
-// numbers are LOAD-BEARING: getItemLayout in LanguagePanel/InPlayerMenu
-// computes scroll offsets from them, so any drift between the constants and
-// the rendered row/heading styles silently mispositions initialScrollIndex
-// over a 2,259-dub list. Kept in a React-free .ts so the arithmetic is
-// unit-testable (jest-expo can't load React-importing modules) and so the
-// style module (watchMenuStyles) and component (WatchOptionRow) both depend
-// on tokens rather than on each other.
+// LOAD-BEARING layout tokens for the watch menus' lists: getItemLayout computes scroll
+// offsets from them, so drift vs the rendered row/heading styles silently mispositions
+// initialScrollIndex over a 2,259-dub list. React-free so the arithmetic is unit-testable.
 
 import { scale } from "../../lib/scale"
 
@@ -20,8 +15,7 @@ export const WATCH_OPTION_ROW_HEIGHT =
   ROW_VERTICAL_PADDING * 2 + ROW_LINE_HEIGHT
 
 /**
- * Fixed height of a heading block rendered INSIDE a menu FlatList
- * (ListHeader/ListFooter headings in InPlayerMenu). Must equal the
+ * Fixed height of a heading block rendered INSIDE a menu FlatList. Must equal the
  * headingBox style height exactly — getItemLayout adds it to row offsets.
  */
 export const MENU_HEADING_HEIGHT = scale(64)

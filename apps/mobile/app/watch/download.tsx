@@ -1,10 +1,14 @@
 import { useEffect } from "react"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 
 import { DownloadSheetContent } from "../../src/components/watch/DownloadSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import type { WatchDownload } from "../../src/lib/normalizeVideo"
+import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
   const router = useRouter()
@@ -15,8 +19,14 @@ export default function DownloadSheetRoute() {
     activeVariantMediaLoading,
     activeVariantMediaError,
     ensureActiveVariantMedia,
+    activeSubtitleSlug,
     setSnackbarMessage,
   } = useWatchSession()
+  const { startDownload, swapDownload } = useDownloads()
+  const { wifiOnly } = useWatchPreferences()
+  // Opened via "Change quality / language" on a downloaded video → swap mode.
+  const { swap } = useLocalSearchParams<{ swap?: string }>()
+  const isSwap = swap === "1"
 
   // Downloads are fetched lazily per dub — kick off the active variant's fetch
   // when the sheet opens (no-op if already loaded / in flight).
@@ -39,16 +49,47 @@ export default function DownloadSheetRoute() {
       />
     )
 
+  // The bundled subtitle is inherited from the watch session, not picked here:
+  // the dub's active subtitle (set on the Video Details sheet), regardless of the
+  // toggle. null when none is active or the active language has no track here.
+  const activeSubtitle = resolveActiveSubtitle(
+    activeSubtitleSlug,
+    activeVariantMedia?.subtitles ?? [],
+  )
+
+  const onStartDownload = async (rendition: WatchDownload) => {
+    if (!activeVariant) return
+    // Audio = active dub; subtitle = the dub's active subtitle. Store identity
+    // (dub + rendition documentId, subtitle slug) so the engine re-resolves fresh
+    // URLs before each (re)start; title + poster feed the offline library.
+    const enqueue = isSwap ? swapDownload : startDownload
+    const result = await enqueue({
+      videoSlug: video.slug,
+      title: video.title ?? "",
+      dubDocumentId: activeVariant.documentId,
+      rendition,
+      subtitleLanguageSlug: activeSubtitle?.languageSlug ?? null,
+      subtitleUrl: activeSubtitle?.vttSrc ?? null,
+      posterUrl: video.posterUrl,
+      allowCellular: !wifiOnly,
+    })
+    if (!result.ok && result.reason === "insufficient-storage") {
+      // Stay on the sheet so the user can pick a smaller quality.
+      setSnackbarMessage("Not enough storage to download this video.")
+      return
+    }
+    setSnackbarMessage(isSwap ? "Updating download…" : "Download started")
+    router.back()
+  }
+
   return (
     <DownloadSheetContent
       videoTitle={video.title}
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}
       downloads={activeVariantMedia?.downloads ?? []}
-      onDownloadComplete={() => {
-        setSnackbarMessage("Download complete")
-        router.back()
-      }}
+      subtitleLanguageName={activeSubtitle?.languageName ?? null}
+      onStartDownload={onStartDownload}
     />
   )
 }

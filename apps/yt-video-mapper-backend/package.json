@@ -20,6 +20,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fastify/busboy": "3.2.0",
     "@forge/admin-graphql": "workspace:*",
     "@prisma/client": "^6",
     "graphql": "16.13.1",

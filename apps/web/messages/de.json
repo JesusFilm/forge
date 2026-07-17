@@ -41,6 +41,10 @@
     "termsAgreementSuffix": " zu",
     "close": "Schließen",
     "download": "Herunterladen",
+    "authRequiredTitle": "Möchten Sie dieses Video herunterladen?",
+    "authRequiredBody": "Zum Herunterladen von Videos ist ein kostenloses Jesus Film-Konto erforderlich.",
+    "signInToDownload": "Zum Herunterladen anmelden",
+    "keepWatching": "Weiter ansehen",
     "checking": "Wird geprüft",
     "closeTermsOfUse": "Nutzungsbedingungen schließen",
     "cancel": "Abbrechen",
@@ -83,7 +87,8 @@
     "toggleOn": "Ein",
     "toggleOff": "Aus",
     "close": "Schließen",
-    "apply": "Anwenden"
+    "apply": "Anwenden",
+    "noLanguageSubtitles": "Keine Untertitel für {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 FOLGE} other {# FOLGEN}}",
@@ -183,16 +188,19 @@
     "categoryStudy": "Studium",
     "categoryFamily": "Familie",
     "categoryChristmas": "Weihnachten",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "searchLanguageLabel": "Suchsprache",
+    "allLanguages": "Alle Sprachen",
+    "searchSuggestions": "Suchvorschläge",
+    "languages": "Sprachen",
+    "recommendedLanguage": "Empfohlene Sprache",
+    "searchSuggestion": "{suggestion} suchen",
+    "searchSuggestionWithLanguage": "{suggestion} auf {language} suchen",
+    "inLanguage": "auf {language}",
+    "browseByRegion": "Nach Region stöbern",
+    "clearLanguages": "Zurücksetzen",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Jetzt ansehen",
@@ -225,7 +233,7 @@
     "nextChapter": "Nächstes Kapitel"
   },
   "SearchResultCard": {
-    "experience": "Experience",
+    "experience": "Erlebnis",
     "episodeCount": "{count, plural, one {# Folge} other {# Folgen}}",
     "thumbnailAlt": "Video-Miniaturbild"
   }

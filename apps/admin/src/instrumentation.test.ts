@@ -8,6 +8,8 @@ const mockEnv = vi.hoisted(() => ({
       | "local"
       | "@workflow/world-postgres"
       | undefined,
+    WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: 12,
+    WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: 10_000,
   },
 }))
 
@@ -16,6 +18,18 @@ const getWorld = vi.hoisted(() => vi.fn(() => ({ start: worldStart })))
 const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
+
+function clearWorkflowStartupState() {
+  const workflowGlobal = globalThis as typeof globalThis & {
+    __forgeAdminWorkflowStartup?: {
+      retryTimer?: ReturnType<typeof setTimeout>
+    }
+  }
+  if (workflowGlobal.__forgeAdminWorkflowStartup?.retryTimer) {
+    clearTimeout(workflowGlobal.__forgeAdminWorkflowStartup.retryTimer)
+  }
+  delete workflowGlobal.__forgeAdminWorkflowStartup
+}
 
 vi.mock("@/config/env", () => mockEnv)
 vi.mock("workflow/runtime", () => ({ getWorld }))
@@ -39,20 +53,17 @@ describe("workflow instrumentation", () => {
     startWorkflowWorkerHeartbeat.mockReset()
     ensureVideoDbBackupSchedulerStarted.mockReset()
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
-    delete (
-      globalThis as typeof globalThis & {
-        __forgeAdminWorkflowStartup?: unknown
-      }
-    ).__forgeAdminWorkflowStartup
+    clearWorkflowStartupState()
     process.env.NEXT_RUNTIME = "nodejs"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
     mockEnv.env.WORKFLOW_TARGET_WORLD = undefined
-    delete process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS
-    delete process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS
+    mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS = 12
+    mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 10_000
   })
 
   afterEach(() => {
     vi.clearAllTimers()
+    clearWorkflowStartupState()
     vi.useRealTimers()
   })
 
@@ -120,7 +131,7 @@ describe("workflow instrumentation", () => {
   })
 
   it("schedules a retry instead of throwing on transient startup saturation", async () => {
-    process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = "1"
+    mockEnv.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS = 1
     const saturationError = Object.assign(
       new Error("sorry, too many clients already"),
       { code: "53300" },
@@ -137,7 +148,7 @@ describe("workflow instrumentation", () => {
     await expect(register()).resolves.toBeUndefined()
     expect(worldStart).toHaveBeenCalledTimes(1)
 
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 25))
 
     expect(worldStart).toHaveBeenCalledTimes(2)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)

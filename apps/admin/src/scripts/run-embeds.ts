@@ -1,10 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Run scene, transcript, and/or experience embedding backfills from a
+ * Run transcript and/or experience embedding backfills from a
  * workstation against any DATABASE_URL.
  *
- * Bypasses the GraphQL `triggerSceneEmbeddingBackfill` /
- * `triggerTranscriptEmbeddingBackfill` /
+ * Bypasses the GraphQL `triggerTranscriptEmbeddingBackfill` /
  * `triggerExperienceEmbeddingBackfill` mutations (which are
  * ADMIN-gated and dispatch via the useworkflow runtime). Calls the
  * workflow functions directly with the in-process Prisma singleton
@@ -23,22 +22,19 @@
  *   pnpm --filter @forge/admin run-embeds --pipeline=transcript
  *
  *   # Filters (all optional, repeatable):
- *   --pipeline=scene|transcript|experience|both|all     # required
- *                                                       # `both` = scene + transcript
- *                                                       # (back-compat)
- *                                                       # `all` = scene + transcript + experience
- *   --mapping-key=admin-migrations/core-id-mapping.json # scene/transcript default
- *   --core-id=<id>                                      # scene/transcript filter (repeatable)
- *   --locale=<bcp47>                                    # scene + experience pipeline filter (repeatable)
+ *   --pipeline=transcript|experience|both|all           # required
+ *                                                       # `both` = transcript (legacy alias)
+ *                                                       # `all` = transcript + experience
+ *   --mapping-key=admin-migrations/core-id-mapping.json # transcript default
+ *   --core-id=<id>                                      # transcript filter (repeatable)
+ *   --locale=<bcp47>                                    # experience pipeline filter (repeatable)
  *   --language=<bcp47>                                  # transcript pipeline filter (repeatable)
- *   --scene-mode=idempotent|repair|force|model-upgrade
  *   --transcript-mode=idempotent|repair|force|model-upgrade
  *   --experience-mode=idempotent|repair|force|model-upgrade
  *   --experience-id=<cuid>                              # experience pipeline filter (repeatable)
  *   --force                                             # experience pipeline only — re-embed
  *                                                       # rows that already have a non-NULL embedding
  *   --report-out=<path>                                 # optional; dump final report JSON
- *   --from-report=<path>                                # scene retry only; retry failed targets
  *   --gate-report=<path>                                # required for --pipeline=all
  *
  * The mapping snapshot must already exist at the configured S3 key
@@ -56,17 +52,13 @@
  *
  *   stdout:
  *     - `run-embeds.start` — one line at startup with resolved config
- *     - `run-embeds.scene.preflight`       (pipeline=scene|both|all)
- *     - `run-embeds.scene.start`           (pipeline=scene|both|all)
- *     - `run-embeds.scene.complete`        (pipeline=scene|both|all)
- *     - `run-embeds.scene.error`           (pipeline=scene|both|all, on error)
  *     - `run-embeds.transcript.start`      (pipeline=transcript|both|all)
  *     - `run-embeds.transcript.complete`   (pipeline=transcript|both|all)
  *     - `run-embeds.transcript.error`      (pipeline=transcript|both|all, on error)
  *     - `run-embeds.experience.start`      (pipeline=experience|all)
  *     - `run-embeds.experience.complete`   (pipeline=experience|all)
  *     - `run-embeds.experience.error`      (pipeline=experience|all, on error)
- *     - `run-embeds.experience.skipped`    (pipeline=both — both = scene+transcript only;
+ *     - `run-embeds.experience.skipped`    (pipeline=both — legacy transcript-only alias;
  *                                           experience is explicitly omitted)
  *     - `run-embeds.complete` — final aggregated report (pretty-printed JSON)
  *     - `run-embeds.report_out_written` — when --report-out succeeded
@@ -134,28 +126,6 @@ export async function writeReportToPath(
   }
 }
 
-export type SceneRetryTargetFromReport = {
-  coreId: string
-  videoEditionId: string
-  locale: string
-  cmsVideoId: number
-}
-
-export type SceneRetrySelectionDetails = {
-  requested: number
-  matched: number
-  unmatched: number
-  unmatchedRetryTargets: ReadonlyArray<{
-    coreId: string
-    videoEditionId: string
-    locale: string
-  }>
-}
-
-export type PipelineErrorDetails = {
-  retrySelection?: SceneRetrySelectionDetails
-}
-
 export class RunEmbedsConfigError extends Error {
   constructor(
     message: string,
@@ -182,6 +152,12 @@ export type ContentBackfillGateSummary = {
     transformVersion: string | null
   }
 }
+
+export type EmbeddingBackfillMode =
+  | "idempotent"
+  | "repair"
+  | "force"
+  | "model-upgrade"
 
 const EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS = 1536
 const EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS = 1536
@@ -596,13 +572,6 @@ export function extractContentBackfillGateFromReport(
   }
 }
 
-export function resolveReportInPath(
-  arg: string | undefined,
-): string | undefined {
-  if (arg === undefined || arg === "") return undefined
-  return isAbsolute(arg) ? arg : resolve(process.cwd(), arg)
-}
-
 function assertGateReportPathAllowed(reportPath: string, cwd: string): void {
   const reportsDir = resolve(cwd, "docs/search-eval-reports")
   const relativePath = relative(reportsDir, reportPath)
@@ -654,241 +623,7 @@ export async function loadContentBackfillGateReport(
   return extractContentBackfillGateFromReport(parsed, reportPath)
 }
 
-export function extractFailedSceneRetryTargetsFromReport(
-  report: unknown,
-): SceneRetryTargetFromReport[] {
-  if (!report || typeof report !== "object") {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report is not an object",
-    )
-  }
-  const reports = (report as Record<string, unknown>).reports
-  if (!reports || typeof reports !== "object") {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report missing reports object",
-    )
-  }
-  const scene = (reports as Record<string, unknown>).scene
-  if (!scene || typeof scene !== "object") {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report missing reports.scene",
-    )
-  }
-  const outcomes = (scene as Record<string, unknown>).outcomes
-  if (!Array.isArray(outcomes)) {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report missing reports.scene.outcomes",
-    )
-  }
-
-  const byKey = new Map<string, SceneRetryTargetFromReport>()
-  outcomes.forEach((outcome, index) => {
-    if (!outcome || typeof outcome !== "object") return
-    const o = outcome as Record<string, unknown>
-    if (o.status !== "failed") return
-    const target = o.target
-    if (!target || typeof target !== "object") {
-      throw new RunEmbedsConfigError(
-        `[run-embeds] failed scene outcome at reports.scene.outcomes[${index}] is missing target`,
-      )
-    }
-    const t = target as Record<string, unknown>
-    const coreId = typeof t.coreId === "string" ? t.coreId : undefined
-    const videoEditionId =
-      typeof t.videoEditionId === "string" ? t.videoEditionId : undefined
-    const locale = typeof o.locale === "string" ? o.locale : undefined
-    const cmsVideoId =
-      typeof t.cmsVideoId === "number" ? t.cmsVideoId : undefined
-    if (!coreId || !videoEditionId || !locale || cmsVideoId === undefined) {
-      throw new RunEmbedsConfigError(
-        `[run-embeds] failed scene outcome at reports.scene.outcomes[${index}] is missing target.coreId, target.videoEditionId, locale, or numeric target.cmsVideoId`,
-      )
-    }
-    const key = `${coreId}::${videoEditionId}::${locale}`
-    if (!byKey.has(key)) {
-      byKey.set(key, { coreId, videoEditionId, locale, cmsVideoId })
-    }
-  })
-  return [...byKey.values()].sort((a, b) => {
-    const ak = `${a.coreId}::${a.videoEditionId}::${a.locale}`
-    const bk = `${b.coreId}::${b.videoEditionId}::${b.locale}`
-    return ak.localeCompare(bk)
-  })
-}
-
-export function pipelineErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-export function pipelineErrorDetails(
-  error: unknown,
-): PipelineErrorDetails | undefined {
-  if (!error || typeof error !== "object") return undefined
-  const retrySelection = (error as Record<string, unknown>).retrySelection
-  if (!isSceneRetrySelectionDetails(retrySelection)) return undefined
-  return { retrySelection }
-}
-
-function isSceneRetrySelectionDetails(
-  value: unknown,
-): value is SceneRetrySelectionDetails {
-  if (!value || typeof value !== "object") return false
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.requested === "number" &&
-    typeof record.matched === "number" &&
-    typeof record.unmatched === "number" &&
-    Array.isArray(record.unmatchedRetryTargets) &&
-    record.unmatchedRetryTargets.every(isSceneRetryTargetSummary)
-  )
-}
-
-function isSceneRetryTargetSummary(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.coreId === "string" &&
-    typeof record.videoEditionId === "string" &&
-    typeof record.locale === "string"
-  )
-}
-
-export async function loadSceneRetryTargetsFromReport(
-  reportPath: string,
-): Promise<SceneRetryTargetFromReport[]> {
-  let raw: string
-  try {
-    raw = await readFile(reportPath, "utf8")
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    throw new RunEmbedsConfigError(
-      `[run-embeds] failed to read --from-report=${reportPath}: ${message}`,
-    )
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw) as unknown
-  } catch {
-    throw new RunEmbedsConfigError(
-      `[run-embeds] --from-report=${reportPath} is not valid JSON`,
-    )
-  }
-  const retryTargets = extractFailedSceneRetryTargetsFromReport(parsed)
-  if (retryTargets.length === 0) {
-    throw new RunEmbedsConfigError(
-      `[run-embeds] no failed scene outcomes found in ${reportPath}`,
-    )
-  }
-  return retryTargets
-}
-
-export type SceneBranchPreflightReport = {
-  ok: boolean
-  checks: ReadonlyArray<{
-    name: string
-    status: string
-    reason: string
-  }>
-}
-
-export type SceneBranchReport = {
-  totalTargets: number
-  succeeded: number
-  skipped: number
-  failed: number
-}
-
-export type SceneBranchResult =
-  | { ok: true; report: SceneBranchReport }
-  | { ok: false; error: string; details?: PipelineErrorDetails }
-
-export type EmbeddingBackfillMode =
-  | "idempotent"
-  | "repair"
-  | "force"
-  | "model-upgrade"
-
-export async function runSceneBranch(args: {
-  mappingS3Key: string
-  coreIds: readonly string[]
-  locales: readonly string[]
-  sceneMode?: EmbeddingBackfillMode
-  sceneRetryTargets: readonly SceneRetryTargetFromReport[] | undefined
-  runManagerArtifactsPreflight: (input: {
-    mappingS3Key: string
-    sampleSceneAssetId?: number
-  }) => Promise<SceneBranchPreflightReport>
-  runSceneEmbeddingBackfill: (input: {
-    mappingS3Key: string
-    coreIds?: readonly string[]
-    locales?: readonly string[]
-    retryTargets?: readonly SceneRetryTargetFromReport[]
-    mode?: EmbeddingBackfillMode
-  }) => Promise<SceneBranchReport>
-  writeStdout?: (line: string) => void
-}): Promise<SceneBranchResult> {
-  const writeStdout = args.writeStdout ?? ((line) => process.stdout.write(line))
-
-  try {
-    const preflight = await args.runManagerArtifactsPreflight({
-      mappingS3Key: args.mappingS3Key,
-      sampleSceneAssetId: args.sceneRetryTargets?.[0]?.cmsVideoId,
-    })
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.preflight",
-        ok: preflight.ok,
-        checks: preflight.checks,
-      }) + "\n",
-    )
-    if (!preflight.ok) {
-      throw new Error(
-        `scene preflight failed: ${preflight.checks
-          .filter((check) => check.status === "failed")
-          .map((check) => `${check.name}:${check.reason}`)
-          .join(", ")}`,
-      )
-    }
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.start",
-        mappingS3Key: args.mappingS3Key,
-        mode: args.sceneMode ?? "idempotent",
-        retryTargets: args.sceneRetryTargets?.length ?? null,
-      }) + "\n",
-    )
-    const report = await args.runSceneEmbeddingBackfill({
-      mappingS3Key: args.mappingS3Key,
-      coreIds: args.coreIds.length > 0 ? args.coreIds : undefined,
-      locales: args.locales.length > 0 ? args.locales : undefined,
-      retryTargets: args.sceneRetryTargets,
-      mode: args.sceneMode,
-    })
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.complete",
-        totalTargets: report.totalTargets,
-        succeeded: report.succeeded,
-        skipped: report.skipped,
-        failed: report.failed,
-      }) + "\n",
-    )
-    return { ok: true, report }
-  } catch (err) {
-    const error = pipelineErrorMessage(err)
-    const details = pipelineErrorDetails(err)
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.error",
-        error,
-        details,
-      }) + "\n",
-    )
-    return details ? { ok: false, error, details } : { ok: false, error }
-  }
-}
-
-type Pipeline = "scene" | "transcript" | "experience" | "both" | "all"
+type Pipeline = "transcript" | "experience" | "both" | "all"
 
 const LOCAL_BACKFILL_DATABASE_HOSTS = new Set([
   "localhost",
@@ -948,13 +683,7 @@ function parseFlag(name: string): boolean {
 }
 
 function isPipeline(v: string): v is Pipeline {
-  return (
-    v === "scene" ||
-    v === "transcript" ||
-    v === "experience" ||
-    v === "both" ||
-    v === "all"
-  )
+  return v === "transcript" || v === "experience" || v === "both" || v === "all"
 }
 
 function isEmbeddingBackfillMode(v: string): v is EmbeddingBackfillMode {
@@ -970,13 +699,13 @@ async function main(): Promise<void> {
   const pipelineArg = parseSingle("pipeline")
   if (!pipelineArg) {
     process.stderr.write(
-      "[run-embeds] --pipeline=scene|transcript|experience|both|all is required\n",
+      "[run-embeds] --pipeline=transcript|experience|both|all is required\n",
     )
     process.exit(2)
   }
   if (!isPipeline(pipelineArg)) {
     process.stderr.write(
-      `[run-embeds] invalid --pipeline=${pipelineArg}; expected scene|transcript|experience|both|all\n`,
+      `[run-embeds] invalid --pipeline=${pipelineArg}; expected transcript|experience|both|all\n`,
     )
     process.exit(2)
   }
@@ -992,7 +721,6 @@ async function main(): Promise<void> {
   const coreIds = parseRepeated("core-id")
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
-  const sceneMode = parseSingle("scene-mode")
   const transcriptMode = parseSingle("transcript-mode")
   const experienceMode = parseSingle("experience-mode")
   const experienceIds = parseRepeated("experience-id")
@@ -1001,21 +729,20 @@ async function main(): Promise<void> {
   // `pnpm trigger-enrichment --from-report=<path>` need a stable
   // file format. When unset, behavior is unchanged (stdout only).
   const reportOutPath = resolveReportOutPath(parseSingle("report-out"))
-  const reportInPath = resolveReportInPath(parseSingle("from-report"))
   const gateReportPath = resolveGateReportPath(parseSingle("gate-report"))
   const allowUngatedLocalBackfill = parseFlag("allow-ungated-local-backfill")
 
-  if (reportInPath !== undefined && pipelineArg !== "scene") {
+  if (parseSingle("from-report") !== undefined) {
     process.stderr.write(
-      "[run-embeds] --from-report is only supported with --pipeline=scene\n",
+      "[run-embeds] --from-report is no longer supported; scene embedding backfills have been retired\n",
     )
     process.exit(2)
   }
-  if (sceneMode !== undefined && !isEmbeddingBackfillMode(sceneMode)) {
+  if (parseSingle("scene-mode") !== undefined) {
     process.stderr.write(
-      `[run-embeds] invalid --scene-mode=${sceneMode}; expected idempotent|repair|force|model-upgrade\n`,
+      "[run-embeds] --scene-mode is no longer supported; scene embedding backfills have been retired\n",
     )
-    process.exit(1)
+    process.exit(2)
   }
   if (
     transcriptMode !== undefined &&
@@ -1036,15 +763,6 @@ async function main(): Promise<void> {
     process.exit(1)
   }
   if (
-    reportInPath !== undefined &&
-    (coreIds.length > 0 || locales.length > 0 || languages.length > 0)
-  ) {
-    process.stderr.write(
-      "[run-embeds] --from-report is mutually exclusive with --core-id/--locale/--language filters\n",
-    )
-    process.exit(2)
-  }
-  if (
     requiresContentBackfillGateReport({
       pipeline: pipelineArg,
       gateReportPath,
@@ -1057,19 +775,6 @@ async function main(): Promise<void> {
       "[run-embeds] --pipeline=all requires --gate-report=<docs/search-eval-reports/*.json>\n",
     )
     process.exit(2)
-  }
-
-  let sceneRetryTargets: SceneRetryTargetFromReport[] | undefined
-  if (reportInPath !== undefined) {
-    try {
-      sceneRetryTargets = await loadSceneRetryTargetsFromReport(reportInPath)
-    } catch (err) {
-      if (err instanceof RunEmbedsConfigError) {
-        process.stderr.write(err.message + "\n")
-        process.exit(err.exitCode)
-      }
-      throw err
-    }
   }
 
   let contentBackfillGate: ContentBackfillGateSummary | undefined
@@ -1092,8 +797,6 @@ async function main(): Promise<void> {
   // a bound prisma reference. Importing the workflows here also pulls
   // in the validated `env` and the workflow defaults — single source
   // of truth for both the CLI's start-event log and the workflow body.
-  const { runSceneEmbeddingBackfill, DEFAULT_SCENE_EMBEDDING_CONCURRENCY } =
-    await import("@/workflows/sceneEmbeddingBackfill")
   const {
     runTranscriptEmbeddingBackfill,
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY,
@@ -1102,8 +805,6 @@ async function main(): Promise<void> {
     await import("@/workflows/experienceEmbeddingBackfill")
   const { prisma } = await import("@/db/client")
   const { env } = await import("@/config/env")
-  const { runManagerArtifactsPreflight } =
-    await import("@/services/manager-artifacts-preflight.service")
 
   if (
     requiresContentBackfillGateReport({
@@ -1120,8 +821,6 @@ async function main(): Promise<void> {
     process.exit(2)
   }
 
-  const sceneConcurrency =
-    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
   const transcriptConcurrency =
     env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
@@ -1142,17 +841,13 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
-      sceneMode: sceneMode ?? null,
       transcriptMode: transcriptMode ?? null,
       experienceMode: resolvedExperienceMode,
       experienceIds: experienceIds.length > 0 ? experienceIds : null,
       force: resolvedExperienceForce,
-      sceneConcurrency,
       transcriptConcurrency,
       managerArtifactsBucket:
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
-      fromReport: reportInPath ?? null,
-      sceneRetryTargets: sceneRetryTargets?.length ?? null,
       gateReport: gateReportPath ?? null,
       contentBackfillGate: contentBackfillGate ?? null,
       contentBackfillGateBypass:
@@ -1189,33 +884,8 @@ async function main(): Promise<void> {
 
   const reports: Record<string, unknown> = {}
   const errors: Record<string, string> = {}
-  const errorDetails: Record<string, PipelineErrorDetails> = {}
 
   try {
-    if (
-      pipelineArg === "scene" ||
-      pipelineArg === "both" ||
-      pipelineArg === "all"
-    ) {
-      const sceneResult = await runSceneBranch({
-        mappingS3Key,
-        coreIds,
-        locales,
-        sceneMode,
-        sceneRetryTargets,
-        runManagerArtifactsPreflight,
-        runSceneEmbeddingBackfill,
-      })
-      if (sceneResult.ok) {
-        reports.scene = sceneResult.report
-      } else {
-        errors.scene = sceneResult.error
-        if (sceneResult.details) {
-          errorDetails.scene = sceneResult.details
-        }
-      }
-    }
-
     if (
       pipelineArg === "transcript" ||
       pipelineArg === "both" ||
@@ -1331,8 +1001,6 @@ async function main(): Promise<void> {
             }
           : null,
       errors: Object.keys(errors).length > 0 ? errors : undefined,
-      errorDetails:
-        Object.keys(errorDetails).length > 0 ? errorDetails : undefined,
     }
 
     process.stdout.write(JSON.stringify(finalReport, null, 2) + "\n")

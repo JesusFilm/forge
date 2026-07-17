@@ -11,6 +11,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchMock = vi.fn()
+const makeTimings = () => ({
+  pipelineMode: "hybrid" as const,
+  totalMs: 1,
+  embeddingMs: 1,
+  retrievalsMs: 0,
+  retrievalWaitMs: 0,
+  fusionMs: 0,
+  dilutionCapMs: 0,
+  dedupeMs: 0,
+  mappingMs: 0,
+  hydrationMs: 0,
+  retrievers: [],
+  db: [],
+})
 const searchWithTraceMock = vi.fn(async (params) => {
   const response = await searchMock(params)
   return {
@@ -26,6 +40,7 @@ const searchWithTraceMock = vi.fn(async (params) => {
       failedRetrievers: [],
       contributingRetrievers: [],
     },
+    timings: makeTimings(),
   }
 })
 vi.mock("@/services/hybrid-search.service", async () => {
@@ -51,6 +66,10 @@ vi.mock("@/auth/search-bearer", () => ({
   isAnyKnownBearer: vi.fn(),
 }))
 
+vi.mock("@/auth/fleet-ceiling", () => ({
+  shouldShedFleetRequest: vi.fn(),
+}))
+
 vi.mock("@/services/search-trace.service", () => ({
   recordSearchTraceSafely: vi.fn(async () => ({ ok: true, timedOut: false })),
 }))
@@ -62,6 +81,7 @@ vi.mock("@/config/env", () => ({
 import { schema } from "@/graphql/schema"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { shouldShedFleetRequest } from "@/auth/fleet-ceiling"
 import { env } from "@/config/env"
 import { recordSearchTraceSafely } from "@/services/search-trace.service"
 
@@ -120,6 +140,7 @@ beforeEach(() => {
   // Individual tests opt into required-auth and/or valid bearer.
   envMutable.SEARCH_AUTH_REQUIRED = "false"
   vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
+  vi.mocked(shouldShedFleetRequest).mockResolvedValue(false)
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
@@ -626,5 +647,32 @@ describe("Query.search bearer auth gate (Plan 002)", () => {
       expect(allLogged).not.toContain("the-secret-key-value-aaa")
       expect(allLogged).not.toContain("Bearer the-secret")
     })
+  })
+})
+
+describe("fleet global ceiling (F1 #2)", () => {
+  const fleetBearer = {
+    valid: true as const,
+    source: "fleet" as const,
+    fleetKeyId: "abc123def456",
+  }
+
+  it("throws a 429 GraphQLError when the fleet ceiling sheds the request", async () => {
+    vi.mocked(isAnyKnownBearer).mockResolvedValue(fleetBearer)
+    vi.mocked(shouldShedFleetRequest).mockResolvedValue(true)
+    await expect(
+      invoke({ q: "jesus", locale: "en" }, ctxWithAuth("Bearer fleet")),
+    ).rejects.toMatchObject({
+      extensions: { code: "RATE_LIMITED", http: { status: 429 } },
+    })
+    expect(shouldShedFleetRequest).toHaveBeenCalledWith(fleetBearer, "graphql")
+    expect(searchMock).not.toHaveBeenCalled()
+  })
+
+  it("runs search when the fleet ceiling does not shed", async () => {
+    vi.mocked(isAnyKnownBearer).mockResolvedValue(fleetBearer)
+    vi.mocked(shouldShedFleetRequest).mockResolvedValue(false)
+    await invoke({ q: "jesus", locale: "en" }, ctxWithAuth("Bearer fleet"))
+    expect(searchMock).toHaveBeenCalled()
   })
 })

@@ -411,6 +411,39 @@ describe("normalizeVideo", () => {
     expect(result.bibleCitations[0].verseStart).toBe(30)
   })
 
+  it("sorts a frozen bibleCitations array without mutating it", () => {
+    // Apollo's InMemoryCache returns frozen arrays and Array.sort mutates in
+    // place, so normalizeVideo must copy before sorting (else "Cannot assign to
+    // read-only property"). Inverted order forces a swap, so no copy = throw.
+    const frozenCitations = Object.freeze([
+      {
+        documentId: "bc-2",
+        chapterStart: 1,
+        verseStart: 1,
+        order: 2,
+        osisId: "John.1.1",
+        bibleBook: { documentId: "bb-2", name: { en: "John" } },
+      },
+      {
+        documentId: "bc-1",
+        chapterStart: 3,
+        verseStart: 16,
+        order: 1,
+        osisId: "John.3.16",
+        bibleBook: { documentId: "bb-1", name: { en: "John" } },
+      },
+    ])
+
+    const result = normalizeVideo(
+      makeRawVideo({ bibleCitations: frozenCitations }),
+    )!
+
+    expect(result.bibleCitations).toHaveLength(2)
+    // Ascending by order: bc-1 (order 1) before bc-2 (order 2).
+    expect(result.bibleCitations[0].documentId).toBe("bc-1")
+    expect(result.bibleCitations[1].documentId).toBe("bc-2")
+  })
+
   it("handles missing fields gracefully", () => {
     const result = normalizeVideo(
       makeRawVideo({
@@ -657,6 +690,35 @@ describe("normalizeSeries", () => {
     expect(result.streamingUrl).toBe("https://stream.mux.com/trailer.m3u8")
     expect(result.muxPlaybackId).toBe("trailer123")
     expect(result.variants).toHaveLength(1)
+  })
+
+  // Contract guard (mocked-shape vs real-contract): SeriesWatchVideo omits the
+  // player-only duration/muxVideo, so those keys are absent (undefined), not null.
+  // Builder must still make a trailer from hls; dropping `?? null` should fail here.
+  it("tolerates the lean dub shape (duration/muxVideo absent): trailer from hls, duration & muxPlaybackId null", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        variants: [
+          {
+            documentId: "dub-lean",
+            slug: "english",
+            published: true,
+            hls: "https://stream.mux.com/lean.m3u8",
+            language: {
+              coreId: "529",
+              bcp47: "en",
+              slug: "english",
+              name: { en: "English" },
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.streamingUrl).toBe("https://stream.mux.com/lean.m3u8")
+    expect(result.duration).toBeNull()
+    expect(result.muxPlaybackId).toBeNull()
+    expect(result.variants[0].duration).toBeNull()
+    expect(result.variants[0].muxPlaybackId).toBeNull()
   })
 
   it("has no trailer streamingUrl when no dub is playable", () => {

@@ -1,17 +1,6 @@
-// SYNC: ported from apps/mobile/src/hooks/useBibleVerses.ts (web has the same
-// logic in apps/web/src/components/watch/BibleQuotesSection.tsx).
-//
-// The bibleCitations projection only carries reference fields (book / chapter /
-// verse) — no verse text — so the text is fetched client-side per citation from
-// the wldeh/bible-api mirror on jsdelivr (single-verse JSON). TV differs from
-// mobile in one way: card assembly (stock images, promo card) lives in the pure
-// buildBibleQuotesBlock adapter (detailsAdapters.ts) so it stays unit-testable;
-// this hook ONLY resolves verse text, keyed by citation documentId. The pure
-// fetch helpers live in lib/bibleVerses.ts (tested there — jest-expo can't load
-// React-importing modules).
-//
-// TV is hardcoded English ({ locale: "en" }, see CLAUDE.md), so the translation
-// is pinned to en-webbe — mobile's DEFAULT_BIBLE_VERSION — with no locale map.
+// SYNC: ported from apps/mobile/src/hooks/useBibleVerses.ts. Verse text is fetched
+// client-side per citation from wldeh/bible-api on jsdelivr (keyed by documentId,
+// version pinned en-webbe); a module-scope cache (bibleVerseFetch) dedupes across mounts.
 
 import { useEffect, useState } from "react"
 
@@ -20,6 +9,12 @@ import {
   formatScripture,
   isFetchedScripture,
 } from "../lib/bibleVerses"
+import {
+  buildVerseUrl,
+  cacheVerse,
+  getCachedVerse,
+  partitionVerses,
+} from "../lib/bibleVerseFetch"
 import type { WatchBibleCitation } from "../lib/normalizeVideo"
 
 // WEBBE renders the divine name as "the LORD" (NIV/ESV convention) rather than
@@ -32,10 +27,9 @@ const BIBLE_API_VERSION = "en-webbe"
 const VERSE_FETCH_TIMEOUT_MS = 8000
 
 /**
- * Fetch each citation's verse text (verseStart, or verse 1 for chapter-only
- * citations — same preview rule as web). Returns a map keyed by citation
- * documentId; missing entries mean the verse is unavailable and the card
- * falls back to reference-only.
+ * Fetch each citation's verse text (verseStart, or verse 1 for chapter-only —
+ * web's preview rule). Returns a map keyed by documentId; a missing entry means
+ * the verse is unavailable and the card falls back to reference-only.
  */
 export function useBibleVerses(
   citations: readonly WatchBibleCitation[],
@@ -45,23 +39,35 @@ export function useBibleVerses(
   useEffect(() => {
     if (citations.length === 0) return
 
+    // Resolve each citation to its verse URL (null = unfetchable book/chapter).
+    const citationUrls = citations.map((c) => {
+      if (c.bookName == null || c.chapterStart == null) {
+        return { documentId: c.documentId, url: null }
+      }
+      const bookSlug = bookSlugForApi(c.bookName)
+      if (bookSlug == null) return { documentId: c.documentId, url: null }
+      const verse = c.verseStart ?? 1
+      return {
+        documentId: c.documentId,
+        url: buildVerseUrl(BIBLE_API_VERSION, bookSlug, c.chapterStart, verse),
+      }
+    })
+
+    // Seed from the module cache; only the deduped uncached URLs hit the network.
+    const { resolved, toFetch } = partitionVerses(citationUrls)
+    if (toFetch.size === 0) {
+      setVerses(resolved)
+      return
+    }
+
     let cancelled = false
     // One controller per in-flight fetch so a single slow verse only kills its
     // own request (timeout) and unmount aborts whatever is still running.
     const controllers = new Set<AbortController>()
 
     void (async () => {
-      const fetched: Record<string, string> = {}
-
       await Promise.all(
-        citations.map(async (c) => {
-          if (c.bookName == null || c.chapterStart == null) return
-          const bookSlug = bookSlugForApi(c.bookName)
-          if (bookSlug == null) return
-
-          const verse = c.verseStart ?? 1
-          const url = `https://cdn.jsdelivr.net/gh/wldeh/bible-api/bibles/${BIBLE_API_VERSION}/books/${bookSlug}/chapters/${c.chapterStart}/verses/${verse}.json`
-
+        [...toFetch].map(async (url) => {
           const controller = new AbortController()
           controllers.add(controller)
           const timeoutId = setTimeout(() => {
@@ -75,8 +81,9 @@ export function useBibleVerses(
             if (cancelled || !res.ok) return
             const data: unknown = await res.json()
             if (cancelled) return
+            // Cache only on success, so a failed/aborted fetch retries next mount.
             if (isFetchedScripture(data)) {
-              fetched[c.documentId] = formatScripture(data.text)
+              cacheVerse(url, formatScripture(data.text))
             }
           } catch (error) {
             // AbortError = timeout or unmount — expected; the card stays
@@ -92,9 +99,16 @@ export function useBibleVerses(
         }),
       )
 
-      if (!cancelled) {
-        setVerses(fetched)
+      if (cancelled) return
+      // Merge cache-seeded text with whatever just landed, keyed by documentId
+      // (two citations may resolve to the same verse URL).
+      const merged: Record<string, string> = { ...resolved }
+      for (const { documentId, url } of citationUrls) {
+        if (url == null || merged[documentId] != null) continue
+        const text = getCachedVerse(url)
+        if (text != null) merged[documentId] = text
       }
+      setVerses(merged)
     })()
 
     return () => {

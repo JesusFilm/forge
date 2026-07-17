@@ -15,8 +15,7 @@
 // per-mutation shape.
 //
 // Returns the JSON scalar (consistent with the other trigger
-// mutations in this app — `triggerSceneEmbeddingBackfill`,
-// `triggerTranscriptEmbeddingBackfill`,
+// mutations in this app — `triggerTranscriptEmbeddingBackfill` and
 // `triggerExperienceContentDump` — per plan D9).
 
 import { z } from "zod"
@@ -130,7 +129,7 @@ function normalizeTargetLocales(
 /**
  * Dispatch helper exported separately from the resolver so tests
  * can assert dispatch shape without building the Pothos schema.
- * Mirrors the `dispatchSceneEmbeddingBackfill` pattern.
+ * Mirrors the workflow-dispatch helper pattern used by embedding backfills.
  */
 export async function dispatchManagerEnrichment(args: {
   assetIds: readonly number[]
@@ -147,7 +146,7 @@ builder.mutationFields((t) => ({
     type: "JSON",
     authScopes: { hasPermission: "write:manager-enrichment-trigger" },
     description:
-      "Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.",
+      "Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerTranscriptEmbeddingBackfill`. ADMIN-only.",
     args: {
       assetIds: t.arg.intList({
         required: true,

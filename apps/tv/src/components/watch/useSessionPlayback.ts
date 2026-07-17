@@ -1,25 +1,7 @@
 // ── Session-driven playback hook (U7) ────────────────────────────────────────
-// Extracted from VideoPlayer.tsx (pure refactor — zero behavior change). This
-// hook owns the block of overlay logic that ONLY activates when a watch session
-// is driving the fullscreen player: the in-player menu open/close, the
-// stale-session-safe `menuActive` gate, the live dub-switch (frozen-source +
-// replaceAsync), the Mux auto-subtitle disabling, and the active-VTT resolution.
-//
-// CHARACTERIZATION — the no-session contract (NON-NEGOTIABLE INVARIANT):
-// Experience-card playback calls VideoPlayerContext.playVideo(url) with NO watch
-// session populated (session.video == null). In that path:
-//   - `menuActive` is false (the inPlayerMenuVisible gate returns false),
-//   - `desiredSource` is always the `streamingUrl` prop (which equals the frozen
-//     creation source), so the dub-switch effect short-circuits on the
-//     loadedUrlRef equality and never touches the player,
-//   - `activeVttSrc` is null → no subtitle layer mounts,
-//   - the lazy media fetch never fires.
-// The Mux auto-subtitle disabling DOES run for all paths (cheap, idempotent) —
-// exactly as before, so an experience-card play never surfaces a stray
-// Mux-burned track either.
-//
-// The pure decision logic lives in playerSwitch.ts (inPlayerMenuVisible /
-// shouldReplaceSource); this hook is the React wiring around it.
+// Overlay logic active only when a watch session drives the fullscreen player.
+// NON-NEGOTIABLE: no-session card playback (session.video == null) is unchanged
+// (menuActive false, only the idempotent Mux auto-subtitle disable). See playerSwitch.ts.
 
 import {
   useCallback,
@@ -40,57 +22,50 @@ export type InPlayerMenuSection = "language" | "subtitles"
 
 export type UseSessionPlaybackParams = {
   /**
-   * The expo-video player instance created by the host's useVideoPlayer. The
-   * dub-switch effect drives `player.replaceAsync` on this SAME instance so a
-   * live dub change never recreates (and releases) the player mid-play.
+   * The host's player. The dub-switch effect drives `player.replaceAsync` on
+   * this SAME instance so a live dub change never recreates/releases it mid-play.
    */
   player: ExpoVideoPlayer
   /**
-   * The URL the overlay was OPENED with (the `streamingUrl` prop — fixed for the
-   * lifetime of one playVideo). This is also the host's frozen creation source.
-   * The `menuActive` gate is evaluated against it, and it is the desired source
-   * for the no-session path.
+   * The URL the overlay was OPENED with (fixed for one playVideo, == host's
+   * frozen creation source). The `menuActive` gate is evaluated against it; it's
+   * also the desired source for the no-session path.
    */
   streamingUrl: string
   /**
-   * The host's in-flight hide-animation handle. openMenu stops it so the chrome
-   * doesn't fade out from under the menu. Shared so the host's reveal/error/
-   * foreground paths and this hook all manipulate the SAME handle.
+   * Host's in-flight hide-animation handle. openMenu stops it so the chrome can't
+   * fade out from under the menu; shared so all host paths manipulate one handle.
    */
   hideAnimRef: MutableRefObject<Animated.CompositeAnimation | null>
   /**
-   * The host's inactivity timer. openMenu clears it (auto-hide is suppressed
-   * while the menu is open; the host's scheduleHide also early-returns on
-   * `menuOpenRef`).
+   * Host's inactivity timer. openMenu clears it (auto-hide is suppressed while
+   * the menu is open; host's scheduleHide also early-returns on `menuOpenRef`).
    */
   inactivityTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>
   /**
-   * The host's seek guard. A dub switch resets the playhead to ~0, so any
-   * pending seek target would never be reached again — leaving setCurrentTime
-   * suppressed forever and freezing the progress bar. The switch effect clears
-   * it here so timeUpdate resumes immediately.
+   * Host's seek guard. A dub switch resets the playhead to ~0, so a pending seek
+   * target would never be reached — freezing the progress bar. The switch effect
+   * clears it here so timeUpdate resumes immediately.
    */
   seekTargetRef: MutableRefObject<number | null>
   /**
-   * The host's stable scheduleHide ref. closeMenu re-arms auto-hide through it
-   * (same indirection the host uses everywhere else).
+   * Host's stable scheduleHide ref. closeMenu re-arms auto-hide through it (same
+   * indirection the host uses everywhere else).
    */
   scheduleHideRef: MutableRefObject<() => void>
   /**
    * One-shot "reveal focus" trigger. closeMenu calls this to route focus back to
-   * play/pause via the host's revealFocusPending claim (mirrors Fix #5 / reveal
-   * pattern). Threaded as a callback rather than reaching into the host's state
-   * setter directly.
+   * play/pause via the host's revealFocusPending claim (mirrors Fix #5). Threaded
+   * as a callback rather than reaching into the host's state setter directly.
    */
   onRequestRevealFocus: () => void
 }
 
 export type UseSessionPlaybackResult = {
   /**
-   * True only when a session video with variants is present AND the
-   * currently-playing URL IS that session's active dub. Gates the in-player
-   * menu, the dub-switch, and the subtitle layer. False for experience-card
-   * playback.
+   * True only when a session video with variants is present AND the playing URL
+   * IS that session's active dub. Gates the menu, dub-switch, and subtitle layer.
+   * False for experience-card playback.
    */
   menuActive: boolean
   /** Whether the in-player menu is currently open. */
@@ -110,24 +85,25 @@ export type UseSessionPlaybackResult = {
   openMenu: (section: InPlayerMenuSection) => void
   /** Close the in-player menu — re-arms auto-hide + restores focus. */
   closeMenu: () => void
-  /**
-   * The active subtitle VTT src for the SubtitleOverlay, or null. Null →
-   * SubtitleOverlay renders nothing (also the no-session value).
-   */
+  /** Active subtitle VTT src for SubtitleOverlay, or null (renders nothing; also the no-session value). */
   activeVttSrc: string | null
   /**
-   * Display name of the active dub's language ("English"), or null when the
-   * session isn't driving this overlay. Feeds the Language pill's sub-caption
-   * (U8 player chrome).
+   * Display name of the active dub's language, or null when the session isn't
+   * driving this overlay. Feeds the Language pill's sub-caption (U8 chrome).
    */
   audioLabel: string | null
   /**
-   * Display name of the active subtitle language, or null when subtitles are
-   * off / unresolved. Resolution mirrors activeVttSrc (active dub's loaded
-   * media), falling back to the slug so the Subtitles pill never lies about
-   * CC being on.
+   * Display name of the active subtitle language, or null when off/unresolved.
+   * Resolution mirrors activeVttSrc, falling back to the slug so the Subtitles
+   * pill never lies about CC being on.
    */
   subtitleLabel: string | null
+  /**
+   * True while a dub/language source swap is in flight (before replaceAsync +
+   * until it settles). The host's QoE rebuffer gate reads this so the spurious
+   * statusChange:"loading" a swap fires is NOT counted as a real rebuffer.
+   */
+  sourceSwappingRef: MutableRefObject<boolean>
 }
 
 export function useSessionPlayback({
@@ -140,26 +116,15 @@ export function useSessionPlayback({
   onRequestRevealFocus,
 }: UseSessionPlaybackParams): UseSessionPlaybackResult {
   // ── Watch session (U7) ──────────────────────────────────────────────
-  // The overlay is SHARED infrastructure. Experience-card playback calls
-  // playVideo(url) with NO session populated (session.video == null); in that
-  // path the session reads below are all empty and `menuActive` is false, so
-  // the overlay behaves EXACTLY as before this unit (no in-player menu, no
-  // subtitle layer, no dub-switch). Every new behavior is gated on the
-  // stale-session-safe `menuActive` predicate (inPlayerMenuVisible) — true only
-  // when a session video with variants is present AND the currently-playing URL
-  // IS that session's active dub.
+  // Shared overlay: experience-card playVideo has no session, so reads below are
+  // empty and menuActive is false (no menu/subtitle/dub-switch). Every new
+  // behavior gates on the stale-safe `menuActive` predicate (inPlayerMenuVisible).
   const session = useWatchSession()
   const sessionActiveHls = session.activeVariant?.hls ?? null
 
-  // Gate, evaluated against the URL this overlay was OPENED with (the
-  // `streamingUrl` prop — fixed for the lifetime of one playVideo). On open this
-  // is the session's active dub, so the gate matches. A subsequent in-player dub
-  // switch changes session.activeVariant.hls to a NEW asset that no longer
-  // equals `streamingUrl`, which would otherwise flip the raw gate to false and
-  // tear down the menu/subtitles mid-switch. So we LATCH: once the gate is true
-  // for this play, stay session-driven as long as a session video is present
-  // (the details screen stays mounted behind the overlay, so session.video is
-  // stable). The latch resets when the session clears (experience-card play).
+  // Gate is on the OPENED url (streamingUrl, fixed per playVideo). A mid-play dub
+  // switch makes activeVariant.hls != streamingUrl, flipping the raw gate false and
+  // tearing down menu/subtitles. So LATCH: session-driven while video present; reset on clear.
   const rawGateMatch = inPlayerMenuVisible({
     sessionVideo: session.video,
     activeVariantHls: sessionActiveHls,
@@ -170,11 +135,9 @@ export function useSessionPlayback({
   if (session.video == null) menuLatchedRef.current = false
   const menuActive = session.video != null && menuLatchedRef.current
 
-  // In-player menu open/closed. Opening suppresses auto-hide; closing returns
-  // focus to play/pause via the one-shot revealFocusPending claim (set in the
-  // close handler below). Only ever true while menuActive (the open controls
-  // are only rendered then), but we still gate the render on both for safety.
-  // menuSection records which pill opened it (Language vs Subtitles).
+  // In-player menu open/closed. Opening suppresses auto-hide; closing restores
+  // focus to play/pause via the one-shot revealFocusPending claim. Only true
+  // while menuActive; menuSection records which pill opened it.
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuSection, setMenuSection] =
     useState<InPlayerMenuSection>("language")
@@ -193,18 +156,14 @@ export function useSessionPlayback({
   // is still the latest, so rapid dub changes never strand on a stale target.
   const switchTokenRef = useRef(0)
 
+  // True while a swap is loading a new source. The host's QoE rebuffer gate
+  // reads it so a swap's spurious statusChange:"loading" isn't miscounted.
+  const sourceSwappingRef = useRef(false)
+
   // ── Live dub-switch (U7) ────────────────────────────────────────────
-  // The CURRENT desired source is the session's active dub HLS when the menu is
-  // active, else the `streamingUrl` prop. For experience-card playback (no
-  // session) menuActive is false → desiredSource is always the prop, which is
-  // also the frozen creationSource → this effect's body short-circuits on the
-  // loadedUrlRef equality and never touches the player. So the no-session path
-  // is unchanged.
-  //
-  // On a real change we decide swap-vs-noop by Mux playback id (shouldReplaceSource):
-  // the same asset under two URL strings (seed vs stored hls) is a no-op so we
-  // don't rebuffer; only a genuinely different asset calls replaceAsync. A
-  // switch token guards overlapping switches so only the latest target resumes.
+  // Desired source = active dub HLS when menuActive, else streamingUrl (no-session
+  // path no-ops on loadedUrlRef equality). Swap-vs-noop is by Mux playback id
+  // (shouldReplaceSource) so same asset under two URLs doesn't rebuffer; token guards overlap.
   const desiredSource = menuActive ? sessionActiveHls : streamingUrl
   useEffect(() => {
     if (!desiredSource || desiredSource === loadedUrlRef.current) return
@@ -220,10 +179,8 @@ export function useSessionPlayback({
 
     const target = desiredSource
     loadedUrlRef.current = target
-    // A dub switch resets the playhead to ~0, so any pending seek target (set
-    // by Forward/Rewind, cleared only when a timeUpdate reaches it) would never
-    // be reached again — leaving setCurrentTime suppressed forever and freezing
-    // the progress bar. Clear it here so timeUpdate resumes immediately.
+    // A dub switch resets the playhead to ~0, so a pending seek target would
+    // never be reached — freezing the progress bar. Clear it so timeUpdate resumes.
     seekTargetRef.current = null
     const token = ++switchTokenRef.current
     // Read LIVE playing state (not React `isPaused`, which lags a tick) so the
@@ -241,6 +198,9 @@ export function useSessionPlayback({
       }
     }
 
+    // Mark the swap in flight so the host's QoE rebuffer gate ignores the
+    // spurious statusChange:"loading" this source change fires.
+    sourceSwappingRef.current = true
     // replaceAsync loads off the main thread (replace() blocks the UI thread for
     // HLS). Fall back to the synchronous path (disableWarning=true) if it rejects.
     void player
@@ -257,15 +217,17 @@ export function useSessionPlayback({
         }
         resume()
       })
+      .finally(() => {
+        // Only the latest swap clears the flag — a superseded swap settling must
+        // not clear it while a newer swap is still loading (miscounts a rebuffer).
+        if (token === switchTokenRef.current) sourceSwappingRef.current = false
+      })
   }, [desiredSource, player, seekTargetRef])
 
   // ── Disable Mux auto-subtitle tracks (U7) ───────────────────────────
-  // Admin CMS VTT subtitles are rendered by SubtitleOverlay (in the host)
-  // instead. AVPlayer can auto-select a track at source load, tracks-available,
-  // or a device-locale match — these three signals cover every re-selection.
-  // This runs for ALL playback paths (cheap, idempotent), so an experience-card
-  // play never surfaces a stray Mux-burned track either; it does not enable our
-  // overlay (that is gated on menuActive).
+  // CMS VTT subtitles render via SubtitleOverlay instead. AVPlayer auto-selects a
+  // track at sourceLoad / tracks-available / device-locale, so we listen on all
+  // three. Runs for ALL paths (idempotent) but never enables our overlay (gated on menuActive).
   useEffect(() => {
     const disable = () => {
       try {
@@ -291,23 +253,9 @@ export function useSessionPlayback({
     }
   }, [player])
 
-  // ── Lazy-load active dub media when subtitles are needed (U7) ────────
-  // Only fetch the active dub's media (GET_VIDEO_DUB → subtitles) when the
-  // session is driving this overlay AND captions are on. ensureActiveVariantMedia
-  // is deduped per dub id, so this is safe to call on every relevant change.
-  // Inert for experience-card playback (menuActive false).
-  useEffect(() => {
-    if (menuActive && session.subtitleEnabled) {
-      session.ensureActiveVariantMedia()
-    }
-  }, [menuActive, session.subtitleEnabled, session.ensureActiveVariantMedia])
-
-  // Resolve the active subtitle TRACK from the session's loaded media for the
-  // active subtitle slug — undefined unless the session is driving this
-  // overlay AND captions are on AND a matching track has loaded. The single
-  // guarded lookup feeds both the VTT src (SubtitleOverlay) and the display
-  // label (Subtitles pill), so the label can never diverge from the track
-  // actually rendered.
+  // Resolve the active subtitle TRACK for the active slug — undefined unless
+  // menuActive AND captions on AND a matching track loaded. One guarded lookup
+  // feeds both the VTT src and the label, so the label can't diverge from the track.
   const subtitlesOn =
     menuActive && session.subtitleEnabled && session.activeSubtitleSlug != null
   const activeSubtitle = subtitlesOn
@@ -330,17 +278,9 @@ export function useSessionPlayback({
     : null
 
   // ── In-player menu open/close (U7) ──────────────────────────────────
-  // Opening from a hidden-chrome state is not supported (the open control is
-  // only focusable while controls are visible) — the viewer reveals the chrome
-  // first (D-pad), then opens the menu. Opening cancels any pending hide so the
-  // chrome doesn't fade under the menu; closing re-arms auto-hide and routes
-  // focus back to play/pause via the one-shot revealFocusPending claim.
-  //
-  // Both are useCallback-stable: closeMenu flows into InPlayerMenu's renderRow
-  // deps, and the host re-renders every timeUpdate (~1Hz) during playback — an
-  // unstable identity would re-render every mounted dub row each second while
-  // the menu is open. Latest-ref pattern for the host callback (mirrors
-  // scheduleHideRef).
+  // Opening cancels any pending hide so chrome can't fade under the menu; closing
+  // re-arms auto-hide and restores focus via revealFocusPending. Both useCallback-stable
+  // (closeMenu feeds InPlayerMenu renderRow deps); latest-ref for host callback mirrors scheduleHideRef.
   const onRequestRevealFocusRef = useRef(onRequestRevealFocus)
   onRequestRevealFocusRef.current = onRequestRevealFocus
   const openMenu = useCallback(
@@ -380,5 +320,6 @@ export function useSessionPlayback({
     activeVttSrc,
     audioLabel,
     subtitleLabel,
+    sourceSwappingRef,
   }
 }

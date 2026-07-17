@@ -3,22 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const {
   afterMock,
   authenticateRequestMock,
-  clientQueryMock,
   createJobMock,
   ensureGeneratedSubtitlesForAssetMock,
+  getCmsGatewayMock,
   isAudioCleanupConfiguredMock,
   materializeEnrichmentTargetForJobMock,
+  readMockCmsStateMock,
   runVideoEnrichmentMock,
   startMock,
   updateJobMock,
 } = vi.hoisted(() => ({
   afterMock: vi.fn(),
   authenticateRequestMock: vi.fn(),
-  clientQueryMock: vi.fn(),
   createJobMock: vi.fn(),
   ensureGeneratedSubtitlesForAssetMock: vi.fn(),
+  getCmsGatewayMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
   materializeEnrichmentTargetForJobMock: vi.fn(),
+  readMockCmsStateMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
   updateJobMock: vi.fn(),
@@ -42,10 +44,9 @@ vi.mock("@/lib/auth", () => ({
   authenticateRequest: authenticateRequestMock,
 }))
 
-vi.mock("@/cms/client", () => ({
-  default: () => ({
-    query: clientQueryMock,
-  }),
+vi.mock("@/cms/gateway", () => ({
+  getCmsGateway: getCmsGatewayMock,
+  readMockCmsState: readMockCmsStateMock,
 }))
 
 vi.mock("@/lib/state", () => ({
@@ -73,11 +74,71 @@ import {
   buildMaterializationMetadata,
   createEnrichmentJobs,
   ENRICH_CREATE_CONCURRENCY,
-  EnrichmentJobCreationError,
   mapWithConcurrencyLimit,
 } from "@/app/api/enrich/route"
 import { wrapStartSpy } from "@/test-helpers/workflow-dispatch"
 import { runVideoEnrichment } from "@/workflows/videoEnrichment"
+
+const ENGLISH_ADMIN_LANGUAGE_ID = "cmokkxw5v03uyqsccis58pea6"
+
+function createAdminGatewayFixture({
+  languages = [
+    {
+      id: ENGLISH_ADMIN_LANGUAGE_ID,
+      coreId: "529",
+      bcp47: "en",
+      iso3: "eng",
+      englishLabel: "English",
+      nativeLabel: "English",
+      countryIds: [],
+      continentIds: [],
+      countrySpeakers: {},
+    },
+  ],
+  videos = [
+    {
+      documentId: "video-doc-1",
+      coreId: "video-1",
+      title: "Jesus Film",
+      label: "JESUS_FILM",
+      primaryLanguage: {
+        coreId: "529",
+        bcp47: "en",
+        iso3: "eng",
+      },
+      variants: [
+        {
+          language: {
+            coreId: "529",
+            bcp47: "en",
+            iso3: "eng",
+          },
+          muxVideo: {
+            assetId: "mux-source-1",
+            playbackId: "mux-source-playback-1",
+          },
+          downloads: [],
+        },
+      ],
+    },
+  ],
+} = {}) {
+  return {
+    mode: "admin" as const,
+    loginManagerUser: vi.fn(),
+    verifyManagerSession: vi.fn(),
+    readMockState: vi.fn(),
+    updateMockState: vi.fn(),
+    getLanguageGeo: vi.fn().mockResolvedValue({
+      continents: [],
+      countries: [],
+      languages,
+    }),
+    getVideoCoverage: vi.fn(),
+    getVideosForEnrichment: vi.fn().mockResolvedValue(videos),
+    getCoverageSnapshots: vi.fn(),
+  }
+}
 
 describe("mapWithConcurrencyLimit", () => {
   it("caps concurrent work while preserving result order", async () => {
@@ -156,6 +217,7 @@ describe("buildMaterializationMetadata", () => {
         sourceLanguageCode: "en",
         sourceMuxAssetId: "source-asset-1",
         sourceMuxPlaybackId: "source-playback-1",
+        sourceInputUrl: "https://stream.mux.com/source-playback-1/480p.mp4",
         sourceInputType: "mux_asset",
         sourceSelectionReason: "fallback-en",
         sourceSelectionAttemptedCodes: ["ru", "en", "es", "fr"],
@@ -171,56 +233,32 @@ describe("buildMaterializationMetadata", () => {
 
     expect(metadata).toMatchObject({
       mode: "direct_mux_asset_reuse",
+      sourceInputHost: "stream.mux.com",
       sourceInputType: "mux_asset",
       targetEnvironment: "mux-production",
       reusedMuxAssetId: "source-asset-1",
       reusedMuxPlaybackId: "source-playback-1",
     })
-    expect(metadata).not.toHaveProperty("sourceInputHost")
+    expect(metadata).not.toHaveProperty("sourceInputUrl")
     expect(metadata).not.toHaveProperty("stageMuxAssetId")
   })
 })
 
 describe("createEnrichmentJobs", () => {
   const dispatch = wrapStartSpy(startMock)
+  let adminGateway: ReturnType<typeof createAdminGatewayFixture>
 
   beforeEach(() => {
     vi.clearAllMocks()
 
+    adminGateway = createAdminGatewayFixture()
+    getCmsGatewayMock.mockReturnValue(adminGateway)
+    readMockCmsStateMock.mockResolvedValue(null)
     authenticateRequestMock.mockResolvedValue(null)
     afterMock.mockImplementation(async (callback: () => Promise<void>) => {
       await callback()
     })
     isAudioCleanupConfiguredMock.mockReturnValue(true)
-    clientQueryMock
-      .mockResolvedValueOnce({
-        data: {
-          videos: [
-            {
-              documentId: "video-doc-1",
-              coreId: "video-1",
-              title: "Video 1",
-              primaryLanguage: {
-                coreId: "529",
-                bcp47: "en",
-                iso3: "eng",
-              },
-              variants: [],
-            },
-          ],
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          languages: [
-            {
-              coreId: "6414",
-              bcp47: "fr",
-              iso3: "fra",
-            },
-          ],
-        },
-      })
     materializeEnrichmentTargetForJobMock.mockResolvedValue({
       status: "ready",
       materializationMode: "direct_mux_asset_reuse",
@@ -229,6 +267,7 @@ describe("createEnrichmentJobs", () => {
       sourceLanguageCode: "en",
       sourceMuxAssetId: "mux-source-1",
       sourceMuxPlaybackId: "mux-source-playback-1",
+      sourceInputUrl: "https://stream.mux.com/mux-source-playback-1/480p.mp4",
       sourceInputType: "mux_asset",
       sourceSelectionReason: "fallback-en",
       sourceSelectionAttemptedCodes: ["fr", "en"],
@@ -236,30 +275,27 @@ describe("createEnrichmentJobs", () => {
       targetMuxPlaybackId: "mux-target-playback-1",
     })
     ensureGeneratedSubtitlesForAssetMock.mockResolvedValue(undefined)
-    createJobMock.mockResolvedValue({
-      id: "job-1",
-      muxAssetId: "mux-target-1",
-      muxPlaybackId: "mux-target-playback-1",
-      languages: ["fr"],
-      options: {},
-      status: "pending",
-      retries: 0,
-      createdAt: "",
-      updatedAt: "",
-      artifacts: {
-        transcriptionRouting: {
-          kind: "metadata",
-          data: { attempts: [] },
-        },
-      },
-      steps: [],
-      errors: [],
-    })
+    createJobMock.mockImplementation(
+      async (_assetId, _playbackId, languages, options) => ({
+        id: "job-1",
+        muxAssetId: "mux-target-1",
+        muxPlaybackId: "mux-target-playback-1",
+        languages,
+        options: {},
+        status: "pending",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: options?.initialArtifacts ?? {},
+        steps: [],
+        errors: [],
+      }),
+    )
     updateJobMock.mockImplementation(async (_id, updates) => ({
       id: "job-1",
       muxAssetId: "mux-target-1",
       muxPlaybackId: "mux-target-playback-1",
-      languages: ["fr"],
+      languages: ["en"],
       options: {},
       status: "pending",
       retries: 0,
@@ -284,37 +320,231 @@ describe("createEnrichmentJobs", () => {
     })
   })
 
-  it("rejects direct enrichment creation after the CMS video model is retired", async () => {
-    await expect(
-      createEnrichmentJobs({
-        videoIds: ["video-1"],
-        targetLanguageIds: ["6414"],
-      }),
-    ).rejects.toMatchObject({
-      status: 410,
-      responseBody: {
-        error:
-          "Direct enrichment creation from the retired CMS video model is no longer available.",
+  it("creates enrichment jobs from Admin-backed coverage selections", async () => {
+    const result = await createEnrichmentJobs({
+      videoIds: ["video-doc-1"],
+      targetLanguageIds: [ENGLISH_ADMIN_LANGUAGE_ID],
+    })
+
+    expect(adminGateway.getVideosForEnrichment).toHaveBeenCalledWith([
+      "video-doc-1",
+    ])
+    expect(materializeEnrichmentTargetForJobMock).toHaveBeenCalledWith(
+      {
+        coreId: "video-1",
+        variants: [
+          {
+            language: {
+              id: null,
+              coreId: "529",
+              bcp47: "en",
+              iso3: "eng",
+            },
+            muxVideo: {
+              assetId: "mux-source-1",
+              playbackId: "mux-source-playback-1",
+            },
+            downloads: [],
+          },
+        ],
       },
+      expect.objectContaining({
+        requestedTargetLanguageCode: "en",
+      }),
+    )
+    expect(createJobMock).toHaveBeenCalledWith(
+      "mux-target-1",
+      "mux-target-playback-1",
+      ["en"],
+      expect.objectContaining({
+        videoDocumentId: "video-doc-1",
+        sourceMediaTitle: "Jesus Film",
+        initialArtifacts: expect.objectContaining({
+          transcriptionRouting: expect.objectContaining({
+            kind: "metadata",
+            data: expect.objectContaining({
+              sourceInputUrl:
+                "https://stream.mux.com/mux-source-playback-1/480p.mp4",
+              sourceInputHost: "stream.mux.com",
+              attempts: [],
+            }),
+          }),
+        }),
+      }),
+    )
+    dispatch.expectDispatched(runVideoEnrichment, [
+      expect.objectContaining({
+        jobId: "job-1",
+        assetId: "mux-target-1",
+        muxAssetId: "mux-target-1",
+        playbackId: "mux-target-playback-1",
+        language: "en",
+        translateTo: ["en"],
+        runAudioCleanup: true,
+        videoDocumentId: "video-doc-1",
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
+        requestedTranscriptionProvider: "automatic",
+        initialArtifacts: expect.objectContaining({
+          transcriptionRouting: expect.objectContaining({
+            kind: "metadata",
+            data: expect.objectContaining({
+              sourceInputUrl:
+                "https://stream.mux.com/mux-source-playback-1/480p.mp4",
+            }),
+          }),
+        }),
+      }),
+    ])
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      created: 1,
+      failed: 0,
+      jobs: [{ videoId: "video-doc-1", jobId: "job-1" }],
+      errors: undefined,
     })
   })
 
-  it("does not dispatch workflows for retired direct enrichment creation", async () => {
+  it("rejects unresolved Admin language selections before dispatch", async () => {
     await expect(
       createEnrichmentJobs({
-        videoIds: ["video-1"],
-        targetLanguageIds: ["6414"],
+        videoIds: ["video-doc-1"],
+        targetLanguageIds: ["unknown-admin-language-id"],
       }),
-    ).rejects.toBeInstanceOf(EnrichmentJobCreationError)
+    ).rejects.toMatchObject({
+      status: 400,
+      responseBody: {
+        error: "Could not resolve one or more requested target languages",
+        unresolvedTargetLanguageIds: ["unknown-admin-language-id"],
+      },
+    })
 
+    expect(createJobMock).not.toHaveBeenCalled()
+    expect(dispatch.spy).not.toHaveBeenCalled()
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
+  it("reports missing Admin videos as per-video failures", async () => {
+    adminGateway.getVideosForEnrichment.mockResolvedValueOnce([])
+
+    await expect(
+      createEnrichmentJobs({
+        videoIds: ["missing-video-doc"],
+        targetLanguageIds: [ENGLISH_ADMIN_LANGUAGE_ID],
+      }),
+    ).resolves.toEqual({
+      created: 0,
+      failed: 1,
+      jobs: [],
+      errors: [{ videoId: "missing-video-doc", error: "Video not found" }],
+    })
+
+    expect(createJobMock).not.toHaveBeenCalled()
+    expect(dispatch.spy).not.toHaveBeenCalled()
+    expect(runVideoEnrichment).not.toHaveBeenCalled()
+  })
+
+  it("reports materialization failures without dispatching workflows", async () => {
+    materializeEnrichmentTargetForJobMock.mockResolvedValueOnce({
+      status: "unsupported",
+      sourceVideoCoreId: "video-1",
+      reason: "no_reusable_mux_asset",
+    })
+
+    await expect(
+      createEnrichmentJobs({
+        videoIds: ["video-doc-1"],
+        targetLanguageIds: [ENGLISH_ADMIN_LANGUAGE_ID],
+      }),
+    ).resolves.toEqual({
+      created: 0,
+      failed: 1,
+      jobs: [],
+      errors: [
+        {
+          videoId: "video-doc-1",
+          error: "No reusable Mux asset available for direct enrichment",
+        },
+      ],
+    })
+
+    expect(createJobMock).not.toHaveBeenCalled()
     expect(dispatch.spy).not.toHaveBeenCalled()
     expect(runVideoEnrichment).not.toHaveBeenCalled()
   })
 })
 
 describe("POST /api/enrich", () => {
+  const dispatch = wrapStartSpy(startMock)
+  let adminGateway: ReturnType<typeof createAdminGatewayFixture>
+
   beforeEach(() => {
+    vi.clearAllMocks()
+
+    adminGateway = createAdminGatewayFixture()
+    getCmsGatewayMock.mockReturnValue(adminGateway)
+    readMockCmsStateMock.mockResolvedValue(null)
     authenticateRequestMock.mockResolvedValue(null)
+    isAudioCleanupConfiguredMock.mockReturnValue(true)
+    materializeEnrichmentTargetForJobMock.mockResolvedValue({
+      status: "ready",
+      materializationMode: "direct_mux_asset_reuse",
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+      sourceLanguageCode: "en",
+      sourceMuxAssetId: "mux-source-1",
+      sourceMuxPlaybackId: "mux-source-playback-1",
+      sourceInputUrl: "https://stream.mux.com/mux-source-playback-1/480p.mp4",
+      sourceInputType: "mux_asset",
+      sourceSelectionReason: "fallback-en",
+      sourceSelectionAttemptedCodes: ["en"],
+      targetMuxAssetId: "mux-target-1",
+      targetMuxPlaybackId: "mux-target-playback-1",
+    })
+    ensureGeneratedSubtitlesForAssetMock.mockResolvedValue(undefined)
+    createJobMock.mockImplementation(
+      async (_assetId, _playbackId, languages, options) => ({
+        id: "job-1",
+        muxAssetId: "mux-target-1",
+        muxPlaybackId: "mux-target-playback-1",
+        languages,
+        options: {},
+        status: "pending",
+        retries: 0,
+        createdAt: "",
+        updatedAt: "",
+        artifacts: options?.initialArtifacts ?? {},
+        steps: [],
+        errors: [],
+      }),
+    )
+    updateJobMock.mockImplementation(async (_id, updates) => ({
+      id: "job-1",
+      muxAssetId: "mux-target-1",
+      muxPlaybackId: "mux-target-playback-1",
+      languages: ["en"],
+      options: {},
+      status: "pending",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {
+        transcriptionRouting: {
+          kind: "metadata",
+          data: { attempts: [] },
+        },
+        ...(updates.artifacts ?? {}),
+      },
+      steps: [],
+      errors: [],
+    }))
+    dispatch.mockReturnValue({
+      assetId: "mux-target-1",
+      transcript: "Transcript",
+      language: "en",
+      chapters: [],
+      tags: [],
+    })
   })
 
   it("rejects unauthorized requests before dispatch", async () => {
@@ -347,22 +577,35 @@ describe("POST /api/enrich", () => {
     expect(createJobMock).not.toHaveBeenCalled()
   })
 
-  it("returns 410 for retired direct enrichment creation", async () => {
+  it("accepts Admin language IDs and creates enrichment jobs", async () => {
     const response = await POST(
       new Request("https://manager.test/api/enrich", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          videoIds: ["video-1"],
-          targetLanguageIds: ["6414"],
+          videoIds: ["video-doc-1"],
+          targetLanguageIds: [ENGLISH_ADMIN_LANGUAGE_ID],
         }),
       }),
     )
 
-    expect(response.status).toBe(410)
+    expect(response.status).toBe(201)
     await expect(response.json()).resolves.toMatchObject({
-      error:
-        "Direct enrichment creation from the retired CMS video model is no longer available.",
+      created: 1,
+      failed: 0,
+      jobs: [{ videoId: "video-doc-1", jobId: "job-1" }],
     })
+    expect(adminGateway.getVideosForEnrichment).toHaveBeenCalledWith([
+      "video-doc-1",
+    ])
+    dispatch.expectDispatched(runVideoEnrichment, [
+      expect.objectContaining({
+        jobId: "job-1",
+        translateTo: ["en"],
+        videoDocumentId: "video-doc-1",
+        videoTitle: "Jesus Film",
+        videoLabel: "JESUS_FILM",
+      }),
+    ])
   })
 })

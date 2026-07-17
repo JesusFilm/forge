@@ -19,11 +19,9 @@ describe("buildAuthHeaders", () => {
   })
 })
 
-// The bearer must ride ONLY on the gated Search operation. A bearer'd request
-// rate-limit-buckets as consumer:<key> on admin — one shared bucket for every
-// install carrying the same baked-in key — while anonymous requests bucket
-// per device IP. Attaching the header to public queries would collapse the
-// whole fleet's Home/watch/experience traffic into that single bucket.
+// The bearer must ride ONLY on the gated Search operation: it buckets as
+// consumer:<key> (one shared bucket for the whole fleet's baked-in key), so
+// attaching it to public queries would collapse all traffic into that bucket.
 describe("authHeadersForOperation", () => {
   it("attaches the bearer for the Search operation", () => {
     expect(authHeadersForOperation("Search", "abc123")).toEqual({
@@ -40,5 +38,24 @@ describe("authHeadersForOperation", () => {
   it("stays anonymous for Search when no token is configured", () => {
     expect(authHeadersForOperation("Search", undefined)).toEqual({})
     expect(authHeadersForOperation("Search", "")).toEqual({})
+  })
+
+  it("adds x-viewer-id on the Search op alongside the bearer", () => {
+    expect(authHeadersForOperation("Search", "abc123", "device-1")).toEqual({
+      Authorization: "Bearer abc123",
+      "x-viewer-id": "device-1",
+    })
+  })
+
+  it("sends x-viewer-id on Search even with no token (ready for provisioning)", () => {
+    expect(authHeadersForOperation("Search", undefined, "device-1")).toEqual({
+      "x-viewer-id": "device-1",
+    })
+  })
+
+  it("never sends x-viewer-id on a public operation", () => {
+    expect(
+      authHeadersForOperation("GetVideoBySlug", "abc123", "device-1"),
+    ).toEqual({})
   })
 })

@@ -6,6 +6,7 @@ export const WATCH_CACHE_TAGS = {
   series: "watch:series",
   childDubLanguages: "watch:child-dub-languages",
   routeManifest: "watch:route-manifest",
+  seoManifest: "watch:seo-manifest",
 } as const
 
 export type WatchCacheTag =
@@ -37,4 +38,5 @@ export const WATCH_CACHE_TAG_GROUPS = {
     WATCH_CACHE_TAGS.home,
   ]),
   watchRouteManifest: uniqueWatchCacheTags([WATCH_CACHE_TAGS.routeManifest]),
+  watchSeoManifest: uniqueWatchCacheTags([WATCH_CACHE_TAGS.seoManifest]),
 } as const

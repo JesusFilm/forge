@@ -13,6 +13,7 @@ import {
 import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
   EmbeddingProviderError,
+  requestModelForEndpoint,
   requestEmbeddingVectors,
   validateEmbeddingProviderResult,
   type EmbeddingProviderResult,
@@ -24,7 +25,37 @@ const DEFAULT_MAX_CHUNK_TOKENS = 500
 const DEFAULT_OVERLAP_TOKENS = 100
 const DEFAULT_MAX_BATCH_CHUNKS = 8
 const DEFAULT_MAX_BATCH_TOKENS = 20_000
-const CHUNKING_VERSION = "manager-transcript-v1"
+const CHUNKING_VERSION = "enriched-transcript-v2"
+const DEFAULT_PROVIDER_BATCH_MAX_ATTEMPTS = 3
+const DEFAULT_PROVIDER_BATCH_RETRY_DELAY_MS = 1_000
+
+type CanonicalFeltNeed =
+  | "Acceptance"
+  | "Anxiety"
+  | "Depression"
+  | "Fear/Power"
+  | "Forgiveness"
+  | "Guilt/Righteousness"
+  | "Honor/Shame"
+  | "Hope"
+  | "Loneliness"
+  | "Love"
+  | "Security"
+  | "Significance"
+
+type CanonicalDemographic =
+  | "Children"
+  | "Youth"
+  | "Young Adults"
+  | "Parents"
+  | "Families"
+  | "Women"
+  | "Men"
+  | "Religious Leaders"
+  | "Disciples"
+  | "Seekers"
+  | "Outsiders"
+  | "People in Crisis"
 
 const GenerationModeSchema = z
   .enum(["idempotent", "repair", "force", "model-upgrade"])
@@ -104,6 +135,12 @@ export const TranscriptEmbeddingWorkflowInputSchema = z
         text: z.string().optional(),
         segments: z.array(TranscriptSegmentSchema).optional(),
         artifactKey: z.string().min(1).optional(),
+        kind: z.enum(["subtitle", "manager-transcript"]).optional(),
+        languageId: z.string().min(1).optional(),
+        languageSlug: z.string().min(1).optional(),
+        subtitleId: z.string().min(1).optional(),
+        format: z.enum(["vtt", "srt"]).optional(),
+        url: z.string().min(1).optional(),
         provider: z.string().min(1).optional(),
         generatedAt: z.string().min(1).optional(),
       })
@@ -124,6 +161,11 @@ const PlannedRunSummarySchema = z
         textLength: z.number().int().nonnegative(),
         segmentCount: z.number().int().nonnegative(),
         artifactKey: z.string().min(1).optional(),
+        kind: z.enum(["subtitle", "manager-transcript"]).optional(),
+        languageId: z.string().min(1).optional(),
+        languageSlug: z.string().min(1).optional(),
+        subtitleId: z.string().min(1).optional(),
+        format: z.enum(["vtt", "srt"]).optional(),
         provider: z.string().min(1).optional(),
         generatedAt: z.string().min(1).optional(),
         contentHash: z.string().min(1),
@@ -228,6 +270,15 @@ type PlannedChunk = {
   chunkIndex: number
   chunkId: string
   text: string
+  rawSourceText?: string
+  embeddingInputText?: string
+  feltNeeds?: CanonicalFeltNeed[]
+  bibleVerses?: string[]
+  contentSummary?: string
+  tone?: string
+  demographics?: CanonicalDemographic[]
+  spiritualContext?: string[]
+  extractionMetadata?: Record<string, unknown>
   tokenCount: number
   startSeconds?: number
   endSeconds?: number
@@ -240,6 +291,12 @@ type PlannedRun = {
     text: string
     segments?: TranscriptSegment[]
     artifactKey?: string
+    kind?: "subtitle" | "manager-transcript"
+    languageId?: string
+    languageSlug?: string
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
     provider?: string
     generatedAt?: string
     contentHash: string
@@ -322,6 +379,8 @@ export type TranscriptEmbeddingWorkflowOptions = {
       itemLabel: string
     },
   ) => Promise<EmbeddingProviderResult>
+  providerRetryMaxAttempts?: number
+  providerRetryDelayMs?: number
   adminIngestClient?: (
     payload: AdminTranscriptEmbeddingIngestPayload,
   ) => Promise<AdminTranscriptIngestClientResult>
@@ -342,6 +401,28 @@ const embeddedRunByMastraRunId = new Map<string, EmbeddedRun>()
 export type TranscriptEmbeddingRouteOutcome = {
   status: number
   body: { result?: TranscriptEmbeddingWorkflowResult; error?: string }
+}
+
+function routeRequestEnvelope(body: unknown): {
+  runId: string
+  input: unknown
+} {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    "runId" in body &&
+    "input" in body
+  ) {
+    const record = body as { runId?: unknown; input?: unknown }
+    const runId =
+      typeof record.runId === "string" && record.runId.trim()
+        ? record.runId.trim()
+        : randomUUID()
+    return { runId, input: record.input }
+  }
+
+  return { runId: randomUUID(), input: body }
 }
 
 function normalizeTranscriptText(
@@ -375,6 +456,156 @@ function estimateTokenCount(text: string): number {
   const trimmed = text.trim()
   if (!trimmed) return 0
   return Math.ceil(trimmed.split(/\s+/).length / 0.75)
+}
+
+function formatTimeRange(seconds: number | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "unknown"
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.floor(seconds % 60)
+  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+}
+
+function summarizeChunkText(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= 180) return normalized
+  return `${normalized.slice(0, 177).trim()}...`
+}
+
+function extractBibleVerses(text: string): string[] {
+  const matches = text.match(
+    /\b(?:[1-3]\s*)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s+\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g,
+  )
+  return Array.from(new Set(matches ?? []))
+}
+
+function inferFeltNeeds(text: string): CanonicalFeltNeed[] {
+  const lower = text.toLowerCase()
+  const needs: CanonicalFeltNeed[] = []
+  const add = (need: CanonicalFeltNeed) => {
+    if (!needs.includes(need)) needs.push(need)
+  }
+
+  if (/\b(accept|accepted|belong|welcome|included)\b/.test(lower)) {
+    add("Acceptance")
+  }
+  if (/\b(anxious|anxiety|worry|worried)\b/.test(lower)) add("Anxiety")
+  if (/\b(depress|sad|sorrow|despair)\b/.test(lower)) add("Depression")
+  if (/\b(fear|afraid|power|deliver|oppress)\b/.test(lower)) add("Fear/Power")
+  if (/\b(forgive|forgiven|forgiveness|mercy)\b/.test(lower)) {
+    add("Forgiveness")
+  }
+  if (/\b(guilt|guilty|righteous|righteousness|sin)\b/.test(lower)) {
+    add("Guilt/Righteousness")
+  }
+  if (/\b(shame|honor|disgrace)\b/.test(lower)) add("Honor/Shame")
+  if (/\b(hope|promise|future|restore)\b/.test(lower)) add("Hope")
+  if (/\b(alone|lonely|forsaken)\b/.test(lower)) add("Loneliness")
+  if (/\b(love|beloved|compassion)\b/.test(lower)) add("Love")
+  if (/\b(safe|secure|security|protect|shelter)\b/.test(lower)) {
+    add("Security")
+  }
+  if (/\b(worth|value|significant|purpose|called)\b/.test(lower)) {
+    add("Significance")
+  }
+
+  return needs
+}
+
+function inferDemographics(text: string): CanonicalDemographic[] {
+  const lower = text.toLowerCase()
+  const demographics: CanonicalDemographic[] = []
+  const add = (demographic: CanonicalDemographic) => {
+    if (!demographics.includes(demographic)) demographics.push(demographic)
+  }
+
+  if (/\b(child|children|kid|kids|little ones)\b/.test(lower)) add("Children")
+  if (/\b(youth|teen|teenager|teenagers|young people)\b/.test(lower)) {
+    add("Youth")
+  }
+  if (/\b(young man|young woman|young adult|young adults)\b/.test(lower)) {
+    add("Young Adults")
+  }
+  if (/\b(parent|parents|mother|father|mom|dad)\b/.test(lower)) add("Parents")
+  if (/\b(family|families|household|households)\b/.test(lower)) {
+    add("Families")
+  }
+  if (/\b(woman|women|wife|wives|widow|widows)\b/.test(lower)) add("Women")
+  if (/\b(man|men|husband|husbands)\b/.test(lower)) add("Men")
+  if (
+    /\b(pharisee|pharisees|priest|priests|rabbi|rabbis|teacher of the law|teachers of the law|religious leader|religious leaders)\b/.test(
+      lower,
+    )
+  ) {
+    add("Religious Leaders")
+  }
+  if (/\b(disciple|disciples|follower|followers)\b/.test(lower)) {
+    add("Disciples")
+  }
+  if (
+    /\b(seek|seeks|seeking|searched|searching|question|questions|asked him|ask him)\b/.test(
+      lower,
+    )
+  ) {
+    add("Seekers")
+  }
+  if (
+    /\b(samaritan|samaritans|gentile|gentiles|tax collector|tax collectors|foreigner|foreigners|outcast|outcasts|sinner|sinners)\b/.test(
+      lower,
+    )
+  ) {
+    add("Outsiders")
+  }
+  if (
+    /\b(sick|ill|blind|lame|leper|lepers|poor|hungry|prisoner|prisoners|mourning|grieving|possessed|oppressed)\b/.test(
+      lower,
+    )
+  ) {
+    add("People in Crisis")
+  }
+
+  return demographics
+}
+
+function enrichChunk(chunk: PlannedChunk): PlannedChunk {
+  const rawSourceText = chunk.rawSourceText ?? chunk.text
+  const feltNeeds = inferFeltNeeds(rawSourceText)
+  const bibleVerses = extractBibleVerses(rawSourceText)
+  const contentSummary = summarizeChunkText(rawSourceText)
+  const timeRange = `${formatTimeRange(chunk.startSeconds)}-${formatTimeRange(chunk.endSeconds)}`
+  const tone = "reflective"
+  const demographics = inferDemographics(rawSourceText)
+  const spiritualContext = bibleVerses.length > 0 ? ["Bible reference"] : []
+  const embeddingInputText = [
+    `Time range: ${timeRange}`,
+    `Felt needs: ${feltNeeds.length > 0 ? feltNeeds.join(", ") : "None"}`,
+    `Bible verses: ${bibleVerses.length > 0 ? bibleVerses.join(", ") : "None"}`,
+    `Summary: ${contentSummary}`,
+    `Tone: ${tone}`,
+    `Demographics: ${demographics.length > 0 ? demographics.join(", ") : "None"}`,
+    `Spiritual context: ${
+      spiritualContext.length > 0 ? spiritualContext.join(", ") : "None"
+    }`,
+    `Transcript: ${rawSourceText}`,
+  ].join("\n")
+
+  return {
+    ...chunk,
+    text: rawSourceText,
+    rawSourceText,
+    embeddingInputText,
+    feltNeeds,
+    bibleVerses,
+    contentSummary,
+    tone,
+    demographics,
+    spiritualContext,
+    extractionMetadata: {
+      strategy: "deterministic-transcript-grounded-v1",
+      source: "transcript",
+      demographicsStrategy: "explicit-cue-taxonomy-v1",
+    },
+    tokenCount: estimateTokenCount(embeddingInputText),
+  }
 }
 
 function chunkText(
@@ -571,6 +802,239 @@ function createBatches(
   return batches
 }
 
+function isRecoverableGatewayProviderError(
+  error: unknown,
+): error is EmbeddingProviderError {
+  return (
+    error instanceof EmbeddingProviderError &&
+    (error.code === "upstream_failed" || error.code === "invalid_response")
+  )
+}
+
+function shouldSplitProviderBatch(error: unknown, batchSize: number): boolean {
+  return (
+    batchSize > 1 &&
+    isRecoverableGatewayProviderError(error) &&
+    !error.retryable
+  )
+}
+
+function shouldRetryProviderBatch(
+  error: unknown,
+  options: { batchSize: number; attempt: number; maxAttempts: number },
+): boolean {
+  if (options.attempt >= options.maxAttempts) return false
+  if (!isRecoverableGatewayProviderError(error)) return false
+
+  return error.retryable || options.batchSize === 1
+}
+
+function retryDelayMs(options: {
+  baseDelayMs: number
+  attempt: number
+}): number {
+  if (options.baseDelayMs <= 0) return 0
+  return options.baseDelayMs * 2 ** Math.max(0, options.attempt - 1)
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve()
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function combineEmbeddingProviderResults(
+  left: EmbeddingProviderResult,
+  right: EmbeddingProviderResult,
+  options: {
+    context: string
+    itemLabel: string
+    expectedDimensions: number
+    expectedCount: number
+  },
+): EmbeddingProviderResult {
+  const mismatch =
+    left.dimensions !== right.dimensions ||
+    left.model !== right.model ||
+    left.provider !== right.provider ||
+    left.requestModel !== right.requestModel ||
+    left.nativeDimensions !== right.nativeDimensions ||
+    left.transformVersion !== right.transformVersion
+
+  if (mismatch) {
+    throw new EmbeddingProviderError(
+      "dimension_mismatch",
+      `${options.context} split embedding responses were inconsistent`,
+    )
+  }
+
+  return validateEmbeddingProviderResult(
+    {
+      embeddings: [...left.embeddings, ...right.embeddings],
+      dimensions: left.dimensions,
+      nativeDimensions: left.nativeDimensions ?? right.nativeDimensions,
+      transformVersion: left.transformVersion ?? right.transformVersion,
+      tokenCount: left.tokenCount + right.tokenCount,
+      model: left.model,
+      provider: left.provider,
+      requestModel: left.requestModel,
+    },
+    options.expectedCount,
+    {
+      expectedDimensions: options.expectedDimensions,
+      context: options.context,
+      itemLabel: options.itemLabel,
+    },
+  )
+}
+
+async function requestEmbeddingBatchWithFallback(
+  batch: PlannedChunk[],
+  options: TranscriptEmbeddingWorkflowOptions & {
+    planned: PlannedRun
+    providerConfig: ReturnType<typeof getTranscriptEmbeddingProviderConfig>
+    context: string
+    splitDepth?: number
+    splitPath?: string
+  },
+): Promise<EmbeddingProviderResult> {
+  const batchInput = batch.map(
+    (chunk) => chunk.embeddingInputText ?? chunk.text,
+  )
+  const maxAttempts =
+    options.providerRetryMaxAttempts ?? DEFAULT_PROVIDER_BATCH_MAX_ATTEMPTS
+  const retryBaseDelayMs =
+    options.providerRetryDelayMs ?? DEFAULT_PROVIDER_BATCH_RETRY_DELAY_MS
+
+  for (let attempt = 1; ; attempt += 1) {
+    let rawResult: EmbeddingProviderResult
+    try {
+      rawResult = options.embeddingRequester
+        ? await options.embeddingRequester(batchInput, {
+            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+            context: options.context,
+            itemLabel: "chunks",
+          })
+        : await requestEmbeddingVectors(batchInput, {
+            apiKey: options.apiKey ?? options.providerConfig.apiKey,
+            baseUrl:
+              options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+            model: options.planned.model.name,
+            provider: options.planned.model.provider,
+            expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+            expectedNativeDimensions:
+              options.providerConfig.expectedNativeDimensions,
+            truncateToDimensions: options.providerConfig.truncateToDimensions,
+            transformVersion: options.providerConfig.transformVersion,
+            userAgent: options.providerConfig.userAgent,
+            context: options.context,
+            itemLabel: "chunks",
+            timeoutMs: options.timeoutMs ?? options.providerConfig.timeoutMs,
+            fetchImpl: options.fetchImpl,
+          })
+    } catch (error) {
+      if (
+        shouldRetryProviderBatch(error, {
+          batchSize: batch.length,
+          attempt,
+          maxAttempts,
+        })
+      ) {
+        const delayMs = retryDelayMs({
+          baseDelayMs: retryBaseDelayMs,
+          attempt,
+        })
+        console.warn(
+          JSON.stringify({
+            event: "transcript_embedding_batch_provider_retry",
+            context: options.context,
+            mastraRunId: options.planned.generation.mastraRunId,
+            target: options.planned.target,
+            language: options.planned.language,
+            model: options.planned.model.name,
+            provider: options.planned.model.provider,
+            requestModel: requestModelForEndpoint(
+              options.planned.model.name,
+              options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+            ),
+            errorCode:
+              error instanceof EmbeddingProviderError ? error.code : "unknown",
+            retryable:
+              error instanceof EmbeddingProviderError ? error.retryable : null,
+            attempt,
+            maxAttempts,
+            delayMs,
+            chunkCount: batch.length,
+            tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
+          }),
+        )
+        await sleep(delayMs)
+        continue
+      }
+
+      if (!shouldSplitProviderBatch(error, batch.length)) throw error
+
+      const splitDepth = options.splitDepth ?? 0
+      const splitPath = options.splitPath ?? "root"
+      console.warn(
+        JSON.stringify({
+          event: "transcript_embedding_batch_split_retry",
+          context: options.context,
+          mastraRunId: options.planned.generation.mastraRunId,
+          target: options.planned.target,
+          language: options.planned.language,
+          model: options.planned.model.name,
+          provider: options.planned.model.provider,
+          requestModel: requestModelForEndpoint(
+            options.planned.model.name,
+            options.embeddingsBaseUrl ?? options.providerConfig.baseUrl,
+          ),
+          errorCode:
+            error instanceof EmbeddingProviderError ? error.code : "unknown",
+          retryable:
+            error instanceof EmbeddingProviderError ? error.retryable : null,
+          splitDepth,
+          splitPath,
+          chunkCount: batch.length,
+          tokenCount: batch.reduce((sum, chunk) => sum + chunk.tokenCount, 0),
+        }),
+      )
+
+      const splitIndex = Math.ceil(batch.length / 2)
+      const left = await requestEmbeddingBatchWithFallback(
+        batch.slice(0, splitIndex),
+        {
+          ...options,
+          context: `${options.context} split 1/2`,
+          splitDepth: splitDepth + 1,
+          splitPath: `${splitPath}.1`,
+        },
+      )
+      const right = await requestEmbeddingBatchWithFallback(
+        batch.slice(splitIndex),
+        {
+          ...options,
+          context: `${options.context} split 2/2`,
+          splitDepth: splitDepth + 1,
+          splitPath: `${splitPath}.2`,
+        },
+      )
+
+      return combineEmbeddingProviderResults(left, right, {
+        context: options.context,
+        itemLabel: "chunks",
+        expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+        expectedCount: batch.length,
+      })
+    }
+
+    return validateEmbeddingProviderResult(rawResult, batch.length, {
+      expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+      context: options.context,
+      itemLabel: "chunks",
+    })
+  }
+}
+
 function sha256Json(value: unknown): string {
   return `sha256:${createHash("sha256")
     .update(JSON.stringify(value))
@@ -580,21 +1044,83 @@ function sha256Json(value: unknown): string {
 function sourceContentHash({
   text,
   segments,
+  source,
   chunks,
 }: {
   text: string
   segments?: TranscriptSegment[]
+  source?: {
+    kind?: "subtitle" | "manager-transcript"
+    artifactKey?: string
+    languageId?: string
+    languageSlug?: string
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
+    provider?: string
+    generatedAt?: string
+  }
   chunks: PlannedChunk[]
 }): string {
+  const hasV2SourceMetadata =
+    source?.kind != null ||
+    source?.languageId != null ||
+    source?.languageSlug != null ||
+    source?.subtitleId != null ||
+    source?.format != null ||
+    source?.url != null
+
   return sha256Json({
     text,
     segments: segments ?? null,
-    chunks: chunks.map((chunk) => ({
-      index: chunk.chunkIndex,
-      text: chunk.text,
-      startSeconds: chunk.startSeconds ?? null,
-      endSeconds: chunk.endSeconds ?? null,
-    })),
+    ...(hasV2SourceMetadata
+      ? {
+          source: {
+            kind: source?.kind ?? null,
+            artifactKey: source?.artifactKey ?? null,
+            languageId: source?.languageId ?? null,
+            languageSlug: source?.languageSlug ?? null,
+            subtitleId: source?.subtitleId ?? null,
+            format: source?.format ?? null,
+            url: source?.url ?? null,
+            provider: source?.provider ?? null,
+            generatedAt: source?.generatedAt ?? null,
+          },
+        }
+      : {}),
+    chunks: chunks.map((chunk) => {
+      const base = {
+        index: chunk.chunkIndex,
+        text: chunk.text,
+        startSeconds: chunk.startSeconds ?? null,
+        endSeconds: chunk.endSeconds ?? null,
+      }
+      const hasEnrichedFields =
+        chunk.rawSourceText != null ||
+        chunk.embeddingInputText != null ||
+        (chunk.feltNeeds?.length ?? 0) > 0 ||
+        (chunk.bibleVerses?.length ?? 0) > 0 ||
+        chunk.contentSummary != null ||
+        chunk.tone != null ||
+        (chunk.demographics?.length ?? 0) > 0 ||
+        (chunk.spiritualContext?.length ?? 0) > 0 ||
+        chunk.extractionMetadata != null
+
+      return hasEnrichedFields
+        ? {
+            ...base,
+            rawSourceText: chunk.rawSourceText ?? null,
+            embeddingInputText: chunk.embeddingInputText ?? null,
+            feltNeeds: chunk.feltNeeds ?? [],
+            bibleVerses: chunk.bibleVerses ?? [],
+            contentSummary: chunk.contentSummary ?? null,
+            tone: chunk.tone ?? null,
+            demographics: chunk.demographics ?? [],
+            spiritualContext: chunk.spiritualContext ?? [],
+            extractionMetadata: chunk.extractionMetadata ?? null,
+          }
+        : base
+    }),
   })
 }
 
@@ -772,12 +1298,25 @@ export function planTranscriptEmbeddingRun(
     input.chunking?.maxBatchTokens ?? DEFAULT_MAX_BATCH_TOKENS
 
   const usesSegments = segments != null && segments.length > 0
-  const chunks = usesSegments
+  const baseChunks = usesSegments
     ? planSegmentChunks(segments, { maxChunkTokens, overlapTokens })
     : planPlainTextChunks(sourceText, { maxChunkTokens, overlapTokens })
+  const chunks = baseChunks.map(enrichChunk)
 
   if (chunks.length === 0) {
     throw new Error("transcript embedding workflow requires at least one chunk")
+  }
+
+  const sourceMetadata = {
+    kind: input.transcript.kind,
+    artifactKey: input.transcript.artifactKey,
+    languageId: input.transcript.languageId,
+    languageSlug: input.transcript.languageSlug,
+    subtitleId: input.transcript.subtitleId,
+    format: input.transcript.format,
+    url: input.transcript.url,
+    provider: input.transcript.provider,
+    generatedAt: input.transcript.generatedAt,
   }
 
   return {
@@ -788,9 +1327,20 @@ export function planTranscriptEmbeddingRun(
       text: sourceText,
       segments,
       artifactKey: input.transcript.artifactKey,
+      kind: input.transcript.kind,
+      languageId: input.transcript.languageId,
+      languageSlug: input.transcript.languageSlug,
+      subtitleId: input.transcript.subtitleId,
+      format: input.transcript.format,
+      url: input.transcript.url,
       provider: input.transcript.provider,
       generatedAt: input.transcript.generatedAt,
-      contentHash: sourceContentHash({ text: sourceText, segments, chunks }),
+      contentHash: sourceContentHash({
+        text: sourceText,
+        segments,
+        source: sourceMetadata,
+        chunks,
+      }),
     },
     model: {
       name: input.model?.name ?? providerConfig.model,
@@ -828,38 +1378,18 @@ export async function embedPlannedTranscript(
   for (let index = 0; index < batches.length; index += 1) {
     const batch = batches[index]!
     const providerConfig = getTranscriptEmbeddingProviderConfig()
-    const batchInput = batch.map((chunk) => chunk.text)
     const requestContext = `Transcript embedding batch ${index + 1}/${batches.length}`
-    const rawResult = options.embeddingRequester
-      ? await options.embeddingRequester(batchInput, {
-          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-          context: requestContext,
-          itemLabel: "chunks",
-        })
-      : await requestEmbeddingVectors(batchInput, {
-          apiKey: options.apiKey ?? providerConfig.apiKey,
-          baseUrl: options.embeddingsBaseUrl ?? providerConfig.baseUrl,
-          model: planned.model.name,
-          provider: planned.model.provider,
-          expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-          expectedNativeDimensions: providerConfig.expectedNativeDimensions,
-          truncateToDimensions: providerConfig.truncateToDimensions,
-          transformVersion: providerConfig.transformVersion,
-          userAgent: providerConfig.userAgent,
-          context: requestContext,
-          itemLabel: "chunks",
-          timeoutMs: options.timeoutMs ?? providerConfig.timeoutMs,
-          fetchImpl: options.fetchImpl,
-        })
-    const result = validateEmbeddingProviderResult(
-      rawResult,
-      batchInput.length,
-      {
-        expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
-        context: requestContext,
-        itemLabel: "chunks",
-      },
-    )
+    const rawResult = await requestEmbeddingBatchWithFallback(batch, {
+      ...options,
+      planned,
+      providerConfig,
+      context: requestContext,
+    })
+    const result = validateEmbeddingProviderResult(rawResult, batch.length, {
+      expectedDimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+      context: requestContext,
+      itemLabel: "chunks",
+    })
 
     tokenCount += result.tokenCount
     transformVersion ??= result.transformVersion
@@ -1235,12 +1765,15 @@ export async function handleTranscriptEmbeddingRouteRequest({
     }
   }
 
-  const runId = randomUUID()
   const body = await readJson().catch(() => undefined)
+  const envelope = routeRequestEnvelope(body)
   const result =
     body === undefined
-      ? failure("invalid_input", { mastraRunId: runId, retryable: false })
-      : await launch(body, { runId })
+      ? failure("invalid_input", {
+          mastraRunId: envelope.runId,
+          retryable: false,
+        })
+      : await launch(envelope.input, { runId: envelope.runId })
 
   return {
     status: routeStatusForResult(result),
@@ -1258,4 +1791,5 @@ export const _internals = {
   toAdminPayload,
   CHUNKING_VERSION,
   workflowFailureFromRunResult,
+  routeRequestEnvelope,
 }

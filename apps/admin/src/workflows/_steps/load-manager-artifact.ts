@@ -6,8 +6,8 @@
 // to Node-only modules — even when the actual call happens inside a
 // `"use step"` function. `s3.ts` imports `node:fs/promises` and
 // `node:path` for its local-fallback path, so importing
-// `readSceneAnalysisArtifact` / `readTranscriptSourceArtifact` directly
-// into the workflow file fails the build plugin check.
+// `readTranscriptSourceArtifact` directly into the workflow file fails
+// the build plugin check.
 //
 // Putting the step wrappers in this separate module side-steps the
 // scope check — the workflow file only imports the step wrappers (whose
@@ -20,37 +20,14 @@
 // error from the underlying reader.
 
 import {
-  readSceneAnalysisArtifact,
   readTranscriptSourceArtifact,
-  type SceneAnalysisResult,
   type TranscriptSourceArtifact,
 } from "@/services/manager-artifacts.service"
 
 /**
- * Per-(video, edition) scene-analysis artifact load. Throws
- * `ManagerArtifactError` on S3 failures; the workflow's `processGroup`
- * catches and cascades the classification per-locale.
- *
- * MUST be a `"use step"` because `readSceneAnalysisArtifact`
- * transitively imports `node:fs/promises` and `node:path` (in the
- * local-fallback path of `s3.ts`).
- *
- * Side-effect of the step boundary: the ~250 KB artifact JSON is
- * journaled per group on every call. Operators monitoring useworkflow
- * journal size should be aware.
- */
-export async function stepLoadSceneAnalysisArtifact(
-  cmsVideoId: number,
-  targetLocale?: string | null,
-): Promise<SceneAnalysisResult> {
-  "use step"
-  return readSceneAnalysisArtifact(String(cmsVideoId), targetLocale)
-}
-
-/**
  * Per-(video, edition) transcript-source artifact load. feat-132 uses
  * `{assetId}/transcript.json` as Mastra input. Manager no longer owns
- * transcript or scene embedding generation.
+ * transcript embedding generation.
  */
 export async function stepLoadTranscriptSourceArtifact(
   cmsVideoId: number,

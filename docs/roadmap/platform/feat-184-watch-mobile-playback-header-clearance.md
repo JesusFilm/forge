@@ -55,13 +55,14 @@ for devices that report a non-zero top safe-area inset.
 
 - Focused HeroPlayer tests cover preview, click-to-playback, autoplay, and
   custom-overlay state boundaries: 79 tests passed with 2 existing todos.
-- The adjacent HeroPlayer and FloatingSearchProvider suites passed together:
-  97 tests passed with 2 existing todos.
+- The adjacent HeroPlayer and FloatingSearchProvider suites passed together
+  after merging current `main`: 153 tests passed with 2 existing todos.
 - `pnpm --filter @forge/web typecheck` and
   `pnpm --filter @forge/web lint` passed.
-- Browser smoke at a 390x844 portrait viewport measured the floating header
-  bottom at 84px and the active media-frame top at 96px. The frame remained
-  16:9 with no horizontal overflow or console errors.
+- Browser smoke at a 390x844 portrait viewport against the merged branch
+  measured the floating header bottom at 60px and the active media-frame top
+  at 96px. The frame remained 16:9 with no horizontal overflow or console
+  errors.
 
 ## Plan
 

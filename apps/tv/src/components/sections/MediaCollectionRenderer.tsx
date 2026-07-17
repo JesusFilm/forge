@@ -2,41 +2,24 @@ import React, { useCallback } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { useRouter } from "expo-router"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { MediaCollectionBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
-import { validateStreamingUrl } from "../../lib/validateUrl"
+import {
+  resolveMediaItemImageUrl,
+  resolveMediaItemTitle,
+} from "../../lib/experienceHydration"
 import { FocusableCard } from "../FocusableCard"
-import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type MediaItem = {
-  id: string
-  titleOverride?: string | null
-  subtitleOverride?: string | null
-  labelOverride?: string | null
-  collectionSize?: number | null
-  imageUrl?: string | null
-  linkToSectionKey?: string | null
-  video?: {
-    slug?: string
-    title?: string
-    streamingUrl?: string
-    imageAlt?: string
-    images?: {
-      url?: string
-      mobileCinematicHigh?: string
-      videoStill?: string
-    }[]
-  } | null
-}
+// Derived from the fragment: an item carries overrides + videoId only (no
+// nested video record is fetched on TV).
+type MediaItem = NonNullable<MediaCollectionBlockModel["items"]>[number]
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -45,8 +28,8 @@ const CARD_HEIGHT = scale(347)
 const CARD_GAP = scale(24)
 
 const GRADIENT_COLORS: [string, string] = [
-  hexToRgba("#000000", 0),
-  hexToRgba("#000000", 0.85),
+  WATCH_THEME.scrim(0),
+  WATCH_THEME.scrim(0.85),
 ]
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -54,41 +37,27 @@ const GRADIENT_COLORS: [string, string] = [
 export function MediaCollectionRenderer({
   section,
 }: {
-  section: NormalizedBlock
+  section: MediaCollectionBlockModel
 }) {
-  const router = useRouter()
-  const { playVideo } = useVideoPlayerContext()
-  const { scrollToSection } = useExperienceContext()
+  const { scrollToSection, videoByCoreId } = useExperienceContext()
 
-  const mcTitle = section.mcTitle as string | null
-  const mcSubtitle = section.mcSubtitle as string | null
-  const categoryLabel = section.categoryLabel as string | null
-  const items = (section.items as MediaItem[] | undefined) ?? []
+  const { mcTitle, mcSubtitle, categoryLabel } = section
+  const items: MediaItem[] = section.items ?? []
 
   const renderItem = useCallback(
     ({ item, index }: { item: MediaItem; index: number }) => {
-      const thumbnailUrl = resolveImageUrl(
-        item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-      )
-      const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+      // Authored overrides are usually null on these cards; resolve title + image
+      // from the coreId-hydrated video (the Home rail's data), else fall back.
+      const video = item.coreId ? videoByCoreId.get(item.coreId) : undefined
+      const thumbnailUrl = resolveMediaItemImageUrl(item, video)
+      const title = resolveMediaItemTitle(item, video)
       const label = item.labelOverride ?? categoryLabel
 
+      // The fragment fetches no video record, so a card's only live action
+      // is the in-page section jump.
       const handlePress = () => {
-        const streamingUrl = item.video?.streamingUrl ?? null
-        if (
-          typeof streamingUrl === "string" &&
-          validateStreamingUrl(streamingUrl)
-        ) {
-          playVideo(streamingUrl, title)
-          return
-        }
         if (item.linkToSectionKey) {
           scrollToSection(item.linkToSectionKey)
-          return
-        }
-        if (item.video?.slug) {
-          router.push(`/experience/${encodeURIComponent(item.video.slug)}`)
-          return
         }
       }
 
@@ -101,8 +70,9 @@ export function MediaCollectionRenderer({
                   source={thumbnailUrl}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
-                  recyclingKey={`mc-${item.id}-${index}`}
-                  accessibilityLabel={item.video?.imageAlt ?? title}
+                  contentPosition="top left"
+                  recyclingKey={`mc-${item.videoId ?? "item"}-${index}`}
+                  accessibilityLabel={title}
                 />
               ) : (
                 <View
@@ -135,11 +105,11 @@ export function MediaCollectionRenderer({
         </View>
       )
     },
-    [categoryLabel, playVideo, router],
+    [categoryLabel, scrollToSection, videoByCoreId],
   )
 
   const keyExtractor = useCallback(
-    (item: MediaItem, index: number) => `mc-${item.id}-${index}`,
+    (item: MediaItem, index: number) => `mc-${item.videoId ?? "item"}-${index}`,
     [],
   )
 
@@ -182,7 +152,6 @@ function Separator() {
 const fontSize14 = scale(14)
 const fontSize16 = scale(16)
 const fontSize18 = scale(18)
-const fontSize24 = scale(24)
 
 const styles = StyleSheet.create({
   container: {
@@ -192,17 +161,14 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize16,
     fontWeight: "600",
-    color: COLORS.muted,
+    color: WATCH_THEME.accent,
     letterSpacing: 1,
     textTransform: "uppercase",
     paddingHorizontal: scale(80),
     marginBottom: scale(4),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: fontSize24,
-    fontWeight: "700",
-    color: COLORS.text,
+    ...SECTION_HEADING,
     paddingHorizontal: scale(80),
     marginBottom: scale(4),
   },
@@ -210,7 +176,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize18,
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     paddingHorizontal: scale(80),
     marginBottom: scale(12),
   },
@@ -225,7 +191,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.scrim(1),
     borderRadius: scale(16),
     overflow: "hidden",
   },
@@ -235,13 +201,13 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   thumbnailFallback: {
-    backgroundColor: COLORS.surfaceContainerHighest,
+    backgroundColor: WATCH_THEME.cardFallback,
   },
   badge: {
     position: "absolute",
     top: scale(8),
     right: scale(8),
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: WATCH_THEME.scrim(0.6),
     borderRadius: scale(6),
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
@@ -250,7 +216,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize14,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: WATCH_THEME.text,
   },
   textContent: {
     position: "absolute",
@@ -262,7 +228,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize14,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.9)",
+    color: WATCH_THEME.text82,
     letterSpacing: 0.8,
     marginBottom: scale(2),
   },
@@ -270,6 +236,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: fontSize18,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: WATCH_THEME.text,
   },
 })

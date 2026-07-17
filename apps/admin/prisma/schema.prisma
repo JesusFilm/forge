@@ -235,14 +235,14 @@ enum SearchEvalCandidateSanitizationStatus {
 
 model User {
   chatThreadsCreated ExperienceChatThread[] // experience-AI chat (additive)
-  id            String   @id
-  name          String
-  email         String
-  emailVerified Boolean  @default(false) @map("email_verified")
-  image         String?
-  role          UserRole @default(VIEWER)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                 String                 @id
+  name               String
+  email              String
+  emailVerified      Boolean                @default(false) @map("email_verified")
+  image              String?
+  role               UserRole               @default(VIEWER)
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
 
   mediaAssets           MediaAsset[]
   mediaFolders          MediaFolder[]
@@ -576,6 +576,22 @@ model WatchRouteManifestSnapshot {
   @@map("watch_route_manifest_snapshot")
 }
 
+/// Latest admin-owned Watch hreflang sitemap manifest. This singleton
+/// snapshot lets apps/web generate sitemap XML without recomputing the full
+/// video-language alternate graph in page render paths.
+model WatchSeoManifestSnapshot {
+  key              String   @id
+  version          String
+  generatedAt      DateTime @map("generated_at")
+  payload          Json
+  payloadSizeBytes Int      @map("payload_size_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([generatedAt])
+  @@map("watch_seo_manifest_snapshot")
+}
+
 /// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
 /// existing Manager JobRecord so Manager can move transport without UI churn.
 model ManagerEnrichmentJob {
@@ -808,6 +824,7 @@ model Language {
   locales          LanguageLocale[]
   videoDubs        VideoDub[]
   videoLocales     VideoLocale[]
+  watchEvents      WatchEvent[]
   videoSubtitles   VideoSubtitle[]
   studyQuestions   VideoStudyQuestion[]
   countryLanguages CountryLanguage[]
@@ -1039,10 +1056,34 @@ model MuxVideo {
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
-  dubs VideoDub[]
+  dubs             VideoDub[]
+  imageDerivatives MuxImageDerivative[]
 
   @@index([deletedAt])
   @@map("mux_video")
+}
+
+/// Generated image metadata for a specific Mux thumbnail recipe. Unlike
+/// VideoImage.blurDataUrl, these rows describe derived Mux images such as the
+/// Watch chapter carousel smart-crop thumbnail.
+model MuxImageDerivative {
+  id            String   @id @default(cuid())
+  muxVideoId    String   @map("mux_video_id")
+  muxVideo      MuxVideo @relation(fields: [muxVideoId], references: [id], onDelete: Cascade)
+  purpose       String
+  paramsHash    String   @map("params_hash")
+  params        Json     @default("{}")
+  sourceUrl     String   @map("source_url")
+  lqipUrl       String   @map("lqip_url")
+  blurDataUrl   String   @map("blur_data_url")
+  dominantColor String?  @map("dominant_color")
+  generatedAt   DateTime @default(now()) @map("generated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([muxVideoId, purpose, paramsHash])
+  @@index([purpose])
+  @@map("mux_image_derivative")
 }
 
 /// A book of the Bible. Synced from Core.
@@ -1114,8 +1155,10 @@ model Video {
   keywords       VideoKeyword[]
   scenes         VideoScene[]
   transcripts    VideoTranscript[]
+  watchEvents    WatchEvent[]
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
+  watchProgress  WatchProgress[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -1125,6 +1168,29 @@ model Video {
   // the `videos` list query's ORDER BY. Not expressed here because Prisma
   // doesn't model partial-index `WHERE` clauses cleanly across providers.
   @@map("video")
+}
+
+/// Latest per-consumer playback position for resume/progress UI.
+///
+/// `userId` is the consumer Auth subject, not a relation to admin's editorial
+/// `User` table. Consumer accounts can exist without an admin row.
+model WatchProgress {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  videoId         String   @map("video_id")
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  languageSlug    String?  @map("language_slug")
+  positionSeconds Int      @map("position_seconds")
+  durationSeconds Int      @map("duration_seconds")
+  completed       Boolean  @default(false)
+  lastWatchedAt   DateTime @default(now()) @map("last_watched_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, videoId])
+  @@index([userId, lastWatchedAt])
+  @@index([videoId])
+  @@map("watch_progress")
 }
 
 /// Per-locale Video content. Editors curate localized title / description /
@@ -1244,7 +1310,8 @@ model VideoDub {
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  downloads VideoDubDownload[]
+  downloads   VideoDubDownload[]
+  watchEvents WatchEvent[]
 
   @@index([videoId])
   @@index([languageId])
@@ -1252,6 +1319,30 @@ model VideoDub {
   @@index([muxVideoId])
   @@index([deletedAt])
   @@map("video_dub")
+}
+
+model WatchEvent {
+  id               String    @id @default(cuid())
+  authSubject      String    @map("auth_subject")
+  eventType        String    @map("event_type")
+  videoId          String    @map("video_id")
+  video            Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoDubId       String?   @map("video_dub_id")
+  videoDub         VideoDub? @relation(fields: [videoDubId], references: [id], onDelete: SetNull)
+  languageId       String?   @map("language_id")
+  language         Language? @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  positionSeconds  Int?      @map("position_seconds")
+  durationSeconds  Int?      @map("duration_seconds")
+  progress         Float?
+  requestSessionId String?   @map("request_session_id")
+  occurredAt       DateTime  @default(now()) @map("occurred_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([authSubject, occurredAt])
+  @@index([videoId, occurredAt])
+  @@index([videoDubId])
+  @@index([languageId])
+  @@map("watch_event")
 }
 
 /// A downloadable quality tier (e.g. mp4 480p, 720p, 1080p) of a VideoDub.
@@ -1365,8 +1456,10 @@ model VideoImage {
   mobileCinematicVeryLow String?    @map("mobile_cinematic_very_low")
   thumbnail              String?
   videoStill             String?    @map("video_still")
-  /// Blurhash for low-quality image placeholders. Computed in a post-sync hook.
-  blurhash               String?
+  /// Forge-generated low-quality image placeholder for the selected video image.
+  blurDataUrl            String?    @map("blur_data_url")
+  /// Dominant color derived from the generated low-quality image placeholder.
+  dominantColor          String?    @map("dominant_color")
   /// "poster" | "still" | "mobileCinematicHigh" | etc.
   kind                   String?
   syncedAt               DateTime?  @map("synced_at")
@@ -1405,6 +1498,29 @@ model BibleCitation {
   @@map("bible_citation")
 }
 
+/// Cached scripture text fetched from an approved remote Bible provider.
+model BiblePassageCache {
+  id                  String   @id @default(cuid())
+  provider            String
+  versionId           String   @map("version_id")
+  reference           String
+  contentFormat       String   @default("text") @map("content_format")
+  content             String
+  humanReference      String?  @map("human_reference")
+  versionAbbreviation String?  @map("version_abbreviation")
+  versionTitle        String?  @map("version_title")
+  copyright           String
+  publisherUrl        String?  @map("publisher_url")
+  fetchedAt           DateTime @default(now()) @map("fetched_at")
+  expiresAt           DateTime @map("expires_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, versionId, reference, contentFormat])
+  @@index([expiresAt])
+  @@map("bible_passage_cache")
+}
+
 /// A timecoded scene segment of a VideoEdition. Scenes follow the edition's
 /// cut, so timecodes attach at edition level (same pattern as VideoSubtitle).
 /// Language-agnostic fields only — per-locale descriptions + embeddings live
@@ -1437,11 +1553,13 @@ model VideoScene {
   @@map("video_scene")
 }
 
-/// Per-locale scene description + embedding. `embedding` is NULL until the
-/// sceneEmbeddingBackfill workflow runs. NEVER exposed in GraphQL (the
-/// Pothos type in `src/graphql/types/video.ts` omits this field, and
-/// `schema.test.ts` asserts no embed/vector/similarity field leaks). Search
-/// uses raw SQL with `<=>` cosine distance + the partial HNSW index.
+/// Per-locale scene description plus historical scene embedding metadata.
+/// The scene embedding writer is retired; rows are retained for historical
+/// and non-search scene data until feat-199 decides retention/migration.
+/// Search and recommendation retrieval are transcript-backed. NEVER expose
+/// the vector field in GraphQL (the Pothos type in `src/graphql/types/video.ts`
+/// omits it, and `schema.test.ts` asserts no embed/vector/similarity field
+/// leaks).
 model VideoSceneLocale {
   id                        String                       @id @default(cuid())
   videoSceneId              String                       @map("video_scene_id")
@@ -1463,8 +1581,8 @@ model VideoSceneLocale {
   embeddingProvider         String?                      @map("embedding_provider")
   embeddingNativeDimensions Int?                         @map("embedding_native_dimensions")
   embeddingTransformVersion String?                      @map("embedding_transform_version")
-  /// Compact provenance for Mastra-written scene embeddings. Nullable so
-  /// legacy rows written before the Mastra migration remain searchable.
+  /// Compact provenance for historical Mastra-written scene embeddings.
+  /// Nullable for legacy rows written before the Mastra migration.
   sourceArtifactKey         String?                      @map("source_artifact_key")
   sourceArtifactVersion     String?                      @map("source_artifact_version")
   sourceContentHash         String?                      @map("source_content_hash")
@@ -1518,7 +1636,7 @@ model Experience {
 /// discriminated union in `src/domain/blocks.ts` (Unit 4e). Reads return the
 /// JSONB column directly; mutations validate before write.
 model ExperienceLocale {
-  chatThreads ExperienceChatThread[] // experience-AI chat (additive)
+  chatThreads                ExperienceChatThread[] // experience-AI chat (additive)
   id                         String                       @id @default(cuid())
   experienceId               String                       @map("experience_id")
   experience                 Experience                   @relation(fields: [experienceId], references: [id], onDelete: Cascade)
@@ -1610,6 +1728,12 @@ model VideoTranscript {
   /// Compact provenance for Mastra-written transcript embeddings. Nullable so
   /// legacy rows from the pre-Mastra producer remain readable.
   sourceArtifactKey         String?      @map("source_artifact_key")
+  sourceKind                String?      @map("source_kind")
+  sourceLanguageId          String?      @map("source_language_id")
+  sourceLanguageSlug        String?      @map("source_language_slug")
+  sourceSubtitleId          String?      @map("source_subtitle_id")
+  sourceFormat              String?      @map("source_format")
+  sourceUrl                 String?      @map("source_url")
   sourceContentHash         String?      @map("source_content_hash")
   sourceProvider            String?      @map("source_provider")
   sourceGeneratedAt         DateTime?    @map("source_generated_at")
@@ -1640,29 +1764,42 @@ model VideoTranscript {
 /// embed/vector/similarity field leaks; and the Prisma client extension
 /// in `src/db/client.ts` strips it from default result sets).
 model VideoTranscriptChunk {
-  id           String                       @id @default(cuid())
-  transcriptId String                       @map("transcript_id")
-  transcript   VideoTranscript              @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  id                 String                       @id @default(cuid())
+  transcriptId       String                       @map("transcript_id")
+  transcript         VideoTranscript              @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
   /// Denormalized from `transcript.language`. Indexer keeps the two in sync;
   /// no DB-level CHECK (Postgres doesn't support cross-row checks cleanly).
-  language     String
+  language           String
   /// 0-based index within the transcript, stable across re-chunks.
-  chunkIndex   Int                          @map("chunk_index")
+  chunkIndex         Int                          @map("chunk_index")
   /// Opaque chunk identifier from manager's artifact (e.g. "chunk-0").
   /// Preserved for drift audits against the upstream artifact.
-  chunkId      String                       @map("chunk_id")
+  chunkId            String                       @map("chunk_id")
   /// The embedded text, verbatim from the artifact's `chunks[].text`.
-  text         String
+  text               String
+  /// Raw subtitle/transcript source text for this segment. Nullable for legacy
+  /// v1 rows where `text` was the only stored snippet.
+  rawSourceText      String?                      @map("raw_source_text")
+  /// Full vector input text. v2 rows keep this separate from user/debug
+  /// snippets so enriched metadata can be audited without replacing raw text.
+  embeddingInputText String?                      @map("embedding_input_text")
+  feltNeeds          String[]                     @default([]) @map("felt_needs")
+  bibleVerses        String[]                     @default([]) @map("bible_verses")
+  contentSummary     String?                      @map("content_summary")
+  tone               String?
+  demographics       String[]                     @default([])
+  spiritualContext   String[]                     @default([]) @map("spiritual_context")
+  extractionMetadata Json?                        @map("extraction_metadata")
   /// Estimated token count from manager's chunker.
-  tokenCount   Int                          @map("token_count")
+  tokenCount         Int                          @map("token_count")
   /// Optional timecodes when the chunk came from a segment-aware chunker.
-  startSeconds Float?                       @map("start_seconds")
-  endSeconds   Float?                       @map("end_seconds")
-  embedding    Unsupported("vector(1536)")?
-  model        String                       @default("text-embedding-3-small")
-  dimensions   Int                          @default(1536)
-  createdAt    DateTime                     @default(now()) @map("created_at")
-  updatedAt    DateTime                     @updatedAt @map("updated_at")
+  startSeconds       Float?                       @map("start_seconds")
+  endSeconds         Float?                       @map("end_seconds")
+  embedding          Unsupported("vector(1536)")?
+  model              String                       @default("text-embedding-3-small")
+  dimensions         Int                          @default(1536)
+  createdAt          DateTime                     @default(now()) @map("created_at")
+  updatedAt          DateTime                     @updatedAt @map("updated_at")
 
   @@unique([transcriptId, chunkIndex])
   @@index([language])
@@ -1679,6 +1816,7 @@ enum ExperienceChatMessageRole {
   ASSISTANT @map("assistant")
   SYSTEM    @map("system")
 }
+
 model ExperienceChatThread {
   id                 String           @id @default(cuid())
   experienceLocaleId String           @map("experience_locale_id")

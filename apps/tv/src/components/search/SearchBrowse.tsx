@@ -1,10 +1,31 @@
+import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native"
 
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { hexToRgba } from "../../lib/colors"
 import { scale } from "../../lib/scale"
 import { FocusableCard } from "../FocusableCard"
 import { CATEGORIES, type SearchCategory } from "./categories"
+import { SEARCH_PAGE_GUTTER, SEARCH_THEME } from "./searchTheme"
+import { useCategoryThumbnails } from "./useCategoryThumbnails"
+
+// Soft scrim over the blurred thumbnail: short, low-opacity dark bands feathered
+// at the top + bottom edges (bottom a touch stronger for title legibility) over a
+// wide clear middle. hexToRgba(...,0) for clear stops, never "transparent".
+const SCRIM_COLORS = [
+  hexToRgba("#000000", 0.24),
+  hexToRgba("#000000", 0.05),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0),
+  hexToRgba("#000000", 0.07),
+  hexToRgba("#000000", 0.4),
+] as const
+const SCRIM_LOCATIONS = [0, 0.16, 0.32, 0.68, 0.84, 1] as const
+
+// expo-image blurRadius isn't calibrated equally across platforms (the same
+// value blurs harder on Android), so tvOS bumps up to match Android TV — mirrors
+// apps/mobile's TopicCard.
+const THUMBNAIL_BLUR_RADIUS = Platform.OS === "ios" ? 12 : 4
 
 type Props = {
   recents: string[]
@@ -14,21 +35,29 @@ type Props = {
   onRunQuery: (query: string) => void
   /** Called when the user presses the "Clear" chip in the Recent rail. */
   onClearHistory: () => void
+  /**
+   * Break out of the parent's horizontal page padding so this view is full-bleed
+   * (the rail/chip/grid gutters below encode the 80dp gutter, landing content on
+   * the page edges). Apple TV stacked layout sets this; two-pane leaves it off.
+   */
+  fullBleed?: boolean
 }
 
-// The search-empty browse view: Recent searches + Browse-topics categories.
-// Both are sourced locally / statically (recents from history, categories from
-// the static CATEGORIES list), so this view needs no GraphQL query and works
-// for the unauthenticated public app. (It previously showed a "Popular
-// experiences" rail backed by the editor-gated Query.experiences, which 401'd
-// for the public TV app and silently rendered empty — removed with the home's
-// migration off that gated query.)
-export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
+// Search-empty browse view: Recent searches + Browse-topics (static CATEGORIES,
+// each backed by a blurred thumbnail of its first search result). Works for the
+// public app — only the anonymous `search` surface is used, no editor-gated query.
+export function SearchBrowse({
+  recents,
+  onRunQuery,
+  onClearHistory,
+  fullBleed,
+}: Props) {
   const showRecent = recents.length > 0
+  const thumbnails = useCategoryThumbnails()
 
   return (
     <ScrollView
-      style={styles.scroll}
+      style={[styles.scroll, fullBleed === true && styles.fullBleed]}
       contentContainerStyle={styles.scrollContent}
     >
       {showRecent ? (
@@ -48,25 +77,23 @@ export function SearchBrowse({ recents, onRunQuery, onClearHistory }: Props) {
         <Text style={styles.railTitle} accessibilityRole="header">
           Browse topics
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryRowContent}
-        >
+        {/* 3-column wrapping grid (not a carousel that ran off-screen). tvOS
+            handles D-pad moves by geometry; each cell's padding gives the focus
+            glow + 1.05x lift room so the grid never clips it. */}
+        <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
-            // Per-cell wrapper provides the breathing room the focus
-            // glow needs (shadowRadius scale(16) + 1.05x scale on the
-            // FocusableCard ≈ 21dp outward on each side). Without this,
-            // ScrollView clips the glow at the contentContainer edges.
-            // Same pattern as ContentRail's itemWrapper on home.
-            <View key={cat.searchTerm} style={styles.categoryCellWrapper}>
+            <View
+              key={`category-${cat.searchTerm}`}
+              style={styles.categoryCellWrapper}
+            >
               <CategoryCard
                 category={cat}
                 onPress={() => onRunQuery(cat.searchTerm)}
+                thumbnailUrl={thumbnails[cat.searchTerm]}
               />
             </View>
           ))}
-        </ScrollView>
+        </View>
       </View>
     </ScrollView>
   )
@@ -93,6 +120,9 @@ function RecentRow({
             onPress={() => onRunQuery(q)}
             accessibilityLabel={`Recent search: ${q}`}
             accessibilityHint="Re-runs this search"
+            // Generic action name keeps the user's typed query out of telemetry
+            // (same privacy rule as KeyButton's keyboard-key).
+            ddActionName="recent-search"
             style={styles.chip}
           >
             <View style={styles.chipInner}>
@@ -122,9 +152,11 @@ function RecentRow({
 function CategoryCard({
   category,
   onPress,
+  thumbnailUrl,
 }: {
   category: SearchCategory
   onPress: () => void
+  thumbnailUrl?: string | null
 }) {
   return (
     <FocusableCard
@@ -133,27 +165,54 @@ function CategoryCard({
       accessibilityHint={`Searches for "${category.searchTerm}"`}
       style={styles.categoryCard}
     >
-      <LinearGradient
-        colors={[
-          hexToRgba(category.colors[0], 1),
-          hexToRgba(category.colors[1], 1),
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.categoryGradient}
-      >
-        <Text style={styles.categoryTitle}>{category.title}</Text>
-      </LinearGradient>
+      <View style={styles.categoryInner}>
+        <LinearGradient
+          colors={[
+            hexToRgba(category.colors[0], 1),
+            hexToRgba(category.colors[1], 1),
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Blurred art of the category's first search result, faint over the
+            brand gradient. Absent until the limit:1 query resolves (and forever
+            if none) so the gradient base keeps the card from ever being blank. */}
+        {thumbnailUrl != null ? (
+          <Image
+            source={thumbnailUrl}
+            style={[StyleSheet.absoluteFill, styles.categoryThumbnail]}
+            contentFit="cover"
+            blurRadius={THUMBNAIL_BLUR_RADIUS}
+            transition={400}
+            cachePolicy="memory-disk"
+            recyclingKey={category.searchTerm}
+          />
+        ) : null}
+        <LinearGradient
+          colors={[...SCRIM_COLORS]}
+          locations={[...SCRIM_LOCATIONS]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.categoryContent}>
+          <Text style={styles.categoryTitle}>{category.title}</Text>
+        </View>
+      </View>
     </FocusableCard>
   )
 }
 
-const CATEGORY_W = scale(220)
-const CATEGORY_H = scale(124)
-
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
+  },
+  // Cancels the parent screen's page padding for full-bleed. Shares
+  // SEARCH_PAGE_GUTTER with app/search.tsx styles.screen.paddingHorizontal so
+  // it can't drift; rail/chip/grid gutters then place content on the page edges.
+  fullBleed: {
+    marginHorizontal: -scale(SEARCH_PAGE_GUTTER),
   },
   scrollContent: {
     paddingVertical: scale(8),
@@ -165,28 +224,31 @@ const styles = StyleSheet.create({
   railTitle: {
     fontFamily: "System",
     fontSize: scale(18),
-    color: COLORS.muted,
+    color: SEARCH_THEME.textDim(0.45),
     letterSpacing: 0.5,
     marginBottom: scale(10),
+    // The browse region is full-bleed on the redesigned layout; align
+    // the rail headers with the page's 80px gutter (the rows below add
+    // their own start padding inside their ScrollViews).
+    marginLeft: scale(80),
   },
   chipRowContent: {
-    // Start/end gutter so the leftmost / rightmost chip has room for
-    // its focus glow inside the ScrollView's clip region. Inter-chip
-    // spacing comes from chipCellWrapper.paddingHorizontal — see
-    // categoryCellWrapper for the same pattern's rationale.
-    paddingHorizontal: scale(24),
+    // Start/end gutter for the edge chips' focus glow inside the clip region;
+    // inter-chip spacing is chipCellWrapper.paddingHorizontal. Sized so the
+    // first chip's edge lands at the 80px page gutter (68 + 12).
+    paddingHorizontal: scale(68),
   },
   chipCellWrapper: {
     paddingVertical: scale(28),
     paddingHorizontal: scale(12),
   },
   chip: {
-    backgroundColor: COLORS.surfaceContainerHigh,
+    backgroundColor: SEARCH_THEME.keyBg,
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
   },
   clearChip: {
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: SEARCH_THEME.textDim(0.04),
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
   },
@@ -198,57 +260,56 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(14),
     fontWeight: "500",
-    color: COLORS.text,
+    color: SEARCH_THEME.keyText,
     maxWidth: scale(160),
   },
   clearText: {
     fontFamily: "System",
     fontSize: scale(14),
     fontWeight: "500",
-    color: COLORS.muted,
+    color: SEARCH_THEME.textDim(0.45),
   },
-  categoryRowContent: {
-    // Start/end gutter so the leftmost / rightmost card's focus glow
-    // is not clipped against the ScrollView's contentContainer edge.
-    // Inter-card spacing comes from categoryCellWrapper.paddingHorizontal
-    // (so each card carries its own focus halo padding instead of
-    // relying on `gap`, which doesn't reserve glow room).
-    paddingHorizontal: scale(24),
+  // 3-column grid container. The 64dp side padding lines the first column up
+  // with the rail titles' 80dp gutter (64 grid pad + 16 cell pad) — the same
+  // left edge the carousel used.
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: scale(64),
   },
+  // One third per cell → three columns. Padding is the inter-card gap AND the
+  // focus-glow / 1.05x-lift room; RN's border-box width keeps three cells at 100%.
   categoryCellWrapper: {
-    // Vertical: shadowRadius (scale(16)) + 1.05x scale expansion (~5dp)
-    // ≈ 21dp at minimum; bumped to 32dp for visual breathing room
-    // beyond the bare-clipping threshold.
-    paddingVertical: scale(32),
-    // Horizontal: 16dp on each side gives 32dp between adjacent cards
-    // (more generous than the original `gap: scale(16)` look). The
-    // 16dp shadow can blend into the neighbour's halo — that's
-    // expected; only the focused card glows at any time.
-    paddingHorizontal: scale(16),
+    width: "33.333%",
+    padding: scale(16),
   },
+  // Fills its cell. Needs a definite height (not aspectRatio): FocusableCard
+  // routes width/height to its outer layout box but aspectRatio only to the
+  // inner, which can't size the box.
   categoryCard: {
-    width: CATEGORY_W,
-    height: CATEGORY_H,
-    overflow: "hidden",
+    width: "100%",
+    height: scale(210),
   },
-  categoryGradient: {
+  categoryInner: {
     flex: 1,
+  },
+  // Faint over the brand gradient — mirrors mobile's 0.3 thumbnail opacity.
+  categoryThumbnail: {
+    opacity: 0.3,
+  },
+  categoryContent: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
-    padding: scale(14),
+    padding: scale(22),
   },
   categoryTitle: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(28)),
     fontWeight: "700",
-    // Use the tinted near-white from the palette rather than pure
-    // #FFFFFF — Crimson Gallery's text token already reads as white
-    // on saturated category gradients while staying consistent with
-    // the rest of the app's typography.
-    color: COLORS.text,
-    // Same logic for the shadow: the warm-stone surface tone tints
-    // the drop shadow toward the rest of the design system instead
-    // of dropping a literal #000.
-    textShadowColor: hexToRgba(COLORS.surface, 0.45),
+    color: SEARCH_THEME.text,
+    // Neutral near-black shadow — matches the redesigned search layer's
+    // #0a0a0b family (the warm-stone Crimson Gallery tint clashed here).
+    textShadowColor: "rgba(10,10,11,0.45)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },

@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react"
 
 import { env } from "@/env"
 
-const DATADOG_SERVICE = "watch"
+const DATADOG_SERVICE = "forge-web"
 
 const DATADOG_ALLOWED_TRACING_URLS = [
   {
@@ -51,11 +51,53 @@ export function reportDatadogRumError(
   error: unknown,
   context: Record<string, unknown>,
 ) {
+  safeReportDatadogRum("error", () => datadogRum.addError(error, context))
+}
+
+export function reportDatadogRumAction(
+  name: string,
+  context: Record<string, unknown>,
+) {
+  safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
+}
+
+type DatadogRumUser = {
+  id?: string
+  email?: string
+  name?: string
+}
+
+export function identifyDatadogRumUser(user: DatadogRumUser | undefined) {
+  const id = user?.id?.trim()
+  if (!user || !id) {
+    clearDatadogRumUser()
+    return
+  }
+
+  const email = user.email?.trim() || undefined
+  const name = user.name?.trim() || undefined
+  safeReportDatadogRum("user", () =>
+    datadogRum.setUser({
+      id,
+      email,
+      name,
+    }),
+  )
+}
+
+export function clearDatadogRumUser() {
+  safeReportDatadogRum("user", () => datadogRum.clearUser())
+}
+
+function safeReportDatadogRum(
+  kind: "action" | "error" | "user",
+  report: () => void,
+) {
   try {
-    datadogRum.addError(error, context)
+    report()
   } catch (reportError) {
     if (process.env.NODE_ENV !== "production") {
-      console.error("[datadog-rum] failed to report error:", reportError)
+      console.error(`[datadog-rum] failed to report ${kind}:`, reportError)
     }
   }
 }

@@ -3,15 +3,9 @@ import { resolveImageUrl } from "./resolveImageUrl"
 import { validateStreamingUrl } from "./validateUrl"
 
 /**
- * Seed data carried from a list surface (search result, Up Next card) into the
- * video detail route so the screen can paint instantly from data already in
- * hand, before any network fetch resolves.
- *
- * Encoded as a single URL-safe `seed` query param. Values are untrusted on the
- * receiving side (a crafted deep link could supply anything), so `decodeWatchSeed`
- * sanitizes every URL-bearing field and drops anything that doesn't validate —
- * the worst case degrades to "no seed" (skeleton), never an unsafe URL reaching
- * the player or image loader.
+ * Seed carried from a list surface into the video detail route so it paints
+ * instantly before any fetch. Encoded as one URL-safe `seed` param; untrusted
+ * (deep links), so `decodeWatchSeed` validates every URL field and drops bad ones.
  */
 export type WatchSeed = {
   slug: string
@@ -26,11 +20,9 @@ export function encodeWatchSeed(seed: WatchSeed): string {
 }
 
 /**
- * Decode and sanitize the `seed` param. Returns a validated seed, or null when
- * the param is absent, malformed, or missing a usable slug.
- *
- * Decode-once mirrors `parseSectionKey` — this app's router does not pre-decode
- * query params, so the value arrives still-encoded.
+ * Decode and sanitize the `seed` param; null if absent, malformed, or no slug.
+ * Decode-once mirrors `parseSectionKey` — this router doesn't pre-decode query
+ * params, so the value arrives still-encoded.
  */
 export function decodeWatchSeed(
   raw: string | string[] | undefined | null,

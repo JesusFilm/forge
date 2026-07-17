@@ -1,14 +1,26 @@
 // Mux service — video asset management and streaming.
 // Docs: https://docs.mux.com
 
-import Mux from "@mux/mux-node"
+import type Mux from "@mux/mux-node"
 import { env } from "@/config/env"
 import { normalizeGeneratedSubtitleLanguage } from "@/lib/mux-language"
 
+declare const require: (id: string) => unknown
+
 let _mux: Mux | undefined
+function loadMuxClient(): typeof Mux {
+  const muxModule = require("@mux/mux-node") as
+    | { default?: typeof Mux }
+    | typeof Mux
+  return "default" in muxModule && muxModule.default
+    ? muxModule.default
+    : (muxModule as typeof Mux)
+}
+
 export function getMux(): Mux {
   if (!_mux) {
-    _mux = new Mux({
+    const MuxClient = loadMuxClient()
+    _mux = new MuxClient({
       tokenId: env.MUX_TOKEN_ID,
       tokenSecret: env.MUX_TOKEN_SECRET,
       jwtSigningKey: env.MUX_SIGNING_KEY ?? null,
@@ -28,17 +40,39 @@ export type CreateAssetOptions = {
 export type MuxAssetInfo = {
   assetId: string
   playbackId: string
+  publicPlaybackId?: string | null
   status: string
   duration: number | null
+  staticRenditions?: MuxStaticRenditionInfo[]
 }
 
 export { normalizeGeneratedSubtitleLanguage }
 
 export type MuxPlaybackPolicy = "public" | "signed" | "drm"
 
+export type MuxStaticRenditionInfo = {
+  name: string
+  status: string | null
+  width: number | null
+  height: number | null
+  type: string | null
+}
+
 type MuxPlaybackId = {
   id?: string | null
   policy?: MuxPlaybackPolicy | null
+}
+
+type MuxStaticRenditionFile = {
+  name?: string | null
+  status?: string | null
+  width?: number | null
+  height?: number | null
+  type?: string | null
+}
+
+type MuxStaticRenditionsSnapshot = {
+  files?: MuxStaticRenditionFile[] | null
 }
 
 type MuxTrackInfo = {
@@ -134,6 +168,69 @@ function choosePlaybackId(
     available.find((playbackId) => playbackId.policy === "drm") ??
     null
   )
+}
+
+function choosePublicPlaybackId(
+  playbackIds: MuxPlaybackId[] | null | undefined,
+): string | null {
+  return (
+    (playbackIds ?? []).find(
+      (playbackId) => playbackId.policy === "public" && Boolean(playbackId.id),
+    )?.id ?? null
+  )
+}
+
+function normalizeStaticRenditions(
+  staticRenditions: MuxStaticRenditionsSnapshot | null | undefined,
+): MuxStaticRenditionInfo[] {
+  return (staticRenditions?.files ?? []).flatMap((file) => {
+    const name = file.name?.trim()
+    if (!name) {
+      return []
+    }
+
+    return [
+      {
+        name,
+        status: file.status ?? null,
+        width: file.width ?? null,
+        height: file.height ?? null,
+        type: file.type ?? null,
+      },
+    ]
+  })
+}
+
+function scoreStaticRendition(file: MuxStaticRenditionInfo): number {
+  const nameHeight = file.name.match(/(\d{3,4})p\.mp4$/i)?.[1]
+  const height =
+    file.height ?? (nameHeight != null ? Number(nameHeight) : undefined)
+
+  return height ?? 0
+}
+
+export function getMuxStaticRenditionSourceUrl(
+  asset: Pick<MuxAssetInfo, "publicPlaybackId" | "staticRenditions">,
+): string | null {
+  if (!asset.publicPlaybackId) {
+    return null
+  }
+
+  const readyMp4Renditions = (asset.staticRenditions ?? [])
+    .filter(
+      (file) =>
+        file.status === "ready" && file.name.toLowerCase().endsWith(".mp4"),
+    )
+    .sort(
+      (left, right) => scoreStaticRendition(right) - scoreStaticRendition(left),
+    )
+
+  const rendition = readyMp4Renditions[0]
+  if (!rendition) {
+    return null
+  }
+
+  return `https://stream.mux.com/${asset.publicPlaybackId}/${rendition.name}`
 }
 
 export async function buildMuxTextTrackUrl(
@@ -314,12 +411,15 @@ export async function createMuxAsset(
   )
 
   const playbackId = asset.playback_ids?.[0]?.id ?? ""
+  const publicPlaybackId = choosePublicPlaybackId(asset.playback_ids)
 
   return {
     assetId: asset.id,
     playbackId,
+    publicPlaybackId,
     status: asset.status ?? "preparing",
     duration: asset.duration ?? null,
+    staticRenditions: normalizeStaticRenditions(asset.static_renditions),
   }
 }
 
@@ -333,8 +433,40 @@ export async function getMuxAsset(assetId: string): Promise<MuxAssetInfo> {
   return {
     assetId: asset.id,
     playbackId,
+    publicPlaybackId: choosePublicPlaybackId(asset.playback_ids),
     status: asset.status ?? "unknown",
     duration: asset.duration ?? null,
+    staticRenditions: normalizeStaticRenditions(asset.static_renditions),
+  }
+}
+
+// Shorts Studio needs the playback POLICY, which getMuxAsset discards (it
+// returns the first playback id regardless of policy). Shorts sources must
+// be PUBLIC: the shorts-worker fetches the stream.mux.com HLS URL
+// unauthenticated, so a signed/drm-only asset is ineligible (plan
+// 2026-06-11-002 SpecFlow I6 — the routes surface `playback_not_public`).
+export type MuxAssetPlaybackInfo = {
+  assetId: string
+  status: string
+  duration: number | null
+  /** First playback id with policy "public" — null when the asset only has
+   * signed/drm playback policies (or none at all). */
+  publicPlaybackId: string | null
+}
+
+export async function getMuxAssetPlayback(
+  assetId: string,
+): Promise<MuxAssetPlaybackInfo> {
+  const asset = await getMux().video.assets.retrieve(assetId)
+  const publicPlayback = (asset.playback_ids ?? []).find(
+    (playback) => playback.policy === "public" && Boolean(playback.id),
+  )
+
+  return {
+    assetId: asset.id,
+    status: asset.status ?? "unknown",
+    duration: asset.duration ?? null,
+    publicPlaybackId: publicPlayback?.id ?? null,
   }
 }
 

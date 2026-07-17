@@ -114,7 +114,8 @@ describe("watch home carousel sequence helpers", () => {
   })
 
   it("builds a progressive queue from playlist pools while avoiding played videos", () => {
-    addWatchHomeTvPlayedId("video-a")
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    addWatchHomeTvPlayedId("video-a", now)
     window.sessionStorage.setItem(
       poolVideosStorageKey("pool-b"),
       JSON.stringify(["video-c"]),
@@ -126,7 +127,7 @@ describe("watch home carousel sequence helpers", () => {
         pool("pool-b", ["video-c", "video-d"]),
       ],
       targetVideoCount: 2,
-      now: new Date("2026-06-04T12:00:00.000Z"),
+      now,
     })
 
     expect(result.videos.map((item) => item.id)).toEqual(["video-b", "video-d"])
@@ -138,13 +139,14 @@ describe("watch home carousel sequence helpers", () => {
   })
 
   it("tracks repeated pool failures and marks depleted pools exhausted", () => {
-    addWatchHomeTvPlayedId("video-a")
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    addWatchHomeTvPlayedId("video-a", now)
 
     for (let attempt = 0; attempt < 3; attempt++) {
       buildWatchHomeVideoQueue({
         pools: [pool("pool-a", ["video-a"])],
         targetVideoCount: 1,
-        now: new Date("2026-06-04T12:00:00.000Z"),
+        now,
       })
     }
 
@@ -159,7 +161,8 @@ describe("watch home carousel sequence helpers", () => {
   })
 
   it("resets monthly played memory after fifty loaded videos so cycling can continue", () => {
-    addWatchHomeTvPlayedId("video-a")
+    const now = new Date("2026-06-04T12:00:00.000Z")
+    addWatchHomeTvPlayedId("video-a", now)
 
     const result = buildWatchHomeVideoQueue({
       existingVideos: Array.from({ length: 50 }, (_, index) =>
@@ -167,7 +170,7 @@ describe("watch home carousel sequence helpers", () => {
       ),
       pools: [pool("pool-a", ["video-a"])],
       targetVideoCount: 51,
-      now: new Date("2026-06-04T12:00:00.000Z"),
+      now,
     })
 
     expect(readWatchHomeTvPlayedIds()).toEqual([])
@@ -230,6 +233,15 @@ describe("watch home carousel sequence helpers", () => {
       kind: "mux",
       title: "Jun 4: Today's Video Picks",
       playbackId: "playback-a",
+      secondaryAction: null,
+    })
+    expect(slides[2]).toMatchObject({
+      kind: "mux",
+      title: "Join Us",
+      secondaryAction: {
+        label: "Watch Short Film",
+        type: "watch-short-film",
+      },
     })
     const stored = JSON.parse(
       window.sessionStorage.getItem(WATCH_HOME_TV_MUX_SELECTIONS_STORAGE_KEY) ??

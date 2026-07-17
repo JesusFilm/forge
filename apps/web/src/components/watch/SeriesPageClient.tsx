@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Globe } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -20,11 +20,16 @@ import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import { resolvePosterUrl } from "@/lib/url"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+} from "@/lib/watch-player-chrome-events"
 
 // Non-null `hls` marker for the synthesized LanguagePickerVariant entries.
 // `series.childDubLanguages` is server-guaranteed playable but ships no
@@ -36,10 +41,9 @@ const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 // Narrowed from WatchModalState ("none" | "download" | "language" | "share")
 // because the series page never offers downloads (R-scope: no series-level
-// downloads). The language picker mirrors the video page's globe-button +
-// modal pattern as a second affordance alongside the inline
-// LanguageCombobox in the meta section — both surfaces dispatch to the
-// same handleLanguageChange path.
+// downloads). The language picker is opened from the global Watch header and
+// remains available inline through LanguageCombobox in the meta section —
+// both surfaces dispatch to the same handleLanguageChange path.
 type SeriesModalState = "none" | "share" | "language"
 
 type SeriesPageClientProps = {
@@ -167,6 +171,44 @@ export function SeriesPageClient({
     slugByBcp47.get(locale.toLowerCase()) ??
     languageOptions[0]?.slug ??
     ""
+  const currentLanguageCode = languageCodeFor(
+    languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
+  )
+
+  const headerLanguageSwitcherVisible = variantsForLanguagePicker.length >= 2
+  const heroOwnsHeaderLanguageSwitcher = Boolean(selectedVariant?.hls)
+  useEffect(() => {
+    if (typeof window === "undefined" || heroOwnsHeaderLanguageSwitcher) return
+
+    window.dispatchEvent(
+      new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        {
+          detail: {
+            visible: headerLanguageSwitcherVisible,
+            onClick: headerLanguageSwitcherVisible ? openLanguage : null,
+            languageCode: headerLanguageSwitcherVisible
+              ? currentLanguageCode
+              : null,
+          },
+        },
+      ),
+    )
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+          WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+          { detail: { visible: false, onClick: null, languageCode: null } },
+        ),
+      )
+    }
+  }, [
+    currentLanguageCode,
+    headerLanguageSwitcherVisible,
+    heroOwnsHeaderLanguageSwitcher,
+    openLanguage,
+  ])
 
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
@@ -193,31 +235,11 @@ export function SeriesPageClient({
       data-modal-state={modalState}
       className="min-h-screen bg-stone-900 text-stone-100"
     >
-      {/* Floating globe button — mirrors HeroPlayer's top-right globe
-          on the video page (same top-10 right-10 offset, same Globe
-          icon, same circular 12×12 hit area). Only renders when there
-          are 2+ playable languages — a single-language series has
-          nothing to switch to. Sits above the hero via z-50 so it
-          remains tappable while the sticky hero is still painted. */}
-      {variantsForLanguagePicker.length >= 2 ? (
-        <button
-          type="button"
-          data-testid="series-page-language-button"
-          onClick={openLanguage}
-          aria-label={t("changeAudioLanguage")}
-          title={t("changeAudioLanguage")}
-          className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
-        >
-          <Globe
-            aria-hidden
-            className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-          />
-        </button>
-      ) : null}
-
       <SeriesHero
         series={series}
         selectedVariant={selectedVariant}
+        onLanguageClick={openLanguage}
+        playableLanguageCount={variantsForLanguagePicker.length}
         overlay={
           // Stack the label on top, then a horizontal row with the title
           // on the left and the share pill on the right. Using
@@ -271,7 +293,7 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-10 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
+          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-5 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
         >
           {description ? (
             <div className="md:col-span-3">
@@ -318,6 +340,7 @@ export function SeriesPageClient({
       <SeriesEpisodesGrid
         episodes={episodes}
         languageSlug={currentLanguageSlug}
+        parentSlug={series.slug ?? ""}
         seriesPosterUrl={posterUrl}
       />
 

@@ -1,24 +1,6 @@
-// Action row for the video-details screen — the "Inline pills" layout from the
-// Claude Design handoff. Play + all secondary actions live in ONE left-aligned,
-// remote-navigable row directly under the title, so the D-pad travels naturally
-// left→right (the mockup's core fix: no more leaping from Play to far-right
-// actions). Order: [Play] [Language] [Subtitles] [Share] [Download].
-//
-// Styling matches the mockup exactly (WATCH_THEME): a solid-red Play pill (play
-// icon + "Play") and glass secondary pills that invert to a white fill on focus.
-// tvOS magnify: focused pills lift + scale 1.06. The whole row is a
-// TVFocusGuideView (autoFocus) so left/right traverses it and focus returns here
-// from the Up Next rail below.
-//
-// Focus (R7): Play receives a one-shot hasTVPreferredFocus on mount (cleared via
-// useEffect) AND becomes the focus-restore target when the fullscreen overlay
-// dismisses — when VideoPlayerContext goes visible → not-visible, we re-arm
-// Play's preferred focus for one render.
-//
-// Play (R5): validate the active variant's hls via validateStreamingUrl, then
-// playVideo(hls, title). Share / Download (R18, R19): build the continuation URL,
-// validate it, and only render the action when valid; pressing it opens the QR
-// LinkModal (the phone is the continuation surface).
+// Video-details inline pills row (Claude Design handoff): [Play] [Language] [Subtitles]
+// [Share] left-aligned under the title; WATCH_THEME, a TVFocusGuideView (autoFocus).
+// Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share R18 opens the QR LinkModal.
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
@@ -32,7 +14,7 @@ import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { buildShareUrl } from "./detailsHelpers"
 import { WATCH_THEME } from "./watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
@@ -76,8 +58,8 @@ export function DetailsActionRow({
     playVideo(hls, title ?? undefined, undefined)
   }
 
-  // Share / Download continuation URL → QR fallback. Same public watch URL for
-  // both in v1 (the phone page exposes share + download); validated before use.
+  // Share continuation URL → QR fallback: the public watch URL, validated
+  // before use so the phone can pick the video up.
   const shareUrl = buildShareUrl(video, activeVariant?.languageSlug ?? null)
   const canShare = shareUrl != null && validateActionUrl(shareUrl)
 
@@ -123,15 +105,6 @@ export function DetailsActionRow({
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
           />
         ) : null}
-        {canShare ? (
-          <SecondaryPill
-            icon="download-outline"
-            label="Download"
-            onPress={() =>
-              openModal(shareUrl, "Scan to download on your phone")
-            }
-          />
-        ) : null}
       </TVFocusGuideView>
 
       {modalUrl != null ? (
@@ -148,10 +121,9 @@ export function DetailsActionRow({
 }
 
 // ── Buttons ─────────────────────────────────────────────────────────
-//
-// Focus eases in via useFocusAnimation's 0→1 `progress` (no "blink"): the pill
-// lifts + magnifies, and its highlight (Play's white ring; the secondary pills'
-// glass→white fill, drop shadow, and icon/text colour) cross-fades over ~180ms.
+// Focus eases in via useFocusAnimation's 0→1 `progress`: the pill lifts + magnifies
+// and its highlight cross-fades over ~180ms. SecondaryPill is exported for reuse
+// (SeriesActionRow's Language pill).
 
 const ICON_SIZE = Math.round(scale(30))
 
@@ -162,7 +134,9 @@ function PlayPill({
   onPress: () => void
   hasTVPreferredFocus: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
   const animatedStyle = useMemo(
@@ -171,9 +145,9 @@ function PlayPill({
         inputRange: [0, 1],
         outputRange: ["rgba(255,255,255,0)", "rgba(255,255,255,0.9)"],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
@@ -192,18 +166,22 @@ function PlayPill({
   )
 }
 
-function SecondaryPill({
+export function SecondaryPill({
   icon,
   label,
   sub,
   onPress,
+  hasTVPreferredFocus,
 }: {
   icon: IconName
   label: string
   sub?: string | null
   onPress: () => void
+  hasTVPreferredFocus?: boolean
 }) {
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
   // Memoized: progress is a stable ref, so the interpolations are built once
   // rather than on every focus/blur re-render.
   const ink = useMemo(
@@ -232,15 +210,16 @@ function SecondaryPill({
         inputRange: [0, 1],
         outputRange: [0, 0.5],
       }),
-      transform: focusTransform(progress),
+      transform,
     }),
-    [progress],
+    [progress, transform],
   )
   return (
     <Pressable
       onPress={onPress}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       // Fold the visible sub-value (current language / "On"/"Off") into the
       // label so VoiceOver and automated D-pad drivers can read the state

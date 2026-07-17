@@ -24,6 +24,13 @@ import {
   type OfflineSearchEvalJudge,
 } from "./judge"
 import { collapseSwapVerdicts, finalizeReport, hashQuery } from "./report"
+import {
+  defaultSearchEvalBaselineNameForCallerTrack,
+  isSearchEvalModeSuitableForCallerTrack,
+  isSearchEvalSearchMode,
+  normalizeSearchEvalCallerTrack,
+  searchEvalCallerTrackDefinition,
+} from "./types"
 import type {
   BaselineArtifact,
   BaselineCase,
@@ -33,6 +40,8 @@ import type {
   GeneratedPromptCase,
   SearchEvalMetadata,
   SearchEvalReport,
+  SearchEvalCallerTrack,
+  SearchEvalSearchMode,
   SearchFailure,
   SeedPromptCase,
 } from "./types"
@@ -49,6 +58,7 @@ export type OfflineSearchEvalMode = "capture-baseline" | "compare"
 export type OfflineSearchEvalInput = {
   mode: OfflineSearchEvalMode
   baselineName?: string
+  callerTrack?: SearchEvalCallerTrack
   locales?: string[]
   searchLimit?: number
   searchMode?: string | null
@@ -106,6 +116,12 @@ type RunnerOptions = {
 }
 
 type SearchTiming = { ms: number }
+
+type PreparedOfflineSearchEvalInput = OfflineSearchEvalInput & {
+  baselineName: string
+  callerTrack: SearchEvalCallerTrack
+  searchMode: SearchEvalSearchMode
+}
 
 function failure(
   reason: OfflineSearchEvalFailure["reason"],
@@ -210,6 +226,7 @@ function artifactFailure(error: unknown): OfflineSearchEvalFailure {
 
 function metadataFor({
   baselineName,
+  callerTrack,
   contentType,
   finishedAt,
   judgeModel,
@@ -221,6 +238,7 @@ function metadataFor({
   startedAt,
 }: {
   baselineName: string
+  callerTrack: SearchEvalCallerTrack
   contentType: "video" | "experience" | null
   finishedAt: Date
   judgeModel: string | null
@@ -236,6 +254,7 @@ function metadataFor({
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
     baselineName,
+    callerTrack,
     promptSetVersion,
     adminSearchUrl: sanitizeAdminSearchUrl(searchUrl),
     judgeModel,
@@ -286,9 +305,38 @@ function generatedCaseFor(
   }
 }
 
-async function searchAdmin(
-  prompt: { queryText: string; locale: string },
+function prepareOfflineSearchEvalInput(
   input: OfflineSearchEvalInput,
+): PreparedOfflineSearchEvalInput | OfflineSearchEvalFailure {
+  const callerTrack = normalizeSearchEvalCallerTrack(input.callerTrack)
+  const definition = searchEvalCallerTrackDefinition(callerTrack)
+  const rawSearchMode = input.searchMode ?? definition.defaultMode
+  if (!isSearchEvalSearchMode(rawSearchMode)) {
+    return failure("invalid_input", {
+      retryable: false,
+      adminReason: `searchMode '${String(rawSearchMode)}' is not supported by search eval`,
+    })
+  }
+  if (!isSearchEvalModeSuitableForCallerTrack(callerTrack, rawSearchMode)) {
+    return failure("invalid_input", {
+      retryable: false,
+      adminReason: `searchMode '${rawSearchMode}' is not suitable for callerTrack '${callerTrack}'`,
+    })
+  }
+
+  return {
+    ...input,
+    baselineName:
+      input.baselineName ??
+      defaultSearchEvalBaselineNameForCallerTrack(callerTrack),
+    callerTrack,
+    searchMode: rawSearchMode,
+  }
+}
+
+async function searchAdmin(
+  prompt: { queryText: string; locale: string; languageSlug?: string },
+  input: PreparedOfflineSearchEvalInput,
   options: RunnerOptions,
   timing?: SearchTiming,
 ): Promise<AdminSearchEvalClientResult<AdminSearchResponse>> {
@@ -299,8 +347,9 @@ async function searchAdmin(
     payload: {
       query: prompt.queryText,
       locale: prompt.locale,
+      ...(prompt.languageSlug ? { languageSlug: prompt.languageSlug } : {}),
       limit: input.searchLimit ?? DEFAULT_SEARCH_LIMIT,
-      mode: input.searchMode ?? null,
+      mode: input.searchMode,
       contentType: input.contentType ?? null,
     },
     timeoutMs: options.timeoutMs,
@@ -312,7 +361,7 @@ async function searchAdmin(
 
 async function searchSeedCases(
   prompts: readonly SeedPromptCase[],
-  input: OfflineSearchEvalInput,
+  input: PreparedOfflineSearchEvalInput,
   options: RunnerOptions,
   timing: SearchTiming,
 ): Promise<BaselineCase[] | OfflineSearchEvalFailure> {
@@ -325,8 +374,11 @@ async function searchSeedCases(
     cases.push({
       caseId: prompt.id,
       locale: prompt.locale,
+      ...(prompt.languageSlug ? { languageSlug: prompt.languageSlug } : {}),
+      ...(prompt.websiteLocale ? { websiteLocale: prompt.websiteLocale } : {}),
       queryText: prompt.queryText,
       source: "seed",
+      callerTrack: input.callerTrack,
       tags: prompt.tags,
       operatorNotes: prompt.operatorNotes,
       results: result.ok ? result.result.results : [],
@@ -343,8 +395,11 @@ function baselineReportOutcomes(
     kind: entry.searchFailure ? "search-failure" : "tie",
     caseId: entry.caseId,
     locale: entry.locale,
+    ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+    ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
     queryText: entry.queryText,
     source: "seed",
+    callerTrack: normalizeSearchEvalCallerTrack(entry.callerTrack),
     baselineResults: entry.results,
     currentResults: entry.results,
     ...(entry.searchFailure ? { searchFailure: entry.searchFailure } : {}),
@@ -352,7 +407,7 @@ function baselineReportOutcomes(
 }
 
 async function readGeneratedCases(
-  input: OfflineSearchEvalInput,
+  input: PreparedOfflineSearchEvalInput,
   options: RunnerOptions,
 ): Promise<{
   cases: GeneratedPromptCase[]
@@ -384,7 +439,7 @@ async function readGeneratedCases(
 
 async function exploratoryGeneratedOutcomes(
   cases: readonly GeneratedPromptCase[],
-  input: OfflineSearchEvalInput,
+  input: PreparedOfflineSearchEvalInput,
   options: RunnerOptions,
   timing: SearchTiming,
 ): Promise<ExploratoryGeneratedOutcome[]> {
@@ -425,7 +480,10 @@ async function exploratoryGeneratedOutcomes(
     }
 
     const result = await searchAdmin(
-      { queryText: entry.queryText, locale: entry.locale },
+      {
+        queryText: entry.queryText,
+        locale: entry.locale,
+      },
       input,
       options,
       timing,
@@ -448,6 +506,7 @@ async function exploratoryGeneratedOutcomes(
 async function calibrateJudge(
   judge: OfflineSearchEvalJudge,
   baselineCases: readonly BaselineCase[],
+  callerTrack: SearchEvalCallerTrack,
 ): Promise<{
   report: CalibrationReport
   tokens: { input: number; output: number }
@@ -462,6 +521,7 @@ async function calibrateJudge(
   const result = await judge.judgePair({
     query: first.queryText,
     locale: first.locale,
+    callerTrack,
     listA: first.results,
     listB: first.results,
   })
@@ -484,7 +544,7 @@ async function compareBaselineCases({
   timing,
 }: {
   baselineCases: readonly BaselineCase[]
-  input: OfflineSearchEvalInput
+  input: PreparedOfflineSearchEvalInput
   judge: OfflineSearchEvalJudge
   options: RunnerOptions
   timing: SearchTiming
@@ -502,7 +562,11 @@ async function compareBaselineCases({
 
   for (const entry of baselineCases) {
     const current = await searchAdmin(
-      { queryText: entry.queryText, locale: entry.locale },
+      {
+        queryText: entry.queryText,
+        locale: entry.locale,
+        languageSlug: entry.languageSlug,
+      },
       input,
       options,
       timing,
@@ -516,8 +580,11 @@ async function compareBaselineCases({
         kind: "search-failure",
         caseId: entry.caseId,
         locale: entry.locale,
+        ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+        ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
         queryText: entry.queryText,
         source: "seed",
+        callerTrack: input.callerTrack,
         baselineResults: entry.results,
         currentResults: current.ok ? current.result.results : [],
         searchFailure: current.ok
@@ -531,6 +598,7 @@ async function compareBaselineCases({
       const forward = await judge.judgePair({
         query: entry.queryText,
         locale: entry.locale,
+        callerTrack: input.callerTrack,
         listA: entry.results,
         listB: current.result.results,
       })
@@ -539,6 +607,7 @@ async function compareBaselineCases({
       const swapped = await judge.judgePair({
         query: entry.queryText,
         locale: entry.locale,
+        callerTrack: input.callerTrack,
         listA: current.result.results,
         listB: entry.results,
       })
@@ -548,8 +617,11 @@ async function compareBaselineCases({
         kind: collapseSwapVerdicts(forward.verdict, swapped.verdict),
         caseId: entry.caseId,
         locale: entry.locale,
+        ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+        ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
         queryText: entry.queryText,
         source: "seed",
+        callerTrack: input.callerTrack,
         baselineResults: entry.results,
         currentResults: current.result.results,
         verdicts: [forward.verdict, swapped.verdict],
@@ -569,8 +641,11 @@ async function compareBaselineCases({
         kind: "judge-failure",
         caseId: entry.caseId,
         locale: entry.locale,
+        ...(entry.languageSlug ? { languageSlug: entry.languageSlug } : {}),
+        ...(entry.websiteLocale ? { websiteLocale: entry.websiteLocale } : {}),
         queryText: entry.queryText,
         source: "seed",
+        callerTrack: input.callerTrack,
         baselineResults: entry.results,
         currentResults: current.result.results,
         rationale: "judge_failed",
@@ -627,14 +702,66 @@ function baselineCasesForLocales(
   return cases.filter((entry) => allowed.has(entry.locale))
 }
 
+function baselineCallerTrack(baseline: BaselineArtifact) {
+  return normalizeSearchEvalCallerTrack(baseline.metadata.callerTrack)
+}
+
+async function assertBaselineTrackWritable({
+  artifactStore,
+  baselineName,
+  callerTrack,
+}: {
+  artifactStore: SearchEvalArtifactStore
+  baselineName: string
+  callerTrack: SearchEvalCallerTrack
+}): Promise<OfflineSearchEvalFailure | null> {
+  try {
+    const existing = await artifactStore.readBaseline(baselineName)
+    const existingCallerTrack = baselineCallerTrack(existing)
+    if (existingCallerTrack !== callerTrack) {
+      return failure("invalid_input", {
+        retryable: false,
+        adminReason: `baseline '${baselineName}' belongs to callerTrack '${existingCallerTrack}', not '${callerTrack}'`,
+      })
+    }
+    return null
+  } catch (error) {
+    if (
+      error instanceof SearchEvalArtifactError &&
+      error.code === "not_found"
+    ) {
+      return null
+    }
+    return artifactFailure(error)
+  }
+}
+
+function baselineTrackMismatchFailure({
+  baseline,
+  callerTrack,
+}: {
+  baseline: BaselineArtifact
+  callerTrack: SearchEvalCallerTrack
+}): OfflineSearchEvalFailure | null {
+  const existingCallerTrack = baselineCallerTrack(baseline)
+  return existingCallerTrack === callerTrack
+    ? null
+    : failure("invalid_input", {
+        retryable: false,
+        adminReason: `baseline '${baseline.name}' belongs to callerTrack '${existingCallerTrack}', not '${callerTrack}'`,
+      })
+}
+
 export async function runOfflineSearchEval(
   input: OfflineSearchEvalInput,
   options: RunnerOptions = {},
 ): Promise<OfflineSearchEvalResult> {
+  const prepared = prepareOfflineSearchEvalInput(input)
+  if ("ok" in prepared) return prepared
   const now = options.now ?? (() => new Date())
   const startedAt = now()
   const mastraRunId = options.runId ?? randomUUID()
-  const baselineName = input.baselineName ?? "default"
+  const baselineName = prepared.baselineName
   const artifactStore = options.artifactStore ?? createSearchEvalArtifactStore()
   const searchUrl = options.searchUrl ?? env.ADMIN_SEARCH_EVAL_SEARCH_URL
   const adminBearer = options.adminBearer ?? env.ADMIN_SEARCH_EVAL_API_KEY
@@ -644,16 +771,24 @@ export async function runOfflineSearchEval(
   const searchTiming: SearchTiming = { ms: 0 }
 
   if (input.mode === "capture-baseline") {
-    if (hasUnsupportedSeedLocales(input.locales)) {
+    if (hasUnsupportedSeedLocales(prepared.locales)) {
       return failure("invalid_input", { retryable: false })
     }
-    const seedPrompts = seedPromptsForLocales(input.locales)
+    const baselineWritable = await assertBaselineTrackWritable({
+      artifactStore,
+      baselineName,
+      callerTrack: prepared.callerTrack,
+    })
+    if (baselineWritable) return baselineWritable
+    const seedPrompts = seedPromptsForLocales(prepared.locales, {
+      callerTrack: prepared.callerTrack,
+    })
     if (seedPrompts.length === 0) {
       return failure("invalid_input", { retryable: false })
     }
     const cases = await searchSeedCases(
       seedPrompts,
-      input,
+      prepared,
       options,
       searchTiming,
     )
@@ -662,21 +797,22 @@ export async function runOfflineSearchEval(
     if (failedSeedCase?.searchFailure) {
       return searchFailureToOfflineFailure(failedSeedCase.searchFailure)
     }
-    const generated = await readGeneratedCases(input, options)
+    const generated = await readGeneratedCases(prepared, options)
     const exploratory = await exploratoryGeneratedOutcomes(
       generated.cases,
-      input,
+      prepared,
       options,
       searchTiming,
     )
     const finishedAt = now()
     const metadata = metadataFor({
       baselineName,
+      callerTrack: prepared.callerTrack,
       contentType: input.contentType ?? null,
       finishedAt,
       judgeModel: null,
       mastraRunId,
-      mode: input.searchMode ?? null,
+      mode: prepared.searchMode,
       searchLimit: input.searchLimit ?? DEFAULT_SEARCH_LIMIT,
       searchUrl,
       startedAt,
@@ -743,6 +879,11 @@ export async function runOfflineSearchEval(
   } catch (error) {
     return artifactFailure(error)
   }
+  const baselineMismatch = baselineTrackMismatchFailure({
+    baseline,
+    callerTrack: prepared.callerTrack,
+  })
+  if (baselineMismatch) return baselineMismatch
 
   let judge = options.judge
   if (!judge) {
@@ -756,27 +897,34 @@ export async function runOfflineSearchEval(
   const judgeStartedAt = Date.now()
   let calibration: Awaited<ReturnType<typeof calibrateJudge>>
   try {
-    calibration = await calibrateJudge(judge, baseline.cases)
+    calibration = await calibrateJudge(
+      judge,
+      baseline.cases,
+      prepared.callerTrack,
+    )
   } catch {
     return failure("judge_failed", { retryable: true })
   }
   if (!calibration.report.passed) {
     return failure("judge_failed", { retryable: true })
   }
-  const generated = await readGeneratedCases(input, options)
+  const generated = await readGeneratedCases(prepared, options)
   const exploratory = await exploratoryGeneratedOutcomes(
     generated.cases,
-    input,
+    prepared,
     options,
     searchTiming,
   )
-  const baselineCases = baselineCasesForLocales(baseline.cases, input.locales)
+  const baselineCases = baselineCasesForLocales(
+    baseline.cases,
+    prepared.locales,
+  )
   if (baselineCases.length === 0) {
     return failure("invalid_input", { retryable: false })
   }
   const compared = await compareBaselineCases({
     baselineCases,
-    input,
+    input: prepared,
     judge,
     options,
     timing: searchTiming,
@@ -790,11 +938,12 @@ export async function runOfflineSearchEval(
   const finishedAt = now()
   const metadata = metadataFor({
     baselineName,
+    callerTrack: prepared.callerTrack,
     contentType: input.contentType ?? null,
     finishedAt,
     judgeModel: judge.model,
     mastraRunId,
-    mode: input.searchMode ?? null,
+    mode: prepared.searchMode,
     promptSetVersion: baseline.metadata.promptSetVersion,
     searchLimit: input.searchLimit ?? DEFAULT_SEARCH_LIMIT,
     searchUrl,

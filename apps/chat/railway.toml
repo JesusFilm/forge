@@ -1,0 +1,22 @@
+# Railway only reads this file if the service's "Config-as-code Path" is
+# set to apps/chat/railway.toml in the service settings. Without that,
+# this file is silently ignored — see apps/admin/railway.toml for the
+# cautionary example and README.md "Railway service setup" for the
+# wiring checklist (including verifying the deployment record's
+# configFile field).
+
+[build]
+builder = "railpack"
+buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter @forge/chat build"
+watchPatterns = ["apps/chat/**"]
+
+[deploy]
+startCommand = "cd apps/chat && npx next start -p ${PORT:-3200}"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# [deploy.env] has been observed to be unreliable on Railway — set
+# HOSTNAME=0.0.0.0 as a service variable in the dashboard instead
+# (README checklist step). Kept here as documentation of the intent.
+[deploy.env]
+HOSTNAME = "0.0.0.0"

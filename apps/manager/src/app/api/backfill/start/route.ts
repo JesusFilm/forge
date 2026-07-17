@@ -1,5 +1,4 @@
 // POST /api/backfill/start — Retired legacy scene-vector backfill.
-// Scene embedding generation now belongs to Mastra and is launched from Admin.
 
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
@@ -11,9 +10,9 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       error: "Legacy Manager scene embedding backfill has been retired",
-      reason: "scene_embeddings_migrated_to_mastra",
+      reason: "legacy_scene_embedding_pipeline_removed",
       replacement:
-        "Use Admin scene embedding backfill; Admin launches Mastra and owns storage/search.",
+        "No replacement. Search uses transcript embeddings; historical scene data is retained for feat-199.",
     },
     { status: 410 },
   )

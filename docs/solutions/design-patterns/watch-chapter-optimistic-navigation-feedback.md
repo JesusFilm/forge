@@ -35,9 +35,9 @@ applies_when:
 Watch chapter cards are ordinary `next/link` navigations to another public
 watch route. On slow route resolution, the old page can remain visible long
 enough that a user wonders whether their click registered. The browser did not
-need a different URL contract; the page needed an immediate local
-acknowledgment using data already present in the carousel: target href, target
-title, and target thumbnail.
+need a new URL contract; the page needed an immediate local acknowledgment
+using data already present in the carousel: parent collection slug, target
+href, target title, and target thumbnail.
 
 The fix lives in `apps/web/src/components/watch/SiblingCarousel.tsx` and keeps
 the carousel server-data model unchanged. A normal click makes the clicked
@@ -50,13 +50,27 @@ card while the next route is still loading.
 Keep the chapter card as a `Link`. Do not replace it with imperative
 `router.push()` or a raw `<a>` just to get immediate feedback. The route
 builder in `apps/web/src/lib/routes.ts` still owns the canonical public watch
-href shape and base-path behavior:
+href shape and base-path behavior. In a collection carousel, preserve the
+current parent collection with the existing three-segment contextual route;
+fall back to the standalone video route only when no valid parent slug is
+available:
 
 ```tsx
+const parentSlug = tryAsContentSlug(canonicalParent.slug)
 const slug = tryAsContentSlug(child.slug)
 const lang = tryAsLocaleSlug(languageSlug)
-const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+const href =
+  slug && lang
+    ? parentSlug
+      ? watchEpisodePath(parentSlug, slug, lang)
+      : watchVideoPath(slug, lang)
+    : undefined
 ```
+
+This distinction matters for multi-parent clips. A slug-only chapter href can
+resolve through a different parent, changing the carousel order and active
+index after navigation. The contextual href keeps chapter progression inside
+the collection the user is already browsing.
 
 Capture only normal left-click navigations. Modified clicks must keep browser
 semantics, and active-card clicks should not create a fake pending state:
@@ -139,14 +153,12 @@ black, fade the clicked chapter poster in, and pulse the visible cover while
 the route is pending. The real player source, Mux metadata, downloads,
 subtitles, and share data still remain route-owned until navigation commits.
 
-If the route-owned poster can differ from the clicked carousel thumbnail, carry
-a separate one-shot destination bridge intent across the route boundary. The
-optimistic chapter payload should still self-invalidate when
-`currentVideoDocumentId` changes; do not keep it alive just to animate the
-destination. Instead, write a small client-only intent for normal clicks and
-consume it only when the destination video id, language slug, and href match.
-That lets the committed route poster reveal out of black without preserving
-stale title, card, playback, or share state.
+Do not carry a separate destination black-bridge intent across the route
+boundary. The optimistic chapter payload should self-invalidate when
+`currentVideoDocumentId` changes, and the committed route-owned poster should
+settle without another black overlay. A post-route black bridge creates a
+visible double transition: current media to black, clicked cover reveal, then
+the landed route dims from black again.
 
 When the requested order is "current player to black, then title/cover swap,"
 do not let `next/link` commit the route immediately for normal clicks. Keep the
@@ -190,6 +202,9 @@ Focused coverage belongs in
 - The clicked card exposes `aria-busy="true"` and the loading icon.
 - The clip label follows the clicked card while navigation is pending.
 - Modified clicks do not set pending feedback.
+- Collection carousels emit contextual hrefs such as
+  `/anticipate-the-resurrection.html/jesus-is-crucified/english.html`, not
+  slug-only child hrefs.
 
 Run:
 

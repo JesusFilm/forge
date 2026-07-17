@@ -16,8 +16,8 @@ describe("robots", () => {
     expect(result.host).toBeUndefined()
   })
 
-  it("emits no sitemap directive yet (sitemap deferred)", () => {
+  it("emits the watch sitemap index URL", () => {
     const result = robots()
-    expect(result.sitemap).toBeUndefined()
+    expect(result.sitemap).toBe("https://www.jesusfilm.org/watch/sitemap.xml")
   })
 })

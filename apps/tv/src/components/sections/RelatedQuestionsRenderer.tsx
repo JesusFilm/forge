@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
+  Animated,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -15,12 +16,14 @@ import {
   ASK_BIBLE_QUESTION_URL,
   CHAT_WITH_PERSON_URL,
 } from "../../lib/bibleContent"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { COLORS } from "../../lib/colors"
+import type { RelatedQuestionsBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
 import { validateActionUrl } from "../../lib/validateUrl"
-import { FocusableCard } from "../FocusableCard"
+import { FOCUS_RING_COLOR, FOCUS_RING_WIDTH } from "../focus/focusVisual"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { LinkModal } from "../LinkModal"
+import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Enable LayoutAnimation on Android ───────────────────────────────────────
@@ -34,22 +37,30 @@ if (
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+// Wire shape (no id is fetched; rows key on their index).
 type QuestionItem = {
-  id: string
-  question: string
+  question: string | null
   /** Nullable in admin's schema (RelatedQuestionItem.answer: String). */
   answer: string | null
 }
 
 // ── No-answer fallback ──────────────────────────────────────────────────────
 //
-// The studyQuestions data carries no inline answers, so an expanded row with
-// no answer text shows the same fallback mobile/web render: a "private
-// discussion" line plus two white pill CTAs (Chat / Ask a Bible question).
-// On TV the links open the QR LinkModal — the phone is the continuation
-// surface — instead of Linking.openURL. URLs + copy live in lib/bibleContent.
+// Answer-less expanded rows show the mobile/web fallback: a "private discussion"
+// line + two pill CTAs. On TV the links open the QR LinkModal (phone is the
+// continuation surface), not Linking.openURL. URLs + copy in lib/bibleContent.
 
 const PILL_ICON_SIZE = Math.round(scale(18))
+
+// Question-row focus ring overhangs the row into the column gutter so the border
+// clears edge-to-edge content (the row keeps paddingHorizontal 0). Outset must
+// stay <= the surrounding gutter; it does on both the inset=80 and inset=0 mounts.
+const RING_OUTSET_H = scale(16)
+const RING_OUTSET_V = scale(6)
+
+// Breathing room above an expanded row's answer/CTAs so the focused row's ring
+// (which overhangs RING_OUTSET_V below the row) clears them instead of crowding.
+const EXPANDED_TOP_GAP = scale(28)
 
 function FallbackPill({
   icon,
@@ -60,15 +71,53 @@ function FallbackPill({
   label: string
   onPress: () => void
 }) {
+  // Standardized invert-on-focus pill (matches DetailsActionRow's SecondaryPill):
+  // dark glass + white ink at rest -> white fill + near-black ink/icon on focus.
+  // No crimson glow — the old FocusableCard focusRing="crimson" exception is gone.
+  const { setFocused, progress, transform } = useFocusVisual("pill", {
+    nativeDriver: false,
+  })
+  const fillStyle = useMemo(
+    () => ({
+      backgroundColor: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.pillGlass, WATCH_THEME.focusFill],
+      }),
+      shadowOpacity: progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+      }),
+      transform,
+    }),
+    [progress, transform],
+  )
+  const ink = useMemo(
+    () =>
+      progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [WATCH_THEME.text, WATCH_THEME.focusInk],
+      }),
+    [progress],
+  )
   return (
-    <FocusableCard
+    <Pressable
       onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      accessibilityRole="button"
       accessibilityLabel={label}
-      style={styles.fallbackPill}
     >
-      <Ionicons name={icon} size={PILL_ICON_SIZE} color={COLORS.surface} />
-      <Text style={styles.fallbackPillText}>{label}</Text>
-    </FocusableCard>
+      <Animated.View style={[styles.fallbackPill, fillStyle]}>
+        <AnimatedFocusIcon
+          name={icon}
+          progress={progress}
+          size={PILL_ICON_SIZE}
+        />
+        <Animated.Text style={[styles.fallbackPillText, { color: ink }]}>
+          {label}
+        </Animated.Text>
+      </Animated.View>
+    </Pressable>
   )
 }
 
@@ -107,7 +156,8 @@ function QuestionRow({
   inset: number
   onOpenLink: (url: string) => void
 }) {
-  const [isFocused, setIsFocused] = useState(false)
+  // Shared focus engine ("row" role): ring only, no motion.
+  const { focused: isFocused, setFocused: setIsFocused } = useFocusVisual("row")
   // Null-safe: admin's RelatedQuestionItem.answer is a nullable String and the
   // SDUI cast hides it — a null answer must fall back, not crash the screen
   // (mobile's renderer guards the same way).
@@ -116,18 +166,22 @@ function QuestionRow({
   return (
     <View style={[styles.item, { marginHorizontal: inset }]}>
       <Pressable
-        style={[styles.questionRow, isFocused && styles.questionRowFocused]}
+        style={styles.questionRow}
         onPress={onToggle}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         accessibilityRole="button"
-        accessibilityLabel={item.question}
+        accessibilityLabel={item.question ?? undefined}
         accessibilityState={{ expanded: isExpanded }}
       >
         <Text style={styles.questionText} numberOfLines={3}>
           {item.question}
         </Text>
         <Text style={styles.chevron}>{isExpanded ? "\u2304" : "\u203A"}</Text>
+        {/* White focus ring overlay (matches HomeCard) \u2014 no layout shift. */}
+        {isFocused ? (
+          <View style={styles.questionRowRing} pointerEvents="none" />
+        ) : null}
       </Pressable>
       {isExpanded &&
         (hasAnswer ? (
@@ -145,23 +199,22 @@ export function RelatedQuestionsRenderer({
   section,
   inset = scale(80),
 }: {
-  section: NormalizedBlock
+  section: RelatedQuestionsBlockModel
   /**
-   * Horizontal screen gutter. Defaults to the SDUI full-bleed gutter
-   * (scale(80)); the watch page passes 0 when the section sits inside an
-   * already-padded column.
+   * Horizontal screen gutter; defaults to the SDUI full-bleed gutter (scale(80)).
+   * The watch page passes 0 when the section sits in an already-padded column.
    */
   inset?: number
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [linkUrl, setLinkUrl] = useState<string | null>(null)
 
-  const heading = section.rqHeading as string | null
-  const questions = (section.questions as QuestionItem[] | undefined) ?? []
+  const heading = section.rqHeading
+  const questions: QuestionItem[] = section.questions ?? []
 
-  const handleToggle = useCallback((id: string) => {
+  const handleToggle = useCallback((index: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setExpandedId((prev) => (prev === id ? null : id))
+    setExpandedIndex((prev) => (prev === index ? null : index))
   }, [])
 
   if (questions.length === 0) {
@@ -190,10 +243,10 @@ export function RelatedQuestionsRenderer({
       )}
       {questions.map((item, index) => (
         <QuestionRow
-          key={`rq-${item.id}-${index}`}
+          key={`rq-${index}`}
           item={item}
-          isExpanded={expandedId === item.id}
-          onToggle={() => handleToggle(item.id)}
+          isExpanded={expandedIndex === index}
+          onToggle={() => handleToggle(index)}
           inset={inset}
           onOpenLink={setLinkUrl}
         />
@@ -235,62 +288,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     borderRadius: scale(8),
   },
-  questionRowFocused: {
-    shadowColor: COLORS.primary,
-    shadowRadius: scale(30),
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 0 },
+  // Extended OUTWARD (negative insets) so the 5px border clears the row's
+  // edge-to-edge content (paddingHorizontal 0) instead of overlapping the first
+  // glyph + chevron; the overhang sits in the empty column gutter.
+  questionRowRing: {
+    position: "absolute",
+    top: -RING_OUTSET_V,
+    bottom: -RING_OUTSET_V,
+    left: -RING_OUTSET_H,
+    right: -RING_OUTSET_H,
+    borderRadius: scale(12),
+    borderWidth: FOCUS_RING_WIDTH,
+    borderColor: FOCUS_RING_COLOR,
   },
   questionText: {
     flex: 1,
     fontFamily: "System",
     fontSize: scale(22),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     marginRight: scale(12),
   },
   chevron: {
     fontFamily: "System",
     fontSize: scale(24),
-    color: COLORS.muted,
+    color: WATCH_THEME.text50,
   },
   fallbackContainer: {
+    paddingTop: EXPANDED_TOP_GAP,
     paddingBottom: scale(24),
   },
   fallbackBody: {
     fontFamily: "System",
     fontSize: Math.round(scale(20)),
     lineHeight: Math.round(scale(28)),
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     marginBottom: scale(16),
   },
   fallbackButtonRow: {
     flexDirection: "row",
     gap: scale(16),
   },
-  // White pill with dark ink (mobile/web parity); focus comes from
-  // FocusableCard's scale + crimson glow.
+  // Invert-on-focus pill (backgroundColor + ink are animated in FallbackPill).
+  // Static dark drop shadow revealed by the focus shadowOpacity ramp; rounded-rect
+  // to echo the watch hero's secondary pills.
   fallbackPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: scale(8),
-    backgroundColor: COLORS.text,
-    borderRadius: scale(999),
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(10),
+    gap: scale(10),
+    borderRadius: scale(16),
+    paddingHorizontal: scale(22),
+    paddingVertical: scale(14),
+    shadowColor: "#000000",
+    shadowRadius: scale(18),
+    shadowOffset: { width: 0, height: scale(10) },
   },
   fallbackPillText: {
     fontFamily: "System",
     fontSize: Math.round(scale(18)),
     fontWeight: "600",
-    color: COLORS.surface,
   },
   answerText: {
     fontFamily: "System",
     fontSize: scale(20),
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text82,
     lineHeight: scale(30),
+    marginTop: EXPANDED_TOP_GAP,
     paddingBottom: scale(20),
   },
 })

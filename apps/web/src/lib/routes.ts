@@ -73,11 +73,13 @@ const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
  * the builder boundary is type-narrowing instead of type-laundering.
  */
 type LocalizedHomeRoute = `/${string}.html${"" | `?${string}`}`
+type LanguageInventoryRoute = `/${string}.html/videos`
 type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
 type WatchEpisodeRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
-type VideosIndexRoute = "/videos"
-type SearchRoute = `/${"" | `?${string}`}`
+type LanguagesIndexRoute = "/languages"
+type LanguageVideosIndexRoute = `/${string}.html/videos`
+type SearchRoute = "/"
 
 function appendQueryString(path: string, opts?: BuildOptions): string {
   if (!opts) return path
@@ -95,6 +97,13 @@ export function localizedHomePath(
 ): LocalizedHomeRoute & Route {
   const path = `/${appendHtmlSuffix(lang)}`
   return appendQueryString(path) as LocalizedHomeRoute & Route
+}
+
+/** Build a localized inventory path `/{lang}.html/videos` (e.g. `/spanish-latin-american.html/videos`). */
+export function languageInventoryPath(
+  lang: LocaleSlug,
+): LanguageInventoryRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/videos` as LanguageInventoryRoute & Route
 }
 
 /** Build the canonical two-segment watch path `/{slug}.html/{lang}.html`. */
@@ -118,27 +127,38 @@ export function watchEpisodePath(
   return appendQueryString(path, opts) as WatchEpisodeRoute & Route
 }
 
-/** Build the all-videos index path `/videos` (no `.html` suffix). */
-export function videosIndexPath(): VideosIndexRoute & Route {
-  return "/videos" as VideosIndexRoute & Route
+/** Build the all-languages index path `/languages` (no `.html` suffix). */
+export function languagesIndexPath(): LanguagesIndexRoute & Route {
+  return "/languages" as LanguagesIndexRoute & Route
 }
 
-/** Build the global search-modal path `/` with optional `?q=` query. */
-export function searchPath(q?: string): SearchRoute & Route {
-  if (!q) return "/" as SearchRoute & Route
-  const params = new URLSearchParams({ q })
-  return `/?${params.toString()}` as SearchRoute & Route
+/** @deprecated Use `languagesIndexPath()` for the canonical language index. */
+export function videosIndexPath(): LanguagesIndexRoute & Route {
+  return languagesIndexPath()
+}
+
+/** Build the language-scoped videos index path `/{lang}.html/videos`. */
+export function languageVideosIndexPath(
+  lang: LocaleSlug,
+): LanguageVideosIndexRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/videos` as LanguageVideosIndexRoute & Route
+}
+
+/** Build the global search-modal fallback path `/`. */
+export function searchPath(): SearchRoute & Route {
+  return "/" as SearchRoute & Route
 }
 
 /**
- * Discriminated union returned by `parseWatchPath`. Eight kinds:
+ * Discriminated union returned by `parseWatchPath`. Nine kinds:
  *
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
  * - `video` — `/{slug}.html/{lang}.html` (two segments)
  * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
- * - `videos` — `/videos`
- * - `search` — deprecated inbound `/search?q=...` redirect shim
+ * - `languages` — `/languages`
+ * - `language-videos` — `/{lang}.html/videos`
+ * - `search` — deprecated inbound `/search` redirect shim
  * - `reserved` — first segment is in `RESERVED_PREFIXES` (api, _next, assets, etc.)
  * - `unknown` — none of the above (four-or-more segments, malformed)
  */
@@ -147,46 +167,18 @@ export type ParsedWatchPath =
   | { kind: "localized-home"; lang: string }
   | { kind: "video"; slug: string; lang: string }
   | { kind: "episode"; series: string; episode: string; lang: string }
-  | { kind: "videos" }
-  | { kind: "search"; q?: string }
+  | { kind: "languages" }
+  | { kind: "language-videos"; lang: string }
+  | { kind: "search" }
   | { kind: "reserved"; prefix: string }
   | { kind: "unknown"; raw: string }
-
-// Two callers with two shapes: proxy.ts hands us a URLSearchParams from
-// NextRequest.nextUrl.searchParams; Next 16 page routes hand us a plain
-// Record after awaiting their `searchParams: Promise<...>` prop. Accept both
-// here so callers don't repeat conversion ceremony at every site.
-export type SearchInput =
-  | URLSearchParams
-  | Record<string, string | string[] | undefined>
-
-function readSearchValue(
-  search: SearchInput | undefined,
-  key: string,
-): string | undefined {
-  if (!search) return undefined
-  if (search instanceof URLSearchParams) {
-    return search.get(key) ?? undefined
-  }
-  const value = search[key]
-  if (Array.isArray(value)) return value[0]
-  return value
-}
 
 /**
  * Classify a watch pathname (basePath-stripped) into a `ParsedWatchPath`.
  * Single source of truth — both page routes (Phase 2) and the canonicalizer
  * read this so the two halves can never silently drift.
- *
- * Accepts `search` in either Next 16 page-route shape (`Promise<Record>` after
- * await) or proxy.ts middleware shape (`URLSearchParams`). Returns plain JSON-
- * serializable objects so agent callers can branch on `kind` without type
- * narrowing helpers.
  */
-export function parseWatchPath(
-  pathname: string,
-  search?: SearchInput,
-): ParsedWatchPath {
+export function parseWatchPath(pathname: string): ParsedWatchPath {
   if (pathname === "" || pathname === "/") return { kind: "home" }
 
   const segments = pathname.split("/").filter(Boolean)
@@ -198,14 +190,21 @@ export function parseWatchPath(
   }
 
   if (segments.length === 1) {
-    if (first === "videos") return { kind: "videos" }
-    if (first === "search") {
-      return { kind: "search", q: readSearchValue(search, "q") }
+    if (first === "languages" || first === "videos") {
+      return { kind: "languages" }
     }
+    if (first === "search") return { kind: "search" }
     return { kind: "localized-home", lang: stripHtmlSuffix(first) }
   }
 
   if (segments.length === 2) {
+    if (segments[1] === "videos") {
+      return {
+        kind: "language-videos",
+        lang: stripHtmlSuffix(segments[0]),
+      }
+    }
+
     return {
       kind: "video",
       slug: stripHtmlSuffix(segments[0]),

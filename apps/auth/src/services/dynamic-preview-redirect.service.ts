@@ -6,6 +6,7 @@ const DYNAMIC_PREVIEW_CLIENT_IDS = new Set([
   "jfp_mastra_studio_preview",
   "jfp_mastra_studio_staging",
 ])
+const DYNAMIC_LOCAL_WEB_CLIENT_IDS = new Set(["jfp_web_local"])
 
 // OAuth clients ultimately need exact redirect URIs, but Railway PR previews
 // receive generated hostnames. Treat these regexes as tightly scoped wildcards:
@@ -41,6 +42,32 @@ export function isDynamicRailwayPreviewRedirectUriAllowed({
   }
 }
 
+export function isDynamicLocalWebRedirectUriAllowed({
+  clientId,
+  redirectUri,
+}: {
+  clientId: string
+  redirectUri: string
+}) {
+  if (!DYNAMIC_LOCAL_WEB_CLIENT_IDS.has(clientId)) {
+    return false
+  }
+
+  try {
+    const url = new URL(redirectUri)
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+      url.pathname === "/watch/api/auth/callback" &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.port.length > 0
+    )
+  } catch {
+    return false
+  }
+}
+
 export async function ensureDynamicPreviewRedirectUriRegistered({
   clientId,
   redirectUri,
@@ -51,13 +78,15 @@ export async function ensureDynamicPreviewRedirectUriRegistered({
   if (
     !clientId ||
     !redirectUri ||
-    !isDynamicRailwayPreviewRedirectUriAllowed({ clientId, redirectUri })
+    !isDynamicRedirectUriAllowed({ clientId, redirectUri })
   ) {
     return
   }
 
   const origin = new URL(redirectUri).origin
-  const postLogoutRedirectUri = `${origin}/api/auth/login`
+  const postLogoutRedirectUri = redirectUri.includes("/watch/api/auth/callback")
+    ? `${origin}/watch`
+    : `${origin}/api/auth/login`
 
   await prisma.$transaction(async (tx) => {
     const [client, environment] = await Promise.all([
@@ -100,6 +129,19 @@ export async function ensureDynamicPreviewRedirectUriRegistered({
       })
     }
   })
+}
+
+function isDynamicRedirectUriAllowed({
+  clientId,
+  redirectUri,
+}: {
+  clientId: string
+  redirectUri: string
+}) {
+  return (
+    isDynamicRailwayPreviewRedirectUriAllowed({ clientId, redirectUri }) ||
+    isDynamicLocalWebRedirectUriAllowed({ clientId, redirectUri })
+  )
 }
 
 function appendUnique(values: string[], value: string) {

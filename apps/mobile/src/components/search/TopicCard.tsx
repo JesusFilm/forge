@@ -24,18 +24,28 @@ export interface TopicCardProps {
   onSelect: (searchTerm: string) => void
   /** First search result's thumbnail, rendered faintly over the gradient. */
   thumbnailUrl?: string | null
+  /** Explicit width set by the grid so two cards sit per row. */
+  cardWidth: number
 }
 
-// A browse-category grid card. A vivid two-stop gradient fills the card, a
-// bottom scrim keeps the label legible, a white outline glyph sits top-left, and
-// the label sits bottom-left — mirroring the "Discover Categories Grid Card"
-// design. The Pressable owns touch + a11y; the glyph is decorative.
-export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
+// Browse-category grid card mirroring the "Discover Categories Grid Card"
+// design: gradient fill, bottom scrim for legibility, glyph top-left, label
+// bottom-left. The Pressable owns touch + a11y; the glyph is decorative.
+export function TopicCard({
+  topic,
+  onSelect,
+  thumbnailUrl,
+  cardWidth,
+}: TopicCardProps) {
   const typography = useTypography()
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && feedback.pressed]}
+      style={({ pressed }) => [
+        styles.card,
+        { width: cardWidth },
+        pressed && feedback.pressed,
+      ]}
       onPress={() => onSelect(topic.searchTerm)}
       accessibilityRole="button"
       accessibilityLabel={`Search ${topic.label}`}
@@ -80,8 +90,6 @@ export function TopicCard({ topic, onSelect, thumbnailUrl }: TopicCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flexGrow: 1,
-    flexBasis: "45%",
     aspectRatio: 1.05,
     borderRadius: 20,
     overflow: "hidden",

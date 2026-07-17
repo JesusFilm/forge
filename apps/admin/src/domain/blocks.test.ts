@@ -8,11 +8,13 @@ import {
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
+  TextBlockSchema,
   ContainerContentBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeHeroBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -20,7 +22,7 @@ import {
 // Happy-path: each top-level block type validates at minimum-required fields.
 // -----------------------------------------------------------------------------
 
-describe("BlockSchema — all 16 top-level types validate", () => {
+describe("BlockSchema — all top-level types validate", () => {
   const samples: Array<{ name: string; value: unknown }> = [
     {
       name: "adventCountdown",
@@ -73,6 +75,10 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       value: { t: "videoRecommendations" },
     },
     {
+      name: "watchHomeHero",
+      value: { t: "watchHomeHero" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
@@ -99,10 +105,40 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
   }
 
-  it("covers all 17 top-level block types listed in the experience schema", () => {
+  it("covers all 18 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
-    // videoRecommendations variant (schema only; no cms precedent).
-    expect(samples.length).toBe(17)
+    // videoRecommendations variant (schema only; no cms precedent) +
+    // watchHomeHero's homepage-only placeholder.
+    expect(samples.length).toBe(18)
+  })
+
+  it("accepts watchHomeHero as a placement-only placeholder", () => {
+    const result = WatchHomeHeroBlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts promotional Markdown text and rejects unknown variants", () => {
+    const promotional = TextBlockSchema.safeParse({
+      t: "text",
+      sectionKey: "mission-story",
+      heading: "A story worth discovering",
+      contentParagraphs: [
+        "### Why this story matters\n\nA substantial opening paragraph.",
+        "- One reason\n- Another reason",
+      ],
+      variant: "promotional",
+    })
+
+    expect(promotional.success).toBe(true)
+    expect(
+      TextBlockSchema.safeParse({
+        t: "text",
+        variant: "editorial-but-unknown",
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts videoHero metadata source modes", () => {
@@ -218,6 +254,25 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it("accepts a reference-first quote: structured citation identity and NO verse text", () => {
+    // Video-anchored generation stores reference + structured ids; apps/web resolves
+    // the verse text at render. The canonical schema must accept a text-less quote.
+    const result = BibleQuotesCarouselBlockSchema.safeParse({
+      t: "bibleQuotesCarousel",
+      heading: "Featured Scripture",
+      quotes: [
+        {
+          reference: "John 20:19-29",
+          osisId: "John.20.19",
+          chapterStart: 20,
+          verseStart: 19,
+          verseEnd: 29,
+        },
+      ],
+    })
+    expect(result.success).toBe(true)
+  })
 })
 
 // -----------------------------------------------------------------------------
@@ -243,6 +298,15 @@ describe("strictness", () => {
   it("rejects an unknown block type", () => {
     const result = BlockSchema.safeParse({ t: "marquee", value: "go" })
     expect(result.success).toBe(false)
+  })
+
+  it("accepts the watch home hero discriminator stored on watch home locales", () => {
+    const result = BlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+
+    expect(result.success).toBe(true)
   })
 })
 
@@ -492,6 +556,26 @@ describe("BlocksSchema", () => {
                 imageOverrideAssetId: "asset-item",
               },
             ],
+          },
+        ],
+      },
+    ]
+
+    expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("accepts root-relative admin media preview URLs", () => {
+    const input = [
+      {
+        t: "mediaCollection",
+        variant: "collection",
+        itemsSource: "manual",
+        showItemNumbers: false,
+        items: [
+          {
+            videoId: "video-1",
+            imageOverrideUrl: "/api/media-assets/asset-1/preview",
+            imageOverrideAssetId: "asset-1",
           },
         ],
       },

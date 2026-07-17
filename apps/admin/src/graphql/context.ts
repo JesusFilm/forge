@@ -16,9 +16,10 @@
 // beyond PUBLIC. Same session-wins precedence applies: an editor with
 // a session cookie who also forwards a consumer-app bearer keeps their
 // editorial role. YTM-002 adds `VIDEO_MAPPER`, a mapper-only catalog-sync
-// bearer. The bearer-resolution chain is:
+// bearer. Web signed-in watch-event writes mint `WEB_USER` after Auth token
+// introspection. The bearer-resolution chain is:
 //   session -> workflow-bearer -> manager-bearer -> video-mapper-bearer ->
-//   consumer-bearer -> PUBLIC
+//   web-user-token -> consumer-bearer -> PUBLIC
 // in that order; the first match wins. The internal bearer CSVs are
 // contractually disjoint per `config/env.ts`; precedence here is the safety
 // net if that invariant ever drifts.
@@ -40,6 +41,7 @@ import {
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
 import { isValidManagerBearer } from "@/auth/manager-bearer"
 import { isValidVideoMapperBearer } from "@/auth/video-mapper-bearer"
+import { resolveWebUserPrincipalFromToken } from "@/auth/web-user-token"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import type { ContextShape } from "@/graphql/builder"
 import { createLoaders } from "@/graphql/loaders"
@@ -54,9 +56,9 @@ export async function createContext({
   // Session wins. A user with an admin session who happens to also send
   // a (valid or stray) bearer header is treated as that session, not
   // demoted to a narrower bearer principal. Otherwise the chain is
-  // workflow -> manager -> mapper -> consumer -> PUBLIC. The bearer CSVs are
-  // contractually disjoint per `config/env.ts`; precedence here is the safety
-  // net if that invariant ever drifts.
+  // workflow -> manager -> mapper -> web-user -> consumer -> PUBLIC. The
+  // bearer CSVs are contractually disjoint per `config/env.ts`; precedence here
+  // is the safety net if that invariant ever drifts.
   let user = sessionUser
   if (user == null) {
     const authHeader = request.headers.get("authorization")
@@ -67,13 +69,19 @@ export async function createContext({
     } else if (isValidVideoMapperBearer(authHeader)) {
       user = VIDEO_MAPPER_PRINCIPAL
     } else {
-      const consumer = isValidConsumerBearer(authHeader)
-      if (consumer.valid) {
-        user = CONSUMER_BEARER_PRINCIPAL({
-          rateLimitBucketKey: consumer.bucketKey,
-        })
+      const webUser = await resolveWebUserPrincipalFromToken(authHeader)
+      if (webUser) {
+        user = webUser
       } else {
-        user = null
+        const consumer = isValidConsumerBearer(authHeader)
+        if (consumer.valid) {
+          user = CONSUMER_BEARER_PRINCIPAL({
+            rateLimitBucketKey: consumer.bucketKey,
+            fleet: consumer.fleet,
+          })
+        } else {
+          user = null
+        }
       }
     }
   }

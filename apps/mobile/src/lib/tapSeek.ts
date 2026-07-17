@@ -34,10 +34,9 @@ export function seekDeltaForTap(
   return side === "left" ? -skipSeconds : skipSeconds
 }
 
-/** A tap is a double-tap (→ seek) when a single-tap is already pending its
- *  DOUBLE_TAP_MS window; otherwise it starts a pending single-tap. The caller
- *  must cancel the pending single-tap when this returns "double", else the
- *  stale single-tap fires after the seek and hides the chrome unexpectedly. */
+/** Double-tap (→ seek) when a single-tap is already pending its DOUBLE_TAP_MS
+ *  window; else starts a pending single-tap. Caller must cancel the pending
+ *  single-tap on "double", else it fires after the seek and hides the chrome. */
 export function classifyTap(singleTapPending: boolean): "double" | "single" {
   return singleTapPending ? "double" : "single"
 }

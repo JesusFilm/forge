@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "に同意します",
     "close": "閉じる",
     "download": "ダウンロード",
+    "authRequiredTitle": "この動画をダウンロードしますか？",
+    "authRequiredBody": "動画をダウンロードするには、無料のJesus Filmアカウントが必要です。",
+    "signInToDownload": "ダウンロードするにはサインイン",
+    "keepWatching": "視聴を続ける",
     "checking": "確認中",
     "closeTermsOfUse": "利用規約を閉じる",
     "cancel": "キャンセル",
@@ -83,7 +87,8 @@
     "toggleOn": "オン",
     "toggleOff": "オフ",
     "close": "閉じる",
-    "apply": "適用"
+    "apply": "適用",
+    "noLanguageSubtitles": "{language}の字幕なし"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# エピソード} other {# エピソード}}",
@@ -192,7 +197,10 @@
     "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "今すぐ見る",

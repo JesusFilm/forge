@@ -14,7 +14,7 @@ Scope: `apps/web`.
 - Keep preview/revalidate endpoints token-gated.
 - Export route metadata where relevant.
 - For any user-visible `/watch` link in a button, card, carousel, modal, or component, build the URL with the public audio language slug (`english.html`, `spanish-castilian.html`, etc.). Use `variant.language.slug`, `languageSlug`, or `currentLanguageSlug` and the route builders in `src/lib/routes.ts`.
-- Keep search in the global modal surface. Do not add buttons, cards, or generated links to `/watch/search` or `/watch/search.html/search.html`; use the current page with `?q=` (or the root modal fallback) instead.
+- Keep search in the global modal surface. Do not add buttons, cards, or generated links to `/watch/search`, `/watch/search.html/search.html`, or query-driven search URLs; use the root modal fallback instead.
 
 ## Do not
 

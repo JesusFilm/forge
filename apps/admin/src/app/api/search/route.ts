@@ -9,8 +9,10 @@
 import { prisma } from "@/db/client"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
+import { shouldShedFleetRequest } from "@/auth/fleet-ceiling"
 import { env } from "@/config/env"
 import {
+  formatSearchTimingLogLine,
   HybridSearchService,
   isContentType,
   type ContentType,
@@ -152,6 +154,13 @@ export async function GET(request: Request): Promise<Response> {
     return authenticationRequired(authTag as "invalid_bearer" | "anonymous")
   }
 
+  // Global per-fleet-key abuse ceiling (F1 #2) — a SECOND gate after auth. The
+  // per-IP gate above can't bound an IP-rotating attacker holding the extracted
+  // fleet key; this counter spans all IPs/viewer_ids for the key.
+  if (await shouldShedFleetRequest(authResult, "rest")) {
+    return tooManyRequests()
+  }
+
   const { searchParams } = new URL(request.url)
 
   const q = searchParams.get("q")?.trim() ?? ""
@@ -200,7 +209,7 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     const service = new HybridSearchService({ prisma })
-    const { response, trace } = await service.searchWithTrace({
+    const { response, trace, timings } = await service.searchWithTrace({
       query: q,
       locale,
       limit: limitParam,
@@ -209,6 +218,7 @@ export async function GET(request: Request): Promise<Response> {
       mode,
       debug,
     })
+    const traceWriteStartedAt = performance.now()
     await recordSearchTraceSafely({
       query: q,
       locale,
@@ -221,6 +231,22 @@ export async function GET(request: Request): Promise<Response> {
       startedAt,
       completedAt: new Date(),
     }).catch(() => {})
+    const traceWriteMs = Math.max(
+      0,
+      Math.round((performance.now() - traceWriteStartedAt) * 10) / 10,
+    )
+    console.error(
+      formatSearchTimingLogLine({
+        route: "rest",
+        locale,
+        requestedMode: mode ?? null,
+        searchMode: trace.searchMode,
+        outcome: trace.outcome,
+        resultCount: trace.resultCount,
+        timings,
+        traceWriteMs,
+      }),
+    )
     return Response.json(response, { status: 200 })
   } catch (error) {
     await recordSearchTraceSafely({

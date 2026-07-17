@@ -86,9 +86,13 @@ await tx.account.upsert({
 })
 ```
 
-For OAuth providers, use the same rule: existing editors may sign in, but new
-accounts should not be created implicitly. In this codebase that means
-`disableSignUp: true` on Google, Apple, and Okta provider config.
+For admin-only OAuth providers, use the same rule: existing editors may sign in,
+but new accounts should not be created implicitly. When the standalone Auth app
+also serves public Web viewer accounts, allow new email/password and trusted
+social-provider signups, but keep duplicate-account protection in front of
+Better Auth so existing Auth users and legacy Firebase users are asked to sign
+in instead. Relying apps such as Admin and Manager must still enforce their own
+app-local access checks after the OAuth callback.
 
 ## Why This Matters
 

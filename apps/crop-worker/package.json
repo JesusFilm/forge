@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/server.ts",
+    "smoke:smart-crop-real-video": "tsx scripts/smart-crop-real-video-smoke.ts",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "lint": "eslint .",

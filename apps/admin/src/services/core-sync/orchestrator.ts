@@ -38,6 +38,7 @@ import { syncDubs } from "./phases/sync-dubs"
 import { syncDubDownloads } from "./phases/sync-dub-downloads"
 import { runCoverageAudit, type CoverageAudit } from "./coverage-audit"
 import { refreshWatchRouteManifestAfterCoreSync } from "../watch-route-manifest-refresh.service"
+import { refreshWatchSeoManifestAfterCoreSync } from "../watch-seo-manifest-refresh.service"
 
 const PHASE_RUNNERS: Record<SyncPhase, PhaseRunner> = {
   languages: syncLanguages,
@@ -296,6 +297,7 @@ export async function finishSyncRun(
 
   const coverageAudit = await runCoverageAudit(prisma).catch(() => undefined)
   await refreshWatchRouteManifestAfterCoreSync({ prisma, phases })
+  await refreshWatchSeoManifestAfterCoreSync({ prisma, phases })
 
   return {
     incremental: run.incremental,

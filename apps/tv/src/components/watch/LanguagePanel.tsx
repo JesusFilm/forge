@@ -1,25 +1,6 @@
-// On-page language (audio dub) picker for the details screen (R8, R13).
-//
-// Styled to the Claude Design handoff ("Forge TV Video Page" → Audio Language
-// sheet): a translucent, hairline-bordered sheet centred over a dimmed backdrop,
-// a header with a dimmed sub-line, and a focus-trapping TVFocusGuideView wrapping
-// a list of dubs (WatchOptionRow). Each row carries a leading globe glyph, the
-// language name (+ native name), and a red check on the active dub; focus inverts
-// the row to a white fill (tvOS HIG). Selecting a playable dub sets the session's
-// activeVariantIndex and dismisses.
-//
-// The list is a VIRTUALIZED FlatList, not a ScrollView: a video like the JESUS
-// film carries ~2,259 dubs, and every WatchOptionRow mounts Animated values —
-// mounting all rows froze the sheet open. Rows are fixed-height
-// (WATCH_OPTION_ROW_HEIGHT), so getItemLayout + initialScrollIndex open the
-// sheet AT the active dub with its row mounted — which is also what lets
-// hasTVPreferredFocus land (tvOS ignores preferred focus on unmounted rows).
-//
-// A published dub with no playable stream (`hls == null` / empty) renders as a
-// DISABLED, non-selectable row: visually muted and NOT focusable, so the viewer
-// can't pick an unplayable language. The annotation lives in panelState.ts
-// (unit-tested there — jest-expo can't load this .tsx). The Close affordance is
-// always focusable so the viewer is never trapped.
+// On-page dub picker (R8, R13). VIRTUALIZED: JESUS's ~2,259 Animated rows, so
+// getItemLayout + initialScrollIndex open AT the active dub (lets hasTVPreferredFocus land
+// — tvOS ignores it on unmounted rows). Unplayable dubs render DISABLED (panelState.ts).
 
 import { useMemo } from "react"
 import { FlatList, Modal, Text, View } from "react-native"

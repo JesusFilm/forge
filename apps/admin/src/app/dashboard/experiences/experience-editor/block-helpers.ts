@@ -22,12 +22,14 @@ export type BlockTemplateKey =
   | "mediaCollection"
   | "navigationCarousel"
   | "promoBanner"
+  | "promotionalText"
   | "relatedQuestions"
   | "section"
   | "text"
   | "video"
   | "videoCarousel"
   | "videoHero"
+  | "watchHomeHero"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -36,11 +38,13 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "videoHero",
   "video",
   "videoCarousel",
+  "watchHomeHero",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
   "mediaCollection",
   "text",
+  "promotionalText",
   "cta",
   "infoBlocks",
   "card",
@@ -69,6 +73,27 @@ export const CONTAINER_SLOT_LAYOUT_PRESETS = [
   { label: "3 / 3 / 3 / 3", spans: [3, 3, 3, 3] },
 ] as const
 
+export function contentParagraphsFromEditorText(
+  value: string,
+  variant: unknown,
+) {
+  const separator = variant === "promotional" ? /\n\s*\n/g : /\n/g
+
+  return value
+    .split(separator)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+export function editorTextFromContentParagraphs(
+  paragraphs: string[],
+  variant: unknown,
+) {
+  return paragraphs.join(variant === "promotional" ? "\n\n" : "\n")
+}
+
+const legacyEditorOnlyKeys = new Set(["videoSlug"])
+
 export type VideoLibraryItem = {
   key: string
   title: string
@@ -84,6 +109,7 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  hasGrounding: boolean
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
@@ -174,6 +200,7 @@ export function containerSlotMarkerIndexes(content: unknown[]) {
 
 const optionalEmptyStringKeys = new Set([
   "backgroundColor",
+  "backgroundImageAssetId",
   "backgroundImageUrl",
   "buttonLink",
   "category",
@@ -184,11 +211,14 @@ const optionalEmptyStringKeys = new Set([
   "ctaLink",
   "footerText",
   "imageOverrideUrl",
+  "imageOverrideAssetId",
+  "imageAssetId",
   "imageUrl",
   "labelOverride",
   "link",
   "linkToSectionKey",
   "mediaUrl",
+  "mediaAssetId",
   "ogImageUrl",
   "sectionKey",
   "streamingUrl",
@@ -261,6 +291,7 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
   const normalizedEntries = Object.entries(record)
     .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
     .filter(([key, item]) => {
+      if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
@@ -329,6 +360,17 @@ export function summarizeBlock(
       badges: [
         asBoolean(value.useRouteVideo) ? "ROUTE_VIDEO" : "AUTHORED_VIDEO",
       ],
+    }
+  }
+
+  if (type === "watchHomeHero") {
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Home Hero",
+      title: "Watch Home Hero",
+      body: "Renders the static Watch homepage hero.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
     }
   }
 
@@ -613,6 +655,13 @@ export function createTemplateBlock(
     }
   }
 
+  if (template === "watchHomeHero") {
+    return {
+      t: "watchHomeHero",
+      sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
   if (template === "video") {
     return {
       t: "video",
@@ -689,6 +738,33 @@ export function createTemplateBlock(
       subtitle: "Supporting subtitle",
       contentParagraphs: ["Write the next part of the story here."],
       variant: "default",
+    }
+  }
+
+  if (template === "promotionalText") {
+    return {
+      t: "section",
+      sectionKey: `promotional-story-${index}`,
+      backgroundColor: "purple",
+      backgroundOpacity: 1,
+      dynamicBackgroundImage: false,
+      staticOverlay: true,
+      content: [
+        {
+          t: "text",
+          sectionKey: `promotional-copy-${index}`,
+          subtitle: "Promotional story",
+          heading: "Tell the story behind this experience",
+          headingLevel: "h2",
+          contentParagraphs: [
+            "### Add a descriptive subheading",
+            "Write a substantial opening paragraph that explains what viewers will discover in this experience.",
+            "Follow with the people, places, themes, or context that make this story distinct.",
+            "- Add specific, useful details\n- Use natural language people search for\n- Link to a meaningful next step",
+          ],
+          variant: "promotional",
+        },
+      ],
     }
   }
 

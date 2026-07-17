@@ -5,17 +5,15 @@ import path from "node:path"
 import { z } from "zod"
 
 import { env, getMastraStorageDir } from "../../config/env"
-import {
-  DISCOVERY_QUERY_FAILURE_CODES,
-  MAX_DISCOVERY_TEXT_LENGTH,
-  MAX_INSTAGRAM_HASHTAGS,
-  type DiscoveryReport,
-} from "./types"
+import { FIRECRAWL_SEARCH_ERROR_CODES } from "../firecrawl-search-client"
+import type { DiscoveryReport } from "./types"
 
 const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
 const MAX_POSTS = 200
 const MAX_QUERIES = 20
-const MAX_QUERY_FAILURES = 20
+const MAX_QUERY_FAILURES = 70
+const MAX_HASHTAGS = 30
+const MAX_SAFE_TEXT = 1024
 const MAX_URL = 512
 const MAX_SHORT_TEXT = 256
 
@@ -26,8 +24,8 @@ export const InstagramPostSchema = z
     mediaType: z.enum(["post", "reel", "tv"]),
     authorHandle: z.string().max(MAX_SHORT_TEXT).nullable(),
     authorName: z.string().max(MAX_SHORT_TEXT).nullable(),
-    caption: z.string().max(MAX_DISCOVERY_TEXT_LENGTH),
-    hashtags: z.array(z.string().max(128)).max(MAX_INSTAGRAM_HASHTAGS),
+    caption: z.string().max(MAX_SAFE_TEXT),
+    hashtags: z.array(z.string().max(128)).max(MAX_HASHTAGS),
     publishedAt: z.string().max(64).nullable(),
     thumbnailUrl: z.string().max(MAX_URL).nullable(),
     matchedAi: z.array(z.string().max(64)).max(64),
@@ -37,9 +35,9 @@ export const InstagramPostSchema = z
 
 export const DiscoveryQueryFailureSchema = z
   .object({
-    query: z.string().max(MAX_DISCOVERY_TEXT_LENGTH),
-    code: z.enum(DISCOVERY_QUERY_FAILURE_CODES),
-    message: z.string().max(MAX_DISCOVERY_TEXT_LENGTH),
+    query: z.string().max(MAX_SAFE_TEXT),
+    code: z.enum([...FIRECRAWL_SEARCH_ERROR_CODES, "search_failed"]),
+    message: z.string().max(MAX_SAFE_TEXT),
   })
   .strict()
 
@@ -48,6 +46,7 @@ export const DiscoveryTotalsSchema = z
     candidates: z.number().int().nonnegative(),
     instagram: z.number().int().nonnegative(),
     deduped: z.number().int().nonnegative(),
+    excludedCommentary: z.number().int().nonnegative(),
     qualified: z.number().int().nonnegative(),
   })
   .strict()
@@ -60,9 +59,7 @@ export const DiscoveryReportSchema = z
     mastraRunId: z.string().max(128),
     startedAt: z.string().max(64),
     finishedAt: z.string().max(64),
-    queries: z
-      .array(z.string().max(MAX_DISCOVERY_TEXT_LENGTH))
-      .max(MAX_QUERIES),
+    queries: z.array(z.string().max(MAX_SAFE_TEXT)).max(MAX_QUERIES),
     totals: DiscoveryTotalsSchema,
     queryFailures: z.array(DiscoveryQueryFailureSchema).max(MAX_QUERY_FAILURES),
     posts: z.array(InstagramPostSchema).max(MAX_POSTS),

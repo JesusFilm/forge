@@ -22,7 +22,7 @@ carousel, promo slide, or responsive layout.
 - Admin GraphQL: `https://admin.jesusfilm.org/api/graphql` via the local
   `WEB_ADMIN_API_KEYS` server secret.
 - YouVersion key source: local `apps/web/.env` server secret.
-- YouVersion version: code default `YOUVERSION_DEFAULT_VERSION_ID=3034` (BSB).
+- YouVersion version: code-owned launch default `3034` (BSB).
 - LaunchDarkly rollout note: after the flag follow-up, this panel is gated by
   `forge.watch.youVersionBibleQuotes` and local smoke must set
   `FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT=true`; the default/off state

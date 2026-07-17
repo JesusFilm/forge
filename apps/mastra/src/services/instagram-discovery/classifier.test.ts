@@ -68,6 +68,58 @@ describe("classifyPost", () => {
     expect(qualifies(signals)).toBe(true)
   })
 
+  it("excludes commentary even when AI + Christian words are present", () => {
+    const signals = classifyPost(
+      post("Should we be listening to AI generated Christian music?"),
+    )
+    expect(signals.isAiGenerated).toBe(true)
+    expect(signals.isChristian).toBe(true)
+    expect(signals.isCommentary).toBe(true)
+    expect(signals.matchedCommentary).toContain("should we")
+    expect(qualifies(signals)).toBe(false)
+  })
+
+  it("excludes tutorial/prompt walk-through posts", () => {
+    const signals = classifyPost(
+      post(
+        "Here's my EXACT ChatGPT conversation to make these Veo 3 Bible prompts",
+      ),
+    )
+    expect(signals.isCommentary).toBe(true)
+    expect(qualifies(signals)).toBe(false)
+  })
+
+  it("keeps a genuine creation that has no commentary words", () => {
+    const signals = classifyPost(
+      post(
+        "I recreated the story of Jesus' crucifixion using cinematic AI storytelling",
+      ),
+    )
+    expect(signals.isAiGenerated).toBe(true)
+    expect(signals.isChristian).toBe(true)
+    expect(signals.isCommentary).toBe(false)
+    expect(qualifies(signals)).toBe(true)
+  })
+
+  it("keeps genuine creations that use commentary-adjacent words", () => {
+    // "according to" (Gospel attribution), "explains", and "mocking" (Passion
+    // narrative) must NOT exclude real creations — these terms were removed.
+    const gospel = classifyPost(
+      post("AI animation of the Gospel according to John, made with Veo"),
+    )
+    expect(qualifies(gospel)).toBe(true)
+
+    const explainer = classifyPost(
+      post("This AI generated film explains the parable of the sower #bible"),
+    )
+    expect(qualifies(explainer)).toBe(true)
+
+    const passion = classifyPost(
+      post("AI recreation of the soldiers mocking Christ before the cross"),
+    )
+    expect(qualifies(passion)).toBe(true)
+  })
+
   it("flags nothing for an empty caption with no hashtags", () => {
     const signals = classifyPost(post(""))
     expect(signals.isAiGenerated).toBe(false)

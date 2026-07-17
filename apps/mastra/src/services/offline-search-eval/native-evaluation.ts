@@ -9,6 +9,12 @@ import { z } from "zod"
 import type { AdminCandidateListResponse } from "../admin-search-eval-client"
 import { env } from "../../config/env"
 import { finalizeReport } from "./report"
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  SEARCH_EVAL_CALLER_TRACK_IDS,
+  SEARCH_EVAL_SEARCH_MODES,
+  normalizeSearchEvalCallerTrack,
+} from "./types"
 import type {
   ComparisonOutcome,
   MastraEvaluationProjection,
@@ -47,6 +53,11 @@ export const NativeSearchEvalInputSchema = z
   .object({
     query: z.string(),
     locale: z.string(),
+    languageSlug: z.string().nullable().optional(),
+    websiteLocale: z.string().nullable().optional(),
+    callerTrack: z
+      .enum(SEARCH_EVAL_CALLER_TRACK_IDS)
+      .default(DEFAULT_SEARCH_EVAL_CALLER_TRACK),
     source: z.enum([
       "seed",
       "generated_catalog",
@@ -58,7 +69,7 @@ export const NativeSearchEvalInputSchema = z
     searchOptions: z
       .object({
         limit: z.number().int().positive(),
-        mode: z.enum(["hybrid", "keyword-first"]),
+        mode: z.enum(SEARCH_EVAL_SEARCH_MODES),
         contentType: z.enum(["all", "video", "experience"]),
       })
       .strict(),
@@ -86,6 +97,8 @@ export const NativeSearchEvalOutputSchema = z
     ]),
     caseId: z.string(),
     locale: z.string(),
+    languageSlug: z.string().nullable().optional(),
+    websiteLocale: z.string().nullable().optional(),
     query: z.string(),
     baselineTopResults: z.array(SearchEvalNativeResultSchema),
     currentTopResults: z.array(SearchEvalNativeResultSchema),
@@ -415,6 +428,7 @@ export function createSampleSearchEvalReport(input: {
       promptSetVersion: SAMPLE_PROMPT_SET_VERSION,
       adminSearchUrl: null,
       judgeModel: "sample-fixture",
+      callerTrack: DEFAULT_SEARCH_EVAL_CALLER_TRACK,
       search: { limit: 5, mode: "hybrid", contentType: null },
     },
     calibration: { passed: true, matched: 3, total: 3, skipped: false },
@@ -436,14 +450,18 @@ function nativeReportDatasetName(
   report: SearchEvalReport,
   environmentLabel: string,
 ) {
-  return `search-eval:${environmentLabel}:${report.metadata.baselineName}`
+  return `search-eval:${environmentLabel}:${report.metadata.baselineName}:${reportCallerTrack(
+    report,
+  )}:${searchMode(report.metadata.search.mode)}`
 }
 
 function nativeReportDatasetKey(
   report: SearchEvalReport,
   environmentLabel: string,
 ) {
-  return `search-eval:${environmentLabel}:${report.metadata.baselineName}:${report.metadata.promptSetVersion}`
+  return `search-eval:${environmentLabel}:${report.metadata.baselineName}:${report.metadata.promptSetVersion}:track:${reportCallerTrack(
+    report,
+  )}:mode:${searchMode(report.metadata.search.mode)}`
 }
 
 function nativeReportExperimentName(
@@ -451,7 +469,9 @@ function nativeReportExperimentName(
   environmentLabel: string,
 ) {
   const verb = report.kind === "baseline-report" ? "baseline" : "compare"
-  return `search-eval-${verb}:${environmentLabel}:${report.metadata.baselineName}:${report.reportId}`
+  return `search-eval-${verb}:${environmentLabel}:${report.metadata.baselineName}:${reportCallerTrack(
+    report,
+  )}:${searchMode(report.metadata.search.mode)}:${report.reportId}`
 }
 
 function nativeReportExperimentKey(
@@ -471,6 +491,7 @@ function nativeReportDatasetMetadata(
       kind: "report_seed_prompt_dataset",
       environmentLabel,
       baselineName: report.metadata.baselineName,
+      callerTrack: reportCallerTrack(report),
       promptSetVersion: report.metadata.promptSetVersion,
       source: "search_eval_report",
       lastReportId: report.reportId,
@@ -660,6 +681,7 @@ async function upsertNativeExperiment(input: {
         reportId: input.report.reportId,
         reportPath: input.reportPath ?? null,
         baselineName: input.report.metadata.baselineName,
+        callerTrack: reportCallerTrack(input.report),
         promptSetVersion: input.report.metadata.promptSetVersion,
         totals: input.report.totals,
         localeMix: input.report.localeMix,
@@ -752,6 +774,9 @@ function nativeDatasetItemFromOutcome(input: {
     input: {
       query: input.outcome.queryText,
       locale: input.outcome.locale,
+      languageSlug: input.outcome.languageSlug ?? null,
+      websiteLocale: input.outcome.websiteLocale ?? null,
+      callerTrack: reportCallerTrack(input.report),
       source: input.outcome.source,
       searchOptions: {
         limit: input.report.metadata.search.limit,
@@ -777,9 +802,12 @@ function nativeDatasetItemFromOutcome(input: {
         reportId: input.report.reportId,
         reportPath: input.reportPath ?? null,
         baselineName: input.report.metadata.baselineName,
+        callerTrack: reportCallerTrack(input.report),
         promptSetVersion: input.report.metadata.promptSetVersion,
         caseId: input.outcome.caseId,
         locale: input.outcome.locale,
+        languageSlug: input.outcome.languageSlug ?? null,
+        websiteLocale: input.outcome.websiteLocale ?? null,
         promptSource: input.outcome.source,
         outcomeKind: input.outcome.kind,
         generatedCandidate: false,
@@ -797,6 +825,8 @@ function nativeOutputFromOutcome(
     outcomeKind: outcome.kind,
     caseId: outcome.caseId,
     locale: outcome.locale,
+    languageSlug: outcome.languageSlug ?? null,
+    websiteLocale: outcome.websiteLocale ?? null,
     query: outcome.queryText,
     baselineTopResults: outcome.baselineResults.slice(0, 5).map(nativeResult),
     currentTopResults: outcome.currentResults.slice(0, 5).map(nativeResult),
@@ -836,6 +866,7 @@ function nativeDatasetItemFromPromotedCandidate(input: {
       input: {
         query: candidate.sanitizedQueryText,
         locale: candidate.locale,
+        callerTrack: DEFAULT_SEARCH_EVAL_CALLER_TRACK,
         source: promotedSource(candidate.source),
         searchOptions: { limit: 20, mode: "hybrid", contentType: "all" },
       },
@@ -869,7 +900,9 @@ function reportOutcomeSourceKey(
   report: SearchEvalReport,
   outcome: ComparisonOutcome,
 ) {
-  return `prompt-set:${report.metadata.promptSetVersion}:case:${outcome.caseId}`
+  return `prompt-set:${report.metadata.promptSetVersion}:track:${reportCallerTrack(
+    report,
+  )}:mode:${searchMode(report.metadata.search.mode)}:case:${outcome.caseId}`
 }
 
 function nativeResult(result: SearchEvalResult) {
@@ -892,8 +925,15 @@ function resultAnchor(result: SearchEvalResult) {
   }
 }
 
-function searchMode(mode: string | null): "hybrid" | "keyword-first" {
+function searchMode(
+  mode: string | null,
+): "hybrid" | "keyword-first" | "semantic-only" {
+  if (mode === "semantic-only") return "semantic-only"
   return mode === "keyword-first" ? "keyword-first" : "hybrid"
+}
+
+function reportCallerTrack(report: SearchEvalReport) {
+  return normalizeSearchEvalCallerTrack(report.metadata.callerTrack)
 }
 
 function contentType(
@@ -979,6 +1019,7 @@ function sampleOutcomes(): ComparisonOutcome[] {
       locale: "en",
       queryText: "Who is Jesus?",
       source: "seed",
+      callerTrack: DEFAULT_SEARCH_EVAL_CALLER_TRACK,
       baselineResults: [
         sampleResult({
           type: "video",
@@ -1009,6 +1050,7 @@ function sampleOutcomes(): ComparisonOutcome[] {
       locale: "en",
       queryText: "Bible Project",
       source: "seed",
+      callerTrack: DEFAULT_SEARCH_EVAL_CALLER_TRACK,
       baselineResults: [
         sampleResult({
           type: "video",
@@ -1039,6 +1081,7 @@ function sampleOutcomes(): ComparisonOutcome[] {
       locale: "en",
       queryText: "random ocean clip",
       source: "seed",
+      callerTrack: DEFAULT_SEARCH_EVAL_CALLER_TRACK,
       baselineResults: [],
       currentResults: [],
       verdicts: ["both-irrelevant", "both-irrelevant"],

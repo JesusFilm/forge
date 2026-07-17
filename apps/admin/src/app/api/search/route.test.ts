@@ -4,6 +4,10 @@ vi.mock("@/auth/rate-limit", () => ({
   rateLimitAuthRoute: vi.fn(),
 }))
 
+vi.mock("@/auth/fleet-ceiling", () => ({
+  shouldShedFleetRequest: vi.fn(),
+}))
+
 vi.mock("@/auth/search-bearer", () => ({
   isAnyKnownBearer: vi.fn(),
 }))
@@ -15,6 +19,20 @@ vi.mock("@/config/env", () => ({
 // The route constructs a HybridSearchService with the shared `prisma`
 // import; we mock the class so tests don't touch the DB.
 const searchMock = vi.fn()
+const makeTimings = () => ({
+  pipelineMode: "hybrid" as const,
+  totalMs: 1,
+  embeddingMs: 1,
+  retrievalsMs: 0,
+  retrievalWaitMs: 0,
+  fusionMs: 0,
+  dilutionCapMs: 0,
+  dedupeMs: 0,
+  mappingMs: 0,
+  hydrationMs: 0,
+  retrievers: [],
+  db: [],
+})
 const searchWithTraceMock = vi.fn(async (params) => {
   const response = await searchMock(params)
   return {
@@ -30,6 +48,7 @@ const searchWithTraceMock = vi.fn(async (params) => {
       failedRetrievers: [],
       contributingRetrievers: [],
     },
+    timings: makeTimings(),
   }
 })
 vi.mock("@/services/hybrid-search.service", async () => {
@@ -56,6 +75,7 @@ vi.mock("@/services/hybrid-search-debug-allowlist", () => ({
 }))
 
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
+import { shouldShedFleetRequest } from "@/auth/fleet-ceiling"
 import { isAnyKnownBearer } from "@/auth/search-bearer"
 import { env } from "@/config/env"
 import { isDebugAllowedForOrigin } from "@/services/hybrid-search-debug-allowlist"
@@ -68,12 +88,14 @@ const allowRateLimit = () =>
   vi.mocked(rateLimitAuthRoute).mockResolvedValue({
     allowed: true,
     source: "local",
+    count: 1,
   })
 
 const denyRateLimit = () =>
   vi.mocked(rateLimitAuthRoute).mockResolvedValue({
     allowed: false,
     source: "local",
+    count: 31,
   })
 
 function req(path: string): Request {
@@ -104,6 +126,8 @@ beforeEach(() => {
   envMutable.SEARCH_AUTH_REQUIRED = "false"
   // Default: bearer absent / invalid → false. Tests opt into valid.
   vi.mocked(isAnyKnownBearer).mockResolvedValue({ valid: false })
+  // Default: fleet ceiling does not shed. Fleet tests opt into shedding.
+  vi.mocked(shouldShedFleetRequest).mockResolvedValue(false)
   searchMock.mockResolvedValue({
     results: [],
     hasMore: false,
@@ -704,5 +728,34 @@ describe("GET /api/search", () => {
         expect(allLogged).not.toContain("Bearer the-secret")
       })
     })
+  })
+})
+
+describe("fleet global ceiling (F1 #2)", () => {
+  const fleetBearer = {
+    valid: true as const,
+    source: "fleet" as const,
+    fleetKeyId: "abc123def456",
+  }
+
+  it("429s a fleet request when the ceiling sheds it and never runs search", async () => {
+    vi.mocked(isAnyKnownBearer).mockResolvedValue(fleetBearer)
+    vi.mocked(shouldShedFleetRequest).mockResolvedValue(true)
+    const res = await GET(
+      reqWithAuth("/api/search?q=jesus&locale=en", "Bearer fleet"),
+    )
+    expect(res.status).toBe(429)
+    expect(shouldShedFleetRequest).toHaveBeenCalledWith(fleetBearer, "rest")
+    expect(searchMock).not.toHaveBeenCalled()
+  })
+
+  it("passes a fleet request through to search when not shed", async () => {
+    vi.mocked(isAnyKnownBearer).mockResolvedValue(fleetBearer)
+    vi.mocked(shouldShedFleetRequest).mockResolvedValue(false)
+    const res = await GET(
+      reqWithAuth("/api/search?q=jesus&locale=en", "Bearer fleet"),
+    )
+    expect(res.status).toBe(200)
+    expect(searchMock).toHaveBeenCalled()
   })
 })

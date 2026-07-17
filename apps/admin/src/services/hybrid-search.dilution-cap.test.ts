@@ -82,6 +82,15 @@ function buildDebugByKey(
   return map
 }
 
+function mockHydrationPrisma() {
+  return {
+    video: { findMany: vi.fn().mockResolvedValue([]) },
+    videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any
+}
+
 describe("applyDilutionCap", () => {
   it("does NOT trigger when no exact-title hit covers every query token", () => {
     // Query: "the bible project". Exact-title list has one item but its
@@ -317,17 +326,31 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
-vi.mock("./hybrid-search-keyword-first-retrievers", () => ({
-  searchByKeywordWeighted: vi.fn(),
-  searchByTrigram: vi.fn(),
-  searchByExactTitle: vi.fn(),
-  MAX_EXACT_TITLE_TOKENS: 16,
-  tokenizeForExactTitle: (q: string) =>
-    q
-      .toLowerCase()
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter((t) => t.length > 0),
-}))
+vi.mock("./hybrid-search-keyword-first-retrievers", () => {
+  const searchByKeywordWeighted = vi.fn()
+  const searchByTrigram = vi.fn()
+  const searchByExactTitle = vi.fn()
+  const searchKeywordFirstVideoLexical = vi.fn(
+    async (prisma: unknown, params: unknown, timing: unknown) => ({
+      keywordWeighted: await searchByKeywordWeighted(prisma, params, timing),
+      trigram: await searchByTrigram(prisma, params, timing),
+      exactTitle: await searchByExactTitle(prisma, params, timing),
+    }),
+  )
+
+  return {
+    searchByKeywordWeighted,
+    searchByTrigram,
+    searchByExactTitle,
+    searchKeywordFirstVideoLexical,
+    MAX_EXACT_TITLE_TOKENS: 16,
+    tokenizeForExactTitle: (q: string) =>
+      q
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((t) => t.length > 0),
+  }
+})
 
 describe("isDilutionCapEnabled (SEARCH_DILUTION_CAP_ENABLED parser)", () => {
   beforeEach(() => {
@@ -428,8 +451,7 @@ describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLE
     process.env.SEARCH_DILUTION_CAP_ENABLED = "false"
 
     const service = new HybridSearchService({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma: { video: { findMany: vi.fn().mockResolvedValue([]) } } as any,
+      prisma: mockHydrationPrisma(),
       embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
       logger: { warn: vi.fn(), error: vi.fn() },
     })
@@ -490,8 +512,7 @@ describe("HybridSearchService skips dilution cap when SEARCH_DILUTION_CAP_ENABLE
     delete process.env.SEARCH_DILUTION_CAP_ENABLED
 
     const service = new HybridSearchService({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma: { video: { findMany: vi.fn().mockResolvedValue([]) } } as any,
+      prisma: mockHydrationPrisma(),
       embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
       logger: { warn: vi.fn(), error: vi.fn() },
     })

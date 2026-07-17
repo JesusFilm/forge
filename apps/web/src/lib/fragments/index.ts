@@ -5,9 +5,11 @@ export {
 } from "./watch-home"
 export {
   getVideoChildDubLanguagesBySlugOperation,
+  getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
+  getWatchVideoRouteSnapshotBySlugOperation,
   getWatchVideoShellBySlugOperation,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,

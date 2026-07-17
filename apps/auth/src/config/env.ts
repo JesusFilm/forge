@@ -88,7 +88,7 @@ export function getAuthTrustedOrigins(): string[] {
   const productionWebOrigins = [
     "https://jesusfilm.org",
     "https://www.jesusfilm.org",
-    "https://web.jesusfilm.org",
+    "https://watch.jesusfilm.org",
   ]
   const localWebOrigins =
     process.env.NODE_ENV === "production"
