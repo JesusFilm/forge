@@ -15,6 +15,13 @@ import {
 
 const messagesDir = join(__dirname, "../../../messages")
 const SOURCE_LOCALE = "en"
+const LANGUAGE_PICKER_KEYS = [
+  "seeAllLanguages",
+  "seeAllVideosInLanguage",
+  "retryLoadingLanguages",
+  "notAvailable",
+  "switching",
+] as const
 
 type Messages = Record<string, Record<string, string>>
 
@@ -26,6 +33,12 @@ function loadCatalog(locale: string): Messages {
 function flatten(messages: Messages): string[] {
   return Object.entries(messages)
     .flatMap(([ns, keys]) => Object.keys(keys).map((k) => `${ns}.${k}`))
+    .sort()
+}
+
+function placeholders(message: string): string[] {
+  return [...message.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)/g)]
+    .map((match) => match[1])
     .sort()
 }
 
@@ -41,6 +54,25 @@ describe("messages catalogs — structural parity", () => {
     const missing = sourceKeys.filter((k) => !localeKeys.includes(k))
     expect(missing).toEqual([])
   })
+
+  it.each(LANGUAGE_PICKER_KEYS)(
+    "LanguagePickerModal.%s exists everywhere with source placeholder parity",
+    (key) => {
+      const sourceMessage = loadCatalog(SOURCE_LOCALE).LanguagePickerModal[key]
+      expect(sourceMessage).toBeTypeOf("string")
+
+      for (const locale of otherLocales) {
+        const message = loadCatalog(locale).LanguagePickerModal[key]
+        expect(message, `${locale}.LanguagePickerModal.${key}`).toBeTypeOf(
+          "string",
+        )
+        expect(
+          placeholders(message),
+          `${locale}.LanguagePickerModal.${key}`,
+        ).toEqual(placeholders(sourceMessage))
+      }
+    },
+  )
 })
 
 describe("generated UI locale list ↔ filesystem catalogs — drift gate", () => {

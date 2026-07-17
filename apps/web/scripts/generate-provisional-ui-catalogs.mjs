@@ -138,7 +138,7 @@ export function buildManifest({ generatedOn, inventory, plan, sourceLocale }) {
       sourceInventory: "docs/i18n/watch-ui-official-language-inventory.json",
       sourceCatalog: `apps/web/messages/${sourceLocale}.json`,
       policy:
-        "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional.",
+        "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed.",
       inventorySource: inventory.metadata?.source ?? null,
       cldrVersion: inventory.metadata?.cldrVersion ?? null,
     },
@@ -158,6 +158,10 @@ export function buildManifest({ generatedOn, inventory, plan, sourceLocale }) {
 
 function main() {
   const check = process.argv.includes("--check")
+  const refreshProvisional = process.argv.includes("--refresh-provisional")
+  if (check && refreshProvisional) {
+    throw new Error("--check and --refresh-provisional cannot be used together")
+  }
   const messagesDir = argValue("--messages-dir", DEFAULT_MESSAGES_DIR)
   const inventoryPath = argValue("--inventory", DEFAULT_INVENTORY_PATH)
   const manifestPath = argValue("--manifest", DEFAULT_MANIFEST_PATH)
@@ -187,17 +191,6 @@ function main() {
     sourceCatalog,
   })
 
-  for (const locale of plan.provisionalLocales) {
-    const path = catalogPath(messagesDir, locale)
-    if (!existsSync(path)) continue
-    const catalog = readJson(path)
-    if (!catalogsMatch(catalog, sourceCatalog)) {
-      throw new Error(
-        `Previously provisional catalog ${relative(repoDir, path)} no longer matches ${relative(repoDir, sourcePath)}. Regenerate after promoting it out of docs/i18n/watch-ui-provisional-catalogs.json.`,
-      )
-    }
-  }
-
   const manifestPlan = check ? plan : { ...plan, missingLocales: [] }
   const manifest = buildManifest({
     generatedOn,
@@ -208,9 +201,20 @@ function main() {
   const manifestContent = renderJson(manifest)
 
   if (check) {
+    for (const locale of plan.provisionalLocales) {
+      const path = catalogPath(messagesDir, locale)
+      if (!existsSync(path)) continue
+      const catalog = readJson(path)
+      if (!catalogsMatch(catalog, sourceCatalog)) {
+        throw new Error(
+          `Provisional catalog ${relative(repoDir, path)} does not match ${relative(repoDir, sourcePath)}. If it now contains authored copy, remove ${locale} from ${relative(repoDir, manifestPath)} before regenerating. Otherwise run pnpm --filter @forge/web generate:provisional-ui-catalogs -- --generated-on ${generatedOn} --refresh-provisional to intentionally refresh every listed provisional catalog.`,
+        )
+      }
+    }
+
     const currentManifest = existsSync(manifestPath)
-      ? readFileSync(manifestPath, "utf-8")
-      : ""
+      ? readJson(manifestPath)
+      : null
     const missingFiles = plan.missingLocales.filter(
       (locale) => !existsSync(catalogPath(messagesDir, locale)),
     )
@@ -221,7 +225,7 @@ function main() {
       process.exitCode = 1
       return
     }
-    if (currentManifest !== manifestContent) {
+    if (!currentManifest || !catalogsMatch(currentManifest, manifest)) {
       console.error(
         `${relative(repoDir, manifestPath)} is stale. Run pnpm --filter @forge/web generate:provisional-ui-catalogs -- --generated-on ${generatedOn}.`,
       )
@@ -230,9 +234,21 @@ function main() {
     return
   }
 
+  const divergentProvisionalLocales = plan.provisionalLocales.filter(
+    (locale) => {
+      const path = catalogPath(messagesDir, locale)
+      return existsSync(path) && !catalogsMatch(readJson(path), sourceCatalog)
+    },
+  )
+  if (divergentProvisionalLocales.length > 0 && !refreshProvisional) {
+    throw new Error(
+      `Refusing to overwrite divergent provisional catalogs: ${divergentProvisionalLocales.join(", ")}. Remove any newly authored locales from ${relative(repoDir, manifestPath)} before regenerating, or pass --refresh-provisional to intentionally replace every listed provisional catalog from ${relative(repoDir, sourcePath)}.`,
+    )
+  }
+
   mkdirSync(messagesDir, { recursive: true })
   const sourceContent = renderJson(sourceCatalog)
-  for (const locale of plan.missingLocales) {
+  for (const locale of plan.provisionalLocales) {
     writeFileSync(catalogPath(messagesDir, locale), sourceContent)
   }
   writeFileSync(manifestPath, manifestContent)

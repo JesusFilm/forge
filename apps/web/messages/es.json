@@ -88,7 +88,12 @@
     "toggleOff": "No",
     "close": "Cerrar",
     "apply": "Aplicar",
-    "noLanguageSubtitles": "Sin subtítulos en {language}"
+    "noLanguageSubtitles": "Sin subtítulos en {language}",
+    "seeAllLanguages": "Ver todos los idiomas",
+    "seeAllVideosInLanguage": "Ver todos los vídeos en {language}",
+    "retryLoadingLanguages": "Volver a cargar los idiomas",
+    "notAvailable": "No disponible",
+    "switching": "Cambiando..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODIO} other {# EPISODIOS}}",

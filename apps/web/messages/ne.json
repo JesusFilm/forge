@@ -88,7 +88,12 @@
     "toggleOff": "अफ",
     "close": "बन्द गर्नुहोस्",
     "apply": "लागू गर्नुहोस्",
-    "noLanguageSubtitles": "{language} उपशीर्षक छैन"
+    "noLanguageSubtitles": "{language} उपशीर्षक छैन",
+    "seeAllLanguages": "सबै भाषाहरू हेर्नुहोस्",
+    "seeAllVideosInLanguage": "{language} भाषाका सबै भिडियोहरू हेर्नुहोस्",
+    "retryLoadingLanguages": "भाषाहरू फेरि लोड गर्ने प्रयास गर्नुहोस्",
+    "notAvailable": "उपलब्ध छैन",
+    "switching": "परिवर्तन हुँदैछ..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोडहरू}}",

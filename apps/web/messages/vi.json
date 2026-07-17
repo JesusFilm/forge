@@ -88,7 +88,12 @@
     "toggleOff": "Tắt",
     "close": "Đóng",
     "apply": "Áp dụng",
-    "noLanguageSubtitles": "Không có phụ đề {language}"
+    "noLanguageSubtitles": "Không có phụ đề {language}",
+    "seeAllLanguages": "Xem tất cả ngôn ngữ",
+    "seeAllVideosInLanguage": "Xem tất cả video bằng {language}",
+    "retryLoadingLanguages": "Thử tải lại ngôn ngữ",
+    "notAvailable": "Không khả dụng",
+    "switching": "Đang chuyển đổi..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# TẬP} other {# TẬP}}",

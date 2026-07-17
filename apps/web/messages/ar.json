@@ -88,7 +88,12 @@
     "toggleOff": "إيقاف",
     "close": "إغلاق",
     "apply": "تطبيق",
-    "noLanguageSubtitles": "لا توجد ترجمات {language}"
+    "noLanguageSubtitles": "لا توجد ترجمات {language}",
+    "seeAllLanguages": "عرض جميع اللغات",
+    "seeAllVideosInLanguage": "عرض جميع الفيديوهات باللغة {language}",
+    "retryLoadingLanguages": "إعادة محاولة تحميل اللغات",
+    "notAvailable": "غير متاح",
+    "switching": "جارٍ التبديل..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",

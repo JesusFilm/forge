@@ -88,7 +88,12 @@
     "toggleOff": "Uit",
     "close": "Sluiten",
     "apply": "Toepassen",
-    "noLanguageSubtitles": "Geen ondertiteling voor {language}"
+    "noLanguageSubtitles": "Geen ondertiteling voor {language}",
+    "seeAllLanguages": "Alle talen bekijken",
+    "seeAllVideosInLanguage": "Alle video's in {language} bekijken",
+    "retryLoadingLanguages": "Talen opnieuw laden",
+    "notAvailable": "Niet beschikbaar",
+    "switching": "Bezig met wisselen..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 AFLEVERING} other {# AFLEVERINGEN}}",

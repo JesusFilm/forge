@@ -46,6 +46,8 @@ export type LanguagePickerVariant = WatchLanguagePickerVariant
 
 const MODAL_FOCUS_RING_CLASS =
   "focus-visible:border-stone-100/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-100 focus-visible:outline-none"
+const FIRST_STRONG_ISOLATE = "\u2068"
+const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
 export type LanguagePickerModalProps = {
   open: boolean
@@ -72,8 +74,6 @@ export type LanguagePickerModalProps = {
   languageOptionsError?: boolean
   onRetryLanguageOptions?: () => void
 }
-
-const SUBTITLE_UNAVAILABLE_CHIP = "Not available"
 
 const TOOLTIP_LANGUAGES = [
   { key: "english", dir: "ltr" },
@@ -347,6 +347,11 @@ export function LanguagePickerModal({
     () => draftLanguageOption ?? deriveLanguageDisplay(draftSlug, null),
     [draftLanguageOption, draftSlug],
   )
+  const draftLanguageInventoryName =
+    draftLanguageOption?.nativeName?.trim() || draftLanguageDisplay.name
+  const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
+    language: `${FIRST_STRONG_ISOLATE}${draftLanguageInventoryName}${POP_DIRECTIONAL_ISOLATE}`,
+  })
   const draftLanguageInventoryPath = useMemo(() => {
     const slug = tryAsLocaleSlug(draftSlug)
     return slug ? languageVideosIndexPath(slug) : null
@@ -462,7 +467,7 @@ export function LanguagePickerModal({
           null,
         bcp47: currentLanguageOption?.bcp47 ?? null,
         disabled: true,
-        chipLabel: SUBTITLE_UNAVAILABLE_CHIP,
+        chipLabel: t("notAvailable"),
       }
     }, [
       allSubtitleOptions.length,
@@ -471,6 +476,7 @@ export function LanguagePickerModal({
       currentLanguageOption,
       currentLanguageSlug,
       sameLanguageSubtitleOptions.length,
+      t,
     ])
   const subtitleOptions = useMemo(
     () => [
@@ -752,7 +758,7 @@ export function LanguagePickerModal({
                   className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
                 >
                   <Globe aria-hidden className="size-3.5" />
-                  <span>See all languages</span>
+                  <span>{t("seeAllLanguages")}</span>
                 </Link>
               </div>
             </MultilingualTooltip>
@@ -768,8 +774,8 @@ export function LanguagePickerModal({
                 <Button
                   type="button"
                   variant="ghost"
-                  aria-label="Retry loading languages"
-                  title="Retry loading languages"
+                  aria-label={t("retryLoadingLanguages")}
+                  title={t("retryLoadingLanguages")}
                   data-testid="watch-language-picker-retry-languages"
                   onClick={onRetryLanguageOptions}
                   className={`size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
@@ -812,11 +818,11 @@ export function LanguagePickerModal({
                   href={draftLanguageInventoryPath}
                   prefetch={false}
                   data-testid="watch-language-picker-selected-language-link"
-                  aria-label={`See all videos in ${draftLanguageDisplay.name}`}
+                  aria-label={draftLanguageInventoryLabel}
                   className={`group inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-stone-400 underline decoration-stone-500 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-stone-200 ${MODAL_FOCUS_RING_CLASS}`}
                 >
                   <span className="truncate">
-                    See all videos in {draftLanguageDisplay.name}
+                    {draftLanguageInventoryLabel}
                   </span>
                   <ArrowRight
                     aria-hidden
@@ -1020,7 +1026,7 @@ export function LanguagePickerModal({
                       aria-hidden
                       className="size-3.5 animate-spin"
                     />
-                    <span>Switching...</span>
+                    <span>{t("switching")}</span>
                   </>
                 ) : (
                   <>

@@ -88,7 +88,12 @@
     "toggleOff": "Wyłączone",
     "close": "Zamknij",
     "apply": "Zastosuj",
-    "noLanguageSubtitles": "Brak napisów w języku {language}"
+    "noLanguageSubtitles": "Brak napisów w języku {language}",
+    "seeAllLanguages": "Zobacz wszystkie języki",
+    "seeAllVideosInLanguage": "Zobacz wszystkie filmy w języku {language}",
+    "retryLoadingLanguages": "Ponów ładowanie języków",
+    "notAvailable": "Niedostępne",
+    "switching": "Przełączanie..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 ODCINEK} other {# ODCINKÓW}}",

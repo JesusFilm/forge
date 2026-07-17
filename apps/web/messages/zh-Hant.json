@@ -88,7 +88,12 @@
     "toggleOff": "關",
     "close": "關閉",
     "apply": "套用",
-    "noLanguageSubtitles": "無{language}字幕"
+    "noLanguageSubtitles": "無{language}字幕",
+    "seeAllLanguages": "查看所有語言",
+    "seeAllVideosInLanguage": "查看所有{language}影片",
+    "retryLoadingLanguages": "重試載入語言",
+    "notAvailable": "無法使用",
+    "switching": "正在切換..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",

@@ -88,7 +88,12 @@
     "toggleOff": "Dezactivat",
     "close": "Închide",
     "apply": "Aplică",
-    "noLanguageSubtitles": "Fără subtitrări în {language}"
+    "noLanguageSubtitles": "Fără subtitrări în {language}",
+    "seeAllLanguages": "Vezi toate limbile",
+    "seeAllVideosInLanguage": "Vezi toate videoclipurile în {language}",
+    "retryLoadingLanguages": "Reîncearcă încărcarea limbilor",
+    "notAvailable": "Indisponibil",
+    "switching": "Se schimbă..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISOD} other {# EPISOADE}}",

@@ -88,7 +88,12 @@
     "toggleOff": "꺼짐",
     "close": "닫기",
     "apply": "적용",
-    "noLanguageSubtitles": "{language} 자막 없음"
+    "noLanguageSubtitles": "{language} 자막 없음",
+    "seeAllLanguages": "모든 언어 보기",
+    "seeAllVideosInLanguage": "{language}로 된 모든 동영상 보기",
+    "retryLoadingLanguages": "언어 다시 불러오기",
+    "notAvailable": "사용할 수 없음",
+    "switching": "전환 중..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {#개 에피소드} other {#개 에피소드}}",

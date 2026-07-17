@@ -88,7 +88,12 @@
     "toggleOff": "Kapalı",
     "close": "Kapat",
     "apply": "Uygula",
-    "noLanguageSubtitles": "{language} altyazısı yok"
+    "noLanguageSubtitles": "{language} altyazısı yok",
+    "seeAllLanguages": "Tüm dilleri görüntüle",
+    "seeAllVideosInLanguage": "{language} dilindeki tüm videoları görüntüle",
+    "retryLoadingLanguages": "Dilleri yeniden yükle",
+    "notAvailable": "Kullanılamıyor",
+    "switching": "Değiştiriliyor..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# BÖLÜM} other {# BÖLÜM}}",

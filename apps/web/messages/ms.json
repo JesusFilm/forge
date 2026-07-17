@@ -88,7 +88,12 @@
     "toggleOff": "Mati",
     "close": "Tutup",
     "apply": "Guna",
-    "noLanguageSubtitles": "Tiada sari kata {language}"
+    "noLanguageSubtitles": "Tiada sari kata {language}",
+    "seeAllLanguages": "Lihat semua bahasa",
+    "seeAllVideosInLanguage": "Lihat semua video dalam {language}",
+    "retryLoadingLanguages": "Cuba muatkan bahasa sekali lagi",
+    "notAvailable": "Tidak tersedia",
+    "switching": "Sedang bertukar..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISOD} other {# EPISOD}}",

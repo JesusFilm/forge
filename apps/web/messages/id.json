@@ -88,7 +88,12 @@
     "toggleOff": "Nonaktif",
     "close": "Tutup",
     "apply": "Terapkan",
-    "noLanguageSubtitles": "Tanpa teks {language}"
+    "noLanguageSubtitles": "Tanpa teks {language}",
+    "seeAllLanguages": "Lihat semua bahasa",
+    "seeAllVideosInLanguage": "Lihat semua video dalam {language}",
+    "retryLoadingLanguages": "Coba lagi memuat bahasa",
+    "notAvailable": "Tidak tersedia",
+    "switching": "Sedang beralih..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",

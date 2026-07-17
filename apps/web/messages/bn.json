@@ -88,7 +88,12 @@
     "toggleOff": "বন্ধ",
     "close": "বন্ধ করুন",
     "apply": "প্রয়োগ করুন",
-    "noLanguageSubtitles": "{language} এর কোনো সাবটাইটেল নেই"
+    "noLanguageSubtitles": "{language} এর কোনো সাবটাইটেল নেই",
+    "seeAllLanguages": "সব ভাষা দেখুন",
+    "seeAllVideosInLanguage": "{language} ভাষার সব ভিডিও দেখুন",
+    "retryLoadingLanguages": "ভাষাগুলি আবার লোড করার চেষ্টা করুন",
+    "notAvailable": "উপলভ্য নয়",
+    "switching": "পরিবর্তন করা হচ্ছে..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# পর্ব} other {# পর্ব}}",

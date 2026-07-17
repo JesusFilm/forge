@@ -88,7 +88,12 @@
     "toggleOff": "オフ",
     "close": "閉じる",
     "apply": "適用",
-    "noLanguageSubtitles": "{language}の字幕なし"
+    "noLanguageSubtitles": "{language}の字幕なし",
+    "seeAllLanguages": "すべての言語を見る",
+    "seeAllVideosInLanguage": "{language}のすべての動画を見る",
+    "retryLoadingLanguages": "言語を再読み込み",
+    "notAvailable": "利用できません",
+    "switching": "切り替え中..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# エピソード} other {# エピソード}}",

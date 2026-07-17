@@ -18,13 +18,72 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { MuxPlayerRef } from "@forge/video-player"
+import arMessages from "../../../../messages/ar.json"
+import enMessages from "../../../../messages/en.json"
+import ruMessages from "../../../../messages/ru.json"
 
-const { routerPrefetchMock, routerPushMock, writePreferredLanguageSlugMock } =
-  vi.hoisted(() => ({
+const {
+  resetLanguagePickerMessages,
+  routerPrefetchMock,
+  routerPushMock,
+  setLanguagePickerCatalog,
+  setLanguagePickerMessages,
+  getLanguagePickerCatalogState,
+  writePreferredLanguageSlugMock,
+} = vi.hoisted(() => {
+  let activeLocale = "en"
+  let sourceCatalog: Record<string, Record<string, string>> = {}
+  let activeCatalog: Record<string, Record<string, string>> = {}
+
+  return {
     routerPrefetchMock: vi.fn(),
     routerPushMock: vi.fn(),
     writePreferredLanguageSlugMock: vi.fn(),
-  }))
+    resetLanguagePickerMessages: (
+      catalog: Record<string, Record<string, string>>,
+    ) => {
+      activeLocale = "en"
+      sourceCatalog = structuredClone(catalog)
+      activeCatalog = structuredClone(catalog)
+    },
+    setLanguagePickerCatalog: (
+      catalog: Record<string, Record<string, string>>,
+      locale: string,
+    ) => {
+      activeLocale = locale
+      activeCatalog = structuredClone(catalog)
+    },
+    setLanguagePickerMessages: (messages: Record<string, string>) => {
+      activeLocale = "en"
+      activeCatalog = {
+        ...structuredClone(sourceCatalog),
+        LanguagePickerModal: {
+          ...sourceCatalog.LanguagePickerModal,
+          ...messages,
+        },
+      }
+    },
+    getLanguagePickerCatalogState: () => ({
+      locale: activeLocale,
+      messages: activeCatalog,
+    }),
+  }
+})
+
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl")>()
+  return {
+    ...actual,
+    useTranslations: (namespace: string) => {
+      const { locale, messages } = getLanguagePickerCatalogState()
+      return actual.createTranslator({
+        locale,
+        messages,
+        namespace,
+      })
+    },
+  }
+})
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -48,6 +107,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  resetLanguagePickerMessages(enMessages)
   routerPrefetchMock.mockReset()
   routerPushMock.mockReset()
   writePreferredLanguageSlugMock.mockReset()
@@ -251,6 +311,8 @@ const baseVariants = [
   makeVariant({ documentId: "v3", languageSlug: "french" }),
 ]
 
+const isolate = (value: string) => `\u2068${value}\u2069`
+
 describe("LanguagePickerModal — globe overlay", () => {
   it("places catalog links at the header edge and below the selector", () => {
     renderModal({ open: true, variants: baseVariants })
@@ -276,11 +338,11 @@ describe("LanguagePickerModal — globe overlay", () => {
       "/english.html/videos",
     )
     expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
-      "See all videos in English",
+      `See all videos in ${isolate("English")}`,
     )
     expect(allLanguagesLink.textContent).toContain("See all languages")
     expect(selectedLanguageLink.textContent).toContain(
-      "See all videos in English",
+      `See all videos in ${isolate("English")}`,
     )
     expect(languageHeader?.contains(allLanguagesLink)).toBe(true)
     expect(languageHeader?.className).toContain("w-full")
@@ -317,11 +379,91 @@ describe("LanguagePickerModal — globe overlay", () => {
       "/spanish.html/videos",
     )
     expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
-      "See all videos in Spanish",
+      `See all videos in ${isolate("Spanish")}`,
     )
     expect(selectedLanguageLink.textContent).toContain(
-      "See all videos in Spanish",
+      `See all videos in ${isolate("Spanish")}`,
     )
+  })
+
+  it("renders Russian catalog links with the selected native language name", () => {
+    setLanguagePickerCatalog(ruMessages, "ru")
+    const russianVariants = [
+      makeVariant({
+        documentId: "v-ru",
+        languageSlug: "russian",
+        language: {
+          coreId: "russian",
+          slug: "russian",
+          name: "Russian",
+          nativeName: "русский",
+        },
+      }),
+    ]
+
+    renderModal({
+      open: true,
+      variants: russianVariants,
+      currentLanguageSlug: "russian",
+    })
+
+    const allLanguagesLink = $(
+      '[data-testid="watch-language-picker-all-languages-link"]',
+    ) as HTMLAnchorElement
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+    const expectedInventoryLabel = `Посмотреть все видео (${isolate("русский")})`
+
+    expect(allLanguagesLink.textContent).toContain("Посмотреть все языки")
+    expect(allLanguagesLink.textContent).not.toContain("See all languages")
+    expect(selectedLanguageLink.getAttribute("href")).toBe(
+      "/russian.html/videos",
+    )
+    expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
+      expectedInventoryLabel,
+    )
+    expect(selectedLanguageLink.textContent).toContain(expectedInventoryLabel)
+    expect(selectedLanguageLink.textContent).not.toContain("See all videos")
+    expect(selectedLanguageLink.textContent).not.toContain("Russian")
+  })
+
+  it("falls back to the primary language name when no native name exists", () => {
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({ documentId: "v-fallback", languageSlug: "esperanto" }),
+      ],
+      currentLanguageSlug: "esperanto",
+    })
+
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+    const expectedInventoryLabel = `See all videos in ${isolate("Esperanto")}`
+
+    expect(selectedLanguageLink.getAttribute("href")).toBe(
+      "/esperanto.html/videos",
+    )
+    expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
+      expectedInventoryLabel,
+    )
+    expect(selectedLanguageLink.textContent).toContain(expectedInventoryLabel)
+  })
+
+  it("isolates an LTR language name inside an RTL inventory template", () => {
+    setLanguagePickerCatalog(arMessages, "ar")
+    renderModal({ open: true, variants: baseVariants })
+
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+    const expectedInventoryLabel = `عرض جميع الفيديوهات باللغة ${isolate("English")}`
+
+    expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
+      expectedInventoryLabel,
+    )
+    expect(selectedLanguageLink.textContent).toContain(expectedInventoryLabel)
   })
 
   it("Apply is disabled when the modal first opens", () => {
@@ -350,6 +492,7 @@ describe("LanguagePickerModal — globe overlay", () => {
   })
 
   it("Apply writes the cookie BEFORE calling router.push and keeps the modal open while switching", () => {
+    setLanguagePickerMessages({ switching: "Переключение..." })
     const onClose = vi.fn()
     renderModal({ open: true, variants: baseVariants, onClose })
 
@@ -380,7 +523,8 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-apply"]',
     ) as HTMLButtonElement
     expect(apply.disabled).toBe(true)
-    expect(apply.textContent).toContain("Switching...")
+    expect(apply.textContent).toContain("Переключение...")
+    expect(apply.textContent).not.toContain("Switching...")
   })
 
   it("uses t=0 when the player ref is null", () => {
@@ -872,6 +1016,7 @@ describe("LanguagePickerModal — globe overlay", () => {
   })
 
   it("makes unavailable captions explicit while allowing translated subtitle selection", () => {
+    setLanguagePickerMessages({ notAvailable: "Недоступно" })
     const onSubtitleChange = vi.fn()
     renderModal({
       open: true,
@@ -922,7 +1067,8 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(englishUnavailable.getAttribute("data-disabled")).toBe("true")
     expect((englishUnavailable as HTMLButtonElement).disabled).toBe(true)
     expect(englishUnavailable.textContent).toContain("English")
-    expect(englishUnavailable.textContent).toContain("Not available")
+    expect(englishUnavailable.textContent).toContain("Недоступно")
+    expect(englishUnavailable.textContent).not.toContain("Not available")
 
     act(() => {
       englishUnavailable.click()
@@ -1026,6 +1172,9 @@ describe("LanguagePickerModal — globe overlay", () => {
   })
 
   it("uses a non-cropping focus ring on the language retry control", () => {
+    setLanguagePickerMessages({
+      retryLoadingLanguages: "Повторить загрузку языков",
+    })
     const onRetryLanguageOptions = vi.fn()
     renderModal({
       open: true,
@@ -1038,6 +1187,8 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-retry-languages"]',
     ) as HTMLButtonElement
     expect(retry).not.toBeNull()
+    expect(retry.getAttribute("aria-label")).toBe("Повторить загрузку языков")
+    expect(retry.getAttribute("title")).toBe("Повторить загрузку языков")
     expectNonCroppingFocusRing(retry)
 
     act(() => {

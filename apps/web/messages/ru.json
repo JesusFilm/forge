@@ -88,7 +88,12 @@
     "toggleOff": "Выкл.",
     "close": "Закрыть",
     "apply": "Применить",
-    "noLanguageSubtitles": "Нет субтитров на {language}"
+    "noLanguageSubtitles": "Нет субтитров на {language}",
+    "seeAllLanguages": "Посмотреть все языки",
+    "seeAllVideosInLanguage": "Посмотреть все видео ({language})",
+    "retryLoadingLanguages": "Повторить загрузку языков",
+    "notAvailable": "Недоступно",
+    "switching": "Переключение..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# СЕРИЯ} few {# СЕРИИ} many {# СЕРИЙ} other {# СЕРИИ}}",

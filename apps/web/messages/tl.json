@@ -88,7 +88,12 @@
     "toggleOff": "Naka-off",
     "close": "Isara",
     "apply": "Ilapat",
-    "noLanguageSubtitles": "Walang subtitle sa {language}"
+    "noLanguageSubtitles": "Walang subtitle sa {language}",
+    "seeAllLanguages": "Tingnan ang lahat ng wika",
+    "seeAllVideosInLanguage": "Tingnan ang lahat ng video sa {language}",
+    "retryLoadingLanguages": "Subukang i-load muli ang mga wika",
+    "notAvailable": "Hindi available",
+    "switching": "Nagpapalit..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",

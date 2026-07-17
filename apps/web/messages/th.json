@@ -88,7 +88,12 @@
     "toggleOff": "ปิด",
     "close": "ปิด",
     "apply": "ใช้",
-    "noLanguageSubtitles": "ไม่มีคำบรรยายภาษา{language}"
+    "noLanguageSubtitles": "ไม่มีคำบรรยายภาษา{language}",
+    "seeAllLanguages": "ดูภาษาทั้งหมด",
+    "seeAllVideosInLanguage": "ดูวิดีโอทั้งหมดในภาษา{language}",
+    "retryLoadingLanguages": "ลองโหลดภาษาอีกครั้ง",
+    "notAvailable": "ไม่พร้อมใช้งาน",
+    "switching": "กำลังเปลี่ยน..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# ตอน} other {# ตอน}}",
