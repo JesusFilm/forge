@@ -88,7 +88,12 @@
     "toggleOff": "Não",
     "close": "Fechar",
     "apply": "Aplicar",
-    "noLanguageSubtitles": "Sem legendas em {language}"
+    "noLanguageSubtitles": "Sem legendas em {language}",
+    "seeAllLanguages": "Ver todos os idiomas",
+    "seeAllVideosInLanguage": "Ver todos os vídeos em {language}",
+    "retryLoadingLanguages": "Tentar carregar os idiomas novamente",
+    "notAvailable": "Indisponível",
+    "switching": "Mudando..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISÓDIO} other {# EPISÓDIOS}}",
@@ -201,9 +206,9 @@
     "inLanguage": "em {language}",
     "browseByRegion": "Explorar por região",
     "clearLanguages": "Limpar",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "{language} detetado",
+    "searchInLanguage": "Pesquisar em {language}",
+    "tryDifferentKeywordsOrLanguage": "Tente outras palavras-chave ou escolha outro idioma de pesquisa"
   },
   "HeroPlayer": {
     "playWithSound": "Assistir agora",
@@ -220,7 +225,7 @@
     "shortFilm": "Curta-metragem",
     "series": "Série",
     "collection": "Coleção",
-    "trailer": "Trailer",
+    "trailer": "Vídeo promocional",
     "behindTheScenes": "Bastidores"
   },
   "SiblingCarousel": {

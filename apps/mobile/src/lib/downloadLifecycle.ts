@@ -1,12 +1,14 @@
 import { decideCancelAction } from "./downloadControls"
+import { sanitizeNativeErrorMessage } from "./downloadErrors"
 // Type-only imports from the engine are erased at runtime, so this module never
 // loads the native downloader — the KTD1 seam stays in downloadEngine.ts.
 import type {
   EngineTask,
   MediaDownloadHandlers,
   MediaDownloadSpec,
+  NativeInterruptionMeta,
 } from "./downloadEngine"
-import { resolveBundle } from "./downloadOutcome"
+import { reachabilityFromInterruption, resolveBundle } from "./downloadOutcome"
 import type { WatchDownload } from "./normalizeVideo"
 import { STORAGE_RESERVE_BYTES } from "./offlineConstants"
 import {
@@ -151,6 +153,25 @@ export function isStorageBlocked(
   return freeBytes > 0 && freeBytes < sizeBytes + STORAGE_RESERVE_BYTES
 }
 
+/**
+ * Fire-and-forget telemetry sink injected by the provider (which owns the Datadog
+ * import). Kept as a port so this pure module never pulls the native SDK — that
+ * would break its unit tests, which run without the Datadog native binary.
+ */
+export type DownloadTelemetry = {
+  info: (message: string, context?: Record<string, unknown>) => void
+  warn: (message: string, context?: Record<string, unknown>) => void
+}
+
+/**
+ * R26: the per-attempt correlation id is the pending nonce, which is persisted in
+ * `pendingPath` — so a next-launch terminal event derives the SAME id the
+ * initiating session logged at begin, linking them across the process death.
+ */
+export function attemptIdFromPendingPath(pendingPath: string): string {
+  return /\.pending-(.+)\.mp4$/.exec(pendingPath)?.[1] ?? pendingPath
+}
+
 // ── Lifecycle factory ───────────────────────────────────────────────
 
 export type MediaUrlResolution = {
@@ -178,6 +199,8 @@ export type DownloadLifecycleDeps = {
   /** Supersede keeps the occupancy slot: drop queue entry + pending-swap only (R14). */
   onSupersedeScope: (videoSlug: string) => void
   offlineRoot: string
+  /** Optional Datadog sink (U8); absent in unit tests so emits no-op. */
+  telemetry?: DownloadTelemetry
   engine: {
     start: (
       spec: MediaDownloadSpec,
@@ -206,6 +229,8 @@ type HandlerArgs = {
   videoSlug: string
   committedPath: string
   pendingPath: string
+  /** R26: per-attempt id (the pending nonce) threaded into every terminal emit. */
+  attemptId: string
   /** Total-size fallback when the OS hasn't reported one yet. */
   fallbackTotalBytes: number
   subtitleLanguageSlug: string | null
@@ -252,8 +277,41 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
   // Build the native event handlers for one download, bound to its identity and
   // sidecars. Shared by start/swap/restart (fresh) and wireTask (reattach) so
   // every path commits identically.
+  const telemetry = deps.telemetry
+
+  // R25/R31: surface the raw native code+message (before classification flattens
+  // it) and the reachability proxy it implies, ahead of the terminal disposition.
+  const emitNativeInterruption = (
+    videoSlug: string,
+    attemptId: string,
+    meta: NativeInterruptionMeta | undefined,
+  ) => {
+    if (!meta || !telemetry) return
+    telemetry.warn("download.native_error", {
+      content_id: videoSlug,
+      attempt_id: attemptId,
+      code: meta.raw.errorCode,
+      message: sanitizeNativeErrorMessage(meta.raw.error),
+      kind: meta.interruption.kind,
+    })
+    const reachability = reachabilityFromInterruption(meta.interruption)
+    if (reachability) {
+      telemetry.info("downloads.reachability", {
+        content_id: videoSlug,
+        state: reachability,
+        cause: meta.interruption.kind,
+      })
+    }
+  }
+
   const makeHandlers = (args: HandlerArgs): MediaDownloadHandlers => {
-    const { videoSlug, committedPath, pendingPath, fallbackTotalBytes } = args
+    const {
+      videoSlug,
+      committedPath,
+      pendingPath,
+      attemptId,
+      fallbackTotalBytes,
+    } = args
 
     // U4/KTD3: a `canceled` interruption that lands before this task's onBegin
     // is a stale terminal from a superseded old task that the native layer
@@ -377,9 +435,15 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
       }
     }
 
+    const terminalContext = { content_id: videoSlug, attempt_id: attemptId }
+
     return {
       onBegin: ({ expectedBytes }) => {
         hasBegun = true
+        telemetry?.info("download.begin", {
+          ...terminalContext,
+          expected_bytes: expectedBytes,
+        })
         patch({
           totalBytes: expectedBytes > 0 ? expectedBytes : fallbackTotalBytes,
         })
@@ -391,6 +455,7 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
         }),
       onDone: ({ location }) => {
         taskRegistry.delete(videoSlug)
+        telemetry?.info("download.done", terminalContext)
         // Signal iOS only AFTER finalize settles; signalling first lets iOS
         // suspend mid-finalize on a background-only launch, cutting sidecars
         // short. `finally` so we always signal — else iOS throttles us.
@@ -398,23 +463,44 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
           deps.notifyIosBackgroundComplete(videoSlug),
         )
       },
-      onInterruption: (classification) => {
+      onInterruption: (classification, meta) => {
         // Any native interruption is terminal for this task handle (a
         // connectivity/wifi/background error stops it). A user pause never
         // arrives here — it sets state directly (U3) and keeps the handle.
         taskRegistry.delete(videoSlug)
+        const wasPaused = deps.getRecord(videoSlug)?.state === "paused"
+        emitNativeInterruption(videoSlug, attemptId, meta)
         const swap = deps.getRecord(videoSlug)?.swapFrom
         if (swap) {
           // A swap was interrupted — keep the original copy intact.
+          telemetry?.info("download.interrupted", {
+            ...terminalContext,
+            disposition: "swap-reverted",
+          })
           revertSwap(swap)
         } else if (classification.state === "canceled") {
-          // Skip the delete when (KTD3) the event arrives before this task
-          // began — a stale terminal from a SUPERSEDED old task on this reused
-          // slug — or (KTD2) the record is paused (native pause-as-cancel).
-          if (hasBegun && deps.getRecord(videoSlug)?.state !== "paused") {
+          // R25: hasBegun + paused separate a genuine user cancel from a stale
+          // pre-onBegin supersede terminal (KTD3) and a native pause-as-cancel
+          // (KTD2) — so a URLSession-teardown -999 storm stays attributable.
+          const cancelKind = !hasBegun
+            ? "stale-supersede"
+            : wasPaused
+              ? "pause-as-cancel"
+              : "cancel"
+          telemetry?.info("download.interrupted", {
+            ...terminalContext,
+            disposition: "canceled",
+            cancel_kind: cancelKind,
+            code: meta?.raw.errorCode,
+          })
+          if (hasBegun && !wasPaused) {
             void deleteDownload(videoSlug)
           }
         } else {
+          telemetry?.info("download.interrupted", {
+            ...terminalContext,
+            disposition: classification.state,
+          })
           patch({ state: classification.state })
         }
         deps.notifyIosBackgroundComplete(videoSlug)
@@ -492,6 +578,7 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
           videoSlug: record.videoSlug,
           committedPath,
           pendingPath,
+          attemptId: attemptIdFromPendingPath(pendingPath),
           fallbackTotalBytes: record.totalBytes,
           // U6: restart re-resolves the whole dub, so the fresh subtitle URL
           // is already in hand — thread it straight through.
@@ -522,15 +609,25 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
 
     // U12: refuse before writing a record if the footprint plus the reserve
     // won't fit (isStorageBlocked never blocks on an unreadable free reading).
-    if (
-      isStorageBlocked(
-        await deps.fs.freeDiskBytes(),
-        requestTotalBytes(request),
-      )
-    ) {
+    const startFreeBytes = await deps.fs.freeDiskBytes()
+    const startSizeBytes = requestTotalBytes(request)
+    if (isStorageBlocked(startFreeBytes, startSizeBytes)) {
+      telemetry?.warn("downloads.storage_blocked", {
+        content_id: videoSlug,
+        free_bytes: startFreeBytes,
+        size_bytes: startSizeBytes,
+      })
       // Clean up only our own adopted placeholder — never a pre-existing record.
       if (isOwnPlaceholder) await deps.removeRecord(videoSlug)
       return { ok: false, reason: "insufficient-storage" }
+    }
+    if (startFreeBytes <= 0) {
+      // R29: the free-disk API was unreadable so the gate self-disabled and let
+      // the download through — record the blind allow distinctly from a real pass.
+      telemetry?.info("downloads.storage_unreadable", {
+        content_id: videoSlug,
+        size_bytes: startSizeBytes,
+      })
     }
 
     try {
@@ -603,6 +700,7 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
         videoSlug,
         committedPath,
         pendingPath,
+        attemptId: attemptIdFromPendingPath(pendingPath),
         fallbackTotalBytes: requestTotalBytes(request),
         subtitleLanguageSlug: request.subtitleLanguageSlug,
         subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
@@ -638,12 +736,15 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
       return { ok: false, reason: "exists" }
     }
     // The new copy lives alongside the old until verified, so reserve room.
-    if (
-      isStorageBlocked(
-        await deps.fs.freeDiskBytes(),
-        requestTotalBytes(request),
-      )
-    ) {
+    const swapFreeBytes = await deps.fs.freeDiskBytes()
+    const swapSizeBytes = requestTotalBytes(request)
+    if (isStorageBlocked(swapFreeBytes, swapSizeBytes)) {
+      telemetry?.warn("downloads.storage_blocked", {
+        content_id: videoSlug,
+        free_bytes: swapFreeBytes,
+        size_bytes: swapSizeBytes,
+        op: "swap",
+      })
       return { ok: false, reason: "insufficient-storage" }
     }
     try {
@@ -713,6 +814,7 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
         videoSlug,
         committedPath,
         pendingPath,
+        attemptId: attemptIdFromPendingPath(pendingPath),
         fallbackTotalBytes: requestTotalBytes(request),
         subtitleLanguageSlug: request.subtitleLanguageSlug,
         subtitleUrl: fresh?.subtitleUrl ?? request.subtitleUrl,
@@ -743,6 +845,7 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
         videoSlug: record.videoSlug,
         committedPath,
         pendingPath,
+        attemptId: attemptIdFromPendingPath(pendingPath),
         fallbackTotalBytes: record.totalBytes,
         // U6: the surviving task has no persisted subtitle URL — re-resolve it
         // lazily at commit so wiring is never blocked on the network (R3).

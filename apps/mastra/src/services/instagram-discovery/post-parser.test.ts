@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest"
 
+import type { FirecrawlSearchHit } from "../firecrawl-search-client"
 import { isInstagramUrl, parseInstagramPost } from "./post-parser"
-
-type SearchHit = Parameters<typeof parseInstagramPost>[0]
 
 describe("isInstagramUrl", () => {
   it("accepts post, reel, tv, and handle-prefixed permalinks", () => {
@@ -26,7 +25,7 @@ describe("isInstagramUrl", () => {
 
 describe("parseInstagramPost", () => {
   it("extracts shortcode, canonical url, author and hashtags", () => {
-    const hit: SearchHit = {
+    const hit: FirecrawlSearchHit = {
       url: "https://instagram.com/reel/ABC123/",
       title: "Grace Films (@grace.films) • Instagram reel",
       description: "An AI generated film about Jesus #aiart #faith",
@@ -52,7 +51,7 @@ describe("parseInstagramPost", () => {
   })
 
   it("derives author handle from the URL path when title lacks it", () => {
-    const hit: SearchHit = {
+    const hit: FirecrawlSearchHit = {
       url: "https://www.instagram.com/holy.reels/p/ZZ9/",
       title: "A post",
       description: "caption",
@@ -64,7 +63,7 @@ describe("parseInstagramPost", () => {
   })
 
   it("returns null publishedAt when metadata has no timestamp", () => {
-    const hit: SearchHit = {
+    const hit: FirecrawlSearchHit = {
       url: "https://www.instagram.com/p/NoDate/",
       description: "caption only",
     }

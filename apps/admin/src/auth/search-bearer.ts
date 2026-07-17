@@ -21,6 +21,7 @@ import {
   isValidConsumerBearer,
   type ConsumerBearerResult,
 } from "@/auth/consumer-bearer"
+import { fleetKeyIdFromRawKey } from "@/auth/fleet-key-id"
 import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
 import {
   sanitizeLogValue,
@@ -40,7 +41,7 @@ export type BearerSource = "partner" | "consumer" | "fleet" | "workflow"
  * identifier per row). All other branches surface only `source`.
  */
 export type BearerCheckResult =
-  | { valid: true; source: BearerSource; keyId?: string }
+  | { valid: true; source: BearerSource; keyId?: string; fleetKeyId?: string }
   | { valid: false }
 
 /**
@@ -98,9 +99,17 @@ export async function isAnyKnownBearer(
 
   const consumer = safeConsumer(authHeader)
   if (consumer.valid) {
-    // Fleet keys log as source=fleet (vs web SSR's source=consumer) so the
-    // existing per-request search log lets F1 confirm fleet traffic in prod.
-    return { valid: true, source: consumer.fleet ? "fleet" : "consumer" }
+    // Fleet keys log as source=fleet (vs web SSR's source=consumer) and carry a
+    // non-secret fleetKeyId (sha256 prefix) so the global ceiling buckets per
+    // KEY across all IPs/viewer_ids without ever seeing the raw key.
+    if (consumer.fleet) {
+      return {
+        valid: true,
+        source: "fleet",
+        fleetKeyId: fleetKeyIdFromRawKey(consumer.bucketKey),
+      }
+    }
+    return { valid: true, source: "consumer" }
   }
   if (safeCheck("workflow", () => isValidWorkflowBearer(authHeader))) {
     return { valid: true, source: "workflow" }

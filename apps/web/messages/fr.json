@@ -88,7 +88,12 @@
     "toggleOff": "Non",
     "close": "Fermer",
     "apply": "Appliquer",
-    "noLanguageSubtitles": "Aucun sous-titre en {language}"
+    "noLanguageSubtitles": "Aucun sous-titre en {language}",
+    "seeAllLanguages": "Voir toutes les langues",
+    "seeAllVideosInLanguage": "Voir toutes les vidéos en {language}",
+    "retryLoadingLanguages": "Réessayer de charger les langues",
+    "notAvailable": "Indisponible",
+    "switching": "Changement en cours..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 ÉPISODE} other {# ÉPISODES}}",
@@ -201,9 +206,9 @@
     "inLanguage": "en {language}",
     "browseByRegion": "Parcourir par région",
     "clearLanguages": "Effacer",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "{language} détecté",
+    "searchInLanguage": "Rechercher en {language}",
+    "tryDifferentKeywordsOrLanguage": "Essayez d’autres mots-clés ou choisissez une autre langue de recherche"
   },
   "HeroPlayer": {
     "playWithSound": "Regarder",
@@ -214,12 +219,12 @@
   },
   "VideoLabels": {
     "video": "Vidéo",
-    "segment": "Segment",
+    "segment": "Séquence",
     "episode": "Épisode",
     "featureFilm": "Long métrage",
     "shortFilm": "Court métrage",
     "series": "Série",
-    "collection": "Collection",
+    "collection": "Collection de vidéos",
     "trailer": "Bande-annonce",
     "behindTheScenes": "Coulisses"
   },

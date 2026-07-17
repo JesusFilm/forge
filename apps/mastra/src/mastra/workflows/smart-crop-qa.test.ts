@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
+import { SmartCropProviderError } from "../../services/smart-crop/openrouter-vision"
 import {
   handleSmartCropQaRouteRequest,
   runSmartCropQaWorkflow,
@@ -165,6 +166,27 @@ describe("smart crop qa workflow", () => {
       reason: "provider_invalid_output",
       retryable: false,
       mastraRunId: "run-qa-bad-verdict",
+    })
+  })
+
+  it("preserves terminal provider rate limits instead of a QA verdict", async () => {
+    const result = await runSmartCropQaWorkflow(baseInput, {
+      runId: "run-qa-rate-limited",
+      requestReview: async () => {
+        throw new SmartCropProviderError(
+          "provider_rate_limited",
+          false,
+          "smart crop vision rate limited after 3 attempts (status 429)",
+        )
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "provider_rate_limited",
+      retryable: false,
+      message: "smart crop vision rate limited after 3 attempts (status 429)",
+      mastraRunId: "run-qa-rate-limited",
     })
   })
 

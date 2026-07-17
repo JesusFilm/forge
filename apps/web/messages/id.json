@@ -88,7 +88,12 @@
     "toggleOff": "Nonaktif",
     "close": "Tutup",
     "apply": "Terapkan",
-    "noLanguageSubtitles": "Tanpa teks {language}"
+    "noLanguageSubtitles": "Tanpa teks {language}",
+    "seeAllLanguages": "Lihat semua bahasa",
+    "seeAllVideosInLanguage": "Lihat semua video dalam {language}",
+    "retryLoadingLanguages": "Coba lagi memuat bahasa",
+    "notAvailable": "Tidak tersedia",
+    "switching": "Sedang beralih..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
@@ -191,19 +196,19 @@
     "categoryStudy": "Pembelajaran",
     "categoryFamily": "Keluarga",
     "categoryChristmas": "Natal",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "searchLanguageLabel": "Bahasa pencarian",
+    "allLanguages": "Semua bahasa",
+    "searchSuggestions": "Saran pencarian",
+    "languages": "Bahasa",
+    "recommendedLanguage": "Bahasa yang disarankan",
+    "searchSuggestion": "Cari {suggestion}",
+    "searchSuggestionWithLanguage": "Cari {suggestion} dalam {language}",
+    "inLanguage": "dalam {language}",
+    "browseByRegion": "Jelajahi berdasarkan wilayah",
+    "clearLanguages": "Hapus",
+    "queryLanguageDetected": "Terdeteksi {language}",
+    "searchInLanguage": "Cari dalam {language}",
+    "tryDifferentKeywordsOrLanguage": "Coba kata kunci lain atau pilih bahasa pencarian lain"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
@@ -213,14 +218,14 @@
     "loadingContent": "Memuat konten"
   },
   "VideoLabels": {
-    "video": "Video",
+    "video": "Tayangan video",
     "segment": "Segmen",
-    "episode": "Episode",
+    "episode": "Bagian episode",
     "featureFilm": "Film panjang",
     "shortFilm": "Film pendek",
     "series": "Serial",
     "collection": "Koleksi",
-    "trailer": "Trailer",
+    "trailer": "Cuplikan",
     "behindTheScenes": "Di balik layar"
   },
   "SiblingCarousel": {

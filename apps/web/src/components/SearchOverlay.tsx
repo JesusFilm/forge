@@ -11,6 +11,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import {
   ChevronDown,
@@ -33,14 +34,18 @@ import {
 } from "@/components/watch/LanguageCombobox"
 import { CATEGORIES } from "@/lib/search-categories"
 import {
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
-  FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+  FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -50,6 +55,7 @@ import {
   type SearchLanguageOption,
 } from "@/lib/search-language"
 import { detectQueryLanguageSuggestion } from "@/lib/search-query-language"
+import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 
@@ -95,6 +101,12 @@ const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
 
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
+  const pathname = usePathname()
+  const parsedPath = parseWatchPath(pathname)
+  const logoSlotClass =
+    parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+      ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
+      : FLOATING_HEADER_LOGO_SLOT_CLASS
   const {
     open,
     closing,
@@ -587,17 +599,23 @@ export function SearchOverlay() {
       }}
     >
       {/* Mirror the floating header grid so the active input lands exactly
-          where the closed search pill was. The persistent header stays above
-          this overlay and owns the logo, language icon, and close button. */}
+          where its hidden header slot sits. On mobile, logo/close occupy the
+          first row and search/language occupy the second. The persistent
+          header stays above this overlay and owns all three controls. */}
       <div
         data-testid="search-overlay-top-bar"
-        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 ${FLOATING_MODAL_HEADER_LAYOUT_CLASS}`}
       >
-        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
+        <div
+          aria-hidden="true"
+          className={`${logoSlotClass} ${FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS}`}
+        />
         <div
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto min-w-0 flex-1"
+          className={`pointer-events-auto min-w-0 flex-1 ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
+            headerLanguageSwitcherVisible ? "" : "col-span-2"
+          }`}
         >
           <FloatingSearchFieldInput
             ref={inputRef}
@@ -712,18 +730,20 @@ export function SearchOverlay() {
         <div
           aria-hidden="true"
           data-testid="search-overlay-trailing-controls-spacer"
-          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+          className={FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS}
         >
           {headerLanguageSwitcherVisible ? (
             <div
-              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
                 headerLanguageCode
                   ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
                   : ""
               }`}
             />
           ) : null}
-          <div className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
+          <div
+            className={`${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS}`}
+          />
         </div>
       </div>
 

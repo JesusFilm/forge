@@ -14,7 +14,7 @@
       "backgroundColor": "#161311"
     },
     "ios": {
-      "bundleIdentifier": "org.jesusfilm.forgetv",
+      "bundleIdentifier": "org.jesusfilm.forgewatch",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {

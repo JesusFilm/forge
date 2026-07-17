@@ -610,11 +610,20 @@ function GroupedVideoListSection({
             {groups.map((group) => (
               <section
                 key={group.key}
-                className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.035] lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]"
+                className="overflow-clip rounded-lg border border-white/10 bg-white/[0.035] lg:grid lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]"
                 aria-label={group.title}
+                data-testid="language-inventory-collection-group"
               >
-                <div className="border-b border-white/10 bg-white/[0.035] p-4 lg:border-r lg:border-b-0 lg:p-5">
-                  <CollectionGroupOverview group={group} />
+                <div
+                  className="border-b border-white/10 bg-white/[0.035] p-4 lg:border-r lg:border-b-0 lg:p-5"
+                  data-testid="language-inventory-collection-sidebar"
+                >
+                  <div
+                    className="lg:sticky lg:top-[calc(env(safe-area-inset-top,0px)+7rem)]"
+                    data-testid="language-inventory-collection-overview"
+                  >
+                    <CollectionGroupOverview group={group} />
+                  </div>
                 </div>
                 <div className="divide-y divide-white/10">
                   {group.items.map((item, index) => (

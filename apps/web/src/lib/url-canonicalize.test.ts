@@ -282,9 +282,18 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
-  it("does NOT fire for /videos (exempt)", () => {
-    expect(canonical({ rawPathname: "/videos" })).toEqual({
+  it("does NOT fire for /languages (exempt)", () => {
+    expect(canonical({ rawPathname: "/languages" })).toEqual({
       kind: "canonical",
+    })
+  })
+
+  it("redirects legacy /videos to /languages", () => {
+    expect(canonical({ rawPathname: "/videos" })).toEqual({
+      kind: "redirect",
+      pathname: "/languages",
+      status: 307,
+      cache: "short",
     })
   })
 
@@ -436,7 +445,7 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/jesus.html/the-beginning/russian.html",
     "/russian.html",
     "/portuguese-brazil.html",
-    "/videos",
+    "/languages",
     "/spanish-latin-american.html/videos",
   ]
 

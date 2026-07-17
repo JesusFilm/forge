@@ -25,7 +25,12 @@ Set them as EAS environment variables per environment (do NOT commit them):
 # point preview + production builds at prod admin GraphQL
 npx eas-cli env:create --environment preview    --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
 npx eas-cli env:create --environment production --name EXPO_PUBLIC_GRAPHQL_URL --value <prod-admin-graphql-url> --visibility plaintext
-# add EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN the same way only if prod admin requires a token
+# prod admin REQUIRES a search token: set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN to TV's OWN fleet key
+# (a dedicated entry in admin's FLEET_ADMIN_API_KEYS CSV — never mobile's value).
+# Use --visibility sensitive, NOT secret: EAS rejects `secret` for EXPO_PUBLIC_* vars (they inline
+# into the bundle, so the value is extractable by design — the abuse ceiling is the guard, not secrecy).
+npx eas-cli env:create --environment preview    --name EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN --value <tv-fleet-key> --visibility sensitive
+npx eas-cli env:create --environment production --name EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN --value <tv-fleet-key> --visibility sensitive
 ```
 
 ## Android TV / Google TV — sideloadable APK (easiest, no review)
@@ -89,8 +94,11 @@ npx eas-cli build --platform ios --profile production   # store-signed tvOS buil
 ```
 
 Requires the Apple Developer Program ($99/yr) and a **tvOS** App Store Connect app
-record for `org.jesusfilm.forgetv` (Apple ID `6781137518`). The app MUST support
-tvOS — if it was auto-created iOS-only, add the platform in App Store Connect
+record for `org.jesusfilm.forgewatch` (Apple ID `6791428415`). Since PR #1590 the
+TV and mobile apps share that single unified "Jesus Film Watch" record (iOS +
+tvOS platforms in one listing); the pre-unification `org.jesusfilm.forgetv`
+record (`6781137518`) was renamed "…Legacy" and is dormant. The record MUST have
+the tvOS platform — if it's missing, add it in App Store Connect
 (**Add Platform → tvOS**). Note `appleTVImages` requires no alpha channel and
 exact sizes; the `withTVInfoPlistFixes` config plugin (`apps/tv/plugins/`) strips
 the stray `LSRequiresIPhoneOS` key that config-tv leaves in (tvOS hygiene).
@@ -129,6 +137,11 @@ xcrun altool --upload-app   -f /tmp/jfw.ipa -t appletvos \
 delivery, so you confirm a clean "VERIFY SUCCEEDED" before uploading. The
 Transporter Mac app also works (it auto-detects tvOS from the binary).
 `eas submit` does not, and there is no flag to make it.
+
+For the same reason, `apps/tv/eas.json` deliberately has **no `submit` section**:
+an accidental `eas submit` fails fast with "Missing submit profile" instead of
+burning doomed deliveries. Do NOT re-add it "for consistency" with mobile —
+mobile's populated profile marks eas submit as its blessed path; TV's is altool.
 
 - **Internal testing**: up to 100 testers who are members of your App Store
   Connect team. No Beta App Review; builds are ready in minutes.

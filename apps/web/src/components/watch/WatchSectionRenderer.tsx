@@ -231,7 +231,13 @@ function WatchBlockEntry({
       />
     )
   }
-  return <ExperienceSectionRenderer section={block} key={`strapi-${index}`} />
+  return (
+    <ExperienceSectionRenderer
+      section={block}
+      key={`strapi-${index}`}
+      languageSlug={languageSlug}
+    />
+  )
 }
 
 function SyntheticBlock({
@@ -298,6 +304,7 @@ function SyntheticBlock({
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
           onLanguageClick={modalCallbacks?.openLanguage}
+          onShareClick={modalCallbacks?.openShare}
           languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}
           hasSubtitleOptions={hasSubtitleOptions}

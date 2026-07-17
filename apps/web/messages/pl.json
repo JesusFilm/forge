@@ -88,7 +88,12 @@
     "toggleOff": "Wyłączone",
     "close": "Zamknij",
     "apply": "Zastosuj",
-    "noLanguageSubtitles": "Brak napisów w języku {language}"
+    "noLanguageSubtitles": "Brak napisów w języku {language}",
+    "seeAllLanguages": "Zobacz wszystkie języki",
+    "seeAllVideosInLanguage": "Zobacz wszystkie filmy w języku {language}",
+    "retryLoadingLanguages": "Ponów ładowanie języków",
+    "notAvailable": "Niedostępne",
+    "switching": "Przełączanie..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 ODCINEK} other {# ODCINKÓW}}",
@@ -201,9 +206,9 @@
     "inLanguage": "w języku {language}",
     "browseByRegion": "Przeglądaj według regionu",
     "clearLanguages": "Wyczyść",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "Wykryto język {language}",
+    "searchInLanguage": "Szukaj w języku {language}",
+    "tryDifferentKeywordsOrLanguage": "Spróbuj innych słów kluczowych lub wybierz inny język wyszukiwania"
   },
   "HeroPlayer": {
     "playWithSound": "Obejrzyj teraz",
@@ -214,7 +219,7 @@
   },
   "VideoLabels": {
     "video": "Film",
-    "segment": "Segment",
+    "segment": "Fragment",
     "episode": "Odcinek",
     "featureFilm": "Film pełnometrażowy",
     "shortFilm": "Film krótkometrażowy",

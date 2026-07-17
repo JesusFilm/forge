@@ -9,7 +9,7 @@ import { WatchHomeCard } from "@/components/home/WatchHomeCard"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
-import { videosIndexPath } from "@/lib/routes"
+import { languagesIndexPath } from "@/lib/routes"
 
 type WatchHomeSectionProps = {
   section: WatchHomeSectionModel
@@ -53,7 +53,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
     HoverBackdropLayer[]
   >([])
   const sectionHref = section.cards.find((card) => card.href)?.href
-  const ctaHref = sectionHref ?? videosIndexPath()
+  const ctaHref = sectionHref ?? languagesIndexPath()
   const hoverBackdropOpacity = "1"
 
   function updateHoverBackground(imageUrl: string | null) {
@@ -187,8 +187,8 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
       />
 
       <div className={cn("relative z-[3] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex max-w-4xl flex-col gap-1">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 max-w-4xl flex-1 flex-col gap-1">
             <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
               {section.eyebrow}
             </p>
@@ -198,7 +198,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
           </div>
           <Link
             href={ctaHref as Route}
-            className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <Play className="h-4 w-4 fill-current" aria-hidden />
             Watch

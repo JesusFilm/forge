@@ -30,8 +30,12 @@ const {
   bibleQuotesSectionMock,
 } = vi.hoisted(() => ({
   experienceSectionRendererMock: vi.fn(
-    ({ section }: { section: { __typename?: string } }) =>
-      `STRAPI:${section.__typename ?? "unknown"}`,
+    ({
+      section,
+    }: {
+      section: { __typename?: string }
+      languageSlug?: string | null
+    }) => `STRAPI:${section.__typename ?? "unknown"}`,
   ),
   // U5 — `WatchSectionRenderer` now mounts the real `<HeroPlayer>` instead of
   // a `data-block-type="HeroPlayer"` placeholder div. We mock it here so this
@@ -41,6 +45,7 @@ const {
     ({
       block,
       optimisticVisual,
+      onShareClick,
     }: {
       block: {
         variant: {
@@ -56,6 +61,7 @@ const {
         loading?: boolean
         transitionKey?: string | null
       } | null
+      onShareClick?: () => void
     }) => {
       // Mirror the original placeholder's data attributes so the renderer
       // contract assertions below (data-block-type + data-content JSON
@@ -69,6 +75,15 @@ const {
       return (
         <div data-block-type="HeroPlayer" data-content={content}>
           HeroPlayer mock
+          {onShareClick ? (
+            <button
+              type="button"
+              data-testid="hero-player-share-proxy"
+              onClick={onShareClick}
+            >
+              Share
+            </button>
+          ) : null}
         </div>
       )
     },
@@ -430,6 +445,31 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     )
   })
 
+  it("passes the page Share modal callback to HeroPlayer", () => {
+    const openShare = vi.fn()
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={[buildHeroBlock(makeVideo(), makeVariant())]}
+          modalCallbacks={{
+            closeModal: vi.fn(),
+            openDownload: vi.fn(),
+            openLanguage: vi.fn(),
+            openShare,
+          }}
+        />,
+      )
+    })
+
+    const share = container.querySelector(
+      '[data-testid="hero-player-share-proxy"]',
+    ) as HTMLButtonElement
+    expect(share).not.toBeNull()
+    share.click()
+    expect(openShare).toHaveBeenCalledTimes(1)
+  })
+
   it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {
     const video = makeVideo()
     const variant = makeVariant()
@@ -532,12 +572,20 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     } as never
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={[promo]} />)
+      root.render(
+        <WatchSectionRenderer
+          blocks={[promo]}
+          languageSlug="spanish-castilian"
+        />,
+      )
     })
 
     expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
     expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.section).toBe(
       promo,
+    )
+    expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.languageSlug).toBe(
+      "spanish-castilian",
     )
     // The mock returns a marker string we can find in the DOM.
     expect(container.textContent).toContain(

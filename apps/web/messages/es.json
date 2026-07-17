@@ -88,7 +88,12 @@
     "toggleOff": "No",
     "close": "Cerrar",
     "apply": "Aplicar",
-    "noLanguageSubtitles": "Sin subtítulos en {language}"
+    "noLanguageSubtitles": "Sin subtítulos en {language}",
+    "seeAllLanguages": "Ver todos los idiomas",
+    "seeAllVideosInLanguage": "Ver todos los vídeos en {language}",
+    "retryLoadingLanguages": "Volver a cargar los idiomas",
+    "notAvailable": "No disponible",
+    "switching": "Cambiando..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISODIO} other {# EPISODIOS}}",
@@ -201,9 +206,9 @@
     "inLanguage": "en {language}",
     "browseByRegion": "Explorar por región",
     "clearLanguages": "Borrar",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "Detectado: {language}",
+    "searchInLanguage": "Buscar en {language}",
+    "tryDifferentKeywordsOrLanguage": "Prueba otras palabras clave o elige otro idioma de búsqueda"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
@@ -213,7 +218,7 @@
     "loadingContent": "Cargando contenido"
   },
   "VideoLabels": {
-    "video": "Video",
+    "video": "Vídeo",
     "segment": "Segmento",
     "episode": "Episodio",
     "featureFilm": "Largometraje",

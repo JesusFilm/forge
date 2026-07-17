@@ -102,6 +102,15 @@ export function resolveMediaItemTitle(
   )
 }
 
+// Exported for the Home adapter, which needs this branch alone: it is BOTH the
+// portrait signal and the art, so one function decides both. `imageUrl` must not
+// count toward it — that field carries landscape art too.
+export function resolveOverridePosterUrl(item: MediaItemLike): string | null {
+  return resolveImageUrl(
+    rewriteSeedPosterUrl(firstNonEmpty(item.imageOverrideUrl)),
+  )
+}
+
 // The curated override poster wins (web's precedence: imageOverrideUrl →
 // imageUrl → video art), so these cards show the SAME portrait posters web
 // renders instead of the video's landscape cinematic cropped to portrait.
@@ -110,9 +119,7 @@ export function resolveMediaItemImageUrl(
   video: HydratedVideo | undefined,
 ): string | null {
   return (
-    resolveImageUrl(
-      rewriteSeedPosterUrl(firstNonEmpty(item.imageOverrideUrl)),
-    ) ??
+    resolveOverridePosterUrl(item) ??
     resolveImageUrl(firstNonEmpty(item.imageUrl)) ??
     resolveImageUrl(pickCardImage(video?.images ?? null, "card"))
   )

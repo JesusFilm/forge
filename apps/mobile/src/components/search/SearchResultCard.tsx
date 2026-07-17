@@ -56,6 +56,9 @@ export function SearchResultCard({
         onPressIn={onPressIn ? () => onPressIn(result) : undefined}
         accessibilityRole="button"
         accessibilityLabel={`${result.title}: ${result.snippet}`}
+        // KTD10: a stable RUM action name so trackInteractions doesn't derive it
+        // from accessibilityLabel (which leaks the title + snippet into telemetry).
+        {...{ "dd-action-name": "search-result" }}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
         <View style={styles.thumbnailContainer}>

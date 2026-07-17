@@ -23,7 +23,7 @@ describe("rateLimitAuthRoute", () => {
         limit: 1,
         windowMs: 60_000,
       }),
-    ).resolves.toEqual({ allowed: true, source: "local" })
+    ).resolves.toEqual({ allowed: true, source: "local", count: 1 })
 
     await expect(
       rateLimitAuthRoute({
@@ -32,7 +32,7 @@ describe("rateLimitAuthRoute", () => {
         limit: 1,
         windowMs: 60_000,
       }),
-    ).resolves.toEqual({ allowed: false, source: "local" })
+    ).resolves.toEqual({ allowed: false, source: "local", count: 1 })
   })
 
   it("falls back to local when Redis connect/incr fails", async () => {
@@ -50,6 +50,100 @@ describe("rateLimitAuthRoute", () => {
         limit: 1,
         windowMs: 60_000,
       }),
-    ).resolves.toEqual({ allowed: true, source: "local" })
+    ).resolves.toEqual({ allowed: true, source: "local", count: 1 })
+  })
+})
+
+describe("incrementFixedWindow (local fallback)", () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  afterEach(async () => {
+    vi.unstubAllEnvs()
+    const { resetLocalRateLimitState } = await import("./rate-limit")
+    resetLocalRateLimitState()
+  })
+
+  it("counts up then blocks past the limit when Redis is absent", async () => {
+    const { incrementFixedWindow } = await import("./rate-limit")
+
+    for (const expected of [1, 2, 3]) {
+      await expect(
+        incrementFixedWindow("fleet-global:abc", 3, 60_000),
+      ).resolves.toEqual({ allowed: true, source: "local", count: expected })
+    }
+
+    // 4th call: window already holds 3 attempts (= limit) → blocked, count stays 3.
+    await expect(
+      incrementFixedWindow("fleet-global:abc", 3, 60_000),
+    ).resolves.toEqual({ allowed: false, source: "local", count: 3 })
+  })
+})
+
+describe("incrementFixedWindow (redis path)", () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  afterEach(async () => {
+    vi.doUnmock("@/infra/redis")
+    vi.useRealTimers()
+    const { resetLocalRateLimitState } = await import("./rate-limit")
+    resetLocalRateLimitState()
+    vi.restoreAllMocks()
+  })
+
+  it("returns source=redis with the INCR count from a live Redis eval", async () => {
+    const evalMock = vi.fn().mockResolvedValue(7)
+    vi.doMock("@/infra/redis", () => ({
+      getRedisClient: () => ({ eval: evalMock }),
+    }))
+    const { incrementFixedWindow } = await import("./rate-limit")
+
+    await expect(
+      incrementFixedWindow("fleet-global:k", 10, 60_000),
+    ).resolves.toEqual({ allowed: true, source: "redis", count: 7 })
+    await expect(
+      incrementFixedWindow("fleet-global:k", 5, 60_000),
+    ).resolves.toEqual({ allowed: false, source: "redis", count: 7 })
+  })
+
+  it("falls back to local with a plain-string warn on a redis command error", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.doMock("@/infra/redis", () => ({
+      getRedisClient: () => ({
+        eval: vi.fn().mockRejectedValue(new Error("boom")),
+      }),
+    }))
+    const { incrementFixedWindow } = await import("./rate-limit")
+
+    const res = await incrementFixedWindow("search:1.2.3.4", 5, 60_000)
+    expect(res.source).toBe("local")
+    const line = warnSpy.mock.calls
+      .map((a) => String(a[0]))
+      .find((l) => l.includes("rate_limit.redis_unavailable"))
+    expect(line).toBeDefined()
+    // Plain-string (not JSON — Railway logsV2 rule), keyPrefix only (never the ip).
+    expect(
+      line!.startsWith("[ratelimit] event=rate_limit.redis_unavailable"),
+    ).toBe(true)
+    expect(line).toContain("keyPrefix=search")
+    expect(line).not.toContain("1.2.3.4")
+    expect(line!.startsWith("{")).toBe(false)
+  })
+
+  it("times out a slow redis command and falls back to local", async () => {
+    vi.useFakeTimers()
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.doMock("@/infra/redis", () => ({
+      getRedisClient: () => ({ eval: () => new Promise(() => {}) }),
+    }))
+    const { incrementFixedWindow } = await import("./rate-limit")
+
+    const pending = incrementFixedWindow("fleet-global:k", 5, 60_000)
+    await vi.advanceTimersByTimeAsync(300)
+    const res = await pending
+    expect(res.source).toBe("local")
   })
 })

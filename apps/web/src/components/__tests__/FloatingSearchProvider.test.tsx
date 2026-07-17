@@ -14,13 +14,18 @@ import {
   useFloatingSearch,
 } from "@/components/FloatingSearchProvider"
 import {
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
-  FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+  FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { runSearch } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
@@ -454,6 +459,45 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(backdrop?.className).toContain("backdrop-blur-[14px]")
     expect(backdrop?.className).toContain("bg-[linear-gradient")
     expect(backdrop?.className).toContain("opacity-100")
+  })
+
+  it("uses safe-area-aware compact geometry in short phone landscape", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const compactLandscape = "compact-landscape"
+    const header = document.querySelector('[data-testid="floating-header"]')
+    const backdrop = document.querySelector(
+      '[data-testid="floating-header-backdrop"]',
+    )
+    const hoverZone = document.querySelector(
+      '[data-testid="floating-header-hover-zone"]',
+    )
+
+    expect(FLOATING_HEADER_TOP_CLASS).toContain(
+      `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
+    )
+    expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
+      `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
+    )
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
+      `${compactLandscape}:left-[max(1.25rem,env(safe-area-inset-left,0px))]`,
+    )
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
+      `${compactLandscape}:right-[max(1.25rem,env(safe-area-inset-right,0px))]`,
+    )
+    expect(header?.className).toContain(FLOATING_HEADER_TOP_CLASS)
+    expect(backdrop?.className).toContain(
+      `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
+    )
+    expect(hoverZone?.className).toContain(
+      `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
+    )
   })
 
   it("moves the desktop gradient upward in compact header mode", () => {
@@ -1487,6 +1531,71 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 })
 
 describe("FloatingSearchProvider — language switcher chrome", () => {
+  it("renders the full ministry logo on Watch home routes", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
+    expect(logo?.className).toContain("w-20")
+    expect(logo?.className).toContain("md:w-[139px]")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesus-film-logo-full.svg",
+    )
+    expect(logo?.querySelector("img")?.getAttribute("width")).toBe("139")
+    expect(logo?.querySelector("img")?.getAttribute("height")).toBe("36")
+
+    navigationMocks.pathname = "/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Localized page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesus-film-logo-full.svg",
+    )
+
+    await openSearchOverlay()
+    const overlayLogoSlot = document.querySelector(
+      '[data-testid="search-overlay-top-bar"] > [aria-hidden="true"]',
+    )
+    expect(overlayLogoSlot?.className).toContain("w-20")
+    expect(overlayLogoSlot?.className).toContain("md:w-[139px]")
+  })
+
+  it("keeps the compact logo on inner Watch routes", () => {
+    navigationMocks.pathname = "/jesus.html/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    // Next applies the configured `/watch` base path at runtime; jsdom exposes
+    // the base-path-relative route passed to `next/link`.
+    expect(logo?.getAttribute("href")).toBe("/")
+    expect(logo?.className).toContain("w-11")
+    expect(logo?.className).toContain("md:w-12")
+    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
+      "/watch/images/jesusfilm-sign.svg",
+    )
+    expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
+      "max-w-[38px]",
+    )
+  })
+
   it("renders the language globe as part of the floating header", () => {
     const onLanguageClick = vi.fn()
     act(() => {
@@ -1548,12 +1657,6 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(logo?.className).toContain("md:h-[52px]")
     expect(logo?.className).toContain("flex")
     expect(logo?.className).not.toContain("hidden")
-    expect(logo?.querySelector("img")?.getAttribute("class")).toContain(
-      "max-w-[38px]",
-    )
-    expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
-      "/watch/images/jesusfilm-sign.svg",
-    )
 
     act(() => {
       languageButton?.click()
@@ -1697,14 +1800,30 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const overlayTopBar = document.querySelector(
       '[data-testid="search-overlay-instant-top-bar"], [data-testid="search-overlay-top-bar"]',
     )
+    const overlayFieldShell = document.querySelector(
+      '[data-testid="search-overlay-instant-field-shell"], [data-testid="search-overlay-field-shell"]',
+    )
+    const header = document.querySelector('[data-testid="floating-header"]')
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    )
     expect(overlayTopBar?.className).toContain("left-5")
     expect(overlayTopBar?.className).toContain("right-5")
     expect(overlayTopBar?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
     )
-    expect(
-      document.querySelector('[data-testid="floating-header"]')?.className,
-    ).toContain("translate-y-0")
+    expect(overlayTopBar?.className).toContain(
+      FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+    )
+    expect(overlayFieldShell?.className).toContain(
+      FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+    )
+    expect(overlayFieldShell?.className).toContain("col-span-2")
+    expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+    expect(header?.className).toContain("translate-y-0")
+    expect(close?.className).toContain(
+      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+    )
     expect(
       document.querySelector('[data-testid="floating-header-search-close"]'),
     ).not.toBeNull()
@@ -1965,6 +2084,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
     )
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    const headerTrailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
     const overlay = document.querySelector(
       '[aria-label="Search and browse videos"]',
     ) as HTMLElement | null
@@ -1991,6 +2114,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlay?.className).toContain("min-h-dvh")
     expect(overlay?.style.zIndex).toBe("45")
     expect(header?.className).toContain("z-50")
+    expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain("translate-y-0")
     expect(header?.className).toContain("opacity-100")
     expect(header?.className).not.toContain("-translate-y-[calc(100%+2rem)]")
@@ -2019,8 +2143,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(topBar?.className).toContain("md:left-16")
     expect(topBar?.className).toContain("md:right-16")
     expect(topBar?.className).toContain(FLOATING_HEADER_TOP_CLASS)
-    expect(topBar?.className).toContain(FLOATING_HEADER_HEIGHT_CLASS)
-    expect(topBar?.className).toContain(FLOATING_HEADER_GAP_CLASS)
+    expect(topBar?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(topBar?.className).toContain("items-start")
     expect(topBar?.className).not.toContain("items-center")
     expect(
@@ -2040,6 +2163,20 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayField).not.toBeNull()
     expect(overlayFieldShell?.className).toContain("min-w-0")
     expect(overlayFieldShell?.className).toContain("flex-1")
+    expect(overlayFieldShell?.className).toContain(
+      FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+    )
+    expect(overlayFieldShell?.className).not.toContain("col-span-2")
+    expect(logo?.className).toContain(FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS)
+    expect(languageButton?.className).toContain(
+      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+    )
+    expect(close?.className).toContain(
+      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+    )
+    expect(headerTrailingControls?.className).toContain(
+      FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
+    )
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")
     expect(overlayField?.className).toContain("w-full")
@@ -2120,17 +2257,23 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
 
     expect(headerTrailingControls?.className).toContain(
-      FLOATING_HEADER_TRAILING_GROUP_CLASS,
+      FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
     )
     expect(overlayTrailingSpacer?.className).toContain(
-      FLOATING_HEADER_TRAILING_GROUP_CLASS,
+      FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
     )
     expect(overlayTrailingSpacer?.children).toHaveLength(2)
     expect(overlayTrailingSpacer?.children[0]?.className).toContain(
       FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
     )
+    expect(overlayTrailingSpacer?.children[0]?.className).toContain(
+      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+    )
     expect(overlayTrailingSpacer?.children[1]?.className).toContain(
       FLOATING_HEADER_TRAILING_SLOT_CLASS,
+    )
+    expect(overlayTrailingSpacer?.children[1]?.className).toContain(
+      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
     )
   })
 })
