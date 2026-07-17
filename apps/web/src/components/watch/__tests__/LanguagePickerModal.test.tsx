@@ -61,6 +61,12 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  Object.defineProperty(document, "fullscreenElement", {
+    configurable: true,
+    get() {
+      return null
+    },
+  })
   document.body.innerHTML = ""
 })
 
@@ -243,6 +249,16 @@ function renderModal({
     )
   })
   return { onClose }
+}
+
+function setFullscreenElement(element: Element | null) {
+  Object.defineProperty(document, "fullscreenElement", {
+    configurable: true,
+    get() {
+      return element
+    },
+  })
+  document.dispatchEvent(new Event("fullscreenchange"))
 }
 
 const baseVariants = [
@@ -648,14 +664,27 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(overlay?.className).toContain("backdrop-blur-md")
 
     const modal = $('[data-testid="watch-language-picker-modal"]')
+    const viewport = $('[data-slot="dialog-viewport"]')
+    expect(viewport).not.toBeNull()
+    expect(viewport?.className).toContain("fixed")
+    expect(viewport?.className).toContain("inset-0")
+    expect(viewport?.className).toContain("overflow-x-hidden")
+    expect(viewport?.className).toContain("overflow-y-auto")
+    expect(viewport?.className).toContain("px-3")
+    expect(viewport?.className).toContain("py-24")
+    expect(viewport?.contains(modal)).toBe(true)
+
     expect(modal?.className).toContain("bg-transparent")
-    expect(modal?.className).toContain("h-[100svh]")
-    expect(modal?.className).toContain("w-screen")
-    expect(modal?.className).toContain("max-w-none")
-    expect(modal?.className).toContain("overflow-x-hidden")
-    expect(modal?.className).toContain("overflow-y-auto")
+    expect(modal?.className).toContain("relative")
+    expect(modal?.className).not.toContain("top-1/2")
+    expect(modal?.className).not.toContain("left-1/2")
+    expect(modal?.className).toContain("m-auto")
+    expect(modal?.className).toContain("max-w-[608px]")
+    expect(modal?.className).toContain("shrink-0")
+    expect(modal?.className).not.toContain("overflow-x-hidden")
+    expect(modal?.className).not.toContain("overflow-y-auto")
     expect(modal?.className).not.toContain("max-w-[min(90vw,608px)]")
-    expect(modal?.className).toContain("sm:max-w-[608px]")
+    expect(modal?.className).not.toContain("sm:max-w-[608px]")
 
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
@@ -813,6 +842,28 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(
       $('[data-testid="watch-language-picker-request-ai-translation"]'),
     ).toBeNull()
+  })
+
+  it("portals the scroll viewport and popup into the fullscreen element", () => {
+    const fullscreenElement = document.createElement("div")
+    document.body.appendChild(fullscreenElement)
+    setFullscreenElement(fullscreenElement)
+
+    renderModal({ open: true, variants: baseVariants })
+
+    expect(
+      fullscreenElement.querySelector('[data-slot="dialog-viewport"]'),
+    ).not.toBeNull()
+    expect(
+      fullscreenElement.querySelector(
+        '[data-testid="watch-language-picker-modal"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      fullscreenElement.querySelector(
+        '[data-testid="watch-language-picker-close"]',
+      ),
+    ).not.toBeNull()
   })
 
   it("makes the subtitle switch state explicit and hides the selector when off", () => {

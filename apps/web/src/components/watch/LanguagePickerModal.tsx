@@ -691,10 +691,11 @@ export function LanguagePickerModal({
       />
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="top-0 left-0 h-[100svh] w-screen max-w-none translate-x-0 translate-y-0 overflow-x-hidden overflow-y-auto border-0 bg-transparent px-3 py-24 text-stone-100 ring-0 sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[calc(100svh-6rem)] sm:w-full sm:max-w-[608px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:p-0"
+        className="m-auto w-full max-w-[608px] shrink-0 border-0 bg-transparent p-0 text-stone-100 ring-0"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
         portalContainer={portalContainer}
+        viewportClassName="fixed inset-0 z-50 flex overflow-x-hidden overflow-y-auto px-3 py-24"
       >
         <DialogTitle className="sr-only">
           {subtitles.length > 0
@@ -702,7 +703,7 @@ export function LanguagePickerModal({
             : t("dialogTitle")}
         </DialogTitle>
 
-        <div className="relative mx-auto flex min-h-full w-full max-w-[608px] flex-col justify-center gap-10 sm:min-h-0">
+        <div className="relative flex w-full flex-col gap-10">
           <MultilingualTooltipPanel
             copy={activeTooltipCopy}
             excludedLanguage={excludedTooltipLanguage}
