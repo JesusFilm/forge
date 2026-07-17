@@ -57,6 +57,54 @@ describe("Video", () => {
     expect(container.querySelector("video")).not.toBeNull()
   })
 
+  it("shows the branded player loader until the media can play", async () => {
+    await act(async () => {
+      root.render(<Video data={baseFragment} />)
+    })
+
+    const video = container.querySelector("video")!
+    expect(
+      container.querySelector('[data-testid="video-player-loading"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="video-player-loading"]')
+        ?.className,
+    ).toContain("z-40")
+    expect(
+      container.querySelector('[data-testid="watch-player-loading-indicator"]'),
+    ).not.toBeNull()
+
+    await act(async () => {
+      video.dispatchEvent(new Event("canplay"))
+    })
+
+    expect(
+      container.querySelector('[data-testid="video-player-loading"]'),
+    ).toBeNull()
+  })
+
+  it("restores the player loader while playback buffers", async () => {
+    await act(async () => {
+      root.render(<Video data={baseFragment} />)
+    })
+
+    const video = container.querySelector("video")!
+    await act(async () => {
+      video.dispatchEvent(new Event("playing"))
+    })
+    expect(
+      container.querySelector('[data-testid="video-player-loading"]'),
+    ).toBeNull()
+
+    await act(async () => {
+      video.dispatchEvent(new Event("waiting"))
+    })
+
+    expect(
+      container.querySelector('[data-testid="video-player-loading"]'),
+    ).not.toBeNull()
+  })
+
   it("renders nothing if streamingUrl resolves to null", async () => {
     const emptyFragment = {
       ...baseFragment,

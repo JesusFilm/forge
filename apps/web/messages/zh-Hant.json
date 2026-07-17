@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "關閉",
     "download": "下載",
+    "authRequiredTitle": "想下載此影片嗎？",
+    "authRequiredBody": "下載影片需要免費的耶穌電影帳戶。",
+    "signInToDownload": "登入以下載",
+    "keepWatching": "繼續觀看",
     "checking": "正在檢查",
     "closeTermsOfUse": "關閉使用條款",
     "cancel": "取消",
@@ -83,7 +87,8 @@
     "toggleOn": "開",
     "toggleOff": "關",
     "close": "關閉",
-    "apply": "套用"
+    "apply": "套用",
+    "noLanguageSubtitles": "無{language}字幕"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",
@@ -192,7 +197,10 @@
     "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",

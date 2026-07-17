@@ -8,8 +8,10 @@ import {
   markWorkflowRunStarted,
 } from "@/services/workflow-run-log.service"
 import {
+  SCHEDULED_VIDEO_DB_BACKUP_PROFILES,
   runScheduledVideoDbBackup,
   type VideoDbBackupJobResult,
+  type VideoDbBackupProfile,
 } from "@/scripts/video-db-backup"
 import {
   runVideoDbBackup,
@@ -24,6 +26,7 @@ export type VideoDbBackupSchedulerInput = {
 export type VideoDbBackupWorkflowInput = {
   trigger?: VideoDbBackupTrigger
   ledgerRunId?: string
+  profile?: VideoDbBackupProfile
 }
 
 export type VideoDbBackupDispatchResult = {
@@ -45,6 +48,13 @@ export type VideoDbBackupSchedulerStartResult =
       ledgerRunId?: string
       runtimeRunId?: string | null
     }
+
+export type VideoDbBackupSchedulerRunResult = {
+  ok: boolean
+  ledgerRunId: string
+  result?: VideoDbBackupJobResult
+  error?: string
+}
 
 const SCHEDULER_WORKFLOW_KEY = "video-db-backup-scheduler"
 const SCHEDULER_LOCK_ID = 862_640_122
@@ -92,14 +102,14 @@ export async function dispatchVideoDbBackup(
     subjectId: "admin-video",
     summary: "Video DB backup workflow queued.",
     details: {
-      profile: "video-core",
+      profile: input.profile ?? "video-core",
       storage: "railway-s3",
     },
   })
 
   try {
     const run = await start(runVideoDbBackup, [
-      { trigger, ledgerRunId: ledgerRun.id },
+      { trigger, ledgerRunId: ledgerRun.id, profile: input.profile },
     ])
     await attachWorkflowRuntimeRunId(ledgerRun.id, run.runId)
 
@@ -124,7 +134,7 @@ export async function runVideoDbBackupJob(
   }
 
   try {
-    const result = await runScheduledVideoDbBackup()
+    const result = await runScheduledVideoDbBackup(input.profile)
 
     if (input.ledgerRunId) {
       await prisma.workflowRun.update({
@@ -150,21 +160,18 @@ export async function runVideoDbBackupJob(
   }
 }
 
-export async function runVideoDbBackupFromScheduler(): Promise<{
-  ok: boolean
-  ledgerRunId: string
-  result?: VideoDbBackupJobResult
-  error?: string
-}> {
+async function runVideoDbBackupProfileFromScheduler(
+  profile: VideoDbBackupProfile,
+): Promise<VideoDbBackupSchedulerRunResult> {
   const ledgerRun = await createWorkflowRunLog({
     workflowKey: "video-db-backup",
     workflowName: "Video DB Backup",
     trigger: "scheduled",
     subjectType: "database",
     subjectId: "admin-video",
-    summary: "Video DB backup workflow started by scheduler.",
+    summary: `Video DB ${profile} backup workflow started by scheduler.`,
     details: {
-      profile: "video-core",
+      profile,
       storage: "railway-s3",
     },
   })
@@ -173,6 +180,7 @@ export async function runVideoDbBackupFromScheduler(): Promise<{
     const result = await runVideoDbBackupJob({
       trigger: "scheduled",
       ledgerRunId: ledgerRun.id,
+      profile,
     })
     return { ok: true, ledgerRunId: ledgerRun.id, result }
   } catch (error) {
@@ -182,6 +190,16 @@ export async function runVideoDbBackupFromScheduler(): Promise<{
       error: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+export async function runVideoDbBackupFromScheduler(): Promise<
+  VideoDbBackupSchedulerRunResult[]
+> {
+  const results = []
+  for (const profile of SCHEDULED_VIDEO_DB_BACKUP_PROFILES) {
+    results.push(await runVideoDbBackupProfileFromScheduler(profile))
+  }
+  return results
 }
 
 export async function markVideoDbBackupSchedulerStarted(

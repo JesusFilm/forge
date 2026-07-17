@@ -7,7 +7,10 @@
 
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { authenticateManagerOverrideRequest } from "@/lib/auth"
+import {
+  authenticateManagerOverrideRequest,
+  managerActorIdentity,
+} from "@/lib/auth"
 import {
   buildSmartCropMetadataArtifact,
   getSmartCropReport,
@@ -17,7 +20,15 @@ import type { SmartCropJobReport } from "@/types/job"
 
 const approveSchema = z.object({
   action: z.enum(["approve", "reject"]),
+  attemptIndex: z.number().int().nonnegative().optional(),
+  manifestDigest: z.string().min(1).optional(),
 })
+
+const SELECTABLE_ATTEMPT_STATUSES = new Set([
+  "approved",
+  "complete",
+  "qa_unavailable",
+])
 
 export async function POST(
   request: Request,
@@ -67,11 +78,91 @@ export async function POST(
 
   const { artifactExists, readArtifact, writeArtifact } =
     await import("@/services/storage")
-  const { parsePlanArtifact } = await import("@/services/smartCrop")
+  const smartCropArtifacts = await import("@/services/smartCrop")
+  const {
+    SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+    buildSmartCropAttemptsArtifact,
+    parsePlanArtifact,
+    parseSmartCropAttemptsArtifact,
+  } = smartCropArtifacts
+
+  let selectedAttemptIndex = parsed.data.attemptIndex ?? 0
+  let selectedPlanArtifactType = "smart-crop-plan-9x16-v1"
+  let attemptsArtifact: ReturnType<
+    typeof parseSmartCropAttemptsArtifact
+  > | null = null
+
+  const attemptsExists = await artifactExists(
+    smartCrop.assetId,
+    SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+    "json",
+  )
+  if (attemptsExists) {
+    attemptsArtifact = parseSmartCropAttemptsArtifact(
+      JSON.parse(
+        new TextDecoder().decode(
+          await readArtifact(
+            smartCrop.assetId,
+            SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+            "json",
+          ),
+        ),
+      ) as unknown,
+    )
+    if (!attemptsArtifact) {
+      return NextResponse.json(
+        { error: "Smart Crop attempt manifest is malformed" },
+        { status: 409 },
+      )
+    }
+    if (parsed.data.attemptIndex == null || !parsed.data.manifestDigest) {
+      return NextResponse.json(
+        {
+          error:
+            "Smart Crop attempt selection is required; refresh and try again",
+        },
+        { status: 409 },
+      )
+    }
+    if (parsed.data.manifestDigest !== attemptsArtifact.manifestDigest) {
+      return NextResponse.json(
+        { error: "Smart Crop attempt manifest changed; refresh and try again" },
+        { status: 409 },
+      )
+    }
+    const selectedAttempt = attemptsArtifact.attempts.find(
+      (attempt) => attempt.attemptIndex === selectedAttemptIndex,
+    )
+    if (!selectedAttempt) {
+      return NextResponse.json(
+        { error: "Selected Smart Crop attempt was not found" },
+        { status: 409 },
+      )
+    }
+    if (
+      selectedAttempt &&
+      !SELECTABLE_ATTEMPT_STATUSES.has(selectedAttempt.status)
+    ) {
+      return NextResponse.json(
+        { error: "Selected Smart Crop attempt is not ready for review" },
+        { status: 409 },
+      )
+    }
+    if (selectedAttempt) {
+      selectedPlanArtifactType = selectedAttempt.planArtifactType
+    } else {
+      selectedAttemptIndex = 0
+    }
+  } else if (parsed.data.attemptIndex != null) {
+    return NextResponse.json(
+      { error: "Smart Crop attempt manifest not found yet" },
+      { status: 409 },
+    )
+  }
 
   const planArtifactExists = await artifactExists(
     smartCrop.assetId,
-    "smart-crop-plan-9x16-v1",
+    selectedPlanArtifactType,
     "json",
   )
   if (!planArtifactExists) {
@@ -84,11 +175,7 @@ export async function POST(
   const plan = parsePlanArtifact(
     JSON.parse(
       new TextDecoder().decode(
-        await readArtifact(
-          smartCrop.assetId,
-          "smart-crop-plan-9x16-v1",
-          "json",
-        ),
+        await readArtifact(smartCrop.assetId, selectedPlanArtifactType, "json"),
       ),
     ) as unknown,
   )
@@ -99,10 +186,7 @@ export async function POST(
     )
   }
 
-  const approvedBy =
-    actor.kind === "session"
-      ? actor.user.email || actor.approvedByUserId
-      : actor.approvedByUserId
+  const approvedBy = managerActorIdentity(actor)
 
   const qa = {
     status: parsed.data.action === "approve" ? "approved" : "rejected",
@@ -114,11 +198,46 @@ export async function POST(
 
   await writeArtifact({
     assetId: smartCrop.assetId,
-    artifactType: "smart-crop-plan-9x16-v1",
+    artifactType: selectedPlanArtifactType,
     ext: "json",
     body: JSON.stringify(plan, null, 2),
     contentType: "application/json",
   })
+
+  if (
+    parsed.data.action === "approve" &&
+    selectedPlanArtifactType !== "smart-crop-plan-9x16-v1"
+  ) {
+    await writeArtifact({
+      assetId: smartCrop.assetId,
+      artifactType: "smart-crop-plan-9x16-v1",
+      ext: "json",
+      body: JSON.stringify(plan, null, 2),
+      contentType: "application/json",
+    })
+  }
+
+  let nextManifestDigest = attemptsArtifact?.manifestDigest
+  if (attemptsArtifact) {
+    const nextAttempts = attemptsArtifact.attempts.map((attempt) =>
+      attempt.attemptIndex === selectedAttemptIndex
+        ? { ...attempt, status: qa.status, updatedAt: qa.approvedAt }
+        : attempt,
+    )
+    const nextManifest = buildSmartCropAttemptsArtifact({
+      assetId: smartCrop.assetId,
+      attempts: nextAttempts,
+      selectedAttemptIndex,
+    })
+    nextManifestDigest = nextManifest.manifestDigest
+    await writeArtifact({
+      assetId: smartCrop.assetId,
+      artifactType: SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+      ext: "json",
+      body: JSON.stringify(nextManifest, null, 2),
+      contentType: "application/json",
+    })
+  }
 
   const report: SmartCropJobReport = getSmartCropReport(job.artifacts) ?? {
     domain: "smart_crop",
@@ -129,11 +248,29 @@ export async function POST(
     segmentCount: plan.segments.length,
     approved: parsed.data.action === "approve",
   }
+  if (attemptsArtifact) {
+    report.attempts = {
+      latestAttemptIndex: Math.max(
+        ...attemptsArtifact.attempts.map((attempt) => attempt.attemptIndex),
+      ),
+      selectedAttemptIndex,
+      maxRepairAttempts: attemptsArtifact.maxRepairAttempts,
+      repairCount: attemptsArtifact.attempts.filter(
+        (attempt) => attempt.source === "repair",
+      ).length,
+      manifestDigest: nextManifestDigest,
+    }
+  }
   await mergeJobArtifacts(job.id, buildSmartCropMetadataArtifact(report))
 
   console.log(
-    `[smart-crop] event=plan_review jobId=${job.id} assetId=${smartCrop.assetId} action=${parsed.data.action}`,
+    `[smart-crop] event=plan_review jobId=${job.id} assetId=${smartCrop.assetId} action=${parsed.data.action} attempt=${selectedAttemptIndex}`,
   )
 
-  return NextResponse.json({ ok: true, qa })
+  return NextResponse.json({
+    ok: true,
+    qa,
+    attemptIndex: selectedAttemptIndex,
+    manifestDigest: nextManifestDigest,
+  })
 }

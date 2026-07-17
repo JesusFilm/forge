@@ -39,6 +39,7 @@ enum MatchJobStatus {
   RUNNING  @map("running")
   COMPLETE @map("complete")
   FAILED   @map("failed")
+  EXPIRED  @map("expired")
 
   @@map("match_job_status")
 }
@@ -179,6 +180,7 @@ model MediaSignature {
 
   @@unique([coreId, videoVariantId, signatureType, algorithmVersion, offsetMilliseconds], map: "mapper_media_signature_variant_signature_key")
   @@index([coreId, signatureType])
+  @@index([algorithmVersion, signatureType])
   @@index([algorithmVersion, coreId, videoVariantId])
   @@map("mapper_media_signature")
 }
@@ -204,8 +206,18 @@ model MatchJob {
   evidence   MatchEvidence[]
 
   @@index([status, createdAt])
+  @@index([status, queuedAt])
   @@index([retentionExpiresAt])
   @@map("mapper_match_job")
+}
+
+model MatchJobCleanerLease {
+  name        String   @id
+  lockedUntil DateTime @map("locked_until")
+  ownerToken  String   @map("owner_token")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("mapper_match_job_cleaner_lease")
 }
 
 model MatchCandidate {

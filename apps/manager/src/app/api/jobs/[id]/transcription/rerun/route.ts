@@ -16,6 +16,8 @@ import type {
   TranscriptionRoutingReport,
 } from "@/types/job"
 import { isSupportedElevenLabsLanguage } from "@/services/elevenlabs-transcription"
+import { isAudioCleanupConfigured } from "@/services/audioCleanup"
+import { getMuxAsset, getMuxStaticRenditionSourceUrl } from "@/services/mux"
 import { normalizeSourceLanguageCode } from "@/services/transcription"
 import { launchVideoEnrichment } from "@/workflows/launchVideoEnrichment"
 
@@ -29,6 +31,16 @@ function isTranscriptionActive(
   return job?.status === "running" && job.currentStep === "transcription"
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null && !Array.isArray(value)
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : undefined
+}
+
 function pruneArtifactsForTranscriptionRerun(
   artifacts: NonNullable<Awaited<ReturnType<typeof getJob>>>["artifacts"],
 ) {
@@ -37,12 +49,18 @@ function pruneArtifactsForTranscriptionRerun(
   delete nextArtifacts.chapters
   delete nextArtifacts.metadata
   delete nextArtifacts.embeddings
-  delete nextArtifacts.sceneEmbeddingSync
   delete nextArtifacts.translations
   delete nextArtifacts.muxSync
+  delete nextArtifacts["transcript-raw"]
+  delete nextArtifacts["subtitles-raw"]
+  delete nextArtifacts["transcript-correction-report"]
 
   for (const key of Object.keys(nextArtifacts)) {
-    if (key.startsWith("subtitles-") || key.startsWith("translation-")) {
+    if (
+      key.startsWith("subtitles-") ||
+      key.startsWith("translation-") ||
+      key.startsWith("subtitle-validation-")
+    ) {
       delete nextArtifacts[key]
     }
   }
@@ -69,8 +87,20 @@ function buildRunningAttempt(
 function buildRerunRoutingReport(
   existing: TranscriptionRoutingReport | undefined,
   provider: RequestedTranscriptionProvider,
+  sourceInputUrl?: string,
 ): TranscriptionRoutingReport {
-  const baseReport = existing ?? buildInitialTranscriptionRoutingReport()
+  const sourceReport = sourceInputUrl
+    ? buildInitialTranscriptionRoutingReport({ sourceInputUrl })
+    : undefined
+  const baseReport = {
+    ...(existing ?? buildInitialTranscriptionRoutingReport()),
+    ...(sourceReport?.sourceInputUrl
+      ? { sourceInputUrl: sourceReport.sourceInputUrl }
+      : {}),
+    ...(sourceReport?.sourceInputHost
+      ? { sourceInputHost: sourceReport.sourceInputHost }
+      : {}),
+  }
   const rerunnableReport = { ...baseReport }
   delete rerunnableReport.currentAttemptId
   delete rerunnableReport.finalProvider
@@ -91,6 +121,44 @@ function resolveRerunSourceLanguageCode(
   const candidate =
     existing?.finalSourceLanguageCode ?? job.sourceLanguageCode ?? "auto"
   return normalizeSourceLanguageCode(candidate)
+}
+
+function readDirectMaterializationSourceAssetId(
+  artifacts: NonNullable<Awaited<ReturnType<typeof getJob>>>["artifacts"],
+): string | undefined {
+  const artifact = artifacts.materialization
+  if (artifact?.kind !== "metadata" || !isRecord(artifact.data)) {
+    return undefined
+  }
+
+  const mode = readString(artifact.data.mode)
+  const sourceInputType = readString(artifact.data.sourceInputType)
+  if (mode !== "direct_mux_asset_reuse" && sourceInputType !== "mux_asset") {
+    return undefined
+  }
+
+  return (
+    readString(artifact.data.sourceMuxAssetId) ??
+    readString(artifact.data.reusedMuxAssetId)
+  )
+}
+
+async function recoverDirectMuxSourceInputUrl(
+  job: NonNullable<Awaited<ReturnType<typeof getJob>>>,
+): Promise<string | undefined> {
+  const sourceMuxAssetId = readDirectMaterializationSourceAssetId(job.artifacts)
+  if (!sourceMuxAssetId) {
+    return undefined
+  }
+
+  try {
+    return (
+      getMuxStaticRenditionSourceUrl(await getMuxAsset(sourceMuxAssetId)) ??
+      undefined
+    )
+  } catch {
+    return undefined
+  }
 }
 
 export async function POST(
@@ -131,7 +199,13 @@ export async function POST(
 
   const provider = parsed.data.provider
   const existingRoutingReport = getTranscriptionRoutingReport(job.artifacts)
-  const sourceInputUrl = existingRoutingReport?.sourceInputUrl
+  const sourceInputUrl =
+    existingRoutingReport?.sourceInputUrl ??
+    (provider === "elevenlabs"
+      ? await recoverDirectMuxSourceInputUrl(
+          job as NonNullable<Awaited<ReturnType<typeof getJob>>>,
+        )
+      : undefined)
   const sourceLanguageCode = resolveRerunSourceLanguageCode(
     job as NonNullable<Awaited<ReturnType<typeof getJob>>>,
     existingRoutingReport,
@@ -173,6 +247,7 @@ export async function POST(
   const nextRoutingReport = buildRerunRoutingReport(
     existingRoutingReport,
     provider,
+    sourceInputUrl,
   )
   const nextArtifacts = setTranscriptionRoutingReport(
     pruneArtifactsForTranscriptionRerun(job.artifacts),
@@ -207,6 +282,8 @@ export async function POST(
       translateTo: job.languages,
       initialArtifacts: updatedJob.artifacts,
       requestedTranscriptionProvider: provider,
+      runAudioCleanup:
+        provider === "elevenlabs" ? isAudioCleanupConfigured() : false,
     })
   } catch (error) {
     console.error(`Transcription rerun failed for job ${updatedJob.id}:`, error)

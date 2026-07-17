@@ -1,12 +1,5 @@
+import type { FirecrawlSearchHit } from "../firecrawl-search-client"
 import type { InstagramMediaType, InstagramPost } from "./types"
-
-type InstagramDiscoverySearchHit = {
-  url: string
-  title?: string | null
-  description?: string | null
-  markdown?: string | null
-  metadata?: Record<string, unknown>
-}
 
 const INSTAGRAM_HOSTS = new Set(["instagram.com", "www.instagram.com"])
 const MAX_CAPTION_LENGTH = 1024
@@ -122,7 +115,7 @@ function deriveAuthor(
  * are not Instagram post/reel/tv permalinks.
  */
 export function parseInstagramPost(
-  hit: InstagramDiscoverySearchHit,
+  hit: FirecrawlSearchHit,
 ): InstagramPost | null {
   const url = toInstagramUrl(hit.url)
   if (!url || !INSTAGRAM_HOSTS.has(url.hostname)) return null

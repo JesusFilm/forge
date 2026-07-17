@@ -1,7 +1,6 @@
 /**
- * Mission storytelling content shared by the Home rail (HomeMissionSection)
- * and the /mission detail page. Ported from
- * apps/web/src/components/home/WatchHomePromo.tsx — mirror copy changes there.
+ * Mission content shared by the Home rail and /mission detail page.
+ * Ported from apps/web's WatchHomePromo.tsx — mirror copy changes there.
  */
 import type { ComponentProps } from "react"
 import type Ionicons from "@expo/vector-icons/Ionicons"

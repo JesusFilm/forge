@@ -9,12 +9,20 @@ type LanguageOptionsLoader = (input: {
   videoSlug: string
 }) => Promise<LanguagePickerVariant[]>
 
+type StoredLanguageOptionsPayload = {
+  version: 1
+  variants: LanguagePickerVariant[]
+}
+
 const WATCH_INTERACTION_WARM_ORDER = [
   "language",
   "search",
   "share",
   "download",
 ] as const satisfies readonly WatchInteractionKey[]
+const WATCH_LANGUAGE_OPTIONS_STORAGE_VERSION = 1
+const WATCH_LANGUAGE_OPTIONS_STORAGE_KEY_PREFIX =
+  "forge.watch.languageOptions.v1:"
 
 const defaultInteractionLoaders: Record<
   WatchInteractionKey,
@@ -41,6 +49,7 @@ const languageOptionsPromises = new Map<
   Promise<LanguagePickerVariant[]>
 >()
 const languageOptionsResults = new Map<string, LanguagePickerVariant[]>()
+const storageHydratedLanguageOptions = new Set<string>()
 
 export function loadWatchInteraction(
   key: WatchInteractionKey,
@@ -59,21 +68,43 @@ export function loadWatchInteraction(
 export function getCachedWatchLanguageOptions(
   videoSlug: string,
 ): LanguagePickerVariant[] | null {
-  return languageOptionsResults.get(videoSlug) ?? null
+  const cached = languageOptionsResults.get(videoSlug)
+  if (cached) return cached
+
+  const stored = readStoredWatchLanguageOptions(videoSlug)
+  if (!stored) return null
+
+  languageOptionsResults.set(videoSlug, stored)
+  storageHydratedLanguageOptions.add(videoSlug)
+  return stored
+}
+
+export function shouldRefreshCachedWatchLanguageOptions(
+  videoSlug: string,
+): boolean {
+  return storageHydratedLanguageOptions.has(videoSlug)
 }
 
 export function loadWatchLanguageOptionsForVideo(
   videoSlug: string,
+  options: { forceRefresh?: boolean } = {},
 ): Promise<LanguagePickerVariant[]> {
-  const cached = languageOptionsResults.get(videoSlug)
+  const cached = options.forceRefresh
+    ? null
+    : getCachedWatchLanguageOptions(videoSlug)
   if (cached) return Promise.resolve(cached)
 
   const existing = languageOptionsPromises.get(videoSlug)
   if (existing) return existing
+  if (options.forceRefresh) {
+    storageHydratedLanguageOptions.delete(videoSlug)
+  }
 
   const promise = languageOptionsLoader({ videoSlug })
     .then((variants) => {
       languageOptionsResults.set(videoSlug, variants)
+      storageHydratedLanguageOptions.delete(videoSlug)
+      writeStoredWatchLanguageOptions(videoSlug, variants)
       return variants
     })
     .catch((error: unknown) => {
@@ -83,6 +114,86 @@ export function loadWatchLanguageOptionsForVideo(
 
   languageOptionsPromises.set(videoSlug, promise)
   return promise
+}
+
+function languageOptionsStorageKey(videoSlug: string): string {
+  return `${WATCH_LANGUAGE_OPTIONS_STORAGE_KEY_PREFIX}${encodeURIComponent(
+    videoSlug,
+  )}`
+}
+
+function isStoredLanguageOptionsPayload(
+  value: unknown,
+): value is StoredLanguageOptionsPayload {
+  if (typeof value !== "object" || value === null) return false
+  const payload = value as Partial<StoredLanguageOptionsPayload>
+  return (
+    payload.version === WATCH_LANGUAGE_OPTIONS_STORAGE_VERSION &&
+    Array.isArray(payload.variants) &&
+    payload.variants.every(isStoredLanguageOption)
+  )
+}
+
+function isStoredLanguageOption(
+  value: unknown,
+): value is LanguagePickerVariant {
+  if (typeof value !== "object" || value === null) return false
+  const variant = value as Partial<LanguagePickerVariant>
+  const language = variant.language
+  return (
+    typeof variant.documentId === "string" &&
+    typeof variant.hls === "string" &&
+    variant.published === true &&
+    typeof language === "object" &&
+    language !== null &&
+    typeof language.slug === "string" &&
+    (language.name == null || typeof language.name === "string") &&
+    (language.nativeName == null || typeof language.nativeName === "string") &&
+    (language.bcp47 == null || typeof language.bcp47 === "string") &&
+    (language.coreId == null || typeof language.coreId === "string")
+  )
+}
+
+function readStoredWatchLanguageOptions(
+  videoSlug: string,
+): LanguagePickerVariant[] | null {
+  if (typeof window === "undefined") return null
+
+  const key = languageOptionsStorageKey(videoSlug)
+  try {
+    const raw = window.sessionStorage.getItem(key)
+    if (!raw) return null
+
+    const parsed: unknown = JSON.parse(raw)
+    if (!isStoredLanguageOptionsPayload(parsed)) {
+      window.sessionStorage.removeItem(key)
+      return null
+    }
+
+    return parsed.variants
+  } catch {
+    return null
+  }
+}
+
+function writeStoredWatchLanguageOptions(
+  videoSlug: string,
+  variants: LanguagePickerVariant[],
+): void {
+  if (typeof window === "undefined") return
+
+  try {
+    const payload: StoredLanguageOptionsPayload = {
+      version: WATCH_LANGUAGE_OPTIONS_STORAGE_VERSION,
+      variants,
+    }
+    window.sessionStorage.setItem(
+      languageOptionsStorageKey(videoSlug),
+      JSON.stringify(payload),
+    )
+  } catch {
+    // Browser storage is an optional acceleration layer.
+  }
 }
 
 export async function warmWatchInteractionsNow(
@@ -169,4 +280,5 @@ export function __resetWatchInteractionLoaderForTests(): void {
   interactionPromises.clear()
   languageOptionsPromises.clear()
   languageOptionsResults.clear()
+  storageHydratedLanguageOptions.clear()
 }

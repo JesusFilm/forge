@@ -13,18 +13,18 @@ import type {
   WatchChildLanguage,
   WatchVideoRecord,
 } from "../lib/normalizeVideo"
-import { resolveDefaultSlug } from "../lib/resolveDefaultLanguage"
+import {
+  INITIAL_RECONCILER_STATE,
+  markUserChoice,
+  reconcileDefault,
+  resetReconciler,
+} from "../lib/preferenceReconciler"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
  * Shared selection state for the series detail screen and its language sheet.
- *
- * The language sheet is a separate formSheet route, so it can't receive props
- * from the screen — both read/write the selected language through this context
- * (context, not router params: passing a language through nav params has bitten
- * the watch surface before). Deliberately lightweight vs WatchSessionProvider:
- * a series page has no per-dub downloads/subtitles/snackbar machinery, only a
- * trailer, an episode grid, and a language choice.
+ * The sheet is a separate formSheet route (no props), so both read/write the
+ * language through context, not nav params. Lighter than WatchSessionProvider.
  */
 type SeriesSessionContextValue = {
   series: WatchVideoRecord | null
@@ -34,11 +34,9 @@ type SeriesSessionContextValue = {
   /** The selected audio language slug, or null before resolution. */
   selectedLanguageSlug: string | null
   /**
-   * Set the selected language. Persists it as the app-wide audio preference so
-   * it carries into an episode opened from the grid — the watch screen resolves
-   * its default dub from the same `WatchPreferences` slug. App-wide + persisted
-   * is the deliberate trade-off (resolved during planning): picking a series
-   * language changes the default audio for later videos until changed again.
+   * Set the selected language; persists it as the app-wide audio preference so
+   * it carries into a grid-opened episode (watch resolves its default dub from
+   * the same WatchPreferences slug). Trade-off: changes default audio for later videos.
    */
   setSelectedLanguageSlug: (slug: string) => void
 }
@@ -67,15 +65,14 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
   // memoizes on the raw reference), so this is stable across renders.
   const languages = series?.languages ?? EMPTY_LANGUAGES
 
-  // Whether the user explicitly picked a language for this series, so the
-  // default-resolution effect never overrides a deliberate choice when partial→
-  // full data republishes the same series. Reset per series identity.
-  const userChoseRef = useRef(false)
-  const resolvedForRef = useRef<string | null>(null)
+  // Guard state for the default-resolution effect so the user's explicit pick is
+  // never overridden when partial→full data republishes the same series, and the
+  // default resolves once per series identity. See preferenceReconciler.
+  const reconcilerRef = useRef(INITIAL_RECONCILER_STATE)
 
   const setSelectedLanguageSlug = useCallback(
     (slug: string) => {
-      userChoseRef.current = true
+      reconcilerRef.current = markUserChoice(reconcilerRef.current)
       setSelectedLanguageSlugState(slug)
       // Carry-through: persist by unique slug so the tapped episode opens in it.
       if (slug) setPreferredAudioLanguage(slug)
@@ -86,8 +83,7 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
   // New series identity → reset choice tracking + selection, so a prior series'
   // language never leaks into the next.
   useEffect(() => {
-    userChoseRef.current = false
-    resolvedForRef.current = null
+    reconcilerRef.current = resetReconciler()
     setSelectedLanguageSlugState(null)
   }, [series?.documentId])
 
@@ -95,22 +91,23 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
   // available, unless the user already chose. Resolution order (resolveDefaultSlug):
   // persisted preference → device locale → series primary → English → first.
   useEffect(() => {
-    if (!preferencesReady) return
-    if (!series || series.languages.length === 0) return
-    if (userChoseRef.current) return
-    if (resolvedForRef.current === series.documentId) return
-    resolvedForRef.current = series.documentId
-    const options = series.languages.map((l) => ({
-      slug: l.slug,
-      bcp47: l.bcp47,
-      languageSlug: l.slug,
-    }))
-    const best = resolveDefaultSlug(
+    const options =
+      series?.languages.map((l) => ({
+        slug: l.slug,
+        bcp47: l.bcp47,
+        languageSlug: l.slug,
+      })) ?? []
+    const { nextState, apply } = reconcileDefault(reconcilerRef.current, {
+      ready: preferencesReady,
+      identity: series?.documentId ?? null,
       options,
-      series.primaryLanguageBcp47,
-      preferredAudioSlug,
-    )
-    setSelectedLanguageSlugState(best ?? series.languages[0].slug)
+      primaryBcp47: series?.primaryLanguageBcp47 ?? null,
+      preferredSlug: preferredAudioSlug,
+    })
+    reconcilerRef.current = nextState
+    if (apply && series) {
+      setSelectedLanguageSlugState(apply.slug ?? series.languages[0].slug)
+    }
   }, [
     series?.documentId,
     series?.languages.length,

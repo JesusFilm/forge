@@ -20,7 +20,17 @@
 import { FatalError } from "workflow"
 import { buildDownloadableArtifactManifest } from "@/lib/job-artifacts"
 import { buildSmartCropMetadataArtifact } from "@/lib/smart-crop-report"
-import type { SmartCropTimelineMapProvenance } from "@/services/smartCrop"
+import {
+  buildSmartCropAttemptArtifactKeys,
+  shouldRepairSmartCropQa,
+  SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+  type SmartCropAttemptStatus,
+  type SmartCropTimelineMapProvenance,
+} from "@/services/smartCrop"
+import type {
+  MastraSmartCropFailure,
+  SmartCropQaIssue,
+} from "@/services/mastra-smart-crop"
 import type {
   JobArtifactManifest,
   SmartCropCropMode,
@@ -87,6 +97,15 @@ function throwStepFailure(
   throw new SmartCropStepError(failure.reason, message)
 }
 
+function formatMastraFailure(
+  operation: "plan" | "align" | "QA" | "repair",
+  failure: Pick<MastraSmartCropFailure, "reason" | "message" | "mastraRunId">,
+): string {
+  return `mastra smart-crop ${operation} failed (${failure.reason})${
+    failure.message ? `: ${failure.message}` : ""
+  }${failure.mastraRunId ? ` [mastraRunId=${failure.mastraRunId}]` : ""}`
+}
+
 export type SmartCropCanonicalWorkflowInput = {
   jobId: string
   assetId: string
@@ -104,6 +123,9 @@ export type SmartCropLocalizedWorkflowInput =
   }
 
 type SmartCropUsageTotals = { inputTokens: number; outputTokens: number }
+type SmartCropAttemptsReportSummary = NonNullable<
+  SmartCropJobReport["attempts"]
+>
 
 // ---------------------------------------------------------------------------
 // Workflow-body helpers (plain async functions calling "use step" functions)
@@ -171,6 +193,26 @@ function addUsage(
   }
 }
 
+function applyAttemptsSummary(
+  report: SmartCropJobReport,
+  summary: SmartCropAttemptsReportSummary,
+): void {
+  report.attempts = summary
+}
+
+function buildQaFailureMessage(result: {
+  verdict: SmartCropQaVerdict
+  issueCount: number
+}): string {
+  return `Smart Crop QA verdict: ${result.verdict} (${result.issueCount} issue${
+    result.issueCount === 1 ? "" : "s"
+  })`
+}
+
+function uniqueStrings(values: readonly (string | undefined)[]): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))]
+}
+
 // Exported for tests: the production failure mode (FatalError not being an
 // `instanceof Error` in the Next.js workflow runtime) does not reproduce in
 // vitest, where `workflow`'s FatalError IS an instanceof Error. Testing this
@@ -222,11 +264,7 @@ export async function runSmartCropCanonical(
   try {
     await runFingerprintPhase(input, report)
     await runPlanPhase(input, report)
-    await runPreviewRenderPhase(input, report, {
-      kind: "canonical",
-      cropPlanAssetId: input.assetId,
-    })
-    await runQaPhase(input, report, { cropPlanAssetId: input.assetId })
+    await runCanonicalRepairLoop(input, report)
 
     await completeJob(input.jobId, report)
   } catch (error) {
@@ -272,6 +310,131 @@ export async function runSmartCropLocalized(
   } catch (error) {
     await failJob(input.jobId, report, error)
     throw error
+  }
+}
+
+async function runCanonicalRepairLoop(
+  input: SmartCropCanonicalWorkflowInput,
+  report: SmartCropJobReport,
+): Promise<void> {
+  let attemptIndex = 0
+
+  for (;;) {
+    const keys = buildSmartCropAttemptArtifactKeys(attemptIndex)
+    const preview = await runPreviewRenderPhase(input, report, {
+      kind: "canonical",
+      cropPlanAssetId: input.assetId,
+      cropPlanArtifactType: keys.planArtifactType,
+      renderReportArtifactType: keys.renderReportArtifactType,
+      artifactSuffix: keys.suffix ?? undefined,
+      attemptIndex,
+    })
+    const qa = await runQaPhase(input, report, {
+      cropPlanAssetId: input.assetId,
+      cropPlanArtifactType: keys.planArtifactType,
+      renderReportArtifactType: keys.renderReportArtifactType,
+      qaArtifactType: keys.qaArtifactType,
+      qaLogicalKey: keys.qaLogicalKey,
+      failOnFail: false,
+    })
+
+    if (qa.outcome === "presign_unavailable") {
+      const attempts = await stepSmartCropRecordAttempt({
+        assetId: input.assetId,
+        attemptIndex,
+        status: "qa_unavailable",
+        source: attemptIndex === 0 ? "initial" : "repair",
+        repairedFromAttemptIndex:
+          attemptIndex === 0 ? undefined : attemptIndex - 1,
+        previewFrameLogicalKeys: preview.previewFrameKeys,
+        qa: {
+          unavailableReason: "storage_presign_unavailable",
+          issueCount: 0,
+          repairTriggerCount: 0,
+        },
+      })
+      applyAttemptsSummary(report, attempts)
+      await persistReport(input.jobId, report)
+      await persistMergedArtifacts(
+        input.jobId,
+        buildDownloadableArtifactManifest(["smart-crop-attempts"]),
+      )
+      return
+    }
+
+    if (qa.outcome === "qa_unavailable") {
+      const attempts = await stepSmartCropRecordAttempt({
+        assetId: input.assetId,
+        attemptIndex,
+        status: "qa_unavailable",
+        source: attemptIndex === 0 ? "initial" : "repair",
+        repairedFromAttemptIndex:
+          attemptIndex === 0 ? undefined : attemptIndex - 1,
+        previewFrameLogicalKeys: preview.previewFrameKeys,
+        qa: {
+          unavailableReason: qa.reason,
+          issueCount: 0,
+          repairTriggerCount: 0,
+        },
+      })
+      applyAttemptsSummary(report, attempts)
+      await persistReport(input.jobId, report)
+      await persistMergedArtifacts(
+        input.jobId,
+        buildDownloadableArtifactManifest(["smart-crop-attempts"]),
+      )
+      return
+    }
+
+    const decision = shouldRepairSmartCropQa({
+      verdict: qa.verdict,
+      issues: qa.issues,
+      repairAttemptCount: attemptIndex,
+    })
+    const terminalStatus: SmartCropAttemptStatus =
+      decision.action === "fail" ? "failed" : "complete"
+    const attempts = await stepSmartCropRecordAttempt({
+      assetId: input.assetId,
+      attemptIndex,
+      status: terminalStatus,
+      source: attemptIndex === 0 ? "initial" : "repair",
+      repairedFromAttemptIndex:
+        attemptIndex === 0 ? undefined : attemptIndex - 1,
+      previewFrameLogicalKeys: preview.previewFrameKeys,
+      qa: {
+        verdict: qa.verdict,
+        issueCount: qa.issueCount,
+        repairTriggerCount: decision.triggerIssues.length,
+      },
+      triggerIssues: decision.triggerIssues,
+    })
+    applyAttemptsSummary(report, attempts)
+    await persistReport(input.jobId, report)
+    await persistMergedArtifacts(
+      input.jobId,
+      buildDownloadableArtifactManifest(["smart-crop-attempts"]),
+    )
+
+    if (decision.action === "repair") {
+      await runRepairPlanPhase(input, report, {
+        previousAttemptIndex: attemptIndex,
+        nextAttemptIndex: attemptIndex + 1,
+        previousPlanArtifactType: keys.planArtifactType,
+        previousQaArtifactType: keys.qaArtifactType,
+        previousRenderReportArtifactType: keys.renderReportArtifactType,
+        triggerIssues: decision.triggerIssues,
+      })
+      attemptIndex += 1
+      continue
+    }
+
+    if (decision.action === "fail") {
+      const message = buildQaFailureMessage(qa)
+      await markStepFailed(input.jobId, "smart_crop_qa", message)
+      throw new SmartCropStepError("qa_failed", message)
+    }
+
+    return
   }
 }
 
@@ -375,7 +538,10 @@ async function runPlanPhase(
     await persistReport(input.jobId, report)
     await persistMergedArtifacts(
       input.jobId,
-      buildDownloadableArtifactManifest(["smart-crop-plan"]),
+      buildDownloadableArtifactManifest([
+        "smart-crop-plan",
+        buildSmartCropAttemptArtifactKeys(0).planLogicalKey,
+      ]),
     )
     if (result.skipped) {
       await markStepSkipped(input.jobId, "smart_crop_plan")
@@ -443,11 +609,23 @@ async function runAlignPhase(
 async function runPreviewRenderPhase(
   input: SmartCropCanonicalWorkflowInput,
   report: SmartCropJobReport,
-  options: { kind: SmartCropKind; cropPlanAssetId: string },
-): Promise<void> {
+  options: {
+    kind: SmartCropKind
+    cropPlanAssetId: string
+    cropPlanArtifactType?: string
+    renderReportArtifactType?: string
+    artifactSuffix?: string
+    attemptIndex?: number
+  },
+): Promise<{ previewFrameKeys: string[] }> {
   await markStepRunning(input.jobId, "smart_crop_preview_render")
   report.phase = "preview_render"
   await persistReport(input.jobId, report)
+
+  const attemptKeys =
+    options.attemptIndex != null
+      ? buildSmartCropAttemptArtifactKeys(options.attemptIndex)
+      : buildSmartCropAttemptArtifactKeys(0)
 
   try {
     const result = await stepSmartCropPreviewRender({
@@ -456,13 +634,16 @@ async function runPreviewRenderPhase(
       playbackId: input.playbackId,
       kind: options.kind,
       cropPlanAssetId: options.cropPlanAssetId,
+      cropPlanArtifactType: options.cropPlanArtifactType,
+      renderReportArtifactType: options.renderReportArtifactType,
+      artifactSuffix: options.artifactSuffix,
       force: input.force ?? false,
     })
     await persistMergedArtifacts(
       input.jobId,
       buildDownloadableArtifactManifest([
-        "smart-crop-preview",
-        "smart-crop-render-report-preview",
+        attemptKeys.previewLogicalKey,
+        attemptKeys.renderReportLogicalKey,
         ...result.previewFrameKeys,
       ]),
     )
@@ -471,6 +652,7 @@ async function runPreviewRenderPhase(
     } else {
       await markStepComplete(input.jobId, "smart_crop_preview_render")
     }
+    return result
   } catch (error) {
     await markStepFailed(
       input.jobId,
@@ -484,8 +666,15 @@ async function runPreviewRenderPhase(
 async function runQaPhase(
   input: SmartCropCanonicalWorkflowInput,
   report: SmartCropJobReport,
-  options: { cropPlanAssetId: string },
-): Promise<void> {
+  options: {
+    cropPlanAssetId: string
+    cropPlanArtifactType?: string
+    renderReportArtifactType?: string
+    qaArtifactType?: string
+    qaLogicalKey?: string
+    failOnFail?: boolean
+  },
+): Promise<Awaited<ReturnType<typeof stepSmartCropQa>>> {
   await markStepRunning(input.jobId, "smart_crop_qa")
   report.phase = "qa"
   await persistReport(input.jobId, report)
@@ -496,6 +685,9 @@ async function runQaPhase(
       jobId: input.jobId,
       assetId: input.assetId,
       cropPlanAssetId: options.cropPlanAssetId,
+      cropPlanArtifactType: options.cropPlanArtifactType,
+      renderReportArtifactType: options.renderReportArtifactType,
+      qaArtifactType: options.qaArtifactType,
       model: input.model,
       force: input.force ?? false,
     })
@@ -510,7 +702,7 @@ async function runQaPhase(
       "smart_crop_qa",
       STORAGE_PRESIGN_UNAVAILABLE,
     )
-    return
+    return result
   }
 
   // Mastra config gap (e.g. the presign host missing from mastra's
@@ -522,9 +714,9 @@ async function runQaPhase(
     await markStepSkipped(
       input.jobId,
       "smart_crop_qa",
-      `qa_unavailable (${result.reason})${result.message ? `: ${result.message}` : ""}`,
+      `qa_unavailable (${result.reason})${result.message ? `: ${result.message}` : ""}${result.mastraRunId ? ` [mastraRunId=${result.mastraRunId}]` : ""}`,
     )
-    return
+    return result
   }
 
   report.qa = { verdict: result.verdict }
@@ -534,11 +726,13 @@ async function runQaPhase(
   await persistReport(input.jobId, report)
   await persistMergedArtifacts(
     input.jobId,
-    buildDownloadableArtifactManifest(["smart-crop-qa"]),
+    buildDownloadableArtifactManifest([
+      options.qaLogicalKey ?? "smart-crop-qa",
+    ]),
   )
 
-  if (result.verdict === "fail") {
-    const message = `Smart Crop QA verdict: fail (${result.issueCount} issue${result.issueCount === 1 ? "" : "s"})`
+  if ((options.failOnFail ?? true) && result.verdict === "fail") {
+    const message = buildQaFailureMessage(result)
     await markStepFailed(input.jobId, "smart_crop_qa", message)
     throw new SmartCropStepError("qa_failed", message)
   }
@@ -547,6 +741,78 @@ async function runQaPhase(
     await markStepSkipped(input.jobId, "smart_crop_qa")
   } else {
     await markStepComplete(input.jobId, "smart_crop_qa")
+  }
+  return result
+}
+
+async function runRepairPlanPhase(
+  input: SmartCropCanonicalWorkflowInput,
+  report: SmartCropJobReport,
+  options: {
+    previousAttemptIndex: number
+    nextAttemptIndex: number
+    previousPlanArtifactType: string
+    previousQaArtifactType: string
+    previousRenderReportArtifactType: string
+    triggerIssues: SmartCropQaIssue[]
+  },
+): Promise<void> {
+  await markStepRunning(input.jobId, "smart_crop_plan")
+  report.phase = "plan"
+  await persistReport(input.jobId, report)
+
+  try {
+    const result = await stepSmartCropRepairAttempt({
+      jobId: input.jobId,
+      assetId: input.assetId,
+      muxAssetId: input.muxAssetId,
+      playbackId: input.playbackId,
+      cropMode: input.cropMode,
+      model: input.model,
+      force: input.force ?? false,
+      previousAttemptIndex: options.previousAttemptIndex,
+      nextAttemptIndex: options.nextAttemptIndex,
+      previousPlanArtifactType: options.previousPlanArtifactType,
+      previousQaArtifactType: options.previousQaArtifactType,
+      previousRenderReportArtifactType:
+        options.previousRenderReportArtifactType,
+      triggerIssues: options.triggerIssues,
+    })
+    report.plan = {
+      segmentCount: result.segmentCount,
+      approved: false,
+    }
+    addUsage(report, result.usage)
+
+    const attempts = await stepSmartCropRecordAttempt({
+      assetId: input.assetId,
+      attemptIndex: options.nextAttemptIndex,
+      status: "planned",
+      source: "repair",
+      repairedFromAttemptIndex: options.previousAttemptIndex,
+      previewFrameLogicalKeys: [],
+      qa: { issueCount: 0, repairTriggerCount: 0 },
+      triggerIssues: options.triggerIssues,
+    })
+    applyAttemptsSummary(report, attempts)
+    await persistReport(input.jobId, report)
+
+    const keys = buildSmartCropAttemptArtifactKeys(options.nextAttemptIndex)
+    await persistMergedArtifacts(
+      input.jobId,
+      buildDownloadableArtifactManifest([
+        keys.planLogicalKey,
+        "smart-crop-attempts",
+      ]),
+    )
+    if (result.skipped) {
+      await markStepSkipped(input.jobId, "smart_crop_plan")
+    } else {
+      await markStepComplete(input.jobId, "smart_crop_plan")
+    }
+  } catch (error) {
+    await markStepFailed(input.jobId, "smart_crop_plan", errorMessage(error))
+    throw error
   }
 }
 
@@ -740,6 +1006,7 @@ async function stepSmartCropPlan(args: {
   "use step"
   const { artifactExists, writeArtifact } = await import("@/services/storage")
   const smartCrop = await import("@/services/smartCrop")
+  const initialAttemptKeys = smartCrop.buildSmartCropAttemptArtifactKeys(0)
 
   const exists = await artifactExists(
     args.assetId,
@@ -751,6 +1018,20 @@ async function stepSmartCropPlan(args: {
       await readJsonArtifact(args.assetId, "smart-crop-plan-9x16-v1"),
     )
     if (existing) {
+      const initialAttemptExists = await artifactExists(
+        args.assetId,
+        initialAttemptKeys.planArtifactType,
+        "json",
+      )
+      if (!initialAttemptExists) {
+        await writeArtifact({
+          assetId: args.assetId,
+          artifactType: initialAttemptKeys.planArtifactType,
+          ext: "json",
+          body: JSON.stringify(existing, null, 2),
+          contentType: "application/json",
+        })
+      }
       return {
         skipped: true,
         segmentCount: existing.segments.length,
@@ -834,10 +1115,7 @@ async function stepSmartCropPlan(args: {
     })
 
     if (!result.ok) {
-      throwStepFailure(
-        result,
-        `mastra smart-crop plan failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-      )
+      throwStepFailure(result, formatMastraFailure("plan", result))
     }
 
     collectedSegments.push(result.segments)
@@ -880,6 +1158,13 @@ async function stepSmartCropPlan(args: {
   await writeArtifact({
     assetId: args.assetId,
     artifactType: "smart-crop-plan-9x16-v1",
+    ext: "json",
+    body: JSON.stringify(plan, null, 2),
+    contentType: "application/json",
+  })
+  await writeArtifact({
+    assetId: args.assetId,
+    artifactType: initialAttemptKeys.planArtifactType,
     ext: "json",
     body: JSON.stringify(plan, null, 2),
     contentType: "application/json",
@@ -1017,10 +1302,7 @@ async function stepSmartCropAlign(args: {
   })
 
   if (!result.ok) {
-    throwStepFailure(
-      result,
-      `mastra smart-crop align failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-    )
+    throwStepFailure(result, formatMastraFailure("align", result))
   }
 
   const artifact = smartCrop.buildTimelineMapArtifact(
@@ -1057,21 +1339,26 @@ async function stepSmartCropPreviewRender(args: {
   playbackId: string
   kind: SmartCropKind
   cropPlanAssetId: string
+  cropPlanArtifactType?: string
+  renderReportArtifactType?: string
+  artifactSuffix?: string
   force: boolean
 }): Promise<{ skipped: boolean; previewFrameKeys: string[] }> {
   "use step"
   const { artifactExists } = await import("@/services/storage")
   const smartCrop = await import("@/services/smartCrop")
+  const renderReportArtifactType =
+    args.renderReportArtifactType ?? "smart-crop-render-report-9x16-preview"
 
   const exists = await artifactExists(
     args.assetId,
-    "smart-crop-render-report-9x16-preview",
+    renderReportArtifactType,
     "json",
   )
   if (smartCrop.shouldSkipWhenArtifactExists(exists, args.force)) {
     const report = await readJsonArtifact(
       args.assetId,
-      "smart-crop-render-report-9x16-preview",
+      renderReportArtifactType,
     )
     return {
       skipped: true,
@@ -1090,10 +1377,16 @@ async function stepSmartCropPreviewRender(args: {
       source: { url: getPlaybackUrl(args.playbackId) },
       render: {
         mode: "preview",
-        cropPlan: { assetId: args.cropPlanAssetId },
+        cropPlan: {
+          assetId: args.cropPlanAssetId,
+          ...(args.cropPlanArtifactType
+            ? { artifactType: args.cropPlanArtifactType }
+            : {}),
+        },
         ...(args.kind === "localized"
           ? { timelineMap: { assetId: args.assetId } }
           : {}),
+        ...(args.artifactSuffix ? { artifactSuffix: args.artifactSuffix } : {}),
         previewFrameCount: PREVIEW_FRAME_COUNT,
       },
     },
@@ -1111,10 +1404,7 @@ async function stepSmartCropPreviewRender(args: {
     )
   }
 
-  const report = await readJsonArtifact(
-    args.assetId,
-    "smart-crop-render-report-9x16-preview",
-  )
+  const report = await readJsonArtifact(args.assetId, renderReportArtifactType)
   return {
     skipped: false,
     previewFrameKeys: smartCrop.listPreviewFrameLogicalKeys(report),
@@ -1125,15 +1415,24 @@ async function stepSmartCropQa(args: {
   jobId: string
   assetId: string
   cropPlanAssetId: string
+  cropPlanArtifactType?: string
+  renderReportArtifactType?: string
+  qaArtifactType?: string
   model?: string
   force: boolean
 }): Promise<
   | { outcome: "presign_unavailable" }
-  | { outcome: "qa_unavailable"; reason: string; message?: string }
+  | {
+      outcome: "qa_unavailable"
+      reason: string
+      message?: string
+      mastraRunId?: string
+    }
   | {
       outcome: "exists" | "completed"
       verdict: SmartCropQaVerdict
       issueCount: number
+      issues: SmartCropQaIssue[]
       usage?: SmartCropUsageTotals
     }
 > {
@@ -1141,35 +1440,40 @@ async function stepSmartCropQa(args: {
   const { artifactExists, writeArtifact, createPresignedArtifactUrl } =
     await import("@/services/storage")
   const smartCrop = await import("@/services/smartCrop")
+  const qaArtifactType = args.qaArtifactType ?? "smart-crop-qa-9x16-v1"
+  const renderReportArtifactType =
+    args.renderReportArtifactType ?? "smart-crop-render-report-9x16-preview"
+  const cropPlanArtifactType =
+    args.cropPlanArtifactType ?? "smart-crop-plan-9x16-v1"
 
-  const exists = await artifactExists(
-    args.assetId,
-    "smart-crop-qa-9x16-v1",
-    "json",
-  )
+  const exists = await artifactExists(args.assetId, qaArtifactType, "json")
   if (smartCrop.shouldSkipWhenArtifactExists(exists, args.force)) {
-    const existing = (await readJsonArtifact(
-      args.assetId,
-      "smart-crop-qa-9x16-v1",
-    )) as { verdict?: unknown; issues?: unknown }
+    const existing = (await readJsonArtifact(args.assetId, qaArtifactType)) as {
+      verdict?: unknown
+      issues?: unknown
+    }
     const verdict =
       existing.verdict === "pass" ||
       existing.verdict === "needs_repair" ||
       existing.verdict === "fail"
         ? existing.verdict
         : "needs_repair"
+    const issues = Array.isArray(existing.issues)
+      ? existing.issues.filter(
+          (issue): issue is SmartCropQaIssue =>
+            issue != null && typeof issue === "object",
+        )
+      : []
     return {
       outcome: "exists",
       verdict,
-      issueCount: Array.isArray(existing.issues) ? existing.issues.length : 0,
+      issueCount: issues.length,
+      issues,
     }
   }
 
   const renderReport = smartCrop.parseRenderReportSummary(
-    await readJsonArtifact(
-      args.assetId,
-      "smart-crop-render-report-9x16-preview",
-    ),
+    await readJsonArtifact(args.assetId, renderReportArtifactType),
   )
   if (!renderReport || renderReport.previewFrameArtifactTypes.length === 0) {
     throw new FatalError(
@@ -1182,11 +1486,12 @@ async function stepSmartCropQa(args: {
     renderReport.previewFrameArtifactTypes.length,
   )
 
-  const frames: Array<{ atSeconds: number; url: string }> = []
+  const frames: Array<{ atSeconds: number; url: string; shotId?: string }> = []
   for (const [
     index,
     frameType,
   ] of renderReport.previewFrameArtifactTypes.entries()) {
+    const atSeconds = frameTimes[index] ?? index
     const url = await createPresignedArtifactUrl(
       args.assetId,
       frameType,
@@ -1196,11 +1501,15 @@ async function stepSmartCropQa(args: {
     if (url === null) {
       return { outcome: "presign_unavailable" }
     }
-    frames.push({ atSeconds: frameTimes[index] ?? index, url })
+    frames.push({
+      atSeconds,
+      url,
+      shotId: smartCrop.findRenderedShotIdAtTime(renderReport, atSeconds),
+    })
   }
 
   const plan = smartCrop.parsePlanArtifact(
-    await readJsonArtifact(args.cropPlanAssetId, "smart-crop-plan-9x16-v1"),
+    await readJsonArtifact(args.cropPlanAssetId, cropPlanArtifactType),
   )
   if (!plan) {
     throw new FatalError(
@@ -1225,12 +1534,10 @@ async function stepSmartCropQa(args: {
         outcome: "qa_unavailable",
         reason: result.reason,
         ...(result.message ? { message: result.message } : {}),
+        ...(result.mastraRunId ? { mastraRunId: result.mastraRunId } : {}),
       }
     }
-    throwStepFailure(
-      result,
-      `mastra smart-crop QA failed (${result.reason})${result.message ? `: ${result.message}` : ""}`,
-    )
+    throwStepFailure(result, formatMastraFailure("QA", result))
   }
 
   const artifact = smartCrop.buildQaArtifact({
@@ -1245,7 +1552,7 @@ async function stepSmartCropQa(args: {
 
   await writeArtifact({
     assetId: args.assetId,
-    artifactType: "smart-crop-qa-9x16-v1",
+    artifactType: qaArtifactType,
     ext: "json",
     body: JSON.stringify(artifact, null, 2),
     contentType: "application/json",
@@ -1255,7 +1562,242 @@ async function stepSmartCropQa(args: {
     outcome: "completed",
     verdict: result.verdict,
     issueCount: result.issues.length,
+    issues: result.issues,
     usage: result.usage,
+  }
+}
+
+async function stepSmartCropRepairAttempt(args: {
+  jobId: string
+  assetId: string
+  muxAssetId: string
+  playbackId: string
+  cropMode: SmartCropCropMode
+  model?: string
+  force: boolean
+  previousAttemptIndex: number
+  nextAttemptIndex: number
+  previousPlanArtifactType: string
+  previousQaArtifactType: string
+  previousRenderReportArtifactType: string
+  triggerIssues: SmartCropQaIssue[]
+}): Promise<{
+  skipped: boolean
+  segmentCount: number
+  usage: SmartCropUsageTotals
+}> {
+  "use step"
+  const { artifactExists, writeArtifact } = await import("@/services/storage")
+  const smartCrop = await import("@/services/smartCrop")
+  const keys = smartCrop.buildSmartCropAttemptArtifactKeys(
+    args.nextAttemptIndex,
+  )
+
+  const exists = await artifactExists(
+    args.assetId,
+    keys.planArtifactType,
+    "json",
+  )
+  if (smartCrop.shouldSkipWhenArtifactExists(exists, args.force)) {
+    const existing = smartCrop.parsePlanArtifact(
+      await readJsonArtifact(args.assetId, keys.planArtifactType),
+    )
+    if (existing) {
+      return {
+        skipped: true,
+        segmentCount: existing.segments.length,
+        usage: { inputTokens: 0, outputTokens: 0 },
+      }
+    }
+  }
+
+  const previousPlan = smartCrop.parsePlanArtifact(
+    await readJsonArtifact(args.assetId, args.previousPlanArtifactType),
+  )
+  if (!previousPlan) {
+    throw new FatalError(
+      `repair_plan_missing: previous smart-crop plan artifact ${args.previousPlanArtifactType} is missing or malformed`,
+    )
+  }
+
+  const renderReport = smartCrop.parseRenderReportSummary(
+    await readJsonArtifact(
+      args.assetId,
+      args.previousRenderReportArtifactType,
+    ).catch(() => null),
+  )
+  const segmentsByShotId = new Map(
+    previousPlan.segments.map((segment) => [segment.shotId, segment]),
+  )
+  const issueShotIds = uniqueStrings(
+    args.triggerIssues.map((issue) => issue.shotId),
+  )
+    .filter((shotId) => segmentsByShotId.has(shotId))
+    .slice(0, 8)
+  const renderedShotIds = uniqueStrings(renderReport?.renderedShotIds ?? [])
+    .filter((shotId) => segmentsByShotId.has(shotId))
+    .slice(0, 8)
+  const targetShotIds =
+    issueShotIds.length > 0
+      ? issueShotIds
+      : renderedShotIds.length > 0
+        ? renderedShotIds
+        : previousPlan.segments.slice(0, 8).map((segment) => segment.shotId)
+
+  if (targetShotIds.length === 0) {
+    throw new FatalError(
+      "repair_targets_missing: no smart-crop plan segments are available for repair",
+    )
+  }
+
+  const targetShotIdSet = new Set(targetShotIds)
+  const repairIssues =
+    args.triggerIssues.length > 0
+      ? args.triggerIssues.map((issue) => ({
+          ...issue,
+          ...(issue.shotId && !targetShotIdSet.has(issue.shotId)
+            ? { shotId: undefined }
+            : {}),
+        }))
+      : [
+          {
+            severity: "warning" as const,
+            description: "QA requested crop-path repair for preview shots.",
+          },
+        ]
+
+  const { launchSmartCropRepair } = await import("@/services/mastra-smart-crop")
+  const result = await launchSmartCropRepair({
+    asset: { assetId: args.assetId, playbackId: args.playbackId },
+    source: previousPlan.source,
+    target: previousPlan.target,
+    attempt: {
+      index: args.nextAttemptIndex,
+      previousPlanGeneratedAt: previousPlan.generatedAt,
+    },
+    issues: repairIssues,
+    shots: targetShotIds.map((shotId) => {
+      const segment = segmentsByShotId.get(shotId)!
+      return {
+        shotId,
+        start: segment.canonicalStart,
+        end: segment.canonicalEnd,
+        previousSegment: {
+          ...segment,
+          primarySubject: segment.primarySubject ?? "Subject",
+          secondarySubjects: segment.secondarySubjects ?? [],
+          avoidCutting: segment.avoidCutting ?? [],
+        },
+        frameUrls: smartCrop.buildShotFrameUrls(args.playbackId, {
+          start: segment.canonicalStart,
+          end: segment.canonicalEnd,
+        }),
+      }
+    }),
+    ...(args.model ? { model: args.model } : {}),
+  })
+
+  if (!result.ok) {
+    throwStepFailure(result, formatMastraFailure("repair", result))
+  }
+
+  const repairedPlan = smartCrop.mergeSmartCropRepairSegments({
+    previousPlan,
+    replacementSegments: result.segments,
+    expectedShotIds: targetShotIds,
+    model: result.model,
+    usage: result.usage,
+  })
+
+  await writeArtifact({
+    assetId: args.assetId,
+    artifactType: keys.planArtifactType,
+    ext: "json",
+    body: JSON.stringify(repairedPlan, null, 2),
+    contentType: "application/json",
+  })
+
+  return {
+    skipped: false,
+    segmentCount: repairedPlan.segments.length,
+    usage: result.usage,
+  }
+}
+
+async function stepSmartCropRecordAttempt(args: {
+  assetId: string
+  attemptIndex: number
+  status: SmartCropAttemptStatus
+  source: "initial" | "repair"
+  repairedFromAttemptIndex?: number
+  previewFrameLogicalKeys: string[]
+  qa?: {
+    verdict?: SmartCropQaVerdict
+    unavailableReason?: string
+    issueCount: number
+    repairTriggerCount: number
+  }
+  triggerIssues?: SmartCropQaIssue[]
+}): Promise<SmartCropAttemptsReportSummary> {
+  "use step"
+  const { artifactExists, writeArtifact } = await import("@/services/storage")
+  const smartCrop = await import("@/services/smartCrop")
+
+  const existing = (await artifactExists(
+    args.assetId,
+    SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+    "json",
+  ))
+    ? smartCrop.parseSmartCropAttemptsArtifact(
+        await readJsonArtifact(args.assetId, SMART_CROP_ATTEMPTS_ARTIFACT_TYPE),
+      )
+    : null
+  const previousAttempt = existing?.attempts.find(
+    (attempt) => attempt.attemptIndex === args.attemptIndex,
+  )
+  const nextAttempt = smartCrop.buildSmartCropAttemptSummary({
+    attemptIndex: args.attemptIndex,
+    status: args.status,
+    source: args.source,
+    repairedFromAttemptIndex: args.repairedFromAttemptIndex,
+    createdAt: previousAttempt?.createdAt,
+    previewFrameLogicalKeys: args.previewFrameLogicalKeys,
+    qa: args.qa,
+    triggerIssues: args.triggerIssues,
+  })
+  const attempts = [
+    ...(existing?.attempts.filter(
+      (attempt) => attempt.attemptIndex !== args.attemptIndex,
+    ) ?? []),
+    nextAttempt,
+  ]
+  const manifest = smartCrop.buildSmartCropAttemptsArtifact({
+    assetId: args.assetId,
+    attempts,
+    selectedAttemptIndex: existing?.selectedAttemptIndex,
+  })
+
+  await writeArtifact({
+    assetId: args.assetId,
+    artifactType: SMART_CROP_ATTEMPTS_ARTIFACT_TYPE,
+    ext: "json",
+    body: JSON.stringify(manifest, null, 2),
+    contentType: "application/json",
+  })
+
+  const latestAttemptIndex = Math.max(
+    ...manifest.attempts.map((attempt) => attempt.attemptIndex),
+  )
+  return {
+    latestAttemptIndex,
+    ...(manifest.selectedAttemptIndex != null
+      ? { selectedAttemptIndex: manifest.selectedAttemptIndex }
+      : {}),
+    maxRepairAttempts: manifest.maxRepairAttempts,
+    repairCount: manifest.attempts.filter(
+      (attempt) => attempt.source === "repair",
+    ).length,
+    manifestDigest: manifest.manifestDigest,
   }
 }
 

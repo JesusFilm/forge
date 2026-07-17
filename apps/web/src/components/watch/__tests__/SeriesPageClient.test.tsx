@@ -132,7 +132,12 @@ vi.mock("@/components/watch/LanguagePickerModal", () => ({
 }))
 
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
+import { SeriesHero } from "@/components/watch/SeriesHero"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+} from "@/lib/watch-player-chrome-events"
 
 let container: HTMLDivElement
 let root: Root
@@ -155,6 +160,7 @@ afterEach(() => {
 })
 
 type Series = ResolvedSeriesBySlug["video"]
+type SelectedVariant = ResolvedSeriesBySlug["selectedVariant"]
 
 function makeSeries(overrides: Partial<Series> = {}): Series {
   return {
@@ -187,7 +193,27 @@ function makeChildren(count: number): Series["children"] {
     images: [],
     durationSeconds: null,
     muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   })) as Series["children"]
+}
+
+function makeSelectedVariant(): SelectedVariant {
+  return {
+    documentId: "variant-1",
+    slug: "english",
+    published: true,
+    hls: "https://cdn.example/storyclubs.m3u8",
+    duration: 30,
+    language: {
+      coreId: "529",
+      bcp47: "en",
+      slug: "english",
+      name: "English",
+      nativeName: "English",
+    },
+    downloads: [],
+    muxVideo: { playbackId: "playback-id-storyclubs" },
+  } as SelectedVariant
 }
 
 // Helper for tests that exercise the language picker (aggregation, globe
@@ -223,6 +249,21 @@ function makeChildDubLanguages(
   return perChildLanguages
     .flat()
     .map(makeLanguage) as Series["childDubLanguages"]
+}
+
+function listenForHeaderLanguageSwitcher() {
+  const updates: WatchHeaderLanguageSwitcherDetail[] = []
+  const handler = (event: Event) => {
+    updates.push(
+      (event as CustomEvent<WatchHeaderLanguageSwitcherDetail>).detail,
+    )
+  }
+  window.addEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler)
+  return {
+    updates,
+    cleanup: () =>
+      window.removeEventListener(WATCH_HEADER_LANGUAGE_SWITCHER_EVENT, handler),
+  }
 }
 
 describe("SeriesPageClient — pluralized label (R8, AE4)", () => {
@@ -400,8 +441,9 @@ describe("SeriesPageClient — edge cases", () => {
   })
 })
 
-describe("SeriesPageClient — globe button + language modal", () => {
-  it("omits the globe button when fewer than 2 languages are available across children", () => {
+describe("SeriesPageClient — header language switcher + language modal", () => {
+  it("hides the header switcher when fewer than 2 languages are available across children", () => {
+    const listener = listenForHeaderLanguageSwitcher()
     const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }],
       [{ languageSlug: "english" }],
@@ -415,12 +457,62 @@ describe("SeriesPageClient — globe button + language modal", () => {
         />,
       )
     })
+    expect(listener.updates.at(-1)?.visible).toBe(false)
+    expect(listener.updates.at(-1)?.onClick).toBeNull()
+    listener.cleanup()
+  })
+
+  it("publishes the global header switcher when 2+ languages are available", () => {
+    const listener = listenForHeaderLanguageSwitcher()
+    const childDubLanguages = makeChildDubLanguages([
+      [
+        { languageSlug: "english", bcp47: "en" },
+        { languageSlug: "spanish", bcp47: "es" },
+      ],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ childDubLanguages })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    const latest = listener.updates.at(-1)
+    expect(latest?.visible).toBe(true)
+    expect(latest?.languageCode).toBe("EN")
+    expect(latest?.onClick).toEqual(expect.any(Function))
     expect(
       container.querySelector('[data-testid="series-page-language-button"]'),
     ).toBeNull()
+    listener.cleanup()
   })
 
-  it("renders the globe button when 2+ languages are available", () => {
+  it("delegates the header switcher to HeroPlayer for a playable series trailer", () => {
+    const listener = listenForHeaderLanguageSwitcher()
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ childDubLanguages })}
+          selectedVariant={makeSelectedVariant()}
+          locale="en"
+        />,
+      )
+    })
+
+    expect(listener.updates).toHaveLength(0)
+    const seriesHeroProps = vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]
+    expect(seriesHeroProps?.playableLanguageCount).toBe(2)
+    expect(seriesHeroProps?.onLanguageClick).toEqual(expect.any(Function))
+    listener.cleanup()
+  })
+
+  it("opens the language modal from the global header switcher", () => {
+    const listener = listenForHeaderLanguageSwitcher()
     const childDubLanguages = makeChildDubLanguages([
       [{ languageSlug: "english" }, { languageSlug: "spanish" }],
     ])
@@ -433,29 +525,8 @@ describe("SeriesPageClient — globe button + language modal", () => {
         />,
       )
     })
-    expect(
-      container.querySelector('[data-testid="series-page-language-button"]'),
-    ).not.toBeNull()
-  })
-
-  it("opens the language modal when the globe button is clicked", () => {
-    const childDubLanguages = makeChildDubLanguages([
-      [{ languageSlug: "english" }, { languageSlug: "spanish" }],
-    ])
     act(() => {
-      root.render(
-        <SeriesPageClient
-          series={makeSeries({ childDubLanguages })}
-          selectedVariant={null}
-          locale="en"
-        />,
-      )
-    })
-    const button = container.querySelector(
-      '[data-testid="series-page-language-button"]',
-    ) as HTMLButtonElement
-    act(() => {
-      button.click()
+      listener.updates.at(-1)?.onClick?.()
     })
     expect(
       container
@@ -466,6 +537,7 @@ describe("SeriesPageClient — globe button + language modal", () => {
       container.querySelectorAll('[data-testid="language-picker-modal-mock"]'),
     )
     expect(allMockOpens.at(-1)?.getAttribute("data-open")).toBe("true")
+    listener.cleanup()
   })
 
   it("dedupes languages by slug when projecting to the picker", () => {

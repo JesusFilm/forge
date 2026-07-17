@@ -3,7 +3,10 @@ import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
+import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
   asLocaleSlug,
   searchPath,
@@ -12,12 +15,14 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
+import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 
 type VideoCardProps = {
   result: SearchResult
   index?: number
   hrefBuilder?: (result: SearchResult) => Route
+  onResultClick?: (result: SearchResult) => void
 }
 
 // English is the default UI locale for search-result deep links. Hoisted to
@@ -61,11 +66,9 @@ function gradientForSlug(slug: string): string {
   return EXPERIENCE_PLACEHOLDER_GRADIENTS[index]
 }
 
-// Admin's hybrid-search response sets `imageUrl: null` until R8 wires
-// real ogImage / VideoImage; `playbackId` is reliably populated for
-// video results (INNER JOIN on dub/mux at the retriever), so the Mux
-// thumbnail endpoint gives us a frame-accurate poster — and when the
-// match is scene-level, `startSeconds` lets us land on the matched scene.
+// Admin hybrid search can return a curated `imageUrl`; when it cannot,
+// `playbackId` lets the card fall back to a Mux poster. Scene-level
+// matches can also use `startSeconds` to land near the matched moment.
 function muxSearchThumbnail(
   playbackId: string,
   startSeconds: number | null,
@@ -104,8 +107,6 @@ export function formatVideoLabel(label: AdminVideoLabel | null): string {
 // actually their parent-count). The old heuristic `childCount > 0 ⇒ series`
 // then mislabels every episode as "1 episode". Gating on label removes
 // that coupling entirely.
-const SERIES_SHAPED_LABELS = new Set<AdminVideoLabel>(["SERIES", "COLLECTION"])
-
 // Decide what to render in the top-right pill. Series-shaped rows
 // (label SERIES / COLLECTION with childCount > 0) get `{n} episodes`;
 // every other video shows duration. Experiences carry null label and are
@@ -114,8 +115,7 @@ const SERIES_SHAPED_LABELS = new Set<AdminVideoLabel>(["SERIES", "COLLECTION"])
 export function pickCardPill(
   result: SearchResult,
 ): { kind: "count"; text: string } | { kind: "duration"; text: string } | null {
-  const isSeriesShaped =
-    result.label != null && SERIES_SHAPED_LABELS.has(result.label)
+  const isSeriesShaped = isSeriesRecord({ label: result.label })
   if (isSeriesShaped && result.childCount != null && result.childCount > 0) {
     const noun = result.childCount === 1 ? "episode" : "episodes"
     return { kind: "count", text: `${result.childCount} ${noun}` }
@@ -130,14 +130,25 @@ export function VideoCard({
   result,
   index = 0,
   hrefBuilder = defaultHrefBuilder,
+  onResultClick,
 }: VideoCardProps) {
   const t = useTranslations("SearchResultCard")
   const videoLabels = useTranslations("VideoLabels")
-  const thumbnailSrc =
-    result.imageUrl ??
-    (result.type === "video" && result.playbackId
+  const muxThumbnailSrc =
+    result.type === "video" && result.playbackId
       ? muxSearchThumbnail(result.playbackId, result.startSeconds)
-      : null)
+      : null
+  const muxPreviewUrl =
+    result.type === "video"
+      ? resolveMuxAnimatedPreviewUrl(result.playbackId)
+      : null
+  const thumbnailSrc = result.imageUrl ?? muxThumbnailSrc
+  const thumbnailBlurDataURL =
+    result.imageUrl != null
+      ? result.imageBlurDataUrl
+      : muxThumbnailSrc != null
+        ? result.muxThumbnailBlurDataUrl
+        : null
 
   const isExperience = result.type === "experience"
   // Experience cards reuse the legacy amber chip (now top-right, was
@@ -157,23 +168,37 @@ export function VideoCard({
   return (
     <Link
       href={hrefBuilder(result)}
-      className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-2xl transition hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/40"
+      onClick={() => onResultClick?.(result)}
+      className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       {/* Full-bleed thumbnail */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-800">
+      <div
+        className="relative aspect-video w-full overflow-hidden bg-stone-800 bg-cover bg-center"
+        style={
+          thumbnailBlurDataURL
+            ? { backgroundImage: `url("${thumbnailBlurDataURL}")` }
+            : undefined
+        }
+      >
         {thumbnailSrc ? (
           <Image
             src={thumbnailSrc}
             alt={result.title ?? t("thumbnailAlt")}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            className="search-card-hover-zoom object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            {...(thumbnailBlurDataURL
+              ? {
+                  placeholder: "blur" as const,
+                  blurDataURL: thumbnailBlurDataURL,
+                }
+              : {})}
           />
         ) : result.type === "experience" ? (
           <div
             aria-hidden
-            className={`relative h-full w-full overflow-hidden bg-gradient-to-br ${gradientForSlug(result.slug)}`}
+            className={`search-card-hover-zoom relative h-full w-full overflow-hidden bg-gradient-to-br transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${gradientForSlug(result.slug)}`}
           >
             {/* Decorative soft radial glow + diagonal stripes so the
                 placeholder reads as intentional branded artwork rather
@@ -198,9 +223,16 @@ export function VideoCard({
             </svg>
           </div>
         )}
+        <MuxHoverPreview
+          previewUrl={muxPreviewUrl}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+        />
 
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
+        {result.type === "video" ? (
+          <WatchProgressBar videoId={result.id} />
+        ) : null}
 
         {/* Top-right slot.
             - Experience: amber pill labeled "Experience" (the only place
@@ -231,7 +263,7 @@ export function VideoCard({
         {/* Bottom-left content: type badge (videos only) + title +
             snippet. Experience cards skip the badge — the amber chip in
             the top-right is the sole type signal. */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-4 pt-4 pb-5">
           {typeBadge ? (
             <span
               data-testid="search-card-type-badge"
@@ -250,6 +282,11 @@ export function VideoCard({
           )}
         </div>
       </div>
+      <div
+        aria-hidden
+        data-testid="search-card-hover-outline"
+        className="search-card-hover-outline search-card-red-outline pointer-events-none absolute z-50 opacity-0 transition-opacity duration-200"
+      />
     </Link>
   )
 }

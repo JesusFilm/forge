@@ -1,16 +1,6 @@
-// SYNC: TV port of apps/mobile/src/lib/watchSeed.ts. Same sanitizing decode —
-// only the import paths differ (muxUrl + resolveImageUrl + validateUrl are
-// TV-local copies).
-//
-// Seed data carried from a list surface (search result, Up Next card) into the
-// /watch/[slug] route so the screen can paint instantly from data already in
-// hand, before any network fetch resolves.
-//
-// Values are UNTRUSTED on the receiving side: deep links are externally
-// addressable, so a crafted link could supply anything. `decodeWatchSeed`
-// sanitizes every URL-bearing field and drops anything that doesn't validate —
-// the worst case degrades to "no seed" (skeleton), never an unsafe URL reaching
-// the player or image loader.
+// SYNC: TV port of apps/mobile/src/lib/watchSeed.ts (only import paths differ).
+// Seed paints /watch/[slug] instantly from list data before any fetch. UNTRUSTED:
+// deep links are external, so decodeWatchSeed sanitizes URLs, degrading to skeleton.
 
 import { muxHlsUrlFromPlaybackId } from "./muxUrl"
 import { resolveImageUrl } from "./resolveImageUrl"
@@ -29,10 +19,8 @@ export function encodeWatchSeed(seed: WatchSeed): string {
 }
 
 /**
- * Decode and sanitize the `seed` param. Returns a validated seed, or null when
- * the param is absent, malformed, or missing a usable slug.
- *
- * Decode-once: this app's router does not pre-decode query params, so the value
+ * Decode and sanitize the `seed` param; null when absent/malformed/no slug.
+ * Decode-once: this router does not pre-decode query params, so the value
  * arrives still-encoded.
  */
 export function decodeWatchSeed(

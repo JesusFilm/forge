@@ -2,11 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Tool execute() returns the success type or a ValidationError. Tests pass valid
 // inputs, so we narrow to the success shape by excluding the error variant.
-function assertOk<T>(value: T): Exclude<T, { error: unknown }> {
-  if (typeof value === "object" && value !== null && "error" in value) {
+// We also exclude `void`: Mastra's createTool types execute's return as
+// `T | void`, and once the admin program's total type-instantiation load is
+// high the checker keeps the `void` arm instead of resolving to T. Excluding
+// it here (with a runtime null-guard) keeps these tests robust to that budget.
+function assertOk<T>(value: T): Exclude<T, { error: unknown } | void> {
+  if (value == null) {
+    throw new Error("tool returned no result")
+  }
+  if (typeof value === "object" && "error" in value) {
     throw new Error("tool returned a ValidationError instead of a result")
   }
-  return value as Exclude<T, { error: unknown }>
+  return value as Exclude<T, { error: unknown } | void>
 }
 
 const searchMock = vi.hoisted(() => vi.fn())
@@ -27,7 +34,7 @@ describe("searchVideosTool", () => {
     vi.resetModules()
   })
 
-  it("calls HybridSearchService.search with the input query+locale+limit and returns trimmed videos", async () => {
+  it("calls HybridSearchService.search with the input query+locale+limit and returns trimmed playable videos, dropping playbackId-null rows", async () => {
     searchMock.mockResolvedValue({
       results: [
         {
@@ -83,14 +90,9 @@ describe("searchVideosTool", () => {
       limit: 5,
       contentTypes: ["video"],
     })
+    // vid-1 has playbackId null (no playable dub in the locale) — agents
+    // write returned videoIds into blocks verbatim, so it must be dropped.
     expect(result.videos).toEqual([
-      {
-        videoId: "vid-1",
-        title: "Jesus",
-        snippet: "About Jesus.",
-        slug: "jesus",
-        imageUrl: "https://cdn/img.png",
-      },
       {
         videoId: "vid-2",
         title: "Easter",

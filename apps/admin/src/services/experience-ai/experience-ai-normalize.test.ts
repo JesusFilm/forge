@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
+import { BlocksSchema } from "@/domain/blocks"
 import {
   ExperienceAiNormalizationError,
   normalizeExperienceDraft,
 } from "./experience-ai-normalize"
-import type { DraftExperience, VideoCandidate } from "./experience-ai.schemas"
+import {
+  GENERATION_MIN_BLOCKS,
+  type DraftExperience,
+  type VideoCandidate,
+} from "@forge/experience-schema"
 
 const candidates: VideoCandidate[] = [
   {
@@ -29,6 +34,47 @@ const candidates: VideoCandidate[] = [
 ]
 
 describe("normalizeExperienceDraft", () => {
+  it("round-trips a reference-first quote: text-less + structured ids survive into a valid canonical block", () => {
+    // Video-anchored generation emits a citation reference + structured identity and NO
+    // verse text (apps/web resolves text at render). The assembled draft must still pass
+    // the canonical persistence boundary, and the structured ids must survive normalize.
+    const draft: DraftExperience = {
+      title: "The Resurrection",
+      metaDescription: "Grounded scripture, no LLM-authored verse text.",
+      blocks: [
+        {
+          t: "videoHero",
+          sectionRef: "s01",
+          candidateRef: "v01",
+          heading: "Watch",
+        },
+        {
+          t: "bibleQuotesCarousel",
+          sectionRef: "s02",
+          heading: "Scripture",
+          quotes: [
+            {
+              reference: "John 20:19-29",
+              osisId: "John.20.19",
+              chapterStart: 20,
+              verseStart: 19,
+              verseEnd: 29,
+            },
+          ],
+        },
+      ],
+    }
+    const normalized = normalizeExperienceDraft(draft, candidates)
+    const parsed = BlocksSchema.parse(normalized.blocks)
+    const carousel = parsed.find((b) => b.t === "bibleQuotesCarousel")
+    expect(carousel?.t).toBe("bibleQuotesCarousel")
+    if (carousel?.t === "bibleQuotesCarousel") {
+      expect(carousel.quotes[0].text).toBeUndefined()
+      expect(carousel.quotes[0].osisId).toBe("John.20.19")
+      expect(carousel.quotes[0].verseEnd).toBe(29)
+    }
+  })
+
   it("normalizes candidate refs and section refs into admin blocks", () => {
     const draft: DraftExperience = {
       title: "Forgiven and Free",
@@ -122,6 +168,9 @@ describe("normalizeExperienceDraft", () => {
             },
           ],
         },
+        // Second top-level block satisfies the generation minimum
+        // (GENERATION_MIN_BLOCKS); the assertions below only inspect blocks[0].
+        { t: "text", sectionRef: "s02", heading: "Closing" },
       ],
     }
 
@@ -165,6 +214,62 @@ describe("normalizeExperienceDraft", () => {
       { t: "text", sectionKey: "ai-s01", heading: "One" },
       { t: "text", sectionKey: "ai-s01-1", heading: "Two" },
     ])
+  })
+
+  describe("generation minimum-block-count gate (U1)", () => {
+    it(`throws BELOW_MIN_BLOCKS when normalized output has fewer than ${GENERATION_MIN_BLOCKS} blocks`, () => {
+      // A single top-level block normalizes into a single valid admin block —
+      // shape-valid against BlocksSchema, but below the generation minimum.
+      const draft: DraftExperience = {
+        title: "Single block",
+        metaDescription: "Single block",
+        blocks: [{ t: "text", heading: "Only one", contentParagraphs: ["x"] }],
+      }
+
+      let thrown: unknown
+      try {
+        normalizeExperienceDraft(draft, candidates)
+      } catch (error) {
+        thrown = error
+      }
+
+      expect(thrown).toBeInstanceOf(ExperienceAiNormalizationError)
+      expect((thrown as ExperienceAiNormalizationError).code).toBe(
+        "BELOW_MIN_BLOCKS",
+      )
+    })
+
+    it(`passes when normalized output has at least ${GENERATION_MIN_BLOCKS} blocks`, () => {
+      const draft: DraftExperience = {
+        title: "Two blocks",
+        metaDescription: "Two blocks",
+        blocks: [
+          { t: "text", heading: "One", contentParagraphs: ["a"] },
+          { t: "text", heading: "Two", contentParagraphs: ["b"] },
+        ],
+      }
+
+      const normalized = normalizeExperienceDraft(draft, candidates)
+      expect(normalized.blocks.length).toBeGreaterThanOrEqual(
+        GENERATION_MIN_BLOCKS,
+      )
+    })
+
+    it("leaves BlocksSchema permissive — a manual 1-block payload still validates directly", () => {
+      // BlocksSchema governs ALL persistence including legitimate manual
+      // 1-block experiences, so it must NOT inherit the generation minimum.
+      const oneBlock = [
+        {
+          t: "text" as const,
+          sectionKey: "manual-1",
+          heading: "Single manual block",
+          contentParagraphs: ["This is a legitimate one-block experience."],
+        },
+      ]
+
+      const parsed = BlocksSchema.safeParse(oneBlock)
+      expect(parsed.success).toBe(true)
+    })
   })
 
   describe("presentation defaults", () => {

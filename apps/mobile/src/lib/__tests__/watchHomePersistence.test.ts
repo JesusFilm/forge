@@ -218,4 +218,42 @@ describe("parseStoredHomeSnapshot", () => {
     expect(fromJson).toBe(serializeHomeSnapshot(videos, NOW))
     expect(parseStoredHomeSnapshot(fromJson, NOW)?.videos).toEqual(videos)
   })
+
+  it("carries the Experience body blocks when tagged (v2 source-tag)", () => {
+    const blocks = [{ __typename: "MediaCollectionBlock", sectionKey: "s" }]
+    const blob = JSON.stringify({
+      version: WATCH_HOME_SNAPSHOT_VERSION,
+      persistedAt: NOW.getTime(),
+      videos,
+      blocks,
+    })
+    expect(parseStoredHomeSnapshot(blob, NOW)?.blocks).toEqual(blocks)
+  })
+
+  it("returns null blocks for a config-body snapshot (blocks absent)", () => {
+    expect(parseStoredHomeSnapshot(valid, NOW)?.blocks).toBeNull()
+  })
+
+  it("discards an old v1 snapshot on migration day (version bump)", () => {
+    const v1 = JSON.stringify({
+      version: 1,
+      persistedAt: NOW.getTime(),
+      videos,
+    })
+    expect(parseStoredHomeSnapshot(v1, NOW)).toBeNull()
+  })
+
+  it("round-trips Experience blocks through the JSON serializer", () => {
+    const blocks = [{ __typename: "MediaCollectionBlock", sectionKey: "s" }]
+    const parsed = parseStoredHomeSnapshot(
+      serializeHomeSnapshotFromVideosJson(
+        JSON.stringify(videos),
+        NOW,
+        JSON.stringify(blocks),
+      ),
+      NOW,
+    )
+    expect(parsed?.videos).toEqual(videos)
+    expect(parsed?.blocks).toEqual(blocks)
+  })
 })

@@ -149,14 +149,6 @@ describe("chip taps (AE3)", () => {
       swapping,
     )
   })
-
-  it("marks the slide it left as played", () => {
-    const next = pagerReducer(createInitialPagerState(mixedQueue), {
-      type: "CHIP_TAPPED",
-      index: 1,
-    })
-    expect(next.playedIds.has("v1")).toBe(true)
-  })
 })
 
 // ── Swipe (SLIDE_SHOWN) ─────────────────────────────────────────────────────
@@ -170,7 +162,6 @@ describe("swipe settling (SLIDE_SHOWN)", () => {
     )
     expect(playing.currentIndex).toBe(1)
     expect(playing.phase).toBe("poster")
-    expect(playing.playedIds.has("v1")).toBe(true)
   })
 
   it("clamps out-of-range momentum indexes", () => {
@@ -220,13 +211,12 @@ describe("swipe gesture (SWIPED)", () => {
 // ── Auto-advance ────────────────────────────────────────────────────────────
 
 describe("auto-advance", () => {
-  it("advances a video slide on play-to-end and marks it played", () => {
+  it("advances a video slide on play-to-end", () => {
     const next = pagerReducer(createInitialPagerState(twoVideos), {
       type: "PLAY_TO_END",
     })
     expect(next.currentIndex).toBe(1)
     expect(next.phase).toBe("poster")
-    expect(next.playedIds.has("v1")).toBe(true)
   })
 
   it("ignores play-to-end on a mux slide", () => {
@@ -244,7 +234,6 @@ describe("auto-advance", () => {
     })
     const next = pagerReducer(onMux, { type: "IMAGE_TIMER_ELAPSED" })
     expect(next.currentIndex).toBe(2)
-    expect(next.playedIds.has("mux-welcome")).toBe(true)
   })
 
   it("ignores the image timer on a video slide", () => {
@@ -259,8 +248,6 @@ describe("auto-advance", () => {
     })
     const next = pagerReducer(atEnd, { type: "PLAY_TO_END" })
     expect(next.currentIndex).toBe(0)
-    expect(next.wrapCount).toBe(1)
-    expect(next.playedIds.has("v2")).toBe(true)
   })
 })
 
@@ -411,10 +398,10 @@ describe("videoReady latch", () => {
 // ── Queue replacement ───────────────────────────────────────────────────────
 
 describe("slides set", () => {
-  it("replaces the queue, resets to the first slide, and keeps session state", () => {
+  it("replaces the queue and resets to the first slide", () => {
     const session = run(
       createInitialPagerState(twoVideos),
-      { type: "PLAY_TO_END" }, // marks v1 played, now on v2
+      { type: "PLAY_TO_END" }, // advances past v1, now on v2
     )
     const fresh = [videoSlide("v3"), videoSlide("v4")]
     const next = pagerReducer(session, { type: "SLIDES_SET", slides: fresh })
@@ -422,7 +409,6 @@ describe("slides set", () => {
     expect(next.slides).toBe(fresh)
     expect(next.currentIndex).toBe(0)
     expect(next.phase).toBe("poster")
-    expect(next.playedIds.has("v1")).toBe(true) // session history survives
   })
 
   it("yields no active slide for an empty queue", () => {

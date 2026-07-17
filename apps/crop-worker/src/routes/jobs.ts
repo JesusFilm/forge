@@ -5,6 +5,11 @@ import type { IncomingMessage, ServerResponse } from "node:http"
 import { z } from "zod"
 import { validateBearer, type ValidateBearerOptions } from "../auth.js"
 import { env } from "../config/env.js"
+import {
+  CROP_PLAN_ARTIFACT_TYPE,
+  cropPlanArtifactTypeSchema,
+  renderArtifactSuffixSchema,
+} from "../crop-plan.js"
 import { createJobDeadline } from "../deadline.js"
 import { FINGERPRINT_ARTIFACT_TYPE, runFingerprint } from "../fingerprint.js"
 import {
@@ -55,8 +60,14 @@ export function createJobRequestSchema(nodeEnv: string = env.NODE_ENV) {
     source: sourceSchema,
     render: z.looseObject({
       mode: z.enum(["preview", "full"]),
-      cropPlan: z.looseObject({ assetId: z.string().min(1) }),
+      cropPlan: z.looseObject({
+        assetId: z.string().min(1),
+        artifactType: cropPlanArtifactTypeSchema
+          .optional()
+          .default(CROP_PLAN_ARTIFACT_TYPE),
+      }),
       timelineMap: z.looseObject({ assetId: z.string().min(1) }).optional(),
+      artifactSuffix: renderArtifactSuffixSchema.optional(),
       previewFrameCount: z.number().int().min(0).max(32).optional().default(0),
     }),
   })
@@ -70,13 +81,14 @@ export type JobRequest = z.infer<typeof jobRequestSchema>
 
 // Logical job identity for in-flight dedupe. Mirrors what makes two
 // submissions byte-identical work: the target asset plus (for renders) the
-// mode and the plan/map inputs. Deliberately excludes the manager jobId so a
-// re-launched workflow or operator retry re-attaches to the running job.
+// mode, plan/map inputs, and attempt output suffix. Deliberately excludes the
+// manager jobId so a re-launched workflow or operator retry re-attaches to the
+// running job.
 export function jobDedupeKey(body: JobRequest): string {
   if (body.kind === "fingerprint") {
     return `fingerprint:${body.assetId}`
   }
-  return `render:${body.assetId}:${body.render.mode}:${body.render.cropPlan.assetId}:${body.render.timelineMap?.assetId ?? ""}`
+  return `render:${body.assetId}:${body.render.mode}:${body.render.cropPlan.assetId}:${body.render.cropPlan.artifactType}:${body.render.timelineMap?.assetId ?? ""}:${body.render.artifactSuffix ?? ""}`
 }
 
 export type JobsRouteOptions = {
@@ -194,7 +206,9 @@ export function createJobsRoute({
               sourceUrl: body.source.url,
               mode: body.render.mode,
               cropPlanAssetId: body.render.cropPlan.assetId,
+              cropPlanArtifactType: body.render.cropPlan.artifactType,
               timelineMapAssetId: body.render.timelineMap?.assetId,
+              artifactSuffix: body.render.artifactSuffix,
               previewFrameCount: body.render.previewFrameCount,
               deps: { deadline },
               onProgress,

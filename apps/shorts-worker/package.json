@@ -1,0 +1,38 @@
+{
+  "name": "@forge/shorts-worker",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prebundle": "tsx scripts/prebundle.ts",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@forge/shorts-compositions": "workspace:*",
+    "@remotion/bundler": "4.0.475",
+    "@remotion/install-whisper-cpp": "4.0.475",
+    "@remotion/renderer": "4.0.475",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "remotion": "4.0.475",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "eslint": "^9.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}

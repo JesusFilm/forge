@@ -35,7 +35,7 @@ export function mergeSignals(signals: RetrievalSignal[]): RetrievalSignal[] {
   const byVariant = new Map<string, RetrievalSignal>()
 
   for (const signal of signals) {
-    const key = `${signal.coreId}:${signal.videoVariantId}`
+    const key = retrievalSignalKey(signal)
     const existing = byVariant.get(key)
 
     if (!existing) {
@@ -53,6 +53,12 @@ export function mergeSignals(signals: RetrievalSignal[]): RetrievalSignal[] {
   }
 
   return Array.from(byVariant.values())
+}
+
+export function retrievalSignalKey(
+  signal: Pick<RetrievalSignal, "coreId" | "videoVariantId">,
+): string {
+  return `${signal.coreId}:${signal.videoVariantId}`
 }
 
 function maxOptional(

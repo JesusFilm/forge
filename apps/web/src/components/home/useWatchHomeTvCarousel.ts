@@ -13,7 +13,6 @@ import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
   buildWatchHomeVideoQueue,
-  loadWatchHomeCurrentVideoSession,
   markWatchHomeVideoPlayed,
   mergeWatchHomeMuxInserts,
   readWatchHomeTvPlayedIds,
@@ -34,6 +33,10 @@ export {
 export type { WatchHomeCarouselSequenceData, WatchHomeTvCarouselSlide }
 
 const IMAGE_SLIDE_ADVANCE_MS = 7000
+const VIDEO_POSTER_HOLD_MS = 1500
+const VIDEO_POSTER_HOLD_SECONDS = VIDEO_POSTER_HOLD_MS / 1000
+const VIDEO_POSTER_HOLD_PROGRESS_TICK_MS = 250
+export const WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS = 30
 
 function subscribeToHydrationStore() {
   return () => undefined
@@ -59,14 +62,24 @@ export function watchHomeTvProgressPercent(
   currentTime: number,
   duration: number,
 ) {
-  if (!Number.isFinite(duration) || duration <= 0) return 0
-  return Math.min(100, Math.max(0, (currentTime / duration) * 100))
+  const targetSeconds = watchHomeTvAdvanceTargetSeconds(duration)
+  if (targetSeconds <= 0) return 0
+  return Math.min(100, Math.max(0, (currentTime / targetSeconds) * 100))
+}
+
+export function watchHomeTvAdvanceTargetSeconds(
+  duration: number,
+  threshold = WATCH_HOME_TV_ADVANCE_THRESHOLD,
+  maxSeconds = WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
+) {
+  if (!Number.isFinite(duration) || duration <= 0) return maxSeconds
+  return Math.min(maxSeconds, duration * (threshold / 100))
 }
 
 export function shouldAdvanceWatchHomeTvCarousel(
   currentProgress: number,
   previousProgress: number,
-  threshold = WATCH_HOME_TV_ADVANCE_THRESHOLD,
+  threshold = 100,
 ) {
   return previousProgress < threshold && currentProgress >= threshold
 }
@@ -130,13 +143,16 @@ export function nextUnplayedWatchHomeTvCarouselIndex(
 export function useWatchHomeTvCarousel(
   slides: readonly WatchHomeTvCarouselSlide[],
   sequence: WatchHomeCarouselSequenceData | null = null,
+  options: {
+    autoAdvancePausedForSlideId?: string | null
+    suppressLeavingSlide?: boolean
+  } = {},
 ) {
   const hasHydrated = useSyncExternalStore(
     subscribeToHydrationStore,
     getClientHydrationSnapshot,
     getServerHydrationSnapshot,
   )
-  const [activeSlideId, setActiveSlideId] = useState<string | null>(null)
   const [prefetchedQueue, setPrefetchedQueue] = useState<{
     sequenceKey: string
     videos: WatchHomeTvCarouselVideoSlide[]
@@ -144,11 +160,22 @@ export function useWatchHomeTvCarousel(
   } | null>(null)
   const [isMuted, setIsMuted] = useState(true)
   const [progress, setProgress] = useState(0)
+  const [playbackTime, setPlaybackTime] = useState<{
+    seconds: number
+    slideId: string | null
+  }>({ seconds: 0, slideId: null })
+  const [leavingSlide, setLeavingSlide] =
+    useState<WatchHomeTvCarouselSlide | null>(null)
+  const [mediaReady, setMediaReady] = useState(false)
   const isMutedRef = useRef(isMuted)
+  const leavingSlideTimeoutRef = useRef<number | null>(null)
+  const slideAdvanceTimeoutRef = useRef<number | null>(null)
+  const videoPosterHoldIntervalRef = useRef<number | null>(null)
+  const videoPosterHoldTimeoutRef = useRef<number | null>(null)
   const previousProgressRef = useRef(0)
   const imageSlideStartedAtRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const isSequenced = hasHydrated && sequence != null
+  const isSequenced = sequence != null
   const sequenceKey = useMemo(
     () =>
       sequence
@@ -166,11 +193,11 @@ export function useWatchHomeTvCarousel(
       return { videos: [], nextPoolIndex: 0 }
     }
 
-    const session = loadWatchHomeCurrentVideoSession()
     return buildWatchHomeVideoQueue({
       pools: sequence.pools,
-      startPoolIndex: session?.poolIndex ?? 0,
+      startPoolIndex: 0,
       targetVideoCount: 7,
+      useStoredProgress: false,
     })
   }, [isSequenced, sequence])
   const activePrefetchedQueue =
@@ -180,8 +207,14 @@ export function useWatchHomeTvCarousel(
     activePrefetchedQueue?.nextPoolIndex ?? initialQueue.nextPoolIndex
 
   const sequencedSlides = useMemo(() => {
-    if (!isSequenced || videoQueue.length === 0 || !sequence) return null
-    return mergeWatchHomeMuxInserts(videoQueue, sequence.muxInserts)
+    if (!isSequenced || !sequence) return null
+    const mergedSlides = mergeWatchHomeMuxInserts(
+      videoQueue,
+      sequence.muxInserts,
+      undefined,
+      { useStoredSelections: false },
+    )
+    return mergedSlides.length > 0 ? mergedSlides : null
   }, [isSequenced, sequence, videoQueue])
 
   const displaySlides = sequencedSlides ?? slides
@@ -189,29 +222,80 @@ export function useWatchHomeTvCarousel(
   const defaultActiveIndex = hasHydrated
     ? firstUnplayedWatchHomeTvCarouselIndex(displaySlides)
     : firstPlayableIndex(displaySlides)
-  const activeSlide =
-    (activeSlideId != null
+  const [activeSlideId, setActiveSlideId] = useState<string | null>(null)
+
+  const selectedActiveSlide =
+    activeSlideId != null
       ? displaySlides.find((slide) => slide.id === activeSlideId)
-      : null) ??
+      : null
+  const activeSlide =
+    selectedActiveSlide ??
     displaySlides[defaultActiveIndex] ??
     displaySlides[0] ??
     null
+  const autoAdvancePaused =
+    activeSlide != null &&
+    activeSlide.id === options.autoAdvancePausedForSlideId
   const safeActiveIndex = activeSlide
     ? Math.max(
         0,
         displaySlides.findIndex((slide) => slide.id === activeSlide.id),
       )
     : 0
+  const autoAdvancePausedRef = useRef(autoAdvancePaused)
+
+  const clearVideoPosterHold = useCallback(() => {
+    if (videoPosterHoldTimeoutRef.current != null) {
+      window.clearTimeout(videoPosterHoldTimeoutRef.current)
+      videoPosterHoldTimeoutRef.current = null
+    }
+    if (videoPosterHoldIntervalRef.current != null) {
+      window.clearInterval(videoPosterHoldIntervalRef.current)
+      videoPosterHoldIntervalRef.current = null
+    }
+  }, [])
+
+  const clearSlideAdvanceTimeout = useCallback(() => {
+    if (slideAdvanceTimeoutRef.current != null) {
+      window.clearTimeout(slideAdvanceTimeoutRef.current)
+      slideAdvanceTimeoutRef.current = null
+    }
+  }, [])
 
   const selectIndex = useCallback(
     (index: number) => {
       if (index < 0 || index >= displaySlides.length) return
+      const nextSlide = displaySlides[index] ?? null
+      if (
+        activeSlide &&
+        nextSlide?.id !== activeSlide.id &&
+        options.suppressLeavingSlide !== true
+      ) {
+        if (leavingSlideTimeoutRef.current != null) {
+          window.clearTimeout(leavingSlideTimeoutRef.current)
+        }
+        setLeavingSlide(activeSlide)
+        leavingSlideTimeoutRef.current = window.setTimeout(() => {
+          setLeavingSlide(null)
+          leavingSlideTimeoutRef.current = null
+        }, 900)
+      }
       imageSlideStartedAtRef.current = null
       previousProgressRef.current = 0
+      clearSlideAdvanceTimeout()
+      clearVideoPosterHold()
       setProgress(0)
-      setActiveSlideId(displaySlides[index]?.id ?? null)
+      setMediaReady(false)
+      setPlaybackTime({ seconds: 0, slideId: nextSlide?.id ?? null })
+      setActiveSlideId(nextSlide?.id ?? null)
     },
-    [displaySlides],
+    [
+      activeSlide,
+      clearSlideAdvanceTimeout,
+      clearVideoPosterHold,
+      displaySlides,
+      options.suppressLeavingSlide,
+    ],
   )
 
   const selectSlide = useCallback(
@@ -244,34 +328,75 @@ export function useWatchHomeTvCarousel(
     const video = videoRef.current
     if (!video) return
     const nextProgress = watchHomeTvProgressPercent(
-      video.currentTime,
+      video.currentTime + VIDEO_POSTER_HOLD_SECONDS,
       video.duration,
     )
+    setPlaybackTime({
+      seconds: video.currentTime,
+      slideId: activeSlide?.id ?? null,
+    })
     setProgress(nextProgress)
-    if (
-      shouldAdvanceWatchHomeTvCarousel(
-        nextProgress,
-        previousProgressRef.current,
-      )
-    ) {
-      previousProgressRef.current = nextProgress
-      advance()
-      return
-    }
     previousProgressRef.current = nextProgress
-  }, [advance])
+  }, [activeSlide?.id])
 
   const handleLoadedMetadata = useCallback(() => {
     previousProgressRef.current = 0
+    clearVideoPosterHold()
+    setMediaReady(false)
+    setPlaybackTime({ seconds: 0, slideId: activeSlide?.id ?? null })
     setProgress(0)
-  }, [])
+  }, [activeSlide?.id, clearVideoPosterHold])
 
   const handleCanPlay = useCallback(() => {
     const video = videoRef.current
     if (!video) return
     video.muted = isMutedRef.current
-    void video.play().catch(() => undefined)
-  }, [])
+    clearVideoPosterHold()
+
+    let startedAt: number | null = null
+
+    function tick() {
+      const currentVideo = videoRef.current
+      if (!currentVideo) return
+      const now = performance.now()
+      if (startedAt == null) startedAt = now
+
+      const elapsedSeconds = (now - startedAt) / 1000
+      const nextProgress = watchHomeTvProgressPercent(
+        elapsedSeconds,
+        currentVideo.duration,
+      )
+      setProgress(nextProgress)
+      previousProgressRef.current = nextProgress
+    }
+
+    tick()
+    videoPosterHoldIntervalRef.current = window.setInterval(
+      tick,
+      VIDEO_POSTER_HOLD_PROGRESS_TICK_MS,
+    )
+    videoPosterHoldTimeoutRef.current = window.setTimeout(() => {
+      if (videoPosterHoldIntervalRef.current != null) {
+        window.clearInterval(videoPosterHoldIntervalRef.current)
+        videoPosterHoldIntervalRef.current = null
+      }
+      const nextProgress = watchHomeTvProgressPercent(
+        VIDEO_POSTER_HOLD_SECONDS,
+        video.duration,
+      )
+      setProgress(nextProgress)
+      previousProgressRef.current = nextProgress
+      setMediaReady(true)
+      if (!autoAdvancePausedRef.current) {
+        void video.play().catch(() => undefined)
+      }
+      videoPosterHoldTimeoutRef.current = null
+    }, VIDEO_POSTER_HOLD_MS)
+  }, [clearVideoPosterHold])
+
+  useEffect(() => {
+    autoAdvancePausedRef.current = autoAdvancePaused
+  }, [autoAdvancePaused])
 
   useEffect(() => {
     isMutedRef.current = isMuted
@@ -280,8 +405,26 @@ export function useWatchHomeTvCarousel(
   }, [isMuted])
 
   useEffect(() => {
+    return () => {
+      if (leavingSlideTimeoutRef.current != null) {
+        window.clearTimeout(leavingSlideTimeoutRef.current)
+      }
+      if (slideAdvanceTimeoutRef.current != null) {
+        window.clearTimeout(slideAdvanceTimeoutRef.current)
+      }
+      if (videoPosterHoldTimeoutRef.current != null) {
+        window.clearTimeout(videoPosterHoldTimeoutRef.current)
+      }
+      if (videoPosterHoldIntervalRef.current != null) {
+        window.clearInterval(videoPosterHoldIntervalRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     imageSlideStartedAtRef.current = null
     previousProgressRef.current = 0
+    clearVideoPosterHold()
     if (hasHydrated) {
       if (isSequenced) {
         markWatchHomeVideoPlayed(activeSlide)
@@ -294,7 +437,43 @@ export function useWatchHomeTvCarousel(
     if (!video) return
     video.muted = isMutedRef.current
     video.currentTime = 0
-  }, [activeSlide, activeSlide?.id, hasHydrated, isSequenced])
+  }, [
+    activeSlide,
+    activeSlide?.id,
+    clearVideoPosterHold,
+    hasHydrated,
+    isSequenced,
+  ])
+
+  useEffect(() => {
+    if (!activeSlide) return
+
+    clearSlideAdvanceTimeout()
+    if (autoAdvancePaused) return undefined
+
+    const advanceAfterMs = activeSlide.src
+      ? watchHomeTvAdvanceTargetSeconds(
+          activeSlide.durationSeconds ?? Number.NaN,
+        ) * 1000
+      : IMAGE_SLIDE_ADVANCE_MS
+
+    slideAdvanceTimeoutRef.current = window.setTimeout(() => {
+      slideAdvanceTimeoutRef.current = null
+      advance()
+    }, advanceAfterMs)
+
+    return () => {
+      clearSlideAdvanceTimeout()
+    }
+  }, [
+    activeSlide,
+    activeSlide?.durationSeconds,
+    activeSlide?.id,
+    activeSlide?.src,
+    advance,
+    autoAdvancePaused,
+    clearSlideAdvanceTimeout,
+  ])
 
   useEffect(() => {
     if (!isSequenced || !sequence || videoQueue.length === 0) return
@@ -340,7 +519,7 @@ export function useWatchHomeTvCarousel(
   ])
 
   useEffect(() => {
-    if (!activeSlide || activeSlide.src) return
+    if (!activeSlide || activeSlide.src || autoAdvancePaused) return
 
     let animationFrame = 0
 
@@ -354,10 +533,6 @@ export function useWatchHomeTvCarousel(
         (elapsed / IMAGE_SLIDE_ADVANCE_MS) * 100,
       )
       setProgress(nextProgress)
-      if (nextProgress >= 100) {
-        advance()
-        return
-      }
       animationFrame = requestAnimationFrame(tick)
     }
 
@@ -366,7 +541,7 @@ export function useWatchHomeTvCarousel(
     return () => {
       cancelAnimationFrame(animationFrame)
     }
-  }, [activeSlide, advance])
+  }, [activeSlide, autoAdvancePaused])
 
   return useMemo(
     () => ({
@@ -378,7 +553,11 @@ export function useWatchHomeTvCarousel(
       handleLoadedMetadata,
       handleTimeUpdate,
       isMuted,
+      leavingSlide,
+      mediaReady,
       progress,
+      playbackTimeSeconds:
+        playbackTime.slideId === activeSlide?.id ? playbackTime.seconds : 0,
       selectSlide,
       slides: displaySlides,
       toggleMuted,
@@ -393,6 +572,9 @@ export function useWatchHomeTvCarousel(
       handleTimeUpdate,
       displaySlides,
       isMuted,
+      leavingSlide,
+      mediaReady,
+      playbackTime,
       progress,
       selectSlide,
       toggleMuted,

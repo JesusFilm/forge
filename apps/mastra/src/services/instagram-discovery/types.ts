@@ -1,27 +1,10 @@
-import type { FirecrawlClientFailure } from "../firecrawl-client"
+import type { FirecrawlSearchErrorCode } from "../firecrawl-search-client"
 
-export const MAX_DISCOVERY_TEXT_LENGTH = 1024
-export const MAX_INSTAGRAM_HASHTAGS = 30
-export const DISCOVERY_QUERY_FAILURE_CODES = [
-  "config_missing",
-  "auth_failed",
-  "network_error",
-  "rate_limited",
-  "rejected",
-  "parse_error",
-  "invalid_response",
-  "search_failed",
-] as const
+// Signals type now lives with the shared classifier; re-exported for callers
+// that still import it from the Instagram types module.
+export type { MatchSignals } from "../discovery/classifier"
 
 export type InstagramMediaType = "post" | "reel" | "tv"
-
-/** Signals from the keyword classifier for a single post. */
-export type MatchSignals = {
-  isAiGenerated: boolean
-  isChristian: boolean
-  matchedAi: string[]
-  matchedChristian: string[]
-}
 
 /** A normalized Instagram post discovered via Firecrawl search. */
 export type InstagramPost = {
@@ -46,7 +29,7 @@ export type InstagramPost = {
 export type DiscoveryQueryFailure = {
   query: string
   /** Firecrawl client error code, or "search_failed" for non-Firecrawl errors. */
-  code: FirecrawlClientFailure["reason"] | "search_failed"
+  code: FirecrawlSearchErrorCode | "search_failed"
   message: string
 }
 
@@ -54,6 +37,8 @@ export type DiscoveryTotals = {
   candidates: number
   instagram: number
   deduped: number
+  /** Deduped posts dropped because they read as commentary, not a creation. */
+  excludedCommentary: number
   qualified: number
 }
 

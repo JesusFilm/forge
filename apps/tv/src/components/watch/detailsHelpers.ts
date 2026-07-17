@@ -5,11 +5,9 @@
 import type { WatchVideoRecord } from "../../lib/normalizeVideo"
 
 /**
- * Build the metadata line shown under the title: `label · duration · N languages`.
- * Each segment is omitted when its source is absent, and the segments are joined
- * with a middle dot. Returns null when there is nothing to show.
- *
- * Duration is formatted from seconds → `M:SS` (or `H:MM:SS` past an hour).
+ * Build the metadata line under the title: `label · duration · N languages`.
+ * Segments with absent sources are omitted; duration is seconds → `M:SS`/`H:MM:SS`.
+ * Returns null when nothing to show.
  */
 export function buildMetadataLine(
   label: string | null | undefined,
@@ -52,9 +50,9 @@ export function formatDuration(
 }
 
 /**
- * Build the public web share URL for a video (and its active language, when
- * known). The continuation surface for Share/Download is the viewer's phone;
- * the QR encodes this URL. Returns null when there is no slug to anchor it.
+ * Public web share URL for a video (plus active language when known); the QR
+ * encodes it since the phone is the Share/Download continuation surface.
+ * Returns null when there is no slug to anchor it.
  */
 export function buildShareUrl(
   video: Pick<WatchVideoRecord, "slug"> | null | undefined,

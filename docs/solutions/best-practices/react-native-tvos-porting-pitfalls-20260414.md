@@ -12,7 +12,7 @@ applies_when:
   - "Building interactive overlays (Modal, bottom sheet) for the TV app"
   - "Implementing scroll-to or jump-to navigation in a TV ScrollView"
   - "pod install fails after adding a new dependency to apps/tv"
-last_updated: "2026-04-20"
+last_updated: "2026-06-25"
 tags:
   - react-native-tvos
   - tvos
@@ -131,11 +131,20 @@ Key constraints:
 - `setNativeProps` is the react-native-tvos imperative API for moving focus. The ref target must be a mounted `Pressable`.
 - Anchors need `accessible={false}` to be invisible to screen readers.
 - Anchor height must be >= 48px for the focus engine to recognize it.
+- This anchor is focused by an **explicit** `setNativeProps({ hasTVPreferredFocus })` claim, not by geometric D-pad discovery — which is why `opacity: 0` works here. The opposite case — a cell that must be caught by a _directional_ D-pad move (e.g. an over-hang catcher inside a rail) — cannot use `opacity: 0`: alpha-0 views are skipped by the geometric focus engine, so it must be transparent at alpha 1. See [`../design-patterns/tv-rail-overhang-pad-bounce-focus-20260616.md`](../design-patterns/tv-rail-overhang-pad-bounce-focus-20260616.md).
 
 Scope: this anchor technique is for `ScrollView`. A virtualized `FlatList`
 scrolls programmatically with `scrollToIndex` + `getItemLayout` instead (no
 anchors needed), and its preferred-focus handling has its own pitfalls — see
 `docs/solutions/best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md`.
+
+Alternative approach for a `ScrollView`: instead of anchoring focus to the
+scroll, set `scrollEnabled={false}` (disabling the native focus-scroll pass)
+and drive the viewport yourself from focus handlers. Prefer that when focus
+maps naturally to rows and you want a fixed anchor (hero pinned, rails anchored
+beneath); prefer the anchor-teleport here when you need to jump focus to an
+arbitrary off-screen target. See
+`docs/solutions/design-patterns/tv-home-row-anchored-scroll-native-focus-scroll-disabled-20260615.md`.
 
 ### 5. pointerEvents="none" wrapper on overlay VideoView blocks AVPlayerLayer on tvOS
 
@@ -200,4 +209,4 @@ See `apps/tv/app/experience/[slug].tsx` for a real implementation of pitfall 4 (
 - `docs/solutions/ui-bugs/tv-video-hero-blank-autoplay-20260413.md` -- expo-video player.play() timing on tvOS
 - `apps/tv/CLAUDE.md` -- TV app conventions including Crimson Gallery tokens, focus ring pattern, Math.round on Android
 - react-native-tvos issue #839 -- `hasTVPreferredFocus` re-steals focus on every re-render (session history)
-- react-native-tvos issue #852 -- focus lost on back-navigation workaround
+- react-native-tvos issue #852 -- focus lost on back-navigation workaround. For restoring the exact last-focused element across a multi-focusable screen, see `docs/solutions/design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md`

@@ -43,18 +43,11 @@ describe("validateAutomationDraft", () => {
     ).toBe(false)
   })
 
-  it("rejects embedding templates until coverage-backed eligibility is available", () => {
+  it("rejects transcript embedding templates until coverage-backed eligibility is available", () => {
     expect(
       validateAutomationDraft({
         ...baseDraft,
         template: "transcript_embeddings_missing",
-      }).success,
-    ).toBe(false)
-
-    expect(
-      validateAutomationDraft({
-        ...baseDraft,
-        template: "scene_embeddings_missing",
       }).success,
     ).toBe(false)
   })

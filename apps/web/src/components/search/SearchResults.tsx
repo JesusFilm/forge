@@ -38,7 +38,7 @@ export function SearchResults({
           No results for &apos;{query}&apos;
         </h2>
         <p className="mt-2 text-sm text-stone-400">
-          Try different keywords or browse experiences
+          Try different keywords or browse videos
         </p>
       </div>
     )

@@ -1,16 +1,7 @@
 /**
- * ExperienceShell — wraps the root layout to provide Experience data to the
- * routes that read it (/experience/[slug], /video/[sectionKey],
- * /collection/[sectionKey], Library's active entry).
- *
- * Never blocks rendering: children always mount, and ExperienceProvider is
- * always present. With no selected slug the context is simply empty
- * (experience=null, loading=false) — Home and the tabs do not depend on it.
- *
- * Reads the active slug from ExperienceSelectionProvider. On first launch
- * (no persisted slug) it best-effort resolves the homepage via admin's
- * watchSetting query; a null or failed resolve is silent — the context just
- * stays empty.
+ * ExperienceShell — wraps the root layout to provide Experience data to routes.
+ * Never blocks rendering: children + ExperienceProvider always mount; no slug ->
+ * empty context. First launch best-effort resolves the homepage via watchSetting.
  */
 import { useEffect, useRef, type ReactNode } from "react"
 import { useQuery } from "@apollo/client/react"

@@ -1,10 +1,7 @@
 /**
- * /mission — the Jesus Film mission storytelling page.
- *
- * Holds the prose that used to live inline on the Home feed: the mission
- * framing, the three mission points, the building-next highlights, and the
- * beta invitation. Reached from the Home mission rail; the native stack
- * header supplies back navigation.
+ * /mission — Jesus Film mission storytelling page (prose moved off the Home
+ * feed: framing, three points, building-next, beta invite). Reached from the
+ * Home mission rail; the native stack header supplies back navigation.
  */
 import { useCallback, useEffect, useRef } from "react"
 import {

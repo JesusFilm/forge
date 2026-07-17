@@ -13,6 +13,13 @@ vi.mock("./hybrid-search-retrievers", () => ({
   searchExperienceKeyword: vi.fn(),
 }))
 
+vi.mock("./embeddings.service", () => ({
+  EXPERIENCE_EMBEDDING_DIMENSIONS: 1536,
+  OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
+  generateExperienceEmbedding: vi.fn(),
+}))
+
+import { generateExperienceEmbedding } from "./embeddings.service"
 import {
   searchVideoSemantic,
   searchVideoKeyword,
@@ -21,11 +28,51 @@ import {
 } from "./hybrid-search-retrievers"
 import { __resetSearchHealthForTest, getStats } from "./hybrid-search-health"
 import {
+  formatSearchTimingLogLine,
   HybridSearchService,
+  __resetQueryEmbeddingCacheForTest,
   normalizeMode,
   sanitizeForLog,
   type QueryEmbedder,
 } from "./hybrid-search.service"
+
+const hydrationRawRows: {
+  images: unknown[]
+  dubs: unknown[]
+  childCounts: unknown[]
+} = {
+  images: [],
+  dubs: [],
+  childCounts: [],
+}
+
+function defaultHydrationRawQuery(
+  strings: TemplateStringsArray,
+): Promise<unknown[]> {
+  const sql = strings.join(" ")
+  if (sql.includes("FROM video_image")) {
+    return Promise.resolve(hydrationRawRows.images)
+  }
+  if (sql.includes("FROM video_dub")) {
+    return Promise.resolve(hydrationRawRows.dubs)
+  }
+  if (sql.includes("FROM video_relation")) {
+    return Promise.resolve(hydrationRawRows.childCounts)
+  }
+  return Promise.resolve([])
+}
+
+function hydrationRawSqlContaining(pattern: string): string {
+  const calls = mockPrisma.$queryRaw.mock.calls as Array<
+    [TemplateStringsArray, ...unknown[]]
+  >
+  const call = calls.find((rawCall) => {
+    const strings = rawCall[0]
+    return strings?.join(" ").includes(pattern)
+  })
+  expect(call, `Expected hydration SQL containing ${pattern}`).toBeDefined()
+  return call![0].join(" ")
+}
 
 const mockPrisma = {
   video: {
@@ -34,6 +81,10 @@ const mockPrisma = {
     // via `mockPrisma.video.findMany.mockResolvedValueOnce(...)`.
     findMany: vi.fn().mockResolvedValue([]),
   },
+  videoLocale: {
+    findMany: vi.fn().mockResolvedValue([]),
+  },
+  $queryRaw: vi.fn(defaultHydrationRawQuery),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any
 const loggerError = vi.fn()
@@ -58,9 +109,20 @@ function setupDefaultRetrievers() {
 beforeEach(() => {
   vi.clearAllMocks()
   __resetSearchHealthForTest()
+  __resetQueryEmbeddingCacheForTest()
   setupDefaultRetrievers()
+  hydrationRawRows.images = []
+  hydrationRawRows.dubs = []
+  hydrationRawRows.childCounts = []
   // Restore default hydration stub after clearAllMocks wipes it.
   mockPrisma.video.findMany.mockResolvedValue([])
+  mockPrisma.videoLocale.findMany.mockResolvedValue([])
+  mockPrisma.$queryRaw.mockImplementation(defaultHydrationRawQuery)
+  vi.mocked(generateExperienceEmbedding).mockResolvedValue({
+    model: "qwen/qwen3-embedding-8b",
+    dimensions: 1536,
+    embedding: [0.1, 0.2, 0.3],
+  })
 })
 
 describe("HybridSearchService", () => {
@@ -106,16 +168,24 @@ describe("HybridSearchService", () => {
     })
 
     // All 4 retrievers were invoked with overfetch = DEFAULT_LIMIT * 3 = 60.
-    expect(searchVideoSemantic).toHaveBeenCalledWith(mockPrisma, {
-      queryEmbedding: "[0.1,0.2,0.3]",
-      locale: "en",
-      limit: 60,
-    })
-    expect(searchVideoKeyword).toHaveBeenCalledWith(mockPrisma, {
-      query: "forgiveness",
-      locale: "en",
-      limit: 60,
-    })
+    expect(searchVideoSemantic).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        queryEmbedding: "[0.1,0.2,0.3]",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
+    expect(searchVideoKeyword).toHaveBeenCalledWith(
+      mockPrisma,
+      {
+        query: "forgiveness",
+        locale: "en",
+        limit: 60,
+      },
+      expect.any(Object),
+    )
     expect(searchExperienceSemantic).toHaveBeenCalled()
     expect(searchExperienceKeyword).toHaveBeenCalled()
 
@@ -219,6 +289,68 @@ describe("HybridSearchService", () => {
       failedRetrievers: [],
       contributingRetrievers: ["semantic-video"],
     })
+    expect(traced.timings).toMatchObject({
+      pipelineMode: "hybrid",
+      totalMs: expect.any(Number),
+      embeddingMs: expect.any(Number),
+      retrievalsMs: expect.any(Number),
+      retrievalWaitMs: expect.any(Number),
+      fusionMs: expect.any(Number),
+      dilutionCapMs: 0,
+      dedupeMs: expect.any(Number),
+      mappingMs: expect.any(Number),
+      hydrationMs: expect.any(Number),
+    })
+    expect(traced.timings.retrievers.map((r) => r.label)).toEqual([
+      "semantic-video",
+      "keyword-video",
+      "semantic-experience",
+      "keyword-experience",
+    ])
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "semantic-video",
+          status: "fulfilled",
+          resultCount: 1,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
+    )
+    expect(traced.timings.db).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "hydration.video.findMany",
+          status: "fulfilled",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+        expect.objectContaining({
+          label: "hydration.videoLocale.findMany",
+          status: "fulfilled",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+        expect.objectContaining({
+          label: "hydration.videoImage.query",
+          status: "fulfilled",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+        expect.objectContaining({
+          label: "hydration.videoDub.query",
+          status: "fulfilled",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+        expect.objectContaining({
+          label: "hydration.videoChildCount.query",
+          status: "fulfilled",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
+    )
     expect(await service.search({ query: "jesus", locale: "en" })).toEqual(
       expect.objectContaining({
         query: "jesus",
@@ -245,6 +377,22 @@ describe("HybridSearchService", () => {
       outcome: "degraded",
       traceClass: "query_embedding_failure",
     })
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "semantic-video",
+          status: "skipped",
+          resultCount: 0,
+          elapsedMs: 0,
+        }),
+        expect.objectContaining({
+          label: "semantic-experience",
+          status: "skipped",
+          resultCount: 0,
+          elapsedMs: 0,
+        }),
+      ]),
+    )
   })
 
   it("classifies partial retriever failure separately from zero results", async () => {
@@ -282,6 +430,68 @@ describe("HybridSearchService", () => {
     expect(traced.trace.traceClass).toBe("retrieval_failure")
     expect(traced.trace.failedRetrievers).toEqual(["keyword-video"])
     expect(traced.trace.contributingRetrievers).toEqual(["semantic-video"])
+    expect(traced.timings.retrievers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "keyword-video",
+          status: "rejected",
+          resultCount: 0,
+          elapsedMs: expect.any(Number),
+        }),
+      ]),
+    )
+  })
+
+  it("formats structured timing logs without query text", () => {
+    const line = formatSearchTimingLogLine({
+      route: "graphql",
+      locale: "en\nx=1",
+      requestedMode: "keyword first",
+      searchMode: "hybrid",
+      outcome: "success",
+      resultCount: 2,
+      traceWriteMs: 1.2,
+      timings: {
+        pipelineMode: "keyword-first",
+        totalMs: 123.4,
+        embeddingMs: 15.2,
+        retrievalsMs: 100,
+        retrievalWaitMs: 80,
+        fusionMs: 1,
+        dilutionCapMs: 0,
+        dedupeMs: 0.4,
+        mappingMs: 0.3,
+        hydrationMs: 6,
+        retrievers: [
+          {
+            label: "semantic-video",
+            status: "fulfilled",
+            elapsedMs: 99,
+            resultCount: 60,
+          },
+        ],
+        db: [
+          {
+            label: "semantic-video.query",
+            status: "fulfilled",
+            elapsedMs: 98,
+            resultCount: 60,
+          },
+        ],
+      },
+    })
+
+    expect(line).toContain("event=search_timing")
+    expect(line).toContain("route=graphql")
+    expect(line).toContain("locale=en_x_1")
+    expect(line).toContain("requested_mode=keyword_first")
+    expect(line).toContain("pipeline_mode=keyword-first")
+    expect(line).toContain("embedding_ms=15.2")
+    expect(line).toContain("retrieval_wait_ms=80")
+    expect(line).toContain("retriever_semantic_video_ms=99")
+    expect(line).toContain("db_semantic_video_query_ms=98")
+    expect(line).toContain("trace_write_ms=1.2")
+    expect(line).not.toContain("Jesus")
   })
 
   describe("query embedding", () => {
@@ -368,6 +578,7 @@ describe("HybridSearchService", () => {
     expect(searchVideoSemantic).toHaveBeenCalledWith(
       mockPrisma,
       expect.objectContaining({ limit: 150 }), // 50 * 3
+      expect.any(Object),
     )
   })
 
@@ -383,6 +594,7 @@ describe("HybridSearchService", () => {
     expect(searchVideoSemantic).toHaveBeenCalledWith(
       mockPrisma,
       expect.objectContaining({ limit: 3 }), // 1 * 3
+      expect.any(Object),
     )
   })
 
@@ -524,6 +736,82 @@ describe("HybridSearchService", () => {
   })
 
   describe("card-pill hydration", () => {
+    it("hydrates video display metadata so cards use descriptions and thumbnails instead of evidence text", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-transcript",
+          videoCoreId: "1_jf",
+          videoSlug: "who-is-jesus",
+          videoTitle: "Who Is Jesus?",
+          imageUrl: "",
+          sceneDescription:
+            "<b>Following Jesus</b> <b>Who is Jesus?</b> <b>Uh yes</b>",
+          startSeconds: 17,
+          playbackId: "",
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+      ])
+
+      mockPrisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "vid-transcript",
+          label: "EPISODE",
+          primaryLanguageId: "lang-en",
+        },
+      ])
+      mockPrisma.videoLocale.findMany.mockResolvedValueOnce([
+        {
+          videoId: "vid-transcript",
+          description: "A concise public description of the video.",
+          snippet: "A shorter fallback snippet.",
+        },
+      ])
+      hydrationRawRows.images = [
+        {
+          id: "image-transcript",
+          videoId: "vid-transcript",
+          mobileCinematicHigh: "https://cdn.example/cover-high.jpg",
+          mobileCinematicLow: null,
+          videoStill: null,
+          url: null,
+          thumbnail: null,
+          blurDataUrl: "data:image/jpeg;base64,LQIP==",
+        },
+      ]
+      hydrationRawRows.dubs = [
+        {
+          videoId: "vid-transcript",
+          languageId: "lang-en",
+          duration: 70,
+          playbackId: "mux-hydrated",
+        },
+      ]
+      hydrationRawRows.childCounts = [
+        { videoId: "vid-transcript", childCount: 0 },
+      ]
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      const result = await service.search({ query: "jesus", locale: "en" })
+
+      expect(result.results[0]).toMatchObject({
+        id: "vid-transcript",
+        snippet: "A concise public description of the video.",
+        imageUrl: "https://cdn.example/cover-high.jpg",
+        imageBlurDataUrl: "data:image/jpeg;base64,LQIP==",
+        playbackId: "mux-hydrated",
+        label: "EPISODE",
+        durationSeconds: 70,
+        childCount: 0,
+      })
+    })
+
     it("populates label, durationSeconds, childCount on video rows from one batched findMany", async () => {
       vi.mocked(searchVideoSemantic).mockResolvedValue([
         {
@@ -559,17 +847,25 @@ describe("HybridSearchService", () => {
           id: "vid-series",
           label: "SERIES",
           primaryLanguageId: "lang-en",
-          dubs: [],
-          _count: { children: 13 },
         },
         {
           id: "vid-clip",
           label: "EPISODE",
           primaryLanguageId: "lang-en",
-          dubs: [{ languageId: "lang-en", duration: 70 }],
-          _count: { children: 0 },
         },
       ])
+      hydrationRawRows.dubs = [
+        {
+          videoId: "vid-clip",
+          languageId: "lang-en",
+          duration: 70,
+          playbackId: null,
+        },
+      ]
+      hydrationRawRows.childCounts = [
+        { videoId: "vid-series", childCount: 13 },
+        { videoId: "vid-clip", childCount: 0 },
+      ]
 
       const service = new HybridSearchService({
         prisma: mockPrisma,
@@ -636,20 +932,37 @@ describe("HybridSearchService", () => {
           id: "vid-primary",
           label: "EPISODE",
           primaryLanguageId: "lang-en",
-          dubs: [
-            { languageId: "lang-fr", duration: 999 },
-            { languageId: "lang-en", duration: 120 },
-          ],
-          _count: { children: 0 },
         },
         {
           id: "vid-fallback",
           label: "EPISODE",
           primaryLanguageId: null,
-          dubs: [{ languageId: "lang-es", duration: 60 }],
-          _count: { children: 0 },
         },
       ])
+      hydrationRawRows.dubs = [
+        {
+          videoId: "vid-primary",
+          languageId: "lang-fr",
+          duration: 999,
+          playbackId: null,
+        },
+        {
+          videoId: "vid-primary",
+          languageId: "lang-en",
+          duration: 120,
+          playbackId: null,
+        },
+        {
+          videoId: "vid-fallback",
+          languageId: "lang-es",
+          duration: 60,
+          playbackId: null,
+        },
+      ]
+      hydrationRawRows.childCounts = [
+        { videoId: "vid-primary", childCount: 0 },
+        { videoId: "vid-fallback", childCount: 0 },
+      ]
 
       const service = new HybridSearchService({
         prisma: mockPrisma,
@@ -664,6 +977,91 @@ describe("HybridSearchService", () => {
       expect(
         result.results.find((r) => r.id === "vid-fallback")!.durationSeconds,
       ).toBe(60)
+    })
+
+    it("orders hydration dub ranking with a stable tie-breaker", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-tied-dubs",
+          videoCoreId: "1_tied",
+          videoSlug: "tied",
+          videoTitle: "Tied",
+          imageUrl: null,
+          sceneDescription: "",
+          startSeconds: 0,
+          playbackId: null,
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+      ])
+      mockPrisma.video.findMany.mockResolvedValueOnce([
+        {
+          id: "vid-tied-dubs",
+          label: "EPISODE",
+          primaryLanguageId: null,
+        },
+      ])
+      hydrationRawRows.dubs = [
+        {
+          videoId: "vid-tied-dubs",
+          languageId: "lang-a",
+          duration: 120,
+          playbackId: "mux-a",
+        },
+      ]
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      await service.search({ query: "x", locale: "en" })
+
+      expect(hydrationRawSqlContaining("FROM video_dub")).toMatch(
+        /row_number\(\)\s+OVER\s*\(\s*PARTITION BY vd\.video_id\s+ORDER BY vd\.duration DESC,\s*vd\.id ASC\s*\)\s+AS hydration_rank/,
+      )
+    })
+
+    it("keeps pre-hydration video fields when hydration fails", async () => {
+      vi.mocked(searchVideoSemantic).mockResolvedValue([
+        {
+          resultType: "video",
+          resultId: "vid-failure",
+          videoCoreId: "1_failure",
+          videoSlug: "failure",
+          videoTitle: "Failure",
+          imageUrl: "https://cdn.example/original.jpg",
+          sceneDescription: "Evidence text survives.",
+          startSeconds: 12,
+          playbackId: "mux-original",
+          similarity: 0.9,
+          embeddingText: "[]",
+        },
+      ])
+      mockPrisma.video.findMany.mockRejectedValueOnce(new Error("db down"))
+
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        embedder: successEmbedder(),
+        logger,
+      })
+
+      const result = await service.search({ query: "x", locale: "en" })
+
+      expect(result.results[0]).toMatchObject({
+        id: "vid-failure",
+        snippet: "Evidence text survives.",
+        imageUrl: "https://cdn.example/original.jpg",
+        playbackId: "mux-original",
+        label: null,
+        durationSeconds: null,
+        childCount: null,
+      })
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining("event=hydration_failed"),
+      )
     })
 
     it("leaves experience rows with null label/duration/childCount and never queries Video", async () => {
@@ -699,6 +1097,87 @@ describe("HybridSearchService", () => {
       expect(mockPrisma.video.findMany).not.toHaveBeenCalled()
     })
   })
+
+  describe("default query embedding cache", () => {
+    function deferredEmbedding() {
+      let resolve!: (value: {
+        model: string
+        dimensions: number
+        embedding: number[]
+      }) => void
+      let reject!: (error: unknown) => void
+      const promise = new Promise<{
+        model: string
+        dimensions: number
+        embedding: number[]
+      }>((promiseResolve, promiseReject) => {
+        resolve = promiseResolve
+        reject = promiseReject
+      })
+      return { promise, resolve, reject }
+    }
+
+    it("reuses a successful default embedding for identical queries", async () => {
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        logger,
+      })
+
+      await service.search({ query: "jesus", locale: "en" })
+      await service.search({ query: "jesus", locale: "en" })
+
+      expect(generateExperienceEmbedding).toHaveBeenCalledTimes(1)
+      expect(getStats()).toMatchObject({ attempts: 1, failures: 0 })
+      expect(searchVideoSemantic).toHaveBeenCalledTimes(2)
+    })
+
+    it("coalesces concurrent identical default embedding requests", async () => {
+      const embedding = deferredEmbedding()
+      vi.mocked(generateExperienceEmbedding).mockReturnValueOnce(
+        embedding.promise,
+      )
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        logger,
+      })
+
+      const first = service.search({ query: "jesus", locale: "en" })
+      const second = service.search({ query: "jesus", locale: "en" })
+
+      expect(generateExperienceEmbedding).toHaveBeenCalledTimes(1)
+      embedding.resolve({
+        model: "qwen/qwen3-embedding-8b",
+        dimensions: 1536,
+        embedding: [0.3, 0.2, 0.1],
+      })
+      await Promise.all([first, second])
+
+      expect(getStats()).toMatchObject({ attempts: 1, failures: 0 })
+      expect(searchVideoSemantic).toHaveBeenCalledTimes(2)
+    })
+
+    it("does not cache default embedding failures", async () => {
+      vi.mocked(generateExperienceEmbedding)
+        .mockRejectedValueOnce(new Error("provider down"))
+        .mockResolvedValueOnce({
+          model: "qwen/qwen3-embedding-8b",
+          dimensions: 1536,
+          embedding: [0.1, 0.2, 0.3],
+        })
+      const service = new HybridSearchService({
+        prisma: mockPrisma,
+        logger,
+      })
+
+      const degraded = await service.search({ query: "jesus", locale: "en" })
+      const recovered = await service.search({ query: "jesus", locale: "en" })
+
+      expect(degraded.searchMode).toBe("keyword-only")
+      expect(recovered.searchMode).toBe("hybrid")
+      expect(generateExperienceEmbedding).toHaveBeenCalledTimes(2)
+      expect(getStats()).toMatchObject({ attempts: 2, failures: 1 })
+    })
+  })
 })
 
 describe("normalizeMode", () => {
@@ -715,6 +1194,40 @@ describe("normalizeMode", () => {
     const warn = vi.fn()
     expect(normalizeMode("keyword-first", { warn })).toBe("keyword-first")
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("recognizes 'semantic-only' only for internal eval callers", () => {
+    const warn = vi.fn()
+    expect(
+      normalizeMode(
+        "semantic-only",
+        { warn },
+        { allowInternalEvalModes: true },
+      ),
+    ).toBe("semantic-only")
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it("treats public 'semantic-only' as unknown and falls back to hybrid", () => {
+    const warn = vi.fn()
+    expect(normalizeMode("semantic-only", { warn })).toBe("hybrid")
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0]![0]).toContain("mode=semantic-only")
+  })
+
+  it("treats removed 'semantic-hnsw-prototype' as unknown for public and internal callers", () => {
+    const warn = vi.fn()
+    expect(normalizeMode("semantic-hnsw-prototype", { warn })).toBe("hybrid")
+    expect(
+      normalizeMode(
+        "semantic-hnsw-prototype",
+        { warn },
+        { allowInternalEvalModes: true },
+      ),
+    ).toBe("hybrid")
+    expect(warn).toHaveBeenCalledTimes(2)
+    expect(warn.mock.calls[0]![0]).toContain("mode=semantic-hnsw-prototype")
+    expect(warn.mock.calls[1]![0]).toContain("mode=semantic-hnsw-prototype")
   })
 
   it("is case-sensitive — 'HYBRID' / 'Keyword-First' are unknown", () => {

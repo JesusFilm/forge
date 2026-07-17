@@ -81,7 +81,7 @@ Confirm required production env is present without printing values:
   - `AI_GATEWAY_EMBEDDINGS_MODEL`
   - `AI_GATEWAY_EMBEDDINGS_PROVIDER`
   - `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE=gateway`
-  - Admin ingest URLs/keys for scene, transcript, and experience embedding writes.
+  - Admin ingest URLs/keys for transcript and experience embedding writes.
 - Admin:
   - workflow/service keys needed by `run-embeds`
   - production DB URL
@@ -155,7 +155,7 @@ GROUP BY 1, 2, 3
 ORDER BY rows DESC;
 ```
 
-Also count total eligible rows/targets for scene, transcript, and experience. Confirm multilingual coverage exists before assuming Core Sync is needed. Core Sync is not the default next step if production already has the videos/languages.
+Also count total eligible rows/targets for transcript and experience. Confirm multilingual coverage exists before assuming Core Sync is needed. Core Sync is not the default next step if production already has the videos/languages.
 
 ## Phase 4: Get a Fresh Native Eval Gate
 
@@ -168,7 +168,7 @@ Run the full Mastra native eval suite against the deployed native-1536 contract.
 - pass/fail state
 - multilingual coverage summary
 - path to JSON artifact under `docs/search-eval-reports/`
-- row-provenance evidence for the evaluated corpus, or a paired Admin SQL/report artifact proving the searched scene, transcript, and experience rows match the same native-1536 gateway tuple
+- row-provenance evidence for the evaluated corpus, or a paired Admin SQL/report artifact proving the searched transcript and experience rows match the same native-1536 gateway tuple
 
 Use the repo's existing eval command where possible:
 
@@ -196,9 +196,9 @@ Prefer existing workflow modes that safely overwrite stale vectors. If a hard wi
 
 Target tables/columns to reason about:
 
-- Scene vectors: `video_scene_locale.embedding` plus `embedding_provider`, `embedding_native_dimensions`, `embedding_transform_version`, `model`, `dimensions`, `source_*`, `generation_mode`, `mastra_run_id`.
 - Transcript vectors: `video_transcript_chunk.embedding`; transcript-level provenance is on `video_transcript.embedding_provider`, `embedding_native_dimensions`, `embedding_transform_version`, `source_*`, `generation_mode`, `mastra_run_id`.
 - Experience vectors: `experience_locale.embedding` plus `embedding_*` provenance fields.
+- Historical scene rows: retained for feat-199 only; do not wipe or backfill them as part of transcript/experience content replacement.
 
 Then run the production backfill with the gate report:
 
@@ -206,31 +206,25 @@ Then run the production backfill with the gate report:
 pnpm --filter @forge/admin run-embeds \
   --pipeline=all \
   --gate-report=docs/search-eval-reports/<report-id>.json \
-  --scene-mode=model-upgrade \
   --transcript-mode=model-upgrade \
   --experience-mode=model-upgrade \
   --report-out=.tmp/prod-native-1536-run-embeds-<timestamp>.json
 ```
 
-If the run reports missing scene-analysis or transcript artifacts, use the existing enrichment trigger flow:
+If the run reports missing transcript artifacts, use the existing enrichment trigger flow:
 
 ```bash
-pnpm --filter @forge/admin trigger-enrichment \
-  --kind=scene-analysis \
-  --from-report=.tmp/prod-native-1536-run-embeds-<timestamp>.json
-
 pnpm --filter @forge/admin trigger-enrichment \
   --kind=transcript \
   --from-report=.tmp/prod-native-1536-run-embeds-<timestamp>.json
 ```
 
-Wait for enrichment to finish, then rerun `run-embeds` until scene, transcript, and experience backfills complete or failures are isolated and explained.
+Wait for enrichment to finish, then rerun `run-embeds` until transcript and experience backfills complete or failures are isolated and explained.
 
 ## Phase 6: Post-backfill Verification
 
 After re-embedding, verify:
 
-- Scene rows have AI Gateway provenance: native `1536`, final `1536`, transform `NULL`.
 - Transcript chunks are populated and parent transcript provenance is native `1536`, transform `NULL`.
 - Experience locale rows are populated and provenance is native `1536`, transform `NULL`.
 - Multilingual languages expected from the seeded/synced production corpus are represented.
@@ -252,7 +246,7 @@ Report back with:
 1. PR/commit/deploy status.
 2. Whether production gateway returns native `1536`.
 3. Whether the wipe happened, and exactly what was wiped.
-4. How many scene, transcript, and experience embeddings were regenerated.
+4. How many transcript and experience embeddings were regenerated.
 5. Which enrichment workflows ran and their outcomes.
 6. Eval report paths and pass/fail summary.
 7. Multilingual coverage/quality summary.

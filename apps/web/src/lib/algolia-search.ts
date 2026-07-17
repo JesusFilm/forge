@@ -41,6 +41,7 @@ export type AlgoliaSearchSuccess = {
 export type AlgoliaSearchOutcome = AlgoliaSearchSuccess | AlgoliaSearchFailure
 
 export type SearchAlgoliaVideosInput = {
+  includeLanguageFacets?: boolean
   query: string
   limit?: number
   offset?: number
@@ -60,6 +61,7 @@ const MAX_QUERY_LENGTH = 200
 const MAX_LIMIT = 50
 
 export async function searchAlgoliaVideos({
+  includeLanguageFacets = true,
   query,
   limit = 20,
   offset = 0,
@@ -95,23 +97,23 @@ export async function searchAlgoliaVideos({
         offset: requestOffset,
         length: hitsPerPage,
         filters,
-        facets: ["languageEnglishName"],
-        maxValuesPerFacet: 1000,
+        ...(includeLanguageFacets
+          ? {
+              facets: ["languageEnglishName"],
+              maxValuesPerFacet: 1000,
+            }
+          : {}),
       }),
       signal: AbortSignal.timeout(ALGOLIA_TIMEOUT_MS),
       cache: "no-store",
     })
   } catch (error) {
-    logAlgoliaError("fetch failed", truncatedQuery, error)
+    logAlgoliaError("fetch failed", error)
     return failure("ALGOLIA_UPSTREAM_ERROR", truncatedQuery, startedAt)
   }
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "")
-    logAlgoliaError(
-      `upstream status=${response.status} body=${sanitize(body)}`,
-      truncatedQuery,
-    )
+    logAlgoliaError(`upstream status=${response.status}`)
     return failure("ALGOLIA_UPSTREAM_ERROR", truncatedQuery, startedAt)
   }
 
@@ -119,12 +121,12 @@ export async function searchAlgoliaVideos({
   try {
     payload = (await response.json()) as AlgoliaRawResponse
   } catch (error) {
-    logAlgoliaError("invalid json", truncatedQuery, error)
+    logAlgoliaError("invalid json", error)
     return failure("ALGOLIA_INVALID_RESPONSE", truncatedQuery, startedAt)
   }
 
   if (!Array.isArray(payload.hits)) {
-    logAlgoliaError("missing hits array", truncatedQuery)
+    logAlgoliaError("missing hits array")
     return failure("ALGOLIA_INVALID_RESPONSE", truncatedQuery, startedAt)
   }
 
@@ -143,7 +145,9 @@ export async function searchAlgoliaVideos({
     offset: requestOffset,
     nextOffset,
     facets: {
-      languageEnglishName: readLanguageFacet(payload.facets),
+      languageEnglishName: includeLanguageFacets
+        ? readLanguageFacet(payload.facets)
+        : {},
     },
   }
 }
@@ -214,16 +218,10 @@ function escapeAlgoliaFilterStringValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }
 
-function logAlgoliaError(
-  message: string,
-  query: string,
-  error?: unknown,
-): void {
+function logAlgoliaError(message: string, error?: unknown): void {
   const detail =
     error instanceof Error ? ` error=${sanitize(error.message)}` : ""
-  console.error(
-    `[watch-search][algolia] ${message} q=${sanitize(query)}${detail}`,
-  )
+  console.error(`[watch-search][algolia] ${message}${detail}`)
 }
 
 function sanitize(input: string): string {

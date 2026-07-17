@@ -1,10 +1,17 @@
 import { useMemo, useState } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { StyleSheet, View } from "react-native"
 
-import { COLORS } from "../../lib/colors"
 import { scale } from "../../lib/scale"
-import { FocusableCard } from "../FocusableCard"
 import { TVFocusGuideView } from "../TVFocusGuideView"
+import { KeyButton } from "./KeyButton"
+import {
+  applyKey,
+  buildActionRow,
+  buildLetterRows,
+  GRID_KEY_DIMS,
+  type KeyAction,
+  KEY_GAP,
+} from "./keyGrid"
 
 type Props = {
   value: string
@@ -13,241 +20,84 @@ type Props = {
 }
 
 /**
- * Action a key performs when pressed. Defines the dispatcher contract
- * between a key row and the keyboard's onChange / onSubmit props.
+ * Grid search keyboard: 6-col A–Z (ABC shift flips case) over a shift/space/
+ * delete/search action row, in SEARCH_THEME. Easier to scan on a 10-foot screen
+ * than the old strip. Cells dispatch in the showing case; writes go via onChange.
  */
-type KeyAction =
-  | { kind: "char"; char: string }
-  | { kind: "backspace" }
-  | { kind: "submit" }
-  | { kind: "space" }
-  | { kind: "shift" }
-
-type KeyCell = {
-  label: string
-  action: KeyAction
-  /** Accessibility label overrides the visible glyph when the glyph is symbolic. */
-  accessibilityLabel?: string
-  /** Wider than a normal key (space key). */
-  wide?: boolean
-}
-
-/**
- * Build the four key sections fresh whenever the case toggle flips.
- * Letter cells render in the active case (uppercase when `isShifted`,
- * lowercase otherwise) and dispatch the same character so the query
- * preserves whatever case the user typed. Punctuation and digits are
- * case-insensitive and pass through unchanged.
- *
- * Defaulting to lowercase rather than uppercase because search queries
- * are case-insensitive on the backend and lowercase reads as less
- * shouty in the QueryDisplay above the keyboard.
- */
-function buildKeyboardSections(isShifted: boolean): {
-  frequency: KeyCell[]
-  alpha: KeyCell[][]
-  numeric: KeyCell[][]
-  action: KeyCell[]
-} {
-  const cased = (c: string) => (isShifted ? c.toUpperCase() : c)
-
-  const frequency: KeyCell[] = ["e", "t", "a", "o", "i", "n", "s"].map((c) => {
-    const display = cased(c)
-    return { label: display, action: { kind: "char", char: display } }
-  })
-
-  const alpha: KeyCell[][] = [
-    ["a", "b", "c", "d", "e", "f", "g"],
-    ["h", "i", "j", "k", "l", "m", "n"],
-    ["o", "p", "q", "r", "s", "t", "u"],
-    ["v", "w", "x", "y", "z", "'", "."],
-  ].map((row) =>
-    row.map((c) => {
-      const isLetter = /^[a-z]$/.test(c)
-      const display = isLetter ? cased(c) : c
-      return { label: display, action: { kind: "char", char: display } }
-    }),
-  )
-
-  const numeric: KeyCell[][] = [
-    ["0", "1", "2", "3", "4", "5", "6"],
-    ["7", "8", "9"],
-  ].map((row) =>
-    row.map((n) => ({ label: n, action: { kind: "char", char: n } })),
-  )
-
-  // Shift key shows the case it would switch TO when pressed
-  // (matches the iOS / tvOS convention). Persistent toggle, not
-  // momentary — easier on D-pad than transient shift.
-  const action: KeyCell[] = [
-    {
-      label: isShifted ? "abc" : "ABC",
-      action: { kind: "shift" },
-      accessibilityLabel: isShifted
-        ? "Switch to lowercase"
-        : "Switch to uppercase",
-    },
-    {
-      label: "␣",
-      action: { kind: "space" },
-      accessibilityLabel: "Space",
-      wide: true,
-    },
-    { label: "⌫", action: { kind: "backspace" }, accessibilityLabel: "Delete" },
-    { label: "⏎", action: { kind: "submit" }, accessibilityLabel: "Search" },
-  ]
-
-  return { frequency, alpha, numeric, action }
-}
-
 export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
+  // Lowercase default; persistent caps-lock-style toggle. Only future presses
+  // are affected — already-typed characters in `value` stay as they were.
   const [isShifted, setIsShifted] = useState(false)
 
-  const sections = useMemo(() => buildKeyboardSections(isShifted), [isShifted])
+  const letterRows = useMemo(() => buildLetterRows(isShifted), [isShifted])
+  const actionRow = useMemo(() => buildActionRow(isShifted), [isShifted])
 
+  // Thin caller over applyKey (tested pure reducer): shift toggles case, submit
+  // fires onSubmit, value-mutating actions forward their non-null next to onChange.
+  // Guarded no-ops (space/backspace on empty) return null and fall through.
   const dispatch = (action: KeyAction) => {
-    switch (action.kind) {
-      case "char":
-        onChange(value + action.char)
-        return
-      case "space":
-        onChange(value + " ")
-        return
-      case "backspace":
-        if (value.length === 0) return
-        onChange(value.slice(0, -1))
-        return
-      case "submit":
-        onSubmit()
-        return
-      case "shift":
-        // Persistent caps-lock-style toggle. The keyboard re-renders
-        // with letters in the new case; only future presses are
-        // affected — already-typed characters in `value` stay as-is
-        // (matches every desktop / mobile keyboard's shift semantics).
-        setIsShifted((prev) => !prev)
-        return
-      default: {
-        // Compile-time exhaustiveness check: if a future KeyAction
-        // variant is added, this line errors at tsc until the new
-        // `case` is handled above. Runtime fall-through is impossible.
-        const _exhaustive: never = action
-        return _exhaustive
-      }
+    if (action.kind === "shift") {
+      setIsShifted((prev) => !prev)
+      return
     }
+    if (action.kind === "submit") {
+      onSubmit()
+      return
+    }
+    const next = applyKey(value, action)
+    if (next != null) onChange(next)
   }
 
-  const renderKey = (cell: KeyCell, rowIdx: number, colIdx: number) => {
-    // First alphabetical row, leftmost cell — claims focus on mount.
-    // Position-based, not label-based, so the case toggle doesn't
-    // shift which cell is the initial focus target. Only consulted
-    // on first mount; subsequent typing leaves focus on whichever
-    // key the user pressed last, which is what we want.
-    const preferred = rowIdx === 1 && colIdx === 0
-    // Frequency row keys (rowIdx === 0) sit on a brighter surface
-    // tone so the quick-pick row reads as a different rank from the
-    // alphabetical grid below. Subtle but enough that users notice
-    // the row exists rather than scanning A-Z and missing it.
-    const isFrequencyKey = rowIdx === 0
-
-    return (
-      <FocusableCard
-        // Stable position-based key — does NOT include the label. The
-        // shift toggle changes labels in place; using the label as the
-        // React key would unmount + remount every cell on each toggle
-        // and lose focus state.
-        key={`r${rowIdx}-c${colIdx}`}
-        onPress={() => dispatch(cell.action)}
-        hasTVPreferredFocus={preferred}
-        accessibilityLabel={cell.accessibilityLabel ?? cell.label}
-        style={{
-          ...(cell.wide === true ? styles.keyWide : styles.key),
-          ...(isFrequencyKey ? styles.keyFrequency : null),
-        }}
-      >
-        <View style={styles.keyInner}>
-          <Text style={styles.keyLabel}>{cell.label}</Text>
-        </View>
-      </FocusableCard>
-    )
-  }
-
+  // trapFocusLeft stops leftmost-column presses escaping offscreen. Right is NOT
+  // trapped so D-pad-right from the rightmost column reaches the results pane;
+  // up/down move between grid rows by geometry.
   return (
     <TVFocusGuideView
       style={styles.keyboard}
       trapFocusLeft
       trapFocusDown={false}
     >
-      {/* Frequency quick-pick row */}
-      <View style={styles.row}>
-        {sections.frequency.map((cell, col) => renderKey(cell, 0, col))}
-      </View>
-      {/* Visual separator — background-color only, no border per
-          Crimson Gallery constraint. */}
-      <View style={styles.separator} />
-      {/* Alphabetical grid */}
-      {sections.alpha.map((row, rowIdx) => (
-        <View key={`alpha-${rowIdx}`} style={styles.row}>
-          {row.map((cell, col) => renderKey(cell, rowIdx + 1, col))}
+      {letterRows.map((row, rowIdx) => (
+        <View key={`letters-${rowIdx}`} style={styles.row}>
+          {row.map((cell, colIdx) => (
+            <KeyButton
+              key={cell.id}
+              cell={cell}
+              // One-shot focus claim on the first letter, position-based so the
+              // case toggle doesn't move it. Only first mount; later typing
+              // leaves focus on the last-pressed key.
+              hasTVPreferredFocus={rowIdx === 0 && colIdx === 0}
+              onPress={() => dispatch(cell.action)}
+              dims={GRID_KEY_DIMS}
+            />
+          ))}
         </View>
       ))}
-      {/* Numerals */}
-      {sections.numeric.map((row, rowIdx) => (
-        <View key={`num-${rowIdx}`} style={styles.row}>
-          {row.map((cell, col) => renderKey(cell, rowIdx + 5, col))}
-        </View>
-      ))}
-      {/* Action row: shift toggle + space (wide) + backspace + submit */}
+
       <View style={styles.row}>
-        {sections.action.map((cell, col) => renderKey(cell, 7, col))}
+        {actionRow.map((cell) => (
+          <KeyButton
+            key={cell.id}
+            cell={cell}
+            hasTVPreferredFocus={false}
+            onPress={() => dispatch(cell.action)}
+            dims={GRID_KEY_DIMS}
+          />
+        ))}
       </View>
     </TVFocusGuideView>
   )
 }
 
-const KEY_SIZE = scale(56)
-const KEY_GAP = scale(8)
-
 const styles = StyleSheet.create({
   keyboard: {
     flexDirection: "column",
-    gap: KEY_GAP,
+    gap: scale(KEY_GAP),
+    // Left-aligned block; the grid is narrower than the full content width.
+    alignItems: "flex-start",
   },
   row: {
     flexDirection: "row",
-    gap: KEY_GAP,
-  },
-  separator: {
-    height: scale(2),
-    backgroundColor: COLORS.surfaceContainerHigh,
-    marginVertical: scale(4),
-  },
-  key: {
-    width: KEY_SIZE,
-    height: KEY_SIZE,
-    backgroundColor: COLORS.surfaceContainer,
-  },
-  keyFrequency: {
-    // One container tier brighter than the alphabetical grid below.
-    // Visually marks the row as the quick-pick shortcut without
-    // adding chrome (no labels, no borders) — the discovery happens
-    // via tone alone.
-    backgroundColor: COLORS.surfaceContainerHigh,
-  },
-  keyWide: {
-    width: KEY_SIZE * 2 + KEY_GAP,
-    height: KEY_SIZE,
-    backgroundColor: COLORS.surfaceContainer,
-  },
-  keyInner: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  keyLabel: {
-    fontFamily: "System",
-    fontSize: scale(22),
-    fontWeight: "600",
-    color: COLORS.text,
+    gap: scale(KEY_GAP),
   },
 })

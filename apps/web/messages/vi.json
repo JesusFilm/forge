@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "Đóng",
     "download": "Tải xuống",
+    "authRequiredTitle": "Bạn muốn tải video này xuống?",
+    "authRequiredBody": "Bạn cần có tài khoản Jesus Film miễn phí để tải video xuống.",
+    "signInToDownload": "Đăng nhập để tải xuống",
+    "keepWatching": "Tiếp tục xem",
     "checking": "Đang kiểm tra",
     "closeTermsOfUse": "Đóng Điều khoản Sử dụng",
     "cancel": "Hủy",
@@ -83,7 +87,8 @@
     "toggleOn": "Bật",
     "toggleOff": "Tắt",
     "close": "Đóng",
-    "apply": "Áp dụng"
+    "apply": "Áp dụng",
+    "noLanguageSubtitles": "Không có phụ đề {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# TẬP} other {# TẬP}}",
@@ -192,7 +197,10 @@
     "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Xem ngay",

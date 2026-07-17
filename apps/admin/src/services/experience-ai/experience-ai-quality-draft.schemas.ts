@@ -2,7 +2,7 @@ import { z } from "zod"
 import {
   buildDraftExperienceJsonSchema,
   DraftExperienceSchema,
-} from "./experience-ai.schemas"
+} from "@forge/experience-schema"
 
 export const QualityDraftReferenceLedgerEntrySchema = z
   .object({

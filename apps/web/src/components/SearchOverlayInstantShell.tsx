@@ -1,0 +1,136 @@
+"use client"
+
+import {
+  useEffect,
+  useRef,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react"
+import { useTranslations } from "next-intl"
+
+import { FloatingSearchFieldInput } from "./FloatingSearchField"
+import {
+  FLOATING_HEADER_GAP_CLASS,
+  FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
+  FLOATING_HEADER_TRAILING_GROUP_CLASS,
+  FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
+} from "@/lib/content-width"
+
+type SearchOverlayInstantShellProps = {
+  open: boolean
+  closing: boolean
+  query: string
+  setQuery: (query: string) => void
+  setOpen: (open: boolean) => void
+  headerTopClass: string
+  logoSlotClass: string
+  headerLanguageControlVisible: boolean
+}
+
+export function SearchOverlayInstantShell({
+  open,
+  closing,
+  query,
+  setQuery,
+  setOpen,
+  headerTopClass,
+  logoSlotClass,
+  headerLanguageControlVisible,
+}: SearchOverlayInstantShellProps) {
+  const t = useTranslations("SearchOverlay")
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const timer = setTimeout(() => inputRef.current?.focus(), 50)
+    return () => clearTimeout(timer)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [open, setOpen])
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value)
+  }
+
+  const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") event.preventDefault()
+  }
+
+  const clearInput = () => {
+    setQuery("")
+    inputRef.current?.focus()
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("dialogLabel")}
+      data-testid="search-overlay-instant-shell"
+      className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${
+        closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"
+      }`}
+      style={{
+        zIndex: 45,
+        backgroundColor: "rgba(0, 0, 0, 0.75)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
+    >
+      <div
+        data-testid="search-overlay-instant-top-bar"
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
+      >
+        <div aria-hidden="true" className={logoSlotClass} />
+        <div className="pointer-events-auto min-w-0 flex-1">
+          <FloatingSearchFieldInput
+            ref={inputRef}
+            value={query}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            onClear={clearInput}
+            placeholder={t("placeholder")}
+            aria-label={t("inputLabel")}
+            iconTestId="search-overlay-instant-input-icon"
+            wrapperClassName="w-full"
+          />
+        </div>
+        <div
+          aria-hidden="true"
+          data-testid="search-overlay-instant-trailing-controls-spacer"
+          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+        >
+          {headerLanguageControlVisible ? (
+            <span className={FLOATING_HEADER_LANGUAGE_SLOT_CLASS} />
+          ) : null}
+          <span className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
+        </div>
+      </div>
+
+      <div
+        aria-hidden="true"
+        data-testid="search-overlay-instant-controls"
+        className="search-overlay-scroll absolute inset-x-0 bottom-0 top-44 z-1 overflow-hidden px-4 pb-8 sm:px-6 md:top-32"
+      >
+        <div className="mx-auto grid max-w-[1400px] gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div
+              key={index}
+              className="h-32 rounded-md border border-white/10 bg-white/8"
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

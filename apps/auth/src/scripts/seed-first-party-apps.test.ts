@@ -26,10 +26,10 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 3,
-      environments: 12,
-      oauthClients: 16,
-      scopes: 9,
+      apps: 5,
+      environments: 18,
+      oauthClients: 22,
+      scopes: 10,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -67,6 +67,57 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_web_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_web_local",
+          redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
+          scopes: expect.arrayContaining(["web:watch-events:write"]),
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "web",
+            environmentKey: "local",
+          }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_chat_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_chat_local",
+          // Identity-only client — exact scope list, no *:access or
+          // membership:read (feat-207 R7).
+          scopes: ["openid", "profile:read", "email:read"],
+          redirectUris: ["http://localhost:3200/api/auth/callback"],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_chat_production" },
+        create: expect.objectContaining({
+          clientId: "jfp_chat_production",
+          // Identity-only client — exact scope list, no *:access or
+          // membership:read (feat-207 R7).
+          scopes: ["openid", "profile:read", "email:read"],
+          redirectUris: ["https://chat.jesusfilm.ai/api/auth/callback"],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "chat",
+            environmentKey: "production",
+          }),
         }),
       }),
     )

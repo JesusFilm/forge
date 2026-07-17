@@ -7,7 +7,10 @@ status: "complete"
 start_date: "2026-06-10"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-194"
+  - "feat-240"
+  - "feat-252"
 tags:
   - "mastra"
   - "firecrawl"

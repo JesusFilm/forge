@@ -31,12 +31,38 @@ type StoredChunk = {
   chunkIndex: number
   chunkId: string
   text: string
+  rawSourceText: string | null
+  embeddingInputText: string | null
+  feltNeeds: string[]
+  bibleVerses: string[]
+  contentSummary: string | null
+  tone: string | null
+  demographics: string[]
+  spiritualContext: string[]
+  extractionMetadata: Record<string, unknown> | null
   tokenCount: number
   startSeconds: number | null
   endSeconds: number | null
   model: string
   dimensions: number
   embeddingText: string
+}
+
+function parseJsonStringArray(value: string | null | undefined): string[] {
+  if (value == null) return []
+  const parsed = JSON.parse(value) as unknown
+  if (!Array.isArray(parsed)) return []
+  return parsed.map(String)
+}
+
+function parseBase64Json(
+  value: string | null | undefined,
+): Record<string, unknown> | null {
+  if (value == null) return null
+  return JSON.parse(Buffer.from(value, "base64").toString("utf8")) as Record<
+    string,
+    unknown
+  >
 }
 
 function required(value: string | null | undefined): string {
@@ -125,7 +151,7 @@ function buildContractPrisma() {
       return [...transcripts.values()]
     }
 
-    if (sql.includes("WITH scene_source AS")) {
+    if (sql.includes("transcript_source AS")) {
       return chunks.map((chunk) => {
         const transcript = transcripts.get(chunk.transcriptId)!
         return {
@@ -236,6 +262,15 @@ function buildContractPrisma() {
         chunkIndexesLiteral: string,
         chunkIdsLiteral: string,
         textsLiteral: string,
+        rawSourceTextsLiteral: string,
+        embeddingInputTextsLiteral: string,
+        feltNeedsJsonLiteral: string,
+        bibleVersesJsonLiteral: string,
+        contentSummariesLiteral: string,
+        tonesLiteral: string,
+        demographicsJsonLiteral: string,
+        spiritualContextJsonLiteral: string,
+        extractionMetadataBase64Literal: string,
         tokenCountsLiteral: string,
         startSecondsLiteral: string,
         endSecondsLiteral: string,
@@ -252,6 +287,19 @@ function buildContractPrisma() {
         const chunkIndexes = parsePgTextArray(chunkIndexesLiteral)
         const chunkIds = parsePgTextArray(chunkIdsLiteral)
         const texts = parsePgTextArray(textsLiteral)
+        const rawSourceTexts = parsePgTextArray(rawSourceTextsLiteral)
+        const embeddingInputTexts = parsePgTextArray(embeddingInputTextsLiteral)
+        const feltNeedsJson = parsePgTextArray(feltNeedsJsonLiteral)
+        const bibleVersesJson = parsePgTextArray(bibleVersesJsonLiteral)
+        const contentSummaries = parsePgTextArray(contentSummariesLiteral)
+        const tones = parsePgTextArray(tonesLiteral)
+        const demographicsJson = parsePgTextArray(demographicsJsonLiteral)
+        const spiritualContextJson = parsePgTextArray(
+          spiritualContextJsonLiteral,
+        )
+        const extractionMetadataBase64 = parsePgTextArray(
+          extractionMetadataBase64Literal,
+        )
         const tokenCounts = parsePgTextArray(tokenCountsLiteral)
         const startSeconds = parsePgTextArray(startSecondsLiteral)
         const endSeconds = parsePgTextArray(endSecondsLiteral)
@@ -267,6 +315,17 @@ function buildContractPrisma() {
             chunkIndex: Number(chunkIndexes[index]),
             chunkId: required(chunkIds[index]),
             text: required(texts[index]),
+            rawSourceText: rawSourceTexts[index] ?? null,
+            embeddingInputText: embeddingInputTexts[index] ?? null,
+            feltNeeds: parseJsonStringArray(feltNeedsJson[index]),
+            bibleVerses: parseJsonStringArray(bibleVersesJson[index]),
+            contentSummary: contentSummaries[index] ?? null,
+            tone: tones[index] ?? null,
+            demographics: parseJsonStringArray(demographicsJson[index]),
+            spiritualContext: parseJsonStringArray(spiritualContextJson[index]),
+            extractionMetadata: parseBase64Json(
+              extractionMetadataBase64[index],
+            ),
             tokenCount: Number(tokenCounts[index]),
             startSeconds:
               startSeconds[index] == null ? null : Number(startSeconds[index]),

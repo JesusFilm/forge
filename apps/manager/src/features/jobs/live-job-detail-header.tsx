@@ -22,6 +22,7 @@ import {
   getDisplayedJobStatus,
   getLanguageBadges,
 } from "@/features/jobs/jobs-table-presenter"
+import { formatDuration } from "@/features/jobs/live-job-steps-table"
 
 type LiveJobDetailHeaderProps = {
   job: JobRecord
@@ -44,33 +45,6 @@ function formatDate(iso?: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(parsed)
-}
-
-function formatDuration(startIso?: string, endIso?: string): string {
-  if (!startIso || !endIso) {
-    return "–"
-  }
-
-  const startMs = Date.parse(startIso)
-  const endMs = Date.parse(endIso)
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-    return "–"
-  }
-
-  const totalSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000))
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`
-  }
-
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
-  }
-
-  const hours = Math.floor(minutes / 60)
-  const remainingMinutes = minutes % 60
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
 }
 
 function formatCreatedSummary(input: {

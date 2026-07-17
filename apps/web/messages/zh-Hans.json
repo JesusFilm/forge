@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "关闭",
     "download": "下载",
+    "authRequiredTitle": "想下载此视频吗？",
+    "authRequiredBody": "下载视频需要免费的耶稣电影账户。",
+    "signInToDownload": "登录以下载",
+    "keepWatching": "继续观看",
     "checking": "正在检查",
     "closeTermsOfUse": "关闭使用条款",
     "cancel": "取消",
@@ -83,7 +87,8 @@
     "toggleOn": "开",
     "toggleOff": "关",
     "close": "关闭",
-    "apply": "应用"
+    "apply": "应用",
+    "noLanguageSubtitles": "无{language}字幕"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",
@@ -192,7 +197,10 @@
     "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "立即观看",

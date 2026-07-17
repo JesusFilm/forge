@@ -19,10 +19,11 @@ import { adminGraphql } from "@forge/admin-graphql"
  *     panel both read `q.value`.
  *
  * Locale-varying fields (`title`, `description`, `snippet`, `imageAlt`)
- * live on `VideoLocale` in admin, not on the parent `Video`. They are
- * fetched separately by `getWatchVideoLocalizedCopyBySlugOperation` so
- * non-English fallback can retry text-only payloads instead of repeating
- * the heavy slug-level shell and Dub detail projections.
+ * live on `VideoLocale` in admin, not on the parent `Video`. Watch routes
+ * fetch the shell plus exact/broad/English copy aliases and one preferred
+ * playable dub in `getWatchVideoRouteSnapshotBySlugOperation`, while the
+ * split localized-copy operation remains as a small document-level contract
+ * test fixture.
  *
  * `VideoRelation` is admin's join shape for `parents` / `children`. The
  * fragment projects the related Video through `parent { ... }` /
@@ -38,6 +39,7 @@ export const watchVideoShellFragment = adminGraphql(`
   fragment WatchVideoShell on Video @_unmask {
     documentId: id
     slug
+    publishedAt
     noIndex
     label
     images {
@@ -46,6 +48,8 @@ export const watchVideoShellFragment = adminGraphql(`
       thumbnail
       mobileCinematicHigh
       mobileCinematicLow
+      blurDataUrl
+      dominantColor
     }
     primaryLanguage {
       coreId
@@ -63,6 +67,8 @@ export const watchVideoShellFragment = adminGraphql(`
           thumbnail
           mobileCinematicHigh
           mobileCinematicLow
+          blurDataUrl
+          dominantColor
         }
         children {
           child {
@@ -75,6 +81,8 @@ export const watchVideoShellFragment = adminGraphql(`
               thumbnail
               mobileCinematicHigh
               mobileCinematicLow
+              blurDataUrl
+              dominantColor
             }
           }
         }
@@ -91,6 +99,8 @@ export const watchVideoShellFragment = adminGraphql(`
           thumbnail
           mobileCinematicHigh
           mobileCinematicLow
+          blurDataUrl
+          dominantColor
         }
         # child.dubs is deliberately NOT projected — a 61-chapter ×
         # ~2,200-language fan-out (~45 MB) blows past Next's unstable_cache
@@ -98,19 +108,6 @@ export const watchVideoShellFragment = adminGraphql(`
         # server-side scalar (admin's Video.durationSeconds, like
         # HybridSearchResult.durationSeconds), NOT a full dub fetch.
         durationSeconds
-      }
-    }
-    variants: dubs {
-      documentId: id
-      slug
-      published
-      hls
-      duration
-      language {
-        coreId
-        bcp47
-        slug
-        name
       }
     }
     bibleCitations {
@@ -121,6 +118,17 @@ export const watchVideoShellFragment = adminGraphql(`
       verseEnd
       order
       osisId
+      passage {
+        content
+        copyright
+        humanReference
+        provider
+        publisherUrl
+        reference
+        versionAbbreviation
+        versionId
+        versionTitle
+      }
       bibleBook {
         documentId: id
         name
@@ -186,14 +194,17 @@ export const watchVideoDubDetailFragment = adminGraphql(`
     published
     hls
     duration
+    muxHeroPosterBlurDataUrl
     language {
       coreId
       bcp47
+      iso3
       slug
       name
     }
     downloads {
       documentId: id
+      height
       quality
       size
     }
@@ -233,6 +244,236 @@ export const getWatchVideoShellBySlugOperation = adminGraphql(
   [watchVideoShellFragment],
 )
 
+export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
+  `
+    query GetWatchVideoRouteSnapshotBySlug(
+      $locale: String!
+      $languageSlug: String
+      $videoSlug: String!
+    ) {
+      watchVideoRouteSnapshotBySlug(
+        slug: $videoSlug
+        locale: $locale
+        languageSlug: $languageSlug
+      ) {
+        documentId
+        slug
+        publishedAt
+        noIndex
+        label
+        images {
+          documentId
+          url
+          thumbnail
+          mobileCinematicHigh
+          mobileCinematicLow
+        }
+        primaryLanguage {
+          coreId
+          bcp47
+        }
+        parents {
+          parent {
+            documentId
+            slug
+            noIndex
+            label
+            images {
+              documentId
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+            exactLocales {
+              documentId
+              languageSlug
+              title
+            }
+            broadLocales {
+              documentId
+              languageSlug
+              title
+            }
+            englishLocales {
+              documentId
+              languageSlug
+              title
+            }
+            children {
+              child {
+                documentId
+                slug
+                label
+                muxPlaybackId
+                muxThumbnailBlurDataUrl
+                muxHeroPosterBlurDataUrl
+                images {
+                  documentId
+                  url
+                  thumbnail
+                  mobileCinematicHigh
+                  mobileCinematicLow
+                }
+                exactLocales {
+                  documentId
+                  languageSlug
+                  title
+                }
+                broadLocales {
+                  documentId
+                  languageSlug
+                  title
+                }
+                englishLocales {
+                  documentId
+                  languageSlug
+                  title
+                }
+              }
+            }
+          }
+        }
+        children {
+          child {
+            documentId
+            slug
+            label
+            muxPlaybackId
+            muxThumbnailBlurDataUrl
+            muxHeroPosterBlurDataUrl
+            durationSeconds
+            images {
+              documentId
+              url
+              thumbnail
+              mobileCinematicHigh
+              mobileCinematicLow
+            }
+            exactLocales {
+              documentId
+              languageSlug
+              title
+            }
+            broadLocales {
+              documentId
+              languageSlug
+              title
+            }
+            englishLocales {
+              documentId
+              languageSlug
+              title
+            }
+          }
+        }
+        bibleCitations {
+          documentId
+          chapterStart
+          chapterEnd
+          verseStart
+          verseEnd
+          order
+          osisId
+          passage(languageSlug: $languageSlug) {
+            content
+            copyright
+            humanReference
+            provider
+            publisherUrl
+            reference
+            versionAbbreviation
+            versionId
+            versionTitle
+          }
+          bibleBook {
+            documentId
+            name
+          }
+        }
+        exactLocales {
+          documentId
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        broadLocales {
+          documentId
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        englishLocales {
+          documentId
+          languageSlug
+          title
+          description
+          snippet
+          imageAlt
+        }
+        exactStudyQuestions {
+          documentId
+          languageSlug
+          value
+          order
+        }
+        broadStudyQuestions {
+          documentId
+          languageSlug
+          value
+          order
+        }
+        englishStudyQuestions {
+          documentId
+          languageSlug
+          value
+          order
+        }
+        playableDubLanguageCount
+        preferredVariant {
+          documentId
+          slug
+          published
+          hls
+          duration
+          muxHeroPosterBlurDataUrl
+          language {
+            coreId
+            bcp47
+            slug
+            name
+          }
+        }
+      }
+    }
+  `,
+)
+
+export const getWatchLanguagePickerVariantsBySlugOperation = adminGraphql(`
+  query GetWatchLanguagePickerVariantsBySlug($videoSlug: String!) {
+    videoBySlug(slug: $videoSlug) {
+      documentId: id
+      variants: dubs {
+        documentId: id
+        slug
+        published
+        hls
+        duration
+        language {
+          coreId
+          bcp47
+          slug
+          name
+        }
+      }
+    }
+  }
+`)
+
 export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
   query GetWatchVideoCarouselMuxPlaybackIds(
     $languageSlug: String
@@ -247,6 +488,8 @@ export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
             child {
               documentId: id
               muxPlaybackId(languageSlug: $languageSlug)
+              muxThumbnailBlurDataUrl(languageSlug: $languageSlug)
+              muxHeroPosterBlurDataUrl(languageSlug: $languageSlug)
             }
           }
         }
@@ -255,6 +498,8 @@ export const getWatchVideoCarouselMuxPlaybackIdsBySlugOperation = adminGraphql(`
         child {
           documentId: id
           muxPlaybackId(languageSlug: $languageSlug)
+          muxThumbnailBlurDataUrl(languageSlug: $languageSlug)
+          muxHeroPosterBlurDataUrl(languageSlug: $languageSlug)
         }
       }
     }

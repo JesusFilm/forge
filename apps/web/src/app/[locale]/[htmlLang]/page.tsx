@@ -1,9 +1,13 @@
 import type { Metadata } from "next"
 import { setRequestLocale } from "next-intl/server"
-import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import {
+  publicWatchHomeLanguageSlugForLocale,
+  resolveWatchLocaleIdentity,
+} from "@/lib/locale"
 import { resolveWatchHome } from "@/lib/watch-home"
+import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
-import { WatchHomePage } from "@/components/home/WatchHomePage"
+import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 
@@ -35,15 +39,39 @@ export default async function HomePage({ params }: PageProps) {
   const { locale: rawLocale } = await params
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
-  const result = await resolveWatchHome(locale)
+  const [heroResult, pageResult] = await Promise.all([
+    resolveWatchHome(locale),
+    resolveWatchPage(locale),
+  ])
 
-  if (result.error) {
-    return <ExperienceError message={result.error.message} />
+  if (heroResult.error) {
+    return <ExperienceError message={heroResult.error.message} />
   }
 
-  if (!result.data.heroSlides.length && !result.data.sections.length) {
+  const builderBlocks =
+    pageResult.data?.kind === "experience"
+      ? (pageResult.data.experience.blocks ?? [])
+      : []
+
+  if (
+    pageResult.error &&
+    !isWatchPageMissingError(pageResult.error) &&
+    process.env.NODE_ENV === "development"
+  ) {
+    console.warn("[watch-home] Unable to load builder-authored body.", {
+      error: pageResult.error.message,
+    })
+  }
+
+  if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
     return <ExperienceEmpty />
   }
 
-  return <WatchHomePage model={result.data} />
+  return (
+    <WatchHomeExperiencePage
+      heroModel={heroResult.data}
+      blocks={builderBlocks}
+      languageSlug={publicWatchHomeLanguageSlugForLocale(locale) ?? "english"}
+    />
+  )
 }

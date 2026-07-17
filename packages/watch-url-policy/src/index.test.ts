@@ -34,6 +34,12 @@ describe("watch URL policy", () => {
     expect(getDefaultWatchCallbackOrigins("production")).not.toContain(
       "http://localhost:3000",
     )
+    expect(getDefaultWatchCallbackOrigins("production")).toContain(
+      "https://watch.jesusfilm.org",
+    )
+    expect(getDefaultWatchCallbackOrigins("production")).not.toContain(
+      "https://web.jesusfilm.org",
+    )
     expect(getDefaultWatchCallbackOrigins("test")).toContain(
       "http://localhost:3000",
     )

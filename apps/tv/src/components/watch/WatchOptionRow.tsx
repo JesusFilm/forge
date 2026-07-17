@@ -1,16 +1,6 @@
-// One selectable row in the on-page Audio Language / Subtitles sheets, ported
-// from the Claude Design handoff (`renderMenu` → `.menu-item`). Matches the
-// mockup exactly: no resting background, a leading glyph, the label (+ optional
-// native-name note), and a trailing red check on the active row — and on focus
-// the whole row inverts to a white fill with near-black ink (the same tvOS-HIG
-// white-fill treatment DetailsActionRow's pills already use, driven by the same
-// useFocusAnimation progress so it glides rather than snaps).
-//
-// Three states:
-//   - selected  → red check (→ ink when that row is focused),
-//   - disabled  → a plain, NON-focusable, muted View with an "Unavailable" tag
-//     (an unplayable dub: the D-pad skips it so it can't be picked),
-//   - default   → focusable, white-fill-on-focus.
+// One row in the Audio Language / Subtitles sheets: leading glyph, label (+ optional
+// native-name note), trailing red check on the active row; focus inverts to white fill /
+// near-black ink via useFocusAnimation. States: selected, disabled (inert), default.
 
 import { useMemo } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
@@ -18,12 +8,10 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
 import { WATCH_THEME } from "./watchDetailTheme"
-import { focusTransform, useFocusAnimation } from "./useFocusAnimation"
+import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
-// Deterministic single-line row height so virtualized lists (FlatList
-// getItemLayout / initialScrollIndex) can compute offsets without measuring.
-// Every text child pins lineHeight to ROW_LINE_HEIGHT and rows are
-// numberOfLines={1}, so height = vertical padding + line height exactly.
+// Deterministic single-line row height so virtualized lists compute offsets
+// without measuring: text pins lineHeight to ROW_LINE_HEIGHT + numberOfLines={1}.
 // Tokens live in watchMenuLayout.ts (React-free, unit-tested).
 import { ROW_LINE_HEIGHT, WATCH_OPTION_ROW_HEIGHT } from "./watchMenuLayout"
 
@@ -60,7 +48,9 @@ export function WatchOptionRow({
 }) {
   // Called unconditionally (hooks rule); the disabled branch below renders a
   // plain View and never drives `progress`.
-  const { setFocused, progress } = useFocusAnimation()
+  const { setFocused, progress, transform } = useFocusVisual("option", {
+    nativeDriver: false,
+  })
 
   const bg = useMemo(
     () =>
@@ -105,18 +95,16 @@ export function WatchOptionRow({
   const animatedRow = useMemo(
     () => ({
       backgroundColor: bg,
-      // Design `.menu-item[data-focused]`: scale(1.015), no lift — the white
-      // fill is the focus signal, not a magnify-and-rise like the pills.
-      transform: focusTransform(progress, { lift: 0, magnify: 1.015 }),
+      // The white fill is the focus signal; the near-imperceptible grow comes
+      // from the shared "option" role.
+      transform,
     }),
-    [bg, progress],
+    [bg, transform],
   )
 
-  // Unplayable dub: a plain View (never a Pressable) so the D-pad skips it and
-  // the viewer can't select an unplayable language. Muted + "Unavailable" tag.
-  // Static Ionicons (not AnimatedFocusIcon): the row can never focus, so the
-  // two-layer cross-fade would be dead Animated infrastructure — at thousands
-  // of dub rows that waste is material.
+  // Unplayable dub: plain View (never Pressable) so the D-pad skips it. Static
+  // Ionicons not AnimatedFocusIcon — the row can never focus, so the cross-fade
+  // would be dead Animated infra, material waste across thousands of dub rows.
   if (disabled) {
     return (
       <View

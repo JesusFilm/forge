@@ -3,12 +3,13 @@ import type {
   MockLanguageGeo,
   MockVideoCoverage,
 } from "@/cms/mock-seed"
-import type {
-  JobRecord,
-  JobStatus,
-  JobStepDetails,
-  StepStatus,
-  WorkflowStepName,
+import {
+  WORKFLOW_STEP_NAMES,
+  type JobRecord,
+  type JobStatus,
+  type JobStepDetails,
+  type StepStatus,
+  type WorkflowStepName,
 } from "@/types/job"
 import { z } from "zod"
 
@@ -71,6 +72,30 @@ type UpdateAdminJobInput = Partial<
   >
 >
 
+export type AdminVideoForEnrichment = {
+  documentId: string
+  coreId?: string | null
+  title?: string | null
+  label?: string | null
+  primaryLanguage?: {
+    coreId?: string | null
+    bcp47?: string | null
+    iso3?: string | null
+  } | null
+  variants?: Array<{
+    language?: {
+      coreId?: string | null
+      bcp47?: string | null
+      iso3?: string | null
+    } | null
+    muxVideo?: {
+      assetId?: string | null
+      playbackId?: string | null
+    } | null
+    downloads?: Array<{ url?: string | null } | null> | null
+  } | null> | null
+}
+
 const VIDEO_COVERAGE_SELECTION = `
   documentId
   coreId
@@ -80,6 +105,10 @@ const VIDEO_COVERAGE_SELECTION = `
   aiMetadata
   imageUrl
   parentDocumentIds
+  parentRelations {
+    parentDocumentId
+    order
+  }
   coverage {
     subtitles { human ai }
     audio { human ai }
@@ -91,11 +120,40 @@ const LANGUAGE_GEO_SELECTION = `
   countries { id name continentId }
   languages {
     id
+    coreId
+    bcp47
+    iso3
     englishLabel
     nativeLabel
     countryIds
     continentIds
     countrySpeakers
+  }
+`
+
+const VIDEO_ENRICHMENT_SELECTION = `
+  documentId
+  coreId
+  title
+  label
+  primaryLanguage {
+    coreId
+    bcp47
+    iso3
+  }
+  variants {
+    language {
+      coreId
+      bcp47
+      iso3
+    }
+    muxVideo {
+      assetId
+      playbackId
+    }
+    downloads {
+      url
+    }
   }
 `
 
@@ -156,30 +214,7 @@ const stepStatusSchema = z.enum([
   "failed",
   "skipped",
 ])
-const workflowStepSchema = z.enum([
-  "download_video",
-  "transcription",
-  "structured_transcript",
-  "subtitle_post_process",
-  "chapters",
-  "metadata",
-  "embeddings",
-  "translation",
-  "audio_cleanup",
-  "voiceover",
-  "artifact_upload",
-  "mux_upload",
-  "theology_validation_bible_quotes",
-  "seo_improvements",
-  "cms_notify",
-  "smart_crop_fingerprint",
-  "smart_crop_plan",
-  "smart_crop_align",
-  "smart_crop_preview_render",
-  "smart_crop_qa",
-  "smart_crop_render",
-  "smart_crop_mux_output",
-])
+const workflowStepSchema = z.enum(WORKFLOW_STEP_NAMES)
 
 const optionalStringFromNullable = z
   .string()
@@ -338,6 +373,26 @@ export class AdminGraphqlClient {
     )
 
     return readField<MockVideoCoverage[]>(data, "managerVideoCoverage") ?? []
+  }
+
+  async getVideosForEnrichment(
+    ids: string[] = [],
+  ): Promise<AdminVideoForEnrichment[]> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+        query ManagerVideosForEnrichment($ids: [String!]!) {
+          managerVideosForEnrichment(ids: $ids) { ${VIDEO_ENRICHMENT_SELECTION} }
+        }
+      `,
+      { ids },
+    )
+
+    return (
+      readField<AdminVideoForEnrichment[]>(
+        data,
+        "managerVideosForEnrichment",
+      ) ?? []
+    )
   }
 
   async getCoverageSnapshots(

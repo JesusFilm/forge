@@ -549,13 +549,26 @@ async function createTranscript(params: {
 }
 
 export async function transcribeViaElevenLabs(input: {
-  sourceUrl: string
+  sourceUrl?: string
+  isolatedAudio?: Blob
   languageCode?: string
   keyterms?: string[]
 }): Promise<ElevenLabsTranscriptionResult> {
   const apiKey = ensureApiKey()
-  const sourceBlob = await downloadSourceMedia(input.sourceUrl)
-  const isolatedAudio = await isolateAudio(sourceBlob, input.sourceUrl, apiKey)
+  const isolatedAudio =
+    input.isolatedAudio ??
+    (input.sourceUrl
+      ? await isolateAudio(
+          await downloadSourceMedia(input.sourceUrl),
+          input.sourceUrl,
+          apiKey,
+        )
+      : undefined)
+  if (!isolatedAudio) {
+    throw new Error(
+      "ElevenLabs transcription requires a source URL or isolated audio input.",
+    )
+  }
   const response = await createTranscript({
     isolatedAudio,
     languageCode: input.languageCode,

@@ -5,6 +5,7 @@
 import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived, hasPermission } from "@/auth/permissions"
+import { getAdminBaseURL } from "@/auth/origins"
 import { ForbiddenError } from "./errors"
 import {
   CreateMediaAssetInput,
@@ -336,17 +337,19 @@ export class MediaAssetService {
   }: {
     mediaAssetId: string
     user: Principal | null
-    data: Pick<
-      Prisma.MediaAssetUpdateInput,
-      | "blurDataUrl"
-      | "dominantColor"
-      | "width"
-      | "height"
-      | "imageEnrichmentStatus"
-      | "imageEnrichmentErrorCode"
-      | "imageEnrichmentErrorMessage"
-      | "imageEnrichmentStartedAt"
-      | "imageEnrichmentCompletedAt"
+    data: Partial<
+      Pick<
+        Prisma.MediaAssetUpdateInput,
+        | "blurDataUrl"
+        | "dominantColor"
+        | "width"
+        | "height"
+        | "imageEnrichmentStatus"
+        | "imageEnrichmentErrorCode"
+        | "imageEnrichmentErrorMessage"
+        | "imageEnrichmentStartedAt"
+        | "imageEnrichmentCompletedAt"
+      >
     >
   }) {
     if (!canWriteDerived(user)) {
@@ -397,6 +400,33 @@ export class MediaAssetService {
     })
   }
 
+  async hydratePublicUrlsInBlocks(blocks: unknown): Promise<unknown> {
+    const assetIds = Array.from(collectBlockMediaAssetIds(blocks))
+    if (assetIds.length === 0) {
+      return blocks
+    }
+
+    const assets = await this.prisma.mediaAsset.findMany({
+      where: {
+        id: { in: assetIds },
+        status: "READY",
+        visibility: "PUBLIC",
+      },
+      select: {
+        id: true,
+        backend: true,
+        status: true,
+        visibility: true,
+        objectKey: true,
+        previewObjectKey: true,
+        muxPlaybackId: true,
+      },
+    })
+    const assetsById = new Map(assets.map((asset) => [asset.id, asset]))
+
+    return hydrateBlockMediaAssetUrls(blocks, assetsById)
+  }
+
   private async assertMediaAsset(id: string) {
     const asset = await this.prisma.mediaAsset.findFirst({
       where: { id },
@@ -445,6 +475,135 @@ export function mediaAssetDownloadUrl(asset: {
     return null
   }
   return asset.objectKey ? `/api/media-assets/${asset.id}/download` : null
+}
+
+export function publicMediaAssetPreviewUrl(
+  asset: {
+    id: string
+    backend: string
+    status: string
+    visibility: string
+    objectKey: string | null
+    previewObjectKey: string | null
+    muxPlaybackId: string | null
+  },
+  baseUrl = getAdminBaseURL(),
+) {
+  if (asset.status !== "READY" || asset.visibility !== "PUBLIC") {
+    return null
+  }
+  if (asset.muxPlaybackId) {
+    return `https://image.mux.com/${asset.muxPlaybackId}/thumbnail.jpg`
+  }
+  if (
+    asset.backend === "MUX" ||
+    (!asset.previewObjectKey && !asset.objectKey)
+  ) {
+    return null
+  }
+
+  const origin = new URL(baseUrl).origin
+  return `${origin}/api/public/media-assets/${encodeURIComponent(asset.id)}/preview`
+}
+
+const BLOCK_MEDIA_ASSET_URL_FIELDS = [
+  ["backgroundImageAssetId", "backgroundImageUrl"],
+  ["imageAssetId", "imageUrl"],
+  ["imageOverrideAssetId", "imageOverrideUrl"],
+  ["mediaAssetId", "mediaUrl"],
+] as const
+
+function collectBlockMediaAssetIds(value: unknown, ids = new Set<string>()) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectBlockMediaAssetIds(item, ids)
+    }
+    return ids
+  }
+
+  if (!isRecord(value)) {
+    return ids
+  }
+
+  for (const [assetField] of BLOCK_MEDIA_ASSET_URL_FIELDS) {
+    const assetId = value[assetField]
+    if (typeof assetId === "string" && assetId.trim().length > 0) {
+      ids.add(assetId)
+    }
+  }
+
+  for (const nested of Object.values(value)) {
+    collectBlockMediaAssetIds(nested, ids)
+  }
+
+  return ids
+}
+
+function hydrateBlockMediaAssetUrls(
+  value: unknown,
+  assetsById: Map<
+    string,
+    {
+      id: string
+      backend: string
+      status: string
+      visibility: string
+      objectKey: string | null
+      previewObjectKey: string | null
+      muxPlaybackId: string | null
+    }
+  >,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => hydrateBlockMediaAssetUrls(item, assetsById))
+  }
+
+  if (!isRecord(value)) {
+    return value
+  }
+
+  const next: Record<string, unknown> = {}
+  for (const [key, nested] of Object.entries(value)) {
+    next[key] = hydrateBlockMediaAssetUrls(nested, assetsById)
+  }
+
+  for (const [assetField, urlField] of BLOCK_MEDIA_ASSET_URL_FIELDS) {
+    const assetId = next[assetField]
+    if (typeof assetId !== "string") {
+      continue
+    }
+
+    const publicUrl = publicMediaAssetPreviewUrl(
+      assetsById.get(assetId) ?? {
+        id: assetId,
+        backend: "",
+        status: "",
+        visibility: "",
+        objectKey: null,
+        previewObjectKey: null,
+        muxPlaybackId: null,
+      },
+    )
+    if (publicUrl) {
+      next[urlField] = publicUrl
+    } else if (isPrivateMediaAssetUrl(next[urlField])) {
+      delete next[urlField]
+    }
+  }
+
+  return next
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isPrivateMediaAssetUrl(value: unknown) {
+  return (
+    typeof value === "string" &&
+    (value.startsWith("/api/media-assets/") ||
+      value.includes("/api/media-assets/"))
+  )
 }
 
 function validateMimeKind(kind: MediaAssetKind, mimeType: string) {

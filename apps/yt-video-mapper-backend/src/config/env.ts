@@ -17,6 +17,19 @@ const envSchema = z.object({
   MATCH_RESULT_LIMIT: z.coerce.number().int().positive().max(25).default(3),
   JOB_RESULT_RETENTION_HOURS: z.coerce.number().int().positive().default(168),
   JOB_RUNNING_STALE_MINUTES: z.coerce.number().int().positive().default(30),
+  MATCH_JOB_WORKER_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("true"),
+  MATCH_JOB_CLEANER_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .default("true"),
+  MATCH_JOB_WORKER_POLL_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1_000),
   MEDIA_SIGNATURE_ALGORITHM_VERSION: z
     .string()
     .min(1)
@@ -53,6 +66,15 @@ export const env = envSchema.parse({
   ),
   JOB_RUNNING_STALE_MINUTES: emptyToUndefined(
     process.env.JOB_RUNNING_STALE_MINUTES,
+  ),
+  MATCH_JOB_WORKER_ENABLED: emptyToUndefined(
+    process.env.MATCH_JOB_WORKER_ENABLED,
+  ),
+  MATCH_JOB_CLEANER_ENABLED: emptyToUndefined(
+    process.env.MATCH_JOB_CLEANER_ENABLED,
+  ),
+  MATCH_JOB_WORKER_POLL_INTERVAL_MS: emptyToUndefined(
+    process.env.MATCH_JOB_WORKER_POLL_INTERVAL_MS,
   ),
   MEDIA_SIGNATURE_ALGORITHM_VERSION: emptyToUndefined(
     process.env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
@@ -103,6 +125,10 @@ export type AdminCatalogSyncEnv = {
   adminServiceBearerToken: string
 }
 
+export type MediaIndexEnv = {
+  allowedHosts: string
+}
+
 export function assertAdminCatalogSyncEnv(): AdminCatalogSyncEnv {
   const missing = [
     ["ADMIN_GRAPHQL_URL", env.ADMIN_GRAPHQL_URL],
@@ -122,5 +148,17 @@ export function assertAdminCatalogSyncEnv(): AdminCatalogSyncEnv {
   return {
     adminGraphqlUrl: env.ADMIN_GRAPHQL_URL!,
     adminServiceBearerToken: env.ADMIN_SERVICE_BEARER_TOKEN!,
+  }
+}
+
+export function assertMediaIndexEnv(): MediaIndexEnv {
+  if (env.NODE_ENV === "production" && !env.MEDIA_INDEX_ALLOWED_HOSTS) {
+    throw new RuntimeEnvError(
+      "MEDIA_INDEX_ALLOWED_HOSTS is required to index yt-video-mapper official media in production",
+    )
+  }
+
+  return {
+    allowedHosts: env.MEDIA_INDEX_ALLOWED_HOSTS ?? "",
   }
 }

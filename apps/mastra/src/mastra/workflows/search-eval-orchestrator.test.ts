@@ -115,6 +115,7 @@ function report(
       startedAt: "2026-05-30T00:00:00.000Z",
       finishedAt: "2026-05-30T00:01:00.000Z",
       baselineName: "seed-baseline",
+      callerTrack: "public-watch",
       promptSetVersion: "seed:v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
       judgeModel:
@@ -155,6 +156,31 @@ function report(
     },
     localeMix: { en: 1 },
     promptSourceMix: { seed: 1 },
+    callerTrackMix: { "public-watch": 1 },
+    trackSummaries: [
+      {
+        callerTrack: "public-watch",
+        caller: "Public Watch search reviewer",
+        job: "Evaluate launch readiness for user-facing Watch website search.",
+        mode: "hybrid",
+        defaultMode: "keyword-first",
+        suitableMode: true,
+        successCriteria: [],
+        totals: {
+          queries: 1,
+          wins: 0,
+          losses: options.losses ?? 0,
+          ties: 1,
+          bothIrrelevant: 0,
+          judgeDisagreements: options.judgeDisagreements ?? 0,
+          judgeFailures: options.judgeFailures ?? 0,
+          searchFailures: options.searchFailures ?? 0,
+          netWinRate: options.netWinRate ?? 0,
+        },
+        noResultCases: 0,
+        representativeFailures: [],
+      },
+    ],
     generatedCandidateBehavior: {
       included: 0,
       searched: 0,
@@ -260,10 +286,9 @@ describe("search eval orchestrator workflow", () => {
       _internal.SearchEvalOrchestratorWorkflowInputSchema.parse({}),
     ).toEqual({
       mode: "seed-baseline",
-      baselineName: "seed-baseline",
+      callerTrack: "public-watch",
       locales: DEFAULT_SEED_LOCALES,
       searchLimit: 20,
-      searchMode: "hybrid",
       contentType: "all",
       nativeSync: true,
       syncPromoted: false,
@@ -285,6 +310,19 @@ describe("search eval orchestrator workflow", () => {
     expect(searchEvalOrchestratorWorkflow.inputSchema).toBe(
       _internal.SearchEvalOrchestratorWorkflowInputSchema,
     )
+  })
+
+  it("accepts semantic-only but rejects Algolia-backed search modes", () => {
+    expect(
+      _internal.SearchEvalOrchestratorWorkflowInputSchema.parse({
+        searchMode: "semantic-only",
+      }).searchMode,
+    ).toBe("semantic-only")
+    expect(
+      _internal.SearchEvalOrchestratorWorkflowInputSchema.safeParse({
+        searchMode: "algolia-backed",
+      }).success,
+    ).toBe(false)
   })
 
   it("runs seed-baseline mode as offline baseline capture plus native report sync", async () => {
@@ -334,9 +372,9 @@ describe("search eval orchestrator workflow", () => {
       {
         mode: "capture-baseline",
         baselineName: "seed-baseline",
+        callerTrack: "public-watch",
         locales: DEFAULT_SEED_LOCALES,
         searchLimit: 20,
-        searchMode: "hybrid",
         contentType: "all",
       },
       { runId: "run-orchestrator-offline-search-eval" },
@@ -405,9 +443,9 @@ describe("search eval orchestrator workflow", () => {
       {
         mode: "capture-baseline",
         baselineName: "seed-baseline",
+        callerTrack: "public-watch",
         locales: DEFAULT_SEED_LOCALES,
         searchLimit: 20,
-        searchMode: "hybrid",
         contentType: "all",
       },
       { runId: "run-orchestrator-offline-search-eval" },
@@ -725,6 +763,7 @@ describe("search eval orchestrator workflow", () => {
           locale: "en",
           queryText: "hope",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [],
           currentResults: [],
           verdicts: ["tie", "tie"],
@@ -735,6 +774,7 @@ describe("search eval orchestrator workflow", () => {
           locale: "es",
           queryText: "esperanza",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [],
           currentResults: [],
           verdicts: ["both-irrelevant", "both-irrelevant"],

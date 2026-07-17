@@ -15,6 +15,7 @@ const metadata = {
   startedAt: "2026-05-27T00:00:00.000Z",
   finishedAt: "2026-05-27T00:00:01.000Z",
   baselineName: "default",
+  callerTrack: "public-watch",
   promptSetVersion: "seed/v1",
   adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
   judgeModel: "judge",
@@ -85,6 +86,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Jesus",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [],
           currentResults: [],
         },
@@ -121,7 +123,7 @@ describe("offline search eval reports", () => {
     expect(report.mastraEvaluation).toMatchObject({
       integrationStatus: "custom_artifact_only",
       dataset: {
-        name: "search-eval:default",
+        name: "search-eval:default:public-watch:hybrid",
         datasetId: null,
         source: "seed_prompt_set",
         targetType: "workflow",
@@ -135,11 +137,18 @@ describe("offline search eval reports", () => {
         },
       ],
       experiment: {
-        name: "search-eval-compare:default:run-1",
+        name: "search-eval-compare:default:public-watch:hybrid:run-1",
         experimentId: null,
         status: "not_created",
         mode: "comparison",
       },
+    })
+    expect(report.callerTrackMix).toEqual({ "public-watch": 1 })
+    expect(report.trackSummaries[0]).toMatchObject({
+      callerTrack: "public-watch",
+      mode: null,
+      suitableMode: false,
+      noResultCases: 1,
     })
     expect(report.totals.netWinRate).toBe(1)
   })
@@ -167,6 +176,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Jesus",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [],
           currentResults: [],
         },
@@ -176,6 +186,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Jesus",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [],
           currentResults: [],
         },
@@ -216,6 +227,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Jesus",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [],
           currentResults: [],
           searchFailure: { code: "judge_failed", retryable: true },
@@ -254,6 +266,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Private user search query",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [result],
           currentResults: [result],
           verdicts: ["slightly-B-better", "slightly-A-better"],
@@ -315,6 +328,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Jesus",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [result],
           currentResults: [result],
         },
@@ -358,6 +372,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "Jesus",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [result],
           currentResults: [result],
         },
@@ -367,6 +382,7 @@ describe("offline search eval reports", () => {
           locale: "en",
           queryText: "new believer",
           source: "seed",
+          callerTrack: "public-watch",
           baselineResults: [result],
           currentResults: [result],
           verdicts: ["clearly-A-better", "clearly-A-better"],

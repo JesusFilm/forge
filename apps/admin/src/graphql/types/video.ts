@@ -11,11 +11,32 @@ import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import {
+  getOrScheduleWatchHeroPosterMuxBlurDataUrl,
+  getOrScheduleWatchHeroPosterMuxDominantColor,
+} from "@/services/mux-image-derivative.service"
+import type { Passage } from "@/services/scripture-passage.service"
+import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
 } from "@/services/video.service"
 import type {
   ChildDubLanguageRow,
+  WatchLanguageInventory,
+  WatchLanguageInventoryCounts,
+  WatchLanguageInventoryItem,
+  WatchLanguageInventoryLanguage,
+  WatchRouteSnapshot,
+  WatchRouteSnapshotBibleBook,
+  WatchRouteSnapshotBibleCitation,
+  WatchRouteSnapshotChild,
+  WatchRouteSnapshotChildRelation,
+  WatchRouteSnapshotImage,
+  WatchRouteSnapshotLanguage,
+  WatchRouteSnapshotLocale,
+  WatchRouteSnapshotParent,
+  WatchRouteSnapshotParentRelation,
+  WatchRouteSnapshotPreferredVariant,
+  WatchRouteSnapshotStudyQuestion,
   VideoMapperCatalogConnection,
   VideoMapperCatalogItem,
   VideoMapperCatalogPageInfo,
@@ -100,10 +121,19 @@ export function videoStudyQuestionsFilter(args: {
   }
 }
 
-export function videoParentsFilter(
-  user: Principal | null,
-): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
-  if (isEditorOrAdmin(user)) return {}
+const videoRelationOrderBy = [
+  { order: { sort: "asc" as const, nulls: "last" as const } },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+] satisfies Prisma.VideoRelationOrderByWithRelationInput[]
+
+type VideoRelationQuery = {
+  where?: Prisma.VideoRelationWhereInput
+  orderBy: Prisma.VideoRelationOrderByWithRelationInput[]
+}
+
+export function videoParentsFilter(user: Principal | null): VideoRelationQuery {
+  if (isEditorOrAdmin(user)) return { orderBy: videoRelationOrderBy }
   return {
     where: {
       parent: {
@@ -111,13 +141,14 @@ export function videoParentsFilter(
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
+    orderBy: videoRelationOrderBy,
   }
 }
 
 export function videoChildrenFilter(
   user: Principal | null,
-): { where: Prisma.VideoRelationWhereInput } | Record<string, never> {
-  if (isEditorOrAdmin(user)) return {}
+): VideoRelationQuery {
+  if (isEditorOrAdmin(user)) return { orderBy: videoRelationOrderBy }
   return {
     where: {
       child: {
@@ -125,6 +156,7 @@ export function videoChildrenFilter(
         locales: { some: { status: "PUBLISHED" as const, deletedAt: null } },
       },
     },
+    orderBy: videoRelationOrderBy,
   }
 }
 
@@ -161,6 +193,18 @@ const VideoMapperCatalogMediaSourceTypeEnum = builder.enumType(
       HLS: { value: "HLS" },
       DASH: { value: "DASH" },
       NONE: { value: "NONE" },
+    } as const,
+  },
+)
+
+const WatchLanguageInventoryAvailabilityEnum = builder.enumType(
+  "WatchLanguageInventoryAvailability",
+  {
+    description:
+      "Whether the requested language has playable audio or subtitles only for this inventory row.",
+    values: {
+      AUDIO: { value: "AUDIO" },
+      SUBTITLE_ONLY: { value: "SUBTITLE_ONLY" },
     } as const,
   },
 )
@@ -222,46 +266,6 @@ builder.prismaObject("BibleBook", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("BibleCitation", {
-  description: "A Core-sourced Bible passage cited by a video.",
-  fields: (t) => ({
-    id: t.exposeID("id"),
-    coreId: t.exposeString("coreId", { nullable: true }),
-    osisId: t.exposeString("osisId", { nullable: true }),
-    order: t.exposeInt("order", { nullable: true }),
-    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
-    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
-    verseStart: t.exposeInt("verseStart", { nullable: true }),
-    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
-    bibleBook: t.relation("bibleBook"),
-  }),
-})
-
-/** @classification public-shape */
-builder.prismaObject("VideoImage", {
-  fields: (t) => ({
-    id: t.exposeID("id"),
-    url: t.exposeString("url", { nullable: true }),
-    width: t.exposeInt("width", { nullable: true }),
-    height: t.exposeInt("height", { nullable: true }),
-    aspectRatio: t.exposeString("aspectRatio", { nullable: true }),
-    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
-      nullable: true,
-    }),
-    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
-      nullable: true,
-    }),
-    mobileCinematicVeryLow: t.exposeString("mobileCinematicVeryLow", {
-      nullable: true,
-    }),
-    thumbnail: t.exposeString("thumbnail", { nullable: true }),
-    videoStill: t.exposeString("videoStill", { nullable: true }),
-    blurhash: t.exposeString("blurhash", { nullable: true }),
-    kind: t.exposeString("kind", { nullable: true }),
-  }),
-})
-
-/** @classification public-shape */
 builder.prismaObject("VideoSubtitle", {
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -301,6 +305,7 @@ builder.prismaObject("VideoDub", {
     "A language-specific audio dub of an Edition, bundled with its encoded playback (HLS/DASH/Mux). lengthInMilliseconds is BigInt — int4 truncates at 596 hours.",
   fields: (t) => ({
     id: t.exposeID("id"),
+    videoId: t.exposeString("videoId"),
     coreId: t.exposeString("coreId"),
     slug: t.exposeString("slug", { nullable: true }),
     duration: t.exposeInt("duration", { nullable: true }),
@@ -322,6 +327,48 @@ builder.prismaObject("VideoDub", {
     language: t.relation("language", { nullable: true }),
     videoEdition: t.relation("videoEdition", { nullable: true }),
     muxVideo: t.relation("muxVideo", { nullable: true }),
+    muxHeroPosterBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+      resolve: async (dub, _args, ctx) => {
+        const muxVideo = await ctx.prisma.muxVideo.findFirst({
+          where: {
+            dubs: { some: { id: dub.id } },
+            playbackId: { not: null },
+            deletedAt: null,
+          },
+          select: { id: true, playbackId: true },
+        })
+        if (!muxVideo?.playbackId) return null
+        return getOrScheduleWatchHeroPosterMuxBlurDataUrl({
+          prisma: ctx.prisma,
+          muxVideoId: muxVideo.id,
+          playbackId: muxVideo.playbackId,
+        })
+      },
+    }),
+    muxHeroPosterDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.",
+      resolve: async (dub, _args, ctx) => {
+        const muxVideo = await ctx.prisma.muxVideo.findFirst({
+          where: {
+            dubs: { some: { id: dub.id } },
+            playbackId: { not: null },
+            deletedAt: null,
+          },
+          select: { id: true, playbackId: true },
+        })
+        if (!muxVideo?.playbackId) return null
+        return getOrScheduleWatchHeroPosterMuxDominantColor({
+          prisma: ctx.prisma,
+          muxVideoId: muxVideo.id,
+          playbackId: muxVideo.playbackId,
+        })
+      },
+    }),
     downloads: t.relation("downloads", {
       query: { where: { deletedAt: null } },
     }),
@@ -329,7 +376,85 @@ builder.prismaObject("VideoDub", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("VideoLocale", {
+const PassageRef = builder.objectRef<Passage>("Passage")
+
+PassageRef.implement({
+  description:
+    "Cached Bible passage text for a video citation, fetched server-side from an approved provider.",
+  fields: (t) => ({
+    content: t.exposeString("content"),
+    copyright: t.exposeString("copyright"),
+    humanReference: t.exposeString("humanReference"),
+    provider: t.exposeString("provider"),
+    publisherUrl: t.exposeString("publisherUrl", { nullable: true }),
+    reference: t.exposeString("reference"),
+    versionAbbreviation: t.exposeString("versionAbbreviation", {
+      nullable: true,
+    }),
+    versionId: t.exposeInt("versionId"),
+    versionTitle: t.exposeString("versionTitle", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+const BibleCitationRef = builder.prismaObject("BibleCitation", {
+  description: "A Core-sourced Bible passage cited by a video.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    coreId: t.exposeString("coreId", { nullable: true }),
+    osisId: t.exposeString("osisId", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
+    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
+    verseStart: t.exposeInt("verseStart", { nullable: true }),
+    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
+    bibleBook: t.relation("bibleBook"),
+    passage: t.field({
+      type: PassageRef,
+      nullable: true,
+      description:
+        "Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.",
+      args: {
+        languageId: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (citation, args, ctx) =>
+        ctx.services.scripturePassage.getPassageForCitation({
+          citationId: citation.id,
+          languageId: args.languageId ?? null,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+  }),
+})
+
+/** @classification public-shape */
+const VideoImageRef = builder.prismaObject("VideoImage", {
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    url: t.exposeString("url", { nullable: true }),
+    width: t.exposeInt("width", { nullable: true }),
+    height: t.exposeInt("height", { nullable: true }),
+    aspectRatio: t.exposeString("aspectRatio", { nullable: true }),
+    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
+      nullable: true,
+    }),
+    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
+      nullable: true,
+    }),
+    mobileCinematicVeryLow: t.exposeString("mobileCinematicVeryLow", {
+      nullable: true,
+    }),
+    thumbnail: t.exposeString("thumbnail", { nullable: true }),
+    videoStill: t.exposeString("videoStill", { nullable: true }),
+    blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
+    kind: t.exposeString("kind", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+const VideoLocaleRef = builder.prismaObject("VideoLocale", {
   description: "Per-locale title/description/snippet/imageAlt for a Video.",
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -350,7 +475,7 @@ builder.prismaObject("VideoLocale", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("VideoStudyQuestion", {
+const VideoStudyQuestionRef = builder.prismaObject("VideoStudyQuestion", {
   description: "A per-locale Core-sourced study question attached to a video.",
   fields: (t) => ({
     id: t.exposeID("id"),
@@ -366,14 +491,24 @@ builder.prismaObject("VideoStudyQuestion", {
 })
 
 /** @classification public-shape */
-builder.prismaObject("VideoRelation", {
+const VideoRelationRef = builder.prismaObject("VideoRelation", {
   description:
     "Self-referential parent/child join between Videos (e.g. series→episode). Exposes the related parent/child Video plus its ordering position.",
   fields: (t) => ({
     id: t.exposeID("id"),
     order: t.exposeInt("order", { nullable: true }),
-    parent: t.relation("parent"),
-    child: t.relation("child"),
+    parent: t.prismaField({
+      type: "Video",
+      nullable: true,
+      resolve: (query, relation, _args, ctx) =>
+        ctx.loaders.videoByIdWithQuery.load({ id: relation.parentId, query }),
+    }),
+    child: t.prismaField({
+      type: "Video",
+      nullable: true,
+      resolve: (query, relation, _args, ctx) =>
+        ctx.loaders.videoByIdWithQuery.load({ id: relation.childId, query }),
+    }),
   }),
 })
 
@@ -446,6 +581,58 @@ builder.prismaObject("Video", {
           languageSlug: args.languageSlug ?? null,
         }),
     }),
+    muxThumbnailBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Base64 blur data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxThumbnailBlurDataUrlByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    muxThumbnailDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxThumbnailDominantColorByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    muxHeroPosterBlurDataUrl: t.string({
+      nullable: true,
+      description:
+        "Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxHeroPosterBlurDataUrlByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+    muxHeroPosterDominantColor: t.string({
+      nullable: true,
+      description:
+        "Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoMuxHeroPosterDominantColorByIdAndLanguageSlug.load({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
     childDubLanguages: t.field({
       type: [ChildDubLanguageRef],
       nullable: false,
@@ -457,40 +644,95 @@ builder.prismaObject("Video", {
           user: ctx.user,
         }),
     }),
-    locales: t.relation("locales", {
+    preferredPlayableDub: t.prismaField({
+      type: "VideoDub",
+      nullable: true,
+      description:
+        "One playable VideoDub for a Watch route. Prefers the requested language slug/BCP-47, then the video's primary language, then the longest playable dub. Lets consumer routes choose the initial player without projecting every dub.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (query, video, args, ctx) =>
+        ctx.services.video.getPreferredPlayableDub({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+          query,
+        }),
+    }),
+    playableDubLanguageCount: t.int({
+      nullable: false,
+      description:
+        "Distinct playable audio-language count for this video. Used by Watch to decide whether to render language switching without loading every VideoDub in the cold route snapshot.",
+      resolve: (video, _args, ctx) =>
+        ctx.services.video.countPlayableDubLanguages({ videoId: video.id }),
+    }),
+    locales: t.field({
+      type: [VideoLocaleRef],
+      nullable: true,
       description:
         "PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).",
       args: {
         locale: t.arg.string({ required: false }),
         languageSlug: t.arg.string({ required: false }),
       },
-      query: (args, ctx) => videoLocalesFilter(args, ctx.user),
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoLocalesByVideoIdAndFilter.load({
+          videoId: video.id,
+          locale: args.locale ?? null,
+          languageSlug: args.languageSlug ?? null,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
+        }),
     }),
     dubs: t.relation("dubs", {
       query: { where: { deletedAt: null } },
     }),
-    images: t.relation("images", {
-      query: { where: { deletedAt: null } },
+    images: t.field({
+      type: [VideoImageRef],
+      nullable: true,
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoImagesByVideoId.load(video.id),
     }),
-    studyQuestions: t.relation("studyQuestions", {
+    studyQuestions: t.field({
+      type: [VideoStudyQuestionRef],
+      nullable: true,
       args: {
         locale: t.arg.string({ required: false }),
         languageSlug: t.arg.string({ required: false }),
       },
-      query: (args) => videoStudyQuestionsFilter(args),
+      resolve: (video, args, ctx) =>
+        ctx.loaders.videoStudyQuestionsByVideoIdAndFilter.load({
+          videoId: video.id,
+          locale: args.locale ?? null,
+          languageSlug: args.languageSlug ?? null,
+        }),
     }),
-    bibleCitations: t.relation("bibleCitations", {
-      query: { where: { deletedAt: null } },
+    bibleCitations: t.field({
+      type: [BibleCitationRef],
+      nullable: true,
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoBibleCitationsByVideoId.load(video.id),
     }),
-    parents: t.relation("parents", {
+    parents: t.field({
+      type: [VideoRelationRef],
+      nullable: true,
       description:
         "Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
-      query: (_args, ctx) => videoParentsFilter(ctx.user),
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoParentsByChildId.load({
+          videoId: video.id,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
+        }),
     }),
-    children: t.relation("children", {
+    children: t.field({
+      type: [VideoRelationRef],
+      nullable: true,
       description:
         "Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.",
-      query: (_args, ctx) => videoChildrenFilter(ctx.user),
+      resolve: (video, _args, ctx) =>
+        ctx.loaders.videoChildrenByParentId.load({
+          videoId: video.id,
+          visibleOnly: !isEditorOrAdmin(ctx.user),
+        }),
     }),
   }),
 })
@@ -683,6 +925,480 @@ VideoMapperCatalogConnectionRef.implement({
   }),
 })
 
+// WatchLanguageInventory* — public, flat read model for Watch's localized
+// /videos page. It intentionally returns card-ready rows rather than nested
+// Video relation graphs, keeping the payload bounded by availability bucket.
+
+const WatchLanguageInventoryLanguageRef =
+  builder.objectRef<WatchLanguageInventoryLanguage>(
+    "WatchLanguageInventoryLanguage",
+  )
+
+WatchLanguageInventoryLanguageRef.implement({
+  description: "Requested public Watch language for a localized inventory.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: false }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name,
+    }),
+  }),
+})
+
+const WatchLanguageInventoryItemRef =
+  builder.objectRef<WatchLanguageInventoryItem>("WatchLanguageInventoryItem")
+
+WatchLanguageInventoryItemRef.implement({
+  description:
+    "Card-ready Watch inventory row for a single video or parent collection in one requested language.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: false }),
+    coreId: t.exposeString("coreId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: false }),
+    title: t.exposeString("title", { nullable: false }),
+    description: t.exposeString("description", { nullable: true }),
+    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    imageAlt: t.exposeString("imageAlt", { nullable: true }),
+    label: t.exposeString("label", {
+      nullable: true,
+      description:
+        "VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).",
+    }),
+    availability: t.field({
+      type: WatchLanguageInventoryAvailabilityEnum,
+      nullable: false,
+      resolve: (row) => row.availability,
+    }),
+    watchLanguageSlug: t.exposeString("watchLanguageSlug", {
+      nullable: false,
+      description:
+        "Public Watch audio-language slug to use in hrefs. Equals the requested language for audio rows; subtitle-only rows use a playable fallback audio language.",
+    }),
+    parentSlug: t.exposeString("parentSlug", { nullable: true }),
+    parentTitle: t.exposeString("parentTitle", { nullable: true }),
+    parentOrder: t.exposeInt("parentOrder", {
+      nullable: true,
+      description:
+        "Zero-based order of this video inside the selected parent collection. Null for standalone videos and parent collection rows.",
+    }),
+    durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
+    childCount: t.exposeInt("childCount", { nullable: false }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
+    createdAt: t.exposeString("createdAt", { nullable: true }),
+    updatedAt: t.exposeString("updatedAt", { nullable: true }),
+  }),
+})
+
+const WatchLanguageInventoryCountsRef =
+  builder.objectRef<WatchLanguageInventoryCounts>(
+    "WatchLanguageInventoryCounts",
+  )
+
+WatchLanguageInventoryCountsRef.implement({
+  description: "Complete counts for the localized Watch inventory buckets.",
+  fields: (t) => ({
+    audioCollections: t.exposeInt("audioCollections", { nullable: false }),
+    audioVideos: t.exposeInt("audioVideos", { nullable: false }),
+    subtitleOnlyVideos: t.exposeInt("subtitleOnlyVideos", {
+      nullable: false,
+    }),
+    total: t.exposeInt("total", { nullable: false }),
+  }),
+})
+
+const WatchLanguageInventoryRef = builder.objectRef<WatchLanguageInventory>(
+  "WatchLanguageInventory",
+)
+
+WatchLanguageInventoryRef.implement({
+  description:
+    "Localized Watch inventory grouped for regional leads: audio collections, audio videos, then subtitle-only videos.",
+  fields: (t) => ({
+    language: t.field({
+      type: WatchLanguageInventoryLanguageRef,
+      nullable: true,
+      resolve: (row) => row.language,
+    }),
+    counts: t.field({
+      type: WatchLanguageInventoryCountsRef,
+      nullable: false,
+      resolve: (row) => row.counts,
+    }),
+    promoted: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.promoted,
+    }),
+    audioCollections: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.audioCollections,
+    }),
+    audioVideos: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.audioVideos,
+    }),
+    subtitleOnlyVideos: t.field({
+      type: [WatchLanguageInventoryItemRef],
+      nullable: false,
+      resolve: (row) => row.subtitleOnlyVideos,
+    }),
+  }),
+})
+
+// WatchRouteSnapshot* — public, route-shaped read model for the hot
+// /watch/[collection]/[video]/[language] page. It deliberately mirrors the
+// web's cold route DTO instead of exposing a nested Prisma graph.
+
+const WatchRouteSnapshotImageRef = builder.objectRef<WatchRouteSnapshotImage>(
+  "WatchRouteSnapshotImage",
+)
+
+WatchRouteSnapshotImageRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    url: t.exposeString("url", { nullable: true }),
+    thumbnail: t.exposeString("thumbnail", { nullable: true }),
+    mobileCinematicHigh: t.exposeString("mobileCinematicHigh", {
+      nullable: true,
+    }),
+    mobileCinematicLow: t.exposeString("mobileCinematicLow", {
+      nullable: true,
+    }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
+  }),
+})
+
+const WatchRouteSnapshotLanguageRef =
+  builder.objectRef<WatchRouteSnapshotLanguage>("WatchRouteSnapshotLanguage")
+
+WatchRouteSnapshotLanguageRef.implement({
+  fields: (t) => ({
+    coreId: t.exposeString("coreId", { nullable: true }),
+    bcp47: t.exposeString("bcp47", { nullable: true }),
+    slug: t.exposeString("slug", { nullable: true }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name ?? null,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotLocaleRef = builder.objectRef<WatchRouteSnapshotLocale>(
+  "WatchRouteSnapshotLocale",
+)
+
+WatchRouteSnapshotLocaleRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    description: t.exposeString("description", { nullable: true }),
+    snippet: t.exposeString("snippet", { nullable: true }),
+    imageAlt: t.exposeString("imageAlt", { nullable: true }),
+  }),
+})
+
+const WatchRouteSnapshotChildRef = builder.objectRef<WatchRouteSnapshotChild>(
+  "WatchRouteSnapshotChild",
+)
+
+const WatchRouteSnapshotChildRelationRef =
+  builder.objectRef<WatchRouteSnapshotChildRelation>(
+    "WatchRouteSnapshotChildRelation",
+  )
+
+WatchRouteSnapshotChildRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    label: t.field({
+      type: VideoLabelEnum,
+      nullable: true,
+      resolve: (row) => row.label,
+    }),
+    images: t.field({
+      type: [WatchRouteSnapshotImageRef],
+      nullable: false,
+      resolve: (row) => row.images,
+    }),
+    exactLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.exactLocales,
+    }),
+    broadLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.broadLocales,
+    }),
+    englishLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.englishLocales,
+    }),
+    durationSeconds: t.exposeInt("durationSeconds", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", { nullable: true }),
+    muxThumbnailBlurDataUrl: t.exposeString("muxThumbnailBlurDataUrl", {
+      nullable: true,
+    }),
+    muxThumbnailDominantColor: t.exposeString("muxThumbnailDominantColor", {
+      nullable: true,
+    }),
+    muxHeroPosterBlurDataUrl: t.exposeString("muxHeroPosterBlurDataUrl", {
+      nullable: true,
+    }),
+    muxHeroPosterDominantColor: t.exposeString("muxHeroPosterDominantColor", {
+      nullable: true,
+    }),
+  }),
+})
+
+WatchRouteSnapshotChildRelationRef.implement({
+  fields: (t) => ({
+    child: t.field({
+      type: WatchRouteSnapshotChildRef,
+      nullable: true,
+      resolve: (row) => row.child,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotParentRef = builder.objectRef<WatchRouteSnapshotParent>(
+  "WatchRouteSnapshotParent",
+)
+
+const WatchRouteSnapshotParentRelationRef =
+  builder.objectRef<WatchRouteSnapshotParentRelation>(
+    "WatchRouteSnapshotParentRelation",
+  )
+
+WatchRouteSnapshotParentRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    noIndex: t.exposeBoolean("noIndex", { nullable: true }),
+    label: t.field({
+      type: VideoLabelEnum,
+      nullable: true,
+      resolve: (row) => row.label,
+    }),
+    images: t.field({
+      type: [WatchRouteSnapshotImageRef],
+      nullable: false,
+      resolve: (row) => row.images,
+    }),
+    exactLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.exactLocales,
+    }),
+    broadLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.broadLocales,
+    }),
+    englishLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.englishLocales,
+    }),
+    children: t.field({
+      type: [WatchRouteSnapshotChildRelationRef],
+      nullable: false,
+      resolve: (row) => row.children,
+    }),
+  }),
+})
+
+WatchRouteSnapshotParentRelationRef.implement({
+  fields: (t) => ({
+    parent: t.field({
+      type: WatchRouteSnapshotParentRef,
+      nullable: true,
+      resolve: (row) => row.parent,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotBibleBookRef =
+  builder.objectRef<WatchRouteSnapshotBibleBook>("WatchRouteSnapshotBibleBook")
+
+WatchRouteSnapshotBibleBookRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    name: t.field({
+      type: "JSON",
+      nullable: true,
+      resolve: (row) => row.name,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotBibleCitationRef =
+  builder.objectRef<WatchRouteSnapshotBibleCitation>(
+    "WatchRouteSnapshotBibleCitation",
+  )
+
+WatchRouteSnapshotBibleCitationRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    chapterStart: t.exposeInt("chapterStart", { nullable: true }),
+    chapterEnd: t.exposeInt("chapterEnd", { nullable: true }),
+    verseStart: t.exposeInt("verseStart", { nullable: true }),
+    verseEnd: t.exposeInt("verseEnd", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+    osisId: t.exposeString("osisId", { nullable: true }),
+    bibleBook: t.field({
+      type: WatchRouteSnapshotBibleBookRef,
+      nullable: true,
+      resolve: (row) => row.bibleBook,
+    }),
+    passage: t.field({
+      type: PassageRef,
+      nullable: true,
+      description:
+        "Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.",
+      args: {
+        languageId: t.arg.string({ required: false }),
+        languageSlug: t.arg.string({ required: false }),
+      },
+      resolve: (row, args, ctx) =>
+        ctx.services.scripturePassage.getPassageForCitation({
+          citationId: row.documentId,
+          languageId: args.languageId ?? null,
+          languageSlug: args.languageSlug ?? null,
+        }),
+    }),
+  }),
+})
+
+const WatchRouteSnapshotStudyQuestionRef =
+  builder.objectRef<WatchRouteSnapshotStudyQuestion>(
+    "WatchRouteSnapshotStudyQuestion",
+  )
+
+WatchRouteSnapshotStudyQuestionRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    value: t.exposeString("value", { nullable: true }),
+    order: t.exposeInt("order", { nullable: true }),
+  }),
+})
+
+const WatchRouteSnapshotPreferredVariantRef =
+  builder.objectRef<WatchRouteSnapshotPreferredVariant>(
+    "WatchRouteSnapshotPreferredVariant",
+  )
+
+WatchRouteSnapshotPreferredVariantRef.implement({
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    published: t.exposeBoolean("published", { nullable: true }),
+    hls: t.exposeString("hls", { nullable: true }),
+    duration: t.exposeInt("duration", { nullable: true }),
+    language: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      resolve: (row) => row.language,
+    }),
+    muxHeroPosterBlurDataUrl: t.exposeString("muxHeroPosterBlurDataUrl", {
+      nullable: true,
+    }),
+    muxHeroPosterDominantColor: t.exposeString("muxHeroPosterDominantColor", {
+      nullable: true,
+    }),
+  }),
+})
+
+const WatchRouteSnapshotRef =
+  builder.objectRef<WatchRouteSnapshot>("WatchRouteSnapshot")
+
+WatchRouteSnapshotRef.implement({
+  description:
+    "Route-shaped Watch video snapshot assembled by the video service in bounded batches. Designed for the public Watch single-video cold path.",
+  fields: (t) => ({
+    documentId: t.exposeID("documentId", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: true }),
+    publishedAt: t.exposeString("publishedAt", { nullable: true }),
+    noIndex: t.exposeBoolean("noIndex", { nullable: true }),
+    label: t.field({
+      type: VideoLabelEnum,
+      nullable: true,
+      resolve: (row) => row.label,
+    }),
+    images: t.field({
+      type: [WatchRouteSnapshotImageRef],
+      nullable: false,
+      resolve: (row) => row.images,
+    }),
+    primaryLanguage: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      resolve: (row) => row.primaryLanguage,
+    }),
+    parents: t.field({
+      type: [WatchRouteSnapshotParentRelationRef],
+      nullable: false,
+      resolve: (row) => row.parents,
+    }),
+    children: t.field({
+      type: [WatchRouteSnapshotChildRelationRef],
+      nullable: false,
+      resolve: (row) => row.children,
+    }),
+    bibleCitations: t.field({
+      type: [WatchRouteSnapshotBibleCitationRef],
+      nullable: false,
+      resolve: (row) => row.bibleCitations,
+    }),
+    exactLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.exactLocales,
+    }),
+    broadLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.broadLocales,
+    }),
+    englishLocales: t.field({
+      type: [WatchRouteSnapshotLocaleRef],
+      nullable: false,
+      resolve: (row) => row.englishLocales,
+    }),
+    exactStudyQuestions: t.field({
+      type: [WatchRouteSnapshotStudyQuestionRef],
+      nullable: false,
+      resolve: (row) => row.exactStudyQuestions,
+    }),
+    broadStudyQuestions: t.field({
+      type: [WatchRouteSnapshotStudyQuestionRef],
+      nullable: false,
+      resolve: (row) => row.broadStudyQuestions,
+    }),
+    englishStudyQuestions: t.field({
+      type: [WatchRouteSnapshotStudyQuestionRef],
+      nullable: false,
+      resolve: (row) => row.englishStudyQuestions,
+    }),
+    playableDubLanguageCount: t.exposeInt("playableDubLanguageCount", {
+      nullable: false,
+    }),
+    preferredVariant: t.field({
+      type: WatchRouteSnapshotPreferredVariantRef,
+      nullable: true,
+      resolve: (row) => row.preferredVariant,
+    }),
+  }),
+})
+
 // Root queries — PUBLIC since consumer-migration U2 (2026-05-11).
 builder.queryFields((t) => ({
   video: t.prismaField({
@@ -711,6 +1427,25 @@ builder.queryFields((t) => ({
       ctx.services.video.getBySlug({
         slug: args.slug,
         query,
+      }),
+  }),
+  watchVideoRouteSnapshotBySlug: t.field({
+    type: WatchRouteSnapshotRef,
+    nullable: true,
+    authScopes: { public: true },
+    description:
+      "Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.",
+    args: {
+      slug: t.arg.string({ required: true }),
+      locale: t.arg.string({ required: true }),
+      languageSlug: t.arg.string({ required: false }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchRouteSnapshotBySlug({
+        slug: args.slug,
+        locale: args.locale,
+        languageSlug: args.languageSlug,
+        user: ctx.user,
       }),
   }),
   videoDub: t.prismaField({
@@ -789,6 +1524,30 @@ builder.queryFields((t) => ({
       ctx.services.video.getWatchHomeVideos({
         coreIds: args.coreIds,
         query,
+      }),
+  }),
+  watchLanguageInventory: t.field({
+    type: WatchLanguageInventoryRef,
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Flat localized Watch /videos inventory grouped as audio collections, audio videos, and subtitle-only videos. Returns counts plus bounded card rows for regional leads and missionaries.",
+    args: {
+      languageSlug: t.arg.string({
+        required: true,
+        description:
+          "Public Watch language slug, e.g. 'english' or 'spanish-latin-american'.",
+      }),
+      limit: t.arg.int({
+        required: false,
+        description:
+          "Maximum rows returned per bucket. Defaults to the service cap.",
+      }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchLanguageInventory({
+        languageSlug: args.languageSlug,
+        limit: args.limit,
       }),
   }),
   videosByCoreIds: t.field({

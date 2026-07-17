@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       error: "Legacy Manager scene embedding backfill has been retired",
-      reason: "scene_embeddings_migrated_to_mastra",
+      reason: "legacy_scene_embedding_pipeline_removed",
     },
     { status: 410 },
   )

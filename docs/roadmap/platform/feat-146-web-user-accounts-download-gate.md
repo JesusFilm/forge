@@ -8,7 +8,9 @@ start_date: "2026-05-27"
 duration: 7
 depends_on:
   - "feat-144"
-blocks: []
+blocks:
+  - "feat-229"
+  - "feat-244"
 tags:
   - "platform"
   - "accounts"
@@ -40,15 +42,11 @@ not own auth state or import another app's internals.
    build sanitized login redirects.
 6. `apps/auth/src/auth/web-callback.ts` and `apps/auth/src/app/login/*` -
    preserve the existing Auth app login surface for watch callbacks.
-7. `packages/feature-flags/src/registry.ts` and
-   `apps/web/src/lib/feature-flags.ts` - define and evaluate
-   `forge.watch.downloadAccountGate`.
+7. `apps/web/src/app/api/download/route.ts` - require a signed-in Web session
+   for download `GET` requests before URL allowlisting, DNS, or upstream fetch.
 
 ## Grep These
 
-- `forge.watch.downloadAccountGate`
-- `FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT`
-- `forge_download_gate_rollout`
 - `resolveWatchDownloadTarget`
 - `resolveWatchCallbackURL`
 - `resolveWebWatchCallbackURL`
@@ -57,13 +55,10 @@ not own auth state or import another app's internals.
 
 ## What To Build
 
-- Add the shared LaunchDarkly flag `forge.watch.downloadAccountGate`, disabled
-  by default and backed by local/test fallback
-  `FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false`.
 - Add a web session route at `/watch/api/auth/session` that returns only
-  download-gate state and a sanitized Auth login URL.
-- Gate `GET` and `HEAD` `/watch/api/download` before URL allowlisting, DNS, or
-  upstream fetch when the flag is enabled.
+  signed-in state and a sanitized Auth login URL.
+- Gate `GET` `/watch/api/download` before URL allowlisting, DNS, or upstream
+  fetch. Keep `HEAD` unauthenticated for download-size metadata probes.
 - Keep raw `VideoDubDownload.url` values server-only. The watch client may
   receive `downloadId`, `variantId`, and `videoSlug`; the download route resolves
   the real URL server-side after the auth gate.
@@ -87,11 +82,10 @@ not own auth state or import another app's internals.
 
 ## Verification
 
-- Red/Green tests for Auth callback forwarding, shared LaunchDarkly defaults,
-  production-safe Auth URL resolution, web callback sign-in, session route,
-  direct download `401`, server-side opaque download target resolution,
-  rollout-cookie stickiness, signed-in download, and stale/session-failure modal
-  behavior.
+- Red/Green tests for Auth callback forwarding, production-safe Auth URL
+  resolution, web callback sign-in, session route, direct download `401`,
+  server-side opaque download target resolution, signed-in download, and
+  stale/session-failure modal behavior.
 - `pnpm --filter @forge/web test`
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/web lint`
@@ -103,9 +97,8 @@ not own auth state or import another app's internals.
 
 ## Completion Notes
 
-- Implemented behind shared LaunchDarkly flag key
-  `forge.watch.downloadAccountGate` with local/test fallback
-  `FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false`.
+- Download gating is now unconditional for `GET /watch/api/download`; the
+  LaunchDarkly rollout flag and rollout cookie were removed.
 - Smoke surfaced a Better Auth trusted-origin callback rejection for the web
   watch callback. Fixed by adding validated web origins to Auth
   `trustedOrigins` via `getAuthTrustedOrigins()`.

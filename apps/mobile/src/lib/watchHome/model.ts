@@ -1,20 +1,7 @@
 /**
- * ADAPTED COPY of apps/web/src/lib/watch-home.ts (the pure model builder
- * only — web's fetch/cache wrappers do not port) — sync obligation in
- * ./config.ts. Mobile adaptations:
- *
- *   - No hrefs: cards carry slug/coreId/parent identifiers and components
- *     decide routes (web's `buildHref` is dropped).
- *   - Lean input (KTD-2): bulk videos carry no dubs/variants, so cards have
- *     no `hls` and `playbackId` stays null until a later unit resolves
- *     streams lazily per slide (`selectPlayableVariant` is dropped).
- *   - Carousel slide eligibility is a poster image + slug (KTD-4), not a
- *     playable stream.
- *   - heroSlides intentionally not ported — mobile's hero queue is the
- *     carousel sequence (HomeScreen builds it via buildWatchHomeHeroQueue
- *     from model.carousel, not a pre-built model field).
- *
- * Pure TypeScript only — no React/React Native imports.
+ * ADAPTED COPY of apps/web/src/lib/watch-home.ts (pure model builder; sync obligation
+ * in ./config.ts). Mobile diffs: no hrefs; lean input (KTD-2, playbackId null for lazy
+ * resolve); carousel eligibility poster + slug (KTD-4); heroSlides not ported (HomeScreen builds the queue via buildWatchHomeHeroQueue).
  */
 
 import {
@@ -36,8 +23,7 @@ import {
 
 /**
  * Lean bulk-video input shape (KTD-2): card fields only, no dubs/variants.
- * Mirrors the `watchHomeVideos` fragment mobile sends (U3), using the
- * codebase-wide `documentId: id` alias convention.
+ * Mirrors the `watchHomeVideos` fragment (U3) with the `documentId: id` alias.
  */
 export type WatchHomeImageInput = {
   url?: string | null
@@ -158,10 +144,7 @@ export function pickAdminImage(
   return null
 }
 
-/**
- * Copy of apps/web/src/lib/format-duration.ts: `m:ss` sub-hour, `h:mm:ss`
- * hour-plus, `""` for invalid input.
- */
+/** Copy of web's format-duration: `m:ss` sub-hour, `h:mm:ss` hour-plus, `""` if invalid. */
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return ""
   const h = Math.floor(seconds / 3600)
@@ -399,8 +382,9 @@ function cardToCarouselSlide(card: WatchHomeCard): WatchHomeVideoSlide | null {
   return isEligibleWatchHomeVideoSlide(slide) ? slide : null
 }
 
-// Web calls this playableSlidesForSource; renamed because mobile eligibility
-// is poster + slug (KTD-4), not build-time playability.
+// Web-parity: the hero shows the PARENT film/collection, NOT its child episodes.
+// Web's child expansion is effectively dead (its fragment omits child variants/hls,
+// so every child fails the hls gate and it falls back to the parent) — match that.
 function eligibleSlidesForSource(args: {
   sectionId: string
   sourceId: string
@@ -424,23 +408,10 @@ function eligibleSlidesForSource(args: {
     return []
   }
 
-  const childSlides = (parent.children ?? [])
-    .map((rel) =>
-      rel.child
-        ? normalizeCard({
-            sectionId: args.sectionId,
-            sourceId: args.sourceId,
-            video: rel.child,
-            parent,
-            languageSlug: args.languageSlug,
-          })
-        : null,
-    )
-    .filter((card): card is WatchHomeCard => card != null)
-    .map(cardToCarouselSlide)
-    .filter((slide): slide is WatchHomeVideoSlide => slide != null)
-
-  if (childSlides.length > 0) return childSlides
+  // Label-based web-parity: drop collection/series containers (web omits them, no
+  // playable stream). Keep playable films/shorts (feature films kept even when they
+  // have chapter-children, e.g. JESUS).
+  if (parent.label === "COLLECTION" || parent.label === "SERIES") return []
 
   const card = normalizeCard({
     sectionId: args.sectionId,
@@ -478,33 +449,19 @@ function buildCarouselPools(args: {
     }
   }).filter((pool) => pool.videos.length > 0)
 
+  // Web-parity: only top-level SHORT_FILM records (parents) reach web's hero —
+  // its child short films are hls-filtered out. Collect parent short films only.
   const shortFilmById = new Map<string, WatchHomeVideoSlide>()
   for (const video of args.videoByCoreId.values()) {
-    const cards: WatchHomeCard[] = []
     const parentCard = normalizeCard({
       sectionId: "home-carousel-short-films",
       sourceId: video.coreId ?? video.documentId ?? "unknown",
       video,
       languageSlug: args.languageSlug,
     })
-    if (parentCard) cards.push(parentCard)
-    for (const rel of video.children ?? []) {
-      if (!rel.child || rel.child.label !== "SHORT_FILM") continue
-      const childCard = normalizeCard({
-        sectionId: "home-carousel-short-films",
-        sourceId: video.coreId ?? video.documentId ?? "unknown",
-        video: rel.child,
-        parent: video,
-        languageSlug: args.languageSlug,
-      })
-      if (childCard) cards.push(childCard)
-    }
-
-    for (const card of cards) {
-      if (card.label !== "Short film") continue
-      const slide = cardToCarouselSlide(card)
-      if (slide) shortFilmById.set(slide.id, slide)
-    }
+    if (!parentCard || parentCard.label !== "Short film") continue
+    const slide = cardToCarouselSlide(parentCard)
+    if (slide) shortFilmById.set(slide.id, slide)
   }
 
   if (shortFilmById.size > 0) {

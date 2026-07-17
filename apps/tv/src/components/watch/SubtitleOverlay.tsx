@@ -14,10 +14,8 @@ import { scale } from "../../lib/scale"
 import { findActiveCue, parseVtt, type VttCue } from "../../lib/parseVtt"
 import { validateActionUrl } from "../../lib/validateUrl"
 
-// Caption colors. The TV palette (COLORS) has no on-overlay/black token, so
-// the dark caption backdrop and text shadow come from a fixed black via
-// hexToRgba — never the string "transparent" (causes dark banding; see
-// apps/tv/CLAUDE.md and lib/colors.ts).
+// COLORS has no black token; caption backdrop/shadow use fixed black via
+// hexToRgba — never "transparent" (banding; see apps/tv/CLAUDE.md).
 const SHADE = "#000000"
 
 type SubtitleOverlayProps = {
@@ -26,9 +24,8 @@ type SubtitleOverlayProps = {
   /** Active subtitle track URL (CMS-sourced; validated before fetch). */
   vttSrc: string | null
   /**
-   * Distance from the bottom edge, in reference dp (scaled per platform).
-   * The host raises this while the player chrome is visible so the caption
-   * clears the bottom controls, and restores it when the chrome hides.
+   * Distance from the bottom edge, in reference dp (scaled per platform). Host
+   * raises it while player chrome shows so captions clear the bottom controls.
    */
   bottomOffset?: number
   /** Horizontal inset so captions clear the safe gutter. */
@@ -36,8 +33,8 @@ type SubtitleOverlayProps = {
   /** Caption text size in reference dp (scaled per platform). */
   fontSize?: number
   /**
-   * Animate vertical-offset changes (the lift-to-clear-the-chrome slide,
-   * mirroring apps/mobile's fullscreen caption). Snaps under reduce-motion.
+   * Animate vertical-offset changes (the lift-to-clear-chrome slide, mirroring
+   * apps/mobile's fullscreen caption). Snaps under reduce-motion.
    */
   animate?: boolean
 }
@@ -61,10 +58,8 @@ export function SubtitleOverlay({
   const [cues, setCues] = useState<VttCue[]>([])
   const [activeText, setActiveText] = useState<string>("")
 
-  // Fade the caption in/out instead of hard-cutting it as cues change. This is
-  // a cosmetic local animation only — the overlay is a PASSIVE consumer of the
-  // player and MUST NOT touch any control/auto-hide state (no scheduleHide /
-  // revealControls). It never reaches into the player's chrome.
+  // Cosmetic per-cue fade. The overlay is a PASSIVE consumer of the player and
+  // MUST NOT touch any control/auto-hide state (no scheduleHide/revealControls).
   const opacity = useRef(new Animated.Value(0)).current
   useEffect(() => {
     Animated.timing(opacity, {
@@ -74,16 +69,9 @@ export function SubtitleOverlay({
     }).start()
   }, [activeText, opacity])
 
-  // Vertical position via translateY (native-driver friendly on Fabric),
-  // mirroring apps/mobile's SubtitleOverlay: anchored at bottom:0 and lifted
-  // by -bottomOffset. When `animate`, offset changes (the chrome show/hide
-  // lift) slide over 200ms; under reduce-motion (or animate=false) they snap.
-  //
-  // reduce-motion is STATE (not a ref): the AccessibilityInfo seed resolves
-  // async, after the offset effect's first run — a ref would miss any offset
-  // change landing in that window and animate it for a reduce-motion user.
-  // State re-runs the effect when the seed settles (same pattern as the
-  // host's isReduceMotionEnabled).
+  // translateY position (native-driver on Fabric): lifted by -bottomOffset;
+  // offset changes slide 200ms when `animate`, else snap. reduce-motion is STATE
+  // not a ref: its async seed lands after the first run, so a ref would miss it.
   const translateY = useRef(new Animated.Value(-px(bottomOffset))).current
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
@@ -177,10 +165,8 @@ export function SubtitleOverlay({
         // Player released — stop touching currentTime until the next effect run.
       }
     }
-    // Reflect the current position immediately, then poll: fast (100ms) while
-    // playing, slow (400ms) while paused. The slow paused poll is cheap (a
-    // bounded binary search) but still catches a seek/scrub made while paused,
-    // which a play-only gate would freeze the subtitle through.
+    // Update now, then poll: 100ms playing, 400ms paused. The paused poll is
+    // cheap and still catches a paused seek/scrub a play-only gate would freeze.
     update()
     const interval = setInterval(update, isPlaying ? 100 : 400)
     return () => clearInterval(interval)
@@ -191,11 +177,9 @@ export function SubtitleOverlay({
   const scaledFont = px(fontSize)
 
   return (
-    // Bottom-anchored centering container (mirrors apps/mobile): the inner
-    // Text HUGS its content — pinning left+right on the Text itself would
-    // paint the caption backdrop across the full screen width even for a
-    // two-word cue. translateY does the chrome-lift slide; opacity does the
-    // per-cue fade. Both are native-driver, on separate nodes.
+    // Bottom-anchored centering container: the inner Text HUGS its content so
+    // the backdrop doesn't span full width for a short cue. translateY slides
+    // the chrome-lift, opacity fades the cue — native-driver on separate nodes.
     <Animated.View
       pointerEvents="none"
       style={[

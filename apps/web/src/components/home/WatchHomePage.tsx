@@ -26,7 +26,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
   const backdrop = findBackdropImage(model)
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen overflow-x-hidden bg-black text-white">
       <div
         className="relative font-sans text-white"
         style={{ minHeight: "100svh" }}
@@ -55,7 +55,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
           <div aria-hidden className="absolute inset-0 bg-black/35" />
         </div>
 
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-hidden">
+        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-x-clip">
           <WatchHomeTvCarousel
             slides={model.heroSlides}
             sequence={model.carousel}

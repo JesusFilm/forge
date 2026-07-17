@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
+  SCHEDULED_VIDEO_DB_BACKUP_PROFILES,
   VIDEO_DB_BACKUP_PROFILES,
   VideoDbBackupError,
   buildBackupPlan,
@@ -42,6 +43,13 @@ describe("video DB backup profiles", () => {
         "video_transcript_chunk",
       ]),
     )
+  })
+
+  it("schedules both catalog and search snapshots", () => {
+    expect(SCHEDULED_VIDEO_DB_BACKUP_PROFILES).toEqual([
+      "video-core",
+      "video-search",
+    ])
   })
 
   it("rejects unknown profiles", () => {

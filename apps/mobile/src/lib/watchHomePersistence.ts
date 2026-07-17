@@ -1,18 +1,9 @@
 /**
- * Storage schema for the Home tab's cross-restart memory:
- *
- *   - Played ids: web's localStorage `carousel-played-ids` — `{ month, ids }`,
- *     dropped wholesale when the stored month differs from the current UTC
- *     month, so rotation exclusions reset monthly.
- *   - Carousel session: web's sessionStorage `carousel-current-video` — the
- *     pool-rotation position the queue resumes from, expired after 24h.
- *   - Home snapshot: the last successful `watchHomeVideos` response, painted
- *     immediately on launch while the live fetch revalidates in the background
- *     (the resolver alone costs 2.5-6s of TTFB against prod admin).
- *
- * Pure parse/serialize only (the watchPreferences.ts pattern). AsyncStorage
- * I/O lives in {@link useWatchHomeCarouselMemory} and {@link useWatchHome},
- * the Home screen's owners of this state.
+ * Storage schema (pure parse/serialize, watchPreferences.ts pattern) for the Home tab's
+ * cross-restart memory: played ids (monthly rotation, reset on UTC month change), carousel
+ * session (resume position, 24h expiry), Home snapshot (painted on launch while live fetch revalidates).
+ * @see useWatchHomeCarouselMemory
+ * @see useWatchHome
  */
 import type { WatchHomeVideoInput } from "./watchHome/model"
 
@@ -37,9 +28,9 @@ export function currentStorageMonth(now: Date): string {
 }
 
 /**
- * Parse the persisted played-ids blob. Anything unexpected — never written,
- * malformed JSON, wrong shape, or a stale month — degrades to an empty set so
- * the queue simply rotates without exclusions.
+ * Parse the persisted played-ids blob. Anything unexpected (unwritten, bad
+ * JSON, wrong shape, stale month) degrades to an empty set, so the queue
+ * rotates without exclusions.
  */
 export function parseStoredPlayedIds(
   raw: string | null,
@@ -67,8 +58,8 @@ export function serializePlayedIds(
 }
 
 /**
- * Parse the persisted carousel session. Returns null for anything unexpected
- * or expired (>24h), so the queue falls back to startPoolIndex 0.
+ * Parse the persisted carousel session. Null for anything unexpected or
+ * expired (>24h), so the queue falls back to startPoolIndex 0.
  */
 export function parseStoredCarouselSession(
   raw: string | null,
@@ -111,30 +102,41 @@ export function serializeCarouselSession(
 
 export const WATCH_HOME_SNAPSHOT_STORAGE_KEY = "watch-home-videos-snapshot"
 
-/** Bump when the WatchHomeVideo fragment / WatchHomeVideoInput shape changes. */
-export const WATCH_HOME_SNAPSHOT_VERSION = 1
+/**
+ * Bump when the persisted snapshot shape changes — old snapshots then fail the
+ * gate and the launch cleanly re-fetches. v2 source-tags the Experience body
+ * blocks alongside the config videos so cold launch can repaint the Experience.
+ */
+export const WATCH_HOME_SNAPSHOT_VERSION = 2
 
 /**
- * Longer than the carousel session's 24h: a stale snapshot is only the first
- * paint — the live fetch always replaces it seconds later — and the daily
- * rotation is computed on-device at queue-build time, so even a days-old
- * snapshot renders today's correct lineup.
+ * Longer than the session's 24h: a stale snapshot is only the first paint (the
+ * live fetch replaces it in seconds) and rotation is computed on-device at
+ * queue-build time, so even a days-old snapshot renders today's lineup.
  */
 export const WATCH_HOME_SNAPSHOT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Stay clear of Android AsyncStorage's ~2MB per-item limit (payload is ~460KB today). */
 export const WATCH_HOME_SNAPSHOT_MAX_BYTES = 1_500_000
 
+/** Loose block shape — reconstructed via the Experience adapter on rehydrate. */
+export type WatchHomeSnapshotBlock = { readonly __typename?: string | null }
+
 export type WatchHomeSnapshot = {
+  /** Always present — feeds the hero carousel and the config fallback body. */
   videos: readonly WatchHomeVideoInput[]
+  /**
+   * The Experience body blocks when the Experience was the painted source; null
+   * when the config body was painted. One source-tagged snapshot at a time.
+   */
+  blocks: readonly WatchHomeSnapshotBlock[] | null
   persistedAt: number
 }
 
 /**
- * Parse the persisted Home snapshot. Returns null for anything unexpected —
- * version drift, expiry, empty or non-array videos — so launch degrades to
- * the network-blocked spinner it had before snapshots existed. Items are only
- * shallow-checked (objects); deep shape drift is covered by the version gate.
+ * Parse the persisted Home snapshot. Null for anything unexpected (version
+ * drift, expiry, empty/non-array videos) so launch degrades to the pre-snapshot
+ * spinner. Items are shallow-checked only; deep drift is caught by the version gate.
  */
 export function parseStoredHomeSnapshot(
   raw: string | null,
@@ -146,6 +148,7 @@ export function parseStoredHomeSnapshot(
       version?: unknown
       persistedAt?: unknown
       videos?: unknown
+      blocks?: unknown
     } | null
     if (data == null || typeof data !== "object") return null
     if (data.version !== WATCH_HOME_SNAPSHOT_VERSION) return null
@@ -161,7 +164,13 @@ export function parseStoredHomeSnapshot(
     // An empty snapshot must not paint the full-empty "No content available"
     // state over the loading spinner.
     if (videos.length === 0) return null
-    return { videos, persistedAt: data.persistedAt }
+    const blocks = Array.isArray(data.blocks)
+      ? data.blocks.filter(
+          (block): block is WatchHomeSnapshotBlock =>
+            block != null && typeof block === "object",
+        )
+      : null
+    return { videos, blocks, persistedAt: data.persistedAt }
   } catch {
     return null
   }
@@ -175,15 +184,14 @@ export function serializeHomeSnapshot(
 }
 
 /**
- * Envelope built around an ALREADY-serialized videos array so the hot path
- * (useWatchHome's network-land) stringifies the ~460KB payload exactly once,
- * reusing it for both the snapshot-equality compare and the persisted blob.
- * `videosJson` must be a JSON array string (callers produce it via
- * JSON.stringify of the videos array).
+ * Envelope around an ALREADY-serialized videos array so the hot path stringifies
+ * the payload once (reused for the equality compare and the blob). `blocksJson` is
+ * a JSON array string (Experience body) or the literal `"null"` (config body).
  */
 export function serializeHomeSnapshotFromVideosJson(
   videosJson: string,
   now: Date,
+  blocksJson: string = "null",
 ): string {
-  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson}}`
+  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson},"blocks":${blocksJson}}`
 }

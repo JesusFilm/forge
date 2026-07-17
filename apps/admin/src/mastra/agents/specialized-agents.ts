@@ -38,6 +38,8 @@ import {
   PLAN_EXPERIENCE_PROMPT,
   CRITIQUE_EXPERIENCE_PROMPT,
   REVISE_EXPERIENCE_PROMPT,
+  SKELETON_EXPERIENCE_PROMPT,
+  FILL_EXPERIENCE_PROMPT,
 } from "../prompts"
 import {
   searchVideosTool,
@@ -122,6 +124,8 @@ export type SpecializedAgentId =
   | "experience-planner"
   | "experience-critic"
   | "experience-reviser"
+  | "experience-skeleton"
+  | "experience-fill"
 
 /**
  * Draft-experience agent — full first-draft generation with the
@@ -255,11 +259,55 @@ export function buildReviserAgent(): Agent {
 }
 
 /**
+ * Skeleton agent (U3) — emits the page STRUCTURE only (an ordered tree
+ * of block types/nesting, no content) for the two-phase draft workflow.
+ * NO tools — structure planning needs no retrieval, and exposing tool
+ * affordances would tempt the model out of the structure-only contract.
+ * No memory — workflow-only, see factory-group JSDoc above (R12).
+ */
+export function buildSkeletonAgent(): Agent {
+  return new Agent({
+    id: "experience-skeleton",
+    name: "Experience Skeleton Agent",
+    description:
+      "Emits the ordered block-type tree (structure only, no content) for the two-phase draft workflow's skeleton step.",
+    instructions: SKELETON_EXPERIENCE_PROMPT,
+    model: resolveAgentModel(),
+    // No tools — structure-only planning.
+    // No memory — workflow-only, see factory-group JSDoc above (R12).
+  })
+}
+
+/**
+ * Fill agent (U3) — fills ONE block's content at a time for the
+ * two-phase draft workflow's sequential fill step. Has the same tool
+ * catalog as draft-experience because filling a video / hero / bible
+ * block may need a real video id or verse.
+ * No memory — workflow-only, see factory-group JSDoc above (R12).
+ */
+export function buildFillAgent(): Agent {
+  return new Agent({
+    id: "experience-fill",
+    name: "Experience Fill Agent",
+    description:
+      "Fills a single block's content (one block per call) for the two-phase draft workflow's fill step.",
+    instructions: FILL_EXPERIENCE_PROMPT,
+    model: resolveAgentModel(),
+    tools: {
+      searchVideosTool,
+      lookupBibleVerseTool,
+      fetchVideoImageTool,
+    },
+    // No memory — workflow-only, see factory-group JSDoc above (R12).
+  })
+}
+
+/**
  * Build all specialized agents at once. Used by the Mastra runtime
  * singleton wiring to register agents by id. Includes the original
  * three editor-facing agents (draft / add-section / rewrite-copy)
- * plus the three multi-step draft workflow agents (planner / critic /
- * reviser).
+ * plus the multi-step draft workflow agents (planner / critic /
+ * reviser) and the two-phase draft workflow agents (skeleton / fill).
  */
 export function buildSpecializedAgents(): Record<SpecializedAgentId, Agent> {
   return {
@@ -269,5 +317,7 @@ export function buildSpecializedAgents(): Record<SpecializedAgentId, Agent> {
     "experience-planner": buildPlannerAgent(),
     "experience-critic": buildCriticAgent(),
     "experience-reviser": buildReviserAgent(),
+    "experience-skeleton": buildSkeletonAgent(),
+    "experience-fill": buildFillAgent(),
   }
 }

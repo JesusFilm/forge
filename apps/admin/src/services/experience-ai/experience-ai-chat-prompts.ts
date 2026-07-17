@@ -1,18 +1,17 @@
 /**
  * Chat-mode prompt builder for the Experience editor AI chat panel.
  *
- * Distinct from the legacy one-shot draft panel prompt in
- * `experience-ai-prompts.ts`. Chat mode is the primary AI authoring surface:
- * on a populated canvas it proposes targeted iterative mutations. Empty-canvas
- * first drafts are handled by the quality-first brief workflow before this
- * prompt is used.
+ * Chat mode is the primary AI authoring surface: on a populated canvas it
+ * proposes targeted iterative mutations. Empty-canvas first drafts are
+ * handled by the quality-first brief workflow (the Mastra draft/quick-draft
+ * workflows) before this prompt is used.
  *
  * Pure string-builder. No IO. The service composes the system message
  * + recent thread history + retrieved video candidates + the new user
  * prompt and pipes the whole thing to Codex on stdin.
  */
 
-import type { VideoCandidate } from "./experience-ai.schemas"
+import type { VideoCandidate } from "@forge/experience-schema"
 
 export type ChatHistoryTurn = {
   role: "user" | "assistant" | "system"

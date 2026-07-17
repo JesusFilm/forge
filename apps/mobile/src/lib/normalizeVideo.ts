@@ -154,9 +154,20 @@ function pickFirstLocale(
 
 type RawVariant = NonNullable<RawVideo["variants"]>[number]
 
+// Permissive aliases let the shared builder accept BOTH the full watch fragment
+// and the lean series shape (no `parents` chain; dubs omit `duration`/`muxVideo`)
+// without loosening either operation's own generated type.
+type NormalizableVariant = Omit<RawVariant, "duration" | "muxVideo"> &
+  Partial<Pick<RawVariant, "duration" | "muxVideo">>
+
+type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
+  parents?: RawVideo["parents"]
+  variants?: readonly NormalizableVariant[] | null
+}
+
 function pickFirstPlayableVariant(
-  variants: RawVideo["variants"] | undefined | null,
-): RawVariant | null {
+  variants: readonly NormalizableVariant[] | undefined | null,
+): NormalizableVariant | null {
   if (!variants) return null
   return (
     variants.find(
@@ -181,10 +192,9 @@ function dedupeByDocumentId<T extends { documentId: string | null }>(
 
 type RawDub = NonNullable<WatchDubData["videoDub"]>
 
-// Map one lazily-fetched dub's downloads + subtitles. Same projection the bulk
-// query used to inline per dub, now run once for the active language only. A
-// missing dub (or one with no media) yields empty arrays = "loaded, nothing".
-// Returns a fresh object each call so callers can never mutate a shared empty.
+// Map one lazily-fetched dub's downloads + subtitles (same projection the bulk
+// query inlined, now per active language). Missing dub/media → empty arrays =
+// "loaded, nothing". Returns a fresh object so callers can't mutate a shared empty.
 export function normalizeDubMedia(
   raw: RawDub | null | undefined,
 ): VariantMedia {
@@ -219,22 +229,18 @@ export function normalizeDubMedia(
 
 // ── Normalizer ─────────────────────────────────────────────────────
 
-// Memoize by the raw object reference. Apollo returns a referentially-stable
-// result for an unchanged cache read, so re-entering a video (cache-first) maps
-// to the same `raw` and reuses the prior record instead of re-walking every dub
-// — a video like birth-of-jesus has 2,259 dubs, so re-normalizing on each mount
-// is a multi-second JS-thread freeze. A WeakMap can't leak: entries die with the
-// cached object. New/changed data is a new reference, so this never serves stale.
+// Memoize by raw object reference: Apollo's stable cache reads let re-entry reuse
+// the prior record vs re-walking every dub (birth-of-jesus = 2,259 dubs =
+// multi-second freeze). WeakMap can't serve stale: new data is a new reference.
 const normalizeCache = new WeakMap<object, WatchVideoRecord | null>()
 
 export function normalizeVideo(
   raw: RawVideo | null | undefined,
 ): WatchVideoRecord | null {
   if (raw == null) return null
-  // With returnPartialData, the cache can surface a partial Video object before
-  // the network fills it in. Without an identity there's nothing usable to
-  // publish (the session keys on documentId), so treat identity-less partials
-  // as "not ready" and let the seed/skeleton carry the screen.
+  // returnPartialData can surface a Video before the network fills it in. The
+  // session keys on documentId, so treat identity-less partials as "not ready"
+  // and let the seed/skeleton carry the screen.
   if (!raw.documentId) return null
 
   const cached = normalizeCache.get(raw)
@@ -244,7 +250,7 @@ export function normalizeVideo(
   return result
 }
 
-function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
+function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
   const locale = pickFirstLocale(raw.locales)
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
@@ -306,7 +312,10 @@ function buildWatchVideoRecord(raw: RawVideo): WatchVideoRecord {
       order: q.order ?? 0,
     }))
 
-  const bibleCitations: WatchBibleCitation[] = (raw.bibleCitations ?? [])
+  // Copy before sort: Apollo freezes cached results, and Array.sort mutates in
+  // place — sorting the raw frozen array throws "Cannot assign to read-only
+  // property". (studyQuestions/episodes are safe: .filter() returns a copy.)
+  const bibleCitations: WatchBibleCitation[] = [...(raw.bibleCitations ?? [])]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((c) => ({
       documentId: c.documentId ?? "",
@@ -392,9 +401,9 @@ export function normalizeSeries(
   if (raw == null || !raw.documentId) return null
   const cached = normalizeSeriesCache.get(raw)
   if (cached !== undefined) return cached
-  // RawSeriesVideo is a structural superset of RawVideo (it spreads WatchVideo),
-  // so the shared builder maps the common fields; episodes + languages attach on
-  // top.
+  // RawSeriesVideo is the lean SeriesWatchVideo subset of WatchVideo (no parents
+  // chain; per-dub duration/muxVideo dropped). Shared builder maps common fields;
+  // dropped fields resolve to siblings=[]/duration=null/muxPlaybackId=null.
   const result: WatchVideoRecord = {
     ...buildWatchVideoRecord(raw),
     episodes: buildEpisodes(raw),

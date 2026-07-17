@@ -1,6 +1,12 @@
 "use client"
 
-import { type MouseEvent, useCallback, useEffect, useState } from "react"
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
@@ -14,11 +20,72 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel"
+import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
+import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
-import { resolveMuxFrameThumbnailUrl, resolvePosterUrl } from "@/lib/url"
-import type { WatchChapterNavigationIntent } from "./chapter-navigation"
+import {
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+  watchEpisodePath,
+} from "@/lib/routes"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxAnimatedPreviewUrl,
+  resolveMuxHeroPosterUrl,
+  resolvePosterUrl,
+} from "@/lib/url"
+import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
+import {
+  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  type WatchChapterCarouselPreserveState,
+  type WatchChapterNavigationIntent,
+} from "./chapter-navigation"
+
+function consumePreservedCarouselIndex({
+  children,
+  currentVideoDocumentId,
+  languageSlug,
+}: {
+  children: Array<{ documentId: string }>
+  currentVideoDocumentId: string
+  languageSlug: string
+}): number | null {
+  if (typeof window === "undefined") return null
+
+  const raw = window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+  if (!raw) return null
+
+  window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+
+  let state: WatchChapterCarouselPreserveState
+  try {
+    state = JSON.parse(raw) as WatchChapterCarouselPreserveState
+  } catch {
+    return null
+  }
+
+  if (
+    state.languageSlug !== languageSlug ||
+    state.targetVideoDocumentId !== currentVideoDocumentId
+  ) {
+    return null
+  }
+
+  const sourceIndex = children.findIndex(
+    (child) => child.documentId === state.sourceVideoDocumentId,
+  )
+  if (
+    typeof state.sourceCarouselIndex === "number" &&
+    Number.isInteger(state.sourceCarouselIndex) &&
+    state.sourceCarouselIndex >= 0 &&
+    state.sourceCarouselIndex < children.length
+  ) {
+    return state.sourceCarouselIndex
+  }
+  return sourceIndex >= 0 ? sourceIndex : null
+}
 
 export function SiblingCarousel({
   block,
@@ -50,6 +117,14 @@ export function SiblingCarousel({
   )
   const clipTotal = children.length
   const parentTitle = canonicalParent.title ?? videoLabels("collection")
+  const parentSlug =
+    typeof canonicalParent.slug === "string"
+      ? tryAsContentSlug(canonicalParent.slug)
+      : null
+  const parentHref =
+    parentSlug != null && tryAsLocaleSlug(languageSlug) != null
+      ? watchVideoPath(parentSlug, tryAsLocaleSlug(languageSlug)!)
+      : null
 
   // All carousel thumbnails ship with `loading="lazy"`. Native browser
   // lazy-loading still fetches above-fold images immediately — it only
@@ -106,7 +181,20 @@ export function SiblingCarousel({
     pendingActiveIndex >= 0 ? pendingActiveIndex : activeIndex
   const isParentMode = visualActiveIndex < 0
   const clipIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
-  const initialCarouselIndex = visualActiveIndex >= 0 ? visualActiveIndex : 0
+  const [initialCarouselState] = useState(() => {
+    const preservedIndex = consumePreservedCarouselIndex({
+      children,
+      currentVideoDocumentId,
+      languageSlug,
+    })
+    return {
+      index: preservedIndex ?? (visualActiveIndex >= 0 ? visualActiveIndex : 0),
+      deferInitialAutoScroll: preservedIndex != null,
+    }
+  })
+  const deferInitialAutoScrollRef = useRef(
+    initialCarouselState.deferInitialAutoScroll,
+  )
 
   // Snap to the visually active item whenever it changes (or when `api`
   // first becomes available). Pending navigation can temporarily move the
@@ -115,8 +203,28 @@ export function SiblingCarousel({
   useEffect(() => {
     if (!api) return
     if (visualActiveIndex < 0) return
-    api.scrollTo(visualActiveIndex, true)
-  }, [api, visualActiveIndex])
+    if (pendingActiveIndex >= 0) return
+    if (deferInitialAutoScrollRef.current) {
+      deferInitialAutoScrollRef.current = false
+      let secondFrame = 0
+      // The target route mounts at the source chapter's carousel position.
+      // Wait until after that commit paints, then animate the clicked chapter
+      // into the lead position so it reads as one post-transition movement.
+      const firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          api.scrollTo(visualActiveIndex)
+        })
+      })
+      return () => {
+        window.cancelAnimationFrame(firstFrame)
+        if (secondFrame !== 0) window.cancelAnimationFrame(secondFrame)
+      }
+    }
+    // Let Embla animate the active-card change. Passing `jump: true` made
+    // chapter clicks teleport the rail so the clicked item snapped into the
+    // first position, which felt like a page reload.
+    api.scrollTo(visualActiveIndex)
+  }, [api, pendingActiveIndex, visualActiveIndex])
 
   if (children.length < 2) return null
 
@@ -137,12 +245,18 @@ export function SiblingCarousel({
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative -mx-10 w-[calc(100%+5rem)] pt-2 pb-2 md:mx-0 md:w-full"
+      className="relative -mx-5 w-[calc(100%+2.5rem)] pt-2 pb-2 md:mx-0 md:w-full"
       aria-label={ariaLabel}
     >
-      <header className="mb-4 px-10 md:px-0">
+      <header className="mb-4 px-5 md:px-0">
         <p className="text-sm font-normal text-stone-300">
-          <span className="font-medium text-stone-100">{parentTitle}</span>
+          {parentHref != null ? (
+            <Link href={parentHref} className="text-stone-100 hover:underline">
+              <span className="font-medium">{parentTitle}</span>
+            </Link>
+          ) : (
+            <span className="font-medium text-stone-100">{parentTitle}</span>
+          )}
           <span className="px-2 text-stone-500">·</span>
           <span data-testid="sibling-carousel-label">
             {isParentMode ? (
@@ -168,12 +282,12 @@ export function SiblingCarousel({
         opts={{
           align: "start",
           containScroll: "trimSnaps",
-          startIndex: initialCarouselIndex,
+          startIndex: initialCarouselState.index,
         }}
         setApi={setApi}
-        className="w-full pl-10 md:pl-0"
+        className="w-full pl-5 md:pl-0"
       >
-        <CarouselContent>
+        <CarouselContent viewportClassName="overflow-x-visible md:overflow-x-clip">
           {children.map((child, index) => {
             const isActive = index === visualActiveIndex
             // Prefer a Mux frame from the current watch language when admin
@@ -182,14 +296,20 @@ export function SiblingCarousel({
             // entirely: it's a misshaped Cloudflare Images URL (missing the
             // variant path segment) that returns 400, so a "last resort"
             // fallback to it only ever produces broken images.
-            const thumb =
-              resolveMuxFrameThumbnailUrl(child.muxPlaybackId) ??
-              resolvePosterUrl(child.images?.[0])
-            // The builder emits the canonical 2-segment `.html` shape
-            // (`/{slug}.html/{languageSlug}.html`).
+            const muxThumb = resolveMuxFrameThumbnailUrl(child.muxPlaybackId)
+            const muxPreview = resolveMuxAnimatedPreviewUrl(child.muxPlaybackId)
+            const thumb = muxThumb ?? resolvePosterUrl(child.images?.[0])
+            const heroPoster = resolveMuxHeroPosterUrl(child.muxPlaybackId)
+            const blurDataURL =
+              muxThumb != null ? child.muxThumbnailBlurDataUrl : null
+            const heroBlurDataURL =
+              heroPoster != null ? child.muxHeroPosterBlurDataUrl : null
             const slug = tryAsContentSlug(child.slug)
             const lang = tryAsLocaleSlug(languageSlug)
-            const href = slug && lang ? watchVideoPath(slug, lang) : undefined
+            const href =
+              parentSlug && slug && lang
+                ? watchEpisodePath(parentSlug, slug, lang)
+                : undefined
             const isPending =
               validPendingNavigation != null &&
               validPendingNavigation.href === href &&
@@ -201,11 +321,11 @@ export function SiblingCarousel({
             const cardClassName = cn(
               "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
               isActive
-                ? "border-4 border-white"
-                : "opacity-70 hover:outline-4 hover:outline-offset-[-4px] hover:outline-brand-red hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                ? "opacity-100"
+                : "opacity-70 hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
               isPending &&
                 !isActive &&
-                "opacity-100 outline-4 outline-offset-[-4px] outline-brand-red shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                "opacity-100 shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
             )
 
             // Card contents are identical whether the card is a routable
@@ -219,6 +339,12 @@ export function SiblingCarousel({
                     fill
                     sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    {...(blurDataURL
+                      ? {
+                          placeholder: "blur" as const,
+                          blurDataURL,
+                        }
+                      : {})}
                     // Native lazy-loading. Browser still fetches
                     // above-fold cards immediately (lazy only defers
                     // far-from-viewport). Avoids the head-preload
@@ -235,6 +361,10 @@ export function SiblingCarousel({
                     {t("noImage")}
                   </div>
                 )}
+                <MuxHoverPreview
+                  previewUrl={muxPreview}
+                  sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                />
 
                 {/* Soften the image into the lower caption zone. */}
                 <div
@@ -275,7 +405,7 @@ export function SiblingCarousel({
                     landscape tile. */}
                 <div
                   data-testid="sibling-carousel-caption"
-                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent p-3 sm:p-4"
+                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent px-3 pt-3 pb-5 sm:px-4 sm:pt-4 sm:pb-6"
                 >
                   <span className="text-[10px] font-normal tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
                     {t("chapter")}
@@ -295,6 +425,29 @@ export function SiblingCarousel({
                   aria-hidden="true"
                   data-testid="sibling-carousel-bevel"
                   className="pointer-events-none absolute inset-0 z-40 rounded-lg border border-white opacity-40 mix-blend-soft-light"
+                />
+                <WatchProgressBar videoId={child.documentId} />
+
+                <div
+                  aria-hidden="true"
+                  data-testid="sibling-carousel-hover-outline"
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_-4px_22px_rgba(255,255,255,0.22)] transition-opacity duration-200",
+                    !isActive &&
+                      "group-hover:opacity-100 group-focus-visible:opacity-100",
+                    isPending && "opacity-100",
+                  )}
+                />
+
+                <div
+                  aria-hidden="true"
+                  data-testid="sibling-carousel-active-outline"
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white transition-[opacity,transform] duration-300 ease-out",
+                    isActive
+                      ? "scale-100 opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.45)]"
+                      : "scale-[0.985] opacity-0",
+                  )}
                 />
 
                 {/* Visually-hidden active marker — preserves the existing
@@ -326,6 +479,7 @@ export function SiblingCarousel({
                 {href ? (
                   <Link
                     href={href}
+                    prefetch={false}
                     data-testid="sibling-carousel-item"
                     data-active={isActive ? "true" : "false"}
                     data-pending={isPending ? "true" : "false"}
@@ -349,7 +503,10 @@ export function SiblingCarousel({
                           title: child.title ?? null,
                           slug: child.slug,
                           label: child.label ?? null,
-                          posterUrl: thumb,
+                          posterUrl: heroPoster ?? thumb,
+                          posterBlurDataUrl: heroBlurDataURL,
+                          sourceCarouselIndex:
+                            api?.selectedScrollSnap() ?? null,
                         },
                         isActive,
                       )
@@ -369,11 +526,14 @@ export function SiblingCarousel({
               </CarouselItem>
             )
           })}
-          <div
+          <CarouselItem
             aria-hidden="true"
             data-testid="sibling-carousel-end-spacer"
-            className="min-w-0 shrink-0 grow-0 basis-[52%] sm:basis-[64%] md:basis-[66.666%] lg:basis-[75%] xl:basis-[80%] 2xl:basis-[83.333%]"
-          />
+            tabIndex={-1}
+            className="basis-auto pl-0"
+          >
+            <div className={CAROUSEL_END_SPACER} />
+          </CarouselItem>
         </CarouselContent>
 
         {/* The shared `outline` Button variant only sets text color on

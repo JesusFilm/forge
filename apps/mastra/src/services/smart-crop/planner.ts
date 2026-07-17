@@ -46,6 +46,8 @@ export type SmartCropPlannerIntent = {
   mode: SmartCropMode
   confidence: number
   subjectCenter: SmartCropSubjectCenter
+  faceVisible?: boolean
+  faceCenter?: SmartCropSubjectCenter | null
 }
 
 export type SmartCropPlannedKeyframes = {
@@ -100,6 +102,14 @@ function staticKeyframes(
   ]
 }
 
+function cropAnchorCenter(
+  intent: SmartCropPlannerIntent,
+): SmartCropSubjectCenter {
+  return intent.faceVisible === true && intent.faceCenter
+    ? intent.faceCenter
+    : intent.subjectCenter
+}
+
 /**
  * Convert one shot's crop intent into exactly two crop keyframes.
  *
@@ -130,12 +140,9 @@ export function intentToKeyframes(
     }
   }
 
-  const x0 = xForSubjectCenter(
-    intent.subjectCenter.start.cx,
-    source,
-    window.width,
-  )
-  let x1 = xForSubjectCenter(intent.subjectCenter.end.cx, source, window.width)
+  const anchorCenter = cropAnchorCenter(intent)
+  const x0 = xForSubjectCenter(anchorCenter.start.cx, source, window.width)
+  let x1 = xForSubjectCenter(anchorCenter.end.cx, source, window.width)
 
   if (Math.abs(x1 - x0) < DEAD_ZONE_CROP_WIDTH_FRACTION * window.width) {
     x1 = x0

@@ -77,6 +77,14 @@ function wheelContent(deltaX: number, deltaY = 0): WheelEvent {
 }
 
 describe("CarouselContent — horizontal wheel support", () => {
+  it("clips horizontal overflow by default", () => {
+    renderCarousel()
+
+    const content = container.querySelector('[data-slot="carousel-content"]')
+    expect(content?.className).toContain("overflow-x-clip")
+    expect(content?.className).toContain("overflow-y-visible")
+  })
+
   it("moves to the next slide on horizontal wheel right", () => {
     renderCarousel()
 

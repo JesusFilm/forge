@@ -22,6 +22,9 @@ function mockPrisma() {
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    language: {
+      findFirst: vi.fn(),
+    },
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
     $executeRawUnsafe: vi.fn(),
@@ -341,6 +344,280 @@ describe("VideoService", () => {
     })
   })
 
+  describe("getWatchLanguageInventory", () => {
+    it("returns empty buckets when the requested language slug is unknown", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.getWatchLanguageInventory({ languageSlug: "not-a-language" }),
+      ).resolves.toMatchObject({
+        language: null,
+        counts: {
+          audioCollections: 0,
+          audioVideos: 0,
+          subtitleOnlyVideos: 0,
+          total: 0,
+        },
+        promoted: [],
+        audioCollections: [],
+        audioVideos: [],
+        subtitleOnlyVideos: [],
+      })
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+    })
+
+    it("groups inventory rows into audio collections, audio videos, and subtitle-only videos", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          bucket: "audio_collection",
+          bucketTotal: 1,
+          id: "collection-1",
+          coreId: "core-collection-1",
+          slug: "story-of-jesus",
+          title: "The Story of Jesus",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          label: "series",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: null,
+          childCount: 12,
+          publishedAt: "2026-06-01T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+        },
+        {
+          bucket: "audio_video",
+          bucketTotal: 1,
+          id: "video-1",
+          coreId: "core-video-1",
+          slug: "jesus-calms-the-storm",
+          title: "Jesus Calms the Storm",
+          description: "A short film.",
+          imageUrl: "https://example.com/storm.jpg",
+          imageAlt: "Jesus Calms the Storm",
+          label: "shortFilm",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 420,
+          childCount: 0,
+          publishedAt: "2026-05-20T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-05-20T00:00:00.000Z",
+        },
+        {
+          bucket: "subtitle_video",
+          bucketTotal: 1,
+          id: "video-2",
+          coreId: "core-video-2",
+          slug: "following-jesus",
+          title: "Following Jesus",
+          description: "Available with translated subtitles.",
+          imageUrl: null,
+          imageAlt: null,
+          label: "featureFilm",
+          availability: "SUBTITLE_ONLY",
+          watchLanguageSlug: "english",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 3600,
+          childCount: 0,
+          publishedAt: "2026-05-15T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-05-15T00:00:00.000Z",
+        },
+      ])
+
+      const inventory = await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+        limit: 25,
+      })
+
+      expect(inventory.language).toMatchObject({
+        slug: "spanish-latin-american",
+        bcp47: "es-419",
+      })
+      expect(inventory.counts).toEqual({
+        audioCollections: 1,
+        audioVideos: 1,
+        subtitleOnlyVideos: 1,
+        total: 3,
+      })
+      expect(inventory.audioCollections).toHaveLength(1)
+      expect(inventory.audioVideos).toHaveLength(1)
+      expect(inventory.subtitleOnlyVideos).toHaveLength(1)
+      expect(inventory.subtitleOnlyVideos[0]).toMatchObject({
+        title: "Following Jesus",
+        availability: "SUBTITLE_ONLY",
+        watchLanguageSlug: "english",
+      })
+      expect(inventory.promoted.map((item) => item.title)).toEqual([
+        "The Story of Jesus",
+        "Jesus Calms the Storm",
+        "Following Jesus",
+      ])
+      expect(prisma.tx.$executeRawUnsafe).toHaveBeenCalledWith(
+        "SET LOCAL statement_timeout = '10000ms'",
+      )
+    })
+
+    it("sorts promoted rows by the SQL recency timestamp", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          bucket: "audio_collection",
+          bucketTotal: 1,
+          id: "collection-1",
+          coreId: "core-collection-1",
+          slug: "story-of-jesus",
+          title: "The Story of Jesus",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          label: "series",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: null,
+          childCount: 12,
+          publishedAt: "2026-01-01T00:00:00.000Z",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          sortAt: "2026-06-10T00:00:00.000Z",
+        },
+        {
+          bucket: "audio_video",
+          bucketTotal: 1,
+          id: "video-1",
+          coreId: "core-video-1",
+          slug: "jesus-calms-the-storm",
+          title: "Jesus Calms the Storm",
+          description: null,
+          imageUrl: null,
+          imageAlt: null,
+          label: "shortFilm",
+          availability: "AUDIO",
+          watchLanguageSlug: "spanish-latin-american",
+          parentSlug: null,
+          parentTitle: null,
+          durationSeconds: 420,
+          childCount: 0,
+          publishedAt: "2026-06-01T00:00:00.000Z",
+          createdAt: "2026-05-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+          sortAt: "2026-06-01T00:00:00.000Z",
+        },
+      ])
+
+      const inventory = await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      expect(inventory.promoted.map((item) => item.title)).toEqual([
+        "The Story of Jesus",
+        "Jesus Calms the Storm",
+      ])
+      expect(inventory.promoted[0]).not.toHaveProperty("sortAt")
+    })
+
+    it("computes collection sort order from parent and playable child publish/update dates", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("MAX(")
+      expect(sql).toContain("FROM eligible_candidate_video child")
+      expect(sql).toContain('child."hasAudio" = TRUE')
+      expect(sql).toContain('COALESCE(child."publishedAt", child."createdAt")')
+      expect(sql).toContain('COALESCE(child."updatedAt", child."createdAt")')
+      expect(sql).toContain("ORDER BY")
+      expect(sql).toContain('"sortAt" DESC NULLS LAST')
+      expect(sql).toContain('relation.order AS "parentOrder"')
+      expect(sql).toContain('parent_ref."parentOrder"')
+    })
+
+    it("bounds language candidates before expensive card hydration", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "spanish-latin-american",
+        name: { en: "Spanish, Latin American" },
+        bcp47: "es-419",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "spanish-latin-american",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      const playableAudio = sql.indexOf("playable_audio AS MATERIALIZED")
+      const subtitleCandidates = sql.indexOf(
+        "usable_subtitle_video AS MATERIALIZED",
+      )
+      const candidateVideoSource = sql.indexOf("candidate_video_source AS")
+      const recencyCutoff = sql.indexOf("candidate_cutoff AS")
+      const prelimitedCandidates = sql.indexOf("prelimited_candidates AS")
+      const candidateDisplay = sql.indexOf("candidate_display AS")
+      const limitedCandidates = sql.indexOf(
+        "limited_candidates AS",
+        candidateDisplay,
+      )
+      const selectedImage = sql.indexOf("selected_image.image_url")
+      const fallbackDub = sql.indexOf("fallback_dub.language_slug")
+
+      expect(playableAudio).toBeGreaterThanOrEqual(0)
+      expect(subtitleCandidates).toBeGreaterThan(playableAudio)
+      expect(candidateVideoSource).toBeGreaterThan(subtitleCandidates)
+      const subtitleCandidateSql = sql.slice(
+        sql.indexOf("usable_subtitle AS MATERIALIZED"),
+        candidateVideoSource,
+      )
+      expect(subtitleCandidateSql).toContain("SELECT DISTINCT")
+      expect(subtitleCandidateSql).not.toContain("UNION ALL")
+      expect(recencyCutoff).toBeGreaterThan(subtitleCandidates)
+      expect(prelimitedCandidates).toBeGreaterThan(recencyCutoff)
+      expect(candidateDisplay).toBeGreaterThan(prelimitedCandidates)
+      expect(limitedCandidates).toBeGreaterThan(candidateDisplay)
+      expect(selectedImage).toBeGreaterThan(limitedCandidates)
+      expect(fallbackDub).toBeGreaterThan(limitedCandidates)
+      expect(sql).not.toContain("published_videos AS")
+      expect(sql).not.toContain("selected_locale AS")
+      expect(sql).not.toContain("selected_image AS")
+      expect(sql).toContain('BOOL_OR("hasAudio") AS "hasAudio"')
+      expect(sql).toContain('BOOL_OR("hasSubtitle") AS "hasSubtitle"')
+      expect(sql).not.toContain("same_language_audio")
+      expect(sql).toContain(
+        'candidate_recency."sortAt" IS NOT DISTINCT FROM candidate_cutoff."sortAt"',
+      )
+      expect(sql).toContain("dub.hls IS NOT NULL")
+      expect(sql).toContain("dub.hls <> ''")
+      expect(sql).toContain("subtitle.vtt_src IS NOT NULL")
+      expect(sql).toContain("subtitle.srt_src IS NOT NULL")
+    })
+  })
+
   describe("countActive", () => {
     it("counts the same non-deleted video scope used by list", async () => {
       prisma.video.count.mockResolvedValueOnce(12)
@@ -473,6 +750,120 @@ describe("VideoService", () => {
       await service.getDubById({ id: "dub-1", query })
 
       expect(prisma.videoDub.findFirst.mock.calls[0][0]).toMatchObject(query)
+    })
+  })
+
+  describe("getPreferredPlayableDub", () => {
+    it("prefers a playable dub matching the requested language slug", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce({ id: "dub-es" })
+
+      const result = await service.getPreferredPlayableDub({
+        videoId: "video-1",
+        languageSlug: "spanish",
+        query: { select: { id: true } },
+      })
+
+      expect(result).toEqual({ id: "dub-es" })
+      const call = prisma.videoDub.findFirst.mock.calls[0][0]
+      expect(call).toMatchObject({ select: { id: true } })
+      expect(call.where).toMatchObject({
+        videoId: "video-1",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+        video: { deletedAt: null },
+        language: {
+          deletedAt: null,
+          OR: [{ slug: "spanish" }, { bcp47: "spanish" }],
+        },
+      })
+      expect(call.orderBy).toEqual([{ duration: "desc" }, { id: "asc" }])
+      expect(prisma.video.findFirst).not.toHaveBeenCalled()
+    })
+
+    it("falls back to the primary language playable dub before longest playable", async () => {
+      prisma.videoDub.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "dub-primary" })
+      prisma.video.findFirst.mockResolvedValueOnce({
+        primaryLanguageId: "language-en",
+      })
+
+      const result = await service.getPreferredPlayableDub({
+        videoId: "video-1",
+        languageSlug: "missing-language",
+        query: {},
+      })
+
+      expect(result).toEqual({ id: "dub-primary" })
+      expect(prisma.video.findFirst.mock.calls[0][0]).toEqual({
+        where: { id: "video-1", deletedAt: null },
+        select: { primaryLanguageId: true },
+      })
+      expect(prisma.videoDub.findFirst.mock.calls[1][0].where).toMatchObject({
+        videoId: "video-1",
+        languageId: "language-en",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+      })
+      expect(prisma.videoDub.findFirst).toHaveBeenCalledTimes(2)
+    })
+
+    it("falls back to the longest playable dub when no requested or primary dub exists", async () => {
+      prisma.videoDub.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "dub-longest" })
+      prisma.video.findFirst.mockResolvedValueOnce({
+        primaryLanguageId: "language-en",
+      })
+
+      const result = await service.getPreferredPlayableDub({
+        videoId: "video-1",
+        languageSlug: "missing-language",
+        query: {},
+      })
+
+      expect(result).toEqual({ id: "dub-longest" })
+      const fallbackCall = prisma.videoDub.findFirst.mock.calls[2][0]
+      expect(fallbackCall.where).toMatchObject({
+        videoId: "video-1",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+      })
+      expect(fallbackCall.orderBy).toEqual([
+        { duration: "desc" },
+        { id: "asc" },
+      ])
+    })
+  })
+
+  describe("countPlayableDubLanguages", () => {
+    it("counts distinct playable dub languages without loading dub payloads", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        { languageId: "language-en" },
+        { languageId: "language-es" },
+      ])
+
+      const count = await service.countPlayableDubLanguages({
+        videoId: "video-1",
+      })
+
+      expect(count).toBe(2)
+      const call = prisma.videoDub.findMany.mock.calls[0][0]
+      expect(call.where).toMatchObject({
+        videoId: "video-1",
+        deletedAt: null,
+        published: true,
+        AND: [{ hls: { not: null } }, { hls: { not: "" } }],
+        video: { deletedAt: null },
+        languageId: { not: null },
+        language: { slug: { not: null }, deletedAt: null },
+      })
+      expect(call.distinct).toEqual(["languageId"])
+      expect(call.select).toEqual({ languageId: true })
     })
   })
 

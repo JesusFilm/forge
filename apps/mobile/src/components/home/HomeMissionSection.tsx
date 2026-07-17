@@ -1,10 +1,7 @@
 /**
- * Mission rail for the Home feed — three tappable landscape cards in the
- * same shelf language as the content rails (eyebrow + title header,
- * horizontal snap rail, 16:9 gradient cards). The storytelling prose lives
- * on the /mission page the cards push to; the beta card opens the external
- * signup directly. Renders as a feed item with its own translucent
- * background per the transparent-feed convention.
+ * Mission rail for the Home feed: three tappable 16:9 cards in shelf language.
+ * Cards push to /mission for the prose; the beta card opens external signup.
+ * Renders as a feed item with its own translucent background.
  */
 import { memo, useCallback } from "react"
 import {

@@ -1,7 +1,7 @@
 ---
 id: YTM-005
 title: "Replace placeholder extraction and NoopMatcher with real matcher"
-status: todo
+status: complete
 priority: P1
 depends_on:
   - YTM-003

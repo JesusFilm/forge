@@ -1,7 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
+import { after } from "next/server"
 import type { Principal } from "@/auth/principal"
 import { ExperienceService } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+
+// Override only `after` so the service's manifest-refresh scheduling is
+// observable; everything else in next/server stays real.
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>()
+  return { ...actual, after: vi.fn() }
+})
 
 vi.mock("./watch-route-manifest-refresh.service", () => ({
   refreshWatchRouteManifest: vi.fn().mockResolvedValue({ status: "refreshed" }),
@@ -29,12 +37,17 @@ function mockPrisma() {
     findMany: vi.fn(),
     update: vi.fn(),
   }
+  // Shared across the top-level client and the transaction client so the
+  // applyChatMutation baseline read and the FOR UPDATE locked read both
+  // resolve through the same mock (call order: baseline, then locked).
+  const $queryRaw = vi.fn()
   return {
     contentRevision,
     experience,
     experienceLocale,
+    $queryRaw,
     $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ contentRevision, experience, experienceLocale }),
+      fn({ contentRevision, experience, experienceLocale, $queryRaw }),
     ),
   } as unknown as Parameters<
     (typeof ExperienceService)["prototype"]["list"]
@@ -64,6 +77,7 @@ describe("ExperienceService", () => {
     prisma = mockPrisma()
     service = new ExperienceService(prisma)
     vi.mocked(refreshWatchRouteManifest).mockClear()
+    vi.mocked(after).mockClear()
   })
 
   // ---------------------------------------------------------------------------
@@ -536,11 +550,22 @@ describe("ExperienceService", () => {
       experience: { ownerId: "alice", archivedAt: null, isTemplate: false },
     }
 
+    // Full-precision (microsecond) updated_at text — the value Postgres
+    // returns from `updated_at::text` for a bare TIMESTAMPTZ column. The
+    // guard must compare this verbatim, never a millisecond-truncated Date.
+    const MICRO_TS = "2026-04-15 12:00:00.336275+00"
+
     it("creates a HISTORICAL contentRevision + updates the locale in one $transaction (happy path)", async () => {
-      prisma.experienceLocale.findUniqueOrThrow
-        .mockResolvedValueOnce(baseRow) // pre-image read
-        .mockResolvedValueOnce({ ...baseRow, title: "Chat Title" }) // re-fetch
-      prisma.experienceLocale.updateMany.mockResolvedValueOnce({ count: 1 })
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(baseRow) // pre-image read
+      // Baseline read, then the FOR UPDATE locked read — same full-precision
+      // text, so the optimistic guard passes.
+      prisma.$queryRaw
+        .mockResolvedValueOnce([{ u: MICRO_TS }])
+        .mockResolvedValueOnce([{ u: MICRO_TS }])
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...baseRow,
+        title: "Chat Title",
+      })
 
       const result = await service.applyChatMutation({
         input: { id: "loc-1", title: "Chat Title" },
@@ -560,14 +585,17 @@ describe("ExperienceService", () => {
           }),
         }),
       )
-      // The write went through the conditional updateMany (concurrency
-      // guard), keyed on the pre-image updatedAt.
-      expect(prisma.experienceLocale.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "loc-1", updatedAt: baseRow.updatedAt },
-        }),
+      // The write is a plain update keyed only on id — the row is already
+      // locked + version-verified by the FOR UPDATE guard, and a `updatedAt`
+      // predicate would re-introduce the millisecond-truncation mismatch.
+      expect(prisma.experienceLocale.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "loc-1" } }),
       )
-      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+      const updateArg = prisma.experienceLocale.update.mock.calls[0][0] as {
+        where: Record<string, unknown>
+      }
+      expect(updateArg.where).not.toHaveProperty("updatedAt")
+      expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
     })
 
     it("throws ForbiddenError when the principal cannot edit the locale", async () => {
@@ -581,14 +609,15 @@ describe("ExperienceService", () => {
         }),
       ).rejects.toThrow("Forbidden")
       // No write attempted on a forbidden mutation.
-      expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
     })
 
     it("strips slug from the update payload (slug is not chat-writable)", async () => {
-      prisma.experienceLocale.findUniqueOrThrow
-        .mockResolvedValueOnce(baseRow)
-        .mockResolvedValueOnce(baseRow)
-      prisma.experienceLocale.updateMany.mockResolvedValueOnce({ count: 1 })
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(baseRow)
+      prisma.$queryRaw
+        .mockResolvedValueOnce([{ u: MICRO_TS }])
+        .mockResolvedValueOnce([{ u: MICRO_TS }])
+      prisma.experienceLocale.update.mockResolvedValueOnce(baseRow)
 
       await service.applyChatMutation({
         // `slug` is not on ChatMutationInput; the Zod parse must strip it
@@ -598,18 +627,23 @@ describe("ExperienceService", () => {
         reason: "Chat-driven mutation",
       })
 
-      const call = prisma.experienceLocale.updateMany.mock.calls[0][0] as {
+      const call = prisma.experienceLocale.update.mock.calls[0][0] as {
         data: Record<string, unknown>
       }
       expect(call.data).not.toHaveProperty("slug")
       expect(call.data).toHaveProperty("title", "Keep slug")
     })
 
-    it("throws ConcurrentModificationError when the row was modified concurrently (no orphan revision)", async () => {
-      // Pre-image read succeeds, but the conditional updateMany matches 0
-      // rows because updatedAt no longer matches → lost-update guard fires.
+    it("throws ConcurrentModificationError when the row changed concurrently (full-precision text mismatch, no orphan revision)", async () => {
+      // Pre-image read succeeds, but the FOR UPDATE locked read returns a
+      // DIFFERENT full-precision updated_at than the baseline → a concurrent
+      // writer changed the row → lost-update guard fires. (Crucially, this
+      // is a real text difference, NOT the old millisecond-truncation false
+      // positive that fired on every microsecond-stamped row.)
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(baseRow)
-      prisma.experienceLocale.updateMany.mockResolvedValueOnce({ count: 0 })
+      prisma.$queryRaw
+        .mockResolvedValueOnce([{ u: MICRO_TS }]) // baseline
+        .mockResolvedValueOnce([{ u: "2026-04-15 12:00:05.111222+00" }]) // locked (changed)
 
       await expect(
         service.applyChatMutation({
@@ -619,9 +653,11 @@ describe("ExperienceService", () => {
         }),
       ).rejects.toMatchObject({ name: "ConcurrentModificationError" })
 
-      // The throw rolls back the $transaction, so the re-fetch never runs.
-      // (findUniqueOrThrow called once for the pre-image only.)
-      expect(prisma.experienceLocale.findUniqueOrThrow).toHaveBeenCalledTimes(1)
+      // Guard runs BEFORE the revision insert and the write, so the throw
+      // rolls back a transaction that never touched either — no orphan
+      // HISTORICAL revision, no partial update.
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
     })
   })
 
@@ -674,6 +710,50 @@ describe("ExperienceService", () => {
       expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
         prisma,
         reason: "experience.publish",
+      })
+    })
+
+    it("schedules the manifest refresh through after() so it survives the response", async () => {
+      const localeRow = {
+        id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "publish-after",
+        isHomepage: false,
+        pathSegment: null,
+        status: "DRAFT",
+        title: "Before publish",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: null,
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...localeRow,
+        status: "PUBLISHED",
+      })
+
+      await service.publishLocale({
+        input: { id: "loc-1" },
+        user: EDITOR_ALICE,
+      })
+
+      // The refresh is handed to after() rather than left as a bare detached
+      // promise — that is what keeps it alive past a standalone Server Action
+      // response so newly published slugs reach the persisted snapshot.
+      expect(after).toHaveBeenCalledTimes(1)
+      const scheduled = vi.mocked(after).mock.calls[0]?.[0] as () => unknown
+      expect(typeof scheduled).toBe("function")
+      // Invoking the scheduled task resolves to the refresh outcome and never
+      // throws (refreshWatchRouteManifest returns a typed outcome).
+      await expect(Promise.resolve(scheduled())).resolves.toEqual({
+        status: "refreshed",
       })
     })
 

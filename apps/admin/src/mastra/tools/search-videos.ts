@@ -71,7 +71,10 @@ export const searchVideosTool = createTool({
     })
 
     const videos = response.results
-      .filter((result) => result.type === "video")
+      // playbackId === null means no playable dub resolved for the locale
+      // (the R4 retrievers keep such rows); agents write these videoIds into
+      // blocks verbatim, so unplayable results must never reach them.
+      .filter((result) => result.type === "video" && result.playbackId !== null)
       .map((result) => ({
         videoId: result.id,
         title: result.title,

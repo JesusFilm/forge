@@ -2,6 +2,7 @@ import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isValidSearchTraceSamplingBearer } from "@/auth/search-trace-bearer"
 import { prisma } from "@/db/client"
 import {
+  formatSearchTimingLogLine,
   HybridSearchService,
   isContentType,
   type ContentType,
@@ -12,7 +13,9 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const MAX_BODY_BYTES = 4096
 const MAX_QUERY_LENGTH = 1024
 const MAX_LOCALE_LENGTH = 32
+const MAX_LANGUAGE_SLUG_LENGTH = 128
 const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*$/
+const LANGUAGE_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 function tooManyRequests(): Response {
   return Response.json(
@@ -120,6 +123,7 @@ function parseBody(body: unknown):
       limit?: number
       offset?: number
       mode?: string
+      languageSlug?: string
       contentTypes?: ContentType[]
     }
   | Response {
@@ -137,6 +141,16 @@ function parseBody(body: unknown):
   if (locale == null) return badRequest("locale is required")
   if (locale.length > MAX_LOCALE_LENGTH || !BCP47_REGEX.test(locale)) {
     return badRequest("locale must be a safe BCP-47 tag")
+  }
+
+  const languageSlug = parseString(record.languageSlug, "languageSlug")
+  if (languageSlug instanceof Response) return languageSlug
+  if (
+    languageSlug != null &&
+    (languageSlug.length > MAX_LANGUAGE_SLUG_LENGTH ||
+      !LANGUAGE_SLUG_REGEX.test(languageSlug))
+  ) {
+    return badRequest("languageSlug must be a safe public language slug")
   }
 
   const limit = parseInteger(record.limit, "limit")
@@ -165,8 +179,26 @@ function parseBody(body: unknown):
     limit,
     offset,
     mode,
+    languageSlug,
     contentTypes: contentType ? [contentType] : undefined,
   }
+}
+
+async function searchLocaleForParams(params: {
+  locale: string
+  languageSlug?: string
+}): Promise<string | Response> {
+  if (!params.languageSlug) return params.locale
+
+  const language = await prisma.language.findFirst({
+    where: { slug: params.languageSlug, deletedAt: null },
+    select: { bcp47: true },
+  })
+  const bcp47 = language?.bcp47?.trim()
+  if (!bcp47 || bcp47.length > MAX_LOCALE_LENGTH || !BCP47_REGEX.test(bcp47)) {
+    return badRequest("languageSlug must reference a searchable language")
+  }
+  return bcp47
 }
 
 function logValue(value: string | undefined): string {
@@ -197,10 +229,31 @@ export async function POST(request: Request): Promise<Response> {
   if (params instanceof Response) return params
 
   try {
+    const locale = await searchLocaleForParams(params)
+    if (locale instanceof Response) return locale
     const service = new HybridSearchService({ prisma })
-    const response = await service.search(params)
+    const { response, trace, timings } = await service.searchWithTrace({
+      query: params.query,
+      locale,
+      limit: params.limit,
+      offset: params.offset,
+      mode: params.mode,
+      allowInternalEvalModes: true,
+      contentTypes: params.contentTypes,
+    })
     console.info(
-      `[search] event=eval_search auth=bearer route=internal rl=${limit.source} locale=${logValue(params.locale)} mode=${logValue(params.mode)} result_count=${response.results.length}`,
+      `[search] event=eval_search auth=bearer route=internal rl=${limit.source} locale=${logValue(locale)} mode=${logValue(params.mode)} result_count=${response.results.length}`,
+    )
+    console.error(
+      formatSearchTimingLogLine({
+        route: "internal",
+        locale,
+        requestedMode: params.mode ?? null,
+        searchMode: trace.searchMode,
+        outcome: trace.outcome,
+        resultCount: trace.resultCount,
+        timings,
+      }),
     )
     return Response.json(response, { status: 200 })
   } catch (error) {

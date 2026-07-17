@@ -57,6 +57,10 @@ import { type CanvasBlockRenderOptions } from "./canvas-block-list"
 
 const contentBlockKeys = new WeakMap<object, string>()
 let contentBlockKeyCounter = 0
+const selectedMediaButtonClassName =
+  "border-[rgba(110,231,183,0.48)] bg-[rgba(110,231,183,0.22)] text-[var(--color-text-primary)] hover:border-[rgba(110,231,183,0.68)] hover:bg-[rgba(110,231,183,0.3)]"
+const idleMediaButtonClassName =
+  "border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
 
 function stableContentBlockKey(item: unknown, childIndex: number) {
   if (!item || typeof item !== "object") {
@@ -860,7 +864,15 @@ export function ContainerWorkspace({
                                     slotRecord,
                                   )
                                 }}
-                                className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:text-[var(--color-text-primary)]"
+                                className={cx(
+                                  "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border transition-colors duration-[120ms] ease-out",
+                                  slotRecord.backgroundImageAssetId
+                                    ? selectedMediaButtonClassName
+                                    : idleMediaButtonClassName,
+                                )}
+                                aria-pressed={Boolean(
+                                  slotRecord.backgroundImageAssetId,
+                                )}
                                 aria-label={`Choose slot ${slotIndex + 1} background image`}
                               >
                                 <ImageIcon

@@ -1,0 +1,92 @@
+/**
+ * Thread ownership + creation-ceiling gate for the ai-chat lane (feat-208).
+ *
+ * Mastra provides NO ownership enforcement on the agent message path: verified
+ * in @mastra/core 1.36.0, both agent-side thread-preparation call sites run
+ * `getThreadById({ threadId })` and silently ADOPT an existing thread without
+ * comparing its resourceId to the caller's resource (the only mismatch throw
+ * lives in the update-working-memory tool). With persistence, threadId alone
+ * would therefore grant continuation of anyone's thread. Every ai-chat route
+ * MUST call `authorizeAiChatThreadAccess` before streaming an agent turn.
+ *
+ * Known TOCTOU residue (accepted): the check-then-stream gap means an attacker
+ * racing a victim's FIRST turn on a guessed id could create/adopt first —
+ * winning a creation-time race against a v4 UUID, which is not practical.
+ * The `thread_forbidden` outcome is also an existence oracle for thread ids;
+ * accepted for the same entropy reason.
+ */
+
+/**
+ * Per-resource thread-creation ceiling. Bounds a single cooperative or
+ * runaway client only — a cookie-refusing caller can mint a fresh resource per
+ * request, so the retention purge (./ai-chat-retention.ts) is the actual
+ * adversarial backstop on storage growth.
+ */
+export const AI_CHAT_MAX_THREADS_PER_RESOURCE = 200
+
+/**
+ * Resource-key prefix for signed-in users (chat-proxy contract, feat-208).
+ * Single mastra-side home (this module owns the resource contract); apps/chat
+ * keeps its own mirror per the no-cross-app-import rule. Prefix-check only —
+ * NEVER split on ":" (an OIDC sub may contain anything).
+ */
+export const USER_RESOURCE_PREFIX = "user:"
+
+/** The narrow Memory surface the gate needs — structural so tests fake it. */
+export type AiChatOwnershipMemory = {
+  getThreadById: (args: {
+    threadId: string
+  }) => Promise<{ resourceId?: string | null } | null>
+  listThreads: (args: {
+    filter?: { resourceId?: string }
+    page?: number
+    perPage?: number
+  }) => Promise<{ total: number }>
+}
+
+export type AiChatThreadAuthorization =
+  | { ok: true }
+  | { ok: false; reason: "thread_forbidden" | "thread_limit" }
+
+/**
+ * Authorize one turn against a thread. Existing thread → the caller's resource
+ * must equal the thread's owner (`thread_forbidden` otherwise). New thread →
+ * the resource must be under the creation ceiling (`thread_limit` otherwise).
+ *
+ * Fail modes differ by branch, per the @mastra/pg contract — not uniform:
+ *  - Ownership (existing thread): `getThreadById` THROWS on a store error, which
+ *    propagates so the caller maps it to its generic failure — fail CLOSED. This
+ *    is the security-critical guarantee: a store blip never grants continuation
+ *    of someone else's thread.
+ *  - Ceiling (new thread): `listThreads` SWALLOWS store errors and returns total
+ *    0, so a transient fault lets thread creation through — fail OPEN. Accepted:
+ *    the ceiling is only a soft anti-abuse cap on a cooperative/runaway client
+ *    (the retention purge is the adversarial backstop), never the access
+ *    boundary, and a genuinely-down store fails the downstream stream anyway.
+ */
+export async function authorizeAiChatThreadAccess({
+  memory,
+  threadId,
+  resource,
+  maxThreadsPerResource = AI_CHAT_MAX_THREADS_PER_RESOURCE,
+}: {
+  memory: AiChatOwnershipMemory
+  threadId: string
+  resource: string
+  maxThreadsPerResource?: number
+}): Promise<AiChatThreadAuthorization> {
+  const thread = await memory.getThreadById({ threadId })
+  if (thread !== null) {
+    return thread.resourceId === resource
+      ? { ok: true }
+      : { ok: false, reason: "thread_forbidden" }
+  }
+  const { total } = await memory.listThreads({
+    filter: { resourceId: resource },
+    page: 0,
+    perPage: 1,
+  })
+  return total >= maxThreadsPerResource
+    ? { ok: false, reason: "thread_limit" }
+    : { ok: true }
+}

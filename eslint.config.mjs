@@ -40,6 +40,21 @@ export default defineConfig(
     },
   },
   {
+    // Keep exhaustive-deps enabled here so it matches apps/chat's own
+    // next/core-web-vitals config — a directive valid in one lint pass
+    // must not be an unknown rule or unused suppression in the other.
+    files: ["apps/chat/**/*.tsx", "apps/chat/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -83,7 +98,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["apps/roadmap/scripts/**/*.js"],
+    files: ["apps/roadmap/scripts/**/*.js", "apps/mobile/plugins/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -100,6 +115,16 @@ export default defineConfig(
     rules: {
       "@typescript-eslint/no-require-imports": "off",
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
+  },
+  {
+    files: ["apps/mobile/plugins/**/*.test.js"],
+    languageOptions: {
+      globals: {
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+      },
     },
   },
   eslintPluginPrettierRecommended,

@@ -2,7 +2,7 @@
 
 ## Role
 
-This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> source artifacts -> sync/hand off through Manager/Admin GraphQL contracts. Transcript and scene embedding generation belong to Mastra; Manager only supplies source artifacts such as transcript and scene-analysis JSON. Do not reintroduce Manager-side vector generation or CMS-specific embedding sync.
+This app orchestrates AI video enrichment pipelines. Agents working here should understand the full enrichment lifecycle: ingest (Mux) -> transcribe -> translate -> chapters -> metadata -> source artifacts -> sync/hand off through Manager/Admin GraphQL contracts. Transcript and experience embedding generation belong to Mastra; Manager only supplies source artifacts such as transcript and scene-analysis JSON. Scene embedding sync into Admin is retired; scene analysis may remain only for non-search product workflows. Subtitle translation/retiming execution also belongs to Mastra. Source transcript scripture correction judgment belongs to Mastra, while Manager owns deterministic exact-match application, raw/canonical artifact writes, job state, optional video context handoff, validation/correction summary display, artifact manifests, and Mux subtitle sync. Do not reintroduce Manager-side vector generation, provider-heavy subtitle execution, scripture-context detection, subtitle scripture validation, Bible-source calls, or CMS-specific embedding sync.
 
 ## Key files
 

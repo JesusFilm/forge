@@ -3,21 +3,12 @@ import { AppState, type AppStateStatus } from "react-native"
 import type { ApolloClient, NormalizedCacheObject } from "@apollo/client"
 
 import { env } from "../env"
+import { datadogLog } from "./datadog"
 
 /**
- * Hand-rolled, opt-in Apollo cache persistence.
- *
- * apollo3-cache-persist targets Apollo v3 and crashed this app on launch, so
- * this is a small best-effort implementation against v4's cache.extract() /
- * cache.restore(). Everything is guarded so the worst case is "boot cold",
- * never a crash. Gated behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default off) so
- * it ships dark until verified on a real (low-end Android) device via EAS —
- * the startup-restructure risk this carries must not reach users untested.
- *
- * What is persisted: a stripped snapshot of the normalized cache, excluding
- * volatile signed URLs (stream hls, download urls, subtitle vttSrc) which would
- * 404 after expiry — those are always re-fetched. The snapshot is version- and
- * TTL-gated and discarded on any mismatch.
+ * Hand-rolled, opt-in Apollo cache persistence — apollo3-cache-persist crashed on launch (targets v3),
+ * so this is best-effort against v4, fully guarded. Gated behind EXPO_PUBLIC_FORGE_CACHE_PERSIST (default
+ * off, ships dark until EAS-verified); snapshot excludes signed URLs (hls, download urls, vttSrc).
  */
 
 const STORAGE_KEY = "forge.apollo.cache"
@@ -37,41 +28,60 @@ export function isCachePersistenceEnabled(): boolean {
   return env.EXPO_PUBLIC_FORGE_CACHE_PERSIST === "true"
 }
 
-function raceTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
-  return Promise.race([
-    promise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
-  ])
-}
+// Distinguishes a restore that hit the read budget from a genuine cache miss —
+// both otherwise surface as a null read, which R23's timeout/miss split needs.
+const RESTORE_TIMEOUT = Symbol("cache_restore_timeout")
 
 /**
- * Restore the persisted snapshot into the cache on cold start. MUST run before
- * ApolloProvider mounts / before any query, or a network write races and this
- * restore would clobber fresh data. Bounded by a timeout: on a slow read the
- * app boots cold and any late-arriving read is discarded (we never restore
- * after returning).
+ * Restore the persisted snapshot on cold start. MUST run before ApolloProvider
+ * mounts / any query, else a network write races and this clobbers fresh data.
+ * Timeout-bounded: on a slow read the app boots cold and late reads are dropped.
  */
 export async function restoreApolloCache(cache: {
   restore: (data: NormalizedCacheObject) => unknown
 }): Promise<void> {
   if (!isCachePersistenceEnabled()) return
+  let outcome: "hit" | "miss" | "skip" | "timeout" | "error" = "miss"
   try {
-    const raw = await raceTimeout(
+    const raw = await Promise.race([
       AsyncStorage.getItem(STORAGE_KEY),
-      RESTORE_TIMEOUT_MS,
-    )
-    if (raw == null) return
+      new Promise<typeof RESTORE_TIMEOUT>((resolve) =>
+        setTimeout(() => resolve(RESTORE_TIMEOUT), RESTORE_TIMEOUT_MS),
+      ),
+    ])
+    if (raw === RESTORE_TIMEOUT) {
+      outcome = "timeout"
+      return
+    }
+    if (raw == null) {
+      outcome = "miss"
+      return
+    }
     const parsed = JSON.parse(raw) as Partial<Snapshot> | null
-    if (!parsed || parsed.version !== CACHE_VERSION) return
+    if (!parsed || parsed.version !== CACHE_VERSION) {
+      outcome = "skip"
+      return
+    }
     if (
       typeof parsed.persistedAt !== "number" ||
       Date.now() - parsed.persistedAt > TTL_MS
-    )
+    ) {
+      outcome = "skip"
       return
-    if (parsed.data == null || typeof parsed.data !== "object") return
+    }
+    if (parsed.data == null || typeof parsed.data !== "object") {
+      outcome = "skip"
+      return
+    }
     cache.restore(parsed.data)
+    outcome = "hit"
   } catch {
     // Any failure (corrupt blob, parse error, storage error) → boot cold.
+    outcome = "error"
+  } finally {
+    // R23: restore sits on the cold-start critical path; the outcome drives
+    // hit-rate and timeout-vs-miss diagnosis.
+    datadogLog.info("cache_restore", { outcome })
   }
 }
 
@@ -108,20 +118,26 @@ async function writeSnapshot(client: ApolloClient): Promise<void> {
     const serialized = JSON.stringify(snapshot)
     // Over cap → skip the write and keep the last valid snapshot. Never trim
     // (trimming a normalized blob drops ref targets → dangling refs on restore).
-    if (serialized.length > MAX_BYTES) return
+    if (serialized.length > MAX_BYTES) {
+      // R17: the snapshot outgrew the cap; the cold-launch snapshot stops
+      // refreshing (stale-but-valid). Surface it so silent staleness is visible.
+      datadogLog.warn("cache_persist.over_cap", { bytes: serialized.length })
+      return
+    }
     await AsyncStorage.setItem(STORAGE_KEY, serialized)
   } catch {
-    // best-effort
+    // R17: a swallowed write means the cold-launch snapshot silently stops
+    // updating — the home paints stale content on next launch.
+    datadogLog.warn("cache_persist.write_failed", {})
   } finally {
     writing = false
   }
 }
 
 /**
- * Deep-strip volatile signed URLs from the extracted cache before persisting:
- * stream `hls` and subtitle `vttSrc` are nulled and `downloads` arrays emptied,
- * because signed/expiring URLs would 404 after the snapshot's TTL. Stable image
- * `url`s are preserved. Re-fetched fresh on the next cache-and-network read.
+ * Deep-strip volatile signed URLs before persisting: `hls`/`vttSrc` nulled and
+ * `downloads` emptied (they 404 after the snapshot's TTL). Stable image `url`s
+ * are kept; the stripped fields re-fetch on the next cache-and-network read.
  */
 function stripVolatile(data: NormalizedCacheObject): NormalizedCacheObject {
   return deepStrip(data) as NormalizedCacheObject

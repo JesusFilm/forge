@@ -41,6 +41,10 @@
     "termsAgreementSuffix": "",
     "close": "Закрыть",
     "download": "Скачать",
+    "authRequiredTitle": "Хотите скачать это видео?",
+    "authRequiredBody": "Чтобы скачивать видео, нужна бесплатная учетная запись Jesus Film.",
+    "signInToDownload": "Войти, чтобы скачать",
+    "keepWatching": "Продолжить просмотр",
     "checking": "Проверяем",
     "closeTermsOfUse": "Закрыть условия использования",
     "cancel": "Отмена",
@@ -83,7 +87,8 @@
     "toggleOn": "Вкл.",
     "toggleOff": "Выкл.",
     "close": "Закрыть",
-    "apply": "Применить"
+    "apply": "Применить",
+    "noLanguageSubtitles": "Нет субтитров на {language}"
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# СЕРИЯ} few {# СЕРИИ} many {# СЕРИЙ} other {# СЕРИИ}}",
@@ -192,7 +197,10 @@
     "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear"
+    "clearLanguages": "Clear",
+    "queryLanguageDetected": "{language} detected",
+    "searchInLanguage": "Search in {language}",
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
   },
   "HeroPlayer": {
     "playWithSound": "Смотреть",

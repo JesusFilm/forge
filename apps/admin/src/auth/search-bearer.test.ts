@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/config/env", () => ({
   env: {} as {
     WEB_ADMIN_API_KEYS?: string
+    FLEET_ADMIN_API_KEYS?: string
     WORKFLOW_API_KEYS?: string
     BACKUP_DOWNLOAD_API_KEYS?: string
   },
@@ -24,6 +25,7 @@ const { isAnyKnownBearer } = await import("@/auth/search-bearer")
 
 const envMutable = env as {
   WEB_ADMIN_API_KEYS?: string
+  FLEET_ADMIN_API_KEYS?: string
   WORKFLOW_API_KEYS?: string
   BACKUP_DOWNLOAD_API_KEYS?: string
 }
@@ -40,6 +42,7 @@ describe("isAnyKnownBearer", () => {
 
   afterEach(() => {
     envMutable.WEB_ADMIN_API_KEYS = undefined
+    envMutable.FLEET_ADMIN_API_KEYS = undefined
     envMutable.WORKFLOW_API_KEYS = undefined
   })
 
@@ -51,6 +54,20 @@ describe("isAnyKnownBearer", () => {
       valid: true,
       source: "consumer",
     })
+  })
+
+  it("accepts a FLEET_ADMIN_API_KEYS bearer with source=fleet + a non-secret fleetKeyId", async () => {
+    // The fleet key must pass the SEARCH_AUTH_REQUIRED gate (so TV/mobile
+    // search returns 200) and carry a stable sha256-prefix fleetKeyId the global
+    // ceiling buckets on — never the raw key (AE2, R4, security#5).
+    envMutable.FLEET_ADMIN_API_KEYS = "fleet-key-zzz"
+    const result = await isAnyKnownBearer("Bearer fleet-key-zzz")
+    expect(result.valid).toBe(true)
+    if (!result.valid) throw new Error("expected valid")
+    expect(result.source).toBe("fleet")
+    expect(result.fleetKeyId).toMatch(/^[0-9a-f]{12}$/)
+    expect(result.fleetKeyId).not.toBe("fleet-key-zzz")
+    expect(JSON.stringify(result)).not.toContain("fleet-key-zzz")
   })
 
   it("accepts a WORKFLOW_API_KEYS bearer with source=workflow", async () => {

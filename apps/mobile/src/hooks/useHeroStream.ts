@@ -1,19 +1,14 @@
 import { useEffect, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
+import { datadogLog } from "../lib/datadog"
 import { GET_VIDEO_BY_SLUG } from "../lib/queries"
 import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
 
 // Stream-resolution path (KTD-2 lazy half): the bulk home query is card-lean,
-// so hero slides carry no stream at model-build time. GET_VIDEO_BY_SLUG's
-// WatchVideo fragment still projects `variants: dubs { published hls
-// language { slug } }` — its "lean" trim removed each dub's downloads +
-// subtitles, not the dub list itself — so a single cache-first per-video
-// query yields a playable HLS directly. This is the same source the watch
-// page plays (activeVariant.hls / normalizeVideo's first-playable fallback),
-// so resolving or prefetching a slide also warms the cache for navigation to
-// /watch/[slug].
+// so hero slides carry no stream. GET_VIDEO_BY_SLUG still projects the dub list,
+// so one cache-first per-video query yields a playable HLS (the source /watch plays).
 
 export type HeroStreamState = {
   streamUrl: string | null
@@ -29,9 +24,9 @@ const IDLE_STATE: HeroStreamState = {
 }
 
 /**
- * Resolve a playable HLS URL for a hero slide's video slug. Pass null for
- * mux insert slides (they carry their own src) — the hook stays idle.
- * Selection order + validateStreamingUrl gating live in selectHeroStreamUrl.
+ * Resolve a playable HLS URL for a hero slide's video slug. Pass null for mux
+ * insert slides (they carry their own src) — the hook stays idle. Selection
+ * order + validateStreamingUrl gating live in selectHeroStreamUrl.
  */
 export function useHeroStream(slug: string | null): HeroStreamState {
   const [state, setState] = useState<HeroStreamState>(IDLE_STATE)
@@ -58,10 +53,15 @@ export function useHeroStream(slug: string | null): HeroStreamState {
         const streamUrl = selectHeroStreamUrl(
           result.data?.videoBySlug?.variants,
         )
+        // R37: a curated slide dropped for no playable variant is a silent loss.
+        if (streamUrl == null) {
+          datadogLog.warn("hero_stream.failed", { reason: "no_variant", slug })
+        }
         setState({ streamUrl, resolving: false, failed: streamUrl == null })
       })
       .catch(() => {
         if (requestIdRef.current !== thisRequest) return
+        datadogLog.warn("hero_stream.failed", { reason: "query_failed", slug })
         setState({ streamUrl: null, resolving: false, failed: true })
       })
   }, [slug])
@@ -70,12 +70,9 @@ export function useHeroStream(slug: string | null): HeroStreamState {
 }
 
 // ── Next-slide prefetch ─────────────────────────────────────────────
-//
-// Mirrors Discover's capped prefetch (app/(tabs)/watch.tsx): deduped by slug
-// and capped in flight so fast swiping can't burst the per-video query
-// against admin. cache-first means a previously-resolved slug is a no-op at
-// the network layer; a failed prefetch releases its slug so a later attempt
-// (or the slide's own useHeroStream resolution) can retry.
+// Mirrors Discover's capped prefetch (app/(tabs)/watch.tsx): deduped by slug,
+// capped in flight so fast swiping can't burst the per-video query. cache-first
+// makes a resolved slug a network no-op; a failed prefetch releases its slug.
 
 const MAX_PREFETCH_INFLIGHT = 3
 const prefetchedSlugs = new Set<string>()

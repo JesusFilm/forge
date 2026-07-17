@@ -100,7 +100,7 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.robots).toEqual({ index: true, follow: true })
   })
 
-  it("generates resolved video metadata with Twitter parity and hreflang alternates", async () => {
+  it("generates resolved video metadata with Twitter parity and no page-head hreflang", async () => {
     const { generateWatchVideoMetadata } = await import("./experience-metadata")
     const selectedVariant = {
       documentId: "dub-en",
@@ -126,6 +126,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-1",
         slug: "life-of-jesus-gospel-of-john",
+        publishedAt: "2026-06-01T12:00:00.000Z",
         title: "Life of Jesus (Gospel of John)",
         snippet: "A feature film about Jesus.",
         description: "Watch the life of Jesus from the Gospel of John.",
@@ -215,11 +216,61 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.alternates).toMatchObject({
       canonical:
         "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
-      languages: {
-        en: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/english.html",
-        es: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html/spanish-castilian.html",
+    })
+    expect(metadata.alternates).not.toHaveProperty("languages")
+  })
+
+  it("keeps contextual collection routes canonicalized to the standalone video URL", async () => {
+    const { generateWatchVideoMetadata } = await import("./experience-metadata")
+    const selectedVariant = {
+      documentId: "dub-en",
+      slug: null,
+      published: true,
+      hls: "https://cdn.example/pilate-en.m3u8",
+      duration: 180,
+      language: {
+        slug: "english",
+        bcp47: "en",
+        coreId: "529",
+        name: "English",
+        nativeName: "English",
+      },
+      downloads: [],
+      muxVideo: { playbackId: "mux-pilate" },
+    }
+
+    const metadata = generateWatchVideoMetadata("en", {
+      routeSlug: "jesus-is-brought-to-pilate",
+      pathLocale: "english",
+      seriesSlug: "jesus",
+      selectedVariant,
+      video: {
+        documentId: "video-pilate",
+        slug: "jesus-is-brought-to-pilate",
+        publishedAt: null,
+        title: "Jesus is Brought to Pilate",
+        snippet: "Pilate questions Jesus.",
+        description: "Pilate questions Jesus before the crowd.",
+        noIndex: false,
+        label: "clip",
+        imageAlt: "Jesus before Pilate",
+        images: [],
+        primaryLanguage: null,
+        parents: [],
+        children: [],
+        childDubLanguages: [],
+        variants: [selectedVariant],
+        subtitles: [],
+        studyQuestions: [],
+        bibleCitations: [],
       },
     })
+
+    const canonical =
+      "https://www.jesusfilm.org/watch/jesus-is-brought-to-pilate.html/english.html"
+    expect(metadata.alternates?.canonical).toBe(canonical)
+    expect(metadata.openGraph).toMatchObject({ url: canonical })
+    expect(metadata.alternates).not.toHaveProperty("languages")
   })
 
   it("uses a 1200x630 Mux social thumbnail before the generic image for playable videos", async () => {
@@ -248,6 +299,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-1",
         slug: "jesus",
+        publishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,
@@ -302,6 +354,7 @@ describe("getWatchPageMetadata", () => {
       video: {
         documentId: "video-1",
         slug: "jesus",
+        publishedAt: null,
         title: "Jesus",
         snippet: null,
         description: null,

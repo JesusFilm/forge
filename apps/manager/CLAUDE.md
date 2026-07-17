@@ -2,7 +2,7 @@
 
 ## What this app does
 
-AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript, scene, and experience embedding generation belongs to Mastra; Manager only supplies source artifacts.
+AI video enrichment pipeline dashboard. Ingests video assets via Mux, runs enrichment workflows (transcription, translation, chapters, metadata, and source-artifact generation), stores artifacts in Railway S3-compatible Object Storage, and syncs results through Manager/Admin GraphQL contracts. Background transcript and experience embedding generation belongs to Mastra; subtitle translation/retiming execution also belongs to Mastra. Scene embedding sync into Admin is retired, while scene analysis may still produce non-search source artifacts. Manager supplies source artifacts and optional video context, owns job state, displays returned validation/correction summaries, records validation/correction artifacts in manifests, and keeps Mux subtitle sync. Scripture-context detection, gospel-aware subtitle prompt guidance, subtitle scripture accuracy validation, source transcript scripture correction judgment, and optional Bible-source calls stay in Mastra; Manager only applies deterministic exact-match source corrections returned by Mastra.
 
 ## Source
 
@@ -80,21 +80,19 @@ Local mock-mode smoke tests can use the seeded credentials:
 - email: `manager@forge.test`
 - password: `mock-manager-password`
 
-## Triggering admin embedding backfills (plan 006)
+## Triggering admin embedding backfills
 
-Manager exposes two REST endpoints that proxy to apps/admin's
-`triggerSceneEmbeddingBackfill` /
-`triggerTranscriptEmbeddingBackfill` GraphQL mutations:
+Manager exposes one REST endpoint that proxies to apps/admin's active
+`triggerTranscriptEmbeddingBackfill` GraphQL mutation:
 
-- `POST /api/admin-embeds/scene` — body `{ mappingS3Key?, coreIds?,
-locales? }`
 - `POST /api/admin-embeds/transcript` — body `{ mappingS3Key?,
 coreIds?, languages? }`
 
-Admin owns the destination Postgres schema (`video_scene_locale`,
-`video_transcript`, `video_transcript_chunk`); manager only carries
-the trigger surface. Proxy ensures behaviour parity by definition —
-single workflow, single source of truth.
+Admin owns the destination Postgres schema (`video_transcript`,
+`video_transcript_chunk`); manager only carries the trigger surface.
+Proxy ensures behaviour parity by definition -- single workflow, single
+source of truth. The legacy scene embedding proxy is retired; Manager
+scene-analysis artifacts must not be synced into Admin scene embeddings.
 
 **Auth (manager-side):** `authenticateRequest` — same Strapi JWT
 cookie or `MANAGER_API_KEY` bearer used by every other manager API
@@ -104,7 +102,8 @@ route.
 ${ADMIN_EMBED_TRIGGER_API_KEY}` against admin's GraphQL endpoint.
 Admin validates via its `WORKFLOW_API_KEYS` allowlist and mints a
 request-bound `WORKFLOW_TRIGGER` principal that satisfies only
-`write:scene-embeddings` + `write:transcript-embeddings`.
+`write:transcript-embeddings` and the other active workflow-trigger
+permissions in Admin.
 
 **Env on `forge-manager` Doppler:**
 
@@ -250,6 +249,13 @@ job-loss).
   client envelopes) throw the workflow SDK's `FatalError` so the runtime does
   NOT auto-retry them (default is 3x); transient failures keep throwing
   `SmartCropStepError` and ride the SDK retries.
+- **Provider recovery ownership:** Mastra's shared Smart Crop OpenRouter client
+  owns bounded automatic recovery for explicit 429/503 outcomes. Exhausted
+  provider recovery, including `provider_rate_limited`, arrives with
+  `retryable:false` and becomes `FatalError`; Manager must not immediately
+  launch another full provider loop. Manager-to-Mastra `network_error` remains
+  retryable because no provider response is known. Last error includes the
+  sanitized typed reason and Mastra run id for correlation.
 - **Mux output idempotency:** the Mux output step records the created asset id
   in `{assetId}/smart-crop-mux-output-v1.json` IMMEDIATELY after
   `createMuxAsset` (before readiness polling, `ready: false`). Retries resume
@@ -258,7 +264,12 @@ job-loss).
 - **Plan checkpointing:** the plan step persists per-batch progress to
   `{assetId}/smart-crop-plan-progress-v1.json` (keyed to the fingerprint's
   `generatedAt`); retries resume from the first incomplete vision batch
-  instead of re-paying completed LLM calls. `force` ignores the checkpoint.
+  instead of re-paying completed LLM calls. This includes an operator Retry
+  after provider recovery exhausts. `force` ignores the checkpoint.
+- **Face-first anchoring:** Mastra plan/repair responses may include optional
+  `faceVisible` and `faceCenter` segment metadata. Manager preserves those
+  fields for artifacts/debugging but does not calculate crop x positions; the
+  deterministic Mastra planner already emitted the final keyframes.
 - **QA is advisory:** mastra config-shaped QA failures
   (`frame_host_not_allowed`, `provider_config_missing`, `config_missing`,
   `auth_failed`, `provider_auth_failed`) degrade the QA step to `skipped` with
@@ -320,6 +331,118 @@ rejects every QA call with `frame_host_not_allowed`. Manager degrades that to
 a skipped (advisory) QA step rather than a failed job, but the QA gap stays
 until the allowlist is extended.
 
+## Shorts Studio
+
+Vertical 9:16 shorts with word-level whisper captions, rendered via Remotion
+(plan `docs/plans/2026-06-11-002-feat-manager-shorts-studio-plan.md` — the
+authoritative architecture and wire-contract source; roadmap feat-178).
+Topology clones Smart Crop: manager owns the operator UI
+(`/dashboard/shorts`), durable orchestration
+(`src/workflows/shortsStudio.ts` + `launchShorts.ts` — `options.shorts`
+discriminator on the existing JobRecord, ZERO admin schema changes), draft
+state, propsHash computation, and Mux output asset creation;
+apps/shorts-worker owns the bytes (ffmpeg clip trim + whisper transcription
+in a prepare lane, Remotion renders in a render lane — client:
+`src/services/shorts-worker.ts`, submit + poll with bounded resubmit and
+queue_full backoff, poll ceilings prepare 50min / render 80min strictly
+ABOVE the worker's 45/70min deadlines); `packages/shorts-compositions` is
+the shared composition consumed by both the browser `<Player>` preview and
+the worker render (parity by construction).
+
+- Routes: `POST/GET /api/shorts/jobs` (create validates clip bounds 5–180s
+  against live Mux duration — never `mux_videos.duration`),
+  `GET /api/shorts/videos/[coreId]` (eligibility with reasons
+  `missing_mux_asset | playback_not_public`), `POST+GET
+/api/shorts/jobs/[id]/draft`, `POST /api/shorts/jobs/[id]/render`,
+  `POST /api/shorts/jobs/[id]/retry` (`{force?: "prepare" | "render"}`;
+  force-prepare responses surface `discardsCaptionEdits: true`),
+  `GET /api/shorts/jobs/[id]/media/[clip|output]` (streaming).
+- **Phase lifecycle + single-writer rule:** UI/API source of truth is
+  `ShortsPhase` in the `shorts` metadata artifact entry
+  (`src/lib/shorts-report.ts`): `queued → preparing → ready_for_review →
+rendering → mux_processing → completed`, failures
+  `prepare_failed | render_failed`. The WORKFLOWS own all phase
+  transitions; routes write launching intents only. Prepare ends with
+  `job.status = "completed"` + phase `ready_for_review` — shorts routes
+  gate on PHASE, not job status (the generic retry route never sees shorts
+  semantics). Render/retry launches claim an in-memory TTL slot
+  (`src/lib/shorts-claim.ts` — sync-claim before any await, try/finally
+  release).
+- **Draft / provenance / propsHash contracts:** whisper captions
+  (`shorts-captions-v1`) are immutable; operator edits live in
+  `shorts-draft-v1.json` — last-write-wins with SERVER-side `draftVersion`
+  increment and `captionsGeneratedAt` provenance (`src/lib/shorts-draft.ts`;
+  `updatedBy` derived from the authenticated actor, never the body).
+  Force-prepare regenerates captions → provenance mismatch → draft reset:
+  the documented caption-edit discard. Render hard-gates
+  `draft_provenance_mismatch`. `propsHash` = sha256 over canonical
+  (sorted-key) JSON of `{clip: {assetId, artifactType: "shorts-clip-v1"},
+props}` (`src/lib/shorts-props.ts`) — `clipUrl` is excluded by
+  construction and the worker treats the hash as opaque. The render
+  workflow REUSES an existing output when the stored render meta echoes the
+  same propsHash and the output MP4 exists (e.g. relaunch after a
+  Mux-output failure never re-pays a Remotion render); the worker's
+  `render:{assetId}:{propsHash}` dedupe re-attaches identical in-flight
+  submits. Mux output is record-before-poll
+  (`shorts-mux-output-v1.json` written before readiness polling,
+  errored → recreate; presign-unavailable → step skipped, job completes
+  with `output.ready: false`).
+- **Streaming media route, not the artifact route:** shorts MP4s are served
+  ONLY by `GET /api/shorts/jobs/[id]/media/[clip|output]` — fixed logical
+  literals, Range-capable (single + suffix ranges → 206, multi-range → 416),
+  stream-never-buffer, 60s in-process jobId→prefix cache, `Cache-Control:
+private, max-age=3600`. The legacy buffering artifact route must NEVER
+  serve shorts media: `readArtifact` buffers whole objects in memory and the
+  rendered output is 180–360MB.
+- **Import rule:** manager server/workflow code imports ONLY the pure
+  subpaths `@forge/shorts-compositions/{schema,captions,registry}` (the
+  compositions package's module-graph test pins schema/captions as
+  React/Remotion-free). The package root (`ShortComposition`, Player
+  consumers) is imported ONLY inside `next/dynamic` `ssr:false` client
+  components (`src/features/shorts/short-preview.tsx` — memoized
+  inputProps, draft commits debounced 250ms, Player never keyed by
+  `draftVersion`). `remotion`/`@remotion/*` are pinned EXACT across
+  manager / worker / compositions — the lockstep test fails on drift.
+- Whisper language resolution: `src/lib/whisper-language.ts` (BCP-47 →
+  whisper ISO-639-1; aliases `jv→jw`, `nb→no`, `fil→tl`; `null` =
+  unsupported → captions-less short annotated
+  `transcription_unsupported_language`; no-audio clips annotate
+  `transcription_skipped_no_audio`). ElevenLabs cue-level transcription
+  (enrichment) and whisper word-level captions (shorts) deliberately
+  coexist — word timings ARE the shorts product; do not "unify" them.
+- **Templates** (source of truth: `SHORT_TEMPLATES` in
+  `packages/shorts-compositions/src/templates/registry.ts` — per-template
+  default knobs applied when an operator PICKS a template in the editor):
+
+  | id      | label | accentColor | captionPosition | captionFont  | waveformStyle | showCaptions |
+  | ------- | ----- | ----------- | --------------- | ------------ | ------------- | ------------ |
+  | `focus` | Focus | `#f97316`   | `center`        | `montserrat` | `bars`        | `true`       |
+  | `frame` | Frame | `#f97316`   | `lower`         | `montserrat` | `bars`        | `true`       |
+
+  Distinct from the freshly-prepared INITIAL draft (`buildInitialDraft` in
+  `src/lib/shorts-draft.ts`, plan decision 14): Focus template, brand-yellow
+  `#facc15` accent, `lower` caption band.
+
+- Licensing: JFP is a non-profit → free Remotion license per Remotion's
+  LICENSE.md; `acknowledgeRemotionLicense` is set on the Player. Re-verify
+  at Remotion 5.0.
+
+Env (both `.optional()` at schema load; shorts routes return 503
+`config_missing` when unset):
+
+| Variable               | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| SHORTS_WORKER_BASE_URL | shorts-worker base URL                      |
+| SHORTS_WORKER_API_KEY  | caller-side single bearer for shorts-worker |
+
+**Deploy ordering (receiver first):** deploy the shorts-worker Railway
+service (Dockerfile builder, Config-as-code Path set, numReplicas=1), set
+`SHORTS_WORKER_API_KEYS` there (a DISTINCT secret from
+`CROP_WORKER_API_KEYS`), verify a wrong bearer gets 401 (not 503), THEN set
+manager's `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Full checklist
+(container smoke, Dockerfile.dockerignore caveat):
+`apps/shorts-worker/CLAUDE.md`.
+
 ## Common pitfalls
 
 - The workflow SDK package is `workflow` (not `@workflowdev/sdk`). See https://useworkflow.dev/.
@@ -332,41 +455,45 @@ until the allowlist is extended.
 
 ## Environment variables (Doppler project: forge-manager)
 
-| Variable                               | Description                                                                    |
-| -------------------------------------- | ------------------------------------------------------------------------------ |
-| MUX_TOKEN_ID                           | Mux API token ID                                                               |
-| MUX_TOKEN_SECRET                       | Mux API token secret                                                           |
-| OPENROUTER_API_KEY                     | OpenRouter API key                                                             |
-| ELEVENLABS_API_KEY                     | ElevenLabs API key for audio isolation (optional — enables audio cleanup)      |
-| RAILWAY_S3_ENDPOINT                    | Railway Object Storage endpoint (optional — local fallback)                    |
-| RAILWAY_S3_REGION                      | Railway S3 region (default: auto)                                              |
-| RAILWAY_S3_BUCKET                      | Railway S3 bucket name (optional — triggers S3 mode)                           |
-| RAILWAY_S3_ACCESS_KEY_ID               | Railway S3 access key (optional)                                               |
-| RAILWAY_S3_SECRET_ACCESS_KEY           | Railway S3 secret key (optional)                                               |
-| MANAGER_DATA_MODE                      | `admin` or `mock` (default `admin`)                                            |
-| MANAGER_BACKEND_MODE                   | Optional override for data/job backend mode (`admin` or `mock`)                |
-| MANAGER_MOCK_SESSION_SECRET            | Required in `mock` mode to sign Manager-issued mock sessions                   |
-| MANAGER_MOCK_DATA_PATH                 | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)          |
-| WORKFLOW_API_KEY                       | workflow API key (optional, for production durability)                         |
-| MANAGER_API_KEY                        | API key for external clients (optional in dev)                                 |
-| MANAGER_SESSION_SECRET                 | Secret for Auth-backed `manager-session` cookies                               |
-| AUTH_ISSUER_URL                        | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                  |
-| AUTH_MANAGER_CLIENT_ID                 | Manager OAuth client ID registered in Auth                                     |
-| AUTH_MANAGER_CLIENT_SECRET             | Manager OAuth client secret                                                    |
-| AUTH_MANAGER_SERVICE_CLIENT_ID         | Manager service OAuth client ID for Admin session validation                   |
-| AUTH_MANAGER_SERVICE_CLIENT_SECRET     | Manager service OAuth client secret for Admin session validation               |
-| ADMIN_MANAGER_API_KEY                  | Legacy bearer key Manager uses for Admin Manager session/read/job contracts    |
-| ADMIN_MANAGER_SESSION_URL              | Optional override for Admin Manager session validation endpoint                |
-| ADMIN_GRAPHQL_URL                      | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)             |
-| ADMIN_EMBED_TRIGGER_API_KEY            | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                 |
-| ADMIN_TRIGGER_API_KEYS                 | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2) |
-| MASTRA_BASE_URL                        | Internal Mastra runtime URL for transcript embedding launches                  |
-| MASTRA_SERVICE_API_KEY                 | Bearer key Manager presents to Mastra service routes                           |
-| MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS | Optional timeout for the Manager to Mastra transcript launch call              |
-| CROP_WORKER_BASE_URL                   | crop-worker base URL (optional — enables Smart Crop)                           |
-| CROP_WORKER_API_KEY                    | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)     |
-| MASTRA_SMART_CROP_TIMEOUT_MS           | Optional per-call timeout for Mastra smart-crop launches (default 120000)      |
-| NEXT_PUBLIC_WATCH_URL                  | Public video watch URL (optional)                                              |
+| Variable                                          | Description                                                                                   |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| MUX_TOKEN_ID                                      | Mux API token ID                                                                              |
+| MUX_TOKEN_SECRET                                  | Mux API token secret                                                                          |
+| OPENROUTER_API_KEY                                | OpenRouter API key                                                                            |
+| ELEVENLABS_API_KEY                                | ElevenLabs API key for audio isolation (optional — enables audio cleanup)                     |
+| RAILWAY_S3_ENDPOINT                               | Railway Object Storage endpoint (optional — local fallback)                                   |
+| RAILWAY_S3_REGION                                 | Railway S3 region (default: auto)                                                             |
+| RAILWAY_S3_BUCKET                                 | Railway S3 bucket name (optional — triggers S3 mode)                                          |
+| RAILWAY_S3_ACCESS_KEY_ID                          | Railway S3 access key (optional)                                                              |
+| RAILWAY_S3_SECRET_ACCESS_KEY                      | Railway S3 secret key (optional)                                                              |
+| MANAGER_DATA_MODE                                 | `admin` or `mock` (default `admin`)                                                           |
+| MANAGER_BACKEND_MODE                              | Optional override for data/job backend mode (`admin` or `mock`)                               |
+| MANAGER_MOCK_SESSION_SECRET                       | Required in `mock` mode to sign Manager-issued mock sessions                                  |
+| MANAGER_MOCK_DATA_PATH                            | Optional mock runtime store path (default `.tmp/mock-cms/store.json`)                         |
+| WORKFLOW_API_KEY                                  | workflow API key (optional, for production durability)                                        |
+| MANAGER_API_KEY                                   | API key for external clients (optional in dev)                                                |
+| MANAGER_SESSION_SECRET                            | Secret for Auth-backed `manager-session` cookies                                              |
+| AUTH_ISSUER_URL                                   | Shared Auth issuer URL, normally `https://auth.jesusfilm.org`                                 |
+| AUTH_MANAGER_CLIENT_ID                            | Manager OAuth client ID registered in Auth                                                    |
+| AUTH_MANAGER_CLIENT_SECRET                        | Manager OAuth client secret                                                                   |
+| AUTH_MANAGER_SERVICE_CLIENT_ID                    | Manager service OAuth client ID for Admin session validation                                  |
+| AUTH_MANAGER_SERVICE_CLIENT_SECRET                | Manager service OAuth client secret for Admin session validation                              |
+| ADMIN_MANAGER_API_KEY                             | Legacy bearer key Manager uses for Admin Manager session/read/job contracts                   |
+| ADMIN_MANAGER_SESSION_URL                         | Optional override for Admin Manager session validation endpoint                               |
+| ADMIN_GRAPHQL_URL                                 | Full URL of admin's `/api/graphql` (used by `/api/admin-embeds/*`)                            |
+| ADMIN_EMBED_TRIGGER_API_KEY                       | Bearer key, must match an entry in admin's `WORKFLOW_API_KEYS`                                |
+| ADMIN_TRIGGER_API_KEYS                            | CSV of bearer keys admin can use to call `/api/admin-trigger/*` (feat-119 PR2)                |
+| MASTRA_BASE_URL                                   | Internal Mastra runtime URL for transcript embedding and subtitle launches                    |
+| MASTRA_SERVICE_API_KEY                            | Bearer key Manager presents to Mastra service routes                                          |
+| MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS            | Optional timeout for the Manager to Mastra transcript launch call                             |
+| MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS             | Optional timeout for the Manager to Mastra subtitle enrichment launch call                    |
+| MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS | Optional timeout for the Manager to Mastra source transcript scripture correction launch call |
+| CROP_WORKER_BASE_URL                              | crop-worker base URL (optional — enables Smart Crop)                                          |
+| CROP_WORKER_API_KEY                               | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)                    |
+| MASTRA_SMART_CROP_TIMEOUT_MS                      | Optional per-call timeout for Mastra smart-crop launches (default 120000)                     |
+| SHORTS_WORKER_BASE_URL                            | shorts-worker base URL (optional — enables Shorts Studio)                                     |
+| SHORTS_WORKER_API_KEY                             | Bearer key Manager presents to shorts-worker (optional — enables Shorts Studio)               |
+| NEXT_PUBLIC_WATCH_URL                             | Public video watch URL (optional)                                                             |
 
 ## Standalone smoke
 

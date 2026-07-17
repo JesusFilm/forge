@@ -9,20 +9,9 @@ import { LIST_SHEET_DETENTS } from "../styles/shared"
 type SheetDetentChangeEvent = { data?: { index?: number } }
 
 /**
- * Height for a FlashList inside a formSheet.
- *
- * FlashList needs a CONCRETE height to virtualize, but the formSheet content
- * root is unbounded so onLayout can't measure it (it reads back our own fixed
- * height — circular). Derive the height from the native detent index instead:
- * track the current detent and return LIST_SHEET_DETENTS[index] * windowHeight,
- * seeded at the initial (index 0) detent.
- *
- * The listener registers once on [navigation] (reading windowHeight through the
- * derived return, not the closure) so a rotation/font-scale change mid-drag
- * can't drop a detent event by tearing the listener down. The state update
- * bails when the index is unchanged, so a per-frame event stream during a drag
- * doesn't thrash renders. The height is derived (not stored), so it also tracks
- * windowHeight changes without an extra effect.
+ * Concrete FlashList height for a formSheet: unbounded content makes onLayout circular, so
+ * derive LIST_SHEET_DETENTS[index] * windowHeight from the detent index. Listener is on
+ * [navigation] (rotation-safe, not torn down mid-drag); unchanged-index bails to avoid per-frame thrash.
  */
 export function useSheetListHeight(windowHeight: number): number {
   const [detentIndex, setDetentIndex] = useState(0)

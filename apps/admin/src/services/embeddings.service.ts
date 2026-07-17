@@ -9,6 +9,7 @@ import { toPgVector } from "@/db/pgvector"
 
 export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
 export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
+const OPENROUTER_EMBEDDING_PROVIDER = "SiliconFlow"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -17,6 +18,8 @@ export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
  * fans out across many scenes.
  */
 const EMBEDDING_REQUEST_TIMEOUT_MS = 30_000
+const SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS = 2_500
+const SINGLE_EMBEDDING_REQUEST_ATTEMPTS = 2
 
 const BLOCK_TEXT_IGNORE_KEY =
   /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
@@ -199,7 +202,22 @@ type EmbeddingProvider = {
   model: string
   url: string
   dimensions?: number
+  routing?: {
+    only: string[]
+    allow_fallbacks: boolean
+    require_parameters: boolean
+  }
 }
+
+type EmbeddingProviderResult =
+  | {
+      ok: true
+      body: unknown
+    }
+  | {
+      ok: false
+      status: number
+    }
 
 function selectProvider(): EmbeddingProvider {
   const openRouterApiKey = env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
@@ -209,11 +227,123 @@ function selectProvider(): EmbeddingProvider {
       model: OPENROUTER_EMBEDDING_MODEL,
       url: "https://openrouter.ai/api/v1/embeddings",
       dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+      routing: {
+        only: [OPENROUTER_EMBEDDING_PROVIDER],
+        allow_fallbacks: false,
+        require_parameters: true,
+      },
     }
   }
   throw new EmbeddingsBatchError(
     "missing_credentials",
     "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required for embedding generation",
+  )
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError"
+}
+
+function embeddingTimeoutError(): Error {
+  const error = new Error("Embedding request timed out")
+  error.name = "AbortError"
+  return error
+}
+
+async function fetchEmbeddingResponse(
+  provider: EmbeddingProvider,
+  body: string,
+  signal: AbortSignal,
+): Promise<EmbeddingProviderResult> {
+  const response = await fetch(provider.url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${provider.apiKey}`,
+      "content-type": "application/json",
+    },
+    body,
+    signal,
+  })
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+    }
+  }
+
+  return {
+    ok: true,
+    body: await response.json(),
+  }
+}
+
+async function fetchEmbeddingResponseWithDeadline(
+  provider: EmbeddingProvider,
+  body: string,
+  timeoutMs: number,
+): Promise<EmbeddingProviderResult> {
+  const controller = new AbortController()
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      fetchEmbeddingResponse(provider, body, controller.signal),
+      new Promise<EmbeddingProviderResult>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => {
+          controller.abort()
+          reject(embeddingTimeoutError())
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
+  }
+}
+
+async function fetchSingleEmbeddingResponseWithRetry(
+  provider: EmbeddingProvider,
+  body: string,
+): Promise<EmbeddingProviderResult> {
+  let lastError: unknown
+
+  for (
+    let attempt = 0;
+    attempt < SINGLE_EMBEDDING_REQUEST_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      return await fetchEmbeddingResponseWithDeadline(
+        provider,
+        body,
+        SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS,
+      )
+    } catch (error) {
+      lastError = error
+      if (!isAbortError(error)) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError
+}
+
+async function fetchEmbeddingResponseWithTimeout(
+  provider: EmbeddingProvider,
+  body: string,
+  inputCount: number,
+): Promise<EmbeddingProviderResult> {
+  if (inputCount === 1) {
+    return fetchSingleEmbeddingResponseWithRetry(provider, body)
+  }
+
+  return fetchEmbeddingResponseWithDeadline(
+    provider,
+    body,
+    EMBEDDING_REQUEST_TIMEOUT_MS,
   )
 }
 
@@ -255,32 +385,25 @@ export async function generateExperienceEmbeddings(
 
   const provider = selectProvider()
 
-  const controller = new AbortController()
-  const timeoutHandle = setTimeout(
-    () => controller.abort(),
-    EMBEDDING_REQUEST_TIMEOUT_MS,
-  )
-  let response: Response
+  let response: EmbeddingProviderResult
+  const requestBody = JSON.stringify({
+    model: provider.model,
+    input: normalized,
+    encoding_format: "float",
+    ...(provider.dimensions ? { dimensions: provider.dimensions } : {}),
+    ...(provider.routing ? { provider: provider.routing } : {}),
+  })
   try {
-    response = await fetch(provider.url, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${provider.apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: provider.model,
-        input: normalized,
-        encoding_format: "float",
-        ...(provider.dimensions ? { dimensions: provider.dimensions } : {}),
-      }),
-      signal: controller.signal,
-    })
+    response = await fetchEmbeddingResponseWithTimeout(
+      provider,
+      requestBody,
+      normalized.length,
+    )
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
+    if (isAbortError(error)) {
       throw new EmbeddingsBatchError(
         "request_timed_out",
-        `Embedding request timed out after ${EMBEDDING_REQUEST_TIMEOUT_MS}ms`,
+        "Embedding request timed out",
         error,
       )
     }
@@ -289,8 +412,6 @@ export async function generateExperienceEmbeddings(
       "Embedding request failed before response",
       error,
     )
-  } finally {
-    clearTimeout(timeoutHandle)
   }
 
   if (!response.ok) {
@@ -302,7 +423,7 @@ export async function generateExperienceEmbeddings(
     )
   }
 
-  const parsed = EmbeddingResponseSchema.safeParse(await response.json())
+  const parsed = EmbeddingResponseSchema.safeParse(response.body)
   if (!parsed.success) {
     throw new EmbeddingsBatchError(
       "validation_failed",

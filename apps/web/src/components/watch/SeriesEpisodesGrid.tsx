@@ -12,6 +12,7 @@ type Episode = NonNullable<Episodes[number]>
 type SeriesEpisodesGridProps = {
   episodes: Episodes
   languageSlug: string
+  parentSlug: string
   // Backdrop image painted behind the grid when no card is hovered.
   // Typically the series record's own poster.
   seriesPosterUrl?: string | null
@@ -79,6 +80,7 @@ function backdropReducer(
 export function SeriesEpisodesGrid({
   episodes,
   languageSlug,
+  parentSlug,
   seriesPosterUrl = null,
 }: SeriesEpisodesGridProps) {
   const [state, dispatch] = useReducer(backdropReducer, {
@@ -190,7 +192,7 @@ export function SeriesEpisodesGrid({
     <section
       data-testid="series-episodes-grid-wrapper"
       data-active={hasBackdrop ? "true" : "false"}
-      className="relative z-20 isolate overflow-hidden bg-stone-900 px-10 pt-16 pb-16 md:px-16 md:pt-20 md:pb-20 xl:px-24"
+      className="relative z-20 isolate overflow-hidden bg-stone-900 px-5 pt-16 pb-16 md:px-16 md:pt-20 md:pb-20 xl:px-24"
     >
       {/* Stack A — one of two parallel three-layer image sets that
           crossfade on hover. Layer 0 is a normal-blend base; without
@@ -313,6 +315,7 @@ export function SeriesEpisodesGrid({
             episode={episode}
             index={index}
             languageSlug={languageSlug}
+            parentSlug={parentSlug}
             backdropUrl={resolveEpisodeImageUrl(episode)}
           />
         ))}
