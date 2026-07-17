@@ -222,6 +222,6 @@ discipline — see related doc).
 
 - `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md` — the timeout-budget rule these clients follow.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — per-branch test discipline for the union.
-- `docs/solutions/security-issues/ssrf-defense-streaming-proxy-and-codeql-fp-20260504.md` — SSRF prior art (it covers apps/web's download proxy; the mastra clients' equivalent control is the env boot-time host allowlist, not a per-request check). Also the dismissible CodeQL `js/request-forgery` FP on env-derived fetch URLs.
+- `docs/solutions/security-issues/ssrf-defense-streaming-proxy-and-codeql-fp-20260504.md` — SSRF prior art. Mastra clients with always-on endpoints retain boot-time host allowlists; optional discovery clients instead validate HTTPS immediately before the request and reject redirects so their configuration cannot block service startup. Also the dismissible CodeQL `js/request-forgery` FP on env-derived fetch URLs.
 - `docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md` — why config is `.optional()` with a runtime `config_missing` short-circuit.
 - `docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md` — the plain-string `event=` logging the tool layer uses for these failures.

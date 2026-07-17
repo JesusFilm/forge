@@ -12,6 +12,7 @@ import {
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
 import DatadogRum from "@/components/DatadogRum"
+import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 
@@ -93,6 +94,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
           <FloatingSearchProvider>
+            <FeedbackLauncher />
             <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
           </FloatingSearchProvider>
         </NextIntlClientProvider>

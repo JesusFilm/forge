@@ -306,6 +306,19 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Discover the full story")
     expect(container.textContent).toContain("Built for global missions")
     expect(container.textContent).toContain("Sign Up For Our Newsletter")
+    const socialHrefs = [
+      "https://twitter.com/jesusfilm",
+      "https://www.facebook.com/jesusfilm",
+      "https://www.instagram.com/jesusfilm",
+      "https://www.youtube.com/user/jesusfilm",
+    ]
+    for (const href of socialHrefs) {
+      const socialLink = container.querySelector(`a[href="${href}"]`)
+      expect(socialLink?.getAttribute("target")).toBe("_blank")
+      expect(socialLink?.getAttribute("rel")).toBe(
+        "nofollow noopener noreferrer",
+      )
+    }
     expect(
       container
         .querySelector('[data-section-id="home-video-gospels"] .grid')
@@ -335,6 +348,9 @@ describe("WatchHomePage", () => {
       container.querySelector("a[href='/jesus.html/english.html?autoplay=1']")
         ?.textContent,
     ).toContain("Watch Now")
+    expect(
+      container.querySelector('[data-testid="watch-home-share-button"]'),
+    ).toBeNull()
     expect(
       container.querySelector('[data-testid="watch-home-card-text-gradient"]'),
     ).not.toBeNull()
@@ -737,6 +753,9 @@ describe("WatchHomePage", () => {
       'a[href="https://example.com/join"]',
     )
     expect(primaryCta?.textContent).toContain("Join Us")
+    expect(
+      container.querySelector('[data-testid="watch-home-share-button"]'),
+    ).toBeNull()
     const shortFilmButton = Array.from(
       container.querySelectorAll("button"),
     ).find((button) => button.textContent?.includes("Watch Short Film"))

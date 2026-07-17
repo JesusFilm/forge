@@ -104,6 +104,8 @@ import {
   createContainerSlotBlock,
   createContainerSlotLayout,
   createTemplateBlock,
+  contentParagraphsFromEditorText,
+  editorTextFromContentParagraphs,
   isContainerSlotBlock,
   normalizeEditorBlocks,
   parseClipInput,
@@ -353,6 +355,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: FileText,
   },
   {
+    key: "promotionalText",
+    label: "Promotional Story",
+    description: "Long-form Markdown in a cinematic mission section.",
+    category: "Content",
+    icon: FileText,
+  },
+  {
     key: "cta",
     label: "Call to Action",
     description: "Prompt the next step with copy and a link.",
@@ -464,6 +473,7 @@ type SectionContentTemplateKey =
       BlockTemplateKey,
       | "adventCountdown"
       | "easterDates"
+      | "promotionalText"
       | "section"
       | "videoHero"
       | "routeVideoHero"
@@ -3103,10 +3113,7 @@ export function ExperienceEditor({
   function updateBlockParagraphsField(index: number, value: string) {
     updateBlockAt(index, (block) => ({
       ...block,
-      contentParagraphs: value
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean),
+      contentParagraphs: contentParagraphsFromEditorText(value, block.variant),
     }))
   }
 
@@ -5835,12 +5842,13 @@ export function ExperienceEditor({
     index: number,
     value: string[],
     placeholder: string,
+    variant: unknown,
     rows = 4,
     autoResize = false,
   ) {
     return (
       <textarea
-        value={value.join("\n")}
+        value={editorTextFromContentParagraphs(value, variant)}
         rows={rows}
         onClick={(event) => {
           event.stopPropagation()
@@ -8521,8 +8529,11 @@ export function ExperienceEditor({
                       asArray(blockRecord?.contentParagraphs).filter(
                         (item): item is string => typeof item === "string",
                       ),
-                      "Paragraphs, one per line",
-                      1,
+                      asString(blockRecord?.variant) === "promotional"
+                        ? "Markdown: use blank lines between paragraphs; start subheadings with ###"
+                        : "Paragraphs, one per line",
+                      blockRecord?.variant,
+                      asString(blockRecord?.variant) === "promotional" ? 8 : 1,
                       true,
                     )}
                   </div>
@@ -8532,7 +8543,7 @@ export function ExperienceEditor({
                     {renderCanvasVariantControl({
                       index,
                       block: blockRecord,
-                      options: ["default", "lead", "small"],
+                      options: ["default", "lead", "small", "promotional"],
                       className: "",
                     })}
                     {renderCanvasStringOptionControl({

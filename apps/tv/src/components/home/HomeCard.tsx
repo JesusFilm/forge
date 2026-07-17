@@ -1,6 +1,6 @@
-// One Home rail card: 2.13:1 thumb + metaLabel chip, fixed width (exported for
-// HomeRail's getItemLayout). Focus = white ring overlay + shadow on a separate
-// overflow-visible wrapper. onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
+// One Home rail card in one of two shapes (HOME_CARD_DIMS): 2.13:1 cinematic, or the 2:3 poster card `variant` selects.
+// Focus = white ring overlay + shadow on a separate overflow-visible wrapper.
+// onFocus/onPress re-emit the `card` PROP, never re-indexed from the rail's data array (patterns doc §7).
 
 import { memo, useCallback, useMemo, useRef } from "react"
 import { Image } from "expo-image"
@@ -27,9 +27,22 @@ import { useHoverPreview } from "../focus/useHoverPreview"
 import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
-export const HOME_CARD_WIDTH = scale(400)
-// 32:15 (2.13:1) of the 400 width — matches the cinematic source art (400×15/32).
-export const HOME_CARD_THUMB_HEIGHT = scale(187.5)
+export type HomeCardVariant = "landscape" | "portrait"
+
+// Landscape 32:15 matches the cinematic source art; portrait 2:3 matches web's
+// `aspect-[2/3]` AND the posters themselves (1192×1788, 1024×1536), so they fill
+// the frame uncropped.
+export const HOME_CARD_DIMS: Record<
+  HomeCardVariant,
+  { readonly width: number; readonly thumbHeight: number }
+> = {
+  landscape: { width: scale(400), thumbHeight: scale(187.5) },
+  portrait: { width: scale(260), thumbHeight: scale(390) },
+}
+
+// Landscape aliases — the default rail geometry and the (always-landscape) skeleton.
+export const HOME_CARD_WIDTH = HOME_CARD_DIMS.landscape.width
+export const HOME_CARD_THUMB_HEIGHT = HOME_CARD_DIMS.landscape.thumbHeight
 
 // Android runs the focus tween on the native driver (off the JS thread, the
 // D-pad-move bottleneck on the weak SoC) and drops the JS shadow + hairline.
@@ -61,6 +74,8 @@ type HomeCardProps = {
    * skipped — so D-pad focus never lands on an empty rail.
    */
   loadImage?: boolean
+  /** Card shape for this rail. Portrait rails carry curated 2:3 poster art. */
+  variant?: HomeCardVariant
 }
 
 export const HomeCard = memo(function HomeCard({
@@ -71,10 +86,14 @@ export const HomeCard = memo(function HomeCard({
   loadImage = true,
   nextFocusUp,
   nodeRef,
+  variant = "landscape",
 }: HomeCardProps) {
   const { focused, setFocused, progress, transform } = useFocusVisual("thumb", {
     nativeDriver: IS_ANDROID,
   })
+  const isPortrait = variant === "portrait"
+  const dims = HOME_CARD_DIMS[variant]
+  const styles = VARIANT_STYLES[variant]
   // Own this card's host node so onFocus can report it upward, while still
   // forwarding to nodeRef (the rail captures its LAST card for RailPad bounce).
   const localRef = useRef<ViewType | null>(null)
@@ -96,12 +115,12 @@ export const HomeCard = memo(function HomeCard({
     label: card.rawLabel,
     childCount: card.childCount,
   })
-  // Animated hover-preview, once focus dwells. Gate on the LABEL not childCount:
-  // a feature film WITH episodes (JESUS, 61 eps) is playable and previews; only
-  // COLLECTION/SERIES-labeled cards are excluded (they carry a null id anyway).
+  // Gate on the LABEL not childCount: a feature film WITH episodes (JESUS, 61 eps)
+  // previews; only COLLECTION/SERIES cards are excluded. Portrait rails opt out —
+  // the preview renders from the LANDSCAPE video and would crop over the poster.
   const previewUrl = useHoverPreview({
     focused,
-    enabled: !isSeriesLabel(card.rawLabel),
+    enabled: !isPortrait && !isSeriesLabel(card.rawLabel),
     playbackId: card.muxPlaybackId,
   })
 
@@ -110,8 +129,8 @@ export const HomeCard = memo(function HomeCard({
   const liftStyle = useMemo(() => ({ transform }), [transform])
   const { shadowStyle, ringStyle, ringFrame } = useThumbFocusRing(
     progress,
-    HOME_CARD_WIDTH,
-    HOME_CARD_THUMB_HEIGHT,
+    dims.width,
+    dims.thumbHeight,
   )
 
   return (
@@ -201,71 +220,84 @@ export const HomeCard = memo(function HomeCard({
   )
 })
 
-const styles = StyleSheet.create({
-  card: {
-    width: HOME_CARD_WIDTH,
-  },
-  thumbBox: {
-    width: HOME_CARD_WIDTH,
-    height: HOME_CARD_THUMB_HEIGHT,
-  },
-  shadowWrap: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: scale(16),
-    ...THUMB_SHADOW,
-  },
-  thumb: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: scale(16),
-    overflow: "hidden",
-    backgroundColor: WATCH_THEME.scrim(1),
-  },
-  thumbFallback: {
-    backgroundColor: WATCH_THEME.cardFallback,
-  },
-  thumbEdge: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: scale(16),
-    borderWidth: scale(1),
-    borderColor: "rgba(255,255,255,0.07)",
-  },
-  chip: {
-    position: "absolute",
-    top: scale(12),
-    right: scale(12),
-    maxWidth: HOME_CARD_WIDTH - scale(24),
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
-    borderRadius: scale(8),
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  chipText: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(16)),
-    fontWeight: "600",
-    color: WATCH_THEME.text,
-  },
+// Built once per variant at module load: StyleSheet.create can't read a prop,
+// and the dim-derived entries (card/thumbBox/chip) differ per shape.
+function makeVariantStyles(variant: HomeCardVariant) {
+  const { width, thumbHeight } = HOME_CARD_DIMS[variant]
+  return StyleSheet.create({
+    card: {
+      width,
+    },
+    thumbBox: {
+      width,
+      height: thumbHeight,
+    },
+    shadowWrap: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: scale(16),
+      ...THUMB_SHADOW,
+    },
+    thumb: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: scale(16),
+      overflow: "hidden",
+      backgroundColor: WATCH_THEME.scrim(1),
+    },
+    thumbFallback: {
+      backgroundColor: WATCH_THEME.cardFallback,
+    },
+    thumbEdge: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: scale(16),
+      borderWidth: scale(1),
+      borderColor: "rgba(255,255,255,0.07)",
+    },
+    chip: {
+      position: "absolute",
+      top: scale(12),
+      right: scale(12),
+      maxWidth: width - scale(24),
+      paddingHorizontal: scale(10),
+      paddingVertical: scale(4),
+      borderRadius: scale(8),
+      backgroundColor: "rgba(0,0,0,0.6)",
+    },
+    chipText: {
+      fontFamily: "System",
+      fontSize: Math.round(scale(16)),
+      fontWeight: "600",
+      color: WATCH_THEME.text,
+    },
 
-  // ── Labels below the art ──
-  meta: {
-    paddingTop: scale(12),
-    paddingHorizontal: scale(4),
-  },
-  title: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(24)),
-    fontWeight: "600",
-    letterSpacing: -scale(0.2),
-    color: "rgba(255,255,255,0.85)",
-  },
-  titleFocused: {
-    color: WATCH_THEME.text,
-  },
-  kind: {
-    fontFamily: "System",
-    fontSize: Math.round(scale(17)),
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.45)",
-    marginTop: scale(3),
-  },
-})
+    // ── Labels below the art ──
+    meta: {
+      paddingTop: scale(12),
+      paddingHorizontal: scale(4),
+    },
+    title: {
+      fontFamily: "System",
+      fontSize: Math.round(scale(24)),
+      fontWeight: "600",
+      letterSpacing: -scale(0.2),
+      color: "rgba(255,255,255,0.85)",
+    },
+    titleFocused: {
+      color: WATCH_THEME.text,
+    },
+    kind: {
+      fontFamily: "System",
+      fontSize: Math.round(scale(17)),
+      fontWeight: "500",
+      color: "rgba(255,255,255,0.45)",
+      marginTop: scale(3),
+    },
+  })
+}
+
+const VARIANT_STYLES: Record<
+  HomeCardVariant,
+  ReturnType<typeof makeVariantStyles>
+> = {
+  landscape: makeVariantStyles("landscape"),
+  portrait: makeVariantStyles("portrait"),
+}

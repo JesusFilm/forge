@@ -28,6 +28,8 @@ export const FLOATING_HEADER_PINNED_TOP_CLASS =
   "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)]"
 export const FLOATING_HEADER_LOGO_SLOT_CLASS =
   "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
+export const FLOATING_HEADER_HOME_LOGO_SLOT_CLASS =
+  "h-11 w-20 shrink-0 sm:w-28 md:h-[52px] md:w-[139px]"
 export const FLOATING_HEADER_TRAILING_SLOT_CLASS =
   "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
 export const FLOATING_HEADER_TRAILING_GROUP_CLASS =

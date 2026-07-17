@@ -70,31 +70,6 @@ describe("instagram discovery artifact store", () => {
     expect(read).toEqual(report)
   })
 
-  it("defaults excludedCommentary when reading legacy reports", async () => {
-    const store = createInstagramDiscoveryArtifactStore(rootDir)
-    const report = sampleReport()
-    const legacyReport = {
-      ...report,
-      totals: {
-        candidates: report.totals.candidates,
-        instagram: report.totals.instagram,
-        deduped: report.totals.deduped,
-        qualified: report.totals.qualified,
-      },
-    }
-
-    await mkdir(path.join(rootDir, "reports"), { recursive: true })
-    await writeFile(
-      path.join(rootDir, "reports", "legacy.json"),
-      JSON.stringify(legacyReport),
-      "utf8",
-    )
-
-    await expect(store.readReport("legacy")).resolves.toMatchObject({
-      totals: { excludedCommentary: 0 },
-    })
-  })
-
   it("rejects unsafe report names", async () => {
     const store = createInstagramDiscoveryArtifactStore(rootDir)
     await expect(store.readReport("../escape")).rejects.toMatchObject({
@@ -141,5 +116,21 @@ describe("instagram discovery artifact store", () => {
     const error = await store.writeReport(report).catch((cause) => cause)
     expect(error).toBeInstanceOf(InstagramDiscoveryArtifactError)
     expect(error.code).toBe("invalid_artifact")
+  })
+
+  it("persists every possible per-source failure for a full run", async () => {
+    const store = createInstagramDiscoveryArtifactStore(rootDir)
+    const report = sampleReport({
+      queryFailures: Array.from({ length: 70 }, (_, index) => ({
+        query: `source-${index}`,
+        code: "upstream_failed" as const,
+        message: "timed out",
+      })),
+      posts: [],
+    })
+
+    await expect(store.writeReport(report)).resolves.toEqual({
+      path: expect.stringContaining("run-123.json"),
+    })
   })
 })

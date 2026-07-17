@@ -3,6 +3,7 @@
 export type DownloadSessionStatus =
   | {
       ok: true
+      accountGateEnabled: boolean
       authenticated: boolean
       loginUrl?: string
     }
@@ -22,11 +23,13 @@ export async function checkDownloadSession(): Promise<DownloadSessionStatus> {
     if (!response.ok) return { ok: false, reason: "session-unavailable" }
 
     const data = (await response.json()) as {
+      accountGateEnabled?: unknown
       authenticated?: unknown
       loginUrl?: unknown
     }
     return {
       ok: true,
+      accountGateEnabled: data.accountGateEnabled === true,
       authenticated: data.authenticated === true,
       ...(typeof data.loginUrl === "string" ? { loginUrl: data.loginUrl } : {}),
     }

@@ -52,10 +52,11 @@ export type CanonicalizeInput = {
 
 const MAX_PATH_LEN = 2048
 
-// Literals that MUST NOT trigger Rule 5 (single-segment-duplicate). `videos`
-// is a 1-segment index; `search` is a deprecated inbound redirect into the
-// global search modal. Neither should become a synthetic `.html` watch URL.
-const ONE_SEGMENT_EXEMPT = new Set(["videos", "search"])
+// Literals that MUST NOT trigger Rule 5 (single-segment-duplicate).
+// `languages` is a 1-segment index; `search` is a deprecated inbound redirect
+// into the global search modal. Neither should become a synthetic `.html`
+// watch URL.
+const ONE_SEGMENT_EXEMPT = new Set(["languages", "search"])
 
 // Origin-invariance + injection guard. Any input that fails MUST short-circuit
 // to `{kind: "canonical"}` (let the route handler 404 it). NEVER emit a
@@ -80,10 +81,12 @@ const HTML_SUFFIX_REGEX_GI = /\.html(?=\/|$)/gi
  * 1. Trailing-slash strip → 308 / long cache.
  * 2. Lowercase `.HTML` → `.html` → 307 / short.
  * 3. Legacy 4-segment-shape episode rewrite → 307 / short.
- * 4. Per-segment `.html` append (segment-count-aware) → 307 / short.
+ * 4. Per-segment `.html` append (segment-count-aware); language videos keep
+ *    `/videos` bare → 307 / short.
  * 4.5. Strip `.html` from middle segment in 3-seg shape (episode-bare contract) → 307 / short.
- * 5. Single-segment-no-`.html` duplicate expansion → 307 / short.
- * 6. Language-slug alias resolution → 307 / short.
+ * 5. Legacy `/videos` index redirect → `/languages` → 307 / short.
+ * 6. Single-segment-no-`.html` duplicate expansion → 307 / short.
+ * 7. Language-slug alias resolution → 307 / short.
  *
  * Termination guarantee: each rule is idempotent, applied at most once,
  * never re-enters the sequence. Therefore `canonicalize(canonicalize(x).pathname) === { kind: "canonical" }`.
@@ -125,6 +128,13 @@ export function canonicalizeWatchPath(
   }
   // (preserve onlyTrailingSlashChanged = true if only this fired)
 
+  // Rule 1.5: legacy language index path. `/videos` used to be the public
+  // language catalog entry; `/languages` is the canonical slug.
+  if (path === "/videos") {
+    path = "/languages"
+    onlyTrailingSlashChanged = false
+  }
+
   // Rule 2: lowercase ".HTML" suffix (case-insensitive match → lowercase replace)
   if (HTML_SUFFIX_REGEX_GI.test(path)) {
     const lowered = path.replace(HTML_SUFFIX_REGEX_GI, HTML_SUFFIX_LOWER)
@@ -156,8 +166,10 @@ export function canonicalizeWatchPath(
   }
 
   // Rule 4: per-segment .html append (segment-count-aware).
-  // 2-segment: append to both. 3-segment: append to segments [0] and [2] only
-  // (episode segment stays bare per production contract).
+  // 2-segment: append to both for video routes, except language-video
+  // indexes (`/{lang}.html/videos`) keep the `videos` segment bare.
+  // 3-segment: append to segments [0] and [2] only (episode segment stays
+  // bare per production contract).
   {
     const segs = path.split("/").filter(Boolean)
     if (segs.length === 2) {
@@ -207,8 +219,8 @@ export function canonicalizeWatchPath(
   }
 
   // Rule 5: single-segment-no-.html → duplicate-with-.html.
-  // /foo → /foo.html/foo.html. Skip whitelist entries (`videos`, deprecated
-  // inbound `search`) which are legitimate 1-segment app routes.
+  // /foo → /foo.html/foo.html. Skip whitelist entries (`languages`,
+  // deprecated inbound `search`) which are legitimate 1-segment app routes.
   // SLUG_PATTERN_SAFE rejects host-shaped segments (e.g. /evil.com) that the
   // positive allowlist let through.
   {

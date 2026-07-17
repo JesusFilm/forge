@@ -43,6 +43,28 @@ export function classifyInterruption(
   }
 }
 
+/** Coarse connectivity a download interruption implies (R31). */
+export type DownloadReachability = "offline" | "network-restricted"
+
+/**
+ * R31/KTD6: reachability proxy from an interruption's cause — no NetInfo sensor,
+ * so only the offline edge is observable. connectivity/backgrounded reads offline;
+ * wifi-only-on-cellular is a policy block (network exists); other causes = no signal.
+ */
+export function reachabilityFromInterruption(
+  interruption: TransferInterruption,
+): DownloadReachability | null {
+  switch (interruption.kind) {
+    case "connectivity":
+    case "backgroundedTransient":
+      return "offline"
+    case "wifiOnlyOnCellular":
+      return "network-restricted"
+    default:
+      return null
+  }
+}
+
 /** Verification status of each part of a download's bundle. */
 export type BundleParts = {
   mediaVerified: boolean

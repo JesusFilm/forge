@@ -196,8 +196,13 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `FIRECRAWL_MAX_SEARCH_RESULTS`               | Runtime cap for Firecrawl search results exposed to agents/workflows. Defaults to `5`, max `20`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `FIRECRAWL_MAX_MARKDOWN_CHARS`               | Runtime cap for markdown returned by Firecrawl search hydration and scrape. Defaults to `16000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`           | Directory for Instagram discovery report JSON artifacts. Defaults to `<storage>/instagram-discovery`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`        | Optional website review-queue ingest endpoint. Both URL and token are required to enable bot-to-site submission.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`      | Optional bearer token for the website ingest endpoint; must match the website's `ADMIN_REVIEW_TOKEN`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_URL`        | Optional website review-queue ingest endpoint. Active only with `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`; an absent or incomplete pair disables review submission and never blocks Mastra startup. The client requires HTTPS before sending the bearer.                                                                                                                                                                                                                                                                                                                                                                                         |
+| `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN`      | Optional shared bearer for website ingest and saved-source reads; must match the website's `ADMIN_REVIEW_TOKEN`. Each website endpoint is active only when its URL and this token are both set; an incomplete configuration is inert and never blocks startup.                                                                                                                                                                                                                                                                                                                                                                                 |
+| `DISCOVERY_SOURCES_URL`                      | Optional website endpoint for saved trusted discovery sources. Active only with the shared ingest bearer; an absent or incomplete pair disables saved-source loading and never blocks Mastra startup. The client requires HTTPS before sending the bearer.                                                                                                                                                                                                                                                                                                                                                                                     |
+| `YOUTUBE_API_KEY`                            | Optional YouTube Data API key that enables YouTube discovery.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `YOUTUBE_API_BASE_URL`                       | YouTube API base URL. Defaults to `https://www.googleapis.com/youtube/v3`; production must use HTTPS and an allowlisted host when the key is set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `YOUTUBE_ALLOWED_HOSTS`                      | CSV host allowlist for production YouTube egress. Defaults to `www.googleapis.com`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `YOUTUBE_SEARCH_TIMEOUT_MS`                  | Single-attempt YouTube discovery API timeout. Defaults to `30000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `JESUSFILM_RAG_BASE_URL`                     | Base URL of the JesusFilm RAG retrieval service for the seeker agent. Optional — unset degrades the tool to an explicit `unavailable` result, never a boot failure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `JESUSFILM_RAG_API_KEY`                      | Per-consumer bearer token Mastra presents to the RAG. Optional; absent → tool returns `unavailable` (`config_missing`) at runtime. Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `JESUSFILM_RAG_ALLOWED_HOSTS`                | CSV host allowlist for the RAG base URL. No default. In production, a set base URL requires https AND its host in this list, else boot throws (fail-closed security guard).                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -410,9 +415,23 @@ Three bounded synchronous workflows, each with a service route protected by
 Results use a discriminated `{ ok: true, ... } | { ok: false, reason,
 retryable, message, mastraRunId }` envelope with the shared reasons
 `invalid_input | provider_config_missing | provider_auth_failed |
-provider_failed | provider_invalid_output | frame_host_not_allowed`. The
-planner and alignment modules are pure functions — keep them free of I/O and
-env reads so they stay property-testable.
+provider_rate_limited | provider_failed | provider_invalid_output |
+frame_host_not_allowed`.
+
+The shared Smart Crop OpenRouter client is the only automatic provider-retry
+owner. Plan, QA, and repair prefer `OPENROUTER_API_PAID_KEY`, fall back to
+`OPENROUTER_API_KEY`, and make at most three attempts for explicit HTTP 429/503
+or their typed embedded equivalents. Recovery honors `Retry-After` or bounded
+jittered backoff inside a 90-second operation deadline, below Manager's
+120-second client timeout. If the full provider delay cannot fit, or recovery
+otherwise exhausts, the workflow returns a sanitized terminal failure so
+Manager does not multiply the provider loop. Ambiguous no-response transport
+failures, auth/credit failures, and invalid output are not automatically
+retried. Structured logs use `smart_crop_provider_retry`,
+`smart_crop_provider_recovered`, and `smart_crop_provider_exhausted`; they
+contain only category, status, attempts, and timing, never request/response
+content. The planner and alignment modules are pure functions — keep them free
+of I/O and env reads so they stay property-testable.
 
 ## Firecrawl web data
 
@@ -749,14 +768,15 @@ search work against the same seed snapshot without logging into production.
 The service route `POST /forge-instagram-discovery` is protected by
 `MASTRA_SERVICE_API_KEYS` and launches the `instagram-ai-christian-discovery`
 workflow. It discovers AI-generated Christian videos on Instagram using
-the shared **Firecrawl web search** client (`POST /v2/search`) — Instagram is
+the shared **Firecrawl web search** client (`POST /v1/search`) — Instagram is
 heavily gated, so direct crawling is unreliable; search returns post/reel URLs
 plus title/snippet that the keyword heuristic acts on.
 
 Input is Studio-friendly with defaults (runs with no hand-written JSON):
-`queries` (defaults to two Instagram-targeted AI/Christian queries),
-`limitPerQuery` (5, max 20), `scrapeMetadata` (false — set true to request bounded
-markdown hydration for each search hit, slower), `maxResults` (50),
+`queries` (defaults to none; the daily run relies on saved trusted handles),
+`limitPerQuery` (10, max 50), `scrapeMetadata` (true — requests bounded markdown
+and thumbnail-capable metadata for each search hit; set false to reduce Firecrawl
+latency/credits), `maxResults` (10),
 `persistArtifact` (true). The
 workflow searches each query (tolerant to per-query failures), parses Instagram
 permalinks, dedupes by shortcode, and keeps only posts whose caption/hashtags
@@ -765,14 +785,50 @@ commentary/news/tutorial (a conservative `COMMENTARY_KEYWORDS` exclusion in
 `classifier.ts`, e.g. "should we", "here's my", "tutorial", "went viral"). The
 report's `totals.excludedCommentary` counts posts dropped by that filter.
 
+Mastra schedules this workflow once a day at `00:00 UTC`. The single
+declarative schedule is persisted as
+`wf_instagram-ai-christian-discovery` when the Mastra process boots; scheduled
+runs do not override input, so they use the same defaults listed above. Manual
+Studio runs and `POST /forge-instagram-discovery` remain available. To stop a
+bad automatic run, open **Workflows → Schedules** in Studio, select
+`wf_instagram-ai-christian-discovery` (detail path
+`/workflows/schedules/wf_instagram-ai-christian-discovery`), and choose
+**Pause** before investigating. **Resume** calculates the next regular UTC
+midnight and does not backfill missed runs.
+
 Results are returned in the response and, by default, written to a validated
 JSON artifact under `INSTAGRAM_DISCOVERY_ARTIFACT_DIR`
 (`<storage>/instagram-discovery/reports/<runId>.json`).
 
 When `INSTAGRAM_DISCOVERY_SITE_INGEST_URL` and
 `INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN` are both set, qualified posts are also
-submitted best-effort to the website review queue. Website ingest failures are
-logged and do not fail discovery; the website dedupes by Instagram shortcode.
+submitted best-effort to the website review queue. The Studio result pairs the
+top-level `mastraRunId` with the submitted `reviewQueue.inserted` and
+`reviewQueue.skipped` counts; successful and failed ingest logs include the same
+run id for correlation. Website ingest failures are reported in the returned
+`reviewQueue` result and do not fail discovery; the website dedupes by Instagram
+shortcode. The client requires HTTPS before sending the bearer and rejects
+redirects.
+
+When `DISCOVERY_SOURCES_URL` and
+`INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN` are both configured, the workflow
+merges the website's saved Instagram handles with the Run-form input, dedupes
+them, and caps the combined list at 50. A saved-source outage with no other
+requested source returns `sources_unavailable` (503) rather than a successful
+empty run. Studio-native runs use the same saved-source loading path as
+`/forge-*` route runs, so a scheduled Studio run can safely use an empty form
+body.
+
+Both website endpoints are optional runtime integrations. A missing URL,
+missing token, or otherwise incomplete URL/token pair disables only that
+endpoint through the nullable config accessor; it must never prevent Mastra or
+Studio from starting. URL safety remains enforced at request time before a
+bearer is sent.
+
+The website must implement the documented review-queue and saved-source
+contracts before these settings are enabled, and its scheduler must call the
+three `/forge-*-discovery` routes (or start the registered workflows). Mastra
+does not create that external scheduler.
 
 Limitations to keep in mind:
 
@@ -787,8 +843,23 @@ Limitations to keep in mind:
 Failure reasons: `invalid_input` (400), `config_missing` (503, when
 `FIRECRAWL_API_KEY` is unset in a non-production/dev-style runtime),
 `all_queries_failed` (502, only when every query errors), `artifact_failed`
-(500, when report persistence fails). Production already requires the shared
+(500, when report persistence fails), and `sources_unavailable` (503, when a
+configured saved-source request fails without any fallback input). Production already requires the shared
 Firecrawl env vars for Mastra's web-data surface.
+
+## YouTube and Pinterest AI/Christian discovery
+
+`POST /forge-youtube-discovery` searches configured YouTube channels,
+playlists, and keyword queries. It accepts stable channel IDs/handles and
+playlist IDs; saved full YouTube playlist URLs are normalized to their `list`
+value, while unsupported custom-channel URLs are skipped. The output cap is 10
+videos by default, each source list is capped at 50, and the response includes
+a best-effort `reviewQueue` outcome.
+
+`POST /forge-pinterest-discovery` reads public Pinterest board RSS feeds. Board
+URLs must be HTTPS `pinterest.com` hosts; query strings are removed before the
+`.rss` URL is constructed. Its default output cap is 10 pins and it applies the
+same saved-source cap and observable review-queue result.
 
 ## Railway Storage
 

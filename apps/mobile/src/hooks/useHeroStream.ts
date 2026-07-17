@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
 import { getApolloClient } from "../lib/apolloClient"
+import { datadogLog } from "../lib/datadog"
 import { GET_VIDEO_BY_SLUG } from "../lib/queries"
 import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
@@ -52,10 +53,15 @@ export function useHeroStream(slug: string | null): HeroStreamState {
         const streamUrl = selectHeroStreamUrl(
           result.data?.videoBySlug?.variants,
         )
+        // R37: a curated slide dropped for no playable variant is a silent loss.
+        if (streamUrl == null) {
+          datadogLog.warn("hero_stream.failed", { reason: "no_variant", slug })
+        }
         setState({ streamUrl, resolving: false, failed: streamUrl == null })
       })
       .catch(() => {
         if (requestIdRef.current !== thisRequest) return
+        datadogLog.warn("hero_stream.failed", { reason: "query_failed", slug })
         setState({ streamUrl: null, resolving: false, failed: true })
       })
   }, [slug])

@@ -87,7 +87,11 @@ describe("Watch root homepage", () => {
     expect(resolveWatchHomeMock).toHaveBeenCalledWith("en")
     expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
     expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({ heroModel, blocks })
+    expect(element.props).toEqual({
+      heroModel,
+      blocks,
+      languageSlug: "english",
+    })
   })
 
   it("keeps the static hero shell when the builder homepage is missing", async () => {
@@ -96,7 +100,11 @@ describe("Watch root homepage", () => {
     })
 
     expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({ heroModel, blocks: [] })
+    expect(element.props).toEqual({
+      heroModel,
+      blocks: [],
+      languageSlug: "english",
+    })
   })
 
   it("renders empty state when neither hero data nor builder blocks exist", async () => {
