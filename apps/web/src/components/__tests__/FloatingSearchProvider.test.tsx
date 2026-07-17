@@ -14,13 +14,16 @@ import {
   useFloatingSearch,
 } from "@/components/FloatingSearchProvider"
 import {
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
-  FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+  FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -1797,14 +1800,30 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const overlayTopBar = document.querySelector(
       '[data-testid="search-overlay-instant-top-bar"], [data-testid="search-overlay-top-bar"]',
     )
+    const overlayFieldShell = document.querySelector(
+      '[data-testid="search-overlay-instant-field-shell"], [data-testid="search-overlay-field-shell"]',
+    )
+    const header = document.querySelector('[data-testid="floating-header"]')
+    const close = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    )
     expect(overlayTopBar?.className).toContain("left-5")
     expect(overlayTopBar?.className).toContain("right-5")
     expect(overlayTopBar?.className).toContain(
       "top-[calc(env(safe-area-inset-top,0px)+0.75rem)]",
     )
-    expect(
-      document.querySelector('[data-testid="floating-header"]')?.className,
-    ).toContain("translate-y-0")
+    expect(overlayTopBar?.className).toContain(
+      FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+    )
+    expect(overlayFieldShell?.className).toContain(
+      FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+    )
+    expect(overlayFieldShell?.className).toContain("col-span-2")
+    expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+    expect(header?.className).toContain("translate-y-0")
+    expect(close?.className).toContain(
+      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+    )
     expect(
       document.querySelector('[data-testid="floating-header-search-close"]'),
     ).not.toBeNull()
@@ -2065,6 +2084,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
     )
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    const headerTrailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
     const overlay = document.querySelector(
       '[aria-label="Search and browse videos"]',
     ) as HTMLElement | null
@@ -2091,6 +2114,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlay?.className).toContain("min-h-dvh")
     expect(overlay?.style.zIndex).toBe("45")
     expect(header?.className).toContain("z-50")
+    expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain("translate-y-0")
     expect(header?.className).toContain("opacity-100")
     expect(header?.className).not.toContain("-translate-y-[calc(100%+2rem)]")
@@ -2119,8 +2143,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(topBar?.className).toContain("md:left-16")
     expect(topBar?.className).toContain("md:right-16")
     expect(topBar?.className).toContain(FLOATING_HEADER_TOP_CLASS)
-    expect(topBar?.className).toContain(FLOATING_HEADER_HEIGHT_CLASS)
-    expect(topBar?.className).toContain(FLOATING_HEADER_GAP_CLASS)
+    expect(topBar?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(topBar?.className).toContain("items-start")
     expect(topBar?.className).not.toContain("items-center")
     expect(
@@ -2140,6 +2163,20 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayField).not.toBeNull()
     expect(overlayFieldShell?.className).toContain("min-w-0")
     expect(overlayFieldShell?.className).toContain("flex-1")
+    expect(overlayFieldShell?.className).toContain(
+      FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+    )
+    expect(overlayFieldShell?.className).not.toContain("col-span-2")
+    expect(logo?.className).toContain(FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS)
+    expect(languageButton?.className).toContain(
+      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+    )
+    expect(close?.className).toContain(
+      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+    )
+    expect(headerTrailingControls?.className).toContain(
+      FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
+    )
     expect(overlayField?.className).toContain("rounded-[35px]")
     expect(overlayField?.className).toContain("bg-white")
     expect(overlayField?.className).toContain("w-full")
@@ -2220,17 +2257,23 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
 
     expect(headerTrailingControls?.className).toContain(
-      FLOATING_HEADER_TRAILING_GROUP_CLASS,
+      FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
     )
     expect(overlayTrailingSpacer?.className).toContain(
-      FLOATING_HEADER_TRAILING_GROUP_CLASS,
+      FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
     )
     expect(overlayTrailingSpacer?.children).toHaveLength(2)
     expect(overlayTrailingSpacer?.children[0]?.className).toContain(
       FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
     )
+    expect(overlayTrailingSpacer?.children[0]?.className).toContain(
+      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+    )
     expect(overlayTrailingSpacer?.children[1]?.className).toContain(
       FLOATING_HEADER_TRAILING_SLOT_CLASS,
+    )
+    expect(overlayTrailingSpacer?.children[1]?.className).toContain(
+      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
     )
   })
 })
