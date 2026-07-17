@@ -5,6 +5,7 @@ import path from "node:path"
 import { z } from "zod"
 
 import { env, getMastraStorageDir } from "../../config/env"
+import { repoRoot } from "./repo-root"
 import {
   DEVOTIONAL_BLOCKS,
   MAX_DEVOTIONAL_QUESTIONS,
@@ -79,6 +80,16 @@ export const SafetyVerdictSchema = z
   })
   .strict()
 
+export const VoiceoverInfoSchema = z
+  .object({
+    format: z.literal("mp3"),
+    voice: z.string().max(MAX_DEVOTIONAL_SHORT_TEXT),
+    locale: z.string().max(64),
+    characterCount: z.number().int().nonnegative(),
+    artifactPath: z.string().max(MAX_DEVOTIONAL_URL),
+  })
+  .strict()
+
 export const DevotionalReportSchema = z
   .object({
     schemaVersion: z.literal("1"),
@@ -92,6 +103,9 @@ export const DevotionalReportSchema = z
     videoMatch: z.enum(VIDEO_MATCH_SOURCES),
     safety: SafetyVerdictSchema.nullable(),
     devotional: DevotionalSchema.nullable(),
+    // Optional + nullable so reports written before voiceover existed still
+    // validate on read (back-compat); new runs always set it (audio or null).
+    voiceover: VoiceoverInfoSchema.nullable().optional(),
   })
   .strict()
 
@@ -115,13 +129,28 @@ export type DevotionalArtifactStore = {
   readonly rootDir: string
   writeReport: (report: DevotionalReport) => Promise<{ path: string }>
   readReport: (reportId: string) => Promise<DevotionalReport>
+  /**
+   * Persist narration audio bytes. Returns both the absolute path and a stable
+   * store-relative path (`audio/<reportId>.mp3`) for the report's
+   * `voiceover.artifactPath`.
+   */
+  writeAudio: (
+    reportId: string,
+    bytes: Uint8Array,
+  ) => Promise<{ path: string; relativePath: string }>
 }
 
 export function devotionalArtifactRoot(): string {
-  return (
-    env.DEVOTIONAL_ARTIFACT_DIR ??
-    path.join(getMastraStorageDir(), "daily-devotional")
-  )
+  if (env.DEVOTIONAL_ARTIFACT_DIR) return env.DEVOTIONAL_ARTIFACT_DIR
+  // A RELATIVE storage dir must resolve to ONE place for every process — the
+  // dev server (cwd src/mastra/public), spawned renders (cwd repo root), CLI
+  // scripts, and vitest all share the ledger/reports. Anchor it to the repo
+  // root; absolute dirs (Railway volume, explicit env) are used as-is.
+  const storageDir = getMastraStorageDir()
+  const anchored = path.isAbsolute(storageDir)
+    ? storageDir
+    : path.join(repoRoot(), storageDir)
+  return path.join(anchored, "daily-devotional")
 }
 
 function assertSafeName(name: string): string {
@@ -144,6 +173,10 @@ function reportPath(rootDir: string, reportId: string): string {
   return path.join(rootDir, "reports", `${assertSafeName(reportId)}.json`)
 }
 
+function audioRelativePath(reportId: string): string {
+  return path.posix.join("audio", `${assertSafeName(reportId)}.mp3`)
+}
+
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   const dir = path.dirname(filePath)
   // randomUUID (not Date.now) so concurrent writers in the same process at the
@@ -161,6 +194,26 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
     throw new DevotionalArtifactError(
       "write_failed",
       "failed to write devotional artifact",
+      cause,
+    )
+  }
+}
+
+async function writeBytes(filePath: string, bytes: Uint8Array): Promise<void> {
+  const dir = path.dirname(filePath)
+  const tmpPath = path.join(
+    dir,
+    `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`,
+  )
+  try {
+    await mkdir(dir, { recursive: true })
+    await writeFile(tmpPath, bytes)
+    await rename(tmpPath, filePath)
+  } catch (cause) {
+    await rm(tmpPath, { force: true }).catch(() => undefined)
+    throw new DevotionalArtifactError(
+      "write_failed",
+      "failed to write devotional audio artifact",
       cause,
     )
   }
@@ -192,6 +245,12 @@ export function createDevotionalArtifactStore(
       const filePath = reportPath(rootDir, report.reportId)
       await writeJson(filePath, parsed.data)
       return { path: filePath }
+    },
+    async writeAudio(reportId, bytes) {
+      const relativePath = audioRelativePath(reportId)
+      const filePath = path.join(rootDir, relativePath)
+      await writeBytes(filePath, bytes)
+      return { path: filePath, relativePath }
     },
     async readReport(reportId) {
       const filePath = reportPath(rootDir, reportId)

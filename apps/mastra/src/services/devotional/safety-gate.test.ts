@@ -30,6 +30,20 @@ function llmReturning(value: unknown): DevotionalLlm {
   return { model: "test-model", complete: async () => value as never }
 }
 
+/** Captures the `user` prompt the judge is shown, so we can assert what it scores. */
+function llmCapturing(
+  capture: { user?: string },
+  value: unknown,
+): DevotionalLlm {
+  return {
+    model: "test-model",
+    complete: async (req: { user: string }) => {
+      capture.user = req.user
+      return value as never
+    },
+  }
+}
+
 function llmThrowing(error: unknown): DevotionalLlm {
   return {
     model: "test-model",
@@ -54,6 +68,24 @@ describe("evaluateSafety", () => {
 
     expect(verdict.verdict).toBe("pass")
     expect(verdict.scores.doctrine).toBeGreaterThan(0.6)
+  })
+
+  it("feeds the guided prayer to the judge so it is scored", async () => {
+    const cap: { user?: string } = {}
+    await evaluateSafety({
+      devotional: {
+        ...DEVOTIONAL,
+        prayer: "Father, teach me to name my riches and claim them from you.",
+      },
+      llm: llmCapturing(cap, {
+        verdict: "pass",
+        doctrine: 0.95,
+        tone: 0.9,
+        sensitivity: 0.9,
+        reasons: [],
+      }),
+    })
+    expect(cap.user).toContain("name my riches and claim them")
   })
 
   it("blocks a doctrinally wrong devotional with a doctrine reason", async () => {

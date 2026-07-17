@@ -149,6 +149,21 @@ const envSchema = z.object({
   DEVOTIONAL_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
   DEVOTIONAL_SAFETY_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
   DEVOTIONAL_ARTIFACT_DIR: z.string().min(1).optional(),
+  AZURE_SPEECH_KEY: z.string().min(1).optional(),
+  AZURE_SPEECH_REGION: z.string().min(1).optional(),
+  DEVOTIONAL_VOICE: z.string().min(1).default("en-US-AndrewMultilingualNeural"),
+  DEVOTIONAL_VOICE_STYLE: z.string().min(1).optional(),
+  // ElevenLabs (voiceover + music). Absent key => audio steps skipped, not failed.
+  ELEVENLABS_API_KEY: z.string().min(1).optional(),
+  // Default narration voice — "Voice D" from the audition (deep, emotive male).
+  // Override to swap voice (e.g. per language) without code changes.
+  ELEVENLABS_VOICE_ID: z.string().min(1).default("HKFOb9iktHA85uKXydRT"),
+  ELEVENLABS_TTS_MODEL: z.string().min(1).default("eleven_multilingual_v2"),
+  ELEVENLABS_MUSIC_MODEL: z.string().min(1).default("music_v1"),
+  // Directory holding the reflection corpus JSON (Ryle / Matthew Henry /
+  // Spurgeon). Defaults to the in-repo `devo/corpus`; override on a bundled
+  // deploy where that path isn't present.
+  DEVOTIONAL_CORPUS_DIR: z.string().min(1).optional(),
   FIRECRAWL_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -348,6 +363,15 @@ export const env = envSchema.parse({
   DEVOTIONAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.DEVOTIONAL_ARTIFACT_DIR,
   ),
+  AZURE_SPEECH_KEY: emptyToUndefined(process.env.AZURE_SPEECH_KEY),
+  AZURE_SPEECH_REGION: emptyToUndefined(process.env.AZURE_SPEECH_REGION),
+  DEVOTIONAL_VOICE: emptyToUndefined(process.env.DEVOTIONAL_VOICE),
+  DEVOTIONAL_VOICE_STYLE: emptyToUndefined(process.env.DEVOTIONAL_VOICE_STYLE),
+  ELEVENLABS_API_KEY: emptyToUndefined(process.env.ELEVENLABS_API_KEY),
+  ELEVENLABS_VOICE_ID: emptyToUndefined(process.env.ELEVENLABS_VOICE_ID),
+  ELEVENLABS_TTS_MODEL: emptyToUndefined(process.env.ELEVENLABS_TTS_MODEL),
+  ELEVENLABS_MUSIC_MODEL: emptyToUndefined(process.env.ELEVENLABS_MUSIC_MODEL),
+  DEVOTIONAL_CORPUS_DIR: emptyToUndefined(process.env.DEVOTIONAL_CORPUS_DIR),
   FIRECRAWL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.FIRECRAWL_ALLOWED_HOSTS,
   ),
@@ -599,6 +623,49 @@ export function getDevotionalModel(): string {
 
 export function getDevotionalSafetyModel(): string {
   return env.DEVOTIONAL_SAFETY_MODEL
+}
+
+export type AzureSpeechConfig = {
+  key?: string
+  region?: string
+}
+
+/** Azure Cognitive Services Speech (TTS). Both absent => voiceover skipped. */
+export function getAzureSpeechConfig(): AzureSpeechConfig {
+  return { key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION }
+}
+
+export function getDevotionalVoice(): string {
+  return env.DEVOTIONAL_VOICE
+}
+
+export function getDevotionalVoiceStyle(): string | undefined {
+  return env.DEVOTIONAL_VOICE_STYLE
+}
+
+export type ElevenLabsConfig = {
+  apiKey?: string
+  ttsModel: string
+  musicModel: string
+}
+
+/** ElevenLabs (voiceover + music). No apiKey => callers treat audio as skipped. */
+export function getElevenLabsConfig(): ElevenLabsConfig {
+  return {
+    apiKey: env.ELEVENLABS_API_KEY,
+    ttsModel: env.ELEVENLABS_TTS_MODEL,
+    musicModel: env.ELEVENLABS_MUSIC_MODEL,
+  }
+}
+
+/** Default narration voice id (overridable per language later). */
+export function getDevotionalElevenVoiceId(): string {
+  return env.ELEVENLABS_VOICE_ID
+}
+
+/** Reflection corpus dir; undefined => the reader falls back to the repo copy. */
+export function getDevotionalCorpusDir(): string | undefined {
+  return env.DEVOTIONAL_CORPUS_DIR
 }
 
 function getLegacyEmbeddingProviderConfig(

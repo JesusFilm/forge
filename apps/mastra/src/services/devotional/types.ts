@@ -72,8 +72,27 @@ export type Devotional = {
   videoMatch: VideoMatchSource
   reflection: string
   questions: string[]
+  /**
+   * Guided prayer shown on-screen and narrated (video-first flow). Optional so
+   * the daily flow, which has no separate prayer, is unaffected. MUST be fed to
+   * the safety gate whenever present — it is publishable, doctrine-bearing text.
+   */
+  prayer?: string
   furtherReading: string | null
   blockOrder: DevotionalBlock[]
+}
+
+/**
+ * Generated narration audio for a published devotional (Azure Neural TTS).
+ * Best-effort: absent (null on the report) when voiceover was skipped or failed.
+ */
+export type VoiceoverInfo = {
+  format: "mp3"
+  voice: string
+  locale: string
+  characterCount: number
+  /** Artifact-store-relative path of the persisted MP3 (e.g. `audio/2026-06-23.mp3`). */
+  artifactPath: string
 }
 
 export type SafetyDimension = "doctrine" | "tone" | "sensitivity"
@@ -99,4 +118,6 @@ export type DevotionalReport = {
   videoMatch: VideoMatchSource
   safety: SafetyVerdict | null
   devotional: Devotional | null
+  /** Narration audio metadata; null when voiceover was skipped or failed. */
+  voiceover?: VoiceoverInfo | null
 }

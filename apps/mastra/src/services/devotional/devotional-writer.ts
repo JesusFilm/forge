@@ -77,10 +77,13 @@ const WRITER_JSON_SCHEMA = {
         minLength: 1,
         maxLength: MAX_DEVOTIONAL_TEXT_LENGTH,
       },
+      // NOTE: no minItems/maxItems — Anthropic's structured-output schema
+      // (the default DEVOTIONAL_MODEL provider) rejects array item-count
+      // constraints ("For 'array' type, property 'maxItems' is not supported").
+      // The count is steered by the prompt ("2 to 3 questions") and enforced by
+      // WriterResponseSchema (.min(1).max) after parse.
       questions: {
         type: "array",
-        minItems: 1,
-        maxItems: MAX_DEVOTIONAL_QUESTIONS,
         items: {
           type: "string",
           minLength: 1,
@@ -250,7 +253,7 @@ export async function writeDevotional(
     if (error instanceof DevotionalLlmError) {
       throw new DevotionalWriterError(
         "generation_failed",
-        `devotional writing failed: ${error.code}`,
+        `devotional writing failed: ${error.code}: ${error.message}`,
         error,
       )
     }
@@ -282,4 +285,5 @@ export const _internal = {
   BLOCK_ORDERS,
   presentBlocks,
   isAllowedPartnerUrl,
+  WRITER_JSON_SCHEMA,
 }

@@ -55,14 +55,24 @@ const BLOCK: SafetyVerdict = {
 
 function memStore(): DevotionalArtifactStore & {
   reports: Map<string, unknown>
+  audio: Map<string, Uint8Array>
 } {
   const reports = new Map<string, unknown>()
+  const audio = new Map<string, Uint8Array>()
   return {
     rootDir: "/mem",
     reports,
+    audio,
     async writeReport(report) {
       reports.set(report.reportId, report)
       return { path: `/mem/${report.reportId}.json` }
+    },
+    async writeAudio(reportId, bytes) {
+      audio.set(reportId, bytes)
+      return {
+        path: `/mem/audio/${reportId}.mp3`,
+        relativePath: `audio/${reportId}.mp3`,
+      }
     },
     async readReport(reportId) {
       const found = reports.get(reportId)
@@ -86,6 +96,13 @@ function baseDeps(overrides: Record<string, unknown> = {}) {
     writeDevotional: async () => DEVOTIONAL,
     evaluateSafety: async () => PASS,
     publish: async () => ({ ok: true as const, published: true }),
+    // Default: Azure TTS not configured, so voiceover is skipped (config_missing).
+    // Tests that exercise the voiceover path override this with an ok result.
+    generateVoiceover: async () => ({
+      ok: false as const,
+      reason: "config_missing" as const,
+      retryable: false,
+    }),
     artifactStore: memStore(),
     ...overrides,
   }
@@ -119,7 +136,11 @@ describe("runDailyDevotional", () => {
     const publish = vi.fn(async () => ({ ok: true as const, published: true }))
     const result = await runDailyDevotional(
       { date: "2026-06-22", persistArtifact: true },
-      baseDeps({ artifactStore: store, publish, evaluateSafety: async () => BLOCK }),
+      baseDeps({
+        artifactStore: store,
+        publish,
+        evaluateSafety: async () => BLOCK,
+      }),
     )
 
     expect(result.ok).toBe(true)
@@ -128,6 +149,84 @@ describe("runDailyDevotional", () => {
     expect(result.safety.verdict).toBe("block")
     expect(publish).not.toHaveBeenCalled()
     expect(store.reports.get("2026-06-22")).toMatchObject({ published: false })
+  })
+
+  it("voiceover: persists audio and records it on the report + result", async () => {
+    const store = memStore()
+    const generateVoiceover = vi.fn(async () => ({
+      ok: true as const,
+      audio: {
+        format: "mp3" as const,
+        bytes: new Uint8Array([1, 2, 3, 4]),
+        voice: "en-US-AndrewMultilingualNeural",
+        locale: "en-US",
+        characterCount: 42,
+      },
+    }))
+    const result = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({ artifactStore: store, generateVoiceover }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.voiceoverPath).toBe("audio/2026-06-22.mp3")
+    expect(store.audio.get("2026-06-22")).toEqual(new Uint8Array([1, 2, 3, 4]))
+    expect(store.reports.get("2026-06-22")).toMatchObject({
+      voiceover: {
+        format: "mp3",
+        voice: "en-US-AndrewMultilingualNeural",
+        artifactPath: "audio/2026-06-22.mp3",
+      },
+    })
+  })
+
+  it("voiceover: skipped on safety block (never narrates blocked content)", async () => {
+    const store = memStore()
+    const generateVoiceover = vi.fn()
+    const result = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({
+        artifactStore: store,
+        evaluateSafety: async () => BLOCK,
+        generateVoiceover,
+      }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(generateVoiceover).not.toHaveBeenCalled()
+    expect(result.voiceoverPath).toBeUndefined()
+    expect(store.reports.get("2026-06-22")).toMatchObject({ voiceover: null })
+  })
+
+  it("voiceover: a TTS/persist failure never fails the run", async () => {
+    const store = memStore()
+    store.writeAudio = async () => {
+      throw new Error("disk full")
+    }
+    const result = await runDailyDevotional(
+      { date: "2026-06-22", persistArtifact: true },
+      baseDeps({
+        artifactStore: store,
+        generateVoiceover: async () => ({
+          ok: true as const,
+          audio: {
+            format: "mp3" as const,
+            bytes: new Uint8Array([9]),
+            voice: "en-US-AndrewMultilingualNeural",
+            locale: "en-US",
+            characterCount: 1,
+          },
+        }),
+      }),
+    )
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.published).toBe(true)
+    expect(result.voiceoverPath).toBeUndefined()
+    expect(store.reports.get("2026-06-22")).toMatchObject({ voiceover: null })
   })
 
   it("generation failure surfaces reason + stage", async () => {
@@ -278,10 +377,7 @@ describe("runDailyDevotional", () => {
   })
 
   it("rejects malformed input", async () => {
-    const result = await runDailyDevotional(
-      { date: "not-a-date" },
-      baseDeps(),
-    )
+    const result = await runDailyDevotional({ date: "not-a-date" }, baseDeps())
     expect(result).toMatchObject({ ok: false, reason: "invalid_input" })
   })
 

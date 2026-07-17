@@ -88,6 +88,24 @@ import {
   handleDailyDevotionalRouteRequest,
 } from "./workflows/daily-devotional"
 import {
+  devotionalApproveWorkflow,
+  devotionalContentWorkflow,
+  devotionalProduceWorkflow,
+  devotionalPublishWorkflow,
+  devotionalRenderWorkflow,
+  devotionalSourceWorkflow,
+  videoFirstDevotionalWorkflow,
+} from "./workflows/video-first-devotional"
+import { MastraEditor } from "@mastra/editor"
+
+import { copyAgent } from "./agents/devotional/copy-agent"
+import { setInstructionResolver } from "./agents/devotional/instruction-resolver"
+import { highlighterAgent } from "./agents/devotional/highlighter-agent"
+import { modernizerAgent } from "./agents/devotional/modernizer-agent"
+import { safetyAgent } from "./agents/devotional/safety-agent"
+import { scriptureAgent } from "./agents/devotional/scripture-agent"
+import { spurgeonRankerAgent } from "./agents/devotional/spurgeon-ranker-agent"
+import {
   handleSubtitleEnrichmentRouteRequest,
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
@@ -132,7 +150,19 @@ const redactPromptBodies: SpanOutputProcessor = {
 }
 
 export const mastra = new Mastra({
-  agents: { smokeAgent, webResearchAgent },
+  // Agent Editor: Studio draft/publish editing of agent instructions (stored
+  // configs live in the storage backend). Model/id/name stay in code.
+  editor: new MastraEditor(),
+  agents: {
+    smokeAgent,
+    webResearchAgent,
+    scriptureAgent,
+    safetyAgent,
+    modernizerAgent,
+    copyAgent,
+    highlighterAgent,
+    spurgeonRankerAgent,
+  },
   workflows: {
     transcriptEmbeddingWorkflow,
     sceneEmbeddingWorkflow,
@@ -150,6 +180,13 @@ export const mastra = new Mastra({
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
     dailyDevotionalWorkflow,
+    videoFirstDevotionalWorkflow,
+    devotionalSourceWorkflow,
+    devotionalContentWorkflow,
+    devotionalProduceWorkflow,
+    devotionalRenderWorkflow,
+    devotionalApproveWorkflow,
+    devotionalPublishWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
   },
@@ -489,3 +526,16 @@ export const mastra = new Mastra({
 })
 
 configureSearchEvalNativeSuiteRuntime(() => mastra)
+
+// Studio-published instruction edits (stored agent configs) flow into the
+// devotional pipeline's LLM calls: the hybrid agent-llm adapter consults this
+// resolver before falling back to the coded instructions. Only instructions
+// are taken from the stored config — model/id/name stay pinned in code.
+setInstructionResolver(async (agentId) => {
+  const hydrated = await mastra.getEditor()?.agent.getById(agentId)
+  if (!hydrated) return null
+  const instructions = await hydrated.getInstructions()
+  return typeof instructions === "string" && instructions.trim()
+    ? instructions
+    : null
+})

@@ -157,9 +157,13 @@ export function createDevotionalLlm(options: {
       }
 
       if (!response.ok) {
+        // Capture a bounded slice of the body — OpenRouter returns the real
+        // cause (unsupported response_format, bad model id, credit/limit) there;
+        // status alone is rarely enough to diagnose.
+        const body = await response.text().catch(() => "")
         throw new DevotionalLlmError(
           "request_failed",
-          `devotional model request failed with ${response.status}`,
+          `devotional model request failed with ${response.status}: ${body.slice(0, 500)}`,
         )
       }
 

@@ -23,6 +23,7 @@ import { matchVideo } from "../../services/devotional/video-matcher"
 import { writeDevotional } from "../../services/devotional/devotional-writer"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
 import { publishDevotional } from "../../services/devotional/site-publish-client"
+import { generateVoiceover } from "../../services/devotional/voiceover"
 import type {
   Devotional,
   DevotionalReport,
@@ -31,6 +32,7 @@ import type {
   ScriptureRef,
   VideoClip,
   VideoMatchSource,
+  VoiceoverInfo,
 } from "../../services/devotional/types"
 
 export const DailyDevotionalWorkflowInputSchema = z
@@ -58,6 +60,8 @@ const WorkflowSuccessSchema = z
     safety: SafetyVerdictSchema,
     devotional: DevotionalSchema,
     artifactPath: z.string().optional(),
+    /** Store-relative path of the generated narration MP3, when voiceover ran. */
+    voiceoverPath: z.string().optional(),
   })
   .strict()
 
@@ -98,6 +102,7 @@ export type DailyDevotionalDeps = {
   writeDevotional?: typeof writeDevotional
   evaluateSafety?: typeof evaluateSafety
   publish?: typeof publishDevotional
+  generateVoiceover?: typeof generateVoiceover
   artifactStore?: DevotionalArtifactStore
   /** Override the generation/safety LLMs (tests inject fakes). */
   llm?: DevotionalLlm
@@ -179,6 +184,7 @@ export async function runDailyDevotional(
   const writeDevotionalFn = deps.writeDevotional ?? writeDevotional
   const evaluateSafetyFn = deps.evaluateSafety ?? evaluateSafety
   const publishFn = deps.publish ?? publishDevotional
+  const generateVoiceoverFn = deps.generateVoiceover ?? generateVoiceover
   const artifactStore = deps.artifactStore ?? createDevotionalArtifactStore()
 
   // Read any prior report for this date up front. Idempotency is per date: if
@@ -267,6 +273,30 @@ export async function runDailyDevotional(
     published = result.ok ? result.published : false
   }
 
+  // Generate narration audio for a safety-passed devotional. Best-effort, same
+  // gate as publish: any voiceover or persist failure leaves `voiceover: null`
+  // and never fails the run (config_missing simply means Azure TTS is not set
+  // up). Persist BEFORE recording so the report only ever references audio that
+  // actually landed on disk.
+  let voiceover: VoiceoverInfo | null = null
+  if (safety.verdict === "pass") {
+    try {
+      const result = await generateVoiceoverFn({ devotional })
+      if (result.ok) {
+        const written = await artifactStore.writeAudio(date, result.audio.bytes)
+        voiceover = {
+          format: result.audio.format,
+          voice: result.audio.voice,
+          locale: result.audio.locale,
+          characterCount: result.audio.characterCount,
+          artifactPath: written.relativePath,
+        }
+      }
+    } catch {
+      voiceover = null
+    }
+  }
+
   const finishedAt = now().toISOString()
 
   let artifactPath: string | undefined
@@ -283,6 +313,7 @@ export async function runDailyDevotional(
       videoMatch: devotional.videoMatch,
       safety,
       devotional,
+      voiceover,
     }
     try {
       const written = await artifactStore.writeReport(report)
@@ -309,6 +340,7 @@ export async function runDailyDevotional(
     safety,
     devotional,
     ...(artifactPath ? { artifactPath } : {}),
+    ...(voiceover ? { voiceoverPath: voiceover.artifactPath } : {}),
   }
 }
 
