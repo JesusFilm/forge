@@ -1,7 +1,7 @@
 ---
 title: "fix: Prevent Watch subtitle header overlap"
 type: fix
-status: active
+status: completed
 date: 2026-07-16
 ---
 
@@ -10,6 +10,10 @@ date: 2026-07-16
 ## Summary
 
 Recompose the Watch language modal's subtitle controls so the heading and toggle remain the primary mobile row while the conditional Translate with AI action moves to a second row. Restore the compact single-row arrangement at desktop widths.
+
+## Outcome
+
+Implemented the responsive hierarchy with heading, toggle, and AI action in matching DOM and visual order. Browser measurements at 390px showed no sibling intersections or header overflow before or after Request sent, with the AI action below the primary row. The 608px modal kept a single aligned row with the longest Nepali labels and the longest RTL Arabic labels without intersection or overflow.
 
 ## Problem Frame
 
@@ -49,7 +53,7 @@ At a narrow mobile viewport, the subtitle heading competes with a non-shrinking 
   - Keyboard focus reaches the subtitle toggle before Translate with AI in the CTA-present enabled state.
   - From `sm` upward, the toggle and conditional AI action occupy separate inline columns beside the heading only when the longest supported localized labels fit.
   - Clicking Translate with AI still changes the button to Request sent without navigation or subtitle-state mutation.
-- **Verification:** Focused component tests pass and assert the responsive placement contract rather than only the absence of `flex-col` classes.
+- **Verification:** Focused component tests pass and cover control state, source/focus order, the five-language translated-only regression state, and Request sent behavior. Browser measurements own the pixel-geometry contract.
 
 ### U2. Prove the mobile and desktop geometry
 
@@ -74,7 +78,7 @@ At a narrow mobile viewport, the subtitle heading competes with a non-shrinking 
 ## Risks & Dependencies
 
 - `MultilingualTooltip` supplies the layout wrapper, so responsive grid classes must be applied to the wrapper rather than only the nested button.
-- Unit tests can verify DOM structure and responsive class contracts but not pixel geometry; the CTA-present browser state is required to close the regression gap.
+- Unit tests verify DOM/source order and behavior but not pixel geometry; the CTA-present browser measurements close the regression gap.
 - The current worktree started behind `origin/main`; implementation must branch from the refreshed `origin/main` while preserving unrelated untracked files.
 
 ## Sources & Research

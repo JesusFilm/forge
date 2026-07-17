@@ -3,7 +3,7 @@ id: "feat-264"
 title: "Watch subtitle header overlap"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-16"
 duration: 1
 depends_on: []
@@ -59,3 +59,14 @@ heading's flex area and paint over its text.
 - `pnpm --filter @forge/web lint`
 - Browser smoke `/watch/jesus.html/russian.html` at 390px and the 608px modal width, with bounding-rectangle overlap checks before and after Request sent.
 - Capture mobile and desktop screenshots and verify the CTA-present state has no horizontal overflow.
+
+## Completion
+
+- Replaced the competing mobile flex row with a two-column grid: heading and toggle form the primary row, and Translate with AI uses a secondary row. At `sm`, the controls use separate inline columns.
+- Preserved heading → toggle → AI source/focus order, subtitle state behavior, tooltips, request-sent behavior, and localized wrapping.
+- Focused component tests pass (29/29), along with `@forge/web` typecheck and lint.
+- At 390px, heading/toggle/request rectangles had zero intersections before and after Request sent, the request action remained below the primary row, and the header had no horizontal overflow.
+- At the exact 608px modal width, the longest Nepali label set and the longest RTL Arabic label set stayed on one aligned row with zero intersections and no header or button overflow.
+- Changing to Request sent added no resource requests or long tasks: the resource count stayed at 76 and the long-task count stayed at 0. The layout-only implementation adds no data-fetching path.
+- The current Russian fixture now has a same-language subtitle, so the CTA-present browser state was rendered with a temporary local-only condition after two real no-same-language routes hit the local Admin timeout boundary. That condition was removed immediately after proof; the final worktree contains only the production fix.
+- Local proof images are under `output/playwright/watch-subtitle-header-{mobile-before,mobile-request-sent,desktop-longest-labels,desktop-rtl}.png`.
