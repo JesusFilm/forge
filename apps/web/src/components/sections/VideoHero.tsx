@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
+import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import {
@@ -21,12 +22,16 @@ function MuxBackedVideoHeroPlayer({
   src,
   isMuted,
   onMutedChange,
+  video,
   videoRef,
+  setVideoRef,
 }: {
   src: string
   isMuted: boolean
   onMutedChange: (muted: boolean) => void
+  video: HTMLVideoElement | null
   videoRef: React.RefObject<HTMLVideoElement | null>
+  setVideoRef: (next: HTMLVideoElement | null | undefined) => void
 }) {
   const pauseOnScrollAway = useCallback(() => {
     const video = videoRef.current
@@ -47,12 +52,11 @@ function MuxBackedVideoHeroPlayer({
   // Mirror `volumechange` from the underlying media element to the parent
   // mute-state (matches the videojs path's `player.on('volumechange', …)`).
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     const handler = () => onMutedChange(video.muted)
     video.addEventListener("volumechange", handler)
     return () => video.removeEventListener("volumechange", handler)
-  }, [onMutedChange, videoRef])
+  }, [onMutedChange, video])
 
   if (!src) return null
 
@@ -62,7 +66,7 @@ function MuxBackedVideoHeroPlayer({
       data-testid="VideoHeroPlayer"
     >
       <MuxVideo
-        ref={videoRef as React.Ref<HTMLVideoElement | undefined>}
+        ref={setVideoRef}
         src={src}
         autoPlay
         loop
@@ -146,10 +150,13 @@ function MuxBackedVideoHero({
   ctaLabel: string | null | undefined
   ctaLink: string | null | undefined
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const {
+    media: video,
+    mediaRef: videoRef,
+    setMediaRef: setVideoRef,
+  } = useWatchModalMediaRef<HTMLVideoElement>(src)
   const [isMuted, setIsMuted] = useState(true)
   const [hasUnmutedOnce, setHasUnmutedOnce] = useState(false)
-
   const handleMutedChange = useCallback((muted: boolean) => {
     setIsMuted(muted)
   }, [])
@@ -167,7 +174,7 @@ function MuxBackedVideoHero({
       void video.play()
       setHasUnmutedOnce(true)
     }
-  }, [isMuted, hasUnmutedOnce])
+  }, [hasUnmutedOnce, isMuted, videoRef])
 
   return (
     <section
@@ -179,7 +186,9 @@ function MuxBackedVideoHero({
         src={src ?? ""}
         isMuted={isMuted}
         onMutedChange={handleMutedChange}
+        video={video}
         videoRef={videoRef}
+        setVideoRef={setVideoRef}
       />
 
       <VideoHeroOverlay

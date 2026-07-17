@@ -19,6 +19,7 @@ import {
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
@@ -60,6 +61,7 @@ export function SeriesPageClient({
   const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
+  useWatchModalActivity(modalState !== "none")
   const openShare = useCallback(() => setModalState("share"), [])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const closeModal = useCallback(() => setModalState("none"), [])

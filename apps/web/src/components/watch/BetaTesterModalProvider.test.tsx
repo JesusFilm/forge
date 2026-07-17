@@ -53,8 +53,12 @@ import {
   BetaTesterModalProvider,
   BetaTesterTrigger,
   useBetaTesterModal,
-  usePauseForBetaTesterModal,
 } from "@/components/watch/BetaTesterModalProvider"
+import {
+  WATCH_MODAL_CLOSE_DELAY_MS,
+  WatchModalActivityProvider,
+  usePauseForWatchModal,
+} from "@/components/watch/WatchModalActivityProvider"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
 
 let container: HTMLDivElement
@@ -84,7 +88,11 @@ function click(selector: string) {
 
 function renderProvider(children: ReactNode = <main>Watch page</main>) {
   act(() => {
-    root.render(<BetaTesterModalProvider>{children}</BetaTesterModalProvider>)
+    root.render(
+      <WatchModalActivityProvider>
+        <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+      </WatchModalActivityProvider>,
+    )
   })
 }
 
@@ -104,7 +112,7 @@ function makeMedia({ paused = false, rejectPlay = false } = {}) {
 }
 
 function MediaOwner({ media }: { media: ReturnType<typeof makeMedia> | null }) {
-  usePauseForBetaTesterModal(media)
+  usePauseForWatchModal(media)
   return null
 }
 
@@ -191,7 +199,9 @@ describe("BetaTesterModalProvider", () => {
       document
         .querySelector<HTMLButtonElement>("[role='dialog'] button")
         ?.click()
-      await Promise.resolve()
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, WATCH_MODAL_CLOSE_DELAY_MS + 20),
+      )
     })
     expect(media.play).toHaveBeenCalledOnce()
   })
@@ -216,7 +226,9 @@ describe("BetaTesterModalProvider", () => {
       document
         .querySelector<HTMLButtonElement>("[role='dialog'] button")
         ?.click()
-      await Promise.resolve()
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, WATCH_MODAL_CLOSE_DELAY_MS + 20),
+      )
     })
 
     expect(media.play).toHaveBeenCalledOnce()
@@ -230,7 +242,7 @@ describe("BetaTesterModalProvider", () => {
       const [attached, setAttached] = useState<ReturnType<
         typeof makeMedia
       > | null>(null)
-      usePauseForBetaTesterModal(attached)
+      usePauseForWatchModal(attached)
       return (
         <button
           type="button"

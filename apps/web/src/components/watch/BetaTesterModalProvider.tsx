@@ -15,6 +15,7 @@ import dynamic from "next/dynamic"
 import { usePathname } from "next/navigation"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
 import { cn } from "@/lib/utils"
 
@@ -23,12 +24,6 @@ type BetaTesterModalContextValue = {
   openModal: (trigger?: HTMLElement | null) => void
   closeModal: () => void
   setQuestionPanelOpen: (open: boolean) => void
-}
-
-type PausableMedia = {
-  paused: boolean
-  pause: () => void
-  play: () => Promise<void> | void
 }
 
 const BetaTesterModalContext =
@@ -143,49 +138,6 @@ class BetaTesterModalLoadBoundary extends Component<
   }
 }
 
-/** Pause a route-owned media element while the beta modal owns interaction. */
-export function usePauseForBetaTesterModal(media: PausableMedia | null) {
-  const modal = useBetaTesterModal()
-  const modalAvailable = modal != null
-  const open = modal?.open ?? false
-  const resumeMediaRef = useRef<PausableMedia | null>(null)
-  const shouldResumeRef = useRef(false)
-  const wasOpenRef = useRef(false)
-
-  useEffect(() => {
-    if (!modalAvailable) {
-      resumeMediaRef.current = null
-      shouldResumeRef.current = false
-      return
-    }
-    const wasOpen = wasOpenRef.current
-    wasOpenRef.current = open
-
-    if (open) {
-      if (!wasOpen) {
-        resumeMediaRef.current = media
-        shouldResumeRef.current = media != null && !media.paused
-      }
-      if (media && !media.paused) {
-        media.pause()
-      }
-      return
-    }
-
-    if (!open && wasOpen) {
-      const resumeMedia = resumeMediaRef.current
-      if (shouldResumeRef.current && resumeMedia === media && resumeMedia) {
-        const playResult = resumeMedia.play()
-        if (playResult && typeof playResult.catch === "function") {
-          playResult.catch(() => undefined)
-        }
-      }
-    }
-    resumeMediaRef.current = null
-    shouldResumeRef.current = false
-  }, [media, modalAvailable, open])
-}
-
 export function BetaTesterTrigger({
   children = "Become a beta tester",
   className,
@@ -234,6 +186,7 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
   const [modalEnabled, setModalEnabled] = useState(false)
   const [questionPanelOpen, setQuestionPanelOpen] = useState(false)
   const returnFocusRef = useRef<HTMLElement | null>(null)
+  useWatchModalActivity(open)
 
   const openModal = useCallback(
     (trigger?: HTMLElement | null) => {

@@ -15,6 +15,7 @@ import DatadogRum from "@/components/DatadogRum"
 import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
+import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
 
 async function loadMessages(locale: UiLocale) {
   return (await import(`../../../../messages/${locale}.json`)).default
@@ -93,10 +94,12 @@ export default async function RootLayout({
       <body className="overflow-x-clip bg-black">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
-          <FloatingSearchProvider>
-            <FeedbackLauncher />
-            <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
-          </FloatingSearchProvider>
+          <WatchModalActivityProvider>
+            <FloatingSearchProvider>
+              <FeedbackLauncher />
+              <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+            </FloatingSearchProvider>
+          </WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>
     </html>

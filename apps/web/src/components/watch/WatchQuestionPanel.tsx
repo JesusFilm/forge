@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl"
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { useBetaTesterModal } from "@/components/watch/BetaTesterModalProvider"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
 
@@ -65,6 +66,7 @@ export function WatchQuestionPanel({
   const visible =
     enabled && pinned && !searchOpen && !modalSuppressed && !betaModalOpen
   const modalOpen = visible && chatOpen
+  useWatchModalActivity(modalOpen)
 
   useEffect(() => {
     setBetaQuestionPanelOpen?.(modalOpen)
