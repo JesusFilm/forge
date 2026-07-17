@@ -56,7 +56,7 @@ export function WatchBody({
               one <h1> per page (WCAG 1.3.1). Visual styling is unchanged. */}
           <h2
             data-testid="watch-body-title"
-            className="min-w-0 flex-1 text-xl leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl"
+            className="min-w-0 flex-1 text-lg leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl"
           >
             {visualTitle}
           </h2>
