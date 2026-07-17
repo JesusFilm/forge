@@ -15,12 +15,17 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import type { AbstractIntlMessages } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 import arMessages from "../../../../messages/ar.json"
 import enMessages from "../../../../messages/en.json"
 import ruMessages from "../../../../messages/ru.json"
+
+type LanguagePickerTestCatalog = AbstractIntlMessages & {
+  LanguagePickerModal: Record<string, string>
+}
 
 const {
   resetLanguagePickerMessages,
@@ -32,22 +37,20 @@ const {
   writePreferredLanguageSlugMock,
 } = vi.hoisted(() => {
   let activeLocale = "en"
-  let sourceCatalog: Record<string, Record<string, string>> = {}
-  let activeCatalog: Record<string, Record<string, string>> = {}
+  let sourceCatalog: LanguagePickerTestCatalog = { LanguagePickerModal: {} }
+  let activeCatalog: LanguagePickerTestCatalog = { LanguagePickerModal: {} }
 
   return {
     routerPrefetchMock: vi.fn(),
     routerPushMock: vi.fn(),
     writePreferredLanguageSlugMock: vi.fn(),
-    resetLanguagePickerMessages: (
-      catalog: Record<string, Record<string, string>>,
-    ) => {
+    resetLanguagePickerMessages: (catalog: LanguagePickerTestCatalog) => {
       activeLocale = "en"
       sourceCatalog = structuredClone(catalog)
       activeCatalog = structuredClone(catalog)
     },
     setLanguagePickerCatalog: (
-      catalog: Record<string, Record<string, string>>,
+      catalog: LanguagePickerTestCatalog,
       locale: string,
     ) => {
       activeLocale = locale
