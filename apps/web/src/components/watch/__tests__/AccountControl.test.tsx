@@ -67,6 +67,95 @@ describe("AccountControl", () => {
     vi.unstubAllGlobals()
   })
 
+  it("renders no account control while the session request is pending", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined)),
+    )
+
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-account-control"]'),
+    ).toBeNull()
+  })
+
+  it("links signed-out homepage viewers back to the exact homepage", async () => {
+    Object.assign(window.location, {
+      pathname: "/watch",
+      search: "",
+    })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ accountGateEnabled: true, authenticated: false }),
+      ),
+    )
+
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+    const button = await vi.waitFor(() => {
+      const el = container.querySelector("button")
+      expect(el?.getAttribute("aria-label")).toBe("Sign in")
+      return el as HTMLButtonElement
+    })
+
+    await act(async () => {
+      button.click()
+    })
+
+    expect(assignSpy).toHaveBeenCalledWith(
+      "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch",
+    )
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:3000/watch/api/auth/session?callbackURL=%2Fwatch",
+      expect.any(Object),
+    )
+  })
+
+  it.each([
+    ["non-success", async () => new Response(null, { status: 503 })],
+    ["invalid JSON", async () => new Response("not-json")],
+    ["null JSON", async () => Response.json(null)],
+    ["array JSON", async () => Response.json([])],
+    ["missing booleans", async () => Response.json({ user: {} })],
+    [
+      "string booleans",
+      async () =>
+        Response.json({
+          accountGateEnabled: "true",
+          authenticated: "false",
+        }),
+    ],
+    [
+      "invalid authenticated user",
+      async () =>
+        Response.json({
+          accountGateEnabled: false,
+          authenticated: true,
+          user: "viewer",
+        }),
+    ],
+    ["rejected request", async () => Promise.reject(new Error("offline"))],
+  ])("fails hidden for a %s session response", async (_name, fetchSession) => {
+    vi.stubGlobal("fetch", vi.fn(fetchSession))
+
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="watch-account-control"]'),
+      ).toBeNull()
+      expect(clearDatadogRumUserMock).toHaveBeenCalledTimes(1)
+    })
+    expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
+  })
+
   it("links signed-out viewers to the Web-local Auth login route", async () => {
     vi.stubGlobal(
       "fetch",
@@ -194,6 +283,7 @@ describe("AccountControl", () => {
       "fetch",
       vi.fn(async () =>
         Response.json({
+          accountGateEnabled: false,
           authenticated: true,
           user: {
             email: "viewer@example.test",

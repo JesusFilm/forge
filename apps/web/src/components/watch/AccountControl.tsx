@@ -22,6 +22,19 @@ type AccountState =
   | { status: "signed-out" }
   | { status: "signed-in"; user?: AccountUser }
 
+type AccountSession = {
+  accountGateEnabled: boolean
+  authenticated: boolean
+  user?: AccountUser
+}
+
+const ACCOUNT_USER_FIELDS = [
+  "id",
+  "email",
+  "name",
+  "image",
+] as const satisfies readonly (keyof AccountUser)[]
+
 function currentReturnTo(): string {
   if (typeof window === "undefined") return "/watch"
   return `${window.location.pathname}${window.location.search}${window.location.hash}`
@@ -50,13 +63,13 @@ export function AccountControl() {
       headers: { accept: "application/json" },
     })
       .then(async (response) => {
-        if (!response.ok)
-          return { accountGateEnabled: true, authenticated: false }
-        return (await response.json()) as {
-          accountGateEnabled?: boolean
-          authenticated?: boolean
-          user?: AccountUser
+        if (!response.ok) throw new Error("Account session request failed")
+
+        const session: unknown = await response.json()
+        if (!isAccountSession(session)) {
+          throw new Error("Invalid account session response")
         }
+        return session
       })
       .then((session) => {
         if (cancelled) return
@@ -76,7 +89,7 @@ export function AccountControl() {
       .catch(() => {
         if (!cancelled) {
           clearDatadogRumUser()
-          setState({ status: "signed-out" })
+          setState({ status: "hidden" })
         }
       })
 
@@ -131,23 +144,18 @@ export function AccountControl() {
     }
   }, [state.status])
 
-  const disabled = state.status === "loading"
   const user = state.status === "signed-in" ? state.user : undefined
   const displayName = user?.name?.trim() || user?.email?.trim() || "Signed in"
   const email = user?.email?.trim()
-  const buttonLabel = disabled
-    ? "Account"
-    : state.status === "signed-in"
-      ? "Account menu"
-      : action.label
+  const buttonLabel =
+    state.status === "signed-in" ? "Account menu" : action.label
 
-  if (state.status === "hidden") return null
+  if (state.status === "loading" || state.status === "hidden") return null
 
   return (
     <div ref={rootRef} className="relative inline-flex">
       <button
         type="button"
-        disabled={disabled}
         aria-label={buttonLabel}
         aria-haspopup={state.status === "signed-in" ? "menu" : undefined}
         aria-expanded={state.status === "signed-in" ? menuOpen : undefined}
@@ -155,14 +163,13 @@ export function AccountControl() {
         data-testid="watch-account-control"
         data-auth-state={state.status}
         onClick={() => {
-          if (disabled) return
           if (state.status === "signed-in") {
             setMenuOpen((open) => !open)
             return
           }
           window.location.assign(accountAuthUrl(action.href))
         }}
-        className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none disabled:cursor-default disabled:opacity-70 md:h-[52px] md:w-12"
+        className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-12"
       >
         {state.status === "signed-in" ? (
           <Avatar user={user} sizeClassName="h-8 w-8 md:h-9 md:w-9" />
@@ -220,6 +227,27 @@ export function AccountControl() {
       ) : null}
     </div>
   )
+}
+
+function isAccountSession(value: unknown): value is AccountSession {
+  if (!isRecord(value)) return false
+  if (typeof value.accountGateEnabled !== "boolean") return false
+  if (typeof value.authenticated !== "boolean") return false
+  if (value.user !== undefined && !isAccountUser(value.user)) return false
+
+  return true
+}
+
+function isAccountUser(value: unknown): value is AccountUser {
+  if (!isRecord(value)) return false
+
+  return ACCOUNT_USER_FIELDS.every(
+    (field) => value[field] === undefined || typeof value[field] === "string",
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value)
 }
 
 function Avatar({
