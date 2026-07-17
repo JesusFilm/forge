@@ -173,8 +173,9 @@ describe("WatchBody — two-column layout", () => {
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
 
-    // Title and Download stay on one row; the title wraps inside the remaining
-    // space instead of pushing Download below it.
+    // Title and Download keep the established row by default, then switch to
+    // a leading-aligned stack on landscape phones so long localized titles
+    // can use the full column width.
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
@@ -184,10 +185,19 @@ describe("WatchBody — two-column layout", () => {
     expect(titleRow!.className).toContain("items-center")
     expect(titleRow!.className).toContain("justify-between")
     expect(titleRow!.className).toContain("gap-3")
-    expect(titleRow!.className).not.toContain("flex-col")
+    expect(titleRow!.className.split(" ")).not.toContain("flex-col")
+    expect(titleRow!.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:flex-col",
+    )
+    expect(titleRow!.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:items-start",
+    )
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
     expect(titleEl?.className).toContain("flex-1")
+    expect(titleEl?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:w-full",
+    )
     expect(titleEl?.className).toContain("text-lg")
     expect(titleEl?.className).toContain("sm:text-[27px]")
     expect(titleEl?.className).toContain("md:text-4xl")
@@ -197,9 +207,18 @@ describe("WatchBody — two-column layout", () => {
     expect(titleEl?.className).not.toContain("text-3xl")
     expect(titleEl?.className).not.toContain("font-bold")
     expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
-    const downloadGroup = dl!.parentElement
+    const downloadGroup = container.querySelector(
+      '[data-testid="watch-download-group"]',
+    )
+    expect(dl!.parentElement).toBe(downloadGroup)
     expect(downloadGroup?.className).toContain("ml-auto")
     expect(downloadGroup?.className).toContain("items-end")
+    expect(downloadGroup?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:ml-0",
+    )
+    expect(downloadGroup?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:items-start",
+    )
 
     // Right-column header top padding is alignment-critical: the right
     // header row should start flush with the title / Download row.
@@ -211,9 +230,26 @@ describe("WatchBody — two-column layout", () => {
     expect(studySection!.className).not.toContain("md:pt-")
     expect(studySection!.className).not.toContain("xl:pt-")
     const headerRow = studySection!.querySelector(
-      "div.mb-4.flex.flex-wrap.items-center.justify-between",
+      '[data-testid="watch-study-questions-header"]',
     )
     expect(headerRow).not.toBeNull()
+    expect(headerRow?.className).toContain("flex-wrap")
+    expect(headerRow?.className).toContain("items-center")
+    expect(headerRow?.className).toContain("justify-between")
+    expect(headerRow?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:flex-col",
+    )
+    expect(headerRow?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:items-start",
+    )
+    expect(headerRow?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:gap-3",
+    )
+    expect(
+      headerRow?.querySelector(
+        '[data-testid="watch-study-questions-ask-yours"]',
+      ),
+    ).not.toBeNull()
     expect(
       container.querySelector("#watch-related-questions-heading")?.className,
     ).toContain(WATCH_SECTION_EYEBROW_CLASS)
