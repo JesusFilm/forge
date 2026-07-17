@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -44,6 +45,10 @@ export function WatchPreferencesProvider({
   const [hydrated, setHydrated] = useState(false)
   const pendingRef = useRef<PendingWatchPreferences>({})
   const mountedRef = useRef(true)
+  // Latest-render mirror so the setter builds `next` outside the state updater —
+  // StrictMode double-invokes updaters, which would double the disk write.
+  const prefsRef = useRef(prefs)
+  prefsRef.current = prefs
 
   useEffect(() => {
     // Setup restores what cleanup mutates — a StrictMode remount reuses this same
@@ -70,17 +75,18 @@ export function WatchPreferencesProvider({
 
   const setAudioLanguageSlug = useCallback((slug: string | null) => {
     pendingRef.current = { ...pendingRef.current, audioLanguageSlug: slug }
-    setPrefs((prev) => {
-      const next = { ...prev, audioLanguageSlug: slug }
-      void saveWatchPreferences(next)
-      return next
-    })
+    const next = { ...prefsRef.current, audioLanguageSlug: slug }
+    setPrefs(next)
+    void saveWatchPreferences(next)
   }, [])
 
+  const value = useMemo<WatchPreferencesContextValue>(
+    () => ({ ...prefs, setAudioLanguageSlug, hydrated }),
+    [prefs, setAudioLanguageSlug, hydrated],
+  )
+
   return (
-    <WatchPreferencesContext.Provider
-      value={{ ...prefs, setAudioLanguageSlug, hydrated }}
-    >
+    <WatchPreferencesContext.Provider value={value}>
       {children}
     </WatchPreferencesContext.Provider>
   )

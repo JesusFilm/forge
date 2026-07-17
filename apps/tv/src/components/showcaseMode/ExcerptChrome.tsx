@@ -29,8 +29,8 @@ export type ExcerptChromeProps = {
   feltNeed: string
   languageName: string | null
   /**
-   * AE4: false when the language did not actually rotate (single-language video, or a
-   * forced repeat). Trust it — naming the language anyway would be a false claim.
+   * True only for a KTD-5 hop's mid-play dub switch; false on every ordinary excerpt.
+   * Trust it — naming the language anyway would be a false claim.
    */
   claimsLanguage: boolean
   /** Restarts the reveal on each new excerpt (reelState's source-swap token). */

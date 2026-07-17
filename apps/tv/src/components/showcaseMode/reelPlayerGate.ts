@@ -47,7 +47,7 @@ export type ReelPlayerGate = {
    * clock on videoReady would disarm it for the exact fault it exists to catch.
    */
   playIntended: boolean
-  /** U7's `isSourceSwapping`: a language-rotation swap is not a rebuffer (KTD-9). */
+  /** U7's `isSourceSwapping`: an excerpt/hop swap is not a rebuffer (KTD-9). */
   swapInFlight: boolean
   /**
    * KTD-5: a hop swap is masked by a brief dip over the LIVE video surface, never the
