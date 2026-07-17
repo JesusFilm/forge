@@ -304,6 +304,16 @@ describe("WatchHomePage", () => {
     expect(container.textContent).toContain("Jesus")
     expect(container.textContent).toContain("The story of Jesus")
     expect(container.textContent).toContain("Discover the full story")
+    const sectionCta = Array.from(container.querySelectorAll("a")).find(
+      (link) => link.textContent?.trim() === "Watch",
+    )
+    expect(Array.from(sectionCta?.parentElement?.classList ?? [])).toEqual(
+      expect.arrayContaining(["flex", "items-center", "justify-between"]),
+    )
+    expect(sectionCta?.parentElement?.classList.contains("flex-col")).toBe(
+      false,
+    )
+    expect(sectionCta?.classList.contains("shrink-0")).toBe(true)
     expect(container.textContent).toContain("Built for global missions")
     expect(container.textContent).toContain("Sign Up For Our Newsletter")
     const socialHrefs = [
