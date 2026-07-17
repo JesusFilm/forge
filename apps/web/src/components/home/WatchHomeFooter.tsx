@@ -45,7 +45,7 @@ export function WatchHomeFooter() {
   return (
     <footer
       data-testid="watch-home-footer"
-      className="bg-white py-10 text-[#131111]"
+      className="relative z-20 bg-white py-10 text-[#131111]"
     >
       <div className={`${WATCH_PAGE_CONTENT_CLASSES} flex flex-col gap-8`}>
         <div className="grid gap-8 lg:grid-cols-[160px_minmax(0,1fr)] lg:items-center xl:grid-cols-[340px_minmax(0,1fr)]">

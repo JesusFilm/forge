@@ -519,6 +519,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           missingData: [],
         },
         blocks: [],
+        languageSlug: "spanish-castilian",
       },
       undefined,
     )

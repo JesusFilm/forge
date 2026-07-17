@@ -3,7 +3,7 @@ id: feat-240
 title: "Admin fleet search key provisioning + rollout preconditions"
 owner: urim
 priority: P1
-status: not-started
+status: in-progress
 start_date: "2026-07-09"
 duration: 3
 depends_on: []
@@ -31,9 +31,21 @@ ticket is the admin-side rollout; feat-241 is the client side.
 Doppler, admin deploy) are the admin CMS owner's to execute. `owner: urim` here tracks
 coordination of the end-to-end search unblock, not admin ownership.
 
-> **Status 2026-07-13:** PR #1493 is MERGED (per-IP + per-`viewer_id` fleet bucketing, dormant
-> until provisioned). Precondition #1 (origin bypass) has been PROBED and is **CONFIRMED OPEN** —
-> see What To Do step 1; it is now active remediation, not a verification checkbox.
+> **Status 2026-07-16:** Preconditions #2–#4 DONE — abuse ceiling shipped (PR #1577, `enforce=false`),
+> two distinct fleet keys minted in `forge-admin` Doppler + admin deployed, fleet requests verified `200`
+> with `source=fleet`. Alerting monitors added as code (PR #1591, `infra/datadog-monitors/`) but NOT yet
+> created in Datadog (operator runs `create.sh`). **Precondition #1 (origin bypass) RE-CONFIRMED OPEN
+> 2026-07-16** — `forgeadmin-production-f4d1.up.railway.app/api/graphql` still returns `200`
+> (`server: railway-hikari`, no `cf-ray`); it is the sole remaining blocker (tracked in `todos/021`),
+> and the admin CMS owner has committed to closing it. REMAINING: close the origin bypass, calibrate +
+> flip `FLEET_SEARCH_CEILING_ENFORCE=true`, confirm `SEARCH_AUTH_REQUIRED=true`, and run `create.sh`.
+>
+> **Pre-flight (2026-07-14, re-verified 2026-07-16):** no in-repo caller depends on the raw origin, so
+> removing the public `*.up.railway.app` domain remains the lowest-blast-radius fix — step 1 stands as
+> written. The runbook's auth-CNAME warning (feat-105's `auth.jesusfilm.org` → f4d1) is **FALSE and
+> must not be acted on**: that domain moved to the standalone `@forge/auth` service on 2026-05-12 and
+> now serves `{"service":"forge-auth"}` — feat-105's line-135 CNAME prose predates the split. Runbook
+> (read with that correction): `docs/handoffs/2026-07-14-feat-240-fleet-search-origin-preflight.md`.
 
 ## Entry Points - Read These First
 

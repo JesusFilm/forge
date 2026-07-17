@@ -129,6 +129,7 @@ type AnyBlock = {
 function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
+  languageSlug: string | null | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
@@ -138,6 +139,7 @@ function renderAdminBlock(
             block as unknown as Parameters<typeof MediaCollection>[0]["data"]
           }
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "PromoBannerBlock":
@@ -205,6 +207,7 @@ function renderAdminBlock(
         <Container
           data={block as unknown as Parameters<typeof Container>[0]["data"]}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "SectionBlock":
@@ -212,6 +215,7 @@ function renderAdminBlock(
         <SectionBlock
           data={block as unknown as Parameters<typeof SectionBlock>[0]["data"]}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "RelatedQuestionsBlock":
@@ -295,16 +299,22 @@ function renderAdminBlock(
 export function ExperienceSectionRenderer({
   section,
   routeVideo,
+  languageSlug,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
   const typename = (section as { readonly __typename?: string | null })
     .__typename
   if (typename != null && ADMIN_BLOCK_TYPENAMES.has(typename)) {
-    return renderAdminBlock(section as unknown as AnyBlock, routeVideo)
+    return renderAdminBlock(
+      section as unknown as AnyBlock,
+      routeVideo,
+      languageSlug,
+    )
   }
 
   if (process.env.NODE_ENV === "development") {

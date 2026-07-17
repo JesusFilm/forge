@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import { setRequestLocale } from "next-intl/server"
-import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import {
+  publicWatchHomeLanguageSlugForLocale,
+  resolveWatchLocaleIdentity,
+} from "@/lib/locale"
 import { resolveWatchHome } from "@/lib/watch-home"
 import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
@@ -68,6 +71,7 @@ export default async function HomePage({ params }: PageProps) {
     <WatchHomeExperiencePage
       heroModel={heroResult.data}
       blocks={builderBlocks}
+      languageSlug={publicWatchHomeLanguageSlugForLocale(locale) ?? "english"}
     />
   )
 }
