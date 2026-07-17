@@ -138,6 +138,11 @@ delivery, so you confirm a clean "VERIFY SUCCEEDED" before uploading. The
 Transporter Mac app also works (it auto-detects tvOS from the binary).
 `eas submit` does not, and there is no flag to make it.
 
+For the same reason, `apps/tv/eas.json` deliberately has **no `submit` section**:
+an accidental `eas submit` fails fast with "Missing submit profile" instead of
+burning doomed deliveries. Do NOT re-add it "for consistency" with mobile —
+mobile's populated profile marks eas submit as its blessed path; TV's is altool.
+
 - **Internal testing**: up to 100 testers who are members of your App Store
   Connect team. No Beta App Review; builds are ready in minutes.
 - **External testing**: up to 10,000 testers via email or a public link. Requires
