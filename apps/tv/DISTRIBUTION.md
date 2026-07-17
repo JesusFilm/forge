@@ -94,8 +94,11 @@ npx eas-cli build --platform ios --profile production   # store-signed tvOS buil
 ```
 
 Requires the Apple Developer Program ($99/yr) and a **tvOS** App Store Connect app
-record for `org.jesusfilm.forgetv` (Apple ID `6781137518`). The app MUST support
-tvOS — if it was auto-created iOS-only, add the platform in App Store Connect
+record for `org.jesusfilm.forgewatch` (Apple ID `6791428415`). Since PR #1590 the
+TV and mobile apps share that single unified "Jesus Film Watch" record (iOS +
+tvOS platforms in one listing); the pre-unification `org.jesusfilm.forgetv`
+record (`6781137518`) was renamed "…Legacy" and is dormant. The record MUST have
+the tvOS platform — if it's missing, add it in App Store Connect
 (**Add Platform → tvOS**). Note `appleTVImages` requires no alpha channel and
 exact sizes; the `withTVInfoPlistFixes` config plugin (`apps/tv/plugins/`) strips
 the stray `LSRequiresIPhoneOS` key that config-tv leaves in (tvOS hygiene).
