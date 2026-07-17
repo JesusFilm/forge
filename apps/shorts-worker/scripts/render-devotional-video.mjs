@@ -76,52 +76,14 @@ function probeDuration(file) {
   })
 }
 
-/**
- * General rule: the music bed must cover the whole devotional. If the track is
- * shorter than the video, loop it (ffmpeg -stream_loop) up to `needSec` so it
- * restarts instead of falling silent. Longer tracks are copied unchanged.
- */
-async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
-  if (!srcName) return
-  const src = path.join(manifestDir, srcName)
-  const dest = path.join(publicDir, srcName)
-  const dur = await probeDuration(src)
-  if (dur == null || dur >= needSec) {
-    await copyFile(src, dest)
-    if (dur != null)
-      console.log(
-        `🎵 music ${dur.toFixed(1)}s ≥ ${needSec.toFixed(1)}s — no loop`,
-      )
-    return
-  }
-  const loops = Math.ceil(needSec / dur)
-  // Re-encode with a codec that matches the output container's extension
-  // (AAC in an .mp3 file is invalid and makes ffmpeg exit 234).
-  const ext = path.extname(dest).toLowerCase()
-  const codecArgs =
-    ext === ".mp3"
-      ? ["-c:a", "libmp3lame", "-b:a", "192k"]
-      : ["-c:a", "aac", "-b:a", "160k"]
-  await new Promise((resolve, reject) => {
-    const c = spawn(
-      "ffmpeg",
-      [
-        "-y",
-        "-stream_loop",
-        String(loops), // loop the input enough times
-        "-i",
-        src,
-        "-t",
-        needSec.toFixed(3), // then trim to exactly what's needed
-        ...codecArgs,
-        dest,
-      ],
-      { stdio: "ignore" },
-    )
+/** Run ffmpeg with a kill-and-reject watchdog. */
+function runFfmpeg(args, label) {
+  return new Promise((resolve, reject) => {
+    const c = spawn("ffmpeg", args, { stdio: "ignore" })
     const timer = setTimeout(() => {
       c.kill("SIGKILL")
       reject(
-        new Error(`ffmpeg music loop timed out after ${FFMPEG_TIMEOUT_MS}ms`),
+        new Error(`ffmpeg ${label} timed out after ${FFMPEG_TIMEOUT_MS}ms`),
       )
     }, FFMPEG_TIMEOUT_MS)
     c.on("error", (e) => {
@@ -131,11 +93,87 @@ async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
     c.on("close", (code) => {
       clearTimeout(timer)
       if (code === 0) resolve()
-      else reject(new Error(`ffmpeg music loop failed (${code})`))
+      else reject(new Error(`ffmpeg ${label} failed (${code})`))
     })
   })
+}
+
+/**
+ * The music bed must cover the whole devotional. Two steps:
+ *
+ * 1. STRIP head + trailing silence. Generated tracks (ElevenLabs) carry ~1-3s of
+ *    silence at each end; when the bed is looped to fill the runtime, that
+ *    silence lands at every seam — and near the end it falls in the narration-
+ *    free closing dwell as an audible DEAD GAP (the music seems to stop before
+ *    the video ends). Trimming both ends makes the loop seamless.
+ * 2. LOOP the trimmed bed (ffmpeg -stream_loop) up to `needSec` so it never
+ *    falls silent. A trimmed track already >= needSec is used as-is.
+ */
+async function stageMusicLooped(srcName, manifestDir, publicDir, needSec) {
+  if (!srcName) return
+  const src = path.join(manifestDir, srcName)
+  const dest = path.join(publicDir, srcName)
+  // Re-encode with a codec that matches the output container's extension
+  // (AAC in an .mp3 file is invalid and makes ffmpeg exit 234).
+  const ext = path.extname(dest).toLowerCase()
+  const codecArgs =
+    ext === ".mp3"
+      ? ["-c:a", "libmp3lame", "-b:a", "192k"]
+      : ["-c:a", "aac", "-b:a", "160k"]
+
+  // Strip leading + trailing silence (trim leading, reverse, trim leading
+  // again = trailing, reverse back). -50dB peak so only true silence goes, not
+  // a quiet musical intro.
+  const trimmed = path.join(publicDir, `._trim_${srcName}`)
+  const sil =
+    "silenceremove=start_periods=1:start_threshold=-50dB:detection=peak"
+  try {
+    await runFfmpeg(
+      [
+        "-y",
+        "-i",
+        src,
+        "-af",
+        `${sil},areverse,${sil},areverse`,
+        ...codecArgs,
+        trimmed,
+      ],
+      "music trim",
+    )
+  } catch {
+    // Trim failed — fall back to the untrimmed source so music still plays.
+    await copyFile(src, dest)
+    return
+  }
+  const dur = await probeDuration(trimmed)
+
+  if (dur == null || dur >= needSec) {
+    await copyFile(dur == null ? src : trimmed, dest)
+    await rm(trimmed, { force: true }).catch(() => {})
+    if (dur != null)
+      console.log(
+        `🎵 music ${dur.toFixed(1)}s (trimmed) ≥ ${needSec.toFixed(1)}s — no loop`,
+      )
+    return
+  }
+  const loops = Math.ceil(needSec / dur)
+  await runFfmpeg(
+    [
+      "-y",
+      "-stream_loop",
+      String(loops), // loop the trimmed input enough times
+      "-i",
+      trimmed,
+      "-t",
+      needSec.toFixed(3), // then trim to exactly what's needed
+      ...codecArgs,
+      dest,
+    ],
+    "music loop",
+  )
+  await rm(trimmed, { force: true }).catch(() => {})
   console.log(
-    `🎵 music ${dur.toFixed(1)}s looped ×${loops + 1} → ${needSec.toFixed(1)}s`,
+    `🎵 music ${dur.toFixed(1)}s (silence-trimmed) looped ×${loops + 1} → ${needSec.toFixed(1)}s`,
   )
 }
 
