@@ -86,8 +86,12 @@ const THUMB_SPEC = resolveFocusVisual("thumb")
 // sizes focus headroom, so overestimating is safe.
 const META_HEIGHT_ALLOWANCE = scale(80)
 
-// The design's head→cards gap (22px ≈ 24); also the minimum focus headroom.
+// Bottom item padding (nothing overhangs below) — keeps the rail-to-rail rhythm.
 const BASE_ITEM_PADDING = scale(24)
+
+// Resting head→cards gap. The design's 22 ≈ 24 let the focused card's static
+// rise (~21–27) crowd the title; 32 keeps a visible seam. Skeleton mirrors it.
+export const HEAD_CARD_GAP = scale(32)
 
 // tvOS touchpad nudges add RCTTVView's default parallax on top of the focus
 // scale: ±2pt center shift + 0.05rad tilt about a 1/500 perspective, which
@@ -121,8 +125,8 @@ function focusHeadroomFor(variant: HomeCardVariant): number {
 }
 
 const ITEM_PADDING_TOP: Record<HomeCardVariant, number> = {
-  landscape: Math.max(BASE_ITEM_PADDING, focusHeadroomFor("landscape")),
-  portrait: Math.max(BASE_ITEM_PADDING, focusHeadroomFor("portrait")),
+  landscape: Math.max(HEAD_CARD_GAP, focusHeadroomFor("landscape")),
+  portrait: Math.max(HEAD_CARD_GAP, focusHeadroomFor("portrait")),
 }
 
 // Top headroom only; the bottom keeps the base (nothing overhangs it).
@@ -140,13 +144,13 @@ const ITEM_WRAPPER: Record<
   },
 })
 
-// Headroom beyond the base gap is carved out of the clip bounds, not the
-// layout: pull the list up by the same amount so cards keep the design's 24
-// head→cards gap and the rail's outer height is unchanged.
+// Headroom beyond the resting gap is carved out of the clip bounds, not the
+// layout: pull the list up by the same amount so cards keep the HEAD_CARD_GAP
+// seam under the head and the rail's outer height is unchanged.
 const RAIL_PULL_UP: Record<HomeCardVariant, { marginTop: number }> =
   StyleSheet.create({
-    landscape: { marginTop: BASE_ITEM_PADDING - ITEM_PADDING_TOP.landscape },
-    portrait: { marginTop: BASE_ITEM_PADDING - ITEM_PADDING_TOP.portrait },
+    landscape: { marginTop: HEAD_CARD_GAP - ITEM_PADDING_TOP.landscape },
+    portrait: { marginTop: HEAD_CARD_GAP - ITEM_PADDING_TOP.portrait },
   })
 
 // react-native-tvos host nodes expose requestTVFocus() (NativeMethods), absent

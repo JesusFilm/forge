@@ -2,7 +2,12 @@ import { Dimensions, StyleSheet, View } from "react-native"
 
 import { REFERENCE_WIDTH, scale } from "../../lib/scale"
 import { HOME_CARD_THUMB_HEIGHT, HOME_CARD_WIDTH } from "./HomeCard"
-import { COLUMN_WIDTH, ITEM_GAP, RAIL_PADDING_LEFT } from "./HomeRail"
+import {
+  COLUMN_WIDTH,
+  HEAD_CARD_GAP,
+  ITEM_GAP,
+  RAIL_PADDING_LEFT,
+} from "./HomeRail"
 import {
   HERO_ACTION_HEIGHT,
   HERO_PADDING_BOTTOM,
@@ -127,7 +132,7 @@ const styles = StyleSheet.create({
     width: scale(320),
     height: scale(30),
     borderRadius: scale(6),
-    marginBottom: scale(22),
+    marginBottom: HEAD_CARD_GAP,
   },
   cardRow: { flexDirection: "row" },
   card: {
