@@ -667,8 +667,11 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(subtitleCount?.className).toContain("sm:text-sm")
     expect(subtitleCount?.className).not.toContain("text-lg")
     expect(subtitleCount?.className).toContain("font-normal")
-    expect(subtitleCount?.parentElement?.textContent).toContain("Subtitles")
-    expect(subtitleCount?.parentElement?.className).toContain("items-center")
+    const subtitlesCopy = $(
+      '[data-testid="watch-language-picker-subtitles-copy"]',
+    )
+    expect(subtitlesCopy?.textContent).toContain("Subtitles")
+    expect(subtitlesCopy?.contains(subtitleCount)).toBe(true)
     const subtitlesIcon = $(
       '[data-testid="watch-language-picker-subtitles-icon"]',
     )
@@ -686,7 +689,6 @@ describe("LanguagePickerModal — globe overlay", () => {
       ["字幕", "उपशीर्षक", "Subtítulos", "الترجمة"],
       ["Subtitles"],
     )
-    expect(subtitlesTooltip?.className).toContain("flex-1")
     expect(subtitlesTooltip?.contains(subtitlesIcon)).toBe(true)
     expect(subtitlesTooltip?.contains(subtitleCount)).toBe(true)
     const toggle = $(
@@ -710,28 +712,7 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggleState?.className).toContain("items-center")
     expect(toggleState?.className).toContain("justify-center")
     expect(toggleState?.className).toContain("left-1")
-    expect(toggle.parentElement?.contains(subtitleCount)).toBe(false)
-    expect(toggle.parentElement?.parentElement?.className).toContain(
-      "items-center",
-    )
-    expect(toggle.parentElement?.parentElement?.className).toContain(
-      "flex-wrap",
-    )
-    expect(toggle.parentElement?.parentElement?.className).toContain("min-w-0")
-    expect(toggle.parentElement?.parentElement?.className).toContain("shrink-0")
-    const subtitleHeader = $(
-      '[data-testid="watch-language-picker-subtitles-header"]',
-    )
-    expect(subtitleHeader?.contains(subtitlesTooltip)).toBe(true)
-    expect(subtitleHeader?.contains(toggle)).toBe(true)
-    expect(subtitleHeader?.className).toContain("items-center")
-    expect(subtitleHeader?.className).toContain("justify-between")
-    expect(subtitleHeader?.className).not.toContain("flex-col")
-    expect(subtitleHeader?.className).not.toContain("sm:flex-row")
-    const thumb = toggle.querySelector('span[aria-hidden="true"]')
-    expect(thumb?.className).toContain("size-7")
-    expect(thumb?.className).toContain("translate-x-7")
-    expectMultilingualTooltip(
+    const toggleTooltip = expectMultilingualTooltip(
       "watch-language-picker-tooltip-subtitles-toggle",
       [
         "关闭字幕",
@@ -741,6 +722,15 @@ describe("LanguagePickerModal — globe overlay", () => {
       ],
       ["Turn subtitles off"],
     )
+    expect(toggleTooltip?.contains(subtitleCount)).toBe(false)
+    const subtitleHeader = $(
+      '[data-testid="watch-language-picker-subtitles-header"]',
+    )
+    expect(subtitleHeader?.contains(subtitlesTooltip)).toBe(true)
+    expect(subtitleHeader?.contains(toggle)).toBe(true)
+    const thumb = toggle.querySelector('span[aria-hidden="true"]')
+    expect(thumb?.className).toContain("size-7")
+    expect(thumb?.className).toContain("translate-x-7")
 
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
@@ -877,7 +867,13 @@ describe("LanguagePickerModal — globe overlay", () => {
       open: true,
       variants: baseVariants,
       currentLanguageSlug: "english",
-      subtitles: [makeSubtitle("sub-es", "spanish", "Spanish")],
+      subtitles: [
+        makeSubtitle("sub-es", "spanish", "Spanish"),
+        makeSubtitle("sub-fr", "french", "French"),
+        makeSubtitle("sub-de", "german", "German"),
+        makeSubtitle("sub-ar", "arabic", "Arabic"),
+        makeSubtitle("sub-hi", "hindi", "Hindi"),
+      ],
       currentSubtitleEnabled: false,
       currentSubtitleSlug: null,
       onSubtitleChange,
@@ -885,7 +881,7 @@ describe("LanguagePickerModal — globe overlay", () => {
 
     expect(
       $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
-    ).toBe("1 language")
+    ).toBe("5 languages")
     expect(
       $('[data-testid="watch-language-picker-subtitles-unavailable"]'),
     ).toBeNull()
@@ -895,6 +891,27 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(toggle.disabled).toBe(false)
     expect(toggle.getAttribute("aria-checked")).toBe("false")
     expect(toggle.getAttribute("data-state")).toBe("off")
+    const subtitleHeader = $(
+      '[data-testid="watch-language-picker-subtitles-header"]',
+    )
+    const toggleTooltip = $(
+      '[data-testid="watch-language-picker-tooltip-subtitles-toggle"]',
+    )
+    const requestTooltip = $(
+      '[data-testid="watch-language-picker-tooltip-request-subtitles"]',
+    )
+    const requestButton = $(
+      '[data-testid="watch-language-picker-request-ai-translation"]',
+    ) as HTMLButtonElement
+    expect(requestButton.textContent).toBe("Translate with AI")
+    expect(Array.from(subtitleHeader?.children ?? [])).toEqual([
+      $('[data-testid="watch-language-picker-tooltip-subtitles"]'),
+      toggleTooltip,
+      requestTooltip,
+    ])
+    expect(
+      Array.from(subtitleHeader?.querySelectorAll("button") ?? []),
+    ).toEqual([toggle, requestButton])
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
 
     act(() => {
@@ -1003,9 +1020,6 @@ describe("LanguagePickerModal — globe overlay", () => {
       ["Subtitles unavailable"],
     )
     expect(button.parentElement?.parentElement?.contains(toggle)).toBe(true)
-    expect(button.parentElement?.parentElement?.className).toContain(
-      "flex-wrap",
-    )
     expect(button.parentElement?.parentElement?.className).toContain("min-w-0")
     expect($$('[data-testid="language-combobox-trigger"]').length).toBe(1)
 
