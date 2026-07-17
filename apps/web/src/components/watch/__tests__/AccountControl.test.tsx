@@ -139,6 +139,15 @@ describe("AccountControl", () => {
           user: "viewer",
         }),
     ],
+    [
+      "conflicting signed-out user",
+      async () =>
+        Response.json({
+          accountGateEnabled: true,
+          authenticated: false,
+          user: { id: "viewer" },
+        }),
+    ],
     ["rejected request", async () => Promise.reject(new Error("offline"))],
   ])("fails hidden for a %s session response", async (_name, fetchSession) => {
     vi.stubGlobal("fetch", vi.fn(fetchSession))

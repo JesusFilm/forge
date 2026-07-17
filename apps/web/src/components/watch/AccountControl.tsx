@@ -233,6 +233,7 @@ function isAccountSession(value: unknown): value is AccountSession {
   if (!isRecord(value)) return false
   if (typeof value.accountGateEnabled !== "boolean") return false
   if (typeof value.authenticated !== "boolean") return false
+  if (!value.authenticated && value.user !== undefined) return false
   if (value.user !== undefined && !isAccountUser(value.user)) return false
 
   return true
