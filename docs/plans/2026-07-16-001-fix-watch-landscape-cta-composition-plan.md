@@ -1,7 +1,7 @@
 ---
 title: "fix: Watch Landscape CTA Composition"
 type: "fix"
-status: "active"
+status: "completed"
 date: "2026-07-16"
 roadmap: "docs/roadmap/platform/feat-264-watch-landscape-section-cta-composition.md"
 ---
