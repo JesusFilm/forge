@@ -34,6 +34,22 @@ export const FLOATING_HEADER_TRAILING_GROUP_CLASS =
   "flex h-11 shrink-0 items-center justify-end gap-1 md:h-[52px] md:gap-2"
 export const FLOATING_HEADER_LANGUAGE_SLOT_CLASS =
   "h-11 w-11 md:h-[52px] md:w-12"
+/**
+ * Open search uses two compact rows on mobile: logo/close, then field/language.
+ * At the desktop breakpoint it returns to the standard single-row header.
+ */
+export const FLOATING_MODAL_HEADER_LAYOUT_CLASS =
+  "grid h-[108px] grid-cols-[minmax(0,1fr)_auto] grid-rows-[44px_52px] items-start gap-3 md:flex md:h-[52px] md:gap-5"
+export const FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS =
+  "col-start-1 row-start-1"
+export const FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS =
+  "col-start-1 row-start-2"
+export const FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS =
+  "pointer-events-none col-start-2 row-span-2 row-start-1 grid h-[108px] grid-rows-[44px_52px] justify-items-end gap-3 md:flex md:h-[52px] md:shrink-0 md:items-center md:justify-end md:gap-2"
+export const FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS =
+  "row-start-2 self-center md:self-auto"
+export const FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS =
+  "row-start-1 justify-self-end md:self-auto"
 export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATCH_PAGE_RAIL_PADDING_CLASSES}`
 
 /**

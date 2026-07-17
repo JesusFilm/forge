@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 15, 2026)
+## Status (July 17, 2026)
 
-- **Total tickets:** 343
-- **Complete:** 251
+- **Total tickets:** 344
+- **Complete:** 252
 - **In progress:** 19
 - **Not started:** 29
 - **Blocked:** 44
@@ -293,6 +293,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-251](platform/feat-251-watch-subtitle-auto-hide-position.md)                   | Watch subtitle position follows player chrome visibility                         | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-252](platform/feat-252-experience-promotional-markdown.md)                     | Experience promotional Markdown sections                                         | urim       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-252](platform/feat-252-watch-header-control-overlap.md)                        | Watch header control overlap                                                     | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
+| [feat-256](platform/feat-256-watch-mobile-search-header-rows.md)                     | Watch mobile search header rows                                                  | vlad       | P1       | 2026-07-17 | 1    | 2026-07-17 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
