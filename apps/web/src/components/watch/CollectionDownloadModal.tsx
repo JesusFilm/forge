@@ -1,7 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Download, FolderOpen, LoaderCircle, LogIn, Square } from "lucide-react"
+import {
+  ChevronRight,
+  Download,
+  FolderOpen,
+  LoaderCircle,
+  LogIn,
+  Square,
+} from "lucide-react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 
@@ -55,9 +62,9 @@ type StoredCollectionDownloadResume = Pick<
 
 const COLLECTION_DOWNLOAD_RESUME_KEY = "forge.watch.collection-download-resume"
 const COLLECTION_THUMBNAIL_STACK_TRANSFORMS = [
-  "translate(0px, 14px) rotate(-2deg)",
-  "translate(6px, 7px) rotate(2deg)",
-  "translate(12px, 0px) rotate(-1deg)",
+  "translate(0px, 28px) rotate(-1.5deg)",
+  "translate(12px, 14px) rotate(1.5deg)",
+  "translate(24px, 0px) rotate(-1deg)",
 ] as const
 
 function collectionDownloadResumeKey(
@@ -435,15 +442,15 @@ export function CollectionDownloadModal({
       />
       <DialogContent
         data-testid="watch-collection-download-modal"
-        className="w-full max-w-[min(92vw,680px)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[680px]"
+        className="w-full max-w-[min(94vw,800px)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[800px]"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
-        <div className="flex max-h-[86vh] flex-col gap-6 overflow-y-auto p-6 sm:p-8">
+        <div className="flex max-h-[86vh] flex-col gap-8 overflow-y-auto p-6 sm:p-9">
           <div
             data-testid="watch-collection-download-header"
-            className="grid gap-x-4 gap-y-3 min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-end"
+            className="grid gap-x-8 gap-y-5 min-[600px]:grid-cols-[minmax(0,1fr)_15rem] min-[600px]:items-center"
           >
             <div className="min-w-0">
               <p className="text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
@@ -454,7 +461,7 @@ export function CollectionDownloadModal({
               </h2>
               <p
                 data-testid="watch-collection-download-description"
-                className="mt-3 text-sm leading-6 text-stone-300"
+                className="mt-3 max-w-[46ch] text-sm leading-6 text-stone-300"
               >
                 {t("description")}
               </p>
@@ -466,18 +473,20 @@ export function CollectionDownloadModal({
                 aria-label={t("availableCount", {
                   count: options.candidates.length,
                 })}
-                className="flex w-fit shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 shadow-lg shadow-black/20 backdrop-blur-sm"
+                className="flex w-fit shrink-0 flex-col items-center justify-self-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-5 shadow-xl shadow-black/30 backdrop-blur-sm min-[600px]:justify-self-end"
               >
                 <div
                   data-testid="watch-collection-download-thumbnail-stack"
-                  className="relative h-[4.5rem] w-[6.75rem] shrink-0"
+                  className="relative h-[7.5rem] w-[11.5rem] shrink-0"
                   aria-hidden="true"
                 >
                   {options.candidates.slice(0, 3).map((episode, index) => (
                     <div
                       key={episode.documentId}
                       data-testid="watch-collection-download-thumbnail"
-                      className="absolute top-0 left-0 aspect-video w-24 overflow-hidden rounded-lg border-2 border-stone-950 bg-stone-800 shadow-lg"
+                      className={`absolute top-0 left-0 aspect-video w-40 overflow-hidden rounded-xl border-2 bg-stone-800 shadow-xl ${
+                        index === 0 ? "border-amber-400/70" : "border-stone-950"
+                      }`}
                       style={{
                         zIndex: 3 - index,
                         transform: COLLECTION_THUMBNAIL_STACK_TRANSFORMS[index],
@@ -488,7 +497,7 @@ export function CollectionDownloadModal({
                           src={episode.thumbnailUrl}
                           alt=""
                           fill
-                          sizes="96px"
+                          sizes="160px"
                           className="object-cover object-left-top"
                         />
                       ) : (
@@ -502,10 +511,10 @@ export function CollectionDownloadModal({
                   aria-hidden="true"
                   className="whitespace-nowrap text-center text-stone-300"
                 >
-                  <span className="text-2xl font-semibold tabular-nums text-white">
+                  <span className="text-3xl font-semibold tabular-nums text-white">
                     {options.candidates.length}
                   </span>{" "}
-                  <span className="text-sm font-medium">videos</span>
+                  <span className="text-base font-medium">videos</span>
                 </span>
               </div>
             ) : null}
@@ -533,8 +542,11 @@ export function CollectionDownloadModal({
             </div>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-2 text-sm font-semibold">
+              <div
+                data-testid="watch-collection-download-fields"
+                className="grid gap-5 sm:grid-cols-2"
+              >
+                <div className="flex flex-col gap-2.5 text-sm font-semibold">
                   <span>{t("languageLabel")}</span>
                   <LanguageCombobox
                     options={languages}
@@ -542,9 +554,10 @@ export function CollectionDownloadModal({
                     disabled={busy}
                     onChange={setLanguageSlug}
                     compact
+                    triggerClassName="border-white/15 bg-stone-900/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 focus-visible:ring-amber-400"
                   />
                 </div>
-                <label className="flex flex-col gap-2 text-sm font-semibold">
+                <label className="flex flex-col gap-2.5 text-sm font-semibold">
                   <span>{t("qualityLabel")}</span>
                   <select
                     data-testid="watch-collection-download-quality"
@@ -553,7 +566,7 @@ export function CollectionDownloadModal({
                     onChange={(event) =>
                       setSelectedTier(event.target.value as DownloadTier)
                     }
-                    className="scheme-dark h-14 rounded-xl border border-white/10 bg-white/5 px-4 text-stone-100 outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
+                    className="scheme-dark h-14 rounded-xl border border-white/15 bg-stone-900/70 px-4 text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition-colors hover:border-white/25 hover:bg-white/10 focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
                   >
                     {(options?.commonTiers ?? []).map((tier) => (
                       <option key={tier} value={tier}>
@@ -610,12 +623,15 @@ export function CollectionDownloadModal({
                   data-testid="watch-collection-download-folder"
                   disabled={busy}
                   onClick={chooseDirectory}
-                  className="justify-start border-white/15 bg-white/5 text-stone-100 hover:bg-white/10 hover:text-white"
+                  className="h-auto w-full justify-start border-white/15 bg-stone-900/70 px-4 py-3 text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-white/10 hover:text-white"
                 >
                   <FolderOpen size={17} />
-                  {directory?.name
-                    ? t("folderSelected", { name: directory.name })
-                    : t("chooseFolder")}
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {directory?.name
+                      ? t("folderSelected", { name: directory.name })
+                      : t("chooseFolder")}
+                  </span>
+                  <ChevronRight className="ml-auto text-stone-500" size={16} />
                 </Button>
               ) : (
                 <p className="text-xs leading-5 text-stone-400">
@@ -669,7 +685,10 @@ export function CollectionDownloadModal({
                 </p>
               ) : null}
 
-              <div className="flex justify-end gap-3">
+              <div
+                data-testid="watch-collection-download-actions"
+                className="flex justify-end gap-3 border-t border-white/10 pt-5"
+              >
                 <Button
                   variant="ghost"
                   data-testid="watch-collection-download-close"

@@ -143,6 +143,7 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root.unmount())
+  Reflect.deleteProperty(window, "showDirectoryPicker")
   container.remove()
 })
 
@@ -331,6 +332,7 @@ describe("CollectionDownloadModal", () => {
     expect(modal?.className).toContain("bg-transparent")
     expect(modal?.className).toContain("rounded-none")
     expect(modal?.className).not.toContain("bg-stone-950")
+    expect(modal?.className).toContain("sm:max-w-[800px]")
   })
 
   it("stacks the heading copy beside the thumbnail summary", async () => {
@@ -344,6 +346,10 @@ describe("CollectionDownloadModal", () => {
       '[data-testid="watch-collection-download-ready"]',
     )
     expect(header?.contains(summary)).toBe(true)
+    expect(header?.className).toContain("gap-x-8")
+    expect(header?.className).toContain(
+      "min-[600px]:grid-cols-[minmax(0,1fr)_15rem]",
+    )
     const description = container.querySelector(
       '[data-testid="watch-collection-download-description"]',
     )
@@ -356,14 +362,16 @@ describe("CollectionDownloadModal", () => {
     expect(summary?.className).toContain("flex-col")
     expect(summary?.className).toContain("border")
     expect(summary?.className).toContain("bg-white/5")
-    expect(summary?.className).toContain("px-5")
-    expect(summary?.className).toContain("py-4")
+    expect(summary?.className).toContain("justify-self-center")
+    expect(summary?.className).toContain("min-[600px]:justify-self-end")
+    expect(summary?.className).toContain("px-6")
+    expect(summary?.className).toContain("py-5")
     const thumbnailStack = summary?.querySelector(
       '[data-testid="watch-collection-download-thumbnail-stack"]',
     )
     expect(thumbnailStack?.className).toContain("relative")
-    expect(thumbnailStack?.className).toContain("h-[4.5rem]")
-    expect(thumbnailStack?.className).toContain("w-[6.75rem]")
+    expect(thumbnailStack?.className).toContain("h-[7.5rem]")
+    expect(thumbnailStack?.className).toContain("w-[11.5rem]")
     expect(thumbnailStack?.className).not.toContain("-space-x")
     const thumbnails = summary?.querySelectorAll(
       '[data-testid="watch-collection-download-thumbnail"]',
@@ -371,13 +379,56 @@ describe("CollectionDownloadModal", () => {
     expect(thumbnails).toHaveLength(2)
     thumbnails?.forEach((thumbnail) => {
       expect(thumbnail.className).toContain("absolute")
-      expect(thumbnail.className).toContain("w-24")
+      expect(thumbnail.className).toContain("w-40")
+      expect(thumbnail.className).toContain("rounded-xl")
     })
     const count = summary?.querySelector(
       '[data-testid="watch-collection-download-ready-count"]',
     )
     expect(count?.className).toContain("text-center")
     expect(count?.textContent).toBe("2 videos")
+  })
+
+  it("strengthens the form hierarchy without changing action shapes", async () => {
+    Object.defineProperty(window, "showDirectoryPicker", {
+      configurable: true,
+      value: vi.fn(),
+    })
+    renderModal()
+    await flush()
+
+    const fields = container.querySelector(
+      '[data-testid="watch-collection-download-fields"]',
+    )
+    expect(fields?.className).toContain("gap-5")
+
+    const language = container.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    expect(language?.className).toContain("border-white/15")
+    expect(language?.className).toContain("bg-stone-900/70")
+
+    const quality = container.querySelector(
+      '[data-testid="watch-collection-download-quality"]',
+    )
+    expect(quality?.className).toContain("border-white/15")
+    expect(quality?.className).toContain("bg-stone-900/70")
+
+    const folder = container.querySelector(
+      '[data-testid="watch-collection-download-folder"]',
+    )
+    expect(folder?.className).toContain("h-auto")
+    expect(folder?.className).toContain("bg-stone-900/70")
+
+    const actions = container.querySelector(
+      '[data-testid="watch-collection-download-actions"]',
+    )
+    expect(actions?.className).toContain("border-t")
+    expect(actions?.className).toContain("pt-5")
+    expect(
+      actions?.querySelector('[data-testid="watch-collection-download-start"]')
+        ?.className,
+    ).toContain("rounded-full")
   })
 
   it("recovers when loading availability rejects", async () => {
