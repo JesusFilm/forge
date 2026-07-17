@@ -2038,7 +2038,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )
     })
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
-    expect(logo?.getAttribute("href")).toBe("/watch")
+    // Next applies the configured `/watch` base path at runtime; jsdom exposes
+    // the base-path-relative route passed to `next/link`.
+    expect(logo?.getAttribute("href")).toBe("/")
     expect(logo?.className).toContain("w-11")
     expect(logo?.className).toContain("md:w-12")
     expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
