@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -23,7 +22,10 @@ import {
 } from "lucide-react"
 
 import { useFloatingSearch } from "./FloatingSearchContext"
-import { FloatingSearchFieldInput } from "./FloatingSearchField"
+import {
+  FloatingSearchFieldInput,
+  useFloatingSearchInputAutofocus,
+} from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
@@ -183,24 +185,7 @@ export function SearchOverlay() {
     setClosePortalContainer(node)
   }, [])
 
-  // Keep the modal ready for immediate typing even when portal/lazy mount work
-  // races the opening click.
-  useLayoutEffect(() => {
-    if (!open) return
-    let cancelled = false
-    const focusInput = () => {
-      if (cancelled) return
-      inputRef.current?.focus({ preventScroll: true })
-    }
-    focusInput()
-    const frame = window.requestAnimationFrame(focusInput)
-    const timer = window.setTimeout(focusInput, 100)
-    return () => {
-      cancelled = true
-      window.cancelAnimationFrame(frame)
-      window.clearTimeout(timer)
-    }
-  }, [open])
+  useFloatingSearchInputAutofocus(open, inputRef)
 
   // Escape closes the modal through the provider-owned reset boundary.
   useEffect(() => {

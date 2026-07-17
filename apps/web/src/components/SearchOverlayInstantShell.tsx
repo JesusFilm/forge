@@ -8,7 +8,10 @@ import {
 } from "react"
 import { useTranslations } from "next-intl"
 
-import { FloatingSearchFieldInput } from "./FloatingSearchField"
+import {
+  FloatingSearchFieldInput,
+  useFloatingSearchInputAutofocus,
+} from "./FloatingSearchField"
 import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
@@ -43,11 +46,7 @@ export function SearchOverlayInstantShell({
   const t = useTranslations("SearchOverlay")
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    const timer = setTimeout(() => inputRef.current?.focus(), 50)
-    return () => clearTimeout(timer)
-  }, [open])
+  useFloatingSearchInputAutofocus(open, inputRef)
 
   useEffect(() => {
     if (!open) return
@@ -102,6 +101,7 @@ export function SearchOverlayInstantShell({
             placeholder={t("placeholder")}
             aria-label={t("inputLabel")}
             iconTestId="search-overlay-instant-input-icon"
+            autoFocus
             wrapperClassName="w-full"
           />
         </div>
