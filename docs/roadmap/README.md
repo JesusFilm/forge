@@ -7,8 +7,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (July 16, 2026)
 
 - **Total tickets:** 352
-- **Complete:** 257
-- **In progress:** 23
+- **Complete:** 258
+- **In progress:** 22
 - **Not started:** 28
 - **Blocked:** 44
 - **Overdue and not complete:** 72
@@ -296,7 +296,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-252](platform/feat-252-watch-header-control-overlap.md)                        | Watch header control overlap                                                     | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-257](platform/feat-257-watch-logo-route-destination.md)                        | Watch logo route destination                                                     | codex      | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-261](platform/feat-261-watch-home-full-logo.md)                                | Watch home full Jesus Film Project logo                                          | codex      | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
-| [feat-264](platform/feat-264-watch-download-poster-resolution.md)                    | Watch download modal poster resolution                                           | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | in-progress |
+| [feat-264](platform/feat-264-watch-download-poster-resolution.md)                    | Watch download modal poster resolution                                           | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
