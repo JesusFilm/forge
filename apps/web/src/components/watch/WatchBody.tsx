@@ -44,11 +44,13 @@ export function WatchBody({
         data-testid="watch-body-left"
         className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {/* Keep Download beside the title; the title wraps inside the
-            remaining width instead of forcing the CTA onto a new row. */}
+        {/* Keep Download beside and top-aligned with the title by default so
+            both column actions share one visual row. On landscape phones,
+            stack the CTA below so long localized titles can use the full
+            column width and the action stays anchored to its heading. */}
         <div
           data-testid="watch-body-title-row"
-          className="flex flex-nowrap items-center justify-between gap-3"
+          className="flex flex-nowrap items-start justify-between gap-3 [@media(max-width:1023px)_and_(orientation:landscape)]:flex-col"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
@@ -56,12 +58,15 @@ export function WatchBody({
               one <h1> per page (WCAG 1.3.1). Visual styling is unchanged. */}
           <h2
             data-testid="watch-body-title"
-            className="min-w-0 flex-1 text-lg leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl"
+            className="min-w-0 flex-1 text-lg leading-[1.08] font-semibold text-stone-100 [@media(max-width:1023px)_and_(orientation:landscape)]:w-full sm:text-[27px] md:text-4xl xl:text-5xl"
           >
             {visualTitle}
           </h2>
           {hasDownloads ? (
-            <div className="ml-auto flex shrink-0 flex-col items-end gap-2">
+            <div
+              data-testid="watch-download-group"
+              className="ml-auto flex shrink-0 flex-col items-end gap-2 [@media(max-width:1023px)_and_(orientation:landscape)]:ml-0 [@media(max-width:1023px)_and_(orientation:landscape)]:items-start"
+            >
               <DownloadButton
                 href={downloadHref}
                 label={downloadButtonLabel}
