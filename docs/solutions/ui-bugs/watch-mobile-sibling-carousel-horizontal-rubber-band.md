@@ -1,6 +1,8 @@
 ---
 title: "Contain Watch sibling-carousel overflow to prevent mobile page rubber-banding"
 category: "ui-bugs"
+module: "apps/web"
+problem_type: "ui_bug"
 tags:
   - "watch"
   - "mobile"
