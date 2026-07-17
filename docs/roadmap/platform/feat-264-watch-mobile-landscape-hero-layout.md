@@ -59,11 +59,15 @@ the Watch, Share, and metadata controls overflow the available hero height.
    custom overlays, and revealed player chrome.
 5. Add focused class-contract tests and verify the supplied failure shape in
    real Mobile Safari landscape with a screenshot.
+6. Let the compact-landscape video consume the full small viewport height,
+   keep the episode carousel after the hero, and let unusually long titles
+   grow the overlay flow container instead of escaping beneath the header.
 
 ## Constraints
 
 - Keep `100svh`; do not regress iOS visible-viewport handling to `100vh`.
-- Keep preview/body overlap measurement-driven.
+- Keep preview/body overlap measurement-driven outside the default compact-
+  landscape pre-reveal state, where the carousel must follow the full hero.
 - Do not add JavaScript viewport or orientation state for styling.
 - Do not change playback, subtitles, language selection, sharing behavior, or
   generated GraphQL and locale artifacts.

@@ -179,7 +179,6 @@ const HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX = 32
 const HERO_PREVIEW_BODY_OVERLAP_EXTRA_PX = 50
 const HERO_PREVIEW_BODY_OVERLAP_MIN_PX = 160
 const HERO_PREVIEW_BODY_OVERLAP_MAX_PX = 288
-const HERO_COMPACT_LANDSCAPE_HEADER_GAP_PX = 8
 
 function canScrollWindowTo(windowRef: Window): boolean {
   if (typeof windowRef.scrollTo !== "function") return false
@@ -833,14 +832,16 @@ export function HeroPlayer({
     }
   }, [autoplayParam, heroPosterUrl, playerActivated])
 
-  // Anchor for the title/pill overlay AND the chrome control bar — both live
-  // in this zero-height div right after the sticky hero so they ride on the
-  // body section's top edge instead of being trapped at the pinned hero's
-  // bottom (which the body slides over).
+  // Anchor for the title/pill overlay AND the chrome control bar. It is
+  // ordinarily zero-height; the compact-landscape pre-reveal state lets it
+  // grow so long localized titles can push the body below the hero.
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )
   const [previewBodyOverlapPx, setPreviewBodyOverlapPx] = useState(0)
+  const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
+  const playbackFrameActive = chromeRevealed || suppressPreRevealOverlay
+  const defaultPreRevealOverlayInFlow = !playbackFrameActive && overlay == null
 
   // Measured rendered height drives the sticky `top` so the player pins
   // exactly when its bottom reaches the viewport bottom.
@@ -879,6 +880,14 @@ export function HeroPlayer({
 
     const sync = () => {
       rafHandle = 0
+      const compactLandscapeActive =
+        window
+          .getComputedStyle(wrapper)
+          .getPropertyValue("--watch-compact-landscape") === "1"
+      if (compactLandscapeActive && defaultPreRevealOverlayInFlow) {
+        setPreviewBodyOverlapPx(0)
+        return
+      }
       const bodyZone = document.querySelector(
         '[data-testid="watch-body-zone"]',
       ) as HTMLElement | null
@@ -899,34 +908,9 @@ export function HeroPlayer({
         HERO_PREVIEW_PANEL_BOTTOM_PADDING_PX
       const spaceBelowHero = Math.max(0, window.innerHeight - heroHeight)
       const neededOverlap = Math.ceil(panelHeightNeeded - spaceBelowHero)
-      const compactLandscapeActive =
-        window
-          .getComputedStyle(wrapper)
-          .getPropertyValue("--watch-compact-landscape") === "1"
-      const overlay = document.querySelector(
-        '[data-testid="hero-player-overlay"]',
-      ) as HTMLElement | null
-      const header = document.querySelector(
-        '[data-testid="floating-header"]',
-      ) as HTMLElement | null
-      const compactLandscapeMaxOverlap =
-        compactLandscapeActive && overlay && header
-          ? Math.max(
-              0,
-              wrapper.getBoundingClientRect().top +
-                heroHeight -
-                header.getBoundingClientRect().bottom -
-                overlay.getBoundingClientRect().height -
-                HERO_COMPACT_LANDSCAPE_HEADER_GAP_PX,
-            )
-          : Number.POSITIVE_INFINITY
       const nextOverlap = Math.max(
         0,
-        Math.min(
-          neededOverlap,
-          calculateMaxOverlap(),
-          compactLandscapeMaxOverlap,
-        ),
+        Math.min(neededOverlap, calculateMaxOverlap()),
       )
       setPreviewBodyOverlapPx(nextOverlap)
     }
@@ -956,7 +940,7 @@ export function HeroPlayer({
       observer?.disconnect()
       if (rafHandle !== 0) window.cancelAnimationFrame(rafHandle)
     }
-  }, [chromeRevealed, heroHeight])
+  }, [chromeRevealed, defaultPreRevealOverlayInFlow, heroHeight])
 
   // Tracks whether the current paused state was caused by THIS scroll
   // listener, so the auto-resume on scroll-back only fires when WE
@@ -1464,11 +1448,8 @@ export function HeroPlayer({
     languageCountLabel != null ||
     hasSubtitleTrack ||
     qualityLabel != null
-  const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
-  const playbackFrameActive =
-    chromeRevealed || (autoplayParam === "1" && !autoplayBlocked)
   const effectivePreviewBodyOverlapPx = playbackFrameActive
     ? 0
     : previewBodyOverlapPx
@@ -1574,6 +1555,8 @@ export function HeroPlayer({
         onPointerDownCapture={handleWatchNextSurfaceInteract}
         onKeyDownCapture={handleWatchNextSurfaceInteract}
         className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} compact-landscape:[--watch-compact-landscape:1] ${
+          defaultPreRevealOverlayInFlow ? "compact-landscape:h-[100svh]" : ""
+        } ${
           playbackFrameActive
             ? "overflow-hidden"
             : `overflow-x-clip ${
@@ -1832,24 +1815,27 @@ export function HeroPlayer({
       </div>
 
       {/*
-        Zero-height anchor right after the sticky hero. The title/label/pill
-        (pre-reveal) and the chrome control bar (post-reveal, portaled in
-        from <HeroPlayerControls>) both attach to this anchor's bottom edge.
-        The anchor lives in normal flow and so scrolls with the document —
-        which means everything attached here rides up on the body section's
-        top edge instead of being trapped at the sticky hero's pinned bottom
-        (which the body slides over).
+        Anchor right after the sticky hero. Ordinarily it stays zero-height so
+        the title/label/pill and portaled chrome attach to the body's top edge.
+        In compact landscape, the default pre-reveal overlay instead becomes a
+        normal-flow child of a full-viewport anchor laid over the video. That
+        lets unusually long titles grow the hero before the body begins while
+        keeping the episode carousel below the full-height video.
       */}
       <div
         ref={setOverlayAnchor}
         data-testid="hero-player-overlay-anchor"
-        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
+        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES} ${
+          defaultPreRevealOverlayInFlow
+            ? "compact-landscape:-mt-[100svh] compact-landscape:flex compact-landscape:h-auto compact-landscape:min-h-[100svh] compact-landscape:flex-col compact-landscape:justify-end compact-landscape:pt-[calc(env(safe-area-inset-top,0px)+4.25rem)] compact-landscape:ps-[max(1.25rem,env(safe-area-inset-left,0px))] compact-landscape:pe-[max(1.25rem,env(safe-area-inset-right,0px))]"
+            : ""
+        }`}
       >
         {!chromeRevealed && !suppressPreRevealOverlay
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"
-                className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto compact-landscape:left-[max(1.25rem,env(safe-area-inset-left,0px))] compact-landscape:right-[max(1.25rem,env(safe-area-inset-right,0px))] compact-landscape:gap-1 compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]`}
+                className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto compact-landscape:relative compact-landscape:inset-x-auto compact-landscape:bottom-auto compact-landscape:w-full compact-landscape:gap-1 compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]`}
               >
                 {visualLabel ? (
                   <span

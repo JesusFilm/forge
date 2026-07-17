@@ -1519,8 +1519,13 @@ describe("HeroPlayer — initial mount", () => {
       const mediaFrame = container.querySelector(
         '[data-testid="hero-player-media-frame"]',
       ) as HTMLDivElement
+      const anchor = container.querySelector(
+        '[data-testid="hero-player-overlay-anchor"]',
+      ) as HTMLDivElement
 
       expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
+      expect(wrapper.className).not.toContain("compact-landscape:h-[100svh]")
+      expect(anchor.className).not.toContain("compact-landscape:-mt-[100svh]")
       expect(
         container.querySelector(
           '[data-testid="hero-player-mobile-header-band"]',
@@ -1624,7 +1629,7 @@ describe("HeroPlayer — initial mount", () => {
     }
   })
 
-  it("caps compact-landscape overlap so the full overlay stays below the header", async () => {
+  it("disables preview/body overlap for the compact-landscape full-height hero", async () => {
     const originalInnerHeight = window.innerHeight
     Object.defineProperty(window, "innerHeight", {
       configurable: true,
@@ -1652,12 +1657,12 @@ describe("HeroPlayer — initial mount", () => {
       })
     }
 
+    let getComputedStyleSpy: { mockRestore: () => void } | undefined
     vi.useFakeTimers()
     try {
       act(() => {
         root.render(
           <>
-            <div data-testid="floating-header" />
             <HeroPlayer block={makeBlock()} />
             <section data-testid="watch-body-zone">
               <div data-block-type="SiblingCarousel" />
@@ -1668,12 +1673,6 @@ describe("HeroPlayer — initial mount", () => {
 
       const wrapper = container.querySelector(
         '[data-testid="hero-player-wrapper"]',
-      ) as HTMLDivElement
-      const overlay = container.querySelector(
-        '[data-testid="hero-player-overlay"]',
-      ) as HTMLDivElement
-      const header = container.querySelector(
-        '[data-testid="floating-header"]',
       ) as HTMLDivElement
       const body = container.querySelector(
         '[data-testid="watch-body-zone"]',
@@ -1686,8 +1685,9 @@ describe("HeroPlayer — initial mount", () => {
         "compact-landscape:[--watch-compact-landscape:1]",
       )
       const getComputedStyle = window.getComputedStyle.bind(window)
-      vi.spyOn(window, "getComputedStyle").mockImplementation(
-        (element, pseudoElement) => {
+      getComputedStyleSpy = vi
+        .spyOn(window, "getComputedStyle")
+        .mockImplementation((element, pseudoElement) => {
           const style = getComputedStyle(element, pseudoElement)
           if (element !== wrapper) return style
           const getPropertyValue = style.getPropertyValue.bind(style)
@@ -1699,13 +1699,10 @@ describe("HeroPlayer — initial mount", () => {
                 : getPropertyValue(property),
           })
           return style
-        },
-      )
+        })
       setRect(wrapper, { top: 0, bottom: 390, height: 390 })
-      setRect(header, { top: 8, bottom: 60, height: 52 })
-      setRect(overlay, { top: 22, bottom: 180, height: 158 })
-      setRect(body, { top: 180, bottom: 500, height: 320 })
-      setRect(rail, { top: 196, bottom: 436, height: 240 })
+      setRect(body, { top: 390, bottom: 710, height: 320 })
+      setRect(rail, { top: 406, bottom: 646, height: 240 })
 
       await ro.setHeight(390)
       await act(async () => {
@@ -1713,9 +1710,11 @@ describe("HeroPlayer — initial mount", () => {
         await vi.advanceTimersByTimeAsync(20)
       })
 
-      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("164")
-      expect(wrapper.getAttribute("style")).toContain("margin-bottom: -164px")
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
     } finally {
+      getComputedStyleSpy?.mockRestore()
       vi.useRealTimers()
       ro.restore()
       Object.defineProperty(window, "innerHeight", {
@@ -1776,6 +1775,12 @@ describe("HeroPlayer — initial mount", () => {
     const overlay = container.querySelector(
       '[data-testid="hero-player-overlay"]',
     )
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    const anchor = container.querySelector(
+      '[data-testid="hero-player-overlay-anchor"]',
+    )
     expect(pill).not.toBeNull()
     expect(pill?.tagName.toLowerCase()).toBe("button")
     expect(pill?.getAttribute("type")).toBe("button")
@@ -1785,6 +1790,28 @@ describe("HeroPlayer — initial mount", () => {
     expect(overlay?.getAttribute("class")).toContain("gap-3")
     expect(overlay?.getAttribute("class")).not.toContain("gap-4")
     expect(overlay?.getAttribute("class")).toContain("pb-12")
+    expect(wrapper?.getAttribute("class")).toContain(
+      "compact-landscape:h-[100svh]",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:-mt-[100svh]",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:min-h-[100svh]",
+    )
+    expect(anchor?.getAttribute("class")).toContain("compact-landscape:h-auto")
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:justify-end",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:pt-[calc(env(safe-area-inset-top,0px)+4.25rem)]",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:relative",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:inset-x-auto",
+    )
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Watch now")
     expect(pill?.querySelector("path")?.getAttribute("d")).toBe("M8 5v14l11-7z")
@@ -1816,11 +1843,11 @@ describe("HeroPlayer — initial mount", () => {
     expect(title?.getAttribute("class")).toContain("compact-landscape:text-2xl")
     expect(title?.getAttribute("class")).not.toContain("whitespace-nowrap")
     expect(title?.getAttribute("class")).not.toContain("line-clamp")
-    expect(overlay?.getAttribute("class")).toContain(
-      "compact-landscape:left-[max(1.25rem,env(safe-area-inset-left,0px))]",
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:ps-[max(1.25rem,env(safe-area-inset-left,0px))]",
     )
-    expect(overlay?.getAttribute("class")).toContain(
-      "compact-landscape:right-[max(1.25rem,env(safe-area-inset-right,0px))]",
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:pe-[max(1.25rem,env(safe-area-inset-right,0px))]",
     )
     expect(overlay?.getAttribute("class")).toContain(
       "compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
