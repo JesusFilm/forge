@@ -66,12 +66,14 @@ function getViewerIdServerSnapshot(): string {
 // the sound-on player as tall as the browser can show without exceeding the
 // video aspect ratio's needed height.
 const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
-const MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS =
+const MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
-const MOBILE_PORTRAIT_PREVIEW_BAND_CLASS =
-  "hidden h-24 shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block"
+const MOBILE_PORTRAIT_HEADER_CLEARANCE_CLASS =
+  "hidden h-[calc(6rem+env(safe-area-inset-top,0px))] shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block"
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
+const MOBILE_PORTRAIT_PLAYBACK_FRAME_CLASS =
+  "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100"
 
@@ -975,9 +977,15 @@ export function HeroPlayer({
   const effectivePreviewBodyOverlapPx = chromeRevealed
     ? 0
     : previewBodyOverlapPx
-  const mobilePortraitPreviewEnabled = !chromeRevealed && overlay == null
+  const mobilePortraitHeaderClearanceEnabled = overlay == null
+  const mobilePortraitPreviewEnabled =
+    !chromeRevealed && mobilePortraitHeaderClearanceEnabled
   const mediaFrameClassName = `relative h-full w-full ${
-    mobilePortraitPreviewEnabled ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS : ""
+    mobilePortraitPreviewEnabled
+      ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS
+      : mobilePortraitHeaderClearanceEnabled
+        ? MOBILE_PORTRAIT_PLAYBACK_FRAME_CLASS
+        : ""
   }`
   const playerClassName = `block h-full w-full origin-top ${
     chromeRevealed
@@ -1028,12 +1036,19 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
+        data-mobile-portrait-header-clearance={
+          mobilePortraitHeaderClearanceEnabled ? "true" : "false"
+        }
         className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black transition-[margin-bottom] duration-500 ease-out ${
           chromeRevealed
-            ? "overflow-hidden"
+            ? `overflow-hidden ${
+                mobilePortraitHeaderClearanceEnabled
+                  ? MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS
+                  : ""
+              }`
             : `overflow-x-clip ${
                 mobilePortraitPreviewEnabled
-                  ? MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS
+                  ? MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS
                   : ""
               }`
         }`}
@@ -1053,11 +1068,11 @@ export function HeroPlayer({
               : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
-        {mobilePortraitPreviewEnabled ? (
+        {mobilePortraitHeaderClearanceEnabled ? (
           <div
             aria-hidden="true"
             data-testid="hero-player-mobile-header-band"
-            className={MOBILE_PORTRAIT_PREVIEW_BAND_CLASS}
+            className={MOBILE_PORTRAIT_HEADER_CLEARANCE_CLASS}
           />
         ) : null}
 
