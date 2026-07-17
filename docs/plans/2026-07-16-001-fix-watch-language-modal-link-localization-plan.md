@@ -4,7 +4,7 @@ type: fix
 scope: web-watch-language-modal-i18n
 status: completed
 roadmap: docs/roadmap/content-discovery/feat-264-watch-language-modal-link-localization.md
-owner: codex
+owner: urim
 ---
 
 # fix: Localize Watch language modal catalog links
@@ -36,7 +36,7 @@ ownership rules rather than changing the public URL or locale pipeline.
 - R2. The selected-language inventory link uses one localized template for visible and accessible copy.
 - R3. The template interpolates the selected language's native display name when available, falling back to the existing English-primary name.
 - R4. Language-loading retry, subtitle-unavailable, and pending-navigation copy is localized through the modal namespace.
-- R5. Every shipped catalog contains the new keys; Russian receives contextual regression copy, every other non-provisional catalog receives locale-specific copy that is not an exact English-source value, and catalogs recorded as provisional remain exact English-source clones.
+- R5. All 224 shipped non-English catalogs contain locale-specific modal copy. Russian is human-reviewed; the remaining machine-translated catalogs carry source/catalog digests and an explicit native-speaker-review recommendation. No provisional English-clone catalogs remain.
 - R6. Existing routes, link placement, draft selection updates, focus treatment, mobile layout, bilingual selector rows, and multilingual tooltip behavior remain unchanged.
 
 ## Scope Boundaries
@@ -44,7 +44,7 @@ ownership rules rather than changing the public URL or locale pipeline.
 In scope:
 
 - Modal-owned catalog-link, retry, unavailable, and pending-navigation copy exposed by the feat-256 surface.
-- Catalog updates required by structural parity and authored/provisional ownership.
+- Catalog updates required to complete the all-language scope, preserve structural parity, and record machine-translation provenance.
 - Focused component, catalog, and browser regression proof.
 
 Out of scope:
@@ -52,14 +52,13 @@ Out of scope:
 - Locale routing, public audio-language slug behavior, or catalog inventory policy.
 - Translating language names supplied by content data; the selector intentionally keeps English-primary and native-name rows.
 - Replacing the five-language icon/action tooltips, which are intentionally multilingual accessibility affordances.
-- Completing the broader provisional-catalog translation program.
 
 ## Key Technical Decisions
 
 - Keep all new strings in `LanguagePickerModal` because the copy belongs to one modal and the component already owns that translator.
 - Reuse one ICU-style inventory-link template for both visible text and `aria-label` so assistive copy cannot drift from the rendered action.
 - Interpolate `nativeName ?? name` for the destination language, bounded by Unicode first-strong-isolate/pop-directional-isolate marks. This removes the remaining English language-name fragment on Russian pages and keeps mixed-script names ordered inside LTR or RTL templates without changing the bilingual selector contract.
-- Follow `docs/i18n/watch-ui-provisional-catalogs.json`: locale-specific translations for non-provisional catalogs, exact English cloning for locales explicitly marked provisional. Engineering acceptance proves catalog use, key/placeholder integrity, and absence of English leakage; it does not certify native-speaker grammar outside the Russian regression target.
+- Complete the previously provisional catalogs with approved contextual machine translation, preserve existing authored copy, and record per-locale source/catalog digests in `docs/i18n/watch-ui-provisional-catalogs.json`. Engineering acceptance proves catalog use, ICU integrity, provenance, and absence of English leakage; it does not certify native-speaker grammar outside the Russian regression target.
 - Add localized-rendering coverage rather than relying only on English text assertions, because the introducing tests passed while the JSX still bypassed `next-intl`.
 
 ## Implementation Units
@@ -92,9 +91,9 @@ Out of scope:
 
 **Verification:** Component tests prove localized rendering, selected-language updates, accessible names, and unchanged routes/layout.
 
-### U2. Extend catalog coverage under the existing ownership policy
+### U2. Complete catalog coverage with explicit translation provenance
 
-**Goal:** Add the modal keys without creating new mixed-language gaps in authored locales or breaking provisional catalog invariants.
+**Goal:** Localize the modal keys in every shipped language and replace provisional English clones with provenance-backed locale-specific catalogs.
 
 **Requirements:** R1, R2, R4, R5.
 
@@ -109,7 +108,7 @@ Out of scope:
 - `apps/web/src/lib/__tests__/watch-ui-provisional-catalogs.test.ts`
 - `docs/i18n/watch-ui-provisional-catalogs.json`
 
-**Approach:** Define the source messages in English. Treat `manifest.provisionalLocales` as the exact clone set; every other shipped non-English catalog, including `existingNonInventoryLocales`, receives contextual copy. Extend generator write mode to overwrite only manifest-listed provisional files from English while leaving authored/non-inventory catalogs untouched; keep check mode read-only and strict. Preserve ICU variables exactly across locales and strengthen data-driven catalog coverage without changing catalog classification.
+**Approach:** Define the source messages in English, preserve existing authored translations, and complete every remaining catalog with contextual machine translation. Record all machine-translated locales and per-catalog digests in the manifest, retain `en` and `ru` as human-reviewed, and keep generator check mode read-only and strict. Preserve ICU variables exactly across locales and strengthen data-driven coverage so every modal message formats through the real `next-intl` translator.
 
 **Patterns to follow:** Structural parity in `messages-parity.test.ts`, exact provisional-source matching in `watch-ui-provisional-catalogs.test.ts`, and the generator policy in `generate-provisional-ui-catalogs.mjs`.
 
@@ -118,9 +117,10 @@ Out of scope:
 1. Every catalog contains the new modal keys.
 2. Every localized inventory-link template preserves the `{language}` variable.
 3. Russian values are contextual Russian copy rather than exact English-source copies.
-4. Every catalog listed as provisional remains byte-equivalent to the updated English catalog.
-5. Generator write mode refreshes existing provisional catalogs but does not modify an authored or existing-non-inventory catalog.
-6. Every non-English, non-provisional catalog has an explicit locale-specific value for each new key, differs from the English source where the string is translatable, and preserves the source placeholder set.
+4. The manifest records zero provisional catalogs and current source/catalog digests for every machine-translated locale.
+5. Generator check mode preserves translation metadata and rejects stale manifest policy or ownership state.
+6. Every non-English catalog has locale-specific modal copy, differs from the English source where the string is translatable, and preserves the source placeholder set.
+7. All 18 modal messages format successfully through `next-intl` in every locale with representative `{count}` and `{language}` values.
 
 **Verification:** Catalog parity, ICU placeholder checks, provisional-catalog validation, typecheck, and lint all pass.
 
@@ -151,17 +151,17 @@ Out of scope:
 
 ## Risks & Dependencies
 
-- Non-Russian authored catalog copy may need native-speaker refinement. Keep phrasing contextual and preserve placeholders, enforce no exact English leakage, and treat Russian as the linguistically reviewed regression target for browser proof; broader native-speaker certification is not claimed by this fix.
+- Machine-translated catalog copy needs native-speaker refinement. Keep phrasing contextual, preserve placeholders, reject English or unrelated-language leakage, and treat Russian as the linguistically reviewed regression target; broader native-speaker certification is not claimed by this fix.
 - The selected language can differ from the UI locale. Using its native name makes the destination recognizable across UI locales and avoids introducing a second language-name translation system.
-- Updating the English source requires regenerating all provisional catalogs. The existing generator and exact-clone checks prevent partial drift.
+- Updating the English source requires retranslation and fresh provenance digests for machine-translated catalogs. The source/catalog digest checks prevent silent drift.
 
 ## Acceptance Examples
 
 - Given `/watch/.../russian.html` resolves the Russian UI catalog, when the language sheet opens, then the new catalog actions render Russian copy alongside `Язык`, `Субтитры`, `Закрыть`, and `Применить`.
 - Given Russian is selected, when the inventory action renders, then its visible and accessible text use the Russian template and the native language name while its href remains `/watch/russian.html/videos`.
-- Given a provisional UI locale, when the new keys are added, then the catalog still matches the updated English source exactly and passes the existing ownership gate.
+- Given any shipped UI locale, when the language sheet opens, then all 18 modal-owned strings format from locale-specific copy without English-source leakage or ICU errors.
 
 ## Assumptions
 
 - The user is reporting the current feat-256 catalog-link regression rather than requesting a redesign of the language sheet.
-- The broader machine-translation completion work is separate; this fix follows the catalog classifications currently committed on `main`.
+- The user's expanded all-language requirement supersedes the original provisional-clone boundary for this fix.

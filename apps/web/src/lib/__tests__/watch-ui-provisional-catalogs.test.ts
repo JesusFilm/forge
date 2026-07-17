@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import {
   mkdirSync,
   mkdtempSync,
@@ -22,33 +23,52 @@ const provisionalManifestPath = join(
   repoDir,
   "docs/i18n/watch-ui-provisional-catalogs.json",
 )
+const translationPolicyPath = join(
+  repoDir,
+  "apps/web/scripts/ui-translation-policy.json",
+)
 
 type Inventory = {
   languages: Array<{ tag: string }>
 }
 
 type ProvisionalManifest = {
+  metadata: {
+    translation: {
+      method: string
+      model: string
+      localeProvenance: Record<
+        string,
+        {
+          model: string
+          sourceDigest: string
+          catalogDigest: string
+          generatedOn: string
+        }
+      >
+      approvedByUser: boolean
+      reviewStatus: string
+    }
+  }
   summary: {
     inventoryLanguageTags: number
     authoredInventoryCatalogs: number
+    machineTranslatedCatalogs: number
     provisionalCatalogs: number
     missingCatalogs: number
   }
   authoredInventoryLocales: string[]
+  machineTranslatedLocales: string[]
   provisionalLocales: string[]
   existingNonInventoryLocales: string[]
   missingCatalogs: string[]
 }
 
-type Messages = Record<string, Record<string, string>>
-
-const LANGUAGE_PICKER_KEYS = [
-  "seeAllLanguages",
-  "seeAllVideosInLanguage",
-  "retryLoadingLanguages",
-  "notAvailable",
-  "switching",
-] as const
+type MessageTree = { [key: string]: string | MessageTree }
+type TranslationPolicy = {
+  humanReviewedLocales: string[]
+  intentionallyLocaleNeutral: string[]
+}
 
 function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf-8")) as T
@@ -56,6 +76,27 @@ function readJson<T>(path: string): T {
 
 function catalogPath(locale: string): string {
   return join(messagesDir, `${locale}.json`)
+}
+
+function flattenCatalog(
+  messages: MessageTree,
+  flattened: Record<string, string> = {},
+  path: string[] = [],
+): Record<string, string> {
+  for (const [key, value] of Object.entries(messages)) {
+    if (typeof value === "string") {
+      flattened[[...path, key].join(".")] = value
+    } else {
+      flattenCatalog(value, flattened, [...path, key])
+    }
+  }
+  return flattened
+}
+
+function contentDigest(value: unknown): string {
+  return createHash("sha256")
+    .update(`${JSON.stringify(value, null, 2)}\n`)
+    .digest("hex")
 }
 
 describe("watch UI provisional official-language catalogs", () => {
@@ -67,6 +108,7 @@ describe("watch UI provisional official-language catalogs", () => {
     .map((file) => file.slice(0, -5))
     .sort((a, b) => a.localeCompare(b))
   const manifest = readJson<ProvisionalManifest>(provisionalManifestPath)
+  const translationPolicy = readJson<TranslationPolicy>(translationPolicyPath)
 
   it("has a message catalog for every inventory language", () => {
     expect(filesystemLocales).toEqual(expect.arrayContaining(inventoryLocales))
@@ -83,6 +125,7 @@ describe("watch UI provisional official-language catalogs", () => {
     expect(manifest.summary).toMatchObject({
       inventoryLanguageTags: inventoryLocales.length,
       authoredInventoryCatalogs: manifest.authoredInventoryLocales.length,
+      machineTranslatedCatalogs: manifest.machineTranslatedLocales.length,
       provisionalCatalogs: manifest.provisionalLocales.length,
       missingCatalogs: 0,
     })
@@ -92,45 +135,58 @@ describe("watch UI provisional official-language catalogs", () => {
     ).toBe(inventoryLocales.length)
   })
 
-  it("keeps provisional catalogs seeded exactly from English", () => {
+  it("keeps unresolved provisional catalogs seeded exactly from English", () => {
     const english = readFileSync(catalogPath("en"), "utf-8")
+    expect(manifest.provisionalLocales).toEqual(["mey-Latn"])
+    expect(manifest.summary.provisionalCatalogs).toBe(1)
     for (const locale of manifest.provisionalLocales) {
       expect(readFileSync(catalogPath(locale), "utf-8")).toBe(english)
     }
   })
 
-  it.each(LANGUAGE_PICKER_KEYS)(
-    "keeps provisional LanguagePickerModal.%s values cloned from English",
-    (key) => {
-      const english = readJson<Messages>(catalogPath("en"))
-      for (const locale of manifest.provisionalLocales) {
-        const catalog = readJson<Messages>(catalogPath(locale))
-        expect(
-          catalog.LanguagePickerModal[key],
-          `${locale}.LanguagePickerModal.${key}`,
-        ).toBe(english.LanguagePickerModal[key])
-      }
-    },
-  )
+  it("tracks every machine-translated catalog with current provenance", () => {
+    const humanReviewedLocales = new Set(translationPolicy.humanReviewedLocales)
+    const expectedMachineLocales = filesystemLocales.filter(
+      (locale) =>
+        !humanReviewedLocales.has(locale) &&
+        !manifest.provisionalLocales.includes(locale),
+    )
+    expect(manifest.machineTranslatedLocales).toEqual(expectedMachineLocales)
+    expect(manifest.metadata.translation).toMatchObject({
+      method:
+        "OpenAI contextual machine translation with localized phrase reuse",
+      approvedByUser: true,
+      reviewStatus: "machine-translated; native-speaker review recommended",
+    })
 
-  it.each(LANGUAGE_PICKER_KEYS)(
-    "keeps non-provisional LanguagePickerModal.%s values locale-specific",
-    (key) => {
-      const english = readJson<Messages>(catalogPath("en"))
-      const nonEnglishAuthoredLocales = [
-        ...manifest.authoredInventoryLocales,
-        ...manifest.existingNonInventoryLocales,
-      ].filter((locale) => locale !== "en")
+    const sourceFlat = flattenCatalog(readJson<MessageTree>(catalogPath("en")))
+    const sourceDigest = contentDigest({
+      sourceFlat,
+      translationPolicy: {
+        humanReviewedLocales: [...translationPolicy.humanReviewedLocales].sort(
+          (left, right) => left.localeCompare(right),
+        ),
+        intentionallyLocaleNeutral: [
+          ...translationPolicy.intentionallyLocaleNeutral,
+        ].sort(),
+      },
+    })
 
-      for (const locale of nonEnglishAuthoredLocales) {
-        const catalog = readJson<Messages>(catalogPath(locale))
-        expect(
-          catalog.LanguagePickerModal[key],
-          `${locale}.LanguagePickerModal.${key}`,
-        ).not.toBe(english.LanguagePickerModal[key])
-      }
-    },
-  )
+    expect(
+      Object.keys(manifest.metadata.translation.localeProvenance).sort(
+        (left, right) => left.localeCompare(right),
+      ),
+    ).toEqual(manifest.machineTranslatedLocales)
+    for (const locale of manifest.machineTranslatedLocales) {
+      const provenance = manifest.metadata.translation.localeProvenance[locale]
+      expect(provenance.sourceDigest, locale).toBe(sourceDigest)
+      expect(provenance.catalogDigest, locale).toBe(
+        contentDigest(
+          flattenCatalog(readJson<MessageTree>(catalogPath(locale))),
+        ),
+      )
+    }
+  })
 
   it("does not mark existing authored catalogs as provisional", () => {
     expect(manifest.authoredInventoryLocales).toEqual(

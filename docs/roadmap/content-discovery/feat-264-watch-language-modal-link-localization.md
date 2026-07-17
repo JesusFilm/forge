@@ -1,14 +1,15 @@
 ---
 id: "feat-264"
 title: "Watch language modal link localization"
-owner: "codex"
+owner: "urim"
 priority: "P1"
 status: "complete"
 start_date: "2026-07-16"
 duration: 1
 depends_on:
   - "feat-256"
-blocks: []
+blocks:
+  - "feat-265"
 tags:
   - "web"
   - "watch"
@@ -46,15 +47,15 @@ the rest of the modal.
 
 1. Move the catalog-link labels and remaining modal-owned retry, unavailable, and pending-navigation copy into the `LanguagePickerModal` message namespace.
 2. Use the selected language's native display name in the localized inventory-link template, with the existing English display name as fallback.
-3. Add contextual copy to authored catalogs and preserve exact English-source cloning only for catalogs currently marked provisional.
-4. Extend generator write mode to refresh only manifest-listed provisional catalogs after the English source changes.
-5. Add regression coverage proving the links and accessibility labels are translator-driven and that catalog parity/provisional ownership still hold.
+3. Add contextual copy to all 224 non-English catalogs, preserving existing authored translations and recording machine-translation provenance for the remainder.
+4. Complete the provisional catalog inventory and keep manifest policy, ownership, and source/catalog digests auditable.
+5. Add regression coverage proving every modal message formats in every locale, the links and accessibility labels are translator-driven, and catalog/provenance parity holds.
 
 ## Constraints
 
 - Preserve the public audio-language route builders and draft-language update behavior from feat-256.
 - Preserve the intentionally five-language tooltips documented in `docs/solutions/design-patterns/watch-language-player-chrome-layout-20260609.md`.
-- Do not change locale routing, catalog ownership policy, or language-selector bilingual row design.
+- Do not change locale routing or the language-selector bilingual row design. The user's expanded all-language requirement explicitly supersedes the original provisional English-clone policy.
 - Keep the modal mobile-safe and keyboard accessible.
 
 ## Verification
@@ -80,6 +81,26 @@ the rest of the modal.
   horizontal overflow, and a sheet bounded within the visual viewport.
 - Opening the real-route modal produced no console errors or
   `MISSING_MESSAGE` diagnostics.
+- Verified representative Russian, Arabic, and Japanese real-route modals after
+  the all-language catalog pass. Each rendered locale-specific catalog links
+  and actions with the expected public-language hrefs and no English leakage;
+  Japanese also reported no console or missing-message errors.
+- Verified all 18 `LanguagePickerModal` values across 223 localized
+  non-English catalogs (4,014 localized values). Real `next-intl` formatting
+  passed across all 225 catalogs with representative plural and `{language}`
+  inputs.
+- Reduced the provisional inventory from 201 catalogs to one: 225 total
+  catalogs, one explicit English fallback (`mey-Latn`), 222 provenance-backed
+  machine-translated catalogs, and `en`/`ru` retained as human-reviewed. Source
+  and per-catalog SHA-256 digests are gated in tests; native-speaker review
+  remains recommended for machine copy. Hassaniyya-Latin remains open because
+  the available orthography and phrase corpus do not cover the modal's modern
+  UI terminology, and the prior Spanish fallback was removed rather than
+  mislabeled as localization.
+- Confirmed the translation-only change adds no runtime imports or requests:
+  request configuration still dynamically imports exactly one active catalog.
+  Catalog payloads remain 8.7–17.9 KB (10.0 KB median; 15.9 KB p95), with
+  representative `en` 9.0 KB, `ru` 12.9 KB, `ar` 11.9 KB, and `ja` 10.6 KB.
 - Captured local proof at
   `.tmp/browser-proof/watch-russian-language-modal-desktop.png` and
   `.tmp/browser-proof/watch-russian-language-modal-390x844.png`.
@@ -89,6 +110,7 @@ the rest of the modal.
   browser-independent catalog regression remains covered by real-route desktop
   and responsive browser proof plus component tests using real English,
   Russian, and Arabic catalogs.
-- Passed focused component/catalog tests (279 assertions), provisional-catalog
-  generation checks, `@forge/web` typecheck, focused ESLint, Prettier, and diff
+- Passed focused component/catalog tests, provisional-catalog generation and
+  locale checks, `@forge/web` typecheck, full web ESLint, Prettier, ICU parser
+  and placeholder audits across 42,784 localized message values, and diff
   hygiene checks.

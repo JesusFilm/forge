@@ -61,7 +61,7 @@
     "pause": "Pausa",
     "seek": "Scorri",
     "seekValue": "{current} di {total}",
-    "volume": "Volume",
+    "volume": "Livello audio",
     "volumeValue": "{percent} percento",
     "mute": "Disattiva audio",
     "unmute": "Attiva audio",
@@ -159,7 +159,7 @@
     "heading": "Trascrizione",
     "subheading": "Tocca una riga per saltare a quel momento.",
     "subtitleLanguage": "Lingua dei sottotitoli",
-    "aiSuffix": " · AI",
+    "aiSuffix": " · IA",
     "loading": "Caricamento trascrizione…",
     "unavailable": "Trascrizione non disponibile per questa traccia di sottotitoli.",
     "empty": "Nessuna riga trovata nella trascrizione."
@@ -200,12 +200,12 @@
     "recommendedLanguage": "Lingua consigliata",
     "searchSuggestion": "Cerca {suggestion}",
     "searchSuggestionWithLanguage": "Cerca {suggestion} in {language}",
-    "inLanguage": "in {language}",
+    "inLanguage": "Lingua: {language}",
     "browseByRegion": "Sfoglia per regione",
     "clearLanguages": "Cancella",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "Rilevato {language}",
+    "searchInLanguage": "Cerca in {language}",
+    "tryDifferentKeywordsOrLanguage": "Prova parole chiave diverse o scegli un'altra lingua di ricerca"
   },
   "HeroPlayer": {
     "playWithSound": "Guarda ora",
@@ -215,14 +215,14 @@
     "loadingContent": "Caricamento contenuto"
   },
   "VideoLabels": {
-    "video": "Video",
+    "video": "Filmato",
     "segment": "Segmento",
     "episode": "Episodio",
     "featureFilm": "Film",
     "shortFilm": "Cortometraggio",
     "series": "Serie",
     "collection": "Raccolta",
-    "trailer": "Trailer",
+    "trailer": "Anteprima",
     "behindTheScenes": "Dietro le quinte"
   },
   "SiblingCarousel": {

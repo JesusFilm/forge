@@ -23,6 +23,10 @@ const DEFAULT_MANIFEST_PATH = join(
 )
 const DEFAULT_SOURCE_LOCALE = "en"
 const LOCALE_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
+const PROVISIONAL_POLICY =
+  "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed."
+const COMPLETED_CATALOG_POLICY =
+  "Every shipped UI catalog contains locale-specific copy. Existing authored translations are preserved; machineTranslatedLocales identifies catalogs completed with approved contextual AI translation and recommended for native-speaker review."
 
 function argValue(name, fallback) {
   const index = process.argv.indexOf(name)
@@ -131,25 +135,53 @@ export function planProvisionalCatalogs({
   }
 }
 
-export function buildManifest({ generatedOn, inventory, plan, sourceLocale }) {
+export function buildManifest({
+  generatedOn,
+  inventory,
+  plan,
+  sourceLocale,
+  existingManifest,
+}) {
+  const catalogLocales = new Set([
+    ...plan.inventoryLocales,
+    ...plan.existingNonInventoryLocales,
+  ])
+  const machineTranslatedLocales = (
+    existingManifest?.machineTranslatedLocales ?? []
+  )
+    .filter(
+      (locale) =>
+        locale !== sourceLocale &&
+        catalogLocales.has(locale) &&
+        !plan.provisionalLocales.includes(locale),
+    )
+    .sort((a, b) => a.localeCompare(b))
+
   return {
     metadata: {
       generatedOn,
       sourceInventory: "docs/i18n/watch-ui-official-language-inventory.json",
       sourceCatalog: `apps/web/messages/${sourceLocale}.json`,
       policy:
-        "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed.",
+        plan.provisionalLocales.length > 0
+          ? PROVISIONAL_POLICY
+          : COMPLETED_CATALOG_POLICY,
       inventorySource: inventory.metadata?.source ?? null,
       cldrVersion: inventory.metadata?.cldrVersion ?? null,
+      ...(existingManifest?.metadata?.translation
+        ? { translation: existingManifest.metadata.translation }
+        : {}),
     },
     summary: {
       inventoryLanguageTags: plan.inventoryLocales.length,
       authoredInventoryCatalogs: plan.authoredLocales.length,
+      machineTranslatedCatalogs: machineTranslatedLocales.length,
       provisionalCatalogs: plan.provisionalLocales.length,
       existingNonInventoryCatalogs: plan.existingNonInventoryLocales.length,
       missingCatalogs: plan.missingLocales.length,
     },
     authoredInventoryLocales: plan.authoredLocales,
+    machineTranslatedLocales,
     provisionalLocales: plan.provisionalLocales,
     existingNonInventoryLocales: plan.existingNonInventoryLocales,
     missingCatalogs: plan.missingLocales,
@@ -197,6 +229,7 @@ function main() {
     inventory,
     plan: manifestPlan,
     sourceLocale,
+    existingManifest,
   })
   const manifestContent = renderJson(manifest)
 

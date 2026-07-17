@@ -203,9 +203,9 @@
     "inLanguage": "auf {language}",
     "browseByRegion": "Nach Region stöbern",
     "clearLanguages": "Zurücksetzen",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "{language} erkannt",
+    "searchInLanguage": "In {language} suchen",
+    "tryDifferentKeywordsOrLanguage": "Andere Stichwörter ausprobieren oder eine andere Suchsprache wählen"
   },
   "HeroPlayer": {
     "playWithSound": "Jetzt ansehen",
@@ -215,14 +215,14 @@
     "loadingContent": "Inhalt wird geladen"
   },
   "VideoLabels": {
-    "video": "Video",
+    "video": "Videobeitrag",
     "segment": "Abschnitt",
     "episode": "Folge",
     "featureFilm": "Spielfilm",
     "shortFilm": "Kurzfilm",
     "series": "Serie",
     "collection": "Sammlung",
-    "trailer": "Trailer",
+    "trailer": "Vorschau",
     "behindTheScenes": "Hinter den Kulissen"
   },
   "SiblingCarousel": {

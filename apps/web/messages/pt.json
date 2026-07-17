@@ -203,9 +203,9 @@
     "inLanguage": "em {language}",
     "browseByRegion": "Explorar por região",
     "clearLanguages": "Limpar",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "{language} detetado",
+    "searchInLanguage": "Pesquisar em {language}",
+    "tryDifferentKeywordsOrLanguage": "Tente outras palavras-chave ou escolha outro idioma de pesquisa"
   },
   "HeroPlayer": {
     "playWithSound": "Assistir agora",
@@ -222,7 +222,7 @@
     "shortFilm": "Curta-metragem",
     "series": "Série",
     "collection": "Coleção",
-    "trailer": "Trailer",
+    "trailer": "Vídeo promocional",
     "behindTheScenes": "Bastidores"
   },
   "SiblingCarousel": {

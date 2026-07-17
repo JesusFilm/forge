@@ -61,7 +61,7 @@
     "pause": "Pauzeren",
     "seek": "Zoeken",
     "seekValue": "{current} van {total}",
-    "volume": "Volume",
+    "volume": "Geluidsniveau",
     "volumeValue": "{percent} procent",
     "mute": "Dempen",
     "unmute": "Geluid aan",
@@ -156,7 +156,7 @@
     "close": "Sluiten"
   },
   "SubtitleTranscript": {
-    "heading": "Transcript",
+    "heading": "Uitgeschreven tekst",
     "subheading": "Tik op een regel om naar dat moment te springen.",
     "subtitleLanguage": "Ondertitelingstaal",
     "aiSuffix": " · AI",
@@ -200,12 +200,12 @@
     "recommendedLanguage": "Aanbevolen taal",
     "searchSuggestion": "Zoek {suggestion}",
     "searchSuggestionWithLanguage": "Zoek {suggestion} in {language}",
-    "inLanguage": "in {language}",
+    "inLanguage": "in de taal: {language}",
     "browseByRegion": "Bladeren op regio",
     "clearLanguages": "Wissen",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "{language} gedetecteerd",
+    "searchInLanguage": "Zoeken in {language}",
+    "tryDifferentKeywordsOrLanguage": "Probeer andere trefwoorden of kies een andere zoektaal"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kijken",
@@ -215,14 +215,14 @@
     "loadingContent": "Content laden"
   },
   "VideoLabels": {
-    "video": "Video",
-    "segment": "Segment",
+    "video": "VIDEO",
+    "segment": "Onderdeel",
     "episode": "Aflevering",
     "featureFilm": "Speelfilm",
     "shortFilm": "Korte film",
     "series": "Serie",
     "collection": "Collectie",
-    "trailer": "Trailer",
+    "trailer": "Voorfilm",
     "behindTheScenes": "Achter de schermen"
   },
   "SiblingCarousel": {
