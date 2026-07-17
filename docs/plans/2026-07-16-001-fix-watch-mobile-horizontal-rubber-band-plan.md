@@ -1,7 +1,7 @@
 ---
 title: "fix: Prevent Watch mobile page rubber-band panning"
 type: "fix"
-status: "active"
+status: "completed"
 date: "2026-07-16"
 ---
 
