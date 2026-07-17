@@ -88,7 +88,12 @@
     "toggleOff": "Dezactivat",
     "close": "Închide",
     "apply": "Aplică",
-    "noLanguageSubtitles": "Fără subtitrări în {language}"
+    "noLanguageSubtitles": "Fără subtitrări în {language}",
+    "seeAllLanguages": "Vezi toate limbile",
+    "seeAllVideosInLanguage": "Vezi toate videoclipurile în {language}",
+    "retryLoadingLanguages": "Reîncearcă încărcarea limbilor",
+    "notAvailable": "Indisponibil",
+    "switching": "Se schimbă..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {1 EPISOD} other {# EPISOADE}}",
@@ -198,9 +203,9 @@
     "inLanguage": "în {language}",
     "browseByRegion": "Răsfoiește după regiune",
     "clearLanguages": "Șterge",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "queryLanguageDetected": "Detectat: {language}",
+    "searchInLanguage": "Caută în {language}",
+    "tryDifferentKeywordsOrLanguage": "Încearcă alte cuvinte-cheie sau alege o altă limbă de căutare"
   },
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",
@@ -210,14 +215,14 @@
     "loadingContent": "Se încarcă conținutul"
   },
   "VideoLabels": {
-    "video": "Video",
-    "segment": "Segment",
+    "video": "Videoclip",
+    "segment": "Secțiune",
     "episode": "Episod",
     "featureFilm": "Film artistic",
     "shortFilm": "Scurtmetraj",
     "series": "Serie",
     "collection": "Colecție",
-    "trailer": "Trailer",
+    "trailer": "Videoclip promoțional",
     "behindTheScenes": "Din culise"
   },
   "SiblingCarousel": {
