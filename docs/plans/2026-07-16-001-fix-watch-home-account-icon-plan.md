@@ -1,7 +1,7 @@
 ---
 title: "fix: hide the Watch homepage account icon when downloads are anonymous"
 type: fix
-status: active
+status: completed
 date: 2026-07-16
 deepened: 2026-07-16
 roadmap: docs/roadmap/platform/feat-264-watch-home-account-callback.md
@@ -222,3 +222,12 @@ Ownership remains explicit: Web normalizes request-relative destinations, the sh
 - `apps/web/src/app/api/auth/session/route.ts` composes the flag result, session state, and sanitized login destination.
 - `docs/solutions/best-practices/nextjs-route-shape-migration-cross-cutting-contract-drift-20260430.md` establishes layered route-contract verification across consumers.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` supports adding production-contract assertions beyond helper-shape tests.
+
+---
+
+## Completion Evidence
+
+- The shared Watch callback policy accepts exact `/watch` callbacks while its origin, API-path, encoded-separator, and media-reference rejection tests remain green.
+- Web, Auth, account-control, and download-gate focused suites pass, along with lint and typecheck for `@forge/watch-url-policy`, `@forge/auth`, and `@forge/web`.
+- Anonymous browser verification at `http://127.0.0.1:3100/watch` returned a `200` gate-off session contract, rendered zero `watch-account-control` elements, loaded real homepage content, and produced no browser console errors.
+- A homepage-derived `/watch/jesus.html/english.html?t=14` smoke rendered video content with the account control absent and its nested callback session contract returning `200`.

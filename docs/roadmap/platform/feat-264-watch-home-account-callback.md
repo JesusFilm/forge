@@ -3,7 +3,7 @@ id: "feat-264"
 title: "Watch homepage account callback"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-16"
 duration: 1
 depends_on:
@@ -82,3 +82,16 @@ that failure into a gate-enabled signed-out account icon even when
   behavior.
 - Anonymous browser smoke on `/watch` records a successful gate-off session
   response, an absent account control after hydration, and visual proof.
+
+## What Was Built
+
+- Extended the shared Watch callback policy to admit the exact `/watch`
+  homepage without bypassing its existing origin, API-path, encoded-separator,
+  or media-reference protections.
+- Changed the passive Watch account control to remain hidden until it receives
+  a runtime-valid authenticated or gate-enabled session response, including
+  fail-hidden handling for unsuccessful, malformed, or contradictory payloads.
+- Added layered policy, Auth, Web route, account-control, and download-gate
+  regressions that preserve the download route as the authorization boundary.
+- Verified the anonymous gate-off homepage and a real nested Watch video route
+  in the browser with zero account controls and no console errors.
