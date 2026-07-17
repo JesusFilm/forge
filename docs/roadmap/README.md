@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 17, 2026)
 
-- **Total tickets:** 361
-- **Complete:** 266
+- **Total tickets:** 363
+- **Complete:** 268
 - **In progress:** 22
 - **Not started:** 29
 - **Blocked:** 44
@@ -304,7 +304,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-264](platform/feat-264-watch-landscape-section-cta-composition.md)             | Watch landscape section CTA composition                                          | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-language-modal-page-scroll.md)                    | Watch language modal page-aligned scroll                                         | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-mobile-landscape-hero-layout.md)                  | Watch mobile landscape hero layout                                               | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-mobile-section-cta-alignment.md)                  | Watch mobile section CTA alignment                                               | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-subtitle-header-overlap.md)                       | Watch subtitle header overlap                                                    | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-256](platform/feat-256-watch-mobile-search-header-rows.md)                     | Watch mobile search header rows                                                  | vlad       | P1       | 2026-07-17 | 1    | 2026-07-17 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
