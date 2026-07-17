@@ -181,6 +181,33 @@ describe("buildHopSchedule — count and uniqueness (R8/AE4)", () => {
 // ── R9 / R6-exception: timing and the credits tail ──────────────────
 
 describe("buildHopSchedule — timing (R9)", () => {
+  it("clamps the plan to the shortest scheduled dub, not the opener alone", () => {
+    // Same footage drifts per dub: a 94s sibling must bound a 100s opener's plan,
+    // or its hop would seek past its own credits-free end (94 - 5 = 89).
+    const dubs = [
+      dub("english", { duration: 100 }),
+      dub("spanish", { duration: 94 }),
+      dub("french", { duration: 100 }),
+    ]
+    for (let seed = 0; seed < 8; seed++) {
+      const hops = buildHopSchedule({ dubs, rng: mulberry32(seed) })
+      expect(hops).not.toBeNull()
+      const last = hops![hops!.length - 1]
+      expect(last.window.endSeconds).toBeLessThanOrEqual(94 - 5)
+    }
+  })
+
+  it("ignores unknown sibling durations when clamping (opener-length assumed)", () => {
+    const dubs = [
+      dub("english", { duration: 600 }),
+      dub("spanish", { duration: null }),
+      dub("french", { duration: 600 }),
+    ]
+    const hops = buildHopSchedule({ dubs, rng: zeroRng })
+    expect(hops).not.toBeNull()
+    expect(slugs(hops).length).toBe(3)
+  })
+
   it("runs ~60-90s of ~10s segments for a long dub-rich centerpiece", () => {
     const hops = buildHopSchedule({
       dubs: centerpiece(11, { duration: 600 }),

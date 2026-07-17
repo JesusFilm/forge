@@ -387,7 +387,8 @@ export function ShowcaseScreen() {
           dispatch({ type: "hopPlanResolved", token, plan })
           return
         }
-        // Fall through: the video is now cached, so resolveExcerptStream reuses it.
+        // Fall through: a successful probe left the video cached for resolveExcerptStream;
+        // a thrown fetch retries once there (bounded — the failure path already skips).
       }
       const resolved = await resolveExcerptStream({
         excerpt,

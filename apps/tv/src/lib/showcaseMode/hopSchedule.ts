@@ -14,7 +14,11 @@
  */
 
 import { resolveDefaultSlug } from "../resolveDefaultLanguage"
-import { playableDubs, type ShowcaseDubInput } from "./languageRotation"
+import {
+  playableDubs,
+  toDefaultSlugOptions,
+  type ShowcaseDubInput,
+} from "./languageRotation"
 import { CREDITS_TAIL_SECONDS } from "./sourceResolution"
 import type { ExcerptWindow } from "./types"
 
@@ -80,12 +84,7 @@ function dedupeBySlug(dubs: readonly SlugBearingDub[]): SlugBearingDub[] {
 function pickOpener(dubs: readonly SlugBearingDub[]): SlugBearingDub {
   const english = dubs.find((dub) => dub.languageSlug === ENGLISH_SLUG)
   if (english) return english
-  const options = dubs.map((dub) => ({
-    slug: dub.languageSlug,
-    bcp47: dub.bcp47,
-    languageSlug: dub.languageSlug,
-  }))
-  const resolved = resolveDefaultSlug(options, null)
+  const resolved = resolveDefaultSlug(toDefaultSlugOptions(dubs), null)
   return dubs.find((dub) => dub.languageSlug === resolved) ?? dubs[0]
 }
 
@@ -129,10 +128,11 @@ function planTiming(
 /**
  * Build the centerpiece's hop plan, or null when it can't showcase a language switch.
  *
- * The opener dub's duration is the planning duration — dub durations drift per language
- * (repo law: dub duration is authoritative) and the opener establishes the media timeline
- * every hop shares. An unknown/null opener duration is unschedulable-extended: the caller
- * treats null as "play as an ordinary excerpt".
+ * The planning duration is the MINIMUM known duration across the scheduled dubs — dub
+ * durations drift per language (repo law: dub duration is authoritative), and every hop
+ * seeks its window into its own dub, so a window sized to the opener alone could seek a
+ * shorter sibling past its end or into its credits. An unknown/null opener duration is
+ * unschedulable-extended: the caller treats null as "play as an ordinary excerpt".
  */
 export function buildHopSchedule(args: {
   dubs: readonly ShowcaseDubInput[] | null | undefined
@@ -147,11 +147,10 @@ export function buildHopSchedule(args: {
   if (slugBearing.length < 2) return null
 
   const opener = pickOpener(slugBearing)
-  const planningDuration = opener.durationSeconds
   if (
-    planningDuration == null ||
-    !Number.isFinite(planningDuration) ||
-    planningDuration <= 0
+    opener.durationSeconds == null ||
+    !Number.isFinite(opener.durationSeconds) ||
+    opener.durationSeconds <= 0
   ) {
     return null
   }
@@ -161,6 +160,21 @@ export function buildHopSchedule(args: {
   )
   const orderedDubs = [opener, ...shuffle(rest, args.rng)]
   const desiredCount = Math.min(orderedDubs.length, MAX_HOPS)
+
+  // Clamp to the shortest KNOWN duration among the dubs that could be scheduled; an
+  // unknown sibling duration is treated as opener-length (excluding it would shrink
+  // the plan on missing metadata alone, and drift is small among dubs of one video).
+  const planningDuration = orderedDubs
+    .slice(0, desiredCount)
+    .reduce(
+      (min, dub) =>
+        dub.durationSeconds != null &&
+        Number.isFinite(dub.durationSeconds) &&
+        dub.durationSeconds > 0
+          ? Math.min(min, dub.durationSeconds)
+          : min,
+      opener.durationSeconds,
+    )
 
   const timing = planTiming(planningDuration, desiredCount)
   if (!timing) return null

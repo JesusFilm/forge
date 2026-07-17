@@ -133,6 +133,7 @@ export function ReelPlayer({
     posterVisible,
     posterCrossfade,
     playIntended,
+    swapInFlight,
     hopDipActive,
   } = computeReelPlayerGate({
     screenFocused,
@@ -567,6 +568,10 @@ export function ReelPlayer({
   // Body-mutated, not cleanup-mutated: setup re-derives it from hopDipActive each run, so
   // a StrictMode remount can't poison it. Gates the audio reveal to a real dip→confirm.
   const hopDipWasActiveRef = useRef(false)
+  // Render mirror so the reveal branch can tell a genuine confirmation apart from a
+  // lifecycle drop (background/nav-away/plan-exit) without widening the effect's deps.
+  const hopRevealEligibleRef = useRef(false)
+  hopRevealEligibleRef.current = !swapInFlight && shouldMountVideo
   useEffect(() => {
     if (hopDipActive) {
       hopDipWasActiveRef.current = true
@@ -588,8 +593,10 @@ export function ReelPlayer({
       useNativeDriver: true,
     })
     dipOut.start()
-    // The swap muted the player; bring the new dub up as the frame brightens back.
-    fadeVolumeTo(1, AUDIO_FADE_IN_MS)
+    // Reveal ONLY on a genuine confirmation. A lifecycle drop (backgrounding, nav-away,
+    // exhausted plan) would otherwise ramp a muted mid-swap player back to full volume,
+    // and the resume would play un-dipped audio; the poster path owns those seams.
+    if (hopRevealEligibleRef.current) fadeVolumeTo(1, AUDIO_FADE_IN_MS)
     return () => dipOut.stop()
   }, [hopDipActive, hopDipOpacity, fadeVolumeTo])
 

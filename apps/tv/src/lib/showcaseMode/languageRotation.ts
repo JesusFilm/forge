@@ -66,6 +66,20 @@ export function playableDubs(
 }
 
 /**
+ * Adapt slug-bearing playable dubs into resolveDefaultSlug's option shape. Slug-less
+ * dubs must be filtered out first — they carry no identity to resolve back to.
+ */
+export function toDefaultSlugOptions(
+  dubs: readonly (PlayableDub & { languageSlug: string })[],
+): { slug: string; bcp47: string | null; languageSlug: string }[] {
+  return dubs.map((dub) => ({
+    slug: dub.languageSlug,
+    bcp47: dub.bcp47,
+    languageSlug: dub.languageSlug,
+  }))
+}
+
+/**
  * Pick this excerpt's dub for the viewer's chosen audio language. An exact `language.slug`
  * match among the playable dubs wins; failing that (no preference, or none playable in it)
  * the default chain resolves it (device locale → English → first). `claimsLanguage` is
@@ -89,13 +103,12 @@ export function pickViewerLanguage(
   // gets null; the device-locale, English, and first rungs stand in. Slug-less dubs can't
   // be an option (no identity to return), so an all-slug-less video falls to playable[0].
   const chosenSlug = resolveDefaultSlug(
-    playable
-      .filter((dub) => dub.languageSlug != null)
-      .map((dub) => ({
-        slug: dub.languageSlug!,
-        bcp47: dub.bcp47,
-        languageSlug: dub.languageSlug,
-      })),
+    toDefaultSlugOptions(
+      playable.filter(
+        (dub): dub is PlayableDub & { languageSlug: string } =>
+          dub.languageSlug != null,
+      ),
+    ),
     null,
   )
   return playable.find((dub) => dub.languageSlug === chosenSlug) ?? playable[0]!
