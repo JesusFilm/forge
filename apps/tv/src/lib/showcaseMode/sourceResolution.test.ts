@@ -8,6 +8,7 @@ import {
   CREDITS_TAIL_SECONDS,
   EXCERPT_MAX_SECONDS,
   EXCERPT_MIN_SECONDS,
+  SHOWCASE_LANGUAGES_CATEGORY_LABEL,
   SHOWCASE_STATS_SECTION_TITLE,
   buildFallbackChapters,
   parseShowcaseExperience,
@@ -176,7 +177,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a", "never-hydrated", "b"])],
       index,
     )
-    expect(drops).toEqual({ items: 1, chapters: 0 })
+    expect(drops).toEqual({ items: 1, chapters: 0, extraLanguageMarkers: 0 })
   })
 
   it("counts an item dropped for a null or malformed coreId", () => {
@@ -195,7 +196,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       ],
       index,
     )
-    expect(drops).toEqual({ items: 1, chapters: 1 })
+    expect(drops).toEqual({ items: 1, chapters: 1, extraLanguageMarkers: 0 })
   })
 
   it("does not count an empty section as a dropped chapter — nothing was authored to lose", () => {
@@ -211,7 +212,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a", "b"])],
       index,
     )
-    expect(drops).toEqual({ items: 0, chapters: 0 })
+    expect(drops).toEqual({ items: 0, chapters: 0, extraLanguageMarkers: 0 })
   })
 
   it("drops a chapter whose items are all unresolvable", () => {
@@ -255,7 +256,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       expect(parseShowcaseExperience(blocks, index)).toEqual({
         chapters: [],
         statLines: [],
-        drops: { items: 0, chapters: 0 },
+        drops: { items: 0, chapters: 0, extraLanguageMarkers: 0 },
       })
     }
   })
@@ -385,6 +386,160 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
   })
 })
 
+// ── KTD-7 language chapter (R3 / AE5 / AE7) ─────────────────────────
+
+describe("parseShowcaseExperience — KTD-7 language chapter", () => {
+  const index = buildVideoByCoreIdIndex([
+    poolVideo("a"),
+    poolVideo("b"),
+    poolVideo("c"),
+  ])
+  const MARKER = SHOWCASE_LANGUAGES_CATEGORY_LABEL
+
+  it("designates the marked chapter's first item as the centerpiece (R3)", () => {
+    const { chapters } = parseShowcaseExperience(
+      [mediaCollection("Languages", ["a", "b"], { categoryLabel: MARKER })],
+      index,
+    )
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  it("designates the sole item as centerpiece in a one-item language chapter", () => {
+    const { chapters } = parseShowcaseExperience(
+      [mediaCollection("Languages", ["a"], { categoryLabel: MARKER })],
+      index,
+    )
+    expect(chapters[0]?.excerpts).toHaveLength(1)
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  // Only the FIRST item is the centerpiece; the rest of a marked chapter's items stay
+  // ordinary excerpts (a later unit dub-switches the centerpiece alone).
+  it("keeps the marked chapter's later items as ordinary excerpts", () => {
+    const { chapters } = parseShowcaseExperience(
+      [
+        mediaCollection("Languages", ["a", "b", "c"], {
+          categoryLabel: MARKER,
+        }),
+      ],
+      index,
+    )
+    expect(chapters[0]?.excerpts.map((e) => e.coreId)).toEqual(["a", "b", "c"])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  // The marker is curator-authored free text — a casing/whitespace slip must still
+  // designate the chapter, mirroring the reserved stats title's fold.
+  it("matches the reserved marker despite casing and surrounding whitespace", () => {
+    const { chapters } = parseShowcaseExperience(
+      [
+        mediaCollection("Languages", ["a"], {
+          categoryLabel: "  Showcase-Languages  ",
+        }),
+      ],
+      index,
+    )
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  it("designates no language chapter when no section carries the marker (AE5)", () => {
+    const { chapters, drops } = parseShowcaseExperience(
+      [mediaCollection("Loneliness", ["a"]), mediaCollection("Hope", ["b"])],
+      index,
+    )
+    expect(chapters.every((chapter) => chapter.languageChapter == null)).toBe(
+      true,
+    )
+    expect(drops.extraLanguageMarkers).toBe(0)
+  })
+
+  // AE7: the curator's slip must not leak a second dub-switching centerpiece — the
+  // first marked chapter wins, the later one plays as an ordinary chapter.
+  it("lets the first marked chapter win; a later marker plays ordinary (AE7)", () => {
+    const { chapters, drops } = parseShowcaseExperience(
+      [
+        mediaCollection("First langs", ["a"], { categoryLabel: MARKER }),
+        mediaCollection("Second langs", ["b"], { categoryLabel: MARKER }),
+      ],
+      index,
+    )
+    expect(chapters.map((chapter) => chapter.title)).toEqual([
+      "First langs",
+      "Second langs",
+    ])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+    expect(chapters[1]?.languageChapter).toBeUndefined()
+    expect(drops.extraLanguageMarkers).toBe(1)
+  })
+
+  // A fully-dropped marked chapter has no centerpiece to designate, so the slot passes
+  // to the first marked chapter that survives — it is a dropped chapter, not an extra.
+  it("passes the designation to the first marked chapter that survives", () => {
+    const { chapters, drops } = parseShowcaseExperience(
+      [
+        mediaCollection("Ghost langs", ["never-hydrated"], {
+          categoryLabel: MARKER,
+        }),
+        mediaCollection("Real langs", ["a"], { categoryLabel: MARKER }),
+      ],
+      index,
+    )
+    expect(chapters.map((chapter) => chapter.title)).toEqual(["Real langs"])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+    expect(drops).toMatchObject({ chapters: 1, extraLanguageMarkers: 0 })
+  })
+
+  it("supports a stats section and a language chapter in one Experience", () => {
+    const { chapters, statLines } = parseShowcaseExperience(
+      [
+        mediaCollection(SHOWCASE_STATS_SECTION_TITLE, [], {
+          mcDescription: "A claim",
+        }),
+        mediaCollection("Languages", ["a"], { categoryLabel: MARKER }),
+        mediaCollection("Hope", ["b"]),
+      ],
+      index,
+    )
+    expect(statLines).toEqual(["A claim"])
+    expect(chapters.map((chapter) => chapter.title)).toEqual([
+      "Languages",
+      "Hope",
+    ])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+    expect(chapters[1]?.languageChapter).toBeUndefined()
+  })
+
+  // A near-miss label is not the reserved marker: no exact fold match, no designation.
+  it("ignores a categoryLabel that is close but not the reserved marker", () => {
+    for (const label of [
+      "showcase-language",
+      "showcase-languages-extra",
+      "languages",
+    ]) {
+      const { chapters, drops } = parseShowcaseExperience(
+        [mediaCollection("Almost", ["a"], { categoryLabel: label })],
+        index,
+      )
+      expect(chapters[0]?.languageChapter).toBeUndefined()
+      expect(drops.extraLanguageMarkers).toBe(0)
+    }
+  })
+})
+
 // ── Fallback composition (R5) ───────────────────────────────────────
 
 describe("buildFallbackChapters — poster shape", () => {
@@ -423,6 +578,14 @@ describe("buildFallbackChapters — R5/AE1", () => {
     expect(chapters).toHaveLength(1)
     expect(chapters[0]?.title).toBe("")
     expect(chapters[0]?.subtitle).toBeNull()
+  })
+
+  // The centerpiece is a curated designation only; a fallback reel has no marker seam.
+  it("never designates a language chapter on the fallback path", () => {
+    const model = modelWithCards([poolCard("a", "SHORT_FILM")])
+    expect(
+      buildFallbackChapters({ model, now })[0]?.languageChapter,
+    ).toBeUndefined()
   })
 
   it("prefers short-form items ahead of long-form backfill", () => {

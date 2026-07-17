@@ -28,6 +28,12 @@ export type ShowcaseChapter = {
   title: string
   subtitle: string | null
   excerpts: ShowcaseExcerpt[]
+  /**
+   * Set only on the ONE curated chapter carrying KTD-7's reserved marker (AE7: the
+   * first marked chapter wins). `centerpieceExcerptId` is that chapter's first excerpt,
+   * the item a later unit dub-switches mid-play. Never on ordinary/fallback chapters.
+   */
+  languageChapter?: { centerpieceExcerptId: string }
 }
 
 export type ShowcaseQueueKind = "curated" | "fallback"
@@ -69,4 +75,9 @@ export type ShowcaseParseDrops = {
   items: number
   /** Chapters left with zero playable excerpts, so the whole section was dropped. */
   chapters: number
+  /**
+   * Marked chapters past the first: the reserved marker is single-use, so extras play
+   * as ordinary chapters with their language designation discarded (AE7).
+   */
+  extraLanguageMarkers: number
 }
