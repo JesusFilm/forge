@@ -17,15 +17,15 @@ export const CONTENT_WIDTH_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} px-4 sm:px-
 export const WATCH_PAGE_RAIL_PADDING_CLASSES = "px-5 md:px-16 xl:px-24"
 export const WATCH_PAGE_LEFT_RAIL_CLASSES = "left-5 md:left-16 xl:left-24"
 export const WATCH_PAGE_LEFT_EDGE_CLASSES =
-  "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))]"
+  "left-5 md:left-16 xl:left-[max(6rem,calc((100vw-1920px)/2+6rem))] compact-landscape:left-[max(1.25rem,env(safe-area-inset-left,0px))]"
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
-  "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]"
+  "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))] compact-landscape:right-[max(1.25rem,env(safe-area-inset-right,0px))]"
 export const FLOATING_HEADER_HEIGHT_CLASS = "h-[52px]"
 export const FLOATING_HEADER_GAP_CLASS = "gap-3 md:gap-5"
 export const FLOATING_HEADER_TOP_CLASS =
-  "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"
+  "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)] compact-landscape:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]"
 export const FLOATING_HEADER_PINNED_TOP_CLASS =
-  "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)]"
+  "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+1rem)] compact-landscape:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]"
 export const FLOATING_HEADER_LOGO_SLOT_CLASS =
   "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
 export const FLOATING_HEADER_HOME_LOGO_SLOT_CLASS =
