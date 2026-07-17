@@ -13,7 +13,8 @@ roadmap: "docs/roadmap/platform/feat-264-watch-landscape-section-cta-composition
 Make the Download and Ask Yours actions read as part of their respective Watch
 body sections on landscape phones. Both columns will use a repeated
 heading-then-action composition at that viewport, while portrait mobile and
-large desktop retain their existing responsive behavior.
+large desktop retain their horizontal composition. On desktop, Download is
+top-aligned with the title so it shares the same action row as Ask Yours.
 
 ## Problem Frame
 
@@ -28,6 +29,10 @@ The current behavior comes from independent flex header rows in
 issue only: CTA semantics, destinations, availability rules, and section
 content are working and remain out of scope.
 
+A desktop follow-up screenshot clarified that Download should align to the top
+of its heading row, matching the vertical position of Ask Yours instead of
+centering against a multi-line localized title.
+
 ## Requirements
 
 - R1. At landscape-phone widths, the video title uses the available left-column
@@ -40,6 +45,8 @@ content are working and remain out of scope.
   landscape-phone stacking override.
 - R5. The corrected composition is visually verified with long localized copy
   at a representative landscape-phone viewport and compared at desktop width.
+- R6. At desktop widths, Download is top-aligned with the video title and shares
+  the same vertical action line as Ask Yours.
 
 ## Key Decisions
 
@@ -49,14 +56,15 @@ content are working and remain out of scope.
 - KTD2. Keep CTA ownership inside each existing section. A shared cross-column
   action rail would disconnect actions from their content and complicate the
   current mobile DOM order.
-- KTD3. Override only flex direction and leading-edge alignment. Shared eyebrow
-  and pill styles, grid proportions, content order, and interaction code remain
-  unchanged.
+- KTD3. Use top alignment for the base title/Download row, then override only
+  flex direction and Download-group leading-edge alignment on landscape phones.
+  Shared eyebrow and pill styles, grid proportions, content order, and
+  interaction code remain unchanged.
 
 ## Assumptions
 
-- The user-visible defect is limited to landscape phones; the existing portrait
-  and desktop compositions are intentionally preserved.
+- The landscape stacking defect remains phone-specific; the desktop row stays
+  horizontal but uses the clarified top alignment.
 - The supplied Russian screenshot is representative of the long-copy case that
   should drive browser proof, even if local fixtures use another long localized
   title with equivalent geometry.
@@ -76,7 +84,7 @@ content are working and remain out of scope.
 **Goal:** Give both Watch body columns the same heading-then-action hierarchy
 on landscape phones.
 
-**Requirements:** R1, R2, R3, R4.
+**Requirements:** R1, R2, R3, R4, R6.
 
 **Dependencies:** None.
 
@@ -86,12 +94,14 @@ on landscape phones.
 - `apps/web/src/components/watch/WatchStudyQuestions.tsx`
 - `apps/web/src/components/watch/__tests__/WatchBody.test.tsx`
 
-**Approach:** Add matching landscape-phone responsive variants to the two
-existing header rows. The left row becomes a leading-aligned column so the
-title can use full width; its Download/error wrapper drops the trailing auto
-margin and aligns to the start. The right header becomes a leading-aligned
-column with explicit spacing between its eyebrow and Ask Yours CTA. Retain
-the current base and large-screen classes so the override is isolated.
+**Approach:** Top-align the base title/Download row so Download shares the same
+desktop action line as Ask Yours. Add matching landscape-phone responsive
+variants to the two existing header rows. The left row becomes a leading-aligned
+column so the title can use full width; its Download/error wrapper drops the
+trailing auto margin and aligns to the start. The right header becomes a
+leading-aligned column with explicit spacing between its eyebrow and Ask Yours
+CTA. Retain the horizontal base composition so the stacking override is
+isolated.
 
 **Patterns to follow:** Mirror the explicit orientation media variants already
 used by `apps/web/src/components/watch/HeroPlayer.tsx`, and keep responsive
@@ -142,8 +152,8 @@ interaction.
    video title; Ask Yours is below and leading-aligned with Related Questions.
 2. Long localized title and CTA copy fit without overlap, clipping, or a button
    floating between columns.
-3. At `1280x900`, the pre-existing desktop title/Download and eyebrow/Ask Yours
-   row composition remains visible and usable.
+3. At `1280x900`, both desktop actions start on the same vertical line while the
+   title/Download and eyebrow/Ask Yours row compositions remain horizontal.
 
 ## Verification
 

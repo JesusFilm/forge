@@ -44,12 +44,13 @@ export function WatchBody({
         data-testid="watch-body-left"
         className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {/* Keep Download beside the title by default. On landscape phones,
+        {/* Keep Download beside and top-aligned with the title by default so
+            both column actions share one visual row. On landscape phones,
             stack the CTA below so long localized titles can use the full
             column width and the action stays anchored to its heading. */}
         <div
           data-testid="watch-body-title-row"
-          className="flex flex-nowrap items-center justify-between gap-3 [@media(max-width:1023px)_and_(orientation:landscape)]:flex-col [@media(max-width:1023px)_and_(orientation:landscape)]:items-start"
+          className="flex flex-nowrap items-start justify-between gap-3 [@media(max-width:1023px)_and_(orientation:landscape)]:flex-col"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
