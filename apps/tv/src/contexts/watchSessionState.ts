@@ -31,8 +31,9 @@ export function selectActiveVariant(
 
 /**
  * Resolve the default audio-dub index, slug-keyed via resolveDefaultSlug
- * (persisted → device → primary → English → first). TV passes null for persisted
- * (no v1 store). Returns 0 when nothing resolves so a video always opens on a dub.
+ * (preferred → device → primary → English → first). The provider passes the
+ * carried series slug, else the persisted Settings default. Returns 0 when
+ * nothing resolves so a video always opens on a dub.
  */
 export function resolveDefaultVariantIndex(
   video: WatchVideoRecord,
@@ -55,8 +56,8 @@ export function resolveDefaultVariantIndex(
 
 /**
  * Resolve the default subtitle slug for the active dub's subtitles, or null when
- * none. Slug-keyed (subtitle slug IS the unique language slug); TV passes null
- * for the persisted preference.
+ * none. Slug-keyed (subtitle slug IS the unique language slug); the provider
+ * passes the persisted Settings default as the preference.
  */
 export function resolveDefaultSubtitleSlug(
   subtitles: VariantMedia["subtitles"] | null | undefined,
@@ -70,6 +71,41 @@ export function resolveDefaultSubtitleSlug(
     languageSlug: s.languageSlug,
   }))
   return resolveDefaultSlug(options, videoPrimaryBcp47, preferredSubtitleSlug)
+}
+
+/**
+ * The preferred slug the dub default chain starts from: the carried series
+ * pick when this video actually has it, else the stored Settings default —
+ * so a series pick missing on one episode falls through to the stored
+ * preference instead of pre-empting it.
+ */
+export function resolvePreferredAudioSlug(
+  video: WatchVideoRecord,
+  carriedLanguageSlug: string | null,
+  storedAudioSlug: string | null,
+): string | null {
+  if (
+    carriedLanguageSlug != null &&
+    video.variants.some((v) => v.languageSlug === carriedLanguageSlug)
+  ) {
+    return carriedLanguageSlug
+  }
+  return storedAudioSlug
+}
+
+/**
+ * Whether the persisted subtitle preference should turn subtitles ON for this
+ * dub: only on an exact languageSlug match — a fallback language the user
+ * never asked for must not enable captions by itself.
+ */
+export function shouldAutoEnableSubtitles(
+  subtitles: VariantMedia["subtitles"] | null | undefined,
+  preferredSubtitleSlug: string | null,
+): boolean {
+  if (!preferredSubtitleSlug || !subtitles || subtitles.length === 0) {
+    return false
+  }
+  return subtitles.some((s) => s.languageSlug === preferredSubtitleSlug)
 }
 
 export type DubMediaState = {

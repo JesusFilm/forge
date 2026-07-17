@@ -6,6 +6,7 @@ import {
   VideoPlayerProvider,
   useVideoPlayerContext,
 } from "../src/contexts/VideoPlayerContext"
+import { LanguagePrefsProvider } from "../src/contexts/LanguagePrefsContext"
 import { SeriesLanguageProvider } from "../src/contexts/SeriesLanguageContext"
 import { WatchSessionProvider } from "../src/contexts/WatchSessionProvider"
 import { VideoPlayer } from "../src/components/VideoPlayer"
@@ -179,22 +180,27 @@ export default function RootLayout() {
               reads the carried series-language selection (U4), so its provider must
               be mounted first. Lives here, not the series screen, to survive push/pop. */}
           <SeriesLanguageProvider>
-            {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
-                call useWatchSession() (live dub/subtitle handoff). Below ErrorBoundary
-                so a throw degrades to the error screen. Inert until a video is published (KTD2, U3). */}
-            <WatchSessionProvider>
-              <VideoPlayerProvider>
-                <StatusBar style="light" />
-                <DatadogRouteTracker />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: BG_COLOR },
-                  }}
-                />
-                <VideoPlayerOverlay />
-              </VideoPlayerProvider>
-            </WatchSessionProvider>
+            {/* LanguagePrefs (Settings' persisted default audio/subtitle language)
+                also sits above WatchSession: the session's default-resolution
+                chain reads it. Hydrates at app start, before any watch screen. */}
+            <LanguagePrefsProvider>
+              {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
+                  call useWatchSession() (live dub/subtitle handoff). Below ErrorBoundary
+                  so a throw degrades to the error screen. Inert until a video is published (KTD2, U3). */}
+              <WatchSessionProvider>
+                <VideoPlayerProvider>
+                  <StatusBar style="light" />
+                  <DatadogRouteTracker />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: BG_COLOR },
+                    }}
+                  />
+                  <VideoPlayerOverlay />
+                </VideoPlayerProvider>
+              </WatchSessionProvider>
+            </LanguagePrefsProvider>
           </SeriesLanguageProvider>
         </ApolloProvider>
       </TvDatadogProvider>

@@ -1,18 +1,24 @@
-// Settings screen (D-pad list, WATCH_THEME). v1 content is Showcase Mode only:
-// a start action + the launch-only auto-start toggle, both persisted on device.
+// Settings screen (D-pad list, WATCH_THEME): Showcase Mode (start action +
+// launch-only auto-start toggle) and the app-wide default audio/subtitle
+// language pickers. Everything persisted on device.
 
 import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useMemo, useRef } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useLanguagePrefs } from "../../contexts/LanguagePrefsContext"
+import { languageDisplayName } from "../../contexts/seriesLanguageState"
+import { useAllLanguages } from "../../hooks/useAllLanguages"
+import type { WatchChildLanguage } from "../../lib/normalizeVideo"
 import { scale } from "../../lib/scale"
 import { useShowcasePrefs } from "../../lib/showcaseMode/useShowcasePrefs"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { LanguagePrefPanel } from "./LanguagePrefPanel"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -21,6 +27,44 @@ const ICON_SIZE = Math.round(scale(26))
 export function SettingsScreen() {
   const router = useRouter()
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
+  const {
+    prefs: langPrefs,
+    hydrated: langHydrated,
+    setAudioPref,
+    setSubtitlePref,
+  } = useLanguagePrefs()
+
+  // Which default-language picker is open; the language list loads lazily on
+  // first open and stays cached for the session.
+  const [activePicker, setActivePicker] = useState<"audio" | "subtitle" | null>(
+    null,
+  )
+  const {
+    languages,
+    loading: languagesLoading,
+    error: languagesError,
+    retry: retryLanguages,
+  } = useAllLanguages(activePicker != null)
+
+  const closePicker = useCallback(() => setActivePicker(null), [])
+  const handleAudioSelect = useCallback(
+    (language: WatchChildLanguage | null) => {
+      setAudioPref(
+        language ? { slug: language.slug, name: language.name } : null,
+      )
+      setActivePicker(null)
+    },
+    [setAudioPref],
+  )
+  const handleSubtitleSelect = useCallback(
+    (language: WatchChildLanguage | null) => {
+      setSubtitlePref(
+        language ? { slug: language.slug, name: language.name } : null,
+      )
+      setActivePicker(null)
+    },
+    [setSubtitlePref],
+  )
 
   // tvos#852: a stack pop drops focus to the top-left default. Remember the
   // focused row and re-focus it on re-entry (mirrors Home's focusMemory wiring).
@@ -91,6 +135,67 @@ export function SettingsScreen() {
           onFocusNode={captureFocusedNode}
         />
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionHeading}>Playback Languages</Text>
+        <Text style={styles.sectionNote}>
+          Every video starts in these languages when they’re available;
+          otherwise the app picks automatically. Subtitles stay off unless a
+          language is set here or turned on for a video.
+        </Text>
+
+        <SettingsRow
+          testID="settings-audio-language-row"
+          icon="globe-outline"
+          label="Audio language"
+          value={
+            langPrefs.audio ? languageDisplayName(langPrefs.audio) : "Automatic"
+          }
+          valueActive={langPrefs.audio != null}
+          disabled={!langHydrated}
+          onPress={() => setActivePicker("audio")}
+          onFocusNode={captureFocusedNode}
+        />
+        <SettingsRow
+          testID="settings-subtitle-language-row"
+          icon="text-outline"
+          label="Subtitle language"
+          value={
+            langPrefs.subtitle ? languageDisplayName(langPrefs.subtitle) : "Off"
+          }
+          valueActive={langPrefs.subtitle != null}
+          disabled={!langHydrated}
+          onPress={() => setActivePicker("subtitle")}
+          onFocusNode={captureFocusedNode}
+        />
+      </View>
+
+      <LanguagePrefPanel
+        visible={activePicker === "audio"}
+        title="Audio Language"
+        subtitle="Videos start in this language when available"
+        clearLabel="Automatic"
+        languages={languages}
+        loading={languagesLoading}
+        error={languagesError}
+        onRetry={retryLanguages}
+        activeSlug={langPrefs.audio?.slug ?? null}
+        onSelect={handleAudioSelect}
+        onClose={closePicker}
+      />
+      <LanguagePrefPanel
+        visible={activePicker === "subtitle"}
+        title="Subtitle Language"
+        subtitle="Show subtitles in this language when available"
+        clearLabel="Off"
+        languages={languages}
+        loading={languagesLoading}
+        error={languagesError}
+        onRetry={retryLanguages}
+        activeSlug={langPrefs.subtitle?.slug ?? null}
+        onSelect={handleSubtitleSelect}
+        onClose={closePicker}
+      />
     </View>
   )
 }
@@ -102,6 +207,10 @@ type SettingsRowProps = {
   label: string
   /** Toggle row when set (switch role + trailing On/Off); action row otherwise. */
   checked?: boolean
+  /** Trailing current-value text on a picker row (mutually exclusive with checked). */
+  value?: string
+  /** Accent the value at rest (a stored choice, vs the dimmed default). */
+  valueActive?: boolean
   /** Inert while prefs hydrate — focusable stays true so the D-pad path is stable. */
   disabled?: boolean
   onPress: () => void
@@ -115,6 +224,8 @@ function SettingsRow({
   icon,
   label,
   checked,
+  value,
+  valueActive = false,
   disabled = false,
   onPress,
   onFocusNode,
@@ -151,11 +262,13 @@ function SettingsRow({
       progress.interpolate({
         inputRange: [0, 1],
         outputRange: [
-          checked === true ? WATCH_THEME.accent : WATCH_THEME.text50,
+          checked === true || valueActive
+            ? WATCH_THEME.accent
+            : WATCH_THEME.text50,
           WATCH_THEME.focusInk,
         ],
       }),
-    [progress, checked],
+    [progress, checked, valueActive],
   )
   const animatedRow = useMemo(
     () => ({ backgroundColor: bg, transform }),
@@ -177,6 +290,7 @@ function SettingsRow({
       accessibilityRole={checked == null ? "button" : "switch"}
       accessibilityLabel={label}
       accessibilityState={{ checked, disabled }}
+      accessibilityValue={value != null ? { text: value } : undefined}
     >
       <Animated.View
         style={[styles.row, disabled && styles.rowDisabled, animatedRow]}
@@ -188,6 +302,13 @@ function SettingsRow({
         {checked != null ? (
           <Animated.Text style={[styles.rowValue, { color: valueInk }]}>
             {checked ? "On" : "Off"}
+          </Animated.Text>
+        ) : value != null ? (
+          <Animated.Text
+            style={[styles.rowValue, { color: valueInk }]}
+            numberOfLines={1}
+          >
+            {value}
           </Animated.Text>
         ) : null}
       </Animated.View>
@@ -255,5 +376,7 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: Math.round(scale(22)),
     fontWeight: "600",
+    // Long language names truncate rather than crowd the label out.
+    maxWidth: scale(420),
   },
 })

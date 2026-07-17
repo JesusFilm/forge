@@ -1,6 +1,7 @@
-// SYNC: structural rewrite (NOT a copy) of apps/mobile's WatchSessionProvider. TV v1 has no persistence
-// (subtitleEnabled local, no preferencesReady gate, setters don't persist, defaults use carried series slug U4,
-// no snackbar). Single source of truth for active dub + subtitle; INERT when video == null.
+// SYNC: structural rewrite (NOT a copy) of apps/mobile's WatchSessionProvider. TV persists ONLY the
+// Settings default-language prefs (read here via LanguagePrefsContext); per-video setters stay
+// in-memory (carried series slug U4, no snackbar). Single source of truth for active dub + subtitle;
+// INERT when video == null.
 
 import {
   createContext,
@@ -21,12 +22,15 @@ import {
 import { ensureDubMedia } from "../lib/dubMediaFetch"
 import { GET_VIDEO_DUB } from "../lib/videoQueries"
 import { getApolloClient } from "../lib/apolloClient"
+import { useLanguagePrefs } from "./LanguagePrefsContext"
 import { useCarriedLanguageSlug } from "./SeriesLanguageContext"
 import {
   resolveDefaultSubtitleSlug,
   resolveDefaultVariantIndex,
+  resolvePreferredAudioSlug,
   selectActiveVariant,
   selectDubMediaState,
+  shouldAutoEnableSubtitles,
   type DubMediaState,
 } from "./watchSessionState"
 
@@ -36,7 +40,9 @@ export {
   selectActiveVariant,
   resolveDefaultVariantIndex,
   resolveDefaultSubtitleSlug,
+  resolvePreferredAudioSlug,
   selectDubMediaState,
+  shouldAutoEnableSubtitles,
   type DubMediaState,
 } from "./watchSessionState"
 
@@ -92,6 +98,10 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // → feeds resolveDefaultVariantIndex's preferred-slug arg so an episode opened
   // from a series starts in the language picked there.
   const carriedLanguageSlug = useCarriedLanguageSlug()
+  // Persisted Settings defaults (hydrated at app start, so ready long before a
+  // video loads; the gate below is a cold-start backstop, not the normal path).
+  const { prefs: languagePrefs, hydrated: languagePrefsHydrated } =
+    useLanguagePrefs()
 
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
   const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
@@ -230,15 +240,23 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   }, [video?.documentId])
 
   // Default the dub language once per video as variants arrive (after documentId),
-  // unless the user chose. INERT/no readiness gate on TV. Chain: carried slug (U4,
-  // soft — no match falls through) → device → primary → English → first.
+  // unless the user chose. Chain: carried series slug (U4, when this video has
+  // it) → persisted Settings default → device → primary → English → first.
   useEffect(() => {
     if (!video || video.variants.length === 0) return
+    if (!languagePrefsHydrated) return
     if (userChoseVariantRef.current) return
     if (resolvedVariantForRef.current === video.documentId) return
     resolvedVariantForRef.current = video.documentId
     setActiveVariantIndexState(
-      resolveDefaultVariantIndex(video, carriedLanguageSlug),
+      resolveDefaultVariantIndex(
+        video,
+        resolvePreferredAudioSlug(
+          video,
+          carriedLanguageSlug,
+          languagePrefs.audio?.slug ?? null,
+        ),
+      ),
     )
   }, [
     video?.documentId,
@@ -247,28 +265,42 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     // Slug changes after this video resolved are no-ops (the ref guard above);
     // listed so the resolving run always reads a fresh value.
     carriedLanguageSlug,
+    languagePrefsHydrated,
+    languagePrefs.audio?.slug,
   ])
 
   // Pre-select the subtitle language once per active variant, unless the user
   // chose. Runs when the dub's media lands (lazy; keyed on dub id). INERT when no
-  // video/dub. Chain: persisted (null on TV) → device → primary → English → first.
+  // video/dub. Chain: persisted Settings default → device → primary → English → first.
   useEffect(() => {
     if (!video || !activeVariant) return
     const subtitles = activeVariantMedia?.subtitles
     if (!subtitles || subtitles.length === 0) return
+    if (!languagePrefsHydrated) return
     if (userChoseSubtitleRef.current) return
     if (resolvedSubtitleForRef.current === activeVariant.documentId) return
     resolvedSubtitleForRef.current = activeVariant.documentId
+    const preferredSubtitleSlug = languagePrefs.subtitle?.slug ?? null
     const best = resolveDefaultSubtitleSlug(
       subtitles,
       video.primaryLanguageBcp47,
-      null,
+      preferredSubtitleSlug,
     )
     if (best) setActiveSubtitleSlugState(best)
+    // With a stored preference, defaults own the enable state BOTH ways: ON
+    // only when its exact language exists for this dub (never a fallback), OFF
+    // so an earlier auto-enable can't leak. No preference keeps legacy carry.
+    if (preferredSubtitleSlug != null) {
+      setSubtitleEnabledState(
+        shouldAutoEnableSubtitles(subtitles, preferredSubtitleSlug),
+      )
+    }
   }, [
     activeVariant?.documentId,
     activeVariantMedia,
     video?.primaryLanguageBcp47,
+    languagePrefsHydrated,
+    languagePrefs.subtitle?.slug,
   ])
 
   const value = useMemo<WatchSessionContextValue>(

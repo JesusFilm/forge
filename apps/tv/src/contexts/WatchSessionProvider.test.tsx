@@ -10,7 +10,9 @@ import {
   selectActiveVariant,
   resolveDefaultVariantIndex,
   resolveDefaultSubtitleSlug,
+  resolvePreferredAudioSlug,
   selectDubMediaState,
+  shouldAutoEnableSubtitles,
 } from "./watchSessionState"
 import type { WatchVideoRecord, VariantMedia } from "../lib/normalizeVideo"
 
@@ -211,6 +213,64 @@ describe("resolveDefaultSubtitleSlug", () => {
   it("honors a persisted subtitle slug preference exactly", () => {
     const subs = [makeSubtitle("korean", "ko"), makeSubtitle("english", "en")]
     expect(resolveDefaultSubtitleSlug(subs, "en", "korean")).toBe("korean")
+  })
+})
+
+// ── resolvePreferredAudioSlug (carried series pick chains to the stored default) ──
+
+describe("resolvePreferredAudioSlug", () => {
+  const video = makeVideo([
+    makeVariant({ slug: "v/korean", languageSlug: "korean" }),
+    makeVariant({ slug: "v/english", languageSlug: "english" }),
+  ])
+
+  it("prefers the carried series pick when this video has it", () => {
+    expect(resolvePreferredAudioSlug(video, "korean", "english")).toBe("korean")
+  })
+
+  it("falls through to the stored default when the carried pick is missing", () => {
+    // A series-level pick can be absent on one episode (uneven dub coverage);
+    // it must not pre-empt a stored default that IS available.
+    expect(resolvePreferredAudioSlug(video, "spanish", "korean")).toBe("korean")
+  })
+
+  it("uses the stored default when nothing is carried", () => {
+    expect(resolvePreferredAudioSlug(video, null, "korean")).toBe("korean")
+  })
+
+  it("is null when neither exists", () => {
+    expect(resolvePreferredAudioSlug(video, null, null)).toBeNull()
+  })
+})
+
+// ── shouldAutoEnableSubtitles (Settings default turns captions on) ───
+
+describe("shouldAutoEnableSubtitles", () => {
+  it("is false with no preference — nothing auto-enables", () => {
+    const subs = [makeSubtitle("english", "en")]
+    expect(shouldAutoEnableSubtitles(subs, null)).toBe(false)
+  })
+
+  it("is false with no subtitles, even when preferred", () => {
+    expect(shouldAutoEnableSubtitles([], "korean")).toBe(false)
+    expect(shouldAutoEnableSubtitles(null, "korean")).toBe(false)
+  })
+
+  it("enables only on an exact languageSlug match", () => {
+    const subs = [makeSubtitle("korean", "ko"), makeSubtitle("english", "en")]
+    expect(shouldAutoEnableSubtitles(subs, "korean")).toBe(true)
+  })
+
+  it("never enables for a fallback the user did not ask for", () => {
+    // Preferred Korean is unavailable: resolveDefaultSubtitleSlug would fall
+    // back to English, but that fallback must not turn captions on.
+    const subs = [makeSubtitle("english", "en"), makeSubtitle("spanish", "es")]
+    expect(shouldAutoEnableSubtitles(subs, "korean")).toBe(false)
+  })
+
+  it("matches by slug, never a bcp47 sibling (ko vs ko-kmr)", () => {
+    const subs = [makeSubtitle("kurmanji", "ko-kmr")]
+    expect(shouldAutoEnableSubtitles(subs, "korean")).toBe(false)
   })
 })
 
