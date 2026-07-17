@@ -173,24 +173,23 @@ describe("WatchBody — two-column layout", () => {
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
 
-    // Title and Download keep the established row by default, then switch to
-    // a leading-aligned stack on landscape phones so long localized titles
-    // can use the full column width.
+    // Title and Download keep a top-aligned row by default so Download shares
+    // the same visual line as Ask Yours, then switch to a leading-aligned
+    // stack on landscape phones so long localized titles can use the full
+    // column width.
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
     expect(titleRow).not.toBeNull()
     expect(titleRow!.className).toContain("flex")
     expect(titleRow!.className).toContain("flex-nowrap")
-    expect(titleRow!.className).toContain("items-center")
+    expect(titleRow!.className).toContain("items-start")
+    expect(titleRow!.className).not.toContain("items-center")
     expect(titleRow!.className).toContain("justify-between")
     expect(titleRow!.className).toContain("gap-3")
     expect(titleRow!.className.split(" ")).not.toContain("flex-col")
     expect(titleRow!.className).toContain(
       "[@media(max-width:1023px)_and_(orientation:landscape)]:flex-col",
-    )
-    expect(titleRow!.className).toContain(
-      "[@media(max-width:1023px)_and_(orientation:landscape)]:items-start",
     )
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)

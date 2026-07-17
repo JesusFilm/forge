@@ -51,7 +51,9 @@ positions instead of reading as actions belonging to their section headings.
 2. At the same viewport range, stack Ask Yours beneath the Related Questions
    eyebrow and align both to the left edge of the right column.
 3. Preserve the existing portrait-mobile and large-desktop compositions,
-   button semantics, download error placement, and question interactions.
+   while top-aligning Download with the desktop title row so it shares the same
+   vertical action line as Ask Yours. Preserve button semantics, download error
+   placement, and question interactions.
 4. Add focused component regression assertions and visually verify a localized
    Watch page at a representative landscape-phone viewport.
 
