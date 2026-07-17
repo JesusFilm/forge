@@ -17,6 +17,7 @@ import {
 
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
+import { FOCUS_RING_WIDTH, resolveFocusVisual } from "../focus/focusVisual"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import {
@@ -78,6 +79,75 @@ const GET_ITEM_LAYOUT: Record<
   landscape: makeGetItemLayout("landscape"),
   portrait: makeGetItemLayout("portrait"),
 }
+
+const THUMB_SPEC = resolveFocusVisual("thumb")
+
+// Generous stand-in for the title+kind block under the art (~64 real) — only
+// sizes focus headroom, so overestimating is safe.
+const META_HEIGHT_ALLOWANCE = scale(80)
+
+// The design's head→cards gap (22px ≈ 24); also the minimum focus headroom.
+const BASE_ITEM_PADDING = scale(24)
+
+// tvOS touchpad nudges add RCTTVView's default parallax on top of the focus
+// scale: ±2pt center shift + 0.05rad tilt about a 1/500 perspective, which
+// magnifies the near top corner. Android TV has no parallax (D-pad only).
+const PARALLAX_SHIFT_Y = IS_ANDROID ? 0 : 2
+const PARALLAX_TILT_SIN = IS_ANDROID ? 0 : Math.sin(0.05)
+const PARALLAX_TILT_COS = Math.cos(0.05)
+const PARALLAX_PERSPECTIVE = 500
+
+// Room the focused card needs above its layout box before the FlatList's
+// scroll bounds clip it: half the magnify growth + lift + scaled ring, at the
+// worst-case diagonal nudge (both tilts perspective-magnify the top corner).
+function focusHeadroomFor(variant: HomeCardVariant): number {
+  const { width, thumbHeight } = HOME_CARD_DIMS[variant]
+  const cardHeight = thumbHeight + META_HEIGHT_ALLOWANCE
+  const halfWidth = (width / 2 + FOCUS_RING_WIDTH) * THUMB_SPEC.magnify
+  const topFromCenter =
+    (cardHeight / 2 + FOCUS_RING_WIDTH) * THUMB_SPEC.magnify + THUMB_SPEC.lift
+  // UIKit applies the two tilts as separate additive CAAnimations that
+  // compose by matrix concatenation, each with its own m34 — the offset
+  // routed through both perspectives weighs (1+cos); bound both terms so.
+  const perspectiveW =
+    1 -
+    (PARALLAX_TILT_SIN *
+      (1 + PARALLAX_TILT_COS) *
+      (halfWidth + topFromCenter)) /
+      PARALLAX_PERSPECTIVE
+  return Math.ceil(
+    topFromCenter / perspectiveW + PARALLAX_SHIFT_Y - cardHeight / 2,
+  )
+}
+
+const ITEM_PADDING_TOP: Record<HomeCardVariant, number> = {
+  landscape: Math.max(BASE_ITEM_PADDING, focusHeadroomFor("landscape")),
+  portrait: Math.max(BASE_ITEM_PADDING, focusHeadroomFor("portrait")),
+}
+
+// Top headroom only; the bottom keeps the base (nothing overhangs it).
+const ITEM_WRAPPER: Record<
+  HomeCardVariant,
+  { paddingTop: number; paddingBottom: number }
+> = StyleSheet.create({
+  landscape: {
+    paddingTop: ITEM_PADDING_TOP.landscape,
+    paddingBottom: BASE_ITEM_PADDING,
+  },
+  portrait: {
+    paddingTop: ITEM_PADDING_TOP.portrait,
+    paddingBottom: BASE_ITEM_PADDING,
+  },
+})
+
+// Headroom beyond the base gap is carved out of the clip bounds, not the
+// layout: pull the list up by the same amount so cards keep the design's 24
+// head→cards gap and the rail's outer height is unchanged.
+const RAIL_PULL_UP: Record<HomeCardVariant, { marginTop: number }> =
+  StyleSheet.create({
+    landscape: { marginTop: BASE_ITEM_PADDING - ITEM_PADDING_TOP.landscape },
+    portrait: { marginTop: BASE_ITEM_PADDING - ITEM_PADDING_TOP.portrait },
+  })
 
 // react-native-tvos host nodes expose requestTVFocus() (NativeMethods), absent
 // from the bundled View type. Encapsulate the cast in one helper so it stays
@@ -192,13 +262,15 @@ export const HomeRail = memo(function HomeRail({
       const isLastColumn = index === items.length - 1
       if (item.kind === "pad") {
         return (
-          <View style={[styles.itemWrapper, !isLastColumn && styles.itemGap]}>
+          <View
+            style={[ITEM_WRAPPER[variant], !isLastColumn && styles.itemGap]}
+          >
             <RailPad targetNode={lastCardNode} variant={variant} />
           </View>
         )
       }
       return (
-        <View style={[styles.itemWrapper, !isLastColumn && styles.itemGap]}>
+        <View style={[ITEM_WRAPPER[variant], !isLastColumn && styles.itemGap]}>
           {/* HomeCard re-emits its `card` prop from onFocus/onPress —
               never re-index into `data` from an async focus callback
               (the array can shrink under it). */}
@@ -255,6 +327,7 @@ export const HomeRail = memo(function HomeRail({
         autoFocus={restoreLastFocus}
         trapFocusLeft={IS_ANDROID}
         trapFocusRight={IS_ANDROID}
+        style={RAIL_PULL_UP[variant]}
       >
         <FlatList
           data={items}
@@ -298,11 +371,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: scale(80),
-  },
-  // Vertical room so the focus lift + white ring + shadow never clip against
-  // neighbours; doubles as the design's head→cards gap (22px ≈ 24).
-  itemWrapper: {
-    paddingVertical: scale(24),
   },
   itemGap: {
     marginRight: ITEM_GAP,
