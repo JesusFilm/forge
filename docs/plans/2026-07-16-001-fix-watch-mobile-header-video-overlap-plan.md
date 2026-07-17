@@ -1,7 +1,7 @@
 ---
 title: "fix: Prevent Watch Mobile Header Video Overlap"
 type: "fix"
-status: "active"
+status: "completed"
 date: "2026-07-16"
 ---
 

@@ -3,7 +3,7 @@ id: "feat-184"
 title: "Watch Mobile Playback Header Clearance"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-16"
 duration: 1
 depends_on:
@@ -54,10 +54,14 @@ for devices that report a non-zero top safe-area inset.
 ## Verification
 
 - Focused HeroPlayer tests cover preview, click-to-playback, autoplay, and
-  custom-overlay state boundaries.
-- Browser smoke at an iPhone portrait viewport proves the active media-frame
-  top is at or below the floating header bottom, with no horizontal overflow
-  or console errors.
+  custom-overlay state boundaries: 79 tests passed with 2 existing todos.
+- The adjacent HeroPlayer and FloatingSearchProvider suites passed together:
+  97 tests passed with 2 existing todos.
+- `pnpm --filter @forge/web typecheck` and
+  `pnpm --filter @forge/web lint` passed.
+- Browser smoke at a 390x844 portrait viewport measured the floating header
+  bottom at 84px and the active media-frame top at 96px. The frame remained
+  16:9 with no horizontal overflow or console errors.
 
 ## Plan
 
