@@ -332,7 +332,7 @@ describe("CollectionDownloadModal", () => {
     expect(modal?.className).toContain("bg-transparent")
     expect(modal?.className).toContain("rounded-none")
     expect(modal?.className).not.toContain("bg-stone-950")
-    expect(modal?.className).toContain("sm:max-w-[800px]")
+    expect(modal?.className).toContain("sm:max-w-[960px]")
   })
 
   it("stacks the heading copy beside the thumbnail summary", async () => {
@@ -346,9 +346,9 @@ describe("CollectionDownloadModal", () => {
       '[data-testid="watch-collection-download-ready"]',
     )
     expect(header?.contains(summary)).toBe(true)
-    expect(header?.className).toContain("gap-x-8")
+    expect(header?.className).toContain("gap-x-10")
     expect(header?.className).toContain(
-      "min-[600px]:grid-cols-[minmax(0,1fr)_15rem]",
+      "min-[700px]:grid-cols-[minmax(0,1fr)_20rem]",
     )
     const description = container.querySelector(
       '[data-testid="watch-collection-download-description"]',
@@ -359,19 +359,20 @@ describe("CollectionDownloadModal", () => {
     expect(description?.parentElement?.parentElement).toBe(header)
     expect(summary?.getAttribute("aria-label")).toBe("2 episodes are ready")
     expect(summary?.className).toContain("rounded-2xl")
+    expect(summary?.className).toContain("min-[700px]:rounded-[2rem]")
     expect(summary?.className).toContain("flex-col")
     expect(summary?.className).toContain("border")
     expect(summary?.className).toContain("bg-white/5")
     expect(summary?.className).toContain("justify-self-center")
-    expect(summary?.className).toContain("min-[600px]:justify-self-end")
+    expect(summary?.className).toContain("min-[700px]:justify-self-end")
     expect(summary?.className).toContain("px-6")
-    expect(summary?.className).toContain("py-5")
+    expect(summary?.className).toContain("min-[700px]:py-6")
     const thumbnailStack = summary?.querySelector(
       '[data-testid="watch-collection-download-thumbnail-stack"]',
     )
     expect(thumbnailStack?.className).toContain("relative")
-    expect(thumbnailStack?.className).toContain("h-[7.5rem]")
-    expect(thumbnailStack?.className).toContain("w-[11.5rem]")
+    expect(thumbnailStack?.className).toContain("min-[700px]:h-[10.5rem]")
+    expect(thumbnailStack?.className).toContain("min-[700px]:w-64")
     expect(thumbnailStack?.className).not.toContain("-space-x")
     const thumbnails = summary?.querySelectorAll(
       '[data-testid="watch-collection-download-thumbnail"]',
@@ -379,8 +380,9 @@ describe("CollectionDownloadModal", () => {
     expect(thumbnails).toHaveLength(2)
     thumbnails?.forEach((thumbnail) => {
       expect(thumbnail.className).toContain("absolute")
-      expect(thumbnail.className).toContain("w-40")
+      expect(thumbnail.className).toContain("min-[700px]:w-56")
       expect(thumbnail.className).toContain("rounded-xl")
+      expect(thumbnail.className).toContain("border-stone-950")
     })
     const count = summary?.querySelector(
       '[data-testid="watch-collection-download-ready-count"]',
