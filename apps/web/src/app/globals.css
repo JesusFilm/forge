@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant compact-landscape (@media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape));
 
 @theme {
   --color-brand-red: #ef3340;

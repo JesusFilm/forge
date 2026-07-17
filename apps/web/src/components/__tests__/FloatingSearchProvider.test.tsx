@@ -21,6 +21,8 @@ import {
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  WATCH_PAGE_LEFT_EDGE_CLASSES,
+  WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { runSearch } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
@@ -454,6 +456,45 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(backdrop?.className).toContain("backdrop-blur-[14px]")
     expect(backdrop?.className).toContain("bg-[linear-gradient")
     expect(backdrop?.className).toContain("opacity-100")
+  })
+
+  it("uses safe-area-aware compact geometry in short phone landscape", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const compactLandscape = "compact-landscape"
+    const header = document.querySelector('[data-testid="floating-header"]')
+    const backdrop = document.querySelector(
+      '[data-testid="floating-header-backdrop"]',
+    )
+    const hoverZone = document.querySelector(
+      '[data-testid="floating-header-hover-zone"]',
+    )
+
+    expect(FLOATING_HEADER_TOP_CLASS).toContain(
+      `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
+    )
+    expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
+      `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
+    )
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
+      `${compactLandscape}:left-[max(1.25rem,env(safe-area-inset-left,0px))]`,
+    )
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
+      `${compactLandscape}:right-[max(1.25rem,env(safe-area-inset-right,0px))]`,
+    )
+    expect(header?.className).toContain(FLOATING_HEADER_TOP_CLASS)
+    expect(backdrop?.className).toContain(
+      `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
+    )
+    expect(hoverZone?.className).toContain(
+      `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
+    )
   })
 
   it("moves the desktop gradient upward in compact header mode", () => {

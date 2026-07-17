@@ -1,7 +1,7 @@
 ---
 title: "fix: Make Watch video hero usable in mobile landscape"
 type: fix
-status: active
+status: completed
 date: 2026-07-16
 ---
 
@@ -208,3 +208,20 @@ landscape)` condition should compact both fixed header
   introduced the Share action into the individual-video overlay.
 - `docs/roadmap/platform/feat-175-watch-mobile-portrait-hero-preview.md`
   defines the portrait-only preview boundary that this fix must preserve.
+
+---
+
+## Completion Evidence
+
+- Production build, web lint, web typecheck, and 155 focused tests passed.
+- At 844x390, the floating header ends at 60px and the hero overlay starts at
+  68px, preserving an 8px gap with no horizontal overflow.
+- Watch, Share, audio-language, and subtitle-language controls each render at
+  44px high and win hit-testing at their center point.
+- Compact mode remains inactive at 1024x501 and in 390x844 portrait; the Watch
+  home and language inventory routes also render without horizontal overflow.
+- The final page load recorded no long tasks and introduced no new dependency
+  or resource type; the implementation adds CSS and existing-layout geometry
+  only.
+- CoreSimulator exposed no device inventory in this environment, so the final
+  real-device Safari pass remains a post-deploy verification item.

@@ -536,6 +536,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(share.className).toContain("border-transparent")
     expect(share.className).toContain("hover:border-white/50")
     expect(share.className).toContain("hover:bg-white/12")
+    expect(share.className).toContain("compact-landscape:min-h-11")
 
     await act(async () => {
       share.click()
@@ -633,6 +634,8 @@ describe("HeroPlayer — initial mount", () => {
     expect(languageTag.className).toContain("font-normal")
     expect(languageTag.className).toContain("hover:border-white/70")
     expect(languageTag.className).toContain("hover:bg-white/15")
+    expect(languageTag.className).toContain("compact-landscape:min-h-11")
+    expect(languageTag.className).toContain("compact-landscape:min-w-11")
     expect(
       container.querySelector('[data-testid="hero-player-runtime-tag"]'),
     ).toBeNull()
@@ -651,6 +654,11 @@ describe("HeroPlayer — initial mount", () => {
         '[data-testid="hero-player-subtitle-language-count"]',
       )?.className,
     ).toContain("text-xs")
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-subtitle-language-count"]',
+      )?.className,
+    ).toContain("compact-landscape:min-h-11")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
@@ -713,6 +721,8 @@ describe("HeroPlayer — initial mount", () => {
     ) as HTMLSpanElement
     expect(languageTag.tagName).toBe("SPAN")
     expect(languageTag.textContent).toBe("1 language")
+    expect(languageTag.className).not.toContain("compact-landscape:min-h-11")
+    expect(languageTag.className).not.toContain("compact-landscape:min-w-11")
     expect(
       container.querySelector('[data-testid="hero-player-runtime-tag"]'),
     ).toBeNull()
@@ -1614,6 +1624,107 @@ describe("HeroPlayer — initial mount", () => {
     }
   })
 
+  it("caps compact-landscape overlap so the full overlay stays below the header", async () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 390,
+    })
+    const ro = installResizeObserverStub()
+    const setRect = (
+      el: Element,
+      rect: { top: number; bottom: number; height: number; width?: number },
+    ) => {
+      Object.defineProperty(el, "getBoundingClientRect", {
+        configurable: true,
+        value: () =>
+          ({
+            x: 0,
+            y: rect.top,
+            top: rect.top,
+            bottom: rect.bottom,
+            left: 0,
+            right: rect.width ?? 844,
+            width: rect.width ?? 844,
+            height: rect.height,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      })
+    }
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(
+          <>
+            <div data-testid="floating-header" />
+            <HeroPlayer block={makeBlock()} />
+            <section data-testid="watch-body-zone">
+              <div data-block-type="SiblingCarousel" />
+            </section>
+          </>,
+        )
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      const overlay = container.querySelector(
+        '[data-testid="hero-player-overlay"]',
+      ) as HTMLDivElement
+      const header = container.querySelector(
+        '[data-testid="floating-header"]',
+      ) as HTMLDivElement
+      const body = container.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement
+      const rail = container.querySelector(
+        '[data-block-type="SiblingCarousel"]',
+      ) as HTMLElement
+
+      expect(wrapper.className).toContain(
+        "compact-landscape:[--watch-compact-landscape:1]",
+      )
+      const getComputedStyle = window.getComputedStyle.bind(window)
+      vi.spyOn(window, "getComputedStyle").mockImplementation(
+        (element, pseudoElement) => {
+          const style = getComputedStyle(element, pseudoElement)
+          if (element !== wrapper) return style
+          const getPropertyValue = style.getPropertyValue.bind(style)
+          Object.defineProperty(style, "getPropertyValue", {
+            configurable: true,
+            value: (property: string) =>
+              property === "--watch-compact-landscape"
+                ? "1"
+                : getPropertyValue(property),
+          })
+          return style
+        },
+      )
+      setRect(wrapper, { top: 0, bottom: 390, height: 390 })
+      setRect(header, { top: 8, bottom: 60, height: 52 })
+      setRect(overlay, { top: 22, bottom: 180, height: 158 })
+      setRect(body, { top: 180, bottom: 500, height: 320 })
+      setRect(rail, { top: 196, bottom: 436, height: 240 })
+
+      await ro.setHeight(390)
+      await act(async () => {
+        window.dispatchEvent(new Event("resize"))
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("164")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: -164px")
+    } finally {
+      vi.useRealTimers()
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
   it("clears the muted-preview overlap and scrolls back to the hero when sound starts from a scrolled page", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
@@ -1692,13 +1803,28 @@ describe("HeroPlayer — initial mount", () => {
     expect(pillClassTokens.some((token) => token.startsWith("w-"))).toBe(false)
     expect(pillClassTokens).toContain("font-medium")
     expect(pillClassTokens).not.toContain("font-semibold")
+    expect(pillClassTokens).toContain("compact-landscape:min-h-11")
     const title = container.querySelector(
       '[data-testid="hero-player-overlay-title"]',
     )
     expect(title?.getAttribute("class")).toContain("text-balance")
     expect(title?.getAttribute("class")).toContain("break-words")
     expect(title?.getAttribute("class")).toContain("max-w-[calc(100vw-5rem)]")
+    expect(title?.getAttribute("class")).toContain(
+      "compact-landscape:max-w-[min(56vw,30rem)]",
+    )
+    expect(title?.getAttribute("class")).toContain("compact-landscape:text-2xl")
     expect(title?.getAttribute("class")).not.toContain("whitespace-nowrap")
+    expect(title?.getAttribute("class")).not.toContain("line-clamp")
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:left-[max(1.25rem,env(safe-area-inset-left,0px))]",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:right-[max(1.25rem,env(safe-area-inset-right,0px))]",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
+    )
     expect(
       container.querySelector('[data-testid="hero-player-overlay-label"]')
         ?.className,
