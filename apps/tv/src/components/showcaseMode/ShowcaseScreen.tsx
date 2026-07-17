@@ -33,6 +33,7 @@ import {
   type ReelEvent,
   type ReelState,
 } from "../../lib/showcaseMode/reelState"
+import { buildHopSchedule } from "../../lib/showcaseMode/hopSchedule"
 import {
   buildFallbackChapters,
   parseShowcaseExperience,
@@ -342,9 +343,20 @@ export function ShowcaseScreen() {
   // R17: resolve the target excerpt's stream. Keyed on the token, which changes
   // exactly when the target does — including a one-item reel looping onto itself.
   const excerpt = currentExcerpt(state)
+  const chapter = currentChapter(state)
+  // KTD-5: the centerpiece is the marked chapter's first excerpt (U3). It plays as a
+  // hop plan instead of an ordinary stream.
+  const isCenterpieceExcerpt =
+    excerpt != null &&
+    chapter?.languageChapter?.centerpieceExcerptId === excerpt.id
+  const inHopMode = state.hop != null
   useEffect(() => {
     if (excerpt == null) return
+    // In hop mode the hop-projection effect owns the stream; this effect only resolves
+    // ordinary excerpts and builds the centerpiece's one-time plan.
+    if (inHopMode) return
     let cancelled = false
+    const token = state.excerptToken
     const baseFetch = createShowcaseVideoFetcher(
       getApolloClient(),
       "cache-first",
@@ -358,6 +370,25 @@ export function ShowcaseScreen() {
       return video
     }
     void (async () => {
+      if (isCenterpieceExcerpt) {
+        // Build the hop plan from the centerpiece's dubs. Math.random is injected HERE —
+        // the screen is the composition root where nondeterminism lives; buildHopSchedule
+        // stays pure. A null plan (too few languages / too short) falls through to play
+        // the centerpiece as an ordinary excerpt (AE4/AE5 degradation).
+        let video
+        try {
+          video = await fetchVideo(excerpt.slug)
+        } catch {
+          video = null
+        }
+        if (cancelled || !mountedRef.current) return
+        const plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+        if (plan != null) {
+          dispatch({ type: "hopPlanResolved", token, plan })
+          return
+        }
+        // Fall through: the video is now cached, so resolveExcerptStream reuses it.
+      }
       const resolved = await resolveExcerptStream({
         excerpt,
         // Ref, not a dep: a preference change mid-reel applies from the next excerpt.
@@ -377,7 +408,26 @@ export function ShowcaseScreen() {
     return () => {
       cancelled = true
     }
-  }, [excerpt, state.excerptToken])
+  }, [excerpt, state.excerptToken, isCenterpieceExcerpt, inHopMode])
+
+  // KTD-5: project the current hop onto the player as its next stream. Same footage,
+  // a different dub — this is the ONE place the reel claims a language (claimsLanguage
+  // true; ExcerptChrome shows nothing when a hop has no display name).
+  useEffect(() => {
+    const hop = state.hop
+    if (hop == null) return
+    const current = hop.hops[hop.index]
+    if (current == null) return
+    setStream({
+      hls: current.hls,
+      languageSlug: current.languageSlug,
+      languageName: current.languageName,
+      muxPlaybackId: current.muxPlaybackId,
+      window: current.window,
+      claimsLanguage: true,
+    })
+    setLiveLanguageCount(hop.hops.length)
+  }, [state.hop])
 
   // R17: warm the next excerpt's stream choice AND its poster while the current one
   // plays. Data only — a second buffering player is the expo-video leak trigger
@@ -474,14 +524,16 @@ export function ShowcaseScreen() {
     dispatch({ type: "exit" })
   }, [])
 
-  const chapter = currentChapter(state)
-
   return (
     <View style={styles.screen}>
       <ReelPlayer
         stream={stream}
         posterUrl={excerpt?.posterUrl ?? null}
         excerptToken={state.excerptToken}
+        // KTD-5: a hop past the opener is a same-footage continuation — mask its swap
+        // with the dip over the live frame, not the poster. The opener (index 0) and
+        // the exit past the centerpiece are ordinary poster-masked seams.
+        hopSwap={state.hop != null && state.hop.index > 0}
         // Cards and interstitials keep the player loaded but silent, so the card
         // doubles as the next excerpt's buffer window instead of bleeding its audio.
         active={state.phase === "excerpt"}

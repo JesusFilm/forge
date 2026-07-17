@@ -141,3 +141,35 @@ describe("classifyReelWatchdog — deadline shape", () => {
     expect(REEL_STALL_DEADLINE_MS).toBeLessThan(REEL_LOAD_DEADLINE_MS)
   })
 })
+
+// KTD-5: each hop bumps the excerpt token, so the player re-arms this clock per hop with
+// a fresh (confirmed=false, heartbeat=null) state — identical to a cold excerpt. The
+// classifier needs no hop awareness; these pin that a hop is watched like any excerpt.
+describe("classifyReelWatchdog — per-hop re-arm (KTD-5)", () => {
+  it("charges a freshly-armed hop the LOAD budget until its own first frame", () => {
+    const freshHop = {
+      playIntended: true,
+      confirmed: false,
+      msSincePlayheadAdvance: null,
+      msSincePlayRequested: REEL_LOAD_DEADLINE_MS - 1,
+    }
+    expect(classifyReelWatchdog(freshHop)).toBe("ok")
+    expect(
+      classifyReelWatchdog({
+        ...freshHop,
+        msSincePlayRequested: REEL_LOAD_DEADLINE_MS,
+      }),
+    ).toBe("load-timeout")
+  })
+
+  it("fails a hop that confirmed then froze past the stall deadline", () => {
+    expect(
+      classifyReelWatchdog({
+        playIntended: true,
+        confirmed: true,
+        msSincePlayRequested: 30_000,
+        msSincePlayheadAdvance: REEL_STALL_DEADLINE_MS,
+      }),
+    ).toBe("stalled")
+  })
+})

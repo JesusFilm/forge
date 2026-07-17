@@ -1,3 +1,8 @@
+import {
+  AUDIO_FADE_OUT_ARM_SECONDS,
+  fadeOutVolumeAt,
+  shouldArmFadeOut,
+} from "./audioFade"
 import type { ShowcaseDubInput } from "./languageRotation"
 import { buildHopSchedule, type ShowcaseHop } from "./hopSchedule"
 
@@ -338,6 +343,62 @@ describe("buildHopSchedule — deterministic under seeded rng", () => {
       expect(hops.length).toBeGreaterThanOrEqual(2)
       expect(hops.length).toBeLessThanOrEqual(9)
       expect(new Set(slugs(hops)).size).toBe(hops.length)
+    }
+  })
+})
+
+// ── R10/KTD-5: each hop seam is drift-safe against the crossfade arming ──
+
+describe("buildHopSchedule — seam arming is drift-safe (KTD-5)", () => {
+  // The player masks every hop seam with the SAME token-keyed audio crossfade the
+  // ordinary window end uses. That fade arms AUDIO_FADE_OUT_ARM_SECONDS before the
+  // window end and must never be stepped over by Android's over-1s drifting timeUpdate
+  // clock (repo law: docs/solutions/integration-issues/expo-video-timeupdate-clock-
+  // drift-audio-fade-hardcut.md). A hop window is only ~10s, so this pins that its
+  // narrower span still arms — swept with fractional, over-1s periods, NOT a t+=1 grid.
+  it("arms the fade in every hop's window at every phase offset, never early, always reaching the end", () => {
+    const hops = buildHopSchedule({
+      dubs: centerpiece(6, { duration: 600 }),
+      rng: mulberry32(11),
+    })!
+    for (const h of hops) {
+      const w = h.window
+      for (const period of [1.01, 1.05, 1.2]) {
+        for (let phase = 0; phase < period; phase += 0.05) {
+          let firstArmRemaining: number | null = null
+          let reachedEnd = false
+          // The player seeks to windowStart, so the hop's clock runs from there.
+          for (
+            let t = w.startSeconds + phase;
+            t <= w.endSeconds + period;
+            t += period
+          ) {
+            if (
+              firstArmRemaining == null &&
+              shouldArmFadeOut({ currentTime: t, window: w })
+            ) {
+              firstArmRemaining = w.endSeconds - t
+            }
+            if (t >= w.endSeconds) {
+              reachedEnd = true
+              break
+            }
+          }
+          // A sample always lands in the arming window (its width >= the drift period).
+          expect(firstArmRemaining).not.toBeNull()
+          // Audible content still remains at the arm — the fade is not a hard cut.
+          expect(firstArmRemaining!).toBeGreaterThan(0)
+          expect(
+            fadeOutVolumeAt({ remainingSeconds: firstArmRemaining! }),
+          ).toBeGreaterThan(0)
+          // Never fires earlier than the margin allows.
+          expect(firstArmRemaining!).toBeLessThanOrEqual(
+            AUDIO_FADE_OUT_ARM_SECONDS,
+          )
+          // The hop-end threshold is always crossed, so onEnded fires for every hop.
+          expect(reachedEnd).toBe(true)
+        }
+      }
     }
   })
 })

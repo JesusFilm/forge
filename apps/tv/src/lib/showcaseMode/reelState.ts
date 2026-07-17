@@ -4,6 +4,7 @@
  * Timers are declarative durations here; the screen owns setTimeout and feeds events back.
  */
 
+import type { ShowcaseHop } from "./hopSchedule"
 import type { ShowcaseChapter, ShowcaseExcerpt, ShowcaseQueue } from "./types"
 
 export type ReelPhase =
@@ -25,6 +26,18 @@ export type ReelRefresh =
   | { status: "ready"; queue: ShowcaseQueue }
   | { status: "failed" }
 
+/**
+ * KTD-5: the language centerpiece plays its dubs as a hop plan (U5's ShowcaseHop[]) —
+ * one dub-rich video switching audio mid-play. The PLAN lives in reducer state only
+ * while the centerpiece plays; ordinary chapters carry plain excerpt entries. `index`
+ * is the hop currently playing; each advance bumps `excerptToken` so the shipped swap
+ * gate, watchdog, and chrome animation all re-arm per hop.
+ */
+export type ReelHopPlan = {
+  hops: ShowcaseHop[]
+  index: number
+}
+
 export type ReelState = {
   phase: ReelPhase
   /** Last-good queue — retained through stills and a failed refresh. */
@@ -41,6 +54,8 @@ export type ReelState = {
    */
   excerptToken: number
   refresh: ReelRefresh
+  /** Non-null only while the centerpiece plays; a hop advance bumps excerptToken. */
+  hop: ReelHopPlan | null
 }
 
 export type ReelEvent =
@@ -62,6 +77,11 @@ export type ReelEvent =
   | { type: "excerptFailed" }
   /** A deliberate remote press (U6). Terminal from every state. */
   | { type: "exit" }
+  /**
+   * KTD-5: the screen resolved the centerpiece's hop plan (U5). `token` is the excerpt
+   * the plan was built for — a plan for a stale token is dropped.
+   */
+  | { type: "hopPlanResolved"; token: number; plan: ShowcaseHop[] }
 
 /** R8: the chapter card names the felt need for about five seconds. */
 export const CHAPTER_CARD_DURATION_MS = 5000
@@ -82,6 +102,7 @@ export const INITIAL_REEL_STATE: ReelState = {
   chaptersSinceInterstitial: 0,
   excerptToken: 0,
   refresh: { status: "idle" },
+  hop: null,
 }
 
 // ── Selectors ───────────────────────────────────────────────────────
@@ -168,7 +189,13 @@ function enterQueue(
 ): ReelState {
   const chapterIndex = playableChapterIndexFrom(queue, 0)
   if (chapterIndex == null) {
-    return { ...state, phase: "stills", queue, refresh: { status: "idle" } }
+    return {
+      ...state,
+      phase: "stills",
+      queue,
+      refresh: { status: "idle" },
+      hop: null,
+    }
   }
   return enterChapterAt(
     {
@@ -182,6 +209,8 @@ function enterQueue(
         ? state.chaptersSinceInterstitial
         : 0,
       refresh: { status: "idle" },
+      // A new queue never carries a prior centerpiece's plan.
+      hop: null,
     },
     queue,
     chapterIndex,
@@ -241,6 +270,27 @@ function advanceExcerpt(state: ReelState, queue: ShowcaseQueue): ReelState {
   )
 }
 
+/**
+ * R16's breaker: one strike, then either stills at the threshold or a skip to the next
+ * item. Shared by the ordinary excerptFailed path and a centerpiece whose last hop died
+ * (KTD-6) — a dead centerpiece is ONE strike, not one per hop.
+ */
+function failExcerpt(state: ReelState, queue: ShowcaseQueue): ReelState {
+  const consecutiveFailures = state.consecutiveFailures + 1
+  if (consecutiveFailures >= REEL_FAILURE_BREAKER_THRESHOLD) {
+    return { ...state, phase: "stills", consecutiveFailures }
+  }
+  const advanced = advanceExcerpt({ ...state, consecutiveFailures }, queue)
+  // Stay on the card while retrying behind it: the card IS the resolve window
+  // (KTD-2/R17), and its timer keys on phase+chapterIndex, so holding both lets it
+  // run its full 5s instead of flashing past a dead first item.
+  return state.phase === "chapterCard" &&
+    advanced.phase === "excerpt" &&
+    advanced.chapterIndex === state.chapterIndex
+    ? { ...advanced, phase: "chapterCard" }
+    : advanced
+}
+
 // ── Reducer ─────────────────────────────────────────────────────────
 
 export function reelReducer(state: ReelState, event: ReelEvent): ReelState {
@@ -290,12 +340,41 @@ export function reelReducer(state: ReelState, event: ReelEvent): ReelState {
       return advanceToNextChapter(state, state.queue)
     }
 
-    case "excerptEnded":
+    case "hopPlanResolved":
+      // The plan enters state only for the excerpt it was built for; a stale plan (the
+      // reel advanced during the async build) is dropped. The card is the centerpiece's
+      // buffer window, so both phases that hold an in-flight excerpt may enter hop mode.
+      if (state.excerptToken !== event.token) return state
+      if (state.phase !== "excerpt" && state.phase !== "chapterCard")
+        return state
+      if (event.plan.length < 2) return state
+      return { ...state, hop: { hops: event.plan, index: 0 } }
+
+    case "excerptEnded": {
       if (state.phase !== "excerpt" || state.queue == null) return state
+      if (state.hop != null) {
+        const nextIndex = state.hop.index + 1
+        if (nextIndex < state.hop.hops.length) {
+          // Next hop: same footage, a different dub. Bumping the token re-arms the swap
+          // gate, watchdog, and chrome animation — three proven mechanisms per hop.
+          return {
+            ...state,
+            hop: { ...state.hop, index: nextIndex },
+            excerptToken: state.excerptToken + 1,
+          }
+        }
+        // Plan complete: the centerpiece played through. Leave hop mode and advance the
+        // excerpt, clearing the breaker like any played-through excerpt.
+        return advanceExcerpt(
+          { ...state, hop: null, consecutiveFailures: 0 },
+          state.queue,
+        )
+      }
       // Completion is the ONLY proof the path works, so it is the only thing that
       // clears the breaker. A first frame proves nothing — an item can paint one and
       // freeze, and resetting there means three such items never reach stills.
       return advanceExcerpt({ ...state, consecutiveFailures: 0 }, state.queue)
+    }
 
     case "excerptFailed": {
       // A curated chapter enters on its card while the token already armed the
@@ -303,22 +382,22 @@ export function reelReducer(state: ReelState, event: ReelEvent): ReelState {
       // wedged the reel on the card's poster with nothing left to re-arm it.
       const canFail = state.phase === "excerpt" || state.phase === "chapterCard"
       if (!canFail || state.queue == null) return state
-      const consecutiveFailures = state.consecutiveFailures + 1
-      if (consecutiveFailures >= REEL_FAILURE_BREAKER_THRESHOLD) {
-        return { ...state, phase: "stills", consecutiveFailures }
+      if (state.hop != null) {
+        const nextIndex = state.hop.index + 1
+        if (nextIndex < state.hop.hops.length) {
+          // KTD-6/AE6: a failed or stalled hop skips to the next planned hop WITHOUT a
+          // strike — a dead dub is not a dead excerpt. The token bump re-arms the swap.
+          return {
+            ...state,
+            hop: { ...state.hop, index: nextIndex },
+            excerptToken: state.excerptToken + 1,
+          }
+        }
+        // No playable hop remains: the centerpiece itself failed. Fall through to the
+        // ordinary breaker as a SINGLE strike (R11), hop mode cleared.
+        return failExcerpt({ ...state, hop: null }, state.queue)
       }
-      const advanced = advanceExcerpt(
-        { ...state, consecutiveFailures },
-        state.queue,
-      )
-      // Stay on the card while retrying behind it: the card IS the resolve window
-      // (KTD-2/R17), and its timer keys on phase+chapterIndex, so holding both
-      // lets it run its full 5s instead of flashing past a dead first item.
-      return state.phase === "chapterCard" &&
-        advanced.phase === "excerpt" &&
-        advanced.chapterIndex === state.chapterIndex
-        ? { ...advanced, phase: "chapterCard" }
-        : advanced
+      return failExcerpt(state, state.queue)
     }
   }
 }

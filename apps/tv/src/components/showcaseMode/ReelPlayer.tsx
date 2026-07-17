@@ -36,6 +36,13 @@ import { classifyReelWatchdog } from "./reelWatchdog"
 const POSTER_HOLD_MS = 500
 const POSTER_FADE_MS = 500
 
+// KTD-5: a hop is the SAME footage in a different dub, so its seam is a brief dim over
+// the LIVE frame — never the poster (that would read as a cut). Shorter than the poster
+// hold, and a DIM not a blackout: the frame stays legible so the dip reads as a
+// momentary darkening synced to the audio crossfade, never a black gap (R10).
+const HOP_DIP_FADE_MS = 200
+const HOP_DIP_MAX_OPACITY = 0.5
+
 /** Matches the player's own 1s timeUpdate cadence — no point sampling finer. */
 const WATCHDOG_TICK_MS = 1000
 
@@ -45,6 +52,12 @@ export type ReelPlayerProps = {
   posterUrl: string | null
   /** KTD-9's source-swap guard token; bumps on every new excerpt target. */
   excerptToken: number
+  /**
+   * KTD-5: the swap into this stream is a hop continuation (same footage, next dub).
+   * Masks with the dip over the live frame instead of the poster. False for the entry
+   * into the centerpiece and the exit past it — those are ordinary content cuts.
+   */
+  hopSwap: boolean
   /**
    * Play gate. False under chapter cards, interstitials and stills: the player stays
    * loaded and silent, so the card doubles as the next excerpt's buffer window (R17).
@@ -65,6 +78,7 @@ export function ReelPlayer({
   stream,
   posterUrl,
   excerptToken,
+  hopSwap,
   active,
   onPlaying,
   onEnded,
@@ -119,6 +133,7 @@ export function ReelPlayer({
     posterVisible,
     posterCrossfade,
     playIntended,
+    hopDipActive,
   } = computeReelPlayerGate({
     screenFocused,
     appForeground,
@@ -127,6 +142,7 @@ export function ReelPlayer({
     videoReady,
     excerptToken,
     confirmedToken,
+    hopSwap,
   })
 
   // Created ONCE with a null source: a changing useVideoPlayer source releases and
@@ -545,6 +561,38 @@ export function ReelPlayer({
     }
   }, [posterVisible, posterCrossfade, posterOpacity, fadeVolumeTo])
 
+  // KTD-5's hop seam. The dip fades IN over the live frame as a hop swap starts and OUT
+  // once the next dub confirms; the audio rides the fade-out (the swap muted the player).
+  const hopDipOpacity = useRef(new Animated.Value(0)).current
+  // Body-mutated, not cleanup-mutated: setup re-derives it from hopDipActive each run, so
+  // a StrictMode remount can't poison it. Gates the audio reveal to a real dip→confirm.
+  const hopDipWasActiveRef = useRef(false)
+  useEffect(() => {
+    if (hopDipActive) {
+      hopDipWasActiveRef.current = true
+      const dipIn = Animated.timing(hopDipOpacity, {
+        toValue: HOP_DIP_MAX_OPACITY,
+        duration: HOP_DIP_FADE_MS,
+        useNativeDriver: true,
+      })
+      dipIn.start()
+      return () => dipIn.stop()
+    }
+    // Only reveal after a dip actually ran — never on mount or an ordinary swap, where
+    // the poster path already owns the audio fade-in.
+    if (!hopDipWasActiveRef.current) return
+    hopDipWasActiveRef.current = false
+    const dipOut = Animated.timing(hopDipOpacity, {
+      toValue: 0,
+      duration: HOP_DIP_FADE_MS,
+      useNativeDriver: true,
+    })
+    dipOut.start()
+    // The swap muted the player; bring the new dub up as the frame brightens back.
+    fadeVolumeTo(1, AUDIO_FADE_IN_MS)
+    return () => dipOut.stop()
+  }, [hopDipActive, hopDipOpacity, fadeVolumeTo])
+
   return (
     // No pointerEvents="none" anywhere above the VideoView: on a fullscreen surface
     // that blacks out the AVPlayerLayer. focusable={false} on the view is the fix.
@@ -558,6 +606,18 @@ export function ReelPlayer({
           focusable={false}
         />
       ) : null}
+
+      {/* KTD-5's hop seam: a brief dim over the LIVE frame, below the poster so the
+          poster still owns lifecycle/background gaps. Zero opacity except mid-hop-swap. */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.hopDip,
+          { opacity: hopDipOpacity },
+        ]}
+        pointerEvents="none"
+        collapsable={false}
+      />
 
       {/* Above the video (KTD-3) and covering every swap, seek and unmount gap —
           the failure window reuses this same layer, never a spinner or blank. */}
@@ -587,6 +647,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fallbackBg: {
+    backgroundColor: WATCH_THEME.below,
+  },
+  hopDip: {
     backgroundColor: WATCH_THEME.below,
   },
 })
