@@ -1,7 +1,7 @@
 ---
 title: "fix: Watch Language Modal Parent Scroll"
 type: fix
-status: active
+status: completed
 date: 2026-07-16
 ---
 
