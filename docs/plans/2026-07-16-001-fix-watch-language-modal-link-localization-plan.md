@@ -2,7 +2,7 @@
 date: 2026-07-16
 type: fix
 scope: web-watch-language-modal-i18n
-status: active
+status: completed
 roadmap: docs/roadmap/content-discovery/feat-264-watch-language-modal-link-localization.md
 owner: codex
 ---

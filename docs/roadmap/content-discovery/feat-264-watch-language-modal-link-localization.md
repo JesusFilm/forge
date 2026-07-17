@@ -3,7 +3,7 @@ id: "feat-264"
 title: "Watch language modal link localization"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-16"
 duration: 1
 depends_on:
@@ -65,3 +65,30 @@ the rest of the modal.
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/web lint`
 - Browser-smoke the Russian modal at mobile and desktop widths, checking localized visible copy, accessible names, links, and horizontal overflow.
+
+## Completion Evidence
+
+- Verified the real Russian Watch route at
+  `http://localhost:3022/watch/jesus.html/russian.html` with the language modal
+  opened at desktop (1280px) and phone-sized (390x844) Chromium viewports.
+- Both viewports rendered `Посмотреть все языки` and
+  `Посмотреть все видео (русский)` with no `See all languages` or
+  `See all videos` leakage. The links retained `/watch/languages` and
+  `/watch/russian.html/videos`, and remained represented as focusable links in
+  the accessibility snapshot.
+- Phone-sized DOM measurements reported a 390px viewport, no document
+  horizontal overflow, and a sheet bounded within the visual viewport.
+- Opening the real-route modal produced no console errors or
+  `MISSING_MESSAGE` diagnostics.
+- Captured local proof at
+  `.tmp/browser-proof/watch-russian-language-modal-desktop.png` and
+  `.tmp/browser-proof/watch-russian-language-modal-390x844.png`.
+- Attempted affected-browser verification on existing and fresh iOS Simulator
+  devices. CoreSimulator stalled during device boot before Safari could launch;
+  restarting the shared simulator service was intentionally avoided. The
+  browser-independent catalog regression remains covered by real-route desktop
+  and responsive browser proof plus component tests using real English,
+  Russian, and Arabic catalogs.
+- Passed focused component/catalog tests (279 assertions), provisional-catalog
+  generation checks, `@forge/web` typecheck, focused ESLint, Prettier, and diff
+  hygiene checks.
