@@ -28,7 +28,7 @@ import {
 } from "../../lib/videoQoe"
 import { isAppStateForeground } from "../watch/videoBackdropGate"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { computeReelPlayerGate } from "./reelPlayerGate"
+import { computeReelPlayerGate, needsWindowStartSeek } from "./reelPlayerGate"
 import { classifyReelWatchdog } from "./reelWatchdog"
 
 // Hold the poster briefly over the confirmed video, then fade: absorbs the seek
@@ -404,6 +404,22 @@ export function ReelPlayer({
       // long-form item still reports the OUTGOING item's position, which would trip
       // the window end instantly and skip an excerpt nobody watched.
       if (confirmedTokenRef.current !== loadedTokenRef.current) return
+      // The post-swap seek can be silently dropped (item not yet seekable on tvOS);
+      // heal forward until the clock is inside the window, and skip this tick's
+      // QoE/fade/end checks — a pre-seek position would pollute all three.
+      if (
+        needsWindowStartSeek({
+          currentTime,
+          startSeconds: loaded.window.startSeconds,
+        })
+      ) {
+        try {
+          player.currentTime = loaded.window.startSeconds
+        } catch {
+          // Native player already released; the next swap owns recovery.
+        }
+        return
+      }
       // Guarded above, so this is the confirmed source's own clock: an unconfirmed
       // reading is the OUTGOING excerpt's position and would pollute watched_ms.
       qoeRef.current?.onTimeUpdate(currentTime)

@@ -1,5 +1,9 @@
 import { isAppStateForeground } from "../watch/videoBackdropGate"
-import { computeReelPlayerGate } from "./reelPlayerGate"
+import {
+  WINDOW_SEEK_TOLERANCE_SECONDS,
+  computeReelPlayerGate,
+  needsWindowStartSeek,
+} from "./reelPlayerGate"
 
 // Steady state: the reel is playing the excerpt it wants (confirmed === target).
 // Every case below perturbs exactly one axis away from it, because that is the
@@ -320,5 +324,49 @@ describe("computeReelPlayerGate — the hop seam (KTD-5/R10)", () => {
     })
     expect(gate.hopDipActive).toBe(true)
     expect(gate.posterVisible).toBe(false)
+  })
+})
+
+// ── Dropped-seek self-heal (the shipped tvOS latent bug) ─────────────
+
+describe("needsWindowStartSeek", () => {
+  it("heals a dropped seek: the clock sits at the top of a mid-video window", () => {
+    expect(needsWindowStartSeek({ currentTime: 0, startSeconds: 42 })).toBe(
+      true,
+    )
+    expect(needsWindowStartSeek({ currentTime: 1.3, startSeconds: 42 })).toBe(
+      true,
+    )
+  })
+
+  it("never loops on a landed seek that settled keyframe-shy of the start", () => {
+    expect(needsWindowStartSeek({ currentTime: 39.2, startSeconds: 42 })).toBe(
+      false,
+    )
+    // Boundary: exactly the tolerance shy is treated as landed.
+    expect(
+      needsWindowStartSeek({
+        currentTime: 42 - WINDOW_SEEK_TOLERANCE_SECONDS,
+        startSeconds: 42,
+      }),
+    ).toBe(false)
+  })
+
+  it("never fires inside or past the window", () => {
+    expect(needsWindowStartSeek({ currentTime: 50, startSeconds: 42 })).toBe(
+      false,
+    )
+  })
+
+  it("never fires for a from-zero window (short-form and fallback excerpts)", () => {
+    expect(needsWindowStartSeek({ currentTime: 0, startSeconds: 0 })).toBe(
+      false,
+    )
+  })
+
+  it("heals a hop whose new dub reports 0 before its mid-video seek lands", () => {
+    expect(needsWindowStartSeek({ currentTime: 0.4, startSeconds: 33 })).toBe(
+      true,
+    )
   })
 })

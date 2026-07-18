@@ -97,3 +97,25 @@ export function computeReelPlayerGate({
     hopDipActive: hopSwap && swapInFlight && shouldMountVideo,
   }
 }
+
+/**
+ * AVPlayer seeks land on keyframes, so a LANDED seek can settle a few seconds shy of
+ * the requested start; only a gap past this is a dropped seek needing the heal.
+ */
+export const WINDOW_SEEK_TOLERANCE_SECONDS = 4
+
+/**
+ * tvOS can silently drop the `currentTime` write issued right after replaceAsync
+ * (the item is not yet seekable), leaving a mid-video window playing from 0:00 —
+ * latent in the shipped short-form-first fallback reel, where startSeconds is 0.
+ * True = the confirmed clock sits meaningfully below the window: re-issue the seek.
+ */
+export function needsWindowStartSeek(args: {
+  currentTime: number
+  startSeconds: number
+}): boolean {
+  return (
+    args.startSeconds > 0 &&
+    args.currentTime + WINDOW_SEEK_TOLERANCE_SECONDS < args.startSeconds
+  )
+}
