@@ -5,21 +5,17 @@ import { unstable_cache } from "next/cache"
 import type { WatchSubtitle } from "@/lib/content"
 import {
   filterTranscriptSubtitlesForAudio,
-  normalizeCueOffset,
+  formatCompactTranscript,
   parseVtt,
   pickInitialSubtitleSlug,
   type InitialSubtitleTranscript,
-  type SubtitleCue,
 } from "@/lib/subtitle-transcript"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
 const WATCH_TRANSCRIPT_REVALIDATE_SECONDS = 60 * 60
 
-const fetchParsedTranscriptCues = unstable_cache(
-  async (
-    vttSrc: string,
-    durationSeconds: number | null | undefined,
-  ): Promise<SubtitleCue[]> => {
+const fetchCompactTranscript = unstable_cache(
+  async (vttSrc: string): Promise<string> => {
     const response = await fetch(vttSrc, {
       cache: "force-cache",
       next: {
@@ -30,10 +26,9 @@ const fetchParsedTranscriptCues = unstable_cache(
     if (!response.ok) {
       throw new Error(`Transcript fetch failed: HTTP ${response.status}`)
     }
-    const text = await response.text()
-    return normalizeCueOffset(parseVtt(text), durationSeconds)
+    return formatCompactTranscript(parseVtt(await response.text()))
   },
-  ["watch-transcript-vtt"],
+  ["watch-transcript-compact-vtt"],
   {
     revalidate: WATCH_TRANSCRIPT_REVALIDATE_SECONDS,
     tags: [WATCH_CACHE_TAGS.video],
@@ -43,11 +38,9 @@ const fetchParsedTranscriptCues = unstable_cache(
 export async function getInitialSubtitleTranscript({
   subtitles,
   audioSlug,
-  durationSeconds,
 }: {
   subtitles: WatchSubtitle[]
   audioSlug: string | null | undefined
-  durationSeconds: number | null | undefined
 }): Promise<InitialSubtitleTranscript> {
   const transcriptSubtitles = filterTranscriptSubtitlesForAudio(
     subtitles,
@@ -63,12 +56,9 @@ export async function getInitialSubtitleTranscript({
   try {
     return {
       vttSrc: selectedSubtitle.vttSrc,
-      cues: await fetchParsedTranscriptCues(
-        selectedSubtitle.vttSrc,
-        durationSeconds,
-      ),
+      compactText: await fetchCompactTranscript(selectedSubtitle.vttSrc),
     }
   } catch {
-    return { vttSrc: selectedSubtitle.vttSrc, cues: null }
+    return { vttSrc: selectedSubtitle.vttSrc, compactText: null }
   }
 }
