@@ -17,6 +17,9 @@ describe("resolveWebWatchCallbackURL", () => {
     expect(
       resolveWebWatchCallbackURL("https://jesusfilm.org/watch/jesus/english"),
     ).toBe("https://jesusfilm.org/watch/jesus/english")
+    expect(resolveWebWatchCallbackURL("https://jesusfilm.org/watch")).toBe(
+      "https://jesusfilm.org/watch",
+    )
   })
 
   it("allows http localhost watch callbacks for local dev", async () => {

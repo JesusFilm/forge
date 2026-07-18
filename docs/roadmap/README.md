@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 17, 2026)
 
-- **Total tickets:** 359
-- **Complete:** 264
+- **Total tickets:** 363
+- **Complete:** 268
 - **In progress:** 22
 - **Not started:** 29
 - **Blocked:** 44
@@ -298,9 +298,13 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-252](platform/feat-252-watch-header-control-overlap.md)                        | Watch header control overlap                                                     | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-257](platform/feat-257-watch-logo-route-destination.md)                        | Watch logo route destination                                                     | codex      | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-261](platform/feat-261-watch-home-full-logo.md)                                | Watch home full Jesus Film Project logo                                          | codex      | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
+| [feat-263](platform/feat-263-watch-mobile-horizontal-rubber-band.md)                 | Watch mobile horizontal rubber-band containment                                  | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-download-poster-resolution.md)                    | Watch download modal poster resolution                                           | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-home-account-callback.md)                         | Watch homepage account callback                                                  | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-landscape-section-cta-composition.md)             | Watch landscape section CTA composition                                          | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-language-modal-page-scroll.md)                    | Watch language modal page-aligned scroll                                         | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-mobile-landscape-hero-layout.md)                  | Watch mobile landscape hero layout                                               | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-mobile-section-cta-alignment.md)                  | Watch mobile section CTA alignment                                               | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-subtitle-header-overlap.md)                       | Watch subtitle header overlap                                                    | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-256](platform/feat-256-watch-mobile-search-header-rows.md)                     | Watch mobile search header rows                                                  | vlad       | P1       | 2026-07-17 | 1    | 2026-07-17 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
