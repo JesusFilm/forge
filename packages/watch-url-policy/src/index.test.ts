@@ -13,6 +13,26 @@ describe("watch URL policy", () => {
         "https://preview.example.test",
       ]),
     ).toBe("https://preview.example.test/watch/jesus")
+    expect(
+      resolveWatchCallbackURL("https://preview.example.test/watch", [
+        "https://preview.example.test",
+      ]),
+    ).toBe("https://preview.example.test/watch")
+  })
+
+  it.each([
+    "https://attacker.example.test/watch",
+    "https://preview.example.test/watcher",
+    "https://preview.example.test/watch-evil",
+    "https://preview.example.test/watch/api/download",
+    "https://preview.example.test/watch/api%2Fdownload",
+    "https://preview.example.test/watch?url=https%3A%2F%2Fstream.mux.com%2Fabc.mp4",
+    "https://preview.example.test/watch?next=https%3A%2F%2Fapi-media-core.jesusfilm.org%2Fabc.mp4",
+    "https://preview.example.test/watch?next=stream.mux.com%2Fabc.mp4",
+  ])("rejects unsafe callback %s", (callbackURL) => {
+    expect(
+      resolveWatchCallbackURL(callbackURL, ["https://preview.example.test"]),
+    ).toBeUndefined()
   })
 
   it("rejects watch API callbacks and embedded media download references", () => {

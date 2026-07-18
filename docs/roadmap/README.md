@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 16, 2026)
+## Status (July 17, 2026)
 
-- **Total tickets:** 352
-- **Complete:** 258
+- **Total tickets:** 363
+- **Complete:** 268
 - **In progress:** 22
-- **Not started:** 28
+- **Not started:** 29
 - **Blocked:** 44
 - **Overdue and not complete:** 72
 
@@ -47,6 +47,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-156](content-discovery/feat-156-mastra-ai-gateway-content-embeddings.md)                                 | Mastra AI Gateway content embeddings migration                                                  | nisal      | P0       | 2026-06-03 | 3    | 2026-06-05 | blocked     |
 | [feat-192](content-discovery/feat-192-enriched-transcript-semantic-search.md)                                  | Enriched Transcript Semantic Search Realignment                                                 | nisal      | P0       | 2026-06-17 | 5    | 2026-06-21 | complete    |
 | [feat-199](content-discovery/feat-199-transcript-embedding-operations-promotion.md)                            | Transcript embedding operations, promotion, and source coverage                                 | nisal      | P0       | 2026-06-30 | 5    | 2026-07-04 | not-started |
+| [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-097](content-discovery/feat-097-investigate-prod-query-embedding.md)                                     | Investigate Production Query Embedding Degradation                                              | nisal      | P1       | 2026-04-15 | 2    | 2026-04-16 | complete    |
 | [feat-095](content-discovery/feat-095-experience-embedding-pipeline.md)                                        | Experience Embedding Pipeline                                                                   | nisal      | P1       | 2026-04-16 | 5    | 2026-04-20 | complete    |
 | [feat-037](content-discovery/feat-037-video-content-vectorization.md)                                          | Video Content Vectorization for Recommendations                                                 | nisal      | P1       | 2026-04-21 | 42   | 2026-06-01 | complete    |
@@ -88,6 +89,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-250](content-discovery/feat-250-watch-language-inventory-query-performance.md)                           | Watch language inventory query performance                                                      | vlad       | P1       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-253](content-discovery/feat-253-watch-collection-overview-sticky-scroll.md)                              | Watch collection overview bounded sticky scroll                                                 | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-256](content-discovery/feat-256-watch-language-modal-catalog-links.md)                                   | Watch language modal catalog links                                                              | urim       | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
+| [feat-264](content-discovery/feat-264-watch-language-modal-link-localization.md)                               | Watch language modal link localization                                                          | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
@@ -296,7 +298,15 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-252](platform/feat-252-watch-header-control-overlap.md)                        | Watch header control overlap                                                     | vlad       | P1       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-257](platform/feat-257-watch-logo-route-destination.md)                        | Watch logo route destination                                                     | codex      | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-261](platform/feat-261-watch-home-full-logo.md)                                | Watch home full Jesus Film Project logo                                          | codex      | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
+| [feat-263](platform/feat-263-watch-mobile-horizontal-rubber-band.md)                 | Watch mobile horizontal rubber-band containment                                  | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](platform/feat-264-watch-download-poster-resolution.md)                    | Watch download modal poster resolution                                           | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-home-account-callback.md)                         | Watch homepage account callback                                                  | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-landscape-section-cta-composition.md)             | Watch landscape section CTA composition                                          | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-language-modal-page-scroll.md)                    | Watch language modal page-aligned scroll                                         | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-mobile-landscape-hero-layout.md)                  | Watch mobile landscape hero layout                                               | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-mobile-section-cta-alignment.md)                  | Watch mobile section CTA alignment                                               | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-264](platform/feat-264-watch-subtitle-header-overlap.md)                       | Watch subtitle header overlap                                                    | vlad       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-256](platform/feat-256-watch-mobile-search-header-rows.md)                     | Watch mobile search header rows                                                  | vlad       | P1       | 2026-07-17 | 1    | 2026-07-17 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -330,6 +340,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-254](platform/feat-254-watch-single-page-footer-layering.md)                   | Keep Watch single-page footer above sticky player                                | urim       | P2       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-258](platform/feat-258-watch-footer-external-social-links.md)                  | Watch footer external social links                                               | vlad       | P2       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-262](platform/feat-262-watch-home-collection-cta-destination.md)               | Watch home collection CTA destination                                            | vlad       | P2       | 2026-07-15 | 1    | 2026-07-15 | complete    |
+| [feat-184](platform/feat-184-watch-body-small-mobile-title.md)                       | Compact Watch body title on small mobile screens                                 | vlad       | P2       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-249](platform/feat-249-web-force-login-marker-consume-on-success.md)           | Web force-login marker: consume on callback success, not login redirect          | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)             | Scope Watch media resource hints to media routes                                 | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
