@@ -261,7 +261,6 @@ async function getInitialTranscriptForWatchVideo(
   return getInitialSubtitleTranscript({
     subtitles: video.subtitles,
     audioSlug: selectedVariant.language?.slug ?? null,
-    durationSeconds: selectedVariant.duration ?? null,
   })
 }
 
