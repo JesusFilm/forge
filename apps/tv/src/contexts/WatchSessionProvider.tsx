@@ -274,13 +274,25 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // video/dub. Chain: persisted Settings default → device → primary → English → first.
   useEffect(() => {
     if (!video || !activeVariant) return
-    const subtitles = activeVariantMedia?.subtitles
-    if (!subtitles || subtitles.length === 0) return
     if (!languagePrefsHydrated) return
     if (userChoseSubtitleRef.current) return
     if (resolvedSubtitleForRef.current === activeVariant.documentId) return
-    resolvedSubtitleForRef.current = activeVariant.documentId
+    // Not-yet-loaded (or errored) media keeps waiting — only a LOADED result
+    // resolves this dub, so the once-per-dub latch is set inside the branches.
+    if (activeVariantMedia == null) return
+    const subtitles = activeVariantMedia.subtitles
     const preferredSubtitleSlug = languagePrefs.subtitle?.slug ?? null
+    if (subtitles.length === 0) {
+      // Loaded-empty still owes the preference its OFF write: a stale
+      // auto-enable from a previous dub must not report "Subtitles: On"
+      // against a dub with zero tracks.
+      if (preferredSubtitleSlug != null) {
+        resolvedSubtitleForRef.current = activeVariant.documentId
+        setSubtitleEnabledState(false)
+      }
+      return
+    }
+    resolvedSubtitleForRef.current = activeVariant.documentId
     const best = resolveDefaultSubtitleSlug(
       subtitles,
       video.primaryLanguageBcp47,

@@ -22,6 +22,11 @@ import {
   type LanguagePrefs,
   type PendingLanguagePrefs,
 } from "../lib/languagePrefs"
+import { withTimeout } from "../lib/withTimeout"
+
+// A hung (never-settling) AsyncStorage read must not hold `hydrated` false
+// forever — WatchSessionProvider gates ALL default-language resolution on it.
+const HYDRATION_TIMEOUT_MS = 5000
 
 type LanguagePrefsContextValue = {
   prefs: LanguagePrefs
@@ -47,7 +52,12 @@ export function LanguagePrefsProvider({ children }: { children: ReactNode }) {
     mountedRef.current = true
 
     void (async () => {
-      const loaded = await loadLanguagePrefs()
+      // Timeout falls back to defaults but still hydrates — a wedged storage
+      // read must degrade to the device-locale chain, not disable it.
+      const loaded = await withTimeout(
+        loadLanguagePrefs(),
+        HYDRATION_TIMEOUT_MS,
+      ).catch(() => ({ ...DEFAULT_LANGUAGE_PREFS }))
       if (!mountedRef.current) return
       const merged = mergeLanguagePrefs(loaded, pendingRef.current)
       setPrefs(merged)

@@ -69,9 +69,20 @@ export function LanguagePrefPanel({
     setFocusArmed((armed) => (armed ? false : armed))
   }, [])
 
+  const scrolledForOpenRef = useRef(false)
   useEffect(() => {
     if (!visible) return
     setFocusArmed(true)
+    scrolledForOpenRef.current = false
+  }, [visible])
+
+  // Scroll to the stored row once per open, as soon as rows exist. On the
+  // session's FIRST open the lazy list lands after `visible`, so this must not
+  // key on [visible] alone — the stored row would stay buried unscrolled.
+  useEffect(() => {
+    if (!visible || scrolledForOpenRef.current) return
+    if (languages == null) return
+    scrolledForOpenRef.current = true
     if (activeDisplayIndex > 0) {
       listRef.current?.scrollToIndex({
         index: activeDisplayIndex,
@@ -80,9 +91,9 @@ export function LanguagePrefPanel({
     } else {
       listRef.current?.scrollToOffset({ offset: 0, animated: false })
     }
-    // Keyed on `visible` only: selection closes the panel, and re-scrolling a
+    // The latch (not the deps) makes this once-per-open: re-scrolling a
     // still-open panel under the user would jank.
-  }, [visible])
+  }, [visible, languages, activeDisplayIndex])
 
   const renderRow = useCallback(
     ({ item: row }: { item: SeriesLanguageRow }) => {

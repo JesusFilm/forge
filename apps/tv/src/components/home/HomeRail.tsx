@@ -17,7 +17,6 @@ import {
 
 import { scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
-import { FOCUS_RING_WIDTH, resolveFocusVisual } from "../focus/focusVisual"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import {
@@ -27,6 +26,14 @@ import {
   type HomeCardVariant,
 } from "./HomeCard"
 import { buildRailItems, type RailItem } from "./homeRailItems"
+import {
+  BASE_ITEM_PADDING,
+  railPaddingTopFor,
+  railPullUpFor,
+} from "./homeRailHeadroom"
+
+// Skeleton mirrors the resting head→cards gap through this module's surface.
+export { HEAD_CARD_GAP } from "./homeRailHeadroom"
 
 const IS_ANDROID = Platform.OS === "android"
 
@@ -80,66 +87,19 @@ const GET_ITEM_LAYOUT: Record<
   portrait: makeGetItemLayout("portrait"),
 }
 
-const THUMB_SPEC = resolveFocusVisual("thumb")
-
-// Generous stand-in for the title+kind block under the art (~64 real) — only
-// sizes focus headroom, so overestimating is safe.
-const META_HEIGHT_ALLOWANCE = scale(80)
-
-// Bottom item padding (nothing overhangs below) — keeps the rail-to-rail rhythm.
-const BASE_ITEM_PADDING = scale(24)
-
-// Resting head→cards gap. The design's 22 ≈ 24 let the focused card's static
-// rise (~21–27) crowd the title; 32 keeps a visible seam. Skeleton mirrors it.
-export const HEAD_CARD_GAP = scale(32)
-
-// tvOS touchpad nudges add RCTTVView's default parallax on top of the focus
-// scale: ±2pt center shift + 0.05rad tilt about a 1/500 perspective, which
-// magnifies the near top corner. Android TV has no parallax (D-pad only).
-const PARALLAX_SHIFT_Y = IS_ANDROID ? 0 : 2
-const PARALLAX_TILT_SIN = IS_ANDROID ? 0 : Math.sin(0.05)
-const PARALLAX_TILT_COS = Math.cos(0.05)
-const PARALLAX_PERSPECTIVE = 500
-
-// Room the focused card needs above its layout box before the FlatList's
-// scroll bounds clip it: half the magnify growth + lift + scaled ring, at the
-// worst-case diagonal nudge (both tilts perspective-magnify the top corner).
-function focusHeadroomFor(variant: HomeCardVariant): number {
-  const { width, thumbHeight } = HOME_CARD_DIMS[variant]
-  const cardHeight = thumbHeight + META_HEIGHT_ALLOWANCE
-  const halfWidth = (width / 2 + FOCUS_RING_WIDTH) * THUMB_SPEC.magnify
-  const topFromCenter =
-    (cardHeight / 2 + FOCUS_RING_WIDTH) * THUMB_SPEC.magnify + THUMB_SPEC.lift
-  // UIKit applies the two tilts as separate additive CAAnimations that
-  // compose by matrix concatenation, each with its own m34 — the offset
-  // routed through both perspectives weighs (1+cos); bound both terms so.
-  const perspectiveW =
-    1 -
-    (PARALLAX_TILT_SIN *
-      (1 + PARALLAX_TILT_COS) *
-      (halfWidth + topFromCenter)) /
-      PARALLAX_PERSPECTIVE
-  return Math.ceil(
-    topFromCenter / perspectiveW + PARALLAX_SHIFT_Y - cardHeight / 2,
-  )
-}
-
-const ITEM_PADDING_TOP: Record<HomeCardVariant, number> = {
-  landscape: Math.max(HEAD_CARD_GAP, focusHeadroomFor("landscape")),
-  portrait: Math.max(HEAD_CARD_GAP, focusHeadroomFor("portrait")),
-}
-
-// Top headroom only; the bottom keeps the base (nothing overhangs it).
+// Top headroom only (geometry model + invariants live in homeRailHeadroom.ts).
+// The bottom keeps the base gap: only an extreme diagonal touchpad nudge can
+// push a portrait card's text a few pt past it — a transient, accepted clip.
 const ITEM_WRAPPER: Record<
   HomeCardVariant,
   { paddingTop: number; paddingBottom: number }
 > = StyleSheet.create({
   landscape: {
-    paddingTop: ITEM_PADDING_TOP.landscape,
+    paddingTop: railPaddingTopFor(HOME_CARD_DIMS.landscape),
     paddingBottom: BASE_ITEM_PADDING,
   },
   portrait: {
-    paddingTop: ITEM_PADDING_TOP.portrait,
+    paddingTop: railPaddingTopFor(HOME_CARD_DIMS.portrait),
     paddingBottom: BASE_ITEM_PADDING,
   },
 })
@@ -149,8 +109,8 @@ const ITEM_WRAPPER: Record<
 // seam under the head and the rail's outer height is unchanged.
 const RAIL_PULL_UP: Record<HomeCardVariant, { marginTop: number }> =
   StyleSheet.create({
-    landscape: { marginTop: HEAD_CARD_GAP - ITEM_PADDING_TOP.landscape },
-    portrait: { marginTop: HEAD_CARD_GAP - ITEM_PADDING_TOP.portrait },
+    landscape: { marginTop: railPullUpFor(HOME_CARD_DIMS.landscape) },
+    portrait: { marginTop: railPullUpFor(HOME_CARD_DIMS.portrait) },
   })
 
 // react-native-tvos host nodes expose requestTVFocus() (NativeMethods), absent
