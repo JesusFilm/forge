@@ -1,4 +1,9 @@
-import { pickViewerLanguage, type ShowcaseDubInput } from "./languageRotation"
+import {
+  pickViewerLanguage,
+  playableDubs,
+  toDefaultSlugOptions,
+  type ShowcaseDubInput,
+} from "./languageRotation"
 
 // resolveDefaultSlug reads the device locale from Intl.DateTimeFormat; override it
 // per-test so the asserted default-chain rung is unambiguous (Jest resolves en-US).
@@ -176,6 +181,21 @@ describe("pickViewerLanguage — slug-less dubs", () => {
     mockDeviceLocale("en-US")
     const result = pickViewerLanguage([dub(null), dub("spanish")], null)
     expect(result?.languageSlug).toBe("spanish")
+  })
+})
+
+describe("toDefaultSlugOptions", () => {
+  it("adapts slug-bearing playable dubs to the resolveDefaultSlug option shape", () => {
+    const playable = playableDubs([
+      dub("korean", { language: { slug: "korean", bcp47: "ko", name: {} } }),
+      dub("spanish"),
+    ]).filter(
+      (d): d is typeof d & { languageSlug: string } => d.languageSlug != null,
+    )
+    expect(toDefaultSlugOptions(playable)).toEqual([
+      { slug: "korean", bcp47: "ko", languageSlug: "korean" },
+      { slug: "spanish", bcp47: null, languageSlug: "spanish" },
+    ])
   })
 })
 

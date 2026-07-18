@@ -428,6 +428,41 @@ describe("buildHopSchedule — seam arming is drift-safe (KTD-5)", () => {
       }
     }
   })
+
+  it("still arms inside a truncated final slice at the readable floor", () => {
+    // duration 49 -> credits-free 44 -> [10,10,10,10,4]: the 4s floor slice is the
+    // tightest window the planner can emit; a MIN_FINAL_SLICE/arming retune that
+    // breaks the drift margin must fail here, not on device.
+    const hops = buildHopSchedule({
+      dubs: centerpiece(8, { duration: 49 }),
+      rng: mulberry32(7),
+    })!
+    const last = hops[hops.length - 1]!
+    expect(last.window.endSeconds - last.window.startSeconds).toBe(4)
+    for (const period of [1.01, 1.05, 1.2]) {
+      for (let phase = 0; phase < period; phase += 0.05) {
+        let firstArmRemaining: number | null = null
+        for (
+          let t = last.window.startSeconds + phase;
+          t <= last.window.endSeconds + period;
+          t += period
+        ) {
+          if (
+            firstArmRemaining == null &&
+            shouldArmFadeOut({ currentTime: t, window: last.window })
+          ) {
+            firstArmRemaining = last.window.endSeconds - t
+          }
+          if (t >= last.window.endSeconds) break
+        }
+        expect(firstArmRemaining).not.toBeNull()
+        expect(firstArmRemaining!).toBeGreaterThan(0)
+        expect(
+          fadeOutVolumeAt({ remainingSeconds: firstArmRemaining! }),
+        ).toBeGreaterThan(0)
+      }
+    }
+  })
 })
 
 // ── Invariants across a sweep of counts, durations, and seeds ───────

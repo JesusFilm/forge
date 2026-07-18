@@ -773,6 +773,19 @@ describe("hop mode — entering (KTD-5)", () => {
       }),
     ).toBe(stills)
   })
+
+  it("drops a plan under two hops — a single segment is an ordinary excerpt, not a hop plan", () => {
+    const state = atCenterpiece()
+    for (const plan of [[], [hop("english", 90, 100)]]) {
+      expect(
+        reelReducer(state, {
+          type: "hopPlanResolved",
+          token: state.excerptToken,
+          plan,
+        }),
+      ).toBe(state)
+    }
+  })
 })
 
 describe("hop mode — advancing on end (KTD-5)", () => {
@@ -817,6 +830,21 @@ describe("hop mode — failure skips without a strike (KTD-6/AE6)", () => {
     state = reelReducer(state, { type: "excerptFailed" }) // 1 -> 2
     expect(state.hop?.index).toBe(2)
     expect(state.consecutiveFailures).toBe(0)
+  })
+
+  it("skips a hop that dies under the chapter card — the buffer window — without a strike", () => {
+    // The opener can 404 while the card is still up (the card IS the resolve
+    // window); the skip must keep the card on screen for its full run.
+    const card = enterHop(
+      started(curatedQueue(threeChapters())),
+      threeHopPlan(),
+    )
+    expect(card.phase).toBe("chapterCard")
+    const next = reelReducer(card, { type: "excerptFailed" })
+    expect(next.hop?.index).toBe(1)
+    expect(next.excerptToken).toBe(card.excerptToken + 1)
+    expect(next.consecutiveFailures).toBe(0)
+    expect(next.phase).toBe("chapterCard")
   })
 
   it("never trips the breaker even when a whole long plan fails hop by hop", () => {

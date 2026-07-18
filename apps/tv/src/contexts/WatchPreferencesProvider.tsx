@@ -2,32 +2,29 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
-  useState,
   type ReactNode,
 } from "react"
 
+import { usePersistedPrefs } from "../lib/persistedPrefs"
 import {
   DEFAULT_WATCH_PREFERENCES,
   loadWatchPreferences,
   mergeWatchPreferences,
+  reportWatchPreferencesReadTimeout,
   saveWatchPreferences,
-  type PendingWatchPreferences,
   type WatchPreferences,
 } from "../lib/watchPreferences"
 
 /**
  * App-wide audio-language preference. Lives at root layout so a choice survives
  * leaving watch (which unmounts WatchSessionProvider) and app restarts. Thin
- * shell over the React-free store; the hydration-race + StrictMode discipline
- * mirrors useShowcasePrefs. The write seam (U2) is the explicit dub-selection
- * seam in WatchSessionProvider.
+ * shell over the React-free store via the shared persisted-prefs hook. The write
+ * seam (U2) is the explicit dub-selection seam in WatchSessionProvider.
  */
 type WatchPreferencesContextValue = WatchPreferences & {
   setAudioLanguageSlug: (slug: string | null) => void
-  /** False until the on-disk read resolves. */
+  /** False until the on-disk read resolves (or times out to defaults). */
   hydrated: boolean
 }
 
@@ -39,46 +36,18 @@ export function WatchPreferencesProvider({
 }: {
   children: ReactNode
 }) {
-  const [prefs, setPrefs] = useState<WatchPreferences>(
-    DEFAULT_WATCH_PREFERENCES,
+  const { prefs, hydrated, setPref } = usePersistedPrefs<WatchPreferences>({
+    defaults: DEFAULT_WATCH_PREFERENCES,
+    load: loadWatchPreferences,
+    save: saveWatchPreferences,
+    merge: mergeWatchPreferences,
+    onLoadTimeout: reportWatchPreferencesReadTimeout,
+  })
+
+  const setAudioLanguageSlug = useCallback(
+    (slug: string | null) => setPref("audioLanguageSlug", slug),
+    [setPref],
   )
-  const [hydrated, setHydrated] = useState(false)
-  const pendingRef = useRef<PendingWatchPreferences>({})
-  const mountedRef = useRef(true)
-  // Latest-render mirror so the setter builds `next` outside the state updater —
-  // StrictMode double-invokes updaters, which would double the disk write.
-  const prefsRef = useRef(prefs)
-  prefsRef.current = prefs
-
-  useEffect(() => {
-    // Setup restores what cleanup mutates — a StrictMode remount reuses this same
-    // hook instance, so a stale `false` here would wedge hydration.
-    mountedRef.current = true
-
-    void (async () => {
-      const loaded = await loadWatchPreferences()
-      if (!mountedRef.current) return
-      const merged = mergeWatchPreferences(loaded, pendingRef.current)
-      setPrefs(merged)
-      setHydrated(true)
-      // A pre-hydration write already persisted its own value; re-persist the
-      // merge so disk matches what the viewer is now looking at.
-      if (Object.keys(pendingRef.current).length > 0) {
-        void saveWatchPreferences(merged)
-      }
-    })()
-
-    return () => {
-      mountedRef.current = false
-    }
-  }, [])
-
-  const setAudioLanguageSlug = useCallback((slug: string | null) => {
-    pendingRef.current = { ...pendingRef.current, audioLanguageSlug: slug }
-    const next = { ...prefsRef.current, audioLanguageSlug: slug }
-    setPrefs(next)
-    void saveWatchPreferences(next)
-  }, [])
 
   const value = useMemo<WatchPreferencesContextValue>(
     () => ({ ...prefs, setAudioLanguageSlug, hydrated }),

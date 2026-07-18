@@ -82,6 +82,12 @@ export async function loadWatchPreferences(): Promise<WatchPreferences> {
   }
 }
 
+/** The hydration race timed out: the read may still settle, but this session runs
+ *  on defaults — same diagnosable-loss posture as a failed read. */
+export function reportWatchPreferencesReadTimeout(): void {
+  datadogLog.warn("watch_prefs.read_failed", { reason: "timeout" })
+}
+
 export async function saveWatchPreferences(
   prefs: WatchPreferences,
 ): Promise<void> {

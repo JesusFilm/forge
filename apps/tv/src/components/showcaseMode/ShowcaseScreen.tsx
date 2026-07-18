@@ -16,6 +16,7 @@ import { useWatchHome } from "../../hooks/useWatchHome"
 import { getApolloClient } from "../../lib/apolloClient"
 import {
   addDatadogTiming,
+  datadogLog,
   isDatadogProvisioned,
   reportDatadogAction,
 } from "../../lib/datadog"
@@ -379,6 +380,9 @@ export function ShowcaseScreen() {
         try {
           video = await fetchVideo(excerpt.slug)
         } catch {
+          // The module's only I/O degrade without its own signal: without this an
+          // operator can't tell a failed probe from a too-few-languages centerpiece.
+          datadogLog.warn("showcase_centerpiece_probe_failed", {})
           video = null
         }
         if (cancelled || !mountedRef.current) return
