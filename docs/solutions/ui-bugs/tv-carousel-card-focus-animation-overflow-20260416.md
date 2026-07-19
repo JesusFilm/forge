@@ -1,7 +1,7 @@
 ---
 title: "TV Carousel Card Focus: Animated Scale Transition and Overflow Clipping Fix"
 date: "2026-04-16"
-last_updated: "2026-06-24"
+last_updated: "2026-07-20"
 category: ui-bugs
 module: apps/tv
 problem_type: ui_bug
@@ -182,12 +182,13 @@ The `LAYOUT_KEYS` split ensures the outer View gets size/position constraints (s
 
 - **Always use `Animated` or Reanimated for visual transitions** — never toggle `transform` or `opacity` via React state. State changes re-render in one frame; Animated runs natively at 60fps.
 - **Separate shadow/transform from content-clip layers** — any component needing both a visible overflow effect (glow, shadow, scale bleed) and content clipping (borderRadius) requires two Views: outer `overflow: "visible"`, inner `overflow: "hidden"`.
-- **FlatList clips its content frame** — `contentContainerStyle` padding does not expand the clip boundary. Add `paddingVertical` to item wrapper Views so scaled or glowing children have physical room within the scroll container.
+- **FlatList clips its content frame** — `contentContainerStyle` padding does not expand the clip boundary. Add `paddingVertical` to item wrapper Views so scaled or glowing children have physical room within the scroll container. The flat `40` constant here is the focus-scale-only special case; when a tvOS rail's focus scale is compounded by the Siri Remote touchpad parallax, a flat constant can undersize the headroom on taller (portrait) cards. See `docs/solutions/design-patterns/tv-rail-focus-headroom-parallax.md` for the general model that derives the padding per card variant from the focus treatment plus the worst-case parallax excursion, and carves it out of the clip bounds so the resting layout is unchanged.
 - **Split style props by concern** — when routing styles to outer/inner Views, use an explicit allowlist (`LAYOUT_KEYS`) with an `else` branch to ensure layout and visual properties are mutually exclusive partitions. Missing the `else` causes properties to leak to both Views.
 - **Android TV has no colored shadows** — `shadowColor`/`shadowRadius` are iOS-only, so the crimson glow was invisible on Android TV. The border-based fallback this recommends was since adopted app-wide: a white **border ring** is now the default focus indicator (visible on both platforms). See `docs/solutions/best-practices/tv-focus-white-ring-default-and-light-surface-exception.md`. (session history)
 
 ## Related Issues
 
+- [docs/solutions/design-patterns/tv-rail-focus-headroom-parallax.md](../design-patterns/tv-rail-focus-headroom-parallax.md) — the general parallax-aware headroom model that this doc's flat `paddingVertical: 40` item-wrapper rule is a focus-scale-only special case of; derives padding per card variant and carves it out of the clip bounds so resting layout is unchanged
 - [docs/solutions/best-practices/tv-focus-white-ring-default-and-light-surface-exception.md](../best-practices/tv-focus-white-ring-default-and-light-surface-exception.md) — the white-ring focus default that superseded the crimson glow (the "border-based fallback" this doc's Prevention recommends)
 - [docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md](../best-practices/react-native-tvos-porting-pitfalls-20260414.md) — Pitfall 3: never use `position: "absolute"` for focusable elements; UIFocusEngine requires flexbox flow
 - [docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md](../best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md) — Section 6: TVFocusGuideView and focus management patterns; Section 7: FlatList zero-height on tvOS
