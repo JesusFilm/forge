@@ -1423,6 +1423,9 @@ export function HeroPlayer({
     iso3: variant.language?.iso3,
     slug: variant.language?.slug ?? languageSlug,
   })
+  const headerLanguageSwitcherOwnerToken = useRef(
+    Symbol("hero-player-language-switcher"),
+  ).current
   const languageCountLabel =
     languageCount > 0
       ? tLanguagePicker("languageCount", { count: languageCount })
@@ -1518,11 +1521,17 @@ export function HeroPlayer({
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
             languageCode: showTopLanguageSwitch ? languageCode : null,
+            ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
       ),
     )
-  }, [languageCode, onLanguageClick, showTopLanguageSwitch])
+  }, [
+    headerLanguageSwitcherOwnerToken,
+    languageCode,
+    onLanguageClick,
+    showTopLanguageSwitch,
+  ])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1530,11 +1539,18 @@ export function HeroPlayer({
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null, languageCode: null } },
+          {
+            detail: {
+              visible: false,
+              onClick: null,
+              languageCode: null,
+              ownerToken: headerLanguageSwitcherOwnerToken,
+            },
+          },
         ),
       )
     }
-  }, [])
+  }, [headerLanguageSwitcherOwnerToken])
 
   return (
     <>

@@ -23,7 +23,10 @@ vi.mock("@/lib/admin-client", () => ({
 import client from "@/lib/admin-client"
 import { headers } from "next/headers"
 
-import { getSearchLanguageOptions } from "./search-language-actions"
+import {
+  getSearchLanguageCatalogOptions,
+  getSearchLanguageOptions,
+} from "./search-language-actions"
 
 const queryMock = vi.mocked(client.query)
 const headersMock = vi.mocked(headers)
@@ -58,6 +61,24 @@ describe("getSearchLanguageOptions", () => {
 
   afterAll(() => {
     consoleError.mockRestore()
+  })
+
+  it("loads the catalog without request-specific header work", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        languages: [englishLanguage, spanishLanguage],
+        countries: [],
+      },
+    })
+
+    await expect(getSearchLanguageCatalogOptions()).resolves.toMatchObject([
+      { englishName: "English", publicSlug: "english" },
+      {
+        englishName: "Spanish, Castilian",
+        publicSlug: "spanish-castilian",
+      },
+    ])
+    expect(headersMock).not.toHaveBeenCalled()
   })
 
   it("loads language metadata", async () => {

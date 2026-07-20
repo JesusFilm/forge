@@ -338,6 +338,8 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
       ["/languages", "/en/en/languages"],
+      ["/french.html/languages", "/fr/fr/languages"],
+      ["/spanish-latin-american.html/history", "/es/es-419/history"],
       [
         "/spanish-latin-american.html/videos",
         "/es/es-419/videos/spanish-latin-american",

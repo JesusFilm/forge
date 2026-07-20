@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, useEffect, useState, type ReactNode } from "react"
+import { StrictMode, act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -33,6 +33,10 @@ import {
   runSearch,
 } from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
+import {
+  __resetWatchInteractionLoaderForTests,
+  __setWatchInteractionLoadersForTests,
+} from "@/lib/watch-interaction-loader"
 import type {
   SearchActionResult,
   SearchActionResultSource,
@@ -91,11 +95,46 @@ vi.mock("@/components/DatadogRum", () => ({
   reportDatadogRumAction,
 }))
 
+vi.mock("@/components/watch/GlobalLanguagePickerModal", () => ({
+  GlobalLanguagePickerModal: ({
+    open,
+    currentLanguageSlug,
+    onClose,
+  }: {
+    open: boolean
+    currentLanguageSlug: string
+    onClose: () => void
+  }) => {
+    useEffect(() => {
+      if (!open) return
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") onClose()
+      }
+      document.addEventListener("keydown", handleKeyDown)
+      return () => document.removeEventListener("keydown", handleKeyDown)
+    }, [onClose, open])
+
+    return open ? (
+      <div
+        role="dialog"
+        aria-modal="true"
+        data-testid="global-language-picker-modal"
+        data-current-language-slug={currentLanguageSlug}
+      >
+        <button type="button" onClick={onClose}>
+          Close global language picker
+        </button>
+      </div>
+    ) : null
+  },
+}))
+
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
   vi.clearAllMocks()
+  __resetWatchInteractionLoaderForTests()
   resetSearchLanguageOptionsCacheForTest()
   navigationMocks.pathname = "/"
   setScrollY(0)
@@ -112,6 +151,7 @@ afterEach(() => {
   container.remove()
   document.body.innerHTML = ""
   vi.clearAllMocks()
+  __resetWatchInteractionLoaderForTests()
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
@@ -318,10 +358,12 @@ async function flushResolvedSearch() {
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise
+    reject = rejectPromise
   })
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 function PlaybackStatePublisher({
@@ -545,6 +587,48 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
+  it.each([
+    "/french.html/videos",
+    "/french.html/languages",
+    "/french.html/history",
+  ])(
+    "keeps the route language on localized utility route %s",
+    async (pathname) => {
+      navigationMocks.pathname = pathname
+      mockedGetSearchLanguageOptions.mockResolvedValueOnce({
+        ok: true,
+        options: [englishSearchLanguage],
+        countrySuggestion: null,
+        recommendedLanguage: englishSearchLanguage,
+        countryCode: null,
+        countryName: null,
+      })
+      mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+
+      act(() => {
+        root.render(
+          <SearchControllerTestShell>
+            <SearchModeHarness />
+          </SearchControllerTestShell>,
+        )
+      })
+
+      await act(async () => {
+        ;(
+          document.querySelector(
+            '[data-testid="search-mode-harness-button"]',
+          ) as HTMLButtonElement
+        ).click()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mockedRunSearch).toHaveBeenCalledWith(
+        expect.objectContaining({ routeLanguageSlug: "french" }),
+      )
+    },
+  )
+
   it("keeps the resolved semantic language when loading more after metadata refresh", async () => {
     navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
     mockedGetSearchLanguageOptions.mockResolvedValueOnce({
@@ -1046,7 +1130,20 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 })
 
 describe("FloatingSearchProvider — language switcher chrome", () => {
-  it("renders the full ministry logo on Watch home routes", async () => {
+  it.each([
+    ["root home", "/"],
+    ["localized home", "/spanish-castilian.html"],
+    ["legacy videos index", "/videos"],
+    ["authored experience", "/easter.html"],
+    ["languages index", "/languages"],
+    ["localized languages", "/french.html/languages"],
+    ["language inventory", "/russian.html/videos"],
+    ["history", "/history"],
+    ["localized history", "/french.html/history"],
+    ["unknown route", "/not/a/valid/watch/route"],
+    ["content without alternatives", "/jesus.html/english.html"],
+  ])("renders one global fallback on %s", (_label, pathname) => {
+    navigationMocks.pathname = pathname
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -1055,6 +1152,613 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )
     })
 
+    expect(
+      document.querySelectorAll(
+        '[data-testid="floating-header-language-button"]',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("marks the global trigger busy during lazy loading and blocks duplicate activation", async () => {
+    const moduleLoad = deferred<unknown>()
+    const globalLanguageLoader = vi.fn(() => moduleLoad.promise)
+    __setWatchInteractionLoadersForTests({
+      "global-language": globalLanguageLoader,
+    })
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    expect(languageButton.getAttribute("aria-label")).toBe(
+      "Change audio language",
+    )
+    expect(languageButton.className).toContain("focus-visible:ring-2")
+
+    act(() => {
+      languageButton.click()
+      languageButton.click()
+    })
+
+    expect(languageButton.getAttribute("aria-busy")).toBe("true")
+    expect(languageButton.disabled).toBe(true)
+    expect(globalLanguageLoader).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+
+    await act(async () => {
+      moduleLoad.resolve({})
+      await moduleLoad.promise
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(languageButton.getAttribute("aria-busy")).toBe("false")
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+  })
+
+  it("recovers the global trigger after a module-load failure and retries", async () => {
+    const globalLanguageLoader = vi
+      .fn<() => Promise<unknown>>()
+      .mockRejectedValueOnce(new Error("chunk unavailable"))
+      .mockResolvedValueOnce({})
+    __setWatchInteractionLoadersForTests({
+      "global-language": globalLanguageLoader,
+    })
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(languageButton.disabled).toBe(false)
+    expect(languageButton.getAttribute("aria-busy")).toBe("false")
+    expect(
+      document.querySelector(
+        '[data-testid="global-language-picker-load-error"]',
+      )?.textContent,
+    ).toContain("Please check your connection")
+    expect(languageButton.getAttribute("aria-label")).toContain(
+      "Please check your connection",
+    )
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(globalLanguageLoader).toHaveBeenCalledTimes(2)
+    expect(
+      document.querySelector(
+        '[data-testid="global-language-picker-load-error"]',
+      ),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+  })
+
+  it("does not open a deferred global picker after a page owner takes over", async () => {
+    const moduleLoad = deferred<unknown>()
+    const pageSpecificClick = vi.fn()
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(() => moduleLoad.promise),
+    })
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    act(() => languageButton.click())
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: pageSpecificClick,
+        ownerToken: Symbol("page picker"),
+      })
+    })
+
+    await act(async () => {
+      moduleLoad.resolve({})
+      await moduleLoad.promise
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    act(() => languageButton.click())
+    expect(pageSpecificClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not open a deferred global picker after search supersedes it", async () => {
+    const moduleLoad = deferred<unknown>()
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(() => moduleLoad.promise),
+    })
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      ;(
+        document.querySelector(
+          '[data-testid="floating-search-desktop-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    await act(async () => {
+      moduleLoad.resolve({})
+      await moduleLoad.promise
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).not.toBeNull()
+  })
+
+  it("replaces search with the global picker without overlapping modal surfaces", async () => {
+    vi.useFakeTimers()
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(async () => ({})),
+    })
+    await openSearchOverlay()
+
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('input[aria-label="Search videos by keyword"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(0)
+  })
+
+  it("defers a page-specific picker until the search modal closes", async () => {
+    vi.useFakeTimers()
+    const pageDialog = document.createElement("div")
+    pageDialog.setAttribute("role", "dialog")
+    pageDialog.setAttribute("aria-modal", "true")
+    const onLanguageClick = vi.fn(() => document.body.appendChild(pageDialog))
+    await openSearchOverlay()
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        ownerToken: Symbol("page picker"),
+      })
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+    })
+
+    expect(onLanguageClick).not.toHaveBeenCalled()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('input[aria-label="Search videos by keyword"]'),
+    ).toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+  })
+
+  it("does not open a deferred global picker after the route changes", async () => {
+    const moduleLoad = deferred<unknown>()
+    navigationMocks.pathname = "/jesus.html/english.html"
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(() => moduleLoad.promise),
+    })
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>English page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Spanish page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    await act(async () => {
+      moduleLoad.resolve({})
+      await moduleLoad.promise
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    navigationMocks.pathname = "/jesus.html/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>English page again</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+  })
+
+  it("does not restore a closed global picker when returning to its previous route", async () => {
+    navigationMocks.pathname = "/jesus.html/english.html"
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(async () => ({})),
+    })
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>English page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+
+    navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Spanish page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    navigationMocks.pathname = "/jesus.html/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>English page again</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+  })
+
+  it("does not complete a deferred global picker load after unmount", async () => {
+    const moduleLoad = deferred<unknown>()
+    const isolatedContainer = document.createElement("div")
+    document.body.appendChild(isolatedContainer)
+    const isolatedRoot = createRoot(isolatedContainer)
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(() => moduleLoad.promise),
+    })
+    act(() => {
+      isolatedRoot.render(
+        <FloatingSearchProvider>
+          <main>Temporary page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      ;(
+        isolatedContainer.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      isolatedRoot.unmount()
+    })
+
+    await act(async () => {
+      moduleLoad.resolve({})
+      await moduleLoad.promise
+      await Promise.resolve()
+    })
+
+    expect(isolatedContainer.childElementCount).toBe(0)
+    isolatedContainer.remove()
+  })
+
+  it("derives the global picker's current public language from the route", async () => {
+    navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(async () => ({})),
+    })
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document
+        .querySelector('[data-testid="global-language-picker-modal"]')
+        ?.getAttribute("data-current-language-slug"),
+    ).toBe("spanish-castilian")
+  })
+
+  it("keeps the newest page-specific owner when an older owner cleans up", () => {
+    const firstOwner = Symbol("first hero")
+    const secondOwner = Symbol("second hero")
+    const firstClick = vi.fn()
+    const secondClick = vi.fn()
+    act(() => {
+      root.render(
+        <StrictMode>
+          <FloatingSearchProvider>
+            <main>Page</main>
+          </FloatingSearchProvider>
+        </StrictMode>,
+      )
+    })
+
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: firstClick,
+        ownerToken: firstOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: secondClick,
+        ownerToken: secondOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: firstOwner,
+      })
+    })
+
+    act(() => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(firstClick).not.toHaveBeenCalled()
+    expect(secondClick).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+  })
+
+  it("restores the global fallback after matching cleanup and route changes", async () => {
+    const ownerToken = Symbol("route owner")
+    const pageSpecificClick = vi.fn()
+    const globalLanguageLoader = vi.fn(async () => ({}))
+    __setWatchInteractionLoadersForTests({
+      "global-language": globalLanguageLoader,
+    })
+    navigationMocks.pathname = "/jesus.html/english.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: pageSpecificClick,
+        ownerToken,
+      })
+    })
+
+    navigationMocks.pathname = "/languages"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Languages</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(pageSpecificClick).not.toHaveBeenCalled()
+    expect(globalLanguageLoader).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken,
+      })
+    })
+    expect(
+      document.querySelectorAll(
+        '[data-testid="floating-header-language-button"]',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("warms the global picker only after the page load idle boundary", async () => {
+    vi.useFakeTimers()
+    const globalLanguageLoader = vi.fn(async () => ({}))
+    const unrelatedInteractionLoaders = {
+      language: vi.fn(async () => ({})),
+      search: vi.fn(async () => ({})),
+      share: vi.fn(async () => ({})),
+      download: vi.fn(async () => ({})),
+    }
+    __setWatchInteractionLoadersForTests({
+      "global-language": globalLanguageLoader,
+      ...unrelatedInteractionLoaders,
+    })
+
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    expect(globalLanguageLoader).not.toHaveBeenCalled()
+
+    await act(async () => {
+      window.dispatchEvent(new Event("load"))
+      vi.advanceTimersByTime(249)
+      await Promise.resolve()
+    })
+    expect(globalLanguageLoader).not.toHaveBeenCalled()
+
+    await act(async () => {
+      vi.advanceTimersByTime(1)
+      await Promise.resolve()
+    })
+    expect(globalLanguageLoader).toHaveBeenCalledTimes(1)
+    for (const loader of Object.values(unrelatedInteractionLoaders)) {
+      expect(loader).not.toHaveBeenCalled()
+    }
+  })
+
+  it("renders the full ministry logo on Watch home routes", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
     expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
     expect(logo?.className).toContain("w-20")
@@ -1064,7 +1768,6 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     )
     expect(logo?.querySelector("img")?.getAttribute("width")).toBe("139")
     expect(logo?.querySelector("img")?.getAttribute("height")).toBe("36")
-
     navigationMocks.pathname = "/english.html"
     act(() => {
       root.render(
@@ -1073,12 +1776,10 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
         </FloatingSearchProvider>,
       )
     })
-
     expect(logo?.getAttribute("href")).toBe("https://www.jesusfilm.org/")
     expect(logo?.querySelector("img")?.getAttribute("src")).toBe(
       "/watch/images/jesus-film-logo-full.svg",
     )
-
     await openSearchOverlay()
     const overlayLogoSlot = document.querySelector(
       '[data-testid="search-overlay-top-bar"] > [aria-hidden="true"]',
@@ -1096,7 +1797,6 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
         </FloatingSearchProvider>,
       )
     })
-
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
     // Next applies the configured `/watch` base path at runtime; jsdom exposes
     // the base-path-relative route passed to `next/link`.
@@ -1172,7 +1872,6 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(logo?.className).toContain("md:h-[52px]")
     expect(logo?.className).toContain("flex")
     expect(logo?.className).not.toContain("hidden")
-
     act(() => {
       languageButton?.click()
     })
@@ -1322,6 +2021,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const close = document.querySelector(
       '[data-testid="floating-header-search-close"]',
     )
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
     expect(overlayTopBar?.className).toContain("left-5")
     expect(overlayTopBar?.className).toContain("right-5")
     expect(overlayTopBar?.className).toContain(
@@ -1333,9 +2035,12 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayFieldShell?.className).toContain(
       FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
     )
-    expect(overlayFieldShell?.className).toContain("col-span-2")
+    expect(overlayFieldShell?.className).not.toContain("col-span-2")
     expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain("translate-y-0")
+    expect(languageButton?.className).toContain(
+      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+    )
     expect(close?.className).toContain(
       FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
     )
@@ -1733,7 +2438,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(topBar?.className).toContain(FLOATING_HEADER_PINNED_TOP_CLASS)
   })
 
-  it("mirrors the optional header language switcher trailing slot", async () => {
+  it("mirrors the global header language switcher trailing slot", async () => {
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -1743,10 +2448,6 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     })
     await act(async () => {
       await Promise.resolve()
-    })
-
-    act(() => {
-      dispatchLanguageSwitcher({ visible: true, onClick: vi.fn() })
     })
 
     const headerTrailingControls = document.querySelector(
