@@ -172,12 +172,6 @@ export const env = createEnv({
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
-    FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: z.string().optional(),
-    // Optional server-side Algolia search configuration for the watch search
-    // modal. Kept server-only: do not add NEXT_PUBLIC aliases for these.
-    ALGOLIA_APP_ID: z.string().optional(),
-    ALGOLIA_SEARCH_API_KEY: z.string().optional(),
-    ALGOLIA_INDEX: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
     ADMIN_GRAPHQL_URL: z
       .url()
@@ -306,11 +300,6 @@ export const env = createEnv({
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
       process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
-    FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT:
-      process.env.FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT,
-    ALGOLIA_APP_ID: process.env.ALGOLIA_APP_ID,
-    ALGOLIA_SEARCH_API_KEY: process.env.ALGOLIA_SEARCH_API_KEY,
-    ALGOLIA_INDEX: process.env.ALGOLIA_INDEX,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,

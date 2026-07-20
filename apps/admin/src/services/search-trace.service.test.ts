@@ -17,6 +17,7 @@ import {
 import {
   classifyLatencyBucket,
   recordSearchTraceSafely,
+  recordWatchSearchTraceSafely,
   sampleSearchTraces,
   writeSearchTrace,
   type RecordSearchTraceInput,
@@ -42,7 +43,7 @@ const baseTraceInput: RecordSearchTraceInput = {
   locale: "en",
   routeSource: "rest",
   requestedMode: "hybrid",
-  searchMode: "hybrid",
+  searchMode: "watch-search",
   resultCount: 3,
   outcome: "success",
   traceClass: "none",
@@ -91,7 +92,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",
@@ -169,6 +170,175 @@ describe("search trace service", () => {
     )
   })
 
+  it("records Watch search request metadata in Admin raw traces without adding query text to aggregates", async () => {
+    const prisma = buildPrisma()
+
+    await recordWatchSearchTraceSafely(
+      {
+        input: {
+          query: "Should I pray to God?",
+          targetLanguageSlug: "russian",
+          queryNamedLanguageSlug: "russian",
+          displayLanguageSlug: "english",
+          routeLanguageSlug: "english",
+          acceptLanguage: "en-US,en;q=0.9",
+          limit: 10,
+          offset: 0,
+          resultTypes: ["video"],
+        },
+        response: {
+          query: "Should I pray to God?",
+          requestId: "watch_req_123456",
+          searchMode: "watch-search",
+          degraded: true,
+          latencyMs: 123.4,
+          hasMore: false,
+          nextOffset: 10,
+          languageInterpretation: {
+            queryLanguageSlug: null,
+            queryNamedLanguageSlug: "russian",
+            targetLanguageSlug: "russian",
+            targetLanguageSource: "explicit_target",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: "english",
+            currentWatchLanguageSlug: null,
+            acceptLanguage: "en-US,en;q=0.9",
+            acceptLanguageSlug: "english",
+          },
+          laneStatuses: [
+            {
+              lane: "semantic_retrieval",
+              status: "degraded",
+              startedOffsetMs: 0,
+              elapsedMs: 42,
+              resultCount: 1,
+              reason: "partial_locale_failure",
+              detail: null,
+            },
+          ],
+          results: [
+            {
+              type: "video",
+              id: "video-prayer",
+              slug: "prayer",
+              title: "Prayer",
+              description: "This text must not enter metadata.",
+              snippet: "This snippet must not enter metadata.",
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              playbackId: "playback-secret-ish",
+              startSeconds: 12,
+              score: 0.9,
+              scoreBreakdown: {
+                total: 0.9,
+                sourceRelevance: 0.5,
+                evidenceBoost: 0.15,
+                relevance: 0.65,
+                availability: 0.25,
+                match: 0.15,
+                sourceScore: 0.91,
+              },
+              label: "FEATURE_FILM",
+              durationSeconds: 120,
+              childCount: 0,
+              languageSlug: "russian",
+              languageEnglishName: "Russian",
+              availability: {
+                kind: "target_audio",
+                languageSlug: "russian",
+                languageEnglishName: "Russian",
+                audio: true,
+                subtitles: false,
+              },
+              evidence: {
+                kind: "transcript_semantic",
+                languageSlug: "russian",
+                label: "Transcript match",
+              },
+              action: {
+                kind: "watch",
+                hrefLanguageSlug: "russian",
+              },
+              fallback: {
+                kind: "none",
+                message: null,
+              },
+            },
+          ],
+        },
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.123Z"),
+        now: new Date("2026-05-01T00:00:00.123Z"),
+      },
+      prisma as unknown as Parameters<typeof recordWatchSearchTraceSafely>[1],
+    )
+
+    const rawData = prisma.searchTrace.create.mock.calls[0]?.[0]?.data
+    expect(rawData).toMatchObject({
+      requestId: "watch_req_123456",
+      locale: "russian",
+      routeSource: "GRAPHQL",
+      requestedMode: "watch-search",
+      searchMode: "watch-search",
+      resultCount: 1,
+      outcome: "DEGRADED",
+      traceClass: expect.stringContaining("semantic_retrieval_degraded"),
+    })
+    expect(rawData.metadata).toMatchObject({
+      version: "watch-search-analytics/v2",
+      requestId: "watch_req_123456",
+      queryLength: "Should I pray to God?".length,
+      resultCount: 1,
+      degraded: true,
+      language: {
+        targetLanguageSlug: "russian",
+        queryNamedLanguageSlug: "russian",
+        acceptLanguageSlug: "english",
+      },
+      laneStatuses: [
+        {
+          lane: "semantic_retrieval",
+          status: "degraded",
+          reason: "partial_locale_failure",
+          detail: null,
+        },
+      ],
+      results: [
+        {
+          id: "video-prayer",
+          type: "video",
+          score: 0.9,
+          scoreBreakdown: {
+            total: 0.9,
+            sourceRelevance: 0.5,
+            evidenceBoost: 0.15,
+            relevance: 0.65,
+            availability: 0.25,
+            match: 0.15,
+            sourceScore: 0.91,
+          },
+          availabilityKind: "target_audio",
+          evidenceKind: "transcript_semantic",
+        },
+      ],
+    })
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "This snippet must not enter metadata",
+    )
+    expect(JSON.stringify(rawData.metadata)).not.toContain("en-US,en;q=0.9")
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "playback-secret-ish",
+    )
+
+    const aggregateCreate =
+      prisma.searchTraceAggregate.upsert.mock.calls[0]?.[0]?.create
+    expect(JSON.stringify(aggregateCreate)).not.toContain("metadata")
+    expect(JSON.stringify(aggregateCreate)).not.toContain(
+      "Should I pray to God?",
+    )
+  })
+
   it("does not throw or log raw query text when persistence fails", async () => {
     const prisma = buildPrisma()
     prisma.searchTraceAggregate.upsert.mockRejectedValueOnce(
@@ -229,7 +399,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",
@@ -258,7 +428,7 @@ describe("search trace service", () => {
         {
           locale: "en",
           routeSource: "rest",
-          searchMode: "hybrid",
+          searchMode: "watch-search",
           since: new Date("2026-05-01T00:00:00.000Z"),
           until: now,
           limit: 500,
@@ -272,7 +442,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "rest",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "lt_250ms",
         outcome: "success",
@@ -307,7 +477,7 @@ describe("search trace service", () => {
         sampleEligible: true,
         locale: "en",
         routeSource: "REST",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
       },
       orderBy: { createdAt: "desc" },
       take: 100,
@@ -415,7 +585,7 @@ describe("search trace service", () => {
         locale: "en",
         routeSource: "REST",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 0,
         latencyBucket: "LT_250_MS",
         outcome: "SUCCESS",

@@ -30,6 +30,8 @@ describe("search trace retention workflow job", () => {
       purgedCount: 0,
       purgedRawTraceCount: 0,
       purgedGeneratedCandidateCount: 0,
+      purgedWatchSearchEventCount: 0,
+      purgedQueryEmbeddingCacheCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     })
   })
@@ -173,6 +175,8 @@ describe("search trace retention workflow job", () => {
       purgedCount: 12,
       purgedRawTraceCount: 9,
       purgedGeneratedCandidateCount: 3,
+      purgedWatchSearchEventCount: 0,
+      purgedQueryEmbeddingCacheCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     })
     const { runSearchTraceRetentionJob } = await import("./job")
@@ -200,6 +204,8 @@ describe("search trace retention workflow job", () => {
           purgedCount: 12,
           purgedRawTraceCount: 9,
           purgedGeneratedCandidateCount: 3,
+          purgedWatchSearchEventCount: 0,
+          purgedQueryEmbeddingCacheCount: 0,
           purgedBefore: "2026-05-30T00:00:00.000Z",
         },
       }),

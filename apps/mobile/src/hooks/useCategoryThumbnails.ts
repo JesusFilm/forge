@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { getApolloClient } from "../lib/apolloClient"
-import { SEARCH } from "../lib/queries"
 import { BROWSE_TOPICS } from "../lib/browseTopics"
-import { pickThumbnailUrl } from "../lib/categoryThumbnail"
 
 // term -> resolved thumbnail URL (null = looked up, none found). Module scope so
 // it survives Discover remounts within a session: fetch once, then reuse.
@@ -11,9 +8,8 @@ const thumbnailCache = new Map<string, string | null>()
 
 /**
  * Per-session `searchTerm -> URL` map of each browse category's first result
- * WITH artwork (limit:5, scanned by pickThumbnailUrl — the top hit can be
- * imageless, e.g. "christmas"), rendered faintly over cards as a real-frame
- * context cue. Reuses the existing anonymous `search` query (no new surface).
+ * thumbnail. Temporarily no-ops while Watch search is rebuilt for web first, so
+ * mobile does not depend on Admin's legacy Query.search contract.
  */
 export function useCategoryThumbnails(): Record<string, string | null> {
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>(
@@ -21,39 +17,14 @@ export function useCategoryThumbnails(): Record<string, string | null> {
   )
 
   useEffect(() => {
-    let cancelled = false
+    const next: Record<string, string | null> = {}
     for (const topic of BROWSE_TOPICS) {
       if (thumbnailCache.has(topic.searchTerm)) continue
-      getApolloClient()
-        .query({
-          query: SEARCH,
-          variables: {
-            q: topic.searchTerm,
-            locale: "en",
-            limit: 5,
-            offset: 0,
-          },
-          fetchPolicy: "cache-first",
-        })
-        .then((res) => {
-          const url = pickThumbnailUrl(res.data)
-          thumbnailCache.set(topic.searchTerm, url)
-          if (!cancelled) {
-            setThumbnails((prev) => ({ ...prev, [topic.searchTerm]: url }))
-          }
-        })
-        .catch((err) => {
-          // Transient failure — leave uncached so a later mount can retry.
-          if (__DEV__) {
-            console.warn(
-              `[useCategoryThumbnails] thumbnail fetch failed for "${topic.searchTerm}"`,
-              err,
-            )
-          }
-        })
+      thumbnailCache.set(topic.searchTerm, null)
+      next[topic.searchTerm] = null
     }
-    return () => {
-      cancelled = true
+    if (Object.keys(next).length > 0) {
+      setThumbnails((prev) => ({ ...prev, ...next }))
     }
   }, [])
 

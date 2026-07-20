@@ -13,10 +13,6 @@ function setRequiredWebEnv() {
   delete process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT
   delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
   delete process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT
-  delete process.env.FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT
-  delete process.env.ALGOLIA_APP_ID
-  delete process.env.ALGOLIA_SEARCH_API_KEY
-  delete process.env.ALGOLIA_INDEX
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
 }
 
@@ -120,23 +116,6 @@ describe("web feature flag helpers", () => {
     await expect(isWatchQuestionPanelEnabled()).resolves.toBe(true)
   })
 
-  it("keeps the watch Algolia search flag disabled by default", async () => {
-    delete process.env.LAUNCHDARKLY_SDK_KEY
-
-    const { isWatchAlgoliaSearchEnabled } = await import("./feature-flags")
-
-    await expect(isWatchAlgoliaSearchEnabled()).resolves.toBe(false)
-  })
-
-  it("evaluates the watch Algolia search flag from the server-side fallback", async () => {
-    delete process.env.LAUNCHDARKLY_SDK_KEY
-    process.env.FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT = "true"
-
-    const { isWatchAlgoliaSearchEnabled } = await import("./feature-flags")
-
-    await expect(isWatchAlgoliaSearchEnabled()).resolves.toBe(true)
-  })
-
   it("passes the LaunchDarkly SDK key and local fallbacks into the shared client", async () => {
     process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test"
     process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION = "false"
@@ -145,7 +124,6 @@ describe("web feature flag helpers", () => {
     process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT = "true"
     process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
     process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT = "false"
-    process.env.FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT = "false"
     const booleanVariation = vi.fn(async () => false)
     const createFeatureFlagClient = vi.fn(() => ({ booleanVariation }))
 
@@ -171,7 +149,6 @@ describe("web feature flag helpers", () => {
           FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: "true",
           FORGE_WATCH_QUESTION_PANEL_DEFAULT: "true",
           FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: "false",
-          FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT: "false",
         },
         defaultValues: {
           "forge.watch.playerMigration": false,
@@ -179,7 +156,6 @@ describe("web feature flag helpers", () => {
           "forge.watch.downloadAccountGate": false,
           "forge.watch.questionPanel": false,
           "forge.watch.hideBibleQuotes": false,
-          "forge.watch.algoliaSearch": false,
         },
       }),
     )
