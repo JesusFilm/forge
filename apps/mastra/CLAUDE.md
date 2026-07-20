@@ -209,6 +209,17 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `JESUSFILM_RAG_TIMEOUT_MS`                   | Single-attempt RAG request timeout. Defaults to `5000`, schema-capped at `30000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `JESUSFILM_RAG_MAX_RESPONSE_BYTES`           | Byte-cap on the buffered RAG response body (feat-202), applied to both the success and error-path reads. Streamed byte counter aborts the stream past the cap → graceful `unavailable`. Optional, defaults to `2097152` (2 MiB), schema-capped at 16 MiB (`16777216`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                 |
 | `JESUSFILM_RAG_USER_AGENT`                   | User agent identifying this consumer in RAG access logs. Defaults to `forge-mastra-jesusfilm-rag/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `LANGFUSE_BASE_URL`                          | Langfuse API base URL for managed prompt retrieval. Optional, **no default** — Langfuse cloud keys are region-bound, so unset simply means unconfigured: `getManagedPrompt` serves the caller-supplied fallback (`config_missing`), never a boot failure. In production a set value must use https AND a host listed in `LANGFUSE_ALLOWED_HOSTS`, else boot throws (fail-closed guard mirroring the RAG guard — the one Langfuse-driven boot throw).                                                                                                                                                                                           |
+| `LANGFUSE_PUBLIC_KEY`                        | Public half of the Langfuse key pair. Optional. Unlike the Bearer siblings in this table, the pair feeds HTTP **Basic** auth (`base64(public:secret)`) — Langfuse's documented scheme. Missing → `config_missing` at runtime, never boot.                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `LANGFUSE_SECRET_KEY`                        | Secret half of the Langfuse key pair. Same posture as the public half. Langfuse keys carry full project access (no read-only prompt scope exists), so they live only in Railway service variables.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `LANGFUSE_ALLOWED_HOSTS`                     | CSV host allowlist for production Langfuse egress. Optional, no default — enforced (with https) only when `LANGFUSE_BASE_URL` is set in production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `LANGFUSE_TIMEOUT_MS`                        | Single-attempt prompt-fetch timeout. Defaults to `3000`, schema-capped at `10000` — strictly inside the 90s `chatTurn` budget per the outbound-timeout law.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `LANGFUSE_MAX_RESPONSE_BYTES`                | Byte-cap on the buffered Langfuse prompt response body, applied to both the success and error-path reads (streamed byte counter aborts past the cap). Optional, runtime default `262144` (256 KiB), schema-capped at 5 MiB (`5242880`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                |
+| `LANGFUSE_USER_AGENT`                        | Non-default user agent for Langfuse prompt requests. Defaults to `forge-mastra-langfuse/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `LANGFUSE_PROMPT_DEFAULT_LABEL`              | Optional env rung of the helper's label resolution: call parameter > this var > `production` (never implicit `latest`). No default. Lets a staging deploy track staging-labeled prompts with zero consumer code change.                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `LANGFUSE_PROMPT_CACHE_TTL_MS`               | TTL for the in-process managed-prompt cache. Defaults to `60000`, schema-capped at `3600000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS`        | Failure cooldown that suppresses refetch attempts while serving stale/fallback. Defaults to `10000`, schema-capped at `300000`; `getLangfuseConfig()` clamps the effective cooldown to ≤ the effective TTL (the smaller value wins).                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
@@ -689,6 +700,56 @@ could harden this into a real check later (deferred, not built).
 
 (Postgres-persisted memory, formerly on this list, shipped in feat-208 — see
 "ai-chat memory, thread ownership + retention" above.)
+
+## Langfuse prompt management
+
+`src/services/langfuse-prompt-client.ts` (plan
+`docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md`) is the
+retrieval helper for Langfuse-managed system prompts — two layers in one
+module:
+
+- **Layer 1 — `fetchLangfusePrompt({ name, label?, config?, fetchImpl? })`:**
+  single-attempt no-throw result union over
+  `GET /api/public/v2/prompts/{name}` carrying the house client invariants
+  (HTTP Basic auth from the key pair, production host allowlist,
+  `redirect: "error"`, byte-capped reads on success and error paths, leak
+  control). Failure reasons: `config_missing | auth_failed | timeout |
+network_error | rate_limited | rejected | parse_error`; details:
+  `base_url_missing | public_key_missing | secret_key_missing |
+chat_type_unsupported | empty_prompt`.
+- **Layer 2 — `getManagedPrompt({ name, label?, fallback })`:** label
+  resolution (call parameter > `LANGFUSE_PROMPT_DEFAULT_LABEL` >
+  `production`, never implicit `latest`), TTL cache keyed on
+  name + resolved label, failure cooldown (clamped ≤ TTL), serve-stale
+  (marked `stale: true`), single-flight, no background work. Returns
+  `{ text, source: "langfuse" | "fallback", version?, resolvedLabel, stale?,
+reason? }` — provenance is part of the return type. Failure logging is the
+  plain-string `[langfuse] event=prompt_fetch_failed name=… label=…
+reason=…` line once per failed attempt (`config_missing` once per
+  process); prompt bodies and key material never appear in logs or results.
+
+**Retrieval-only boundary:** the helper never creates, updates, or moves
+prompts or labels — authoring and versioning stay in the Langfuse UI.
+
+**Per-environment posture (plan KTD8):** separate Langfuse **projects** per
+environment (dev/staging/prod), each with its own key pair in Railway — a
+leaked dev key must not be able to read tuned production prompt text. Within
+each project, `production` should be a protected label (admin-only mutation).
+The helper itself only ever sees one project's keys.
+
+**Nothing consumes the helper yet.** It is a standalone module proven by
+tests (including a seeker-scenario block simulating the chat agent resolving
+its system prompt). Integration — seeker wiring and the prompt-composition
+split, SWR refresh, version pinning, sustained-fallback alerting, and the
+label-governance review — is the tracked follow-up ticket
+`docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`.
+
+**Smoke seeding convention:** the opt-in real-credential smoke
+(`LANGFUSE_PROMPT_SMOKE_TEST=1`, skipped by default) documents its one-time
+manual seeding convention — prompt `forge-mastra-smoke/text-prompt`, label
+`production`, text type, in the dev Langfuse project; the test never
+self-seeds — in the header of
+`src/services/langfuse-prompt-client.smoke.test.ts`.
 
 ## Experience draft & chat generation
 
