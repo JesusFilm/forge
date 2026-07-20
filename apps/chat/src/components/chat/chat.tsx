@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useLayoutEffect, useRef } from "react"
 
 import { type Conversation, type ReplayState } from "@/lib/conversations"
 
@@ -107,6 +107,9 @@ export function Chat({
   onStartNew = () => {},
 }: ChatProps) {
   const logRef = useRef<HTMLDivElement>(null)
+  // Last observed in-flight assistant id, so the scroll effect can tell a
+  // finalize (non-null → null) apart from ordinary transcript growth.
+  const prevStreamingIdRef = useRef<string | null>(null)
   // The replay states own the pane while the transcript is loading, failed,
   // or gone; the starter-questions gate is suppressed for those (R18).
   const replayBlocked =
@@ -116,11 +119,29 @@ export function Chat({
   const isEmpty =
     conversation.messages.length === 0 && !pending && !replayBlocked
 
-  // Keep the latest turn in view as the conversation grows.
-  useEffect(() => {
+  // Keep the latest turn in view as the conversation grows — except on
+  // finalize, where the reader should be left at the TOP of the answer, not
+  // bottom-pinned under its metadata/sources block (feat-269). Layout effect:
+  // the scroll must land before paint or the finalize jump flashes.
+  useLayoutEffect(() => {
     const el = logRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [conversation.messages, pending, conversation.id])
+    if (!el) return
+    const prevStreamingId = prevStreamingIdRef.current
+    prevStreamingIdRef.current = streamingMessageId
+    if (prevStreamingId !== null && streamingMessageId === null) {
+      const turn = el.querySelector(
+        `[data-message-id="${CSS.escape(prevStreamingId)}"]`,
+      )
+      if (turn) {
+        // Align the answer's top to the scrollport top (clamped by the
+        // browser when there isn't enough content below to fill the view).
+        el.scrollTop +=
+          turn.getBoundingClientRect().top - el.getBoundingClientRect().top
+        return
+      }
+    }
+    el.scrollTop = el.scrollHeight
+  }, [conversation.messages, pending, conversation.id, streamingMessageId])
 
   const sendBlockedReason =
     replayState === "loading"
@@ -135,6 +156,7 @@ export function Chat({
           element behind the sticky composer band at the scrollport bottom. */}
       <div
         ref={logRef}
+        data-chat-scroller
         className="min-h-0 flex-1 overflow-y-auto [scroll-padding-bottom:13rem]"
       >
         {/* min-h-full column keeps the sticky composer pinned to the pane
