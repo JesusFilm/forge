@@ -24,12 +24,20 @@ export function selectHeroStreamUrl(
 ): string | null {
   if (!variants || variants.length === 0) return null
 
-  const playable = variants.filter(
-    (variant): variant is HeroStreamVariantInput & { hls: string } =>
-      variant.published === true &&
-      typeof variant.hls === "string" &&
-      validateStreamingUrl(variant.hls),
-  )
+  // Trim BEFORE validating: WHATWG URL strips stray whitespace so a tainted
+  // "…m3u8\n" passes validation, but the native player requests it raw → 400.
+  const playable = variants
+    .map((variant) =>
+      typeof variant.hls === "string"
+        ? { ...variant, hls: variant.hls.trim() }
+        : variant,
+    )
+    .filter(
+      (variant): variant is HeroStreamVariantInput & { hls: string } =>
+        variant.published === true &&
+        typeof variant.hls === "string" &&
+        validateStreamingUrl(variant.hls),
+    )
 
   const english = playable.find(
     (variant) => variant.language?.slug === ENGLISH_LANGUAGE_SLUG,

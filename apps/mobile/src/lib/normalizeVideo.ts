@@ -165,14 +165,20 @@ type NormalizableVideo = Omit<RawVideo, "parents" | "variants"> & {
   variants?: readonly NormalizableVariant[] | null
 }
 
+// Prod data can carry stray whitespace on hls (a dub shipped "…m3u8\n"); the
+// native player requests the string raw → Mux 400. Ingest trimmed, never raw.
+function cleanHls(hls: string | null | undefined): string | null {
+  const trimmed = hls?.trim()
+  return trimmed ? trimmed : null
+}
+
 function pickFirstPlayableVariant(
   variants: readonly NormalizableVariant[] | undefined | null,
 ): NormalizableVariant | null {
   if (!variants) return null
   return (
-    variants.find(
-      (v) => v.published === true && v.hls != null && v.hls !== "",
-    ) ?? null
+    variants.find((v) => v.published === true && cleanHls(v.hls) != null) ??
+    null
   )
 }
 
@@ -260,7 +266,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       documentId: v.documentId ?? "",
       slug: v.slug ?? "",
       published: v.published ?? false,
-      hls: v.hls ?? null,
+      hls: cleanHls(v.hls),
       duration: v.duration ?? null,
       languageCoreId: v.language?.coreId ?? null,
       languageBcp47: v.language?.bcp47 ?? null,
@@ -338,7 +344,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     description: locale.description,
     snippet: locale.snippet,
     posterUrl: pickPosterUrl(raw.images),
-    streamingUrl: firstPlayable?.hls ?? null,
+    streamingUrl: cleanHls(firstPlayable?.hls),
     muxPlaybackId: firstPlayable?.muxVideo?.playbackId ?? null,
     duration: firstPlayable?.duration ?? null,
     primaryLanguageBcp47: raw.primaryLanguage?.bcp47 ?? null,
