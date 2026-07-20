@@ -9,11 +9,31 @@ const envMock = vi.hoisted(() => ({
 
 vi.mock("@/config/env", () => envMock)
 vi.mock("@/db/client", () => ({ prisma: {} }))
+vi.mock("@/services/search-trace-retention.service", () => ({
+  purgeExpiredSearchTraces: vi.fn(async () => ({
+    purgedCount: 0,
+    purgedRawTraceCount: 0,
+    purgedGeneratedCandidateCount: 0,
+    purgedWatchSearchEventCount: 0,
+    purgedQueryEmbeddingCacheCount: 0,
+    purgedBefore: "2026-05-01T00:00:00.180Z",
+  })),
+  readSearchTraceRetentionHealth: vi.fn(async () => ({
+    healthy: true,
+    reason: "recent-purge",
+    latestPurgeAt: "2026-05-01T00:00:00.000Z",
+    activeSchedulerRunId: null,
+  })),
+}))
 
 import {
   __resetSearchTraceHealthForTest,
   getSearchTraceHealthCounters,
 } from "./search-trace-health"
+import {
+  purgeExpiredSearchTraces,
+  readSearchTraceRetentionHealth,
+} from "@/services/search-trace-retention.service"
 import {
   classifyLatencyBucket,
   recordSearchTraceSafely,
@@ -388,6 +408,39 @@ describe("search trace service", () => {
     expect(prisma.searchTraceAggregate.upsert).toHaveBeenCalledOnce()
     expect(prisma.searchTrace.create).not.toHaveBeenCalled()
     expect(getSearchTraceHealthCounters().rawCaptureDisabled).toBe(1)
+  })
+
+  it("self-heals missing production retention health before storing raw traces", async () => {
+    envMock.env.NODE_ENV = "production"
+    vi.mocked(readSearchTraceRetentionHealth).mockResolvedValueOnce({
+      healthy: false,
+      reason: "missing",
+      latestPurgeAt: null,
+      activeSchedulerRunId: null,
+    })
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const prisma = buildPrisma()
+
+    await expect(
+      writeSearchTrace(
+        baseTraceInput,
+        prisma as unknown as Parameters<typeof writeSearchTrace>[1],
+      ),
+    ).resolves.toEqual({
+      aggregateStored: true,
+      rawStored: true,
+      rawCaptureDisabled: false,
+    })
+
+    expect(purgeExpiredSearchTraces).toHaveBeenCalledWith(
+      prisma,
+      baseTraceInput.now,
+    )
+    expect(prisma.searchTrace.create).toHaveBeenCalledOnce()
+    expect(getSearchTraceHealthCounters().rawCaptureDisabled).toBe(0)
+    expect(warn).toHaveBeenCalledWith(
+      "[search] event=trace_retention_inline_purge route=rest reason=missing",
+    )
   })
 
   it("samples only unexpired, eligible rows inside the clamped window", async () => {
