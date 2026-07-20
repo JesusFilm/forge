@@ -4,8 +4,10 @@ import type { ReactNode } from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Forge Chat",
-  description: "Chat UI for the Forge Mastra agents (jesusfilm.ai).",
+  title: "jesusfilm.ai — ask anything",
+  description:
+    "Scripture, doubt, prayer, next steps — ask anything. Answers grounded in cited sources.",
+  icons: { icon: "/brand/jfp-sign.svg" },
 }
 
 export const viewport: Viewport = {

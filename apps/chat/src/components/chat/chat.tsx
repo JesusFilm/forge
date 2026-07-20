@@ -131,47 +131,60 @@ export function Chat({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* scroll-padding keeps focus auto-scroll from parking a focused
+          element behind the sticky composer band at the scrollport bottom. */}
       <div
         ref={logRef}
-        role="log"
-        aria-label="Conversation"
-        className="min-h-0 flex-1 overflow-y-auto px-8 pt-12"
+        className="min-h-0 flex-1 overflow-y-auto [scroll-padding-bottom:13rem]"
       >
-        <div className="mx-auto w-full max-w-[680px] pb-10">
-          {replayState === "failed" ? (
-            <ReplayFailed onRetry={onRetryReplay} />
-          ) : replayState === "not_available" ? (
-            <ReplayNotAvailable onStartNew={onStartNew} />
-          ) : replayState === "loading" ? (
-            <ReplayLoading />
-          ) : isEmpty ? (
-            <EmptyState onPick={onSend} seekerEnabled={seekerEnabled} />
-          ) : (
-            <MessageList
-              messages={conversation.messages}
-              streamingMessageId={streamingMessageId}
-            />
-          )}
-        </div>
-      </div>
+        {/* min-h-full column keeps the sticky composer pinned to the pane
+            bottom even when the transcript is shorter than the viewport. */}
+        <div className="flex min-h-full flex-col">
+          <div className="flex-1 px-8 pt-12">
+            <div
+              role="log"
+              aria-label="Conversation"
+              className="mx-auto w-full max-w-[680px] pb-6"
+            >
+              {replayState === "failed" ? (
+                <ReplayFailed onRetry={onRetryReplay} />
+              ) : replayState === "not_available" ? (
+                <ReplayNotAvailable onStartNew={onStartNew} />
+              ) : replayState === "loading" ? (
+                <ReplayLoading />
+              ) : isEmpty ? (
+                <EmptyState onPick={onSend} seekerEnabled={seekerEnabled} />
+              ) : (
+                <MessageList
+                  messages={conversation.messages}
+                  streamingMessageId={streamingMessageId}
+                />
+              )}
+            </div>
+          </div>
 
-      {/* Sticky composer with a protection gradient so text dissolves into
-          the bottom edge rather than cutting abruptly. */}
-      <div className="sticky bottom-0 bg-gradient-to-b from-transparent via-hearthblack/85 to-hearthblack px-8 pt-16 pb-8">
-        <div className="mx-auto w-full max-w-[680px]">
-          <Composer
-            draft={draft}
-            pending={pending}
-            seekerEnabled={seekerEnabled}
-            sendBlockedReason={sendBlockedReason}
-            placeholder={
-              isEmpty
-                ? "Scripture, doubt, prayer, next steps — ask anything."
-                : "Keep going."
-            }
-            onChange={onDraftChange}
-            onSend={onSend}
-          />
+          {/* Sticky INSIDE the scroller so text dissolves through the gradient
+              instead of clipping. Only the transparent fade is click-through;
+              the full-width inner wrapper intercepts over the opaque zone. */}
+          <div className="pointer-events-none sticky bottom-0 bg-gradient-to-b from-transparent via-hearthblack/85 to-hearthblack pt-16">
+            <div className="pointer-events-auto px-8 pb-8">
+              <div className="mx-auto w-full max-w-[680px]">
+                <Composer
+                  draft={draft}
+                  pending={pending}
+                  seekerEnabled={seekerEnabled}
+                  sendBlockedReason={sendBlockedReason}
+                  placeholder={
+                    isEmpty
+                      ? "Scripture, doubt, prayer, next steps — ask anything."
+                      : "Keep going."
+                  }
+                  onChange={onDraftChange}
+                  onSend={onSend}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
