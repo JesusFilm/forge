@@ -24,13 +24,25 @@ import {
  *               (the `/` in the name is deliberate — resolving it live
  *               doubles as proof of the client's URL path-segment encoding)
  *   - Type:     text (NOT chat)
- *   - Label:    `production`
- *   - Body:     any known non-empty sentinel text, e.g.
- *               "forge-mastra smoke sentinel: managed prompt retrieval works."
+ *   - Versions: ONE prompt, TWO versions, TWO labels (idiomatic Langfuse).
+ *               The bodies are EXACT — the tests assert strict equality, not
+ *               "any non-empty text":
+ *
+ *       Version 1 — label `production`, body EXACTLY:
+ *         "forge-mastra smoke sentinel: managed prompt retrieval works."
+ *       Version 2 — label `smoke`, body EXACTLY:
+ *         "forge-mastra smoke sentinel: non-default label selection works."
+ *
+ *   WHY two labels with DIFFERENT bodies: `production` is ALSO Langfuse's
+ *   documented default when the `label` param is omitted, so a
+ *   production-labeled prompt alone cannot prove the client actually sends
+ *   (and Langfuse honors) `?label=`. Fetching label `smoke` and receiving
+ *   its distinct sentinel body is possible ONLY if label selection worked
+ *   end to end.
  *
  * FAIL-LOUD CONTRACT: when credentials are present (the suite is enabled)
- * but the seeded prompt is missing, this suite FAILS — it never skips. The
- * seeded-prompt test below turns a `rejected`/404 into an actionable
+ * but a seeded prompt version is missing, this suite FAILS — it never skips.
+ * The seeded-prompt tests below turn a `rejected`/404 into an actionable
  * assertion failure pointing back at this header.
  *
  * To run:
@@ -43,6 +55,17 @@ const RUN_LANGFUSE_SMOKE = env.LANGFUSE_PROMPT_SMOKE_TEST === "1"
 
 const SMOKE_PROMPT_NAME = "forge-mastra-smoke/text-prompt"
 const SMOKE_PROMPT_LABEL = "production"
+// Non-default label carrying a DIFFERENT body than `production` — the only
+// way to prove `?label=` is sent AND honored (production is also Langfuse's
+// omitted-label default, so it can never prove label selection by itself).
+const SMOKE_NON_DEFAULT_LABEL = "smoke"
+// EXACT seeded bodies (see the ONE-TIME SEEDING CONVENTION above). These are
+// the required version bodies, not examples — the tests assert strict
+// equality against them.
+const SMOKE_SENTINEL_TEXT =
+  "forge-mastra smoke sentinel: managed prompt retrieval works."
+const SMOKE_LABEL_SENTINEL_TEXT =
+  "forge-mastra smoke sentinel: non-default label selection works."
 // A name that must not exist in the project; slashed like the real one so the
 // negative path also exercises the encoded-name route.
 const NONEXISTENT_PROMPT_NAME = "forge-mastra-smoke/does-not-exist"
@@ -84,10 +107,51 @@ describe.skipIf(!RUN_LANGFUSE_SMOKE)(
           )
         }
 
-        expect(result.text.trim().length).toBeGreaterThan(0)
+        // EXACT body, not just non-empty: proves Langfuse served the seeded
+        // production-version sentinel, and (paired with the smoke-label test
+        // below) that label→body mapping is intact.
+        expect(result.text).toBe(SMOKE_SENTINEL_TEXT)
         expect(typeof result.version).toBe("number")
         expect(Number.isFinite(result.version)).toBe(true)
         expect(result.labels).toContain(SMOKE_PROMPT_LABEL)
+      },
+      SMOKE_TEST_TIMEOUT_MS,
+    )
+
+    it(
+      "honors the label param end to end: label `smoke` serves the DISTINCT non-default-label sentinel",
+      async () => {
+        const result = await fetchLangfusePrompt({
+          name: SMOKE_PROMPT_NAME,
+          label: SMOKE_NON_DEFAULT_LABEL,
+          config,
+        })
+
+        if (!result.ok) {
+          // Same fail-loud contract as the production-label test above: a
+          // rejected/404 here almost always means version 2 (label `smoke`)
+          // of the smoke prompt has not been seeded yet.
+          expect.unreachable(
+            `Expected the seeded smoke prompt "${SMOKE_PROMPT_NAME}" ` +
+              `(label "${SMOKE_NON_DEFAULT_LABEL}") to resolve, but got ` +
+              `reason=${result.reason}` +
+              (result.status !== undefined ? ` status=${result.status}` : "") +
+              (result.detail !== undefined ? ` detail=${result.detail}` : "") +
+              `. Seed version 2 of the prompt under label ` +
+              `"${SMOKE_NON_DEFAULT_LABEL}" per the ONE-TIME SEEDING ` +
+              `CONVENTION in this file's header (the test never self-seeds).`,
+          )
+        }
+
+        // The `smoke` label carries a DIFFERENT exact body than `production`
+        // (Langfuse's omitted-label default), so this equality can only hold
+        // if the client sent `?label=` AND Langfuse honored it — receiving
+        // the production sentinel here would mean label selection silently
+        // broke while staying green on non-empty-text assertions.
+        expect(result.text).toBe(SMOKE_LABEL_SENTINEL_TEXT)
+        expect(typeof result.version).toBe("number")
+        expect(Number.isFinite(result.version)).toBe(true)
+        expect(result.labels).toContain(SMOKE_NON_DEFAULT_LABEL)
       },
       SMOKE_TEST_TIMEOUT_MS,
     )

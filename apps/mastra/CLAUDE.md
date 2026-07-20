@@ -746,10 +746,11 @@ label-governance review — is the tracked follow-up ticket
 
 **Smoke seeding convention:** the opt-in real-credential smoke
 (`LANGFUSE_PROMPT_SMOKE_TEST=1`, skipped by default) documents its one-time
-manual seeding convention — prompt `forge-mastra-smoke/text-prompt`, label
-`production`, text type, in the dev Langfuse project; the test never
-self-seeds — in the header of
-`src/services/langfuse-prompt-client.smoke.test.ts`.
+manual seeding convention — one text prompt `forge-mastra-smoke/text-prompt`
+in the dev Langfuse project with two versions under two labels (`production`
+and the non-default `smoke`), each carrying a distinct exact sentinel body so
+the smoke proves label selection end to end; the test never self-seeds — in
+the header of `src/services/langfuse-prompt-client.smoke.test.ts`.
 
 ## Experience draft & chat generation
 

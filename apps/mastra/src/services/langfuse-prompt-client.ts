@@ -297,14 +297,24 @@ export async function fetchLangfusePrompt({
   }
 
   // encodeURIComponent: Langfuse prompt names may contain `/` (folder-scoped),
-  // which must land in the path as `%2F`, not as a route separator.
-  const url = endpoint(
-    config.baseUrl,
-    `api/public/v2/prompts/${encodeURIComponent(name)}`,
-  )
-  // Pass-through only: label resolution/defaulting is layer 2's job. Omitted
-  // label means Langfuse applies its own documented default (`production`).
-  if (label !== undefined) url.searchParams.set("label", label)
+  // which must land in the path as `%2F`, not as a route separator. It THROWS
+  // URIError on malformed UTF-16 (a lone surrogate in the name), so the whole
+  // URL build sits in its own try to keep the never-throws contract: an
+  // unencodable name is a permanent CALLER error, returned as non-retryable
+  // `rejected` — it must not ride the timeout/network classification, and
+  // neither the name nor the error is echoed into the result (leak control).
+  let url: URL
+  try {
+    url = endpoint(
+      config.baseUrl,
+      `api/public/v2/prompts/${encodeURIComponent(name)}`,
+    )
+    // Pass-through only: label resolution/defaulting is layer 2's job. Omitted
+    // label means Langfuse applies its own documented default (`production`).
+    if (label !== undefined) url.searchParams.set("label", label)
+  } catch {
+    return { ok: false, reason: "rejected", retryable: false }
+  }
 
   let response: Response
   try {
@@ -640,6 +650,14 @@ async function refetchManagedPrompt(
     logSink,
   }: ManagedPromptRefetchArgs,
 ): Promise<void> {
+  // Effective cooldown ≤ TTL: getLangfuseConfig() already clamps this, but a
+  // hand-built injected config bypasses it — re-clamping here defends the
+  // documented smaller-value-wins invariant (idempotent for env-derived
+  // configs).
+  const cooldownMs = Math.min(
+    config.promptFailureCooldownMs,
+    config.promptCacheTtlMs,
+  )
   try {
     const result = await fetchLangfusePrompt({
       name,
@@ -658,17 +676,28 @@ async function refetchManagedPrompt(
     }
     // Failure state FIRST, log SECOND: a throwing log sink must still leave a
     // coherent cooldown behind so subsequent calls serve from state.
-    entry.cooldownUntil = now() + config.promptFailureCooldownMs
+    entry.cooldownUntil = now() + cooldownMs
     entry.lastFailureReason = result.reason
     logPromptFetchFailure(name, resolvedLabel, result, logSink)
   } catch {
-    // Swallow, never log: the thrown value is arbitrary and could embed
-    // anything (leak control). Defensive negative-cache: if the throw somehow
-    // predated failure classification (layer 1 contractually never throws),
-    // still start a cooldown so a persistently throwing wrapper cannot become
-    // a per-call fetch storm.
+    // Never log the thrown VALUE: it is arbitrary and could embed anything
+    // (leak control). Defensive negative-cache: if the throw somehow predated
+    // failure classification (layer 1 contractually never throws), still start
+    // a cooldown so a persistently throwing wrapper cannot become a per-call
+    // fetch storm.
     if (entry.cooldownUntil === undefined || entry.cooldownUntil <= now()) {
-      entry.cooldownUntil = now() + config.promptFailureCooldownMs
+      entry.cooldownUntil = now() + cooldownMs
+      // Bounded breadcrumb — one enum-only line per NEW cooldown window, so
+      // this defensive path is never fully silent. Carries name/label ONLY,
+      // never the caught error or any of its text; own try/catch so a
+      // throwing sink cannot escape the guard.
+      try {
+        logSink(
+          `[langfuse] event=prompt_refetch_unexpected_error name=${name} label=${resolvedLabel}`,
+        )
+      } catch {
+        // A throwing sink must not escape the defensive catch.
+      }
     }
   }
 }

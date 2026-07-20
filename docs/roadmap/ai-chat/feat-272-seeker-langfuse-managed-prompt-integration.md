@@ -88,9 +88,14 @@ real run of the opt-in smoke and this integration.
 The deferred items from the plan's Scope Boundaries, in rough order:
 
 1. **Seeker wiring.** Back the seeker agent's `instructions` with
-   `getManagedPrompt` as a dynamic-instructions function (verified in the
-   plan: `@mastra/core` `DynamicArgument<string>` accepts `Promise<string>`,
-   and the helper never throws). The fallback is the full current working
+   `getManagedPrompt` through a thin dynamic-instructions wrapper:
+   `instructions: async () => (await getManagedPrompt({ ... })).text`.
+   (Verified against `@mastra/core` `dist/types/dynamic-argument.d.ts`:
+   `DynamicArgument<string>` accepts an async **function** returning
+   `Promise<string>`, never a bare `Promise` — and `getManagedPrompt` cannot
+   be assigned directly, since it takes its own options object and returns a
+   `ManagedPromptResult`, not a `string`. The helper never throws, so the
+   wrapper needs no error handling.) The fallback is the full current working
    prompt — never a stub.
 2. **The composition decision.** Keep the SAFETY line and the tool-coupled
    citation wording CODE-OWNED (they are coupled to `retrieveAnswer`'s
@@ -134,6 +139,20 @@ The deferred items from the plan's Scope Boundaries, in rough order:
 - Do not enable production consumption before the access-control review
   (item 6): an unreviewed label move must not be able to change production
   agent behavior.
+- The caller-supplied `fallback` must always be the full working prompt and
+  never empty — layer 2 deliberately serves it verbatim with no emptiness
+  guard (asymmetric with layer 1's `empty_prompt` rejection). Pin a
+  non-empty fallback in the wiring tests. (Review finding #8.)
+- Serve-stale means DELETING a managed prompt in Langfuse does not retract
+  already-cached text until process restart — layer 2 ignores `retryable`
+  and keeps serving stale through non-retryable 404/401 failure windows.
+  Decide retraction semantics during wiring: degrade stale-serving after N
+  non-retryable cooldown windows, or document label re-pointing as the only
+  retraction path. (Review finding #9.)
+- Prompt names/labels passed to `getManagedPrompt` must be compile-time
+  constants — the default cache has no eviction and logs the raw name per
+  failure transition, so request-derived names would grow the Map
+  unboundedly and defeat the cooldown discipline. (Review finding #11.)
 
 ## Verification
 

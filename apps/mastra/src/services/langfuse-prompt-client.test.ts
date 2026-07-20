@@ -439,6 +439,27 @@ describe("langfuse prompt client", () => {
     )
   })
 
+  it("returns non-retryable rejected (never throws) for a name encodeURIComponent cannot encode, without fetching", async () => {
+    // A lone surrogate is malformed UTF-16: encodeURIComponent throws URIError
+    // on it. The URL build must absorb that into the no-throw union — a
+    // permanent caller error classified as `rejected`, never a rejection of
+    // the returned promise and never a fetch attempt.
+    const fetchImpl = vi.fn<typeof fetch>()
+
+    const result = await fetchLangfusePrompt({
+      name: "\uD800",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "rejected",
+      retryable: false,
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("rejects a chat-type prompt with detail chat_type_unsupported, never ok", async () => {
     const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(chatPromptFixture))
 
@@ -457,6 +478,96 @@ describe("langfuse prompt client", () => {
     })
     // Leak control: the chat messages never bleed into the typed failure.
     expect(JSON.stringify(result)).not.toContain("seeker assistant")
+  })
+
+  it("rejects type chat with a STRING body as chat_type_unsupported (proves the type check alone)", async () => {
+    // Isolating fixture: chat type but a string prompt body. Only the
+    // `type === "chat"` half of the OR can catch this — deleting that half
+    // would let it fall through, so the check is proven independently of
+    // the combined chatPromptFixture.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      jsonResponse({ ...textPromptFixture, type: "chat" }),
+    )
+
+    const result = await fetchLangfusePrompt({
+      name: "seeker/system-prompt",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+      detail: "chat_type_unsupported",
+    })
+  })
+
+  it("rejects type text with an ARRAY body as chat_type_unsupported (proves the Array.isArray check alone)", async () => {
+    // Isolating fixture: text type but a ChatMessage-array body. Only the
+    // `Array.isArray(prompt)` half of the OR can catch this.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      jsonResponse({ ...chatPromptFixture, type: "text" }),
+    )
+
+    const result = await fetchLangfusePrompt({
+      name: "seeker/chat-prompt",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+      detail: "chat_type_unsupported",
+    })
+  })
+
+  it("maps a schema-valid but unusable body (type text, prompt null) to plain parse_error with no detail", async () => {
+    // The fallthrough branch: passes the Zod shape (prompt is z.unknown()),
+    // misses both chat detections, but is not a usable text prompt either.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      jsonResponse({ ...textPromptFixture, prompt: null }),
+    )
+
+    const result = await fetchLangfusePrompt({
+      name: "seeker/system-prompt",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+    })
+    if (!result.ok) expect(result.detail).toBeUndefined()
+  })
+
+  it("maps an unknown prompt type with a string body to plain parse_error with no detail", async () => {
+    // A hypothetical future type value: string body, but not `type: "text"` —
+    // only the `type !== "text"` half of the fallthrough condition catches it.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      jsonResponse({ ...textPromptFixture, type: "template" }),
+    )
+
+    const result = await fetchLangfusePrompt({
+      name: "seeker/system-prompt",
+      config: testConfig,
+      fetchImpl,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: false,
+      status: 200,
+    })
+    if (!result.ok) expect(result.detail).toBeUndefined()
   })
 
   it("rejects a whitespace-only text prompt with detail empty_prompt, never ok", async () => {
@@ -1034,6 +1145,123 @@ describe("getManagedPrompt (layer 2)", () => {
       version: 4,
       resolvedLabel: "production",
     })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("serves the fallback for an unencodable prompt name (no unhandled rejection) and logs the classified failure without error text", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>()
+    const input = {
+      // Lone surrogate: layer 1 classifies the URIError into `rejected`
+      // instead of rejecting, so layer 2 rides its NORMAL failure path —
+      // cooldown, per-attempt log line, fallback with the reason attached.
+      name: "\uD800",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    const result = await getManagedPrompt(input)
+    expect(result).toEqual({
+      text: FALLBACK_TEXT,
+      source: "fallback",
+      resolvedLabel: "production",
+      reason: "rejected",
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toContain("event=prompt_fetch_failed")
+    expect(logs[0]).toContain("reason=rejected")
+    // Leak control: the URIError's text never reaches the log line.
+    expect(logs[0]).not.toContain("URI")
+    expect(logs[0]).not.toContain("malformed")
+  })
+
+  it("defensive catch: an unclassifiable layer-1 rejection starts a cooldown and emits ONE bounded enum-only line per window", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    // Hostile Response whose `ok` getter throws: layer 1's try only wraps the
+    // fetch await, so this makes fetchLangfusePrompt itself reject — the one
+    // deterministic route into refetchManagedPrompt's defensive catch.
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve({
+        get ok(): boolean {
+          throw new Error("HOSTILE-ERROR-MARKER")
+        },
+      } as unknown as Response),
+    )
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    // No throw escapes; the throw predated failure classification, so no
+    // lastFailureReason exists — the fallback carries no reason field.
+    const first = await getManagedPrompt(input)
+    expect(first).toEqual({
+      text: FALLBACK_TEXT,
+      source: "fallback",
+      resolvedLabel: "production",
+    })
+    expect(logs).toEqual([
+      "[langfuse] event=prompt_refetch_unexpected_error name=seeker/system-prompt label=production",
+    ])
+
+    // Within the cooldown window: serve from state — no fetch, no re-log.
+    clock.advance(testConfig.promptFailureCooldownMs - 1)
+    const second = await getManagedPrompt(input)
+    expect(second).toEqual(first)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(logs).toHaveLength(1)
+
+    // Window lapses: one new attempt, one new line — still enum-only.
+    clock.advance(1)
+    await getManagedPrompt(input)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toHaveLength(2)
+    // Leak control: the caught error's text never reaches any log line.
+    expect(logs.join("\n")).not.toContain("HOSTILE-ERROR-MARKER")
+  })
+
+  it("clamps an injected config's cooldown to the TTL (documented smaller-value-wins invariant)", async () => {
+    const clock = makeClock()
+    // Hand-built config that bypasses getLangfuseConfig()'s clamp: cooldown
+    // far above TTL. The effective cooldown must still be TTL-bounded.
+    const config: LangfuseConfig = {
+      ...testConfig,
+      promptFailureCooldownMs: 50_000,
+      promptCacheTtlMs: 10_000,
+    }
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.reject(new TypeError("fetch failed")),
+    )
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config,
+      fetchImpl,
+      now: clock.now,
+      logSink: () => {},
+    }
+
+    await getManagedPrompt(input)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    // Past the 10s TTL but far below the raw 50s cooldown: a refetch attempt
+    // fires, proving the effective cooldown clamped to the TTL.
+    clock.advance(10_000)
+    await getManagedPrompt(input)
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
