@@ -14,9 +14,9 @@ from the main DS Year 1 roadmap.
 ## Status (July 20, 2026)
 
 - **Total tickets:** 29
-- ✅ **Complete:** 21
+- ✅ **Complete:** 22
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 8
+- 🔵 **Not started:** 7
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -49,6 +49,6 @@ from the main DS Year 1 roadmap.
 | [feat-250](feat-250-seeker-route-lane-key-migration.md)      | Migrate /forge-seeker onto the ai-chat lane service key                   | jian wei | P2       | 2026-08-03 | 1    | ✅ complete    | [#1554](https://github.com/JesusFilm/forge/pull/1554) |
 | [feat-267](feat-267-chat-ui-quick-wins.md)                   | Chat UI quick wins: cursor, focus ring, tab identity, mobile hint         | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1617](https://github.com/JesusFilm/forge/pull/1617) |
 | [feat-268](feat-268-chat-assistant-markdown-rendering.md)    | Chat assistant markdown rendering (hardened, no raw HTML)                 | jian wei | P1       | 2026-07-16 | 3    | 🔵 not-started | —                                                     |
-| [feat-269](feat-269-chat-sources-presentation.md)            | Chat sources presentation: heading, clamped cards, collapse               | jian wei | P1       | 2026-07-20 | 2    | 🔵 not-started | —                                                     |
+| [feat-269](feat-269-chat-sources-presentation.md)            | Chat sources presentation: heading, clamped cards, collapse               | jian wei | P1       | 2026-07-20 | 2    | ✅ complete    | [#1619](https://github.com/JesusFilm/forge/pull/1619) |
 | [feat-270](feat-270-chat-ui-cleanup-batch.md)                | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges | jian wei | P2       | 2026-07-27 | 3    | 🔵 not-started | —                                                     |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)    | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                     |

@@ -3,7 +3,7 @@ id: "feat-269"
 title: "Chat sources presentation: heading, clamped cards, collapse"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-07-20"
 duration: 2
 depends_on: []
@@ -11,6 +11,16 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-20 via [PR #1619](https://github.com/JesusFilm/forge/pull/1619) (`feat(chat): collapse sources into a Sources · N disclosure (feat-269)`).
+
+**What landed.** Native `<details>`/`<summary>` for both the section and per-source snippet disclosures (chosen over button+state — keeps sources-list hook-free per chat's client-context convention), with a select-to-copy guard so copying an expanded passage doesn't collapse it. Dedupe went slightly beyond the brief: unparseable/junk urls ("N/A", "") are exempt so distinct unlinked citations never collapse into one. The finalize scroll aligns the answer's top to the scrollport via `useLayoutEffect` (pre-paint, no flash); streaming growth and conversation switches still bottom-pin. Verified with live-gate mint plus synthetic-SSE fixtures in headless Chromium at 1440px/390px, including the pane's pointer-events and scroll-padding traps.
+
+**Compound docs.** `docs/solutions/design-patterns/native-details-summary-disclosure-implementation-traps.md`, `docs/solutions/best-practices/synthetic-sse-fetch-patch-browser-verification.md`, and a Boundary amendment to `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`.
+
+**Residual risk / follow-ups.** Mid-stream per-token bottom-pin still yanks a reader interacting with a previous turn's sources while a new reply streams — validated as newly-relevant but deferred as a scroll-stickiness design call, suggested for [feat-270](feat-270-chat-ui-cleanup-batch.md)'s batch. Screen readers announce the whole snippet as the disclosure's name (inherent to snippet-in-summary; accepted at current scale).
 
 ## Problem
 

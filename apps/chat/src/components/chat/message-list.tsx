@@ -109,6 +109,7 @@ function AssistantTurn({
   if (streaming) {
     return (
       <li
+        data-message-id={message.id}
         data-pending="true"
         aria-live="polite"
         aria-atomic="false"
@@ -125,7 +126,10 @@ function AssistantTurn({
   }
 
   return (
-    <li className="max-w-[560px] text-lg leading-relaxed whitespace-pre-wrap text-linen">
+    <li
+      data-message-id={message.id}
+      className="max-w-[560px] text-lg leading-relaxed whitespace-pre-wrap text-linen"
+    >
       <span data-message-content>{message.content}</span>
       {message.error ? (
         <div className="mt-2 flex flex-col gap-1">
