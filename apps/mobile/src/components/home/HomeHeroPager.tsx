@@ -6,9 +6,11 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type Ref,
 } from "react"
 import {
+  Animated,
   AppState,
   FlatList,
   type NativeScrollEvent,
@@ -572,6 +574,9 @@ type HeroPageProps = {
   typography: TypographyScale
 }
 
+/** Poster→video crossfade length once the incoming slide starts playing. */
+const POSTER_CROSSFADE_MS = 350
+
 const HeroPage = memo(function HeroPage({
   slide,
   isActive,
@@ -590,6 +595,27 @@ const HeroPage = memo(function HeroPage({
   // no black flash during replaceAsync).
   const showVideo = isActive && isVideo && videoReady
   const posterHidden = showVideo && phase === "playing"
+
+  // Crossfade instead of a hard cut: fade the poster out over the playing
+  // video, then unmount it. Re-arming (slide change / phase reset) restores
+  // full opacity BEFORE the poster remounts, so it never flashes transparent.
+  const posterOpacity = useRef(new Animated.Value(1)).current
+  const [posterMounted, setPosterMounted] = useState(true)
+  useEffect(() => {
+    if (posterHidden) {
+      const fade = Animated.timing(posterOpacity, {
+        toValue: 0,
+        duration: POSTER_CROSSFADE_MS,
+        useNativeDriver: true,
+      })
+      fade.start(({ finished }) => {
+        if (finished) setPosterMounted(false)
+      })
+      return () => fade.stop()
+    }
+    posterOpacity.setValue(1)
+    setPosterMounted(true)
+  }, [posterHidden, posterOpacity])
 
   // Mux overlay copy is time-of-day sensitive — resolve at DISPLAY time
   // (Eastern-hour rule), not at queue-build time. Memoized per slide entry
@@ -622,22 +648,27 @@ const HeroPage = memo(function HeroPage({
         />
       )}
 
-      {!posterHidden &&
-        (posterUrl != null ? (
-          <Image
-            source={posterUrl}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={slide.id}
-            accessibilityLabel={slide.imageAlt}
-            // R18: a silently-dropped hero poster is a content-quality loss.
-            onError={() =>
-              datadogLog.warn("image.load_failed", { surface: "hero" })
-            }
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.posterFallback]} />
-        ))}
+      {posterMounted && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: posterOpacity }]}
+        >
+          {posterUrl != null ? (
+            <Image
+              source={posterUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={slide.id}
+              accessibilityLabel={slide.imageAlt}
+              // R18: a silently-dropped hero poster is a content-quality loss.
+              onError={() =>
+                datadogLog.warn("image.load_failed", { surface: "hero" })
+              }
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.posterFallback]} />
+          )}
+        </Animated.View>
+      )}
 
       <LinearGradient
         colors={[hexToRgba(BG_COLOR, 0), BG_COLOR]}
