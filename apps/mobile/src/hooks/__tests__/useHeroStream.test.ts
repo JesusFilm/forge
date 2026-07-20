@@ -24,6 +24,7 @@ import {
   HERO_STREAM_COOLDOWN_BASE_MS,
   HERO_STREAM_COOLDOWN_MAX_MS,
   checkHeroStreamCooldown,
+  clearAllHeroStreamCooldowns,
   clearHeroStreamCooldown,
   registerHeroStreamFailure,
   resetHeroStreamCooldownsForTests,
@@ -118,6 +119,25 @@ describe("heroStreamCooldown (pure module)", () => {
       checkHeroStreamCooldown("jesus", t1 + HERO_STREAM_COOLDOWN_BASE_MS)
         .suppressed,
     ).toBe(false)
+  })
+
+  it("a same-window re-registration is a concurrent echo — backoff not doubled", () => {
+    registerHeroStreamFailure("jesus", T0)
+    // Hook + prefetch share one Apollo-deduped rejection: second register
+    // lands milliseconds later, inside the open window.
+    registerHeroStreamFailure("jesus", T0 + 5)
+    expect(
+      checkHeroStreamCooldown("jesus", T0 + HERO_STREAM_COOLDOWN_BASE_MS)
+        .suppressed,
+    ).toBe(false)
+  })
+
+  it("clearAllHeroStreamCooldowns releases every open window", () => {
+    registerHeroStreamFailure("jesus", T0)
+    registerHeroStreamFailure("goj", T0)
+    clearAllHeroStreamCooldowns()
+    expect(checkHeroStreamCooldown("jesus", T0 + 1).suppressed).toBe(false)
+    expect(checkHeroStreamCooldown("goj", T0 + 1).suppressed).toBe(false)
   })
 
   it("grants the warn budget once per window, restored by a new window", () => {

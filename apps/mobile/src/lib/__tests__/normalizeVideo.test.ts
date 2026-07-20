@@ -262,6 +262,17 @@ describe("normalizeVideo", () => {
     ).toBe(true)
   })
 
+  it("skips a whitespace-only hls when picking the first playable variant", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((v, index) => (index === 0 ? { ...v, hls: "  \n" } : v))
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    // dub-1's hls is unplayable; the pick must advance to dub-2 (Spanish).
+    expect(result.streamingUrl).toBe("https://stream.mux.com/def456.m3u8")
+  })
+
   it("filters self-references from siblings", () => {
     const result = normalizeVideo(makeRawVideo())!
 

@@ -48,6 +48,7 @@ import {
   WATCH_HOME_MAX_DWELL_MS,
   activeSlide as selectActiveSlide,
   createInitialPagerState,
+  heroPageVideoState,
   pagerReducer,
   showsPagerChrome,
   timersRunning,
@@ -187,19 +188,33 @@ export function HomeHeroPager({
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status !== "error") return
       const current = stateRef.current
+      const message =
+        error?.message != null
+          ? sanitizeVideoErrorMessage(error.message)
+          : "video playback error"
       // Mid-hold the player still carries the OUTGOING stream; its error must
-      // not skip the incoming slide (whose own swap surfaces its own errors).
-      if (current.transitionFromId != null) return
+      // not skip the incoming slide (whose own swap surfaces its own errors)
+      // — but it must stay observable (R37: silent QoE losses are findings).
+      if (current.transitionFromId != null) {
+        const held = current.slides.find(
+          (s) => s.id === current.transitionFromId,
+        )
+        datadogLog.warn("video.playback_error", {
+          surface: "hero",
+          phase: "transition_hold",
+          content_id:
+            held?.kind === "video" ? (held.slug ?? held.id) : held?.id,
+          message,
+        })
+        return
+      }
       const slide = current.slides[current.currentIndex]
       if (slide?.kind !== "video") return
       // R37: the hero is a distinct player the managed-player QoE excludes.
       datadogLog.warn("video.playback_error", {
         surface: "hero",
         content_id: slide.slug,
-        message:
-          error?.message != null
-            ? sanitizeVideoErrorMessage(error.message)
-            : "video playback error",
+        message,
       })
       dispatch({ type: "STREAM_ERROR" })
     })
@@ -507,15 +522,7 @@ export function HomeHeroPager({
 
   const renderItem = useCallback(
     ({ item, index }: { item: WatchHomeSlide; index: number }) => {
-      // During a transition hold the departing slide keeps hosting the live
-      // video (poster stays hidden) while the incoming page shows its poster;
-      // otherwise the active page hosts, revealed once its stream plays.
-      const holding = state.transitionFromId != null
-      const hostsVideo = holding
-        ? item.id === state.transitionFromId
-        : index === state.currentIndex
-      const showVideo = hostsVideo && item.kind === "video" && state.videoReady
-      const posterHidden = showVideo && (holding || state.phase === "playing")
+      const { showVideo, posterHidden } = heroPageVideoState(state, item, index)
       return (
         <HeroPage
           slide={item}

@@ -8,6 +8,7 @@ import {
   WATCH_HOME_MAX_DWELL_MS,
   activeSlide,
   createInitialPagerState,
+  heroPageVideoState,
   pagerReducer,
   shouldReissueSwap,
   showsPagerChrome,
@@ -647,5 +648,84 @@ describe("transition hold (transitionFromId)", () => {
       slides: [videoSlide("v3"), videoSlide("v4")],
     })
     expect(replaced.transitionFromId).toBeNull()
+  })
+
+  it("PLAY_STARTED during a hold is the OUTGOING stream's edge — no latch", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    // A rebuffer-resume of the still-playing outgoing video must not flip
+    // phase to "playing" for the incoming slide (poster would hide at settle).
+    expect(pagerReducer(midFlight, { type: "PLAY_STARTED" })).toBe(midFlight)
+  })
+
+  it("MAX_DWELL force-releases a hold whose settle never arrived", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const escaped = pagerReducer(midFlight, { type: "MAX_DWELL_ELAPSED" })
+    expect(escaped.currentIndex).toBe(0) // wrapped past the stuck slide
+    expect(escaped.transitionFromId).toBeNull()
+  })
+
+  it("repeat same-reason SUSPEND still clears a hold created while suspended", () => {
+    const wedged = run(
+      playingOnV1,
+      { type: "SUSPEND", reason: "blur" },
+      // moveTo has no suspended guard, so this creates a hold mid-suspension.
+      { type: "CHIP_TAPPED", index: 1 },
+      { type: "SUSPEND", reason: "blur" },
+    )
+    expect(wedged.transitionFromId).toBeNull()
+  })
+})
+
+// ── heroPageVideoState (render-time host derivation) ────────────────────────
+
+describe("heroPageVideoState", () => {
+  const ready = run(createInitialPagerState(twoVideos), {
+    type: "PLAY_STARTED",
+  })
+
+  it("active playing page hosts the video with poster hidden", () => {
+    expect(heroPageVideoState(ready, twoVideos[0]!, 0)).toEqual({
+      showVideo: true,
+      posterHidden: true,
+    })
+    expect(heroPageVideoState(ready, twoVideos[1]!, 1)).toEqual({
+      showVideo: false,
+      posterHidden: false,
+    })
+  })
+
+  it("poster phase shows the video under a visible poster (handoff rule)", () => {
+    const poster = run(ready, { type: "SLIDE_SHOWN", index: 1 })
+    expect(heroPageVideoState(poster, twoVideos[1]!, 1)).toEqual({
+      showVideo: true,
+      posterHidden: false,
+    })
+  })
+
+  it("during a hold the DEPARTING page keeps the video; incoming shows poster", () => {
+    const midFlight = pagerReducer(ready, { type: "CHIP_TAPPED", index: 1 })
+    expect(heroPageVideoState(midFlight, twoVideos[0]!, 0)).toEqual({
+      showVideo: true,
+      posterHidden: true,
+    })
+    expect(heroPageVideoState(midFlight, twoVideos[1]!, 1)).toEqual({
+      showVideo: false,
+      posterHidden: false,
+    })
+  })
+
+  it("a mux slide never hosts the video", () => {
+    const onMux = run(
+      createInitialPagerState(mixedQueue),
+      { type: "PLAY_STARTED" },
+      { type: "SLIDE_SHOWN", index: 1 },
+    )
+    expect(heroPageVideoState(onMux, mixedQueue[1]!, 1).showVideo).toBe(false)
   })
 })

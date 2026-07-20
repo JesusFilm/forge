@@ -50,8 +50,12 @@ export function checkHeroStreamCooldown(
 
 /** Record a failed query: doubles the window per consecutive failure, capped. */
 export function registerHeroStreamFailure(slug: string, now: number): void {
-  const consecutiveFailures =
-    (cooldowns.get(slug)?.consecutiveFailures ?? 0) + 1
+  const existing = cooldowns.get(slug)
+  // Inside an open window a registration is a concurrent echo of the same
+  // failure (hook + prefetch share one Apollo-deduped rejection; checks
+  // suppress new queries until expiry) — don't double the backoff for it.
+  if (existing && existing.blockedUntil > now) return
+  const consecutiveFailures = (existing?.consecutiveFailures ?? 0) + 1
   const windowMs = Math.min(
     HERO_STREAM_COOLDOWN_BASE_MS * 2 ** (consecutiveFailures - 1),
     HERO_STREAM_COOLDOWN_MAX_MS,
@@ -66,6 +70,15 @@ export function registerHeroStreamFailure(slug: string, now: number): void {
 /** A successful query proves the network path works again — forget the slug. */
 export function clearHeroStreamCooldown(slug: string): void {
   cooldowns.delete(slug)
+}
+
+/**
+ * A successful forced-network bulk fetch (pull-to-refresh / retry) proves the
+ * network path works — release every window so recovered slides return now
+ * instead of after up to the 10-minute cap.
+ */
+export function clearAllHeroStreamCooldowns(): void {
+  cooldowns.clear()
 }
 
 export function resetHeroStreamCooldownsForTests(): void {

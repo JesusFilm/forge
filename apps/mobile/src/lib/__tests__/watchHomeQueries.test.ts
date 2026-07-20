@@ -196,6 +196,24 @@ describe("selectHeroStreamUrl — lazy hero stream selection", () => {
     )
   })
 
+  it("treats INTERIOR whitespace as unplayable (WHATWG URL would strip it)", () => {
+    const variants = [
+      variant({
+        documentId: "dub-en",
+        language: { slug: "english" },
+        hls: "https://stream.mux.com/eng\nlish.m3u8",
+      }),
+      variant({
+        documentId: "dub-fr",
+        language: { slug: "french" },
+        hls: "https://stream.mux.com/french.m3u8",
+      }),
+    ]
+    expect(selectHeroStreamUrl(variants)).toBe(
+      "https://stream.mux.com/french.m3u8",
+    )
+  })
+
   it("treats a whitespace-only hls as unplayable", () => {
     const variants = [
       variant({

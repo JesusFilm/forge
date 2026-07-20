@@ -117,6 +117,27 @@ export function activeSlide(state: PagerState): WatchHomeSlide | null {
   return state.slides[state.currentIndex] ?? null
 }
 
+/**
+ * Which page hosts the single VideoView and whether its poster is hidden.
+ * Hold-aware: the departing slide keeps hosting through the scroll animation
+ * while the incoming page shows its poster (one-decoder discipline).
+ */
+export function heroPageVideoState(
+  state: PagerState,
+  slide: WatchHomeSlide,
+  index: number,
+): { showVideo: boolean; posterHidden: boolean } {
+  const holding = state.transitionFromId !== null
+  const hostsVideo = holding
+    ? slide.id === state.transitionFromId
+    : index === state.currentIndex
+  const showVideo = hostsVideo && slide.kind === "video" && state.videoReady
+  return {
+    showVideo,
+    posterHidden: showVideo && (holding || state.phase === "playing"),
+  }
+}
+
 // ── Transitions ─────────────────────────────────────────────────────────────
 
 /**
@@ -230,6 +251,10 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       return state.swapInFlight ? { ...state, swapInFlight: false } : state
 
     case "PLAY_STARTED":
+      // During a hold the playing edge belongs to the OUTGOING stream (the
+      // incoming swap is deferred); latching phase here would hide the
+      // incoming slide's poster over the paused outgoing frame at settle.
+      if (state.transitionFromId !== null) return state
       // videoReady latches here and is never reset by idle blips or advances.
       if (state.phase === "playing" && state.videoReady) return state
       return { ...state, phase: "playing", videoReady: true }
@@ -270,7 +295,7 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         : { ...cleared, phase: "poster" }
     }
 
-    case "MAX_DWELL_ELAPSED":
+    case "MAX_DWELL_ELAPSED": {
       // Max dwell guards stuck slides; a playing video ends via PLAY_TO_END.
       if (state.phase === "playing") return state
       if (state.suspended !== null && state.slides.length > 1) {
@@ -278,7 +303,14 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         // RESUME to execute (AE5) so the stuck slide doesn't dwell needlessly.
         return state.pendingSkip ? state : { ...state, pendingSkip: true }
       }
-      return advance(state)
+      const advanced = advance(state)
+      // A hold that survived a full max-dwell means the scroll settle was
+      // lost — force-release it so the deferred pause/swap machinery runs.
+      if (advanced.transitionFromId !== null) {
+        return { ...advanced, transitionFromId: null }
+      }
+      return advanced
+    }
 
     case "SUSPEND":
       return suspend(state, event.reason)
