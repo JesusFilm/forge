@@ -1,5 +1,8 @@
+import { memo } from "react"
+
 import { type Message, type ReplyFailureReason } from "@/lib/conversations"
 
+import { AssistantMarkdown } from "./assistant-markdown"
 import { SourcesList } from "./sources-list"
 
 type MessageListProps = {
@@ -99,7 +102,9 @@ function GroundedBadge({
 // One assistant turn. Layout order: answer text → metadata row (grounded badge +
 // engine marker) → sources. A streaming turn (pre/mid first token) shows the
 // pulse and lives in an aria-live region so appended text is announced.
-function AssistantTurn({
+// memo: finalized turns keep their message reference across sibling-token
+// re-renders (updateMessage maps in place), so they skip the markdown re-parse.
+const AssistantTurn = memo(function AssistantTurn({
   message,
   streaming,
 }: {
@@ -113,13 +118,9 @@ function AssistantTurn({
         data-pending="true"
         aria-live="polite"
         aria-atomic="false"
-        className="max-w-[560px] text-lg leading-relaxed whitespace-pre-wrap text-linen"
+        className="max-w-[560px] text-lg leading-relaxed text-linen"
       >
-        <span data-message-content>{message.content}</span>
-        <span
-          aria-hidden="true"
-          className="ml-0.5 inline-block h-[1em] w-0.5 translate-y-1 bg-lamplight [animation:vigil-pulse_2s_var(--ease-vigil)_infinite]"
-        />
+        <AssistantMarkdown content={message.content} streaming />
         <span className="sr-only">Replying</span>
       </li>
     )
@@ -128,9 +129,9 @@ function AssistantTurn({
   return (
     <li
       data-message-id={message.id}
-      className="max-w-[560px] text-lg leading-relaxed whitespace-pre-wrap text-linen"
+      className="max-w-[560px] text-lg leading-relaxed text-linen"
     >
-      <span data-message-content>{message.content}</span>
+      <AssistantMarkdown content={message.content} />
       {message.error ? (
         <div className="mt-2 flex flex-col gap-1">
           <p role="alert" className="text-sm text-vesper">
@@ -156,12 +157,13 @@ function AssistantTurn({
       )}
     </li>
   )
-}
+})
 
 /**
- * Renders the conversation. User turns sit in an Embersoot bubble; assistant
- * turns are plain Linen text with their grounding/source/engine metadata. The
- * in-flight assistant turn (matched by `streamingMessageId`) carries the
+ * Renders the conversation. User turns sit in an Embersoot bubble as
+ * React-escaped plain text; assistant turns render hardened markdown
+ * (AssistantMarkdown, feat-268) with their grounding/source/engine metadata.
+ * The in-flight assistant turn (matched by `streamingMessageId`) carries the
  * Lamplight pulse cursor.
  */
 export function MessageList({
