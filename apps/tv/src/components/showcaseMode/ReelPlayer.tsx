@@ -1,12 +1,12 @@
 /**
- * The reel's playback surface (R10/R11/R18): ONE long-lived player whose source is
- * swapped with replaceAsync behind a poster covering every swap and seek. A second
- * player is expo-video's AVPlayerViewController leak trigger (KTD-2/KTD-3).
+ * The reel's playback surface (R10/R11/R18). TWO long-lived players: ordinary swaps
+ * replaceAsync on the live one behind the poster; a hop preloads the next dub on the
+ * standby and flips views at the boundary, so the seam stays on live frames (KTD-5).
  */
 
 import { Image } from "expo-image"
 import { useFocusEffect } from "expo-router"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { useVideoPlayer, VideoView, type VideoPlayer } from "expo-video"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Animated, AppState, StyleSheet, View } from "react-native"
 
@@ -18,6 +18,14 @@ import {
   shouldDriveFadeOut,
   volumeAtElapsed,
 } from "../../lib/showcaseMode/audioFade"
+import {
+  HANDOFF_CROSSFADE_MS,
+  alignmentSeekTarget,
+  preloadPollVerdict,
+  resolveHopSwapMode,
+  sameHopStream,
+  type StandbyPreloadPhase,
+} from "../../lib/showcaseMode/hopHandoff"
 import { OVERLAY_CROSSFADE_MS } from "../../lib/showcaseMode/reelState"
 import { shouldCountReelRebuffer } from "../../lib/showcaseMode/showcaseTelemetry"
 import type { ShowcaseStream } from "../../lib/showcaseMode/types"
@@ -43,26 +51,27 @@ const POSTER_FADE_MS = 500
 const POSTER_COVER_DELAY_MS = OVERLAY_CROSSFADE_MS + 80
 const SWAP_COVER_DELAY_MS = POSTER_COVER_DELAY_MS + 100
 
-// KTD-5: a hop is the SAME footage in a different dub, so its seam is a brief dim over
-// the LIVE frame — never the poster (that would read as a cut). Shorter than the poster
-// hold, and a DIM not a blackout: the frame stays legible so the dip reads as a
-// momentary darkening synced to the audio crossfade, never a black gap (R10).
-const HOP_DIP_FADE_MS = 200
-const HOP_DIP_MAX_OPACITY = 0.5
-
 /** Matches the player's own 1s timeUpdate cadence — no point sampling finer. */
 const WATCHDOG_TICK_MS = 1000
+
+/** A paused standby emits no timeUpdate, so its preload progress is polled. */
+const PRELOAD_POLL_MS = 250
 
 export type ReelPlayerProps = {
   /** The shell's resolved stream (KTD-4). Null until this excerpt's choice lands. */
   stream: ShowcaseStream | null
+  /**
+   * KTD-5: the NEXT hop's stream, published while the current one plays so the
+   * standby player can preload it. Null outside hop mode and past the last hop.
+   */
+  preloadStream: ShowcaseStream | null
   posterUrl: string | null
   /** KTD-9's source-swap guard token; bumps on every new excerpt target. */
   excerptToken: number
   /**
    * KTD-5: the swap into this stream is a hop continuation (same footage, next dub).
-   * Masks with the dip over the live frame instead of the poster. False for the entry
-   * into the centerpiece and the exit past it — those are ordinary content cuts.
+   * Preloaded, it flips seamlessly; missed, it masks with the poster. False for the
+   * entry into the centerpiece and the exit past it — those are ordinary cuts.
    */
   hopSwap: boolean
   /**
@@ -83,6 +92,7 @@ export type ReelPlayerProps = {
 
 export function ReelPlayer({
   stream,
+  preloadStream,
   posterUrl,
   excerptToken,
   hopSwap,
@@ -91,9 +101,13 @@ export function ReelPlayer({
   onEnded,
   onFailed,
 }: ReelPlayerProps) {
-  // CMS-sourced URL: re-validate before it reaches the decoder.
+  // CMS-sourced URLs: re-validate before they reach a decoder.
   const validStream =
     stream != null && validateStreamingUrl(stream.hls) ? stream : null
+  const validPreload =
+    preloadStream != null && validateStreamingUrl(preloadStream.hls)
+      ? preloadStream
+      : null
 
   // Dropping it silently starved R16's ladder: the reducer only degrades on a
   // reported failure, so an unplayable URL parked the reel on its poster forever.
@@ -134,14 +148,50 @@ export function ReelPlayer({
   const [videoReady, setVideoReady] = useState(false)
   const [confirmedToken, setConfirmedToken] = useState<number | null>(null)
 
+  // Created ONCE each with a null source: a changing useVideoPlayer source recreates
+  // the native player, which is the KTD-2 leak. Two fixed instances, views bound
+  // permanently to their own player — roles (live/standby) alternate per hop instead.
+  const playerA = useVideoPlayer(null, (p) => {
+    p.muted = false // R10: the reel is the audio.
+    p.loop = false // KTD-2: native loop re-inits HLS; the reel advances manually.
+    p.timeUpdateEventInterval = 1
+  })
+  const playerB = useVideoPlayer(null, (p) => {
+    p.muted = false
+    p.loop = false
+    p.timeUpdateEventInterval = 1
+  })
+  const [liveKey, setLiveKey] = useState<"a" | "b">("a")
+  const live = liveKey === "a" ? playerA : playerB
+  const standby = liveKey === "a" ? playerB : playerA
+  // For timers that outlive a flip (poster reveal, fades): target the CURRENT live.
+  const liveRef = useRef(live)
+  liveRef.current = live
+
+  // The standby preload machine. The ref is the machine; standbyReady mirrors a
+  // finished preload into render so the gate and swap effect share one decision.
+  const standbyLoadRef = useRef<{
+    stream: ShowcaseStream
+    phase: StandbyPreloadPhase
+  } | null>(null)
+  // Whether the standby-ROLE player still holds a loaded item (a decode slot).
+  const standbyHoldsItemRef = useRef(false)
+  const [standbyReady, setStandbyReady] = useState<ShowcaseStream | null>(null)
+
+  // Seamless only when the standby finished preloading exactly this target; the
+  // reservation is kept through confirmation so the poster cannot pop mid-flip.
+  const hopMode = resolveHopSwapMode({
+    hopSwap,
+    targetStream: validStream,
+    standbyReadyStream: standbyReady,
+  })
+
   const {
     shouldPlay,
     shouldMountVideo,
     posterVisible,
     posterCrossfade,
     playIntended,
-    swapInFlight,
-    hopDipActive,
   } = computeReelPlayerGate({
     screenFocused,
     appForeground,
@@ -150,17 +200,7 @@ export function ReelPlayer({
     videoReady,
     excerptToken,
     confirmedToken,
-    hopSwap,
-  })
-
-  // Created ONCE with a null source: a changing useVideoPlayer source releases and
-  // recreates the native player. Every excerpt swap goes through replaceAsync on
-  // this instance, which is what avoids the leak (KTD-2).
-  const player = useVideoPlayer(null, (p) => {
-    p.muted = false // R10: the reel is the audio.
-    p.loop = false // KTD-2: native loop re-inits HLS; the reel advances manually.
-    // Drives the bounded-window end (R6) and U7's QoE position sampling.
-    p.timeUpdateEventInterval = 1
+    seamlessHopSwap: hopMode === "flip",
   })
 
   // Native emitters fire outside React's commit, so everything they read is a ref.
@@ -223,34 +263,35 @@ export function ReelPlayer({
     }
   }, [])
 
-  const setVolume = useCallback(
-    (value: number) => {
-      try {
-        player.volume = value
-      } catch {
-        // Native player already released; benign.
-      }
-    },
-    [player],
-  )
+  // Explicit target: with two players, "the" volume is whichever role owns the seam.
+  const setVolumeOn = useCallback((target: VideoPlayer, value: number) => {
+    try {
+      target.volume = value
+    } catch {
+      // Native player already released; benign.
+    }
+  }, [])
 
   const fadeVolumeTo = useCallback(
-    (to: number, durationMs: number) => {
+    (target: VideoPlayer, to: number, durationMs: number) => {
       stopFade()
       let from = to
       try {
-        from = player.volume
+        from = target.volume
       } catch {
         return // Released mid-transition; nothing to ramp.
       }
       const startedAt = Date.now()
       fadeTimerRef.current = setInterval(() => {
         const elapsedMs = Date.now() - startedAt
-        setVolume(volumeAtElapsed({ from, to, elapsedMs, durationMs }))
+        setVolumeOn(
+          target,
+          volumeAtElapsed({ from, to, elapsedMs, durationMs }),
+        )
         if (elapsedMs >= durationMs) stopFade()
       }, AUDIO_FADE_TICK_MS)
     },
-    [player, stopFade, setVolume],
+    [stopFade, setVolumeOn],
   )
 
   // Driven off MEDIA time, not the reveal's wall-clock fade-in: re-based on every
@@ -266,16 +307,133 @@ export function ReelPlayer({
         const volume = fadeOutVolumeAt({
           remainingSeconds: endSeconds - projected,
         })
-        setVolume(volume)
+        setVolumeOn(liveRef.current, volume)
         if (volume <= 0) stopFade()
       }
       tick()
       fadeTimerRef.current = setInterval(tick, AUDIO_FADE_TICK_MS)
     },
-    [stopFade, setVolume],
+    [stopFade, setVolumeOn],
   )
 
   useEffect(() => stopFade, [stopFade])
+
+  // ── Standby preload (KTD-5) ───────────────────────────────────────
+
+  useEffect(() => {
+    // A reservation for the imminent/settling boundary is not ours to disturb; it is
+    // cleared on confirmation below, and this effect re-runs then.
+    if (standbyReady != null && sameHopStream(standbyReady, validStream)) return
+    if (validPreload == null) {
+      standbyLoadRef.current = null
+      if (standbyReady != null) setStandbyReady(null)
+      // Out of hop mode the standby drops its item — a loaded paused player still
+      // owns a scarce tvOS decode slot (R18's law, applied to the second player).
+      if (standbyHoldsItemRef.current) {
+        standbyHoldsItemRef.current = false
+        void standby.replaceAsync(null).catch(() => {})
+      }
+      return
+    }
+    const current = standbyLoadRef.current
+    if (
+      current != null &&
+      current.phase !== "failed" &&
+      sameHopStream(current.stream, validPreload)
+    ) {
+      return
+    }
+    const entry: { stream: ShowcaseStream; phase: StandbyPreloadPhase } = {
+      stream: validPreload,
+      phase: "loading",
+    }
+    standbyLoadRef.current = entry
+    if (standbyReady != null) setStandbyReady(null)
+    standbyHoldsItemRef.current = true
+    let cancelled = false
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    const startedAt = Date.now()
+    const startSeconds = validPreload.window.startSeconds
+    void (async () => {
+      try {
+        await standby.replaceAsync(validPreload.hls)
+        if (cancelled || standbyLoadRef.current !== entry) return
+        try {
+          standby.pause()
+          standby.volume = 0
+          // Zero-tolerance seek to the boundary; the poll below heals the tvOS
+          // dropped-seek case (see needsWindowStartSeek) that a one-shot write hits.
+          standby.currentTime = startSeconds
+        } catch {
+          // Released mid-load; the poll's deadline settles this entry.
+        }
+        pollTimer = setInterval(() => {
+          if (cancelled || standbyLoadRef.current !== entry) {
+            if (pollTimer != null) clearInterval(pollTimer)
+            return
+          }
+          let currentTime: number | null = null
+          let bufferedPosition: number | null = null
+          try {
+            currentTime = standby.currentTime
+            bufferedPosition = standby.bufferedPosition
+          } catch {
+            // Released; the deadline will fail the entry.
+          }
+          const verdict = preloadPollVerdict({
+            currentTime,
+            startSeconds,
+            bufferedPosition,
+            elapsedMs: Date.now() - startedAt,
+          })
+          if (verdict === "wait") return
+          if (verdict === "reseek") {
+            try {
+              standby.currentTime = startSeconds
+            } catch {
+              // Released; the deadline will fail the entry.
+            }
+            return
+          }
+          if (pollTimer != null) clearInterval(pollTimer)
+          if (verdict === "ready") {
+            entry.phase = "ready"
+            setStandbyReady(entry.stream)
+          } else {
+            entry.phase = "failed"
+            datadogLog.warn("showcase_hop_preload_failed", {
+              content_id: entry.stream.muxPlaybackId ?? null,
+            })
+          }
+        }, PRELOAD_POLL_MS)
+      } catch {
+        if (cancelled || standbyLoadRef.current !== entry) return
+        entry.phase = "failed"
+        datadogLog.warn("showcase_hop_preload_failed", {
+          content_id: entry.stream.muxPlaybackId ?? null,
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+      if (pollTimer != null) clearInterval(pollTimer)
+      // A torn-down in-flight load restarts clean on the setup re-run (StrictMode).
+      if (standbyLoadRef.current === entry && entry.phase === "loading") {
+        standbyLoadRef.current = null
+      }
+    }
+  }, [validPreload, validStream, standby, standbyReady])
+
+  // The reservation held the gate seamless through the flip; once this token is
+  // confirmed the boundary is over and the standby is free for the next preload.
+  useEffect(() => {
+    if (confirmedToken !== excerptToken) return
+    if (standbyReady != null && sameHopStream(standbyReady, validStream)) {
+      setStandbyReady(null)
+    }
+  }, [confirmedToken, excerptToken, standbyReady, validStream])
+
+  // ── Source swap / hop flip ────────────────────────────────────────
 
   useEffect(() => {
     // Keyed on the stream object, not the token: the shell holds the outgoing
@@ -298,6 +456,56 @@ export function ReelPlayer({
     targetTokenRef.current = token
     const swapId = ++swapIdRef.current
 
+    if (hopSwap && target != null) {
+      datadogLog.info("showcase_hop_handoff", {
+        content_id: target.muxPlaybackId ?? null,
+        mode: hopMode === "flip" ? "flip" : "fallback",
+      })
+    }
+
+    if (hopMode === "flip" && target != null) {
+      // Seamless boundary: the standby already holds this dub, seeked and decoded.
+      // Synchronous — the flip must not leave a frame where neither player owns the
+      // screen. Native events queue behind this task, so the post-flip listeners
+      // attach before the new live's playingChange can arrive.
+      let outgoingTime: number | null = null
+      try {
+        outgoingTime = live.currentTime
+        live.pause()
+      } catch {
+        // Released; the flip proceeds from the preloaded boundary.
+      }
+      stopFade()
+      loadedStreamRef.current = target
+      loadedTokenRef.current = token
+      standbyLoadRef.current = null
+      // The retired live keeps its item until the next preload replaces it.
+      standbyHoldsItemRef.current = true
+      let standbyTime: number | null = null
+      try {
+        standbyTime = standby.currentTime
+      } catch {
+        // Released; alignment falls back to the preloaded boundary.
+      }
+      const alignTo = alignmentSeekTarget({
+        outgoingTime,
+        incomingWindow: target.window,
+        standbyTime,
+      })
+      try {
+        if (alignTo != null) standby.currentTime = alignTo
+        standby.volume = 0
+        if (shouldPlayRef.current) standby.play()
+      } catch {
+        // Released; the watchdog owns recovery for a flip that never starts.
+      }
+      if (shouldPlayRef.current) {
+        fadeVolumeTo(standby, 1, AUDIO_FADE_IN_MS)
+      }
+      setLiveKey((key) => (key === "a" ? "b" : "a"))
+      return
+    }
+
     void (async () => {
       try {
         // Covered: wait out the overlay dissolve + poster cover before releasing the
@@ -308,7 +516,7 @@ export function ReelPlayer({
           )
           if (swapIdRef.current !== swapId) return
         }
-        await player.replaceAsync(target?.hls ?? null)
+        await live.replaceAsync(target?.hls ?? null)
         // A newer swap already owns the player; this one's seek/play would fight it.
         if (swapIdRef.current !== swapId) return
         loadedStreamRef.current = target
@@ -316,31 +524,37 @@ export function ReelPlayer({
         if (target == null) return
         // R6's bounded window: long-form starts mid-video, the seek under the poster.
         if (target.window.startSeconds > 0) {
-          player.currentTime = target.window.startSeconds
+          live.currentTime = target.window.startSeconds
         }
         // Silent BEFORE play: the poster still has a hold and a fade to run, and
         // starting at full volume is what made the incoming excerpt pop in early.
         stopFade()
-        setVolume(0)
+        setVolumeOn(live, 0)
         // Re-read the gate at execution time. The app can background across the
         // load, and a pre-await snapshot would force audio out of a hidden screen.
-        if (shouldPlayRef.current) player.play()
+        if (shouldPlayRef.current) live.play()
       } catch {
         if (swapIdRef.current === swapId) onFailed(token)
       }
     })()
   }, [
-    player,
+    live,
+    standby,
     validStream,
     excerptToken,
+    hopSwap,
+    hopMode,
     onFailed,
     finalizeQoe,
     stopFade,
-    setVolume,
+    setVolumeOn,
+    fadeVolumeTo,
   ])
 
+  // ── Live-player listeners ─────────────────────────────────────────
+
   useEffect(() => {
-    const sub = player.addListener("statusChange", ({ status, error }) => {
+    const sub = live.addListener("statusChange", ({ status, error }) => {
       // Latch through `idle`: every swap blips idle, and unmounting there forces a
       // full HLS re-init — the long black pause KTD-2 exists to avoid.
       if (status === "readyToPlay") setVideoReady(true)
@@ -373,10 +587,10 @@ export function ReelPlayer({
       }
     })
     return () => sub.remove()
-  }, [player, onFailed])
+  }, [live, onFailed])
 
   useEffect(() => {
-    const sub = player.addListener("playingChange", ({ isPlaying }) => {
+    const sub = live.addListener("playingChange", ({ isPlaying }) => {
       if (!isPlaying) return
       const token = loadedTokenRef.current
       confirmedTokenRef.current = token
@@ -398,17 +612,17 @@ export function ReelPlayer({
       onPlaying(token)
     })
     return () => sub.remove()
-  }, [player, onPlaying])
+  }, [live, onPlaying])
 
   useEffect(() => {
-    const sub = player.addListener("playToEnd", () => {
+    const sub = live.addListener("playToEnd", () => {
       onEnded(loadedTokenRef.current)
     })
     return () => sub.remove()
-  }, [player, onEnded])
+  }, [live, onEnded])
 
   useEffect(() => {
-    const sub = player.addListener("timeUpdate", ({ currentTime }) => {
+    const sub = live.addListener("timeUpdate", ({ currentTime }) => {
       // The watchdog's heartbeat: position MOVED, not merely an event arrived — a
       // frozen player still emits on the interval, reporting the same currentTime.
       const positionMoved = currentTime !== lastPositionRef.current
@@ -432,7 +646,7 @@ export function ReelPlayer({
         })
       ) {
         try {
-          player.currentTime = loaded.window.startSeconds
+          live.currentTime = loaded.window.startSeconds
         } catch {
           // Native player already released; the next swap owns recovery.
         }
@@ -459,16 +673,16 @@ export function ReelPlayer({
       // Silence it now — the poster hides the picture, but this excerpt's audio
       // would otherwise run on underneath until the next stream resolves.
       stopFade()
-      setVolume(0)
+      setVolumeOn(live, 0)
       try {
-        player.pause()
+        live.pause()
       } catch {
         // Native player already released; benign.
       }
       onEnded(loadedTokenRef.current)
     })
     return () => sub.remove()
-  }, [player, onEnded, driveFadeOut, stopFade, setVolume])
+  }, [live, onEnded, driveFadeOut, stopFade, setVolumeOn])
 
   useEffect(() => {
     shouldPlayRef.current = shouldPlay
@@ -476,22 +690,27 @@ export function ReelPlayer({
       // Only the reel's CURRENT source may be audible. After the reel advances, the
       // outgoing source stays loaded until its replacement resolves, so resuming it
       // here would play the previous excerpt under the poster; the swap plays it.
-      if (shouldPlay && loadedTokenRef.current === excerptToken) player.play()
-      else if (!shouldPlay) player.pause()
+      if (shouldPlay && loadedTokenRef.current === excerptToken) live.play()
+      else if (!shouldPlay) live.pause()
     } catch {
       // Native player already released; benign.
     }
-  }, [player, shouldPlay, excerptToken])
+  }, [live, shouldPlay, excerptToken])
 
   useEffect(() => {
     return () => {
       try {
-        player.pause()
+        playerA.pause()
+      } catch {
+        // Native player already released; benign.
+      }
+      try {
+        playerB.pause()
       } catch {
         // Native player already released; benign.
       }
     }
-  }, [player])
+  }, [playerA, playerB])
 
   // Every excerpt but the last finalizes on its swap; this catches that last one plus
   // every exit, nav-away and background teardown. Without it the reel's abandonment
@@ -590,10 +809,10 @@ export function ReelPlayer({
     anim.start()
     // The audio rides the reveal, not the play() that precedes it by the whole hold.
     // Volume is a JS property, so it cannot share the native-driven opacity value —
-    // it mirrors that sequence's timing instead.
+    // it mirrors that sequence's timing instead. liveRef: a flip must not retime it.
     fadeInDelayRef.current = setTimeout(() => {
       fadeInDelayRef.current = null
-      fadeVolumeTo(1, AUDIO_FADE_IN_MS)
+      fadeVolumeTo(liveRef.current, 1, AUDIO_FADE_IN_MS)
     }, POSTER_HOLD_MS)
     const scheduled = fadeInDelayRef.current
     return () => {
@@ -607,69 +826,60 @@ export function ReelPlayer({
     }
   }, [posterVisible, posterCrossfade, posterOpacity, fadeVolumeTo])
 
-  // KTD-5's hop seam. The dip fades IN over the live frame as a hop swap starts and OUT
-  // once the next dub confirms; the audio rides the fade-out (the swap muted the player).
-  const hopDipOpacity = useRef(new Animated.Value(0)).current
-  // Body-mutated, not cleanup-mutated: setup re-derives it from hopDipActive each run, so
-  // a StrictMode remount can't poison it. Gates the audio reveal to a real dip→confirm.
-  const hopDipWasActiveRef = useRef(false)
-  // Render mirror so the reveal branch can tell a genuine confirmation apart from a
-  // lifecycle drop (background/nav-away/plan-exit) without widening the effect's deps.
-  const hopRevealEligibleRef = useRef(false)
-  hopRevealEligibleRef.current = !swapInFlight && shouldMountVideo
+  // KTD-5's seam: view B rides above view A, and a flip animates only B's opacity —
+  // fixed z-order, so neither platform ever reorders two live video surfaces.
+  const viewBOpacity = useRef(new Animated.Value(0)).current
+  const liveKeyShownRef = useRef<"a" | "b">("a")
   useEffect(() => {
-    if (hopDipActive) {
-      hopDipWasActiveRef.current = true
-      const dipIn = Animated.timing(hopDipOpacity, {
-        toValue: HOP_DIP_MAX_OPACITY,
-        duration: HOP_DIP_FADE_MS,
-        useNativeDriver: true,
-      })
-      dipIn.start()
-      return () => dipIn.stop()
-    }
-    // Only reveal after a dip actually ran — never on mount or an ordinary swap, where
-    // the poster path already owns the audio fade-in.
-    if (!hopDipWasActiveRef.current) return
-    hopDipWasActiveRef.current = false
-    const dipOut = Animated.timing(hopDipOpacity, {
-      toValue: 0,
-      duration: HOP_DIP_FADE_MS,
+    if (liveKeyShownRef.current === liveKey) return
+    liveKeyShownRef.current = liveKey
+    const fade = Animated.timing(viewBOpacity, {
+      toValue: liveKey === "b" ? 1 : 0,
+      duration: HANDOFF_CROSSFADE_MS,
       useNativeDriver: true,
     })
-    dipOut.start()
-    // Reveal ONLY on a genuine confirmation. A lifecycle drop (backgrounding, nav-away,
-    // exhausted plan) would otherwise ramp a muted mid-swap player back to full volume,
-    // and the resume would play un-dipped audio; the poster path owns those seams.
-    if (hopRevealEligibleRef.current) fadeVolumeTo(1, AUDIO_FADE_IN_MS)
-    return () => dipOut.stop()
-  }, [hopDipActive, hopDipOpacity, fadeVolumeTo])
+    fade.start()
+    return () => fade.stop()
+  }, [liveKey, viewBOpacity])
+
+  // The standby's view stays mounted through the whole hop plan: its player decodes
+  // the preloaded boundary frame under the live view, which is what makes the flip
+  // instant. Outside hop mode only the live view holds a surface (R18).
+  const hopEngaged = validPreload != null || hopSwap || standbyReady != null
+  const mountA = shouldMountVideo && (liveKey === "a" || hopEngaged)
+  const mountB = shouldMountVideo && (liveKey === "b" || hopEngaged)
 
   return (
-    // No pointerEvents="none" anywhere above the VideoView: on a fullscreen surface
-    // that blacks out the AVPlayerLayer. focusable={false} on the view is the fix.
+    // No pointerEvents="none" anywhere above the VideoViews: on a fullscreen surface
+    // that blacks out the AVPlayerLayer. focusable={false} on the views is the fix.
     <View style={styles.container} collapsable={false}>
-      {shouldMountVideo ? (
+      {mountA ? (
         <VideoView
-          player={player}
+          player={playerA}
           style={StyleSheet.absoluteFill}
           nativeControls={false}
           contentFit="cover"
           focusable={false}
+          // Android: SurfaceViews neither blend nor stack predictably; the flip's
+          // crossfade and the poster overlay both need TextureView compositing.
+          surfaceType="textureView"
         />
       ) : null}
-
-      {/* KTD-5's hop seam: a brief dim over the LIVE frame, below the poster so the
-          poster still owns lifecycle/background gaps. Zero opacity except mid-hop-swap. */}
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          styles.hopDip,
-          { opacity: hopDipOpacity },
-        ]}
-        pointerEvents="none"
-        collapsable={false}
-      />
+      {mountB ? (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: viewBOpacity }]}
+          collapsable={false}
+        >
+          <VideoView
+            player={playerB}
+            style={StyleSheet.absoluteFill}
+            nativeControls={false}
+            contentFit="cover"
+            focusable={false}
+            surfaceType="textureView"
+          />
+        </Animated.View>
+      ) : null}
 
       {/* Above the video (KTD-3) and covering every swap, seek and unmount gap —
           the failure window reuses this same layer, never a spinner or blank. */}
@@ -699,9 +909,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fallbackBg: {
-    backgroundColor: WATCH_THEME.below,
-  },
-  hopDip: {
     backgroundColor: WATCH_THEME.below,
   },
 })

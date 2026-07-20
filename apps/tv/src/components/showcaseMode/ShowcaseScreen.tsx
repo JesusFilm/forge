@@ -7,7 +7,14 @@
 import { Image } from "expo-image"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useLocalSearchParams, useRouter } from "expo-router"
-import { useCallback, useEffect, useReducer, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react"
 import { AppState, StyleSheet, View } from "react-native"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
@@ -34,7 +41,10 @@ import {
   type ReelEvent,
   type ReelState,
 } from "../../lib/showcaseMode/reelState"
-import { buildHopSchedule } from "../../lib/showcaseMode/hopSchedule"
+import {
+  buildHopSchedule,
+  hopToStream,
+} from "../../lib/showcaseMode/hopSchedule"
 import {
   buildFallbackChapters,
   parseShowcaseExperience,
@@ -423,15 +433,17 @@ export function ShowcaseScreen() {
     if (hop == null) return
     const current = hop.hops[hop.index]
     if (current == null) return
-    setStream({
-      hls: current.hls,
-      languageSlug: current.languageSlug,
-      languageName: current.languageName,
-      muxPlaybackId: current.muxPlaybackId,
-      window: current.window,
-      claimsLanguage: true,
-    })
+    setStream(hopToStream(current))
     setLiveLanguageCount(hop.hops.length)
+  }, [state.hop])
+
+  // KTD-5: the NEXT hop, published alongside the current one so the reel's standby
+  // player preloads it — the seamless boundary is armed a whole segment ahead.
+  const preloadStream = useMemo(() => {
+    const hop = state.hop
+    if (hop == null) return null
+    const next = hop.hops[hop.index + 1]
+    return next == null ? null : hopToStream(next)
   }, [state.hop])
 
   // R17: warm the next excerpt's stream choice AND its poster while the current one
@@ -543,6 +555,7 @@ export function ShowcaseScreen() {
     <View style={styles.screen}>
       <ReelPlayer
         stream={stream}
+        preloadStream={preloadStream}
         posterUrl={excerpt?.posterUrl ?? null}
         excerptToken={state.excerptToken}
         // KTD-5: a hop past the opener is a same-footage continuation — mask its swap

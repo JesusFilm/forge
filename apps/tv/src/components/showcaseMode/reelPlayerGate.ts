@@ -18,11 +18,11 @@ export type ReelPlayerGateInputs = {
   /** The excerpt whose playback the player confirmed; null before the first frame. */
   confirmedToken: number | null
   /**
-   * KTD-5: the swap INTO this token is a hop continuation (same footage, next dub), not
-   * a content cut. True only for hop indices past the opener — the entry into the
-   * centerpiece and the exit past it are ordinary poster-masked seams.
+   * KTD-5: the swap INTO this token is a hop the STANDBY player preloaded, so the
+   * boundary is a live view flip — the poster stands down. A preload-miss hop and
+   * every ordinary content cut are false: the poster owns those seams.
    */
-  hopSwap: boolean
+  seamlessHopSwap: boolean
 }
 
 export type ReelPlayerGate = {
@@ -49,12 +49,6 @@ export type ReelPlayerGate = {
   playIntended: boolean
   /** U7's `isSourceSwapping`: an excerpt/hop swap is not a rebuffer (KTD-9). */
   swapInFlight: boolean
-  /**
-   * KTD-5: a hop swap is masked by a brief dip over the LIVE video surface, never the
-   * poster (same footage — a poster would read as a cut). True only while a hop swap is
-   * in flight AND the video is mounted; a backgrounded hop falls back to the poster.
-   */
-  hopDipActive: boolean
 }
 
 /**
@@ -70,16 +64,16 @@ export function computeReelPlayerGate({
   videoReady,
   excerptToken,
   confirmedToken,
-  hopSwap,
+  seamlessHopSwap,
 }: ReelPlayerGateInputs): ReelPlayerGate {
   const shouldMountVideo =
     hasStream && videoReady && screenFocused && appForeground
   // Identity, not staleness: a late confirmation for an earlier excerpt leaves the
   // poster up, because the source on screen is not the one the reel is asking for.
   const swapInFlight = confirmedToken !== excerptToken
-  // A hop swap over a live surface is masked by the dip, so the poster stands down for
-  // it; a hop swap over an UNMOUNTED video has no frame to hold and falls to the poster.
-  const maskWithPoster = swapInFlight && !hopSwap
+  // A preloaded flip keeps live frames on screen for the whole swap, so the poster
+  // stands down for it; every other swap has a real load gap the poster must cover.
+  const maskWithPoster = swapInFlight && !seamlessHopSwap
   return {
     shouldPlay: shouldMountVideo && active,
     shouldMountVideo,
@@ -93,8 +87,6 @@ export function computeReelPlayerGate({
     // flash lands on that same frame mid-dissolve, which is what we are showing.
     posterCrossfade: maskWithPoster && shouldMountVideo,
     swapInFlight,
-    // Same-footage seam: hold the live frame and dip over it, never the poster.
-    hopDipActive: hopSwap && swapInFlight && shouldMountVideo,
   }
 }
 

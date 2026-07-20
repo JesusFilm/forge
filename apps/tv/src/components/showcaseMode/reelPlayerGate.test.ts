@@ -16,8 +16,8 @@ const playing = {
   videoReady: true,
   excerptToken: 7,
   confirmedToken: 7,
-  // Ordinary excerpt: a swap masks with the poster, never the hop dip.
-  hopSwap: false,
+  // Ordinary excerpt: a swap masks with the poster; only a preloaded flip stands it down.
+  seamlessHopSwap: false,
 }
 
 // The watchdog arms on playIntended. If this ever collapsed into shouldPlay, the load
@@ -53,7 +53,6 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
       posterCrossfade: true,
       playIntended: true,
       swapInFlight: true,
-      hopDipActive: false,
     })
   })
 
@@ -139,7 +138,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       posterCrossfade: false,
       playIntended: true,
       swapInFlight: false,
-      hopDipActive: false,
     })
   })
 
@@ -152,7 +150,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         posterCrossfade: false,
         playIntended: false,
         swapInFlight: false,
-        hopDipActive: false,
       },
     )
   })
@@ -166,7 +163,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         posterCrossfade: false,
         playIntended: false,
         swapInFlight: false,
-        hopDipActive: false,
       },
     )
   })
@@ -185,7 +181,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       posterCrossfade: false,
       playIntended: false,
       swapInFlight: false,
-      hopDipActive: false,
     })
   })
 
@@ -208,7 +203,6 @@ describe("computeReelPlayerGate — silent phases (R8/R10)", () => {
       posterCrossfade: false,
       playIntended: false,
       swapInFlight: false,
-      hopDipActive: false,
     })
   })
 
@@ -265,64 +259,58 @@ describe("AppState composition — the teardown gate (tvOS)", () => {
   })
 })
 
-// A hop is the SAME footage in a different dub. Covering it with the excerpt's static
-// poster would read as a cut; instead the live video surface stays visible and a brief
-// dip masks the swap (R10). The poster stays down; the dip takes over.
+// A hop is the SAME footage in a different dub, and a preloaded flip keeps live
+// frames on screen through the whole boundary — so the poster stands down for it.
+// A preload MISS has a real load gap, and the poster masks it like any content cut.
 describe("computeReelPlayerGate — the hop seam (KTD-5/R10)", () => {
-  // Mid-plan hop swap: the reel targets the next dub, not yet confirmed.
-  const hopSwapInFlight = { ...playing, excerptToken: 8, hopSwap: true }
+  // Mid-plan flip: the reel targets the next dub, standby preloaded, not yet confirmed.
+  const flipInFlight = { ...playing, excerptToken: 8, seamlessHopSwap: true }
 
-  it("holds the live frame — no poster — while a hop swap is in flight", () => {
-    const gate = computeReelPlayerGate(hopSwapInFlight)
+  it("holds live frames — no poster — while a preloaded flip is in flight", () => {
+    const gate = computeReelPlayerGate(flipInFlight)
     expect(gate.posterVisible).toBe(false)
     expect(gate.posterCrossfade).toBe(false)
-    expect(gate.hopDipActive).toBe(true)
     // The player keeps decoding through the swap, exactly as an ordinary swap does.
     expect(gate.shouldMountVideo).toBe(true)
     expect(gate.shouldPlay).toBe(true)
   })
 
-  it("drops the dip once the hop is confirmed — the frame is the reel's own again", () => {
-    const gate = computeReelPlayerGate({ ...playing, hopSwap: true })
+  it("stays uncovered once the flipped hop is confirmed", () => {
+    const gate = computeReelPlayerGate({ ...playing, seamlessHopSwap: true })
     expect(gate.swapInFlight).toBe(false)
-    expect(gate.hopDipActive).toBe(false)
     expect(gate.posterVisible).toBe(false)
   })
 
-  it("falls back to the poster when a hop swap coincides with an unmounted video", () => {
-    // Backgrounded mid-hop: there is no live frame to hold, so cover with the poster
-    // and never claim a dip over bare screen background.
+  it("falls back to the poster when a flip coincides with an unmounted video", () => {
+    // Backgrounded mid-hop: there is no live frame to hold, so cover with the poster.
     for (const unmounting of [
       { screenFocused: false },
       { appForeground: false },
       { videoReady: false },
     ]) {
       const gate = computeReelPlayerGate({
-        ...hopSwapInFlight,
+        ...flipInFlight,
         ...unmounting,
       })
       expect(gate.posterVisible).toBe(true)
-      expect(gate.hopDipActive).toBe(false)
     }
   })
 
-  it("keeps masking an ORDINARY excerpt swap with the poster, not the dip", () => {
-    // The entry into the centerpiece (hop 0) and the exit past it are real content
-    // cuts — hopSwap is false there, so the poster still owns those seams.
+  it("masks a preload-miss hop with the poster — seamlessHopSwap is false there", () => {
+    // The ReelPlayer only claims seamless when the standby finished preloading this
+    // exact stream (hopHandoff's resolveHopSwapMode); a miss is an ordinary cut.
     const gate = computeReelPlayerGate({ ...playing, excerptToken: 8 })
     expect(gate.posterVisible).toBe(true)
     expect(gate.posterCrossfade).toBe(true)
-    expect(gate.hopDipActive).toBe(false)
   })
 
-  it("never lifts the dip on a stale confirmation from an earlier hop", () => {
+  it("never covers on a stale confirmation while a flip is in flight", () => {
     const gate = computeReelPlayerGate({
       ...playing,
       excerptToken: 8,
       confirmedToken: 6,
-      hopSwap: true,
+      seamlessHopSwap: true,
     })
-    expect(gate.hopDipActive).toBe(true)
     expect(gate.posterVisible).toBe(false)
   })
 })
