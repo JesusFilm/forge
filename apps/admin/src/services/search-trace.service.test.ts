@@ -362,7 +362,9 @@ describe("search trace service", () => {
   it("does not throw or log raw query text when persistence fails", async () => {
     const prisma = buildPrisma()
     prisma.searchTraceAggregate.upsert.mockRejectedValueOnce(
-      new Error("database unavailable"),
+      new Error(
+        "Invalid value for argument `queryText`: raw private query is bad",
+      ),
     )
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
@@ -375,6 +377,9 @@ describe("search trace service", () => {
 
     expect(getSearchTraceHealthCounters().writeFailures).toBe(1)
     expect(warn.mock.calls.flat().join(" ")).not.toContain("raw private query")
+    expect(warn.mock.calls.flat().join(" ")).toContain(
+      "Invalid value for argument `queryText`",
+    )
   })
 
   it("returns after timeout and logs no raw query text", async () => {
