@@ -141,6 +141,28 @@ describe("search trace service", () => {
     })
   })
 
+  it("defaults raw trace retention when runtime env skips schema defaults", async () => {
+    const prisma = buildPrisma()
+    envMock.env.SEARCH_TRACE_RAW_RETENTION_DAYS = undefined as unknown as number
+
+    await expect(
+      writeSearchTrace(
+        baseTraceInput,
+        prisma as unknown as Parameters<typeof writeSearchTrace>[1],
+      ),
+    ).resolves.toEqual({
+      aggregateStored: true,
+      rawStored: true,
+      rawCaptureDisabled: false,
+    })
+
+    expect(prisma.searchTrace.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        rawExpiresAt: new Date("2026-05-30T00:00:00.180Z"),
+      }),
+    })
+  })
+
   it("redacts sensitive query text and excludes it from sampling by default", async () => {
     const prisma = buildPrisma()
     await writeSearchTrace(

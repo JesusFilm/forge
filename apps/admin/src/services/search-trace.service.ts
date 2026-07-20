@@ -127,6 +127,7 @@ const TRACE_RECORD_TIMEOUT_MS = 250
 const DEFAULT_SAMPLE_LIMIT = 50
 const MAX_SAMPLE_LIMIT = 100
 const MAX_SAMPLE_WINDOW_MS = 24 * 60 * 60 * 1000
+const DEFAULT_RAW_RETENTION_DAYS = 29
 export const SEARCH_TRACE_LLM_HIGH_IMPACT_RESULT_COUNT = 20
 
 export function classifyLatencyBucket(
@@ -318,10 +319,14 @@ function floorToHour(value: Date): Date {
   return bucket
 }
 
+function rawRetentionDays(): number {
+  const days = env.SEARCH_TRACE_RAW_RETENTION_DAYS
+  if (Number.isInteger(days) && days >= 1 && days <= 29) return days
+  return DEFAULT_RAW_RETENTION_DAYS
+}
+
 function addRetentionDays(value: Date): Date {
-  return new Date(
-    value.getTime() + env.SEARCH_TRACE_RAW_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-  )
+  return new Date(value.getTime() + rawRetentionDays() * 24 * 60 * 60 * 1000)
 }
 
 function latencyMs(input: RecordSearchTraceInput): number {
