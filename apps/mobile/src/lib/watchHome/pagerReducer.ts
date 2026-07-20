@@ -45,6 +45,13 @@ export type PagerState = {
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null
+  /**
+   * Slide that keeps hosting the live video while the scroll animation runs —
+   * leaving a PLAYING slide must not snap it back to its poster mid-slide.
+   * Set by moveTo/advance, released by the settle (SLIDE_SHOWN), SUSPEND, or
+   * SLIDES_SET; the component defers pause + swap until it clears.
+   */
+  transitionFromId: string | null
 }
 
 export type PagerEvent =
@@ -82,6 +89,7 @@ export function createInitialPagerState(
     pendingSwap: false,
     pendingSkip: false,
     suspended: null,
+    transitionFromId: null,
   }
 }
 
@@ -111,6 +119,17 @@ export function activeSlide(state: PagerState): WatchHomeSlide | null {
 
 // ── Transitions ─────────────────────────────────────────────────────────────
 
+/**
+ * Hold for the departing slide: only a revealed video needs to keep hosting
+ * the player through the animation. A mid-flight second jump departs a
+ * poster-phase slide, so the original hold survives it.
+ */
+function transitionHold(state: PagerState): string | null {
+  return state.phase === "playing"
+    ? (activeSlide(state)?.id ?? null)
+    : state.transitionFromId
+}
+
 /** User-driven jump (swipe settle or chip tap). */
 function moveTo(state: PagerState, rawIndex: number): PagerState {
   if (state.slides.length === 0) return state
@@ -125,6 +144,7 @@ function moveTo(state: PagerState, rawIndex: number): PagerState {
     pendingSwap: state.pendingSwap || state.swapInFlight,
     // Explicit navigation supersedes any deferred skip.
     pendingSkip: false,
+    transitionFromId: transitionHold(state),
   }
 }
 
@@ -139,15 +159,22 @@ function advance(state: PagerState): PagerState {
     currentIndex: wrapped ? 0 : next,
     phase: "poster",
     pendingSwap: state.pendingSwap || state.swapInFlight,
+    transitionFromId: transitionHold(state),
   }
 }
 
 function suspend(state: PagerState, reason: PagerSuspendReason): PagerState {
   const pendingSwap = state.pendingSwap || state.swapInFlight
-  if (state.suspended === reason && state.pendingSwap === pendingSwap) {
+  if (
+    state.suspended === reason &&
+    state.pendingSwap === pendingSwap &&
+    state.transitionFromId === null
+  ) {
     return state
   }
-  return { ...state, suspended: reason, pendingSwap }
+  // Release the hold: the settle event may never arrive while suspended, and
+  // suspension pauses the player anyway.
+  return { ...state, suspended: reason, pendingSwap, transitionFromId: null }
 }
 
 export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
@@ -161,10 +188,17 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
         pendingSwap: state.pendingSwap || state.swapInFlight,
         // A queue replacement is an explicit move; supersedes any deferred skip.
         pendingSkip: false,
+        // The held slide may not exist in the new queue.
+        transitionFromId: null,
       }
 
-    case "SLIDE_SHOWN":
-      return moveTo(state, event.index)
+    case "SLIDE_SHOWN": {
+      // The settle of the scroll animation: release the transition hold so the
+      // component pauses the outgoing stream and issues the deferred swap.
+      const moved = moveTo(state, event.index)
+      if (moved.transitionFromId === null) return moved
+      return { ...moved, transitionFromId: null }
+    }
 
     case "SWIPED":
       return moveTo(state, event.index)
@@ -201,6 +235,9 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       return { ...state, phase: "playing", videoReady: true }
 
     case "PLAY_TO_END":
+      // During a transition hold the event belongs to the OUTGOING stream —
+      // advancing again would leap past the incoming slide.
+      if (state.transitionFromId !== null) return state
       return activeSlide(state)?.kind === "video" ? advance(state) : state
 
     case "IMAGE_TIMER_ELAPSED":

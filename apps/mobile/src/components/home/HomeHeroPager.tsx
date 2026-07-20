@@ -187,6 +187,9 @@ export function HomeHeroPager({
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status !== "error") return
       const current = stateRef.current
+      // Mid-hold the player still carries the OUTGOING stream; its error must
+      // not skip the incoming slide (whose own swap surfaces its own errors).
+      if (current.transitionFromId != null) return
       const slide = current.slides[current.currentIndex]
       if (slide?.kind !== "video") return
       // R37: the hero is a distinct player the managed-player QoE excludes.
@@ -223,21 +226,38 @@ export function HomeHeroPager({
     return () => sub.remove()
   }, [player])
 
-  // Leaving a slide: silence the outgoing stream immediately (the incoming
-  // slide reveals via PLAY_STARTED after its own swap) and bump the slide
-  // epoch so re-entering a slide re-issues its swap.
+  // Leaving a slide: silence the outgoing stream (the incoming slide reveals
+  // via PLAY_STARTED after its own swap) and bump the slide epoch so
+  // re-entering a slide re-issues its swap. A transition hold defers the
+  // pause — the outgoing video keeps playing through the slide animation.
   const slideEpochRef = useRef(0)
   const prevActiveIdRef = useRef(activeId)
   useEffect(() => {
     if (prevActiveIdRef.current === activeId) return
     prevActiveIdRef.current = activeId
     slideEpochRef.current += 1
+    if (stateRef.current.transitionFromId != null) return
     try {
       player.pause()
     } catch {
       // Native player already released.
     }
   }, [activeId, player])
+
+  // The hold's release (settle/suspend/queue swap) is where the deferred
+  // pause lands — and what re-arms the playingChange edge the incoming
+  // slide's PLAY_STARTED reveal depends on.
+  const prevTransitionIdRef = useRef(state.transitionFromId)
+  useEffect(() => {
+    const prev = prevTransitionIdRef.current
+    prevTransitionIdRef.current = state.transitionFromId
+    if (prev == null || state.transitionFromId != null) return
+    try {
+      player.pause()
+    } catch {
+      // Native player already released.
+    }
+  }, [state.transitionFromId, player])
 
   // ── Stream resolution → serialized replaceAsync swaps ────────────────────
 
@@ -272,6 +292,10 @@ export function HomeHeroPager({
     const url = stream.streamUrl
     if (url == null) return
     if (state.swapInFlight) return
+    // Transition hold: the player is still presenting the outgoing slide —
+    // a swap now would flash the new source there mid-animation. The settle
+    // clears the hold and re-runs this effect.
+    if (state.transitionFromId != null) return
     if (state.suspended !== null) {
       // Remember the ready stream; RESUME re-issues the swap (AE6).
       dispatch({ type: "STREAM_READY" })
@@ -321,6 +345,7 @@ export function HomeHeroPager({
     state.swapInFlight,
     state.suspended,
     state.pendingSwap,
+    state.transitionFromId,
     player,
   ])
 
@@ -481,22 +506,33 @@ export function HomeHeroPager({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const renderItem = useCallback(
-    ({ item, index }: { item: WatchHomeSlide; index: number }) => (
-      <HeroPage
-        slide={item}
-        isActive={index === state.currentIndex}
-        phase={state.phase}
-        videoReady={state.videoReady}
-        player={player}
-        width={screenWidth}
-        height={pageHeight}
-        typography={typography}
-      />
-    ),
+    ({ item, index }: { item: WatchHomeSlide; index: number }) => {
+      // During a transition hold the departing slide keeps hosting the live
+      // video (poster stays hidden) while the incoming page shows its poster;
+      // otherwise the active page hosts, revealed once its stream plays.
+      const holding = state.transitionFromId != null
+      const hostsVideo = holding
+        ? item.id === state.transitionFromId
+        : index === state.currentIndex
+      const showVideo = hostsVideo && item.kind === "video" && state.videoReady
+      const posterHidden = showVideo && (holding || state.phase === "playing")
+      return (
+        <HeroPage
+          slide={item}
+          showVideo={showVideo}
+          posterHidden={posterHidden}
+          player={player}
+          width={screenWidth}
+          height={pageHeight}
+          typography={typography}
+        />
+      )
+    },
     [
       state.currentIndex,
       state.phase,
       state.videoReady,
+      state.transitionFromId,
       player,
       screenWidth,
       pageHeight,
@@ -515,7 +551,7 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -565,9 +601,13 @@ export function HomeHeroPager({
 
 type HeroPageProps = {
   slide: WatchHomeSlide
-  isActive: boolean
-  phase: "poster" | "resolving" | "playing"
-  videoReady: boolean
+  /**
+   * This page hosts the single VideoView (active page, or the departing page
+   * while a transition hold runs). Poster stays painted on top until
+   * posterHidden — the handoff rule: no black flash during replaceAsync.
+   */
+  showVideo: boolean
+  posterHidden: boolean
   player: VideoPlayer
   width: number
   height: number
@@ -579,22 +619,14 @@ const POSTER_CROSSFADE_MS = 350
 
 const HeroPage = memo(function HeroPage({
   slide,
-  isActive,
-  phase,
-  videoReady,
+  showVideo,
+  posterHidden,
   player,
   width,
   height,
   typography,
 }: HeroPageProps) {
   const posterUrl = resolveImageUrl(slide.posterUrl ?? slide.thumbnailUrl)
-  const isVideo = slide.kind === "video"
-
-  // The single VideoView mounts only on the ACTIVE page once videoReady latches;
-  // poster stays painted on top until the incoming slide plays (handoff rule —
-  // no black flash during replaceAsync).
-  const showVideo = isActive && isVideo && videoReady
-  const posterHidden = showVideo && phase === "playing"
 
   // Crossfade instead of a hard cut: fade the poster out over the playing
   // video, then unmount it. Re-arming (slide change / phase reset) restores

@@ -557,3 +557,95 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     expect(next.pendingSkip).toBe(false)
   })
 })
+
+// ── Transition hold: outgoing video keeps playing through the slide anim ────
+
+describe("transition hold (transitionFromId)", () => {
+  /** Queue on v1 with its video revealed (phase "playing"). */
+  const playingOnV1 = run(createInitialPagerState(twoVideos), {
+    type: "PLAY_STARTED",
+  })
+
+  it("starts null", () => {
+    expect(createInitialPagerState(twoVideos).transitionFromId).toBeNull()
+  })
+
+  it("leaving a PLAYING slide records it as the hold (chip tap)", () => {
+    const next = pagerReducer(playingOnV1, { type: "CHIP_TAPPED", index: 1 })
+    expect(next.currentIndex).toBe(1)
+    expect(next.transitionFromId).toBe("v1")
+  })
+
+  it("leaving a PLAYING slide records it as the hold (auto-advance)", () => {
+    const next = pagerReducer(playingOnV1, { type: "PLAY_TO_END" })
+    expect(next.currentIndex).toBe(1)
+    expect(next.transitionFromId).toBe("v1")
+  })
+
+  it("leaving a POSTER slide sets no hold (nothing was playing)", () => {
+    const next = pagerReducer(createInitialPagerState(twoVideos), {
+      type: "SWIPED",
+      index: 1,
+    })
+    expect(next.transitionFromId).toBeNull()
+  })
+
+  it("a second jump mid-animation keeps the ORIGINAL hold", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    // Incoming slide never played, so its departure must not steal the hold.
+    const doubled = pagerReducer(midFlight, { type: "SWIPED", index: 0 })
+    expect(doubled.transitionFromId).toBe("v1")
+  })
+
+  it("the scroll settle (SLIDE_SHOWN) releases the hold", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const settled = pagerReducer(midFlight, { type: "SLIDE_SHOWN", index: 1 })
+    expect(settled.currentIndex).toBe(1)
+    expect(settled.transitionFromId).toBeNull()
+  })
+
+  it("SLIDE_SHOWN with no hold on the current index is a no-op (same ref)", () => {
+    const state = createInitialPagerState(twoVideos)
+    expect(pagerReducer(state, { type: "SLIDE_SHOWN", index: 0 })).toBe(state)
+  })
+
+  it("SUSPEND releases the hold (settle may never fire while suspended)", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const suspended = pagerReducer(midFlight, {
+      type: "SUSPEND",
+      reason: "blur",
+    })
+    expect(suspended.transitionFromId).toBeNull()
+  })
+
+  it("PLAY_TO_END during a hold is the OUTGOING stream ending — no advance", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    // The outgoing video finishing mid-animation must not double-advance
+    // past the incoming slide; it just freezes on its last frame.
+    expect(pagerReducer(midFlight, { type: "PLAY_TO_END" })).toBe(midFlight)
+  })
+
+  it("SLIDES_SET releases the hold (held id may no longer exist)", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const replaced = pagerReducer(midFlight, {
+      type: "SLIDES_SET",
+      slides: [videoSlide("v3"), videoSlide("v4")],
+    })
+    expect(replaced.transitionFromId).toBeNull()
+  })
+})
