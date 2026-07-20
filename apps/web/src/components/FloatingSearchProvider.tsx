@@ -144,8 +144,6 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     useState<string | null>(null)
   const [globalLanguageErrorPathname, setGlobalLanguageErrorPathname] =
     useState<string | null>(null)
-  const [pendingPageLanguageOpen, setPendingPageLanguageOpen] =
-    useState<PendingPageLanguageOpen | null>(null)
   const [headerHovered, setHeaderHovered] = useState(false)
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
@@ -154,6 +152,9 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const globalLanguageIntentRef = useRef(0)
   const globalLanguagePendingPathnameRef = useRef<string | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
+  const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
+    null,
+  )
   const pathnameRef = useRef(pathname)
 
   const invalidateGlobalLanguageIntent = useCallback(() => {
@@ -166,7 +167,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     pathnameRef.current = pathname
-    setPendingPageLanguageOpen(null)
+    pendingPageLanguageOpenRef.current = null
     invalidateGlobalLanguageIntent()
   }, [invalidateGlobalLanguageIntent, pathname])
 
@@ -182,7 +183,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         closingTimerRef.current = null
       }
       if (next) {
-        setPendingPageLanguageOpen(null)
+        pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
         setOpenState(true)
@@ -489,19 +490,19 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    setPendingPageLanguageOpen({
+    pendingPageLanguageOpenRef.current = {
       ownerToken: headerLanguageSwitcher.ownerToken,
       onClick,
       pathname,
-    })
+    }
     setOpen(false)
   }, [closing, headerLanguageSwitcher, open, pathname, setOpen])
 
   useEffect(() => {
     if (open || closing) return
-    const pending = pendingPageLanguageOpen
+    const pending = pendingPageLanguageOpenRef.current
     if (pending == null) return
-    setPendingPageLanguageOpen(null)
+    pendingPageLanguageOpenRef.current = null
     if (
       pending.pathname !== pathname ||
       !headerLanguageSwitcher.visible ||
@@ -512,7 +513,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       return
     }
     pending.onClick()
-  }, [closing, headerLanguageSwitcher, open, pathname, pendingPageLanguageOpen])
+  }, [closing, headerLanguageSwitcher, open, pathname])
 
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
