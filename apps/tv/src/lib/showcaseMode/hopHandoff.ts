@@ -32,14 +32,22 @@ export const PRELOAD_MIN_BUFFER_AHEAD_SECONDS = 1
 export const PRELOAD_BUFFER_GRACE_MS = 4000
 
 /**
- * At the flip the outgoing player has drifted past the boundary by up to one
- * timeUpdate interval; beyond this the standby re-seeks to the outgoing position so
- * the footage never visibly repeats. Under it, the mismatch is below notice.
+ * At the flip the outgoing player has usually drifted (end-check sampling + start
+ * lead) about half a second past the standby's parked boundary. Under this tolerance
+ * the flip skips the align seek — a fresh zero-tolerance seek flushes the decoder on
+ * the critical path, and a sub-second offset is invisible under the motion crossfade.
  */
-export const ALIGNMENT_TOLERANCE_SECONDS = 0.25
+export const ALIGNMENT_TOLERANCE_SECONDS = 0.75
 
 /** The incoming view's opacity ramp over the outgoing frame — same footage, so short. */
 export const HANDOFF_CROSSFADE_MS = 180
+
+/**
+ * Added to the outgoing clock when aiming the incoming player's start: it absorbs the
+ * seek-settle + play-start latency, so when the reveal lands both players are moving
+ * at roughly the same content position instead of the incoming lagging a beat.
+ */
+export const HANDOFF_START_LEAD_SECONDS = 0.5
 
 export type StandbyPreloadPhase = "idle" | "loading" | "ready" | "failed"
 
@@ -90,6 +98,12 @@ export function preloadPollVerdict(args: {
   startSeconds: number
   /** Standby's buffered frontier; null/NaN when the platform does not report one. */
   bufferedPosition: number | null
+  /**
+   * The item reports readyToPlay. Position and buffer can read plausibly off an
+   * item wedged in `loading`, and a flip armed on one plays nothing — the boundary
+   * then rolls the cover into the watchdog instead of taking the clean poster cut.
+   */
+  statusReady: boolean
   elapsedMs: number
 }): PreloadVerdict {
   if (args.elapsedMs >= PRELOAD_DEADLINE_MS) return "failed"
@@ -100,6 +114,7 @@ export function preloadPollVerdict(args: {
     Math.abs(args.currentTime - args.startSeconds) <=
     PRELOAD_SEEK_TOLERANCE_SECONDS
   if (!landed) return "reseek"
+  if (!args.statusReady) return "wait"
   const buffered =
     args.bufferedPosition != null &&
     Number.isFinite(args.bufferedPosition) &&
@@ -111,21 +126,26 @@ export function preloadPollVerdict(args: {
 
 /**
  * Where the incoming player should fine-seek at the flip, or null to start from its
- * preloaded boundary position. The outgoing clock wins when it is usable — it is the
- * frame on screen — but never past the incoming window's end (a final-slice hop can
- * be shorter than the outgoing drift).
+ * preloaded boundary position. The outgoing clock (plus the start lead) wins when it
+ * is usable — it is the motion on screen — but never past the incoming window's end
+ * (a final-slice hop can be shorter than the outgoing drift).
  */
 export function alignmentSeekTarget(args: {
-  /** The outgoing player's paused position; null when the native read threw. */
+  /** The outgoing player's live position at the flip; null when the read threw. */
   outgoingTime: number | null
   incomingWindow: { startSeconds: number; endSeconds: number }
   /** The incoming standby's current (preloaded) position. */
   standbyTime: number | null
+  /** Aim ahead of the outgoing clock by this much (HANDOFF_START_LEAD_SECONDS). */
+  leadSeconds: number
 }): number | null {
-  const { outgoingTime, incomingWindow, standbyTime } = args
+  const { outgoingTime, incomingWindow, standbyTime, leadSeconds } = args
   if (outgoingTime == null || !Number.isFinite(outgoingTime)) return null
   if (outgoingTime < incomingWindow.startSeconds) return null
-  const target = Math.min(outgoingTime, incomingWindow.endSeconds - 1)
+  const target = Math.min(
+    outgoingTime + leadSeconds,
+    incomingWindow.endSeconds - 1,
+  )
   if (target <= incomingWindow.startSeconds) return null
   if (
     standbyTime != null &&

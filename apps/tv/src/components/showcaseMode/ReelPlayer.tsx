@@ -20,6 +20,7 @@ import {
 } from "../../lib/showcaseMode/audioFade"
 import {
   HANDOFF_CROSSFADE_MS,
+  HANDOFF_START_LEAD_SECONDS,
   alignmentSeekTarget,
   preloadPollVerdict,
   resolveHopSwapMode,
@@ -56,6 +57,12 @@ const WATCHDOG_TICK_MS = 1000
 
 /** A paused standby emits no timeUpdate, so its preload progress is polled. */
 const PRELOAD_POLL_MS = 250
+
+/** While a flip's reveal is owed, the incoming player's playing state is polled too. */
+const REVEAL_POLL_MS = 150
+
+/** Give the flip's own play() this long before the poll starts re-issuing it. */
+const REVEAL_REPLAY_AFTER_MS = 600
 
 export type ReelPlayerProps = {
   /** The shell's resolved stream (KTD-4). Null until this excerpt's choice lands. */
@@ -178,6 +185,13 @@ export function ReelPlayer({
   const standbyHoldsItemRef = useRef(false)
   const [standbyReady, setStandbyReady] = useState<ShowcaseStream | null>(null)
 
+  // A flip whose reveal is still owed: the outgoing player keeps ROLLING as the
+  // motion cover until the incoming confirms; only then do the views crossfade.
+  const [pendingReveal, setPendingReveal] = useState<{ token: number } | null>(
+    null,
+  )
+  const pendingRetiredRef = useRef<VideoPlayer | null>(null)
+
   // Seamless only when the standby finished preloading exactly this target; the
   // reservation is kept through confirmation so the poster cannot pop mid-flip.
   const hopMode = resolveHopSwapMode({
@@ -185,6 +199,15 @@ export function ReelPlayer({
     targetStream: validStream,
     standbyReadyStream: standbyReady,
   })
+
+  // Read by the end-of-window path (native emitter): when the NEXT boundary is a
+  // ready flip, the outgoing player is left rolling instead of paused — it is the
+  // live frame the handoff covers with until the incoming dub confirms.
+  const nextFlipArmedRef = useRef(false)
+  nextFlipArmedRef.current =
+    validPreload != null &&
+    standbyReady != null &&
+    sameHopStream(standbyReady, validPreload)
 
   const {
     shouldPlay,
@@ -374,9 +397,11 @@ export function ReelPlayer({
           }
           let currentTime: number | null = null
           let bufferedPosition: number | null = null
+          let statusReady = false
           try {
             currentTime = standby.currentTime
             bufferedPosition = standby.bufferedPosition
+            statusReady = standby.status === "readyToPlay"
           } catch {
             // Released; the deadline will fail the entry.
           }
@@ -384,6 +409,7 @@ export function ReelPlayer({
             currentTime,
             startSeconds,
             bufferedPosition,
+            statusReady,
             elapsedMs: Date.now() - startedAt,
           })
           if (verdict === "wait") return
@@ -426,13 +452,6 @@ export function ReelPlayer({
 
   // The reservation held the gate seamless through the flip; once this token is
   // confirmed the boundary is over and the standby is free for the next preload.
-  useEffect(() => {
-    if (confirmedToken !== excerptToken) return
-    if (standbyReady != null && sameHopStream(standbyReady, validStream)) {
-      setStandbyReady(null)
-    }
-  }, [confirmedToken, excerptToken, standbyReady, validStream])
-
   // ── Source swap / hop flip ────────────────────────────────────────
 
   useEffect(() => {
@@ -464,14 +483,12 @@ export function ReelPlayer({
     }
 
     if (hopMode === "flip" && target != null) {
-      // Seamless boundary: the standby already holds this dub, seeked and decoded.
-      // Synchronous — the flip must not leave a frame where neither player owns the
-      // screen. Native events queue behind this task, so the post-flip listeners
-      // attach before the new live's playingChange can arrive.
+      // Seamless boundary. The outgoing player is NOT paused — the end-of-window
+      // path left it rolling silently, and it stays the visible motion cover until
+      // the incoming dub confirms; the reveal effect owns the crossfade from here.
       let outgoingTime: number | null = null
       try {
         outgoingTime = live.currentTime
-        live.pause()
       } catch {
         // Released; the flip proceeds from the preloaded boundary.
       }
@@ -491,6 +508,7 @@ export function ReelPlayer({
         outgoingTime,
         incomingWindow: target.window,
         standbyTime,
+        leadSeconds: HANDOFF_START_LEAD_SECONDS,
       })
       try {
         if (alignTo != null) standby.currentTime = alignTo
@@ -499,9 +517,8 @@ export function ReelPlayer({
       } catch {
         // Released; the watchdog owns recovery for a flip that never starts.
       }
-      if (shouldPlayRef.current) {
-        fadeVolumeTo(standby, 1, AUDIO_FADE_IN_MS)
-      }
+      pendingRetiredRef.current = live
+      setPendingReveal({ token })
       setLiveKey((key) => (key === "a" ? "b" : "a"))
       return
     }
@@ -589,30 +606,57 @@ export function ReelPlayer({
     return () => sub.remove()
   }, [live, onFailed])
 
+  const confirmPlayback = useCallback(() => {
+    const token = loadedTokenRef.current
+    confirmedTokenRef.current = token
+    armConfirmedRef.current = true
+    setConfirmedToken(token)
+    // The stall clock starts HERE, not at the play request: a long-form item
+    // seeks ~15% in before its first heartbeat, and measuring from the request
+    // would call that healthy seek a stall and skip an excerpt nobody watched.
+    lastAdvanceAtRef.current = Date.now()
+    // Per-excerpt TTFF is a LOG FIELD, never a view timing: addDatadogTiming
+    // measures from the route view's start, folding nav latency in (KTD-9).
+    const ttffMs = qoeRef.current?.onFirstPlaying()
+    if (ttffMs != null) {
+      datadogLog.info("video_playback.ttff", {
+        content_id: contentIdRef.current,
+        ttff_ms: ttffMs,
+      })
+    }
+    onPlaying(token)
+  }, [onPlaying])
+
   useEffect(() => {
     const sub = live.addListener("playingChange", ({ isPlaying }) => {
       if (!isPlaying) return
-      const token = loadedTokenRef.current
-      confirmedTokenRef.current = token
-      armConfirmedRef.current = true
-      setConfirmedToken(token)
-      // The stall clock starts HERE, not at the play request: a long-form item
-      // seeks ~15% in before its first heartbeat, and measuring from the request
-      // would call that healthy seek a stall and skip an excerpt nobody watched.
-      lastAdvanceAtRef.current = Date.now()
-      // Per-excerpt TTFF is a LOG FIELD, never a view timing: addDatadogTiming
-      // measures from the route view's start, folding nav latency in (KTD-9).
-      const ttffMs = qoeRef.current?.onFirstPlaying()
-      if (ttffMs != null) {
-        datadogLog.info("video_playback.ttff", {
-          content_id: contentIdRef.current,
-          ttff_ms: ttffMs,
-        })
-      }
-      onPlaying(token)
+      confirmPlayback()
     })
     return () => sub.remove()
-  }, [live, onPlaying])
+  }, [live, confirmPlayback])
+
+  // A flip's play() is issued one commit before this live player's listeners attach,
+  // so its playingChange can slip through unheard; while a reveal is owed, poll the
+  // player directly so a lost event can never strand the handoff on the cover. The
+  // re-issued play() heals tvOS swallowing a play() queued behind a fresh seek —
+  // the dropped-seek pitfall's sibling, cured at the same kind of choke point.
+  useEffect(() => {
+    if (pendingReveal == null) return
+    const startedAt = Date.now()
+    const timer = setInterval(() => {
+      let playing = false
+      try {
+        playing = live.playing
+        if (!playing && Date.now() - startedAt >= REVEAL_REPLAY_AFTER_MS) {
+          if (shouldPlayRef.current) live.play()
+        }
+      } catch {
+        return // Released; the watchdog owns recovery.
+      }
+      if (playing) confirmPlayback()
+    }, REVEAL_POLL_MS)
+    return () => clearInterval(timer)
+  }, [pendingReveal, live, confirmPlayback])
 
   useEffect(() => {
     const sub = live.addListener("playToEnd", () => {
@@ -674,10 +718,14 @@ export function ReelPlayer({
       // would otherwise run on underneath until the next stream resolves.
       stopFade()
       setVolumeOn(live, 0)
-      try {
-        live.pause()
-      } catch {
-        // Native player already released; benign.
+      // A ready flip leaves the player ROLLING past its end: the same footage
+      // continues, and it is the visible motion cover until the incoming confirms.
+      if (!nextFlipArmedRef.current) {
+        try {
+          live.pause()
+        } catch {
+          // Native player already released; benign.
+        }
       }
       onEnded(loadedTokenRef.current)
     })
@@ -691,7 +739,11 @@ export function ReelPlayer({
       // outgoing source stays loaded until its replacement resolves, so resuming it
       // here would play the previous excerpt under the poster; the swap plays it.
       if (shouldPlay && loadedTokenRef.current === excerptToken) live.play()
-      else if (!shouldPlay) live.pause()
+      else if (!shouldPlay) {
+        live.pause()
+        // A mid-handoff background/nav-away also parks the rolling cover (R18).
+        pendingRetiredRef.current?.pause()
+      }
     } catch {
       // Native player already released; benign.
     }
@@ -826,21 +878,58 @@ export function ReelPlayer({
     }
   }, [posterVisible, posterCrossfade, posterOpacity, fadeVolumeTo])
 
-  // KTD-5's seam: view B rides above view A, and a flip animates only B's opacity —
-  // fixed z-order, so neither platform ever reorders two live video surfaces.
+  // KTD-5's seam: view B rides above view A, fixed z-order, and only B's opacity
+  // ever animates. The crossfade waits for CONFIRMATION — revealing at the flip
+  // showed the incoming player parked on its preloaded frame, which read as a
+  // thumbnail card; until the new dub is actually moving, the rolling retired
+  // player stays on screen, so the blend is always motion into motion.
   const viewBOpacity = useRef(new Animated.Value(0)).current
-  const liveKeyShownRef = useRef<"a" | "b">("a")
   useEffect(() => {
-    if (liveKeyShownRef.current === liveKey) return
-    liveKeyShownRef.current = liveKey
+    if (confirmedToken !== excerptToken) return
+    // Converge the top view to the live side on EVERY confirmation — flips reveal
+    // here, and a fallback recovery from a dead flip re-homes a stranded opacity.
     const fade = Animated.timing(viewBOpacity, {
       toValue: liveKey === "b" ? 1 : 0,
       duration: HANDOFF_CROSSFADE_MS,
       useNativeDriver: true,
     })
     fade.start()
+    if (pendingReveal != null) {
+      const retired = pendingRetiredRef.current
+      pendingRetiredRef.current = null
+      setPendingReveal(null)
+      if (pendingReveal.token === confirmedToken) {
+        // The incoming dub is moving: ride the crossfade with the audio ramp, then
+        // retire the cover and release the reservation for the next preload.
+        fadeVolumeTo(live, 1, AUDIO_FADE_IN_MS)
+        setTimeout(() => {
+          try {
+            retired?.pause()
+          } catch {
+            // Released; benign.
+          }
+          setStandbyReady(null)
+        }, HANDOFF_CROSSFADE_MS + 40)
+      } else {
+        // A dead flip recovered through the poster fallback: just silence the
+        // rolling cover — the next preload will reclaim its player.
+        try {
+          retired?.pause()
+        } catch {
+          // Released; benign.
+        }
+      }
+    }
     return () => fade.stop()
-  }, [liveKey, viewBOpacity])
+  }, [
+    confirmedToken,
+    excerptToken,
+    pendingReveal,
+    liveKey,
+    live,
+    fadeVolumeTo,
+    viewBOpacity,
+  ])
 
   // The standby's view stays mounted through the whole hop plan: its player decodes
   // the preloaded boundary frame under the live view, which is what makes the flip

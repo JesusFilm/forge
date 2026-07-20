@@ -99,6 +99,7 @@ describe("preloadPollVerdict — the standby's poll loop", () => {
     currentTime: t,
     startSeconds: 50,
     bufferedPosition: 55,
+    statusReady: true,
     elapsedMs: 1000,
   })
 
@@ -116,6 +117,7 @@ describe("preloadPollVerdict — the standby's poll loop", () => {
         currentTime: null,
         startSeconds: 50,
         bufferedPosition: null,
+        statusReady: false,
         elapsedMs: 1000,
       }),
     ).toBe("wait")
@@ -136,6 +138,19 @@ describe("preloadPollVerdict — the standby's poll loop", () => {
     ).toBe("wait")
   })
 
+  it("never arms on an item that has not reported readyToPlay — position and buffer alone can read plausibly off a wedged load", () => {
+    expect(preloadPollVerdict({ ...landedAt(50), statusReady: false })).toBe(
+      "wait",
+    )
+    expect(
+      preloadPollVerdict({
+        ...landedAt(50),
+        statusReady: false,
+        elapsedMs: PRELOAD_BUFFER_GRACE_MS,
+      }),
+    ).toBe("wait")
+  })
+
   it("fails at the deadline — the boundary then takes the poster fallback", () => {
     expect(
       preloadPollVerdict({ ...landedAt(0), elapsedMs: PRELOAD_DEADLINE_MS }),
@@ -146,22 +161,24 @@ describe("preloadPollVerdict — the standby's poll loop", () => {
 describe("alignmentSeekTarget — no repeated footage at the flip", () => {
   const incomingWindow = { startSeconds: 50, endSeconds: 60 }
 
-  it("aligns the incoming player to the outgoing clock when it drifted past the boundary", () => {
+  it("aims ahead of the live outgoing clock by the start lead", () => {
     expect(
       alignmentSeekTarget({
         outgoingTime: 50.8,
         incomingWindow,
         standbyTime: 50,
+        leadSeconds: 0.5,
       }),
-    ).toBe(50.8)
+    ).toBe(51.3)
   })
 
-  it("skips the seek when the standby already sits within tolerance", () => {
+  it("skips the seek when the standby already sits within tolerance of the aim", () => {
     expect(
       alignmentSeekTarget({
         outgoingTime: 50 + ALIGNMENT_TOLERANCE_SECONDS,
         incomingWindow,
-        standbyTime: 50,
+        standbyTime: 50.25,
+        leadSeconds: 0.25,
       }),
     ).toBe(null)
   })
@@ -172,6 +189,7 @@ describe("alignmentSeekTarget — no repeated footage at the flip", () => {
         outgoingTime: null,
         incomingWindow,
         standbyTime: 50,
+        leadSeconds: 0.5,
       }),
     ).toBe(null)
     expect(
@@ -179,6 +197,7 @@ describe("alignmentSeekTarget — no repeated footage at the flip", () => {
         outgoingTime: Number.NaN,
         incomingWindow,
         standbyTime: 50,
+        leadSeconds: 0.5,
       }),
     ).toBe(null)
   })
@@ -190,6 +209,7 @@ describe("alignmentSeekTarget — no repeated footage at the flip", () => {
         outgoingTime: 43,
         incomingWindow,
         standbyTime: 50,
+        leadSeconds: 0.5,
       }),
     ).toBe(null)
   })
@@ -200,6 +220,7 @@ describe("alignmentSeekTarget — no repeated footage at the flip", () => {
         outgoingTime: 79,
         incomingWindow,
         standbyTime: 50,
+        leadSeconds: 0.5,
       }),
     ).toBe(59)
   })

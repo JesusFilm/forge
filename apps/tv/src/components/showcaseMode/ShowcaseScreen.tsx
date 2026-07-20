@@ -398,6 +398,9 @@ export function ShowcaseScreen() {
         if (cancelled || !mountedRef.current) return
         const plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
         if (plan != null) {
+          // The hop projection owns the stream for the whole plan; a held resolved
+          // stream would replay as a stale target the moment the plan completes.
+          setStream(null)
           dispatch({ type: "hopPlanResolved", token, plan })
           return
         }
@@ -425,26 +428,32 @@ export function ShowcaseScreen() {
     }
   }, [excerpt, state.excerptToken, isCenterpieceExcerpt, inHopMode])
 
-  // KTD-5: project the current hop onto the player as its next stream. Same footage,
-  // a different dub — this is the ONE place the reel claims a language (claimsLanguage
-  // true; ExcerptChrome shows nothing when a hop has no display name).
+  // KTD-5: R9's live language count follows the plan while the centerpiece plays.
   useEffect(() => {
     const hop = state.hop
     if (hop == null) return
-    const current = hop.hops[hop.index]
-    if (current == null) return
-    setStream(hopToStream(current))
     setLiveLanguageCount(hop.hops.length)
   }, [state.hop])
 
-  // KTD-5: the NEXT hop, published alongside the current one so the reel's standby
-  // player preloads it — the seamless boundary is armed a whole segment ahead.
+  // KTD-5: the current hop's stream and the NEXT hop's preload derive at RENDER from
+  // the same reducer state as the token, so all three advance in one commit. An
+  // effect-published stream lagged a commit behind, and in that gap the reel's
+  // preload machine read (new preload, old stream) and clobbered the ready standby —
+  // every boundary fell back to the poster. This is the ONE place the reel claims a
+  // language (claimsLanguage true via hopToStream).
+  const hopStream = useMemo(() => {
+    const hop = state.hop
+    if (hop == null) return null
+    const current = hop.hops[hop.index]
+    return current == null ? null : hopToStream(current)
+  }, [state.hop])
   const preloadStream = useMemo(() => {
     const hop = state.hop
     if (hop == null) return null
     const next = hop.hops[hop.index + 1]
     return next == null ? null : hopToStream(next)
   }, [state.hop])
+  const activeStream = hopStream ?? stream
 
   // R17: warm the next excerpt's stream choice AND its poster while the current one
   // plays. Data only — a second buffering player is the expo-video leak trigger
@@ -554,7 +563,7 @@ export function ShowcaseScreen() {
   return (
     <View style={styles.screen}>
       <ReelPlayer
-        stream={stream}
+        stream={activeStream}
         preloadStream={preloadStream}
         posterUrl={excerpt?.posterUrl ?? null}
         excerptToken={state.excerptToken}
@@ -574,7 +583,7 @@ export function ShowcaseScreen() {
         state={state}
         chapter={chapter}
         excerpt={excerpt}
-        stream={stream}
+        stream={activeStream}
         liveLanguageCount={liveLanguageCount}
         cardEntersOpaque={cardEntersOpaque}
       />
