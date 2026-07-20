@@ -95,16 +95,19 @@ type HeaderLanguageSwitcherState = {
   pathname: string | null
 }
 
+type RouteIdentity = Readonly<{ pathname: string }>
+
 type PendingPageLanguageOpen = {
   ownerToken: symbol | null
   onClick: () => void
-  pathname: string
+  routeIdentity: RouteIdentity
 }
 
 export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const pathname = usePathname()
+  const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = parseWatchPath(pathname)
   const currentLanguageSlug = "lang" in parsedPath ? parsedPath.lang : "english"
   const isWatchHome =
@@ -137,39 +140,30 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       ownerToken: null,
       pathname: null,
     })
-  const [globalLanguageOpenPathname, setGlobalLanguageOpenPathname] = useState<
-    string | null
-  >(null)
-  const [globalLanguageLoadingPathname, setGlobalLanguageLoadingPathname] =
-    useState<string | null>(null)
-  const [globalLanguageErrorPathname, setGlobalLanguageErrorPathname] =
-    useState<string | null>(null)
+  const [globalLanguageOpenRoute, setGlobalLanguageOpenRoute] =
+    useState<RouteIdentity | null>(null)
+  const [globalLanguageLoadingRoute, setGlobalLanguageLoadingRoute] =
+    useState<RouteIdentity | null>(null)
+  const [globalLanguageErrorRoute, setGlobalLanguageErrorRoute] =
+    useState<RouteIdentity | null>(null)
   const [headerHovered, setHeaderHovered] = useState(false)
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScrollYRef = useRef(0)
   const globalLanguageIntentRef = useRef(0)
-  const globalLanguagePendingPathnameRef = useRef<string | null>(null)
+  const globalLanguagePendingRouteRef = useRef<RouteIdentity | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
-  const pathnameRef = useRef(pathname)
-
   const invalidateGlobalLanguageIntent = useCallback(() => {
     globalLanguageIntentRef.current += 1
-    globalLanguagePendingPathnameRef.current = null
-    setGlobalLanguageLoadingPathname(null)
-    setGlobalLanguageErrorPathname(null)
-    setGlobalLanguageOpenPathname(null)
+    globalLanguagePendingRouteRef.current = null
+    setGlobalLanguageLoadingRoute(null)
+    setGlobalLanguageErrorRoute(null)
+    setGlobalLanguageOpenRoute(null)
   }, [])
-
-  useEffect(() => {
-    pathnameRef.current = pathname
-    pendingPageLanguageOpenRef.current = null
-    invalidateGlobalLanguageIntent()
-  }, [invalidateGlobalLanguageIntent, pathname])
 
   const resetSearch = useCallback(() => {
     setQuery("")
@@ -203,7 +197,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return () => {
       globalLanguageIntentRef.current += 1
-      globalLanguagePendingPathnameRef.current = null
+      globalLanguagePendingRouteRef.current = null
       if (closingTimerRef.current) clearTimeout(closingTimerRef.current)
     }
   }, [])
@@ -439,11 +433,11 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     return () => window.cancelAnimationFrame(frame)
   }, [pathname])
 
-  const globalLanguageOpen = globalLanguageOpenPathname === pathname
+  const globalLanguageOpen = globalLanguageOpenRoute === routeIdentity
 
   const openGlobalLanguage = useCallback(() => {
     if (
-      globalLanguagePendingPathnameRef.current === pathname ||
+      globalLanguagePendingRouteRef.current === routeIdentity ||
       globalLanguageOpen
     ) {
       return
@@ -452,34 +446,31 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
 
     const intent = globalLanguageIntentRef.current + 1
     globalLanguageIntentRef.current = intent
-    globalLanguagePendingPathnameRef.current = pathname
-    setGlobalLanguageLoadingPathname(pathname)
-    setGlobalLanguageErrorPathname(null)
+    globalLanguagePendingRouteRef.current = routeIdentity
+    setGlobalLanguageLoadingRoute(routeIdentity)
+    setGlobalLanguageErrorRoute(null)
 
     void loadWatchInteraction("global-language")
       .then(() => {
-        if (
-          globalLanguageIntentRef.current === intent &&
-          pathnameRef.current === pathname
-        ) {
-          setGlobalLanguageOpenPathname(pathname)
+        if (globalLanguageIntentRef.current === intent) {
+          setGlobalLanguageOpenRoute(routeIdentity)
         }
       })
       .catch(() => {
         if (globalLanguageIntentRef.current === intent) {
-          setGlobalLanguageErrorPathname(pathname)
+          setGlobalLanguageErrorRoute(routeIdentity)
         }
       })
       .finally(() => {
         if (globalLanguageIntentRef.current === intent) {
-          globalLanguagePendingPathnameRef.current = null
-          setGlobalLanguageLoadingPathname(null)
+          globalLanguagePendingRouteRef.current = null
+          setGlobalLanguageLoadingRoute(null)
         }
       })
-  }, [closing, globalLanguageOpen, open, pathname, setOpen])
+  }, [closing, globalLanguageOpen, open, routeIdentity, setOpen])
 
   const closeGlobalLanguage = useCallback(() => {
-    setGlobalLanguageOpenPathname(null)
+    setGlobalLanguageOpenRoute(null)
   }, [])
 
   const openPageSpecificLanguage = useCallback(() => {
@@ -493,10 +484,10 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     pendingPageLanguageOpenRef.current = {
       ownerToken: headerLanguageSwitcher.ownerToken,
       onClick,
-      pathname,
+      routeIdentity,
     }
     setOpen(false)
-  }, [closing, headerLanguageSwitcher, open, pathname, setOpen])
+  }, [closing, headerLanguageSwitcher, open, routeIdentity, setOpen])
 
   useEffect(() => {
     if (open || closing) return
@@ -504,7 +495,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     if (pending == null) return
     pendingPageLanguageOpenRef.current = null
     if (
-      pending.pathname !== pathname ||
+      pending.routeIdentity !== routeIdentity ||
       !headerLanguageSwitcher.visible ||
       headerLanguageSwitcher.pathname !== pathname ||
       headerLanguageSwitcher.ownerToken !== pending.ownerToken ||
@@ -513,7 +504,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       return
     }
     pending.onClick()
-  }, [closing, headerLanguageSwitcher, open, pathname])
+  }, [closing, headerLanguageSwitcher, open, pathname, routeIdentity])
 
   const modalChromeHidden = open || closing
   const playerPlayingWithSound =
@@ -531,10 +522,10 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     : null
   const headerLanguageBusy =
     !pageSpecificLanguageSwitcherActive &&
-    globalLanguageLoadingPathname === pathname
+    globalLanguageLoadingRoute === routeIdentity
   const globalLanguageLoadFailed =
     !pageSpecificLanguageSwitcherActive &&
-    globalLanguageErrorPathname === pathname
+    globalLanguageErrorRoute === routeIdentity
   const globalLanguageLabel = globalLanguageLoadFailed
     ? `${t("changeAudioLanguage")}. ${searchT("connectionHint")}`
     : t("changeAudioLanguage")
