@@ -64,6 +64,14 @@ const REVEAL_POLL_MS = 150
 /** Give the flip's own play() this long before the poll starts re-issuing it. */
 const REVEAL_REPLAY_AFTER_MS = 600
 
+/**
+ * Buffer a full hop window (10s) plus the roll-through margin ahead of the playhead.
+ * AVPlayer's automatic mode barely buffers a PAUSED item, so the parked standby held
+ * ~1s at the flip and a slow segment could stall a hop mid-window; an explicit target
+ * keeps filling while the standby waits, without gating the flip on it.
+ */
+const REEL_FORWARD_BUFFER_SECONDS = 15
+
 export type ReelPlayerProps = {
   /** The shell's resolved stream (KTD-4). Null until this excerpt's choice lands. */
   stream: ShowcaseStream | null
@@ -162,11 +170,17 @@ export function ReelPlayer({
     p.muted = false // R10: the reel is the audio.
     p.loop = false // KTD-2: native loop re-inits HLS; the reel advances manually.
     p.timeUpdateEventInterval = 1
+    p.bufferOptions = {
+      preferredForwardBufferDuration: REEL_FORWARD_BUFFER_SECONDS,
+    }
   })
   const playerB = useVideoPlayer(null, (p) => {
     p.muted = false
     p.loop = false
     p.timeUpdateEventInterval = 1
+    p.bufferOptions = {
+      preferredForwardBufferDuration: REEL_FORWARD_BUFFER_SECONDS,
+    }
   })
   const [liveKey, setLiveKey] = useState<"a" | "b">("a")
   const live = liveKey === "a" ? playerA : playerB
