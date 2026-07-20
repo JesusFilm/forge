@@ -13,6 +13,7 @@ import {
   resolveWatchLocaleIdentity,
   slugToBcp47Tag,
   slugToBcp47Primary,
+  textDirectionForLocale,
 } from "./locale"
 
 describe("isLocale (generated UI catalogs only)", () => {
@@ -183,6 +184,59 @@ describe("slugToBcp47Tag", () => {
   it("normalizes direct bcp47 tag input", () => {
     expect(slugToBcp47Tag("pt-br")).toBe("pt-BR")
     expect(slugToBcp47Tag("es-419")).toBe("es-419")
+  })
+})
+
+describe("textDirectionForLocale", () => {
+  it.each([
+    "ar",
+    "az-Arab",
+    "ckb",
+    "dv",
+    "fa",
+    "he",
+    "ks",
+    "ms-Arab",
+    "ps",
+    "sd",
+    "ug",
+    "ur",
+    "uz-Arab",
+  ])("uses RTL for %s", (locale) => {
+    expect(textDirectionForLocale(locale)).toBe("rtl")
+  })
+
+  it.each(["en", "es-419", "zh-Hans", "az-Cyrl", "ms", "sd-Deva"])(
+    "uses LTR for %s",
+    (locale) => {
+      expect(textDirectionForLocale(locale)).toBe("ltr")
+    },
+  )
+
+  it("falls back safely for invalid locale tags", () => {
+    expect(textDirectionForLocale("not_a_locale")).toBe("ltr")
+  })
+
+  it("uses the textInfo getter when getTextInfo is unavailable", () => {
+    const localeDescriptor = Object.getOwnPropertyDescriptor(Intl, "Locale")
+    const PropertyOnlyLocale = class {
+      get textInfo() {
+        return { direction: "rtl" as const }
+      }
+    }
+
+    Object.defineProperty(Intl, "Locale", {
+      configurable: true,
+      value: PropertyOnlyLocale,
+    })
+
+    try {
+      expect(textDirectionForLocale("ar")).toBe("rtl")
+    } finally {
+      if (localeDescriptor) {
+        Object.defineProperty(Intl, "Locale", localeDescriptor)
+      }
+    }
   })
 })
 

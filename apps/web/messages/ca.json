@@ -7,7 +7,9 @@
     "noContent": "No hi ha contingut disponible.",
     "homepageMisconfigured": "La pàgina d’inici de visualització està mal configurada.",
     "defaultTemplateMisconfigured": "La plantilla de visualització per defecte està mal configurada.",
-    "authFailed": "No s’ha pogut autenticar amb el servei de contingut. Poseu-vos en contacte amb el suport si això persisteix."
+    "authFailed": "No s’ha pogut autenticar amb el servei de contingut. Poseu-vos en contacte amb el suport si això persisteix.",
+    "pageLoadFailed": "S’ha produït un error.",
+    "tryAgain": "Torna-ho a provar"
   },
   "VideosPage": {
     "title": "Tots els vídeos",
@@ -22,7 +24,8 @@
     "promoHeading": "Vols entendre millor la Bíblia?",
     "joinBibleStudy": "Uneix-te al nostre estudi bíblic",
     "previousQuote": "Cita bíblica anterior",
-    "nextQuote": "Cita bíblica següent"
+    "nextQuote": "Cita bíblica següent",
+    "readPassage": "Llegeix aquest passatge a la teva Bíblia."
   },
   "DownloadButton": {
     "checking": "S’està comprovant",
@@ -73,7 +76,8 @@
     "selectLanguage": "Selecciona l’idioma",
     "searchPlaceholder": "Cerca idiomes…",
     "languages": "Idiomes",
-    "noMatches": "Cap coincidència"
+    "noMatches": "Cap coincidència",
+    "notAvailable": "No disponible"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Idioma",
@@ -112,7 +116,8 @@
     "questions": "Preguntes relacionades",
     "askYours": "Fes la teva pregunta",
     "chatWithPerson": "Xateja amb una persona",
-    "askBibleQuestion": "Fes una pregunta bíblica"
+    "askBibleQuestion": "Fes una pregunta bíblica",
+    "quiz": "Qüestionari"
   },
   "WatchQuestionPanel": {
     "messageType": "Tipus de missatge",
@@ -170,7 +175,8 @@
     "searchRegion": "Cerca vídeos",
     "clearSearch": "Esborra la cerca",
     "changeAudioLanguage": "Canvia l’idioma de l’àudio",
-    "home": "Inici de JesusFilm"
+    "home": "Inici de JesusFilm",
+    "closeSearch": "Tanca la cerca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca i navega pels vídeos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Esborra",
     "queryLanguageDetected": "S’ha detectat {language}",
     "searchInLanguage": "Cerca en {language}",
-    "tryDifferentKeywordsOrLanguage": "Prova paraules clau diferents o tria un altre idioma de cerca"
+    "tryDifferentKeywordsOrLanguage": "Prova paraules clau diferents o tria un altre idioma de cerca",
+    "useWebsiteDefaultLanguage": "Utilitza l’idioma de cerca per defecte del lloc web",
+    "removeLanguage": "Elimina {language}",
+    "browseMode": "Mode de navegació de cerca"
   },
   "HeroPlayer": {
     "playWithSound": "Mira ara",
-    "tapToUnmute": "Toca per activar el so"
+    "tapToUnmute": "Toca per activar el so",
+    "nextEpisode": "Episodi següent"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "S’està carregant el contingut"
+    "loadingContent": "S’està carregant el contingut",
+    "loadingVideo": "S’està carregant el vídeo"
   },
   "VideoLabels": {
     "video": "Vídeo",
@@ -223,7 +234,8 @@
     "series": "Sèrie",
     "collection": "Col·lecció",
     "trailer": "Tràiler",
-    "behindTheScenes": "Entre bastidors"
+    "behindTheScenes": "Entre bastidors",
+    "chapter": "Capítol"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} de {total}",
@@ -235,11 +247,243 @@
     "noImage": "Sense imatge",
     "playingNow": "S’està reproduint",
     "previousChapter": "Capítol anterior",
-    "nextChapter": "Capítol següent"
+    "nextChapter": "Capítol següent",
+    "thumbnailAlt": "Miniatura de {title}",
+    "relatedVideoThumbnail": "Miniatura del vídeo relacionat"
   },
   "SearchResultCard": {
     "experience": "Experiència",
     "episodeCount": "{count, plural, one {# episodi} other {# episodis}}",
     "thumbnailAlt": "Miniatura del vídeo"
+  },
+  "Feedback": {
+    "openForm": "Obrir el formulari de comentaris",
+    "label": "Comentaris",
+    "couldNotLoad": "No s’ha pogut carregar el formulari de comentaris.",
+    "loadingForm": "S’està carregant el formulari de comentaris…",
+    "retry": "Torna a provar",
+    "openFormShort": "Obrir el formulari",
+    "cancel": "Cancel·la",
+    "title": "Comentaris beta",
+    "description": "Comparteix què funciona i què podem millorar. Aquest formulari el proporciona Google.",
+    "openInNewTab": "Obrir el formulari en una pestanya nova",
+    "closeForm": "Tancar el formulari de comentaris",
+    "loadingGoogleForm": "S’està carregant el formulari de Google…",
+    "iframeTitle": "Enviar comentaris beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vídeos cristians gratuïts en {language} | Jesus Film Project",
+    "metadataDescription": "Explora pel·lícules de Jesús, històries bíbliques, sèries de discipulat i vídeos d’evangelització amb àudio doblat o subtítols en {language}.",
+    "heroTitle": "Vídeos cristians gratuïts en {language}",
+    "heroDescription": "Explora pel·lícules de Jesús, històries bíbliques, sèries de discipulat i vídeos d’evangelització disponibles en {language}. Els vídeos totalment doblats es mostren primer, i a sota hi ha les opcions només amb subtítols.",
+    "languageCollection": "Col·lecció d’idiomes",
+    "itemCount": "{count, plural, one {# element} other {# elements}}",
+    "videoCount": "{count, plural, one {# vídeo} other {# vídeos}}",
+    "videosInGroups": "{videoCount, plural, one {# vídeo} other {# vídeos}} en {groupCount, plural, one {# grup} other {# grups}}",
+    "sectionNavLabel": "Seccions de l’inventari d’idiomes",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nou",
+    "videoBible": "Bíblia en vídeo",
+    "bibleProject": "BibleProject",
+    "sports": "Esports",
+    "collections": "Col·leccions",
+    "subtitlesOnly": "Només subtítols",
+    "newlyAdded": "Afegits recentment",
+    "newVideosTitle": "Nous vídeos cristians en {language}",
+    "newestFirst": "Més recents primer",
+    "noPublishedVideos": "Encara no s’han trobat vídeos publicats per a aquest idioma.",
+    "bibleAndGospelFilms": "Pel·lícules de la Bíblia i dels Evangelis",
+    "videoBibleCollectionsTitle": "Col·leccions de Bíblia en vídeo en {language}",
+    "videoBibleDescription": "Col·leccions centrades en les Escriptures que inclouen LUMO, JESUS, Magdalena i Actes en {language}.",
+    "noVideoBibleCollections": "Encara no hi ha col·leccions de Bíblia en vídeo disponibles per a aquest idioma.",
+    "bibleProjectCollectionsTitle": "Col·leccions de BibleProject en {language}",
+    "bibleProjectDescription": "Sèries i estudis de BibleProject disponibles en {language}.",
+    "noBibleProjectCollections": "Encara no hi ha col·leccions de BibleProject disponibles per a aquest idioma.",
+    "sportsStories": "Històries d’esports",
+    "sportsTitle": "Històries d’esports i d’atletes en {language}",
+    "sportsDescription": "Històries d’esports amb enfocament de fe i col·leccions centrades en atletes disponibles en {language}.",
+    "noSportsCollections": "Encara no hi ha col·leccions d’esports o d’històries d’atletes disponibles per a aquest idioma.",
+    "fullyDubbed": "Totalment doblat",
+    "dubbedVideosTitle": "Vídeos en {language} per col·lecció",
+    "dubbedVideosDescription": "Explora vídeos totalment doblats en {language}, agrupats amb la seva col·lecció per trobar-los més fàcilment.",
+    "noDubbedVideos": "Encara no hi ha vídeos totalment doblats disponibles per a aquest idioma.",
+    "subtitlesAvailable": "Subtítols disponibles",
+    "subtitlesTitle": "Vídeos en {language} amb subtítols",
+    "subtitlesDescription": "Aquests vídeos inclouen subtítols en {language} quan l’àudio parlat en {language} encara no està disponible.",
+    "noSubtitleVideos": "Encara no hi ha vídeos només amb subtítols disponibles per a aquest idioma.",
+    "dubbed": "Doblat",
+    "subtitles": "Subtítols",
+    "newLabel": "Nou",
+    "fromCollection": "De {collection}",
+    "standaloneVideos": "Vídeos independents",
+    "videosFromCollection": "Vídeos de {collection}.",
+    "standaloneDescription": "Vídeos independents en aquest idioma.",
+    "openCollection": "Obre la col·lecció"
+  },
+  "WatchHome": {
+    "pageTitle": "Mira Jesus Film Project",
+    "watch": "Mira",
+    "watchNow": "Mira ara",
+    "mutePreview": "Silencia la previsualització",
+    "unmutePreview": "Activa el so de la previsualització",
+    "nextVideo": "Vídeo següent",
+    "featured": "Destacat",
+    "showVideo": "Mostra {title}",
+    "previousVideoPreview": "Previsualització del vídeo anterior",
+    "nextVideoPreview": "Previsualització del vídeo següent",
+    "mediaCollection": "Col·lecció de mitjans",
+    "scrollToVideo": "Desplaça’t fins al vídeo {title}"
+  },
+  "WatchFooter": {
+    "home": "Inici de Jesus Film Project",
+    "navigation": "Navegació del peu de pàgina",
+    "share": "Comparteix",
+    "watch": "Mira",
+    "giving": "Donatius",
+    "about": "Qui som",
+    "products": "Productes",
+    "resources": "Recursos",
+    "partners": "Socis",
+    "contact": "Contacte",
+    "giveNow": "Fes un donatiu ara",
+    "resourcesVersion": "Recursos ({version})",
+    "office": "Oficina",
+    "fax": "Número de fax",
+    "privacyPolicy": "Política de privacitat",
+    "legalStatement": "Avís legal",
+    "newsletter": "Subscriu-te al nostre butlletí"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Pensat per a la missió global",
+    "title": "El missatge no canvia. La manera com la gent mira, sí.",
+    "description": "Estem reconstruint la nostra videoteca i les nostres eines des de zero, portant dècades de feina de traducció a les plataformes on la gent ja es reuneix, mira i comparteix.",
+    "translatedLibraryTitle": "La videoteca més traduïda del món",
+    "translatedLibraryDescription": "Dècades de treball de traducció, sostingudes per socis de ministeri de confiança, han creat una biblioteca amb milers de pistes d’idioma perquè la gent pugui conèixer la història de Jesús en l’idioma que més li arriba al cor.",
+    "trustedVoicesTitle": "Portant veus de confiança a formats nous",
+    "trustedVoicesDescription": "Estem reconstruint com es narren visualment les històries de l’evangeli, combinant traduccions de confiança amb formats moderns perquè el missatge pugui circular lliurement per plataformes, cultures i pantalles.",
+    "missionTeamTitle": "Més que una biblioteca. Un equip impulsat per la missió.",
+    "missionTeamDescription": "Jesus Film Project és un equip global de traductors, especialistes en mitjans, editors i creadors que converteixen dècades d’experiència ministerial en eines per a deixeblants arreu.",
+    "buildingNext": "El que estem construint ara",
+    "nextStepsTitle": "Plataforma de següents passos",
+    "nextStepsDescription": "Connecta els espectadors amb oportunitats concretes en el seu camí espiritual, ajudant-los a fer un pas següent cap a la comunitat, les Escriptures o la missió.",
+    "mediaLibraryTitle": "Biblioteca de mitjans evangelístics",
+    "mediaLibraryDescription": "Una àmplia biblioteca de mitjans cristians amb milers de vídeos, pel·lícules i recursos disponibles en diversos idiomes per al ministeri i l’evangelització arreu del món.",
+    "ministryToolsTitle": "Eines digitals per a ministeris",
+    "ministryToolsDescription": "Gestió de vídeos, distribució de contingut, implicació de l’audiència i analítica pensades per ajudar els ministeris a arribar a més persones de manera efectiva.",
+    "invitationEyebrow": "T’hi convidem",
+    "invitationTitle": "Ajuda a construir <highlight>la nova generació</highlight> d’eines per a la missió",
+    "invitationDescription": "Convidem professionals, creadors i socis a un accés anticipat. Prova primer les eines noves, dona feedback i ajuda a donar forma a productes pensats per al treball missioner real.",
+    "betaTester": "Fes-te beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Col·lecció de Bíblia en vídeo",
+    "gospelRailTitle": "Descobreix la història completa",
+    "videoBibleDescription": "Explora la nostra col·lecció de vídeos i recursos que donen vida a la Bíblia amb històries i ensenyaments atractius.",
+    "showcaseTitle": "Les Escriptures explicades en format de pel·lícula",
+    "adventEyebrow": "Advent de Nadal",
+    "adventTitle": "Compte enrere de l’Advent de Nadal",
+    "adventDescription": "Uneix-te al nostre camí d’Advent amb un vídeo diari que fa créixer l’esperança pel Nadal, explorant l’esperança, l’alegria i la promesa de l’arribada de Jesús.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent de BibleProject",
+    "nuaEyebrow": "Sèrie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Sèrie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curs en vídeo",
+    "journeyWithJesusTitle": "Camina amb Jesús",
+    "gospelsOnVideoEyebrow": "Tots els Evangelis, explicats en vídeo",
+    "scriptureAsWrittenTitle": "Les Escriptures, dites exactament com estan escrites",
+    "merryChristmas": "Bon Nadal!",
+    "daysUntilChristmas": "{count, plural, one {Falta # dia per Nadal} other {Falten # dies per Nadal}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Idiomes",
+    "metadataDescription": "Navega pels vídeos de JesusFilm per idioma.",
+    "eyebrow": "Idiomes de visualització",
+    "title": "Tria un idioma",
+    "description": "Explora els idiomes per regió o navega per la llista completa.",
+    "searchPlaceholder": "Cerca idiomes o països...",
+    "searchLabel": "Cerca idiomes o països",
+    "clearSearch": "Esborra la cerca",
+    "browse": "Navega",
+    "browseByRegion": "Navega per regió i país",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomes}}",
+    "region": "Regió",
+    "countryLanguages": "Idiomes de {country}",
+    "showLess": "Mostra’n menys",
+    "showMore": "Mostra {count} més",
+    "noLanguages": "No s’ha trobat cap idioma",
+    "tryAnotherSearch": "Prova amb un altre terme de cerca."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historial de visualitzacions | Jesus Film Project",
+    "title": "Historial de visualitzacions",
+    "loading": "S’està carregant l’historial",
+    "empty": "Encara no hi ha res",
+    "emptyDescription": "Els vídeos que miris mentre hagis iniciat sessió apareixeran aquí.",
+    "earlier": "Abans",
+    "today": "Avui",
+    "yesterday": "Ahir"
+  },
+  "AccountControl": {
+    "account": "Compte",
+    "accountMenu": "Menú del compte",
+    "signIn": "Inicia la sessió",
+    "signOut": "Tanca la sessió",
+    "signedIn": "Sessió iniciada",
+    "history": "Historial",
+    "logOut": "Surt"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pàgina no trobada",
+    "eyebrow": "Pàgina no trobada",
+    "screenReaderPrefix": "Pàgina no trobada:",
+    "title": "Aquesta escena no és aquí.",
+    "description": "És possible que la pàgina s’hagi mogut, però la història continua.",
+    "actionsLabel": "Accions de pàgina no trobada",
+    "backToWatch": "Torna a Watch",
+    "browseVideos": "Navega pels vídeos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Mira el curtmetratge",
+    "actions": {
+      "joinUs": "Uneix-te a nosaltres",
+      "shareMission": "Comparteix la nostra missió"
+    },
+    "welcomeStart": {
+      "label": "Fe i Escriptura",
+      "title": "Selecció de vídeos d’avui",
+      "description": "Vídeos de la nostra biblioteca centrats en la fe per inspirar, provocar i convidar a la reflexió."
+    },
+    "welcomeMorning": {
+      "label": "Inspiració matinal",
+      "title": "Bon dia! T’esperen els moments bíblics d’avui.",
+      "description": "Comença el dia amb moments bíblics encoratjadors pensats per inspirar-te i aixecar-te l’ànim."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspiració de la tarda",
+      "title": "Bona tarda! Moments bíblics per al teu dia.",
+      "description": "Contingut bíblic encoratjador, perfecte per a la pausa de la tarda o per continuar inspirant-te."
+    },
+    "welcomeEvening": {
+      "label": "Inspiració del vespre",
+      "title": "Bona nit! Desconnecta amb moments bíblics.",
+      "description": "Moments bíblics de pau per ajudar-te a reflexionar i trobar consol mentre s’acaba el dia."
+    },
+    "joinUs": {
+      "label": "Uneix-te a nosaltres",
+      "title": "Milers de milions de persones busquen respostes",
+      "description": "La collita ja és aquí. Uneix-te a nosaltres per compartir l’evangeli amb el món mitjançant els mitjans digitals."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Anem junts",
+      "title": "Explicant junts la història de Jesús",
+      "description": "Perquè puguin sentir i veure l’amor de Jesús en la seva pròpia llengua, allà on siguin."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % de coincidència",
+    "none": "No s’han trobat recomanacions per a aquest vídeo en aquest idioma."
   }
 }

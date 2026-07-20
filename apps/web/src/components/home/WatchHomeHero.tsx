@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { Play } from "lucide-react"
+import { useTranslations } from "next-intl"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
 
@@ -10,6 +11,7 @@ type WatchHomeHeroProps = {
 }
 
 export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
+  const t = useTranslations("WatchHome")
   const featured = slides[0] ?? null
 
   return (
@@ -38,7 +40,7 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
       />
 
       <div className="mx-auto flex min-h-[calc(100svh-7rem)] w-full max-w-[1920px] flex-col justify-end pb-8 sm:pb-10 lg:pb-12">
-        <h1 className="sr-only">Jesus Film Project Watch</h1>
+        <h1 className="sr-only">{t("pageTitle")}</h1>
         <div className="w-full overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-2 px-4 sm:px-6 md:gap-3 lg:px-8">
             {slides.map((slide, index) => {

@@ -7,7 +7,9 @@
     "noContent": "Hapana zvirimo zviripo.",
     "homepageMisconfigured": "Peji rekutanga reWatch harina kugadzirirwa nemazvo.",
     "defaultTemplateMisconfigured": "Template yekusarudzika yeWatch haina kugadzirirwa nemazvo.",
-    "authFailed": "Hatigoni kusimbisa kuzivikanwa neservhisi yezviri mukati. Ndapota taurai nerutsigiro kana izvi zvikapfuurira."
+    "authFailed": "Hatigoni kusimbisa kuzivikanwa neservhisi yezviri mukati. Ndapota taurai nerutsigiro kana izvi zvikapfuurira.",
+    "pageLoadFailed": "Pane chakanganisika.",
+    "tryAgain": "Edzazve"
   },
   "VideosPage": {
     "title": "Mavhidhiyo Ese",
@@ -22,7 +24,8 @@
     "promoHeading": "Unoda kunzwisisa Bhaibheri zvakadzama here?",
     "joinBibleStudy": "Batanai nechidzidzo chedu cheBhaibheri",
     "previousQuote": "Mashoko apfuura eBhaibheri",
-    "nextQuote": "Mashoko anotevera eBhaibheri"
+    "nextQuote": "Mashoko anotevera eBhaibheri",
+    "readPassage": "Verenga ndima iyi muBhaibheri rako."
   },
   "DownloadButton": {
     "checking": "Kutarisa",
@@ -73,7 +76,8 @@
     "selectLanguage": "Sarudza mutauro",
     "searchPlaceholder": "Tsvaga mitauro…",
     "languages": "Mitauro",
-    "noMatches": "Hapana zvinoenderana"
+    "noMatches": "Hapana zvinoenderana",
+    "notAvailable": "Hazviwanikwi"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Mutauro",
@@ -112,7 +116,8 @@
     "questions": "Mibvunzo Ine Chekuita",
     "askYours": "Bvunza yako",
     "chatWithPerson": "Taura nemunhu",
-    "askBibleQuestion": "Bvunza mubvunzo weBhaibheri"
+    "askBibleQuestion": "Bvunza mubvunzo weBhaibheri",
+    "quiz": "Bvunzo pfupi"
   },
   "WatchQuestionPanel": {
     "messageType": "Rudzi rwemashoko",
@@ -170,7 +175,8 @@
     "searchRegion": "Tsvaga mavhidhiyo",
     "clearSearch": "Bvisa kutsvaga",
     "changeAudioLanguage": "Chinja mutauro wekuteerera",
-    "home": "Peji guru reJesusFilm"
+    "home": "Peji guru reJesusFilm",
+    "closeSearch": "Vhara kutsvaga"
   },
   "SearchOverlay": {
     "dialogLabel": "Tsvaga uye browse mavhidhiyo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Bvisa",
     "queryLanguageDetected": "{language} yawanikwa",
     "searchInLanguage": "Tsvaga mu {language}",
-    "tryDifferentKeywordsOrLanguage": "Edzai mazwi akasiyana kana sarudza mumwe mutauro wekutsvaga"
+    "tryDifferentKeywordsOrLanguage": "Edzai mazwi akasiyana kana sarudza mumwe mutauro wekutsvaga",
+    "useWebsiteDefaultLanguage": "Shandisa mutauro wekutanga wekutsvaga wewebsite",
+    "removeLanguage": "Bvisa {language}",
+    "browseMode": "Nzira yekutsvaga browsing"
   },
   "HeroPlayer": {
     "playWithSound": "Tarisa zvino",
-    "tapToUnmute": "Taphani kuti mubvise kunyarara"
+    "tapToUnmute": "Taphani kuti mubvise kunyarara",
+    "nextEpisode": "Chikamu chinotevera"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Kurodha zvirimo"
+    "loadingContent": "Kurodha zvirimo",
+    "loadingVideo": "Kurodha vhidhiyo"
   },
   "VideoLabels": {
     "video": "Vhidhiyo",
@@ -223,7 +234,8 @@
     "series": "Nhevedzano",
     "collection": "Muunganidzwa",
     "trailer": "Turera",
-    "behindTheScenes": "Kuseri kweZviitiko"
+    "behindTheScenes": "Kuseri kweZviitiko",
+    "chapter": "Chitsauko"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ye {total}",
@@ -235,11 +247,243 @@
     "noImage": "Hapana mufananidzo",
     "playingNow": "Kuri kutambwa izvozvi",
     "previousChapter": "Chitsauko chapfuura",
-    "nextChapter": "Chitsauko chinotevera"
+    "nextChapter": "Chitsauko chinotevera",
+    "thumbnailAlt": "Thumbnail ye {title}",
+    "relatedVideoThumbnail": "Thumbnail yevhidhiyo ine chekuita nayo"
   },
   "SearchResultCard": {
     "experience": "Ruzivo",
     "episodeCount": "{count, plural, one {# chikamu} other {# zvikamu}}",
     "thumbnailAlt": "Thumbnail yevhidhiyo"
+  },
+  "Feedback": {
+    "openForm": "Vhura fomu remhinduro",
+    "label": "Mhinduro",
+    "couldNotLoad": "Fomu remhinduro harina kukwanisa kurodha.",
+    "loadingForm": "Kurodha fomu remhinduro…",
+    "retry": "Edzazve",
+    "openFormShort": "Vhura fomu",
+    "cancel": "Kanzura",
+    "title": "Mhinduro dzeBeta",
+    "description": "Goverana zviri kushanda nezvatisingagona kuvandudza. Fomu iri rinopihwa neGoogle.",
+    "openInNewTab": "Vhura fomu mutabhu itsva",
+    "closeForm": "Vhara fomu remhinduro",
+    "loadingGoogleForm": "Kurodha Google Form…",
+    "iframeTitle": "Tumira mhinduro dzeBeta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Mavhidhiyo echiKristu emahara mu {language} | Jesus Film Project",
+    "metadataDescription": "Ongororai mafirimu aJesu, nyaya dzeBhaibheri, nhevedzano dzeudzidzi, nemavhidhiyo ekusvitsa shoko ane odhiyo yakadhibhayiwa kana zvidhindo mu {language}.",
+    "heroTitle": "Mavhidhiyo echiKristu emahara mu {language}",
+    "heroDescription": "Ongororai mafirimu aJesu, nyaya dzeBhaibheri, nhevedzano dzeudzidzi, nemavhidhiyo ekusvitsa shoko aripo mu {language}. Mavhidhiyo akanyatsodhibhayiwa anotanga kuratidzwa, uye sarudzo dzezvidhindo dziri pasi apa.",
+    "languageCollection": "Muunganidzwa wemitauro",
+    "itemCount": "{count, plural, one {# chinhu} other {# zvinhu}}",
+    "videoCount": "{count, plural, one {# vhidhiyo} other {# mavhidhiyo}}",
+    "videosInGroups": "{videoCount, plural, one {# vhidhiyo} other {# mavhidhiyo}} mu {groupCount, plural, one {# boka} other {# mapoka}}",
+    "sectionNavLabel": "Zvikamu zveruzivo rwemitauro",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Itsva",
+    "videoBible": "Bhaibheri reVhidhiyo",
+    "bibleProject": "BibleProject",
+    "sports": "Mitambo",
+    "collections": "Muunganidzwa",
+    "subtitlesOnly": "Zvidhindo chete",
+    "newlyAdded": "Zvichangobva kuwedzerwa",
+    "newVideosTitle": "Mavhidhiyo echiKristu matsva mu {language}",
+    "newestFirst": "Zvitsva kutanga",
+    "noPublishedVideos": "Hapasati pave nemavhidhiyo akabudiswa emutauro uyu.",
+    "bibleAndGospelFilms": "Mafirimu eBhaibheri neEvhangeri",
+    "videoBibleCollectionsTitle": "Muunganidzwa weVideo Bible mu {language}",
+    "videoBibleDescription": "Muunganidzwa wakanangana neMagwaro unosanganisira LUMO, JESUS, Magdalena, neMabasa mu {language}.",
+    "noVideoBibleCollections": "Hapasati pave nemuunganidzwa weVideo Bible wemutauro uyu.",
+    "bibleProjectCollectionsTitle": "Muunganidzwa weBibleProject mu {language}",
+    "bibleProjectDescription": "Nhevedzano neongororo dzeBibleProject dziripo mu {language}.",
+    "noBibleProjectCollections": "Hapasati pave nemuunganidzwa weBibleProject wemutauro uyu.",
+    "sportsStories": "Nyaya dzemitambo",
+    "sportsTitle": "Nyaya dzemitambo nevatambi mu {language}",
+    "sportsDescription": "Nyaya dzemitambo dzinotarisisa kutenda nemuunganidzwa unotarisa vatambi uripo mu {language}.",
+    "noSportsCollections": "Hapasati pave nemuunganidzwa wemitambo kana wenyaya dzevatambi wemutauro uyu.",
+    "fullyDubbed": "Zvakadhibhayiwa zvizere",
+    "dubbedVideosTitle": "Mavhidhiyo e {language} nemuunganidzwa",
+    "dubbedVideosDescription": "Browse mavhidhiyo e {language} akadhibhaiwa zvizere akaiswa pamwe chete nemuunganidzwa wawo kuti zvive nyore kuwana.",
+    "noDubbedVideos": "Hapasati pave nemavhidhiyo akadhibhaiwa zvizere emutauro uyu.",
+    "subtitlesAvailable": "Zvidhindo zviripo",
+    "subtitlesTitle": "Mavhidhiyo e {language} ane zvidhindo",
+    "subtitlesDescription": "Mavhidhiyo aya ane zvidhindo zve {language} kana odhiyo yakataurwa ye {language} isati yawanikwa.",
+    "noSubtitleVideos": "Hapasati pave nemavhidhiyo ane zvidhindo chete emutauro uyu.",
+    "dubbed": "Dhibhayiwa",
+    "subtitles": "Zvidhindo",
+    "newLabel": "Itsva",
+    "fromCollection": "Kubva mu {collection}",
+    "standaloneVideos": "Mavhidhiyo akazvimirira",
+    "videosFromCollection": "Mavhidhiyo kubva mu {collection}.",
+    "standaloneDescription": "Mavhidhiyo akazvimirira mumutauro uyu.",
+    "openCollection": "Vhura muunganidzwa"
+  },
+  "WatchHome": {
+    "pageTitle": "Tarisa paJesus Film Project",
+    "watch": "Tarisa",
+    "watchNow": "Tarisa Zvino",
+    "mutePreview": "Nyararisa preview",
+    "unmutePreview": "Bvisa kunyarara preview",
+    "nextVideo": "Vhidhiyo inotevera",
+    "featured": "Yakasarudzwa",
+    "showVideo": "Ratidza {title}",
+    "previousVideoPreview": "Preview yevhidhiyo yapfuura",
+    "nextVideoPreview": "Preview yevhidhiyo inotevera",
+    "mediaCollection": "Muunganidzwa wezvinyorwa zvevhidhiyo",
+    "scrollToVideo": "Skrola kuvhidhiyo ye {title}"
+  },
+  "WatchFooter": {
+    "home": "Peji guru reJesus Film Project",
+    "navigation": "Kufamba kwefooter",
+    "share": "Goverana",
+    "watch": "Tarisa",
+    "giving": "Kupa",
+    "about": "Nezve",
+    "products": "Zvigadzirwa",
+    "resources": "Zvishandiso",
+    "partners": "Vadyidzani",
+    "contact": "Taura nesu",
+    "giveNow": "Ipa Zvino",
+    "resourcesVersion": "Zvishandiso ({version})",
+    "office": "Hofisi",
+    "fax": "Fakisi",
+    "privacyPolicy": "Mutemo wekuvanzika",
+    "legalStatement": "Chirevo chepamutemo",
+    "newsletter": "Nyoresai kutsamba yedu yenhau"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yakagadzirirwa basa guru repasi rose",
+    "title": "Shoko harichinji. Maitiro ekutarisa evanhu ndiwo anoshanduka.",
+    "description": "Tiri kuvaka patsva raibhurari yedu yevhidhiyo nematurusi kubva pasi, tichipa makore mazhinji ebasa rekushandura kuma platform atove kuunganira, kutarisa, nekugoverana vanhu.",
+    "translatedLibraryTitle": "Raibhurari yemafirimu yakadudzirwa zvakanyanya pasi rose",
+    "translatedLibraryDescription": "Makore mazhinji ebasa rekushandura, richitsigirwa nevadyidzani vakavimbika vehushumiri, rakavaka raibhurari ine zviuru zvematanho emitauro kuitira kuti vanhu vasangane nenyaya yaJesu mumutauro unovabata zvakadzama.",
+    "trustedVoicesTitle": "Kutakura mazwi anovimbwa nawo kuenda mumafomati matsva",
+    "trustedVoicesDescription": "Tiri kuvaka patsva nzira dzinotaurwa nadzo nyaya dzevhangeri nemifananidzo, tichibatanidza dudziro dzakavimbika nemafomati emazuva ano kuitira kuti shoko rifambe zvakasununguka pamapuratifomu, mutsika, uye pazvikwangwani.",
+    "missionTeamTitle": "Kupfuura raibhurari. Chikwata chinotungamirirwa nebasa.",
+    "missionTeamDescription": "Jesus Film Project chikwata chepasi rose chevaturikiri, nyanzvi dzezvenhau, vapepeti, nevagadziri vari kushandura makore ebasa reushumiri kuva maturusi evapfekedzi vevadzidzi kwese kwese.",
+    "buildingNext": "Zvatiri kuvaka zvinotevera",
+    "nextStepsTitle": "Puratifomu yeMatanho Anotevera",
+    "nextStepsDescription": "Batanidzai vaoni nemikana inobatika parwendo rwavo rwepamweya, muchivabatsira kutora danho rinotevera kuenda kunharaunda, Magwaro, kana basa.",
+    "mediaLibraryTitle": "Raibhurari yeMedia yeEvhangeli",
+    "mediaLibraryDescription": "Raibhurari yakakura yechiKristu ine zviuru zvemavhidhiyo, mafirimu, nezvishandiso zviripo mumitauro yakawanda zveushumiri nekusvitsa shoko pasi rose.",
+    "ministryToolsTitle": "Zvishandiso zveDhijitari zveMabasa",
+    "ministryToolsDescription": "Kutonga mavhidhiyo, kugovera zvirimo, kubatana nevateereri, uye analytics zvakagadzirirwa kubatsira mashumiro kusvika kuvanhu vakawanda zvine mutsindo.",
+    "invitationEyebrow": "Mokokwa",
+    "invitationTitle": "Batsirai kuvaka <highlight>chizvarwa chinotevera</highlight> chezvishandiso zvehushumiri",
+    "invitationDescription": "Tiri kukoka varapi, vagadziri, nevadyidzani kuti vapinde mukuwana kwekutanga. Edzai maturusi matsva kutanga, ipai mhinduro, uye batsirai kugadzira zvigadzirwa zvakagadzirirwa basa chairo reumishinari.",
+    "betaTester": "Ivai beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Muunganidzwa weVideo Bible",
+    "gospelRailTitle": "Wanakai nyaya yese",
+    "videoBibleDescription": "Ongororai muunganidzwa wedu wemavhidhiyo nezvishandiso zvinounza Bhaibheri kuhupenyu kuburikidza nenyaya dzinokwezva nekudzidzisa.",
+    "showcaseTitle": "Magwaro Akarondedzerwa Kuburikidza neFirimu",
+    "adventEyebrow": "Advent yeKisimusi",
+    "adventTitle": "Kuverenga KweAdvent yeKisimusi",
+    "adventDescription": "Batanai murwendo rwedu rweAdvent nevhidhiyo yezuva nezuva inowedzera kutarisira Kisimusi, ichiongorora tariro, mufaro, nechipikirwa chekuuya kwaJesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent yeBibleProject",
+    "nuaEyebrow": "Nhevedzano yeNUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Nhevedzano yeWorth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kosi yeVhidhiyo",
+    "journeyWithJesusTitle": "Famba naJesu",
+    "gospelsOnVideoEyebrow": "Evhangeri Yese, Yakataurwa paVhidhiyo",
+    "scriptureAsWrittenTitle": "Magwaro, Anotaurwa Chaizvo Sezvanyorwa",
+    "merryChristmas": "Kisimusi yakanaka!",
+    "daysUntilChristmas": "{count, plural, one {Kwasara zuva # kuti Kisimusi isvike} other {Kwasara mazuva # kuti Kisimusi isvike}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Mitauro",
+    "metadataDescription": "Browse mavhidhiyo eJesusFilm nemutauro.",
+    "eyebrow": "Mitauro yeWatch",
+    "title": "Sarudza mutauro",
+    "description": "Ongororai mitauro nenzvimbo kana browse runyorwa rwese.",
+    "searchPlaceholder": "Tsvaga mitauro kana nyika...",
+    "searchLabel": "Tsvaga mitauro kana nyika",
+    "clearSearch": "Bvisa kutsvaga",
+    "browse": "Ongorora",
+    "browseByRegion": "Browse nenzvimbo nenyika",
+    "languageCount": "{count, plural, one {# mutauro} other {# mitauro}}",
+    "region": "Dunhu",
+    "countryLanguages": "Mitauro ye {country}",
+    "showLess": "Ratidza zvishoma",
+    "showMore": "Ratidza zvimwe {count}",
+    "noLanguages": "Hapana mitauro yawanikwa",
+    "tryAnotherSearch": "Edzai rimwe izwi rekutsvaga."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Nhoroondo Yekutarisa | Jesus Film Project",
+    "title": "Nhoroondo Yekutarisa",
+    "loading": "Kurodha nhoroondo",
+    "empty": "Hapana pano parizvino",
+    "emptyDescription": "Mavhidhiyo amunotarisa muchiri wapinda achatobuda pano.",
+    "earlier": "Kare",
+    "today": "Nhasi",
+    "yesterday": "Nezuro"
+  },
+  "AccountControl": {
+    "account": "Akaunti",
+    "accountMenu": "Menyu yeakaunti",
+    "signIn": "Pinda",
+    "signOut": "Buda",
+    "signedIn": "Mupinda",
+    "history": "Nhoroondo",
+    "logOut": "Buda"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Peji harisi kuwanikwa",
+    "eyebrow": "Peji harisi kuwanikwa",
+    "screenReaderPrefix": "Peji harisi kuwanikwa:",
+    "title": "Chiitiko ichi hachipo pano.",
+    "description": "Peji ringave ratama, asi nyaya inoenderera mberi.",
+    "actionsLabel": "Zviito zvepeji harisi kuwanikwa",
+    "backToWatch": "Dzokera kuWatch",
+    "browseVideos": "Browse mavhidhiyo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Tarisa Firimu Pfupi",
+    "actions": {
+      "joinUs": "Joina nesu",
+      "shareMission": "Goverana muBasa redu"
+    },
+    "welcomeStart": {
+      "label": "Kutenda neMagwaro",
+      "title": "Sarudzo dzeVhidhiyo dzeNhasi",
+      "description": "Zviri muvhidhiyo zvine chekuita nekutenda kubva muraibhurari yedu, kuti zvikukurudzire, zvikupikise, uye zvikupesvedzere kufungisisa."
+    },
+    "welcomeMorning": {
+      "label": "Kukurudzirwa kweMangwanani",
+      "title": "Mangwanani akanaka! Zvinhu zveBhaibheri zvenhasi zviri kukumirira.",
+      "description": "Tanga zuva rako nezvinokukurudzira zveBhaibheri zvakagadzirirwa kukupembedza uye kusimudzira mweya wako."
+    },
+    "welcomeAfternoon": {
+      "label": "Kukurudzirwa kweMasikati",
+      "title": "Masikati akanaka! Zvinhu zveBhaibheri zvemazuva enyu.",
+      "description": "Zviri muBhaibheri zvinokurudzira, zvakakodzera kuzororo rako remasikati kana kuramba uchikurudzirwa."
+    },
+    "welcomeEvening": {
+      "label": "Kukurudzirwa kweManheru",
+      "title": "Manheru akanaka! Zororai nezvinhu zveBhaibheri.",
+      "description": "Zvinhu zveBhaibheri zvine rugare zvinokubatsira kufungisisa uye kuwana nyaradzo zuva rako richipera."
+    },
+    "joinUs": {
+      "label": "Joina nesu",
+      "title": "Mabhiriyoni ari kutsvaga",
+      "description": "Nguva yekukohwa yasvika. Joinai nesu patinogovera evhangeri nenyika tichishandisa midhiya yedhijitari."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ngatiendei pamwe chete",
+      "title": "Kutaura Nyaya yaJesu, pamwe chete",
+      "description": "Kuti vanzwe vaone rudo rwaJesu mumutauro wavo pachavo, ipapo pavanenge vari."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Zvinoenderana ne{percent}%",
+    "none": "Hapana mavhidhiyo akakurudzirwa awanikwa anoenderana nevhidhiyo iyi mumutauro uyu."
   }
 }

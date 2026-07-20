@@ -127,6 +127,31 @@ export function normalizeBcp47Tag(tag: string): string {
     .join("-")
 }
 
+type LocaleTextDirection = "ltr" | "rtl"
+
+type LocaleTextInfo = Readonly<{
+  direction: LocaleTextDirection
+}>
+
+type LocaleWithTextInfo = Intl.Locale & {
+  readonly textInfo?: LocaleTextInfo
+  getTextInfo?: () => LocaleTextInfo
+}
+
+export function textDirectionForLocale(locale: string): LocaleTextDirection {
+  try {
+    const resolvedLocale = new Intl.Locale(locale) as LocaleWithTextInfo
+    const textInfo =
+      typeof resolvedLocale.getTextInfo === "function"
+        ? resolvedLocale.getTextInfo()
+        : resolvedLocale.textInfo
+
+    return textInfo?.direction === "rtl" ? "rtl" : "ltr"
+  } catch {
+    return "ltr"
+  }
+}
+
 export function slugToBcp47Tag(slug: string): string | null {
   if (Object.hasOwn(HTML_LANG_OVERRIDES, slug)) {
     return normalizeBcp47Tag(HTML_LANG_OVERRIDES[slug])

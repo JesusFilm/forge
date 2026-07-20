@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
+import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
 
@@ -36,6 +37,7 @@ type AdventCountdownProps = {
 }
 
 export function AdventCountdown({ data }: AdventCountdownProps) {
+  const t = useTranslations("WatchHomeSections")
   const { adventTitle: title, scripture, scriptureReference } = data
 
   const instanceId = useId()
@@ -112,7 +114,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                 {isChristmasDay ? (
                   <div>
                     <p className="text-5xl font-extrabold tracking-tighter text-white/90">
-                      Merry Christmas!
+                      {t("merryChristmas")}
                     </p>
                   </div>
                 ) : (
@@ -121,7 +123,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                       {days}
                     </p>
                     <p className="text-lg font-medium text-white/60">
-                      {days === 1 ? "day" : "days"} until Christmas
+                      {t("daysUntilChristmas", { count: days })}
                     </p>
                   </div>
                 )}

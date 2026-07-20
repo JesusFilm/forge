@@ -3,6 +3,7 @@
  */
 import { StrictMode, act, useEffect, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -134,6 +135,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  setRequestLocale("en")
   vi.clearAllMocks()
   __resetWatchInteractionLoaderForTests()
   resetSearchLanguageOptionsCacheForTest()
@@ -690,6 +692,7 @@ describe("FloatingSearchProvider — search mode", () => {
       await Promise.resolve()
       await Promise.resolve()
     })
+    await flushSearchControllerMount()
 
     expect(resultCount?.textContent).toBe("1")
     expect(mockedRunSearch).toHaveBeenNthCalledWith(
@@ -1967,6 +1970,35 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("localizes the global search launcher and close control in Russian", async () => {
+    setRequestLocale("ru")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const searchButton = document.querySelector(
+      '[aria-label="Искать видео"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      searchButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[aria-label="Закрыть поиск"]'),
+    ).not.toBeNull()
+    expect(document.querySelector('[aria-label="Search videos"]')).toBeNull()
+    expect(document.querySelector('[aria-label="Close search"]')).toBeNull()
+  })
+
   it("does not mount the full search overlay on initial render without query intent", () => {
     act(() => {
       root.render(

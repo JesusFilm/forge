@@ -1828,7 +1828,7 @@ export function HeroPlayer({
             data-kind={block.nextWatchItem?.kind ?? "chapter"}
             data-manual={watchNextManual ? "true" : "false"}
             data-auto-armed={watchNextAutoArmed ? "true" : "false"}
-            aria-label="Next Episode"
+            aria-label={t("nextEpisode")}
             onClick={navigateToNextWatchItem}
             className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
               watchNextManual
@@ -1846,7 +1846,7 @@ export function HeroPlayer({
             ) : null}
             <PlayIcon />
             <span className="relative text-base font-bold leading-none">
-              Next Episode
+              {t("nextEpisode")}
             </span>
           </button>
         ) : null}

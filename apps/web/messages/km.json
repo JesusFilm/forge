@@ -7,7 +7,9 @@
     "noContent": "មិនមានមាតិកាណាមួយទេ។",
     "homepageMisconfigured": "ទំព័រដើមសម្រាប់មើលវីដេអូមិនបានកំណត់រចនាសម្ព័ន្ធត្រឹមត្រូវ។",
     "defaultTemplateMisconfigured": "គំរូលំនាំដើមសម្រាប់មើលវីដេអូមិនបានកំណត់រចនាសម្ព័ន្ធត្រឹមត្រូវ។",
-    "authFailed": "មិនអាចផ្ទៀងផ្ទាត់ជាមួយសេវាកម្មមាតិកាបាន។ សូមទាក់ទងផ្នែកគាំទ្រ ប្រសិនបើបញ្ហានេះនៅតែបន្ត។"
+    "authFailed": "មិនអាចផ្ទៀងផ្ទាត់ជាមួយសេវាកម្មមាតិកាបាន។ សូមទាក់ទងផ្នែកគាំទ្រ ប្រសិនបើបញ្ហានេះនៅតែបន្ត។",
+    "pageLoadFailed": "មានអ្វីមួយខុសប្រក្រតី។",
+    "tryAgain": "ព្យាយាមម្តងទៀត"
   },
   "VideosPage": {
     "title": "វីដេអូទាំងអស់",
@@ -22,7 +24,8 @@
     "promoHeading": "ចង់យល់ព្រះគម្ពីរឲ្យជ្រាលជ្រៅជាងមុនទេ?",
     "joinBibleStudy": "ចូលរួមសិក្សាព្រះគម្ពីររបស់យើង",
     "previousQuote": "អត្ថបទយោងព្រះគម្ពីរមុន",
-    "nextQuote": "អត្ថបទយោងព្រះគម្ពីរបន្ទាប់"
+    "nextQuote": "អត្ថបទយោងព្រះគម្ពីរបន្ទាប់",
+    "readPassage": "សូមអានអត្ថបទនេះនៅក្នុងព្រះគម្ពីររបស់អ្នក។"
   },
   "DownloadButton": {
     "checking": "កំពុងពិនិត្យ",
@@ -73,7 +76,8 @@
     "selectLanguage": "ជ្រើសរើសភាសា",
     "searchPlaceholder": "ស្វែងរកភាសា…",
     "languages": "ភាសា",
-    "noMatches": "គ្មានលទ្ធផលត្រូវគ្នា"
+    "noMatches": "គ្មានលទ្ធផលត្រូវគ្នា",
+    "notAvailable": "មិនមាន"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ភាសា",
@@ -112,7 +116,8 @@
     "questions": "សំណួរពាក់ព័ន្ធ",
     "askYours": "សួររបស់អ្នក",
     "chatWithPerson": "ជជែកជាមួយមនុស្ស",
-    "askBibleQuestion": "សួរសំណួរព្រះគម្ពីរ"
+    "askBibleQuestion": "សួរសំណួរព្រះគម្ពីរ",
+    "quiz": "កម្រងសំណួរ"
   },
   "WatchQuestionPanel": {
     "messageType": "ប្រភេទសារ",
@@ -170,7 +175,8 @@
     "searchRegion": "ស្វែងរកវីដេអូ",
     "clearSearch": "លុបការស្វែងរក",
     "changeAudioLanguage": "ប្ដូរភាសាសំឡេង",
-    "home": "ទំព័រដើម JesusFilm"
+    "home": "ទំព័រដើម JesusFilm",
+    "closeSearch": "បិទការស្វែងរក"
   },
   "SearchOverlay": {
     "dialogLabel": "ស្វែងរក និងរុករកវីដេអូ",
@@ -205,14 +211,19 @@
     "clearLanguages": "លុប",
     "queryLanguageDetected": "រកឃើញ {language}",
     "searchInLanguage": "ស្វែងរកជា {language}",
-    "tryDifferentKeywordsOrLanguage": "សាកល្បងពាក្យគន្លឹះផ្សេង ឬជ្រើសភាសាស្វែងរកផ្សេង"
+    "tryDifferentKeywordsOrLanguage": "សាកល្បងពាក្យគន្លឹះផ្សេង ឬជ្រើសភាសាស្វែងរកផ្សេង",
+    "useWebsiteDefaultLanguage": "ប្រើភាសាស្វែងរកលំនាំដើមរបស់គេហទំព័រ",
+    "removeLanguage": "លុប {language}",
+    "browseMode": "របៀបរុករកការស្វែងរក"
   },
   "HeroPlayer": {
     "playWithSound": "មើលឥឡូវនេះ",
-    "tapToUnmute": "ចុចដើម្បីបើកសំឡេង"
+    "tapToUnmute": "ចុចដើម្បីបើកសំឡេង",
+    "nextEpisode": "វគ្គបន្ទាប់"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "កំពុងផ្ទុកមាតិកា"
+    "loadingContent": "កំពុងផ្ទុកមាតិកា",
+    "loadingVideo": "កំពុងផ្ទុកវីដេអូ"
   },
   "VideoLabels": {
     "video": "វីដេអូ",
@@ -223,7 +234,8 @@
     "series": "ស៊េរី",
     "collection": "កម្រង",
     "trailer": "ឈុតខ្លីផ្សព្វផ្សាយ",
-    "behindTheScenes": "ក្រោយឆាក"
+    "behindTheScenes": "ក្រោយឆាក",
+    "chapter": "ជំពូក"
   },
   "SiblingCarousel": {
     "clipPosition": "ឈុត {current} ក្នុងចំណោម {total}",
@@ -235,11 +247,243 @@
     "noImage": "គ្មានរូបភាព",
     "playingNow": "កំពុងចាក់ឥឡូវនេះ",
     "previousChapter": "ជំពូកមុន",
-    "nextChapter": "ជំពូកបន្ទាប់"
+    "nextChapter": "ជំពូកបន្ទាប់",
+    "thumbnailAlt": "រូបតូចរបស់ {title}",
+    "relatedVideoThumbnail": "រូបតូចវីដេអូពាក់ព័ន្ធ"
   },
   "SearchResultCard": {
     "experience": "បទពិសោធន៍",
     "episodeCount": "{count, plural, one {# វគ្គ} other {# វគ្គ}}",
     "thumbnailAlt": "រូបតូចវីដេអូ"
+  },
+  "Feedback": {
+    "openForm": "បើកទម្រង់មតិយោបល់",
+    "label": "មតិយោបល់",
+    "couldNotLoad": "មិនអាចផ្ទុកទម្រង់មតិយោបល់បាន។",
+    "loadingForm": "កំពុងផ្ទុកទម្រង់មតិយោបល់…",
+    "retry": "ព្យាយាមម្តងទៀត",
+    "openFormShort": "បើកទម្រង់",
+    "cancel": "បោះបង់",
+    "title": "មតិយោបល់បេតា",
+    "description": "ចែករំលែកអ្វីដែលដំណើរការល្អ និងអ្វីដែលយើងអាចកែលម្អបាន។ ទម្រង់នេះផ្តល់ដោយ Google។",
+    "openInNewTab": "បើកទម្រង់ក្នុងផ្ទាំងថ្មី",
+    "closeForm": "បិទទម្រង់មតិយោបល់",
+    "loadingGoogleForm": "កំពុងផ្ទុក Google Form…",
+    "iframeTitle": "ដាក់ស្នើមតិយោបល់បេតា"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "វីដេអូគ្រីស្ទានឥតគិតថ្លៃជា {language} | Jesus Film Project",
+    "metadataDescription": "ស្វែងរកភាពយន្តអំពីព្រះយេស៊ូវ រឿងក្នុងព្រះគម្ពីរ ស៊េរីសិស្សភាព និងវីដេអូផ្សព្វផ្សាយ ជាមួយសំឡេងអធិប្បាយ ឬចំណងជើងរងជា {language}។",
+    "heroTitle": "វីដេអូគ្រីស្ទានឥតគិតថ្លៃជា {language}",
+    "heroDescription": "ស្វែងរកភាពយន្តអំពីព្រះយេស៊ូវ រឿងក្នុងព្រះគម្ពីរ ស៊េរីសិស្សភាព និងវីដេអូផ្សព្វផ្សាយដែលមានជា {language}។ វីដេអូដែលមានសំឡេងដាក់ឈ្មោះពេញលេញត្រូវបានបង្ហាញមុន ហើយជម្រើសមានតែចំណងជើងរងស្ថិតខាងក្រោម។",
+    "languageCollection": "កម្រងភាសា",
+    "itemCount": "{count, plural, one {# ធាតុ} other {# ធាតុ}}",
+    "videoCount": "{count, plural, one {# វីដេអូ} other {# វីដេអូ}}",
+    "videosInGroups": "{videoCount, plural, one {# វីដេអូ} other {# វីដេអូ}} ក្នុង {groupCount, plural, one {# ក្រុម} other {# ក្រុម}}",
+    "sectionNavLabel": "ផ្នែកកម្រងភាសា",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "ថ្មី",
+    "videoBible": "ព្រះគម្ពីរវីដេអូ",
+    "bibleProject": "BibleProject",
+    "sports": "កីឡា",
+    "collections": "កម្រង",
+    "subtitlesOnly": "មានតែចំណងជើងរង",
+    "newlyAdded": "បានបន្ថែមថ្មីៗ",
+    "newVideosTitle": "វីដេអូគ្រីស្ទានថ្មីជា {language}",
+    "newestFirst": "ថ្មីបំផុតមុន",
+    "noPublishedVideos": "មិនទាន់រកឃើញវីដេអូដែលបានបោះពុម្ពសម្រាប់ភាសានេះនៅឡើយ។",
+    "bibleAndGospelFilms": "ភាពយន្តព្រះគម្ពីរ និងដំណឹងល្អ",
+    "videoBibleCollectionsTitle": "កម្រងព្រះគម្ពីរវីដេអូជា {language}",
+    "videoBibleDescription": "កម្រងផ្អែកលើព្រះគម្ពីរ រួមមាន LUMO, JESUS, Magdalena, និង Acts ជា {language}។",
+    "noVideoBibleCollections": "មិនទាន់មានកម្រងព្រះគម្ពីរវីដេអូសម្រាប់ភាសានេះនៅឡើយ។",
+    "bibleProjectCollectionsTitle": "កម្រង BibleProject ជា {language}",
+    "bibleProjectDescription": "ស៊េរី និងការសិក្សា BibleProject ដែលមានជា {language}។",
+    "noBibleProjectCollections": "មិនទាន់មានកម្រង BibleProject សម្រាប់ភាសានេះនៅឡើយ។",
+    "sportsStories": "រឿងរ៉ាវកីឡា",
+    "sportsTitle": "រឿងរ៉ាវកីឡា និងអត្តពលិកជា {language}",
+    "sportsDescription": "រឿងរ៉ាវកីឡាដែលផ្អែកលើជំនឿ និងកម្រងផ្តោតលើអត្តពលិក មានជា {language}។",
+    "noSportsCollections": "មិនទាន់មានកម្រងកីឡា ឬរឿងរ៉ាវអត្តពលិកសម្រាប់ភាសានេះនៅឡើយ។",
+    "fullyDubbed": "ដាក់សំឡេងពេញលេញ",
+    "dubbedVideosTitle": "វីដេអូជា {language} តាមកម្រង",
+    "dubbedVideosDescription": "រុករកវីដេអូជា {language} ដែលបានដាក់សំឡេងពេញលេញ ដាក់ជាក្រុមតាមកម្រង ដើម្បីងាយស្រួលរក។",
+    "noDubbedVideos": "មិនទាន់មានវីដេអូដែលដាក់សំឡេងពេញលេញសម្រាប់ភាសានេះនៅឡើយ។",
+    "subtitlesAvailable": "មានចំណងជើងរង",
+    "subtitlesTitle": "វីដេអូជា {language} ដែលមានចំណងជើងរង",
+    "subtitlesDescription": "វីដេអូទាំងនេះមានចំណងជើងរងជា {language} នៅពេលសំឡេងនិយាយជា {language} មិនទាន់មាន។",
+    "noSubtitleVideos": "មិនទាន់មានវីដេអូដែលមានតែចំណងជើងរងសម្រាប់ភាសានេះនៅឡើយ។",
+    "dubbed": "ដាក់សំឡេង",
+    "subtitles": "ចំណងជើងរង",
+    "newLabel": "ថ្មី",
+    "fromCollection": "ពី {collection}",
+    "standaloneVideos": "វីដេអូឯករាជ្យ",
+    "videosFromCollection": "វីដេអូពី {collection}។",
+    "standaloneDescription": "វីដេអូឯករាជ្យក្នុងភាសានេះ។",
+    "openCollection": "បើកកម្រង"
+  },
+  "WatchHome": {
+    "pageTitle": "ទស្សនា Jesus Film Project",
+    "watch": "មើល",
+    "watchNow": "មើលឥឡូវនេះ",
+    "mutePreview": "បិទសំឡេងមើលជាមុន",
+    "unmutePreview": "បើកសំឡេងមើលជាមុន",
+    "nextVideo": "វីដេអូបន្ទាប់",
+    "featured": "ពិសេស",
+    "showVideo": "បង្ហាញ {title}",
+    "previousVideoPreview": "មើលវីដេអូមុនជាមុន",
+    "nextVideoPreview": "មើលវីដេអូបន្ទាប់ជាមុន",
+    "mediaCollection": "កម្រងមេឌៀ",
+    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}"
+  },
+  "WatchFooter": {
+    "home": "ទំព័រដើម Jesus Film Project",
+    "navigation": "ការរុករកផ្នែកខាងក្រោម",
+    "share": "ចែករំលែក",
+    "watch": "មើល",
+    "giving": "ការផ្តល់ជូន",
+    "about": "អំពី",
+    "products": "ផលិតផល",
+    "resources": "ធនធាន",
+    "partners": "ដៃគូ",
+    "contact": "ទំនាក់ទំនង",
+    "giveNow": "ផ្តល់ឥឡូវនេះ",
+    "resourcesVersion": "ធនធាន ({version})",
+    "office": "ការិយាល័យ",
+    "fax": "ហ្វាក់ស៍",
+    "privacyPolicy": "គោលការណ៍ភាពឯកជន",
+    "legalStatement": "សេចក្តីថ្លែងការណ៍ផ្លូវច្បាប់",
+    "newsletter": "ចុះឈ្មោះទទួលព្រឹត្តិបត្រព័ត៌មានរបស់យើង"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "បង្កើតឡើងសម្រាប់បេសកកម្មសកល",
+    "title": "សារ​មិន​ប្រែប្រួល​ទេ។ របៀប​ដែល​មនុស្ស​មើល​វា​ប្រែប្រួល។",
+    "description": "យើងកំពុងកសាងបណ្ណាល័យវីដេអូ និងឧបករណ៍របស់យើងឡើងវិញពីមូលដ្ឋាន ដោយយកការងារបកប្រែជាច្រើនទសវត្សរ៍ ទៅកាន់វេទិកាដែលមនុស្សបានជួបជុំ មើល និងចែករំលែករួចហើយ។",
+    "translatedLibraryTitle": "បណ្ណាល័យភាពយន្តដែលបានបកប្រែច្រើនបំផុតក្នុងពិភពលោក",
+    "translatedLibraryDescription": "ការងារបកប្រែជាច្រើនទសវត្សរ៍ ដែលគាំទ្រដោយដៃគូបម្រើការងារដែលទុកចិត្ត បានបង្កើតបណ្ណាល័យមានបទភាសាច្រើនពាន់ ដើម្បីឲ្យមនុស្សអាចជួបនឹងរឿងរបស់ព្រះយេស៊ូវជាភាសាដែលទៅដល់ចិត្តពួកគេជ្រៅបំផុត។",
+    "trustedVoicesTitle": "នាំសំឡេងដែលគេជឿទុកចិត្តទៅក្នុងទម្រង់ថ្មី",
+    "trustedVoicesDescription": "យើងកំពុងកសាងវិធីថ្មីក្នុងការនិទានរឿងដំណឹងល្អជារូបភាព ដោយភ្ជាប់ការបកប្រែដែលគេទុកចិត្តជាមួយទម្រង់ទាន់សម័យ ដើម្បីឲ្យសារនេះអាចចល័តដោយសេរីឆ្លងកាត់វេទិកា វប្បធម៌ និងអេក្រង់។",
+    "missionTeamTitle": "លើសពីបណ្ណាល័យ។ ជាក្រុមការងារដែលមានបេសកកម្ម។",
+    "missionTeamDescription": "Jesus Film Project គឺជាក្រុមសកលនៃអ្នកបកប្រែ អ្នកឯកទេសប្រព័ន្ធផ្សព្វផ្សាយ អ្នកកែសម្រួល និងអ្នកបង្កើត ដែលបម្លែងបទពិសោធន៍បម្រើការងារជាច្រើនទសវត្សរ៍ ទៅជាឧបករណ៍សម្រាប់អ្នកធ្វើសិស្សភាពគ្រប់ទីកន្លែង។",
+    "buildingNext": "អ្វីដែលយើងកំពុងកសាងបន្តទៅ",
+    "nextStepsTitle": "វេទិកាជំហានបន្ទាប់",
+    "nextStepsDescription": "ភ្ជាប់អ្នកមើលទៅកាន់ឱកាសជាក់ស្តែងនៅលើដំណើរខាងវិញ្ញាណរបស់ពួកគេ ដោយជួយពួកគេឆ្លងទៅកាន់ជំហានបន្ទាប់ក្នុងសហគមន៍ ព្រះគម្ពីរ ឬបេសកកម្ម។",
+    "mediaLibraryTitle": "បណ្ណាល័យមេឌៀសម្រាប់ផ្សព្វផ្សាយដំណឹងល្អ",
+    "mediaLibraryDescription": "បណ្ណាល័យមេឌៀគ្រីស្ទានដ៏ទូលំទូលាយ មានវីដេអូ ភាពយន្ត និងធនធានរាប់ពាន់ ជាភាសាច្រើន សម្រាប់បម្រើការងារ និងការផ្សាយដំណឹងល្អទូទាំងពិភពលោក។",
+    "ministryToolsTitle": "ឧបករណ៍ឌីជីថលសម្រាប់ក្រុមបម្រើការងារ",
+    "ministryToolsDescription": "ការគ្រប់គ្រងវីដេអូ ការចែកចាយមាតិកា ការចូលរួមរបស់ទស្សនិកជន និងវិភាគទិន្នន័យ ដែលរចនាឡើងដើម្បីជួយក្រុមបម្រើការងារទៅដល់មនុស្សច្រើនជាងមុនដោយមានប្រសិទ្ធភាព។",
+    "invitationEyebrow": "អ្នកត្រូវបានអញ្ជើញ",
+    "invitationTitle": "ជួយកសាង <highlight>ជំនាន់បន្ទាប់</highlight> នៃឧបករណ៍បេសកកម្ម",
+    "invitationDescription": "យើងកំពុងអញ្ជើញអ្នកអនុវត្ត អ្នកបង្កើត និងដៃគូឲ្យចូលប្រើមុន។ សាកល្បងឧបករណ៍ថ្មីមុនគេ ផ្តល់មតិយោបល់ និងជួយកំណត់ទិសដៅផលិតផលដែលរចនាសម្រាប់ការងារបេសកកម្មពិតប្រាកដ។",
+    "betaTester": "ក្លាយជាអ្នកសាកល្បងបេតា"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "កម្រងព្រះគម្ពីរវីដេអូ",
+    "gospelRailTitle": "ស្វែងរករឿងទាំងមូល",
+    "videoBibleDescription": "ស្វែងរកកម្រងវីដេអូ និងធនធានរបស់យើង ដែលនាំព្រះគម្ពីរឲ្យមានជីវិតតាមរយៈរឿងរ៉ាវ និងការបង្រៀនដែលទាក់ទាញចិត្ត។",
+    "showcaseTitle": "ព្រះគម្ពីរត្រូវបាននិយាយតាមរយៈភាពយន្ត",
+    "adventEyebrow": "Advent បុណ្យណូអែល",
+    "adventTitle": "រាប់ថយក្រោយទៅកាន់បុណ្យណូអែល Advent",
+    "adventDescription": "ចូលរួមដំណើរ Advent របស់យើងជាមួយវីដេអូប្រចាំថ្ងៃ ដែលបង្កើនការរំពឹងទុកចំពោះបុណ្យណូអែល ដោយស្វែងយល់អំពីក្តីសង្ឃឹម ភាពរីករាយ និងការសន្យានៃការយាងមករបស់ព្រះយេស៊ូវ។",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent របស់ BibleProject",
+    "nuaEyebrow": "ស៊េរី NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "ស៊េរី Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "វគ្គសិក្សាវីដេអូ",
+    "journeyWithJesusTitle": "ធ្វើដំណើរជាមួយព្រះយេស៊ូវ",
+    "gospelsOnVideoEyebrow": "គម្ពីរដំណឹងល្អគ្រប់កណ្ឌ ប្រាប់ជាវីដេអូ",
+    "scriptureAsWrittenTitle": "បទគម្ពីរ ត្រូវបាននិយាយតាមអក្សរដែលបានសរសេរ",
+    "merryChristmas": "រីករាយបុណ្យណូអែល!",
+    "daysUntilChristmas": "{count, plural, other {នៅសល់ # ថ្ងៃទៀតដល់បុណ្យណូអែល}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ភាសា",
+    "metadataDescription": "រុករកវីដេអូ JesusFilm តាមភាសា។",
+    "eyebrow": "ភាសាសម្រាប់មើល",
+    "title": "ជ្រើសរើសភាសា",
+    "description": "ស្វែងរកភាសាតាមតំបន់ ឬរុករកបញ្ជីទាំងមូល។",
+    "searchPlaceholder": "ស្វែងរកភាសា ឬប្រទេស...",
+    "searchLabel": "ស្វែងរកភាសា ឬប្រទេស",
+    "clearSearch": "លុបការស្វែងរក",
+    "browse": "រុករក",
+    "browseByRegion": "រុករកតាមតំបន់ និងប្រទេស",
+    "languageCount": "{count, plural, one {# ភាសា} other {# ភាសា}}",
+    "region": "តំបន់",
+    "countryLanguages": "ភាសារបស់ {country}",
+    "showLess": "បង្ហាញតិច",
+    "showMore": "បង្ហាញបន្ថែម {count}",
+    "noLanguages": "មិនឃើញភាសាទេ",
+    "tryAnotherSearch": "សាកល្បងពាក្យស្វែងរកផ្សេង។"
+  },
+  "WatchHistory": {
+    "metadataTitle": "ប្រវត្តិការមើល | Jesus Film Project",
+    "title": "ប្រវត្តិការមើល",
+    "loading": "កំពុងផ្ទុកប្រវត្តិ",
+    "empty": "នៅទីនេះមិនទាន់មានអ្វីទេ",
+    "emptyDescription": "វីដេអូដែលអ្នកមើលនៅពេលបានចូលគណនី នឹងបង្ហាញនៅទីនេះ។",
+    "earlier": "មុននេះ",
+    "today": "ថ្ងៃនេះ",
+    "yesterday": "ម្សិលមិញ"
+  },
+  "AccountControl": {
+    "account": "គណនី",
+    "accountMenu": "ម៉ឺនុយគណនី",
+    "signIn": "ចូលគណនី",
+    "signOut": "ចាកចេញពីគណនី",
+    "signedIn": "បានចូលគណនី",
+    "history": "ប្រវត្តិ",
+    "logOut": "ចាកចេញ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "រកមិនឃើញទំព័រ",
+    "eyebrow": "រកមិនឃើញទំព័រ",
+    "screenReaderPrefix": "រកមិនឃើញទំព័រ៖",
+    "title": "ឈុតនេះមិនមាននៅទីនេះទេ។",
+    "description": "ទំព័រអាចនឹងបានផ្លាស់ទី ប៉ុន្តែរឿងរ៉ាវនៅតែបន្តទៅមុខ។",
+    "actionsLabel": "សកម្មភាពសម្រាប់ទំព័ររកមិនឃើញ",
+    "backToWatch": "ត្រឡប់ទៅមើល",
+    "browseVideos": "រុករកវីដេអូ"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "មើលភាពយន្តខ្លី",
+    "actions": {
+      "joinUs": "ចូលរួមជាមួយយើង",
+      "shareMission": "ចែករំលែកក្នុងបេសកកម្មរបស់យើង"
+    },
+    "welcomeStart": {
+      "label": "ជំនឿ និងបទគម្ពីរ",
+      "title": "ជម្រើសវីដេអូថ្ងៃនេះ",
+      "description": "មាតិកាវីដេអូផ្តោតលើជំនឿពីបណ្ណាល័យរបស់យើង ដើម្បីលើកទឹកចិត្ត ប្រកួតប្រជែង និងជំរុញការពិចារណា។"
+    },
+    "welcomeMorning": {
+      "label": "ការបំផុសគំនិតពេលព្រឹក",
+      "title": "អរុណសួស្តី! ពេលវេលាព្រះគម្ពីរថ្ងៃនេះកំពុងរង់ចាំ។",
+      "description": "ចាប់ផ្តើមថ្ងៃរបស់អ្នកជាមួយនឹងពេលវេលាព្រះគម្ពីរដែលលើកទឹកចិត្ត រចនាឡើងដើម្បីបំផុស និងលើកស្ទួយវិញ្ញាណរបស់អ្នក។"
+    },
+    "welcomeAfternoon": {
+      "label": "ការបំផុសគំនិតពេលរសៀល",
+      "title": "រសៀលសួស្តី! ពេលវេលាព្រះគម្ពីរសម្រាប់ថ្ងៃរបស់អ្នក។",
+      "description": "មាតិកាព្រះគម្ពីរលើកទឹកចិត្ត ដែលសមស្របសម្រាប់ការសម្រាកពេលរសៀល ឬសម្រាប់ការបំផុសបន្ត។"
+    },
+    "welcomeEvening": {
+      "label": "ការបំផុសគំនិតពេលល្ងាច",
+      "title": "ល្ងាចសួស្តី! បន្ធូរអារម្មណ៍ជាមួយពេលវេលាព្រះគម្ពីរ។",
+      "description": "ពេលវេលាព្រះគម្ពីរដ៏ស្ងប់ស្ងាត់ ដើម្បីជួយឲ្យអ្នកពិចារណា និងរកបានការលួងលោម ខណៈថ្ងៃរបស់អ្នកកំពុងបញ្ចប់។"
+    },
+    "joinUs": {
+      "label": "ចូលរួមជាមួយយើង",
+      "title": "មនុស្សរាប់ពាន់លានកំពុងស្វែងរក",
+      "description": "ការច្រូតកាត់បានមកដល់ហើយ។ ចូលរួមជាមួយយើង ខណៈយើងចែកចាយដំណឹងល្អទៅកាន់ពិភពលោក ដោយប្រើមេឌៀឌីជីថល។"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "ទៅជាមួយគ្នា",
+      "title": "ប្រាប់រឿងរ៉ាវរបស់ព្រះយេស៊ូវ ជាមួយគ្នា",
+      "description": "ដើម្បីឲ្យពួកគេអាចឮ និងឃើញសេចក្តីស្រឡាញ់របស់ព្រះយេស៊ូវ ជាភាសារបស់ខ្លួន នៅកន្លែងដែលពួកគេនៅ។"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "ត្រូវគ្នា {percent}%",
+    "none": "រកមិនឃើញវីដេអូណែនាំសម្រាប់វីដេអូនេះជាភាសានេះទេ។"
   }
 }

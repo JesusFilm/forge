@@ -7,7 +7,9 @@
     "noContent": "Wala sing available nga content.",
     "homepageMisconfigured": "Ang watch homepage indi husto ang pagka-configure.",
     "defaultTemplateMisconfigured": "Ang default watch template indi husto ang pagka-configure.",
-    "authFailed": "Indi makapa-authenticate sa content service. Palihog kontaka ang support kon magpadayon ini."
+    "authFailed": "Indi makapa-authenticate sa content service. Palihog kontaka ang support kon magpadayon ini.",
+    "pageLoadFailed": "May nagkamali.",
+    "tryAgain": "Sulayi liwat"
   },
   "VideosPage": {
     "title": "Tanan nga Videos",
@@ -22,7 +24,8 @@
     "promoHeading": "Gusto mo mas maintiendihan sing mas lalom ang Biblia?",
     "joinBibleStudy": "Mag-upod sa amon Bible study",
     "previousQuote": "Masanag nga Bible quote",
-    "nextQuote": "Sunod nga Bible quote"
+    "nextQuote": "Sunod nga Bible quote",
+    "readPassage": "Basaha ini nga bahin sa imo Biblia."
   },
   "DownloadButton": {
     "checking": "Gina-check",
@@ -73,7 +76,8 @@
     "selectLanguage": "Pilia ang lenguahe",
     "searchPlaceholder": "Pangitaa ang mga lenguahe…",
     "languages": "Mga lenguahe",
-    "noMatches": "Wala sing kapareho"
+    "noMatches": "Wala sing kapareho",
+    "notAvailable": "Wala available"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lenguahe",
@@ -112,7 +116,8 @@
     "questions": "May Kalab-uton nga mga Pamangkot",
     "askYours": "Pamangkot mo",
     "chatWithPerson": "Makig-chat sa isa ka tawo",
-    "askBibleQuestion": "Mangutana sang Bible"
+    "askBibleQuestion": "Mangutana sang Bible",
+    "quiz": "Pagsulay"
   },
   "WatchQuestionPanel": {
     "messageType": "Klase sang mensahe",
@@ -170,7 +175,8 @@
     "searchRegion": "Pangitaa ang mga video",
     "clearSearch": "Halinon ang search",
     "changeAudioLanguage": "Suksua ang idioma sang audio",
-    "home": "Panguna nga pahina sang JesusFilm"
+    "home": "Panguna nga pahina sang JesusFilm",
+    "closeSearch": "Sirad-an ang search"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa kag i-browse ang mga video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Halinon",
     "queryLanguageDetected": "Nadetect ang {language}",
     "searchInLanguage": "Pangitaa sa {language}",
-    "tryDifferentKeywordsOrLanguage": "Sulayi ang lain nga keyword ukon magpili sang lain nga search language"
+    "tryDifferentKeywordsOrLanguage": "Sulayi ang lain nga keyword ukon magpili sang lain nga search language",
+    "useWebsiteDefaultLanguage": "Gamita ang default nga lenguahe sang website para sa search",
+    "removeLanguage": "Kuhaa ang {language}",
+    "browseMode": "Browse mode sang search"
   },
   "HeroPlayer": {
     "playWithSound": "Tan-awon subong",
-    "tapToUnmute": "Tupoka para ibalik ang tingog"
+    "tapToUnmute": "Tupoka para ibalik ang tingog",
+    "nextEpisode": "Sunod nga Episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Gina-load ang content"
+    "loadingContent": "Gina-load ang content",
+    "loadingVideo": "Gina-load ang video"
   },
   "VideoLabels": {
     "video": "Bidyo",
@@ -223,7 +234,8 @@
     "series": "Serye",
     "collection": "Koleksyon",
     "trailer": "Pasiuna",
-    "behindTheScenes": "Sa Likod sang Eksena"
+    "behindTheScenes": "Sa Likod sang Eksena",
+    "chapter": "Kapitulo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} sa {total}",
@@ -235,11 +247,243 @@
     "noImage": "Wala sing hulagway",
     "playingNow": "Ginatukar subong",
     "previousChapter": "Una nga kapitulo",
-    "nextChapter": "Sunod nga kapitulo"
+    "nextChapter": "Sunod nga kapitulo",
+    "thumbnailAlt": "Thumbnail sang {title}",
+    "relatedVideoThumbnail": "Thumbnail sang may kalab-uton nga video"
   },
   "SearchResultCard": {
     "experience": "Kasinatian",
     "episodeCount": "{count, plural, one {# ka episode} other {# ka mga episode}}",
     "thumbnailAlt": "Thumbnail sang video"
+  },
+  "Feedback": {
+    "openForm": "Ablihan ang feedback form",
+    "label": "Mga komento",
+    "couldNotLoad": "Indi ma-load ang feedback form.",
+    "loadingForm": "Gina-load ang feedback form…",
+    "retry": "Sulayi liwat",
+    "openFormShort": "Ablihan ang form",
+    "cancel": "Kanselahon",
+    "title": "Mga Komento sa Beta",
+    "description": "Ipaambit kon ano ang nagapakita nga maayo kag ano ang mahimo pa namon mapauswag. Ini nga form ginahatag sang Google.",
+    "openInNewTab": "Ablihan ang form sa bag-o nga tab",
+    "closeForm": "Sirad-an ang feedback form",
+    "loadingGoogleForm": "Gina-load ang Google Form…",
+    "iframeTitle": "Ipasa ang Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Libre nga mga Kristohanon nga video sa {language} | Jesus Film Project",
+    "metadataDescription": "Mag-usisa sang mga pelikula ni Jesus, mga estorya sa Biblia, mga series para sa pagdisipulo, kag mga outreach video nga may dubbed audio ukon subtitles sa {language}.",
+    "heroTitle": "Libre nga mga Kristohanon nga video sa {language}",
+    "heroDescription": "Mag-usisa sang mga pelikula ni Jesus, mga estorya sa Biblia, mga series para sa pagdisipulo, kag mga outreach video nga ara sa {language}. Ang mga video nga fully dubbed una nga ginapakita, kag ang mga subtitle-only nga opsyon ara sa idalom.",
+    "languageCollection": "Koleksyon sang lenguahe",
+    "itemCount": "{count, plural, one {# ka item} other {# ka mga item}}",
+    "videoCount": "{count, plural, one {# ka video} other {# ka mga video}}",
+    "videosInGroups": "{videoCount, plural, one {# ka video} other {# ka mga video}} sa {groupCount, plural, one {# ka grupo} other {# ka mga grupo}}",
+    "sectionNavLabel": "Mga seksyon sang language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Bago",
+    "videoBible": "Biblia sa Video",
+    "bibleProject": "BibleProject",
+    "sports": "Isports",
+    "collections": "Mga Koleksyon",
+    "subtitlesOnly": "Subtitles lang",
+    "newlyAdded": "Bag-o lang nadugang",
+    "newVideosTitle": "Bag-o nga mga Kristohanon nga video sa {language}",
+    "newestFirst": "Pinakabag-o sa una",
+    "noPublishedVideos": "Wala pa sing nahanap nga published nga mga video para sini nga lenguahe.",
+    "bibleAndGospelFilms": "Mga pelikula sa Biblia kag Ebanghelyo",
+    "videoBibleCollectionsTitle": "{language} nga Video Bible nga mga koleksyon",
+    "videoBibleDescription": "Mga koleksyon nga nagatuon sa Kasulatan lakip ang LUMO, JESUS, Magdalena, kag Acts sa {language}.",
+    "noVideoBibleCollections": "Wala pa sing available nga Video Bible nga mga koleksyon para sini nga lenguahe.",
+    "bibleProjectCollectionsTitle": "{language} nga mga koleksyon sang BibleProject",
+    "bibleProjectDescription": "Mga series kag studies sang BibleProject nga ara sa {language}.",
+    "noBibleProjectCollections": "Wala pa sing available nga mga koleksyon sang BibleProject para sini nga lenguahe.",
+    "sportsStories": "Mga estorya sa sports",
+    "sportsTitle": "{language} nga mga estorya sa sports kag atleta",
+    "sportsDescription": "Mga estorya sa sports nga nagatuon sa pagtuo kag mga koleksyon nga nakasentro sa atleta nga ara sa {language}.",
+    "noSportsCollections": "Wala pa sing available nga mga koleksyon sang sports ukon estorya sang atleta para sini nga lenguahe.",
+    "fullyDubbed": "Bug-os nga gin-dub",
+    "dubbedVideosTitle": "{language} nga mga video paagi sa koleksyon",
+    "dubbedVideosDescription": "Browsea ang fully dubbed nga mga video sa {language} nga gin-grupo upod sang ila koleksyon para mas hapos mahibal-an.",
+    "noDubbedVideos": "Wala pa sing available nga fully dubbed nga mga video para sini nga lenguahe.",
+    "subtitlesAvailable": "May subtitles",
+    "subtitlesTitle": "{language} nga mga video nga may subtitles",
+    "subtitlesDescription": "Sini nga mga video may {language} nga subtitles kon ang ginasiling {language} nga audio wala pa available.",
+    "noSubtitleVideos": "Wala pa sing available nga subtitle-only nga mga video para sini nga lenguahe.",
+    "dubbed": "Gin-dub",
+    "subtitles": "Mga Subtitle",
+    "newLabel": "Bago",
+    "fromCollection": "Halin sa {collection}",
+    "standaloneVideos": "Mga video nga nagaisahanon",
+    "videosFromCollection": "Mga video halin sa {collection}.",
+    "standaloneDescription": "Mga video nga nagaisahanon sa sini nga lenguahe.",
+    "openCollection": "Ablihan ang koleksyon"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch sang Jesus Film Project",
+    "watch": "Tan-aw",
+    "watchNow": "Tan-aw Subong",
+    "mutePreview": "I-mute ang preview",
+    "unmutePreview": "I-unmute ang preview",
+    "nextVideo": "Sunod nga video",
+    "featured": "Ginpabutyag",
+    "showVideo": "Ipakita ang {title}",
+    "previousVideoPreview": "Preview sang una nga video",
+    "nextVideoPreview": "Preview sang sunod nga video",
+    "mediaCollection": "Koleksyon sang media",
+    "scrollToVideo": "Mag-scroll sa video nga {title}"
+  },
+  "WatchFooter": {
+    "home": "Panguna nga pahina sang Jesus Film Project",
+    "navigation": "Nabigasyon sa idalom sang pahina",
+    "share": "I-share",
+    "watch": "Tan-aw",
+    "giving": "Paghatag",
+    "about": "Parte",
+    "products": "Mga Produkto",
+    "resources": "Mga Resource",
+    "partners": "Mga Partner",
+    "contact": "Kontak",
+    "giveNow": "Maghatag Subong",
+    "resourcesVersion": "Mga Resource ({version})",
+    "office": "Opisina",
+    "fax": "Numero sang fax",
+    "privacyPolicy": "Polisa sa Privacy",
+    "legalStatement": "Legal nga Pahayag",
+    "newsletter": "Mag-sign Up Para sa Aming Newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ginbuhat para sa global missions",
+    "title": "Wala nagabag-o ang mensahe. Ang paagi sang pagtan-aw sang mga tawo amo ang nagabag-o.",
+    "description": "Gina-rebuild namon halin sa umpisa ang amon video library kag mga tool, ginadungan ang mga dekada nga buluhaton sa paghubad sa mga platform nga ginatambongan, ginatan-aw, kag ginapaambit na sang mga tawo.",
+    "translatedLibraryTitle": "Ang pinakaminga-salin nga film library sa kalibutan",
+    "translatedLibraryDescription": "Mga dekada sang translation work, nga gindala sang masaligan nga ministry partners, ang nagpatindog sang library nga may libo-libo nga language tracks agud mahibaluan sang mga tawo ang istorya ni Jesus sa lenguahe nga mas makalawig sa ila kasingkasing.",
+    "trustedVoicesTitle": "Ginadala ang masaligan nga mga tingog sa bag-o nga mga porma",
+    "trustedVoicesDescription": "Gina-rebuild namon kon paano ginasugid nga biswal ang mga istorya sang ebanghelyo, ginapares ang masaligan nga mga hubad sa moderno nga porma agud ang mensahe makalakat sing libre sa tunga sang mga platform, kultura, kag screen.",
+    "missionTeamTitle": "Labaw pa sa isa ka library. Isa ka mission-driven nga team.",
+    "missionTeamDescription": "Ang Jesus Film Project isa ka global nga team sang mga translator, media specialist, editor, kag creator nga nagabalhin sang dekada sang ministry experience sa mga tool para sa mga disciple-maker sa bisan diin.",
+    "buildingNext": "Ano ang sunod namon nga ginatukod",
+    "nextStepsTitle": "Sunod nga mga Tikang Platform",
+    "nextStepsDescription": "I-konektar ang mga tumatan-aw sa matuod nga mga oportunidad sa ila spiritual journey, agud buligan sila magkuha sang sunod nga tikang padulong sa komunidad, Kasulatan, ukon misyon.",
+    "mediaLibraryTitle": "Library sang Media para sa Ebanghelismo",
+    "mediaLibraryDescription": "Isa ka madamo nga Kristohanon nga media library nga may libo-libo nga video, pelikula, kag resource nga available sa madamo nga lenguahe para sa ministry kag evangelism sa bug-os nga kalibutan.",
+    "ministryToolsTitle": "Digital Tools para sa mga Ministry",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, kag analytics nga ginhimo agud buligan ang mga ministry nga makaabot sa mas madamo nga tawo sing epektibo.",
+    "invitationEyebrow": "Ginaimbitar ka",
+    "invitationTitle": "Buligi sa paghimo sang <highlight>bag-o nga henerasyon</highlight> sang mga mission tool",
+    "invitationDescription": "Ginaimbitar namon ang mga practitioner, creator, kag partner sa early access. Subayi anay ang bag-o nga mga tool, maghatag feedback, kag buligi ang paghulma sang mga produkto nga ginahimo para sa matuod nga mission work.",
+    "betaTester": "Magin beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksyon sang Video Bible",
+    "gospelRailTitle": "Madiskobre ang bug-os nga istorya",
+    "videoBibleDescription": "Usisaa ang amon koleksyon sang mga video kag resource nga nagabuhay sang Biblia paagi sa nagaka-engganyo nga mga istorya kag pagtudlo.",
+    "showcaseTitle": "Kasulatan nga Ginasugid Paagi sa Pelikula",
+    "adventEyebrow": "Pasko nga Advent",
+    "adventTitle": "Pag-ihap Tubtob sa Advent sang Pasko",
+    "adventDescription": "Upod sa amon Advent journey paagi sa adlaw-adlaw nga video nga nagabug-at sang handum para sa Pasko, ginauyatan ang paglaum, kalipay, kag saad sang pag-abot ni Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent sang BibleProject",
+    "nuaEyebrow": "Serye nga NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serye nga Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurso sa Video",
+    "journeyWithJesusTitle": "Lakbay upod ni Jesus",
+    "gospelsOnVideoEyebrow": "Tagsa ka Ebanghelyo, Ginasugid sa Video",
+    "scriptureAsWrittenTitle": "Kasulatan, Ginasambit Eksakto Subong sang Nakasulat",
+    "merryChristmas": "Malipayon nga Pasko!",
+    "daysUntilChristmas": "{count, plural, one {# ka adlaw antes sang Pasko} other {# ka mga adlaw antes sang Pasko}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Mga Lenguahe",
+    "metadataDescription": "Browsea ang mga video sang JesusFilm paagi sa lenguahe.",
+    "eyebrow": "Mga lenguahe sa Watch",
+    "title": "Pilia ang isa ka lenguahe",
+    "description": "Usisaa ang mga lenguahe paagi sa rehiyon ukon tan-awa ang bug-os nga lista.",
+    "searchPlaceholder": "Pangitaa ang mga lenguahe ukon mga pungsod...",
+    "searchLabel": "Pangitaa ang mga lenguahe ukon mga pungsod",
+    "clearSearch": "Halinon ang search",
+    "browse": "Mag-browse",
+    "browseByRegion": "Mag-browse paagi sa rehiyon kag pungsod",
+    "languageCount": "{count, plural, one {# ka lenguahe} other {# ka mga lenguahe}}",
+    "region": "Rehiyon",
+    "countryLanguages": "Mga lenguahe sang {country}",
+    "showLess": "Ipakita sing menos",
+    "showMore": "Ipakita ang {count} pa",
+    "noLanguages": "Wala sing nahanap nga mga lenguahe",
+    "tryAnotherSearch": "Sulayi ang lain nga search term."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Kasaysayan sang Gintan-aw | Jesus Film Project",
+    "title": "Kasaysayan sang Gintan-aw",
+    "loading": "Gina-load ang history",
+    "empty": "Wala pa sing ara diri",
+    "emptyDescription": "Ang mga video nga imo gina-watch samtang naka-sign in ikaw ipakita diri.",
+    "earlier": "Sang una pa",
+    "today": "Subong nga adlaw",
+    "yesterday": "Kahapon"
+  },
+  "AccountControl": {
+    "account": "Akawnt",
+    "accountMenu": "Menu sang account",
+    "signIn": "Mag-sign in",
+    "signOut": "Mag-sign out",
+    "signedIn": "Naka-sign in",
+    "history": "Kasaysayan",
+    "logOut": "Mag-log out"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Wala nakita ang page",
+    "eyebrow": "Wala nakita ang page",
+    "screenReaderPrefix": "Wala nakita ang page:",
+    "title": "Wala diri ini nga scene.",
+    "description": "Posible nga nagbalhin ang page, pero ang istorya nagapadayon.",
+    "actionsLabel": "Mga aksyon para sa wala nakita nga page",
+    "backToWatch": "Balik sa Watch",
+    "browseVideos": "Browsea ang mga video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Tan-aw sang Mubo nga Pelikula",
+    "actions": {
+      "joinUs": "Upod Ka sa Amon",
+      "shareMission": "Ipaambit ang Amon Misyon"
+    },
+    "welcomeStart": {
+      "label": "Pagtuo kag Kasulatan",
+      "title": "Mga Pinili nga Video Para Subong nga Adlaw",
+      "description": "Mga video halin sa amon library nga nakasentro sa pagtuo agud makahatag inspirasyon, pagpanuko, kag pagpamalandong."
+    },
+    "welcomeMorning": {
+      "label": "Inspirasyon sa Aga",
+      "title": "Maayong aga! May mga Bible moment para subong nga adlaw.",
+      "description": "Sugdi ang imo adlaw paagi sa makapadasig nga mga Bible moment nga ginlaragway agud makahatag inspirasyon kag makapataas sang espiritu mo."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirasyon sa Hapon",
+      "title": "Maayong hapon! Mga Bible moment para sa imo adlaw.",
+      "description": "Makapadasig nga content sang Biblia nga bagay para sa imo hapon nga pahulay ukon padayon nga inspirasyon."
+    },
+    "welcomeEvening": {
+      "label": "Inspirasyon sa Gab-i",
+      "title": "Maayong gab-i! Magpahuway upod ang mga Bible moment.",
+      "description": "Mapisan nga mga Bible moment nga bulig sa imo pagpamalandong kag pagpangita sang komportable samtang nagatapos ang imo adlaw."
+    },
+    "joinUs": {
+      "label": "Upod Ka sa Amon",
+      "title": "Bilyon-bilyon ang nagapangita",
+      "description": "Ari na ang anihon. Upod ka sa amon sa pagpaambit sang ebanghelyo sa kalibutan paagi sa digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Mag-upod kita",
+      "title": "Ang Pagsugid sang Estorya ni Jesus, Mag-upod Kita",
+      "description": "Agud mabatian kag makita nila ang gugma ni Jesus sa ila kaugalingon nga lenguahe, didto mismo sa ila kinaroonan."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% nga kaangay",
+    "none": "Wala sing nakita nga rekomendasyon para sini nga video sa sini nga lenguahe."
   }
 }

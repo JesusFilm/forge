@@ -7,7 +7,9 @@
     "noContent": "Nu este disponibil niciun conținut.",
     "homepageMisconfigured": "Pagina principală Watch este configurată greșit.",
     "defaultTemplateMisconfigured": "Șablonul implicit Watch este configurat greșit.",
-    "authFailed": "Autentificarea la serviciul de conținut nu a reușit. Te rugăm să contactezi asistența dacă problema persistă."
+    "authFailed": "Autentificarea la serviciul de conținut nu a reușit. Te rugăm să contactezi asistența dacă problema persistă.",
+    "pageLoadFailed": "Ceva nu a mers bine.",
+    "tryAgain": "Încearcă din nou"
   },
   "VideosPage": {
     "title": "Toate videoclipurile",
@@ -22,7 +24,8 @@
     "promoHeading": "Vrei să înțelegi Biblia mai profund?",
     "joinBibleStudy": "Alătură-te studiului nostru biblic",
     "previousQuote": "Citat biblic anterior",
-    "nextQuote": "Citat biblic următor"
+    "nextQuote": "Citat biblic următor",
+    "readPassage": "Citește acest pasaj în Biblia ta."
   },
   "DownloadButton": {
     "checking": "Se verifică",
@@ -73,7 +76,8 @@
     "selectLanguage": "Selectează limba",
     "searchPlaceholder": "Caută limbi…",
     "languages": "Limbi",
-    "noMatches": "Nicio potrivire"
+    "noMatches": "Nicio potrivire",
+    "notAvailable": "Indisponibil"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Limbă",
@@ -112,7 +116,8 @@
     "questions": "Întrebări conexe",
     "askYours": "Pune întrebarea ta",
     "chatWithPerson": "Vorbește cu o persoană",
-    "askBibleQuestion": "Pune o întrebare despre Biblie"
+    "askBibleQuestion": "Pune o întrebare despre Biblie",
+    "quiz": "Chestionar"
   },
   "WatchQuestionPanel": {
     "messageType": "Tip mesaj",
@@ -170,7 +175,8 @@
     "searchRegion": "Caută videoclipuri",
     "clearSearch": "Șterge căutarea",
     "changeAudioLanguage": "Schimbă limba audio",
-    "home": "Pagina principală JesusFilm"
+    "home": "Pagina principală JesusFilm",
+    "closeSearch": "Închide căutarea"
   },
   "SearchOverlay": {
     "dialogLabel": "Caută și răsfoiește videoclipuri",
@@ -205,14 +211,19 @@
     "clearLanguages": "Șterge",
     "queryLanguageDetected": "Detectat: {language}",
     "searchInLanguage": "Caută în {language}",
-    "tryDifferentKeywordsOrLanguage": "Încearcă alte cuvinte-cheie sau alege o altă limbă de căutare"
+    "tryDifferentKeywordsOrLanguage": "Încearcă alte cuvinte-cheie sau alege o altă limbă de căutare",
+    "useWebsiteDefaultLanguage": "Folosește limba implicită de căutare a site-ului",
+    "removeLanguage": "Elimină {language}",
+    "browseMode": "Mod de răsfoire a căutării"
   },
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",
-    "tapToUnmute": "Atinge pentru sunet"
+    "tapToUnmute": "Atinge pentru sunet",
+    "nextEpisode": "Episodul următor"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Se încarcă conținutul"
+    "loadingContent": "Se încarcă conținutul",
+    "loadingVideo": "Se încarcă videoclipul"
   },
   "VideoLabels": {
     "video": "Videoclip",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Colecție",
     "trailer": "Videoclip promoțional",
-    "behindTheScenes": "Din culise"
+    "behindTheScenes": "Din culise",
+    "chapter": "Capitol"
   },
   "SiblingCarousel": {
     "clipPosition": "Clipul {current} din {total}",
@@ -235,11 +247,243 @@
     "noImage": "Fără imagine",
     "playingNow": "Se redă acum",
     "previousChapter": "Capitolul anterior",
-    "nextChapter": "Capitolul următor"
+    "nextChapter": "Capitolul următor",
+    "thumbnailAlt": "Miniatură pentru {title}",
+    "relatedVideoThumbnail": "Miniatură video asociată"
   },
   "SearchResultCard": {
     "experience": "Experiență",
     "episodeCount": "{count, plural, one {# episod} other {# episoade}}",
     "thumbnailAlt": "Miniatură video"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videoclipuri creștine gratuite în {language} | Jesus Film Project",
+    "metadataDescription": "Descoperă filme despre Isus, istorisiri biblice, serii de ucenicie și videoclipuri de evanghelizare cu audio dublat sau subtitrări în {language}.",
+    "heroTitle": "Videoclipuri creștine gratuite în {language}",
+    "heroDescription": "Descoperă filme despre Isus, istorisiri biblice, serii de ucenicie și videoclipuri de evanghelizare disponibile în {language}. Videoclipurile complet dublate sunt afișate primele, iar mai jos sunt opțiunile doar cu subtitrări.",
+    "languageCollection": "Colecția de limbi",
+    "itemCount": "{count, plural, one {# element} other {# elemente}}",
+    "videoCount": "{count, plural, one {# videoclip} other {# videoclipuri}}",
+    "videosInGroups": "{videoCount, plural, one {# videoclip} other {# videoclipuri}} în {groupCount, plural, one {# grup} other {# grupuri}}",
+    "sectionNavLabel": "Secțiuni ale inventarului de limbi",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nou",
+    "videoBible": "Biblia video",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Colecții",
+    "subtitlesOnly": "Doar subtitrări",
+    "newlyAdded": "Adăugat recent",
+    "newVideosTitle": "Videoclipuri creștine noi în {language}",
+    "newestFirst": "Cele mai noi primele",
+    "noPublishedVideos": "Încă nu s-au găsit videoclipuri publicate pentru această limbă.",
+    "bibleAndGospelFilms": "Filme biblice și despre Evanghelie",
+    "videoBibleCollectionsTitle": "Colecții Biblia Video în {language}",
+    "videoBibleDescription": "Colecții centrate pe Scriptură, inclusiv LUMO, JESUS, Magdalena și Faptele în {language}.",
+    "noVideoBibleCollections": "Încă nu sunt disponibile colecții Biblia Video pentru această limbă.",
+    "bibleProjectCollectionsTitle": "Colecții BibleProject în {language}",
+    "bibleProjectDescription": "Serii și studii BibleProject disponibile în {language}.",
+    "noBibleProjectCollections": "Încă nu sunt disponibile colecții BibleProject pentru această limbă.",
+    "sportsStories": "Povești din sport",
+    "sportsTitle": "Povești despre sport și sportivi în {language}",
+    "sportsDescription": "Povești din sport cu accent pe credință și colecții despre sportivi disponibile în {language}.",
+    "noSportsCollections": "Încă nu sunt disponibile colecții despre sport sau sportivi pentru această limbă.",
+    "fullyDubbed": "Complet dublat",
+    "dubbedVideosTitle": "Videoclipuri în {language}, pe colecții",
+    "dubbedVideosDescription": "Răsfoiește videoclipuri complet dublate în {language}, grupate cu colecția lor pentru o descoperire mai ușoară.",
+    "noDubbedVideos": "Încă nu sunt disponibile videoclipuri complet dublate pentru această limbă.",
+    "subtitlesAvailable": "Subtitrări disponibile",
+    "subtitlesTitle": "Videoclipuri în {language} cu subtitrări",
+    "subtitlesDescription": "Aceste videoclipuri includ subtitrări în {language} atunci când audio-ul vorbit în {language} nu este încă disponibil.",
+    "noSubtitleVideos": "Încă nu sunt disponibile videoclipuri doar cu subtitrări pentru această limbă.",
+    "dubbed": "Dublat",
+    "subtitles": "Subtitrări",
+    "newLabel": "Nou",
+    "fromCollection": "Din {collection}",
+    "standaloneVideos": "Videoclipuri independente",
+    "videosFromCollection": "Videoclipuri din {collection}.",
+    "standaloneDescription": "Videoclipuri independente în această limbă.",
+    "openCollection": "Deschide colecția"
+  },
+  "WatchHome": {
+    "pageTitle": "Vizionare Jesus Film Project",
+    "watch": "Urmărește",
+    "watchNow": "Urmărește acum",
+    "mutePreview": "Oprește sunetul previzualizării",
+    "unmutePreview": "Pornește sunetul previzualizării",
+    "nextVideo": "Videoclipul următor",
+    "showVideo": "Afișează {title}",
+    "previousVideoPreview": "Previzualizarea videoclipului anterior",
+    "nextVideoPreview": "Previzualizarea videoclipului următor",
+    "featured": "Recomandate",
+    "mediaCollection": "Colecție media",
+    "scrollToVideo": "Derulează la videoclipul {title}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Limbi",
+    "metadataDescription": "Răsfoiește videoclipurile JesusFilm după limbă.",
+    "eyebrow": "Limbi Watch",
+    "title": "Alege o limbă",
+    "description": "Explorează limbile pe regiuni sau răsfoiește lista completă.",
+    "searchPlaceholder": "Caută limbi sau țări...",
+    "searchLabel": "Caută limbi sau țări",
+    "clearSearch": "Șterge căutarea",
+    "browse": "Răsfoiește",
+    "browseByRegion": "Răsfoiește după regiune și țară",
+    "languageCount": "{count, plural, one {# limbă} other {# limbi}}",
+    "region": "Regiune",
+    "countryLanguages": "Limbi în {country}",
+    "showLess": "Afișează mai puține",
+    "showMore": "Afișează încă {count}",
+    "noLanguages": "Nu s-au găsit limbi",
+    "tryAnotherSearch": "Încearcă un alt termen de căutare."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istoric vizionări | Jesus Film Project",
+    "title": "Istoric vizionări",
+    "loading": "Se încarcă istoricul",
+    "empty": "Nimic aici încă",
+    "emptyDescription": "Videoclipurile pe care le vizionezi când ești autentificat vor apărea aici.",
+    "earlier": "Mai devreme",
+    "today": "Astăzi",
+    "yesterday": "Ieri"
+  },
+  "AccountControl": {
+    "account": "Cont",
+    "accountMenu": "Meniu cont",
+    "signIn": "Autentifică-te",
+    "signOut": "Deconectează-te",
+    "signedIn": "Autentificat",
+    "history": "Istoric",
+    "logOut": "Ieși din cont"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pagina nu a fost găsită",
+    "eyebrow": "Pagina nu a fost găsită",
+    "screenReaderPrefix": "Pagina nu a fost găsită:",
+    "title": "Această scenă nu este aici.",
+    "description": "Pagina poate s-a mutat, dar povestea continuă.",
+    "actionsLabel": "Acțiuni pentru pagina negăsită",
+    "backToWatch": "Înapoi la Watch",
+    "browseVideos": "Răsfoiește videoclipurile"
+  },
+  "WatchFooter": {
+    "home": "Pagina principală Jesus Film Project",
+    "navigation": "Navigare în subsol",
+    "share": "Distribuie",
+    "watch": "Urmărește",
+    "giving": "Dăruire",
+    "about": "Despre",
+    "products": "Produse",
+    "resources": "Resurse",
+    "partners": "Parteneri",
+    "contact": "Contactează-ne",
+    "giveNow": "Dă acum",
+    "resourcesVersion": "Resurse ({version})",
+    "office": "Birou",
+    "fax": "Nr. de fax",
+    "privacyPolicy": "Politica de confidențialitate",
+    "legalStatement": "Declarație juridică",
+    "newsletter": "Înscrie-te la newsletterul nostru"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Creat pentru misiuni globale",
+    "title": "Mesajul nu se schimbă. Modul în care oamenii urmăresc, da.",
+    "description": "Reproiectăm de la zero biblioteca noastră video și instrumentele, ducând zeci de ani de traduceri pe platformele unde oamenii deja se adună, urmăresc și distribuie.",
+    "translatedLibraryTitle": "Cea mai tradusă bibliotecă de filme din lume",
+    "translatedLibraryDescription": "Zeci de ani de traduceri, susținute de parteneri de slujire de încredere, au construit o bibliotecă cu mii de piste audio în diferite limbi, astfel încât oamenii să poată întâlni povestea lui Isus în limba care îi atinge cel mai profund.",
+    "trustedVoicesTitle": "Aducem voci de încredere în formate noi",
+    "trustedVoicesDescription": "Reproiectăm modul în care sunt spuse vizual poveștile Evangheliei, îmbinând traduceri de încredere cu formate moderne, astfel încât mesajul să circule liber pe platforme, între culturi și pe ecrane.",
+    "missionTeamTitle": "Mai mult decât o bibliotecă. O echipă orientată spre misiune.",
+    "missionTeamDescription": "Jesus Film Project este o echipă globală de traducători, specialiști media, editori și creatori care transformă zeci de ani de experiență în slujire în instrumente pentru ucenici-făcători de pretutindeni.",
+    "buildingNext": "Ce construim în continuare",
+    "nextStepsTitle": "Platforma Next Steps",
+    "nextStepsDescription": "Conectează spectatorii cu oportunități concrete în călătoria lor spirituală, ajutându-i să facă următorul pas spre comunitate, Scriptură sau misiune.",
+    "mediaLibraryTitle": "Bibliotecă media evanghelistică",
+    "mediaLibraryDescription": "O bibliotecă media creștină extinsă, cu mii de videoclipuri, filme și resurse disponibile în mai multe limbi pentru slujire și evanghelizare la nivel global.",
+    "ministryToolsTitle": "Instrumente digitale pentru slujiri",
+    "ministryToolsDescription": "Gestionare video, distribuție de conținut, implicarea audienței și analize concepute pentru a ajuta slujirile să ajungă mai eficient la mai mulți oameni.",
+    "invitationEyebrow": "Ești invitat",
+    "invitationDescription": "Invităm practicieni, creatori și parteneri să aibă acces timpuriu. Testează mai întâi instrumentele noi, oferă feedback și ajută la conturarea produselor concepute pentru lucrare misionară reală.",
+    "betaTester": "Devino tester beta",
+    "invitationTitle": "Ajută la construirea <highlight>noii generații</highlight> de instrumente pentru misiune"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Colecția Biblia Video",
+    "gospelRailTitle": "Descoperă întreaga poveste",
+    "videoBibleDescription": "Descoperă colecția noastră de videoclipuri și resurse care aduc Biblia la viață prin povești și învățături captivante.",
+    "showcaseTitle": "Scriptura spusă prin film",
+    "adventEyebrow": "Advent de Crăciun",
+    "adventTitle": "Numărătoarea inversă a Adventului de Crăciun",
+    "adventDescription": "Alătură-te călătoriei noastre de Advent cu un videoclip zilnic care construiește așteptarea pentru Crăciun, explorând speranța, bucuria și promisiunea venirii lui Isus.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Seria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curs video",
+    "journeyWithJesusTitle": "Călătoria cu Isus",
+    "gospelsOnVideoEyebrow": "Fiecare Evanghelie, spusă pe video",
+    "scriptureAsWrittenTitle": "Scriptura, rostită exact așa cum este scrisă",
+    "merryChristmas": "Crăciun fericit!",
+    "daysUntilChristmas": "{count, plural, one {# zi până la Crăciun} few {# zile până la Crăciun} other {# de zile până la Crăciun}}"
+  },
+  "Feedback": {
+    "openForm": "Deschide formularul de feedback",
+    "label": "Trimite feedback",
+    "couldNotLoad": "Formularul de feedback nu s-a putut încărca.",
+    "loadingForm": "Se încarcă formularul de feedback…",
+    "retry": "Încearcă din nou",
+    "openFormShort": "Deschide formularul",
+    "cancel": "Anulează",
+    "title": "Feedback Beta",
+    "description": "Spune ce funcționează și ce putem îmbunătăți. Acest formular este furnizat de Google.",
+    "openInNewTab": "Deschide formularul într-o filă nouă",
+    "closeForm": "Închide formularul de feedback",
+    "loadingGoogleForm": "Se încarcă formularul Google…",
+    "iframeTitle": "Trimite feedback beta"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Urmărește scurtmetrajul",
+    "actions": {
+      "joinUs": "Alătură-te nouă",
+      "shareMission": "Ia parte la misiunea noastră"
+    },
+    "welcomeStart": {
+      "label": "Credință și Scriptură",
+      "title": "Selecția video de astăzi",
+      "description": "Conținut video centrat pe credință din biblioteca noastră, pentru a inspira, a provoca și a stârni reflecția."
+    },
+    "welcomeMorning": {
+      "label": "Inspirație de dimineață",
+      "title": "Bună dimineața! Te așteaptă momente biblice pentru astăzi.",
+      "description": "Începe-ți ziua cu momente biblice încurajatoare, gândite să inspire și să-ți înalțe sufletul."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirație de după-amiază",
+      "title": "Bună după-amiaza! Momente biblice pentru ziua ta.",
+      "description": "Conținut biblic încurajator, perfect pentru pauza de după-amiază sau pentru inspirație în continuare."
+    },
+    "welcomeEvening": {
+      "label": "Inspirație de seară",
+      "title": "Bună seara! Încheie ziua cu momente biblice.",
+      "description": "Momente biblice liniștitoare, care te ajută să reflectezi și să găsești mângâiere pe măsură ce ziua se apropie de sfârșit."
+    },
+    "joinUs": {
+      "label": "Alătură-te nouă",
+      "title": "Miliarde de oameni caută răspunsuri",
+      "description": "Secerișul este aici. Alătură-te nouă în timp ce împărtășim Evanghelia cu lumea prin media digitală."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Să mergem împreună",
+      "title": "Spunem împreună povestea lui Isus",
+      "description": "Ca să poată auzi și vedea dragostea lui Isus în limba lor, chiar acolo unde se află."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Potrivire de {percent}%",
+    "none": "Nu s-au găsit recomandări pentru acest videoclip în această limbă."
   }
 }

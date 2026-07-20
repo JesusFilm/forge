@@ -7,7 +7,9 @@
     "noContent": "Seai se content e maua.",
     "homepageMisconfigured": "Kua sese te watch homepage.",
     "defaultTemplateMisconfigured": "Kua sese te default watch template.",
-    "authFailed": "Seai se avanoa o authenticate mo te content service. Fakamolemole fakaakoako ki te support kafai e tumau tenei mea."
+    "authFailed": "Seai se avanoa o authenticate mo te content service. Fakamolemole fakaakoako ki te support kafai e tumau tenei mea.",
+    "pageLoadFailed": "Fala i se mea ne sala.",
+    "tryAgain": "Toe tofotofo"
   },
   "VideosPage": {
     "title": "Vitio katoa",
@@ -22,7 +24,8 @@
     "promoHeading": "E manako koe o malamalama likiliki atu ki te Tusi Tapu?",
     "joinBibleStudy": "Ulufale ki tena potukelapositai i te Tusi Tapu",
     "previousQuote": "Bible quote muamua",
-    "nextQuote": "Bible quote e sosoa"
+    "nextQuote": "Bible quote e sosoa",
+    "readPassage": "Faitau te vaega tenei i tau Tusi Tapu."
   },
   "DownloadButton": {
     "checking": "Siaki",
@@ -73,7 +76,8 @@
     "selectLanguage": "Filifili te language",
     "searchPlaceholder": "Saili languages…",
     "languages": "Gagana",
-    "noMatches": "Se mea ne fetaui"
+    "noMatches": "Se mea ne fetaui",
+    "notAvailable": "Se maua"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Gagana",
@@ -112,7 +116,8 @@
     "questions": "Fesili fesootai",
     "askYours": "Fesili toou",
     "chatWithPerson": "Talanoa mo se tagata",
-    "askBibleQuestion": "Fesili se fesili ki te Tusi Tapu"
+    "askBibleQuestion": "Fesili se fesili ki te Tusi Tapu",
+    "quiz": "Kuis"
   },
   "WatchQuestionPanel": {
     "messageType": "Mataupu o te message",
@@ -170,7 +175,8 @@
     "searchRegion": "Saili vitio",
     "clearSearch": "Tamā te search",
     "changeAudioLanguage": "Fakafesuiaʻi te language o te leo",
-    "home": "Te kāiga o JesusFilm"
+    "home": "Te kāiga o JesusFilm",
+    "closeSearch": "Tapuni te search"
   },
   "SearchOverlay": {
     "dialogLabel": "Saili kae browse vitio",
@@ -205,14 +211,19 @@
     "clearLanguages": "Tamā",
     "queryLanguageDetected": "{language} ne maua",
     "searchInLanguage": "Saili i te {language}",
-    "tryDifferentKeywordsOrLanguage": "Fakamolemole fakaaoga nisi keywords io me filifili se isi language o te search"
+    "tryDifferentKeywordsOrLanguage": "Fakamolemole fakaaoga nisi keywords io me filifili se isi language o te search",
+    "useWebsiteDefaultLanguage": "Fakamalosi te language o te search default a te website",
+    "removeLanguage": "Tukuese {language}",
+    "browseMode": "Auala browse o te search"
   },
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
-    "tapToUnmute": "Ote ki luga ke fakaola te leo"
+    "tapToUnmute": "Ote ki luga ke fakaola te leo",
+    "nextEpisode": "Episode e sosoa"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Uta content"
+    "loadingContent": "Uta content",
+    "loadingVideo": "Uta vitio"
   },
   "VideoLabels": {
     "video": "Vitio",
@@ -223,7 +234,8 @@
     "series": "Fakasologa",
     "collection": "Fakaputuga",
     "trailer": "Vitio fakatomuaga",
-    "behindTheScenes": "I tua o te faia"
+    "behindTheScenes": "I tua o te faia",
+    "chapter": "Mataupu"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} o {total}",
@@ -235,11 +247,243 @@
     "noImage": "Se ata",
     "playingNow": "Ta nei",
     "previousChapter": "Chapter muamua",
-    "nextChapter": "Chapter e sosoa"
+    "nextChapter": "Chapter e sosoa",
+    "thumbnailAlt": "thumbnail o {title}",
+    "relatedVideoThumbnail": "Thumbnail o te vitio fesootai"
   },
   "SearchResultCard": {
     "experience": "Aafiaga",
     "episodeCount": "{count, plural, one {# vaega} other {# vaega}}",
     "thumbnailAlt": "Thumbnail o te vitio"
+  },
+  "Feedback": {
+    "openForm": "Fakatonu te pepa fakamatalaga",
+    "label": "Fakamatalaga",
+    "couldNotLoad": "The feedback form could not load.",
+    "loadingForm": "Uta te pepa fakamatalaga…",
+    "retry": "Toe tofotofo",
+    "openFormShort": "Fakatonu te pepa",
+    "cancel": "Seke",
+    "title": "Beta Fakamatalaga",
+    "description": "Tufa mai a mea kolā e galue, mo mea e mafai o fakalelei. E tuku mai te pepa tenei ne Google.",
+    "openInNewTab": "Fakatonu te pepa i se tab fou",
+    "closeForm": "Tapuni te pepa fakamatalaga",
+    "loadingGoogleForm": "Uta te Google Form…",
+    "iframeTitle": "Tuku mai a Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vitio faka-Kelisiano e maua fua i te {language} | Jesus Film Project",
+    "metadataDescription": "Saili Jesus films, Bible stories, discipleship series, mo outreach videos mo te leo io me subtitles i te {language}.",
+    "heroTitle": "Vitio faka-Kelisiano e maua fua i te {language}",
+    "heroDescription": "Saili Jesus films, Bible stories, discipleship series, mo outreach videos e maua i te {language}. Vitio fully dubbed e fakailoa muamua, kae filifiliga subtitle-only i lalo.",
+    "languageCollection": "Collection o te language",
+    "itemCount": "{count, plural, one {# mea} other {# mea}}",
+    "videoCount": "{count, plural, one {# vitio} other {# vitio}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} i {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Vaega o te language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Fou",
+    "videoBible": "Tusi Tapu i Vitio",
+    "bibleProject": "BibleProject",
+    "sports": "Taaloga",
+    "collections": "Fakaputuga",
+    "subtitlesOnly": "Subtitles fua",
+    "newlyAdded": "Faatoā fakapuloua",
+    "newVideosTitle": "Vitio faka-Kelisiano fou i te {language}",
+    "newestFirst": "Mea fou muamua",
+    "noPublishedVideos": "Seai ne vitio ne publish mō tenei language i te taimi nei.",
+    "bibleAndGospelFilms": "Ata tifaga o te Tusi Tapu mo te Tala Lei",
+    "videoBibleCollectionsTitle": "Collections Video Bible i te {language}",
+    "videoBibleDescription": "Collections e fakavae ki te Tusi Tapu e aofia ei LUMO, JESUS, Magdalena, mo Acts i te {language}.",
+    "noVideoBibleCollections": "Seai ne Video Bible collections e maua mō tenei language i te taimi nei.",
+    "bibleProjectCollectionsTitle": "Collections BibleProject i te {language}",
+    "bibleProjectDescription": "BibleProject series mo studies e maua i te {language}.",
+    "noBibleProjectCollections": "Seai ne BibleProject collections e maua mō tenei language i te taimi nei.",
+    "sportsStories": "Tala o taaloga",
+    "sportsTitle": "Taaloga mo tala o athletes i te {language}",
+    "sportsDescription": "Sports stories e fakavae ki te fakatuanaki mo athlete collections e maua i te {language}.",
+    "noSportsCollections": "Seai ne sports io me athlete-story collections e maua mō tenei language i te taimi nei.",
+    "fullyDubbed": "Kua dub katoatoa",
+    "dubbedVideosTitle": "Vitio i te {language} e tusa mo collection",
+    "dubbedVideosDescription": "Browse fully dubbed {language} videos e fakaputu fakaputuga mā te collection ke faigofie te sukesuke.",
+    "noDubbedVideos": "Seai ne fully dubbed videos e maua mō tenei language i te taimi nei.",
+    "subtitlesAvailable": "Subtitles e maua",
+    "subtitlesTitle": "Vitio i te {language} mo subtitles",
+    "subtitlesDescription": "Ne aofia i vitio konei a {language} subtitles māfai e seai fua te spoken {language} audio.",
+    "noSubtitleVideos": "Seai ne subtitle-only videos e maua mō tenei language i te taimi nei.",
+    "dubbed": "Kua fakaleo",
+    "subtitles": "Tusitusiga i lalo",
+    "newLabel": "Fou",
+    "fromCollection": "Mai {collection}",
+    "standaloneVideos": "Vitio tūtasi",
+    "videosFromCollection": "Videos mai {collection}.",
+    "standaloneDescription": "Standalone videos i tenei language.",
+    "openCollection": "Tatala collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Matamata i te Jesus Film Project",
+    "watch": "Matamata",
+    "watchNow": "Matamata nei",
+    "mutePreview": "Fakamate te preview",
+    "unmutePreview": "Fakaola te preview",
+    "nextVideo": "Vitio e sosoa",
+    "featured": "Fakaali",
+    "showVideo": "Fakailoa {title}",
+    "previousVideoPreview": "Vitio preview muamua",
+    "nextVideoPreview": "Vitio preview e sosoa",
+    "mediaCollection": "Fakaputuga o te media",
+    "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}"
+  },
+  "WatchFooter": {
+    "home": "Te kāiga o Jesus Film Project",
+    "navigation": "Navigation i te footer",
+    "share": "Tufa",
+    "watch": "Matamata",
+    "giving": "Tuku kofo",
+    "about": "E uiga ki ei",
+    "products": "Oloa",
+    "resources": "Mekameka",
+    "partners": "Paaga",
+    "contact": "Fesokotaki",
+    "giveNow": "Tuku nei",
+    "resourcesVersion": "Mekameka ({version})",
+    "office": "Ofisa",
+    "fax": "Napa o te fax",
+    "privacyPolicy": "Tulafono mō te fakalilolilo",
+    "legalStatement": "Fakamatalaga fakatulafono",
+    "newsletter": "Saini mō te matou newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Fausia mō misiona i te lalolagi katoa",
+    "title": "E se suia te feau. E suia te auala e matamata ei tino.",
+    "description": "Kua toe fau a tatou video library mo meafaigaluega mai te amataga, ma tuku atu te galuega fakaliliu e fia sefulu tausaga ki platform e masani ne fakapotopoto, matamata, mo tufa ei tino.",
+    "translatedLibraryTitle": "Te video library e sili atu te tele o ana translation i te lalolagi",
+    "translatedLibraryDescription": "E fia sefulu tausaga o galuega fakaliliu, ne ave ne ministry partners fakatuatuagina, ne fau ei se library mo e fia afe language tracks ke mafai o fetaiai tino mo te tala o Iesu i te language e sili ona oki atu ki loto i a latou.",
+    "trustedVoicesTitle": "Ave a leo fakatuatuagina ki formats fou",
+    "trustedVoicesDescription": "Kua toe fau ne matou te auala e fakamatala ei a tala o te gospel i ata, ma fakafesui a translations fakatuatuagina mo formats fou ke mafai o see fua te feau i platform, aganuu, mo screens katoa.",
+    "missionTeamTitle": "E sili atu i se library. Se team e fakavae ki te misiona.",
+    "missionTeamDescription": "Jesus Film Project se team lalolagi o translators, media specialists, editors, mo creators e liliu te fāesaga o galuega ministry e fia sefulu tausaga ki meafaigaluega mō tino fai-disiple i so se koga.",
+    "buildingNext": "Mea e fau i te taimi nei",
+    "nextStepsTitle": "Platform mō Sitepu e Sosoʻo",
+    "nextStepsDescription": "Fakafesoʻotaʻi tino matamata ki avanoa tonu i tena faigamalaga fakalaumalie, ke fesoasoani ki a latou o fai te sitepu sosoa ki te community, Scripture, io me te mission.",
+    "mediaLibraryTitle": "Media Library mō te Talai Telei",
+    "mediaLibraryDescription": "Se media library faka-Kerisiano telā e tele, mo e fia afe vitio, films, mo resources e maua i languages e uke mō galuega ministry mo evangelism i te lalolagi katoa.",
+    "ministryToolsTitle": "Meafaigaluega fakatekinolosi mō Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, mo analytics ne fuafua ke fesoasoani ki ministries o aapa atu ki tino e tokouke atu i se auala lelei.",
+    "invitationEyebrow": "E fakaafe koe",
+    "invitationTitle": "Fesoasoani ke fau <highlight>te tupulaga fou</highlight> o mission tools",
+    "invitationDescription": "E fakaafe ne matou a practitioners, creators, mo partners ki te early access. Tofo muamua meafaigaluega fou, tuku mai se feedback, mo fesoasoani ke fau a products e fuafuaina mō galuega misiona tonu.",
+    "betaTester": "Ave koe mo beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Fakaputuga o te Tusi Tapu i Vitio",
+    "gospelRailTitle": "Saili te tala katoa",
+    "videoBibleDescription": "Saili a matou collection o vitio mo resources e fakaola mai te Tusi Tapu i tala mo akoakoga e manakogina.",
+    "showcaseTitle": "Te Tusi Tapu e fakamatala mai i ata tifaga",
+    "adventEyebrow": "Kilisimasi Advent",
+    "adventTitle": "Countdown o te Kilisimasi Advent",
+    "adventDescription": "Fakatasi mai i a matou Advent journey mo se vitio i aso taki tasi e fau ei te manako mō Christmas, ma sukesuke te faamoemoega, te fiafia, mo te tala fakapapau o te taunuku mai o Iesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent a BibleProject",
+    "nuaEyebrow": "Fakasologa NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Fakasologa Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Akoga i Vitio",
+    "journeyWithJesusTitle": "Malaga fakatahi mo Iesu",
+    "gospelsOnVideoEyebrow": "Evangelia taki tasi, fakamatala i te vitio",
+    "scriptureAsWrittenTitle": "Te Tusi Tapu, e faipati tonu e pelā mo te mea ne tusi",
+    "merryChristmas": "Kilisimasi fiafia!",
+    "daysUntilChristmas": "{count, plural, one {Toe # te aso ki te Kilisimasi} other {Toe # aso ki te Kilisimasi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gagana",
+    "metadataDescription": "Browse vitio a JesusFilm i te language.",
+    "eyebrow": "Gagana mō te matamata",
+    "title": "Filifili se language",
+    "description": "Saili languages mā te region io me browse te lisi katoa.",
+    "searchPlaceholder": "Saili languages io me countries...",
+    "searchLabel": "Saili languages io me countries",
+    "clearSearch": "Tamā search",
+    "browse": "Sukesuke",
+    "browseByRegion": "Browse mā te region mo te country",
+    "languageCount": "{count, plural, one {# gagana} other {# gagana}}",
+    "region": "Koga",
+    "countryLanguages": "Languages a {country}",
+    "showLess": "Fakasiitia ifo",
+    "showMore": "Fakailoa {count} isi",
+    "noLanguages": "Seai ne languages ne maua",
+    "tryAnotherSearch": "Tofo se isi search term."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Tala o Matamataga | Jesus Film Project",
+    "title": "Tala o Matamataga",
+    "loading": "Uta history",
+    "empty": "Seai ne mea i konei i te taimi nei",
+    "emptyDescription": "Vitio e matamata koe ki ei māfai ko saini mai, ka foliga mai i konei.",
+    "earlier": "Muamua atu",
+    "today": "Aso nei",
+    "yesterday": "Aso ne"
+  },
+  "AccountControl": {
+    "account": "Akauni",
+    "accountMenu": "Menu o te account",
+    "signIn": "Saini mai",
+    "signOut": "Saini olai",
+    "signedIn": "Kua saini mai",
+    "history": "Tala mua",
+    "logOut": "Saini ki tua"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Se maua te page",
+    "eyebrow": "Se maua te page",
+    "screenReaderPrefix": "Se maua te page:",
+    "title": "Se i konei tenei scene.",
+    "description": "A page penei ne hiki, kae tumau te tala.",
+    "actionsLabel": "Gaioiga mō te page se maua",
+    "backToWatch": "Toe foki ki te Watch",
+    "browseVideos": "Browse vitio"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Matamata ki te ata tifaga poto",
+    "actions": {
+      "joinUs": "Fakatasi mai",
+      "shareMission": "Tufa i te matou Misiona"
+    },
+    "welcomeStart": {
+      "label": "Fakatuanaki mo te Tusi Tapu",
+      "title": "Vitio filifili mō te aso nei",
+      "description": "Vitio fakavae ki te fakatuanaki mai te matou library ke fakamalosi, fakalotolotolua, mo fakaosooso mafaufauga."
+    },
+    "welcomeMorning": {
+      "label": "Fakamalosiga i te taeao",
+      "title": "Taeao manuia! E fakaasi atu a mea mai te Tusi Tapu mō te aso nei.",
+      "description": "Amata tou aso mo a mea fakamalosi mai te Tusi Tapu ne fuafuagina ke fakamalosia kae fakaola tou loto."
+    },
+    "welcomeAfternoon": {
+      "label": "Fakamalosiga i te afiafi",
+      "title": "Afiafi manuia! Mea mai te Tusi Tapu mō tou aso.",
+      "description": "Tala fakamalosia mai te Tusi Tapu e fetaui lelei mō tou mālōlō i te afiafi io me ke tumau tou fakamalosiga."
+    },
+    "welcomeEvening": {
+      "label": "Fakamalosiga i te afiafi po",
+      "title": "Afiafi manuia! Malōlō mālie mo a mea mai te Tusi Tapu.",
+      "description": "A mea filemu mai te Tusi Tapu ke fesoasoani ki a koe o mafaufau kae maua te fakamafanafana i te fakaotiga o tou aso."
+    },
+    "joinUs": {
+      "label": "Fakatasi mai",
+      "title": "E tokouke a tino e sailivili",
+      "description": "Kua oko mai te taimi o te seleselega. Fakatafai mai mo matou ke tufa te tala lei ki te lalolagi mā te media faka-igitali."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tatou olo fakatasi",
+      "title": "Faipati ki te tala o Iesu, fakatasi",
+      "description": "Ke mafai o lagona kae kilo atu latou ki te alofa o Iesu i tālatou lava language i te koga telā e nofo ei latou."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% e fetaui",
+    "none": "Seai ne fautuaga ne maua mō te vitio tenei i te language tenei."
   }
 }

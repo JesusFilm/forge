@@ -7,7 +7,9 @@
     "noContent": "Ha ho litaba tse fumanehang.",
     "homepageMisconfigured": "Leqephe la lehae la watch ha lea hlophisoa hantle.",
     "defaultTemplateMisconfigured": "Template ea kamehla ea watch ha ea hlophisoa hantle.",
-    "authFailed": "Ha ho khonehe ho netefatsa ka ts'ebeletso ea litaba. Ka kopo ikopanye le tšehetso haeba sena se tsoela pele."
+    "authFailed": "Ha ho khonehe ho netefatsa ka ts'ebeletso ea litaba. Ka kopo ikopanye le tšehetso haeba sena se tsoela pele.",
+    "pageLoadFailed": "Ho na le ho sa tsamaeeng hantle.",
+    "tryAgain": "Leka hape"
   },
   "VideosPage": {
     "title": "Lifitio tsohle",
@@ -22,7 +24,8 @@
     "promoHeading": "Na u batla ho utloisisa Bibele ka botebo?",
     "joinBibleStudy": "Kenela thuto ea rona ea Bibele",
     "previousQuote": "Kgetho e fetileng ea Bibele",
-    "nextQuote": "Kgetho e latelang ea Bibele"
+    "nextQuote": "Kgetho e latelang ea Bibele",
+    "readPassage": "Bala temana ena Bibeleng ea hao."
   },
   "DownloadButton": {
     "checking": "Ho hlahloba",
@@ -73,7 +76,8 @@
     "selectLanguage": "Khetha puo",
     "searchPlaceholder": "Batla lipuo…",
     "languages": "Lipuo",
-    "noMatches": "Ha ho tse tsamaellanang"
+    "noMatches": "Ha ho tse tsamaellanang",
+    "notAvailable": "Ha e fumanehe"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Puo",
@@ -112,7 +116,8 @@
     "questions": "Lipotso tse Amanang",
     "askYours": "Botsa ea hao",
     "chatWithPerson": "Buisana le motho",
-    "askBibleQuestion": "Botsa potso ea Bibele"
+    "askBibleQuestion": "Botsa potso ea Bibele",
+    "quiz": "Lipotso tsa kapele"
   },
   "WatchQuestionPanel": {
     "messageType": "Mofuta oa molaetsa",
@@ -170,7 +175,8 @@
     "searchRegion": "Batla livideo",
     "clearSearch": "Hlakola patlo",
     "changeAudioLanguage": "Fetola puo ea molumo",
-    "home": "Lehae la JesusFilm"
+    "home": "Lehae la JesusFilm",
+    "closeSearch": "Koala patlo"
   },
   "SearchOverlay": {
     "dialogLabel": "Batla le ho sheba livideo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Hlakola",
     "queryLanguageDetected": "Ho fumanoe {language}",
     "searchInLanguage": "Batla ka {language}",
-    "tryDifferentKeywordsOrLanguage": "Leka mantsoe a mang kapa khetha puo e ’ngoe ea patlo"
+    "tryDifferentKeywordsOrLanguage": "Leka mantsoe a mang kapa khetha puo e ’ngoe ea patlo",
+    "useWebsiteDefaultLanguage": "Sebelisa puo ea patlo ea kamehla ea sebaka sa marang-rang",
+    "removeLanguage": "Tlosa {language}",
+    "browseMode": "Mokhoa oa ho sheba patlo"
   },
   "HeroPlayer": {
     "playWithSound": "Shebella hona joale",
-    "tapToUnmute": "Tlanya ho tlosa khutso"
+    "tapToUnmute": "Tlanya ho tlosa khutso",
+    "nextEpisode": "Khahiso e latelang"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ho kenya litaba"
+    "loadingContent": "Ho kenya litaba",
+    "loadingVideo": "Ho kenya video"
   },
   "VideoLabels": {
     "video": "Fitio",
@@ -223,7 +234,8 @@
     "series": "Letoto",
     "collection": "Pokello",
     "trailer": "Ponelopele",
-    "behindTheScenes": "Ka morao ho liketsahalo"
+    "behindTheScenes": "Ka morao ho liketsahalo",
+    "chapter": "Khaolo"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipi {current} ho {total}",
@@ -235,11 +247,243 @@
     "noImage": "Ha ho setšoantšo",
     "playingNow": "E ntse e bapala hona joale",
     "previousChapter": "Khaolo e fetileng",
-    "nextChapter": "Khaolo e latelang"
+    "nextChapter": "Khaolo e latelang",
+    "thumbnailAlt": "Setšoantšo se senyenyane sa {title}",
+    "relatedVideoThumbnail": "Setšoantšo se senyenyane sa video e amanang"
   },
   "SearchResultCard": {
     "experience": "Boiphihlelo",
     "episodeCount": "{count, plural, one {# karolo} other {# likarolo}}",
     "thumbnailAlt": "Setšoantšo se senyenyane sa video"
+  },
+  "Feedback": {
+    "openForm": "Bula foromo ea maikutlo",
+    "label": "Maikutlo",
+    "couldNotLoad": "Foromo ea maikutlo ha ea ka ea kenya.",
+    "loadingForm": "Ho kenya foromo ea maikutlo…",
+    "retry": "Leka hape",
+    "openFormShort": "Bula foromo",
+    "cancel": "Hlakola",
+    "title": "Maikutlo a Beta",
+    "description": "Arolelana se sebetsang le seo re ka se ntlafatsang. Foromo ena e fanoa ke Google.",
+    "openInNewTab": "Bula foromo tabeng e ncha",
+    "closeForm": "Koala foromo ea maikutlo",
+    "loadingGoogleForm": "Ho kenya Google Form…",
+    "iframeTitle": "Romela maikutlo a Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Livideo tsa Bokreste tsa mahala ka {language} | Jesus Film Project",
+    "metadataDescription": "Fumana lifilimi tsa Jesu, lipale tsa Bibele, letoto la boithuto ba barutuoa, le livideo tsa phatlalatso ka molumo o bitsitsoeng kapa mengolo-tlase ka {language}.",
+    "heroTitle": "Livideo tsa Bokreste tsa mahala ka {language}",
+    "heroDescription": "Fumana lifilimi tsa Jesu, lipale tsa Bibele, letoto la boithuto ba barutuoa, le livideo tsa phatlalatso tse fumanehang ka {language}. Livideo tse bitsitsoeng ka botlalo li totobatsoa pele, ka likhetho tsa mengolo-tlase ka tlase.",
+    "languageCollection": "Pokello ea lipuo",
+    "itemCount": "{count, plural, one {# ntho} other {# lintho}}",
+    "videoCount": "{count, plural, one {# video} other {# livideo}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# livideo}} ho {groupCount, plural, one {# sehlopha} other {# lihlopha}}",
+    "sectionNavLabel": "Likarolo tsa lethathamo la lipuo",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "E ncha",
+    "videoBible": "Bibele ea Video",
+    "bibleProject": "BibleProject",
+    "sports": "Lipapali",
+    "collections": "Liphutheloana",
+    "subtitlesOnly": "Mengolo-tlase feela",
+    "newlyAdded": "E sa tsoa eketsoa",
+    "newVideosTitle": "Livideo tse ncha tsa Bokreste ka {language}",
+    "newestFirst": "Tse ncha pele",
+    "noPublishedVideos": "Ha ho livideo tse phatlalalitsoeng tse fumanoeng bakeng sa puo ena hajoale.",
+    "bibleAndGospelFilms": "Lifilimi tsa Bibele le tsa Evangeli",
+    "videoBibleCollectionsTitle": "Liphutheloana tsa Bibele ea Video tsa {language}",
+    "videoBibleDescription": "Liphutheloana tse shebaneng le Mangolo tse kenyeletsang LUMO, JESUS, Magdalena, le Acts ka {language}.",
+    "noVideoBibleCollections": "Ha ho liphutheloana tsa Bibele ea Video tse fumanehang bakeng sa puo ena hajoale.",
+    "bibleProjectCollectionsTitle": "Liphutheloana tsa BibleProject tsa {language}",
+    "bibleProjectDescription": "Letoto le lithuto tsa BibleProject tse fumanehang ka {language}.",
+    "noBibleProjectCollections": "Ha ho liphutheloana tsa BibleProject tse fumanehang bakeng sa puo ena hajoale.",
+    "sportsStories": "Lipale tsa lipapali",
+    "sportsTitle": "Lipale tsa lipapali le baatlelete tsa {language}",
+    "sportsDescription": "Lipale tsa lipapali tse shebaneng le tumelo le liphutheloana tse tsepamisitseng maikutlo ho baatlelete tse fumanehang ka {language}.",
+    "noSportsCollections": "Ha ho liphutheloana tsa lipapali kapa lipale tsa baatlelete tse fumanehang bakeng sa puo ena hajoale.",
+    "fullyDubbed": "E bitsitsoe ka botlalo",
+    "dubbedVideosTitle": "Livideo tsa {language} ka pokello",
+    "dubbedVideosDescription": "Sheba livideo tse bitsitsoeng ka botlalo ka {language} tse hlophisitsoeng hammoho le pokello ea tsona bakeng sa ho li fumana habonolo.",
+    "noDubbedVideos": "Ha ho livideo tse bitsitsoeng ka botlalo tse fumanehang bakeng sa puo ena hajoale.",
+    "subtitlesAvailable": "Mengolo-tlase e teng",
+    "subtitlesTitle": "Livideo tsa {language} tse nang le mengolo-tlase",
+    "subtitlesDescription": "Livideo tsena li na le mengolo-tlase ea {language} ha molumo o buuoang ka {language} o e-s'o fumanehe.",
+    "noSubtitleVideos": "Ha ho livideo tsa mengolo-tlase feela tse fumanehang bakeng sa puo ena hajoale.",
+    "dubbed": "E bitsitsoe",
+    "subtitles": "Mengolo-tlase",
+    "newLabel": "E ncha",
+    "fromCollection": "Ho tloha ho {collection}",
+    "standaloneVideos": "Livideo tse ikemetseng",
+    "videosFromCollection": "Livideo tse tsoang ho {collection}.",
+    "standaloneDescription": "Livideo tse ikemetseng ka puo ena.",
+    "openCollection": "Bula pokello"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch ea Jesus Film Project",
+    "watch": "Shebella",
+    "watchNow": "Shebella Hona Joale",
+    "mutePreview": "Khutsisa ponelopele",
+    "unmutePreview": "Tlosa khutso ponelopele",
+    "nextVideo": "Video e latelang",
+    "featured": "E totobalitsoeng",
+    "showVideo": "Bontša {title}",
+    "previousVideoPreview": "Ponelopele ea video e fetileng",
+    "nextVideoPreview": "Ponelopele ea video e latelang",
+    "mediaCollection": "Pokello ea mecha ea litaba",
+    "scrollToVideo": "Tsamaisetsa ho video ea {title}"
+  },
+  "WatchFooter": {
+    "home": "Lehae la Jesus Film Project",
+    "navigation": "Tsamaiso ea maoto",
+    "share": "Abelana",
+    "watch": "Shebella",
+    "giving": "Monehelo",
+    "about": "Mabapi le",
+    "products": "Lihlahisoa",
+    "resources": "Lisebelisoa",
+    "partners": "Balekane",
+    "contact": "Iteanye le rona",
+    "giveNow": "Fana Hona Joale",
+    "resourcesVersion": "Lisebelisoa ({version})",
+    "office": "Ofisi",
+    "fax": "Fekese",
+    "privacyPolicy": "Leano la Lekunutu",
+    "legalStatement": "Polelo ea Molao",
+    "newsletter": "Ingolise bakeng sa lengolo la rona la litaba"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "E hahiloe bakeng sa mesebetsi ea lefatše lohle",
+    "title": "Molaetsa ha o fetohe. Tsela eo batho ba shebellang ka eona ke eona e fetohang.",
+    "description": "Re haha bocha laebrari ea rona ea livideo le lisebelisoa ho tloha qalong, re nehela mosebetsi oa lilemo tse ngata oa phetolelo lipulong tseo batho ba seng ba ntse ba bokana, ba shebella, ba bile ba arolelana ho tsona.",
+    "translatedLibraryTitle": "Laeborari ea lifilimi e fetoletsoeng haholo ho fetisisa lefatšeng",
+    "translatedLibraryDescription": "Mosebetsi oa lilemo tse ngata oa phetolelo, o tšehelitsoeng ke balekane ba tšepahalang ba bosebeletsi, o thehile laeborari e nang le lipina tsa lipuo tse likete e le hore batho ba ka kopana le pale ea Jesu ka puo e ba fihlelang botebong.",
+    "trustedVoicesTitle": "Ho isa mantsoe a tšepahalang mefuteng e mecha",
+    "trustedVoicesDescription": "Re haha bocha tsela eo lipale tsa evangeli li phetang ka eona ka pono, re kopanya liphetolelo tse tšepahalang le mefuta ea sejoale-joale e le hore molaetsa o ka tsamaea ka bolokolohi ho pholletsa le lipalaka, litso le likrineng.",
+    "missionTeamTitle": "Ho feta laeborari. Ke sehlopha se tsamaisoang ke thomo.",
+    "missionTeamDescription": "Jesus Film Project ke sehlopha sa lefats’e sa bafetoleli, litsebi tsa mecha ea litaba, bahlophisi le baqapi ba fetolang phihlelo ea lilemo tse ngata tsa bosebeletsi hore e be lisebelisoa bakeng sa ba etsang barutuoa hohle.",
+    "buildingNext": "Seo re se hahang ka mor'a moo",
+    "nextStepsTitle": "Plathfomo ya Mehato e Latelang",
+    "nextStepsDescription": "Hokela bashebelli menyetla e bonahalang leetong la bona la semoea, u ba thuse ho nka mohato o latelang ho kena sechabeng, Lengolong, kapa morerong.",
+    "mediaLibraryTitle": "Laeborari ea Mecha ea Evangelisimo",
+    "mediaLibraryDescription": "Laeborari e pharaletseng ea mecha ea Bokreste e nang le livideo, lifilimi le lisebelisoa tse likete tse fumanehang ka lipuo tse ngata bakeng sa bosebeletsi le evangelisimo lefatšeng ka bophara.",
+    "ministryToolsTitle": "Lisebelisoa tsa Dijithale bakeng sa Bosebeletsi",
+    "ministryToolsDescription": "Tsamaiso ea video, kabo ea litaba, ho kenyeletsa bamameli, le litlhahlobo tse etselitsoeng ho thusa bosebeletsi ho fihlela batho ba bangata ka katleho.",
+    "invitationEyebrow": "U memeloa",
+    "invitationTitle": "Thusa ho haha <highlight>moloko o latelang</highlight> oa lisebelisoa tsa thomo",
+    "invitationDescription": "Re mema litsebi, baqapi, le balekane ho kena phihlelong ea pele. Lekola lisebelisoa tse ncha pele, fana ka maikutlo, 'me u thuse ho bopa lihlahisoa tse etselitsoeng mosebetsi oa nnete oa thomo.",
+    "betaTester": "Eba mohlahlobi oa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Pokello ea Bibele ea Video",
+    "gospelRailTitle": "Fumana pale e felletseng",
+    "videoBibleDescription": "Hlahloba pokello ea rona ea livideo le lisebelisoa tse tlisang Bibele bophelong ka lipale le lithuto tse hohelang.",
+    "showcaseTitle": "Mangolo a Boleloang ka Filimi",
+    "adventEyebrow": "Advente ea Keresemese",
+    "adventTitle": "Countdown ea Advent ea Keresemese",
+    "adventDescription": "Kena leetong la rona la Advent ka video ea letsatsi le letsatsi e hahang tebello ea Keresemese, e hlahlobang tšepo, thabo, le tšepiso ea ho tla ha Jesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advente ea BibleProject",
+    "nuaEyebrow": "Letoto la NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Letoto la Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Thupelo ea Video",
+    "journeyWithJesusTitle": "Leeto le Jesu",
+    "gospelsOnVideoEyebrow": "Evangeli e ’ngoe le e ’ngoe, e Phetliloe ka Video",
+    "scriptureAsWrittenTitle": "Mangolo, a Builoeng Hantle Joalokaha a Ngotsoe",
+    "merryChristmas": "Keresemese e monate!",
+    "daysUntilChristmas": "{count, plural, one {Ho setse letsatsi le # pele ho Keresemese} other {Ho setse matsatsi a # pele ho Keresemese}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Lipuo",
+    "metadataDescription": "Sheba livideo tsa JesusFilm ka puo.",
+    "eyebrow": "Lipuo tsa ho shebella",
+    "title": "Khetha puo",
+    "description": "Hlahloba lipuo ka sebaka kapa sheba lethathamo lohle.",
+    "searchPlaceholder": "Batla lipuo kapa linaha...",
+    "searchLabel": "Batla lipuo kapa linaha",
+    "clearSearch": "Hlakola patlo",
+    "browse": "Sheba",
+    "browseByRegion": "Sheba ka sebaka le naha",
+    "languageCount": "{count, plural, one {# puo} other {# lipuo}}",
+    "region": "Sebaka",
+    "countryLanguages": "Lipuo tsa {country}",
+    "showLess": "Bontša tse fokolang",
+    "showMore": "Bontša tse ling tse {count}",
+    "noLanguages": "Ha ho lipuo tse fumanoeng",
+    "tryAnotherSearch": "Leka lentsoe le leng la patlo."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Nalane ea ho Shebella | Jesus Film Project",
+    "title": "Nalane ea ho Shebella",
+    "loading": "Ho kenya nalane",
+    "empty": "Ha ho letho mona hajoale",
+    "emptyDescription": "Livideo tseo u li shebellang ha u kena li tla hlaha mona.",
+    "earlier": "Pejana",
+    "today": "Kajeno",
+    "yesterday": "Maobane"
+  },
+  "AccountControl": {
+    "account": "Ak'haonte",
+    "accountMenu": "Lenane la ak'haonte",
+    "signIn": "Kena",
+    "signOut": "Tsoa",
+    "signedIn": "O kene",
+    "history": "Nalane",
+    "logOut": "Tsoa"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Leqephe ha lea fumanoa",
+    "eyebrow": "Leqephe ha lea fumanoa",
+    "screenReaderPrefix": "Leqephe ha lea fumanoa:",
+    "title": "Ketsahalo ena ha e eo mona.",
+    "description": "Leqephe le ka ’na la sisinyeha, empa pale e ntse e tsoela pele.",
+    "actionsLabel": "Liketso tsa leqephe le sa fumanoang",
+    "backToWatch": "Khutlela ho Watch",
+    "browseVideos": "Sheba livideo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Shebella filimi e khutšoane",
+    "actions": {
+      "joinUs": "Kena le rona",
+      "shareMission": "Arolelana morerong oa rona"
+    },
+    "welcomeStart": {
+      "label": "Tumelo le Lengolo",
+      "title": "Likhetho tsa video tsa kajeno",
+      "description": "Likahare tsa video tse thehiloeng tumelong tse tsoang laebraring ea rona ho khothatsa, ho phephetsa, le ho tsosa ho nahanisisa."
+    },
+    "welcomeMorning": {
+      "label": "Khothatso ea hoseng",
+      "title": "Lumelang! Mehlala ea Bibele ea kajeno e letile.",
+      "description": "Qala letsatsi la hao ka mehlala e khothatsang ea Bibele e etselitsoeng ho u khothatsa le ho phahamisa moya oa hao."
+    },
+    "welcomeAfternoon": {
+      "label": "Khothatso ea thapama",
+      "title": "Lumelang! Mehlala ea Bibele ea letsatsi la hao.",
+      "description": "Likahare tse khothatsang tsa Bibele tse loketseng khefu ea hao ea thapama kapa ho tsoela pele ka khothatso."
+    },
+    "welcomeEvening": {
+      "label": "Khothatso ea mantsiboea",
+      "title": "Lumelang! Phomola ka mehlala ea Bibele.",
+      "description": "Mehlala e khutsitseng ea Bibele ho u thusa ho nahanisisa le ho fumana matšeliso ha letsatsi la hao le fela."
+    },
+    "joinUs": {
+      "label": "Kena le rona",
+      "title": "Ho na le limilione tse likete tse batlang",
+      "description": "Kotulo e se e fihlile. Kena le rona ha re arolelana evangeli le lefatše ka mecha ea litaba ea dijithale."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ha re tsamaee hammoho",
+      "title": "Ho pheta pale ea Jesu, hammoho",
+      "description": "E le hore ba ka utloa le ho bona lerato la Jesu ka puo ea bona moo ba leng teng."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "E lumellana ka {percent}%",
+    "none": "Ha ho likhothaletso tse fumanoeng bakeng sa video ena ka puo ena."
   }
 }

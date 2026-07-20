@@ -7,7 +7,9 @@
     "noContent": "Мазмун мавжуд эмас.",
     "homepageMisconfigured": "Кўриш бош саҳифаси нотўғри созланган.",
     "defaultTemplateMisconfigured": "Кўришнинг стандарт шаблони нотўғри созланган.",
-    "authFailed": "Мазмун хизматига аутентификация қилишнинг иложи бўлмади. Агар бу ҳолат давом этса, қўллаб-қувватлаш хизматига мурожаат қилинг."
+    "authFailed": "Мазмун хизматига аутентификация қилишнинг иложи бўлмади. Агар бу ҳолат давом этса, қўллаб-қувватлаш хизматига мурожаат қилинг.",
+    "pageLoadFailed": "Нимадир нотўғри кетди.",
+    "tryAgain": "Қайта уриниб кўринг"
   },
   "VideosPage": {
     "title": "Барча видеолар",
@@ -22,7 +24,8 @@
     "promoHeading": "Библияни чуқурроқ тушунишни хоҳлайсизми?",
     "joinBibleStudy": "Библия тадқиқотимизга қўшилинг",
     "previousQuote": "Аввалги Библия иқтибоси",
-    "nextQuote": "Кейинги Библия иқтибоси"
+    "nextQuote": "Кейинги Библия иқтибоси",
+    "readPassage": "Бу парчани Библиянгиздан ўқинг."
   },
   "DownloadButton": {
     "checking": "Текширилмоқда",
@@ -73,7 +76,8 @@
     "selectLanguage": "Тилни танланг",
     "searchPlaceholder": "Тилларни қидириш…",
     "languages": "Тиллар",
-    "noMatches": "Мос вариант йўқ"
+    "noMatches": "Мос вариант йўқ",
+    "notAvailable": "Мавжуд эмас"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Тил",
@@ -112,7 +116,8 @@
     "questions": "Мавзуга оид саволлар",
     "askYours": "Ўз саволингизни беринг",
     "chatWithPerson": "Инсон билан суҳбатлашиш",
-    "askBibleQuestion": "Библия ҳақида савол бериш"
+    "askBibleQuestion": "Библия ҳақида савол бериш",
+    "quiz": "Викторина"
   },
   "WatchQuestionPanel": {
     "messageType": "Хабар тури",
@@ -170,7 +175,8 @@
     "searchRegion": "Видеоларни қидириш",
     "clearSearch": "Қидирувни тозалаш",
     "changeAudioLanguage": "Овоз тилини ўзгартириш",
-    "home": "JesusFilm бош саҳифаси"
+    "home": "JesusFilm бош саҳифаси",
+    "closeSearch": "Қидирувни ёпиш"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларни қидириш ва кўриб чиқиш",
@@ -205,14 +211,19 @@
     "clearLanguages": "Тозалаш",
     "queryLanguageDetected": "{language} аниқланди",
     "searchInLanguage": "{language} тилида қидириш",
-    "tryDifferentKeywordsOrLanguage": "Бошқа калит сўзларни синаб кўринг ёки бошқа қидирув тилини танланг"
+    "tryDifferentKeywordsOrLanguage": "Бошқа калит сўзларни синаб кўринг ёки бошқа қидирув тилини танланг",
+    "useWebsiteDefaultLanguage": "Сайтнинг стандарт қидирув тилидан фойдаланиш",
+    "removeLanguage": "{language} ни олиб ташлаш",
+    "browseMode": "Кўриш қидирув режими"
   },
   "HeroPlayer": {
     "playWithSound": "Ҳозир кўриш",
-    "tapToUnmute": "Овозни ёқиш учун босинг"
+    "tapToUnmute": "Овозни ёқиш учун босинг",
+    "nextEpisode": "Кейинги қисм"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Мазмун юкланмоқда"
+    "loadingContent": "Мазмун юкланмоқда",
+    "loadingVideo": "Видео юкланмоқда"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -223,7 +234,8 @@
     "series": "Серия",
     "collection": "Тўплам",
     "trailer": "Трейлер",
-    "behindTheScenes": "Съёмка орти"
+    "behindTheScenes": "Съёмка орти",
+    "chapter": "Боб"
   },
   "SiblingCarousel": {
     "clipPosition": "{current} / {total} клип",
@@ -235,11 +247,243 @@
     "noImage": "Расм йўқ",
     "playingNow": "Ҳозир кўрсатилмоқда",
     "previousChapter": "Аввалги боб",
-    "nextChapter": "Кейинги боб"
+    "nextChapter": "Кейинги боб",
+    "thumbnailAlt": "{title} нинг миниатюраси",
+    "relatedVideoThumbnail": "Тегишли видео миниатюраси"
   },
   "SearchResultCard": {
     "experience": "Тажриба",
     "episodeCount": "{count, plural, one {# қисм} other {# қисм}}",
     "thumbnailAlt": "Видео миниатюраси"
+  },
+  "Feedback": {
+    "openForm": "Фикр-мулоҳаза шаклини очиш",
+    "label": "Фикр-мулоҳаза",
+    "couldNotLoad": "Фикр-мулоҳаза шаклини юклаб бўлмади.",
+    "loadingForm": "Фикр-мулоҳаза шакли юкланмоқда…",
+    "retry": "Қайта уриниш",
+    "openFormShort": "Шаклни очиш",
+    "cancel": "Бекор қилиш",
+    "title": "Бета фикр-мулоҳаза",
+    "description": "Нима ишлаяпти ва нимани яхшилаш мумкинлигини баҳам кўринг. Бу шакл Google томонидан тақдим этилган.",
+    "openInNewTab": "Шаклни янги вкладкада очиш",
+    "closeForm": "Фикр-мулоҳаза шаклини ёпиш",
+    "loadingGoogleForm": "Google шакли юкланмоқда…",
+    "iframeTitle": "Бета фикр-мулоҳаза юбориш"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} тилидаги бепул христиан видеолари | Jesus Film Project",
+    "metadataDescription": "{language} тилида дубляж қилинган ёки субтитрли Исо фильмлари, Библия ҳикоялари, шогирдлик сериялари ва миссионерлик видеоларини ўрганинг.",
+    "heroTitle": "{language} тилидаги бепул христиан видеолари",
+    "heroDescription": "{language} тилида мавжуд бўлган Исо фильмлари, Библия ҳикоялари, шогирдлик сериялари ва миссионерлик видеоларини ўрганинг. Тўлиқ дубляж қилинган видеолар аввал кўрсатилади, фақат субтитрли вариантлар эса пастда.",
+    "languageCollection": "Тил тўплами",
+    "itemCount": "{count, plural, one {# та элемент} other {# та элемент}}",
+    "videoCount": "{count, plural, one {# та видео} other {# та видео}}",
+    "videosInGroups": "{videoCount, plural, one {# та видео} other {# та видео}} {groupCount, plural, one {# та гуруҳда} other {# та гуруҳда}}",
+    "sectionNavLabel": "Тил тўплами бўлимлари",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Янги",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Тўпламлар",
+    "subtitlesOnly": "Фақат субтитрлар",
+    "newlyAdded": "Янги қўшилган",
+    "newVideosTitle": "{language} тилидаги янги христиан видеолари",
+    "newestFirst": "Энг янги аввал",
+    "noPublishedVideos": "Бу тил учун ҳали нашр қилинган видеолар топилмади.",
+    "bibleAndGospelFilms": "Библия ва Инжил фильмлари",
+    "videoBibleCollectionsTitle": "{language} Video Bible тўпламлари",
+    "videoBibleDescription": "{language} тилидаги ЛУМО, ИСО, Магдалена ва Ҳаворийлар каби Муqaddas Kitob марказидаги тўпламлар.",
+    "noVideoBibleCollections": "Бу тил учун ҳали Video Bible тўпламлари мавжуд эмас.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject тўпламлари",
+    "bibleProjectDescription": "{language} тилида мавжуд BibleProject сериялари ва ўқувлари.",
+    "noBibleProjectCollections": "Бу тил учун ҳали BibleProject тўпламлари мавжуд эмас.",
+    "sportsStories": "Спорт ҳикоялари",
+    "sportsTitle": "{language} тилидаги спорт ва спортчи ҳикоялари",
+    "sportsDescription": "{language} тилида мавжуд бўлган иймонга йўналтирилган спорт ҳикоялари ва спортчиларга оид тўпламлар.",
+    "noSportsCollections": "Бу тил учун ҳали спорт ёки спортчи ҳикоялари тўпламлари мавжуд эмас.",
+    "fullyDubbed": "Тўлиқ дубляж қилинган",
+    "dubbedVideosTitle": "{language} тилидаги видеолар тўпламлар бўйича",
+    "dubbedVideosDescription": "Тўлиқ дубляж қилинган {language} видеоларни тўпламлари билан бирга кўриб чиқинг — топиш осонроқ.",
+    "noDubbedVideos": "Бу тил учун ҳали тўлиқ дубляж қилинган видеолар мавжуд эмас.",
+    "subtitlesAvailable": "Субтитрлар мавжуд",
+    "subtitlesTitle": "{language} субтитрли видеолар",
+    "subtitlesDescription": "Сўзлашилган {language} аудиоси ҳали мавжуд бўлмаганда, бу видеоларда {language} субтитрлар бор.",
+    "noSubtitleVideos": "Бу тил учун ҳали фақат субтитрли видеолар мавжуд эмас.",
+    "dubbed": "Дубляж қилинган",
+    "subtitles": "Субтитрлар",
+    "newLabel": "Янги",
+    "fromCollection": "{collection} дан",
+    "standaloneVideos": "Мустақил видеолар",
+    "videosFromCollection": "{collection} дан видеолар.",
+    "standaloneDescription": "Бу тилдаги мустақил видеолар.",
+    "openCollection": "Тўпламни очиш"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project кўриш",
+    "watch": "Кўриш",
+    "watchNow": "Ҳозир кўриш",
+    "mutePreview": "Таҳрирни ўчириш",
+    "unmutePreview": "Таҳрирни ёқиш",
+    "nextVideo": "Кейинги видео",
+    "featured": "Танланган",
+    "showVideo": "{title} ни кўрсатиш",
+    "previousVideoPreview": "Аввалги видео олдиндан кўриниши",
+    "nextVideoPreview": "Кейинги видео олдиндан кўриниши",
+    "mediaCollection": "Медиа тўплам",
+    "scrollToVideo": "{title} видеосига ўтиш"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project бош саҳифаси",
+    "navigation": "Пастки навигация",
+    "share": "Улашиш",
+    "watch": "Кўриш",
+    "giving": "Хайрия",
+    "about": "Ҳақида",
+    "products": "Маҳсулотлар",
+    "resources": "Ресурслар",
+    "partners": "Ҳамкорлар",
+    "contact": "Алоқа",
+    "giveNow": "Ҳозир хайрия қилинг",
+    "resourcesVersion": "Ресурслар ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Махфийлик сиёсати",
+    "legalStatement": "Ҳуқуқий баёнот",
+    "newsletter": "Бизнинг хабарномамизга обуна бўлинг"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Жаҳон миссияси учун яратилган",
+    "title": "Хабар ўзгармайди. Уни кўриш усули ўзгаради.",
+    "description": "Биз видео кутубхонамиз ва воситаларимизни бошидан янгиламоқдамиз, ўнлаб йиллик таржима меҳнатини одамлар аллақачон жам бўладиган, кўрадиган ва ўртоқлашадиган платформаларга олиб чиқяпмиз.",
+    "translatedLibraryTitle": "Дунёдаги энг кўп таржима қилинган фильмлар кутубхонаси",
+    "translatedLibraryDescription": "Ишончли хизмат ҳамкорлари орқали олиб борилган ўнлаб йиллик таржима ишлари минглаб тил йўлларига эга кутубхона яратди, токи одамлар Исо ҳақидаги ҳикояни ўзларига энг яқин тилда эшитсинлар.",
+    "trustedVoicesTitle": "Ишончли овозларни янги шаклларга олиб ўтиш",
+    "trustedVoicesDescription": "Биз Инжил ҳикоялари визуал тарзда қандай айтилганини қайта қурмоқдамиз, ишончли таржималарни замонавий форматлар билан бирлаштириб, хабар платформалар, маданиятлар ва экранлар орасида эркин ҳаракатлансин.",
+    "missionTeamTitle": "Шунчаки кутубхона эмас. Миссияга бағишланган жамоа.",
+    "missionTeamDescription": "Jesus Film Project — таржимонлар, медиа мутахассислар, муҳаррирлар ва ижодкорлардан иборат глобал жамоа бўлиб, ўнлаб йиллик хизмат тажрибасини ҳамма жойда шогирд ясовчилар учун воситаларга айлантирмоқда.",
+    "buildingNext": "Кейин нима яратяпмиз",
+    "nextStepsTitle": "Кейинги қадамлар платформаси",
+    "nextStepsDescription": "Кўрувчиларни уларнинг руҳий саёҳатида амалий имкониятлар билан боғланг, уларга жамоа, Муқаддас Ёзув ёки миссия сари кейинги қадамни қўйишга ёрдам беринг.",
+    "mediaLibraryTitle": "Хушхабарли медиа кутубхона",
+    "mediaLibraryDescription": "Дунёнинг турли тилларида хизмат ва евангелизация учун мавжуд минглаб видео, фильм ва ресурсларга эга кенг христиан медиа кутубхонаси.",
+    "ministryToolsTitle": "Хизматлар учун рақамли воситалар",
+    "ministryToolsDescription": "Видеоларни бошқариш, мазмун тарқатиш, аудитория билан мулоқот ва аналитика — хизматларга кўпроқ инсонга самарали етиб боришга ёрдам бериш учун.",
+    "invitationEyebrow": "Сиз таклиф қилингансиз",
+    "invitationTitle": "<highlight>Кейинги авлод</highlight> миссионерлик воситаларини яратишга ёрдам беринг",
+    "invitationDescription": "Биз амалиётчилар, ижодкорлар ва ҳамкорларни эрта киришга таклиф қиляпмиз. Янги воситаларни биринчи синаб кўринг, фикр билдиринг ва ҳақиқий хизмат иши учун мўлжалланган маҳсулотларни шакллантиришга ёрдам беринг.",
+    "betaTester": "Бета-тестер бўлинг"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библия тўплами",
+    "gospelRailTitle": "Тўлиқ ҳикояни кашф этинг",
+    "videoBibleDescription": "Қизиқарли ҳикоялар ва таълимотлар орқали Библияни жонлантирадиган видео ва ресурслар тўпламимизни ўрганинг.",
+    "showcaseTitle": "Муқаддас Ёзув фильм орқали баён этилган",
+    "adventEyebrow": "Рождество адвенти",
+    "adventTitle": "Рождество адвенти саноғи",
+    "adventDescription": "Рождествога интизорликни оширадиган кунлик видео билан Адвент саёҳатига қўшилинг, Исо келиши билан боғлиқ умид, шодлик ва ваъдаларни ўрганинг.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Адвенти",
+    "nuaEyebrow": "NUA серияси",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серияси",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Исо билан саёҳат",
+    "gospelsOnVideoEyebrow": "Ҳар бир Инжил, видеода баён этилган",
+    "scriptureAsWrittenTitle": "Ёзилгани каби аниқ айтилган Муқаддас Ёзув",
+    "merryChristmas": "Рождество муборак!",
+    "daysUntilChristmas": "{count, plural, one {Рождествогача # кун қолди} other {Рождествогача # кун қолди}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Тиллар",
+    "metadataDescription": "JesusFilm видеоларини тил бўйича кўринг.",
+    "eyebrow": "Кўриш тиллари",
+    "title": "Тил танланг",
+    "description": "Тилларни ҳудуд бўйича ўрганинг ёки тўлиқ рўйхатни кўринг.",
+    "searchPlaceholder": "Тиллар ёки мамлакатларни қидиринг...",
+    "searchLabel": "Тиллар ёки мамлакатларни қидириш",
+    "clearSearch": "Қидирувни тозалаш",
+    "browse": "Кўриш",
+    "browseByRegion": "Ҳудуд ва мамлакат бўйича кўриш",
+    "languageCount": "{count, plural, one {# тил} other {# тил}}",
+    "region": "Ҳудуд",
+    "countryLanguages": "{country} тиллари",
+    "showLess": "Камроқ кўрсатиш",
+    "showMore": "Яна {count} та кўрсатиш",
+    "noLanguages": "Тиллар топилмади",
+    "tryAnotherSearch": "Бошқа қидирув сўзини синаб кўринг."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Кўриш тарихи | Jesus Film Project",
+    "title": "Кўриш тарихи",
+    "loading": "Тарих юкланмоқда",
+    "empty": "Ҳали ҳеч нарса йўқ",
+    "emptyDescription": "Тизимга кирган ҳолда кўрган видеоларингиз шу ерда пайдо бўлади.",
+    "earlier": "Аввалроқ",
+    "today": "Бугун",
+    "yesterday": "Кеча"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт менюси",
+    "signIn": "Кириш",
+    "signOut": "Чиқиш",
+    "signedIn": "Тизимга кирилган",
+    "history": "Тарих",
+    "logOut": "Чиқиш"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Саҳифа топилмади",
+    "eyebrow": "Саҳифа топилмади",
+    "screenReaderPrefix": "Саҳифа топилмади:",
+    "title": "Бу саҳна бу ерда йўқ.",
+    "description": "Саҳифа кўчган бўлиши мумкин, лекин ҳикоя давом этади.",
+    "actionsLabel": "Саҳифа топилмади амаллари",
+    "backToWatch": "Кўришга қайтиш",
+    "browseVideos": "Видеоларни кўриш"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Қисқа фильмни кўриш",
+    "actions": {
+      "joinUs": "Бизга қўшилинг",
+      "shareMission": "Миссиямизда иштирок этинг"
+    },
+    "welcomeStart": {
+      "label": "Имон ва Муқаддас Ёзув",
+      "title": "Бугунги видео танловлари",
+      "description": "Руҳлантириш, ўйлантириш ва мулоҳаза уйғотиш учун кутубхонамиздан имонга йўналтирилган видео мазмун."
+    },
+    "welcomeMorning": {
+      "label": "Тонгги илҳом",
+      "title": "Ассалому алайкум! Бугунги Библия лаҳзалари сизни кутмоқда.",
+      "description": "Кунни руҳлантирувчи, илҳом бағишлаш ва қалбингизни кўтариш учун тайёрланган Библия лаҳзалари билан бошланг."
+    },
+    "welcomeAfternoon": {
+      "label": "Пешинги илҳом",
+      "title": "Кундуз хайр! Кунингиз учун Библия лаҳзалари.",
+      "description": "Кундузги танаффусингиз ёки руҳланишингиз учун мос, кўнгилни кўтарувчи Библия мазмуни."
+    },
+    "welcomeEvening": {
+      "label": "Оқшомги илҳом",
+      "title": "Оқшом хайр! Библия лаҳзалари билан тин олинг.",
+      "description": "Кун охирида мулоҳаза қилиш ва тасалли топишга ёрдам берадиган осойишта Библия лаҳзалари."
+    },
+    "joinUs": {
+      "label": "Бизга қўшилинг",
+      "title": "Миллиардлаб одамлар излаяпти",
+      "description": "Ҳосил бу ерда. Рақамли медиа орқали бутун дунёга хушхабарни етказишда бизга қўшилинг."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Бирга йўл олдик",
+      "title": "Исо ҳақидаги ҳикояни бирга баён қиламиз",
+      "description": "Шунда улар Исо муҳаббатини ўз тилида, ўзи турган жойда эшитиб, кўра оладилар."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% мос келади",
+    "none": "Бу тилда бу видео учун тавсиялар топилмади."
   }
 }

@@ -7,7 +7,9 @@
     "noContent": "Einki innihald er tøkt.",
     "homepageMisconfigured": "Forsíðan fyri at hyggja er ikki sett upp rætt.",
     "defaultTemplateMisconfigured": "Standard sniðið fyri at hyggja er ikki sett upp rætt.",
-    "authFailed": "Tað eydnaðist ikki at sannprógva við innihaldstænastuna. Vinarliga set teg í samband við stuðul, um hetta heldur fram."
+    "authFailed": "Tað eydnaðist ikki at sannprógva við innihaldstænastuna. Vinarliga set teg í samband við stuðul, um hetta heldur fram.",
+    "pageLoadFailed": "Eitthvørt fór galið.",
+    "tryAgain": "Royn aftur"
   },
   "VideosPage": {
     "title": "Øll videobrot",
@@ -22,7 +24,8 @@
     "promoHeading": "Vilt tú skilja Bíbliuna djypri?",
     "joinBibleStudy": "Vert við í bíbliulestur okkara",
     "previousQuote": "Fyrra bíbliuorð",
-    "nextQuote": "Næsta bíbliuorð"
+    "nextQuote": "Næsta bíbliuorð",
+    "readPassage": "Les hetta brotið í Bíbliuni hjá tær."
   },
   "DownloadButton": {
     "checking": "Kannar",
@@ -73,7 +76,8 @@
     "selectLanguage": "Vel mál",
     "searchPlaceholder": "Leita eftir málum…",
     "languages": "Mál",
-    "noMatches": "Einki samsvar"
+    "noMatches": "Einki samsvar",
+    "notAvailable": "Ikki tøkt"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Mál",
@@ -112,7 +116,8 @@
     "questions": "Viðkomandi spurningar",
     "askYours": "Spyr tín spurning",
     "chatWithPerson": "Prát við ein persón",
-    "askBibleQuestion": "Spyr ein bíbliusporðing"
+    "askBibleQuestion": "Spyr ein bíbliusporðing",
+    "quiz": "Kvís"
   },
   "WatchQuestionPanel": {
     "messageType": "Boðslagi",
@@ -170,7 +175,8 @@
     "searchRegion": "Leita eftir videobrotum",
     "clearSearch": "Strika leit",
     "changeAudioLanguage": "Broyt ljóðmál",
-    "home": "JesusFilm forsíða"
+    "home": "JesusFilm forsíða",
+    "closeSearch": "Lat leit aftur"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og blaða í videobrotum",
@@ -205,14 +211,19 @@
     "clearLanguages": "Strika",
     "queryLanguageDetected": "{language} funnið",
     "searchInLanguage": "Leita á {language}",
-    "tryDifferentKeywordsOrLanguage": "Royn onnur lyklaorð ella vel eitt annað leitismál"
+    "tryDifferentKeywordsOrLanguage": "Royn onnur lyklaorð ella vel eitt annað leitismál",
+    "useWebsiteDefaultLanguage": "Brúka standard leitismál á heimasíðuni",
+    "removeLanguage": "Tak {language} burtur",
+    "browseMode": "Leita-blaðingarháttur"
   },
   "HeroPlayer": {
     "playWithSound": "Hygg nú",
-    "tapToUnmute": "Trýst fyri at kveikja ljóðið"
+    "tapToUnmute": "Trýst fyri at kveikja ljóðið",
+    "nextEpisode": "Næsti partur"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Lesur innihald"
+    "loadingContent": "Lesur innihald",
+    "loadingVideo": "Lesur videobrot"
   },
   "VideoLabels": {
     "video": "Videobrot",
@@ -223,7 +234,8 @@
     "series": "Røð",
     "collection": "Savn",
     "trailer": "Stiklilfilmur",
-    "behindTheScenes": "Bak kamera"
+    "behindTheScenes": "Bak kamera",
+    "chapter": "Kapitil"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipp {current} av {total}",
@@ -235,11 +247,243 @@
     "noImage": "Eingin mynd",
     "playingNow": "Spælt nú",
     "previousChapter": "Fyrri kapitil",
-    "nextChapter": "Næsti kapitil"
+    "nextChapter": "Næsti kapitil",
+    "thumbnailAlt": "Smámynd av {title}",
+    "relatedVideoThumbnail": "Smámynd av líknandi videobroti"
   },
   "SearchResultCard": {
     "experience": "Uppliving",
     "episodeCount": "{count, plural, one {# partur} other {# partar}}",
     "thumbnailAlt": "Smámynd av videobroti"
+  },
+  "Feedback": {
+    "openForm": "Lat afturmeldingarformulár upp",
+    "label": "Afturmelding",
+    "couldNotLoad": "Afturmeldingarformulárið kundi ikki lesast.",
+    "loadingForm": "Lesur afturmeldingarformulær…",
+    "retry": "Royn aftur",
+    "openFormShort": "Lat formulár upp",
+    "cancel": "Avlýs",
+    "title": "Beta afturmelding",
+    "description": "Deil, hvat riggar, og hvat vit kunnu betra. Hetta formulárið er veitt av Google.",
+    "openInNewTab": "Lat formulárið upp í einum nýggjum flipa",
+    "closeForm": "Lat afturmeldingarformulár aftur",
+    "loadingGoogleForm": "Lesur Google Formulár…",
+    "iframeTitle": "Send beta afturmelding"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ókeypis kristin videobrot á {language} | Jesus Film Project",
+    "metadataDescription": "Kanna Jesus-filmar, bíbliusøgur, lærusveinaskaprøðir og útbreiðsluvideobrot við ljóðspori ella undirtekstum á {language}.",
+    "heroTitle": "Ókeypis kristin videobrot á {language}",
+    "heroDescription": "Kanna Jesus-filmar, bíbliusøgur, lærusveinaskaprøðir og útbreiðsluvideobrot tøk á {language}. Fullt dubbað videobrot verða víst fyrst, við undirtekstum niðanfyri.",
+    "languageCollection": "Málsavnsbólkur",
+    "itemCount": "{count, plural, one {# lutur} other {# lutir}}",
+    "videoCount": "{count, plural, one {# videobrot} other {# videobrot}}",
+    "videosInGroups": "{videoCount, plural, one {# videobrot} other {# videobrot}} í {groupCount, plural, one {# bólki} other {# bólkum}}",
+    "sectionNavLabel": "Partar í mályvirliti",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nýtt",
+    "videoBible": "Videobíblia",
+    "bibleProject": "BibleProject",
+    "sports": "Ítróttur",
+    "collections": "Søvn",
+    "subtitlesOnly": "Bert undirtekstir",
+    "newlyAdded": "Nýliga lagt aftrat",
+    "newVideosTitle": "Nýggj kristin videobrot á {language}",
+    "newestFirst": "Nýggjasta fyrst",
+    "noPublishedVideos": "Ongin útgivin videobrot vóru funnin til hetta málið enn.",
+    "bibleAndGospelFilms": "Bíbliu- og evangeliumsfilmar",
+    "videoBibleCollectionsTitle": "{language} Video Bible savn",
+    "videoBibleDescription": "Skriftgrundað søvn, m.a. LUMO, JESUS, Magdalena og Acts á {language}.",
+    "noVideoBibleCollections": "Eingi Video Bible søvn eru tøk á hesum máli enn.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject søvn",
+    "bibleProjectDescription": "BibleProject røðir og bíbliulestur tøk á {language}.",
+    "noBibleProjectCollections": "Eingi BibleProject søvn eru tøk á hesum máli enn.",
+    "sportsStories": "Ítróttarsøgur",
+    "sportsTitle": "{language} ítróttur og ítróttarfólkssøgur",
+    "sportsDescription": "Trúargrundaðar ítróttarsøgur og søvn um ítróttarfólk tøk á {language}.",
+    "noSportsCollections": "Eingi savn við ítrótti ella søgum um ítróttarfólk eru tøk á hesum máli enn.",
+    "fullyDubbed": "Fullt dubbað",
+    "dubbedVideosTitle": "{language} videobrot eftir savni",
+    "dubbedVideosDescription": "Blað í fullkomiliga dubbaðum {language} videobrotum, skipað eftir savni, so tað er lættari at finna.",
+    "noDubbedVideos": "Eingi fullkomiliga dubbað videobrot eru tøk á hesum máli enn.",
+    "subtitlesAvailable": "Undirtekstir tøkir",
+    "subtitlesTitle": "{language} videobrot við undirtekstum",
+    "subtitlesDescription": "Hesi videobrot hava {language} undirtekstir, tá talað {language} ljóð enn ikki er tøkt.",
+    "noSubtitleVideos": "Eingi videobrot við bert undirtekstum eru tøk á hesum máli enn.",
+    "dubbed": "Dubbað",
+    "subtitles": "Undirtekstir",
+    "newLabel": "Nýtt",
+    "fromCollection": "Úr {collection}",
+    "standaloneVideos": "Stakar videobrot",
+    "videosFromCollection": "Videobrot úr {collection}.",
+    "standaloneDescription": "Støk videobrot á hesum máli.",
+    "openCollection": "Lat savn upp"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project – Hygg",
+    "watch": "Hygg",
+    "watchNow": "Hygg nú",
+    "mutePreview": "Sløkk forskot",
+    "unmutePreview": "Kveik forskot aftur",
+    "nextVideo": "Næsta videobrot",
+    "featured": "Í brennideplinum",
+    "showVideo": "Vís {title}",
+    "previousVideoPreview": "Fyrra videobrotsforskot",
+    "nextVideoPreview": "Næsta videobrotsforskot",
+    "mediaCollection": "Miðlasavn",
+    "scrollToVideo": "Rulla til videobrotið {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project forsíða",
+    "navigation": "Fótmynstrunavigatión",
+    "share": "Deil",
+    "watch": "Hygg",
+    "giving": "Gávur",
+    "about": "Um okkum",
+    "products": "Vørur",
+    "resources": "Tilfar",
+    "partners": "Partnarar",
+    "contact": "Set teg í samband",
+    "giveNow": "Gev nú",
+    "resourcesVersion": "Tilfar ({version})",
+    "office": "Skrivstova",
+    "fax": "Faks",
+    "privacyPolicy": "Privatlívspolitikkur",
+    "legalStatement": "Lógarfrágreiðing",
+    "newsletter": "Skráset teg til tíðindabrævið okkara"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Bygt til altjóða missión",
+    "title": "Boðskapurin broytist ikki. Mátin fólk hyggja á, ger.",
+    "description": "Vit endurbyggja okkara videobókasavn og amboð frá grundini og bindum áratíggjur av umsetingararbeiði til pallarnar, har fólk longu savnast, hyggja og deila.",
+    "translatedLibraryTitle": "Heimsins mest umsetta filmsavnsbókasavn",
+    "translatedLibraryDescription": "Áratíggjur av umsetingararbeiði, borne av álítandi tænastupartnarum, hava bygt eitt savn við túsundtals málsligum sporum, so fólk kunnu møta søguni um Jesus á tí máli, sum røkkur teimum djúpast.",
+    "trustedVoicesTitle": "Álitarligar røddir í nýggjar formater",
+    "trustedVoicesDescription": "Vit endurbyggja, hvussu evangeliesøgur verða sagdar sjónliga, og sameina álítandi umsetingar við nútímans formater, so boðskapurin kann ferðast frítt tvørtur um pallar, mentanir og skermar.",
+    "missionTeamTitle": "Meir enn eitt savn. Eitt missiónsdrigið lið.",
+    "missionTeamDescription": "Jesus Film Project er eitt altjóða lið av umsetarum, miðlasérfrøðingum, ritstjórum og skapandi fólki, sum umseta áratíggjur av tænastu til amboð fyri lærisveinagerð allastaðni.",
+    "buildingNext": "Tað, vit byggja næst",
+    "nextStepsTitle": "Næstu stig plattformur",
+    "nextStepsDescription": "Set hyggjarar í samband við ítøkiligar møguleikar á teirra andaligu ferð, so tey kunnu taka eitt næsta stig inn í felagsskap, Skrift ella missión.",
+    "mediaLibraryTitle": "Evangeliskt miðlasavn",
+    "mediaLibraryDescription": "Eitt víðfevnt kristiligt miðlasavn við túsundtals videobrotum, filmum og tilfari tøk á fleiri málum til tænastu og evangelisering um allan heim.",
+    "ministryToolsTitle": "Talgild amboð til tænastur",
+    "ministryToolsDescription": "Videostýring, innihaldsútbreiðsla, áhoyraratengd viðvirkan og greining, sniðgivið til at hjálpa tænastum at náa fleiri fólkum effektivt.",
+    "invitationEyebrow": "Tú ert boðin/boðin",
+    "invitationTitle": "Hjálp við at byggja <highlight>næsta ættarlið</highlight> av missiónsamboðum",
+    "invitationDescription": "Vit bjóða praktikaranum, skaparanum og samstarvspørtum inn til tíðliga atgongd. Royn nýggj amboð fyrst, gev afturmelding og hjálp við at mynda vørur, sum eru gjørdar til veruligt missiónsarbeiði.",
+    "betaTester": "Blív beta-testari"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible savn",
+    "gospelRailTitle": "Upptókna alla søguna",
+    "videoBibleDescription": "Kanna okkara savn av videobrotum og tilfari, sum geva Bíbliuni lív gjøgnum fangandi søgur og undirvísing.",
+    "showcaseTitle": "Skriftsøgan fortald gjøgnum film",
+    "adventEyebrow": "Jólaadventur",
+    "adventTitle": "Afturteljing til jól",
+    "adventDescription": "Vert við í okkara adventferð við einum dagligum videobroti, sum byggir upp ímóti jólum og kannar vónina, gleðina og lyftið um Jesus' komu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject adventur",
+    "nuaEyebrow": "NUA røð",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth røð",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurvur",
+    "journeyWithJesusTitle": "Ferð við Jesusi",
+    "gospelsOnVideoEyebrow": "Hvørt evangeliu, sagt á video",
+    "scriptureAsWrittenTitle": "Skriftin, søgd júst sum skrivað",
+    "merryChristmas": "Gleðilig jól!",
+    "daysUntilChristmas": "{count, plural, one {# dagur til jóla} other {# dagar til jóla}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Mál",
+    "metadataDescription": "Blað í JesusFilm videobrotum eftir máli.",
+    "eyebrow": "Hygg mál",
+    "title": "Vel eitt mál",
+    "description": "Kanna mál eftir øki ella blað í allari listanum.",
+    "searchPlaceholder": "Leita eftir málum ella londum...",
+    "searchLabel": "Leita eftir málum ella londum",
+    "clearSearch": "Strika leit",
+    "browse": "Blaða",
+    "browseByRegion": "Blaða eftir øki og landi",
+    "languageCount": "{count, plural, one {# mál} other {# mál}}",
+    "region": "Øki",
+    "countryLanguages": "Mál í {country}",
+    "showLess": "Vís minni",
+    "showMore": "Vís {count} fleiri",
+    "noLanguages": "Eingi mál funnin",
+    "tryAnotherSearch": "Royn eitt annað leitiorð."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Hyggesøga | Jesus Film Project",
+    "title": "Hyggesøga",
+    "loading": "Lesur søgu",
+    "empty": "Einki her enn",
+    "emptyDescription": "Videobrot, tú hyggur at, meðan tú ert innritað/ur, koma at vísa her.",
+    "earlier": "Fyrr",
+    "today": "Í dag",
+    "yesterday": "Í gjár"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Kontuvalmynd",
+    "signIn": "Rita inn",
+    "signOut": "Rita út",
+    "signedIn": "Innritað/ur",
+    "history": "Søga",
+    "logOut": "Rita út"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Síðan er ikki funnin",
+    "eyebrow": "Síðan er ikki funnin",
+    "screenReaderPrefix": "Síðan er ikki funnin:",
+    "title": "Henda senan er ikki her.",
+    "description": "Síðan kann vera flutt, men søgan heldur fram.",
+    "actionsLabel": "Agerðir fyri ikki funna síðu",
+    "backToWatch": "Aftur til Watch",
+    "browseVideos": "Blaða í videobrotum"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Hygg at stuttfilmi",
+    "actions": {
+      "joinUs": "Ver við",
+      "shareMission": "Deil okkara missión"
+    },
+    "welcomeStart": {
+      "label": "Trúgv og Skrift",
+      "title": "Dagsins videoval",
+      "description": "Videoinnihald við trúgv í miðdeplinum úr savninum, sum kann inspirera, avbjóða og kveikja til hugleiðing."
+    },
+    "welcomeMorning": {
+      "label": "Morguninspiratión",
+      "title": "Góðan morgun! Dagsins bíbliustundir bíða.",
+      "description": "Byrja dagin við eggjandi bíbliustundum, ætlaðum at inspirera og lyfta andan."
+    },
+    "welcomeAfternoon": {
+      "label": "Eftirmiðdagsinspiratión",
+      "title": "Góðan dag! Bíbliustundir til tín dag.",
+      "description": "Eggjandi bíbliutilfar, væl egnað til tína eftirmiðdagssteðg ella sum framhaldandi íblástur."
+    },
+    "welcomeEvening": {
+      "label": "Kvøldsinspiratión",
+      "title": "Góða kvøld! Slapp av við bíbliustundum.",
+      "description": "Friðsæl bíbliustundir, sum hjálpa tær at hugleiða og finna troyst, tá ið dagurin fer at enda."
+    },
+    "joinUs": {
+      "label": "Ver við",
+      "title": "Milliardir leita",
+      "description": "Heystið er her. Ver við okkum, meðan vit deila evangeliið við heimin gjøgnum talgild miðlar."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Lata okkum fara saman",
+      "title": "At siga søguna um Jesus, saman",
+      "description": "So tey kunnu hoyra og síggja kærleikan hjá Jesusi á sínum egna máli júst har, sum tey eru."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% samsvar",
+    "none": "Eingi viðmæli til hetta videobrotið á hesum máli funnin."
   }
 }

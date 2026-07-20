@@ -87,6 +87,58 @@ function placeholders(message: string): string[] {
     .sort()
 }
 
+function messageVariables(message: string): Set<string> {
+  return new Set(
+    [...message.matchAll(/\{([A-Za-z][A-Za-z0-9_]*)\s*(?:,|\})/g)].map(
+      (match) => match[1],
+    ),
+  )
+}
+
+function richTextTags(message: string): Set<string> {
+  return new Set(
+    [...message.matchAll(/<\/?([A-Za-z][A-Za-z0-9_]*)>/g)].map(
+      (match) => match[1],
+    ),
+  )
+}
+
+function pluralAndSelectOperations(message: string): Set<string> {
+  return new Set(
+    [
+      ...message.matchAll(
+        /\{([A-Za-z][A-Za-z0-9_]*)\s*,\s*(plural|selectordinal|select)\b/g,
+      ),
+    ].map((match) => `${match[2]}:${match[1]}`),
+  )
+}
+
+function sameSet(left: Set<string>, right: Set<string>): boolean {
+  return (
+    left.size === right.size && [...left].every((value) => right.has(value))
+  )
+}
+
+function formattingValues(message: string): Record<string, unknown> {
+  const values: Record<string, unknown> = {}
+  const numericVariables = new Set(
+    [
+      ...message.matchAll(
+        /\{([A-Za-z][A-Za-z0-9_]*)\s*,\s*(?:plural|selectordinal|number)\b/g,
+      ),
+    ].map((match) => match[1]),
+  )
+  for (const match of message.matchAll(
+    /\{([A-Za-z][A-Za-z0-9_]*)\s*(?:,|\})/g,
+  )) {
+    values[match[1]] = numericVariables.has(match[1]) ? 2 : "Sample"
+  }
+  for (const match of message.matchAll(/<\/?([A-Za-z][A-Za-z0-9_]*)>/g)) {
+    values[match[1]] = (chunks: unknown) => chunks
+  }
+  return values
+}
+
 function languagePickerMessages(locale: string): Record<string, string> {
   return loadCatalog(locale).LanguagePickerModal as Record<string, string>
 }
@@ -191,6 +243,90 @@ describe("non-English catalogs — translated-copy gate", () => {
       )
     },
   )
+})
+
+describe("messages catalogs — ICU and rich-text syntax", () => {
+  it("preserves English variable, rich-tag, and plural/select contracts", () => {
+    const source = flattenCatalog(SOURCE_LOCALE)
+    const contractErrors: string[] = []
+    const locales = readdirSync(messagesDir)
+      .filter((file) => file.endsWith(".json") && file !== "en.json")
+      .map((file) => file.slice(0, -5))
+
+    for (const locale of locales) {
+      const catalog = flattenCatalog(locale)
+      for (const [path, sourceMessage] of Object.entries(source)) {
+        const translatedMessage = catalog[path]
+        if (translatedMessage == null) continue
+
+        const contracts = [
+          [
+            "variables",
+            messageVariables(sourceMessage),
+            messageVariables(translatedMessage),
+          ],
+          [
+            "rich tags",
+            richTextTags(sourceMessage),
+            richTextTags(translatedMessage),
+          ],
+          [
+            "plural/select operations",
+            pluralAndSelectOperations(sourceMessage),
+            pluralAndSelectOperations(translatedMessage),
+          ],
+        ] as const
+
+        for (const [label, expected, actual] of contracts) {
+          if (!sameSet(expected, actual)) {
+            contractErrors.push(
+              `${locale}:${path}: ${label}; expected=${JSON.stringify([...expected].sort())}; actual=${JSON.stringify([...actual].sort())}`,
+            )
+          }
+        }
+      }
+    }
+
+    expect(contractErrors).toEqual([])
+  })
+
+  it("formats every translated message without parser errors", () => {
+    const errors: string[] = []
+    const locales = readdirSync(messagesDir)
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => file.slice(0, -5))
+
+    for (const locale of locales) {
+      const catalog = loadCatalog(locale)
+      let activePath = ""
+      const translate = createTranslator({
+        locale,
+        messages: catalog as AbstractIntlMessages,
+        onError(error) {
+          errors.push(
+            `${locale}:${activePath}: ${error.code}: ${error.message}`,
+          )
+        },
+      })
+      const translateRich = translate.rich as unknown as (
+        key: string,
+        values: Record<string, unknown>,
+      ) => unknown
+
+      for (const [path, message] of Object.entries(flattenCatalog(locale))) {
+        activePath = path
+        try {
+          translateRich(path, formattingValues(message))
+        } catch (error) {
+          errors.push(
+            `${locale}:${path}: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      }
+    }
+
+    expect(errors).toEqual([])
+  }, 15_000)
 })
 
 describe("generated UI locale list ↔ filesystem catalogs — drift gate", () => {

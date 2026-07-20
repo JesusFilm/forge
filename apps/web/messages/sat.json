@@ -7,7 +7,9 @@
     "noContent": "कुनु दसें बाय ना़वाबेना़।",
     "homepageMisconfigured": "वाच होमपेज ठीक से सेट बाय होकाना।",
     "defaultTemplateMisconfigured": "डिफ़ॉल्ट वाच टेम्पलेट ठीक से सेट बाय होकाना।",
-    "authFailed": "बिसोय सेवारे जुऱा लेकान प्रमाणिकरण बाय होकाना। जुदि एयाक् ला़गित् बा़ङा ताहेन, दया काते सहायता सोंपर्क मे।"
+    "authFailed": "बिसोय सेवारे जुऱा लेकान प्रमाणिकरण बाय होकाना। जुदि एयाक् ला़गित् बा़ङा ताहेन, दया काते सहायता सोंपर्क मे।",
+    "pageLoadFailed": "किछुञ भूला गेआना।",
+    "tryAgain": "एताय मे"
   },
   "VideosPage": {
     "title": "जोतो वीडियो",
@@ -22,7 +24,8 @@
     "promoHeading": "बाइबिल के आरो गहिराई रे बुझ्‌आय चाहा?",
     "joinBibleStudy": "हामार बाइबिल अध्ययन रे जुड़ मे",
     "previousQuote": "पाछिल बाइबिल उद्धरण",
-    "nextQuote": "आगेय बाइबिल उद्धरण"
+    "nextQuote": "आगेय बाइबिल उद्धरण",
+    "readPassage": "आमाक् बाइबिल रे ए अंश पढ़ मे।"
   },
   "DownloadButton": {
     "checking": "जांच होतोना",
@@ -73,7 +76,8 @@
     "selectLanguage": "ञेरेन चुन मे",
     "searchPlaceholder": "ञेरेन खोज मे…",
     "languages": "ञेरेन",
-    "noMatches": "कुनु मेल बाय मिला़क्"
+    "noMatches": "कुनु मेल बाय मिला़क्",
+    "notAvailable": "ना़वाबेना़"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ञेरेन",
@@ -112,7 +116,8 @@
     "questions": "संबंधित प्रश्न",
     "askYours": "आमाक् पुछ्‌हा मे",
     "chatWithPerson": "मित् मनुश सांव गपमाराव मे",
-    "askBibleQuestion": "बाइबिल पुछ्‌हा मे"
+    "askBibleQuestion": "बाइबिल पुछ्‌हा मे",
+    "quiz": "कुइज़"
   },
   "WatchQuestionPanel": {
     "messageType": "संदेश प्रकार",
@@ -170,7 +175,8 @@
     "searchRegion": "वीडियो खोज मे",
     "clearSearch": "खोज साफ मे",
     "changeAudioLanguage": "ऑडियो ञेरेन बदल मे",
-    "home": "JesusFilm होम"
+    "home": "JesusFilm होम",
+    "closeSearch": "खोज बोंद मे"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोज आर ब्राउज़ मे",
@@ -205,14 +211,19 @@
     "clearLanguages": "साफ मे",
     "queryLanguageDetected": "{language} चिन्हित होकाना",
     "searchInLanguage": "{language} रे खोज मे",
-    "tryDifferentKeywordsOrLanguage": "आलादा कुंजी शब्द वा आरो मित् खोज ञेरेन चुन मे"
+    "tryDifferentKeywordsOrLanguage": "आलादा कुंजी शब्द वा आरो मित् खोज ञेरेन चुन मे",
+    "useWebsiteDefaultLanguage": "वेबसाइट डिफ़ॉल्ट खोज ञेरेन बेभार मे",
+    "removeLanguage": "{language} हटाव मे",
+    "browseMode": "खोज ब्राउज़ मोड"
   },
   "HeroPlayer": {
     "playWithSound": "एक्हन देख मे",
-    "tapToUnmute": "आवाज खोले ला़गित् टैप मे"
+    "tapToUnmute": "आवाज खोले ला़गित् टैप मे",
+    "nextEpisode": "आगेय एपिसोड"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "सामग्री लोड होतोना"
+    "loadingContent": "सामग्री लोड होतोना",
+    "loadingVideo": "वीडियो लोड होतोना"
   },
   "VideoLabels": {
     "video": "वीडियो",
@@ -223,7 +234,8 @@
     "series": "श्रृंखला",
     "collection": "संग्रह",
     "trailer": "ट्रेलर",
-    "behindTheScenes": "पाछिल दृश्य"
+    "behindTheScenes": "पाछिल दृश्य",
+    "chapter": "अध्याय"
   },
   "SiblingCarousel": {
     "clipPosition": "क्लिप {current} / {total}",
@@ -235,11 +247,243 @@
     "noImage": "चित्र बाय ना़वाबेना़",
     "playingNow": "एक्हन चलतोना",
     "previousChapter": "पाछिल अध्याय",
-    "nextChapter": "आगेय अध्याय"
+    "nextChapter": "आगेय अध्याय",
+    "thumbnailAlt": "{title} थंबनेल",
+    "relatedVideoThumbnail": "संबंधित वीडियो थंबनेल"
   },
   "SearchResultCard": {
     "experience": "अनुभव",
     "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोड}}",
     "thumbnailAlt": "वीडियो थंबनेल"
+  },
+  "Feedback": {
+    "openForm": "प्रतिक्रिया फॉर्म खोल मे",
+    "label": "प्रतिक्रिया",
+    "couldNotLoad": "प्रतिक्रिया फॉर्म लोड बाय होका।",
+    "loadingForm": "प्रतिक्रिया फॉर्म लोड होतोना…",
+    "retry": "फिर कुस्टी मे",
+    "openFormShort": "फॉर्म खोल मे",
+    "cancel": "बोंद मे",
+    "title": "बीटा प्रतिक्रिया",
+    "description": "कुन काज होकाना आर किछु बेसी भाला होराक् मा हस, हांदा साझा मे। ए फॉर्म Google सांव दा़ंदा़याक्।",
+    "openInNewTab": "नावा टैब रे फॉर्म खोल मे",
+    "closeForm": "प्रतिक्रिया फॉर्म बोंद मे",
+    "loadingGoogleForm": "Google Form लोड होतोना…",
+    "iframeTitle": "बीटा प्रतिक्रिया भेज मे"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} रे नि:शुल्क मसीही वीडियो | Jesus Film Project",
+    "metadataDescription": "{language} रे डब कीले या उपशीर्षक सांव Jesus फिल्म, बाइबिल कथामाला, शिष्यता श्रृंखला, आओर सुसमाचार वीडियो देख मे।",
+    "heroTitle": "{language} रे नि:शुल्क मसीही वीडियो",
+    "heroDescription": "{language} रे ना़वाबेनाज Jesus फिल्म, बाइबिल कथामाला, शिष्यता श्रृंखला, आओर सुसमाचार वीडियो देख मे। पूरा डब किता वीडियो पिल्हन सुनुमे, आओर नीचे उपशीर्षक-ओनली विकल्प मे।",
+    "languageCollection": "ञेरेन संग्रह",
+    "itemCount": "{count, plural, one {# वस्तु} other {# वस्तु}}",
+    "videoCount": "{count, plural, one {# वीडियो} other {# वीडियो}}",
+    "videosInGroups": "{videoCount, plural, one {# वीडियो} other {# वीडियो}} {groupCount, plural, one {# समूह} other {# समूह}} रे",
+    "sectionNavLabel": "भाषा सूची खंड",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "नावा",
+    "videoBible": "वीडियो बाइबिल",
+    "bibleProject": "BibleProject",
+    "sports": "खेल",
+    "collections": "संग्रह",
+    "subtitlesOnly": "सिर्फ उपशीर्षक",
+    "newlyAdded": "नावा जोड़ल",
+    "newVideosTitle": "{language} रे नावा मसीही वीडियो",
+    "newestFirst": "सबसे नावा पहिले",
+    "noPublishedVideos": "ए भाषा ला़गित् एखनाहों कुनु प्रकाशित वीडियो बाय मिला़क्।",
+    "bibleAndGospelFilms": "बाइबिल आओर सुसमाचार फिल्म",
+    "videoBibleCollectionsTitle": "{language} वीडियो बाइबिल संग्रह",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, आओर Acts समेटा धर्मग्रंथ-केंद्रित संग्रह {language} रे।",
+    "noVideoBibleCollections": "ए भाषा ला़गित् एखनाहों कुनु वीडियो बाइबिल संग्रह बाय ना़वाबेना़।",
+    "bibleProjectCollectionsTitle": "{language} BibleProject संग्रह",
+    "bibleProjectDescription": "{language} रे ना़वाबेनाज BibleProject श्रृंखला आओर अध्ययन।",
+    "noBibleProjectCollections": "ए भाषा ला़गित् एखनाहों कुनु BibleProject संग्रह बाय ना़वाबेना़।",
+    "sportsStories": "खेल कथामाला",
+    "sportsTitle": "{language} खेल आओर खिलाड़ी कथामाला",
+    "sportsDescription": "{language} रे ना़वाबेनाज विश्वास-केंद्रित खेल कथामाला आओर खिलाड़ी-केन्द्रित संग्रह।",
+    "noSportsCollections": "ए भाषा ला़गित् एखनाहों कुनु खेल वा खिलाड़ी-कथा संग्रह बाय ना़वाबेना़।",
+    "fullyDubbed": "पूरा डब कील",
+    "dubbedVideosTitle": "संग्रह अनुसार {language} वीडियो",
+    "dubbedVideosDescription": "आसानी से खोज ला़गित् संग्रह सांव सगाबा पूरा डब {language} वीडियो ब्राउज़ मे।",
+    "noDubbedVideos": "ए भाषा ला़गित् एखनाहों कुनु पूरा डब वीडियो बाय ना़वाबेना़।",
+    "subtitlesAvailable": "उपशीर्षक ना़वाबेना़",
+    "subtitlesTitle": "उपशीर्षक सांव {language} वीडियो",
+    "subtitlesDescription": "जखन बोलल {language} ऑडियो एखनाहों बाय ना़वाबेना़, ए वीडियो मे {language} उपशीर्षक ताहेनाक्।",
+    "noSubtitleVideos": "ए भाषा ला़गित् एखनाहों सिर्फ उपशीर्षक वीडियो बाय ना़वाबेना़।",
+    "dubbed": "डब कील",
+    "subtitles": "उपशीर्षक",
+    "newLabel": "नावा",
+    "fromCollection": "{collection} खोन",
+    "standaloneVideos": "अकेला वीडियो",
+    "videosFromCollection": "{collection} खोन वीडियो।",
+    "standaloneDescription": "ए भाषा रे अकेला वीडियो।",
+    "openCollection": "संग्रह खोल मे"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project वाच",
+    "watch": "देख मे",
+    "watchNow": "एक्हन देख मे",
+    "mutePreview": "पेशगी आवाज बंद मे",
+    "unmutePreview": "पेशगी आवाज खोले मे",
+    "nextVideo": "आगेय वीडियो",
+    "featured": "विशेष",
+    "showVideo": "{title} देख मे",
+    "previousVideoPreview": "पाछिल वीडियो पेशगी",
+    "nextVideoPreview": "आगेय वीडियो पेशगी",
+    "mediaCollection": "मीडिया संग्रह",
+    "scrollToVideo": "{title} वीडियो हिच्/सरकाव मे"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project होम",
+    "navigation": "फुटर नेविगेशन",
+    "share": "साझा मे",
+    "watch": "देख मे",
+    "giving": "दान",
+    "about": "बारे रे",
+    "products": "उत्पाद",
+    "resources": "संसाधन",
+    "partners": "भागीदार",
+    "contact": "संपर्क",
+    "giveNow": "एक्हन दान मे",
+    "resourcesVersion": "संसाधन ({version})",
+    "office": "कार्यालय",
+    "fax": "फैक्स",
+    "privacyPolicy": "गोपनीयता नीति",
+    "legalStatement": "कानूनी बयान",
+    "newsletter": "आमाक् न्यूज़लेटर ला़गित् साइन अप मे"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "वैश्विक मिशन ला़गित् बनावल",
+    "title": "संदेश बाय बदलावा। लोग काजित् लेकान देखावा बदलावा।",
+    "description": "हम वीडियो लाइब्रेरी आओर टूल्स नावा सिरे तिखिन रे बना रहलाहा, दशकों के अनुवाद काम ओना मंच रे समर्पित करत् जहां लोग पहिल्हा खोन आओर देख, साझा करे।",
+    "translatedLibraryTitle": "दुनिया रे सबसे बेसी अनुवादित फिल्म लाइब्रेरी",
+    "translatedLibraryDescription": "दशकों के अनुवाद काम, भरोसेमंद मंत्रालय भागीदार सांव, हजारों भाषा ट्रैक के लाइब्रेरी बना काना ताकि लोग Jesus कहानी तिनकाक् जीभे अनुभव कर सकें।",
+    "trustedVoicesTitle": "नावा रूप रे भरोसेमंद आवाज गोटा करत्",
+    "trustedVoicesDescription": "हम सुसमाचार कथामाला के दृश्य रूप रे बोलेयाक् ढंग फिर से बना रहलाहा, भरोसेमंद अनुवाद के आधुनिक रूप सांव सगाबा करत् ताकि संदेश प्लेटफॉर्म, संस्कृति, आओर स्क्रीन पार खुलसेयाक् चलाक्।",
+    "missionTeamTitle": "लाइब्रेरी खोन आगेय। मिशन-चालित टीम।",
+    "missionTeamDescription": "Jesus Film Project एक वैश्विक टीम आना — अनुवादक, मीडिया विशेषज्ञ, संपादक, आओर रचनाकार — जे दशकों के मंत्रालय अनुभव के दुनिया भर के शिष्य-निर्माता़क् ला़गित् टूल्स रे बदल रहलाहा।",
+    "buildingNext": "हम एकहन के बना रहलाहा",
+    "nextStepsTitle": "अगला कदम प्लेटफ़ॉर्म",
+    "nextStepsDescription": "देखना वाले लोग के तिनकाक् आत्मिक यात्रा रे ठोस अवसर सांव जोड़ा मे, ओनका समुदाय, धर्मशास्त्र, वा मिशन रे अगला कदम निखसावाय मे।",
+    "mediaLibraryTitle": "सुसमाचारिक मीडिया लाइब्रेरी",
+    "mediaLibraryDescription": "मंत्रालय आओर सुसमाचार प्रचार ला़गित् दुनिया भर रे अनेक भाषा रे हजारों वीडियो, फिल्म, आओर संसाधन सांव एक बड़ा मसीही मीडिया लाइब्रेरी।",
+    "ministryToolsTitle": "मंत्रालय ला़गित् डिजिटल टूल्स",
+    "ministryToolsDescription": "वीडियो प्रबंधन, सामग्री वितरण, दर्शक संलग्नता, आओर विश्लेषण — जे मंत्रालय के बेसी लोग तक असरदार ढंग रे पहुंचाय ला़गित् बनावाल।",
+    "invitationEyebrow": "आपहिन निमंत्रित हैं",
+    "invitationTitle": "मिशन टूल्स के अगला पीढ़ी गढ़े रे <highlight>सहायता मे</highlight>",
+    "invitationDescription": "हम अभ्यासी, रचनाकार, आओर भागीदार के शुरुआती पहुंच रे आमंत्रित काना। नावा टूल्स पहिले परख मे, प्रतिक्रिया मे, आओर वास्तविक मिशन काम ला़गित् बनावल उत्पाद गढ़े रे मदद मे।",
+    "betaTester": "बीटा परीक्षक बन मे"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "वीडियो बाइबिल संग्रह",
+    "gospelRailTitle": "पूरा कथा खोज मे",
+    "videoBibleDescription": "हमाक् वीडियो आओर संसाधन संग्रह देख मे जे बाइबिल के जीवंत कथा आओर शिक्षा सांव जीवित करतोना।",
+    "showcaseTitle": "फिल्म सांव कहल धर्मग्रंथ",
+    "adventEyebrow": "क्रिसमस आगमन",
+    "adventTitle": "क्रिसमस आगमन उलटी गिनती",
+    "adventDescription": "आगमन यात्रा रे जुड़ मे, रोज़ मित् वीडियो सांव जे क्रिसमस ला़गित् उत्कंठा बढ़ायतोना, आओर Jesus आगमन के आशा, आनंद, आओर प्रतिज्ञा खोजतोना।",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject आगमन",
+    "nuaEyebrow": "NUA श्रृंखला",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth श्रृंखला",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "वीडियो कोर्स",
+    "journeyWithJesusTitle": "Jesus सांव यात्रा",
+    "gospelsOnVideoEyebrow": "जोतो सुसमाचार, वीडियो रे कहल",
+    "scriptureAsWrittenTitle": "धर्मग्रंथ, बिल्कुल लिखाल लेकान बोलल",
+    "merryChristmas": "क्रिसमस रेयाक् रा़सका़ जोहार!",
+    "daysUntilChristmas": "{count, plural, one {क्रिसमस हा़बिच् # दिन} other {क्रिसमस हा़बिच् # दिन}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ञेरेन",
+    "metadataDescription": "JesusFilm वीडियो ञेरेन अनुसार ब्राउज़ मे।",
+    "eyebrow": "वाच ञेरेन",
+    "title": "मित् ञेरेन चुन मे",
+    "description": "क्षेत्र अनुसार ञेरेन देख मे वा पुरा सूची ब्राउज़ मे।",
+    "searchPlaceholder": "ञेरेन वा देश खोज मे...",
+    "searchLabel": "ञेरेन वा देश खोज मे",
+    "clearSearch": "खोज साफ मे",
+    "browse": "ब्राउज़ मे",
+    "browseByRegion": "प्रदेश आओर देश अनुसार ब्राउज़ मे",
+    "languageCount": "{count, plural, one {# ञेरेन} other {# ञेरेनमाला}}",
+    "region": "प्रदेश",
+    "countryLanguages": "{country} ञेरेन",
+    "showLess": "कम देख मे",
+    "showMore": "आरो {count} देख मे",
+    "noLanguages": "कुनु ञेरेन बाय मिला़क्",
+    "tryAnotherSearch": "आरो मित् खोज शब्द आजमाय मे।"
+  },
+  "WatchHistory": {
+    "metadataTitle": "देख इतिहास | Jesus Film Project",
+    "title": "देख इतिहास",
+    "loading": "इतिहास लोड होतोना",
+    "empty": "एकहनो किछु बाय ताहेन",
+    "emptyDescription": "जखन आप साइन इन ताहें, ओना देखल वीडियो एतका देखायगेयामा।",
+    "earlier": "पहिले",
+    "today": "आज",
+    "yesterday": "हिजु"
+  },
+  "AccountControl": {
+    "account": "खाता",
+    "accountMenu": "खाता मेनू",
+    "signIn": "साइन इन मे",
+    "signOut": "साइन आउट मे",
+    "signedIn": "साइन इन होकाना",
+    "history": "इतिहास",
+    "logOut": "लॉग आउट मे"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "पृष्ठ बाय मिला़क्",
+    "eyebrow": "पृष्ठ बाय मिला़क्",
+    "screenReaderPrefix": "पृष्ठ बाय मिला़क्:",
+    "title": "ए दृश्य एतका बाय ताहेन।",
+    "description": "पृष्ठ सरकाव होका, मुदा कथा आगेय चलतोना।",
+    "actionsLabel": "पृष्ठ ना़वाबेना़ क्रिया",
+    "backToWatch": "वाच रे फिन जाव मे",
+    "browseVideos": "वीडियो ब्राउज़ मे"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "लघु फिल्म देख मे",
+    "actions": {
+      "joinUs": "हमार सांव जुड़ मे",
+      "shareMission": "हमार मिशन रे साझा मे"
+    },
+    "welcomeStart": {
+      "label": "विश्वास आओर धर्मग्रंथ",
+      "title": "आजाक् वीडियो चुनवा",
+      "description": "हमाक् लाइब्रेरी खोन विश्वास-केंद्रित वीडियो सामग्री — जे प्रेरित करे, चुनौती दे, आओर विचार जगा।"
+    },
+    "welcomeMorning": {
+      "label": "बिहानाक् प्रेरणा",
+      "title": "सुबह जोहार! आजाक् बाइबिल पल इंतजार करेना।",
+      "description": "प्रोत्साहित करेयाक् बाइबिल पल सांव अपन दिन सुरू मे, जे आपनाके प्रेरित आओर उत्साहित कर ला़गित् बनावल हाना।"
+    },
+    "welcomeAfternoon": {
+      "label": "दोपहराक् प्रेरणा",
+      "title": "दोपहर जोहार! आपन दिन ला़गित् बाइबिल पल।",
+      "description": "प्रोत्साहक बाइबिल सामग्री, आपन दोपहराक् आराम वा आगेय प्रेरणा ला़गित् एकदम ठीक।"
+    },
+    "welcomeEvening": {
+      "label": "सांझाक् प्रेरणा",
+      "title": "सांझ जोहार! बाइबिल पल सांव आराम मे।",
+      "description": "शांत बाइबिल पल, जे आपनाके चिंतन करे आओर आराम ना़वाय रे सहारा दे, जखन आपन दिन सामाप्त होताना।"
+    },
+    "joinUs": {
+      "label": "हमार सांव जुड़ मे",
+      "title": "करोड़ों लोग खोजतोना",
+      "description": "कटनी एखनाहों हाना। डिजिटल मीडिया सांव संसार रे सुसमाचार साझा करेय रे हमार सांव जुड़ मे।"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "आओ हम सॉगाइ",
+      "title": "मिलजुल Jesus हाक् कहानी सुनाव मे",
+      "description": "जाने ओना इना तिनकाक् निज भाषा रे, जेत्‌ता ते तिनी ताहा तिनाक्, Jesus हाक् प्रेम सुन आओर देख सकायें।"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% मेल",
+    "none": "ए ञेरेन रे ए वीडियो ला़गित् कुनु सुझाव बाय मिला़क्।"
   }
 }

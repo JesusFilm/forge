@@ -7,7 +7,9 @@
     "noContent": "Ez dago edukirik erabilgarri.",
     "homepageMisconfigured": "Ikuspenaren hasierako orria gaizki konfiguratuta dago.",
     "defaultTemplateMisconfigured": "Ikuspenaren txantiloi lehenetsia gaizki konfiguratuta dago.",
-    "authFailed": "Ezin izan da autentifikatu edukien zerbitzuarekin. Mesedez, jarri harremanetan laguntzarekin arazoak jarraitzen badu."
+    "authFailed": "Ezin izan da autentifikatu edukien zerbitzuarekin. Mesedez, jarri harremanetan laguntzarekin arazoak jarraitzen badu.",
+    "pageLoadFailed": "Zerbait gaizki joan da.",
+    "tryAgain": "Saiatu berriro"
   },
   "VideosPage": {
     "title": "Bideo guztiak",
@@ -22,7 +24,8 @@
     "promoHeading": "Bibliaren sakonago ulertu nahi duzu?",
     "joinBibleStudy": "Sartu gure Bibliako ikasketa-taldean",
     "previousQuote": "Aurreko bibliako aipamena",
-    "nextQuote": "Hurrengo bibliako aipamena"
+    "nextQuote": "Hurrengo bibliako aipamena",
+    "readPassage": "Irakurri pasarte hau zure Biblian."
   },
   "DownloadButton": {
     "checking": "Egiaztatzen",
@@ -73,7 +76,8 @@
     "selectLanguage": "Hautatu hizkuntza",
     "searchPlaceholder": "Bilatu hizkuntzak…",
     "languages": "Hizkuntzak",
-    "noMatches": "Ez dago bat datorrenik"
+    "noMatches": "Ez dago bat datorrenik",
+    "notAvailable": "Ez dago erabilgarri"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Hizkuntza",
@@ -112,7 +116,8 @@
     "questions": "Lotutako galderak",
     "askYours": "Egin zurea",
     "chatWithPerson": "Txateatu pertsona batekin",
-    "askBibleQuestion": "Egin Bibliari buruzko galdera bat"
+    "askBibleQuestion": "Egin Bibliari buruzko galdera bat",
+    "quiz": "Galdeketa"
   },
   "WatchQuestionPanel": {
     "messageType": "Mezu mota",
@@ -170,7 +175,8 @@
     "searchRegion": "Bilatu bideoak",
     "clearSearch": "Garbitu bilaketa",
     "changeAudioLanguage": "Aldatu audio-hizkuntza",
-    "home": "JesusFilm hasiera"
+    "home": "JesusFilm hasiera",
+    "closeSearch": "Itxi bilaketa"
   },
   "SearchOverlay": {
     "dialogLabel": "Bilatu eta arakatu bideoak",
@@ -205,14 +211,19 @@
     "clearLanguages": "Garbitu",
     "queryLanguageDetected": "{language} detektatu da",
     "searchInLanguage": "Bilatu {language} hizkuntzan",
-    "tryDifferentKeywordsOrLanguage": "Saiatu gako-hitz desberdinekin edo aukeratu beste bilaketa-hizkuntza bat"
+    "tryDifferentKeywordsOrLanguage": "Saiatu gako-hitz desberdinekin edo aukeratu beste bilaketa-hizkuntza bat",
+    "useWebsiteDefaultLanguage": "Erabili webgunearen bilaketa-hizkuntza lehenetsia",
+    "removeLanguage": "Kendu {language}",
+    "browseMode": "Bilaketa-arakatze modua"
   },
   "HeroPlayer": {
     "playWithSound": "Ikusi orain",
-    "tapToUnmute": "Ukitu soinua aktibatzeko"
+    "tapToUnmute": "Ukitu soinua aktibatzeko",
+    "nextEpisode": "Hurrengo atala"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Edukia kargatzen"
+    "loadingContent": "Edukia kargatzen",
+    "loadingVideo": "Bideoa kargatzen"
   },
   "VideoLabels": {
     "video": "Bideoa",
@@ -223,7 +234,8 @@
     "series": "Saioa",
     "collection": "Bilduma",
     "trailer": "Trailerra",
-    "behindTheScenes": "Eszenen atzean"
+    "behindTheScenes": "Eszenen atzean",
+    "chapter": "Kapitulua"
   },
   "SiblingCarousel": {
     "clipPosition": "{current} / {total} klipa",
@@ -235,11 +247,243 @@
     "noImage": "Irudirik ez",
     "playingNow": "Orain erreproduzitzen",
     "previousChapter": "Aurreko kapitulua",
-    "nextChapter": "Hurrengo kapitulua"
+    "nextChapter": "Hurrengo kapitulua",
+    "thumbnailAlt": "{title} miniatura",
+    "relatedVideoThumbnail": "Lotutako bideoaren miniatura"
   },
   "SearchResultCard": {
     "experience": "Esperientzia",
     "episodeCount": "{count, plural, one {# episodio} other {# episodio}}",
     "thumbnailAlt": "Bideoaren miniatura"
+  },
+  "Feedback": {
+    "openForm": "Ireki iritzia emateko formularioa",
+    "label": "Iritzia",
+    "couldNotLoad": "Ezin izan da iritzia emateko formularioa kargatu.",
+    "loadingForm": "Iritzia emateko formularioa kargatzen…",
+    "retry": "Saiatu berriro",
+    "openFormShort": "Ireki formularioa",
+    "cancel": "Utzi",
+    "title": "Beta bertsiorako iritzia",
+    "description": "Partekatu zer dabilen ondo eta zer hobetu dezakegun. Formulario hau Googlek eskaintzen du.",
+    "openInNewTab": "Ireki formularioa fitxa berri batean",
+    "closeForm": "Itxi iritzia emateko formularioa",
+    "loadingGoogleForm": "Google Formularioa kargatzen…",
+    "iframeTitle": "Bidali beta bertsiorako iritzia"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Doako kristau-bideoak {language} hizkuntzan | Jesus Film Project",
+    "metadataDescription": "Arakatu Jesusen filmak, Bibliako istorioak, dizipulutza-saioak eta hedapen-bideoak {language} hizkuntzan bikoiztutako audioarekin edo azpitituluekin.",
+    "heroTitle": "Doako kristau-bideoak {language} hizkuntzan",
+    "heroDescription": "Arakatu {language} hizkuntzan eskuragarri dauden Jesusen filmak, Bibliako istorioak, dizipulutza-saioak eta hedapen-bideoak. Bikoiztutako bideoak lehenik nabarmenduta daude, eta azpitituluak soilik dituzten aukerak behean ageri dira.",
+    "languageCollection": "Hizkuntza-bilduma",
+    "itemCount": "{count, plural, one {# elementu} other {# elementu}}",
+    "videoCount": "{count, plural, one {# bideo} other {# bideo}}",
+    "videosInGroups": "{videoCount, plural, one {# bideo} other {# bideo}} {groupCount, plural, one {# taldean} other {# taldetan}}",
+    "sectionNavLabel": "Hizkuntza-inbentarioaren atalak",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Berria",
+    "videoBible": "Bideo Biblia",
+    "bibleProject": "BibleProject",
+    "sports": "Kirolak",
+    "collections": "Bildumak",
+    "subtitlesOnly": "Azpitituluak soilik",
+    "newlyAdded": "Berriki gehitua",
+    "newVideosTitle": "Kristau-bideo berriak {language} hizkuntzan",
+    "newestFirst": "Berrienak lehenik",
+    "noPublishedVideos": "Oraindik ez da bideorik aurkitu hizkuntza honetarako.",
+    "bibleAndGospelFilms": "Bibliako eta Ebanjelioko filmak",
+    "videoBibleCollectionsTitle": "{language} Bideo Bibliako bildumak",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena eta Eginak barne hartzen dituzten Eskrituretan oinarritutako bildumak {language} hizkuntzan.",
+    "noVideoBibleCollections": "Oraindik ez dago Bideo Bibliako bildumarik hizkuntza honetarako.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject bildumak",
+    "bibleProjectDescription": "{language} hizkuntzan eskuragarri dauden BibleProject saioak eta ikasketak.",
+    "noBibleProjectCollections": "Oraindik ez dago BibleProject bildumarik hizkuntza honetarako.",
+    "sportsStories": "Kirol-istorioak",
+    "sportsTitle": "{language} kirol eta kirolarien istorioak",
+    "sportsDescription": "Fedean oinarritutako kirol-istorioak eta kirolariei buruzko bildumak eskuragarri daude {language} hizkuntzan.",
+    "noSportsCollections": "Oraindik ez dago kirol edo kirolarien istorioen bildumarik hizkuntza honetarako.",
+    "fullyDubbed": "Erabat bikoiztua",
+    "dubbedVideosTitle": "{language} bideoak bildumaren arabera",
+    "dubbedVideosDescription": "Arakatu erabat bikoiztutako {language} bideoak, euren bildumaren arabera multzokatuta, errazago aurkitzeko.",
+    "noDubbedVideos": "Oraindik ez dago erabat bikoiztutako biderik hizkuntza honetarako.",
+    "subtitlesAvailable": "Azpitituluak eskuragarri",
+    "subtitlesTitle": "{language} azpitituludun bideoak",
+    "subtitlesDescription": "Bideo hauek {language} azpitituluak dituzte oraindik hitz egindako {language} audioa ez dagoenean.",
+    "noSubtitleVideos": "Oraindik ez dago azpitituluak soilik dituzten bideorik hizkuntza honetarako.",
+    "dubbed": "Bikoiztua",
+    "subtitles": "Azpitituluak",
+    "newLabel": "Berria",
+    "fromCollection": "{collection} bildumatik",
+    "standaloneVideos": "Bakarkako bideoak",
+    "videosFromCollection": "{collection} bildumako bideoak.",
+    "standaloneDescription": "Hizkuntza honetako bakarkako bideoak.",
+    "openCollection": "Ireki bilduma"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Ikusi",
+    "watch": "Ikusi",
+    "watchNow": "Ikusi orain",
+    "mutePreview": "Mututu aurrebista",
+    "unmutePreview": "Aktibatu aurrebistaren soinua",
+    "nextVideo": "Hurrengo bideoa",
+    "featured": "Nabarmendua",
+    "showVideo": "Erakutsi {title}",
+    "previousVideoPreview": "Aurreko bideoaren aurrebista",
+    "nextVideoPreview": "Hurrengo bideoaren aurrebista",
+    "mediaCollection": "Edukiontzi-bilduma",
+    "scrollToVideo": "Joan {title} bideora"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project hasiera",
+    "navigation": "Orri-azpiko nabigazioa",
+    "share": "Partekatu",
+    "watch": "Ikusi",
+    "giving": "Ekarpenak",
+    "about": "Guri buruz",
+    "products": "Produktuak",
+    "resources": "Baliabideak",
+    "partners": "Lankideak",
+    "contact": "Kontaktua",
+    "giveNow": "Eman orain",
+    "resourcesVersion": "Baliabideak ({version})",
+    "office": "Bulegoa",
+    "fax": "Faxa",
+    "privacyPolicy": "Pribatutasun-politika",
+    "legalStatement": "Legezko oharra",
+    "newsletter": "Harpidetu gure buletinera"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Munduko misioetarako egina",
+    "title": "Mezua ez da aldatzen. Jendeak ikusteko modua bai.",
+    "description": "Gure bideo-liburutegia eta tresnak oinarritik berreraikitzen ari gara, hamarkadetako itzulpen-lana jada jendea biltzen, ikusten eta partekatzen den plataformetara eramanez.",
+    "translatedLibraryTitle": "Munduan gehien itzuli den film-bilduma",
+    "translatedLibraryDescription": "Hamarkadetako itzulpen-lanak, ministerio-lankide fidagarriek eramanda, milaka hizkuntza-pistadun liburutegia osatu du, jendeak Jesusen istorioa beraiengana sakonen heltzen den hizkuntzan ezagutu dezan.",
+    "trustedVoicesTitle": "Ahots fidagarriak formatu berrietara eramanez",
+    "trustedVoicesDescription": "Ebanjelioaren istorioak ikusiz kontatzeko modua berreraikitzen ari gara, itzulpen fidagarriak formatu modernoekin uztartuz mezua plataforma, kultura eta pantaila guztietara aske mugi dadin.",
+    "missionTeamTitle": "Liburutegi bat baino gehiago. Misioan oinarritutako taldea.",
+    "missionTeamDescription": "Jesus Film Project mundu osoko itzultzaile, komunikabide-espezialista, editore eta sortzaileen taldea da, hamarkadetako ministerio-esperientzia mundu osoko dizipulugileentzako tresnetan bihurtzen duena.",
+    "buildingNext": "Eraikitzen ari garena",
+    "nextStepsTitle": "Hurrengo Urratsak Plataforma",
+    "nextStepsDescription": "Konektatu ikusleak beren bidaia espiritualeko aukera zehatzekin, komunitatera, Eskrituretara edo misiora hurrengo urratsa ematen lagunduz.",
+    "mediaLibraryTitle": "Ebanjelizazio-hedabideen liburutegia",
+    "mediaLibraryDescription": "Kristau-hedabideen liburutegi zabala, milaka bideo, film eta baliabiderekin, hainbat hizkuntzatan eskuragarri, mundu osoko ministerio eta ebanjelizaziorako.",
+    "ministryToolsTitle": "Ministerioentzako tresna digitalak",
+    "ministryToolsDescription": "Bideo-kudeaketa, edukien banaketa, audientziaren parte-hartzea eta analitika, ministerioei jende gehiagorengana eraginkortasunez heltzen laguntzeko diseinatuak.",
+    "invitationEyebrow": "Gonbidatuta zaude",
+    "invitationTitle": "Lagundu <highlight>hurrengo belaunaldia</highlight> misio-tresnetan eraikitzen",
+    "invitationDescription": "Praktikaria, sortzaile eta lankideak gonbidatzen ari gara aurretiazko sarbidera. Probatu tresna berriak lehenik, eman iritzia eta lagundu benetako misio-lanerako diseinatutako produktuak moldatzen.",
+    "betaTester": "Bihurtu beta probatzaile"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Bideo Bibliako bilduma",
+    "gospelRailTitle": "Ezagutu istorio osoa",
+    "videoBibleDescription": "Arakatu Biblia biziberritzen duten bideo eta baliabideen gure bilduma, istorio eta irakaspen erakargarrien bidez.",
+    "showcaseTitle": "Eskritura zinemaren bidez kontatua",
+    "adventEyebrow": "Eguberrietako Adventua",
+    "adventTitle": "Eguberrietako Adventu-kontaketa",
+    "adventDescription": "Bat egin gure Adventu-bidaiarekin, Eguberrietarako itxaropena, poza eta Jesusen etorreraren promesa aztertzen duen eguneroko bideo batekin.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Adventua",
+    "nuaEyebrow": "NUA saioa",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth saioa",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Bideo-ikastaroa",
+    "journeyWithJesusTitle": "Jesusekin bidaian",
+    "gospelsOnVideoEyebrow": "Ebanjelio bakoitza, bideoan kontatua",
+    "scriptureAsWrittenTitle": "Eskritura, idatzita dagoen bezala zehatz-mehatz esana",
+    "merryChristmas": "Eguberri on!",
+    "daysUntilChristmas": "{count, plural, one {Egun # Eguberrietarako} other {# egun Eguberrietarako}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Hizkuntzak",
+    "metadataDescription": "Arakatu JesusFilm bideoak hizkuntzaren arabera.",
+    "eyebrow": "Ikusteko hizkuntzak",
+    "title": "Hautatu hizkuntza bat",
+    "description": "Arakatu hizkuntzak eskualdeka edo begiratu zerrenda osoa.",
+    "searchPlaceholder": "Bilatu hizkuntzak edo herrialdeak...",
+    "searchLabel": "Bilatu hizkuntzak edo herrialdeak",
+    "clearSearch": "Garbitu bilaketa",
+    "browse": "Arakatu",
+    "browseByRegion": "Arakatu eskualde eta herrialdearen arabera",
+    "languageCount": "{count, plural, one {# hizkuntza} other {# hizkuntza}}",
+    "region": "Eskualdea",
+    "countryLanguages": "{country} hizkuntzak",
+    "showLess": "Erakutsi gutxiago",
+    "showMore": "Erakutsi beste {count}",
+    "noLanguages": "Ez da hizkuntzarik aurkitu",
+    "tryAnotherSearch": "Saiatu beste bilaketa-hitz batekin."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ikusteko historia | Jesus Film Project",
+    "title": "Ikusteko historia",
+    "loading": "Historia kargatzen",
+    "empty": "Oraindik ez dago ezer hemen",
+    "emptyDescription": "Saioa hasita ikusten dituzun bideoak hemen agertuko dira.",
+    "earlier": "Lehenago",
+    "today": "Gaur",
+    "yesterday": "Atzo"
+  },
+  "AccountControl": {
+    "account": "Kontua",
+    "accountMenu": "Kontu-menua",
+    "signIn": "Hasi saioa",
+    "signOut": "Saioa amaitu",
+    "signedIn": "Saioa hasita",
+    "history": "Historia",
+    "logOut": "Irten saioa"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Orria ez da aurkitu",
+    "eyebrow": "Orria ez da aurkitu",
+    "screenReaderPrefix": "Orria ez da aurkitu:",
+    "title": "Eszena hau ez dago hemen.",
+    "description": "Orria lekuz aldatu daiteke, baina istorioak jarraitzen du.",
+    "actionsLabel": "Orria ez aurkitzeko ekintzak",
+    "backToWatch": "Itzuli ikustera",
+    "browseVideos": "Arakatu bideoak"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Ikusi film laburra",
+    "actions": {
+      "joinUs": "Bat egin gurekin",
+      "shareMission": "Partekatu gure misioa"
+    },
+    "welcomeStart": {
+      "label": "Fedea eta Eskritura",
+      "title": "Gaurko bideo-hautaketak",
+      "description": "Gure bildumako fedean oinarritutako bideo-edukia, inspiratzeko, erronka jartzeko eta gogoeta pizteko."
+    },
+    "welcomeMorning": {
+      "label": "Goizeko inspirazioa",
+      "title": "Egun on! Gaurko Bibliako uneak zain dituzu.",
+      "description": "Hasi eguna animo emango dizuten Bibliako uneekin, zure espiritua inspiratu eta indartzeko diseinatuak."
+    },
+    "welcomeAfternoon": {
+      "label": "Arratsaldeko inspirazioa",
+      "title": "Arratsalde on! Gaurko Bibliako uneak zuretzat.",
+      "description": "Bibliako eduki sustatzailea, arratsaldeko atsedenalderako edo inspirazioari eusteko aproposa."
+    },
+    "welcomeEvening": {
+      "label": "Iluntzeko inspirazioa",
+      "title": "Gau on! Lasaitu Bibliako uneekin.",
+      "description": "Bibliako une baketsuak, zure eguna amaitzean gogoeta egiten eta lasaitasuna aurkitzen laguntzeko."
+    },
+    "joinUs": {
+      "label": "Bat egin gurekin",
+      "title": "Milioika pertsona bilatzen ari dira",
+      "description": "Uzta hemen dago. Bat egin gurekin ebanjelioa munduarekin hedabide digitalen bidez partekatzen dugun honetan."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Goazen elkarrekin",
+      "title": "Jesusen istorioa elkarrekin kontatuz",
+      "description": "Horrela, Jesusekiko maitasuna beren hizkuntzan entzun eta ikusi ahal izan dezaten, dauden tokian bertan."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "%{percent}eko bat-etortzea",
+    "none": "Ez da gomendiorik aurkitu bideo honetarako hizkuntza honetan."
   }
 }

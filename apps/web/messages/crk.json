@@ -7,7 +7,9 @@
     "noContent": "awîna mîna kâ itapihtâhk.",
     "homepageMisconfigured": "watch home page kî-mîna-kîsikâw.",
     "defaultTemplateMisconfigured": "default watch template kî-mîna-kîsikâw.",
-    "authFailed": "mîna ka kî-nitotênawâw content service. mîna kî-wîcihitowin support ohci osîhcikêyihk wîkihtâwina."
+    "authFailed": "mîna ka kî-nitotênawâw content service. mîna kî-wîcihitowin support ohci osîhcikêyihk wîkihtâwina.",
+    "pageLoadFailed": "mîna awîna kîsikâw.",
+    "tryAgain": "kî-pîkiskwê mîna"
   },
   "VideosPage": {
     "title": "mâmaw video-wa",
@@ -22,7 +24,8 @@
     "promoHeading": "kî-wî-tapwewin Bible mîna kî-atoskê?",
     "joinBibleStudy": "Bible study ohci pîkiskwê",
     "previousQuote": "kâ-wî-pimipahtam Bible quote",
-    "nextQuote": "mîna kâ-wî-pimipahtam Bible quote"
+    "nextQuote": "mîna kâ-wî-pimipahtam Bible quote",
+    "readPassage": "Ayami ôma masinahikan kî-Bible-mihk."
   },
   "DownloadButton": {
     "checking": "kî-nitotam",
@@ -73,7 +76,8 @@
     "selectLanguage": "language ohci nîsohkin",
     "searchPlaceholder": "languages ohci nâkatohkê…",
     "languages": "languages",
-    "noMatches": "awîna kî-mînahtâw"
+    "noMatches": "awîna kî-mînahtâw",
+    "notAvailable": "not available"
   },
   "LanguagePickerModal": {
     "dialogTitle": "language",
@@ -112,7 +116,8 @@
     "questions": "kâ-nâkatohkâtâhk kîkwaya",
     "askYours": "ask yours",
     "chatWithPerson": "awâna kî-pîkiskwê",
-    "askBibleQuestion": "Bible question ohci ask"
+    "askBibleQuestion": "Bible question ohci ask",
+    "quiz": "kakwêcihkêmowin"
   },
   "WatchQuestionPanel": {
     "messageType": "message type",
@@ -170,7 +175,8 @@
     "searchRegion": "videos ohci nâkatohkê",
     "clearSearch": "search ohci piko",
     "changeAudioLanguage": "audio language ohci kî-wîcihtân",
-    "home": "JesusFilm wîkihtâwin"
+    "home": "JesusFilm wîkihtâwin",
+    "closeSearch": "search ohci pihcikê"
   },
   "SearchOverlay": {
     "dialogLabel": "videos ohci nâkatohkê mîna browse",
@@ -205,14 +211,19 @@
     "clearLanguages": "piko",
     "queryLanguageDetected": "{language} kî-kiskêyihtam",
     "searchInLanguage": "{language} ohci search",
-    "tryDifferentKeywordsOrLanguage": "keyword mîna kî-tôtam mîna language mîna nîtisihkâson"
+    "tryDifferentKeywordsOrLanguage": "keyword mîna kî-tôtam mîna language mîna nîtisihkâson",
+    "useWebsiteDefaultLanguage": "website default search language ohci itâwina",
+    "removeLanguage": "{language} ohci piko",
+    "browseMode": "search browse mode"
   },
   "HeroPlayer": {
     "playWithSound": "nîhiyaw",
-    "tapToUnmute": "mute ohci tap"
+    "tapToUnmute": "mute ohci tap",
+    "nextEpisode": "mîna episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "content ohci tipâkanêw"
+    "loadingContent": "content ohci tipâkanêw",
+    "loadingVideo": "video ohci tipâkanêw"
   },
   "VideoLabels": {
     "video": "video",
@@ -223,7 +234,8 @@
     "series": "series",
     "collection": "collection",
     "trailer": "trailer",
-    "behindTheScenes": "behind the scenes"
+    "behindTheScenes": "behind the scenes",
+    "chapter": "chapter"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ohci {total}",
@@ -235,11 +247,243 @@
     "noImage": "namoya image",
     "playingNow": "anohc namôyahta",
     "previousChapter": "kîhtwâm chapter",
-    "nextChapter": "mîna chapter"
+    "nextChapter": "mîna chapter",
+    "thumbnailAlt": "{title} video thumbnail",
+    "relatedVideoThumbnail": "wîcihitowin video thumbnail"
   },
   "SearchResultCard": {
     "experience": "experience",
     "episodeCount": "{count, plural, one {# episode} other {# episode-wa}}",
     "thumbnailAlt": "video thumbnail"
+  },
+  "Feedback": {
+    "openForm": "feedback form ohci pîkiskwê",
+    "label": "kî-itôtamowin",
+    "couldNotLoad": "feedback form mîna kî tipâkanêw.",
+    "loadingForm": "feedback form ohci tipâkanêw…",
+    "retry": "kî-pîkiskwê mîna",
+    "openFormShort": "form ohci pîkiskwê",
+    "cancel": "mîna kâya",
+    "title": "Beta kî-itôtamowin",
+    "description": "ta-atohtamîk, kîsikâw mîna mâmawi-ispîhtâwin kî-miyo. Google ohci wâpamitaw awâsis.",
+    "openInNewTab": "form ohci pîkiskwê ta-kâ-wîcihtwâw kâ-nîhiyaw",
+    "closeForm": "feedback form ohci pihcikê",
+    "loadingGoogleForm": "Google Form ohci tipâkanêw…",
+    "iframeTitle": "Beta Feedback ohci nîpâhtâw"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "namoya otinawâw Christian video-wa {language} | Jesus Film Project",
+    "metadataDescription": "Jesus films, Bible âcimowina, discipleship series, êkwa outreach videos kâ-itâwina nâkatohkê êkwa dubbed audio êkwa subtitles {language}.",
+    "heroTitle": "namoya otinawâw Christian video-wa {language}",
+    "heroDescription": "Jesus films, Bible âcimowina, discipleship series, êkwa outreach videos kâ-itâwina {language} nâkatohkê. kâ-kisewâtisiwêhk dubbed videos nistam wâpamwak, êkwa subtitle-only options apitaw.",
+    "languageCollection": "language collection",
+    "itemCount": "{count, plural, one {# kîkway} other {# kîkwaya}}",
+    "videoCount": "{count, plural, one {# video} other {# video-wa}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video-wa}} {groupCount, plural, one {# group ohci} other {# groups ohci}}",
+    "sectionNavLabel": "language inventory sections",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "oski",
+    "videoBible": "Video ohci Bible",
+    "bibleProject": "BibleProject",
+    "sports": "sports",
+    "collections": "collections",
+    "subtitlesOnly": "subtitles êkwa mêkwâc",
+    "newlyAdded": "oskîsina kî-atoskâtâw",
+    "newVideosTitle": "oski Christian video-wa {language}",
+    "newestFirst": "oskîsina nistam",
+    "noPublishedVideos": "namoya videos kî-nitâcihisowak oma language mâka.",
+    "bibleAndGospelFilms": "Bible êkwa Gospel films",
+    "videoBibleCollectionsTitle": "{language}: Video Bible collections",
+    "videoBibleDescription": "Scripture kâ-nitawi-ispîhtêyimocik collections, LUMO, JESUS, Magdalena, êkwa Acts {language} ohci.",
+    "noVideoBibleCollections": "namoya Video Bible collections kî-itâwin oma language mâka.",
+    "bibleProjectCollectionsTitle": "{language}: BibleProject collections",
+    "bibleProjectDescription": "BibleProject series êkwa studies kâ-itâwina {language}.",
+    "noBibleProjectCollections": "namoya BibleProject collections kî-itâwin oma language mâka.",
+    "sportsStories": "sports âcimowina",
+    "sportsTitle": "{language} sports êkwa athlete âcimowina",
+    "sportsDescription": "Faith-centered sports stories êkwa athlete-focused collections kâ-itâwina {language}.",
+    "noSportsCollections": "namoya sports êkwa athlete-story collections kî-itâwin oma language mâka.",
+    "fullyDubbed": "miyo-kakwê dubbed",
+    "dubbedVideosTitle": "{language}: collection ohci video-wa",
+    "dubbedVideosDescription": "miyo-kakwê dubbed {language} videos browse, collection êkwa kî-mâmawatoskâtâw, ê-wî-mîyo-kiskêyihtamihk.",
+    "noDubbedVideos": "namoya miyo-kakwê dubbed videos kî-itâwin oma language mâka.",
+    "subtitlesAvailable": "subtitles kî-itâwin",
+    "subtitlesTitle": "{language}: subtitles kâ-ayâki video-wa",
+    "subtitlesDescription": "ôki videos {language} subtitles kî-itâwin êkosi spoken {language} audio namoya mâka.",
+    "noSubtitleVideos": "namoya subtitle-only videos kî-itâwin oma language mâka.",
+    "dubbed": "dubbed",
+    "subtitles": "subtitles",
+    "newLabel": "oski",
+    "fromCollection": "{collection} ohci",
+    "standaloneVideos": "standalone videos",
+    "videosFromCollection": "{collection} ohci video-wa.",
+    "standaloneDescription": "oma language standalone videos.",
+    "openCollection": "collection ohci pîkiskwê"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project wâpamê",
+    "watch": "wâpamê",
+    "watchNow": "anohc wâpamê",
+    "mutePreview": "preview mute",
+    "unmutePreview": "preview unmute",
+    "nextVideo": "mîna video",
+    "featured": "kâ-nitawi-kîsikâw",
+    "showVideo": "{title} wâpamihk",
+    "previousVideoPreview": "kîhtwâm video preview",
+    "nextVideoPreview": "mîna video preview",
+    "mediaCollection": "media collection",
+    "scrollToVideo": "{title} video ohci pîkiskwê"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project wîkihtâwin",
+    "navigation": "footer navigation",
+    "share": "share",
+    "watch": "wâpamê",
+    "giving": "miywêyihcikêwin",
+    "about": "ohci",
+    "products": "products",
+    "resources": "resources",
+    "partners": "partners",
+    "contact": "contact",
+    "giveNow": "anohc miywêyihcikê",
+    "resourcesVersion": "wîcihiwêwina ({version})",
+    "office": "office",
+    "fax": "fax",
+    "privacyPolicy": "privacy policy",
+    "legalStatement": "legal statement",
+    "newsletter": "nîsohkin namôya newsletter sign up"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "kî-ositonaw global missions ohci",
+    "title": "otwêwin namoya kî-ayâsîw. âhow ê-wâpamihk aya namoya.",
+    "description": "nîstanân video library êkwa tools oski-osihtânân, mitoni astahtânân nîmitona pêyak translation work tahto platformihk êkwa anima êkota ayisiyiniwak mâmawi-atoskêwak, wâpamwak, êkwa share wak.",
+    "translatedLibraryTitle": "mâmaw askîhk kâ-mostos translated film library",
+    "translatedLibraryDescription": "nîmitona translation work, kâ-nitaw-âpacihcikât trusted ministry partners, kî-osihtâw pêyak library mistahi language tracks êkwa ayisiyiniwak ta-kiskinohamâkaniwiwak Jesus âcimowin owâwâsowininihk ê-ohcihtwâhk.",
+    "trustedVoicesTitle": "trusted voices oski-formatihk itotam",
+    "trustedVoicesDescription": "oski-osihtânân âhow gospel stories wâpamikosiwak, trusted translations êkwa modern formats mâmawi-atoskêwak êkwa otwêwin ta-pimipahtâk platforms, cultures, êkwa screens.",
+    "missionTeamTitle": "namoya kêkwân library. mission-driven team.",
+    "missionTeamDescription": "Jesus Film Project êkwa mâmawêyatit global team translators, media specialists, editors, êkwa creators kâ-ayâcik, nîmitona ministry experience toolsihk itotamwak disciple-makers kahkiyaw êkâ.",
+    "buildingNext": "kîkway kâ-osihtâyâhk mîna",
+    "nextStepsTitle": "mîna kâ-wî-itohtêhk platform",
+    "nextStepsDescription": "viewers mâmawi-kotiskâw tangible opportunities owi-nitawi-pimâtisiwin atoskêwinîhk, êkwa wîcihêw ta-itohtêwak mîna community, Scripture, êkwa missionihk.",
+    "mediaLibraryTitle": "Miyo-Âcimowin media library",
+    "mediaLibraryDescription": "mistahi Christian media library âsay videos, films, êkwa resources kâ-itâwina nânitaw languages ohci ministry êkwa evangelism kahkiyaw askîhk.",
+    "ministryToolsTitle": "digital tools kâ-wîcihikwahk ministries",
+    "ministryToolsDescription": "video management, content distribution, audience engagement, êkwa analytics kî-isi-osihtâw ta-wîcihikwahk ministries mistahi ayisiyiniwa ta-kotiskâcik mistahi miyo.",
+    "invitationEyebrow": "kî-wî-kîhkawâyân",
+    "invitationTitle": "wîcihiwewin kî-osihtâw <highlight>mîna generation</highlight> mission tools",
+    "invitationDescription": "practitioners, creators, êkwa partners pîhtokwêwânân early accessihk. oski tools nistam test, feedback miy, êkwa wîcihîw products ta-isi-osihtâcik kâ-tapwe mission work ohci.",
+    "betaTester": "beta tester isi-kîsikâw"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible collection",
+    "gospelRailTitle": "mistahi âcimowin kiskêyihtam",
+    "videoBibleDescription": "nitanis our collection videos êkwa resources kâ-wîcihicik Bible ta-pimâtisit êkwa kiskeyihtamowin âcimowina êkwa kiskinohamâtowina.",
+    "showcaseTitle": "Scripture Film ohci âcimowin",
+    "adventEyebrow": "Advent ohci Christmas",
+    "adventTitle": "Christmas Advent kîsikâwa kâ-akihtâhk",
+    "adventDescription": "mâmawi-itohtê namôya Advent journey êkwa pêyak pîsim video kâ-osihtâk kîsikâw Christmas, hope, joy, êkwa promise Jesus otatoskêwin nâkatohkê.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Advent kîsikâwa",
+    "nuaEyebrow": "NUA series",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth series",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "video kiskinohamâkêwin",
+    "journeyWithJesusTitle": "Jesus êkwa pimohte",
+    "gospelsOnVideoEyebrow": "kahkiyaw Miyo-Âcimowina video ohci âcimostâkêwin",
+    "scriptureAsWrittenTitle": "Scripture, tapwe kâ-isi-masinahikâtek kâ-isi-pîkiskwâtêk",
+    "merryChristmas": "Miyo-Manitowi-kîsikâw!",
+    "daysUntilChristmas": "{count, plural, one {# kîsikâw isko Christmas} other {# kîsikâwa isko Christmas}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "languages",
+    "metadataDescription": "JesusFilm videos language ohci browse.",
+    "eyebrow": "watch languages",
+    "title": "pêyak language nâso",
+    "description": "region ohci languages nâkatohkê êkwa kahkiyaw list browse.",
+    "searchPlaceholder": "languages êkwa countries ohci nâkatohkê...",
+    "searchLabel": "languages êkwa countries ohci nâkatohkê",
+    "clearSearch": "search piko",
+    "browse": "browse",
+    "browseByRegion": "region êkwa country ohci browse",
+    "languageCount": "{count, plural, one {# pîkiskwêwin} other {# pîkiskwêwina}}",
+    "region": "region",
+    "countryLanguages": "{country}: languages",
+    "showLess": "pêyak apisis",
+    "showMore": "show {count} more",
+    "noLanguages": "namoya languages kî-miskinawâw",
+    "tryAnotherSearch": "mîna search term kî-isi-kiskêyihtam."
+  },
+  "WatchHistory": {
+    "metadataTitle": "wâpamê history | Jesus Film Project",
+    "title": "wâpamê history",
+    "loading": "history ohci tipâkanêw",
+    "empty": "namoya kîkway ôma mâka",
+    "emptyDescription": "videos kâ-wâpamâtaman ê-sign in yan ôma ta-nôhtê-mîcisowin.",
+    "earlier": "kîhtwâm",
+    "today": "anohc",
+    "yesterday": "matotân"
+  },
+  "AccountControl": {
+    "account": "account",
+    "accountMenu": "account menu",
+    "signIn": "sign in",
+    "signOut": "sign out",
+    "signedIn": "signed in",
+    "history": "history",
+    "logOut": "log out"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "page namoya miskawâw",
+    "eyebrow": "page namoya miskawâw",
+    "screenReaderPrefix": "page namoya miskawâw:",
+    "title": "ôma scene namoya ôma.",
+    "description": "page kî-kiskisotê, mâka âcimowin pimipahtâw.",
+    "actionsLabel": "page namoya miskawâw actions",
+    "backToWatch": "Watch ohci kîwê",
+    "browseVideos": "videos browse"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Short film ohci wâpamê",
+    "actions": {
+      "joinUs": "mîna itohk",
+      "shareMission": "mîna nînawân mission ohci wîcihiwewin"
+    },
+    "welcomeStart": {
+      "label": "Faith êkwa Scripture",
+      "title": "anohc video-wa kî-nitawêhtâw",
+      "description": "kî-tapwewîwin video content ôma library ohci, ta-wîcihikot, ta-kîhtêyihtâk, êkwa ta-pîkiskwêwin wîcihiwew."
+    },
+    "welcomeMorning": {
+      "label": "kîsikâw sôhkeyihtamowin",
+      "title": "miyo-âcimowin! anohc Bible moments kî-âyâwak.",
+      "description": "anohc kî-pimipahtâw Bible moments kâ-wîcihikot, ta-wîcihikot êkwa ta-miyo-aya."
+    },
+    "welcomeAfternoon": {
+      "label": "âpihtâ-kîsikâw sôhkeyihtamowin",
+      "title": "miyo-âcimowin! Bible moments ôma kîsikâw ohci.",
+      "description": "Bible content kâ-wîcihikot, miyo ta-wâpamihk afternoon break ohci kâ-itohtêt."
+    },
+    "welcomeEvening": {
+      "label": "otâkosîhk sôhkeyihtamowin",
+      "title": "miyo-âcimowin! Bible moments ohci pîpôn wâpamê.",
+      "description": "miyo-âcimowin Bible moments ta-wîcihikot pîkiskwê êkwa ta-miyo-aya, ê-mînâwac kîsikâw kâ-pimipahtâk."
+    },
+    "joinUs": {
+      "label": "mîna itohk",
+      "title": "billions kî-nâkatohkêwak",
+      "description": "harvest ôma itê. mîna itohk nânitaw gospel kî-pîkiskwêwêwânahk world ohci digital media ohci."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "mîna mîna",
+      "title": "Jesus o-âcimowin kî-pîkiskwêwân, mîna",
+      "description": "êkosi ta-kî-kiskêyihtamwak êkwa ta-wâpamwak Jesus otîhkatowin oma own language ihk, ôma kâ-itâwina."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% pêyakwan",
+    "none": "namoya kâ-kî-nâsohkâtêki video-wa kî-miskikâtêwa ôma video ohci ôma pîkiskwêwin."
   }
 }

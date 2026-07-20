@@ -7,7 +7,9 @@
     "noContent": "Hakuna maudhui yanayopatikana.",
     "homepageMisconfigured": "Ukurasa wa nyumbani wa kutazama umesanidiwa vibaya.",
     "defaultTemplateMisconfigured": "Kiolezo chaguomsingi cha kutazama kimesanidiwa vibaya.",
-    "authFailed": "Imeshindikana kuthibitisha na huduma ya maudhui. Tafadhali wasiliana na usaidizi ikiwa hili litaendelea."
+    "authFailed": "Imeshindikana kuthibitisha na huduma ya maudhui. Tafadhali wasiliana na usaidizi ikiwa hili litaendelea.",
+    "pageLoadFailed": "Kuna kitu kimeenda vibaya.",
+    "tryAgain": "Jaribu tena"
   },
   "VideosPage": {
     "title": "Video Zote",
@@ -22,7 +24,8 @@
     "promoHeading": "Ungependa kuelewa Biblia kwa kina zaidi?",
     "joinBibleStudy": "Jiunge na masomo yetu ya Biblia",
     "previousQuote": "Nukuu ya Biblia iliyotangulia",
-    "nextQuote": "Nukuu ya Biblia inayofuata"
+    "nextQuote": "Nukuu ya Biblia inayofuata",
+    "readPassage": "Soma kifungu hiki katika Biblia yako."
   },
   "DownloadButton": {
     "checking": "Inakagua",
@@ -73,7 +76,8 @@
     "selectLanguage": "Chagua lugha",
     "searchPlaceholder": "Tafuta lugha…",
     "languages": "Lugha",
-    "noMatches": "Hakuna zinazolingana"
+    "noMatches": "Hakuna zinazolingana",
+    "notAvailable": "Haipatikani"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lugha",
@@ -112,7 +116,8 @@
     "questions": "Maswali Yanayohusiana",
     "askYours": "Uliza lako",
     "chatWithPerson": "Ongea na mtu",
-    "askBibleQuestion": "Uliza swali la Biblia"
+    "askBibleQuestion": "Uliza swali la Biblia",
+    "quiz": "Maswali ya maarifa"
   },
   "WatchQuestionPanel": {
     "messageType": "Aina ya ujumbe",
@@ -170,7 +175,8 @@
     "searchRegion": "Tafuta video",
     "clearSearch": "Futa utafutaji",
     "changeAudioLanguage": "Badilisha lugha ya sauti",
-    "home": "Nyumbani kwa JesusFilm"
+    "home": "Nyumbani kwa JesusFilm",
+    "closeSearch": "Funga utafutaji"
   },
   "SearchOverlay": {
     "dialogLabel": "Tafuta na vinjari video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Futa",
     "queryLanguageDetected": "{language} imetambuliwa",
     "searchInLanguage": "Tafuta katika {language}",
-    "tryDifferentKeywordsOrLanguage": "Jaribu maneno tofauti au chagua lugha nyingine ya utafutaji"
+    "tryDifferentKeywordsOrLanguage": "Jaribu maneno tofauti au chagua lugha nyingine ya utafutaji",
+    "useWebsiteDefaultLanguage": "Tumia lugha chaguomsingi ya utafutaji ya tovuti",
+    "removeLanguage": "Ondoa {language}",
+    "browseMode": "Hali ya kuvinjari ya utafutaji"
   },
   "HeroPlayer": {
     "playWithSound": "Tazama sasa",
-    "tapToUnmute": "Gusa ili kuwasha sauti"
+    "tapToUnmute": "Gusa ili kuwasha sauti",
+    "nextEpisode": "Kipindi Kifuatacho"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Inapakia maudhui"
+    "loadingContent": "Inapakia maudhui",
+    "loadingVideo": "Inapakia video"
   },
   "VideoLabels": {
     "video": "VIDEO",
@@ -223,7 +234,8 @@
     "series": "Mfululizo",
     "collection": "Mkusanyiko",
     "trailer": "Trela",
-    "behindTheScenes": "Nyuma ya Pazia"
+    "behindTheScenes": "Nyuma ya Pazia",
+    "chapter": "Sura"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipu {current} kati ya {total}",
@@ -235,11 +247,243 @@
     "noImage": "Hakuna picha",
     "playingNow": "Inachezwa sasa",
     "previousChapter": "Sura iliyotangulia",
-    "nextChapter": "Sura inayofuata"
+    "nextChapter": "Sura inayofuata",
+    "thumbnailAlt": "Kijipicha cha {title}",
+    "relatedVideoThumbnail": "Kijipicha cha video inayohusiana"
   },
   "SearchResultCard": {
     "experience": "Uzoefu",
     "episodeCount": "{count, plural, one {# kipindi} other {# vipindi}}",
     "thumbnailAlt": "Kijipicha cha video"
+  },
+  "Feedback": {
+    "openForm": "Fungua fomu ya maoni",
+    "label": "Maoni",
+    "couldNotLoad": "Imeshindikana kupakia fomu ya maoni.",
+    "loadingForm": "Inapakia fomu ya maoni…",
+    "retry": "Jaribu tena",
+    "openFormShort": "Fungua fomu",
+    "cancel": "Ghairi",
+    "title": "Maoni ya Beta",
+    "description": "Shiriki kinachofanya kazi na tunachoweza kuboresha. Fomu hii imetolewa na Google.",
+    "openInNewTab": "Fungua fomu katika kichupo kipya",
+    "closeForm": "Funga fomu ya maoni",
+    "loadingGoogleForm": "Inapakia Fomu ya Google…",
+    "iframeTitle": "Wasilisha Maoni ya Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video za Kikristo za bure katika {language} | Jesus Film Project",
+    "metadataDescription": "Gundua filamu za Yesu, hadithi za Biblia, mfululizo wa uanafunzi, na video za uinjilisti zenye sauti iliyodubiwa au manukuu katika {language}.",
+    "heroTitle": "Video za Kikristo za bure katika {language}",
+    "heroDescription": "Gundua filamu za Yesu, hadithi za Biblia, mfululizo wa uanafunzi, na video za uinjilisti zinazopatikana katika {language}. Video zenye sauti iliyodubiwa kamili zinaangaziwa kwanza, huku chaguo za manukuu pekee zikiwa chini.",
+    "languageCollection": "Mkusanyiko wa lugha",
+    "itemCount": "{count, plural, one {# kipengee} other {# vipengee}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} katika {groupCount, plural, one {# kundi} other {# makundi}}",
+    "sectionNavLabel": "Sehemu za orodha ya lugha",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Mpya",
+    "videoBible": "Biblia ya Video",
+    "bibleProject": "BibleProject",
+    "sports": "Michezo",
+    "collections": "Mikusanyiko",
+    "subtitlesOnly": "Manukuu pekee",
+    "newlyAdded": "Imeongezwa hivi karibuni",
+    "newVideosTitle": "Video mpya za Kikristo katika {language}",
+    "newestFirst": "Mpya kwanza",
+    "noPublishedVideos": "Bado hakuna video zilizochapishwa zilizopatikana kwa lugha hii.",
+    "bibleAndGospelFilms": "Filamu za Biblia na Injili",
+    "videoBibleCollectionsTitle": "Mikusanyiko ya Biblia ya Video ya {language}",
+    "videoBibleDescription": "Mikusanyiko inayozingatia Maandiko ikijumuisha LUMO, JESUS, Magdalena, na Matendo katika {language}.",
+    "noVideoBibleCollections": "Bado hakuna mikusanyiko ya Biblia ya Video inayopatikana kwa lugha hii.",
+    "bibleProjectCollectionsTitle": "Mikusanyiko ya BibleProject ya {language}",
+    "bibleProjectDescription": "Mfululizo na masomo ya BibleProject yanayopatikana katika {language}.",
+    "noBibleProjectCollections": "Bado hakuna mikusanyiko ya BibleProject inayopatikana kwa lugha hii.",
+    "sportsStories": "Hadithi za michezo",
+    "sportsTitle": "Hadithi za michezo na wanamichezo katika {language}",
+    "sportsDescription": "Hadithi za michezo zinazomlenga imani na mikusanyiko inayolenga wanamichezo inayopatikana katika {language}.",
+    "noSportsCollections": "Bado hakuna mikusanyiko ya michezo au hadithi za wanamichezo inayopatikana kwa lugha hii.",
+    "fullyDubbed": "Imedubiwa kikamilifu",
+    "dubbedVideosTitle": "Video za {language} kwa mkusanyiko",
+    "dubbedVideosDescription": "Vinjari video za {language} zilizodubiwa kikamilifu zikiwa zimepangwa pamoja na mkusanyiko wao kwa urahisi wa kuzigundua.",
+    "noDubbedVideos": "Bado hakuna video zilizodubiwa kikamilifu zinazopatikana kwa lugha hii.",
+    "subtitlesAvailable": "Manukuu yanapatikana",
+    "subtitlesTitle": "Video za {language} zenye manukuu",
+    "subtitlesDescription": "Video hizi zina manukuu ya {language} wakati sauti ya {language} inayozungumzwa bado haijapatikana.",
+    "noSubtitleVideos": "Bado hakuna video za manukuu pekee zinazopatikana kwa lugha hii.",
+    "dubbed": "Zilizodubiwa",
+    "subtitles": "Manukuu",
+    "newLabel": "Mpya",
+    "fromCollection": "Kutoka {collection}",
+    "standaloneVideos": "Video za pekee",
+    "videosFromCollection": "Video kutoka {collection}.",
+    "standaloneDescription": "Video za pekee katika lugha hii.",
+    "openCollection": "Fungua mkusanyiko"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Tazama",
+    "watch": "Tazama",
+    "watchNow": "Tazama Sasa",
+    "mutePreview": "Nyamazisha onyesho la kukagua",
+    "unmutePreview": "Washa sauti ya onyesho la kukagua",
+    "nextVideo": "Video inayofuata",
+    "featured": "Iliyoangaziwa",
+    "showVideo": "Onyesha {title}",
+    "previousVideoPreview": "Onyesho la kukagua video iliyotangulia",
+    "nextVideoPreview": "Onyesho la kukagua video inayofuata",
+    "mediaCollection": "Mkusanyiko wa media",
+    "scrollToVideo": "Sogeza hadi video ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Nyumbani kwa Jesus Film Project",
+    "navigation": "Urambazaji wa kijachini",
+    "share": "Shiriki",
+    "watch": "Tazama",
+    "giving": "Kutoa",
+    "about": "Kuhusu",
+    "products": "Bidhaa",
+    "resources": "Rasilimali",
+    "partners": "Washirika",
+    "contact": "Wasiliana",
+    "giveNow": "Toa Sasa",
+    "resourcesVersion": "Rasilimali ({version})",
+    "office": "Ofisi",
+    "fax": "Faksi",
+    "privacyPolicy": "Sera ya Faragha",
+    "legalStatement": "Taarifa ya Kisheria",
+    "newsletter": "Jiandikishe kwa Jarida Letu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Iliyoundwa kwa ajili ya misheni ya kimataifa",
+    "title": "Ujumbe haubadiliki. Njia ambavyo watu hutazama ndiyo hubadilika.",
+    "description": "Tunajenga upya maktaba yetu ya video na zana zetu kutoka mwanzo, tukijitolea kazi za miongo mingi za tafsiri kwenye majukwaa ambako watu tayari hukusanyika, kutazama, na kushiriki.",
+    "translatedLibraryTitle": "Maktaba ya filamu iliyotafsiriwa zaidi duniani",
+    "translatedLibraryDescription": "Miongo ya kazi za tafsiri, ikibebwa na washirika wa huduma wanaoaminika, imejenga maktaba yenye maelfu ya nyimbo za lugha ili watu waweze kukutana na simulizi la Yesu katika lugha inayowagusa zaidi.",
+    "trustedVoicesTitle": "Kubeba sauti zinazoaminika katika miundo mipya",
+    "trustedVoicesDescription": "Tunakumbatia upya jinsi hadithi za injili zinavyosimuliwa kwa taswira, tukiunganisha tafsiri zinazoaminika na miundo ya kisasa ili ujumbe uweze kusonga kwa uhuru katika majukwaa, tamaduni, na skrini.",
+    "missionTeamTitle": "Zaidi ya maktaba. Timu inayoongozwa na misheni.",
+    "missionTeamDescription": "Jesus Film Project ni timu ya kimataifa ya watafsiri, wataalamu wa vyombo vya habari, wahariri, na waumbaji wanaogeuza uzoefu wa huduma wa miongo mingi kuwa zana kwa wanafanya uanafunzi kila mahali.",
+    "buildingNext": "Tunachojenga sasa",
+    "nextStepsTitle": "Jukwaa la Hatua Zinazofuata",
+    "nextStepsDescription": "Waunganishe watazamaji na fursa halisi katika safari yao ya kiroho, wakisaidiwa kuchukua hatua inayofuata kuelekea jamii, Maandiko, au misheni.",
+    "mediaLibraryTitle": "Maktaba ya Vyombo vya Habari vya Uinjilisti",
+    "mediaLibraryDescription": "Maktaba pana ya vyombo vya habari vya Kikristo yenye maelfu ya video, filamu, na rasilimali zinazopatikana katika lugha nyingi kwa huduma na uinjilisti duniani kote.",
+    "ministryToolsTitle": "Zana za Kidijitali kwa Huduma",
+    "ministryToolsDescription": "Usimamizi wa video, usambazaji wa maudhui, ushirikishwaji wa hadhira, na uchanganuzi vilivyoundwa kusaidia huduma kuwafikia watu wengi zaidi kwa ufanisi.",
+    "invitationEyebrow": "Mmealikwa",
+    "invitationTitle": "Saidi kujenga <highlight>kizazi kijacho</highlight> cha zana za misheni",
+    "invitationDescription": "Tunawaalika watendaji, waumbaji, na washirika kwenye ufikiaji wa mapema. Jaribuni zana mpya kwanza, toeni maoni, na saidieni kuunda bidhaa zilizoundwa kwa kazi halisi ya misheni.",
+    "betaTester": "Kuwa mjaribu wa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Mkusanyiko wa Biblia ya Video",
+    "gospelRailTitle": "Gundua simulizi kamili",
+    "videoBibleDescription": "Chunguza mkusanyiko wetu wa video na rasilimali zinazoileta Biblia hai kupitia hadithi na mafundisho ya kuvutia.",
+    "showcaseTitle": "Maandiko Yasimuliwa Kupitia Filamu",
+    "adventEyebrow": "Adventi ya Krismasi",
+    "adventTitle": "Hesabu ya Adventi ya Krismasi",
+    "adventDescription": "Jiunge nasi katika safari ya Adventi yenye video ya kila siku inayoongeza matarajio ya Krismasi, ikichunguza tumaini, furaha, na ahadi ya kuja kwa Yesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Adventi ya BibleProject",
+    "nuaEyebrow": "Mfululizo wa NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Mfululizo wa Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kozi ya Video",
+    "journeyWithJesusTitle": "Safiri na Yesu",
+    "gospelsOnVideoEyebrow": "Kila Injili, Imeelezwa kwa Video",
+    "scriptureAsWrittenTitle": "Maandiko, Yakasemwa Kama Yameandikwa",
+    "merryChristmas": "Heri ya Krismasi!",
+    "daysUntilChristmas": "{count, plural, one {Imesalia siku # kabla ya Krismasi} other {Zimesalia siku # kabla ya Krismasi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Lugha",
+    "metadataDescription": "Vinjari video za JesusFilm kwa lugha.",
+    "eyebrow": "Lugha za kutazama",
+    "title": "Chagua lugha",
+    "description": "Chunguza lugha kwa eneo au vinjari orodha kamili.",
+    "searchPlaceholder": "Tafuta lugha au nchi...",
+    "searchLabel": "Tafuta lugha au nchi",
+    "clearSearch": "Futa utafutaji",
+    "browse": "Vinjari",
+    "browseByRegion": "Vinjari kwa eneo na nchi",
+    "languageCount": "{count, plural, one {# lugha} other {# lugha}}",
+    "region": "Eneo",
+    "countryLanguages": "Lugha za {country}",
+    "showLess": "Onyesha chache",
+    "showMore": "Onyesha zingine {count}",
+    "noLanguages": "Hakuna lugha zilizopatikana",
+    "tryAnotherSearch": "Jaribu neno lingine la utafutaji."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historia ya Kutazama | Jesus Film Project",
+    "title": "Historia ya Kutazama",
+    "loading": "Inapakia historia",
+    "empty": "Hakuna chochote hapa bado",
+    "emptyDescription": "Video unazotazama ukiwa umeingia zitaonekana hapa.",
+    "earlier": "Awali",
+    "today": "Leo",
+    "yesterday": "Jana"
+  },
+  "AccountControl": {
+    "account": "Akaunti",
+    "accountMenu": "Menyu ya akaunti",
+    "signIn": "Ingia",
+    "signOut": "Toka",
+    "signedIn": "Umeingia",
+    "history": "Historia",
+    "logOut": "Ondoka"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ukurasa haupatikani",
+    "eyebrow": "Ukurasa haupatikani",
+    "screenReaderPrefix": "Ukurasa haupatikani:",
+    "title": "Onyesho hili halipo hapa.",
+    "description": "Ukurasa huenda umehamishwa, lakini simulizi linaendelea.",
+    "actionsLabel": "Vitendo vya ukurasa haupatikani",
+    "backToWatch": "Rudi kwenye Kutazama",
+    "browseVideos": "Vinjari video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Tazama filamu fupi",
+    "actions": {
+      "joinUs": "Jiunge nasi",
+      "shareMission": "Shiriki katika misheni yetu"
+    },
+    "welcomeStart": {
+      "label": "Imani na Maandiko",
+      "title": "Chaguo za Video za Leo",
+      "description": "Maudhui ya video yaliyojikita katika imani kutoka kwenye maktaba yetu ili kukutia moyo, kukupa changamoto, na kuchochea tafakari."
+    },
+    "welcomeMorning": {
+      "label": "Mhamasisho wa Asubuhi",
+      "title": "Habari za asubuhi! Vipindi vya Biblia vya leo vinakusubiri.",
+      "description": "Anza siku yako kwa matukio ya Biblia yenye kutia moyo yaliyoundwa kukutia moyo na kuinua roho yako."
+    },
+    "welcomeAfternoon": {
+      "label": "Mhamasisho wa Mchana",
+      "title": "Habari za mchana! Matukio ya Biblia kwa siku yako.",
+      "description": "Maudhui ya Biblia yenye kutia moyo, yanayofaa kwa mapumziko yako ya mchana au kuendelea kupata hamasa."
+    },
+    "welcomeEvening": {
+      "label": "Mhamasisho wa Jioni",
+      "title": "Habari za jioni! Tulia na matukio ya Biblia.",
+      "description": "Matukio ya Biblia yenye utulivu ili kukusaidia kutafakari na kupata faraja siku yako inapokaribia kuisha."
+    },
+    "joinUs": {
+      "label": "Jiunge nasi",
+      "title": "Mabilioni wanatafuta",
+      "description": "Mavuno yamefika. Jiunge nasi tunaposhiriki injili ulimwenguni kwa kutumia vyombo vya habari vya kidijitali."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Twendeni pamoja",
+      "title": "Tukisimulia Hadithi ya Yesu, Pamoja",
+      "description": "Ili waweze kusikia na kuona upendo wa Yesu katika lugha yao wenyewe, mahali walipo."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Inalingana kwa {percent}%",
+    "none": "Hakuna mapendekezo yaliyopatikana kwa video hii katika lugha hii."
   }
 }

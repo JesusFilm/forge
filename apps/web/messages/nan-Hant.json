@@ -7,7 +7,9 @@
     "noContent": "目前無內容可用。",
     "homepageMisconfigured": "觀看首頁設定有誤。",
     "defaultTemplateMisconfigured": "預設觀看範本設定有誤。",
-    "authFailed": "無法向內容服務驗證。若情況持續，請聯絡支援。"
+    "authFailed": "無法向內容服務驗證。若情況持續，請聯絡支援。",
+    "pageLoadFailed": "出了一些問題。",
+    "tryAgain": "再試一次"
   },
   "VideosPage": {
     "title": "全部影片",
@@ -22,7 +24,8 @@
     "promoHeading": "想更深入明白聖經嗎？",
     "joinBibleStudy": "加入我們的查經",
     "previousQuote": "上一則聖經經文",
-    "nextQuote": "下一則聖經經文"
+    "nextQuote": "下一則聖經經文",
+    "readPassage": "請佇你的聖經內底讀這段經文。"
   },
   "DownloadButton": {
     "checking": "檢查中",
@@ -73,7 +76,8 @@
     "selectLanguage": "選擇語言",
     "searchPlaceholder": "搜尋語言…",
     "languages": "語言",
-    "noMatches": "沒有符合項目"
+    "noMatches": "沒有符合項目",
+    "notAvailable": "無法使用"
   },
   "LanguagePickerModal": {
     "dialogTitle": "語言",
@@ -112,7 +116,8 @@
     "questions": "相關問題",
     "askYours": "提出你的問題",
     "chatWithPerson": "和人聊天",
-    "askBibleQuestion": "詢問聖經問題"
+    "askBibleQuestion": "詢問聖經問題",
+    "quiz": "測驗"
   },
   "WatchQuestionPanel": {
     "messageType": "訊息類型",
@@ -170,7 +175,8 @@
     "searchRegion": "搜尋影片",
     "clearSearch": "清除搜尋",
     "changeAudioLanguage": "更改音訊語言",
-    "home": "JesusFilm 首頁"
+    "home": "JesusFilm 首頁",
+    "closeSearch": "關閉搜尋"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋與瀏覽影片",
@@ -205,14 +211,19 @@
     "clearLanguages": "清除",
     "queryLanguageDetected": "偵測到 {language}",
     "searchInLanguage": "以 {language} 搜尋",
-    "tryDifferentKeywordsOrLanguage": "試試其他關鍵字或選擇其他搜尋語言"
+    "tryDifferentKeywordsOrLanguage": "試試其他關鍵字或選擇其他搜尋語言",
+    "useWebsiteDefaultLanguage": "使用網站預設搜尋語言",
+    "removeLanguage": "移除 {language}",
+    "browseMode": "搜尋瀏覽模式"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",
-    "tapToUnmute": "點一下取消靜音"
+    "tapToUnmute": "點一下取消靜音",
+    "nextEpisode": "下一集"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "正在載入內容"
+    "loadingContent": "正在載入內容",
+    "loadingVideo": "正在載入影片"
   },
   "VideoLabels": {
     "video": "影片",
@@ -223,7 +234,8 @@
     "series": "系列",
     "collection": "合集",
     "trailer": "預告片",
-    "behindTheScenes": "幕後花絮"
+    "behindTheScenes": "幕後花絮",
+    "chapter": "章"
   },
   "SiblingCarousel": {
     "clipPosition": "片段 {current} / {total}",
@@ -235,11 +247,243 @@
     "noImage": "沒有圖片",
     "playingNow": "正在播放",
     "previousChapter": "上一章",
-    "nextChapter": "下一章"
+    "nextChapter": "下一章",
+    "thumbnailAlt": "{title} 縮圖",
+    "relatedVideoThumbnail": "相關影片縮圖"
   },
   "SearchResultCard": {
     "experience": "體驗",
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",
     "thumbnailAlt": "影片縮圖"
+  },
+  "Feedback": {
+    "openForm": "開啟意見回饋表單",
+    "label": "意見回饋",
+    "couldNotLoad": "意見回饋表單無法載入。",
+    "loadingForm": "正在載入意見回饋表單…",
+    "retry": "重試",
+    "openFormShort": "開啟表單",
+    "cancel": "取消",
+    "title": "測試版意見回饋",
+    "description": "分享哪些地方運作良好，以及哪些地方可以改進。此表單由 Google 提供。",
+    "openInNewTab": "在新分頁開啟表單",
+    "closeForm": "關閉意見回饋表單",
+    "loadingGoogleForm": "正在載入 Google 表單…",
+    "iframeTitle": "提交測試版意見回饋"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "以 {language} 提供的免費基督教影片 | Jesus Film Project",
+    "metadataDescription": "探索以 {language} 配音或字幕提供的耶穌電影、聖經故事、門徒訓練系列和宣教影片。",
+    "heroTitle": "以 {language} 提供的免費基督教影片",
+    "heroDescription": "探索以 {language} 提供的耶穌電影、聖經故事、門徒訓練系列和宣教影片。先顯示完整配音影片，下面則是僅有字幕的選項。",
+    "languageCollection": "語言合集",
+    "itemCount": "{count, plural, one {# 個項目} other {# 個項目}}",
+    "videoCount": "{count, plural, one {# 支影片} other {# 支影片}}",
+    "videosInGroups": "{videoCount, plural, one {# 支影片} other {# 支影片}}，共 {groupCount, plural, one {# 個群組} other {# 個群組}}",
+    "sectionNavLabel": "語言庫區段",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "新",
+    "videoBible": "影片聖經",
+    "bibleProject": "BibleProject",
+    "sports": "體育",
+    "collections": "合集",
+    "subtitlesOnly": "僅字幕",
+    "newlyAdded": "新加入",
+    "newVideosTitle": "以 {language} 提供的新基督教影片",
+    "newestFirst": "最新優先",
+    "noPublishedVideos": "目前還沒有找到此語言已發布的影片。",
+    "bibleAndGospelFilms": "聖經與福音影片",
+    "videoBibleCollectionsTitle": "{language} 影片聖經合集",
+    "videoBibleDescription": "以 {language} 提供以經文為中心的合集，包括 LUMO、JESUS、Magdalena 和 Acts。",
+    "noVideoBibleCollections": "目前此語言尚無可用的影片聖經合集。",
+    "bibleProjectCollectionsTitle": "{language} BibleProject 合集",
+    "bibleProjectDescription": "以 {language} 提供的 BibleProject 系列與查考材料。",
+    "noBibleProjectCollections": "目前此語言尚無可用的 BibleProject 合集。",
+    "sportsStories": "體育故事",
+    "sportsTitle": "{language} 體育與運動員故事",
+    "sportsDescription": "以 {language} 提供以信仰為中心的體育故事與運動員主題合集。",
+    "noSportsCollections": "目前此語言尚無可用的體育或運動員故事合集。",
+    "fullyDubbed": "完整配音",
+    "dubbedVideosTitle": "以 {language} 配音的影片，依合集分類",
+    "dubbedVideosDescription": "瀏覽完整配音的 {language} 影片，並與其合集一同分類，方便查找。",
+    "noDubbedVideos": "目前此語言尚無可用的完整配音影片。",
+    "subtitlesAvailable": "有字幕可用",
+    "subtitlesTitle": "有字幕的 {language} 影片",
+    "subtitlesDescription": "當尚未提供口說 {language} 音訊時，這些影片會附有 {language} 字幕。",
+    "noSubtitleVideos": "目前此語言尚無僅有字幕的影片。",
+    "dubbed": "配音",
+    "subtitles": "字幕",
+    "newLabel": "新",
+    "fromCollection": "來自 {collection}",
+    "standaloneVideos": "獨立影片",
+    "videosFromCollection": "來自 {collection} 的影片。",
+    "standaloneDescription": "此語言的獨立影片。",
+    "openCollection": "開啟合集"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project 觀看頁面",
+    "watch": "觀看",
+    "watchNow": "立即觀看",
+    "mutePreview": "預覽靜音",
+    "unmutePreview": "預覽取消靜音",
+    "nextVideo": "下一支影片",
+    "featured": "精選",
+    "showVideo": "顯示 {title}",
+    "previousVideoPreview": "上一支影片預覽",
+    "nextVideoPreview": "下一支影片預覽",
+    "mediaCollection": "媒體合集",
+    "scrollToVideo": "捲動到 {title} 影片"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project 首頁",
+    "navigation": "頁尾導覽",
+    "share": "分享",
+    "watch": "觀看",
+    "giving": "奉獻",
+    "about": "關於",
+    "products": "產品",
+    "resources": "資源",
+    "partners": "合作夥伴",
+    "contact": "聯絡",
+    "giveNow": "立即奉獻",
+    "resourcesVersion": "資源（{version}）",
+    "office": "辦公室",
+    "fax": "傳真",
+    "privacyPolicy": "隱私權政策",
+    "legalStatement": "法律聲明",
+    "newsletter": "訂閱我們的電子報"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "為全球宣教而建",
+    "title": "信息不變。人們觀看的方式在改變。",
+    "description": "我們正從頭重建我們的影片庫與工具，將數十年的翻譯工作投入人們已經聚集、觀看與分享的平台。",
+    "translatedLibraryTitle": "全球翻譯版本最多的影片庫",
+    "translatedLibraryDescription": "在可信任的事工夥伴帶領下，數十年的翻譯工作建立了擁有數千種語言音軌的影片庫，讓人們能以最深觸動他們的語言遇見耶穌的故事。",
+    "trustedVoicesTitle": "把可信任的聲音帶入新格式",
+    "trustedVoicesDescription": "我們正重建福音故事的視覺呈現方式，將可信任的翻譯與現代格式結合，使信息能自由流動於各平台、文化與螢幕之間。",
+    "missionTeamTitle": "不只是資料庫，更是一支以使命為導向的團隊。",
+    "missionTeamDescription": "Jesus Film Project 是一支全球團隊，由翻譯員、媒體專家、編輯與創作者組成，將數十年的事工經驗轉化為各地門徒訓練者可用的工具。",
+    "buildingNext": "我們接下來要打造的內容",
+    "nextStepsTitle": "下一步平台",
+    "nextStepsDescription": "在觀眾的屬靈旅程中連結具體可行的機會，幫助他們邁向群體、聖經或宣教的下一步。",
+    "mediaLibraryTitle": "佈道媒體庫",
+    "mediaLibraryDescription": "一個廣泛的基督教媒體庫，提供數千支影片、電影與資源，支援全球各地的事工與福音工作。",
+    "ministryToolsTitle": "給事工的數位工具",
+    "ministryToolsDescription": "影片管理、內容發佈、受眾互動與分析工具，旨在幫助事工更有效地接觸更多人。",
+    "invitationEyebrow": "誠摯邀請",
+    "invitationTitle": "一起打造<highlight>新一代</highlight>宣教工具",
+    "invitationDescription": "我們邀請實務工作者、創作者與合作夥伴參與早期體驗。優先試用新工具、提供回饋，並協助塑造真正適用於宣教工作的產品。",
+    "betaTester": "成為測試者"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "影片聖經合集",
+    "gospelRailTitle": "發現完整故事",
+    "videoBibleDescription": "探索我們的影片與資源合集，透過引人入勝的故事與教導，讓聖經活現在眼前。",
+    "showcaseTitle": "以電影述說聖經經文",
+    "adventEyebrow": "聖誕將臨期",
+    "adventTitle": "聖誕將臨期倒數",
+    "adventDescription": "加入我們的將臨期旅程，每天一支影片，帶出對聖誕的期待，探索耶穌降臨帶來的盼望、喜樂與應許。",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject 將臨期",
+    "nuaEyebrow": "NUA 系列",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth 系列",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "影片課程",
+    "journeyWithJesusTitle": "與耶穌同行",
+    "gospelsOnVideoEyebrow": "每一卷福音書，都以影片呈現",
+    "scriptureAsWrittenTitle": "照著經文原文完整說出",
+    "merryChristmas": "聖誕快樂！",
+    "daysUntilChristmas": "{count, plural, other {閣有 # 工就到聖誕節}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "語言",
+    "metadataDescription": "依語言瀏覽 JesusFilm 影片。",
+    "eyebrow": "觀看語言",
+    "title": "選擇語言",
+    "description": "依地區探索語言，或瀏覽完整列表。",
+    "searchPlaceholder": "搜尋語言或國家...",
+    "searchLabel": "搜尋語言或國家",
+    "clearSearch": "清除搜尋",
+    "browse": "瀏覽",
+    "browseByRegion": "依地區與國家瀏覽",
+    "languageCount": "{count, plural, one {# 種語言} other {# 種語言}}",
+    "region": "區域",
+    "countryLanguages": "{country} 語言",
+    "showLess": "顯示較少",
+    "showMore": "再顯示 {count} 個",
+    "noLanguages": "找不到語言",
+    "tryAnotherSearch": "試試其他搜尋詞。"
+  },
+  "WatchHistory": {
+    "metadataTitle": "觀看記錄 | Jesus Film Project",
+    "title": "觀看記錄",
+    "loading": "正在載入記錄",
+    "empty": "這裡還沒有內容",
+    "emptyDescription": "您登入時觀看的影片會顯示在這裡。",
+    "earlier": "較早",
+    "today": "今天",
+    "yesterday": "昨天"
+  },
+  "AccountControl": {
+    "account": "帳戶",
+    "accountMenu": "帳戶選單",
+    "signIn": "登入",
+    "signOut": "登出",
+    "signedIn": "已登入",
+    "history": "歷史記錄",
+    "logOut": "登出"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "找不到頁面",
+    "eyebrow": "找不到頁面",
+    "screenReaderPrefix": "找不到頁面：",
+    "title": "這一幕不在這裡。",
+    "description": "頁面也許已移動，但故事仍在繼續。",
+    "actionsLabel": "找不到頁面動作",
+    "backToWatch": "回到觀看頁面",
+    "browseVideos": "瀏覽影片"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}：{title}",
+    "watchShortFilm": "觀看短片",
+    "actions": {
+      "joinUs": "加入我們",
+      "shareMission": "與我們一同參與使命"
+    },
+    "welcomeStart": {
+      "label": "信仰與聖經",
+      "title": "今日精選影片",
+      "description": "來自我們影音庫的信仰主題內容，帶來激勵、挑戰，並啟發你深思。"
+    },
+    "welcomeMorning": {
+      "label": "早晨靈感",
+      "title": "早安！今日聖經時刻等你來看。",
+      "description": "用鼓舞人心的聖經時刻開始一天，讓你的心靈得著激勵與提升。"
+    },
+    "welcomeAfternoon": {
+      "label": "午後靈感",
+      "title": "午安！為你今天預備的聖經時刻。",
+      "description": "適合午後休息時觀看的鼓勵性聖經內容，讓你持續得著啟發。"
+    },
+    "welcomeEvening": {
+      "label": "晚間靈感",
+      "title": "晚安！用聖經時刻放鬆一下。",
+      "description": "平靜的聖經時刻，陪你在一天結束時反思並得著安慰。"
+    },
+    "joinUs": {
+      "label": "加入我們",
+      "title": "數十億人正在尋找",
+      "description": "莊稼已經成熟。讓我們一起用數位媒體向世界傳揚福音。"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "一起前行",
+      "title": "一起述說耶穌的故事",
+      "description": "好讓他們能在自己所在之處、用自己的語言聽見並看見耶穌的愛。"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% 相符合",
+    "none": "這支影片佇這个語言揣無推薦內容。"
   }
 }

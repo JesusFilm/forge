@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl"
+
 import { cn } from "@/lib/utils"
 
 export function WatchPlayerLoadingIndicator({
@@ -5,6 +7,8 @@ export function WatchPlayerLoadingIndicator({
 }: {
   className?: string
 }) {
+  const t = useTranslations("ExperienceSkeleton")
+
   return (
     <div
       data-testid="watch-player-loading-indicator"
@@ -13,13 +17,13 @@ export function WatchPlayerLoadingIndicator({
         className,
       )}
       role="status"
-      aria-label="Loading video"
+      aria-label={t("loadingVideo")}
     >
       <span
         aria-hidden="true"
         className="h-10 w-10 rounded-full border-4 border-white/20 border-t-white/95 motion-safe:animate-spin"
       />
-      <span className="sr-only">Loading video</span>
+      <span className="sr-only">{t("loadingVideo")}</span>
     </div>
   )
 }

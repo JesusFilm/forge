@@ -7,7 +7,9 @@
     "noContent": "Koi content available nai hai.",
     "homepageMisconfigured": "Watch homepage sahi se set nai hai.",
     "defaultTemplateMisconfigured": "Default watch template sahi se set nai hai.",
-    "authFailed": "Content service se authenticate karne me nai ho paaya. Agar aisa hi rahe to support se sampark kariye."
+    "authFailed": "Content service se authenticate karne me nai ho paaya. Agar aisa hi rahe to support se sampark kariye.",
+    "pageLoadFailed": "Kuchh galat ho gaya.",
+    "tryAgain": "Dobara koshish kariye"
   },
   "VideosPage": {
     "title": "Sab Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Kya aap Bible ko aur gehraai se samajhna chahte hain?",
     "joinBibleStudy": "Hamare Bible study me judiye",
     "previousQuote": "Pichhla Bible quote",
-    "nextQuote": "Agla Bible quote"
+    "nextQuote": "Agla Bible quote",
+    "readPassage": "Ee passage aapke Bible me padhiye."
   },
   "DownloadButton": {
     "checking": "Jaanch raha hai",
@@ -73,7 +76,8 @@
     "selectLanguage": "Bhasha chuniye",
     "searchPlaceholder": "Bhasha khojiye…",
     "languages": "Bhashaen",
-    "noMatches": "Koi milan nai"
+    "noMatches": "Koi milan nai",
+    "notAvailable": "Available nai hai"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Bhasha",
@@ -112,7 +116,8 @@
     "questions": "Jure hue Sawal",
     "askYours": "Apna puchiye",
     "chatWithPerson": "Ek vyakti se baat kariye",
-    "askBibleQuestion": "Bible ka sawal puchiye"
+    "askBibleQuestion": "Bible ka sawal puchiye",
+    "quiz": "Sawal-jawaab"
   },
   "WatchQuestionPanel": {
     "messageType": "Message ke type",
@@ -170,7 +175,8 @@
     "searchRegion": "Video khojiye",
     "clearSearch": "Search saaf kariye",
     "changeAudioLanguage": "Audio bhasha badliye",
-    "home": "JesusFilm ka home page"
+    "home": "JesusFilm ka home page",
+    "closeSearch": "Search band kariye"
   },
   "SearchOverlay": {
     "dialogLabel": "Video khojiye aur browse kariye",
@@ -205,14 +211,19 @@
     "clearLanguages": "Saaf kariye",
     "queryLanguageDetected": "{language} pahchana gaya",
     "searchInLanguage": "{language} me khojiye",
-    "tryDifferentKeywordsOrLanguage": "Alag keywords try kariye ya dusri search bhasha chuniye"
+    "tryDifferentKeywordsOrLanguage": "Alag keywords try kariye ya dusri search bhasha chuniye",
+    "useWebsiteDefaultLanguage": "Website ki default search bhasha use kariye",
+    "removeLanguage": "{language} hataiye",
+    "browseMode": "Search browse karne ka tareeka"
   },
   "HeroPlayer": {
     "playWithSound": "Abhi dekhiye",
-    "tapToUnmute": "Awaz chalu karne ke liye tap kariye"
+    "tapToUnmute": "Awaz chalu karne ke liye tap kariye",
+    "nextEpisode": "Agla Episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Content load ho raha hai"
+    "loadingContent": "Content load ho raha hai",
+    "loadingVideo": "Video load ho raha hai"
   },
   "VideoLabels": {
     "video": "Video film",
@@ -223,7 +234,8 @@
     "series": "Kadiyon ki series",
     "collection": "Video sangrah",
     "trailer": "Jhalak",
-    "behindTheScenes": "Parde ke pichhe"
+    "behindTheScenes": "Parde ke pichhe",
+    "chapter": "Adhyay"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} me se {total}",
@@ -235,11 +247,243 @@
     "noImage": "Koi image nai",
     "playingNow": "Abhi chal raha hai",
     "previousChapter": "Pichhla chapter",
-    "nextChapter": "Agla chapter"
+    "nextChapter": "Agla chapter",
+    "thumbnailAlt": "{title} ka chhota image",
+    "relatedVideoThumbnail": "Sambandhit video thumbnail"
   },
   "SearchResultCard": {
     "experience": "Anubhav",
     "episodeCount": "{count, plural, one {# kadi} other {# kadiyan}}",
     "thumbnailAlt": "Video ka chhota image"
+  },
+  "Feedback": {
+    "openForm": "Feedback form kholiye",
+    "label": "Feedback dijiye",
+    "couldNotLoad": "Feedback form load nai ho paaya.",
+    "loadingForm": "Feedback form load ho raha hai…",
+    "retry": "Dobara koshish kariye",
+    "openFormShort": "Form kholiye",
+    "cancel": "Cancel kariye",
+    "title": "Beta Feedback dijiye",
+    "description": "Batayiye kaun sa kaam kar raha hai aur hum kya behtar kar sakte hain. Ee form Google ke taraf se diya gaya hai.",
+    "openInNewTab": "Form naya tab me kholiye",
+    "closeForm": "Feedback form band kariye",
+    "loadingGoogleForm": "Google Form load ho raha hai…",
+    "iframeTitle": "Beta Feedback jama kariye"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} me muft Christian videos | Jesus Film Project",
+    "metadataDescription": "{language} me dubbed audio ya subtitles ke saath Jesus films, Bible kahaniyan, discipleship series, aur outreach videos dekhiye.",
+    "heroTitle": "{language} me muft Christian videos",
+    "heroDescription": "{language} me available Jesus films, Bible kahaniyan, discipleship series, aur outreach videos dekhiye. Poori tarah dubbed videos pehle dikhaye gaye hain, aur niche sirf subtitles wale options hain.",
+    "languageCollection": "Bhasha collection",
+    "itemCount": "{count, plural, one {# cheez} other {# cheezein}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} {groupCount, plural, one {# group} other {# groups}} me",
+    "sectionNavLabel": "Bhasha inventory sections",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Naya",
+    "videoBible": "Video wali Bible",
+    "bibleProject": "BibleProject",
+    "sports": "Khel",
+    "collections": "Sab collections",
+    "subtitlesOnly": "Sirf subtitles",
+    "newlyAdded": "Abhi joda gaya",
+    "newVideosTitle": "{language} me naye Christian videos",
+    "newestFirst": "Sab se naye pehle",
+    "noPublishedVideos": "Is bhasha ke liye abhi koi published video nai mila.",
+    "bibleAndGospelFilms": "Bible aur Gospel films",
+    "videoBibleCollectionsTitle": "{language}: Video Bible ke collections",
+    "videoBibleDescription": "{language} me Scripture-centered collections jisme LUMO, JESUS, Magdalena, aur Acts shamil hain.",
+    "noVideoBibleCollections": "Is bhasha ke liye abhi koi Video Bible collection available nai hai.",
+    "bibleProjectCollectionsTitle": "{language}: BibleProject ke collections",
+    "bibleProjectDescription": "{language} me available BibleProject series aur studies.",
+    "noBibleProjectCollections": "Is bhasha ke liye abhi koi BibleProject collection available nai hai.",
+    "sportsStories": "Khel kahaniyan",
+    "sportsTitle": "{language} khel aur athlete kahaniyan",
+    "sportsDescription": "{language} me available faith-centered sports kahaniyan aur athlete-focused collections.",
+    "noSportsCollections": "Is bhasha ke liye abhi koi khel ya athlete-story collection available nai hai.",
+    "fullyDubbed": "Poora dubbed",
+    "dubbedVideosTitle": "Collection ke hisaab se {language} videos",
+    "dubbedVideosDescription": "Asaani se dhoondhne ke liye collection ke saath grouped poori tarah dubbed {language} videos browse kariye.",
+    "noDubbedVideos": "Is bhasha ke liye abhi koi poora dubbed video available nai hai.",
+    "subtitlesAvailable": "Subtitles available hain",
+    "subtitlesTitle": "Subtitles wale {language} videos",
+    "subtitlesDescription": "Jab spoken {language} audio abhi available nai hai, tab in videos me {language} subtitles milte hain.",
+    "noSubtitleVideos": "Is bhasha ke liye abhi koi sirf subtitles wale video available nai hai.",
+    "dubbed": "Dubbed audio",
+    "subtitles": "Likhe hue bol",
+    "newLabel": "Naya",
+    "fromCollection": "{collection} se",
+    "standaloneVideos": "Alag videos",
+    "videosFromCollection": "{collection} se videos.",
+    "standaloneDescription": "Is bhasha me alag videos.",
+    "openCollection": "Collection kholiye"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project par dekhiye",
+    "watch": "Dekhiye",
+    "watchNow": "Abhi dekhiye",
+    "mutePreview": "Preview ka awaz band kariye",
+    "unmutePreview": "Preview ka awaz chalu kariye",
+    "nextVideo": "Agla video",
+    "featured": "Khaas videos",
+    "showVideo": "{title} dikhaiye",
+    "previousVideoPreview": "Pichhla video preview",
+    "nextVideoPreview": "Agla video preview",
+    "mediaCollection": "Media sangrah",
+    "scrollToVideo": "{title} video tak scroll kariye"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ka home page",
+    "navigation": "Footer ke links",
+    "share": "Share kariye",
+    "watch": "Dekhiye",
+    "giving": "Daan",
+    "about": "Baare me",
+    "products": "Hamare products",
+    "resources": "Saadhan",
+    "partners": "Saajhedaar",
+    "contact": "Sampark",
+    "giveNow": "Abhi daan kariye",
+    "resourcesVersion": "Saadhan ({version})",
+    "office": "Daftar",
+    "fax": "Fax number",
+    "privacyPolicy": "Nijta Niti",
+    "legalStatement": "Kanooni Bayaan",
+    "newsletter": "Hamare newsletter ke liye sign up kariye"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Global missions ke liye banaya gaya",
+    "title": "Sandesh nai badalta. Log kaise dekhte hain, woh badalta hai.",
+    "description": "Hum apni video library aur tools ko naya se bana rahe hain, aur dasakon ke translation kaam ko un platforms par la rahe hain jahan log pehle se ekattha, dekhte, aur share karte hain.",
+    "translatedLibraryTitle": "Duniya ki sab se zyada translated film library",
+    "translatedLibraryDescription": "Dasakon ke translation kaam, bharosemand ministry partners ke saath, hazaaron language tracks wali library banayi hai taaki log Jesus ki kahani apni dil tak pahunchne wali bhasha me dekh saken.",
+    "trustedVoicesTitle": "Bharosemand awaazon ko naye format me le jaana",
+    "trustedVoicesDescription": "Hum gospel kahaniyon ko visual tareeke se dubara bana rahe hain, bharosemand translations ko modern formats ke saath jod kar, taaki sandesh platform, culture, aur screen par aazadi se chal sake.",
+    "missionTeamTitle": "Sirf library nai. Ek mission-driven team.",
+    "missionTeamDescription": "Jesus Film Project translators, media specialists, editors, aur creators ki ek global team hai jo ministry ke dasakon ke anubhav ko har jagah disciple-makers ke liye tools me badal rahi hai.",
+    "buildingNext": "Hum agla kya bana rahe hain",
+    "nextStepsTitle": "Agla Kadam Platform",
+    "nextStepsDescription": "Dekhne walon ko unke spiritual journey me practical mauke se jodiye, taaki woh community, Scripture, ya mission ki taraf agla kadam le saken.",
+    "mediaLibraryTitle": "Susamachar Media Library",
+    "mediaLibraryDescription": "Ek badi Christian media library jisme hazaaron videos, films, aur resources kai bhashon me available hain, duniya bhar me ministry aur evangelism ke liye.",
+    "ministryToolsTitle": "Ministries ke liye Digital Tools",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, aur analytics jo ministries ko zyada logon tak asar-daar tareeke se pahunchne me madad karein.",
+    "invitationEyebrow": "Aap ko nimantran hai",
+    "invitationTitle": "Mission tools ki <highlight>next generation</highlight> banane me madad kariye",
+    "invitationDescription": "Hum practitioners, creators, aur partners ko early access ke liye bula rahe hain. Pehle naye tools test kariye, feedback dijiye, aur real mission work ke liye banaye gaye products ko shape kariye.",
+    "betaTester": "Beta tester baniye"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible ka collection",
+    "gospelRailTitle": "Poori kahani janiye",
+    "videoBibleDescription": "Hamare videos aur resources ki collection dekhiye jo dilchasp kahaniyon aur teachings ke through Bible ko zinda karte hain.",
+    "showcaseTitle": "Scripture film ke through sunayi gayi",
+    "adventEyebrow": "Christmas ke Advent",
+    "adventTitle": "Christmas Advent ki ulti ginti",
+    "adventDescription": "Hamare Advent safar me judiye, roz ek video ke saath jo Christmas ke liye intezaar badhata hai, aur Jesus ke aane ki ummeed, khushi, aur waada ko explore karta hai.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject ka Advent",
+    "nuaEyebrow": "NUA series",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth series",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video course",
+    "journeyWithJesusTitle": "Jesus ke saath safar kariye",
+    "gospelsOnVideoEyebrow": "Har Gospel, video par",
+    "scriptureAsWrittenTitle": "Scripture, bilkul jaisa likha gaya hai, waisa hi sunayi gayi",
+    "merryChristmas": "Christmas mubarak!",
+    "daysUntilChristmas": "{count, plural, one {Christmas me # din baaki} other {Christmas me # din baaki}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Bhashaen",
+    "metadataDescription": "JesusFilm videos ko bhasha ke hisaab se browse kariye.",
+    "eyebrow": "Watch bhashaein",
+    "title": "Ek bhasha chuniye",
+    "description": "Ilaaka ke hisaab se bhashaein dekhiye ya poori list browse kariye.",
+    "searchPlaceholder": "Bhasha ya desh khojiye...",
+    "searchLabel": "Bhasha ya desh khojiye",
+    "clearSearch": "Search saaf kariye",
+    "browse": "Browse kariye",
+    "browseByRegion": "Ilaaka aur desh ke hisaab se browse kariye",
+    "languageCount": "{count, plural, one {# bhasha} other {# bhashaein}}",
+    "region": "Ilaaka",
+    "countryLanguages": "{country} ki bhashaein",
+    "showLess": "Kam dikhaiye",
+    "showMore": "{count} aur dikhaiye",
+    "noLanguages": "Koi bhasha nai mili",
+    "tryAnotherSearch": "Koi aur search term try kariye."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Dekhne ka History | Jesus Film Project",
+    "title": "Dekhne ka History",
+    "loading": "History load ho raha hai",
+    "empty": "Abhi kuchh nai hai",
+    "emptyDescription": "Aap jab sign in rahenge tab jo videos dekhenge woh yahan dikhengi.",
+    "earlier": "Pehle",
+    "today": "Aaj",
+    "yesterday": "Kal"
+  },
+  "AccountControl": {
+    "account": "Aapka account",
+    "accountMenu": "Account ke options",
+    "signIn": "Sign in kariye",
+    "signOut": "Sign out kariye",
+    "signedIn": "Sign in hai",
+    "history": "Dekhne ka history",
+    "logOut": "Log out kariye"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page nai mili",
+    "eyebrow": "Page nai mili",
+    "screenReaderPrefix": "Page nai mili:",
+    "title": "Ee scene yahan nai hai.",
+    "description": "Page shayad move ho gayi, lekin kahani chalti rahegi.",
+    "actionsLabel": "Page nai mili ke actions",
+    "backToWatch": "Watch par wapas",
+    "browseVideos": "Video browse kariye"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Chhota film dekhiye",
+    "actions": {
+      "joinUs": "Hamare saath judiye",
+      "shareMission": "Hamari mission me hissha lijiye"
+    },
+    "welcomeStart": {
+      "label": "Vishwas aur Scripture",
+      "title": "Aaj ke video chunav",
+      "description": "Hamari library se vishwas-kenit video content, jo inspire kare, challenge kare, aur soch-vichar jagaye."
+    },
+    "welcomeMorning": {
+      "label": "Subah ki prerna",
+      "title": "Suprabhat! Aaj ke Bible moments intezaar me hain.",
+      "description": "Apna din Bible ke encouraging moments ke saath shuru kariye, jo aapke mann ko uplift karein."
+    },
+    "welcomeAfternoon": {
+      "label": "Dopahar ki prerna",
+      "title": "Shubh dopahar! Aapke din ke liye Bible moments.",
+      "description": "Bible ka encouraging content, aapke dopahar ke break ya aage ki prerna ke liye ekdum theek."
+    },
+    "welcomeEvening": {
+      "label": "Shaam ki prerna",
+      "title": "Shubh sandhya! Bible moments ke saath araam kariye.",
+      "description": "Shant Bible moments jo aapko sochne aur din ke ant me sukoon paane me madad karein."
+    },
+    "joinUs": {
+      "label": "Hamare saath judiye",
+      "title": "Arabon log khoj rahe hain",
+      "description": "Katni tayaar hai. Digital media ke zariye duniya ke saath gospel baantne me hamara saath dijiye."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Chaliye saath me",
+      "title": "Jesus ki kahani saath me sunaiye",
+      "description": "Taaki log apni hi bhasha me, jahan woh hain wahin, Jesus ke pyaar ko sun aur dekh saken."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% milta hai",
+    "none": "Ee bhasha me is video ke liye koi sujhaav nai mila."
   }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
+import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import { formatDuration } from "@/lib/format-duration"
@@ -22,12 +23,14 @@ function FullscreenButton({
   isFullscreen: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
     >
       {isFullscreen ? (
         <svg
@@ -63,12 +66,14 @@ function FullscreenButton({
 }
 
 function CenterUnmute({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
-      aria-label="Unmute video"
+      aria-label={t("unmute")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -90,12 +95,14 @@ function CenterUnmute({ onClick }: { onClick: () => void }) {
 }
 
 function CornerMute({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-      aria-label="Mute video"
+      aria-label={t("mute")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -117,12 +124,14 @@ function PlayPauseButton({
   isPlaying: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
-      aria-label={isPlaying ? "Pause video" : "Play video"}
+      aria-label={isPlaying ? t("pause") : t("play")}
     >
       {isPlaying ? (
         <svg
@@ -156,6 +165,7 @@ function MuxBackedVideoPlayer({
   src: string
   poster?: string
 }) {
+  const t = useTranslations("HeroPlayerControls")
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const sliderRef = useRef<HTMLInputElement>(null)
@@ -368,7 +378,7 @@ function MuxBackedVideoPlayer({
             step="any"
             onChange={handleSeek}
             className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label="Video progress"
+            aria-label={t("seek")}
           />
 
           <span

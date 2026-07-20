@@ -44,6 +44,7 @@ vi.mock("@/components/ExperienceError", () => ({
 }))
 
 import HomePage from "@/app/[locale]/[htmlLang]/page"
+import { WATCH_HOME_CLIENT_MESSAGE_NAMESPACES } from "@/i18n/client-messages"
 
 const heroModel = {
   heroSlides: [{ id: "hero-1", imageUrl: "https://example.com/hero.jpg" }],
@@ -86,8 +87,11 @@ describe("Watch root homepage", () => {
 
     expect(resolveWatchHomeMock).toHaveBeenCalledWith("en")
     expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
-    expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({
+    expect(Object.keys(element.props.messages)).toEqual([
+      ...WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+    ])
+    expect(element.props.children.type).toBe(watchHomeExperiencePageMock)
+    expect(element.props.children.props).toEqual({
       heroModel,
       blocks,
       languageSlug: "english",
@@ -99,8 +103,8 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(watchHomeExperiencePageMock)
-    expect(element.props).toEqual({
+    expect(element.props.children.type).toBe(watchHomeExperiencePageMock)
+    expect(element.props.children.props).toEqual({
       heroModel,
       blocks: [],
       languageSlug: "english",
@@ -122,7 +126,7 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(experienceEmptyMock)
+    expect(element.props.children.type).toBe(experienceEmptyMock)
   })
 
   it("ignores legacy static sections when deciding whether the builder homepage is empty", async () => {
@@ -148,6 +152,6 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(element.type).toBe(experienceEmptyMock)
+    expect(element.props.children.type).toBe(experienceEmptyMock)
   })
 })

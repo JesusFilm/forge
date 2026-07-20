@@ -95,6 +95,7 @@ vi.mock("next-intl", () => ({
     (key: string, values?: { count?: number }) => {
       const catalogs = {
         HeroPlayer: {
+          nextEpisode: "Next Episode",
           playWithSound: "Watch now",
           tapToUnmute: "Tap to Unmute",
         },

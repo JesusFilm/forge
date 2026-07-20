@@ -7,7 +7,9 @@
     "noContent": "محتوایی در دسترس نیست.",
     "homepageMisconfigured": "صفحهٔ اصلی تماشا نادرست پیکربندی شده است.",
     "defaultTemplateMisconfigured": "الگوی پیش‌فرض تماشا نادرست پیکربندی شده است.",
-    "authFailed": "احراز هویت با سرویس محتوا ممکن نیست. اگر این مشکل ادامه داشت، با پشتیبانی تماس بگیرید."
+    "authFailed": "احراز هویت با سرویس محتوا ممکن نیست. اگر این مشکل ادامه داشت، با پشتیبانی تماس بگیرید.",
+    "pageLoadFailed": "مشکلی پیش آمد.",
+    "tryAgain": "دوباره تلاش کنید"
   },
   "VideosPage": {
     "title": "همهٔ ویدیوها",
@@ -22,7 +24,8 @@
     "promoHeading": "می‌خواهید کتاب مقدس را عمیق‌تر درک کنید؟",
     "joinBibleStudy": "به مطالعهٔ کتاب مقدس ما بپیوندید",
     "previousQuote": "آیهٔ قبلی",
-    "nextQuote": "آیهٔ بعدی"
+    "nextQuote": "آیهٔ بعدی",
+    "readPassage": "این بخش را در کتاب مقدس خود بخوانید."
   },
   "DownloadButton": {
     "checking": "در حال بررسی",
@@ -73,7 +76,8 @@
     "selectLanguage": "انتخاب زبان",
     "searchPlaceholder": "جستجوی زبان‌ها…",
     "languages": "زبان‌ها",
-    "noMatches": "موردی یافت نشد"
+    "noMatches": "موردی یافت نشد",
+    "notAvailable": "در دسترس نیست"
   },
   "LanguagePickerModal": {
     "dialogTitle": "زبان",
@@ -112,7 +116,8 @@
     "questions": "سؤالات مرتبط",
     "askYours": "سؤال خود را بپرسید",
     "chatWithPerson": "با یک نفر گفتگو کنید",
-    "askBibleQuestion": "یک سؤال دربارهٔ کتاب مقدس بپرسید"
+    "askBibleQuestion": "یک سؤال دربارهٔ کتاب مقدس بپرسید",
+    "quiz": "آزمون"
   },
   "WatchQuestionPanel": {
     "messageType": "نوع پیام",
@@ -170,7 +175,8 @@
     "searchRegion": "جستجوی ویدیوها",
     "clearSearch": "پاک کردن جستجو",
     "changeAudioLanguage": "تغییر زبان صدا",
-    "home": "صفحهٔ اصلی JesusFilm"
+    "home": "صفحهٔ اصلی JesusFilm",
+    "closeSearch": "بستن جستجو"
   },
   "SearchOverlay": {
     "dialogLabel": "جستجو و مرور ویدیوها",
@@ -205,14 +211,19 @@
     "clearLanguages": "پاک کردن",
     "queryLanguageDetected": "زبان {language} شناسایی شد",
     "searchInLanguage": "جستجو به زبان {language}",
-    "tryDifferentKeywordsOrLanguage": "کلیدواژه‌های دیگری را امتحان کنید یا زبان جستجوی دیگری را انتخاب کنید"
+    "tryDifferentKeywordsOrLanguage": "کلیدواژه‌های دیگری را امتحان کنید یا زبان جستجوی دیگری را انتخاب کنید",
+    "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جستجوی وب‌سایت",
+    "removeLanguage": "حذف {language}",
+    "browseMode": "حالت مرور جستجو"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
-    "tapToUnmute": "برای فعال‌کردن صدا بزنید"
+    "tapToUnmute": "برای فعال‌کردن صدا بزنید",
+    "nextEpisode": "قسمت بعدی"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "در حال بارگذاری محتوا"
+    "loadingContent": "در حال بارگذاری محتوا",
+    "loadingVideo": "در حال بارگذاری ویدیو"
   },
   "VideoLabels": {
     "video": "ویدیو",
@@ -223,7 +234,8 @@
     "series": "مجموعه",
     "collection": "مجموعه",
     "trailer": "تریلر",
-    "behindTheScenes": "پشت صحنه"
+    "behindTheScenes": "پشت صحنه",
+    "chapter": "فصل"
   },
   "SiblingCarousel": {
     "clipPosition": "کلیپ {current} از {total}",
@@ -235,11 +247,243 @@
     "noImage": "بدون تصویر",
     "playingNow": "در حال پخش",
     "previousChapter": "فصل قبلی",
-    "nextChapter": "فصل بعدی"
+    "nextChapter": "فصل بعدی",
+    "thumbnailAlt": "بندانگشتی {title}",
+    "relatedVideoThumbnail": "بندانگشتی ویدیوی مرتبط"
   },
   "SearchResultCard": {
     "experience": "تجربه",
     "episodeCount": "{count, plural, one {# قسمت} other {# قسمت}}",
     "thumbnailAlt": "بندانگشتی ویدیو"
+  },
+  "Feedback": {
+    "openForm": "باز کردن فرم بازخورد",
+    "label": "بازخورد",
+    "couldNotLoad": "بارگذاری فرم بازخورد ممکن نشد.",
+    "loadingForm": "در حال بارگذاری فرم بازخورد…",
+    "retry": "تلاش دوباره",
+    "openFormShort": "باز کردن فرم",
+    "cancel": "لغو",
+    "title": "بازخورد نسخهٔ بتا",
+    "description": "بگویید چه چیزهایی خوب کار می‌کند و چه چیزهایی را می‌توان بهتر کرد. این فرم توسط Google ارائه شده است.",
+    "openInNewTab": "باز کردن فرم در یک زبانهٔ جدید",
+    "closeForm": "بستن فرم بازخورد",
+    "loadingGoogleForm": "در حال بارگذاری فرم Google…",
+    "iframeTitle": "ارسال بازخورد نسخهٔ بتا"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "ویدیوهای رایگان مسیحی به زبان {language} | Jesus Film Project",
+    "metadataDescription": "فیلم‌های عیسی، داستان‌های کتاب مقدس، مجموعه‌های شاگردسازی و ویدیوهای بشارتی را با صدای دوبله یا زیرنویس به زبان {language} کاوش کنید.",
+    "heroTitle": "ویدیوهای رایگان مسیحی به زبان {language}",
+    "heroDescription": "فیلم‌های عیسی، داستان‌های کتاب مقدس، مجموعه‌های شاگردسازی و ویدیوهای بشارتی در دسترس به زبان {language} را کاوش کنید. ویدیوهای دوبله‌شدهٔ کامل ابتدا نشان داده می‌شوند و گزینه‌های فقط‌زیرنویس در پایین آمده‌اند.",
+    "languageCollection": "مجموعهٔ زبان",
+    "itemCount": "{count, plural, one {# مورد} other {# مورد}}",
+    "videoCount": "{count, plural, one {# ویدیو} other {# ویدیو}}",
+    "videosInGroups": "{videoCount, plural, one {# ویدیو} other {# ویدیو}} در {groupCount, plural, one {# گروه} other {# گروه}}",
+    "sectionNavLabel": "بخش‌های فهرست زبان",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "جدید",
+    "videoBible": "کتاب مقدس ویدیویی",
+    "bibleProject": "BibleProject",
+    "sports": "ورزش",
+    "collections": "مجموعه‌ها",
+    "subtitlesOnly": "فقط زیرنویس",
+    "newlyAdded": "تازه اضافه‌شده",
+    "newVideosTitle": "ویدیوهای جدید مسیحی به زبان {language}",
+    "newestFirst": "جدیدترین ابتدا",
+    "noPublishedVideos": "هنوز هیچ ویدیوی منتشرشده‌ای برای این زبان پیدا نشد.",
+    "bibleAndGospelFilms": "فیلم‌های کتاب مقدس و انجیل",
+    "videoBibleCollectionsTitle": "مجموعه‌های کتاب مقدس ویدیویی به زبان {language}",
+    "videoBibleDescription": "مجموعه‌های مبتنی بر کتاب مقدس شامل LUMO، JESUS، Magdalena و Acts به زبان {language}.",
+    "noVideoBibleCollections": "هنوز هیچ مجموعهٔ کتاب مقدس ویدیویی برای این زبان در دسترس نیست.",
+    "bibleProjectCollectionsTitle": "مجموعه‌های BibleProject به زبان {language}",
+    "bibleProjectDescription": "مجموعه‌ها و مطالعه‌های BibleProject در دسترس به زبان {language}.",
+    "noBibleProjectCollections": "هنوز هیچ مجموعهٔ BibleProject برای این زبان در دسترس نیست.",
+    "sportsStories": "داستان‌های ورزشی",
+    "sportsTitle": "داستان‌های ورزشی و ورزشکاران به زبان {language}",
+    "sportsDescription": "داستان‌های ورزشی با محوریت ایمان و مجموعه‌های مربوط به ورزشکاران در دسترس به زبان {language}.",
+    "noSportsCollections": "هنوز هیچ مجموعهٔ ورزشی یا داستانِ ورزشکاران برای این زبان در دسترس نیست.",
+    "fullyDubbed": "کاملاً دوبله‌شده",
+    "dubbedVideosTitle": "ویدیوهای {language} بر اساس مجموعه",
+    "dubbedVideosDescription": "ویدیوهای کاملاً دوبله‌شدهٔ {language} را که همراه با مجموعه‌شان دسته‌بندی شده‌اند مرور کنید تا پیدا کردنشان آسان‌تر شود.",
+    "noDubbedVideos": "هنوز هیچ ویدیوی کاملاً دوبله‌شده‌ای برای این زبان در دسترس نیست.",
+    "subtitlesAvailable": "زیرنویس موجود است",
+    "subtitlesTitle": "ویدیوهای {language} با زیرنویس",
+    "subtitlesDescription": "این ویدیوها شامل زیرنویس {language} هستند، وقتی صدای سخن‌گفتهٔ {language} هنوز در دسترس نیست.",
+    "noSubtitleVideos": "هنوز هیچ ویدیوی فقط‌زیرنویس برای این زبان در دسترس نیست.",
+    "dubbed": "دوبله‌شده",
+    "subtitles": "زیرنویس",
+    "newLabel": "جدید",
+    "fromCollection": "از {collection}",
+    "standaloneVideos": "ویدیوهای مستقل",
+    "videosFromCollection": "ویدیوهای از {collection}.",
+    "standaloneDescription": "ویدیوهای مستقل در این زبان.",
+    "openCollection": "باز کردن مجموعه"
+  },
+  "WatchHome": {
+    "pageTitle": "تماشای Jesus Film Project",
+    "watch": "تماشا",
+    "watchNow": "اکنون تماشا کنید",
+    "mutePreview": "بی‌صدا کردن پیش‌نمایش",
+    "unmutePreview": "با صدا کردن پیش‌نمایش",
+    "nextVideo": "ویدیوی بعدی",
+    "featured": "ویژه",
+    "showVideo": "نمایش {title}",
+    "previousVideoPreview": "پیش‌نمایش ویدیوی قبلی",
+    "nextVideoPreview": "پیش‌نمایش ویدیوی بعدی",
+    "mediaCollection": "مجموعهٔ رسانه‌ها",
+    "scrollToVideo": "رفتن به ویدیوی {title}"
+  },
+  "WatchFooter": {
+    "home": "صفحهٔ اصلی Jesus Film Project",
+    "navigation": "ناوبری پابرگ",
+    "share": "اشتراک‌گذاری",
+    "watch": "تماشا",
+    "giving": "اهدا",
+    "about": "درباره",
+    "products": "محصولات",
+    "resources": "منابع",
+    "partners": "همکاران",
+    "contact": "تماس",
+    "giveNow": "اکنون اهدا کنید",
+    "resourcesVersion": "منابع ({version})",
+    "office": "دفتر",
+    "fax": "فکس",
+    "privacyPolicy": "سیاست حفظ حریم خصوصی",
+    "legalStatement": "بیانیهٔ حقوقی",
+    "newsletter": "برای خبرنامهٔ ما ثبت‌نام کنید"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "ساخته‌شده برای مأموریت‌های جهانی",
+    "title": "پیام تغییر نمی‌کند. شیوهٔ تماشا کردن مردم تغییر می‌کند.",
+    "description": "ما در حال بازسازی کتابخانهٔ ویدیویی و ابزارهای خود از پایه هستیم و دهه‌ها تلاشِ ترجمه را به پلتفرم‌هایی می‌سپاریم که مردم همین حالا در آن‌ها جمع می‌شوند، تماشا می‌کنند و به اشتراک می‌گذارند.",
+    "translatedLibraryTitle": "پرجمعیت‌ترین کتابخانهٔ فیلمِ ترجمه‌شده در جهان",
+    "translatedLibraryDescription": "دهه‌ها تلاش ترجمه، با همراهی شرکای مورد اعتمادِ خدمت، کتابخانه‌ای با هزاران ترک زبانی ساخته است تا مردم بتوانند داستان عیسی را به زبانی بشنوند که عمیق‌تر به دلشان می‌نشیند.",
+    "trustedVoicesTitle": "بردن صداهای مورد اعتماد به قالب‌های تازه",
+    "trustedVoicesDescription": "ما در حال بازسازی شیوهٔ روایت بصری داستان‌های انجیل هستیم و ترجمه‌های مورد اعتماد را با قالب‌های مدرن همراه می‌کنیم تا پیام بتواند آزادانه در میان پلتفرم‌ها، فرهنگ‌ها و صفحه‌ها حرکت کند.",
+    "missionTeamTitle": "بیش از یک کتابخانه. یک تیم مأموریت‌محور.",
+    "missionTeamDescription": "Jesus Film Project یک تیم جهانی از مترجمان، متخصصان رسانه، ویراستاران و خالقان محتواست که دهه‌ها تجربهٔ خدمت را به ابزارهایی برای شاگردسازان در همه‌جا تبدیل می‌کند.",
+    "buildingNext": "آنچه در حال ساختش هستیم",
+    "nextStepsTitle": "پلتفرم گام بعدی",
+    "nextStepsDescription": "بینندگان را به فرصت‌های ملموس در مسیر روحانی‌شان وصل کنید و به آن‌ها کمک کنید گام بعدی را به‌سوی جامعه، کتاب‌مقدس یا مأموریت بردارند.",
+    "mediaLibraryTitle": "کتابخانهٔ رسانهٔ بشارتی",
+    "mediaLibraryDescription": "یک کتابخانهٔ گستردهٔ رسانهٔ مسیحی با هزاران ویدیو، فیلم و منبع که در چندین زبان برای خدمت و بشارت در سراسر جهان در دسترس است.",
+    "ministryToolsTitle": "ابزارهای دیجیتال برای خدمات",
+    "ministryToolsDescription": "مدیریت ویدیو، توزیع محتوا، تعامل با مخاطب و تحلیل داده‌ها که برای کمک به خدمات طراحی شده‌اند تا مؤثرتر به افراد بیشتری برسند.",
+    "invitationEyebrow": "دعوتید",
+    "invitationTitle": "به ساخت <highlight>نسل بعدی</highlight> ابزارهای مأموریت کمک کنید",
+    "invitationDescription": "از خادمان، خالقان محتوا و همکاران دعوت می‌کنیم تا به دسترسی زودهنگام بپیوندند. نخست ابزارهای تازه را آزمایش کنید، بازخورد بدهید و به شکل‌دهی محصولاتی کمک کنید که برای کار واقعی در خدمت طراحی شده‌اند.",
+    "betaTester": "بتا تستر شوید"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "مجموعهٔ کتاب مقدس ویدیویی",
+    "gospelRailTitle": "داستان کامل را کشف کنید",
+    "videoBibleDescription": "مجموعهٔ ویدیوها و منابع ما را کاوش کنید که با داستان‌ها و آموزه‌های جذاب، کتاب مقدس را زنده می‌کنند.",
+    "showcaseTitle": "کتاب مقدس در قالب فیلم روایت می‌شود",
+    "adventEyebrow": "آدونت کریسمس",
+    "adventTitle": "شمارش معکوس آدونت کریسمس",
+    "adventDescription": "در سفر آدونت ما همراه شوید؛ با یک ویدیوی روزانه که انتظار برای کریسمس را افزایش می‌دهد و امید، شادی و وعدهٔ آمدن عیسی را بررسی می‌کند.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "آدونت BibleProject",
+    "nuaEyebrow": "مجموعهٔ NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "مجموعهٔ Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "دورهٔ ویدیویی",
+    "journeyWithJesusTitle": "همراه عیسی در سفر باشید",
+    "gospelsOnVideoEyebrow": "هر انجیل، به‌صورت ویدیویی روایت شده",
+    "scriptureAsWrittenTitle": "کتاب مقدس، دقیقاً همان‌گونه که نوشته شده، خوانده می‌شود",
+    "merryChristmas": "کریسمس مبارک!",
+    "daysUntilChristmas": "{count, plural, one {# روز تا کریسمس} other {# روز تا کریسمس}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "زبان‌ها",
+    "metadataDescription": "ویدیوهای JesusFilm را بر اساس زبان مرور کنید.",
+    "eyebrow": "زبان‌های تماشا",
+    "title": "یک زبان را انتخاب کنید",
+    "description": "زبان‌ها را بر اساس منطقه بررسی کنید یا فهرست کامل را مرور کنید.",
+    "searchPlaceholder": "جستجوی زبان‌ها یا کشورها...",
+    "searchLabel": "جستجوی زبان‌ها یا کشورها",
+    "clearSearch": "پاک کردن جستجو",
+    "browse": "مرور",
+    "browseByRegion": "مرور بر اساس منطقه و کشور",
+    "languageCount": "{count, plural, one {# زبان} other {# زبان}}",
+    "region": "منطقه",
+    "countryLanguages": "زبان‌های {country}",
+    "showLess": "نمایش کمتر",
+    "showMore": "نمایش {count} مورد بیشتر",
+    "noLanguages": "هیچ زبانی پیدا نشد",
+    "tryAnotherSearch": "عبارت جستجوی دیگری را امتحان کنید."
+  },
+  "WatchHistory": {
+    "metadataTitle": "تاریخچهٔ تماشا | Jesus Film Project",
+    "title": "تاریخچهٔ تماشا",
+    "loading": "در حال بارگذاری تاریخچه",
+    "empty": "فعلاً چیزی اینجا نیست",
+    "emptyDescription": "ویدیوهایی که هنگام ورود به حساب تماشا می‌کنید، اینجا نمایش داده می‌شوند.",
+    "earlier": "قدیمی‌تر",
+    "today": "امروز",
+    "yesterday": "دیروز"
+  },
+  "AccountControl": {
+    "account": "حساب",
+    "accountMenu": "منوی حساب",
+    "signIn": "ورود",
+    "signOut": "خروج",
+    "signedIn": "وارد شده",
+    "history": "تاریخچه",
+    "logOut": "خروج از حساب"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "صفحه پیدا نشد",
+    "eyebrow": "صفحه پیدا نشد",
+    "screenReaderPrefix": "صفحه پیدا نشد:",
+    "title": "این صحنه اینجا نیست.",
+    "description": "ممکن است صفحه جابه‌جا شده باشد، اما داستان ادامه دارد.",
+    "actionsLabel": "اقدامات برای صفحه پیدا نشد",
+    "backToWatch": "بازگشت به تماشا",
+    "browseVideos": "مرور ویدیوها"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "تماشای فیلم کوتاه",
+    "actions": {
+      "joinUs": "به ما بپیوندید",
+      "shareMission": "در مأموریت ما سهیم شوید"
+    },
+    "welcomeStart": {
+      "label": "ایمان و کتاب‌مقدس",
+      "title": "انتخاب‌های ویدیویی امروز",
+      "description": "محتوای ویدیوییِ ایمانی از کتابخانهٔ ما برای الهام‌بخشی، به چالش کشیدن و برانگیختن تأمل."
+    },
+    "welcomeMorning": {
+      "label": "الهام صبحگاهی",
+      "title": "صبح بخیر! لحظات کتاب‌مقدسِ امروز در انتظارند.",
+      "description": "روزتان را با لحظات دلگرم‌کنندهٔ کتاب‌مقدس آغاز کنید؛ لحظاتی برای الهام‌بخشی و تقویت روح شما."
+    },
+    "welcomeAfternoon": {
+      "label": "الهام عصرگاهی",
+      "title": "عصر بخیر! لحظات کتاب‌مقدس برای امروز شما.",
+      "description": "محتوای دلگرم‌کنندهٔ کتاب‌مقدس که برای استراحت عصرگاهی یا ادامهٔ الهام‌بخشی مناسب است."
+    },
+    "welcomeEvening": {
+      "label": "الهام شبانه",
+      "title": "شب بخیر! با لحظات کتاب‌مقدس آرام بگیرید.",
+      "description": "لحظات آرامِ کتاب‌مقدس برای کمک به تأمل و یافتن آرامش در پایان روز."
+    },
+    "joinUs": {
+      "label": "به ما بپیوندید",
+      "title": "میلیاردها نفر در جست‌وجو هستند",
+      "description": "زمانِ برداشت فرا رسیده است. با ما همراه شوید تا از طریق رسانه‌های دیجیتال انجیل را با جهان در میان بگذاریم."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "بیایید با هم برویم",
+      "title": "بازگویی داستان عیسی، با هم",
+      "description": "تا بتوانند محبت عیسی را به زبان خودشان، درست همان‌جا که هستند، بشنوند و ببینند."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}٪ مطابقت",
+    "none": "برای این ویدیو به این زبان هیچ پیشنهادی یافت نشد."
   }
 }
