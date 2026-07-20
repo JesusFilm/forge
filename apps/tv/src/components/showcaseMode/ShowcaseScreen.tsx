@@ -567,9 +567,9 @@ export function ShowcaseScreen() {
         preloadStream={preloadStream}
         posterUrl={excerpt?.posterUrl ?? null}
         excerptToken={state.excerptToken}
-        // KTD-5: a hop past the opener is a same-footage continuation — mask its swap
-        // with the dip over the live frame, not the poster. The opener (index 0) and
-        // the exit past the centerpiece are ordinary poster-masked seams.
+        // KTD-5: a hop past the opener is a same-footage continuation — preloaded, it
+        // flips seamlessly on live frames; missed, it masks with the poster. The opener
+        // (index 0) and the exit past the centerpiece are ordinary poster-masked seams.
         hopSwap={state.hop != null && state.hop.index > 0}
         // Cards and interstitials keep the player loaded but silent, so the card
         // doubles as the next excerpt's buffer window instead of bleeding its audio.

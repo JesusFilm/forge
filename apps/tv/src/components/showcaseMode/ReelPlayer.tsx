@@ -19,8 +19,8 @@ import {
   volumeAtElapsed,
 } from "../../lib/showcaseMode/audioFade"
 import {
-  HANDOFF_CROSSFADE_MS,
   HANDOFF_START_LEAD_SECONDS,
+  PRELOAD_DEADLINE_MS,
   alignmentSeekTarget,
   preloadPollVerdict,
   resolveHopSwapMode,
@@ -64,13 +64,15 @@ const REVEAL_POLL_MS = 150
 /** Give the flip's own play() this long before the poll starts re-issuing it. */
 const REVEAL_REPLAY_AFTER_MS = 600
 
+/** The incoming view's opacity ramp over the outgoing frame — same footage, so short. */
+const HANDOFF_CROSSFADE_MS = 180
+
 /**
- * Buffer a full hop window (10s) plus the roll-through margin ahead of the playhead.
- * AVPlayer's automatic mode barely buffers a PAUSED item, so the parked standby held
- * ~1s at the flip and a slow segment could stall a hop mid-window; an explicit target
- * keeps filling while the standby waits, without gating the flip on it.
+ * Preload buffer target: a full hop window (10s) plus roll-through margin. AVPlayer's
+ * automatic mode barely buffers a PAUSED item (~1s at the flip), so the standby gets
+ * this explicit target per preload; ordinary live loads restore the library default.
  */
-const REEL_FORWARD_BUFFER_SECONDS = 15
+const PRELOAD_FORWARD_BUFFER_SECONDS = 15
 
 export type ReelPlayerProps = {
   /** The shell's resolved stream (KTD-4). Null until this excerpt's choice lands. */
@@ -163,25 +165,25 @@ export function ReelPlayer({
   const [videoReady, setVideoReady] = useState(false)
   const [confirmedToken, setConfirmedToken] = useState<number | null>(null)
 
-  // Created ONCE each with a null source: a changing useVideoPlayer source recreates
-  // the native player, which is the KTD-2 leak. Two fixed instances, views bound
-  // permanently to their own player — roles (live/standby) alternate per hop instead.
-  const playerA = useVideoPlayer(null, (p) => {
+  // The library's own default, captured once so ordinary loads can restore it after
+  // a preload overrode it — cross-platform-safe (0 is not "automatic" on Android).
+  const defaultBufferOptionsRef = useRef<VideoPlayer["bufferOptions"] | null>(
+    null,
+  )
+  // One setup for both players: they alternate live/standby roles every hop, and a
+  // config edit reaching only one of them would desynchronize the pair silently.
+  const configurePlayer = useCallback((p: VideoPlayer) => {
     p.muted = false // R10: the reel is the audio.
     p.loop = false // KTD-2: native loop re-inits HLS; the reel advances manually.
     p.timeUpdateEventInterval = 1
-    p.bufferOptions = {
-      preferredForwardBufferDuration: REEL_FORWARD_BUFFER_SECONDS,
-    }
-  })
-  const playerB = useVideoPlayer(null, (p) => {
-    p.muted = false
-    p.loop = false
-    p.timeUpdateEventInterval = 1
-    p.bufferOptions = {
-      preferredForwardBufferDuration: REEL_FORWARD_BUFFER_SECONDS,
-    }
-  })
+    defaultBufferOptionsRef.current ??= p.bufferOptions
+  }, [])
+
+  // Created ONCE each with a null source: a changing useVideoPlayer source recreates
+  // the native player, which is the KTD-2 leak. Two fixed instances, views bound
+  // permanently to their own player — roles (live/standby) alternate per hop instead.
+  const playerA = useVideoPlayer(null, configurePlayer)
+  const playerB = useVideoPlayer(null, configurePlayer)
   const [liveKey, setLiveKey] = useState<"a" | "b">("a")
   const live = liveKey === "a" ? playerA : playerB
   const standby = liveKey === "a" ? playerB : playerA
@@ -205,6 +207,10 @@ export function ReelPlayer({
     null,
   )
   const pendingRetiredRef = useRef<VideoPlayer | null>(null)
+  /** The post-crossfade retire timer — see the reveal effect for its lifecycle. */
+  const revealRetireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
 
   // Seamless only when the standby finished preloading exactly this target; the
   // reservation is kept through confirmation so the poster cannot pop mid-flip.
@@ -367,8 +373,16 @@ export function ReelPlayer({
       // Out of hop mode the standby drops its item — a loaded paused player still
       // owns a scarce tvOS decode slot (R18's law, applied to the second player).
       if (standbyHoldsItemRef.current) {
-        standbyHoldsItemRef.current = false
-        void standby.replaceAsync(null).catch(() => {})
+        void standby
+          .replaceAsync(null)
+          .then(() => {
+            // Cleared on RESOLUTION: an optimistic clear would mark the slot free
+            // while a failed release still holds it.
+            standbyHoldsItemRef.current = false
+          })
+          .catch(() => {
+            datadogLog.warn("showcase_hop_standby_release_failed", {})
+          })
       }
       return
     }
@@ -392,8 +406,28 @@ export function ReelPlayer({
     const startedAt = Date.now()
     const startSeconds = validPreload.window.startSeconds
     void (async () => {
+      let raceTimer: ReturnType<typeof setTimeout> | null = null
       try {
-        await standby.replaceAsync(validPreload.hls)
+        try {
+          // Full-window target per preloaded item; ordinary live loads restore the
+          // captured library default, so the cap stays scoped to hop preloads.
+          standby.bufferOptions = {
+            preferredForwardBufferDuration: PRELOAD_FORWARD_BUFFER_SECONDS,
+          }
+        } catch {
+          // Released; the load below settles the entry.
+        }
+        // replaceAsync can hang on a network stall, and the poll's deadline only
+        // starts after it resolves — bound it so the failure is never silent.
+        await Promise.race([
+          standby.replaceAsync(validPreload.hls),
+          new Promise<never>((_, reject) => {
+            raceTimer = setTimeout(
+              () => reject(new Error("standby replaceAsync timed out")),
+              PRELOAD_DEADLINE_MS,
+            )
+          }),
+        ])
         if (cancelled || standbyLoadRef.current !== entry) return
         try {
           standby.pause()
@@ -443,15 +477,25 @@ export function ReelPlayer({
             entry.phase = "failed"
             datadogLog.warn("showcase_hop_preload_failed", {
               content_id: entry.stream.muxPlaybackId ?? null,
+              language_slug: entry.stream.languageSlug,
+              reason: "deadline",
             })
           }
         }, PRELOAD_POLL_MS)
-      } catch {
+      } catch (error) {
         if (cancelled || standbyLoadRef.current !== entry) return
         entry.phase = "failed"
         datadogLog.warn("showcase_hop_preload_failed", {
           content_id: entry.stream.muxPlaybackId ?? null,
+          language_slug: entry.stream.languageSlug,
+          // Sanitized: a native HLS message can embed the signed Mux URL.
+          reason:
+            error instanceof Error
+              ? sanitizeVideoErrorMessage(error.message)
+              : "unknown",
         })
+      } finally {
+        if (raceTimer != null) clearTimeout(raceTimer)
       }
     })()
     return () => {
@@ -464,8 +508,6 @@ export function ReelPlayer({
     }
   }, [validPreload, validStream, standby, standbyReady])
 
-  // The reservation held the gate seamless through the flip; once this token is
-  // confirmed the boundary is over and the standby is free for the next preload.
   // ── Source swap / hop flip ────────────────────────────────────────
 
   useEffect(() => {
@@ -507,6 +549,9 @@ export function ReelPlayer({
         // Released; the flip proceeds from the preloaded boundary.
       }
       stopFade()
+      // A failure-driven advance (watchdog/error mid-window) reaches this branch with
+      // the outgoing still AUDIBLE — the window-end fade only covers the natural path.
+      setVolumeOn(live, 0)
       loadedStreamRef.current = target
       loadedTokenRef.current = token
       standbyLoadRef.current = null
@@ -546,6 +591,15 @@ export function ReelPlayer({
             setTimeout(resolve, SWAP_COVER_DELAY_MS),
           )
           if (swapIdRef.current !== swapId) return
+        }
+        try {
+          // An ex-standby player carries the preload buffer cap; ordinary loads get
+          // the library default back so live playback keeps automatic buffering.
+          if (defaultBufferOptionsRef.current != null) {
+            live.bufferOptions = defaultBufferOptionsRef.current
+          }
+        } catch {
+          // Released; the replace below fails and reports.
         }
         await live.replaceAsync(target?.hls ?? null)
         // A newer swap already owns the player; this one's seek/play would fight it.
@@ -765,6 +819,10 @@ export function ReelPlayer({
 
   useEffect(() => {
     return () => {
+      if (revealRetireTimerRef.current != null) {
+        clearTimeout(revealRetireTimerRef.current)
+        revealRetireTimerRef.current = null
+      }
       try {
         playerA.pause()
       } catch {
@@ -916,7 +974,14 @@ export function ReelPlayer({
         // The incoming dub is moving: ride the crossfade with the audio ramp, then
         // retire the cover and release the reservation for the next preload.
         fadeVolumeTo(live, 1, AUDIO_FADE_IN_MS)
-        setTimeout(() => {
+        // Ref-held, latest-wins, cleared on UNMOUNT only: this effect re-runs the
+        // instant setPendingReveal(null) lands, so a cleanup-cleared timer would die
+        // before firing and the reservation would never release.
+        if (revealRetireTimerRef.current != null) {
+          clearTimeout(revealRetireTimerRef.current)
+        }
+        revealRetireTimerRef.current = setTimeout(() => {
+          revealRetireTimerRef.current = null
           try {
             retired?.pause()
           } catch {

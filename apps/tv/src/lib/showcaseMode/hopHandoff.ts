@@ -39,9 +39,6 @@ export const PRELOAD_BUFFER_GRACE_MS = 4000
  */
 export const ALIGNMENT_TOLERANCE_SECONDS = 0.75
 
-/** The incoming view's opacity ramp over the outgoing frame — same footage, so short. */
-export const HANDOFF_CROSSFADE_MS = 180
-
 /**
  * Added to the outgoing clock when aiming the incoming player's start: it absorbs the
  * seek-settle + play-start latency, so when the reveal lands both players are moving

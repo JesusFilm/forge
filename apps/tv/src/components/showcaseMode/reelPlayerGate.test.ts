@@ -52,7 +52,6 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
       posterVisible: true,
       posterCrossfade: true,
       playIntended: true,
-      swapInFlight: true,
     })
   })
 
@@ -62,7 +61,7 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
 
   it("covers before the first excerpt is ever confirmed", () => {
     expect(
-      computeReelPlayerGate({ ...playing, confirmedToken: null }).swapInFlight,
+      computeReelPlayerGate({ ...playing, confirmedToken: null }).posterVisible,
     ).toBe(true)
   })
 
@@ -137,7 +136,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       posterVisible: false,
       posterCrossfade: false,
       playIntended: true,
-      swapInFlight: false,
     })
   })
 
@@ -149,7 +147,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         posterVisible: true,
         posterCrossfade: false,
         playIntended: false,
-        swapInFlight: false,
       },
     )
   })
@@ -162,7 +159,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         posterVisible: true,
         posterCrossfade: false,
         playIntended: false,
-        swapInFlight: false,
       },
     )
   })
@@ -180,7 +176,6 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       posterVisible: true,
       posterCrossfade: false,
       playIntended: false,
-      swapInFlight: false,
     })
   })
 
@@ -202,7 +197,6 @@ describe("computeReelPlayerGate — silent phases (R8/R10)", () => {
       posterVisible: false,
       posterCrossfade: false,
       playIntended: false,
-      swapInFlight: false,
     })
   })
 
@@ -215,15 +209,6 @@ describe("computeReelPlayerGate — silent phases (R8/R10)", () => {
     expect(duringCard.shouldMountVideo).toBe(true)
     expect(duringCard.shouldPlay).toBe(false)
     expect(duringCard.posterVisible).toBe(true)
-  })
-})
-
-describe("computeReelPlayerGate — U7's rebuffer seam (KTD-9)", () => {
-  it("reports swapInFlight so a language-rotation swap is not counted as a rebuffer", () => {
-    expect(
-      computeReelPlayerGate({ ...playing, excerptToken: 8 }).swapInFlight,
-    ).toBe(true)
-    expect(computeReelPlayerGate(playing).swapInFlight).toBe(false)
   })
 })
 
@@ -277,7 +262,6 @@ describe("computeReelPlayerGate — the hop seam (KTD-5/R10)", () => {
 
   it("stays uncovered once the flipped hop is confirmed", () => {
     const gate = computeReelPlayerGate({ ...playing, seamlessHopSwap: true })
-    expect(gate.swapInFlight).toBe(false)
     expect(gate.posterVisible).toBe(false)
   })
 

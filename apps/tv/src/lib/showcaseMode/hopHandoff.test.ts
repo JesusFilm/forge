@@ -1,5 +1,6 @@
 import {
   ALIGNMENT_TOLERANCE_SECONDS,
+  HANDOFF_START_LEAD_SECONDS,
   PRELOAD_BUFFER_GRACE_MS,
   PRELOAD_DEADLINE_MS,
   alignmentSeekTarget,
@@ -138,6 +139,14 @@ describe("preloadPollVerdict — the standby's poll loop", () => {
     ).toBe("wait")
   })
 
+  it("re-issues the seek even when the item is not yet readyToPlay — the heal must win over the readiness wait", () => {
+    // If a refactor reorders the landed/statusReady checks, a dropped seek on a
+    // still-loading item would return "wait" and the tvOS heal stops re-issuing.
+    expect(preloadPollVerdict({ ...landedAt(0), statusReady: false })).toBe(
+      "reseek",
+    )
+  })
+
   it("never arms on an item that has not reported readyToPlay — position and buffer alone can read plausibly off a wedged load", () => {
     expect(preloadPollVerdict({ ...landedAt(50), statusReady: false })).toBe(
       "wait",
@@ -170,6 +179,19 @@ describe("alignmentSeekTarget — no repeated footage at the flip", () => {
         leadSeconds: 0.5,
       }),
     ).toBe(51.3)
+  })
+
+  it("skips the seek for the TYPICAL flip under the real production constants", () => {
+    // The production contract: outgoing barely past the boundary, standby parked at
+    // it — the lead/tolerance pair must skip the critical-path decoder flush.
+    expect(
+      alignmentSeekTarget({
+        outgoingTime: incomingWindow.startSeconds + 0.01,
+        incomingWindow,
+        standbyTime: incomingWindow.startSeconds,
+        leadSeconds: HANDOFF_START_LEAD_SECONDS,
+      }),
+    ).toBe(null)
   })
 
   it("skips the seek when the standby already sits within tolerance of the aim", () => {

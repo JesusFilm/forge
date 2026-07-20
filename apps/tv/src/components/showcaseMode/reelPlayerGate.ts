@@ -47,8 +47,6 @@ export type ReelPlayerGate = {
    * clock on videoReady would disarm it for the exact fault it exists to catch.
    */
   playIntended: boolean
-  /** U7's `isSourceSwapping`: an excerpt/hop swap is not a rebuffer (KTD-9). */
-  swapInFlight: boolean
 }
 
 /**
@@ -86,7 +84,6 @@ export function computeReelPlayerGate({
     // so its last frame is what the poster dissolves over. Android's previous-frame
     // flash lands on that same frame mid-dissolve, which is what we are showing.
     posterCrossfade: maskWithPoster && shouldMountVideo,
-    swapInFlight,
   }
 }
 
