@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -982,6 +983,7 @@ export function ExperienceEditor({
   createLocaleAction,
   restoreAction,
   uploadImageAction,
+  searchVideoLibraryAction,
   onCanvasController,
 }: {
   canPublish: boolean
@@ -1012,6 +1014,7 @@ export function ExperienceEditor({
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
   uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
+  searchVideoLibraryAction?: (query: string) => Promise<VideoLibraryItem[]>
   /**
    * Optional imperative bridge published once on mount so the chat panel
    * (sibling component at the page level) can read current canvas state
@@ -1257,6 +1260,11 @@ export function ExperienceEditor({
   const [previewIsLoading, setPreviewIsLoading] = useState(false)
   const [previewIsFullscreen, setPreviewIsFullscreen] = useState(false)
   const [videoLibraryQuery, setVideoLibraryQuery] = useState("")
+  const [videoLibrarySearchPending, setVideoLibrarySearchPending] =
+    useState(false)
+  const [videoLibrarySearchError, setVideoLibrarySearchError] = useState(false)
+  const [videoLibrarySearchResultKeys, setVideoLibrarySearchResultKeys] =
+    useState<Set<string>>(new Set())
   const [videoLibrarySort, setVideoLibrarySort] = useState<
     "recent" | "title" | "duration"
   >("recent")
@@ -1524,39 +1532,98 @@ export function ExperienceEditor({
   )
   const currentLocaleCode = activeLocaleEntry?.code ?? "en"
   const normalizedVideoLibraryQuery = videoLibraryQuery.trim().toLowerCase()
-  const filteredVideoLibrary = [...videoLibrary]
-    .filter((item) => {
-      const carouselAlreadyIncludes =
-        (videoPickerMode === "carouselAppend" ||
-          videoPickerMode === "mediaCollectionAppend") &&
-        asArray(videoPickerBlockRecord?.items).some(
-          (entry) => asString(asRecord(entry)?.videoId) === item.key,
-        )
-      if (carouselAlreadyIncludes) return false
-      const haystack =
-        `${item.title} ${item.id} ${item.sourceLabel} ${item.dubs}`.toLowerCase()
-      const matchesQuery =
-        normalizedVideoLibraryQuery.length === 0 ||
-        haystack.includes(normalizedVideoLibraryQuery)
-      return matchesQuery
-    })
-    .sort((left, right) => {
-      if (videoLibrarySort === "title") {
-        return left.title.localeCompare(right.title)
-      }
-      if (videoLibrarySort === "duration") {
-        return right.duration.localeCompare(left.duration)
-      }
-      return right.updated.localeCompare(left.updated)
-    })
-  const videoPickerLibraryRows = [
-    ...(videoPickerMode === "block" && videoPickerCurrentVideo
-      ? [videoPickerCurrentVideo]
-      : []),
-    ...filteredVideoLibrary.filter(
-      (item) => item.key !== videoPickerCurrentVideo?.key,
-    ),
-  ]
+  const filteredVideoLibrary = useMemo(
+    () =>
+      [...videoLibrary]
+        .filter((item) => {
+          const carouselAlreadyIncludes =
+            (videoPickerMode === "carouselAppend" ||
+              videoPickerMode === "mediaCollectionAppend") &&
+            asArray(videoPickerBlockRecord?.items).some(
+              (entry) => asString(asRecord(entry)?.videoId) === item.key,
+            )
+          if (carouselAlreadyIncludes) return false
+          const haystack =
+            `${item.title} ${item.description ?? ""} ${item.id} ${
+              item.labelLabel ?? ""
+            } ${item.sourceLabel} ${item.dubs}`.toLowerCase()
+          const matchesQuery =
+            normalizedVideoLibraryQuery.length === 0 ||
+            videoLibrarySearchResultKeys.has(item.key) ||
+            haystack.includes(normalizedVideoLibraryQuery)
+          return matchesQuery
+        })
+        .sort((left, right) => {
+          if (videoLibrarySort === "title") {
+            return left.title.localeCompare(right.title)
+          }
+          if (videoLibrarySort === "duration") {
+            return right.duration.localeCompare(left.duration)
+          }
+          return right.updated.localeCompare(left.updated)
+        }),
+    [
+      normalizedVideoLibraryQuery,
+      videoLibrary,
+      videoLibrarySearchResultKeys,
+      videoLibrarySort,
+      videoPickerBlockRecord,
+      videoPickerMode,
+    ],
+  )
+
+  useEffect(() => {
+    if (videoPickerBlockIndex === null) return
+    if (!searchVideoLibraryAction) return
+
+    const query = videoLibraryQuery.trim()
+    if (!query) {
+      setVideoLibrarySearchPending(false)
+      setVideoLibrarySearchError(false)
+      setVideoLibrarySearchResultKeys(new Set())
+      return
+    }
+
+    let ignore = false
+    setVideoLibrarySearchPending(true)
+    setVideoLibrarySearchError(false)
+    const timeout = window.setTimeout(() => {
+      searchVideoLibraryAction(query)
+        .then((results) => {
+          if (ignore) return
+          setVideoLibrarySearchResultKeys(
+            new Set(results.map((result) => result.key)),
+          )
+          setVideoLibrarySearchError(false)
+        })
+        .catch(() => {
+          if (ignore) return
+          setVideoLibrarySearchResultKeys(new Set())
+          setVideoLibrarySearchError(true)
+        })
+        .finally(() => {
+          if (ignore) return
+          setVideoLibrarySearchPending(false)
+        })
+    }, 220)
+
+    return () => {
+      ignore = true
+      window.clearTimeout(timeout)
+    }
+  }, [searchVideoLibraryAction, videoLibraryQuery, videoPickerBlockIndex])
+
+  const videoPickerLibraryRows = useMemo(
+    () => [
+      ...(videoPickerMode === "block" && videoPickerCurrentVideo
+        ? [videoPickerCurrentVideo]
+        : []),
+      ...filteredVideoLibrary.filter(
+        (item) => item.key !== videoPickerCurrentVideo?.key,
+      ),
+    ],
+    [filteredVideoLibrary, videoPickerCurrentVideo, videoPickerMode],
+  )
   const videoPickerSelectedVideo = findVideoLibraryItem(
     videoPickerDraft.videoKey,
   )
@@ -1926,19 +1993,26 @@ export function ExperienceEditor({
 
     if (
       videoPickerDraft.videoKey &&
-      videoLibrary.some((video) => video.key === videoPickerDraft.videoKey)
+      videoPickerLibraryRows.some(
+        (video) => video.key === videoPickerDraft.videoKey,
+      )
     ) {
       return
     }
 
-    setVideoPickerDraft((current) => ({
-      ...current,
-      videoKey:
-        videoPickerCurrentVideo?.key ?? filteredVideoLibrary[0]?.key ?? null,
-    }))
+    setVideoPickerDraft((current) => {
+      const nextVideoKey =
+        videoPickerLibraryRows[0]?.key ?? videoPickerCurrentVideo?.key ?? null
+      if (current.videoKey === nextVideoKey) {
+        return current
+      }
+      return {
+        ...current,
+        videoKey: nextVideoKey,
+      }
+    })
   }, [
-    filteredVideoLibrary,
-    videoLibrary,
+    videoPickerLibraryRows,
     videoPickerBlockIndex,
     videoPickerCurrentVideo?.key,
     videoPickerDraft.videoKey,
@@ -9902,11 +9976,15 @@ export function ExperienceEditor({
                     Results
                   </div>
                   <div className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
-                    {videoPickerMode === "carouselAppend"
-                      ? "Choose a media item to preview and add to this carousel."
-                      : videoPickerMode === "mediaCollectionAppend"
-                        ? "Choose a video to preview and add to this media collection."
-                        : "Choose a media item to preview and configure on the right."}
+                    {videoLibrarySearchPending
+                      ? "Searching the full video library..."
+                      : videoLibrarySearchError
+                        ? "Search failed. Try again or clear the query."
+                        : videoPickerMode === "carouselAppend"
+                          ? "Choose a media item to preview and add to this carousel."
+                          : videoPickerMode === "mediaCollectionAppend"
+                            ? "Choose a video to preview and add to this media collection."
+                            : "Choose a media item to preview and configure on the right."}
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-2 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
