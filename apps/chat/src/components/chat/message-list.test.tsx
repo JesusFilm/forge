@@ -85,3 +85,53 @@ describe("MessageList failure notices", () => {
     }
   })
 })
+
+describe("MessageList markdown split (feat-268)", () => {
+  const MD = "**Grace** abounds"
+
+  it("renders assistant markdown as elements, user content as literal text", () => {
+    const messages: Message[] = [
+      { id: "u1", role: "user", content: MD },
+      { id: "a1", role: "assistant", content: MD, engine: "seeker" },
+    ]
+    const { container } = render(
+      <MessageList messages={messages} streamingMessageId={null} />,
+    )
+    const [userNode, assistantNode] = Array.from(
+      container.querySelectorAll("[data-message-content]"),
+    )
+    // User turn: React-escaped plain text — the asterisks stay visible.
+    expect(userNode.textContent).toBe(MD)
+    expect(userNode.querySelector("strong")).toBeNull()
+    // Assistant turn: hardened markdown — a real <strong>, no asterisks.
+    expect(assistantNode.querySelector("strong")).toHaveTextContent("Grace")
+    expect(assistantNode.textContent).not.toContain("*")
+  })
+
+  it("renders markdown on the streaming turn too, with the pending pulse", () => {
+    const messages: Message[] = [
+      { id: "a1", role: "assistant", content: "So **far** so" },
+    ]
+    const { container } = render(
+      <MessageList messages={messages} streamingMessageId="a1" />,
+    )
+    const pending = container.querySelector("[data-pending]")
+    expect(pending).not.toBeNull()
+    expect(pending?.querySelector("strong")).toHaveTextContent("far")
+  })
+
+  it("renders a replayed transcript turn (no engine) through the same markdown path", () => {
+    // R21 parity: replayed turns carry no engine/grounded/source badges, but
+    // the TEXT treatment must match live turns exactly.
+    const messages: Message[] = [
+      { id: "r1", role: "assistant", content: "> Be still\n\n- one\n- two" },
+    ]
+    const { container } = render(
+      <MessageList messages={messages} streamingMessageId={null} />,
+    )
+    const content = container.querySelector("[data-message-content]")
+    expect(content?.querySelector("blockquote")).toHaveTextContent("Be still")
+    expect(content?.querySelectorAll("ul li")).toHaveLength(2)
+    expect(container.querySelector("[data-engine]")).toBeNull()
+  })
+})

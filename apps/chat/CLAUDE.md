@@ -57,8 +57,10 @@ src/
       icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational)
-      message-list.tsx   Renders turns (Embersoot user bubble / plain assistant text) + streaming pulse (aria-live), grounded badge (3 states), engine marker, role="alert" failure notice
-      sources-list.tsx   Collapsed "Sources · N" disclosure of cited passages (feat-269: deduped by URL, snippets line-clamped behind per-source disclosures) or explicit always-visible "No sources cited" state; untrusted RAG sources → https-only links (rel=noopener), text never HTML (feat-205)
+      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states), engine marker, role="alert" failure notice
+      assistant-markdown.tsx  feat-268: hardened markdown for ASSISTANT turns only — react-markdown + remark-breaks, element allowlist (p/strong/em/ul/ol/li/blockquote/code/a/br), raw HTML → inert text (no rehype-raw, skipHtml stays false), https-only links via untrusted-link, Vigil-token styling (blockquote = font-scripture), streaming cursor slot, THREE pathological-input controls that each degrade one turn to plain pre-wrap text (chat has no app-level error boundary): prefix guard (short deep-nesting crash) + length cap at the 8192-unit per-message ceiling (shape-agnostic freeze bound, catches emphasis nesting the prefix regex misses) + MarkdownRenderBoundary (any throw the guards miss)
+      untrusted-link.tsx feat-268: the ONE hardened anchor for untrusted URLs (isHttpsUrl gate + target=_blank + rel="noopener noreferrer" + sr-only suffix); shared by sources-list + assistant-markdown so the surfaces cannot drift
+      sources-list.tsx   Collapsed "Sources · N" disclosure of cited passages (feat-269: deduped by URL, snippets line-clamped behind per-source disclosures) or explicit always-visible "No sources cited" state; untrusted RAG sources → https-only links via untrusted-link, text never HTML (feat-205)
       composer.tsx       Auto-growing textarea + 12px Vesper send-dot (no paper-airplane icon)
       empty-state.tsx    "What would you like to ask?" heading + starter questions
     brand/
@@ -67,6 +69,7 @@ src/
     chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins)
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
+    is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
@@ -225,7 +228,9 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
 not_available`; failed retries only via the explicit action); sends into a
   server-origin conversation are BLOCKED unless its replay is `loaded` (R22 —
   the composer keeps the draft, only the send action is disabled). Replayed
-  turns render as bare text — no engine/grounded/source badges (R21).
+  turns carry no engine/grounded/source badges (R21) but get the SAME
+  feat-268 markdown treatment as live turns — badge stripping, not text
+  divergence.
 - **Denied sends fail visibly on persisted conversations (KTD10):** a
   conversation counts as server-persisted once hydrated from history OR after
   a send's SUCCESS finalize with engine `"seeker"` (never from the engine tag
@@ -264,10 +269,13 @@ emailVerified? }`) read from the id_token at callback — chat writes no user
   cannot be ended early per-user — no revocation, a deliberate decision
   (feat-240's Decision Record), not an oversight. The honest mitigations are
   the 8h TTL (the repo's shortest), server-side self-scoped reads, and chat's
-  plain-text message rendering discipline: message content renders as
-  React-escaped text only — no `dangerouslySetInnerHTML`, no HTML, no
-  markdown; keep it that way. The everyone-at-once incident lever is rotating
-  `CHAT_SESSION_SECRET`.
+  rendering discipline: no raw HTML ever reaches the DOM (feat-268). User
+  turns render as React-escaped plain text; assistant turns render through
+  the hardened markdown pipeline (`chat/assistant-markdown.tsx`: element
+  allowlist, raw HTML inert-texted, https-only links via the shared
+  `isHttpsUrl` gate) — no `dangerouslySetInnerHTML`, no `rehype-raw`, no HTML
+  passthrough of any kind; keep it that way. The everyone-at-once incident
+  lever is rotating `CHAT_SESSION_SECRET`.
 - **Config-gated, default off.** `chatAuthConfigured()` (`config/env.ts`) is true
   only when `AUTH_ISSUER_URL`, `AUTH_CHAT_CLIENT_ID`, `CHAT_BASE_URL`, and a REAL
   `CHAT_SESSION_SECRET` (rejects empty, the `.env.example` placeholder, and
@@ -379,7 +387,8 @@ login page instead of silently re-authenticating via the SSO session.
 - Server Components by default. Client components are the ones holding hooks:
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
   `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
-  `chat/message-list.tsx`, `chat/sources-list.tsx`, and the
+  `chat/message-list.tsx`, `chat/assistant-markdown.tsx`,
+  `chat/untrusted-link.tsx`, `chat/sources-list.tsx`, and the
   `shell/sidebar-{header,new-conversation,conversation-list,account}.tsx`
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import

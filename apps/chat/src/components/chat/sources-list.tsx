@@ -3,17 +3,11 @@ import { type MouseEvent, type SyntheticEvent } from "react"
 import { ChevronRightIcon } from "@/components/shell/icons"
 import { type SeekerSource } from "@/lib/conversations"
 
-// Source fields are UNTRUSTED (RAG-corpus-originated). Only an https: URL becomes
-// a link; everything else renders as plain text (never HTML), and links carry
-// rel="noopener noreferrer". This is the sole sanitization seam for sources —
-// the proxy forwards them verbatim (feat-205, KTD6).
-function isHttpsUrl(url: string): boolean {
-  try {
-    return new URL(url).protocol === "https:"
-  } catch {
-    return false
-  }
-}
+import { UntrustedLink } from "./untrusted-link"
+
+// Source fields are UNTRUSTED (RAG-corpus-originated): only an https: URL
+// becomes a link (UntrustedLink, shared with assistant-markdown); everything
+// else renders as plain text — the proxy forwards sources verbatim (feat-205).
 
 // The url is corpus-verbatim and may be any junk string; only a parseable URL
 // can identify a source for dedupe purposes.
@@ -96,26 +90,18 @@ export function SourcesList({ sources }: SourcesListProps) {
       >
         {entries.map((source, index) => {
           const label = source.title ?? source.sourceName
-          const linked = isHttpsUrl(source.url)
           return (
             <li
               key={`${source.url}-${index}`}
               data-source-index={index}
               className="text-sm text-ash"
             >
-              {linked ? (
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-vellum underline underline-offset-2 hover:text-linen"
-                >
-                  {label}
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </a>
-              ) : (
-                <span className="text-vellum">{label}</span>
-              )}
+              <UntrustedLink
+                href={source.url}
+                fallback={<span className="text-vellum">{label}</span>}
+              >
+                {label}
+              </UntrustedLink>
               {source.snippet ? (
                 // The details body is intentionally empty — the summary holds
                 // the snippet, and open-state presentation (clamp release,
