@@ -1,5 +1,9 @@
 import { isAppStateForeground } from "../watch/videoBackdropGate"
-import { computeReelPlayerGate } from "./reelPlayerGate"
+import {
+  WINDOW_SEEK_TOLERANCE_SECONDS,
+  computeReelPlayerGate,
+  needsWindowStartSeek,
+} from "./reelPlayerGate"
 
 // Steady state: the reel is playing the excerpt it wants (confirmed === target).
 // Every case below perturbs exactly one axis away from it, because that is the
@@ -12,6 +16,8 @@ const playing = {
   videoReady: true,
   excerptToken: 7,
   confirmedToken: 7,
+  // Ordinary excerpt: a swap masks with the poster, never the hop dip.
+  hopSwap: false,
 }
 
 // The watchdog arms on playIntended. If this ever collapsed into shouldPlay, the load
@@ -47,6 +53,7 @@ describe("computeReelPlayerGate — the swap window (R11/KTD-3)", () => {
       posterCrossfade: true,
       playIntended: true,
       swapInFlight: true,
+      hopDipActive: false,
     })
   })
 
@@ -115,7 +122,7 @@ describe("computeReelPlayerGate — the poster dissolve (R11)", () => {
     expect(computeReelPlayerGate(playing).posterCrossfade).toBe(false)
   })
 
-  it("dissolves behind a chapter card too: the card is opaque, but a bare gap under it is still a bug", () => {
+  it("grants the crossfade behind a chapter card too — ReelPlayer's covered branch owns the actual timing (delayed silent snap)", () => {
     expect(
       computeReelPlayerGate({ ...playing, active: false, excerptToken: 8 })
         .posterCrossfade,
@@ -132,6 +139,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       posterCrossfade: false,
       playIntended: true,
       swapInFlight: false,
+      hopDipActive: false,
     })
   })
 
@@ -144,6 +152,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         posterCrossfade: false,
         playIntended: false,
         swapInFlight: false,
+        hopDipActive: false,
       },
     )
   })
@@ -157,6 +166,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
         posterCrossfade: false,
         playIntended: false,
         swapInFlight: false,
+        hopDipActive: false,
       },
     )
   })
@@ -175,6 +185,7 @@ describe("computeReelPlayerGate — decode slot lifecycle (R18)", () => {
       posterCrossfade: false,
       playIntended: false,
       swapInFlight: false,
+      hopDipActive: false,
     })
   })
 
@@ -197,6 +208,7 @@ describe("computeReelPlayerGate — silent phases (R8/R10)", () => {
       posterCrossfade: false,
       playIntended: false,
       swapInFlight: false,
+      hopDipActive: false,
     })
   })
 
@@ -250,5 +262,111 @@ describe("AppState composition — the teardown gate (tvOS)", () => {
         appForeground: isAppStateForeground("active"),
       }).shouldPlay,
     ).toBe(true)
+  })
+})
+
+// A hop is the SAME footage in a different dub. Covering it with the excerpt's static
+// poster would read as a cut; instead the live video surface stays visible and a brief
+// dip masks the swap (R10). The poster stays down; the dip takes over.
+describe("computeReelPlayerGate — the hop seam (KTD-5/R10)", () => {
+  // Mid-plan hop swap: the reel targets the next dub, not yet confirmed.
+  const hopSwapInFlight = { ...playing, excerptToken: 8, hopSwap: true }
+
+  it("holds the live frame — no poster — while a hop swap is in flight", () => {
+    const gate = computeReelPlayerGate(hopSwapInFlight)
+    expect(gate.posterVisible).toBe(false)
+    expect(gate.posterCrossfade).toBe(false)
+    expect(gate.hopDipActive).toBe(true)
+    // The player keeps decoding through the swap, exactly as an ordinary swap does.
+    expect(gate.shouldMountVideo).toBe(true)
+    expect(gate.shouldPlay).toBe(true)
+  })
+
+  it("drops the dip once the hop is confirmed — the frame is the reel's own again", () => {
+    const gate = computeReelPlayerGate({ ...playing, hopSwap: true })
+    expect(gate.swapInFlight).toBe(false)
+    expect(gate.hopDipActive).toBe(false)
+    expect(gate.posterVisible).toBe(false)
+  })
+
+  it("falls back to the poster when a hop swap coincides with an unmounted video", () => {
+    // Backgrounded mid-hop: there is no live frame to hold, so cover with the poster
+    // and never claim a dip over bare screen background.
+    for (const unmounting of [
+      { screenFocused: false },
+      { appForeground: false },
+      { videoReady: false },
+    ]) {
+      const gate = computeReelPlayerGate({
+        ...hopSwapInFlight,
+        ...unmounting,
+      })
+      expect(gate.posterVisible).toBe(true)
+      expect(gate.hopDipActive).toBe(false)
+    }
+  })
+
+  it("keeps masking an ORDINARY excerpt swap with the poster, not the dip", () => {
+    // The entry into the centerpiece (hop 0) and the exit past it are real content
+    // cuts — hopSwap is false there, so the poster still owns those seams.
+    const gate = computeReelPlayerGate({ ...playing, excerptToken: 8 })
+    expect(gate.posterVisible).toBe(true)
+    expect(gate.posterCrossfade).toBe(true)
+    expect(gate.hopDipActive).toBe(false)
+  })
+
+  it("never lifts the dip on a stale confirmation from an earlier hop", () => {
+    const gate = computeReelPlayerGate({
+      ...playing,
+      excerptToken: 8,
+      confirmedToken: 6,
+      hopSwap: true,
+    })
+    expect(gate.hopDipActive).toBe(true)
+    expect(gate.posterVisible).toBe(false)
+  })
+})
+
+// ── Dropped-seek self-heal (the shipped tvOS latent bug) ─────────────
+
+describe("needsWindowStartSeek", () => {
+  it("heals a dropped seek: the clock sits at the top of a mid-video window", () => {
+    expect(needsWindowStartSeek({ currentTime: 0, startSeconds: 42 })).toBe(
+      true,
+    )
+    expect(needsWindowStartSeek({ currentTime: 1.3, startSeconds: 42 })).toBe(
+      true,
+    )
+  })
+
+  it("never loops on a landed seek that settled keyframe-shy of the start", () => {
+    expect(needsWindowStartSeek({ currentTime: 39.2, startSeconds: 42 })).toBe(
+      false,
+    )
+    // Boundary: exactly the tolerance shy is treated as landed.
+    expect(
+      needsWindowStartSeek({
+        currentTime: 42 - WINDOW_SEEK_TOLERANCE_SECONDS,
+        startSeconds: 42,
+      }),
+    ).toBe(false)
+  })
+
+  it("never fires inside or past the window", () => {
+    expect(needsWindowStartSeek({ currentTime: 50, startSeconds: 42 })).toBe(
+      false,
+    )
+  })
+
+  it("never fires for a from-zero window (short-form and fallback excerpts)", () => {
+    expect(needsWindowStartSeek({ currentTime: 0, startSeconds: 0 })).toBe(
+      false,
+    )
+  })
+
+  it("heals a hop whose new dub reports 0 before its mid-video seek lands", () => {
+    expect(needsWindowStartSeek({ currentTime: 0.4, startSeconds: 33 })).toBe(
+      true,
+    )
   })
 })
