@@ -36,9 +36,9 @@ export type ReelPlayerGate = {
   /** Poster covers the VideoView. Must be true across every swap, seek, and unmount. */
   posterVisible: boolean
   /**
-   * The poster may dissolve IN over the outgoing frame instead of snapping (R11).
-   * Only when the VideoView is still mounted — otherwise there is nothing beneath
-   * it and a fade would bleed the bare screen background through.
+   * The poster MAY dissolve in over the outgoing frame (R11) — permission, not a
+   * promise: ReelPlayer's covered branch instead defers the cover and snaps it under
+   * the opaque overlay. False when unmounted (a fade would bleed bare background).
    */
   posterCrossfade: boolean
   /**

@@ -520,6 +520,16 @@ export function ShowcaseScreen() {
     }
   }, [])
 
+  // Presentation-only seam signal: the dissolve-in is reserved for the video→card
+  // seam. From resolving/stills/interstitial the card mounts opaque — beneath is a
+  // dark stage or a covered poster, and a dissolve would flash the thumbnail through.
+  const lastPhaseRef = useRef(state.phase)
+  const cardEntersOpaque =
+    state.phase === "chapterCard" && lastPhaseRef.current !== "excerpt"
+  useEffect(() => {
+    lastPhaseRef.current = state.phase
+  }, [state.phase])
+
   // R12: a press must exit from every phase, including the resolving window, so this
   // is an unconditional sibling rather than one of OverlaySlot's branches.
   const handleExit = useCallback(() => {
@@ -553,6 +563,7 @@ export function ShowcaseScreen() {
         excerpt={excerpt}
         stream={stream}
         liveLanguageCount={liveLanguageCount}
+        cardEntersOpaque={cardEntersOpaque}
       />
     </View>
   )
@@ -566,6 +577,8 @@ type OverlaySlotProps = {
   excerpt: ShowcaseExcerpt | null
   stream: ShowcaseStream | null
   liveLanguageCount: number | null
+  /** The card follows the interstitial this commit — mount it opaque (same stage). */
+  cardEntersOpaque: boolean
 }
 
 /** Every reel phase's presentation. A pure projection of state — no decisions here. */
@@ -575,6 +588,7 @@ function OverlaySlot({
   excerpt,
   stream,
   liveLanguageCount,
+  cardEntersOpaque,
 }: OverlaySlotProps) {
   switch (state.phase) {
     case "resolving":
@@ -598,6 +612,7 @@ function OverlaySlot({
             chapters.slice(0, state.chapterIndex).filter(plays).length + 1
           }
           total={chapters.filter(plays).length}
+          entersOpaque={cardEntersOpaque}
         />
       )
     }

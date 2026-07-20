@@ -122,7 +122,7 @@ describe("computeReelPlayerGate — the poster dissolve (R11)", () => {
     expect(computeReelPlayerGate(playing).posterCrossfade).toBe(false)
   })
 
-  it("dissolves behind a chapter card too: the card is opaque, but a bare gap under it is still a bug", () => {
+  it("grants the crossfade behind a chapter card too — ReelPlayer's covered branch owns the actual timing (delayed silent snap)", () => {
     expect(
       computeReelPlayerGate({ ...playing, active: false, excerptToken: 8 })
         .posterCrossfade,

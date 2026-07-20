@@ -18,6 +18,7 @@ import {
   shouldDriveFadeOut,
   volumeAtElapsed,
 } from "../../lib/showcaseMode/audioFade"
+import { OVERLAY_CROSSFADE_MS } from "../../lib/showcaseMode/reelState"
 import { shouldCountReelRebuffer } from "../../lib/showcaseMode/showcaseTelemetry"
 import type { ShowcaseStream } from "../../lib/showcaseMode/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -35,6 +36,12 @@ import { classifyReelWatchdog } from "./reelWatchdog"
 // settle and gives the eye a still instead of a mid-load pop (VideoBackdrop's curve).
 const POSTER_HOLD_MS = 500
 const POSTER_FADE_MS = 500
+
+// A COVERED swap (card/interstitial over the reel) holds the poster and item swap
+// back until the overlay's entry dissolve is opaque — otherwise the incoming
+// thumbnail (or a released surface) flashes through the half-transparent card.
+const POSTER_COVER_DELAY_MS = OVERLAY_CROSSFADE_MS + 80
+const SWAP_COVER_DELAY_MS = POSTER_COVER_DELAY_MS + 100
 
 // KTD-5: a hop is the SAME footage in a different dub, so its seam is a brief dim over
 // the LIVE frame — never the poster (that would read as a cut). Shorter than the poster
@@ -165,6 +172,9 @@ export function ReelPlayer({
   const loadedTokenRef = useRef(excerptToken)
   const confirmedTokenRef = useRef<number | null>(null)
   const shouldPlayRef = useRef(shouldPlay)
+  // Read at swap/poster start (async paths) — covered vs visible picks the sequencing.
+  const activeRef = useRef(active)
+  activeRef.current = active
   // Watchdog clocks. `playRequestedAt` starts when we ASK for playback, not when the
   // stream lands: the fetch owns its own timeout, and the player cannot start while a
   // chapter card holds it paused.
@@ -290,6 +300,14 @@ export function ReelPlayer({
 
     void (async () => {
       try {
+        // Covered: wait out the overlay dissolve + poster cover before releasing the
+        // outgoing item, so nothing beneath a half-transparent card can change.
+        if (!activeRef.current) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, SWAP_COVER_DELAY_MS),
+          )
+          if (swapIdRef.current !== swapId) return
+        }
         await player.replaceAsync(target?.hls ?? null)
         // A newer swap already owns the player; this one's seek/play would fight it.
         if (swapIdRef.current !== swapId) return
@@ -542,11 +560,22 @@ export function ReelPlayer({
         posterOpacity.setValue(1)
         return
       }
-      const fadeIn = Animated.timing(posterOpacity, {
-        toValue: 1,
-        duration: POSTER_FADE_MS,
-        useNativeDriver: true,
-      })
+      const fadeIn = activeRef.current
+        ? Animated.timing(posterOpacity, {
+            toValue: 1,
+            duration: POSTER_FADE_MS,
+            useNativeDriver: true,
+          })
+        : // Covered: wait out the card's dissolve, then cover silently — a visible
+          // bloom here is what flashed the incoming thumbnail through the card.
+          Animated.sequence([
+            Animated.delay(POSTER_COVER_DELAY_MS),
+            Animated.timing(posterOpacity, {
+              toValue: 1,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ])
       fadeIn.start()
       return () => fadeIn.stop()
     }

@@ -9,6 +9,11 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { scale } from "../../lib/scale"
+import {
+  CHAPTER_CARD_DURATION_MS,
+  OVERLAY_CROSSFADE_MS,
+  OVERLAY_EXIT_MARGIN_MS,
+} from "../../lib/showcaseMode/reelState"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 const ENTER_MS = 420
@@ -27,6 +32,12 @@ export type ChapterCardProps = {
    * at runtime, so counting the raw queue would show dots the viewer never reaches.
    */
   total: number
+  /**
+   * True when the stage beneath is not a playing excerpt (interstitial, cold-start
+   * resolve, stills): mount opaque — the dissolve-in is reserved for the video→card
+   * seam, and anywhere else it would dip to a stale frame or bare thumbnail.
+   */
+  entersOpaque?: boolean
 }
 
 export function ChapterCard({
@@ -34,9 +45,17 @@ export function ChapterCard({
   subtitle,
   position,
   total,
+  entersOpaque,
 }: ChapterCardProps) {
   const reduceMotion = useReduceMotion()
   const enter = useRef(new Animated.Value(0)).current
+  const rootFade = useRef(new Animated.Value(0)).current
+  // Mount-time latch: the flag describes the seam this card ENTERED through, and the
+  // screen's previous-phase bookkeeping moves on while the card is still up.
+  const entersOpaqueRef = useRef(entersOpaque === true)
+  // A cross-chapter failExcerpt updates this card IN PLACE (new `position`, no
+  // remount); once shown, stay opaque — never snap transparent and re-dissolve.
+  const hasShownRef = useRef(false)
 
   useEffect(() => {
     if (reduceMotion) {
@@ -54,6 +73,53 @@ export function ChapterCard({
     return () => anim.stop()
   }, [enter, reduceMotion, position])
 
+  // The opaque root dissolves over the reel beneath: in over the outgoing frame's
+  // poster crossfade, out to reveal the next excerpt's poster (the unmount then
+  // removes a fully transparent view). Reduce-motion keeps today's immediate cuts.
+  useEffect(() => {
+    const skipDissolve = entersOpaqueRef.current || hasShownRef.current
+    hasShownRef.current = true
+    if (reduceMotion) {
+      rootFade.setValue(1)
+      return
+    }
+    let fadeIn: Animated.CompositeAnimation | null = null
+    if (skipDissolve) {
+      rootFade.setValue(1)
+    } else {
+      rootFade.setValue(0)
+      fadeIn = Animated.timing(rootFade, {
+        toValue: 1,
+        duration: OVERLAY_CROSSFADE_MS,
+        useNativeDriver: true,
+      })
+      fadeIn.start()
+    }
+    let fadeOut: Animated.CompositeAnimation | null = null
+    const exitTimer = setTimeout(
+      () => {
+        fadeOut = Animated.timing(rootFade, {
+          toValue: 0,
+          duration: OVERLAY_CROSSFADE_MS,
+          useNativeDriver: true,
+        })
+        fadeOut.start()
+      },
+      // The margin keeps the fade ahead of the reducer's own unmount timer.
+      Math.max(
+        0,
+        CHAPTER_CARD_DURATION_MS -
+          OVERLAY_CROSSFADE_MS -
+          OVERLAY_EXIT_MARGIN_MS,
+      ),
+    )
+    return () => {
+      fadeIn?.stop()
+      fadeOut?.stop()
+      clearTimeout(exitTimer)
+    }
+  }, [rootFade, reduceMotion, position])
+
   const translateY = enter.interpolate({
     inputRange: [0, 1],
     outputRange: [RISE_DISTANCE, 0],
@@ -62,8 +128,8 @@ export function ChapterCard({
   return (
     // collapsable={false}: Android TV paints the (still-mounted, silent) VideoView
     // over every flattened RN view. Decorative, so it takes no focus and no a11y.
-    <View
-      style={styles.root}
+    <Animated.View
+      style={[styles.root, { opacity: rootFade }]}
       pointerEvents="none"
       collapsable={false}
       accessibilityElementsHidden
@@ -92,7 +158,7 @@ export function ChapterCard({
           ))}
         </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   )
 }
 

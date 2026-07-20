@@ -86,6 +86,10 @@ export type ReelEvent =
 /** R8: the chapter card names the felt need for about five seconds. */
 export const CHAPTER_CARD_DURATION_MS = 5000
 export const INTERSTITIAL_DURATION_MS = 6000
+/** One overlay dissolve length; ReelPlayer's cover delays derive from it to outlast it. */
+export const OVERLAY_CROSSFADE_MS = 420
+/** Exit fades lead the reducer's own unmount timers by this — two unsynced clocks. */
+export const OVERLAY_EXIT_MARGIN_MS = 120
 /** R16: stills re-attempt resolution periodically rather than fast-skipping. */
 export const STILLS_RE_RESOLVE_INTERVAL_MS = 30000
 /** R9: "every few chapters". */
