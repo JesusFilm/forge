@@ -23,7 +23,10 @@ import {
   type SearchTraceQueryQualityLabel,
   type SearchTraceSensitiveQueryLabel,
 } from "@/services/search-trace-privacy"
-import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
+import {
+  purgeExpiredSearchTraces,
+  readSearchTraceRetentionHealth,
+} from "@/services/search-trace-retention.service"
 import type {
   WatchSearchInput,
   WatchSearchLaneStatus,
@@ -332,7 +335,13 @@ async function shouldStoreRawTrace(
   if (typeof input.retentionHealthy === "boolean") return input.retentionHealthy
   if (env.NODE_ENV !== "production") return true
   const health = await readSearchTraceRetentionHealth(prisma)
-  return health.healthy
+  if (health.healthy) return true
+
+  await purgeExpiredSearchTraces(prisma, input.now ?? input.completedAt)
+  console.warn(
+    `[search] event=trace_retention_inline_purge route=${input.routeSource} reason=${health.reason}`,
+  )
+  return true
 }
 
 export async function writeSearchTrace(
