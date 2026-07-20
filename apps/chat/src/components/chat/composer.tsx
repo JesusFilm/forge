@@ -90,7 +90,10 @@ export function Composer({
         </button>
       </div>
       <div className="mt-2.5 flex items-center justify-between border-t border-linen/5 pt-2.5 text-xs text-ash">
-        <span>Enter to send · Shift + Enter for a new line</span>
+        {/* Keyboard-only hint — meaningless on touch, so hidden below md. */}
+        <span className="hidden md:inline">
+          Enter to send · Shift + Enter for a new line
+        </span>
         {sendBlocked ? (
           // Visually distinct from the reply-pending disabled state (Vesper,
           // not Ash) and referenced from the textarea via aria-describedby.
