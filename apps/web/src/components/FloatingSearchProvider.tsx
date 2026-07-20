@@ -29,6 +29,7 @@ import type { GlobalLanguagePickerModalProps } from "@/components/watch/GlobalLa
 import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
+  FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
@@ -38,6 +39,7 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { parseWatchPath } from "@/lib/routes"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -113,7 +115,14 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const pathname = usePathname()
+  const parsedPath = parseWatchPath(pathname)
   const currentLanguageSlug = routeLanguageSlugCandidate(pathname)
+  const isWatchHome =
+    parsedPath.kind === "home" || parsedPath.kind === "localized-home"
+  const logoHref = isWatchHome ? "https://www.jesusfilm.org/" : "/"
+  const logoSlotClass = isWatchHome
+    ? FLOATING_HEADER_HOME_LOGO_SLOT_CLASS
+    : FLOATING_HEADER_LOGO_SLOT_CLASS
 
   const [open, setOpenState] = useState<boolean>(false)
   const [closing, setClosing] = useState<boolean>(false)
@@ -626,19 +635,27 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS} transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
       >
         <Link
-          href={"/" as Route}
+          href={logoHref as Route}
           aria-label={t("home")}
           data-testid="floating-header-logo"
           onClick={resetSearch}
-          className={`pointer-events-auto flex ${FLOATING_HEADER_LOGO_SLOT_CLASS} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
+          className={`pointer-events-auto flex ${logoSlotClass} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
         >
           <Image
-            src="/watch/images/jesusfilm-sign.svg"
+            src={
+              isWatchHome
+                ? "/watch/images/jesus-film-logo-full.svg"
+                : "/watch/images/jesusfilm-sign.svg"
+            }
             alt="JesusFilm"
-            width={70}
-            height={70}
+            width={isWatchHome ? 139 : 70}
+            height={isWatchHome ? 36 : 70}
             unoptimized
-            className="h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+            className={
+              isWatchHome
+                ? "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px]"
+                : "h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
+            }
           />
         </Link>
         <div className="min-w-0 flex-1">
@@ -729,6 +746,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpen={setOpen}
           setQuery={setQuery}
           headerTopClass={headerTopClass}
+          logoSlotClass={logoSlotClass}
         />
       ) : null}
       {globalLanguageOpen ? (

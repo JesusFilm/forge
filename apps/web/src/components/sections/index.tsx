@@ -21,6 +21,7 @@ import type { Section as SectionBlockType } from "./Section"
 import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestions"
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
+import { WatchHomeLanguages } from "./WatchHomeLanguages"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -116,6 +117,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "CardBlock",
   "VideoRecommendationsBlock",
   "WatchHomeHeroBlock",
+  "WatchHomeLanguagesBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -129,6 +131,7 @@ type AnyBlock = {
 function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
+  languageSlug: string | null | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
@@ -138,6 +141,7 @@ function renderAdminBlock(
             block as unknown as Parameters<typeof MediaCollection>[0]["data"]
           }
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "PromoBannerBlock":
@@ -205,6 +209,7 @@ function renderAdminBlock(
         <Container
           data={block as unknown as Parameters<typeof Container>[0]["data"]}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "SectionBlock":
@@ -212,6 +217,7 @@ function renderAdminBlock(
         <SectionBlock
           data={block as unknown as Parameters<typeof SectionBlock>[0]["data"]}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "RelatedQuestionsBlock":
@@ -271,6 +277,14 @@ function renderAdminBlock(
       // The Watch homepage route renders this placeholder with the static
       // hero model it already resolved. Other routes deliberately ignore it.
       return null
+    case "WatchHomeLanguagesBlock":
+      return (
+        <WatchHomeLanguages
+          sectionKey={
+            typeof block.sectionKey === "string" ? block.sectionKey : null
+          }
+        />
+      )
     default: {
       // F6 (ce-code-review): if this branch fires for a typename in
       // ADMIN_BLOCK_TYPENAMES_LIST, the dispatch set and the switch have
@@ -295,16 +309,22 @@ function renderAdminBlock(
 export function ExperienceSectionRenderer({
   section,
   routeVideo,
+  languageSlug,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
   const typename = (section as { readonly __typename?: string | null })
     .__typename
   if (typename != null && ADMIN_BLOCK_TYPENAMES.has(typename)) {
-    return renderAdminBlock(section as unknown as AnyBlock, routeVideo)
+    return renderAdminBlock(
+      section as unknown as AnyBlock,
+      routeVideo,
+      languageSlug,
+    )
   }
 
   if (process.env.NODE_ENV === "development") {

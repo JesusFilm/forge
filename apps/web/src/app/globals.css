@@ -441,6 +441,202 @@
   }
 }
 
+@keyframes living-atlas-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-0.6deg) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -0.75rem, 0) rotate(0.6deg) scale(1.012);
+  }
+}
+
+@keyframes living-atlas-language-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -0.4rem, 0);
+  }
+}
+
+.living-atlas-visual {
+  contain: paint;
+}
+
+.living-atlas-globe-mask {
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 50%,
+    #000 0%,
+    #000 49.2%,
+    transparent 49.5%
+  );
+  mask-image: radial-gradient(
+    circle at 50% 50%,
+    #000 0%,
+    #000 49.2%,
+    transparent 49.5%
+  );
+}
+
+.living-atlas-globe-motion {
+  animation: living-atlas-drift 18s ease-in-out infinite;
+  transform-origin: 54% 52%;
+  will-change: transform;
+}
+
+.living-atlas-globe {
+  filter: drop-shadow(0 0 1.75rem rgb(251 146 60 / 20%));
+  mix-blend-mode: screen;
+}
+
+.living-atlas-atmosphere {
+  animation: living-atlas-atmosphere-breathe 9s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 31% 28%, rgb(251 146 60 / 26%), transparent 38%),
+    radial-gradient(circle at 76% 64%, rgb(59 130 246 / 18%), transparent 43%);
+  filter: blur(1.5rem);
+  opacity: 0.82;
+  will-change: opacity, transform;
+}
+
+.living-atlas-stars {
+  background-image:
+    radial-gradient(
+      circle at 12% 19%,
+      rgb(255 255 255 / 92%) 0 1px,
+      transparent 1.8px
+    ),
+    radial-gradient(
+      circle at 78% 12%,
+      rgb(254 215 170 / 85%) 0 1.2px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 91% 41%,
+      rgb(191 219 254 / 88%) 0 1px,
+      transparent 1.8px
+    ),
+    radial-gradient(
+      circle at 15% 68%,
+      rgb(254 215 170 / 80%) 0 1.3px,
+      transparent 2.2px
+    ),
+    radial-gradient(
+      circle at 73% 84%,
+      rgb(255 255 255 / 78%) 0 0.9px,
+      transparent 1.7px
+    ),
+    radial-gradient(
+      circle at 45% 7%,
+      rgb(255 255 255 / 82%) 0 0.8px,
+      transparent 1.5px
+    ),
+    radial-gradient(
+      circle at 54% 94%,
+      rgb(191 219 254 / 76%) 0 1.1px,
+      transparent 1.9px
+    );
+  mix-blend-mode: screen;
+  opacity: 0.56;
+  will-change: opacity, transform;
+}
+
+.living-atlas-stars-far {
+  animation: living-atlas-stars-far 14s ease-in-out infinite;
+}
+
+.living-atlas-stars-near {
+  animation: living-atlas-stars-near 8s ease-in-out infinite;
+  rotate: 23deg;
+  scale: 0.91;
+}
+
+.living-atlas-shimmer {
+  animation: living-atlas-shimmer 11s ease-in-out infinite;
+  background: linear-gradient(
+    118deg,
+    transparent 34%,
+    rgb(255 255 255 / 8%) 47%,
+    rgb(251 146 60 / 13%) 51%,
+    transparent 63%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  will-change: opacity, transform;
+}
+
+.living-atlas-language {
+  animation: living-atlas-language-float 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes living-atlas-atmosphere-breathe {
+  0%,
+  100% {
+    opacity: 0.68;
+    transform: scale3d(0.96, 0.96, 1);
+  }
+  50% {
+    opacity: 0.96;
+    transform: scale3d(1.04, 1.04, 1);
+  }
+}
+
+@keyframes living-atlas-stars-far {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translate3d(0, 0, 0) scale(0.98);
+  }
+  50% {
+    opacity: 0.72;
+    transform: translate3d(0.35rem, -0.45rem, 0) scale(1.02);
+  }
+}
+
+@keyframes living-atlas-stars-near {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translate3d(0, 0, 0) scale(0.96);
+  }
+  50% {
+    opacity: 0.66;
+    transform: translate3d(-0.4rem, 0.35rem, 0) scale(1.04);
+  }
+}
+
+@keyframes living-atlas-shimmer {
+  0%,
+  30%,
+  100% {
+    opacity: 0;
+    transform: translate3d(-14%, 8%, 0) rotate(-8deg);
+  }
+  48%,
+  62% {
+    opacity: 0.72;
+    transform: translate3d(12%, -7%, 0) rotate(5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .living-atlas-atmosphere,
+  .living-atlas-globe-motion,
+  .living-atlas-language,
+  .living-atlas-shimmer,
+  .living-atlas-stars {
+    animation: none;
+    will-change: auto;
+  }
+
+  .living-atlas-shimmer {
+    display: none;
+  }
+}
+
 .animate-background-pan-zoom {
   animation: background-pan-zoom 18s ease-in-out infinite;
 }

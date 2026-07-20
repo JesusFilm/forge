@@ -47,7 +47,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(21)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(22)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -447,6 +447,23 @@ describe("experience editor block helpers", () => {
       typeLabel: "Watch Home Hero",
       title: "Watch Home Hero",
       body: "Renders the static Watch homepage hero.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
+    })
+  })
+
+  it("creates and summarizes the Watch Home language feature placeholder", () => {
+    expect(createTemplateBlock("watchHomeLanguages", 1)).toEqual({
+      t: "watchHomeLanguages",
+      sectionKey: "watch-home-languages-1",
+    })
+
+    expect(
+      summarizeBlock(createTemplateBlock("watchHomeLanguages", 1), 1, []),
+    ).toMatchObject({
+      typeLabel: "Watch Home Languages",
+      title: "Living Atlas",
+      body: "Promotes the complete Watch language library.",
       tone: "hero",
       badges: ["WATCH_HOME"],
     })

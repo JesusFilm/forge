@@ -17,6 +17,7 @@ import { adminVideoCarouselFragment } from "./blocks/video-carousel"
 import { adminVideoHeroFragment } from "./blocks/video-hero"
 import { adminVideoRecommendationsFragment } from "./blocks/video-recommendations"
 import { adminWatchHomeHeroFragment } from "./blocks/watch-home-hero"
+import { adminWatchHomeLanguagesFragment } from "./blocks/watch-home-languages"
 
 // Root WatchExperience fragment on ExperienceLocale.
 export const adminWatchExperienceFragment = adminGraphql(
@@ -89,6 +90,9 @@ export const adminWatchExperienceFragment = adminGraphql(
         ... on WatchHomeHeroBlock {
           ...AdminWatchHomeHero
         }
+        ... on WatchHomeLanguagesBlock {
+          ...AdminWatchHomeLanguages
+        }
       }
     }
   `,
@@ -111,5 +115,6 @@ export const adminWatchExperienceFragment = adminGraphql(
     adminVideoHeroFragment,
     adminVideoRecommendationsFragment,
     adminWatchHomeHeroFragment,
+    adminWatchHomeLanguagesFragment,
   ],
 )

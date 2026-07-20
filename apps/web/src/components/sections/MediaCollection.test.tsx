@@ -263,12 +263,91 @@ describe("MediaCollection VideoCard href", () => {
     )
   })
 
-  it("uses the watch languages index as the default CTA target", () => {
+  it("uses a shared parent collection as the localized default CTA target", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-castilian"
+          data={makeData({
+            itemsSource: "manual",
+            mediaDefaultCollectionSlug: "lumo",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+              {
+                videoId: "v-2",
+                videoSlug: "episode-two",
+                titleOverride: "Episode Two",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/lumo.html/spanish-castilian.html']",
+      ),
+    ).not.toBeNull()
+  })
+
+  it("keeps the languages index fallback for mixed-parent collections", () => {
     act(() => {
       root.render(
         <MediaCollection
           data={makeData({
             itemsSource: "manual",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "episode-one",
+                titleOverride: "Episode One",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+              {
+                videoId: "v-2",
+                videoSlug: "episode-two",
+                titleOverride: "Episode Two",
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>("a[href='/watch/languages']"),
+    ).not.toBeNull()
+  })
+
+  it("keeps an explicit Admin CTA ahead of the inferred collection", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-castilian"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/watch/featured",
+            mediaDefaultCollectionSlug: "lumo",
             items: [
               {
                 videoId: "v-1",
@@ -286,7 +365,25 @@ describe("MediaCollection VideoCard href", () => {
     })
 
     expect(
-      container.querySelector<HTMLAnchorElement>("a[href='/watch/languages']"),
+      container.querySelector<HTMLAnchorElement>("a[href='/watch/featured']"),
+    ).not.toBeNull()
+  })
+
+  it("defaults route-video children to their localized route collection", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData()}
+          routeVideo={makeRouteVideo("episode-one")}
+          languageSlug="french"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/series.html/french.html']",
+      ),
     ).not.toBeNull()
   })
 

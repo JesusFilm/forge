@@ -15,6 +15,7 @@ import {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  WatchHomeLanguagesBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -79,6 +80,10 @@ describe("BlockSchema — all top-level types validate", () => {
       value: { t: "watchHomeHero" },
     },
     {
+      name: "watchHomeLanguages",
+      value: { t: "watchHomeLanguages" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
@@ -105,17 +110,25 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 18 top-level block types listed in the experience schema", () => {
+  it("covers all 19 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
-    // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(18)
+    // watchHomeHero and watchHomeLanguages homepage-only placeholders.
+    expect(samples.length).toBe(19)
   })
 
   it("accepts watchHomeHero as a placement-only placeholder", () => {
     const result = WatchHomeHeroBlockSchema.safeParse({
       t: "watchHomeHero",
       sectionKey: "watch-home-hero",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts watchHomeLanguages as a placement-only placeholder", () => {
+    const result = WatchHomeLanguagesBlockSchema.safeParse({
+      t: "watchHomeLanguages",
+      sectionKey: "watch-home-languages",
     })
     expect(result.success).toBe(true)
   })

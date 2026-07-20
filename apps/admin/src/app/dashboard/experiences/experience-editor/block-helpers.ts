@@ -30,6 +30,7 @@ export type BlockTemplateKey =
   | "videoCarousel"
   | "videoHero"
   | "watchHomeHero"
+  | "watchHomeLanguages"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -39,6 +40,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
+  "watchHomeLanguages",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -374,6 +376,17 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "watchHomeLanguages") {
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Home Languages",
+      title: "Living Atlas",
+      body: "Promotes the complete Watch language library.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -659,6 +672,13 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "watchHomeLanguages") {
+    return {
+      t: "watchHomeLanguages",
+      sectionKey: `watch-home-languages-${index}`,
     }
   }
 

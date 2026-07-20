@@ -17,6 +17,7 @@ import {
   WATCH_BASE_PATH,
   asLocaleSlug,
   tryAsContentSlug,
+  tryAsLocaleSlug,
   videosIndexPath,
   watchVideoPath,
 } from "@/lib/routes"
@@ -42,6 +43,7 @@ export { mediaCollectionFragment }
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }
 
 type HoverBackdropLayer = {
@@ -134,7 +136,11 @@ function backdropLayerStyle(
   } as CSSProperties
 }
 
-export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
+export function MediaCollection({
+  data,
+  routeVideo,
+  languageSlug,
+}: MediaCollectionProps) {
   const {
     id,
     title,
@@ -150,6 +156,9 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
     footerText: rawFooterText,
     items,
   } = data
+  const mediaDefaultCollectionSlug = (
+    data as unknown as { mediaDefaultCollectionSlug?: string | null }
+  ).mediaDefaultCollectionSlug
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
@@ -161,6 +170,17 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
   const enrichedItems = rawEnrichedItems.filter(
     (item): item is EnrichedMediaItem => item != null,
   )
+  const resolvedLanguageSlug =
+    tryAsLocaleSlug(languageSlug ?? "") ?? DEFAULT_COLLECTION_LOCALE
+  const inferredCollectionSlug =
+    selectedSource === "routeVideoChildren"
+      ? tryAsContentSlug(routeVideo?.slug ?? "")
+      : tryAsContentSlug(mediaDefaultCollectionSlug ?? "")
+  const inferredCtaLink = inferredCollectionSlug
+    ? `${WATCH_BASE_PATH}${watchVideoPath(inferredCollectionSlug, resolvedLanguageSlug)}`
+    : null
+  const explicitCtaLink =
+    typeof ctaLink === "string" && ctaLink.trim().length > 0 ? ctaLink : null
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -180,7 +200,7 @@ export function MediaCollection({ data, routeVideo }: MediaCollectionProps) {
       title={title}
       eyebrow={categoryLabel ?? subtitle}
       description={description}
-      ctaLink={ctaLink}
+      ctaLink={explicitCtaLink ?? inferredCtaLink}
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}

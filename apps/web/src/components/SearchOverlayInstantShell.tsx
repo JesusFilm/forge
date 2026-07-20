@@ -13,7 +13,6 @@ import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
-  FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
@@ -27,6 +26,7 @@ type SearchOverlayInstantShellProps = {
   setQuery: (query: string) => void
   setOpen: (open: boolean) => void
   headerTopClass: string
+  logoSlotClass: string
 }
 
 export function SearchOverlayInstantShell({
@@ -36,6 +36,7 @@ export function SearchOverlayInstantShell({
   setQuery,
   setOpen,
   headerTopClass,
+  logoSlotClass,
 }: SearchOverlayInstantShellProps) {
   const t = useTranslations("SearchOverlay")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -88,7 +89,7 @@ export function SearchOverlayInstantShell({
         data-testid="search-overlay-instant-top-bar"
         className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
       >
-        <div aria-hidden="true" className={FLOATING_HEADER_LOGO_SLOT_CLASS} />
+        <div aria-hidden="true" className={logoSlotClass} />
         <div className="pointer-events-auto min-w-0 flex-1">
           <FloatingSearchFieldInput
             ref={inputRef}

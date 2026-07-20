@@ -431,6 +431,13 @@ export const WatchHomeHeroBlockSchema = z
   })
   .strict()
 
+export const WatchHomeLanguagesBlockSchema = z
+  .object({
+    t: z.literal("watchHomeLanguages"),
+    sectionKey,
+  })
+  .strict()
+
 // -----------------------------------------------------------------------------
 // Container composition (no recursion — slot content is a narrower set).
 // -----------------------------------------------------------------------------
@@ -573,6 +580,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   VideoRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
   WatchHomeHeroBlockSchema,
+  WatchHomeLanguagesBlockSchema,
 ])
 
 export type Block = z.infer<typeof BlockSchema>

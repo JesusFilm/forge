@@ -320,6 +320,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
+    key: "watchHomeLanguages",
+    label: "Watch Home Languages",
+    description: "Animated Living Atlas feature for the language library.",
+    category: "Hero",
+    icon: Globe2,
+  },
+  {
     key: "routeVideoHero",
     label: "Route Video Hero",
     description: "Hero bound to the current video route.",
@@ -1444,7 +1451,9 @@ export function ExperienceEditor({
       )
     }
 
-    if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "watchHomeHero" || block.key === "watchHomeLanguages") {
+      return isHomepage
+    }
 
     return isTemplate || block.category !== "Route"
   })

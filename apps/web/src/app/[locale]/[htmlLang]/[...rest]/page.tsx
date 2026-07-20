@@ -38,6 +38,7 @@ import {
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
   type UiLocale,
 } from "@/lib/locale"
@@ -443,6 +444,7 @@ async function renderOneSegment(shape: {
       <WatchHomeExperiencePage
         heroModel={heroResult.data}
         blocks={builderBlocks}
+        languageSlug={slug}
       />
     )
   }
@@ -480,6 +482,9 @@ async function renderOneSegment(shape: {
             key={key}
             section={block}
             routeVideo={routeVideo}
+            languageSlug={
+              publicWatchAudioLanguageSlugForLocale(locale) ?? "english"
+            }
           />
         )
       })}
@@ -742,6 +747,7 @@ async function renderVideo(shape: {
             key={key}
             section={block}
             routeVideo={routeVideo}
+            languageSlug={rawLocale}
           />
         )
       })}

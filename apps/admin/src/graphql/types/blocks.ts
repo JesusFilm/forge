@@ -47,6 +47,7 @@ import type {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  WatchHomeLanguagesBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
@@ -81,6 +82,7 @@ type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
+type WatchHomeLanguagesBlock = z.infer<typeof WatchHomeLanguagesBlockSchema>
 
 type MediaPreviewContext = {
   request: {
@@ -727,6 +729,60 @@ MediaCollectionBlockRef.implement({
     description: t.exposeString("description", { nullable: true }),
     ctaLink: t.exposeString("ctaLink", { nullable: true }),
     ctaLabel: t.exposeString("ctaLabel", { nullable: true }),
+    defaultCollectionSlug: t.string({
+      nullable: true,
+      description:
+        "First visible parent collection slug shared by every linked manual item, in the first item's relation order. Null when items are empty, unlinked, or mixed.",
+      resolve: async (row, _args, ctx) => {
+        if (row.itemsSource !== "manual") return null
+
+        const videoIds = row.items.map((item) => optionalString(item.videoId))
+        if (
+          videoIds.length === 0 ||
+          videoIds.some((videoId) => videoId == null)
+        ) {
+          return null
+        }
+
+        const relationsByItem =
+          await ctx.loaders.videoParentsByChildId.loadMany(
+            videoIds.map((videoId) => ({
+              videoId: videoId as string,
+              visibleOnly: true,
+            })),
+          )
+        const parentIdsByItem: string[][] = []
+        for (const relations of relationsByItem) {
+          if (relations instanceof Error || relations.length === 0) return null
+          parentIdsByItem.push(relations.map((relation) => relation.parentId))
+        }
+
+        const parentIds = Array.from(new Set(parentIdsByItem.flat()))
+        const parents = await ctx.loaders.videoById.loadMany(parentIds)
+        const slugByParentId = new Map<string, string>()
+        parents.forEach((parent, index) => {
+          if (parent instanceof Error || parent == null || parent.deletedAt) {
+            return
+          }
+          const slug = optionalString(parent.slug)
+          const parentId = parentIds[index]
+          if (slug && parentId) slugByParentId.set(parentId, slug)
+        })
+
+        const parentSlugsByItem = parentIdsByItem.map((ids) =>
+          ids.flatMap((id) => {
+            const slug = slugByParentId.get(id)
+            return slug ? [slug] : []
+          }),
+        )
+        const firstItemParentSlugs = parentSlugsByItem[0] ?? []
+        return (
+          firstItemParentSlugs.find((candidate) =>
+            parentSlugsByItem.every((slugs) => slugs.includes(candidate)),
+          ) ?? null
+        )
+      },
+    }),
     showItemNumbers: t.exposeBoolean("showItemNumbers"),
     footerText: t.exposeString("footerText", { nullable: true }),
     items: t.field({
@@ -989,6 +1045,18 @@ WatchHomeHeroBlockRef.implement({
   }),
 })
 
+const WatchHomeLanguagesBlockRef = builder.objectRef<WatchHomeLanguagesBlock>(
+  "WatchHomeLanguagesBlock",
+)
+WatchHomeLanguagesBlockRef.implement({
+  description:
+    "Top-level placeholder that renders the Web-owned Watch Home language library feature.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+  }),
+})
+
 const ContainerSlotBlockRef =
   builder.objectRef<ContainerSlotBlock>("ContainerSlotBlock")
 ContainerSlotBlockRef.implement({
@@ -1114,6 +1182,7 @@ export const T_TO_TYPENAME = {
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
   watchHomeHero: "WatchHomeHeroBlock",
+  watchHomeLanguages: "WatchHomeLanguagesBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
   string
@@ -1140,7 +1209,7 @@ function resolveBlockTypename(value: { t: string }): BlockTypename {
   return typename
 }
 
-// Unions — 17 top-level members. Excludes `quizButton` (section-only) and
+// Unions — 19 top-level members. Excludes `quizButton` (section-only) and
 // `containerSlot` (container-only).
 export const ExperienceBlock = builder.unionType("ExperienceBlock", {
   description:
@@ -1164,6 +1233,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
     WatchHomeHeroBlockRef,
+    WatchHomeLanguagesBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),
 })

@@ -276,7 +276,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock | WatchHomeLanguagesBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -758,6 +758,10 @@ type MediaCollectionBlock {
   categoryLabel: String
   ctaLabel: String
   ctaLink: String
+  """
+  First visible parent collection slug shared by every linked manual item, in the first item's relation order. Null when items are empty, unlinked, or mixed.
+  """
+  defaultCollectionSlug: String
   description: String
   footerText: String
   imageAssetId: String
@@ -1752,6 +1756,14 @@ enum WatchEventType {
 
 """Top-level placeholder that renders the Web-owned Watch Home hero."""
 type WatchHomeHeroBlock {
+  sectionKey: String
+  t: String
+}
+
+"""
+Top-level placeholder that renders the Web-owned Watch Home language library feature.
+"""
+type WatchHomeLanguagesBlock {
   sectionKey: String
   t: String
 }

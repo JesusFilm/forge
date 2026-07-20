@@ -74,6 +74,7 @@ function isHexColor(value: unknown) {
 type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
@@ -81,7 +82,7 @@ type SectionContentItem = NonNullable<
   NonNullable<SectionData["sectionContent"]>[number]
 >
 
-export function Section({ data, routeVideo }: SectionProps) {
+export function Section({ data, routeVideo, languageSlug }: SectionProps) {
   const {
     id,
     sectionKey,
@@ -107,6 +108,7 @@ export function Section({ data, routeVideo }: SectionProps) {
         key={`section-${id ?? index}-${index}`}
         item={item as SectionContentItem}
         routeVideo={routeVideo}
+        languageSlug={languageSlug}
       />
     ) : null,
   )
@@ -199,9 +201,11 @@ export function Section({ data, routeVideo }: SectionProps) {
 function SectionContentRenderer({
   item,
   routeVideo,
+  languageSlug,
 }: {
   item: SectionContentItem
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
@@ -213,6 +217,7 @@ function SectionContentRenderer({
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsVideo":
@@ -241,6 +246,7 @@ function SectionContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsQuizButton":
@@ -276,6 +282,7 @@ function SectionContentRenderer({
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "VideoBlock":
@@ -322,6 +329,7 @@ function SectionContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "NavigationCarouselBlock":

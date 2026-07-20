@@ -5,7 +5,7 @@
  * The current Web-owned hero remains static and is represented by the
  * `watchHomeHero` placeholder block. Below-hero rows become explicit
  * `mediaCollection` blocks whose items reference Admin Video ids resolved
- * from the existing Core ids.
+ * from the existing Core ids, followed by the static language-library feature.
  *
  * Usage:
  *   DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
@@ -442,6 +442,10 @@ async function main(): Promise<void> {
             return video ? [buildMediaItem(video)] : []
           }),
       })),
+      {
+        t: "watchHomeLanguages",
+        sectionKey: "watch-home-languages",
+      },
       WATCH_HOME_PROMO_SECTION,
     ])
 
