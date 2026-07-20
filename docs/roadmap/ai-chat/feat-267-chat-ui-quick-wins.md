@@ -3,7 +3,7 @@ id: "feat-267"
 title: "Chat UI quick wins: cursor affordance, focus ring, tab identity, mobile hint"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-15"
 duration: 1
 depends_on: []
@@ -11,6 +11,16 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-20 via [PR #1617](https://github.com/JesusFilm/forge/pull/1617) (`feat(chat): ui quick wins + composer scroll-clip fix (feat-267)`).
+
+**What landed.** All five fixes from the 2026-07-15 browser audit, in one PR: the `@layer base` cursor/focus-ring rules, tab title + SVG favicon, the md-gated keyboard hint, and the composer moved inside the scroller as a sticky overlay (fixing the ~100px transcript clip). The sticky restructure was review-hardened before merge — a multi-reviewer pass with a cross-model adversarial reviewer caught two P2s in the first cut (click-through over the band's opaque zones; keyboard focus parking behind the band), fixed via the transparent-zone-scoped `pointer-events` split and `[scroll-padding-bottom:13rem]`. Verified by browser hit-testing (`elementFromPoint`) and a focus-probe rect check at both 1440x900 and 390x844; jsdom cannot express either failure mode.
+
+**Compound docs.** [sticky-overlay-scroll-container-pointer-events-scroll-padding](../../solutions/ui-bugs/sticky-overlay-scroll-container-pointer-events-scroll-padding.md) — the general law (scoped click-through + scroll-padding, both jsdom-invisible) with the detection recipes.
+
+**Residual risk / follow-ups.** iOS Safari real-device check outstanding (emulated 390x844 only; `interactiveWidget` is ignored there). Safari shows no favicon (SVG-only) — PNG fallback is [feat-270](feat-270-chat-ui-cleanup-batch.md) item 8, blocked on an asset from the owner. The composer auto-grow overlay residual is feat-270 item 7. The rest of the audit backlog: [feat-268](feat-268-chat-assistant-markdown-rendering.md), [feat-269](feat-269-chat-sources-presentation.md), [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md).
 
 ## Problem
 
