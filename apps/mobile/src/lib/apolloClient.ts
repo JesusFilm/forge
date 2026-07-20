@@ -11,6 +11,7 @@ import { getApiToken, getGraphQLUrl } from "./config"
 import { authHeadersForOperation } from "./authHeaders"
 import { getViewerId } from "./viewer-id"
 import {
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER,
   datadogGraphqlHeaders,
   datadogLog,
   isDatadogProvisioned,
@@ -18,6 +19,32 @@ import {
 } from "./datadog"
 
 const REQUEST_TIMEOUT_MS = 15_000
+
+// Read the Datadog op-name attribution header back off the request init so the
+// timeout marker can say WHICH operation blew the budget (feat-268). Only the
+// bounded op name is logged — never URLs, variables, or other header values.
+function operationNameFromInit(init?: RequestInit): string {
+  try {
+    const headers = init?.headers
+    if (!headers) return "anonymous"
+    if (typeof (headers as Headers).get === "function") {
+      return (
+        (headers as Headers).get(DATADOG_GRAPH_QL_OPERATION_NAME_HEADER) ??
+        "anonymous"
+      )
+    }
+    const wanted = DATADOG_GRAPH_QL_OPERATION_NAME_HEADER.toLowerCase()
+    const entries = Array.isArray(headers)
+      ? headers
+      : Object.entries(headers as Record<string, string>)
+    const hit = entries.find(([name]) => name.toLowerCase() === wanted)
+    return hit?.[1] ?? "anonymous"
+  } catch {
+    // Telemetry must never break the app; an unreadable shape loses only
+    // attribution.
+    return "anonymous"
+  }
+}
 
 // Exported for the timeout-marker test.
 export const fetchWithTimeout = (
@@ -32,6 +59,7 @@ export const fetchWithTimeout = (
     if (isDatadogProvisioned()) {
       datadogLog.warn("graphql.client_timeout_abort", {
         budget_ms: REQUEST_TIMEOUT_MS,
+        operation: operationNameFromInit(init),
       })
     }
     controller.abort()
