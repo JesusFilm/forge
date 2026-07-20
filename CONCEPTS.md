@@ -410,6 +410,12 @@ A bounded window of a catalog video that Showcase Mode plays in place of the who
 
 The titled card Showcase Mode shows when entering a felt-need chapter, naming the need the chapter answers. It doubles as the buffer window: the player is held paused but loaded behind it, so the next excerpt is fetching while the card is on screen. A card that lifts before its excerpt has loaded therefore exposes the gap it exists to cover.
 
+The card dissolves in only when live video is beneath it; entered from any covered or empty state it appears already opaque, and once shown it never returns to transparency while up. Its exits dissolve out to the next excerpt's cover — except under reduced motion, where every seam cuts instead of fading.
+
+### Covered Swap
+
+A reel source change performed while a full-screen overlay — a chapter card or stat interstitial — covers the player. Everything beneath the overlay holds still until the overlay is fully opaque, then changes silently under it, so a dissolving overlay never reveals a layer mid-change. Its counterpart, the visible seam between two excerpts, masks the swap with the poster dissolving over the outgoing frame instead.
+
 ### Language Centerpiece
 
 The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs roughly every ten seconds, naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
