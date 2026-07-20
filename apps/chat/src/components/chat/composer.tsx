@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useId, useRef } from "react"
+import { useEffect, useId, useRef, type RefObject } from "react"
+
+import { ArrowUpIcon, StopIcon } from "@/components/shell/icons"
 
 type ComposerProps = {
   draft: string
@@ -11,34 +13,43 @@ type ComposerProps = {
    * not loaded — only the SEND action is blocked (the textarea stays editable
    * so the draft survives), with a visible per-state reason. */
   sendBlockedReason?: "loading" | "unavailable" | null
+  /** feat-270: lets the shell focus the textarea imperatively (e.g. the
+   * New-conversation action landing on the already-empty pane). */
+  textareaRef?: RefObject<HTMLTextAreaElement | null>
   onChange: (value: string) => void
   onSend: (text: string) => void
+  /** feat-270: aborts the in-flight reply. The stop control renders only
+   * while `pending` — the R22 blocked states keep the plain disabled send. */
+  onStop?: () => void
 }
 
-// The composer card. The send affordance is a 12px Vesper dot inside a 44px
-// touch target — no paper-airplane icon, per the Vigil iconography rules.
+// The composer card. The send slot is a 44px target: a directional Vesper
+// arrow when a draft is ready, a dim dot otherwise, and a stop control while
+// a reply is in flight (feat-270).
 export function Composer({
   draft,
   pending,
   placeholder,
   seekerEnabled = false,
   sendBlockedReason = null,
+  textareaRef,
   onChange,
   onSend,
+  onStop = () => {},
 }: ComposerProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const localTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const blockedHintId = useId()
 
   // Auto-grow the textarea up to a ceiling, like the design kit's Composer.
   useEffect(() => {
-    const el = textareaRef.current
+    const el = localTextareaRef.current
     if (!el) return
     el.style.height = "auto"
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`
   }, [draft])
 
   useEffect(() => {
-    if (!pending) textareaRef.current?.focus()
+    if (!pending) localTextareaRef.current?.focus()
   }, [pending])
 
   const sendBlocked = sendBlockedReason !== null
@@ -55,7 +66,10 @@ export function Composer({
     >
       <div className="flex items-end gap-3.5">
         <textarea
-          ref={textareaRef}
+          ref={(el) => {
+            localTextareaRef.current = el
+            if (textareaRef) textareaRef.current = el
+          }}
           aria-label="Message"
           aria-describedby={sendBlocked ? blockedHintId : undefined}
           placeholder={placeholder}
@@ -76,21 +90,35 @@ export function Composer({
           }}
           className="max-h-[200px] min-h-7 flex-1 resize-none bg-transparent py-1.5 text-base leading-relaxed text-linen caret-lamplight outline-none placeholder:text-ash disabled:opacity-50"
         />
-        <button
-          type="submit"
-          aria-label="Send"
-          disabled={!canSend}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full transition-colors duration-300 hover:bg-vesper/15 disabled:cursor-not-allowed"
-        >
-          <span
-            className={`size-3 rounded-full transition-colors duration-300 ${
-              canSend ? "bg-vesper" : "bg-vesper/55"
-            }`}
-          />
-        </button>
+        {pending ? (
+          <button
+            type="button"
+            aria-label="Stop generating"
+            onClick={onStop}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full text-vesper transition-colors duration-300 hover:bg-vesper/15"
+          >
+            <StopIcon className="size-5" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            aria-label="Send"
+            disabled={!canSend}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full transition-colors duration-300 hover:bg-vesper/15 disabled:cursor-not-allowed"
+          >
+            {canSend ? (
+              <ArrowUpIcon className="size-5 text-vesper" />
+            ) : (
+              <span className="size-3 rounded-full bg-vesper/55" />
+            )}
+          </button>
+        )}
       </div>
       <div className="mt-2.5 flex items-center justify-between border-t border-linen/5 pt-2.5 text-xs text-ash">
-        <span>Enter to send · Shift + Enter for a new line</span>
+        {/* Keyboard-only hint — meaningless on touch, so hidden below md. */}
+        <span className="hidden md:inline">
+          Enter to send · Shift + Enter for a new line
+        </span>
         {sendBlocked ? (
           // Visually distinct from the reply-pending disabled state (Vesper,
           // not Ash) and referenced from the textarea via aria-describedby.

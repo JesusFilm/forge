@@ -10,11 +10,14 @@ import { useTranslations } from "next-intl"
 
 import { FloatingSearchFieldInput } from "./FloatingSearchField"
 import {
-  FLOATING_HEADER_GAP_CLASS,
-  FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
-  FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+  FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -27,6 +30,7 @@ type SearchOverlayInstantShellProps = {
   setOpen: (open: boolean) => void
   headerTopClass: string
   logoSlotClass: string
+  headerLanguageControlVisible: boolean
 }
 
 export function SearchOverlayInstantShell({
@@ -37,6 +41,7 @@ export function SearchOverlayInstantShell({
   setOpen,
   headerTopClass,
   logoSlotClass,
+  headerLanguageControlVisible,
 }: SearchOverlayInstantShellProps) {
   const t = useTranslations("SearchOverlay")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -87,10 +92,18 @@ export function SearchOverlayInstantShell({
     >
       <div
         data-testid="search-overlay-instant-top-bar"
-        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-start ${FLOATING_HEADER_GAP_CLASS}`}
+        className={`pointer-events-none absolute ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-10 ${FLOATING_MODAL_HEADER_LAYOUT_CLASS}`}
       >
-        <div aria-hidden="true" className={logoSlotClass} />
-        <div className="pointer-events-auto min-w-0 flex-1">
+        <div
+          aria-hidden="true"
+          className={`${logoSlotClass} ${FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS}`}
+        />
+        <div
+          data-testid="search-overlay-instant-field-shell"
+          className={`pointer-events-auto min-w-0 flex-1 ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
+            headerLanguageControlVisible ? "" : "col-span-2"
+          }`}
+        >
           <FloatingSearchFieldInput
             ref={inputRef}
             value={query}
@@ -106,10 +119,16 @@ export function SearchOverlayInstantShell({
         <div
           aria-hidden="true"
           data-testid="search-overlay-instant-trailing-controls-spacer"
-          className={FLOATING_HEADER_TRAILING_GROUP_CLASS}
+          className={FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS}
         >
-          <span className={FLOATING_HEADER_LANGUAGE_SLOT_CLASS} />
-          <span className={FLOATING_HEADER_TRAILING_SLOT_CLASS} />
+          {headerLanguageControlVisible ? (
+            <span
+              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS}`}
+            />
+          ) : null}
+          <span
+            className={`${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS}`}
+          />
         </div>
       </div>
 

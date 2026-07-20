@@ -19,9 +19,15 @@ export function logShowcaseFallback(args: {
  * action-name privacy rule applies to log context too.
  */
 export function logShowcaseParseDrops(drops: ShowcaseParseDrops): void {
-  if (drops.items === 0 && drops.chapters === 0) return
+  if (
+    drops.items === 0 &&
+    drops.chapters === 0 &&
+    drops.extraLanguageMarkers === 0
+  )
+    return
   datadogLog.warn("showcase_experience_drops", {
     dropped_items: drops.items,
     dropped_chapters: drops.chapters,
+    extra_language_markers: drops.extraLanguageMarkers,
   })
 }

@@ -5,7 +5,6 @@ import { adminGraphql } from "@forge/admin-graphql"
 
 import client from "@/lib/admin-client"
 
-import { isWatchAlgoliaSearchEnabled } from "./feature-flags"
 import {
   parseAcceptLanguage,
   publicWatchAudioLanguageSlugForLocale,
@@ -81,7 +80,6 @@ export async function getSearchLanguageOptions(
 ): Promise<
   | {
       ok: true
-      algoliaEnabled: boolean
       options: SearchLanguageOption[]
       countrySuggestion: SearchLanguageCountrySuggestion | null
       recommendedLanguage: SearchLanguageOption | null
@@ -90,7 +88,6 @@ export async function getSearchLanguageOptions(
     }
   | {
       ok: false
-      algoliaEnabled: boolean
       options: []
       countrySuggestion: null
       recommendedLanguage: null
@@ -102,12 +99,7 @@ export async function getSearchLanguageOptions(
       }
     }
 > {
-  const [algoliaEnabled, requestHeaders] = await Promise.all([
-    isWatchAlgoliaSearchEnabled({
-      custom: { surface: "floating-search-modal" },
-    }),
-    readRequestHeaders(),
-  ])
+  const requestHeaders = await readRequestHeaders()
   const countryCode = readCountryCode(requestHeaders)
   const acceptLanguage = requestHeaders?.get("accept-language") ?? null
   const countryName = countryCode ? countryNameFromCode(countryCode) : null
@@ -124,7 +116,6 @@ export async function getSearchLanguageOptions(
 
     return {
       ok: true,
-      algoliaEnabled,
       options: result.options,
       countrySuggestion: result.countrySuggestion,
       recommendedLanguage: recommendedLanguageOption({
@@ -140,7 +131,6 @@ export async function getSearchLanguageOptions(
     )
     return {
       ok: false,
-      algoliaEnabled,
       options: [],
       countrySuggestion: null,
       recommendedLanguage: null,

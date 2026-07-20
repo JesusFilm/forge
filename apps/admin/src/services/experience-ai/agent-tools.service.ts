@@ -24,7 +24,7 @@
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
-import { HybridSearchService } from "@/services/hybrid-search.service"
+import { WatchSearchService } from "@/services/watch-search.service"
 import { pickLocalisedName } from "./citation-reference"
 
 // ---------------------------------------------------------------------------
@@ -60,12 +60,16 @@ export async function searchVideosForAgent(
   prisma: PrismaClient,
   input: SearchVideosRequest,
 ): Promise<{ videos: AgentVideoResult[] }> {
-  const service = new HybridSearchService({ prisma })
+  const service = new WatchSearchService(prisma)
+  const targetLanguageSlug = await languageSlugForLocale(prisma, input.locale)
   const response = await service.search({
     query: input.q,
-    locale: input.locale,
+    targetLanguageSlug,
+    displayLanguageSlug: targetLanguageSlug,
+    routeLanguageSlug: targetLanguageSlug,
+    acceptLanguage: input.locale,
     limit: input.limit,
-    contentTypes: ["video"],
+    resultTypes: ["video"],
   })
 
   const videos = response.results
@@ -76,12 +80,23 @@ export async function searchVideosForAgent(
     .map((result) => ({
       videoId: result.id,
       title: result.title,
-      snippet: result.snippet,
+      snippet: result.snippet ?? "",
       slug: result.slug,
       imageUrl: result.imageUrl,
     }))
 
   return { videos }
+}
+
+async function languageSlugForLocale(
+  prisma: PrismaClient,
+  locale: string,
+): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: { bcp47: locale, deletedAt: null, slug: { not: null } },
+    select: { slug: true },
+  })
+  return language?.slug ?? null
 }
 
 // ---------------------------------------------------------------------------

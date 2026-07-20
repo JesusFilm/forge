@@ -130,7 +130,7 @@ describe("defaultHrefBuilder", () => {
     )
   })
 
-  it("uses a result language slug when Algolia search resolves one", () => {
+  it("uses a result language slug when watch search resolves one", () => {
     expect(
       defaultHrefBuilder(
         makeResult({ slug: "jesus", languageSlug: "spanish-castilian" }),
@@ -240,6 +240,29 @@ describe("pickCardPill", () => {
 })
 
 describe("VideoCard", () => {
+  it("does not render watchability as a visible badge on search cards", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            availabilityKind: "target_audio",
+            availabilityLanguageEnglishName: "Russian",
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).toBeNull()
+  })
+
   it("keeps the result card stable while zooming the media layer on hover", () => {
     container = document.createElement("div")
     document.body.appendChild(container)
@@ -342,7 +365,7 @@ describe("buildWatchSearchResultClickRumContext", () => {
       }),
       {
         position: 3,
-        resultSource: "algolia",
+        resultSource: "watch-search",
         routeLanguageSlug: "english",
         searchLanguageEnglishName: "Spanish, Castilian",
         searchLanguageSlug: "spanish-castilian",
@@ -354,7 +377,7 @@ describe("buildWatchSearchResultClickRumContext", () => {
       "watch_search.result_id": "video_1",
       "watch_search.result_position": 3,
       "watch_search.result_slug": "jesus",
-      "watch_search.result_source": "algolia",
+      "watch_search.result_source": "watch-search",
       "watch_search.result_title": "JESUS",
       "watch_search.route_language_slug": "english",
       "watch_search.search_language_english_name": "Spanish, Castilian",

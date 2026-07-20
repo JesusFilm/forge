@@ -11,15 +11,16 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { AppState, StyleSheet, View } from "react-native"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import { getApolloClient } from "../../lib/apolloClient"
 import {
   addDatadogTiming,
+  datadogLog,
   isDatadogProvisioned,
   reportDatadogAction,
 } from "../../lib/datadog"
 import { GET_WATCH_EXPERIENCE } from "../../lib/queries"
-import { initialRotationState } from "../../lib/showcaseMode/languageRotation"
 import {
   CHAPTER_CARD_DURATION_MS,
   INITIAL_REEL_STATE,
@@ -33,6 +34,7 @@ import {
   type ReelEvent,
   type ReelState,
 } from "../../lib/showcaseMode/reelState"
+import { buildHopSchedule } from "../../lib/showcaseMode/hopSchedule"
 import {
   buildFallbackChapters,
   parseShowcaseExperience,
@@ -169,6 +171,7 @@ export function ShowcaseScreen() {
   const routeParams = useLocalSearchParams()
   const { setDecoderClaimed } = useVideoPlayerContext()
   const { model, loading: poolLoading } = useWatchHome()
+  const { audioLanguageSlug } = useWatchPreferences()
   const [state, dispatch] = useReducer(reelReducer, INITIAL_REEL_STATE)
   const [stream, setStream] = useState<ShowcaseStream | null>(null)
   /** R9's live claim, for the video the reel is on. Null when it can't support one. */
@@ -181,7 +184,9 @@ export function ShowcaseScreen() {
   const stateRef = useRef<ReelState>(state)
   const modelRef = useRef(model)
   const mountedRef = useRef(true)
-  const rotationRef = useRef(initialRotationState)
+  // Read live at excerpt-resolution time so a mid-reel language change applies from the
+  // NEXT excerpt without restarting the current one (it stays out of the effect's deps).
+  const audioLanguageSlugRef = useRef(audioLanguageSlug)
   const requestIdRef = useRef(0)
 
   // R15: one report each per mounted session. Latches rather than booleans, so a
@@ -212,6 +217,10 @@ export function ShowcaseScreen() {
   useEffect(() => {
     modelRef.current = model
   }, [model])
+
+  useEffect(() => {
+    audioLanguageSlugRef.current = audioLanguageSlug
+  }, [audioLanguageSlug])
 
   useEffect(() => {
     // Setup restores what cleanup mutates: StrictMode remounts this same hook
@@ -335,10 +344,20 @@ export function ShowcaseScreen() {
   // R17: resolve the target excerpt's stream. Keyed on the token, which changes
   // exactly when the target does — including a one-item reel looping onto itself.
   const excerpt = currentExcerpt(state)
-  const isFirstOfChapter = state.excerptIndex === 0
+  const chapter = currentChapter(state)
+  // KTD-5: the centerpiece is the marked chapter's first excerpt (U3). It plays as a
+  // hop plan instead of an ordinary stream.
+  const isCenterpieceExcerpt =
+    excerpt != null &&
+    chapter?.languageChapter?.centerpieceExcerptId === excerpt.id
+  const inHopMode = state.hop != null
   useEffect(() => {
     if (excerpt == null) return
+    // In hop mode the hop-projection effect owns the stream; this effect only resolves
+    // ordinary excerpts and builds the centerpiece's one-time plan.
+    if (inHopMode) return
     let cancelled = false
+    const token = state.excerptToken
     const baseFetch = createShowcaseVideoFetcher(
       getApolloClient(),
       "cache-first",
@@ -352,10 +371,33 @@ export function ShowcaseScreen() {
       return video
     }
     void (async () => {
+      if (isCenterpieceExcerpt) {
+        // Build the hop plan from the centerpiece's dubs. Math.random is injected HERE —
+        // the screen is the composition root where nondeterminism lives; buildHopSchedule
+        // stays pure. A null plan (too few languages / too short) falls through to play
+        // the centerpiece as an ordinary excerpt (AE4/AE5 degradation).
+        let video
+        try {
+          video = await fetchVideo(excerpt.slug)
+        } catch {
+          // The module's only I/O degrade without its own signal: without this an
+          // operator can't tell a failed probe from a too-few-languages centerpiece.
+          datadogLog.warn("showcase_centerpiece_probe_failed", {})
+          video = null
+        }
+        if (cancelled || !mountedRef.current) return
+        const plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+        if (plan != null) {
+          dispatch({ type: "hopPlanResolved", token, plan })
+          return
+        }
+        // Fall through: a successful probe left the video cached for resolveExcerptStream;
+        // a thrown fetch retries once there (bounded — the failure path already skips).
+      }
       const resolved = await resolveExcerptStream({
         excerpt,
-        // R7 scopes language rotation to the chapter, so entry resets it.
-        rotation: isFirstOfChapter ? initialRotationState : rotationRef.current,
+        // Ref, not a dep: a preference change mid-reel applies from the next excerpt.
+        viewerLanguageSlug: audioLanguageSlugRef.current,
         fetchVideo,
       })
       if (cancelled || !mountedRef.current) return
@@ -365,14 +407,32 @@ export function ShowcaseScreen() {
         dispatch({ type: "excerptFailed" })
         return
       }
-      rotationRef.current = resolved.rotation
-      setStream(resolved.stream)
+      setStream(resolved)
       setLiveLanguageCount(languageCount)
     })()
     return () => {
       cancelled = true
     }
-  }, [excerpt, isFirstOfChapter, state.excerptToken])
+  }, [excerpt, state.excerptToken, isCenterpieceExcerpt, inHopMode])
+
+  // KTD-5: project the current hop onto the player as its next stream. Same footage,
+  // a different dub — this is the ONE place the reel claims a language (claimsLanguage
+  // true; ExcerptChrome shows nothing when a hop has no display name).
+  useEffect(() => {
+    const hop = state.hop
+    if (hop == null) return
+    const current = hop.hops[hop.index]
+    if (current == null) return
+    setStream({
+      hls: current.hls,
+      languageSlug: current.languageSlug,
+      languageName: current.languageName,
+      muxPlaybackId: current.muxPlaybackId,
+      window: current.window,
+      claimsLanguage: true,
+    })
+    setLiveLanguageCount(hop.hops.length)
+  }, [state.hop])
 
   // R17: warm the next excerpt's stream choice AND its poster while the current one
   // plays. Data only — a second buffering player is the expo-video leak trigger
@@ -460,6 +520,16 @@ export function ShowcaseScreen() {
     }
   }, [])
 
+  // Presentation-only seam signal: the dissolve-in is reserved for the video→card
+  // seam. From resolving/stills/interstitial the card mounts opaque — beneath is a
+  // dark stage or a covered poster, and a dissolve would flash the thumbnail through.
+  const lastPhaseRef = useRef(state.phase)
+  const cardEntersOpaque =
+    state.phase === "chapterCard" && lastPhaseRef.current !== "excerpt"
+  useEffect(() => {
+    lastPhaseRef.current = state.phase
+  }, [state.phase])
+
   // R12: a press must exit from every phase, including the resolving window, so this
   // is an unconditional sibling rather than one of OverlaySlot's branches.
   const handleExit = useCallback(() => {
@@ -469,14 +539,16 @@ export function ShowcaseScreen() {
     dispatch({ type: "exit" })
   }, [])
 
-  const chapter = currentChapter(state)
-
   return (
     <View style={styles.screen}>
       <ReelPlayer
         stream={stream}
         posterUrl={excerpt?.posterUrl ?? null}
         excerptToken={state.excerptToken}
+        // KTD-5: a hop past the opener is a same-footage continuation — mask its swap
+        // with the dip over the live frame, not the poster. The opener (index 0) and
+        // the exit past the centerpiece are ordinary poster-masked seams.
+        hopSwap={state.hop != null && state.hop.index > 0}
         // Cards and interstitials keep the player loaded but silent, so the card
         // doubles as the next excerpt's buffer window instead of bleeding its audio.
         active={state.phase === "excerpt"}
@@ -491,6 +563,7 @@ export function ShowcaseScreen() {
         excerpt={excerpt}
         stream={stream}
         liveLanguageCount={liveLanguageCount}
+        cardEntersOpaque={cardEntersOpaque}
       />
     </View>
   )
@@ -504,6 +577,8 @@ type OverlaySlotProps = {
   excerpt: ShowcaseExcerpt | null
   stream: ShowcaseStream | null
   liveLanguageCount: number | null
+  /** The card follows the interstitial this commit — mount it opaque (same stage). */
+  cardEntersOpaque: boolean
 }
 
 /** Every reel phase's presentation. A pure projection of state — no decisions here. */
@@ -513,6 +588,7 @@ function OverlaySlot({
   excerpt,
   stream,
   liveLanguageCount,
+  cardEntersOpaque,
 }: OverlaySlotProps) {
   switch (state.phase) {
     case "resolving":
@@ -536,6 +612,7 @@ function OverlaySlot({
             chapters.slice(0, state.chapterIndex).filter(plays).length + 1
           }
           total={chapters.filter(plays).length}
+          entersOpaque={cardEntersOpaque}
         />
       )
     }

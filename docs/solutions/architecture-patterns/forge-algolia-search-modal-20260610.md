@@ -1,7 +1,7 @@
 ---
 title: "Forge Algolia Search Modal Pattern"
 date: 2026-06-10
-last_updated: 2026-06-10
+last_updated: 2026-07-17
 category: architecture-patterns
 module: apps/web search modal
 problem_type: architecture_pattern
@@ -41,7 +41,7 @@ Forge needed to reuse Core Watch's Algolia video search without replacing the ex
 - Normalize client-supplied language facet names at the server boundary: trim, dedupe, cap count, and cap label length before building Algolia filters.
 - Apply the same selected-language cap in the UI. The modal should not display a ninth selected chip when the server will only apply the first eight filters.
 - Return fixed public semantic-search errors from the server action and log sanitized details server-side only. Do not serialize raw admin/Apollo diagnostics to the browser.
-- New overlay copy should go through the existing `SearchOverlay` message namespace and message parity tests, even if untranslated locale files initially receive English fallback text.
+- New overlay copy should go through the existing `SearchOverlay` message namespace and message parity tests. Catalogs claimed as translated must not silently retain English fallback text; any unavoidable fallback must remain explicitly provisional until verified target-language copy is available.
 
 ## Files
 
@@ -67,3 +67,4 @@ Forge needed to reuse Core Watch's Algolia video search without replacing the ex
 - `docs/brainstorms/2026-06-10-forge-algolia-search-modal-requirements.md`
 - `docs/plans/2026-06-10-001-feat-forge-algolia-search-modal-plan.md`
 - `docs/roadmap/content-discovery/feat-172-forge-algolia-search-modal.md`
+- `docs/solutions/ui-bugs/machine-translated-ui-catalog-wrong-language-validation-gap.md`

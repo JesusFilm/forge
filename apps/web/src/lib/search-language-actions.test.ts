@@ -20,14 +20,9 @@ vi.mock("@/lib/admin-client", () => ({
   },
 }))
 
-vi.mock("./feature-flags", () => ({
-  isWatchAlgoliaSearchEnabled: vi.fn(),
-}))
-
 import client from "@/lib/admin-client"
 import { headers } from "next/headers"
 
-import { isWatchAlgoliaSearchEnabled } from "./feature-flags"
 import {
   getSearchLanguageCatalogOptions,
   getSearchLanguageOptions,
@@ -35,7 +30,6 @@ import {
 
 const queryMock = vi.mocked(client.query)
 const headersMock = vi.mocked(headers)
-const flagMock = vi.mocked(isWatchAlgoliaSearchEnabled)
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
 const englishLanguage = {
@@ -69,7 +63,7 @@ describe("getSearchLanguageOptions", () => {
     consoleError.mockRestore()
   })
 
-  it("loads the catalog without search-only request or feature-flag work", async () => {
+  it("loads the catalog without request-specific header work", async () => {
     queryMock.mockResolvedValueOnce({
       data: {
         languages: [englishLanguage, spanishLanguage],
@@ -84,12 +78,10 @@ describe("getSearchLanguageOptions", () => {
         publicSlug: "spanish-castilian",
       },
     ])
-    expect(flagMock).not.toHaveBeenCalled()
     expect(headersMock).not.toHaveBeenCalled()
   })
 
-  it("loads language metadata when the Algolia flag is off", async () => {
-    flagMock.mockResolvedValueOnce(false)
+  it("loads language metadata", async () => {
     queryMock.mockResolvedValueOnce({
       data: {
         languages: [englishLanguage, spanishLanguage],
@@ -99,7 +91,6 @@ describe("getSearchLanguageOptions", () => {
 
     await expect(getSearchLanguageOptions()).resolves.toMatchObject({
       ok: true,
-      algoliaEnabled: false,
       options: [
         {
           englishName: "English",
@@ -122,7 +113,6 @@ describe("getSearchLanguageOptions", () => {
   })
 
   it("builds facet-limited options, country suggestions, and a recommended language", async () => {
-    flagMock.mockResolvedValueOnce(true)
     queryMock.mockResolvedValueOnce({
       data: {
         languages: [englishLanguage, spanishLanguage],
@@ -161,7 +151,6 @@ describe("getSearchLanguageOptions", () => {
       }),
     ).resolves.toMatchObject({
       ok: true,
-      algoliaEnabled: true,
       countryCode: "US",
       countryName: "United States",
       options: [
@@ -194,7 +183,6 @@ describe("getSearchLanguageOptions", () => {
   })
 
   it("falls back to the browser language when there is no country language suggestion", async () => {
-    flagMock.mockResolvedValueOnce(true)
     headersMock.mockResolvedValueOnce(
       new Headers({
         "accept-language": "es-ES,es;q=0.9,en;q=0.8",
@@ -218,7 +206,6 @@ describe("getSearchLanguageOptions", () => {
   })
 
   it("returns a safe error when admin language metadata fails", async () => {
-    flagMock.mockResolvedValueOnce(true)
     queryMock.mockResolvedValueOnce({
       data: undefined,
       error: new Error("secret token leaked in upstream diagnostics\nstack"),
@@ -226,7 +213,6 @@ describe("getSearchLanguageOptions", () => {
 
     await expect(getSearchLanguageOptions()).resolves.toMatchObject({
       ok: false,
-      algoliaEnabled: true,
       options: [],
       countrySuggestion: null,
       recommendedLanguage: null,

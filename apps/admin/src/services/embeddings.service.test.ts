@@ -478,7 +478,7 @@ describe("generateExperienceEmbeddings (batched)", () => {
 
 describe("generateExperienceEmbedding (singular) — back-compat error contract", () => {
   // The singular wrapper now delegates to the batched form. Back-compat
-  // callers (hybrid-search.service.ts, experienceEmbedding.ts,
+  // callers (watch-search.service.ts, experienceEmbedding.ts,
   // ops-data.ts, search/health/route.ts) catch on the literal message
   // "Embedding input must not be empty" and on the generic Error class
   // (NOT EmbeddingsBatchError). Pin the contract.

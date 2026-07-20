@@ -1,5 +1,8 @@
+import { memo } from "react"
+
 import { type Message, type ReplyFailureReason } from "@/lib/conversations"
 
+import { AssistantMarkdown } from "./assistant-markdown"
 import { SourcesList } from "./sources-list"
 
 type MessageListProps = {
@@ -52,22 +55,17 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled ReplyFailureReason: ${String(value)}`)
 }
 
-// The engine that produced a turn, always rendered on finalized assistant turns
-// (R20) so a Seeker answer is never confusable with a stub one and a conversation
-// never mixes unmarked turns.
+// Visible engine copy renders on STUB turns only (feat-270) — the codename
+// meant nothing to users. R20 distinguishability survives: stub turns are
+// the marked ones; the machine data-engine attribute stays for both engines.
 function EngineMarker({ engine }: { engine: "stub" | "seeker" }) {
-  return (
-    <span
-      data-engine={engine}
-      className="text-xs uppercase tracking-wide text-ash"
-    >
-      {engine === "seeker" ? "Seeker" : "Stub"}
-    </span>
-  )
+  if (engine !== "stub") return null
+  return <span className="text-xs uppercase tracking-wide text-ash">Stub</span>
 }
 
 // The grounding verdict — the signal the dogfood exists to read (R13). Three
-// distinct states: grounded+cited, grounded but no passages cited, ungrounded.
+// distinct states: grounded+cited, grounded but no passages cited, ungrounded
+// — each with a plain-language `title` one-liner (feat-270).
 function GroundedBadge({
   grounded,
   hasSources,
@@ -77,20 +75,32 @@ function GroundedBadge({
 }) {
   if (grounded && hasSources) {
     return (
-      <span data-grounded="cited" className="text-xs text-vellum">
+      <span
+        data-grounded="cited"
+        title="Answer drawn from the cited sources below"
+        className="text-xs text-vellum"
+      >
         Grounded
       </span>
     )
   }
   if (grounded && !hasSources) {
     return (
-      <span data-grounded="no-citations" className="text-xs text-vesper">
+      <span
+        data-grounded="no-citations"
+        title="The answer reports grounding, but no source passages were cited"
+        className="text-xs text-vesper"
+      >
         Grounded · no passages cited
       </span>
     )
   }
   return (
-    <span data-grounded="ungrounded" className="text-xs text-vesper">
+    <span
+      data-grounded="ungrounded"
+      title="No sources were available for this answer"
+      className="text-xs text-vesper"
+    >
       Ungrounded
     </span>
   )
@@ -99,7 +109,9 @@ function GroundedBadge({
 // One assistant turn. Layout order: answer text → metadata row (grounded badge +
 // engine marker) → sources. A streaming turn (pre/mid first token) shows the
 // pulse and lives in an aria-live region so appended text is announced.
-function AssistantTurn({
+// memo: finalized turns keep their message reference across sibling-token
+// re-renders (updateMessage maps in place), so they skip the markdown re-parse.
+const AssistantTurn = memo(function AssistantTurn({
   message,
   streaming,
 }: {
@@ -109,24 +121,25 @@ function AssistantTurn({
   if (streaming) {
     return (
       <li
+        data-message-id={message.id}
         data-pending="true"
         aria-live="polite"
         aria-atomic="false"
-        className="max-w-[560px] text-lg leading-relaxed whitespace-pre-wrap text-linen"
+        className="max-w-[560px] text-lg leading-relaxed text-linen"
       >
-        <span data-message-content>{message.content}</span>
-        <span
-          aria-hidden="true"
-          className="ml-0.5 inline-block h-[1em] w-0.5 translate-y-1 bg-lamplight [animation:vigil-pulse_2s_var(--ease-vigil)_infinite]"
-        />
+        <AssistantMarkdown content={message.content} streaming />
         <span className="sr-only">Replying</span>
       </li>
     )
   }
 
   return (
-    <li className="max-w-[560px] text-lg leading-relaxed whitespace-pre-wrap text-linen">
-      <span data-message-content>{message.content}</span>
+    <li
+      data-message-id={message.id}
+      data-engine={message.engine}
+      className="max-w-[560px] text-lg leading-relaxed text-linen"
+    >
+      <AssistantMarkdown content={message.content} />
       {message.error ? (
         <div className="mt-2 flex flex-col gap-1">
           <p role="alert" className="text-sm text-vesper">
@@ -152,12 +165,13 @@ function AssistantTurn({
       )}
     </li>
   )
-}
+})
 
 /**
- * Renders the conversation. User turns sit in an Embersoot bubble; assistant
- * turns are plain Linen text with their grounding/source/engine metadata. The
- * in-flight assistant turn (matched by `streamingMessageId`) carries the
+ * Renders the conversation. User turns sit in an Embersoot bubble as
+ * React-escaped plain text; assistant turns render hardened markdown
+ * (AssistantMarkdown, feat-268) with their grounding/source/engine metadata.
+ * The in-flight assistant turn (matched by `streamingMessageId`) carries the
  * Lamplight pulse cursor.
  */
 export function MessageList({

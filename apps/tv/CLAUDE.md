@@ -194,6 +194,7 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 
 ## Common Pitfalls
 
+- tvOS silently drops a `player.currentTime` seek issued right after `expo-video`'s `replaceAsync` resolves (item not yet seekable) — no error, playback just starts at 0:00. Any mid-video start needs the self-healing re-seek at the `timeUpdate` choke point (`needsWindowStartSeek` in `reelPlayerGate.ts`); see `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`.
 - Android TV VideoView z-order: renders on top of all RN Views.
 - Focus lost on back-navigation (react-native-tvos #852): Home remembers the focused node (`createFocusMemory`) and re-focuses it via `requestTVFocus()` on `useFocusEffect` re-entry. `hasTVPreferredFocus` is mount-only and does not restore on pop.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.

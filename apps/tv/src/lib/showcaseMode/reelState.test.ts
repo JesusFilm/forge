@@ -1,3 +1,4 @@
+import type { ShowcaseHop } from "./hopSchedule"
 import {
   CHAPTER_CARD_DURATION_MS,
   INITIAL_REEL_STATE,
@@ -81,6 +82,40 @@ const threeChapters = () => [
   chapter("b", ["v3", "v4"]),
   chapter("c", ["v5", "v6"]),
 ]
+
+/** One planned hop, shaped as buildHopSchedule (U5) emits them. */
+function hop(languageSlug: string, start: number, end: number): ShowcaseHop {
+  return {
+    languageSlug,
+    languageName: languageSlug.toUpperCase(),
+    hls: `https://stream/${languageSlug}.m3u8`,
+    muxPlaybackId: `pb-${languageSlug}`,
+    window: { startSeconds: start, endSeconds: end },
+  }
+}
+
+/** English opener then two contiguous hops — the shape the centerpiece executes. */
+const threeHopPlan = (): ShowcaseHop[] => [
+  hop("english", 90, 100),
+  hop("spanish", 100, 110),
+  hop("french", 110, 120),
+]
+
+/** Drives to the centerpiece excerpt (first of chapter a, card lifted). */
+function atCenterpiece(): ReelState {
+  return run(started(curatedQueue(threeChapters())), {
+    type: "cardTimerElapsed",
+  })
+}
+
+/** The screen's role: hand the reducer a plan for the excerpt it is on. */
+function enterHop(state: ReelState, plan: ShowcaseHop[]): ReelState {
+  return reelReducer(state, {
+    type: "hopPlanResolved",
+    token: state.excerptToken,
+    plan,
+  })
+}
 
 // ── Mode start and queue entry ──────────────────────────────────────
 
@@ -694,5 +729,208 @@ describe("selectors", () => {
       "https://img/v5.jpg",
       "https://img/v6.jpg",
     ])
+  })
+})
+
+// ── KTD-5/KTD-6: the language centerpiece plays as a hop plan ────────
+
+describe("hop mode — entering (KTD-5)", () => {
+  it("enters hop mode at index 0 without bumping the token or changing phase", () => {
+    const state = atCenterpiece()
+    const hopped = enterHop(state, threeHopPlan())
+    expect(hopped.hop).toEqual({ hops: threeHopPlan(), index: 0 })
+    // The plan is the FIRST stream for this excerpt's token, so the swap is triggered
+    // by the stream object changing — no token bump, no phase change.
+    expect(hopped.excerptToken).toBe(state.excerptToken)
+    expect(hopped.phase).toBe("excerpt")
+  })
+
+  it("accepts a plan while the chapter card is still up — the card is the buffer window", () => {
+    const card = started(curatedQueue(threeChapters()))
+    expect(card.phase).toBe("chapterCard")
+    const hopped = enterHop(card, threeHopPlan())
+    expect(hopped.hop?.index).toBe(0)
+    expect(hopped.phase).toBe("chapterCard")
+  })
+
+  it("discards a plan built for a stale token — the reel advanced during the async build", () => {
+    const state = atCenterpiece()
+    const stale = reelReducer(state, {
+      type: "hopPlanResolved",
+      token: state.excerptToken - 1,
+      plan: threeHopPlan(),
+    })
+    expect(stale).toBe(state)
+  })
+
+  it("ignores a plan arriving with no excerpt in flight (stills)", () => {
+    const stills = { ...atCenterpiece(), phase: "stills" as const }
+    expect(
+      reelReducer(stills, {
+        type: "hopPlanResolved",
+        token: stills.excerptToken,
+        plan: threeHopPlan(),
+      }),
+    ).toBe(stills)
+  })
+
+  it("drops a plan under two hops — a single segment is an ordinary excerpt, not a hop plan", () => {
+    const state = atCenterpiece()
+    for (const plan of [[], [hop("english", 90, 100)]]) {
+      expect(
+        reelReducer(state, {
+          type: "hopPlanResolved",
+          token: state.excerptToken,
+          plan,
+        }),
+      ).toBe(state)
+    }
+  })
+})
+
+describe("hop mode — advancing on end (KTD-5)", () => {
+  it("advances to the next hop on excerptEnded — new token, breaker untouched", () => {
+    const state = enterHop(atCenterpiece(), threeHopPlan())
+    const next = reelReducer(state, { type: "excerptEnded" })
+    expect(next.hop?.index).toBe(1)
+    expect(next.excerptToken).toBeGreaterThan(state.excerptToken)
+    expect(next.consecutiveFailures).toBe(0)
+    expect(next.phase).toBe("excerpt")
+  })
+
+  it("bumps the token on EVERY hop so the swap/watchdog/chrome re-arm per hop", () => {
+    let state = enterHop(atCenterpiece(), threeHopPlan())
+    const tokens = [state.excerptToken]
+    state = reelReducer(state, { type: "excerptEnded" })
+    tokens.push(state.excerptToken)
+    // The last hop's end leaves hop mode, so stop before it.
+    expect(new Set(tokens).size).toBe(tokens.length)
+    expect(tokens[1]).toBeGreaterThan(tokens[0])
+  })
+
+  it("leaves hop mode and advances the excerpt when the last hop ends, clearing the breaker", () => {
+    let state = enterHop(atCenterpiece(), threeHopPlan())
+    // Carry a prior strike in: a completed centerpiece must clear it like any excerpt.
+    state = { ...state, consecutiveFailures: 1 }
+    state = reelReducer(state, { type: "excerptEnded" }) // 0 -> 1
+    state = reelReducer(state, { type: "excerptEnded" }) // 1 -> 2
+    state = reelReducer(state, { type: "excerptEnded" }) // last hop ends -> exit
+    expect(state.hop).toBeNull()
+    expect(state.consecutiveFailures).toBe(0)
+    expect(currentExcerpt(state)?.coreId).toBe("v2")
+  })
+})
+
+describe("hop mode — failure skips without a strike (KTD-6/AE6)", () => {
+  it("skips to the next hop on excerptFailed WITHOUT tripping the breaker", () => {
+    let state = enterHop(atCenterpiece(), threeHopPlan())
+    state = reelReducer(state, { type: "excerptFailed" }) // 0 -> 1
+    expect(state.hop?.index).toBe(1)
+    expect(state.consecutiveFailures).toBe(0)
+    state = reelReducer(state, { type: "excerptFailed" }) // 1 -> 2
+    expect(state.hop?.index).toBe(2)
+    expect(state.consecutiveFailures).toBe(0)
+  })
+
+  it("skips a hop that dies under the chapter card — the buffer window — without a strike", () => {
+    // The opener can 404 while the card is still up (the card IS the resolve
+    // window); the skip must keep the card on screen for its full run.
+    const card = enterHop(
+      started(curatedQueue(threeChapters())),
+      threeHopPlan(),
+    )
+    expect(card.phase).toBe("chapterCard")
+    const next = reelReducer(card, { type: "excerptFailed" })
+    expect(next.hop?.index).toBe(1)
+    expect(next.excerptToken).toBe(card.excerptToken + 1)
+    expect(next.consecutiveFailures).toBe(0)
+    expect(next.phase).toBe("chapterCard")
+  })
+
+  it("never trips the breaker even when a whole long plan fails hop by hop", () => {
+    const long = [
+      hop("a", 0, 10),
+      hop("b", 10, 20),
+      hop("c", 20, 30),
+      hop("d", 30, 40),
+      hop("e", 40, 50),
+    ]
+    let state = enterHop(atCenterpiece(), long)
+    for (let i = 0; i < long.length - 1; i++) {
+      state = reelReducer(state, { type: "excerptFailed" })
+    }
+    expect(state.consecutiveFailures).toBe(0)
+    expect(state.hop?.index).toBe(long.length - 1)
+  })
+
+  it("charges ONE strike when the last hop fails with nothing left to play", () => {
+    let state = enterHop(atCenterpiece(), threeHopPlan())
+    state = reelReducer(state, { type: "excerptFailed" }) // 0 -> 1
+    state = reelReducer(state, { type: "excerptFailed" }) // 1 -> 2
+    expect(state.consecutiveFailures).toBe(0)
+    state = reelReducer(state, { type: "excerptFailed" }) // last hop fails -> normal ladder
+    expect(state.hop).toBeNull()
+    expect(state.consecutiveFailures).toBe(1)
+    expect(currentExcerpt(state)?.coreId).toBe("v2")
+  })
+
+  it("still reaches stills when the centerpiece is the reel's third dead excerpt", () => {
+    // Two ordinary excerpts fail (2 strikes), then a fully-dead centerpiece is the
+    // third — its hop failures count as one strike, which trips the breaker.
+    let state = run(started(curatedQueue([chapter("a", ["v1", "v2", "v3"])])), {
+      type: "cardTimerElapsed",
+    })
+    state = reelReducer(state, { type: "excerptFailed" }) // v1 dead: 1
+    state = reelReducer(state, { type: "excerptFailed" }) // v2 dead: 2
+    expect(state.consecutiveFailures).toBe(2)
+    state = enterHop(state, threeHopPlan()) // v3 is the centerpiece
+    state = reelReducer(state, { type: "excerptFailed" }) // hop 0 -> 1 (no strike)
+    state = reelReducer(state, { type: "excerptFailed" }) // hop 1 -> 2 (no strike)
+    expect(state.consecutiveFailures).toBe(2)
+    state = reelReducer(state, { type: "excerptFailed" }) // last hop dead -> strike -> stills
+    expect(state.phase).toBe("stills")
+    expect(state.consecutiveFailures).toBe(REEL_FAILURE_BREAKER_THRESHOLD)
+  })
+})
+
+describe("hop mode — cadence and ordinary excerpts (R9/R11)", () => {
+  it("counts a hop-rich centerpiece as ONE chapter toward the interstitial cadence", () => {
+    const chapters = [
+      chapter("a", ["v1"]),
+      chapter("b", ["v2"]),
+      chapter("c", ["v3"]),
+      chapter("d", ["v4"]),
+    ]
+    let state = started(curatedQueue(chapters))
+    state = reelReducer(state, { type: "cardTimerElapsed" }) // excerpt a/v1
+    state = enterHop(state, threeHopPlan())
+    state = reelReducer(state, { type: "excerptEnded" }) // hop 0 -> 1
+    state = reelReducer(state, { type: "excerptEnded" }) // hop 1 -> 2
+    state = reelReducer(state, { type: "excerptEnded" }) // last hop -> chapter a done
+    expect(state.phase).toBe("chapterCard")
+    expect(currentChapter(state)?.id).toBe("b")
+    state = completeChapter(state) // b done
+    state = completeChapter(state) // c done -> third chapter -> interstitial
+    expect(state.phase).toBe("interstitial")
+  })
+
+  it("keeps ordinary excerpts entirely out of hop mode", () => {
+    const state = reelReducer(atCenterpiece(), { type: "excerptEnded" })
+    expect(state.hop).toBeNull()
+  })
+
+  it("never carries a hop plan into a re-resolved queue (enterQueue clears it)", () => {
+    // Force a lingering plan onto the stills floor: a fresh queue must never inherit it.
+    const stillsWithHop: ReelState = {
+      ...atCenterpiece(),
+      phase: "stills",
+      hop: { hops: threeHopPlan(), index: 1 },
+    }
+    const rejoined = reelReducer(stillsWithHop, {
+      type: "resolved",
+      queue: curatedQueue(threeChapters()),
+    })
+    expect(rejoined.hop).toBeNull()
+    expect(rejoined.phase).toBe("chapterCard")
   })
 })

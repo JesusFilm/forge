@@ -85,6 +85,8 @@ const HERO_QUALITY_TAG_CLASS =
   "inline-flex h-4 items-center rounded-sm border border-white/80 bg-white/80 px-0.5 text-[0.6rem] font-medium tracking-wide text-stone-950"
 const HERO_LANGUAGE_TAG_CLASS =
   "inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 md:text-sm"
+const HERO_INTERACTIVE_LANGUAGE_TAG_CLASS =
+  "compact-landscape:min-h-11 compact-landscape:min-w-11"
 
 const HERO_METADATA_QUALITY_RANK: Record<DownloadResolutionLabel, number> = {
   "4K": 5,
@@ -218,7 +220,7 @@ const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
 const HERO_POSTER_MAX_WIDTH = 1280
 const WATCH_NOW_LINK_CLASS =
-  "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg"
+  "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg compact-landscape:min-h-11 compact-landscape:py-2 compact-landscape:text-base"
 const WATCH_NEXT_WINDOW_SECONDS = 5
 
 function isResumableProgress(videoId: string): boolean {
@@ -830,14 +832,16 @@ export function HeroPlayer({
     }
   }, [autoplayParam, heroPosterUrl, playerActivated])
 
-  // Anchor for the title/pill overlay AND the chrome control bar — both live
-  // in this zero-height div right after the sticky hero so they ride on the
-  // body section's top edge instead of being trapped at the pinned hero's
-  // bottom (which the body slides over).
+  // Anchor for the title/pill overlay AND the chrome control bar. It is
+  // ordinarily zero-height; the compact-landscape pre-reveal state lets it
+  // grow so long localized titles can push the body below the hero.
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )
   const [previewBodyOverlapPx, setPreviewBodyOverlapPx] = useState(0)
+  const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
+  const playbackFrameActive = chromeRevealed || suppressPreRevealOverlay
+  const defaultPreRevealOverlayInFlow = !playbackFrameActive && overlay == null
 
   // Measured rendered height drives the sticky `top` so the player pins
   // exactly when its bottom reaches the viewport bottom.
@@ -876,6 +880,14 @@ export function HeroPlayer({
 
     const sync = () => {
       rafHandle = 0
+      const compactLandscapeActive =
+        window
+          .getComputedStyle(wrapper)
+          .getPropertyValue("--watch-compact-landscape") === "1"
+      if (compactLandscapeActive && defaultPreRevealOverlayInFlow) {
+        setPreviewBodyOverlapPx(0)
+        return
+      }
       const bodyZone = document.querySelector(
         '[data-testid="watch-body-zone"]',
       ) as HTMLElement | null
@@ -928,7 +940,7 @@ export function HeroPlayer({
       observer?.disconnect()
       if (rafHandle !== 0) window.cancelAnimationFrame(rafHandle)
     }
-  }, [chromeRevealed, heroHeight])
+  }, [chromeRevealed, defaultPreRevealOverlayInFlow, heroHeight])
 
   // Tracks whether the current paused state was caused by THIS scroll
   // listener, so the auto-resume on scroll-back only fires when WE
@@ -1439,11 +1451,8 @@ export function HeroPlayer({
     languageCountLabel != null ||
     hasSubtitleTrack ||
     qualityLabel != null
-  const suppressPreRevealOverlay = autoplayParam === "1" && !autoplayBlocked
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
-  const playbackFrameActive =
-    chromeRevealed || (autoplayParam === "1" && !autoplayBlocked)
   const effectivePreviewBodyOverlapPx = playbackFrameActive
     ? 0
     : previewBodyOverlapPx
@@ -1561,7 +1570,9 @@ export function HeroPlayer({
         }
         onPointerDownCapture={handleWatchNextSurfaceInteract}
         onKeyDownCapture={handleWatchNextSurfaceInteract}
-        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} ${
+        className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} compact-landscape:[--watch-compact-landscape:1] ${
+          defaultPreRevealOverlayInFlow ? "compact-landscape:h-[100svh]" : ""
+        } ${
           playbackFrameActive
             ? "overflow-hidden"
             : `overflow-x-clip ${
@@ -1820,24 +1831,27 @@ export function HeroPlayer({
       </div>
 
       {/*
-        Zero-height anchor right after the sticky hero. The title/label/pill
-        (pre-reveal) and the chrome control bar (post-reveal, portaled in
-        from <HeroPlayerControls>) both attach to this anchor's bottom edge.
-        The anchor lives in normal flow and so scrolls with the document —
-        which means everything attached here rides up on the body section's
-        top edge instead of being trapped at the sticky hero's pinned bottom
-        (which the body slides over).
+        Anchor right after the sticky hero. Ordinarily it stays zero-height so
+        the title/label/pill and portaled chrome attach to the body's top edge.
+        In compact landscape, the default pre-reveal overlay instead becomes a
+        normal-flow child of a full-viewport anchor laid over the video. That
+        lets unusually long titles grow the hero before the body begins while
+        keeping the episode carousel below the full-height video.
       */}
       <div
         ref={setOverlayAnchor}
         data-testid="hero-player-overlay-anchor"
-        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
+        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES} ${
+          defaultPreRevealOverlayInFlow
+            ? "compact-landscape:-mt-[100svh] compact-landscape:flex compact-landscape:h-auto compact-landscape:min-h-[100svh] compact-landscape:flex-col compact-landscape:justify-end compact-landscape:pt-[calc(env(safe-area-inset-top,0px)+4.25rem)] compact-landscape:ps-[max(1.25rem,env(safe-area-inset-left,0px))] compact-landscape:pe-[max(1.25rem,env(safe-area-inset-right,0px))]"
+            : ""
+        }`}
       >
         {!chromeRevealed && !suppressPreRevealOverlay
           ? (overlay ?? (
               <div
                 data-testid="hero-player-overlay"
-                className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto`}
+                className={`absolute right-6 bottom-0 ${WATCH_PAGE_LEFT_RAIL_CLASSES} flex flex-col items-start gap-3 pb-12 md:right-auto compact-landscape:relative compact-landscape:inset-x-auto compact-landscape:bottom-auto compact-landscape:w-full compact-landscape:gap-1 compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]`}
               >
                 {visualLabel ? (
                   <span
@@ -1850,13 +1864,13 @@ export function HeroPlayer({
                 {visualTitle ? (
                   <h1
                     data-testid="hero-player-overlay-title"
-                    className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl"
+                    className="max-w-[calc(100vw-5rem)] text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl compact-landscape:max-w-[min(56vw,30rem)] compact-landscape:text-2xl"
                   >
                     {visualTitle}
                   </h1>
                 ) : null}
-                <div className="flex flex-col items-start gap-3">
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                <div className="flex flex-col items-start gap-3 compact-landscape:gap-1">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3 compact-landscape:gap-x-3 compact-landscape:gap-y-1">
                     <button
                       type="button"
                       data-testid="hero-player-unmute-pill"
@@ -1897,7 +1911,7 @@ export function HeroPlayer({
                   {hasHeroMetadataTags ? (
                     <div
                       data-testid="hero-player-metadata-tags"
-                      className="mt-3 flex flex-wrap items-center gap-2 opacity-75"
+                      className="mt-3 flex flex-wrap items-center gap-2 opacity-75 compact-landscape:mt-0 compact-landscape:gap-1"
                     >
                       {releaseMetadata !== "" ? (
                         <span
@@ -1922,7 +1936,7 @@ export function HeroPlayer({
                             data-testid="hero-player-language-tag"
                             aria-label={languageCountLabel}
                             onClick={onLanguageClick}
-                            className={`${HERO_LANGUAGE_TAG_CLASS} cursor-pointer transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
+                            className={`${HERO_LANGUAGE_TAG_CLASS} ${HERO_INTERACTIVE_LANGUAGE_TAG_CLASS} cursor-pointer transition hover:border-white/70 hover:bg-white/15 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
                             <AudioLanguagesIcon />
                             <span>{languageCountLabel}</span>
@@ -1944,7 +1958,7 @@ export function HeroPlayer({
                             data-testid="hero-player-subtitle-language-count"
                             aria-label={subtitleLanguageCountLabel}
                             onClick={onLanguageClick}
-                            className="inline-flex items-center gap-1 px-1 text-xs font-normal text-white/85 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:text-sm"
+                            className={`${HERO_LANGUAGE_TAG_CLASS} ${HERO_INTERACTIVE_LANGUAGE_TAG_CLASS} transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
                             <Captions
                               className="h-3.5 w-3.5 shrink-0"

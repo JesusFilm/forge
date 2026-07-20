@@ -49,6 +49,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videos",
         "watchHomeVideos",
         "watchLanguageInventory",
+        "watchSearch",
         "videosByCoreIds",
         // Experience
         "experience",
@@ -193,6 +194,75 @@ describe("GraphQL schema — Unit 4 content types", () => {
       "languageSlug",
       "limit",
     ])
+  })
+
+  it("WatchSearch type exposes the replacement multilingual contract skeleton", () => {
+    const query = schema.getQueryType()!.getFields().watchSearch
+    expect(String(query.type)).toBe("WatchSearchResponse")
+    expect(query.args.map((arg) => arg.name)).toEqual(["input"])
+
+    expect(Object.keys(fieldsOf("WatchSearchResponse"))).toEqual(
+      expect.arrayContaining([
+        "query",
+        "results",
+        "hasMore",
+        "nextOffset",
+        "searchMode",
+        "requestId",
+        "degraded",
+        "latencyMs",
+        "laneStatuses",
+        "languageInterpretation",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchLaneStatus"))).toEqual(
+      expect.arrayContaining([
+        "lane",
+        "status",
+        "elapsedMs",
+        "resultCount",
+        "reason",
+        "detail",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchResult"))).toEqual(
+      expect.arrayContaining([
+        "type",
+        "id",
+        "slug",
+        "title",
+        "snippet",
+        "imageUrl",
+        "playbackId",
+        "startSeconds",
+        "score",
+        "label",
+        "durationSeconds",
+        "childCount",
+        "languageSlug",
+        "languageEnglishName",
+        "availability",
+        "evidence",
+        "action",
+        "fallback",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchLanguageInterpretation"))).toEqual(
+      expect.arrayContaining([
+        "queryLanguageSlug",
+        "queryNamedLanguageSlug",
+        "targetLanguageSlug",
+        "targetLanguageSource",
+        "displayLanguageSlug",
+        "routeLanguageSlug",
+        "currentWatchLanguageSlug",
+        "acceptLanguage",
+        "acceptLanguageSlug",
+      ]),
+    )
   })
 
   it("Query root no longer exposes the Unit 3 Ping spike fields", () => {
@@ -625,121 +695,6 @@ describe("reference types", () => {
         "language",
       ]),
     )
-  })
-})
-
-describe("Hybrid search — R4 query + response types", () => {
-  it("Query root exposes the `search` field", () => {
-    const fields = schema.getQueryType()!.getFields()
-    expect(fields.search).toBeTruthy()
-  })
-
-  it("HybridSearchResult exposes the expected consumer-facing shape", () => {
-    const fields = fieldsOf("HybridSearchResult") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining([
-        "type",
-        "id",
-        "slug",
-        "title",
-        "imageUrl",
-        "imageBlurDataUrl",
-        "muxThumbnailBlurDataUrl",
-        "snippet",
-        "startSeconds",
-        "playbackId",
-        "score",
-      ]),
-    )
-    expect(fields.score.type.toString()).toBe("Float!")
-    expect(fields.startSeconds.type.toString()).toBe("Float")
-    expect(fields.playbackId.type.toString()).toBe("String")
-    expect(fields.imageBlurDataUrl.type.toString()).toBe("String")
-    expect(fields.muxThumbnailBlurDataUrl.type.toString()).toBe("String")
-  })
-
-  it("HybridSearchResult exposes no embedding/vector/similarity-shaped field", () => {
-    const fields = fieldsOf("HybridSearchResult")
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-  })
-
-  it("HybridSearchResultDebug exposes ranks + fusedScore + dilutionCapApplied (no embedding leak)", () => {
-    const fields = fieldsOf("HybridSearchResultDebug") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining([
-        "retrieverRanks",
-        "fusedScore",
-        "dilutionCapApplied",
-      ]),
-    )
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-    expect(fields.fusedScore.type.toString()).toBe("Float!")
-    expect(fields.dilutionCapApplied.type.toString()).toBe("Boolean!")
-    expect(fields.retrieverRanks.type.toString()).toBe(
-      "[HybridSearchRetrieverRank!]!",
-    )
-  })
-
-  it("HybridSearchRetrieverRank carries label + rank only (no embedding leak)", () => {
-    const fields = fieldsOf("HybridSearchRetrieverRank") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields).sort()).toEqual(["label", "rank"])
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-    expect(fields.label.type.toString()).toBe("String!")
-    expect(fields.rank.type.toString()).toBe("Int!")
-  })
-
-  it("HybridSearchResult exposes a nullable debug field gated at the resolver", () => {
-    const fields = fieldsOf("HybridSearchResult") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(fields.debug.type.toString()).toBe("HybridSearchResultDebug")
-  })
-
-  it("HybridSearchResponse wraps results + hasMore + query + searchMode", () => {
-    const fields = fieldsOf("HybridSearchResponse") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(fields.results.type.toString()).toBe("[HybridSearchResult!]!")
-    expect(fields.hasMore.type.toString()).toBe("Boolean!")
-    expect(fields.query.type.toString()).toBe("String!")
-    expect(fields.searchMode.type.toString()).toBe("HybridSearchMode!")
-  })
-
-  it("HybridSearchMode enum exposes hybrid + keyword-only values", () => {
-    const t = schema.getType("HybridSearchMode")
-    expect(t).toBeTruthy()
-    const values = (
-      t as unknown as { getValues(): { value: string }[] }
-    ).getValues()
-    const raw = values.map((v) => v.value)
-    expect(raw).toContain("hybrid")
-    expect(raw).toContain("keyword-only")
-  })
-
-  it("HybridSearchContentType enum maps to service-layer values", () => {
-    const t = schema.getType("HybridSearchContentType")
-    const values = (
-      t as unknown as { getValues(): { value: string }[] }
-    ).getValues()
-    const raw = values.map((v) => v.value)
-    expect(raw).toEqual(expect.arrayContaining(["video", "experience"]))
   })
 })
 

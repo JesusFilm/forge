@@ -30,7 +30,6 @@ export type FloatingSearchContextValue = {
   error: string | null
   searched: boolean
   resultSource: SearchActionResultSource | null
-  algoliaSearchEnabled: boolean
   languageOptions: SearchLanguageOption[]
   languageGroups: SearchLanguageRegionGroup[]
   languageCountrySuggestion: SearchLanguageCountrySuggestion | null
@@ -43,13 +42,18 @@ export type FloatingSearchContextValue = {
   selectedSearchLanguageOption: SearchLanguageOption | null
   searchResultAnalytics: FloatingSearchResultAnalyticsContext | null
   defaultSearchLanguageOption: SearchLanguageOption | null
+  headerLanguageSwitcherVisible: boolean
   headerLanguageCode: string | null
   headerPinned: boolean
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
   search: (
     q: string,
-    options?: { languageEnglishNames?: string[]; languageSlug?: string | null },
+    options?: {
+      languageEnglishNames?: string[]
+      languageSlug?: string | null
+      languageSlugIsExplicit?: boolean
+    },
   ) => Promise<void>
   loadMore: () => Promise<void>
   toggleSearchLanguage: (

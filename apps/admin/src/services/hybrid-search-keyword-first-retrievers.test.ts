@@ -220,6 +220,7 @@ describe("searchByKeywordWeighted", () => {
     expect(joined).toMatch(/vl\.locale\s*=\s*\?/)
     expect(joined).toMatch(/vl\.status\s*=\s*'published'/)
     expect(joined).toMatch(/v\.deleted_at IS NULL/)
+    expect(joined).toMatch(/v\.no_index = false/)
   })
 })
 
@@ -276,6 +277,7 @@ describe("searchByTrigram", () => {
     // drives the new `video_locale_description_trgm_idx` from migration 0010.
     expect(joined).toMatch(/vl\.title\s*%>\s*\?/)
     expect(joined).toMatch(/vl\.description\s*%>\s*\?/)
+    expect(joined).toMatch(/v\.no_index = false/)
   })
 
   it("ranks by GREATEST similarity across title and description", async () => {
@@ -417,6 +419,8 @@ describe("searchByExactTitle", () => {
     const callArgs = prisma.$queryRaw.mock.calls[0]
     const ilikeChain = callArgs[1] as { values: string[] }
     expect(ilikeChain.values).toEqual(["%the%", "%bible%"])
+    const [strings] = callArgs as [TemplateStringsArray]
+    expect(strings.join("?")).toMatch(/v\.no_index = false/)
   })
 })
 

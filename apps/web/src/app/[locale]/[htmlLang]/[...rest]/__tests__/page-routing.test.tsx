@@ -947,7 +947,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
-  it("passes server-parsed transcript cues to the client when subtitles exist", async () => {
+  it("passes server-formatted compact transcript text to the client when subtitles exist", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     const subtitles = [
       {
@@ -967,7 +967,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       subtitles
     const initialTranscript = {
       vttSrc: "https://cdn.example/storyclubs.vtt",
-      cues: [{ start: 1, end: 3, text: "In the beginning" }],
+      compactText: "In the beginning\n\nThe story continues",
     }
     getInitialSubtitleTranscriptMock.mockResolvedValue(initialTranscript)
     mockRouteVideo(watchVideoResult)
@@ -977,7 +977,6 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(getInitialSubtitleTranscriptMock).toHaveBeenCalledWith({
       subtitles,
       audioSlug: "english",
-      durationSeconds: 30,
     })
     expect(watchPageClientMock.mock.calls[0]?.[0]).toMatchObject({
       initialTranscript,
@@ -1174,6 +1173,24 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         questionPanelEnabled: true,
       }),
     )
+  })
+
+  it("renders an error state instead of bubbling to a 500 when route resolution throws", async () => {
+    resolveWatchRouteBySlugMock.mockRejectedValue(
+      new Error("Response not successful: Received status code 503"),
+    )
+
+    await render2Seg("life-of-jesus-gospel-of-john.html", "english.html")
+
+    expect(experienceErrorMock).toHaveBeenCalledWith(
+      {
+        message: "Response not successful: Received status code 503",
+      },
+      undefined,
+    )
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })
 

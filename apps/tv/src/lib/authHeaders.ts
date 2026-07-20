@@ -1,12 +1,11 @@
 // SYNC: mirrors apps/mobile/src/lib/authHeaders.ts. The one TV difference is the
-// gated operation NAME — TV's search query is `query SemanticSearch`, mobile's is
-// `query Search`. Scope to TV's name or the bearer never attaches (or, worse if
-// copied wrong, attaches nowhere and search 401s).
+// legacy operation NAME — TV's old search query was `query SemanticSearch`,
+// mobile's was `query Search`.
 
 /**
- * Consumer-bearer header for admin GraphQL (Query.search requires it once
- * SEARCH_AUTH_REQUIRED is active). Absent token returns the anonymous shape so
- * the app still boots and public queries work where no key is provisioned.
+ * Consumer-bearer header builder retained for the temporary search shim.
+ * Absent token returns the anonymous shape so the app still boots and public
+ * queries work where no key is provisioned.
  */
 export function buildAuthHeaders(
   token: string | undefined,
@@ -15,13 +14,12 @@ export function buildAuthHeaders(
   return { Authorization: `Bearer ${token}` }
 }
 
-/** Operation name of the one admin query gated behind the search bearer. */
+/** Legacy search operation name retained until TV search is rebuilt. */
 export const SEARCH_OPERATION_NAME = "SemanticSearch"
 
 /**
- * Bearer scoped to the gated Search operation only. The consumer bearer is admin's
- * rate-limit identity (`consumer:<key>`, one shared 60/min bucket); since every
- * install ships the same key, only SemanticSearch (rejected anonymously) gets it.
+ * Bearer scoped to the legacy Search operation only. The consumer bearer is
+ * admin's rate-limit identity (`consumer:<key>`, one shared 60/min bucket).
  * Attaching it to public operations would funnel the whole fleet into one bucket.
  */
 export function authHeadersForOperation(
