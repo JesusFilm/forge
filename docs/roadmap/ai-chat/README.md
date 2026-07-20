@@ -14,9 +14,9 @@ from the main DS Year 1 roadmap.
 ## Status (July 20, 2026)
 
 - **Total tickets:** 29
-- ✅ **Complete:** 23
+- ✅ **Complete:** 24
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 6
+- 🔵 **Not started:** 5
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -50,5 +50,5 @@ from the main DS Year 1 roadmap.
 | [feat-267](feat-267-chat-ui-quick-wins.md)                   | Chat UI quick wins: cursor, focus ring, tab identity, mobile hint         | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1617](https://github.com/JesusFilm/forge/pull/1617) |
 | [feat-268](feat-268-chat-assistant-markdown-rendering.md)    | Chat assistant markdown rendering (hardened, no raw HTML)                 | jian wei | P1       | 2026-07-16 | 3    | ✅ complete    | [#1620](https://github.com/JesusFilm/forge/pull/1620) |
 | [feat-269](feat-269-chat-sources-presentation.md)            | Chat sources presentation: heading, clamped cards, collapse               | jian wei | P1       | 2026-07-20 | 2    | ✅ complete    | [#1619](https://github.com/JesusFilm/forge/pull/1619) |
-| [feat-270](feat-270-chat-ui-cleanup-batch.md)                | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges | jian wei | P2       | 2026-07-27 | 3    | 🔵 not-started | —                                                     |
+| [feat-270](feat-270-chat-ui-cleanup-batch.md)                | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges | jian wei | P2       | 2026-07-27 | 3    | ✅ complete    | [#1626](https://github.com/JesusFilm/forge/pull/1626) |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)    | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                     |
