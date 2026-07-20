@@ -556,7 +556,7 @@ function VideoCard({
   return (
     <Wrapper
       href={href}
-      className={`group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 ${
+      className={`group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] ${
         href ? "cursor-pointer" : "cursor-default"
       }`}
       aria-label="VideoCard"
@@ -642,12 +642,7 @@ function VideoCard({
         <div
           aria-hidden
           data-testid="media-collection-card-hover-outline"
-          className={cn(
-            "watch-home-gradient-outline pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-visible:opacity-100",
-            isVertical
-              ? "watch-home-gradient-outline-portrait"
-              : "watch-home-gradient-outline-landscape",
-          )}
+          className="pointer-events-none absolute inset-0 z-[80] rounded-lg border-4 border-white opacity-0 transition-opacity duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-visible:opacity-100"
         />
         <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
           {item.label ? (
