@@ -1148,6 +1148,71 @@ describe("getManagedPrompt (layer 2)", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
+  it("slot-leak guard: a throwing config property getter resolves to fallback, fires no unhandled rejection, and never wedges the entry", async () => {
+    const clock = makeClock()
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    // Type-legal hostile config: the cooldown knob THROWS on property access.
+    // It is first read inside the refetch flight, so this is the one injection
+    // seam where a sync throw could reject the shared flight promise — which
+    // would wedge entry.inFlight on a settled-rejected promise forever and
+    // emit an unhandled rejection from the release chain.
+    let cooldownReads = 0
+    const throwingConfig: LangfuseConfig = {
+      ...testConfig,
+      get promptFailureCooldownMs(): number {
+        cooldownReads += 1
+        throw new Error("hostile config getter")
+      },
+    }
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => {
+      unhandled.push(reason)
+    }
+    process.on("unhandledRejection", onUnhandled)
+    try {
+      const first = await getManagedPrompt({
+        name: "seeker/system-prompt",
+        fallback: FALLBACK_TEXT,
+        config: throwingConfig,
+        fetchImpl,
+        now: clock.now,
+      })
+      // The getter throws before any fetch; the flight absorbs it and the
+      // caller lands on the terminal fallback floor (no classified reason —
+      // the throw predated failure classification).
+      expect(first).toEqual({
+        text: FALLBACK_TEXT,
+        source: "fallback",
+        resolvedLabel: "production",
+      })
+      expect(cooldownReads).toBeGreaterThanOrEqual(1)
+      expect(fetchImpl).not.toHaveBeenCalled()
+
+      // Flush microtasks so a rejected release chain would surface here.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(unhandled).toEqual([])
+
+      // Not wedged: the same entry recovers immediately with a sane config —
+      // proving the in-flight slot was released despite the hostile getter.
+      const second = await getManagedPrompt({
+        name: "seeker/system-prompt",
+        fallback: FALLBACK_TEXT,
+        config: testConfig,
+        fetchImpl,
+        now: clock.now,
+      })
+      expect(second).toEqual({
+        text: FIXTURE_TEXT,
+        source: "langfuse",
+        version: 4,
+        resolvedLabel: "production",
+      })
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    } finally {
+      process.off("unhandledRejection", onUnhandled)
+    }
+  })
+
   it("serves the fallback for an unencodable prompt name (no unhandled rejection) and logs the classified failure without error text", async () => {
     const clock = makeClock()
     const logs: string[] = []

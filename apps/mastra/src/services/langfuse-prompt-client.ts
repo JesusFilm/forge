@@ -650,15 +650,17 @@ async function refetchManagedPrompt(
     logSink,
   }: ManagedPromptRefetchArgs,
 ): Promise<void> {
-  // Effective cooldown ≤ TTL: getLangfuseConfig() already clamps this, but a
-  // hand-built injected config bypasses it — re-clamping here defends the
-  // documented smaller-value-wins invariant (idempotent for env-derived
-  // configs).
-  const cooldownMs = Math.min(
-    config.promptFailureCooldownMs,
-    config.promptCacheTtlMs,
-  )
   try {
+    // Effective cooldown ≤ TTL: getLangfuseConfig() already clamps this, but a
+    // hand-built injected config bypasses it — re-clamping here defends the
+    // documented smaller-value-wins invariant (idempotent for env-derived
+    // configs). Computed INSIDE the try: config is caller-supplied, so even a
+    // throwing property getter must degrade to the catch below, not reject
+    // the shared flight promise before the guard starts.
+    const cooldownMs = Math.min(
+      config.promptFailureCooldownMs,
+      config.promptCacheTtlMs,
+    )
     const result = await fetchLangfusePrompt({
       name,
       label: resolvedLabel,
@@ -684,20 +686,33 @@ async function refetchManagedPrompt(
     // (leak control). Defensive negative-cache: if the throw somehow predated
     // failure classification (layer 1 contractually never throws), still start
     // a cooldown so a persistently throwing wrapper cannot become a per-call
-    // fetch storm.
-    if (entry.cooldownUntil === undefined || entry.cooldownUntil <= now()) {
-      entry.cooldownUntil = now() + cooldownMs
-      // Bounded breadcrumb — one enum-only line per NEW cooldown window, so
-      // this defensive path is never fully silent. Carries name/label ONLY,
-      // never the caught error or any of its text; own try/catch so a
-      // throwing sink cannot escape the guard.
-      try {
-        logSink(
-          `[langfuse] event=prompt_refetch_unexpected_error name=${name} label=${resolvedLabel}`,
-        )
-      } catch {
-        // A throwing sink must not escape the defensive catch.
+    // fetch storm. The bookkeeping below re-reads the caller-supplied `config`
+    // and `now` — the plausible throw sources that landed us here — so it sits
+    // in its OWN try: this catch must be total, because a rejecting flight
+    // would wedge `entry.inFlight` and rethrow at every joiner's await.
+    try {
+      const cooldownMs = Math.min(
+        config.promptFailureCooldownMs,
+        config.promptCacheTtlMs,
+      )
+      if (entry.cooldownUntil === undefined || entry.cooldownUntil <= now()) {
+        entry.cooldownUntil = now() + cooldownMs
+        // Bounded breadcrumb — one enum-only line per NEW cooldown window, so
+        // this defensive path is never fully silent. Carries name/label ONLY,
+        // never the caught error or any of its text; own try/catch so a
+        // throwing sink cannot escape the guard.
+        try {
+          logSink(
+            `[langfuse] event=prompt_refetch_unexpected_error name=${name} label=${resolvedLabel}`,
+          )
+        } catch {
+          // A throwing sink must not escape the defensive catch.
+        }
       }
+    } catch {
+      // Even the defensive bookkeeping threw (hostile config getter or
+      // throwing now()). Leave the entry untouched — the flight still settles
+      // fulfilled and callers land on getManagedPrompt's terminal fallback.
     }
   }
 }
@@ -757,13 +772,24 @@ export async function getManagedPrompt(
       logSink,
     })
     entry.inFlight = flight
-    // `.then` (not `.finally`) — the flight is structurally non-rejecting, and
-    // .then cannot manufacture an unhandled-rejection edge if that ever slips.
-    void flight.then(() => {
+    // Release on BOTH settlement paths (identity-checked). The flight is
+    // designed never to reject, but a fulfillment-only `.then` would turn any
+    // slip into the worst outcome: the release never runs (entry wedged on a
+    // settled-rejected promise until process restart) AND the derived promise
+    // rejects unhandled. Registering the same release as the rejection
+    // handler closes both.
+    const release = () => {
       if (entry.inFlight === flight) entry.inFlight = undefined
-    })
+    }
+    void flight.then(release, release)
   }
-  await entry.inFlight
+  try {
+    await entry.inFlight
+  } catch {
+    // Defensive floor for the never-rejects contract: a rejecting flight must
+    // not rethrow into callers — fall through to serve from entry state or
+    // the terminal fallback below.
+  }
 
   // Post-refetch, leader and joiners alike re-derive from the settled entry
   // state with their OWN fallback — success lands on the fresh branch, failure
