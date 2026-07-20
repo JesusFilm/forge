@@ -3,7 +3,7 @@ id: "feat-251"
 title: "Watch collection sequential downloads"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-07-14"
 duration: 3
 depends_on:
@@ -20,7 +20,7 @@ tags:
 
 ## Resolution
 
-**Status:** Complete via [PR #1559](https://github.com/JesusFilm/forge/pull/1559). The roadmap status change rides the same PR branch, so it becomes complete on `main` when the implementation lands.
+**Status:** Reopened on 2026-07-20 for the missing Terms acceptance requirement in the collection modal. [PR #1559](https://github.com/JesusFilm/forge/pull/1559) remains the delivery vehicle and returns to complete only after the parity patch and local browser verification pass.
 
 ## Problem
 
