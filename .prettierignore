@@ -35,3 +35,7 @@ apps/*/.impeccable
 
 # Local agent-skills setup — gitignored local tooling, same class as .cursor/.local
 .agents
+
+# superpowers SDD scratch + local design mockups (both gitignored, non-source)
+.superpowers
+apps/mobile/design-mockups
