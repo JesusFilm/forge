@@ -445,6 +445,22 @@ function errorClass(error: unknown): string {
   return error instanceof Error ? error.constructor.name : "UnknownError"
 }
 
+function safeTraceErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown"
+  const diagnosticLines = error.message
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) =>
+      /^(Unknown argument|Invalid value|Argument .* is missing|Argument .* must not be|Provided|Expected|Available options)/.test(
+        line,
+      ),
+    )
+    .map((line) => line.replace(/: .+$/, ""))
+  const message =
+    diagnosticLines.length > 0 ? diagnosticLines.join(" ") : error.message
+  return message.replace(/[\r\n\t]/g, " ").slice(0, 300)
+}
+
 export async function recordSearchTraceSafely(
   input: RecordSearchTraceInput,
   prisma: PrismaClient = defaultPrisma,
@@ -463,7 +479,7 @@ export async function recordSearchTraceSafely(
       if (timeout) clearTimeout(timeout)
       recordSearchTraceWriteFailure()
       console.warn(
-        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)}`,
+        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)} message=${safeTraceErrorMessage(error)}`,
       )
       return { ok: false as const, timedOut: false as const }
     })
