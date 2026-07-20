@@ -259,8 +259,9 @@ export const env = createEnv({
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
     // principal (permissions = empty set) whose sole effect is to
-    // bucket consumer SSR traffic as `consumer:<key>` in admin's
-    // rate-limit identifyFn — separate from anonymous-IP.
+    // identify trusted Web SSR traffic in admin's rate-limit identifyFn —
+    // separate from anonymous-IP and request-scoped so RSC traffic does not
+    // accumulate into one shared field-limit bucket.
     // `.optional()` because environments without web cutover (preview,
     // local dev) don't need it. Required-without-default would brick
     // those Railway deploys — see

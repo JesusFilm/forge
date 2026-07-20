@@ -1175,6 +1175,24 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       }),
     )
   })
+
+  it("renders an error state instead of bubbling to a 500 when route resolution throws", async () => {
+    resolveWatchRouteBySlugMock.mockRejectedValue(
+      new Error("Response not successful: Received status code 503"),
+    )
+
+    await render2Seg("life-of-jesus-gospel-of-john.html", "english.html")
+
+    expect(experienceErrorMock).toHaveBeenCalledWith(
+      {
+        message: "Response not successful: Received status code 503",
+      },
+      undefined,
+    )
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
+  })
 })
 
 describe("Catch-all routing — video precedence (2-seg)", () => {
