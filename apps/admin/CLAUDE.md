@@ -2207,8 +2207,9 @@ TV and mobile ship the SAME consumer bearer baked into every install, so a flat
 mint the normal `CONSUMER_BEARER` principal (zero permissions) but flagged
 `fleet`, so `identifyForRateLimit` buckets them per device: by a client-provided
 `viewer_id` as `consumer:<key>:v:<viewer_id>` when present (preferred), else per
-client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) stays flat
-`consumer:<key>`.
+client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) uses trusted
+request-scoped internal buckets so RSC traffic does not accumulate into a shared
+field-rate-limit counter.
 
 - **Trusted IP only (R8).** The `<ip>` comes from `getTrustedClientIp`
   (`cf-connecting-ip` only) — never the client-supplied `x-forwarded-for`. The
@@ -2232,7 +2233,8 @@ client IP as `consumer:<key>:<ip>`. Web SSR (`WEB_ADMIN_API_KEYS`) stays flat
   reuse web SSR's or another surface's value.
 - **Observable.** A fleet key logs `source=fleet` in the per-request search log
   (vs web SSR's `source=consumer`); a rising `consumer:*:unknown` share signals a
-  `cf-connecting-ip` drop / AOP regression collapsing the fleet.
+  `cf-connecting-ip` drop / AOP regression collapsing the fleet. Web SSR should
+  not trip Admin's field-rate limiter; it is internal server-to-server traffic.
 - **Carrier-NAT residual (IP path only).** Devices behind one carrier-grade NAT
   egress that do NOT send a `viewer_id` share a single `consumer:<key>:<ip>` 60/min
   bucket — the multi-user-per-IP collapse re-scoped to per-carrier-egress; the
