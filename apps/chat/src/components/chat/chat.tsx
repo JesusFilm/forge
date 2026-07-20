@@ -13,6 +13,21 @@ import { MessageList } from "./message-list"
 // never yank (feat-270).
 const NEAR_BOTTOM_PX = 64
 
+/**
+ * The re-pin decision for a resizing composer band (feat-270): true when the
+ * reader was at/near the bottom BEFORE the resize — recovered as
+ * `distanceAfter - delta`, valid for grow and shrink alike. Pure and exported
+ * for table-testing both directions; the ResizeObserver seam that feeds it
+ * stays browser-verified (see the sticky-overlay solutions doc).
+ */
+export function shouldRepin(
+  distanceAfter: number,
+  delta: number,
+  threshold: number,
+): boolean {
+  return distanceAfter - delta <= threshold
+}
+
 type ChatProps = {
   conversation: Conversation
   draft: string
@@ -174,7 +189,7 @@ export function Chat({
       // moved scrollHeight by `delta` (both directions), so subtract it back.
       const distance =
         scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
-      if (distance - delta <= NEAR_BOTTOM_PX) {
+      if (shouldRepin(distance, delta, NEAR_BOTTOM_PX)) {
         scroller.scrollTop = scroller.scrollHeight
       }
     })

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import { type Conversation, type Message } from "@/lib/conversations"
 
-import { Chat } from "./chat"
+import { Chat, shouldRepin } from "./chat"
 
 // jsdom has no layout, so these tests mock the scroller/turn geometry and
 // assert WHICH scroll the effect performs (answer-top align vs bottom-pin).
@@ -202,5 +202,34 @@ describe("Chat finalize scroll", () => {
     // The finalized turn is not in this conversation's DOM — fall back to the
     // bottom-pin, never a stray answer-align against a foreign id.
     expect(assignments.at(-1)).toBe(SCROLL_HEIGHT)
+  })
+})
+
+describe("shouldRepin (feat-270) — pre-resize distance decision", () => {
+  const T = 64
+
+  it("re-pins a reader who was at or near the bottom on grow (boundary inclusive)", () => {
+    expect(shouldRepin(156, 156, T)).toBe(true) // was exactly at the bottom
+    expect(shouldRepin(220, 156, T)).toBe(true) // was exactly at the threshold
+  })
+
+  it("never yanks a scrolled-up reader on grow", () => {
+    expect(shouldRepin(221, 156, T)).toBe(false) // 1px past the threshold
+    expect(shouldRepin(456, 156, T)).toBe(false) // 300px up
+  })
+
+  it("discriminates the old Math.max clamp bug on shrink", () => {
+    // Reader 180px up before a 156px shrink: post-shrink distance is 24 —
+    // the clamped formula (24 <= 64) yanked them; the fix must not.
+    expect(shouldRepin(24, -156, T)).toBe(false)
+    // The solutions doc's worked example: distanceAfter=50, delta=-156.
+    expect(shouldRepin(50, -156, T)).toBe(false)
+  })
+
+  it("stays harmless in the browser-clamp band on shrink", () => {
+    // A clamped reader reads distanceAfter 0: large shrinks skip the re-pin…
+    expect(shouldRepin(0, -156, T)).toBe(false)
+    // …small ones redundantly re-pin — a no-op on an at-bottom scroller.
+    expect(shouldRepin(0, -40, T)).toBe(true)
   })
 })
