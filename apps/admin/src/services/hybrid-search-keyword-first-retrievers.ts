@@ -217,6 +217,7 @@ export async function searchByKeywordWeighted(
         FROM video_locale vl
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
+          AND v.no_index = false
         WHERE ${tsvector} @@ websearch_to_tsquery('simple', ${trimmed})
           AND vl.locale = ${locale}
           AND vl.status = 'published'
@@ -304,6 +305,7 @@ export async function searchByTrigram(
         FROM video_locale vl
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
+          AND v.no_index = false
         WHERE (vl.title %> ${trimmed} OR vl.description %> ${trimmed})
           AND vl.locale = ${locale}
           AND vl.status = 'published'
@@ -381,6 +383,7 @@ export async function searchByExactTitle(
         FROM video_locale vl
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
+          AND v.no_index = false
         WHERE ${ilikeChain}
           AND vl.locale = ${locale}
           AND vl.status = 'published'

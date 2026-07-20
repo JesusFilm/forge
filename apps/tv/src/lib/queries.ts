@@ -5,10 +5,7 @@
  * per convention (operations live in apps, not the package). @_unmask exposes
  * fragment fields directly on parent results.
  */
-import {
-  adminGraphql as graphql,
-  type AdminResultOf as ResultOf,
-} from "@forge/admin-graphql"
+import { adminGraphql as graphql } from "@forge/admin-graphql"
 
 // ── Leaf fragments ──────────────────────────────────────────────────
 
@@ -361,47 +358,26 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
-// ── Semantic search query ─────────────────────────────────────────
-// Mirrors mobile SEMANTIC_SEARCH. We omit `searchMode` since TV renders
-// keyword-fallback results identically (no degraded-mode UX). $locale is String!
-// because admin's search resolver takes a plain string, not a locale enum.
+// ── Search result shape ─────────────────────────────────────────────
+// TODO(feat-254): TV is outside the P0 Watch web search migration. Keep the
+// UI-facing shape local so Admin can replace Query.search without breaking CI.
 
-export const SEMANTIC_SEARCH = graphql(`
-  query SemanticSearch(
-    $query: String!
-    $locale: String!
-    $limit: Int
-    $offset: Int
-  ) {
-    semanticSearch: search(
-      q: $query
-      locale: $locale
-      limit: $limit
-      offset: $offset
-    ) {
-      query
-      hasMore
-      results {
-        type
-        id
-        slug
-        title
-        imageUrl
-        snippet
-        startSeconds
-        playbackId
-        score
-        label
-        childCount
-      }
-    }
-  }
-`)
+export type SearchResult = {
+  readonly type: string
+  readonly id: string
+  readonly slug: string
+  readonly title: string
+  readonly imageUrl: string | null
+  readonly snippet: string | null
+  readonly startSeconds: number | null
+  readonly playbackId: string | null
+  readonly score: number | null
+  readonly label: string | null
+  readonly childCount: number | null
+}
 
-export type SearchResult = NonNullable<
-  ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
->["results"][number]
-
-export type SearchResponse = NonNullable<
-  ResultOf<typeof SEMANTIC_SEARCH>["semanticSearch"]
->
+export type SearchResponse = {
+  readonly query: string
+  readonly hasMore: boolean
+  readonly results: readonly SearchResult[]
+}

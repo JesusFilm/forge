@@ -44,7 +44,7 @@ describe("buildWatchSearchAnalyticsLogEvent", () => {
       requestType: "search",
       responseSearchMode: "hybrid",
       resultCount: 3,
-      resultSource: "semantic",
+      resultSource: "watch-search",
       searchRequestId: "search_12345678",
       surface: WATCH_SEARCH_ANALYTICS_SURFACE,
     })
@@ -141,6 +141,55 @@ describe("buildWatchSearchAnalyticsLogEvent", () => {
     expect(event?.attributes).not.toHaveProperty("watch_context.token")
     expect(event?.attributes).not.toHaveProperty("watch_context.video_id")
     expect(event?.attributes).not.toHaveProperty("watch_context.video_slug")
+  })
+
+  it("records privacy-safe lane status counts and summaries", () => {
+    const event = buildWatchSearchAnalyticsLogEvent({
+      degraded: true,
+      laneStatuses: [
+        {
+          lane: "exact_title",
+          status: "fulfilled",
+          elapsedMs: 4.5,
+          resultCount: 2,
+          reason: null,
+        },
+        {
+          lane: "semantic_retrieval",
+          status: "degraded",
+          elapsedMs: 19,
+          resultCount: 1,
+          reason: "partial_locale_failure",
+        },
+        {
+          lane: "bad lane",
+          status: "degraded",
+          elapsedMs: 99,
+          resultCount: 10,
+          reason: "unsafe reason",
+        },
+      ],
+      outcome: "completed",
+      query: "Jesus",
+      resultCount: 3,
+      searchRequestId: "search_12345678",
+      surface: WATCH_SEARCH_ANALYTICS_SURFACE,
+    })
+
+    expect(event?.attributes).toMatchObject({
+      "watch_search.degraded": true,
+      "watch_search.lane_count": 2,
+      "watch_search.fulfilled_lane_count": 1,
+      "watch_search.degraded_lane_count": 1,
+      "watch_search.skipped_lane_count": 0,
+      "watch_search.lane_elapsed_ms_max": 19,
+      "watch_search.lane_result_count": 3,
+      "watch_search.lane_statuses":
+        "exact_title:fulfilled,ms=4.5,count=2;semantic_retrieval:degraded,reason=partial_locale_failure,ms=19,count=1",
+    })
+    expect(event?.attributes["watch_search.lane_statuses"]).not.toContain(
+      "bad lane",
+    )
   })
 })
 

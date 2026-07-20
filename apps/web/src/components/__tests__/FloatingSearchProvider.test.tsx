@@ -27,7 +27,11 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { runSearch } from "@/lib/search-actions"
+import {
+  recordWatchSearchResultClick,
+  recordWatchSearchResultsViewed,
+  runSearch,
+} from "@/lib/search-actions"
 import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import type {
   SearchActionResult,
@@ -43,10 +47,7 @@ import {
   type WatchPlayerChromeVisibilityDetail,
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
-import {
-  WATCH_SEARCH_ANALYTICS_SURFACE,
-  WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
-} from "@/lib/watch-search-analytics-contract"
+import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
@@ -67,13 +68,14 @@ vi.mock("next/navigation", () => ({
 }))
 
 vi.mock("@/lib/search-actions", () => ({
+  recordWatchSearchResultClick: vi.fn(async () => ({ ok: true })),
+  recordWatchSearchResultsViewed: vi.fn(async () => ({ ok: true })),
   runSearch: vi.fn(),
 }))
 
 vi.mock("@/lib/search-language-actions", () => ({
   getSearchLanguageOptions: vi.fn(async () => ({
     ok: true,
-    algoliaEnabled: false,
     options: [],
     countrySuggestion: null,
     recommendedLanguage: null,
@@ -238,11 +240,11 @@ function makeSearchResponse(
   results: SearchResult[],
   hasMore: boolean,
 ): SearchActionResult {
-  return searchResult("semantic", {
+  return searchResult("watch-search", {
     results,
     hasMore,
     query: "the bible project",
-    searchMode: "hybrid",
+    searchMode: "watch-search",
     latencyMs: 12,
   })
 }
@@ -336,7 +338,6 @@ function PlaybackStatePublisher({
 
 function SearchModeHarness() {
   const {
-    algoliaSearchEnabled,
     displayResults,
     error,
     loadMore,
@@ -348,9 +349,6 @@ function SearchModeHarness() {
 
   return (
     <div>
-      <span data-testid="algolia-search-enabled">
-        {String(algoliaSearchEnabled)}
-      </span>
       <span data-testid="search-result-count">{displayResults.length}</span>
       <span data-testid="search-error">{error ?? ""}</span>
       <span data-testid="search-loading">{String(loading)}</span>
@@ -547,497 +545,10 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
-  it("uses the server language metadata response to enable Algolia UI on open", async () => {
-    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
-      ok: true,
-      algoliaEnabled: true,
-      options: [
-        {
-          englishName: "English",
-          nativeName: "English",
-          bcp47: "en",
-          publicSlug: "english",
-          regionNames: ["Europe"],
-        },
-        {
-          englishName: "Swahili",
-          nativeName: "Kiswahili",
-          bcp47: "sw",
-          publicSlug: "swahili",
-          regionNames: ["Africa"],
-        },
-        {
-          englishName: "Hindi",
-          nativeName: "हिंदी",
-          bcp47: "hi",
-          publicSlug: "hindi",
-          regionNames: ["Asia"],
-        },
-        {
-          englishName: "Spanish, Latin American",
-          nativeName: "Español",
-          bcp47: "es-419",
-          publicSlug: "spanish-latin-american",
-          regionNames: ["South America"],
-        },
-        {
-          englishName: "Navajo",
-          nativeName: "Diné Bizaad",
-          bcp47: "nv",
-          publicSlug: "navajo",
-          regionNames: ["North America"],
-        },
-        {
-          englishName: "Fijian",
-          nativeName: "Vosa Vakaviti",
-          bcp47: "fj",
-          publicSlug: "fijian",
-          regionNames: ["Oceania"],
-        },
-      ],
-      countrySuggestion: null,
-      recommendedLanguage: {
-        englishName: "English",
-        nativeName: "English",
-        bcp47: "en",
-        publicSlug: "english",
-        regionNames: ["Europe"],
-      },
-      countryCode: null,
-      countryName: null,
-    })
-
-    act(() => {
-      root.render(
-        <SearchControllerTestShell>
-          <SearchModeHarness />
-        </SearchControllerTestShell>,
-      )
-    })
-
-    const state = document.querySelector(
-      '[data-testid="algolia-search-enabled"]',
-    )
-    const openButton = document.querySelector(
-      '[data-testid="search-mode-harness-open-button"]',
-    ) as HTMLButtonElement
-
-    expect(state?.textContent).toBe("false")
-
-    await act(async () => {
-      openButton.click()
-      await Promise.resolve()
-    })
-
-    expect(state?.textContent).toBe("true")
-    expect(document.body.textContent).toContain("Search Suggestions")
-    expect(document.body.textContent).toContain("Languages")
-    expect(document.body.textContent).toContain("Europe")
-    expect(document.body.textContent).toContain("Africa")
-    expect(document.body.textContent).toContain("Asia")
-    expect(document.body.textContent).toContain("South America")
-    expect(document.body.textContent).toContain("North America")
-    expect(document.body.textContent).toContain("Oceania")
-
-    const suggestionsTab = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent?.includes("Search Suggestions"),
-    )
-    await act(async () => {
-      suggestionsTab?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-      await Promise.resolve()
-    })
-    expect(document.body.textContent).toContain("Recommended language")
-    expect(document.body.textContent).toContain("in English")
-
-    vi.mocked(runSearch).mockResolvedValueOnce(searchResult("algolia"))
-    const recommendedJesusSuggestion = document.querySelector(
-      '[aria-label="Search Jesus in English"]',
-    ) as HTMLButtonElement
-    await act(async () => {
-      recommendedJesusSuggestion.click()
-      await Promise.resolve()
-    })
-    expect(runSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: "Jesus",
-        languageEnglishNames: ["English"],
-        languageOptions: expect.arrayContaining([
-          expect.objectContaining({ englishName: "English" }),
-          expect.objectContaining({ englishName: "Swahili" }),
-          expect.objectContaining({ englishName: "Spanish, Latin American" }),
-        ]),
-      }),
-    )
-    const parablesCategory = document.querySelector(
-      '[data-testid="search-overlay-category-parables"]',
-    )
-    expect(parablesCategory).toBeNull()
-  })
-
-  it("keeps category cards stable while zooming only the background on hover", async () => {
-    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
-      ok: true,
-      algoliaEnabled: false,
-      options: [],
-      countrySuggestion: null,
-      recommendedLanguage: null,
-      countryCode: null,
-      countryName: null,
-    })
-
-    await openSearchOverlay()
-
-    const categoryButton = document.querySelector(
-      '[data-testid="search-overlay-category-parables"]',
-    ) as HTMLButtonElement | null
-    const categoryBackground = document.querySelector(
-      '[data-testid="search-overlay-category-background-parables"]',
-    )
-    const categoryHoverOutline = document.querySelector(
-      '[data-testid="search-overlay-category-hover-outline-parables"]',
-    )
-
-    expect(categoryButton).not.toBeNull()
-    expect(categoryButton?.className).not.toContain("hover:scale")
-    expect(categoryBackground?.className).toContain("search-card-hover-zoom")
-    expect(categoryHoverOutline?.className).toContain("search-card-red-outline")
-    expect(categoryHoverOutline?.className).toContain(
-      "search-card-hover-outline",
-    )
-  })
-
-  it("uses the manual semantic search language selection for the next search", async () => {
-    vi.useFakeTimers()
-    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
-      ok: true,
-      algoliaEnabled: false,
-      options: [englishSearchLanguage, spanishSearchLanguage],
-      countrySuggestion: null,
-      recommendedLanguage: englishSearchLanguage,
-      countryCode: null,
-      countryName: null,
-    })
-    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
-
-    const input = await openSearchOverlay()
-    const languageComboboxTrigger = document.querySelector(
-      '[data-testid="language-combobox-trigger"]',
-    ) as HTMLButtonElement | null
-
-    expect(languageComboboxTrigger).not.toBeNull()
-    expect(languageComboboxTrigger?.getAttribute("aria-expanded")).toBe("false")
-    expect(languageComboboxTrigger?.textContent).toContain("English")
-    expect(
-      document.querySelector('[data-testid="language-combobox-search"]'),
-    ).toBeNull()
-    expect(document.body.textContent).not.toContain("Browse by region")
-    expect(document.body.textContent).not.toContain("Spanish, Castilian")
-
-    await act(async () => {
-      languageComboboxTrigger?.click()
-      await Promise.resolve()
-    })
-
-    const languageSearchInput = document.querySelector(
-      '[data-testid="language-combobox-search"]',
-    ) as HTMLInputElement | null
-
-    expect(languageSearchInput).not.toBeNull()
-    expect(languageSearchInput?.value).toBe("")
-    expect(document.body.textContent).toContain("English")
-    expect(
-      document.querySelector('[data-testid="language-combobox-popover"]'),
-    ).not.toBeNull()
-    expect(document.body.textContent).toContain("Spanish, Castilian")
-
-    act(() => {
-      setInputValue(languageSearchInput as HTMLInputElement, "span")
-    })
-
-    const spanishButton = document.querySelector(
-      '[data-testid="language-combobox-option"][data-language-slug="spanish-castilian"]',
-    ) as HTMLButtonElement | null
-
-    expect(spanishButton).not.toBeNull()
-
-    await act(async () => {
-      spanishButton?.click()
-      await Promise.resolve()
-    })
-    await submitDebouncedSearch(input, "jesus")
-
-    expect(mockedRunSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: "jesus",
-        languageEnglishNames: ["Spanish, Castilian"],
-        languageSlug: "spanish-castilian",
-      }),
-    )
-
-    const clearLanguageButton = document.querySelector(
-      '[aria-label="Use website default search language"]',
-    ) as HTMLButtonElement | null
-    expect(clearLanguageButton).not.toBeNull()
-
-    await act(async () => {
-      clearLanguageButton?.click()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(mockedRunSearch).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        query: "jesus",
-        languageEnglishNames: ["English"],
-        languageSlug: "english",
-      }),
-    )
-  })
-
-  it("defaults semantic search language from the Watch route before browser recommendation", async () => {
-    vi.useFakeTimers()
-    navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
-    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
-      ok: true,
-      algoliaEnabled: false,
-      options: [englishSearchLanguage, spanishSearchLanguage],
-      countrySuggestion: null,
-      recommendedLanguage: englishSearchLanguage,
-      countryCode: null,
-      countryName: null,
-    })
-    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
-
-    const input = await openSearchOverlay()
-    await submitDebouncedSearch(input, "jesus")
-
-    expect(mockedRunSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: "jesus",
-        languageSlug: "spanish-castilian",
-      }),
-    )
-  })
-
-  it("pauses semantic debounce for a detected query language until confirmed", async () => {
-    vi.useFakeTimers()
-    mockedGetSearchLanguageOptions.mockResolvedValueOnce({
-      ok: true,
-      algoliaEnabled: false,
-      options: [englishSearchLanguage, spanishSearchLanguage],
-      countrySuggestion: null,
-      recommendedLanguage: englishSearchLanguage,
-      countryCode: null,
-      countryName: null,
-    })
-    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
-
-    const input = await openSearchOverlay()
-
-    act(() => {
-      setInputValue(input, "la vida de Jesús en español para niños")
-      vi.advanceTimersByTime(400)
-    })
-
-    expect(mockedRunSearch).not.toHaveBeenCalled()
-    expect(document.body.textContent).toContain("Spanish detected")
-
-    const confirm = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Search in Spanish",
-    ) as HTMLButtonElement | undefined
-
-    await act(async () => {
-      confirm?.click()
-      await Promise.resolve()
-    })
-
-    expect(mockedRunSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: "la vida de Jesús en español para niños",
-        languageEnglishNames: ["Spanish, Castilian"],
-        languageSlug: "spanish-castilian",
-      }),
-    )
-  })
-
-  it("waits for semantic language metadata before searching a detectable query", async () => {
-    vi.useFakeTimers()
-    type LanguageOptionsResponse = Awaited<
-      ReturnType<typeof getSearchLanguageOptions>
-    >
-    let resolveLanguageOptions: (
-      value: LanguageOptionsResponse,
-    ) => void = () => {}
-    const delayedLanguageOptions = new Promise<LanguageOptionsResponse>(
-      (resolve) => {
-        resolveLanguageOptions = resolve
-      },
-    )
-    mockedGetSearchLanguageOptions.mockReturnValueOnce(delayedLanguageOptions)
-    mockedRunSearch.mockResolvedValue(searchResult("semantic"))
-
-    const input = await openSearchOverlay()
-
-    act(() => {
-      setInputValue(input, "la vida de Jesús en español para niños")
-    })
-    await act(async () => {
-      vi.advanceTimersByTime(400)
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(mockedRunSearch).not.toHaveBeenCalled()
-    expect(document.body.textContent).not.toContain("Spanish detected")
-
-    await act(async () => {
-      resolveLanguageOptions({
-        ok: true,
-        algoliaEnabled: false,
-        options: [englishSearchLanguage, spanishSearchLanguage],
-        countrySuggestion: null,
-        recommendedLanguage: englishSearchLanguage,
-        countryCode: null,
-        countryName: null,
-      })
-      await delayedLanguageOptions
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(mockedRunSearch).not.toHaveBeenCalled()
-    expect(document.body.textContent).toContain("Spanish detected")
-
-    const confirm = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Search in Spanish",
-    ) as HTMLButtonElement | undefined
-
-    await act(async () => {
-      confirm?.click()
-      await Promise.resolve()
-    })
-
-    expect(mockedRunSearch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: "la vida de Jesús en español para niños",
-        languageEnglishNames: ["Spanish, Castilian"],
-        languageSlug: "spanish-castilian",
-      }),
-    )
-  })
-
-  it("uses the latest server search source to toggle Algolia-only UI state", async () => {
-    vi.mocked(runSearch)
-      .mockResolvedValueOnce(searchResult("algolia"))
-      .mockResolvedValueOnce(searchResult("semantic"))
-
-    act(() => {
-      root.render(
-        <SearchControllerTestShell>
-          <SearchModeHarness />
-        </SearchControllerTestShell>,
-      )
-    })
-
-    const state = document.querySelector(
-      '[data-testid="algolia-search-enabled"]',
-    )
-    const searchButton = document.querySelector(
-      '[data-testid="search-mode-harness-button"]',
-    ) as HTMLButtonElement
-
-    expect(state?.textContent).toBe("false")
-
-    await act(async () => {
-      searchButton.click()
-      await Promise.resolve()
-    })
-
-    expect(state?.textContent).toBe("true")
-
-    await act(async () => {
-      searchButton.click()
-      await Promise.resolve()
-    })
-
-    expect(state?.textContent).toBe("false")
-  })
-
-  it("does not append load-more results if the server search source changes mid-query", async () => {
-    vi.mocked(runSearch)
-      .mockResolvedValueOnce(
-        searchResult("algolia", {
-          results: [videoResult("algolia-1")],
-          hasMore: true,
-          nextOffset: 20,
-        }),
-      )
-      .mockResolvedValueOnce(
-        searchResult("semantic", {
-          results: [videoResult("semantic-1")],
-          hasMore: false,
-        }),
-      )
-
-    act(() => {
-      root.render(
-        <SearchControllerTestShell>
-          <SearchModeHarness />
-        </SearchControllerTestShell>,
-      )
-    })
-
-    const searchButton = document.querySelector(
-      '[data-testid="search-mode-harness-button"]',
-    ) as HTMLButtonElement
-    const loadMoreButton = document.querySelector(
-      '[data-testid="search-mode-harness-load-more-button"]',
-    ) as HTMLButtonElement
-    const resultCount = document.querySelector(
-      '[data-testid="search-result-count"]',
-    )
-    const error = document.querySelector('[data-testid="search-error"]')
-
-    await act(async () => {
-      searchButton.click()
-      await Promise.resolve()
-    })
-
-    expect(resultCount?.textContent).toBe("1")
-
-    await act(async () => {
-      loadMoreButton.click()
-      await Promise.resolve()
-    })
-
-    expect(resultCount?.textContent).toBe("1")
-    expect(runSearch).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        offset: 20,
-      }),
-    )
-    const firstAnalytics = mockedRunSearch.mock.calls[0]?.[0].analytics
-    const loadMoreAnalytics = mockedRunSearch.mock.calls[1]?.[0].analytics
-    expect(firstAnalytics).toMatchObject({
-      requestType: "search",
-      surface: WATCH_SEARCH_ANALYTICS_SURFACE,
-    })
-    expect(loadMoreAnalytics).toMatchObject({
-      expectedResultSource: "algolia",
-      requestType: "load_more",
-      searchRequestId: firstAnalytics?.searchRequestId,
-      surface: WATCH_SEARCH_ANALYTICS_SURFACE,
-      visibleResultCount: 1,
-    })
-    expect(error?.textContent).toBe("Failed to load more results.")
-  })
-
   it("keeps the resolved semantic language when loading more after metadata refresh", async () => {
     navigationMocks.pathname = "/jesus.html/spanish-castilian.html"
     mockedGetSearchLanguageOptions.mockResolvedValueOnce({
       ok: true,
-      algoliaEnabled: false,
       options: [englishSearchLanguage, spanishSearchLanguage],
       countrySuggestion: null,
       recommendedLanguage: englishSearchLanguage,
@@ -1046,8 +557,8 @@ describe("FloatingSearchProvider — search mode", () => {
     })
     mockedRunSearch
       .mockResolvedValueOnce(
-        searchResult("semantic", {
-          results: [videoResult("semantic-1")],
+        searchResult("watch-search", {
+          results: [videoResult("watch-search-1")],
           hasMore: true,
           nextOffset: 10,
           resolvedLanguage: {
@@ -1059,8 +570,8 @@ describe("FloatingSearchProvider — search mode", () => {
         }),
       )
       .mockResolvedValueOnce(
-        searchResult("semantic", {
-          results: [videoResult("semantic-2")],
+        searchResult("watch-search", {
+          results: [videoResult("watch-search-1")],
           hasMore: false,
           resolvedLanguage: {
             locale: "es",
@@ -1100,8 +611,10 @@ describe("FloatingSearchProvider — search mode", () => {
       1,
       expect.objectContaining({
         query: "jesus",
-        languageEnglishNames: ["Spanish, Castilian"],
-        languageSlug: "spanish-castilian",
+        languageEnglishNames: [],
+        languageSlug: null,
+        languageSlugIsExplicit: false,
+        routeLanguageSlug: "spanish-castilian",
       }),
     )
 
@@ -1117,8 +630,10 @@ describe("FloatingSearchProvider — search mode", () => {
       expect.objectContaining({
         query: "jesus",
         offset: 10,
-        languageEnglishNames: ["Spanish, Castilian"],
-        languageSlug: "spanish-castilian",
+        languageEnglishNames: [],
+        languageSlug: null,
+        languageSlugIsExplicit: false,
+        routeLanguageSlug: "spanish-castilian",
       }),
     )
   })
@@ -1208,7 +723,7 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(skeleton?.textContent).toBe("true")
 
     await act(async () => {
-      resolveFirstSearch(searchResult("semantic"))
+      resolveFirstSearch(searchResult("watch-search"))
       await firstSearch
       await Promise.resolve()
     })
@@ -1218,7 +733,7 @@ describe("FloatingSearchProvider — search mode", () => {
   })
 
   it("leaves the browser URL unchanged when the submitted search query changes", async () => {
-    mockedRunSearch.mockResolvedValueOnce(searchResult("semantic"))
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
     window.history.replaceState({ next: "initial" }, "", "/watch?utm=campaign")
 
     act(() => {
@@ -1835,7 +1350,6 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     await act(async () => {
       delayedLanguageOptions.resolve({
         ok: true,
-        algoliaEnabled: false,
         options: [],
         countrySuggestion: null,
         recommendedLanguage: null,
@@ -1850,7 +1364,6 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("reuses language metadata when reopening the search modal", async () => {
     mockedGetSearchLanguageOptions.mockResolvedValue({
       ok: true,
-      algoliaEnabled: false,
       options: [englishSearchLanguage],
       countrySuggestion: null,
       recommendedLanguage: englishSearchLanguage,
@@ -2008,7 +1521,6 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     vi.useFakeTimers()
     mockedGetSearchLanguageOptions.mockResolvedValueOnce({
       ok: true,
-      algoliaEnabled: false,
       options: [englishSearchLanguage, spanishSearchLanguage],
       countrySuggestion: null,
       recommendedLanguage: englishSearchLanguage,
@@ -2321,8 +1833,19 @@ describe("FloatingSearchProvider — search pagination", () => {
     const searchRequestId =
       mockedRunSearch.mock.calls[0]?.[0].analytics?.searchRequestId
 
+    expect(recordWatchSearchResultsViewed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: searchRequestId,
+        visibleResultIds: ["first-result"],
+      }),
+    )
+    expect(recordWatchSearchResultsViewed).toHaveBeenCalledTimes(1)
+
     expect(link).not.toBeUndefined()
     await act(async () => {
+      link?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
       link?.dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       )
@@ -2337,11 +1860,20 @@ describe("FloatingSearchProvider — search pagination", () => {
         "watch_search.result_id": "first-result",
         "watch_search.result_position": 1,
         "watch_search.result_slug": "first-result-slug",
-        "watch_search.result_source": "semantic",
-        "watch_search.search_language_slug": "english",
+        "watch_search.result_source": "watch-search",
         "watch_search.search_request_id": searchRequestId,
       }),
     )
+    expect(recordWatchSearchResultClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: searchRequestId,
+        resultId: "first-result",
+        resultType: "video",
+        position: 1,
+        visibleResultIds: ["first-result"],
+      }),
+    )
+    expect(recordWatchSearchResultClick).toHaveBeenCalledTimes(1)
   })
 
   it("keeps the final edited query search without syncing the URL", async () => {
@@ -2463,8 +1995,8 @@ describe("FloatingSearchProvider — search pagination", () => {
     mockedGetSearchLanguageOptions.mockReturnValue(languageMetadata.promise)
     mockedRunSearch
       .mockResolvedValueOnce(
-        searchResult("semantic", {
-          results: [videoResult("semantic-1")],
+        searchResult("watch-search", {
+          results: [videoResult("watch-search-1")],
           hasMore: true,
           nextOffset: 10,
           resolvedLanguage: {
@@ -2476,8 +2008,8 @@ describe("FloatingSearchProvider — search pagination", () => {
         }),
       )
       .mockResolvedValueOnce(
-        searchResult("semantic", {
-          results: [videoResult("semantic-2")],
+        searchResult("watch-search", {
+          results: [videoResult("watch-search-1")],
           hasMore: false,
           resolvedLanguage: {
             locale: "en",
@@ -2520,7 +2052,6 @@ describe("FloatingSearchProvider — search pagination", () => {
     await act(async () => {
       languageMetadata.resolve({
         ok: true,
-        algoliaEnabled: false,
         options: [englishSearchLanguage],
         countrySuggestion: null,
         recommendedLanguage: null,
@@ -2544,7 +2075,8 @@ describe("FloatingSearchProvider — search pagination", () => {
         query: "jesus",
         offset: 10,
         languageEnglishNames: [],
-        languageSlug: "english",
+        languageSlug: null,
+        languageSlugIsExplicit: false,
       }),
     )
   })

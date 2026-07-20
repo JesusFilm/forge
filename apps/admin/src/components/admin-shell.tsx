@@ -4,7 +4,7 @@ import type { Role } from "@/auth/principal"
 import type { Route } from "next"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   Command,
   Globe,
@@ -47,6 +47,8 @@ type NavigationFeedbackCheck = {
 }
 
 const ADMIN_ROUTE_PENDING_TIMEOUT_MS = 8000
+const ADMIN_ROUTE_FEEDBACK_EXIT_MS = 360
+const ADMIN_ROUTE_FEEDBACK_MIN_VISIBLE_MS = 520
 export const ADMIN_NAVIGATION_PENDING_EVENT = "admin:navigation-pending"
 
 function isDashboardPathname(pathname: string) {
@@ -169,6 +171,11 @@ export function AdminShell({
   const [isNavOpen, setNavOpen] = useState(false)
   const [isSwitchingLocale, setIsSwitchingLocale] = useState(false)
   const [navigationPending, setNavigationPending] = useState(false)
+  const [navigationFeedbackVisible, setNavigationFeedbackVisible] =
+    useState(false)
+  const [navigationFeedbackExiting, setNavigationFeedbackExiting] =
+    useState(false)
+  const navigationFeedbackShownAt = useRef(0)
   const routeKey = `${pathname}?${searchParams.toString()}`
   const activeItem = getNavItem(pathname)
   const isFullCanvasRoute =
@@ -230,6 +237,35 @@ export function AdminShell({
 
     return () => window.clearTimeout(timeout)
   }, [navigationPending])
+
+  useEffect(() => {
+    if (navigationPending) {
+      navigationFeedbackShownAt.current = window.performance.now()
+      setNavigationFeedbackVisible(true)
+      setNavigationFeedbackExiting(false)
+      return
+    }
+
+    if (!navigationFeedbackVisible) {
+      return
+    }
+
+    const elapsed = window.performance.now() - navigationFeedbackShownAt.current
+    const exitDelay = Math.max(0, ADMIN_ROUTE_FEEDBACK_MIN_VISIBLE_MS - elapsed)
+    let exitTimeout: number | undefined
+    const removeTimeout = window.setTimeout(() => {
+      setNavigationFeedbackExiting(true)
+      exitTimeout = window.setTimeout(() => {
+        setNavigationFeedbackVisible(false)
+        setNavigationFeedbackExiting(false)
+      }, ADMIN_ROUTE_FEEDBACK_EXIT_MS)
+    }, exitDelay)
+
+    return () => {
+      window.clearTimeout(removeTimeout)
+      if (exitTimeout) window.clearTimeout(exitTimeout)
+    }
+  }, [navigationPending, navigationFeedbackVisible])
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -442,26 +478,37 @@ export function AdminShell({
             </div>
           </div>
         </header>
-        {navigationPending ? (
+        {navigationFeedbackVisible ? (
           <div
             role="status"
             aria-live="polite"
             aria-atomic="true"
             data-admin-navigation-feedback="pending"
-            className="sticky top-12 z-20 flex h-8 items-center gap-2 border-b border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-6 font-mono text-[11px] font-semibold uppercase text-[var(--color-success)] shadow-[0_8px_18px_rgba(0,0,0,0.18)]"
+            className={cx(
+              "fixed right-4 bottom-4 z-50 w-[min(320px,calc(100vw-2rem))] rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.38)]",
+              navigationFeedbackExiting
+                ? "route-feedback-exit"
+                : "route-feedback-enter",
+            )}
           >
-            <LoaderCircle
-              className="h-3.5 w-3.5 animate-spin"
-              strokeWidth={1.6}
+            <div className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase text-[var(--color-success)]">
+              <LoaderCircle
+                className="h-3.5 w-3.5 animate-spin"
+                strokeWidth={1.6}
+                aria-hidden="true"
+              />
+              {messages.common.navigationLoading}
+            </div>
+            <div
               aria-hidden="true"
-            />
-            {messages.common.navigationLoading}
-            <span
-              aria-hidden="true"
-              className="ml-auto h-px w-24 overflow-hidden rounded-full bg-[var(--color-hairline-strong)]"
+              className="mt-3 grid h-1 grid-cols-5 gap-1 overflow-hidden"
             >
-              <span className="block h-full w-1/2 animate-pulse rounded-full bg-[var(--color-success)]" />
-            </span>
+              <span className="rounded-full bg-[var(--color-success)]" />
+              <span className="animate-pulse rounded-full bg-[var(--color-success)]" />
+              <span className="animate-pulse rounded-full bg-[var(--color-success)] opacity-70" />
+              <span className="rounded-full bg-[var(--color-hairline-strong)]" />
+              <span className="rounded-full bg-[var(--color-hairline-strong)]" />
+            </div>
           </div>
         ) : null}
         <main className="flex-1 bg-[var(--color-bg)]">
