@@ -39,6 +39,16 @@ const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
 // misbehaving upstream can claim before the byte-cap aborts the stream. Override
 // via JESUSFILM_RAG_MAX_RESPONSE_BYTES; never required at boot.
 const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
+const DEFAULT_LANGFUSE_USER_AGENT = "forge-mastra-langfuse/1.0"
+const DEFAULT_LANGFUSE_TIMEOUT_MS = 3_000
+// 256 KiB ceiling on the buffered Langfuse prompt response body. Prompt
+// payloads are small (a system prompt plus metadata), so this bounds the heap a
+// misbehaving upstream can claim before the byte-cap aborts the stream while
+// leaving generous headroom for any legitimate prompt. Override via
+// LANGFUSE_MAX_RESPONSE_BYTES; never required at boot.
+const DEFAULT_LANGFUSE_MAX_RESPONSE_BYTES = 262_144
+const DEFAULT_LANGFUSE_PROMPT_CACHE_TTL_MS = 60_000
+const DEFAULT_LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS = 10_000
 const DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_MODEL =
   DEFAULT_SUBTITLE_ENRICHMENT_MODEL
 const DEFAULT_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS =
@@ -87,6 +97,20 @@ export type JesusfilmRagConfig = {
   userAgent: string
   /** Max bytes buffered from the RAG response body before the read aborts. */
   maxResponseBytes: number
+}
+
+export type LangfuseConfig = {
+  baseUrl?: string
+  publicKey?: string
+  secretKey?: string
+  timeoutMs: number
+  userAgent: string
+  /** Max bytes buffered from the Langfuse response body before the read aborts. */
+  maxResponseBytes: number
+  promptDefaultLabel?: string
+  promptCacheTtlMs: number
+  /** Clamped to promptCacheTtlMs — the smaller value always wins. */
+  promptFailureCooldownMs: number
 }
 
 const envSchema = z.object({
@@ -314,6 +338,66 @@ const envSchema = z.object({
     .positive()
     .max(16_777_216)
     .optional(),
+  // Langfuse prompt retrieval (2026-07-20 prompt-helper plan, U1). Fully
+  // optional — unset degrades the helper to the caller-supplied fallback
+  // prompt at runtime, never a boot failure. The base URL is gated by
+  // `LANGFUSE_ALLOWED_HOSTS` in production (the one Langfuse-driven boot
+  // throw — a security control), but no LANGFUSE_* var is ever pushed into the
+  // production `missing` list (KTD5).
+  LANGFUSE_ALLOWED_HOSTS: z.string().min(1).optional(),
+  // No default base URL: Langfuse cloud keys are region-bound, so a hardcoded
+  // region default yields confusing 401s. Unset means unconfigured — the same
+  // posture as JESUSFILM_RAG_BASE_URL.
+  LANGFUSE_BASE_URL: z.string().url().optional(),
+  // Unlike the Bearer-token siblings in this file, this key pair feeds HTTP
+  // Basic auth (`base64(public:secret)`) — Langfuse's documented auth scheme.
+  LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
+  LANGFUSE_SECRET_KEY: z.string().min(1).optional(),
+  // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
+  // this single-attempt prompt-fetch timeout must stay strictly inside any
+  // future chat-turn budget. The 10_000 cap keeps even the widest override
+  // well below the 90 s chatTurn ceiling.
+  LANGFUSE_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10_000)
+    .default(DEFAULT_LANGFUSE_TIMEOUT_MS),
+  LANGFUSE_USER_AGENT: z.string().min(1).default(DEFAULT_LANGFUSE_USER_AGENT),
+  // Byte-cap on the buffered Langfuse prompt response body. `.optional()` with
+  // a runtime fallback in `getLangfuseConfig()` — mirrors
+  // JESUSFILM_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing`
+  // list while the 5 MiB `.max()` ceiling fails LOUD (boot-time parse error)
+  // on an over-range operator typo rather than silently widening the cap and
+  // defeating the OOM guard this var exists to provide. 5 MiB is 20× the
+  // 256 KiB default — ample headroom for a legitimately huge prompt while
+  // bounding the shared process.
+  LANGFUSE_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(5_242_880)
+    .optional(),
+  // Optional label the helper resolves prompts against when the caller does
+  // not pass one. No schema default — the helper's own resolution order is
+  // call parameter > this var > "production" (KTD3), so unset here still
+  // resolves to an explicit "production" label, never an implicit `latest`.
+  LANGFUSE_PROMPT_DEFAULT_LABEL: z.string().min(1).optional(),
+  LANGFUSE_PROMPT_CACHE_TTL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(3_600_000)
+    .default(DEFAULT_LANGFUSE_PROMPT_CACHE_TTL_MS),
+  LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(300_000)
+    .default(DEFAULT_LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS),
+  // Opt-in live smoke gate: only the literal "1" enables it. Any other
+  // non-empty value fails loud at parse rather than silently half-enabling.
+  LANGFUSE_PROMPT_SMOKE_TEST: z.enum(["1"]).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -565,6 +649,27 @@ export const env = envSchema.parse({
   JESUSFILM_RAG_USER_AGENT: emptyToUndefined(
     process.env.JESUSFILM_RAG_USER_AGENT,
   ),
+  LANGFUSE_ALLOWED_HOSTS: emptyToUndefined(process.env.LANGFUSE_ALLOWED_HOSTS),
+  LANGFUSE_BASE_URL: emptyToUndefined(process.env.LANGFUSE_BASE_URL),
+  LANGFUSE_PUBLIC_KEY: emptyToUndefined(process.env.LANGFUSE_PUBLIC_KEY),
+  LANGFUSE_SECRET_KEY: emptyToUndefined(process.env.LANGFUSE_SECRET_KEY),
+  LANGFUSE_TIMEOUT_MS: emptyToUndefined(process.env.LANGFUSE_TIMEOUT_MS),
+  LANGFUSE_USER_AGENT: emptyToUndefined(process.env.LANGFUSE_USER_AGENT),
+  LANGFUSE_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.LANGFUSE_MAX_RESPONSE_BYTES,
+  ),
+  LANGFUSE_PROMPT_DEFAULT_LABEL: emptyToUndefined(
+    process.env.LANGFUSE_PROMPT_DEFAULT_LABEL,
+  ),
+  LANGFUSE_PROMPT_CACHE_TTL_MS: emptyToUndefined(
+    process.env.LANGFUSE_PROMPT_CACHE_TTL_MS,
+  ),
+  LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS: emptyToUndefined(
+    process.env.LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS,
+  ),
+  LANGFUSE_PROMPT_SMOKE_TEST: emptyToUndefined(
+    process.env.LANGFUSE_PROMPT_SMOKE_TEST,
+  ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
@@ -672,6 +777,26 @@ function assertJesusfilmRagBaseUrlAllowedForProduction() {
   }
 }
 
+function assertLangfuseBaseUrlAllowedForProduction() {
+  // Conditional on the base URL being set: unconfigured Langfuse is valid by
+  // design (the prompt helper degrades to the caller-supplied fallback). When
+  // the URL IS set, fail-closed — https AND a non-empty allowlist containing
+  // the hostname, else throw. The allowlist has no default (Langfuse cloud is
+  // region-bound and self-hosting is supported, so no single host is
+  // canonical), so a base-URL-set-but-allowlist-unset production config throws
+  // here. Mirrors `assertJesusfilmRagBaseUrlAllowedForProduction`.
+  if (!env.LANGFUSE_BASE_URL) return
+  const baseUrl = new URL(env.LANGFUSE_BASE_URL)
+  const allowedHosts = env.LANGFUSE_ALLOWED_HOSTS
+    ? csvSet(env.LANGFUSE_ALLOWED_HOSTS)
+    : new Set<string>()
+  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+    throw new Error(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
 function assertGatewayProviderContractAllowedForProduction() {
   if (
     env.AI_GATEWAY_EMBEDDINGS_MODEL !== DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL ||
@@ -753,6 +878,11 @@ export function assertMastraRuntimeEnv() {
   // state degrades at runtime via the client's `config_missing` short-circuit,
   // honoring the ticket's "never a boot failure" rule.
   assertJesusfilmRagBaseUrlAllowedForProduction()
+  // Same posture for Langfuse (U1, R9): the host guard is the only
+  // Langfuse-driven boot throw. Missing keys are deliberately NOT in `missing`
+  // above — an unconfigured helper degrades to the caller-supplied fallback
+  // prompt at runtime (R8).
+  assertLangfuseBaseUrlAllowedForProduction()
 
   if (getContentEmbeddingsProviderMode() === "gateway") {
     missing.push([
@@ -907,6 +1037,31 @@ export function getJesusfilmRagConfig(): JesusfilmRagConfig {
     maxResponseBytes:
       env.JESUSFILM_RAG_MAX_RESPONSE_BYTES ??
       DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES,
+  }
+}
+
+export function getLangfuseConfig(): LangfuseConfig {
+  const promptCacheTtlMs = env.LANGFUSE_PROMPT_CACHE_TTL_MS
+  return {
+    baseUrl: env.LANGFUSE_BASE_URL,
+    publicKey: env.LANGFUSE_PUBLIC_KEY,
+    secretKey: env.LANGFUSE_SECRET_KEY,
+    timeoutMs: env.LANGFUSE_TIMEOUT_MS,
+    userAgent: env.LANGFUSE_USER_AGENT,
+    // `.optional()` schema + runtime fallback: keeps the knob out of the
+    // boot-time `missing` list while always handing the helper a concrete cap.
+    maxResponseBytes:
+      env.LANGFUSE_MAX_RESPONSE_BYTES ?? DEFAULT_LANGFUSE_MAX_RESPONSE_BYTES,
+    promptDefaultLabel: env.LANGFUSE_PROMPT_DEFAULT_LABEL,
+    promptCacheTtlMs,
+    // Invariant: the effective failure cooldown never exceeds the effective
+    // TTL under any env configuration — the smaller value wins. A cooldown
+    // outliving the cache window would keep serving the fallback prompt after
+    // a fresh fetch is already due.
+    promptFailureCooldownMs: Math.min(
+      env.LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS,
+      promptCacheTtlMs,
+    ),
   }
 }
 
