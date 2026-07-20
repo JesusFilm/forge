@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   fetchLangfusePrompt,
+  getManagedPrompt,
+  resetManagedPromptStateForTests,
   type LangfuseConfig,
 } from "./langfuse-prompt-client"
 
@@ -557,5 +559,631 @@ describe("langfuse prompt client", () => {
       status: 400,
     })
     if (!result.ok) expect(result.upstreamReason).toBeUndefined()
+  })
+})
+
+/**
+ * Layer 2 — `getManagedPrompt`. The tests are derived edge-for-edge from the
+ * cache state machine in the module's layer-2 header comment: every arrow is
+ * one test. All timing goes through an injected `now` clock (the repo's
+ * ai-chat-retention idiom — NO fake timers), and every scenario pins the
+ * underlying fetch-call count so a caching regression cannot pass silently.
+ */
+describe("getManagedPrompt (layer 2)", () => {
+  const FIXTURE_TEXT = textPromptFixture.prompt
+  // Marker string (scenario 14): must never appear in a captured log line.
+  const FALLBACK_TEXT = "FALLBACK-TEXT-MARKER: offline seeker instructions."
+
+  function makeClock(start = 1_700_000_000_000) {
+    let t = start
+    return {
+      now: () => t,
+      advance: (ms: number) => {
+        t += ms
+      },
+    }
+  }
+
+  function failureResponse(status = 500): Promise<Response> {
+    return jsonResponse({ error: "internal error" }, { status })
+  }
+
+  beforeEach(() => {
+    // Scenario 15: the reset hook isolates the module-level default cache and
+    // the once-per-process config_missing log gate between tests.
+    resetManagedPromptStateForTests()
+  })
+
+  it("Empty -> Fresh: cold success serves managed text with version and resolved label, passing the label explicitly on the wire", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+
+    const result = await getManagedPrompt({
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    })
+
+    expect(result).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    // R2 "no implicit latest": the omitted call label resolved to "production"
+    // and reached layer 1 EXPLICITLY as a query param — never omitted.
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("label=production")
+    expect(logs).toEqual([])
+  })
+
+  it("serves a fresh hit within TTL with no second fetch (call count pinned at 1)", async () => {
+    const clock = makeClock()
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+    }
+
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs - 1)
+    const second = await getManagedPrompt(input)
+
+    expect(second).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("Fresh -> Expired -> Fresh: TTL elapse triggers one blocking refetch and recaches the new text", async () => {
+    const clock = makeClock()
+    const updatedFixture = {
+      ...textPromptFixture,
+      version: 5,
+      prompt: "Updated managed instructions.",
+    }
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+    }
+
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs)
+    fetchImpl.mockImplementation(() => jsonResponse(updatedFixture))
+    const refreshed = await getManagedPrompt(input)
+
+    expect(refreshed).toEqual({
+      text: "Updated managed instructions.",
+      source: "langfuse",
+      version: 5,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    // Recached: an immediate third call is a fresh hit, not a fetch.
+    const third = await getManagedPrompt(input)
+    expect(third).toEqual(refreshed)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("Expired -> StaleServing: refetch failure serves stale text, logs exactly one failure event, and starts the cooldown", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs)
+    fetchImpl.mockImplementation(() => failureResponse())
+    const stale = await getManagedPrompt(input)
+
+    expect(stale).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+      stale: true,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toEqual([
+      "[langfuse] event=prompt_fetch_failed name=seeker/system-prompt label=production reason=network_error status=500",
+    ])
+    // Cooldown active: an immediate retry neither fetches nor re-logs.
+    const again = await getManagedPrompt(input)
+    expect(again).toEqual(stale)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toHaveLength(1)
+  })
+
+  it("StaleServing -> StaleServing: within the cooldown window stale is served from state — no fetch attempt, no re-log", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    // Build StaleServing: success, expire, refetch failure.
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs)
+    fetchImpl.mockImplementation(() => failureResponse())
+    await getManagedPrompt(input)
+
+    // One tick short of the cooldown boundary: still serving from state.
+    clock.advance(testConfig.promptFailureCooldownMs - 1)
+    const result = await getManagedPrompt(input)
+    expect(result).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+      stale: true,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toHaveLength(1)
+  })
+
+  it("StaleServing -> Fresh: cooldown lapse + refetch success clears the failure state and serves fresh managed text", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const updatedFixture = {
+      ...textPromptFixture,
+      version: 5,
+      prompt: "Updated managed instructions.",
+    }
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    // Build StaleServing: success, expire, refetch failure.
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs)
+    fetchImpl.mockImplementation(() => failureResponse())
+    await getManagedPrompt(input)
+
+    clock.advance(testConfig.promptFailureCooldownMs)
+    fetchImpl.mockImplementation(() => jsonResponse(updatedFixture))
+    const recovered = await getManagedPrompt(input)
+
+    // No stale flag: this is a fresh serve, not a cooldown serve.
+    expect(recovered).toEqual({
+      text: "Updated managed instructions.",
+      source: "langfuse",
+      version: 5,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    // Failure state cleared: an immediate next call is a plain fresh hit.
+    const after = await getManagedPrompt(input)
+    expect(after).toEqual(recovered)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    expect(logs).toHaveLength(1)
+  })
+
+  it("StaleServing -> StaleServing: post-cooldown refetch failure serves stale again, restarts the cooldown, and logs ONE new event (per attempt, never per serve)", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    // Build StaleServing: success, expire, refetch failure (first log).
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs)
+    fetchImpl.mockImplementation(() => failureResponse())
+    await getManagedPrompt(input)
+    expect(logs).toHaveLength(1)
+
+    // Cooldown lapses; the next attempt fails again → ONE new failure event.
+    clock.advance(testConfig.promptFailureCooldownMs)
+    const second = await getManagedPrompt(input)
+    expect(second).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+      stale: true,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    expect(logs).toHaveLength(2)
+
+    // Cooldown restarted: subsequent serves are fetch-free and log-free.
+    clock.advance(testConfig.promptFailureCooldownMs - 1)
+    const third = await getManagedPrompt(input)
+    expect(third).toEqual(second)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    expect(logs).toHaveLength(2)
+  })
+
+  it("Empty -> NegativeCached: cold failure serves the fallback with the reason; repeats within cooldown neither refetch nor re-log", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.reject(new TypeError("fetch failed")),
+    )
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    const first = await getManagedPrompt(input)
+    expect(first).toEqual({
+      text: FALLBACK_TEXT,
+      source: "fallback",
+      resolvedLabel: "production",
+      reason: "network_error",
+    })
+    expect(logs).toEqual([
+      "[langfuse] event=prompt_fetch_failed name=seeker/system-prompt label=production reason=network_error",
+    ])
+
+    clock.advance(testConfig.promptFailureCooldownMs - 1)
+    const second = await getManagedPrompt(input)
+    expect(second).toEqual(first)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(logs).toHaveLength(1)
+  })
+
+  it("NegativeCached -> Fresh: cooldown lapse + refetch success replaces the negative cache with a fresh entry", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.reject(new TypeError("fetch failed")),
+    )
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptFailureCooldownMs)
+    fetchImpl.mockImplementation(() => jsonResponse(textPromptFixture))
+    const recovered = await getManagedPrompt(input)
+
+    expect(recovered).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    // Failure state cleared: an immediate next call is a plain fresh hit.
+    const after = await getManagedPrompt(input)
+    expect(after).toEqual(recovered)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toHaveLength(1)
+  })
+
+  it("NegativeCached -> NegativeCached: post-cooldown refetch failure serves the fallback again, restarts the cooldown, and logs a new failure event", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.reject(new TypeError("fetch failed")),
+    )
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    await getManagedPrompt(input)
+    expect(logs).toHaveLength(1)
+
+    // Cooldown lapses; the next attempt fails again → ONE new failure event.
+    clock.advance(testConfig.promptFailureCooldownMs)
+    const second = await getManagedPrompt(input)
+    expect(second).toEqual({
+      text: FALLBACK_TEXT,
+      source: "fallback",
+      resolvedLabel: "production",
+      reason: "network_error",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toHaveLength(2)
+
+    // Cooldown restarted: subsequent serves are fetch-free and log-free.
+    clock.advance(testConfig.promptFailureCooldownMs - 1)
+    const third = await getManagedPrompt(input)
+    expect(third).toEqual(second)
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(logs).toHaveLength(2)
+  })
+
+  it("single-flight: two concurrent cold callers share ONE underlying fetch and both resolve to the managed text", async () => {
+    const clock = makeClock()
+    let resolveFetch: ((response: Response) => void) | undefined
+    const fetchImpl = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+    }
+
+    const first = getManagedPrompt(input)
+    const second = getManagedPrompt(input)
+    // Both callers' synchronous prefixes have run: one fetch, one shared flight.
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    resolveFetch?.(
+      new Response(JSON.stringify(textPromptFixture), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    const [a, b] = await Promise.all([first, second])
+    expect(a).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+    })
+    expect(b).toEqual(a)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("slot-leak guard: a synchronously throwing log sink clears the in-flight slot, resolves to fallback, and never wedges the entry", async () => {
+    const clock = makeClock()
+    const fetchImpl = vi.fn<typeof fetch>(() => failureResponse())
+    const throwingSink = vi.fn((_line: string) => {
+      throw new Error("sink exploded")
+    })
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: throwingSink,
+    }
+
+    // The throw happens INSIDE the refetch wrapper; nothing may propagate.
+    const first = await getManagedPrompt(input)
+    expect(first).toEqual({
+      text: FALLBACK_TEXT,
+      source: "fallback",
+      resolvedLabel: "production",
+      reason: "network_error",
+    })
+    expect(throwingSink).toHaveBeenCalledTimes(1)
+
+    // Subsequent calls resolve to fallback from cooldown state — no fetch.
+    const second = await getManagedPrompt(input)
+    expect(second).toEqual(first)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    // Not wedged: after the cooldown lapses, a successful refetch recovers the
+    // entry — proving the in-flight slot was released despite the sync throw.
+    clock.advance(testConfig.promptFailureCooldownMs)
+    fetchImpl.mockImplementation(() => jsonResponse(textPromptFixture))
+    const third = await getManagedPrompt(input)
+    expect(third).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('omitted label and explicit "production" share one cache entry; a different label is an independent entry', async () => {
+    const clock = makeClock()
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const base = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+    }
+
+    const omitted = await getManagedPrompt(base)
+    const explicit = await getManagedPrompt({ ...base, label: "production" })
+    expect(omitted.resolvedLabel).toBe("production")
+    expect(explicit).toEqual(omitted)
+    // One entry, one fetch: resolution happens BEFORE cache keying.
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    const editor = await getManagedPrompt({ ...base, label: "editor" })
+    expect(editor.resolvedLabel).toBe("editor")
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain("label=editor")
+  })
+
+  it('config.promptDefaultLabel fills an omitted call label (call param > config default > "production")', async () => {
+    const clock = makeClock()
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const config: LangfuseConfig = {
+      ...testConfig,
+      promptDefaultLabel: "staging",
+    }
+    const base = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config,
+      fetchImpl,
+      now: clock.now,
+    }
+
+    const defaulted = await getManagedPrompt(base)
+    expect(defaulted.resolvedLabel).toBe("staging")
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("label=staging")
+
+    // The call param still wins over the config default (its own entry).
+    const explicit = await getManagedPrompt({ ...base, label: "editor" })
+    expect(explicit.resolvedLabel).toBe("editor")
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("config_missing logs once per process across repeated attempts and entries", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const fetchImpl = vi.fn<typeof fetch>()
+    const config: LangfuseConfig = { ...testConfig, baseUrl: undefined }
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    const first = await getManagedPrompt(input)
+    expect(first).toEqual({
+      text: FALLBACK_TEXT,
+      source: "fallback",
+      resolvedLabel: "production",
+      reason: "config_missing",
+    })
+    expect(logs).toEqual([
+      "[langfuse] event=prompt_fetch_failed name=seeker/system-prompt label=production reason=config_missing detail=base_url_missing",
+    ])
+
+    // A post-cooldown re-attempt fails again but does NOT re-log...
+    clock.advance(testConfig.promptFailureCooldownMs)
+    await getManagedPrompt(input)
+    // ...and neither does a different prompt entry (per process, not per entry).
+    await getManagedPrompt({ ...input, name: "another/prompt" })
+    expect(logs).toHaveLength(1)
+    // Layer 1 short-circuits config_missing before any fetch.
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("failure log lines carry name/label/reason but never fetched prompt text, fallback text, or upstream reason", async () => {
+    const clock = makeClock()
+    const logs: string[] = []
+    const markerFixture = {
+      ...textPromptFixture,
+      prompt: "PROMPT-TEXT-MARKER managed instructions",
+    }
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(markerFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+      logSink: (line: string) => {
+        logs.push(line)
+      },
+    }
+
+    // Cache marker prompt text, expire it, then fail with a marker-carrying
+    // upstream error body — the single emitted line must leak none of them.
+    await getManagedPrompt(input)
+    clock.advance(testConfig.promptCacheTtlMs)
+    fetchImpl.mockImplementation(() =>
+      jsonResponse({ error: "UPSTREAM-REASON-MARKER" }, { status: 500 }),
+    )
+    await getManagedPrompt(input)
+
+    expect(logs).toHaveLength(1)
+    const joined = logs.join("\n")
+    expect(joined).toContain("name=seeker/system-prompt")
+    expect(joined).toContain("label=production")
+    expect(joined).toContain("reason=network_error")
+    expect(joined).not.toContain("PROMPT-TEXT-MARKER")
+    expect(joined).not.toContain("FALLBACK-TEXT-MARKER")
+    expect(joined).not.toContain("UPSTREAM-REASON-MARKER")
+  })
+
+  it("resetManagedPromptStateForTests clears the default cache so tests stay isolated (the beforeEach hook above relies on this)", async () => {
+    const clock = makeClock()
+    const fetchImpl = vi.fn<typeof fetch>(() => jsonResponse(textPromptFixture))
+    const input = {
+      name: "seeker/system-prompt",
+      fallback: FALLBACK_TEXT,
+      config: testConfig,
+      fetchImpl,
+      now: clock.now,
+    }
+
+    await getManagedPrompt(input)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+
+    resetManagedPromptStateForTests()
+
+    // A within-TTL call refetches: the entry did not survive the reset.
+    const second = await getManagedPrompt(input)
+    expect(second).toEqual({
+      text: FIXTURE_TEXT,
+      source: "langfuse",
+      version: 4,
+      resolvedLabel: "production",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 })

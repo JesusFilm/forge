@@ -48,11 +48,10 @@ export type { LangfuseConfig } from "../config/env"
  * the route, not the prompt.
  *
  * SINGLE ATTEMPT: one request per call, `AbortSignal.timeout`, no
- * retry/backoff. The cached helper layer (layer 2, `getManagedPrompt` — a
- * LATER unit that stacks above this function in this module) owns fetch
- * frequency via TTL + failure cooldown; retrying here would multiply its
- * refetch attempts. The `retryable` flag stays on the failure union for type
- * parity and logging even though no caller retries.
+ * retry/backoff. The cached helper layer (layer 2, `getManagedPrompt`, below
+ * in this module) owns fetch frequency via TTL + failure cooldown; retrying
+ * here would multiply its refetch attempts. The `retryable` flag stays on the
+ * failure union for type parity and logging even though no caller retries.
  *
  * NO-THROW LEAK CONTROL: nothing on the request path may throw an error whose
  * message embeds the prompt body, the key pair, or the raw response body — the
@@ -396,4 +395,353 @@ export async function fetchLangfusePrompt({
     // template's discipline: nothing beyond the consumed shape escapes.
     labels: [...parsed.data.labels],
   }
+}
+
+/**
+ * ── Layer 2 (U3): cached managed-prompt helper ──────────────────────────────
+ *
+ * `getManagedPrompt` stacks a TTL cache + failure cooldown + serve-stale +
+ * single-flight + fallback provenance above `fetchLangfusePrompt` (layer 1,
+ * above). Async-only, never throws, never rejects: every outcome is a
+ * `ManagedPromptResult` whose provenance fields say where the text came from.
+ *
+ * BEHAVIORAL CONTRACT (plan KTD4) — the per-entry cache state machine. Every
+ * arrow is one test in langfuse-prompt-client.test.ts:
+ *
+ *   [*] -> Empty
+ *   Empty -> Fresh: fetch ok
+ *   Empty -> NegativeCached: fetch fails (serve fallback)
+ *   Fresh -> Expired: TTL elapses
+ *   Expired -> Fresh: refetch ok
+ *   Expired -> StaleServing: refetch fails (serve stale, start cooldown)
+ *   StaleServing -> StaleServing: within cooldown (serve stale, no fetch)
+ *   StaleServing -> Fresh: cooldown over, refetch ok
+ *   StaleServing -> StaleServing: cooldown over, refetch fails (restart cooldown)
+ *   NegativeCached -> NegativeCached: within cooldown (serve fallback, no fetch)
+ *   NegativeCached -> Fresh: cooldown over, refetch ok
+ *   NegativeCached -> NegativeCached: cooldown over, refetch fails
+ *
+ * LABEL RESOLUTION (KTD3, R2 "no implicit latest"): call param >
+ * `config.promptDefaultLabel` > "production", resolved BEFORE cache keying and
+ * ALWAYS passed explicitly to layer 1 — an omitted label never reaches the
+ * wire. Cache key = name + resolvedLabel, so an omitted label and an explicit
+ * "production" share one entry while different labels stay independent.
+ *
+ * STALE IS MANAGED TEXT: serving an expired entry during a failure cooldown
+ * is `source: "langfuse"` + `stale: true` — it IS managed text. Only the
+ * fallback path carries the machine-readable layer-1 `reason`.
+ *
+ * NO BACKGROUND WORK: no setInterval / SWR-style refresh — a refetch happens
+ * only inside a caller's own await, so nothing keeps the process (or the test
+ * runner) alive.
+ *
+ * BOUNDED FAILURE LOGGING (R10): one plain-string
+ * `[langfuse] event=prompt_fetch_failed ...` line per FAILED ATTEMPT (attempts
+ * are bounded to one per cooldown window), never per fallback serve;
+ * `config_missing` logs once per process. Lines carry name/label/reason/
+ * status/detail only — never prompt bodies, fallback text, key material, or
+ * `upstreamReason` (untrusted upstream text; leak/log-injection vector).
+ *
+ * INJECTION SEAMS (test isolation, ai-chat-retention.ts idiom): `now`,
+ * `fetchImpl`, `config`, `cache`, and `logSink` are all injectable; the
+ * default cache + the config_missing gate reset via
+ * `resetManagedPromptStateForTests()`. No fake timers anywhere.
+ */
+
+export type ManagedPromptSource = "langfuse" | "fallback"
+
+export type ManagedPromptResult = {
+  text: string
+  source: ManagedPromptSource
+  /** Langfuse prompt version — present only on `source: "langfuse"` serves. */
+  version?: number
+  /** The label actually used (call param > config default > "production"). */
+  resolvedLabel: string
+  /** True when serving expired managed text during a failure cooldown. */
+  stale?: boolean
+  /** Layer-1 failure reason — present on failure-driven fallback serves. */
+  reason?: LangfusePromptFailureReason
+}
+
+/**
+ * Per-(name, resolvedLabel) cache state. `text`/`version`/`fetchedAt` hold the
+ * last successful fetch (Fresh/Expired/StaleServing); `cooldownUntil` +
+ * `lastFailureReason` are the failure state (StaleServing/NegativeCached);
+ * `inFlight` is the single-flight slot shared by concurrent callers.
+ */
+type ManagedPromptCacheEntry = {
+  text?: string
+  version?: number
+  fetchedAt?: number
+  cooldownUntil?: number
+  lastFailureReason?: LangfusePromptFailureReason
+  inFlight?: Promise<void>
+}
+
+export type ManagedPromptCache = Map<string, ManagedPromptCacheEntry>
+
+/** Fresh isolated cache instance — the injectable alternative to the reset hook. */
+export function createManagedPromptCache(): ManagedPromptCache {
+  return new Map()
+}
+
+export type ManagedPromptInput = {
+  name: string
+  label?: string
+  /** Compiled-in text served (with `reason`) whenever no managed text exists. */
+  fallback: string
+  config?: LangfuseConfig
+  fetchImpl?: typeof fetch
+  /** Injected clock (ai-chat-retention idiom) — tests advance it, no fake timers. */
+  now?: () => number
+  cache?: ManagedPromptCache
+  logSink?: (line: string) => void
+}
+
+const defaultManagedPromptCache: ManagedPromptCache = createManagedPromptCache()
+
+/**
+ * Once-per-process gate for `config_missing` (R10): missing config is
+ * permanent for the process, so re-logging it on every cooldown lapse — for
+ * every prompt entry — would be pure noise. Reset via the test hook below.
+ */
+let configMissingLogged = false
+
+/**
+ * Test-isolation hook: clears the module-level default cache AND re-arms the
+ * once-per-process config_missing log gate. Call it in `beforeEach`.
+ */
+export function resetManagedPromptStateForTests(): void {
+  defaultManagedPromptCache.clear()
+  configMissingLogged = false
+}
+
+// console.error matches the repo's failure-path log convention (the `[seeker]
+// event=` lines in retrieve-answer.ts) and dodges Railway logsV2's
+// JSON-stringify silencing by staying plain-string.
+const defaultManagedPromptLogSink: (line: string) => void = (line) => {
+  console.error(line)
+}
+
+/**
+ * Emit ONLY on fetch-failure transitions — one line per failed attempt, never
+ * per fallback serve (the cooldown bounds attempts to one per window).
+ * Carries name/label plus enum-shaped fields only; `upstreamReason` and every
+ * body-derived string are excluded by construction (leak control).
+ */
+function logPromptFetchFailure(
+  name: string,
+  resolvedLabel: string,
+  failure: LangfusePromptClientFailure,
+  logSink: (line: string) => void,
+): void {
+  if (failure.reason === "config_missing") {
+    if (configMissingLogged) return
+    // Set BEFORE the sink call so a throwing sink cannot re-arm the gate.
+    configMissingLogged = true
+  }
+  const status = failure.status !== undefined ? ` status=${failure.status}` : ""
+  const detail = failure.detail ? ` detail=${failure.detail}` : ""
+  logSink(
+    `[langfuse] event=prompt_fetch_failed name=${name} label=${resolvedLabel} reason=${failure.reason}${status}${detail}`,
+  )
+}
+
+function buildManagedResult(
+  text: string,
+  version: number | undefined,
+  resolvedLabel: string,
+  stale: boolean,
+): ManagedPromptResult {
+  const result: ManagedPromptResult = {
+    text,
+    source: "langfuse",
+    resolvedLabel,
+  }
+  if (version !== undefined) result.version = version
+  if (stale) result.stale = true
+  return result
+}
+
+function buildFallbackResult(
+  fallback: string,
+  resolvedLabel: string,
+  reason: LangfusePromptFailureReason | undefined,
+): ManagedPromptResult {
+  const result: ManagedPromptResult = {
+    text: fallback,
+    source: "fallback",
+    resolvedLabel,
+  }
+  if (reason !== undefined) result.reason = reason
+  return result
+}
+
+/**
+ * Serve from entry state alone (no fetch): Fresh within TTL, or the two
+ * cooldown branches — stale managed text wins over the fallback (it IS
+ * managed text); a cold entry serves the fallback with the negative-cached
+ * reason. Returns undefined for Empty / Expired / cooldown-lapsed, where the
+ * caller must (re)fetch.
+ */
+function serveFromState(
+  entry: ManagedPromptCacheEntry,
+  nowMs: number,
+  config: LangfuseConfig,
+  resolvedLabel: string,
+  fallback: string,
+): ManagedPromptResult | undefined {
+  if (
+    entry.text !== undefined &&
+    entry.fetchedAt !== undefined &&
+    nowMs - entry.fetchedAt < config.promptCacheTtlMs
+  ) {
+    return buildManagedResult(entry.text, entry.version, resolvedLabel, false)
+  }
+  if (entry.cooldownUntil !== undefined && nowMs < entry.cooldownUntil) {
+    if (entry.text !== undefined) {
+      return buildManagedResult(entry.text, entry.version, resolvedLabel, true)
+    }
+    return buildFallbackResult(fallback, resolvedLabel, entry.lastFailureReason)
+  }
+  return undefined
+}
+
+type ManagedPromptRefetchArgs = {
+  name: string
+  resolvedLabel: string
+  config: LangfuseConfig
+  fetchImpl?: typeof fetch
+  now: () => number
+  logSink: (line: string) => void
+}
+
+/**
+ * One blocking single-attempt refetch, mutating the entry to its next state.
+ *
+ * SLOT-LEAK GUARD (docs/solutions/best-practices/
+ * in-memory-slot-reservation-fire-and-forget-20260506.md): the ENTIRE body
+ * sits inside try/catch, so ANY unexpected synchronous throw — the injected
+ * log sink is the realistic one — degrades to cooldown/fallback state instead
+ * of rejecting the shared flight promise. The slot RELEASE deliberately does
+ * not live here: it rides the flight promise in `getManagedPrompt` with an
+ * identity check, so it can neither run before the reservation lands (a
+ * sync-settling body would otherwise clear the slot first and then wedge the
+ * entry on a settled promise) nor clear a newer flight.
+ */
+async function refetchManagedPrompt(
+  entry: ManagedPromptCacheEntry,
+  {
+    name,
+    resolvedLabel,
+    config,
+    fetchImpl,
+    now,
+    logSink,
+  }: ManagedPromptRefetchArgs,
+): Promise<void> {
+  try {
+    const result = await fetchLangfusePrompt({
+      name,
+      label: resolvedLabel,
+      config,
+      fetchImpl,
+    })
+    if (result.ok) {
+      entry.text = result.text
+      entry.version = result.version
+      entry.fetchedAt = now()
+      // Success clears failure state (StaleServing/NegativeCached -> Fresh).
+      entry.cooldownUntil = undefined
+      entry.lastFailureReason = undefined
+      return
+    }
+    // Failure state FIRST, log SECOND: a throwing log sink must still leave a
+    // coherent cooldown behind so subsequent calls serve from state.
+    entry.cooldownUntil = now() + config.promptFailureCooldownMs
+    entry.lastFailureReason = result.reason
+    logPromptFetchFailure(name, resolvedLabel, result, logSink)
+  } catch {
+    // Swallow, never log: the thrown value is arbitrary and could embed
+    // anything (leak control). Defensive negative-cache: if the throw somehow
+    // predated failure classification (layer 1 contractually never throws),
+    // still start a cooldown so a persistently throwing wrapper cannot become
+    // a per-call fetch storm.
+    if (entry.cooldownUntil === undefined || entry.cooldownUntil <= now()) {
+      entry.cooldownUntil = now() + config.promptFailureCooldownMs
+    }
+  }
+}
+
+function getOrCreateEntry(
+  cache: ManagedPromptCache,
+  key: string,
+): ManagedPromptCacheEntry {
+  const existing = cache.get(key)
+  if (existing) return existing
+  const created: ManagedPromptCacheEntry = {}
+  cache.set(key, created)
+  return created
+}
+
+/**
+ * Resolve a managed prompt with fallback provenance. Never throws, never
+ * rejects — see the layer-2 header comment for the full behavioral contract.
+ */
+export async function getManagedPrompt(
+  input: ManagedPromptInput,
+): Promise<ManagedPromptResult> {
+  const {
+    name,
+    label,
+    fallback,
+    config = getLangfuseConfig(),
+    fetchImpl,
+    now = () => Date.now(),
+    cache = defaultManagedPromptCache,
+    logSink = defaultManagedPromptLogSink,
+  } = input
+
+  // KTD3/R2: resolve BEFORE cache keying; layer 1 always receives this label
+  // explicitly — never an implicit/omitted "latest".
+  const resolvedLabel = label ?? config.promptDefaultLabel ?? "production"
+  // NUL separator: prompt names may contain any printable character (including
+  // a would-be joiner), so a printable separator could alias two distinct
+  // (name, label) pairs onto one key.
+  const entry = getOrCreateEntry(cache, `${name}\u0000${resolvedLabel}`)
+
+  // Fresh and in-cooldown states serve without any fetch.
+  const served = serveFromState(entry, now(), config, resolvedLabel, fallback)
+  if (served) return served
+
+  // Empty, Expired, or cooldown just lapsed → one blocking refetch attempt.
+  // Single-flight: concurrent callers racing this entry share ONE in-flight
+  // promise; only the leader creates it. The release is identity-checked on
+  // the flight promise itself (see refetchManagedPrompt's guard note).
+  if (!entry.inFlight) {
+    const flight = refetchManagedPrompt(entry, {
+      name,
+      resolvedLabel,
+      config,
+      fetchImpl,
+      now,
+      logSink,
+    })
+    entry.inFlight = flight
+    // `.then` (not `.finally`) — the flight is structurally non-rejecting, and
+    // .then cannot manufacture an unhandled-rejection edge if that ever slips.
+    void flight.then(() => {
+      if (entry.inFlight === flight) entry.inFlight = undefined
+    })
+  }
+  await entry.inFlight
+
+  // Post-refetch, leader and joiners alike re-derive from the settled entry
+  // state with their OWN fallback — success lands on the fresh branch, failure
+  // on a cooldown branch. The terminal fallback is the defensive floor for a
+  // refetch body that threw before classifying its failure.
+  return (
+    serveFromState(entry, now(), config, resolvedLabel, fallback) ??
+    buildFallbackResult(fallback, resolvedLabel, entry.lastFailureReason)
+  )
 }
