@@ -97,10 +97,20 @@ vi.mock("@/components/watch/GlobalLanguagePickerModal", () => ({
     open: boolean
     currentLanguageSlug: string
     onClose: () => void
-  }) =>
-    open ? (
+  }) => {
+    useEffect(() => {
+      if (!open) return
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") onClose()
+      }
+      document.addEventListener("keydown", handleKeyDown)
+      return () => document.removeEventListener("keydown", handleKeyDown)
+    }, [onClose, open])
+
+    return open ? (
       <div
         role="dialog"
+        aria-modal="true"
         data-testid="global-language-picker-modal"
         data-current-language-slug={currentLanguageSlug}
       >
@@ -108,7 +118,8 @@ vi.mock("@/components/watch/GlobalLanguagePickerModal", () => ({
           Close global language picker
         </button>
       </div>
-    ) : null,
+    ) : null
+  },
 }))
 
 let container: HTMLDivElement
@@ -1727,6 +1738,61 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(
       document.querySelector('[data-testid="floating-header-search-close"]'),
     ).not.toBeNull()
+  })
+
+  it("replaces search with the global picker without overlapping modal surfaces", async () => {
+    __setWatchInteractionLoadersForTests({
+      "global-language": vi.fn(async () => ({})),
+    })
+    await openSearchOverlay()
+
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="floating-header-language-button"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 220))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('input[aria-label="Search videos by keyword"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(1)
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(
+      document.querySelectorAll('[role="dialog"][aria-modal="true"]'),
+    ).toHaveLength(0)
   })
 
   it("does not open a deferred global picker after the route changes", async () => {

@@ -454,6 +454,8 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
     ) {
       return
     }
+    if (open || closing) setOpen(false)
+
     const intent = globalLanguageIntentRef.current + 1
     globalLanguageIntentRef.current = intent
     globalLanguagePendingPathnameRef.current = pathname
@@ -480,7 +482,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setGlobalLanguageLoadingPathname(null)
         }
       })
-  }, [globalLanguageOpen, pathname])
+  }, [closing, globalLanguageOpen, open, pathname, setOpen])
 
   const closeGlobalLanguage = useCallback(() => {
     setGlobalLanguageOpenPathname(null)
@@ -749,7 +751,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           logoSlotClass={logoSlotClass}
         />
       ) : null}
-      {globalLanguageOpen ? (
+      {globalLanguageOpen && !modalChromeHidden ? (
         <LazyGlobalLanguagePickerModal
           open={globalLanguageOpen}
           pathname={pathname}
