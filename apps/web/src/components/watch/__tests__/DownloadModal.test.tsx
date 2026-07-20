@@ -31,15 +31,14 @@ import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 
 // next/image renders an <img> in tests; the modal otherwise tries to load the
-// real image-optimization endpoint, which JSDOM can't serve. Strip the
-// next/image-only props (`fill`, `sizes`) so React doesn't warn about them
-// being forwarded to a plain DOM <img>.
+// real image-optimization endpoint, which JSDOM can't serve. Preserve its
+// layout-only props as data attributes without forwarding them to the DOM.
 vi.mock("next/image", () => ({
   default: ({
     src,
     alt,
-    fill: _fill,
-    sizes: _sizes,
+    fill,
+    sizes,
     ...rest
   }: {
     src: string
@@ -50,7 +49,15 @@ vi.mock("next/image", () => ({
     // Bypass `<img>` lint warning — this mock is only loaded in jsdom
     // tests where next/image's optimization endpoint isn't available.
     const Img = "img"
-    return <Img src={src} alt={alt} {...rest} />
+    return (
+      <Img
+        src={src}
+        alt={alt}
+        data-fill={fill ? "true" : "false"}
+        data-sizes={sizes}
+        {...rest}
+      />
+    )
   },
 }))
 
@@ -157,6 +164,14 @@ describe("DownloadModal — header metadata", () => {
       $('[data-testid="watch-download-modal-duration"]')?.textContent,
     ).toContain("2:07:54")
     expect($('[data-testid="watch-download-modal-poster"]')).not.toBeNull()
+    const poster = $(
+      '[data-testid="watch-download-modal-poster"] img',
+    ) as HTMLImageElement | null
+    expect(poster?.getAttribute("src")).toBe(
+      "https://imagedelivery.net/poster.jpg",
+    )
+    expect(poster?.dataset.fill).toBe("true")
+    expect(poster?.dataset.sizes).toBe("(min-width: 640px) 224px, 100vw")
     expect($('[data-testid="watch-download-modal-eyebrow"]')?.className).toBe(
       WATCH_SECTION_EYEBROW_CLASS,
     )

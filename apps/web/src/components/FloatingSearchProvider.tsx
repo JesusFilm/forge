@@ -35,6 +35,12 @@ import {
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_LAYOUT_CLASS,
+  FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS,
+  FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -456,7 +462,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
       <div
         aria-hidden="true"
         data-testid="floating-header-backdrop"
-        className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none ${
+        className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
           headerSurfaceSolid
             ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
             : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
@@ -466,7 +472,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         aria-hidden="true"
         data-testid="floating-header-hover-zone"
         onPointerEnter={handleHeaderPointerEnter}
-        className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] ${
+        className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] ${
           headerHoverZoneActive ? "pointer-events-auto" : "pointer-events-none"
         }`}
       />
@@ -474,14 +480,20 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         data-testid="floating-header"
         inert={headerChromeHidden || undefined}
         aria-hidden={headerChromeHidden || undefined}
-        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS} transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
+        className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
+          modalChromeHidden
+            ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
+            : `flex ${FLOATING_HEADER_HEIGHT_CLASS} items-center ${FLOATING_HEADER_GAP_CLASS}`
+        } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
       >
         <Link
           href={logoHref as Route}
           aria-label={t("home")}
           data-testid="floating-header-logo"
           onClick={resetSearch}
-          className={`pointer-events-auto flex ${logoSlotClass} items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
+          className={`pointer-events-auto flex ${logoSlotClass} ${
+            modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
+          } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
         >
           <Image
             src={
@@ -500,7 +512,15 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
             }
           />
         </Link>
-        <div className="min-w-0 flex-1">
+        <div
+          className={`min-w-0 flex-1 ${
+            modalChromeHidden
+              ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
+                  headerLanguageControlVisible ? "" : "col-span-2"
+                }`
+              : ""
+          }`}
+        >
           <FloatingSearchBar
             open={open}
             closing={closing}
@@ -510,7 +530,11 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
         </div>
         <div
           data-testid="floating-header-trailing-controls"
-          className={`pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`}
+          className={
+            modalChromeHidden
+              ? FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS
+              : `pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`
+          }
         >
           {headerLanguageControlVisible ? (
             <button
@@ -519,7 +543,11 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
               onClick={headerLanguageClick}
               aria-label={t("changeAudioLanguage")}
               title={t("changeAudioLanguage")}
-              className={`inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
+              className={`pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                modalChromeHidden
+                  ? FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS
+                  : ""
+              } cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none ${
                 headerLanguageSwitcher.languageCode
                   ? "w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]"
                   : ""
@@ -545,7 +573,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
               aria-label="Close search"
               data-testid="floating-header-search-close"
               onClick={() => setOpen(false)}
-              className={`inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
+              className={`pointer-events-auto inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}
             >
               <X
                 aria-hidden

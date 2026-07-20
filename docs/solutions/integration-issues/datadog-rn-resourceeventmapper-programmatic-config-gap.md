@@ -183,7 +183,8 @@ Both mechanisms were verified live in the Datadog dev environment: a `GetVideoBy
 ## Related Issues
 
 - `docs/plans/2026-07-14-001-feat-mobile-datadog-observability-plan.md` (KTD5, KTD10 — original correlation-strategy planning)
-- PR #1572 `feat(mobile): Datadog observability — RUM + Logs + Session Replay, end-to-end trace` (open/unmerged as of writing)
+- PR #1572 `feat(mobile): Datadog observability — RUM + Logs + Session Replay, end-to-end trace` (merged 2026-07-15)
+- `docs/solutions/integration-issues/datadog-rum-apollo-abort-error-double-reporting.md` (downstream — the errorEventMapper file-config-only limitation documented here is why RUM client-abort noise had to be filtered in the Apollo error link instead of at the SDK layer; PR #1616)
 - `docs/solutions/integration-issues/datadog-mobile-rum-tvos-integration.md` (prior `@datadog/mobile-react-native` SDK-surface integration issue on `apps/tv`)
 - `docs/solutions/integration-issues/datadog-rn-source-map-upload-eas-hook.md` (sibling — the same feature's EAS dSYM/source-map upload hooks)
 - `docs/solutions/best-practices/mobile-datadog-rich-posture-data-governance-20260714.md` (same feature — the R43 rich-posture data-governance deliverable; `search_request_id` is the privacy-preserving alternative to logging the raw term as a join key)

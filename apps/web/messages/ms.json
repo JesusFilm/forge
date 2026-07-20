@@ -88,7 +88,12 @@
     "toggleOff": "Mati",
     "close": "Tutup",
     "apply": "Guna",
-    "noLanguageSubtitles": "Tiada sari kata {language}"
+    "noLanguageSubtitles": "Tiada sari kata {language}",
+    "seeAllLanguages": "Lihat semua bahasa",
+    "seeAllVideosInLanguage": "Lihat semua video dalam {language}",
+    "retryLoadingLanguages": "Cuba muatkan bahasa sekali lagi",
+    "notAvailable": "Tidak tersedia",
+    "switching": "Sedang bertukar..."
   },
   "SeriesPage": {
     "episodeCount": "{count, plural, one {# EPISOD} other {# EPISOD}}",
@@ -188,19 +193,19 @@
     "categoryStudy": "Kajian",
     "categoryFamily": "Keluarga",
     "categoryChristmas": "Krismas",
-    "searchLanguageLabel": "Search language",
-    "allLanguages": "All languages",
-    "searchSuggestions": "Search Suggestions",
-    "languages": "Languages",
-    "recommendedLanguage": "Recommended language",
-    "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
-    "inLanguage": "in {language}",
-    "browseByRegion": "Browse by region",
-    "clearLanguages": "Clear",
-    "queryLanguageDetected": "{language} detected",
-    "searchInLanguage": "Search in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "searchLanguageLabel": "Bahasa carian",
+    "allLanguages": "Semua bahasa",
+    "searchSuggestions": "Cadangan carian",
+    "languages": "Bahasa",
+    "recommendedLanguage": "Bahasa yang disyorkan",
+    "searchSuggestion": "Cari {suggestion}",
+    "searchSuggestionWithLanguage": "Cari {suggestion} dalam {language}",
+    "inLanguage": "dalam {language}",
+    "browseByRegion": "Semak imbas mengikut wilayah",
+    "clearLanguages": "Kosongkan",
+    "queryLanguageDetected": "{language} dikesan",
+    "searchInLanguage": "Cari dalam {language}",
+    "tryDifferentKeywordsOrLanguage": "Cuba kata kunci lain atau pilih bahasa carian yang lain"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
@@ -210,7 +215,7 @@
     "loadingContent": "Memuatkan kandungan"
   },
   "VideoLabels": {
-    "video": "Video",
+    "video": "Kandungan video",
     "segment": "Segmen",
     "episode": "Episod",
     "featureFilm": "Filem cereka",

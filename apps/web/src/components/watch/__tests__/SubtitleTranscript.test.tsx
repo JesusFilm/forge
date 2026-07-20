@@ -13,6 +13,7 @@ import { describe, expect, test } from "vitest"
 import type { WatchSubtitle } from "@/lib/content"
 import {
   filterTranscriptSubtitlesForAudio,
+  formatCompactTranscript,
   normalizeCueOffset,
   parseVtt,
 } from "@/lib/subtitle-transcript"
@@ -63,6 +64,22 @@ describe("filterTranscriptSubtitlesForAudio", () => {
     const subtitles = [englishSubtitle, amharicSubtitle]
 
     expect(filterTranscriptSubtitlesForAudio(subtitles, null)).toBe(subtitles)
+  })
+})
+
+describe("formatCompactTranscript", () => {
+  test("preserves cue boundaries as blank lines in one string", () => {
+    expect(
+      formatCompactTranscript([
+        { start: 1, end: 2, text: "First phrase." },
+        { start: 3, end: 4, text: "Second phrase." },
+        { start: 5, end: 6, text: "Third phrase." },
+      ]),
+    ).toBe("First phrase.\n\nSecond phrase.\n\nThird phrase.")
+  })
+
+  test("returns an empty string for an empty transcript", () => {
+    expect(formatCompactTranscript([])).toBe("")
   })
 })
 
