@@ -3,7 +3,7 @@ id: "feat-270"
 title: "Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-07-27"
 duration: 3
 depends_on: []
@@ -11,6 +11,16 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-20 via [PR #1626](https://github.com/JesusFilm/forge/pull/1626) (`feat(chat): ui cleanup batch — mobile header, stop control, titles, badges (feat-270)`).
+
+**What landed.** All eight items, with three notable calls beyond the brief: the stop control (item 4) marks EVERY user-stopped Seeker turn server-persisted — Mastra creates the thread row before generating, so even a zero-token stop may have persisted it, and a missing stamp would let a later gate denial silently stub-fork (KTD10); item 7's re-pin decision was extracted as the table-tested pure `shouldRepin` (pre-resize distance, both directions — the inline first draft shipped a `Math.max` clamp bug to review, caught and fixed pre-PR) while the ResizeObserver seam stays browser-verified; item 3's optional "delayed title refetch after a thread's first reply" was deliberately skipped — snippet titles now cover the visible gap and LLM titles land on the next hydration. Item 5 kept the visible Stub marker (mixed conversations stay distinguishable) and moved the machine `data-engine` tag to the turn element.
+
+**Compound docs.** [`docs/solutions/ui-bugs/sticky-overlay-scroll-container-pointer-events-scroll-padding.md`](../../solutions/ui-bugs/sticky-overlay-scroll-container-pointer-events-scroll-padding.md) — extended with the law's third control: re-pin on overlay resize compares the PRE-resize distance, including the formula-attributable yank window vs the browser's own scroll clamp and the discriminating probe-window rule.
+
+**Residual risk / follow-ups.** Accepted: a stop racing an already-settled terminal frame renders the full badged reply (the answer was complete). Noted, pre-existing: `apps/chat/AGENTS.md` still describes the app as stub-only (superseded by feat-205/208/241) — worth a prose sweep; the apps/chat 3-line comment cap has no lint enforcement (review caught six violations in this batch alone).
 
 ## Problem
 

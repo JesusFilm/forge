@@ -6,6 +6,7 @@ import { streamReply } from "./chat-stub"
 import {
   createConversation,
   deriveTitle,
+  titleFromFirstUser,
   type Conversation,
   type Message,
 } from "./conversations"
@@ -41,6 +42,7 @@ export type UseConversations = {
   history: HistoryListUi
   setDraft: (value: string) => void
   send: (text: string) => void
+  stopReply: () => void
   newConversation: () => void
   selectConversation: (id: string) => void
   retryHistory: () => void
@@ -162,6 +164,22 @@ export function orderConversations(
 }
 
 /**
+ * The sidebar-visible projection (feat-270): ordered per orderConversations,
+ * minus never-used empty local conversations that are not active — the New
+ * action reuses those, so an inactive empty is pure clutter under the
+ * identically-labeled action button. The active fresh row stays pinned.
+ * Pure — exported for direct unit coverage.
+ */
+export function listConversations(
+  conversations: Conversation[],
+  activeId: string,
+): Conversation[] {
+  return orderConversations(conversations).filter(
+    (c) => c.id === activeId || c.origin === "server" || c.messages.length > 0,
+  )
+}
+
+/**
  * Owns all conversation + reply state so the components stay presentational.
  * `seekerEnabled` selects the reply source (Seeker proxy vs local stub) inside
  * the streamReply seam AND gates server-history hydration (feat-241, KTD9 —
@@ -223,6 +241,11 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
   // callbacks that need a current snapshot without re-closing over state.
   const conversationsRef = useRef(conversations)
   conversationsRef.current = conversations
+
+  // Conversations whose in-flight reply the USER stopped (feat-270): abort
+  // finalizes quietly (partial text kept, no failure notice) instead of as an
+  // unmount abort. Consumed where the stream settles in send().
+  const stoppedRef = useRef<Set<string>>(new Set())
 
   // History fetches get their own abort tracking (KTD11) — one hook-lifetime
   // controller aborted on unmount; select-away never aborts a replay fetch.
@@ -294,13 +317,14 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
         conversation.id === conversationId
           ? {
               ...conversation,
-              // Server-origin conversations skip the retitle branch (KTD9):
-              // an empty replay must not let a send clobber the server title.
+              // Server-origin rows skip the retitle branch (KTD9) UNLESS
+              // untitled (feat-270): a first send into an untitled thread
+              // beats the date-fallback label; a real server title is kept.
               title:
-                conversation.messages.length === 0 &&
-                message.role === "user" &&
-                conversation.origin !== "server"
-                  ? deriveTitle(message.content)
+                conversation.messages.length === 0 && message.role === "user"
+                  ? conversation.origin !== "server"
+                    ? deriveTitle(message.content)
+                    : titleFromFirstUser(conversation.title, message.content)
                   : conversation.title,
               // A send bumps the activity key so ordering surfaces the
               // conversation (AE7); replies land in the same turn.
@@ -311,6 +335,18 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
               messages: [...conversation.messages, message],
             }
           : conversation,
+      ),
+    )
+  }
+
+  // KTD10 stamp, shared by the success/stopped/failure finalize branches —
+  // each branch keeps its own guard for WHEN the thread provably exists.
+  function markServerPersisted(conversationId: string) {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId && c.serverPersisted !== true
+          ? { ...c, serverPersisted: true }
+          : c,
       ),
     )
   }
@@ -470,15 +506,18 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
           return
         }
         setConversations((prev) =>
-          prev.map((c) =>
-            c.id === conversationId
-              ? {
-                  ...c,
-                  replay: "loaded",
-                  messages: mergeReplayMessages(result.messages, c.messages),
-                }
-              : c,
-          ),
+          prev.map((c) => {
+            if (c.id !== conversationId) return c
+            const messages = mergeReplayMessages(result.messages, c.messages)
+            // feat-270: a replayed first user turn beats the date-fallback
+            // label on an untitled thread (titleFromFirstUser — a non-empty
+            // LLM or snippet title always wins).
+            const title = titleFromFirstUser(
+              c.title,
+              messages.find((m) => m.role === "user")?.content,
+            )
+            return { ...c, replay: "loaded", messages, title }
+          }),
         )
       } finally {
         replayInFlightRef.current.delete(conversationId)
@@ -558,9 +597,13 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
               content: message.content + token,
             })),
         })
-        // Aborted (unmount) → the tree is gone; skip the finalize setState. The
-        // finally below still releases the slot.
-        if (controller.signal.aborted) return
+        // A user stop (feat-270) finalizes quietly below; any OTHER abort
+        // (unmount, StrictMode cycle) skips the finalize setState — the tree
+        // is gone. The finally below still releases the slot either way.
+        const stopped = stoppedRef.current.delete(targetId)
+        if (!mountedRef.current || (controller.signal.aborted && !stopped)) {
+          return
+        }
         if (result.ok) {
           updateMessage(targetId, assistantId, (message) => ({
             ...message,
@@ -573,13 +616,31 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
             // KTD10: the persisted predicate keys on a SUCCESSFUL Seeker turn
             // only — the failure branch below also stamps the engine tag on
             // turns that never reached the server, so tag presence is not it.
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === targetId && c.serverPersisted !== true
-                  ? { ...c, serverPersisted: true }
-                  : c,
-              ),
-            )
+            markServerPersisted(targetId)
+          }
+        } else if (stopped) {
+          // User stop (feat-270): finalize with partial text kept — a plain
+          // turn, no role="alert" notice, no engine/grounded stamp. Nothing
+          // streamed → drop the empty turn instead of a blank bubble.
+          setConversations((prev) =>
+            prev.map((c) => {
+              if (c.id !== targetId) return c
+              const messages = c.messages
+                .map((m) =>
+                  m.id === assistantId
+                    ? { ...m, content: result.partialText || m.content }
+                    : m,
+                )
+                .filter((m) => m.id !== assistantId || m.content.length > 0)
+              return { ...c, messages }
+            }),
+          )
+          // Mastra creates the thread row BEFORE generating, so a stop that
+          // beat the first token may still have persisted the thread. Stamp
+          // every stopped Seeker turn: a wrong stamp only costs a visible
+          // gate_denied notice later; a missing one silently stub-forks.
+          if (seekerEnabled) {
+            markServerPersisted(targetId)
           }
         } else {
           // Keep whatever streamed (partialText); mark the failure so the UI
@@ -595,22 +656,43 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
           // through Mastra, which creates the thread row BEFORE generating —
           // so the thread is server-persisted even though this turn failed.
           if (seekerEnabled && result.partialText.length > 0) {
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === targetId && c.serverPersisted !== true
-                  ? { ...c, serverPersisted: true }
-                  : c,
-              ),
-            )
+            markServerPersisted(targetId)
           }
         }
       } finally {
+        // Belt-and-braces: the consume above sits in the try, so a (today
+        // impossible) streamReply rejection must not leak the stopped flag.
+        stoppedRef.current.delete(targetId)
         clearReply(targetId)
       }
     })()
   }
 
+  /** Abort the ACTIVE conversation's in-flight reply (feat-270). The quiet
+   * finalize (partial text kept, no failure notice) happens where the stream
+   * settles in send(); this only flags the abort as user-initiated. */
+  function stopReply() {
+    const targetId = activeIdRef.current
+    const controller = controllersRef.current.get(targetId)
+    if (!controller) return
+    stoppedRef.current.add(targetId)
+    controller.abort()
+  }
+
   function newConversation() {
+    // feat-270: reuse the existing never-used local conversation instead of
+    // minting an identical sibling — so at most one fresh row ever exists.
+    const existing = conversationsRef.current.find(
+      (c) => c.origin !== "server" && c.messages.length === 0,
+    )
+    if (existing) {
+      if (existing.id !== activeIdRef.current) {
+        activeIdRef.current = existing.id
+        setActiveId(existing.id)
+        setDraft("")
+      }
+      return
+    }
     const conversation = createConversation()
     // Keep the synchronous mirror in lockstep so a send batched with this switch
     // targets the new conversation.
@@ -632,7 +714,7 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
     conversations[0]
 
   return {
-    conversations: orderConversations(conversations),
+    conversations: listConversations(conversations, activeId),
     activeId,
     activeConversation,
     draft,
@@ -650,6 +732,7 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
     },
     setDraft,
     send,
+    stopReply,
     newConversation,
     selectConversation,
     retryHistory,

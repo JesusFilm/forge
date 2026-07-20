@@ -55,22 +55,17 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled ReplyFailureReason: ${String(value)}`)
 }
 
-// The engine that produced a turn, always rendered on finalized assistant turns
-// (R20) so a Seeker answer is never confusable with a stub one and a conversation
-// never mixes unmarked turns.
+// Visible engine copy renders on STUB turns only (feat-270) — the codename
+// meant nothing to users. R20 distinguishability survives: stub turns are
+// the marked ones; the machine data-engine attribute stays for both engines.
 function EngineMarker({ engine }: { engine: "stub" | "seeker" }) {
-  return (
-    <span
-      data-engine={engine}
-      className="text-xs uppercase tracking-wide text-ash"
-    >
-      {engine === "seeker" ? "Seeker" : "Stub"}
-    </span>
-  )
+  if (engine !== "stub") return null
+  return <span className="text-xs uppercase tracking-wide text-ash">Stub</span>
 }
 
 // The grounding verdict — the signal the dogfood exists to read (R13). Three
-// distinct states: grounded+cited, grounded but no passages cited, ungrounded.
+// distinct states: grounded+cited, grounded but no passages cited, ungrounded
+// — each with a plain-language `title` one-liner (feat-270).
 function GroundedBadge({
   grounded,
   hasSources,
@@ -80,20 +75,32 @@ function GroundedBadge({
 }) {
   if (grounded && hasSources) {
     return (
-      <span data-grounded="cited" className="text-xs text-vellum">
+      <span
+        data-grounded="cited"
+        title="Answer drawn from the cited sources below"
+        className="text-xs text-vellum"
+      >
         Grounded
       </span>
     )
   }
   if (grounded && !hasSources) {
     return (
-      <span data-grounded="no-citations" className="text-xs text-vesper">
+      <span
+        data-grounded="no-citations"
+        title="The answer reports grounding, but no source passages were cited"
+        className="text-xs text-vesper"
+      >
         Grounded · no passages cited
       </span>
     )
   }
   return (
-    <span data-grounded="ungrounded" className="text-xs text-vesper">
+    <span
+      data-grounded="ungrounded"
+      title="No sources were available for this answer"
+      className="text-xs text-vesper"
+    >
       Ungrounded
     </span>
   )
@@ -129,6 +136,7 @@ const AssistantTurn = memo(function AssistantTurn({
   return (
     <li
       data-message-id={message.id}
+      data-engine={message.engine}
       className="max-w-[560px] text-lg leading-relaxed text-linen"
     >
       <AssistantMarkdown content={message.content} />

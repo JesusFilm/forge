@@ -67,6 +67,25 @@ export function ChevronRightIcon({ className }: IconProps) {
   )
 }
 
+/** Up-arrow glyph — the composer's directional send affordance (feat-270). */
+export function ArrowUpIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...baseProps}>
+      <path d="M12 19V5" />
+      <path d="M5 12l7-7 7 7" />
+    </svg>
+  )
+}
+
+/** Stop (square) glyph — halts an in-flight reply (feat-270). */
+export function StopIcon({ className }: IconProps) {
+  return (
+    <svg className={className} {...baseProps}>
+      <rect x="7" y="7" width="10" height="10" rx="1.5" />
+    </svg>
+  )
+}
+
 /** Generic person glyph — the signed-in avatar fallback (no picture, no initials). */
 export function UserIcon({ className }: IconProps) {
   return (
