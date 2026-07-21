@@ -181,9 +181,10 @@ export function HomeHeroPager({
     if (isPlaying) dispatch({ type: "PLAY_STARTED" })
   }, [isPlaying])
 
-  // Genuine stream failure → skip; transient "idle" blips are ignored so the
-  // videoReady latch survives. Only video slides consume the error — a stale
-  // background source must not skip an active mux slide (those run a 7s timer).
+  // Genuine stream failure → the slide parks on its poster dwell; transient
+  // "idle" blips are ignored so the videoReady latch survives. Only video
+  // slides consume the error — a stale background source must not park an
+  // active mux slide (those run their own 7s timer).
   useEffect(() => {
     const sub = player.addListener("statusChange", ({ status, error }) => {
       if (status !== "error") return
@@ -297,7 +298,8 @@ export function HomeHeroPager({
       return
     }
     if (stream.failed) {
-      // Consume each failure once; the reducer advances past the slide.
+      // Consume each failure once; the reducer parks the slide on its
+      // unavailable poster dwell (no instant skip).
       if (failedSlugRef.current !== activeVideoSlug) {
         failedSlugRef.current = activeVideoSlug
         dispatch({ type: "STREAM_ERROR" })
@@ -389,6 +391,17 @@ export function HomeHeroPager({
     )
     return () => clearTimeout(timer)
   }, [timersOn, activeId, activeKind])
+
+  // Failed (unavailable) slides dwell on their poster for the same image
+  // budget instead of skipping instantly — calm offline rotation.
+  useEffect(() => {
+    if (!timersOn || state.phase !== "unavailable") return
+    const timer = setTimeout(
+      () => dispatch({ type: "UNAVAILABLE_TIMER_ELAPSED" }),
+      WATCH_HOME_IMAGE_SLIDE_DWELL_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [timersOn, activeId, state.phase])
 
   useEffect(() => {
     if (!timersOn || activeKind !== "video" || state.phase === "playing") return

@@ -6,7 +6,11 @@
 
 import type { WatchHomeSlide } from "./carouselSequence"
 
-/** Dwell for image/mux insert slides before auto-advancing (web parity: 7s). */
+/**
+ * Dwell before auto-advancing image/mux slides AND failed (unavailable) video
+ * slides — a dead slide shows its poster for this budget instead of an
+ * instant skip, so offline rotation stays calm (web parity: 7s).
+ */
 export const WATCH_HOME_IMAGE_SLIDE_DWELL_MS = 7000
 
 /**
@@ -19,10 +23,15 @@ export type PagerSuspendReason = "blur" | "scroll"
 
 /**
  * Reveal state for the ACTIVE slide. "poster" paints on every slide change;
- * "playing" hides the poster over the VideoView. Handoff rule: the incoming
- * slide's poster stays visible during replaceAsync.
+ * "playing" hides the poster over the VideoView; "unavailable" is a failed
+ * slide dwelling on its poster for the image budget before advancing.
+ * Handoff rule: the incoming slide's poster stays visible during replaceAsync.
  */
-export type PagerPlaybackPhase = "poster" | "resolving" | "playing"
+export type PagerPlaybackPhase =
+  | "poster"
+  | "resolving"
+  | "playing"
+  | "unavailable"
 
 export type PagerState = {
   slides: readonly WatchHomeSlide[]
@@ -39,9 +48,10 @@ export type PagerState = {
    */
   pendingSwap: boolean
   /**
-   * A skip (STREAM_ERROR / MAX_DWELL_ELAPSED) arrived while suspended and was
-   * deferred; RESUME executes the advance and clears it (AE5). Cleared early by
-   * SLIDES_SET or by an explicit move to a DIFFERENT index (moveTo).
+   * A MAX_DWELL skip arrived while suspended and was deferred; RESUME executes
+   * the advance and clears it (AE5). Cleared early by SLIDES_SET or by an
+   * explicit move to a DIFFERENT index (moveTo). Stream errors no longer skip
+   * — they park the slide in the "unavailable" poster dwell instead.
    */
   pendingSkip: boolean
   suspended: PagerSuspendReason | null
@@ -72,6 +82,7 @@ export type PagerEvent =
   | { type: "PLAY_STARTED" }
   | { type: "PLAY_TO_END" }
   | { type: "IMAGE_TIMER_ELAPSED" }
+  | { type: "UNAVAILABLE_TIMER_ELAPSED" }
   | { type: "STREAM_ERROR" }
   | { type: "MAX_DWELL_ELAPSED" }
   | { type: "SUSPEND"; reason: PagerSuspendReason }
@@ -274,26 +285,17 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
       const cleared = state.swapInFlight
         ? { ...state, swapInFlight: false }
         : state
-      if (cleared.suspended !== null) {
-        // Can't advance while suspended. Record a pendingSkip for multi-slide
-        // queues so RESUME executes the skip promptly (AE5) instead of letting
-        // the dead slide sit on its poster for the full 20s max-dwell.
-        const base =
-          cleared.phase === "poster"
-            ? cleared
-            : { ...cleared, phase: "poster" as const }
-        if (cleared.slides.length > 1 && !base.pendingSkip) {
-          return { ...base, pendingSkip: true }
-        }
-        return base
-      }
-      const advanced = advance(cleared)
-      if (advanced !== cleared) return advanced
-      // Single-slide queue: nowhere to skip to — fall back to the poster.
-      return cleared.phase === "poster"
+      // Dead-slide dwell: park on the poster for the image budget
+      // (UNAVAILABLE_TIMER_ELAPSED advances) instead of skipping instantly —
+      // offline rotation stays calm rather than jumping between live slides.
+      return cleared.phase === "unavailable"
         ? cleared
-        : { ...cleared, phase: "poster" }
+        : { ...cleared, phase: "unavailable" }
     }
+
+    case "UNAVAILABLE_TIMER_ELAPSED":
+      if (state.phase !== "unavailable") return state
+      return advance(state)
 
     case "MAX_DWELL_ELAPSED": {
       // Max dwell guards stuck slides; a playing video ends via PLAY_TO_END.

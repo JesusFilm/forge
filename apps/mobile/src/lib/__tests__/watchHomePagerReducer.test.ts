@@ -254,29 +254,60 @@ describe("auto-advance", () => {
 
 // ── AE5: skip rules ─────────────────────────────────────────────────────────
 
-describe("skip rules (AE5)", () => {
-  it("skips to the next slide on stream error and clears the in-flight swap", () => {
+describe("dead-slide dwell (AE5)", () => {
+  it("parks a failed slide on its poster dwell instead of skipping instantly", () => {
     const next = run(
       createInitialPagerState(twoVideos),
       { type: "SWAP_STARTED" },
       { type: "STREAM_ERROR" },
     )
-    expect(next.currentIndex).toBe(1)
+    // Offline rotation stays calm: no instant jump, the slide dwells.
+    expect(next.currentIndex).toBe(0)
+    expect(next.phase).toBe("unavailable")
     expect(next.swapInFlight).toBe(false)
     // The interrupted swap died with its slide — no stale re-issue.
     expect(next.pendingSwap).toBe(false)
   })
 
-  it("falls back to the poster on stream error with a single slide", () => {
+  it("the unavailable dwell timer advances past the failed slide", () => {
+    const parked = run(createInitialPagerState(twoVideos), {
+      type: "STREAM_ERROR",
+    })
+    const next = pagerReducer(parked, { type: "UNAVAILABLE_TIMER_ELAPSED" })
+    expect(next.currentIndex).toBe(1)
+    expect(next.phase).toBe("poster")
+  })
+
+  it("the unavailable timer is inert outside the unavailable phase", () => {
+    const initial = createInitialPagerState(twoVideos)
+    expect(pagerReducer(initial, { type: "UNAVAILABLE_TIMER_ELAPSED" })).toBe(
+      initial,
+    )
+  })
+
+  it("PLAY_STARTED recovers an unavailable slide to playing", () => {
+    const parked = run(createInitialPagerState(twoVideos), {
+      type: "STREAM_ERROR",
+    })
+    const recovered = pagerReducer(parked, { type: "PLAY_STARTED" })
+    expect(recovered.phase).toBe("playing")
+    expect(recovered.currentIndex).toBe(0)
+  })
+
+  it("a failed single-slide queue parks unavailable without advancing", () => {
     const single = run(createInitialPagerState([videoSlide("only")]), {
       type: "STREAM_RESOLVING",
     })
     const next = pagerReducer(single, { type: "STREAM_ERROR" })
     expect(next.currentIndex).toBe(0)
-    expect(next.phase).toBe("poster")
+    expect(next.phase).toBe("unavailable")
+    // Nowhere to advance to — the timer no-ops on a lone slide.
+    expect(
+      pagerReducer(next, { type: "UNAVAILABLE_TIMER_ELAPSED" }).currentIndex,
+    ).toBe(0)
   })
 
-  it("skips a stuck slide on max dwell", () => {
+  it("max dwell remains the backstop for a stuck slide", () => {
     const resolving = run(createInitialPagerState(twoVideos), {
       type: "STREAM_RESOLVING",
     })
@@ -469,7 +500,7 @@ describe("swap serialization", () => {
 // ── AE5: pendingSkip (deferred skip on stream error while suspended) ─────────
 
 describe("pendingSkip (AE5 deferred skip)", () => {
-  it("records pendingSkip on STREAM_ERROR while suspended, then advances on RESUME", () => {
+  it("STREAM_ERROR while suspended parks unavailable; RESUME does not skip (dwell handles it)", () => {
     // Scenario: SWAP_STARTED → STREAM_RESOLVING → SUSPEND → STREAM_ERROR
     const afterError = run(
       createInitialPagerState(twoVideos),
@@ -479,15 +510,15 @@ describe("pendingSkip (AE5 deferred skip)", () => {
       { type: "STREAM_ERROR" },
     )
 
-    expect(afterError.phase).toBe("poster")
-    expect(afterError.currentIndex).toBe(0) // not advanced yet
+    expect(afterError.phase).toBe("unavailable")
+    expect(afterError.currentIndex).toBe(0) // not advanced
     expect(afterError.swapInFlight).toBe(false) // swap cleared
-    expect(afterError.pendingSkip).toBe(true)
+    expect(afterError.pendingSkip).toBe(false)
 
     const resumed = pagerReducer(afterError, { type: "RESUME" })
     expect(resumed.suspended).toBeNull()
-    expect(resumed.currentIndex).toBe(1) // deferred skip executed
-    expect(resumed.pendingSkip).toBe(false)
+    // The re-armed unavailable dwell paces the advance after resume.
+    expect(resumed.currentIndex).toBe(0)
   })
 
   it("records pendingSkip on MAX_DWELL_ELAPSED while suspended, then advances on RESUME", () => {
@@ -510,7 +541,7 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     const afterError = run(
       createInitialPagerState(twoVideos),
       { type: "SUSPEND", reason: "scroll" },
-      { type: "STREAM_ERROR" },
+      { type: "MAX_DWELL_ELAPSED" },
     )
     expect(afterError.pendingSkip).toBe(true)
 
@@ -532,7 +563,7 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     const afterError = run(
       createInitialPagerState(mixedQueue),
       { type: "SUSPEND", reason: "scroll" },
-      { type: "STREAM_ERROR" },
+      { type: "MAX_DWELL_ELAPSED" },
     )
     expect(afterError.pendingSkip).toBe(true)
 
@@ -549,7 +580,7 @@ describe("pendingSkip (AE5 deferred skip)", () => {
     const afterError = run(
       createInitialPagerState(twoVideos),
       { type: "SUSPEND", reason: "scroll" },
-      { type: "STREAM_ERROR" },
+      { type: "MAX_DWELL_ELAPSED" },
     )
     expect(afterError.pendingSkip).toBe(true)
 
@@ -626,6 +657,17 @@ describe("transition hold (transitionFromId)", () => {
       reason: "blur",
     })
     expect(suspended.transitionFromId).toBeNull()
+  })
+
+  it("STREAM_ERROR during a hold parks unavailable and keeps the hold", () => {
+    const midFlight = pagerReducer(playingOnV1, {
+      type: "CHIP_TAPPED",
+      index: 1,
+    })
+    const errored = pagerReducer(midFlight, { type: "STREAM_ERROR" })
+    expect(errored.currentIndex).toBe(1) // no mid-animation advance
+    expect(errored.phase).toBe("unavailable")
+    expect(errored.transitionFromId).toBe("v1")
   })
 
   it("PLAY_TO_END during a hold is the OUTGOING stream ending — no advance", () => {
