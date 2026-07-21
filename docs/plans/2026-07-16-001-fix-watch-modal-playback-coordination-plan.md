@@ -1,7 +1,7 @@
 ---
 title: "fix: Pause Watch playback for every modal"
 type: fix
-status: active
+status: completed
 date: 2026-07-16
 ---
 

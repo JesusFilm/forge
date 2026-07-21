@@ -3,7 +3,7 @@ id: "feat-264"
 title: "Pause Watch playback for every modal"
 owner: "codex"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-16"
 duration: 1
 depends_on: []
