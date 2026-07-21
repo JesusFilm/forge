@@ -1,9 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { type ChatIdentity } from "@/auth/session-cookie"
 import { SIGN_IN_ERROR_PARAM } from "@/auth/sign-in-notice"
+import { BrandLockup } from "@/components/brand/brand-lockup"
 import { Chat } from "@/components/chat/chat"
 import { useConversations } from "@/lib/use-conversations"
 
@@ -47,6 +48,7 @@ export function AppShell({
     history,
     setDraft,
     send,
+    stopReply,
     newConversation,
     selectConversation,
     retryHistory,
@@ -60,6 +62,26 @@ export function AppShell({
   // Stable so Sidebar's Escape-listener effect doesn't re-register on every
   // AppShell render (e.g. when a reply arrives) while the drawer is open.
   const closeMobile = useCallback(() => setMobileOpen(false), [])
+
+  // feat-270: the New action lands on a ready-to-type pane, including the
+  // no-op case where the active conversation is already the fresh empty one.
+  // From the drawer, focus is deferred (flag below) — <main> is still inert.
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
+  const pendingComposerFocusRef = useRef(false)
+  const newConversationFocused = () => {
+    newConversation()
+    if (mobileOpen) pendingComposerFocusRef.current = true
+    else composerRef.current?.focus()
+  }
+
+  // Fires once the drawer close commits (inert lifted). Runs after the
+  // sidebar chrome's trigger-restore (child effects first), so the composer
+  // keeps the final focus.
+  useEffect(() => {
+    if (mobileOpen || !pendingComposerFocusRef.current) return
+    pendingComposerFocusRef.current = false
+    composerRef.current?.focus()
+  }, [mobileOpen])
 
   // Drop the drawer's open state when the viewport grows past `md`, so the rail
   // returns to its in-flow desktop form (no stale dialog/inert semantics).
@@ -108,7 +130,7 @@ export function AppShell({
         identity={identity}
         signInError={signInError}
         history={history}
-        onNew={newConversation}
+        onNew={newConversationFocused}
         onSelect={selectConversation}
         onToggleCollapsed={() => setCollapsed((value) => !value)}
         onCloseMobile={closeMobile}
@@ -122,18 +144,22 @@ export function AppShell({
         inert={mobileOpen}
         className="relative flex min-w-0 flex-1 flex-col"
       >
-        {/* Mobile-only menu trigger: the rail is off-canvas below md, so this
-            floats top-left to open the drawer. */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-          aria-controls={SIDEBAR_ID}
-          aria-expanded={mobileOpen}
-          className="absolute left-3 top-4 z-20 inline-flex size-10 items-center justify-center rounded-full text-linen transition-colors duration-300 hover:bg-linen/[0.06] md:hidden"
-        >
-          <MenuIcon className="size-5" />
-        </button>
+        {/* Mobile-only top bar (feat-270): the rail is off-canvas below md,
+            so the drawer trigger gets a real in-flow surface — never floating
+            over transcript text — with the brand as its anchor. */}
+        <header className="flex shrink-0 items-center gap-2 border-b border-linen/10 bg-hearthblack px-2 py-1.5 md:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            aria-controls={SIDEBAR_ID}
+            aria-expanded={mobileOpen}
+            className="inline-flex size-10 items-center justify-center rounded-full text-linen transition-colors duration-300 hover:bg-linen/[0.06]"
+          >
+            <MenuIcon className="size-5" />
+          </button>
+          <BrandLockup />
+        </header>
         <Chat
           conversation={activeConversation}
           draft={draft}
@@ -145,10 +171,12 @@ export function AppShell({
               ? (activeConversation.replay ?? null)
               : null
           }
+          composerTextareaRef={composerRef}
           onDraftChange={setDraft}
           onSend={send}
+          onStop={stopReply}
           onRetryReplay={retryReplay}
-          onStartNew={newConversation}
+          onStartNew={newConversationFocused}
         />
       </main>
     </div>

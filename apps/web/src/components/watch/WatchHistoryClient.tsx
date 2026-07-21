@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { Clock3, Play } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
 
 import {
   getWatchProgressRatio,
@@ -15,6 +16,7 @@ import type {
   WatchHistoryItem,
   WatchHistoryVideoDetails,
 } from "@/lib/watch-history"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 
 type VideoState =
   | { status: "loading"; videos: WatchHistoryVideoDetails[] }
@@ -32,30 +34,43 @@ function dayDiff(a: Date, b: Date): number {
   )
 }
 
-function dateHeading(value: number, now = new Date()): string {
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return "Earlier"
-
-  const diff = dayDiff(now, date)
-  if (diff === 0) return "Today"
-  if (diff === 1) return "Yesterday"
-  if (diff > 1 && diff < 7) {
-    return new Intl.DateTimeFormat("en", { weekday: "long" }).format(date)
-  }
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "2-digit",
-  })
-    .format(date)
-    .replace(",", "")
-    .toUpperCase()
+type DateHeadingFormatters = {
+  shortDate: Intl.DateTimeFormat
+  weekday: Intl.DateTimeFormat
 }
 
-function groupHistory(items: WatchHistoryItem[]) {
+function dateHeading(
+  value: number,
+  locale: string,
+  labels: { earlier: string; today: string; yesterday: string },
+  formatters: DateHeadingFormatters,
+  now = new Date(),
+): string {
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return labels.earlier
+
+  const diff = dayDiff(now, date)
+  if (diff === 0) return labels.today
+  if (diff === 1) return labels.yesterday
+  if (diff > 1 && diff < 7) {
+    return formatters.weekday.format(date)
+  }
+  return formatters.shortDate.format(date).toLocaleUpperCase(locale)
+}
+
+function groupHistory(
+  items: WatchHistoryItem[],
+  headingForDate: (value: number) => string,
+) {
   const groups = new Map<string, WatchHistoryItem[]>()
   for (const item of items) {
-    const heading = dateHeading(Date.parse(item.watchedAt))
-    groups.set(heading, [...(groups.get(heading) ?? []), item])
+    const heading = headingForDate(Date.parse(item.watchedAt))
+    const existingGroup = groups.get(heading)
+    if (existingGroup) {
+      existingGroup.push(item)
+    } else {
+      groups.set(heading, [item])
+    }
   }
   return Array.from(groups.entries()).map(([heading, groupItems]) => ({
     heading,
@@ -82,6 +97,8 @@ function mergeProgressAndVideos(
 }
 
 export function WatchHistoryClient() {
+  const locale = useLocale()
+  const t = useTranslations("WatchHistory")
   const [progress, setProgress] = useState<WatchProgressEntry[]>([])
   const [videoState, setVideoState] = useState<VideoState>({
     status: "loading",
@@ -115,13 +132,29 @@ export function WatchHistoryClient() {
         : mergeProgressAndVideos(progress, videoState.videos),
     [progress, videoState],
   )
-  const groups = groupHistory(items)
+  const groups = useMemo(() => {
+    const labels = {
+      earlier: t("earlier"),
+      today: t("today"),
+      yesterday: t("yesterday"),
+    }
+    const formatters: DateHeadingFormatters = {
+      shortDate: new Intl.DateTimeFormat(locale, {
+        month: "short",
+        day: "2-digit",
+      }),
+      weekday: new Intl.DateTimeFormat(locale, { weekday: "long" }),
+    }
+    return groupHistory(items, (value) =>
+      dateHeading(value, locale, labels, formatters),
+    )
+  }, [items, locale, t])
 
   if (videoState.status === "loading" && groups.length === 0) {
     return (
       <div className="mt-10 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-stone-300">
         <Clock3 aria-hidden="true" className="mb-4 h-8 w-8 text-stone-400" />
-        <p className="text-lg font-semibold text-white">Loading history</p>
+        <p className="text-lg font-semibold text-white">{t("loading")}</p>
       </div>
     )
   }
@@ -130,9 +163,9 @@ export function WatchHistoryClient() {
     return (
       <div className="mt-10 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-stone-300">
         <Clock3 aria-hidden="true" className="mb-4 h-8 w-8 text-stone-400" />
-        <p className="text-lg font-semibold text-white">Nothing here yet</p>
+        <p className="text-lg font-semibold text-white">{t("empty")}</p>
         <p className="mt-2 max-w-xl text-sm leading-6">
-          Videos you watch while signed in will appear here.
+          {t("emptyDescription")}
         </p>
       </div>
     )
@@ -157,6 +190,7 @@ export function WatchHistoryClient() {
 }
 
 function HistoryRow({ item }: { item: WatchHistoryItem }) {
+  const videoLabels = useTranslations("VideoLabels")
   const content = (
     <div className="grid grid-cols-[7rem_1fr] gap-4 p-3 transition-colors hover:bg-white/[0.04] sm:grid-cols-[10rem_1fr] sm:gap-5 sm:p-4">
       <div className="relative aspect-video overflow-hidden rounded-md bg-stone-900">
@@ -181,7 +215,7 @@ function HistoryRow({ item }: { item: WatchHistoryItem }) {
       <div className="flex min-w-0 items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-1 text-[10px] font-semibold tracking-[0.18em] text-stone-400 uppercase">
-            {item.label}
+            {videoLabels(videoLabelMessageKey(item.label))}
           </div>
           <h3 className="line-clamp-2 text-base leading-snug font-semibold text-white sm:text-lg">
             {item.title}

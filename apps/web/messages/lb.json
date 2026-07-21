@@ -7,7 +7,9 @@
     "noContent": "Keen Inhalt ass verfügbar.",
     "homepageMisconfigured": "D’Startsäit fir d’Kucken ass falsch konfiguréiert.",
     "defaultTemplateMisconfigured": "D’Standard-Vorlag fir d’Kucken ass falsch konfiguréiert.",
-    "authFailed": "D’Authentifikatioun mam Content-Service ass net méiglech. Kontaktéiert w.e.g. de Support, wann dat weiderhi geschitt."
+    "authFailed": "D’Authentifikatioun mam Content-Service ass net méiglech. Kontaktéiert w.e.g. de Support, wann dat weiderhi geschitt.",
+    "pageLoadFailed": "Eppes ass schif gelaf.",
+    "tryAgain": "Nach eng Kéier probéieren"
   },
   "VideosPage": {
     "title": "All Videoen",
@@ -22,7 +24,8 @@
     "promoHeading": "Wëllt Dir d’Bibel méi déif verstoen?",
     "joinBibleStudy": "Maacht mat bei eiser Bibelstudie",
     "previousQuote": "Viregt Bibelzitat",
-    "nextQuote": "Nächst Bibelzitat"
+    "nextQuote": "Nächst Bibelzitat",
+    "readPassage": "Liest dësen Abschnitt an Ärer Bibel."
   },
   "DownloadButton": {
     "checking": "Iwwerpréiwung",
@@ -73,7 +76,8 @@
     "selectLanguage": "Sprooch wielen",
     "searchPlaceholder": "Sproochen sichen…",
     "languages": "Sproochen",
-    "noMatches": "Keng Treffer"
+    "noMatches": "Keng Treffer",
+    "notAvailable": "Net verfügbar"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Sprooch",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIE · {episodes}",
     "changeAudioLanguage": "Audio-Sprooch änneren",
     "share": "Deelen",
-    "languages": "Sproochen",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Sproochen"
   },
   "WatchModal": {
     "close": "Zoumaachen"
@@ -115,7 +116,8 @@
     "questions": "Zesummenhang Froen",
     "askYours": "Stellt Är Fro",
     "chatWithPerson": "Mat enger Persoun schwätzen",
-    "askBibleQuestion": "Eng Bibelfro stellen"
+    "askBibleQuestion": "Eng Bibelfro stellen",
+    "quiz": "Wëssenstest"
   },
   "WatchQuestionPanel": {
     "messageType": "Aart vun der Noriicht",
@@ -173,7 +175,8 @@
     "searchRegion": "Videoen sichen",
     "clearSearch": "Sich läschen",
     "changeAudioLanguage": "Audio-Sprooch änneren",
-    "home": "JesusFilm-Startsäit"
+    "home": "JesusFilm-Startsäit",
+    "closeSearch": "Sich zoumaachen"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoen sichen a duerchkucken",
@@ -208,14 +211,19 @@
     "clearLanguages": "Läschen",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Op {language} sichen",
-    "tryDifferentKeywordsOrLanguage": "Probéiert aner Schlësselwierder oder wielt eng aner Sichsprooch"
+    "tryDifferentKeywordsOrLanguage": "Probéiert aner Schlësselwierder oder wielt eng aner Sichsprooch",
+    "useWebsiteDefaultLanguage": "Standard-Sichsprooch vun der Websäit benotzen",
+    "removeLanguage": "{language} ewechhuelen",
+    "browseMode": "Sich-Duerchkuckmodus"
   },
   "HeroPlayer": {
     "playWithSound": "Elo kucken",
-    "tapToUnmute": "Tippt fir den Toun unzeschalten"
+    "tapToUnmute": "Tippt fir den Toun unzeschalten",
+    "nextEpisode": "Nächst Episod"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Inhalt gëtt geluede"
+    "loadingContent": "Inhalt gëtt geluede",
+    "loadingVideo": "Video gëtt geluede"
   },
   "VideoLabels": {
     "video": "Videoclip",
@@ -226,7 +234,8 @@
     "series": "Serie",
     "collection": "Kollektioun",
     "trailer": "Virschau",
-    "behindTheScenes": "Hanner de Kulissen"
+    "behindTheScenes": "Hanner de Kulissen",
+    "chapter": "Kapitel"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} vu {total}",
@@ -238,12 +247,253 @@
     "noImage": "Keen Bild",
     "playingNow": "Spillt elo",
     "previousChapter": "Viregt Kapitel",
-    "nextChapter": "Nächst Kapitel"
+    "nextChapter": "Nächst Kapitel",
+    "thumbnailAlt": "Miniaturbild vu {title}",
+    "relatedVideoThumbnail": "Miniaturbild vum verbonnene Video"
   },
   "SearchResultCard": {
     "experience": "Erfarung",
     "episodeCount": "{count, plural, one {# Episod} other {# Episoden}}",
     "thumbnailAlt": "Video-Miniaturbild"
+  },
+  "Feedback": {
+    "openForm": "Feedback-Formular opmaachen",
+    "label": "Réckmeldung",
+    "couldNotLoad": "De Feedback-Formulaire konnt net geluede ginn.",
+    "loadingForm": "Feedback-Formulaire gëtt geluede…",
+    "retry": "Nach eng Kéier",
+    "openFormShort": "Formulaire opmaachen",
+    "cancel": "Ofbriechen",
+    "title": "Beta-Feedback",
+    "description": "Deelt mat, wat gutt funktionéiert a wat mir verbessere kënnen. Dëse Formular gëtt vu Google ugebueden.",
+    "openInNewTab": "Formulaire an engem neien Tab opmaachen",
+    "closeForm": "Feedback-Formulaire zoumaachen",
+    "loadingGoogleForm": "Google-Formulaire gëtt geluede…",
+    "iframeTitle": "Beta-Feedback ofginn"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Gratis chrëschtlech Videoen op {language} | Jesus Film Project",
+    "metadataDescription": "Entdeckt Jesus-Filmer, Bibelgeschichten, Jüngerschaftsserieën an Outreach-Videoe mat synchroniséiertem Toun oder Ënnertitelen op {language}.",
+    "heroTitle": "Gratis chrëschtlech Videoen op {language}",
+    "heroDescription": "Entdeckt Jesus-Filmer, Bibelgeschichten, Jüngerschaftsserieën an Outreach-Videoen op {language}. Voll synchroniséiert Videoe gi virgehuewen, mat Optiounen nëmme mat Ënnertitelen hei drënner.",
+    "languageCollection": "Sproochenkollektioun",
+    "itemCount": "{count, plural, one {# Element} other {# Elementer}}",
+    "videoCount": "{count, plural, one {# Video} other {# Videoen}}",
+    "videosInGroups": "{videoCount, plural, one {# Video} other {# Videoen}} an {groupCount, plural, one {# Grupp} other {# Gruppen}}",
+    "sectionNavLabel": "Sektioune vun der Sproocheninventur",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nei",
+    "videoBible": "Video-Bibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Kollektiounen",
+    "subtitlesOnly": "Nëmme Ënnertitelen",
+    "newlyAdded": "Nei dobäigesat",
+    "newVideosTitle": "Nei chrëschtlech Videoen op {language}",
+    "newestFirst": "Déi neisten éischt",
+    "noPublishedVideos": "Et goufe bis elo keng publizéiert Videoe fir dës Sprooch fonnt.",
+    "bibleAndGospelFilms": "Bibel- a Evangeliefilmer",
+    "videoBibleCollectionsTitle": "{language} Video-Bibel-Kollektiounen",
+    "videoBibleDescription": "Schrëftzentéiert Kollektiounen mat LUMO, JESUS, Magdalena an Acts op {language}.",
+    "noVideoBibleCollections": "Fir dës Sprooch sinn nach keng Video-Bibel-Kollektiounen verfügbar.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject-Kollektiounen",
+    "bibleProjectDescription": "BibleProject-Serieën a Studie verfügbar op {language}.",
+    "noBibleProjectCollections": "Fir dës Sprooch sinn nach keng BibleProject-Kollektiounen verfügbar.",
+    "sportsStories": "Sportsgeschichten",
+    "sportsTitle": "Sport- a Sportlergeschichten op {language}",
+    "sportsDescription": "Glaawenszentéiert Sportsgeschichten a Kollektioune mat Sportler op {language} verfügbar.",
+    "noSportsCollections": "Fir dës Sprooch sinn nach keng Sport- oder Sportlergeschicht-Kollektiounen verfügbar.",
+    "fullyDubbed": "Komplett synchroniséiert",
+    "dubbedVideosTitle": "Videoen op {language} no Kollektioun",
+    "dubbedVideosDescription": "Kuckt voll synchroniséiert Videoen op {language}, no Kollektioun gruppéiert fir méi einfach Entdeckung.",
+    "noDubbedVideos": "Fir dës Sprooch sinn nach keng komplett synchroniséiert Videoe verfügbar.",
+    "subtitlesAvailable": "Ënnertitelen verfügbar",
+    "subtitlesTitle": "Videoen op {language} mat Ënnertitelen",
+    "subtitlesDescription": "Dës Videoe enthalen Ënnertitele op {language}, wann geschwat Toun op {language} nach net verfügbar ass.",
+    "noSubtitleVideos": "Fir dës Sprooch sinn nach keng Videoe just mat Ënnertitelen verfügbar.",
+    "dubbed": "Synchroniséiert",
+    "subtitles": "Ënnertitelen",
+    "newLabel": "Nei",
+    "fromCollection": "Aus {collection}",
+    "standaloneVideos": "Eenzel Videoen",
+    "videosFromCollection": "Videoen aus {collection}.",
+    "standaloneDescription": "Eenzel Videoen op dëser Sprooch.",
+    "openCollection": "Kollektioun opmaachen"
+  },
+  "WatchHome": {
+    "pageTitle": "Videoe kucken | Jesus Film Project",
+    "watch": "Kucken",
+    "watchNow": "Elo kucken",
+    "mutePreview": "Virschau stomm schalten",
+    "unmutePreview": "Virschau den Toun uschalten",
+    "nextVideo": "Nächste Video",
+    "featured": "Vorgestallt",
+    "showVideo": "{title} weisen",
+    "previousVideoPreview": "Virschau vum viregte Video",
+    "nextVideoPreview": "Virschau vum nächste Video",
+    "mediaCollection": "Mediekollektioun",
+    "scrollToVideo": "Zum Video {title} rullen"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project Startsäit",
+    "navigation": "Navigatioun am Foussberäich",
+    "share": "Deelen",
+    "watch": "Kucken",
+    "giving": "Ginn",
+    "about": "Iwwer",
+    "products": "Produkter",
+    "resources": "Ressourcen",
+    "partners": "Partner",
+    "contact": "Kontakt",
+    "giveNow": "Elo spenden",
+    "resourcesVersion": "Ressourcen ({version})",
+    "office": "Büro",
+    "fax": "Faxnummer",
+    "privacyPolicy": "Dateschutzpolitik",
+    "legalStatement": "Juristesch Erklärung",
+    "newsletter": "Fir eisen Newsletter umellen"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Gebaut fir weltwäit Missioun",
+    "title": "D’Botschaft ännert sech net. D’Aart a Weis wéi Leit kucken, awer schonn.",
+    "description": "Mir bauen eis Videobibliothéik an eis Tools vun Null un nei op a bréngen Joerzéngte vun Iwwersetzungsaarbecht op déi Plattformen, wou Leit scho zesummekommen, kucken an deelen.",
+    "translatedLibraryTitle": "Déi am meeschten iwwersat Film-Bibliothéik op der Welt",
+    "translatedLibraryDescription": "Joerzéngte vun Iwwersetzungsaarbecht, gedroe vu vertrauenswürdege Ministärspartner, hunn eng Bibliothéik mat dausende vu Sproochspuren opgebaut, sou datt Leit d’Geschicht vu Jesus an hirer Sprooch erliewe kënnen.",
+    "trustedVoicesTitle": "Vertrauenswierdeg Stëmmen an nei Formater bréngen",
+    "trustedVoicesDescription": "Mir bauen nei op, wéi Evangeliumsgeschichten visuell erzielt ginn, andeems mir vertrauenswierdeg Iwwersetzungen mat moderne Formater verbannen, sou datt d’Botschaft fräi iwwer Plattformen, Kulturen an Ecranen erausgoe kann.",
+    "missionTeamTitle": "Méi wéi eng Bibliothéik. Eng Missiounsteam.",
+    "missionTeamDescription": "Jesus Film Project ass e weltwäitt Team vu Iwwersetzer, Medienexperten, Editeuren a Kreativen, dat Joerzéngte vu Ministère-Erfarung an Tools fir Jünger-Maacher iwwerall ëmsetzt.",
+    "buildingNext": "Wat mir als Nächst bauen",
+    "nextStepsTitle": "Next Steps Plattform",
+    "nextStepsDescription": "Verbannt Zuschauer mat konkreten Méiglechkeeten op hirer spiritueller Rees a hëlleft hinnen, de nächste Schrëtt an d’Gemeinschaft, d’Schrëft oder d’Missioun ze maachen.",
+    "mediaLibraryTitle": "Evangelistesch Mediebibliothéik",
+    "mediaLibraryDescription": "Eng ëmfaassend chrëschtlech Mediebibliothéik mat dausende vu Videoen, Filmer a Ressourcen op verschidde Sproochen, fir Ministère an Evangelisatioun weltwäit.",
+    "ministryToolsTitle": "Digital Tools fir Ministèren",
+    "ministryToolsDescription": "Videomanagement, Inhaltdistributioun, Zilgrupp-Engagement an Analysen, entwéckelt fir Ministèren ze hëllefen, méi Leit effektiv z’erreechen.",
+    "invitationEyebrow": "Dir sidd invitéiert",
+    "invitationTitle": "Hëlleft mat, <highlight>déi nächst Generatioun</highlight> vu Missiounsinstrumenter ze bauen",
+    "invitationDescription": "Mir invitéieren Practicien, Kreativer a Partner an de fréie Zougang. Test nei Tools als Éischt, gitt Feedback a hëlleft Produkter matzebauen, déi fir richteg Missiounsaarbecht entwéckelt sinn.",
+    "betaTester": "Beta-Tester ginn"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-Bibel-Kollektioun",
+    "gospelRailTitle": "Entdeckt déi ganz Geschicht",
+    "videoBibleDescription": "Entdeckt eis Sammlung vu Videoen a Ressourcen, déi d’Bibel duerch spannend Geschichten an Léier zum Liewen erwecken.",
+    "showcaseTitle": "Schrëft duerch Film erzielt",
+    "adventEyebrow": "Chrëschtdag Advent",
+    "adventTitle": "Chrëschtdag Advents-Countdown",
+    "adventDescription": "Maacht mat op eiser Adventsrees mat engem deegleche Video, deen d’Erwaardung op Chrëschtdag opbaut an d’Hoffnung, d’Freed an d’Versprieche vum Kommen vu Jesus entdeckt.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent mat BibleProject",
+    "nuaEyebrow": "NUA Serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurs",
+    "journeyWithJesusTitle": "Rees mam Jesus",
+    "gospelsOnVideoEyebrow": "All Evangelium, op Video erzielt",
+    "scriptureAsWrittenTitle": "Schrëft, genee wéi geschriwwen",
+    "merryChristmas": "Schéi Chrëschtdeeg!",
+    "daysUntilChristmas": "{count, plural, one {Nach # Dag bis Chrëschtdag} other {Nach # Deeg bis Chrëschtdag}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Sproochen",
+    "metadataDescription": "Kuckt JesusFilm-Videoen no Sprooch duerch.",
+    "eyebrow": "Watch-Sproochen",
+    "title": "Wielt eng Sprooch",
+    "description": "Entdeckt Sproochen no Regioun oder kuckt déi ganz Lëscht duerch.",
+    "searchPlaceholder": "Sproochen oder Länner sichen...",
+    "searchLabel": "Sproochen oder Länner sichen",
+    "clearSearch": "Sich läschen",
+    "browse": "Duerchkucken",
+    "browseByRegion": "No Regioun a Land duerchkucken",
+    "languageCount": "{count, plural, one {# Sprooch} other {# Sproochen}}",
+    "region": "Regioun",
+    "countryLanguages": "Sproochen vu {country}",
+    "showLess": "Manner weisen",
+    "showMore": "{count} méi weisen",
+    "noLanguages": "Keng Sproochen fonnt",
+    "tryAnotherSearch": "Probéiert en anere Sichbegrëff."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Kuck-Geschicht | Jesus Film Project",
+    "title": "Kuck-Geschicht",
+    "loading": "Geschicht gëtt geluede",
+    "empty": "Nach näischt hei",
+    "emptyDescription": "Videoen, déi Dir kuckt wärend Dir ageloggt sidd, ginn hei ugewisen.",
+    "earlier": "Virdrun",
+    "today": "Haut",
+    "yesterday": "Gëschter"
+  },
+  "AccountControl": {
+    "account": "Kont",
+    "accountMenu": "Kontmenü",
+    "signIn": "Umellen",
+    "signOut": "Ofmellen",
+    "signedIn": "Ageloggt",
+    "history": "Geschicht",
+    "logOut": "Offloggen"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Säit net fonnt",
+    "eyebrow": "Säit net fonnt",
+    "screenReaderPrefix": "Säit net fonnt:",
+    "title": "Dës Zeen ass net hei.",
+    "description": "D’Säit ass vläicht verluecht ginn, mee d’Geschicht geet weider.",
+    "actionsLabel": "Aktioune bei net fonnten Säiten",
+    "backToWatch": "Zréck op Watch",
+    "browseVideos": "Videoen duerchkucken"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Kuerzfilm kucken",
+    "actions": {
+      "joinUs": "Maacht mat",
+      "shareMission": "Maacht mat bei eiser Missioun"
+    },
+    "welcomeStart": {
+      "label": "Glaawen & Schrëft",
+      "title": "Déi hauteg Video-Auswiel",
+      "description": "Glaawenszentéiert Videoen aus eiser Bibliothéik, déi inspiréieren, erausfuerderen an zum Nokéieren anregen."
+    },
+    "welcomeMorning": {
+      "label": "Moiesinspiratioun",
+      "title": "Gudde Moien! Hauteg Bibelmomenter waarden op Iech.",
+      "description": "Start Ären Dag mat ermunternden Bibelmomenter, déi inspiréieren an Äre Geescht opbauen."
+    },
+    "welcomeAfternoon": {
+      "label": "Nomëttesinspiratioun",
+      "title": "Gudden Nomëtteg! Bibelmomenter fir Ären Dag.",
+      "description": "Ermuetigend Bibelinhalter, ideal fir Är Nomëttespaus oder fir weider Inspiratioun."
+    },
+    "welcomeEvening": {
+      "label": "Owensinspiratioun",
+      "title": "Gudden Owend! Entspannt Iech mat Bibelmomenter.",
+      "description": "Roueg Bibelmomenter, déi Iech hëllefen, nozedenken an Trouscht ze fannen, wann Ären Dag op en Enn geet."
+    },
+    "joinUs": {
+      "label": "Maacht mat",
+      "title": "Milliarde si am Sich",
+      "description": "D’Ernte ass do. Maacht mat a deelt d’Evangelium mat der Welt iwwer digital Medie."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Loosst eis et zesumme maachen",
+      "title": "D’Geschicht vu Jesus zesumme erzielen",
+      "description": "Sou kënne si d’Léift vu Jesus an hirer eegener Sprooch héieren a gesinn, direkt do wou si sinn."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % Iwwereestëmmung",
+    "none": "Fir dëse Video goufe keng Recommandatiounen an dëser Sprooch fonnt."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-Tester ginn",
+    "trigger": "Beta-Tester ginn",
+    "loadFailed": "Eppes ass schif gelaf.",
+    "loading": "Lueden...",
+    "openFormNewTab": "Formulaire an engem neien Tab opmaachen",
+    "close": "Zoumaachen",
+    "iframeTitle": "Beta-Tester ginn"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

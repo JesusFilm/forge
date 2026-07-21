@@ -7,6 +7,7 @@ import type {
   LegacyFragmentValue,
 } from "@/lib/legacy-fragment-types"
 import { BookOpen, ExternalLink } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { Button } from "@/components/ui/button"
 import {
@@ -80,6 +81,8 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
 }
 
 function BibleQuotesHeader({ heading }: { heading: string | null }) {
+  const t = useTranslations("BibleQuotes")
+
   async function handleShare() {
     const shareUrl = new URL(window.location.href)
     shareUrl.searchParams.set("utm_source", "share")
@@ -108,9 +111,9 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
           {heading}
         </h3>
       )}
-      <Button variant="pill" onClick={handleShare} aria-label="Share">
+      <Button variant="pill" onClick={handleShare} aria-label={t("share")}>
         <ExternalLink size={16} />
-        <span>Share</span>
+        <span>{t("share")}</span>
       </Button>
     </div>
   )
@@ -147,6 +150,7 @@ function BibleQuoteCard({
 }
 
 function QuoteCard({ quote }: { quote: QuoteItem }) {
+  const t = useTranslations("BibleQuotes")
   // Reference-first scripture (video-anchored generation) stores only the
   // reference; verse text is resolved at render in a follow-up. Until then,
   // render the reference prominently with a "read it" hint instead of a blank.
@@ -170,7 +174,7 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
         </p>
       ) : (
         <p className="text-sm leading-relaxed text-balance text-white/70">
-          Read this passage in your Bible.
+          {t("readPassage")}
         </p>
       )}
     </BibleQuoteCard>

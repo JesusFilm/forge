@@ -1,10 +1,24 @@
 import {
-  initialRotationState,
-  rotateLanguage,
+  pickViewerLanguage,
+  playableDubs,
+  toDefaultSlugOptions,
   type ShowcaseDubInput,
 } from "./languageRotation"
 
-// A playable dub: admin's contract is published === true AND a non-empty hls.
+// resolveDefaultSlug reads the device locale from Intl.DateTimeFormat; override it
+// per-test so the asserted default-chain rung is unambiguous (Jest resolves en-US).
+const realDateTimeFormat = Intl.DateTimeFormat
+function mockDeviceLocale(locale: string) {
+  Intl.DateTimeFormat = (() => ({
+    resolvedOptions: () => ({ locale }),
+  })) as unknown as typeof Intl.DateTimeFormat
+}
+afterEach(() => {
+  Intl.DateTimeFormat = realDateTimeFormat
+})
+
+// A playable dub: admin's contract is published === true AND a non-empty hls. Pass a
+// full `language` override to attach a bcp47 (default fixtures carry none).
 function dub(
   languageSlug: string | null,
   overrides: Partial<ShowcaseDubInput> = {},
@@ -21,9 +35,11 @@ function dub(
   }
 }
 
-describe("rotateLanguage — playability", () => {
+describe("pickViewerLanguage — playability", () => {
   it("returns null when the video has no dubs at all", () => {
-    expect(rotateLanguage([], initialRotationState)).toBeNull()
+    expect(pickViewerLanguage([], "english")).toBeNull()
+    expect(pickViewerLanguage(null, "english")).toBeNull()
+    expect(pickViewerLanguage(undefined, null)).toBeNull()
   })
 
   // The playable test is `published === true && hls != null && hls !== ""` —
@@ -34,14 +50,14 @@ describe("rotateLanguage — playability", () => {
       dub("spanish", { hls: "" }),
       dub("french", { hls: null }),
     ]
-    expect(rotateLanguage(unplayable, initialRotationState)).toBeNull()
+    expect(pickViewerLanguage(unplayable, "english")).toBeNull()
   })
 
   it("picks the one playable dub past unplayable siblings", () => {
     const dubs = [dub("english", { published: false }), dub("spanish")]
-    const result = rotateLanguage(dubs, initialRotationState)
-    expect(result?.pick.hls).toBe("https://stream/spanish.m3u8")
-    expect(result?.pick.muxPlaybackId).toBe("pb-spanish")
+    const result = pickViewerLanguage(dubs, "spanish")
+    expect(result?.hls).toBe("https://stream/spanish.m3u8")
+    expect(result?.muxPlaybackId).toBe("pb-spanish")
   })
 
   // Language.name is admin's jsonb locale map, not a String — it must be read
@@ -52,37 +68,28 @@ describe("rotateLanguage — playability", () => {
         language: { slug: "spanish", name: { en: "Spanish" } },
       }),
     ]
-    expect(rotateLanguage(dubs, initialRotationState)?.pick.languageName).toBe(
-      "Spanish",
-    )
+    expect(pickViewerLanguage(dubs, "spanish")?.languageName).toBe("Spanish")
   })
 })
 
-describe("rotateLanguage — AE4: single-dub makes no rotation claim", () => {
-  it("yields the one language with claimsLanguage false", () => {
-    const result = rotateLanguage([dub("english")], initialRotationState)
-    expect(result?.pick.languageSlug).toBe("english")
-    expect(result?.pick.claimsLanguage).toBe(false)
+describe("pickViewerLanguage — AE1: the viewer's chosen language plays", () => {
+  it("plays the viewer's language when a playable dub carries it", () => {
+    const dubs = [dub("english"), dub("russian")]
+    const result = pickViewerLanguage(dubs, "russian")
+    expect(result?.languageSlug).toBe("russian")
+    expect(result?.hls).toBe("https://stream/russian.m3u8")
   })
 
-  it("makes no claim when several dubs all carry the SAME language slug", () => {
-    const result = rotateLanguage(
-      [dub("english"), dub("english"), dub("english")],
-      initialRotationState,
-    )
-    expect(result?.pick.claimsLanguage).toBe(false)
+  // Ordinary excerpts never rotate, so the lower-third makes no breadth claim.
+  it("never claims a language, even across a multi-language video", () => {
+    const dubs = [dub("english"), dub("spanish"), dub("french")]
+    expect(pickViewerLanguage(dubs, "spanish")?.claimsLanguage).toBe(false)
+    expect(pickViewerLanguage(dubs, "english")?.claimsLanguage).toBe(false)
   })
 
-  it("does not error and still advances rotation state for a single-dub video", () => {
-    const result = rotateLanguage([dub("english")], initialRotationState)
-    expect(result?.nextState.previousSlug).toBe("english")
-  })
-})
-
-describe("rotateLanguage — R7: consecutive excerpts differ", () => {
-  // Identity is language.slug, NEVER bcp47: ko-kmr collides with ko and en-nai
-  // with en, so bcp47 would silently merge distinct languages.
-  it("keys identity on language.slug, not bcp47", () => {
+  // Identity is language.slug, NEVER bcp47: ko-kmr collides with ko, so matching on
+  // the tag would let a "korean" preference grab the Kurmanji dub, and vice versa.
+  it("keys the preference on language.slug, not the colliding bcp47", () => {
     const dubs = [
       dub("korean", {
         language: { slug: "korean", bcp47: "ko", name: { en: "Korean" } },
@@ -91,80 +98,104 @@ describe("rotateLanguage — R7: consecutive excerpts differ", () => {
         language: { slug: "kurmanji", bcp47: "ko", name: { en: "Kurmanji" } },
       }),
     ]
-    const first = rotateLanguage(dubs, initialRotationState)
-    expect(first?.pick.languageSlug).toBe("korean")
-    const second = rotateLanguage(dubs, first!.nextState)
-    expect(second?.pick.languageSlug).toBe("kurmanji")
-    expect(second?.pick.claimsLanguage).toBe(true)
+    expect(pickViewerLanguage(dubs, "korean")?.languageSlug).toBe("korean")
+    expect(pickViewerLanguage(dubs, "kurmanji")?.languageSlug).toBe("kurmanji")
   })
+})
 
-  it("yields 3 distinct slugs across a 3-excerpt chapter when available", () => {
-    const dubs = [dub("english"), dub("spanish"), dub("french")]
-    const picks: string[] = []
-    let state = initialRotationState
-    for (let i = 0; i < 3; i++) {
-      const result = rotateLanguage(dubs, state)
-      picks.push(result!.pick.languageSlug!)
-      state = result!.nextState
-    }
-    expect(new Set(picks).size).toBe(3)
-    expect(picks).toEqual(["english", "spanish", "french"])
-  })
-
-  it("claims the language once rotation actually varies it", () => {
-    const dubs = [dub("english"), dub("spanish")]
-    const first = rotateLanguage(dubs, initialRotationState)
-    const second = rotateLanguage(dubs, first!.nextState)
-    expect(second?.pick.languageSlug).toBe("spanish")
-    expect(second?.pick.claimsLanguage).toBe(true)
-  })
-
-  // Exhaustion must not strand the reel on one language: the used set resets but
-  // the immediately-previous slug stays excluded, so en,es,en,es — never en,en.
-  it("never repeats the immediately-previous language when an alternative exists", () => {
-    const dubs = [dub("english"), dub("spanish")]
-    const picks: string[] = []
-    let state = initialRotationState
-    for (let i = 0; i < 4; i++) {
-      const result = rotateLanguage(dubs, state)
-      picks.push(result!.pick.languageSlug!)
-      state = result!.nextState
-    }
-    expect(picks).toEqual(["english", "spanish", "english", "spanish"])
-  })
-
-  it("falls back to a repeat only when the video has a single language", () => {
-    const first = rotateLanguage([dub("english")], initialRotationState)
-    const second = rotateLanguage([dub("english")], first!.nextState)
-    expect(second?.pick.languageSlug).toBe("english")
-    expect(second?.pick.claimsLanguage).toBe(false)
-  })
-
-  it("plays a slug-less dub without claiming a language", () => {
-    const result = rotateLanguage([dub(null)], initialRotationState)
-    expect(result?.pick.hls).toBe("https://stream/none.m3u8")
-    expect(result?.pick.languageSlug).toBeNull()
-    expect(result?.pick.claimsLanguage).toBe(false)
-  })
-
-  it("prefers a slug-bearing dub over a slug-less one so rotation can progress", () => {
-    const result = rotateLanguage(
-      [dub(null), dub("spanish")],
-      initialRotationState,
-    )
-    expect(result?.pick.languageSlug).toBe("spanish")
-  })
-
-  it("makes no claim when the language slug is known but the name is not", () => {
+describe("pickViewerLanguage — AE2: default resolution when the language is absent", () => {
+  it("resolves the device-locale dub by bcp47 when the viewer has no preference", () => {
+    // Device en-US must pick English over the first-listed Spanish — proof the bcp47
+    // device-locale rung fires (Spanish is options[0], so a blind first-pick would take it).
+    mockDeviceLocale("en-US")
     const dubs = [
-      dub("english"),
-      dub("xyz", { language: { slug: "xyz", name: null } }),
+      dub("spanish", {
+        language: { slug: "spanish", bcp47: "es", name: { en: "Spanish" } },
+      }),
+      dub("english", {
+        language: { slug: "english", bcp47: "en", name: { en: "English" } },
+      }),
     ]
-    const first = rotateLanguage(dubs, initialRotationState)
-    const second = rotateLanguage(dubs, first!.nextState)
-    expect(second?.pick.languageSlug).toBe("xyz")
-    expect(second?.pick.languageName).toBeNull()
-    expect(second?.pick.claimsLanguage).toBe(false)
+    const result = pickViewerLanguage(dubs, null)
+    expect(result?.languageSlug).toBe("english")
+    expect(result?.claimsLanguage).toBe(false)
+  })
+
+  it("falls to the default chain when the preference has no playable dub here — never errors", () => {
+    mockDeviceLocale("en-US")
+    const dubs = [
+      dub("spanish", {
+        language: { slug: "spanish", bcp47: "es", name: { en: "Spanish" } },
+      }),
+      dub("english", {
+        language: { slug: "english", bcp47: "en", name: { en: "English" } },
+      }),
+    ]
+    // Viewer picked Russian; this video has none, so the chain resolves to English.
+    const result = pickViewerLanguage(dubs, "russian")
+    expect(result?.languageSlug).toBe("english")
+    expect(result?.claimsLanguage).toBe(false)
+  })
+
+  it("resolves the English rung by bcp47 when the device locale matches nothing", () => {
+    // Device de-DE cannot match; only the English fallback rung can pick English here.
+    mockDeviceLocale("de-DE")
+    const dubs = [
+      dub("french", {
+        language: { slug: "french", bcp47: "fr", name: { en: "French" } },
+      }),
+      dub("english", {
+        language: { slug: "english", bcp47: "en", name: { en: "English" } },
+      }),
+    ]
+    expect(pickViewerLanguage(dubs, null)?.languageSlug).toBe("english")
+  })
+
+  // This is exactly why showcaseVideoFragment must select the dubs' bcp47: with it
+  // absent, the device-locale and English rungs have no inputs and the chain silently
+  // degrades to the first-listed dub regardless of the viewer's device.
+  it("degrades to the first dub when no dub carries a bcp47", () => {
+    mockDeviceLocale("en-US")
+    const dubs = [
+      dub("spanish", {
+        language: { slug: "spanish", name: { en: "Spanish" } },
+      }),
+      dub("english", {
+        language: { slug: "english", name: { en: "English" } },
+      }),
+    ]
+    expect(pickViewerLanguage(dubs, null)?.languageSlug).toBe("spanish")
+  })
+})
+
+describe("pickViewerLanguage — slug-less dubs", () => {
+  it("plays a slug-less dub without claiming a language", () => {
+    mockDeviceLocale("en-US")
+    const result = pickViewerLanguage([dub(null)], null)
+    expect(result?.hls).toBe("https://stream/none.m3u8")
+    expect(result?.languageSlug).toBeNull()
+    expect(result?.claimsLanguage).toBe(false)
+  })
+
+  it("prefers a slug-bearing dub over a slug-less one", () => {
+    mockDeviceLocale("en-US")
+    const result = pickViewerLanguage([dub(null), dub("spanish")], null)
+    expect(result?.languageSlug).toBe("spanish")
+  })
+})
+
+describe("toDefaultSlugOptions", () => {
+  it("adapts slug-bearing playable dubs to the resolveDefaultSlug option shape", () => {
+    const playable = playableDubs([
+      dub("korean", { language: { slug: "korean", bcp47: "ko", name: {} } }),
+      dub("spanish"),
+    ]).filter(
+      (d): d is typeof d & { languageSlug: string } => d.languageSlug != null,
+    )
+    expect(toDefaultSlugOptions(playable)).toEqual([
+      { slug: "korean", bcp47: "ko", languageSlug: "korean" },
+      { slug: "spanish", bcp47: null, languageSlug: "spanish" },
+    ])
   })
 })
 

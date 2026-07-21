@@ -7,7 +7,9 @@
     "noContent": "Nuk ka përmbajtje të disponueshme.",
     "homepageMisconfigured": "Faqja kryesore e shikimit është e konfiguruar gabim.",
     "defaultTemplateMisconfigured": "Modeli i parazgjedhur i shikimit është i konfiguruar gabim.",
-    "authFailed": "Nuk mund të bëhet autentikimi me shërbimin e përmbajtjes. Ju lutemi kontaktoni mbështetjen nëse kjo vazhdon."
+    "authFailed": "Nuk mund të bëhet autentikimi me shërbimin e përmbajtjes. Ju lutemi kontaktoni mbështetjen nëse kjo vazhdon.",
+    "pageLoadFailed": "Diçka shkoi keq.",
+    "tryAgain": "Provo përsëri"
   },
   "VideosPage": {
     "title": "Të gjitha videot",
@@ -22,7 +24,8 @@
     "promoHeading": "Dëshironi ta kuptoni më thellë Biblën?",
     "joinBibleStudy": "Bashkohuni me studimin tonë biblik",
     "previousQuote": "Cita­ti i mëparshëm biblik",
-    "nextQuote": "Cita­ti tjetër biblik"
+    "nextQuote": "Cita­ti tjetër biblik",
+    "readPassage": "Lexojeni këtë pjesë në Biblën tuaj."
   },
   "DownloadButton": {
     "checking": "Po kontrollohet",
@@ -73,7 +76,8 @@
     "selectLanguage": "Zgjidhni gjuhën",
     "searchPlaceholder": "Kërko gjuhë…",
     "languages": "Gjuhë",
-    "noMatches": "Pa përputhje"
+    "noMatches": "Pa përputhje",
+    "notAvailable": "Nuk është i disponueshëm"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Gjuha",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERI · {episodes}",
     "changeAudioLanguage": "Ndrysho gjuhën e audios",
     "share": "Ndaj",
-    "languages": "Gjuhë",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Gjuhë"
   },
   "WatchModal": {
     "close": "Mbyll"
@@ -115,7 +116,8 @@
     "questions": "Pyetje të lidhura",
     "askYours": "Bëni pyetjen tuaj",
     "chatWithPerson": "Bisedo me një person",
-    "askBibleQuestion": "Bëj një pyetje biblike"
+    "askBibleQuestion": "Bëj një pyetje biblike",
+    "quiz": "Kuiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Lloji i mesazhit",
@@ -173,7 +175,8 @@
     "searchRegion": "Kërko video",
     "clearSearch": "Pastro kërkimin",
     "changeAudioLanguage": "Ndrysho gjuhën e audios",
-    "home": "Faqja kryesore e JesusFilm"
+    "home": "Faqja kryesore e JesusFilm",
+    "closeSearch": "Mbyll kërkimin"
   },
   "SearchOverlay": {
     "dialogLabel": "Kërko dhe shfleto videot",
@@ -208,14 +211,19 @@
     "clearLanguages": "Pastro",
     "queryLanguageDetected": "U zbulua {language}",
     "searchInLanguage": "Kërko në {language}",
-    "tryDifferentKeywordsOrLanguage": "Provo fjalë kyçe të tjera ose zgjidh një gjuhë tjetër kërkimi"
+    "tryDifferentKeywordsOrLanguage": "Provo fjalë kyçe të tjera ose zgjidh një gjuhë tjetër kërkimi",
+    "useWebsiteDefaultLanguage": "Përdor gjuhën e parazgjedhur të kërkimit të faqes",
+    "removeLanguage": "Hiq {language}",
+    "browseMode": "Modaliteti i shfletimit të kërkimit"
   },
   "HeroPlayer": {
     "playWithSound": "Shiko tani",
-    "tapToUnmute": "Prek për të aktivizuar zërin"
+    "tapToUnmute": "Prek për të aktivizuar zërin",
+    "nextEpisode": "Episodi tjetër"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Po ngarkohet përmbajtja"
+    "loadingContent": "Po ngarkohet përmbajtja",
+    "loadingVideo": "Po ngarkohet videoja"
   },
   "VideoLabels": {
     "video": "Material video",
@@ -226,7 +234,8 @@
     "series": "Serial",
     "collection": "Koleksion",
     "trailer": "Trajler",
-    "behindTheScenes": "Prapaskenat"
+    "behindTheScenes": "Prapaskenat",
+    "chapter": "Kapitull"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipi {current} nga {total}",
@@ -238,12 +247,253 @@
     "noImage": "Pa imazh",
     "playingNow": "Po luhet tani",
     "previousChapter": "Kapitulli i mëparshëm",
-    "nextChapter": "Kapitulli tjetër"
+    "nextChapter": "Kapitulli tjetër",
+    "thumbnailAlt": "Miniatura e {title}",
+    "relatedVideoThumbnail": "Miniaturë videoje të lidhur"
   },
   "SearchResultCard": {
     "experience": "Përvojë",
     "episodeCount": "{count, plural, one {# episod} other {# episode}}",
     "thumbnailAlt": "Miniatura e videos"
+  },
+  "Feedback": {
+    "openForm": "Hap formularin e komenteve",
+    "label": "Komente",
+    "couldNotLoad": "Formulari i komenteve nuk mund të ngarkohej.",
+    "loadingForm": "Po ngarkohet formulari i komenteve…",
+    "retry": "Provo përsëri",
+    "openFormShort": "Hap formularin",
+    "cancel": "Anulo",
+    "title": "Komente beta",
+    "description": "Ndani çfarë funksionon dhe çfarë mund të përmirësojmë. Ky formular ofrohet nga Google.",
+    "openInNewTab": "Hap formularin në një skedë të re",
+    "closeForm": "Mbyll formularin e komenteve",
+    "loadingGoogleForm": "Po ngarkohet Google Form…",
+    "iframeTitle": "Dërgo komentet beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video të krishtera falas në {language} | Jesus Film Project",
+    "metadataDescription": "Eksploroni filmat për Jezusin, historitë biblike, seritë e dishepullimit dhe videot e ungjillizimit me audio të dubluar ose titra në {language}.",
+    "heroTitle": "Video të krishtera falas në {language}",
+    "heroDescription": "Eksploroni filmat për Jezusin, historitë biblike, seritë e dishepullimit dhe videot e ungjillizimit të disponueshme në {language}. Videot plotësisht të dubluara theksohen së pari, ndërsa opsionet vetëm me titra janë më poshtë.",
+    "languageCollection": "Koleksioni i gjuhës",
+    "itemCount": "{count, plural, one {# element} other {# elemente}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} në {groupCount, plural, one {# grup} other {# grupe}}",
+    "sectionNavLabel": "Seksionet e inventarit të gjuhës",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "E re",
+    "videoBible": "Bibla në video",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Koleksione",
+    "subtitlesOnly": "Vetëm titra",
+    "newlyAdded": "Sapo shtuar",
+    "newVideosTitle": "Video të reja të krishtera në {language}",
+    "newestFirst": "Më të rejat të parat",
+    "noPublishedVideos": "Nuk u gjetën ende video të publikuara për këtë gjuhë.",
+    "bibleAndGospelFilms": "Filma biblikë dhe ungjillorë",
+    "videoBibleCollectionsTitle": "Koleksionet e Biblës në video në {language}",
+    "videoBibleDescription": "Koleksione të përqendruara te Shkrimi, duke përfshirë LUMO, JESUS, Magdalena dhe Veprat në {language}.",
+    "noVideoBibleCollections": "Nuk ka ende koleksione të Biblës në video të disponueshme për këtë gjuhë.",
+    "bibleProjectCollectionsTitle": "Koleksionet BibleProject në {language}",
+    "bibleProjectDescription": "Seritë dhe studimet BibleProject të disponueshme në {language}.",
+    "noBibleProjectCollections": "Nuk ka ende koleksione BibleProject të disponueshme për këtë gjuhë.",
+    "sportsStories": "Histori sportive",
+    "sportsTitle": "Histori sportive dhe të atletëve në {language}",
+    "sportsDescription": "Histori sportive me qendër besimin dhe koleksione të fokusuara te atletët të disponueshme në {language}.",
+    "noSportsCollections": "Nuk ka ende koleksione sportive ose me histori atletësh të disponueshme për këtë gjuhë.",
+    "fullyDubbed": "Plotësisht të dubluara",
+    "dubbedVideosTitle": "Video në {language} sipas koleksionit",
+    "dubbedVideosDescription": "Shfletoni videot plotësisht të dubluara në {language}, të grupuara me koleksionin e tyre për zbulim më të lehtë.",
+    "noDubbedVideos": "Nuk ka ende video plotësisht të dubluara të disponueshme për këtë gjuhë.",
+    "subtitlesAvailable": "Titra të disponueshme",
+    "subtitlesTitle": "Video në {language} me titra",
+    "subtitlesDescription": "Këto video përfshijnë titra në {language} kur audioja e folur në {language} nuk është ende e disponueshme.",
+    "noSubtitleVideos": "Nuk ka ende video vetëm me titra të disponueshme për këtë gjuhë.",
+    "dubbed": "Të dubluara",
+    "subtitles": "Titra",
+    "newLabel": "E re",
+    "fromCollection": "Nga {collection}",
+    "standaloneVideos": "Video të veçanta",
+    "videosFromCollection": "Video nga {collection}.",
+    "standaloneDescription": "Video të veçanta në këtë gjuhë.",
+    "openCollection": "Hap koleksionin"
+  },
+  "WatchHome": {
+    "pageTitle": "Shikimi i Jesus Film Project",
+    "watch": "Shiko",
+    "watchNow": "Shiko tani",
+    "mutePreview": "Hiq zërin e parapamjes",
+    "unmutePreview": "Aktivizo zërin e parapamjes",
+    "nextVideo": "Videoja tjetër",
+    "featured": "Të veçuara",
+    "showVideo": "Shfaq {title}",
+    "previousVideoPreview": "Parapamja e videos së mëparshme",
+    "nextVideoPreview": "Parapamja e videos tjetër",
+    "mediaCollection": "Koleksion mediash",
+    "scrollToVideo": "Lëviz te videoja {title}"
+  },
+  "WatchFooter": {
+    "home": "Faqja kryesore e Jesus Film Project",
+    "navigation": "Navigimi i faqes së poshtme",
+    "share": "Ndaj",
+    "watch": "Shiko",
+    "giving": "Dhënie",
+    "about": "Rreth nesh",
+    "products": "Produkte",
+    "resources": "Burime",
+    "partners": "Partnerë",
+    "contact": "Kontakt",
+    "giveNow": "Jep tani",
+    "resourcesVersion": "Burime ({version})",
+    "office": "Zyrë",
+    "fax": "Faks",
+    "privacyPolicy": "Politika e privatësisë",
+    "legalStatement": "Deklaratë ligjore",
+    "newsletter": "Regjistrohuni për buletinin tonë"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ndërtuar për misionin global",
+    "title": "Mesazhi nuk ndryshon. Mënyra si e shikojnë njerëzit po.",
+    "description": "Po rindërtojmë bibliotekën dhe mjetet tona video nga e para, duke e çuar dekada pune përkthimi në platformat ku njerëzit tashmë mblidhen, shikojnë dhe ndajnë.",
+    "translatedLibraryTitle": "Biblioteka e filmave më e përkthyer në botë",
+    "translatedLibraryDescription": "Dekada pune përkthimi, të mbështetura nga partnerë të besuar të shërbesës, kanë ndërtuar një bibliotekë me mijëra pista gjuhësore që njerëzit të mund të takojnë historinë e Jezusit në gjuhën që u prek më thellë.",
+    "trustedVoicesTitle": "Duke i sjellë zërat e besuar në formate të reja",
+    "trustedVoicesDescription": "Po rindërtojmë mënyrën si tregohen vizualisht historitë e ungjillit, duke i lidhur përkthimet e besuara me formate moderne që mesazhi të lëvizë lirshëm nëpër platforma, kultura dhe ekrane.",
+    "missionTeamTitle": "Më shumë se një bibliotekë. Një ekip me mision.",
+    "missionTeamDescription": "Jesus Film Project është një ekip global përkthyesish, specialistësh të medias, redaktorësh dhe krijuesish që shndërrojnë dekada përvoje në shërbesë në mjete për dishepullbërësit kudo.",
+    "buildingNext": "Çfarë po ndërtojmë më tej",
+    "nextStepsTitle": "Platforma e Hapave të Radhës",
+    "nextStepsDescription": "Lidhni shikuesit me mundësi konkrete në rrugëtimin e tyre shpirtëror, duke i ndihmuar të hedhin hapin e radhës drejt komunitetit, Shkrimit ose misionit.",
+    "mediaLibraryTitle": "Bibliotekë Media për Ungjillizim",
+    "mediaLibraryDescription": "Një bibliotekë e gjerë mediash të krishtera me mijëra video, filma dhe burime të disponueshme në shumë gjuhë për shërbesë dhe ungjillizim në mbarë botën.",
+    "ministryToolsTitle": "Mjete Digjitale për Shërbesat",
+    "ministryToolsDescription": "Menaxhim videoje, shpërndarje përmbajtjeje, angazhim të audiencës dhe analiza të krijuara për t’i ndihmuar shërbesat të arrijnë më shumë njerëz në mënyrë efektive.",
+    "invitationEyebrow": "Jeni të ftuar",
+    "invitationTitle": "Ndihmoni të ndërtojmë <highlight>brezin e ardhshëm</highlight> të mjeteve për misionin",
+    "invitationDescription": "Po ftojmë praktikues, krijues dhe partnerë në qasje të hershme. Testoni mjetet e reja të parët, jepni feedback dhe ndihmoni të formësojmë produkte të krijuara për punë të vërtetë misionare.",
+    "betaTester": "Bëhuni testues beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksioni Bibla në Video",
+    "gospelRailTitle": "Zbuloni historinë e plotë",
+    "videoBibleDescription": "Eksploroni koleksionin tonë të videove dhe burimeve që e sjellin Biblën në jetë përmes tregimeve dhe mësimeve tërheqëse.",
+    "showcaseTitle": "Shkrimi i treguar përmes filmit",
+    "adventEyebrow": "Ardhja e Krishtlindjes",
+    "adventTitle": "Numërimi mbrapsht i Ardhjes së Krishtlindjes",
+    "adventDescription": "Bashkohuni me udhëtimin tonë të Ardhjes me një video të përditshme që ndërton pritjen për Krishtlindje, duke eksploruar shpresën, gëzimin dhe premtimin e ardhjes së Jezusit.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Ardhja e Krishtlindjes me BibleProject",
+    "nuaEyebrow": "Seria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurs video",
+    "journeyWithJesusTitle": "Udhëto me Jezusin",
+    "gospelsOnVideoEyebrow": "Çdo Ungjill, i treguar në video",
+    "scriptureAsWrittenTitle": "Shkrimi, i shqiptuar saktësisht siç është shkruar",
+    "merryChristmas": "Gëzuar Krishtlindjet!",
+    "daysUntilChristmas": "{count, plural, one {# ditë deri në Krishtlindje} other {# ditë deri në Krishtlindje}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gjuhët",
+    "metadataDescription": "Shfletoni videot e JesusFilm sipas gjuhës.",
+    "eyebrow": "Gjuhët e shikimit",
+    "title": "Zgjidhni një gjuhë",
+    "description": "Eksploroni gjuhët sipas rajonit ose shfletoni listën e plotë.",
+    "searchPlaceholder": "Kërko gjuhë ose vende...",
+    "searchLabel": "Kërko gjuhë ose vende",
+    "clearSearch": "Pastro kërkimin",
+    "browse": "Shfleto",
+    "browseByRegion": "Shfleto sipas rajonit dhe vendit",
+    "languageCount": "{count, plural, one {# gjuhë} other {# gjuhë}}",
+    "region": "Rajon",
+    "countryLanguages": "Gjuhët e {country}",
+    "showLess": "Shfaq më pak",
+    "showMore": "Shfaq {count} më shumë",
+    "noLanguages": "Nuk u gjetën gjuhë",
+    "tryAnotherSearch": "Provoni një term tjetër kërkimi."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historia e shikimit | Jesus Film Project",
+    "title": "Historia e shikimit",
+    "loading": "Po ngarkohet historia",
+    "empty": "S’ka asgjë këtu ende",
+    "emptyDescription": "Videot që shikoni ndërsa jeni të kyçur do të shfaqen këtu.",
+    "earlier": "Më herët",
+    "today": "Sot",
+    "yesterday": "Dje"
+  },
+  "AccountControl": {
+    "account": "Llogaria",
+    "accountMenu": "Menyja e llogarisë",
+    "signIn": "Hyni",
+    "signOut": "Dilni",
+    "signedIn": "I kyçur",
+    "history": "Historia",
+    "logOut": "Shkyçu"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Faqja nuk u gjet",
+    "eyebrow": "Faqja nuk u gjet",
+    "screenReaderPrefix": "Faqja nuk u gjet:",
+    "title": "Kjo skenë nuk është këtu.",
+    "description": "Faqja mund të jetë zhvendosur, por historia vazhdon.",
+    "actionsLabel": "Veprimet kur faqja nuk u gjet",
+    "backToWatch": "Kthehu te Shikimi",
+    "browseVideos": "Shfleto videot"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Shiko filmin e shkurtër",
+    "actions": {
+      "joinUs": "Bashkohuni me ne",
+      "shareMission": "Ndani misionin tonë"
+    },
+    "welcomeStart": {
+      "label": "Besim & Shkrimi i Shenjtë",
+      "title": "Përzgjedhjet e sotme të videove",
+      "description": "Përmbajtje video me në qendër besimin nga biblioteka jonë, për të frymëzuar, sfiduar dhe nxitur reflektim."
+    },
+    "welcomeMorning": {
+      "label": "Frymëzim i mëngjesit",
+      "title": "Mirëmëngjes! Ju presin momentet e sotme biblike.",
+      "description": "Filloni ditën me momente inkurajuese biblike, të krijuara për të frymëzuar dhe ngritur shpirtin tuaj."
+    },
+    "welcomeAfternoon": {
+      "label": "Frymëzim i pasdites",
+      "title": "Mirëdita! Momente biblike për ditën tuaj.",
+      "description": "Përmbajtje inkurajuese biblike, e përsosur për pushimin e pasdites ose për frymëzim të mëtejshëm."
+    },
+    "welcomeEvening": {
+      "label": "Frymëzim i mbrëmjes",
+      "title": "Mirëmbrëma! Qetësohuni me momente biblike.",
+      "description": "Momente paqësore biblike për t’ju ndihmuar të reflektoni dhe të gjeni ngushëllim ndërsa dita po mbyllet."
+    },
+    "joinUs": {
+      "label": "Bashkohuni me ne",
+      "title": "Miliarda njerëz po kërkojnë",
+      "description": "Të korrat janë këtu. Bashkohuni me ne ndërsa ndajmë ungjillin me botën përmes mediave digjitale."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Le të shkojmë së bashku",
+      "title": "Të tregojmë historinë e Jezusit, së bashku",
+      "description": "Që ata të mund të dëgjojnë dhe të shohin dashurinë e Jezusit në gjuhën e tyre, pikërisht aty ku janë."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% përputhje",
+    "none": "Nuk u gjetën rekomandime për këtë video në këtë gjuhë."
+  },
+  "BetaTesterModal": {
+    "title": "Bëhuni testues beta",
+    "trigger": "Bëhuni testues beta",
+    "loadFailed": "Diçka shkoi keq.",
+    "loading": "Po ngarkohet...",
+    "openFormNewTab": "Hap formularin në një skedë të re",
+    "close": "Mbyll",
+    "iframeTitle": "Bëhuni testues beta"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

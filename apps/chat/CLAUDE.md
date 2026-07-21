@@ -6,8 +6,9 @@ A chat UI for the Forge Mastra agents (jesusfilm.ai). The initial styling
 follows the "Vigil" design direction (see below) — a starting point handed to
 us to get going, not a locked-in convention; expect it to evolve. Replies come
 from the client stub by default, or stream from Seeker behind the
-`SEEKER_CHAT_ENABLED` kill switch composed with the per-user seeker dogfood
-email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-205, feat-233). On the Seeker
+`SEEKER_CHAT_ENABLED` kill switch (feat-205) composed with the per-user
+seeker dogfood email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-233/feat-239).
+On the Seeker
 path the SERVER side persists (feat-208): Mastra stores threads/messages in
 its `ai_chat` Postgres schema, keyed by a proxy-resolved per-user resource —
 and since feat-241 signed-in, gate-granted users get that history BACK: the
@@ -27,7 +28,7 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame the client maps to the stub). Testable core handleSeekerProxyRequest
-      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, hostAllowed reuse, min(seekerTimeoutMs,10s) budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
+      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, hostAllowed reuse, [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
       history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
@@ -43,10 +44,10 @@ src/
     errors.ts            ChatAuthError + fixed non-PII reason codes (KTD7)
     sign-in-notice.ts    the R12 ?signin=failed marker constants (fixed enum, never free text)
   config/
-    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
+    env.ts               Validated env (zod, all .optional()): SEEKER_CHAT_ENABLED + Mastra vars (feat-205: SEEKER_MASTRA_BASE_URL + SEEKER_MASTRA_ALLOWED_HOSTS + SEEKER_TIMEOUT_MS; since feat-250 the one Mastra bearer is AI_CHAT_MASTRA_API_KEY — SEEKER_MASTRA_API_KEY is gone), the feat-207 auth vars, AND the feat-233 SEEKER_ALLOWED_EMAILS allowlist. isSeekerChatEnabled() / isSeekerEmailAllowed() / seekerTimeoutMs() / chatAuthConfigured() / chatAuthCookiePrefix(). Boots clean with none set
   components/
     shell/
-      app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap
+      app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text)
       sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, sub-rows in the sidebar-* components
       use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener, drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
       sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav)
@@ -54,12 +55,14 @@ src/
       sidebar-new-conversation.tsx New-conversation action (full-width labeled ↔ centered icon-only when collapsed); presentational
       sidebar-conversation-list.tsx Conversation history nav (select + per-row replying pulse; hidden when collapsed); presentational
       sidebar-account.tsx          Rail-foot account control (feat-207): signed-out "Sign in" anchor / signed-in identity (name→email→label, avatar→initials→icon) + "Sign out" POST form + R12 notice; presentational, three-presentation coverage; hidden when auth unconfigured
-      icons.tsx          Inline line-icon components (panel/compose/menu/close) — currentColor, no icon dependency, no emoji
+      icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
-      chat.tsx           Conversation pane — the centered 680px reading "room" (presentational)
-      message-list.tsx   Renders turns (Embersoot user bubble / plain assistant text) + streaming pulse (aria-live), grounded badge (3 states), engine marker, role="alert" failure notice
-      sources-list.tsx   Cited passages or explicit "No sources cited" state; untrusted RAG sources → https-only links (rel=noopener), text never HTML (feat-205)
-      composer.tsx       Auto-growing textarea + 12px Vesper send-dot (no paper-airplane icon)
+      chat.tsx           Conversation pane — the centered 680px reading "room" (presentational); a ResizeObserver on the composer band re-pins a bottom-pinned reader on auto-grow (never a scrolled-up one) and keeps the scroller's scroll-padding sized to the band (feat-270)
+      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice
+      assistant-markdown.tsx  feat-268: hardened markdown for ASSISTANT turns only — react-markdown + remark-breaks, element allowlist (p/strong/em/ul/ol/li/blockquote/code/a/br), raw HTML → inert text (no rehype-raw, skipHtml stays false), https-only links via untrusted-link, Vigil-token styling (blockquote = font-scripture), streaming cursor slot, THREE pathological-input controls that each degrade one turn to plain pre-wrap text (chat has no app-level error boundary): prefix guard (short deep-nesting crash) + length cap at the 8192-unit per-message ceiling (shape-agnostic freeze bound, catches emphasis nesting the prefix regex misses) + MarkdownRenderBoundary (any throw the guards miss)
+      untrusted-link.tsx feat-268: the ONE hardened anchor for untrusted URLs (isHttpsUrl gate + target=_blank + rel="noopener noreferrer" + sr-only suffix); shared by sources-list + assistant-markdown so the surfaces cannot drift
+      sources-list.tsx   Collapsed "Sources · N" disclosure of cited passages (feat-269: deduped by URL, snippets line-clamped behind per-source disclosures) or explicit always-visible "No sources cited" state; untrusted RAG sources → https-only links via untrusted-link, text never HTML (feat-205)
+      composer.tsx       Auto-growing textarea; the 44px send slot is a Vesper up-arrow when a draft is ready, a dim dot otherwise, and a stop control while pending (feat-270 — R22 blocked states keep the plain disabled send)
       empty-state.tsx    "What would you like to ask?" heading + starter questions
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
@@ -67,13 +70,15 @@ src/
     chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins)
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
+    is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
-    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation. feat-241: post-mount history hydration (gated on seekerEnabled), merge by conversation id, Load more, lazy single-flight replay, R22 send blocking, KTD10 allowStubFallback wiring; pure merge/order helpers exported for tests
+    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation. feat-270: stopReply (user abort → quiet finalize keeping partial text, no failure notice; every stopped Seeker turn marks the conversation server-persisted — Mastra creates the thread row before generating, so even a zero-token stop may have persisted it), New-conversation reuse of the existing empty, sidebar projection hides inactive never-used empties, snippet titles beat the date fallback via titleFromFirstUser (server LLM title still wins). feat-241: post-mount history hydration (gated on seekerEnabled), merge by conversation id, Load more, lazy single-flight replay, R22 send blocking, KTD10 allowStubFallback wiring; pure merge/order helpers exported for tests
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
-    jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx)
+    jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx); primary favicon
+    jfp-sign-32.png      32px PNG favicon fallback for Safari, which renders no SVG favicons (feat-270)
     jesus-film-logo.svg  Full wordmark (unused for now; kept for longer-form surfaces)
 ```
 
@@ -101,8 +106,10 @@ public/                  Static assets served by URL (Next.js convention, matche
   so the rail was built from its tokens rather than copied from it. It is
   responsive (Gemini-style): a desktop rail that collapses to an icon column,
   and a mobile off-canvas drawer (hamburger opens; scrim / X / Escape close;
-  `<main>` is `inert` while open). This too may change. Multi-conversation state
-  is client-only and resets on refresh (no DB/users yet).
+  `<main>` is `inert` while open). This too may change. For anonymous and
+  gate-denied users, multi-conversation state is client-only and resets on
+  refresh; signed-in gate-granted users hydrate the sidebar from the server
+  and resume threads (see "Server-side conversation history (feat-241)").
 
 ### Initial design direction — "The Vigil"
 
@@ -156,21 +163,23 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   `redirect:"error"`, bounds the call with `SEEKER_TIMEOUT_MS` (95s > Mastra's
   90s ceiling), and normalizes every failure to one terminal `error{reason}` SSE
   frame. Plain-string logging only.
-- **Accepted v1 risk (restated under feat-208's durable-storage physics):** the
-  proxy is unauthenticated + un-rate-limited + world-reachable, gated only by
-  URL obscurity + a small trusted audience (NOT a gate). Since feat-208, each
-  junk POST no longer costs only an ephemeral ~90s paid generation — it also
-  writes durable rows into the SAME Postgres database as Mastra runtime
-  storage. Two bounds apply, honestly framed: the per-resource thread ceiling
-  (200, `thread_limit`) bounds a single cooperative or runaway client ONLY — a
-  cookie-refusing attacker mints a fresh `anon:<uuid>` resource per POST for
-  free. The 30-day retention purge is the only adversarial storage control
-  and it is bounded: it drains junk once aged past the window (capping total
-  junk at ~one retention window × inflow), but in-window growth is unbounded
-  and a concurrent burst can saturate Mastra's small ai-chat pool long before
-  storage matters. Inbound auth + a rate/concurrency cap remain prerequisites
-  before the audience widens — they, not the purge, are the actual flood
-  control; do not "fix" the open proxy without that work.
+- **Access posture (feat-233; supersedes the feat-205/feat-208 "open proxy"
+  framing):** an inbound per-user auth gate now EXISTS — the seeker dogfood
+  gate is enforced on every request before config checks or any upstream
+  fetch, so an anonymous or denied POST gets a terminal `gate_denied` frame
+  and never reaches Mastra (no paid generation, no durable rows). The route
+  stays world-reachable HTTPS and un-RATE-limited: each granted turn is still
+  a ~90s paid generation writing durable rows into the SAME Postgres as
+  Mastra runtime storage, so the cost/storage-amplification surface is now
+  bounded by the allowlisted dogfood roster + the prompt-length cap rather
+  than URL obscurity. Within that granted lane the storage bounds still hold,
+  honestly framed: the per-resource thread ceiling (200, `thread_limit`)
+  bounds a cooperative or runaway client; the retention purge caps total junk
+  at ~one retention window × inflow but NOT in-window growth, and a
+  concurrent burst can saturate Mastra's small ai-chat pool long before
+  storage matters. A per-caller rate/concurrency cap remains the open
+  prerequisite before the audience widens — the R15 grant log is the interim
+  volume signal; do not "fix" this surface piecemeal without that work.
 - **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
   (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
   signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is
@@ -203,8 +212,11 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
   (since feat-250 the send path presents the same lane bearer — chat holds no
   pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the exported
-  `hostAllowed`. Read budget `min(seekerTimeoutMs(), 10s)`; upstream status
-  classified before any body parse; byte-capped buffered reads (2 MiB list /
+  `hostAllowed`. Read budget = `seekerTimeoutMs()` clamped to [9 s, 10 s]
+  (`composeHistoryTimeoutMs` — the 9 s floor keeps the budget above Mastra's
+  8 s `historyRead` even when the send-path `SEEKER_TIMEOUT_MS` escape hatch
+  lowers the send budget); upstream status classified before any body parse;
+  byte-capped buffered reads (2 MiB list /
   8 MiB thread — sized for the worst-case UTF-8 inflation of the 8,192
   UTF-16-unit per-message text cap). Deny wire (KTD8): 401 `invalid_session` (anonymous ≡ expired
   ≡ tampered), 403 `gate_denied` / `thread_forbidden`, 404 `thread_not_found`
@@ -225,11 +237,15 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
 not_available`; failed retries only via the explicit action); sends into a
   server-origin conversation are BLOCKED unless its replay is `loaded` (R22 —
   the composer keeps the draft, only the send action is disabled). Replayed
-  turns render as bare text — no engine/grounded/source badges (R21).
+  turns carry no engine/grounded/source badges (R21) but get the SAME
+  feat-268 markdown treatment as live turns — badge stripping, not text
+  divergence.
 - **Denied sends fail visibly on persisted conversations (KTD10):** a
-  conversation counts as server-persisted once hydrated from history OR after
-  a send's SUCCESS finalize with engine `"seeker"` (never from the engine tag
-  alone). The hook passes `allowStubFallback: false` for those, so
+  conversation counts as server-persisted once hydrated from history, after
+  a send's SUCCESS finalize with engine `"seeker"`, after a failed Seeker
+  turn that streamed partial text, or after ANY user-stopped Seeker turn
+  (feat-270 — Mastra creates the thread row before generating, so even a
+  zero-token stop may have persisted it; never from the engine tag alone). The hook passes `allowStubFallback: false` for those, so
   `gate_denied` renders the access-changed failure copy instead of silently
   stub-forking; never-persisted conversations keep the feat-233 stub
   downgrade.
@@ -264,10 +280,13 @@ emailVerified? }`) read from the id_token at callback — chat writes no user
   cannot be ended early per-user — no revocation, a deliberate decision
   (feat-240's Decision Record), not an oversight. The honest mitigations are
   the 8h TTL (the repo's shortest), server-side self-scoped reads, and chat's
-  plain-text message rendering discipline: message content renders as
-  React-escaped text only — no `dangerouslySetInnerHTML`, no HTML, no
-  markdown; keep it that way. The everyone-at-once incident lever is rotating
-  `CHAT_SESSION_SECRET`.
+  rendering discipline: no raw HTML ever reaches the DOM (feat-268). User
+  turns render as React-escaped plain text; assistant turns render through
+  the hardened markdown pipeline (`chat/assistant-markdown.tsx`: element
+  allowlist, raw HTML inert-texted, https-only links via the shared
+  `isHttpsUrl` gate) — no `dangerouslySetInnerHTML`, no `rehype-raw`, no HTML
+  passthrough of any kind; keep it that way. The everyone-at-once incident
+  lever is rotating `CHAT_SESSION_SECRET`.
 - **Config-gated, default off.** `chatAuthConfigured()` (`config/env.ts`) is true
   only when `AUTH_ISSUER_URL`, `AUTH_CHAT_CLIENT_ID`, `CHAT_BASE_URL`, and a REAL
   `CHAT_SESSION_SECRET` (rejects empty, the `.env.example` placeholder, and
@@ -379,7 +398,8 @@ login page instead of silently re-authenticating via the SSO session.
 - Server Components by default. Client components are the ones holding hooks:
   `shell/app-shell.tsx`, `shell/sidebar.tsx`, `shell/use-sidebar-chrome.ts`,
   `chat/chat.tsx`, `chat/composer.tsx`, and `chat/empty-state.tsx`.
-  `chat/message-list.tsx`, `chat/sources-list.tsx`, and the
+  `chat/message-list.tsx`, `chat/assistant-markdown.tsx`,
+  `chat/untrusted-link.tsx`, `chat/sources-list.tsx`, and the
   `shell/sidebar-{header,new-conversation,conversation-list,account}.tsx`
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
@@ -397,14 +417,19 @@ login page instead of silently re-authenticating via the SSO session.
   Library** (`render` / `screen` / `within` + `@testing-library/user-event`,
   with `@testing-library/jest-dom` matchers); the hook test uses `renderHook`.
   jsdom is the app-wide test env (`vitest.config.ts` `environment: "jsdom"` +
-  `vitest.setup.ts`). The auth crypto/route tests (`src/auth/oauth-client`,
-  `session-cookie`, `identity`, and `src/app/api/auth/*` route tests) are one
-  class of exception: they carry a top-of-file `// @vitest-environment node`
-  directive because `jose`'s WebCrypto path throws a cross-realm `payload must be an
-instance of Uint8Array` under jsdom (jsdom's `TextEncoder` produces a
-  different-realm `Uint8Array` than jose's `instanceof` check). The feat-233
-  `lib/seeker-gate.test.ts` carries the same `node` directive — the module
-  under test is server-only and needs no DOM. Component/hook tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
+  `vitest.setup.ts`). Two classes of tests carry a top-of-file
+  `// @vitest-environment node` directive. Required: the jose-touching auth
+  tests (`src/auth/oauth-client`, `session-cookie`, `identity`, and the
+  `src/app/api/auth/*` route tests) — `jose`'s WebCrypto path throws a
+  cross-realm `payload must be an instance of Uint8Array` under jsdom (jsdom's
+  `TextEncoder` produces a different-realm `Uint8Array` than jose's
+  `instanceof` check). Opt-in: tests of server-only wiring that need no DOM —
+  `src/auth/anon-id.test.ts`, the feat-233 `lib/seeker-gate.test.ts`, and the
+  two `*.gate-wiring.test.ts` files. Not every server-module test opts in
+  (`config/env`, `auth/oauth-state`, `auth/origins`, `lib/sse`, and the main
+  proxy suites run under jsdom); when unsure,
+  `grep -rln "vitest-environment node" apps/chat/src` is authoritative.
+  Component/hook tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
   `apps/web` no-testing-library convention (plain `react-dom/client` + `act`),
   scoped to chat by design — it does not change those apps. Pure-function tests
   (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,
@@ -454,7 +479,7 @@ email not on the allowlist → stub. The one Mastra bearer is
 `AI_CHAT_SERVICE_API_KEYS` CSV; it covers sends AND the feat-241 sidebar
 history. Unset, sends get the `config_missing` failure notice and the history
 routes refuse (502 `unavailable`) — a GRANTED user's sidebar shows the history
-error state with Retry until the key is provisioned (per KTD8: 5xx renders
+error state with Retry until the key is provisioned (per KTD8: 502/504 render
 the error state — a config gap is an outage to a granted user, never silently
 hidden); anonymous/denied users are unaffected.
 

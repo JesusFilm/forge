@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
+import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
@@ -60,6 +61,11 @@ import {
 } from "@/lib/watch-structured-data"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
+import {
+  loadClientMessages,
+  WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+} from "@/i18n/client-messages"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -261,7 +267,6 @@ async function getInitialTranscriptForWatchVideo(
   return getInitialSubtitleTranscript({
     subtitles: video.subtitles,
     audioSlug: selectedVariant.language?.slug ?? null,
-    durationSeconds: selectedVariant.duration ?? null,
   })
 }
 
@@ -395,15 +400,24 @@ export default async function SlugRestPage({ params }: PageProps) {
 
   setRequestLocale(shape.locale)
 
-  if (shape.kind === "one-segment") {
-    return renderOneSegment(shape)
-  }
+  const namespaces =
+    shape.kind === "one-segment" && shape.isLanguageHome
+      ? WATCH_HOME_CLIENT_MESSAGE_NAMESPACES
+      : WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES
+  const messages = await loadClientMessages(shape.locale, namespaces)
 
-  if (shape.kind === "episode") {
-    return renderEpisode(shape)
-  }
+  const content =
+    shape.kind === "one-segment"
+      ? await renderOneSegment(shape)
+      : shape.kind === "episode"
+        ? await renderEpisode(shape)
+        : await renderVideo(shape)
 
-  return renderVideo(shape)
+  return (
+    <NextIntlClientProvider locale={shape.locale} messages={messages}>
+      {content}
+    </NextIntlClientProvider>
+  )
 }
 
 async function renderOneSegment(shape: {
@@ -415,7 +429,7 @@ async function renderOneSegment(shape: {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
     const [heroResult, pageResult] = await Promise.all([
-      resolveWatchHome(locale),
+      resolveWatchHome(locale, slug),
       resolveWatchPage(locale),
     ])
     if (heroResult.error) {
@@ -610,7 +624,25 @@ async function renderVideo(shape: {
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
   // land in the resolver as "korean", not "en". A same-slug Experience is
   // only a fallback after video and series routes fail to render.
-  const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+  let routeModel: Awaited<ReturnType<typeof resolveWatchRouteBySlug>>
+  try {
+    routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+  } catch (error) {
+    logWatchServerEvent(
+      "watch_route.video.resolve_failed",
+      {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      },
+      { level: "error" },
+    )
+    return (
+      <ExperienceError
+        message={error instanceof Error ? error.message : String(error)}
+      />
+    )
+  }
   if (routeModel.kind === "video") {
     const watchVideo = routeModel
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null

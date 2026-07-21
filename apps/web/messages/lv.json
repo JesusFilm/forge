@@ -7,7 +7,9 @@
     "noContent": "Nav pieejama nekāda satura.",
     "homepageMisconfigured": "Skatīšanas sākumlapa ir nepareizi konfigurēta.",
     "defaultTemplateMisconfigured": "Noklusējuma skatīšanas veidne ir nepareizi konfigurēta.",
-    "authFailed": "Neizdevās autentificēties ar satura pakalpojumu. Ja problēma saglabājas, sazinieties ar atbalstu."
+    "authFailed": "Neizdevās autentificēties ar satura pakalpojumu. Ja problēma saglabājas, sazinieties ar atbalstu.",
+    "pageLoadFailed": "Kaut kas nogāja greizi.",
+    "tryAgain": "Mēģināt vēlreiz"
   },
   "VideosPage": {
     "title": "Visi video",
@@ -22,7 +24,8 @@
     "promoHeading": "Vai vēlaties dziļāk izprast Bībeli?",
     "joinBibleStudy": "Pievienojieties mūsu Bībeles studijām",
     "previousQuote": "Iepriekšējais Bībeles citāts",
-    "nextQuote": "Nākamais Bībeles citāts"
+    "nextQuote": "Nākamais Bībeles citāts",
+    "readPassage": "Izlasiet šo Rakstu vietu savā Bībelē."
   },
   "DownloadButton": {
     "checking": "Notiek pārbaude",
@@ -73,7 +76,8 @@
     "selectLanguage": "Izvēlieties valodu",
     "searchPlaceholder": "Meklēt valodas…",
     "languages": "Valodas",
-    "noMatches": "Nav atbilstību"
+    "noMatches": "Nav atbilstību",
+    "notAvailable": "Nav pieejams"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Valoda",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIĀLS · {episodes}",
     "changeAudioLanguage": "Mainīt audio valodu",
     "share": "Kopīgot",
-    "languages": "Valodas",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Valodas"
   },
   "WatchModal": {
     "close": "Aizvērt"
@@ -115,7 +116,8 @@
     "questions": "Saistītie jautājumi",
     "askYours": "Uzdod savu",
     "chatWithPerson": "Tērzēt ar cilvēku",
-    "askBibleQuestion": "Uzdot Bībeles jautājumu"
+    "askBibleQuestion": "Uzdot Bībeles jautājumu",
+    "quiz": "Tests"
   },
   "WatchQuestionPanel": {
     "messageType": "Ziņojuma veids",
@@ -173,7 +175,8 @@
     "searchRegion": "Meklēt video",
     "clearSearch": "Notīrīt meklēšanu",
     "changeAudioLanguage": "Mainīt audio valodu",
-    "home": "JesusFilm sākumlapa"
+    "home": "JesusFilm sākumlapa",
+    "closeSearch": "Aizvērt meklēšanu"
   },
   "SearchOverlay": {
     "dialogLabel": "Meklēt un pārlūkot video",
@@ -208,14 +211,19 @@
     "clearLanguages": "Notīrīt",
     "queryLanguageDetected": "Atpazīta valoda: {language}",
     "searchInLanguage": "Meklēt valodā {language}",
-    "tryDifferentKeywordsOrLanguage": "Mēģiniet citus atslēgvārdus vai izvēlieties citu meklēšanas valodu"
+    "tryDifferentKeywordsOrLanguage": "Mēģiniet citus atslēgvārdus vai izvēlieties citu meklēšanas valodu",
+    "useWebsiteDefaultLanguage": "Izmantot vietnes noklusējuma meklēšanas valodu",
+    "removeLanguage": "Noņemt {language}",
+    "browseMode": "Meklēšanas pārlūkošanas režīms"
   },
   "HeroPlayer": {
     "playWithSound": "Skatīties tagad",
-    "tapToUnmute": "Pieskarieties, lai ieslēgtu skaņu"
+    "tapToUnmute": "Pieskarieties, lai ieslēgtu skaņu",
+    "nextEpisode": "Nākamā sērija"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Notiek satura ielāde"
+    "loadingContent": "Notiek satura ielāde",
+    "loadingVideo": "Notiek video ielāde"
   },
   "VideoLabels": {
     "video": "Videoklips",
@@ -226,7 +234,8 @@
     "series": "Seriāls",
     "collection": "Kolekcija",
     "trailer": "Treileris",
-    "behindTheScenes": "Aiz kadra"
+    "behindTheScenes": "Aiz kadra",
+    "chapter": "Nodaļa"
   },
   "SiblingCarousel": {
     "clipPosition": "Fragments {current} no {total}",
@@ -238,12 +247,253 @@
     "noImage": "Nav attēla",
     "playingNow": "Tagad atskaņo",
     "previousChapter": "Iepriekšējā nodaļa",
-    "nextChapter": "Nākamā nodaļa"
+    "nextChapter": "Nākamā nodaļa",
+    "thumbnailAlt": "{title} sīktēls",
+    "relatedVideoThumbnail": "Saistītā video sīktēls"
   },
   "SearchResultCard": {
     "experience": "Pieredze",
     "episodeCount": "{count, plural, one {# sērija} other {# sērijas}}",
     "thumbnailAlt": "Video sīktēls"
+  },
+  "Feedback": {
+    "openForm": "Atvērt atsauksmju veidlapu",
+    "label": "Atsauksmes",
+    "couldNotLoad": "Neizdevās ielādēt atsauksmju veidlapu.",
+    "loadingForm": "Notiek atsauksmju veidlapas ielāde…",
+    "retry": "Mēģināt vēlreiz",
+    "openFormShort": "Atvērt veidlapu",
+    "cancel": "Atcelt",
+    "title": "Beta versijas atsauksmes",
+    "description": "Pastāstiet, kas darbojas labi un ko varam uzlabot. Šo veidlapu nodrošina Google.",
+    "openInNewTab": "Atvērt veidlapu jaunā cilnē",
+    "closeForm": "Aizvērt atsauksmju veidlapu",
+    "loadingGoogleForm": "Notiek Google veidlapas ielāde…",
+    "iframeTitle": "Iesniegt beta versijas atsauksmes"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Bezmaksas kristīgi video {language} valodā | Jesus Film Project",
+    "metadataDescription": "Apskatiet Jēzus filmu, Bībeles stāstu, māceklības seriālu un evaņģelizācijas video ar dublētu audio vai subtitriem {language} valodā.",
+    "heroTitle": "Bezmaksas kristīgi video {language} valodā",
+    "heroDescription": "Apskatiet Jēzus filmu, Bībeles stāstu, māceklības seriālu un evaņģelizācijas video, kas pieejami {language} valodā. Vispirms ir izcelti pilnībā dublētie video, zemāk — tikai ar subtitriem.",
+    "languageCollection": "Valodas kolekcija",
+    "itemCount": "{count, plural, one {# vienums} other {# vienumi}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} {groupCount, plural, one {# grupā} other {# grupās}}",
+    "sectionNavLabel": "Valodu kataloga sadaļas",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Jauns",
+    "videoBible": "Video Bībele",
+    "bibleProject": "BibleProject",
+    "sports": "Sports un atlēti",
+    "collections": "Kolekcijas",
+    "subtitlesOnly": "Tikai subtitri",
+    "newlyAdded": "Nesen pievienots",
+    "newVideosTitle": "Jauni kristīgi video {language} valodā",
+    "newestFirst": "Vispirms jaunākie",
+    "noPublishedVideos": "Šai valodai vēl nav atrasti publicēti video.",
+    "bibleAndGospelFilms": "Bībeles un Evaņģēlija filmas",
+    "videoBibleCollectionsTitle": "{language} Video Bībeles kolekcijas",
+    "videoBibleDescription": "Ar Rakstiem saistītas kolekcijas, tostarp LUMO, JESUS, Magdalena un Apustuļu darbi {language} valodā.",
+    "noVideoBibleCollections": "Šai valodai vēl nav pieejamas Video Bībeles kolekcijas.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject kolekcijas",
+    "bibleProjectDescription": "BibleProject seriāli un studijas, kas pieejamas {language} valodā.",
+    "noBibleProjectCollections": "Šai valodai vēl nav pieejamas BibleProject kolekcijas.",
+    "sportsStories": "Sporta stāsti",
+    "sportsTitle": "{language} sporta un sportistu stāsti",
+    "sportsDescription": "Ar ticību saistīti sporta stāsti un sportistiem veltītas kolekcijas, kas pieejamas {language} valodā.",
+    "noSportsCollections": "Šai valodai vēl nav pieejamas sporta vai sportistu stāstu kolekcijas.",
+    "fullyDubbed": "Pilnībā dublēts",
+    "dubbedVideosTitle": "{language} video pēc kolekcijas",
+    "dubbedVideosDescription": "Pārlūkojiet pilnībā dublētus {language} video, kas sagrupēti pēc kolekcijas, lai tos būtu vieglāk atrast.",
+    "noDubbedVideos": "Šai valodai vēl nav pieejami pilnībā dublēti video.",
+    "subtitlesAvailable": "Pieejami subtitri",
+    "subtitlesTitle": "{language} video ar subtitriem",
+    "subtitlesDescription": "Šiem video ir {language} subtitri, ja vēl nav pieejams runātais {language} audio.",
+    "noSubtitleVideos": "Šai valodai vēl nav pieejami video tikai ar subtitriem.",
+    "dubbed": "Dublēts",
+    "subtitles": "Subtitri",
+    "newLabel": "Jauns",
+    "fromCollection": "No {collection}",
+    "standaloneVideos": "Atsevišķi video",
+    "videosFromCollection": "Video no {collection}.",
+    "standaloneDescription": "Atsevišķi video šajā valodā.",
+    "openCollection": "Atvērt kolekciju"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project skatīšanās",
+    "watch": "Skatīties",
+    "watchNow": "Skatīties tagad",
+    "mutePreview": "Izslēgt priekšskatījuma skaņu",
+    "unmutePreview": "Ieslēgt priekšskatījuma skaņu",
+    "nextVideo": "Nākamais video",
+    "featured": "Ieteikts",
+    "showVideo": "Rādīt {title}",
+    "previousVideoPreview": "Iepriekšējā video priekšskatījums",
+    "nextVideoPreview": "Nākamā video priekšskatījums",
+    "mediaCollection": "Mediju kolekcija",
+    "scrollToVideo": "Ritināt līdz {title} video"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project sākumlapa",
+    "navigation": "Kājenes navigācija",
+    "share": "Kopīgot",
+    "watch": "Skatīties",
+    "giving": "Ziedošana",
+    "about": "Par mums",
+    "products": "Produkti",
+    "resources": "Resursi",
+    "partners": "Partneri",
+    "contact": "Kontakti",
+    "giveNow": "Ziedot tagad",
+    "resourcesVersion": "Resursi ({version})",
+    "office": "Birojs",
+    "fax": "Fakss",
+    "privacyPolicy": "Privātuma politika",
+    "legalStatement": "Juridiskais paziņojums",
+    "newsletter": "Pieteikties mūsu jaunumiem"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Radīts globālai misijai",
+    "title": "Vēsts nemainās. Mainās veids, kā cilvēki skatās.",
+    "description": "Mēs no pamatiem pārbūvējam savu video bibliotēku un rīkus, pārnesot gadu desmitiem veiktu tulkošanas darbu uz platformām, kur cilvēki jau pulcējas, skatās un dalās.",
+    "translatedLibraryTitle": "Visvairāk tulkoto filmu bibliotēka pasaulē",
+    "translatedLibraryDescription": "Gadu desmitiem ilgs tulkošanas darbs, ko nes uzticami kalpošanas partneri, ir veidojis bibliotēku ar tūkstošiem valodu celiņu, lai cilvēki varētu sastapties ar Jēzus stāstu sev vistuvākajā valodā.",
+    "trustedVoicesTitle": "Uzticamas balsis jaunās formās",
+    "trustedVoicesDescription": "Mēs no jauna veidojam veidu, kā vizuāli tiek stāstīti evaņģēlija stāsti, apvienojot uzticamus tulkojumus ar mūsdienīgiem formātiem, lai vēsts varētu brīvi kustēties starp platformām, kultūrām un ekrāniem.",
+    "missionTeamTitle": "Vairāk nekā bibliotēka. Misijas komanda.",
+    "missionTeamDescription": "Jesus Film Project ir globāla tulkotāju, mediju speciālistu, redaktoru un satura veidotāju komanda, kas gadu desmitiem uzkrāto kalpošanas pieredzi pārvērš rīkos mācekļu veidotājiem visur.",
+    "buildingNext": "Ko mēs veidojam tālāk",
+    "nextStepsTitle": "Nākamo soļu platforma",
+    "nextStepsDescription": "Savienojiet skatītājus ar konkrētām iespējām viņu garīgajā ceļā, palīdzot spert nākamo soli kopienā, Rakstos vai misijā.",
+    "mediaLibraryTitle": "Evaņģelizācijas mediju bibliotēka",
+    "mediaLibraryDescription": "Plaša kristīgā mediju bibliotēka ar tūkstošiem video, filmu un resursu vairākās valodās kalpošanai un evaņģelizācijai visā pasaulē.",
+    "ministryToolsTitle": "Digitālie rīki kalpošanām",
+    "ministryToolsDescription": "Video pārvaldība, satura izplatīšana, auditorijas iesaiste un analītika, kas veidota, lai palīdzētu kalpošanām efektīvāk sasniegt vairāk cilvēku.",
+    "invitationEyebrow": "Jūs esat aicināti",
+    "invitationTitle": "Palīdziet būvēt <highlight>nākamās paaudzes</highlight> misijas rīkus",
+    "invitationDescription": "Mēs aicinām praktiķus, veidotājus un partnerus izmantot agrīno piekļuvi. Pirmajiem izmēģiniet jaunus rīkus, sniedziet atsauksmes un palīdziet veidot produktus, kas paredzēti reālam misijas darbam.",
+    "betaTester": "Kļūt par beta testētāju"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bībeles kolekcija",
+    "gospelRailTitle": "Atklājiet pilno stāstu",
+    "videoBibleDescription": "Iepazīstiet mūsu video un resursu kolekciju, kas atdzīvina Bībeli ar aizraujošiem stāstiem un mācībām.",
+    "showcaseTitle": "Raksti filmā",
+    "adventEyebrow": "Ziemassvētku Advents",
+    "adventTitle": "Ziemassvētku Adventa atskaite",
+    "adventDescription": "Pievienojieties mūsu Adventa ceļojumam ar ikdienas video, kas vairo gaidas par Ziemassvētkiem, pētot cerību, prieku un Jēzus nākšanas apsolījumu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Advents",
+    "nuaEyebrow": "NUA sērija",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth sērija",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video kurss",
+    "journeyWithJesusTitle": "Ceļojums ar Jēzu",
+    "gospelsOnVideoEyebrow": "Katrs Evaņģēlijs video formātā",
+    "scriptureAsWrittenTitle": "Raksti, runāti tieši tā, kā uzrakstīti",
+    "merryChristmas": "Priecīgus Ziemassvētkus!",
+    "daysUntilChristmas": "{count, plural, one {Līdz Ziemassvētkiem # diena} other {Līdz Ziemassvētkiem # dienas}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Valodas",
+    "metadataDescription": "Pārlūkojiet JesusFilm video pēc valodas.",
+    "eyebrow": "Skatīšanās valodas",
+    "title": "Izvēlieties valodu",
+    "description": "Izpētiet valodas pēc reģiona vai pārlūkojiet pilnu sarakstu.",
+    "searchPlaceholder": "Meklēt valodas vai valstis...",
+    "searchLabel": "Meklēt valodas vai valstis",
+    "clearSearch": "Notīrīt meklēšanu",
+    "browse": "Pārlūkot",
+    "browseByRegion": "Pārlūkot pēc reģiona un valsts",
+    "languageCount": "{count, plural, one {# valoda} other {# valodas}}",
+    "region": "Reģions",
+    "countryLanguages": "{country} valodas",
+    "showLess": "Rādīt mazāk",
+    "showMore": "Rādīt vēl {count}",
+    "noLanguages": "Valodas nav atrastas",
+    "tryAnotherSearch": "Mēģiniet citu meklēšanas terminu."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Skatīšanās vēsture | Jesus Film Project",
+    "title": "Skatīšanās vēsture",
+    "loading": "Notiek vēstures ielāde",
+    "empty": "Šeit vēl nekā nav",
+    "emptyDescription": "Šeit tiks rādīti video, kurus skatāties, kad esat pierakstījies.",
+    "earlier": "Agrāk",
+    "today": "Šodien",
+    "yesterday": "Vakar"
+  },
+  "AccountControl": {
+    "account": "Konts",
+    "accountMenu": "Konta izvēlne",
+    "signIn": "Pierakstīties",
+    "signOut": "Izrakstīties",
+    "signedIn": "Pierakstījies",
+    "history": "Vēsture",
+    "logOut": "Izrakstīties"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Lapa nav atrasta",
+    "eyebrow": "Lapa nav atrasta",
+    "screenReaderPrefix": "Lapa nav atrasta:",
+    "title": "Šī aina šeit nav pieejama.",
+    "description": "Lapa var būt pārvietota, bet stāsts turpinās.",
+    "actionsLabel": "Darbības lapai nav atrasta",
+    "backToWatch": "Atpakaļ uz skatīšanos",
+    "browseVideos": "Pārlūkot video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Skatīties īsfilmu",
+    "actions": {
+      "joinUs": "Pievienojieties mums",
+      "shareMission": "Dalieties mūsu misijā"
+    },
+    "welcomeStart": {
+      "label": "Ticība un Raksti",
+      "title": "Šodienas video ieteikumi",
+      "description": "No ticības iedvesmots video saturs no mūsu bibliotēkas, lai iedvesmotu, izaicinātu un rosinātu pārdomas."
+    },
+    "welcomeMorning": {
+      "label": "Rīta iedvesma",
+      "title": "Labrīt! Šodienas Bībeles mirkļi jūs gaida.",
+      "description": "Sāciet dienu ar iedvesmojošiem Bībeles mirkļiem, kas stiprinās un uzmundrinās jūsu garu."
+    },
+    "welcomeAfternoon": {
+      "label": "Pēcpusdienas iedvesma",
+      "title": "Labu pēcpusdienu! Bībeles mirkļi jūsu dienai.",
+      "description": "Iedvesmojošs Bībeles saturs, kas lieliski piemērots jūsu pēcpusdienas pauzei vai turpmākai iedvesmai."
+    },
+    "welcomeEvening": {
+      "label": "Vakara iedvesma",
+      "title": "Labvakar! Atpūtieties ar Bībeles mirkļiem.",
+      "description": "Mierpilni Bībeles mirkļi, kas palīdzēs pārdomāt dienu un rast mierinājumu dienas noslēgumā."
+    },
+    "joinUs": {
+      "label": "Pievienojieties mums",
+      "title": "Miljardi meklē",
+      "description": "Raža ir klāt. Pievienojieties mums, daloties evaņģēlijā ar pasauli, izmantojot digitālos medijus."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Iesim kopā",
+      "title": "Stāstām Jēzus stāstu kopā",
+      "description": "Lai viņi varētu dzirdēt un redzēt Jēzus mīlestību savā valodā turpat, kur viņi ir."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% atbilstība",
+    "none": "Šim video šajā valodā ieteikumi nav atrasti."
+  },
+  "BetaTesterModal": {
+    "title": "Kļūt par beta testētāju",
+    "trigger": "Kļūt par beta testētāju",
+    "loadFailed": "Kaut kas nogāja greizi.",
+    "loading": "Notiek ielāde...",
+    "openFormNewTab": "Atvērt veidlapu jaunā cilnē",
+    "close": "Aizvērt",
+    "iframeTitle": "Kļūt par beta testētāju"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

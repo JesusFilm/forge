@@ -7,7 +7,9 @@
     "noContent": "A ku na swilo leswi kumekaka.",
     "homepageMisconfigured": "Tluka ra Watch ri lulamisiwanga hi ku biha.",
     "defaultTemplateMisconfigured": "Template ya ntolovelo ya Watch yi lulamisiwanga hi ku biha.",
-    "authFailed": "Hi nga tsandzeka ku tiyisisa vutshamo na vukorhokeri bya swilo. Hi kombela mi tihlanganisa na nseketelo loko leswi swi ya emahlweni."
+    "authFailed": "Hi nga tsandzeka ku tiyisisa vutshamo na vukorhokeri bya swilo. Hi kombela mi tihlanganisa na nseketelo loko leswi swi ya emahlweni.",
+    "pageLoadFailed": "Ku lo hoxeka nchumu.",
+    "tryAgain": "Ringeta nakambe"
   },
   "VideosPage": {
     "title": "Tivhidiyo Hinkwato",
@@ -22,7 +24,8 @@
     "promoHeading": "Xana u lava ku twisisa Bibele hi ku dzika?",
     "joinBibleStudy": "Nghena eka dyondzo ya hina ya Bibele",
     "previousQuote": "Xikorweto xa Bibele lexi hundzeke",
-    "nextQuote": "Xikorweto xa Bibele lexi landzelaka"
+    "nextQuote": "Xikorweto xa Bibele lexi landzelaka",
+    "readPassage": "Hlaya ndzimana leyi eBibeleni ya wena."
   },
   "DownloadButton": {
     "checking": "Ku kambela",
@@ -73,7 +76,8 @@
     "selectLanguage": "Hlawula ririmi",
     "searchPlaceholder": "Lava tindzimi…",
     "languages": "Tindzimi",
-    "noMatches": "A swi fambelani"
+    "noMatches": "A swi fambelani",
+    "notAvailable": "A swi kumeki"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ririmi",
@@ -100,10 +104,7 @@
     "seriesLabel": "NKHENSO · {episodes}",
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "share": "Avelana",
-    "languages": "Tindzimi",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Tindzimi"
   },
   "WatchModal": {
     "close": "Pfala"
@@ -115,7 +116,8 @@
     "questions": "Swivutiso leswi fambelanaka",
     "askYours": "Vutisa xa wena",
     "chatWithPerson": "Mbulavurisa na munhu",
-    "askBibleQuestion": "Vutisa xivutiso xa Bibele"
+    "askBibleQuestion": "Vutisa xivutiso xa Bibele",
+    "quiz": "Ndzingo"
   },
   "WatchQuestionPanel": {
     "messageType": "Muxaka wa mahungu",
@@ -173,7 +175,8 @@
     "searchRegion": "Lava tivhidiyo",
     "clearSearch": "Sula ku lava",
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
-    "home": "Tluka ra le kaya ra JesusFilm"
+    "home": "Tluka ra le kaya ra JesusFilm",
+    "closeSearch": "Pfala ku lava"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -208,14 +211,19 @@
     "clearLanguages": "Sula",
     "queryLanguageDetected": "{language} yi kumekile",
     "searchInLanguage": "Lava hi {language}",
-    "tryDifferentKeywordsOrLanguage": "Ringeta marito man’wana kumbe hlawula ririmi rin’wana ra ku lava"
+    "tryDifferentKeywordsOrLanguage": "Ringeta marito man’wana kumbe hlawula ririmi rin’wana ra ku lava",
+    "useWebsiteDefaultLanguage": "Tirhisa ririmi ra ku lava ra xiviri ra website",
+    "removeLanguage": "Susa {language}",
+    "browseMode": "Maitiro ya ku languta"
   },
   "HeroPlayer": {
     "playWithSound": "Languta sweswi",
-    "tapToUnmute": "Khumba leswaku u pfula mpfumawulo"
+    "tapToUnmute": "Khumba leswaku u pfula mpfumawulo",
+    "nextEpisode": "Xiphemu lexi landzelaka"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ku layicha swilo"
+    "loadingContent": "Ku layicha swilo",
+    "loadingVideo": "Ku layicha vhidiyo"
   },
   "VideoLabels": {
     "video": "Vhidiyo",
@@ -226,7 +234,8 @@
     "series": "Nkhenso",
     "collection": "Muqoqo",
     "trailer": "Xikombiso xa filimi",
-    "behindTheScenes": "Endzhaku ka swifaniso"
+    "behindTheScenes": "Endzhaku ka swifaniso",
+    "chapter": "Xiyenge"
   },
   "SiblingCarousel": {
     "clipPosition": "Xiphemu {current} xa {total}",
@@ -238,12 +247,253 @@
     "noImage": "A ku na xifaniso",
     "playingNow": "Sweswi swa tlanga",
     "previousChapter": "Xiyenge lexi hundzeke",
-    "nextChapter": "Xiyenge lexi landzelaka"
+    "nextChapter": "Xiyenge lexi landzelaka",
+    "thumbnailAlt": "Xifaniso xitsongo xa {title}",
+    "relatedVideoThumbnail": "Xifaniso xitsongo xa vhidiyo leyi fambelanaka"
   },
   "SearchResultCard": {
     "experience": "Ntokoto",
     "episodeCount": "{count, plural, one {# xiphemu} other {# swiphemu}}",
     "thumbnailAlt": "Xifaniso xitsongo xa vhidiyo"
+  },
+  "Feedback": {
+    "openForm": "Pfula fomo ya mavonelo",
+    "label": "Mavonelo",
+    "couldNotLoad": "Fomo ya mavonelo a yi nga pfuliwanga.",
+    "loadingForm": "Ku layicha fomo ya mavonelo…",
+    "retry": "Ringeta nakambe",
+    "openFormShort": "Pfula fomo",
+    "cancel": "Khansela",
+    "title": "Mavonelo ya Beta",
+    "description": "Avelana leswi tirhaka kahle ni leswi hi nga swi antswisaka. Fomo leyi yi nyikiwe hi Google.",
+    "openInNewTab": "Pfula fomo eka thebhu leyintshwa",
+    "closeForm": "Pfala fomo ya mavonelo",
+    "loadingGoogleForm": "Ku layicha Google Form…",
+    "iframeTitle": "Rhumela Mavonelo ya Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Tivhidiyo ta Vukreste ta Mahala hi {language} | Jesus Film Project",
+    "metadataDescription": "Languta tifilimi ta Yesu, tindzaba ta Bibele, tiseri ta ku endla vadisipulu, ni tivhidiyo ta ku fika eka vanhu na mpfumawulo lowu vulavuriweke kumbe switsalwana hi {language}.",
+    "heroTitle": "Tivhidiyo ta Vukreste ta Mahala hi {language}",
+    "heroDescription": "Languta tifilimi ta Yesu, tindzaba ta Bibele, tiseri ta ku endla vadisipulu, ni tivhidiyo ta ku fika eka vanhu leswi kumekaka hi {language}. Tivhidiyo leti hinkwato ti vulavuriweke hi ntiyiso ti kombisiwa ku sungula, naswona swihlawulekisi swa switsalwana ntsena swi le hansi.",
+    "languageCollection": "Muqoqo wa ririmi",
+    "itemCount": "{count, plural, one {# nchumu} other {# swilo}}",
+    "videoCount": "{count, plural, one {# vhidiyo} other {# tivhidiyo}}",
+    "videosInGroups": "{videoCount, plural, one {# vhidiyo} other {# tivhidiyo}} eka {groupCount, plural, one {# ntlawa} other {# mintlawa}}",
+    "sectionNavLabel": "Swiyenge swa nxaxamelo wa tindzimi",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Yintshwa",
+    "videoBible": "Bibele ya Vhidiyo",
+    "bibleProject": "BibleProject",
+    "sports": "Midlalo",
+    "collections": "Miqoqo",
+    "subtitlesOnly": "Switsalwana ntsena",
+    "newlyAdded": "Swa ha ku engeteriwa",
+    "newVideosTitle": "Tivhidiyo ta Vukreste letintshwa hi {language}",
+    "newestFirst": "Leswintshwa ku sungula",
+    "noPublishedVideos": "A ku si kumeka tivhidiyo leti kandziyisiweke eka ririmi leri.",
+    "bibleAndGospelFilms": "Tifilimi ta Bibele na Evhangeli",
+    "videoBibleCollectionsTitle": "Miqoqo ya Bibele ya Vhidiyo ya {language}",
+    "videoBibleDescription": "Miqoqo leyi kongomisiweke eka Matsalwa leyi katsaka LUMO, JESUS, Magdalena, na Acts hi {language}.",
+    "noVideoBibleCollections": "A ku si va na miqoqo ya Bibele ya Vhidiyo eka ririmi leri.",
+    "bibleProjectCollectionsTitle": "Miqoqo ya BibleProject ya {language}",
+    "bibleProjectDescription": "Tiseri ta BibleProject ni tidyondzo leswi kumekaka hi {language}.",
+    "noBibleProjectCollections": "A ku si va na miqoqo ya BibleProject eka ririmi leri.",
+    "sportsStories": "Tintshunxeko ta midlalo",
+    "sportsTitle": "Tintshunxeko ta midlalo ni ta vatlangi ta {language}",
+    "sportsDescription": "Tindzaba ta midlalo leti kongomisiweke eka ripfumelo ni miqoqo ya vatlangi leswi kumekaka hi {language}.",
+    "noSportsCollections": "A ku si va na miqoqo ya midlalo kumbe ya tindzaba ta vatlangi eka ririmi leri.",
+    "fullyDubbed": "Vulavuri lebyi heleleke",
+    "dubbedVideosTitle": "Tivhidiyo ta {language} hi muqoqo",
+    "dubbedVideosDescription": "Languta tivhidiyo hinkwato ta {language} leti vulavuriweke hi ntiyiso ti hlanganisiweke na miqoqo ya tona leswaku ti olovisa ku ti kuma.",
+    "noDubbedVideos": "A ku si va na tivhidiyo leti vulavuriweke hi ntiyiso eka ririmi leri.",
+    "subtitlesAvailable": "Switsalwana swi kumeka",
+    "subtitlesTitle": "Tivhidiyo ta {language} leti nga na switsalwana",
+    "subtitlesDescription": "Tivhidiyo leti ti na switsalwana swa {language} loko mpfumawulo lowu vulavuriweke hi {language} wu nga si kumeka.",
+    "noSubtitleVideos": "A ku si va na tivhidiyo ta switsalwana ntsena eka ririmi leri.",
+    "dubbed": "Vulavuri lebyi endliweke",
+    "subtitles": "Switsalwana",
+    "newLabel": "Yintshwa",
+    "fromCollection": "Ku suka eka {collection}",
+    "standaloneVideos": "Tivhidiyo leti yimaka toxe",
+    "videosFromCollection": "Tivhidiyo ku suka eka {collection}.",
+    "standaloneDescription": "Tivhidiyo leti yimaka toxe eka ririmi leri.",
+    "openCollection": "Pfula muqoqo"
+  },
+  "WatchHome": {
+    "pageTitle": "Ku Languta ka Jesus Film Project",
+    "watch": "Languta",
+    "watchNow": "Languta Sweswi",
+    "mutePreview": "Pfala xikambo xa mpfumawulo",
+    "unmutePreview": "Pfula xikambo xa mpfumawulo",
+    "nextVideo": "Vhidiyo leyi landzelaka",
+    "featured": "Leyi hlawuriweke",
+    "showVideo": "Kombisa {title}",
+    "previousVideoPreview": "Xikombiso xa vhidiyo leyi hundzeke",
+    "nextVideoPreview": "Xikombiso xa vhidiyo leyi landzelaka",
+    "mediaCollection": "Muqoqo wa swihangalasamahungu",
+    "scrollToVideo": "Fambisa tluka u ya eka vhidiyo ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Tluka ra le kaya ra Jesus Film Project",
+    "navigation": "Ku famba eka footer",
+    "share": "Avelana",
+    "watch": "Languta",
+    "giving": "Ku nyika",
+    "about": "Mayelana",
+    "products": "Switirhisiwa",
+    "resources": "Switirhisiwa",
+    "partners": "Vatirhisani",
+    "contact": "Vuhlanganisi",
+    "giveNow": "Nyika sweswi",
+    "resourcesVersion": "Switirhisiwa ({version})",
+    "office": "Hofisi",
+    "fax": "Fekisi",
+    "privacyPolicy": "Nongonoko wa Xihundla",
+    "legalStatement": "Xitatimende xa Nawu",
+    "newsletter": "Tirhisana leswaku u kuma Newsletter ya hina"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yakhiwe hikwalaho ka ntirho wa misava hinkwayo",
+    "title": "Mahungu a ma cincangi. Ndlela leyi vanhu va langutaka ha yona yi cincile.",
+    "description": "Hi tlhela hi aka xitolo xa hina xa tivhidiyo ni switirhisiwa hi ku sungula kusuka ebaseni, hi nyiketela ntirho wa ku hundzuluxela wa malembe yo tala eka tipulatifomo leti vanhu va already hlengeletanaka, langutaka, naswona avelanaka eka tona.",
+    "translatedLibraryTitle": "Layiburari ya tifilimi leyi hundzuluxeriweke ngopfu emisaveni hinkwayo",
+    "translatedLibraryDescription": "Malembe yo tala ya ntirho wa ku hundzuluxela, leswi rhwaleriweke hi vatirhisani va vurhumiwa lava tshembekaka, swi ake layiburari leyi nga na timalaka ta tindzimi leswaku vanhu va kota ku hlangana na mhaka ya Yesu hi ririmi leri va ri fikelelaka swinene.",
+    "trustedVoicesTitle": "Ku rhwala marito lama tshembekaka eka tifomati letintshwa",
+    "trustedVoicesDescription": "Hi tlhela hi aka ndlela leyi tindzaba ta evhangeli ti vulavuriwaka hi yona hi xifaniso, hi hlanganisa swihundzuluxo leswi tshembekaka ni tifomati ta manguva lawa leswaku mahungu ma kota ku famba hi ntshunxeko eka tipulatifomo, mindhavuko ni swikirini.",
+    "missionTeamTitle": "Ku tlula layiburari. I ntlawa lowu fambisiwaka hi ntirho.",
+    "missionTeamDescription": "Jesus Film Project i ntlawa wa misava hinkwayo wa vahundzuluxi, vatirhi va swihangalasamahungu, vahleleri, ni vavumbi lava cincelaka malembe yo tala ya ntokoto wa ntirho wa Xikwembu eka switirhisiwa swa vanhu hinkwavo lava endlaka vadyondzisiwa.",
+    "buildingNext": "Laha hi yi akaka hi yona leyi landzelaka",
+    "nextStepsTitle": "Pulatifomo ya Switandzhaku leswi Landzelaka",
+    "nextStepsDescription": "Hlanganisa vanhlaleri na mintirho leyi vonakalaka eka ndlela ya vona ya moya, leswi va pfunaka ku teka xitandzhaku xa nkoka eka vuxaka, Matsalwa, kumbe vurhumiwa.",
+    "mediaLibraryTitle": "Layiburari ya Vuhaxi bya ku Evhangelisa",
+    "mediaLibraryDescription": "Layiburari leyikulu ya vuhaxi bya Vukreste leyi nga na timiliyoni ta tivhidiyo, tifilimi, ni switirhisiwa leswi kumekaka hi tindzimi to tala ku pfuna ntirho na ku evhangelisa emisaveni hinkwayo.",
+    "ministryToolsTitle": "Switirhisiwa swa Dijithali swa Minisitiri",
+    "ministryToolsDescription": "Nongonoko wa vhidiyo, ku hangalasa swilo, ku hlanganisa vayingiseri, ni analytics leswi endleriweke ku pfuna minisitiri ku fikelela vanhu vo tala hi ndlela leyi tirhaka swinene.",
+    "invitationEyebrow": "Mi rhambiwile",
+    "invitationTitle": "Pfunani ku aka <highlight>xixaka lexi landzelaka</highlight> xa switirhisiwa swa vurhumiwa",
+    "invitationDescription": "Hi rhamba vaendli, vavumbi, na vatirhisani eka ku kuma ku nghena ka le ka ha ri emahlweni. Ringetani switirhisiwa leswintshwa ku sungula, nyikani mavonelo, naswona pfunani ku vumba switirhisiwa leswi endleriweke ntirho wa ntiyiso wa vurhumiwa.",
+    "betaTester": "Va mutirhisi wa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Muqoqo wa Bibele ya Vhidiyo",
+    "gospelRailTitle": "Tiva mhaka hinkwayo",
+    "videoBibleDescription": "Languta muqoqo wa hina wa tivhidiyo ni switirhisiwa leswi tisaka Bibele evuton’wini hi tindzaba ni dyondzo leti khangekeke.",
+    "showcaseTitle": "Matsalwa lama vulavuriweke hi filimi",
+    "adventEyebrow": "Advent ya Khisimusi",
+    "adventTitle": "Ku hlayela Advent ya Khisimusi",
+    "adventDescription": "Nghena eka ndlela ya hina ya Advent hi vhidiyo ya siku na siku leyi aka ku langutela Khisimusi, yi lavisisa ntshembo, ku tsaka, ni xitshembiso xa ku ta ka Yesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Ntlawa wa NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Ntlawa wa Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Khoso ya Vhidiyo",
+    "journeyWithJesusTitle": "Khwela na Yesu",
+    "gospelsOnVideoEyebrow": "Evhangeli Yin’wana na Yin’wana, Yi Vulavuriwile eka Vhidiyo",
+    "scriptureAsWrittenTitle": "Matsalwa, ma Vulavuriwa Ku Fana Ni Leswi Tsariweke",
+    "merryChristmas": "Khisimusi lerinene!",
+    "daysUntilChristmas": "{count, plural, one {Ku sele siku # leswaku ku va Khisimusi} other {Ku sele masiku # leswaku ku va Khisimusi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Tindzimi",
+    "metadataDescription": "Languta tivhidiyo ta JesusFilm hi ririmi.",
+    "eyebrow": "Tindzimi to languta",
+    "title": "Hlawula ririmi",
+    "description": "Languta tindzimi hi xifundzha kumbe u hlaya nxaxamelo hinkwawo.",
+    "searchPlaceholder": "Lava tindzimi kumbe matiko...",
+    "searchLabel": "Lava tindzimi kumbe matiko",
+    "clearSearch": "Sula ku lava",
+    "browse": "Languta",
+    "browseByRegion": "Languta hi xifundzha ni tiko",
+    "languageCount": "{count, plural, one {# ririmi} other {# tindzimi}}",
+    "region": "Xifundzha",
+    "countryLanguages": "Tindzimi ta {country}",
+    "showLess": "Kombisa swi nga ri swingani",
+    "showMore": "Kombisa {count} leswi engetelekeke",
+    "noLanguages": "A ku kumekanga tindzimi",
+    "tryAnotherSearch": "Ringeta marito man’wana ya ku lava."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Mfuwo wa Ku Languta | Jesus Film Project",
+    "title": "Mfuwo wa Ku Languta",
+    "loading": "Ku layicha mfuwo",
+    "empty": "A ku na nchumu hi nkarhi lowu",
+    "emptyDescription": "Tivhidiyo leti u ti langutaka loko u nghenile ti ta humelela laha.",
+    "earlier": "Swin'wana nkarhi lowu hundzeke",
+    "today": "Namuntlha",
+    "yesterday": "Mundzuku lowu hundzeke"
+  },
+  "AccountControl": {
+    "account": "Akhawunti",
+    "accountMenu": "Menu ya akhawunti",
+    "signIn": "Nghena",
+    "signOut": "Huma",
+    "signedIn": "U nghenile",
+    "history": "Mfuwo",
+    "logOut": "Huma"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Tluka a ri kumeki",
+    "eyebrow": "Tluka a ri kumeki",
+    "screenReaderPrefix": "Tluka a ri kumeki:",
+    "title": "Xiteji lexi a xi kona laha.",
+    "description": "Tluka ri nga ha va ri rhurhile, kambe mhaka yi ya emahlweni.",
+    "actionsLabel": "Swendlo swa tluka a ri kumeki",
+    "backToWatch": "Tlhelela eka Watch",
+    "browseVideos": "Languta tivhidiyo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Languta filimi yo koma",
+    "actions": {
+      "joinUs": "Nghena na hina",
+      "shareMission": "Avelana na hina ntirho wa vurhumiwa"
+    },
+    "welcomeStart": {
+      "label": "Ripfumelo & Matsalwa",
+      "title": "Swihlawulekisi swa vhidiyo swa namuntlha",
+      "description": "Swilo swa vhidiyo leswi kongomisiweke eka ripfumelo leswi humaka eka layiburari ya hina ku hlohlotela, ku nyika mivangelo, ni ku pfuxeta ku anakanyisisa."
+    },
+    "welcomeMorning": {
+      "label": "Ku Hlohlotela ka Nimixo",
+      "title": "Mixo lowunene! Tinhungu ta Bibele ta namuntlha ti mi rindzerile.",
+      "description": "Sungula siku ra wena hi tinhungu ta Bibele leti hlohlotelaka leti endleriweke ku khensisa ni ku tlakusa moya wa wena."
+    },
+    "welcomeAfternoon": {
+      "label": "Ku Hlohlotela ka Nhlikanhi",
+      "title": "Nhlikanhi lowunene! Tinhungu ta Bibele ta siku ra wena.",
+      "description": "Swilo swa Bibele leswi hlohlotelaka leswi faneleke nkarhi wa wena wa nhlikanhi kumbe ku ya emahlweni ni ku hlohlotela."
+    },
+    "welcomeEvening": {
+      "label": "Ku Hlohlotela ka Nimadyambu",
+      "title": "Vusiku lebyinene! Tinyikete eka tinhungu ta Bibele.",
+      "description": "Tinhungu ta Bibele ta ku rhula ku ku pfuna ku anakanyisisa ni ku kuma nchavelelo loko siku ra wena ri ya emakumu."
+    },
+    "joinUs": {
+      "label": "Nghena na hina",
+      "title": "Timiliyoni ta lava swo karhi",
+      "description": "Ku tshovela kona. Nghena na hina loko hi avelana evhangeli ni misava hi ku tirhisa swihangalasamahungu swa xidijitali."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "A hi fambeni swin’we",
+      "title": "Ku vulavula hi mhaka ya Yesu, swin’we",
+      "description": "Leswaku va kota ku twa ni ku vona rirhandzu ra Yesu hi ririmi ra vona eka laha va nga kona."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Ku fambelana ka {percent}%",
+    "none": "A ku kumekanga switsundzuxo swa vhidiyo leyi hi ririmi leri."
+  },
+  "BetaTesterModal": {
+    "title": "Va mutirhisi wa beta",
+    "trigger": "Va mutirhisi wa beta",
+    "loadFailed": "Ku lo hoxeka nchumu.",
+    "loading": "Ku layicha...",
+    "openFormNewTab": "Pfula fomo eka thebhu leyintshwa",
+    "close": "Pfala",
+    "iframeTitle": "Va mutirhisi wa beta"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

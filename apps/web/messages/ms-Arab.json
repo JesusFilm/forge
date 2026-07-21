@@ -7,7 +7,9 @@
     "noContent": "Tiada kandungan tersedia.",
     "homepageMisconfigured": "Laman utama tontonan salah konfigurasi.",
     "defaultTemplateMisconfigured": "Templat tontonan lalai salah konfigurasi.",
-    "authFailed": "Tidak dapat mengesahkan dengan perkhidmatan kandungan. Sila hubungi sokongan jika ini berterusan."
+    "authFailed": "Tidak dapat mengesahkan dengan perkhidmatan kandungan. Sila hubungi sokongan jika ini berterusan.",
+    "pageLoadFailed": "Ada sesuatu yang tidak kena.",
+    "tryAgain": "Cuba lagi"
   },
   "VideosPage": {
     "title": "Semua Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Ingin memahami Alkitab dengan lebih mendalam?",
     "joinBibleStudy": "Sertai kajian Alkitab kami",
     "previousQuote": "Petikan Alkitab sebelumnya",
-    "nextQuote": "Petikan Alkitab seterusnya"
+    "nextQuote": "Petikan Alkitab seterusnya",
+    "readPassage": "باچاله ڤتيقن اين دالم الکيتاب اندا."
   },
   "DownloadButton": {
     "checking": "Memeriksa",
@@ -73,7 +76,8 @@
     "selectLanguage": "Pilih bahasa",
     "searchPlaceholder": "Cari bahasa…",
     "languages": "Bahasa",
-    "noMatches": "Tiada padanan"
+    "noMatches": "Tiada padanan",
+    "notAvailable": "Tidak tersedia"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Bahasa",
@@ -100,10 +104,7 @@
     "seriesLabel": "SIRI · {episodes}",
     "changeAudioLanguage": "Tukar bahasa audio",
     "share": "Kongsi",
-    "languages": "Bahasa",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Bahasa"
   },
   "WatchModal": {
     "close": "Tutup"
@@ -115,7 +116,8 @@
     "questions": "Soalan Berkaitan",
     "askYours": "Tanya soalan anda",
     "chatWithPerson": "Berbual dengan seseorang",
-    "askBibleQuestion": "Tanya soalan Alkitab"
+    "askBibleQuestion": "Tanya soalan Alkitab",
+    "quiz": "Kuiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Jenis mesej",
@@ -173,7 +175,8 @@
     "searchRegion": "Cari video",
     "clearSearch": "Kosongkan carian",
     "changeAudioLanguage": "Tukar bahasa audio",
-    "home": "Laman utama JesusFilm"
+    "home": "Laman utama JesusFilm",
+    "closeSearch": "Tutup carian"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan semak video",
@@ -208,14 +211,19 @@
     "clearLanguages": "Kosongkan",
     "queryLanguageDetected": "{language} dikesan",
     "searchInLanguage": "Cari dalam {language}",
-    "tryDifferentKeywordsOrLanguage": "Cuba kata kunci lain atau pilih bahasa carian lain"
+    "tryDifferentKeywordsOrLanguage": "Cuba kata kunci lain atau pilih bahasa carian lain",
+    "useWebsiteDefaultLanguage": "Gunakan bahasa carian lalai laman web",
+    "removeLanguage": "Buang {language}",
+    "browseMode": "Mod semakan carian"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
-    "tapToUnmute": "Ketik untuk nyahbisu"
+    "tapToUnmute": "Ketik untuk nyahbisu",
+    "nextEpisode": "Episod seterusnya"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Memuatkan kandungan"
+    "loadingContent": "Memuatkan kandungan",
+    "loadingVideo": "Memuatkan video"
   },
   "VideoLabels": {
     "video": "ۏيديو",
@@ -226,7 +234,8 @@
     "series": "Siri",
     "collection": "Koleksi",
     "trailer": "Treler",
-    "behindTheScenes": "Di Sebalik Tabir"
+    "behindTheScenes": "Di Sebalik Tabir",
+    "chapter": "Bab"
   },
   "SiblingCarousel": {
     "clipPosition": "Klip {current} daripada {total}",
@@ -238,12 +247,253 @@
     "noImage": "Tiada imej",
     "playingNow": "Sedang dimainkan",
     "previousChapter": "Bab sebelumnya",
-    "nextChapter": "Bab seterusnya"
+    "nextChapter": "Bab seterusnya",
+    "thumbnailAlt": "Imej kecil {title}",
+    "relatedVideoThumbnail": "Imej kecil video berkaitan"
   },
   "SearchResultCard": {
     "experience": "Pengalaman",
     "episodeCount": "{count, plural, one {# episod} other {# episod}}",
     "thumbnailAlt": "Imej kecil video"
+  },
+  "Feedback": {
+    "openForm": "Buka borang maklum balas",
+    "label": "Maklum balas",
+    "couldNotLoad": "Borang maklum balas tidak dapat dimuatkan.",
+    "loadingForm": "Memuatkan borang maklum balas…",
+    "retry": "Cuba semula",
+    "openFormShort": "Buka borang",
+    "cancel": "Batal",
+    "title": "Maklum Balas Beta",
+    "description": "Kongsi apa yang berfungsi dan apa yang boleh kami perbaiki. Borang ini disediakan oleh Google.",
+    "openInNewTab": "Buka borang dalam tab baharu",
+    "closeForm": "Tutup borang maklum balas",
+    "loadingGoogleForm": "Memuatkan Borang Google…",
+    "iframeTitle": "Hantar Maklum Balas Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video Kristian percuma dalam {language} | Jesus Film Project",
+    "metadataDescription": "Terokai filem Jesus, kisah Alkitab, siri pemuridan, dan video penginjilan dengan audio alih suara atau sarikata dalam {language}.",
+    "heroTitle": "Video Kristian percuma dalam {language}",
+    "heroDescription": "Terokai filem Jesus, kisah Alkitab, siri pemuridan, dan video penginjilan yang tersedia dalam {language}. Video yang dialih suara sepenuhnya ditampilkan dahulu, dengan pilihan sarikata di bawah.",
+    "languageCollection": "Koleksi bahasa",
+    "itemCount": "{count, plural, one {# item} other {# item}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} dalam {groupCount, plural, one {# kumpulan} other {# kumpulan}}",
+    "sectionNavLabel": "Bahagian inventori bahasa",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Baharu",
+    "videoBible": "ۏيديو بايبل",
+    "bibleProject": "BibleProject",
+    "sports": "Sukan",
+    "collections": "Koleksi",
+    "subtitlesOnly": "Sarikata sahaja",
+    "newlyAdded": "Ditambah baharu",
+    "newVideosTitle": "Video Kristian baharu dalam {language}",
+    "newestFirst": "Paling baharu dahulu",
+    "noPublishedVideos": "Belum ada video diterbitkan ditemui untuk bahasa ini.",
+    "bibleAndGospelFilms": "Filem Alkitab dan Injil",
+    "videoBibleCollectionsTitle": "Koleksi Video Bible {language}",
+    "videoBibleDescription": "Koleksi berpusatkan Kitab Suci termasuk LUMO, JESUS, Magdalena, dan Acts dalam {language}.",
+    "noVideoBibleCollections": "Belum ada koleksi Video Bible tersedia untuk bahasa ini.",
+    "bibleProjectCollectionsTitle": "Koleksi BibleProject {language}",
+    "bibleProjectDescription": "Siri dan kajian BibleProject yang tersedia dalam {language}.",
+    "noBibleProjectCollections": "Belum ada koleksi BibleProject tersedia untuk bahasa ini.",
+    "sportsStories": "Kisah sukan",
+    "sportsTitle": "Kisah sukan dan atlet {language}",
+    "sportsDescription": "Kisah sukan berasaskan iman dan koleksi berfokuskan atlet yang tersedia dalam {language}.",
+    "noSportsCollections": "Belum ada koleksi sukan atau kisah atlet tersedia untuk bahasa ini.",
+    "fullyDubbed": "Dialih suara sepenuhnya",
+    "dubbedVideosTitle": "Video {language} mengikut koleksi",
+    "dubbedVideosDescription": "Semak video {language} yang dialih suara sepenuhnya dan dikumpulkan bersama koleksi untuk memudahkan pencarian.",
+    "noDubbedVideos": "Belum ada video yang dialih suara sepenuhnya tersedia untuk bahasa ini.",
+    "subtitlesAvailable": "Sarikata tersedia",
+    "subtitlesTitle": "Video {language} dengan sarikata",
+    "subtitlesDescription": "Video ini menyertakan sarikata {language} apabila audio lisan {language} belum tersedia.",
+    "noSubtitleVideos": "Belum ada video sarikata sahaja tersedia untuk bahasa ini.",
+    "dubbed": "Alih suara",
+    "subtitles": "Sarikata",
+    "newLabel": "Baharu",
+    "fromCollection": "Daripada {collection}",
+    "standaloneVideos": "Video berdiri sendiri",
+    "videosFromCollection": "Video daripada {collection}.",
+    "standaloneDescription": "Video berdiri sendiri dalam bahasa ini.",
+    "openCollection": "Buka koleksi"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Tonton",
+    "watch": "Tonton",
+    "watchNow": "Tonton Sekarang",
+    "mutePreview": "Senyapkan pratonton",
+    "unmutePreview": "Bunyikan pratonton",
+    "nextVideo": "Video seterusnya",
+    "featured": "Pilihan",
+    "showVideo": "Tunjukkan {title}",
+    "previousVideoPreview": "Pratonton video sebelumnya",
+    "nextVideoPreview": "Pratonton video seterusnya",
+    "mediaCollection": "Koleksi media",
+    "scrollToVideo": "Tatal ke video {title}"
+  },
+  "WatchFooter": {
+    "home": "Laman utama Jesus Film Project",
+    "navigation": "Navigasi pengaki",
+    "share": "Kongsi",
+    "watch": "Tonton",
+    "giving": "Pemberian",
+    "about": "Perihal",
+    "products": "Produk",
+    "resources": "Sumber",
+    "partners": "Rakan kongsi",
+    "contact": "Hubungi",
+    "giveNow": "Beri Sekarang",
+    "resourcesVersion": "Sumber ({version})",
+    "office": "Pejabat",
+    "fax": "Faks",
+    "privacyPolicy": "Dasar Privasi",
+    "legalStatement": "Pernyataan Undang-undang",
+    "newsletter": "Daftar untuk surat berita kami"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Dibina untuk misi global",
+    "title": "Mesejnya tidak berubah. Cara orang menonton berubah.",
+    "description": "Kami sedang membina semula pustaka video dan alat kami dari asas, memindahkan kerja terjemahan berdekad-dekad ke platform tempat orang ramai sudah berkumpul, menonton, dan berkongsi.",
+    "translatedLibraryTitle": "Pustaka filem paling banyak diterjemahkan di dunia",
+    "translatedLibraryDescription": "Kerja terjemahan berdekad-dekad, dibawa oleh rakan pelayanan yang dipercayai, telah membina sebuah pustaka dengan ribuan trek bahasa supaya orang dapat menemui kisah Jesus dalam bahasa yang paling menyentuh hati mereka.",
+    "trustedVoicesTitle": "Membawa suara yang dipercayai ke dalam format baharu",
+    "trustedVoicesDescription": "Kami sedang membina semula cara kisah Injil diceritakan secara visual, menggabungkan terjemahan yang dipercayai dengan format moden supaya mesej dapat bergerak bebas merentas platform, budaya, dan skrin.",
+    "missionTeamTitle": "Lebih daripada sebuah pustaka. Sebuah pasukan berasaskan misi.",
+    "missionTeamDescription": "Jesus Film Project ialah pasukan global penterjemah, pakar media, penyunting, dan pencipta yang menukar pengalaman pelayanan berdekad-dekad menjadi alat untuk para pembuat murid di mana-mana.",
+    "buildingNext": "Apa yang kami sedang bina seterusnya",
+    "nextStepsTitle": "Platform Langkah Seterusnya",
+    "nextStepsDescription": "Hubungkan penonton dengan peluang yang nyata dalam perjalanan rohani mereka, membantu mereka mengambil langkah seterusnya ke dalam komuniti, Kitab Suci, atau misi.",
+    "mediaLibraryTitle": "Pustaka Media Penginjilan",
+    "mediaLibraryDescription": "Pustaka media Kristian yang luas dengan ribuan video, filem, dan sumber tersedia dalam pelbagai bahasa untuk pelayanan dan penginjilan di seluruh dunia.",
+    "ministryToolsTitle": "Alat Digital untuk Pelayanan",
+    "ministryToolsDescription": "Pengurusan video, pengedaran kandungan, penglibatan penonton, dan analitik yang direka untuk membantu pelayanan menjangkau lebih ramai orang dengan berkesan.",
+    "invitationEyebrow": "Anda dijemput",
+    "invitationTitle": "Bantu bina <highlight>generasi baharu</highlight> alat misi",
+    "invitationDescription": "Kami menjemput pengamal, pencipta, dan rakan kongsi untuk akses awal. Uji alat baharu terlebih dahulu, beri maklum balas, dan bantu bentuk produk yang direka untuk kerja misi sebenar.",
+    "betaTester": "Jadi penguji beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksi Video Bible",
+    "gospelRailTitle": "Temui kisah penuh",
+    "videoBibleDescription": "Terokai koleksi video dan sumber kami yang menghidupkan Alkitab melalui kisah dan pengajaran yang menarik.",
+    "showcaseTitle": "Kitab Suci Dikisahkan Melalui Filem",
+    "adventEyebrow": "Adven Krismas",
+    "adventTitle": "Kiraan Mundur Adven Krismas",
+    "adventDescription": "Sertai perjalanan Adven kami dengan video harian yang membina penantian untuk Krismas, meneroka harapan, sukacita, dan janji kedatangan Jesus.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Adven BibleProject",
+    "nuaEyebrow": "Siri NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Siri Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursus Video",
+    "journeyWithJesusTitle": "Perjalanan bersama Jesus",
+    "gospelsOnVideoEyebrow": "Setiap Injil, Diceritakan dalam Video",
+    "scriptureAsWrittenTitle": "Kitab Suci, Dituturkan Tepat Seperti yang Ditulis",
+    "merryChristmas": "سلامت هاري کريسمس!",
+    "daysUntilChristmas": "{count, plural, other {# هاري لاݢي منجلاڠ کريسمس}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Bahasa",
+    "metadataDescription": "Semak video JesusFilm mengikut bahasa.",
+    "eyebrow": "Bahasa tontonan",
+    "title": "Pilih bahasa",
+    "description": "Terokai bahasa mengikut wilayah atau semak senarai penuh.",
+    "searchPlaceholder": "Cari bahasa atau negara...",
+    "searchLabel": "Cari bahasa atau negara",
+    "clearSearch": "Kosongkan carian",
+    "browse": "Semak",
+    "browseByRegion": "Semak mengikut wilayah dan negara",
+    "languageCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "region": "Wilayah",
+    "countryLanguages": "Bahasa {country}",
+    "showLess": "Tunjuk kurang",
+    "showMore": "Tunjuk {count} lagi",
+    "noLanguages": "Tiada bahasa ditemui",
+    "tryAnotherSearch": "Cuba istilah carian yang lain."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Sejarah Tontonan | Jesus Film Project",
+    "title": "Sejarah Tontonan",
+    "loading": "Memuatkan sejarah",
+    "empty": "Belum ada apa-apa di sini",
+    "emptyDescription": "Video yang anda tonton semasa log masuk akan muncul di sini.",
+    "earlier": "Lebih awal",
+    "today": "Hari ini",
+    "yesterday": "Semalam"
+  },
+  "AccountControl": {
+    "account": "Akaun",
+    "accountMenu": "Menu akaun",
+    "signIn": "Log masuk",
+    "signOut": "Log keluar",
+    "signedIn": "Telah log masuk",
+    "history": "Sejarah",
+    "logOut": "Log keluar"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Halaman tidak ditemui",
+    "eyebrow": "Halaman tidak ditemui",
+    "screenReaderPrefix": "Halaman tidak ditemui:",
+    "title": "Babak ini tiada di sini.",
+    "description": "Halaman mungkin telah berpindah, tetapi kisahnya terus berjalan.",
+    "actionsLabel": "Tindakan halaman tidak ditemui",
+    "backToWatch": "Kembali ke Tontonan",
+    "browseVideos": "Semak video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Tonton filem pendek",
+    "actions": {
+      "joinUs": "Sertai kami",
+      "shareMission": "Berkongsi dalam misi kami"
+    },
+    "welcomeStart": {
+      "label": "Iman & Kitab Suci",
+      "title": "Pilihan video hari ini",
+      "description": "Kandungan video berteraskan iman dari pustaka kami untuk menginspirasi, mencabar, dan mencetuskan renungan."
+    },
+    "welcomeMorning": {
+      "label": "Inspirasi pagi",
+      "title": "Selamat pagi! Momen-momen Alkitab hari ini menanti.",
+      "description": "Mulakan hari anda dengan momen-momen Alkitab yang menggalakkan, direka untuk memberi inspirasi dan menguatkan semangat anda."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirasi petang",
+      "title": "Selamat petang! Momen-momen Alkitab untuk hari anda.",
+      "description": "Kandungan Alkitab yang menggalakkan, sesuai untuk rehat petang anda atau sebagai inspirasi berterusan."
+    },
+    "welcomeEvening": {
+      "label": "Inspirasi malam",
+      "title": "Selamat malam! Tenangkan diri dengan momen-momen Alkitab.",
+      "description": "Momen-momen Alkitab yang menenangkan untuk membantu anda merenung dan menemukan penghiburan ketika hari anda berakhir."
+    },
+    "joinUs": {
+      "label": "Sertai kami",
+      "title": "Berbilion-bilion sedang mencari",
+      "description": "Tuai sudah tiba. Sertai kami ketika kami membagikan Injil kepada dunia melalui media digital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Mari bersama-sama",
+      "title": "Menceritakan Kisah Jesus, Bersama-sama",
+      "description": "Supaya mereka dapat mendengar dan melihat kasih Jesus dalam bahasa mereka sendiri, di mana sahaja mereka berada."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% سڤادن",
+    "none": "تياد چادڠن دتموکن اونتوق ۏيديو اين دالم بهاس اين."
+  },
+  "BetaTesterModal": {
+    "title": "Jadi penguji beta",
+    "trigger": "Jadi penguji beta",
+    "loadFailed": "Ada sesuatu yang tidak kena.",
+    "loading": "Memuatkan...",
+    "openFormNewTab": "Buka borang dalam tab baharu",
+    "close": "Tutup",
+    "iframeTitle": "Jadi penguji beta"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

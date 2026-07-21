@@ -52,6 +52,46 @@ export const AUTH_SCOPES = [
     label: "Manage tokens",
     description: "Create, inspect, and revoke scoped Auth tokens.",
   },
+  {
+    key: "experience:read",
+    label: "Read experiences",
+    description: "Read Experience pages and locale content for localization.",
+  },
+  {
+    key: "experience:locale:create",
+    label: "Create experience locales",
+    description: "Create new localized Experience drafts.",
+  },
+  {
+    key: "experience:locale:update",
+    label: "Update experience locales",
+    description: "Update localized Experience drafts you can edit.",
+  },
+  {
+    key: "experience:locale:validate",
+    label: "Validate experience locales",
+    description: "Validate localized Experience drafts before writing.",
+  },
+  {
+    key: "media:read",
+    label: "Read media",
+    description: "Read media asset metadata needed for localized Experiences.",
+  },
+  {
+    key: "video:read",
+    label: "Read videos",
+    description: "Read video availability and replacement candidates.",
+  },
+  {
+    key: "bible:read",
+    label: "Read Bible references",
+    description: "Read Bible passages and reference metadata for localization.",
+  },
+  {
+    key: "experience:publish",
+    label: "Publish experience locales",
+    description: "Publish localized Experiences after validation.",
+  },
 ] as const
 
 export type AuthScopeKey = (typeof AUTH_SCOPES)[number]["key"]

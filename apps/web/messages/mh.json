@@ -7,7 +7,9 @@
     "noContent": "Waanjon̄ content eo ejab tobar.",
     "homepageMisconfigured": "Watch homepage eo ejab maron kōjparok.",
     "defaultTemplateMisconfigured": "Default watch template eo ejab maron kōjparok.",
-    "authFailed": "Ejab maron authenticate ilo content service. Jouj im kebaak support ne ewōr armej eo bōk jorrāān kein. "
+    "authFailed": "Ejab maron authenticate ilo content service. Jouj im kebaak support ne ewōr armej eo bōk jorrāān kein. ",
+    "pageLoadFailed": "Ejjelok jorrāān ej walok.",
+    "tryAgain": "Jijjet"
   },
   "VideosPage": {
     "title": "Videos Kōnono Murub",
@@ -22,7 +24,8 @@
     "promoHeading": "Komaron mōj m̧ōn̄ōn̄e Bible eo em̧orok? ",
     "joinBibleStudy": "Join irooj Bible study in kōm",
     "previousQuote": "Bible quote eo an karōk",
-    "nextQuote": "Bible quote eo elaplok"
+    "nextQuote": "Bible quote eo elaplok",
+    "readPassage": "Riit eoon kein ilo Baibōḷ eo am."
   },
   "DownloadButton": {
     "checking": "Kōmman",
@@ -73,7 +76,8 @@
     "selectLanguage": "Kojut language",
     "searchPlaceholder": "Jibed language…",
     "languages": "Kajin ko",
-    "noMatches": "Ejellok eja"
+    "noMatches": "Ejellok eja",
+    "notAvailable": "Ejab available"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Kajin",
@@ -100,10 +104,7 @@
     "seriesLabel": "BWEBWENATO KO · {episodes}",
     "changeAudioLanguage": "Kāāl language in audio",
     "share": "Koba",
-    "languages": "Kajin ko",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Kajin ko"
   },
   "WatchModal": {
     "close": "Māake"
@@ -115,7 +116,8 @@
     "questions": "Kajitōk ko rej ekkeijel",
     "askYours": "Jabdi am",
     "chatWithPerson": "Kōnono im armij",
-    "askBibleQuestion": "Bōk juon kōnono kōn Bible"
+    "askBibleQuestion": "Bōk juon kōnono kōn Bible",
+    "quiz": "Kajjioñ meḷeḷe ko am"
   },
   "WatchQuestionPanel": {
     "messageType": "Wāween in message",
@@ -173,7 +175,8 @@
     "searchRegion": "Jibed videos",
     "clearSearch": "Kōjbarok search",
     "changeAudioLanguage": "Kāāl language in audio",
-    "home": "Jikin jinoin JesusFilm"
+    "home": "Jikin jinoin JesusFilm",
+    "closeSearch": "Māake search"
   },
   "SearchOverlay": {
     "dialogLabel": "Jibed im browse videos",
@@ -208,14 +211,19 @@
     "clearLanguages": "Kōjbarok",
     "queryLanguageDetected": "{language} ej lōmṇaki",
     "searchInLanguage": "Jibed ilo {language}",
-    "tryDifferentKeywordsOrLanguage": "Jibed keywords tolak ak kōj language eo jet"
+    "tryDifferentKeywordsOrLanguage": "Jibed keywords tolak ak kōj language eo jet",
+    "useWebsiteDefaultLanguage": "Jipan in website default search language",
+    "removeLanguage": "Bōk jān {language}",
+    "browseMode": "Wāween browse ilo search"
   },
   "HeroPlayer": {
     "playWithSound": "Lale kio",
-    "tapToUnmute": "Tap nan Unmute"
+    "tapToUnmute": "Tap nan Unmute",
+    "nextEpisode": "Episode eo ilo joriane"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ej load content"
+    "loadingContent": "Ej load content",
+    "loadingVideo": "Ej load video"
   },
   "VideoLabels": {
     "video": "Pija in alwōj",
@@ -226,7 +234,8 @@
     "series": "Bwebwenato ko",
     "collection": "Kumi in video",
     "trailer": "Pija in kōjañjañ",
-    "behindTheScenes": "Lik in Scene ko"
+    "behindTheScenes": "Lik in Scene ko",
+    "chapter": "Jebta"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} jān {total}",
@@ -238,12 +247,253 @@
     "noImage": "Ejellok image",
     "playingNow": "Playing ijet",
     "previousChapter": "Chapter eo an karōk",
-    "nextChapter": "Chapter eo elaplok"
+    "nextChapter": "Chapter eo elaplok",
+    "thumbnailAlt": "Thumbnail in {title}",
+    "relatedVideoThumbnail": "Thumbnail in video eo ej ekkeijel"
   },
   "SearchResultCard": {
     "experience": "Wāween in ekkatak",
     "episodeCount": "{count, plural, one {# mōttan} other {# mōttan ko}}",
     "thumbnailAlt": "Thumbnail in video"
+  },
+  "Feedback": {
+    "openForm": "Iak form in feedback",
+    "label": "Kōmeḷeḷe ko am",
+    "couldNotLoad": "Form in feedback ejjab maron lōk.",
+    "loadingForm": "Ej load form in feedback…",
+    "retry": "Jijjet",
+    "openFormShort": "Iak form",
+    "cancel": "Bōk jān",
+    "title": "Kōmeḷeḷe ko kōn Beta",
+    "description": "Kōmman ijoko eo elōñ ijin emman im ta eo komaron emman. Google ekar jipan in form in.",
+    "openInNewTab": "Iak form ilo juon tab ekarōk",
+    "closeForm": "Māake form in feedback",
+    "loadingGoogleForm": "Ej load Google Form…",
+    "iframeTitle": "Send Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian videos ko ejellok wōnāer ilo {language} | Jesus Film Project",
+    "metadataDescription": "Bōk kin Jesus films, Bible stories, series in discipleship, im videos in outreach im audio dub ak subtitles ilo {language}.",
+    "heroTitle": "Christian videos ko ejellok wōnāer ilo {language}",
+    "heroDescription": "Bōk kin Jesus films, Bible stories, series in discipleship, im videos in outreach ewōr ilo {language}. Videos eo jarin dub full e kar kōmman ijo ilo kajojo, im subtitle-only options eo ijo ijoko.",
+    "languageCollection": "Collection in language",
+    "itemCount": "{count, plural, one {# men} other {# men ko}}",
+    "videoCount": "{count, plural, one {# video} other {# video ko}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} ilo {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Mottan ko ilo inventory in language",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Kāāl",
+    "videoBible": "Baibōḷ ilo Video",
+    "bibleProject": "BibleProject",
+    "sports": "Ikkure ko",
+    "collections": "Kumi ko",
+    "subtitlesOnly": "Subtitles eilōñ",
+    "newlyAdded": "Kāāl ijo bōk",
+    "newVideosTitle": "Christian videos kāāl in {language}",
+    "newestFirst": "Newest ijo karok",
+    "noPublishedVideos": "Ejellok videos eo kar published n̄an language in iien in.",
+    "bibleAndGospelFilms": "Bible im Gospel films",
+    "videoBibleCollectionsTitle": "Video Bible collections ilo {language}",
+    "videoBibleDescription": "Scripture-centered collections in LUMO, JESUS, Magdalena, im Acts ilo {language}.",
+    "noVideoBibleCollections": "Ejellok Video Bible collections n̄an language in iien in.",
+    "bibleProjectCollectionsTitle": "BibleProject collections ilo {language}",
+    "bibleProjectDescription": "BibleProject series im studies ewōr ilo {language}.",
+    "noBibleProjectCollections": "Ejellok BibleProject collections n̄an language in iien in.",
+    "sportsStories": "Bwebwenato in sports",
+    "sportsTitle": "{language} sports im athlete stories",
+    "sportsDescription": "Faith-centered sports stories im athlete-focused collections ewōr ilo {language}.",
+    "noSportsCollections": "Ejellok sports ak athlete-story collections n̄an language in iien in.",
+    "fullyDubbed": "Dubbed kauwōtata",
+    "dubbedVideosTitle": "{language} videos jān collection",
+    "dubbedVideosDescription": "Browse fully dubbed {language} videos jān collection in nan maron loor elaplok.",
+    "noDubbedVideos": "Ejellok videos fully dubbed n̄an language in iien in.",
+    "subtitlesAvailable": "Subtitles ewōr",
+    "subtitlesTitle": "{language} videos ewōr subtitles",
+    "subtitlesDescription": "Videos kein ewōr {language} subtitles ne spoken {language} audio ejellok iien in.",
+    "noSubtitleVideos": "Ejellok subtitle-only videos n̄an language in iien in.",
+    "dubbed": "Ainikien emōj ukōte",
+    "subtitles": "Subtitle ko",
+    "newLabel": "Kāāl",
+    "fromCollection": "Jān {collection}",
+    "standaloneVideos": "Video ko rej jutak make",
+    "videosFromCollection": "Videos jān {collection}.",
+    "standaloneDescription": "Standalone videos ilo language in.",
+    "openCollection": "Iak collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Lale ilo Jesus Film Project",
+    "watch": "Lale",
+    "watchNow": "Lale Kio",
+    "mutePreview": "Kōjjeḷā ainikien preview",
+    "unmutePreview": "Kōrool ainikien preview",
+    "nextVideo": "Video eo elaplok",
+    "featured": "Ekkā an walok",
+    "showVideo": "Kāāl {title}",
+    "previousVideoPreview": "Video preview eo an karōk",
+    "nextVideoPreview": "Video preview eo elaplok",
+    "mediaCollection": "Kumi in media",
+    "scrollToVideo": "Kolok ijo n̄an {title} video"
+  },
+  "WatchFooter": {
+    "home": "Jikin jinoin Jesus Film Project",
+    "navigation": "Navigation ilo footer",
+    "share": "Koba",
+    "watch": "Lale",
+    "giving": "Leḷọk",
+    "about": "Kōn kōm",
+    "products": "Men ko kōmij kōmmane",
+    "resources": "Kein jipan",
+    "partners": "Ro rej jerbal ippān kōm",
+    "contact": "Kebaak",
+    "giveNow": "Leḷọk Kio",
+    "resourcesVersion": "Kein jipan ({version})",
+    "office": "Opij",
+    "fax": "Fax eo",
+    "privacyPolicy": "Kien in Kōjparok Meḷeḷe",
+    "legalStatement": "Kōnono eo an kien",
+    "newsletter": "Sign Up ñan Newsletter eo Am"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Kar kōmman ñan mission ko ipeḷaakin laḷ",
+    "title": "Message eo ejjab ukōt. Wāween an armej lale ej ukōt.",
+    "description": "Kōmman e video library im tools eo an jōtkob ir jān ijo, kōjbarok decades in translation work n̄an platforms eo armij ewor ijo kōnono, watch, im share.",
+    "translatedLibraryTitle": "Library in film eo eḷaptata an ukōte ilo laḷ in",
+    "translatedLibraryDescription": "Decades in translation work, carried by trusted ministry partners, e kōmman juon library ewōr thousands of language tracks n̄an armej ro maron kwaḷḷañ story eo an Jesus ilo language eo e lōmṇak ilo ko c.",
+    "trustedVoicesTitle": "Bōk ainikien ro rej likūt kōjatdikdik ñan format ko rekāāl",
+    "trustedVoicesDescription": "Kōmman kajojo gospel stories eo an kōnono ilo visual, kōjbarok trusted translations im modern formats n̄an message eo ej emaron kajin ilo platforms, cultures, im screens.",
+    "missionTeamTitle": "Eḷaplok jān juon library. Juon team eo mission ej tōl e.",
+    "missionTeamDescription": "Jesus Film Project ej juon global team in translators, media specialists, editors, im creators eo rej kōmman decades in ministry experience n̄an tools n̄an disciple-makers ilo kajoor.",
+    "buildingNext": "Ta eo kōm build next",
+    "nextStepsTitle": "Platform in Bun̄tōn ko Tokālik",
+    "nextStepsDescription": "Connect viewers im opportunities tangible ilo spiritual journey eo, jipan ir n̄an bōk juon step elaplok ilo community, Scripture, ak mission.",
+    "mediaLibraryTitle": "Library in Media ñan Evangelism",
+    "mediaLibraryDescription": "Juon Christian media library elap ewōr videos, films, im resources ilo language ko ewor n̄an ministry im evangelism ilo world.",
+    "ministryToolsTitle": "Digital Tools ñan Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, im analytics eo kōn jipan ministries n̄an reach ppl ilo maron.",
+    "invitationEyebrow": "Kōmij kūrtok kwe",
+    "invitationTitle": "Jipan kōm build <highlight>the next generation</highlight> of mission tools",
+    "invitationDescription": "Kōm invitation practitioner ro, creators, im partners n̄an early access. Test tools eo kapen, jipan feedback, im kōjbarok products eo kōmman n̄an real mission work.",
+    "betaTester": "Erā ñan erom juon beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kumi in Baibōḷ ilo Video",
+    "gospelRailTitle": "Lo aolepen bwebwenato eo",
+    "videoBibleDescription": "Explore collection eo an videos im resources eo rej kōmman Bible eo maron kobaelōñ kōn stories im teachings.",
+    "showcaseTitle": "Baibōḷ eo kar kwaḷọk ilo Film",
+    "adventEyebrow": "Advent in Christmas",
+    "adventTitle": "Bwōjrak ñan Advent in Christmas",
+    "adventDescription": "Join journey eo an Advent im juon video erelap daily eo ej kōmman anticipation n̄an Christmas, kōn hope, joy, im promise eo an Jesus' arrival.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent an BibleProject",
+    "nuaEyebrow": "Bwebwenato ko an NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Bwebwenato ko an Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Katak kōn Video",
+    "journeyWithJesusTitle": "Ito-itak ippān Jesus",
+    "gospelsOnVideoEyebrow": "Gospel otemjej, kar kwaḷọki ilo Video",
+    "scriptureAsWrittenTitle": "Eoon ko, kar kōnono āinwōt kar jeiki",
+    "merryChristmas": "M̧ōņōņō in Kūrjṃōj!",
+    "daysUntilChristmas": "{count, plural, one {# raan ñan Kūrjṃōj} other {# raan ko ñan Kūrjṃōj}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Kajin ko",
+    "metadataDescription": "Browse JesusFilm videos ekkar ñan language.",
+    "eyebrow": "Lale languages",
+    "title": "Kāāl juon language",
+    "description": "Lale languages ekkar ñan region ak browse aolepen list eo.",
+    "searchPlaceholder": "Jibed languages ak countries...",
+    "searchLabel": "Jibed languages ak countries",
+    "clearSearch": "Kōjbarok search",
+    "browse": "Etale",
+    "browseByRegion": "Browse ekkar ñan region im country",
+    "languageCount": "{count, plural, one {# kajin} other {# kajin ko}}",
+    "region": "Bukwōn",
+    "countryLanguages": "Languages ilo {country}",
+    "showLess": "Kwaḷọk diklok",
+    "showMore": "Kwaḷọk {count} elōñlok",
+    "noLanguages": "Ejellok languages kar lo",
+    "tryAnotherSearch": "Kajjioñ bar juon naan in search."
+  },
+  "WatchHistory": {
+    "metadataTitle": "History in Lale | Jesus Film Project",
+    "title": "History in Lale",
+    "loading": "Ej load history",
+    "empty": "Ejellok jabdewōt ijin ñan kio",
+    "emptyDescription": "Video ko kwōj lale ñe kwōj signed in renaaj walok ijin.",
+    "earlier": "Moktalok",
+    "today": "Raan in",
+    "yesterday": "Ine"
+  },
+  "AccountControl": {
+    "account": "Akaun",
+    "accountMenu": "Menu in account",
+    "signIn": "Deloñ ilo akaun",
+    "signOut": "Jānḷọk jān akaun",
+    "signedIn": "Mōj sign in",
+    "history": "Bwebwenato in lale",
+    "logOut": "Diloñḷọk jān akaun"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ejellok page eo",
+    "eyebrow": "Ejellok page eo",
+    "screenReaderPrefix": "Ejellok page eo:",
+    "title": "Scene in ejjab pād ijin.",
+    "description": "Bōlen page eo emōj an emmakūt, ak bwebwenato eo ej wōnmanlok wōt.",
+    "actionsLabel": "Men ko kwōmaron kōmmane ñe ejellok page eo",
+    "backToWatch": "Rool ñan Watch",
+    "browseVideos": "Etale video ko"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Lale Short Film",
+    "actions": {
+      "joinUs": "Join kōm",
+      "shareMission": "Koba ijo an mission"
+    },
+    "welcomeStart": {
+      "label": "Bwid im Scripture",
+      "title": "Video ko an raan in",
+      "description": "Video content eo jān library eo kōm, ej tōl jān bwid im Scripture n̄an jipan, kōjbarok, im kōmmane juon kōmman in lōmṇak."
+    },
+    "welcomeMorning": {
+      "label": "Morning inspiration",
+      "title": "Mōjn̄i! Bible moments ko an raan in rej kōllik.",
+      "description": "Jibed raan eo am im Bible moments ko rej kōjbarok n̄an jipan im kōllik joor eo am."
+    },
+    "welcomeAfternoon": {
+      "label": "Afternoon inspiration",
+      "title": "Iien jọulọk! Bible moments ko an raan eo am.",
+      "description": "Bible content eo ej kōjbarok, emman n̄an jọulọk eo am ak jipan tōlke jot in kōjbarok."
+    },
+    "welcomeEvening": {
+      "label": "Evening inspiration",
+      "title": "Iien rowa! Kakkije ippān Bible moments.",
+      "description": "Bible moments ko rej kalimij n̄an jipan kwe n̄an lōmṇak im bōk kōkāāl iien eo raan eo am ej boktak."
+    },
+    "joinUs": {
+      "label": "Join kōm",
+      "title": "Billions rej bukot",
+      "description": "Harvest eo ejet. Join kōm melele jān Gospel eo n̄an ajiri ro aolep ilo world kōn digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Jibed ippān juon",
+      "title": "Kōnono kōn Bwebwenato an Jesus, ippān juon",
+      "description": "Bwe ren maron ron im lom̄ak ijo eo rej pād ie, eo an Jesus lōkkin ilo kajin eo ra."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% an ekkar",
+    "none": "Ejellok video kar lo ñan rōjañ kōn video in ilo kajin in."
+  },
+  "BetaTesterModal": {
+    "title": "Erā ñan erom juon beta tester",
+    "trigger": "Erā ñan erom juon beta tester",
+    "loadFailed": "Ejjelok jorrāān ej walok.",
+    "loading": "Ej load...",
+    "openFormNewTab": "Iak form ilo juon tab ekarōk",
+    "close": "Māake",
+    "iframeTitle": "Erā ñan erom juon beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

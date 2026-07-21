@@ -7,7 +7,9 @@
     "noContent": "Hiç hili mazmun elýeterli däl.",
     "homepageMisconfigured": "Seretmek başlangyç sahypasy nädogry sazlanan.",
     "defaultTemplateMisconfigured": "Bellenen seretmek şablony nädogry sazlanan.",
-    "authFailed": "Mazmun hyzmaty bilen tassyklanyp bolmady. Bu dowam etse, goldaw bilen habarlaşyň."
+    "authFailed": "Mazmun hyzmaty bilen tassyklanyp bolmady. Bu dowam etse, goldaw bilen habarlaşyň.",
+    "pageLoadFailed": "Bir ýalňyşlyk boldy.",
+    "tryAgain": "Gaýtadan synanşyň"
   },
   "VideosPage": {
     "title": "Ähli wideolar",
@@ -22,7 +24,8 @@
     "promoHeading": "Mukaddes Ýazgyny has çuňňur düşünmek isleýärsiňizmi?",
     "joinBibleStudy": "Mukaddes Kitap öwrenişimize goşulyň",
     "previousQuote": "Öňki sitata",
-    "nextQuote": "Soňky sitata"
+    "nextQuote": "Soňky sitata",
+    "readPassage": "Bu parçany Mukaddes Kitabyňyzdan okaň."
   },
   "DownloadButton": {
     "checking": "Barlanylýar",
@@ -73,7 +76,8 @@
     "selectLanguage": "Dil saýlaň",
     "searchPlaceholder": "Dilleri gözläň…",
     "languages": "Diller",
-    "noMatches": "Gabat gelýän ýok"
+    "noMatches": "Gabat gelýän ýok",
+    "notAvailable": "Elýeterli däl"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Dil",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIÝA · {episodes}",
     "changeAudioLanguage": "Ses dilini üýtget",
     "share": "Paýlaş",
-    "languages": "Diller",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Diller"
   },
   "WatchModal": {
     "close": "Ýap"
@@ -115,7 +116,8 @@
     "questions": "Baglanyşykly soraglar",
     "askYours": "Özüňizi sorap görüň",
     "chatWithPerson": "Adam bilen söhbetdeş boluň",
-    "askBibleQuestion": "Mukaddes Kitap boýunça sorag beriň"
+    "askBibleQuestion": "Mukaddes Kitap boýunça sorag beriň",
+    "quiz": "Kwiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Habar görnüşi",
@@ -173,7 +175,8 @@
     "searchRegion": "Wideolary gözläň",
     "clearSearch": "Gözlegi arassala",
     "changeAudioLanguage": "Ses dilini üýtget",
-    "home": "JesusFilm baş sahypasy"
+    "home": "JesusFilm baş sahypasy",
+    "closeSearch": "Gözlegi ýap"
   },
   "SearchOverlay": {
     "dialogLabel": "Wideolary gözläň we gözden geçiriň",
@@ -208,14 +211,19 @@
     "clearLanguages": "Arassala",
     "queryLanguageDetected": "{language} tapyldy",
     "searchInLanguage": "{language} dilinde gözle",
-    "tryDifferentKeywordsOrLanguage": "Dürli açar sözleri synap görüň ýa-da başga bir gözleg dilini saýlaň"
+    "tryDifferentKeywordsOrLanguage": "Dürli açar sözleri synap görüň ýa-da başga bir gözleg dilini saýlaň",
+    "useWebsiteDefaultLanguage": "Websaýtyň deslapky gözleg dilini ulanyň",
+    "removeLanguage": "{language} aýyr",
+    "browseMode": "Gözden geçiriş tertibi"
   },
   "HeroPlayer": {
     "playWithSound": "Häzir seret",
-    "tapToUnmute": "Ses açmak üçin basyň"
+    "tapToUnmute": "Ses açmak üçin basyň",
+    "nextEpisode": "Soňky bölüm"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Mazmun ýüklenýär"
+    "loadingContent": "Mazmun ýüklenýär",
+    "loadingVideo": "Wideo ýüklenýär"
   },
   "VideoLabels": {
     "video": "Wideo",
@@ -226,7 +234,8 @@
     "series": "Seriýa",
     "collection": "Toplum",
     "trailer": "Tizer",
-    "behindTheScenes": "Sahnanyň arkasynda"
+    "behindTheScenes": "Sahnanyň arkasynda",
+    "chapter": "Bap"
   },
   "SiblingCarousel": {
     "clipPosition": "{current} / {total} klip",
@@ -238,12 +247,253 @@
     "noImage": "Surat ýok",
     "playingNow": "Häzir görkezilýär",
     "previousChapter": "Öňki bap",
-    "nextChapter": "Soňky bap"
+    "nextChapter": "Soňky bap",
+    "thumbnailAlt": "{title} kiçijik şekili",
+    "relatedVideoThumbnail": "Baglanyşykly wideo kiçijik şekili"
   },
   "SearchResultCard": {
     "experience": "Tejribe",
     "episodeCount": "{count, plural, one {# bölüm} other {# bölüm}}",
     "thumbnailAlt": "Wideo kiçijik şekili"
+  },
+  "Feedback": {
+    "openForm": "Seslenme formasyny aç",
+    "label": "Seslenme",
+    "couldNotLoad": "Seslenme formasyny ýükläp bolmady.",
+    "loadingForm": "Seslenme formasy ýüklenýär…",
+    "retry": "Täzeden synanş",
+    "openFormShort": "Formany aç",
+    "cancel": "Ýatyr",
+    "title": "Beta seslenmesi",
+    "description": "Nämäniň işleýändigini we näme gowulandyrylyp bilinjekdigini paýlaşyň. Bu forma Google tarapyndan üpjün edilýär.",
+    "openInNewTab": "Formany täze goýma aç",
+    "closeForm": "Seslenme formasyny ýap",
+    "loadingGoogleForm": "Google formasy ýüklenýär…",
+    "iframeTitle": "Beta seslenmesini iber"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} dilindäki mugt hristian wideolary | Jesus Film Project",
+    "metadataDescription": "{language} dilinde dubly ses ýa-da subtitrler bilen Jesus filmlerini, Mukaddes Kitap hekaýalaryny, şägirt taýýarlyk seriýalaryny we wagyz wideolaryny öwreniň.",
+    "heroTitle": "{language} dilindäki mugt hristian wideolary",
+    "heroDescription": "{language} dilinde bar bolan Jesus filmlerini, Mukaddes Kitap hekaýalaryny, şägirt taýýarlyk seriýalaryny we wagyz wideolaryny öwreniň. Doly dubly edilen wideolar ilki görkezilýär, diňe subtitrli mümkinçilikler aşakda ýerleşýär.",
+    "languageCollection": "Dil toplumy",
+    "itemCount": "{count, plural, one {# zat} other {# zat}}",
+    "videoCount": "{count, plural, one {# wideo} other {# wideo}}",
+    "videosInGroups": "{videoCount, plural, one {# wideo} other {# wideo}} - {groupCount, plural, one {# topar} other {# topar}} içinde",
+    "sectionNavLabel": "Dil katalogy bölümleri",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Täze",
+    "videoBible": "Wideo Injil",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Toplumlar",
+    "subtitlesOnly": "Diňe subtitrler",
+    "newlyAdded": "Täze goşuldy",
+    "newVideosTitle": "{language} dilindäki täze hristian wideolary",
+    "newestFirst": "Ilki iň täzeleri",
+    "noPublishedVideos": "Bu dil üçin entek neşir edilen wideo tapylmady.",
+    "bibleAndGospelFilms": "Mukaddes Kitap we Hoş Habar filmleri",
+    "videoBibleCollectionsTitle": "{language} Wideo Injil toplumlary",
+    "videoBibleDescription": "{language} dilindäki LUMO, JESUS, Magdalena we Resullaryň Işleri ýaly ýazgy merkezli toplumlar.",
+    "noVideoBibleCollections": "Bu dil üçin entek Wideo Injil toplumlary ýok.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject toplumlary",
+    "bibleProjectDescription": "{language} dilinde bar bolan BibleProject seriýalary we öwrenişleri.",
+    "noBibleProjectCollections": "Bu dil üçin entek BibleProject toplumlary ýok.",
+    "sportsStories": "Sport hekaýalary",
+    "sportsTitle": "{language} sport we sportçy hekaýalary",
+    "sportsDescription": "{language} dilinde bar bolan iman merkezli sport hekaýalary we sportçylara degişli toplumlar.",
+    "noSportsCollections": "Bu dil üçin entek sport ýa-da sportçy hekaýalary boýunça toplum ýok.",
+    "fullyDubbed": "Doly dubly edilen",
+    "dubbedVideosTitle": "Toplum boýunça {language} wideolar",
+    "dubbedVideosDescription": "Toplumlary bilen bile görkezilen doly dubly edilen {language} wideolaryny gözden geçiriň.",
+    "noDubbedVideos": "Bu dil üçin entek doly dubly edilen wideo ýok.",
+    "subtitlesAvailable": "Subtitrler elýeterli",
+    "subtitlesTitle": "Subtitrlýi {language} wideolar",
+    "subtitlesDescription": "Sözleýiş sesli {language} görnüşi entek elýeterli bolmadyk ýagdaýynda, bu wideolarda {language} subtitrler bolýar.",
+    "noSubtitleVideos": "Bu dil üçin entek diňe subtitrli wideo ýok.",
+    "dubbed": "Dubly",
+    "subtitles": "Subtitrlər",
+    "newLabel": "Täze",
+    "fromCollection": "{collection}-den",
+    "standaloneVideos": "Aýratyn wideolar",
+    "videosFromCollection": "{collection}-den wideolar.",
+    "standaloneDescription": "Bu dilde aýratyn wideolar.",
+    "openCollection": "Toplumy aç"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project-de serediň",
+    "watch": "Seret",
+    "watchNow": "Häzir seret",
+    "mutePreview": "Deslapky görkezilişi sesi öçür",
+    "unmutePreview": "Deslapky görkezilişi sesi aç",
+    "nextVideo": "Soňky wideo",
+    "featured": "Aýratyn",
+    "showVideo": "{title} görkez",
+    "previousVideoPreview": "Öňki wideo deslapky görkezilişi",
+    "nextVideoPreview": "Soňky wideo deslapky görkezilişi",
+    "mediaCollection": "Media ýygyndysy",
+    "scrollToVideo": "{title} wideosyna geçiň"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project baş sahypasy",
+    "navigation": "Aşaky navigasiýa",
+    "share": "Paýlaş",
+    "watch": "Seret",
+    "giving": "Berme",
+    "about": "Hakynda",
+    "products": "Önümler",
+    "resources": "Serişdeler",
+    "partners": "Hyzmatdaşlar",
+    "contact": "Habarlaşmak",
+    "giveNow": "Häzir beriň",
+    "resourcesVersion": "Serişdeler ({version})",
+    "office": "Ofis",
+    "fax": "Faks",
+    "privacyPolicy": "Hususylyk syýasaty",
+    "legalStatement": "Hukuk beýany",
+    "newsletter": "Biziň habar býulletenimize ýazylyň"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Dünýä derejesindäki missiýalar üçin döredildi",
+    "title": "Habar üýtgemeýär. Ony adamlaryň görmek usuly üýtgeýär.",
+    "description": "Biz wideotekamyz we gurallarymyzy düýbünden täzeleýäris, onlarça ýyllap edilen terjime işini adamlaryň eýýäm jemlenýän, görýän we paýlaşýan platformalaryna ýetirýäris.",
+    "translatedLibraryTitle": "Dünýäde iň köp terjime edilen film kitaphanasy",
+    "translatedLibraryDescription": "Ygtybarly hyzmatdaşlaryň getiren onlarça ýyllyk terjime işi müňlerçe dil ýazgylary bolan kitaphanany döretdi, şeýlelikde adamlar Isa baradaky gürrüňi özlerine iň ýakyn dillerde eşidip bilerler.",
+    "trustedVoicesTitle": "Ygtybarly sesleri täze görnüşlere geçirmek",
+    "trustedVoicesDescription": "Biz Hoş Habaryň gürrüňini wizual görnüşde bermegiň usulyny täzeden gurýarys, ygtybarly terjimeleri häzirki zaman görnüşleri bilen utgaşdyryp, habaryň platformalar, medeniýetler we ekranlar boýunça erkin hereket etmegine mümkinçilik berýäris.",
+    "missionTeamTitle": "Diňe kitaphana däl. Missiýa ugrukdyrylan topar.",
+    "missionTeamDescription": "Jesus Film Project dünýä boýunça terjimeçileriň, mediýa hünärmenleriniň, redaktorlaryň we döredijileriň topary bolup, onlarça ýyllyk hyzmat tejribesini ähli ýerdäki şägirt ýetişdirijiler üçin gurallara öwürýär.",
+    "buildingNext": "Soňky döwürde näme döredýäris",
+    "nextStepsTitle": "Soňky ädimler platformasy",
+    "nextStepsDescription": "Tomlara ruhy ýolunda görnetin mümkinçilikler bilen baglanyşdyryp, jemgyýete, Ýazga ýa-da missiýa tarap indiki ädimi ädmäge kömek edýär.",
+    "mediaLibraryTitle": "Hoş Habar üçin mediýa kitaphanasy",
+    "mediaLibraryDescription": "Dünýä boýunça hyzmat we wagyz üçin birnäçe dilde bar bolan müňlerçe wideo, film we serişdäni öz içine alýan giň hristian mediýa kitaphanasy.",
+    "ministryToolsTitle": "Hyzmatlar üçin sanly gurallar",
+    "ministryToolsDescription": "Wideony dolandyrmak, mazmun paýlamak, tomaşaçy bilen gatnaşyk we analitika hyzmatlaryň has köp adama netijeli ýetmegine kömek etmek üçin döredildi.",
+    "invitationEyebrow": "Sizi çagyrýarys",
+    "invitationTitle": "Missiýa gurallarynyň <highlight>täze neslini</highlight> döretmäge kömek ediň",
+    "invitationDescription": "Biz tejribeli işgärleri, döredijileri we hyzmatdaşlary irki girişe çagyrýarys. Täze gurallary ilkinji bolup synap görüň, seslenme beriň we hakyky missiýa işi üçin döredilen önümleri şekillendirmäge kömek ediň.",
+    "betaTester": "Beta synagçy bol"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Wideo Injil toplumy",
+    "gospelRailTitle": "Doly gürrüňi açyň",
+    "videoBibleDescription": "Mukaddes Kitaby janlandyrýan, gyzykly hekaýalar we öwretmeler arkaly düzülen wideo we serişdeler toplumymyzy gözden geçiriň.",
+    "showcaseTitle": "Mukaddes Yazgy film arkaly gürrüň edilýär",
+    "adventEyebrow": "Roždestwo adventi",
+    "adventTitle": "Roždestwo Advent sany",
+    "adventDescription": "Advent ýolumyzyň dowamynda, Isa-nyň gelmegine degişli umydy, şatlygyny we wadany öwrenýän gündelik wideo bilen Roždestwo bolan garaşmany artdyryň.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Adventi",
+    "nuaEyebrow": "NUA seriýasy",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth seriýasy",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Wideo kurs",
+    "journeyWithJesusTitle": "Isa bilen ýol ýöriň",
+    "gospelsOnVideoEyebrow": "Her Hoş Habar, wideoda gürrüň berilýär",
+    "scriptureAsWrittenTitle": "Mukaddes ýazgy, ýazylan görnüşi boýunça aýdylyşy ýaly",
+    "merryChristmas": "Roždestwo baýramyňyz gutly bolsun!",
+    "daysUntilChristmas": "{count, plural, one {Roždestwo baýramyna # gün galdy} other {Roždestwo baýramyna # gün galdy}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Diller",
+    "metadataDescription": "JesusFilm wideolaryny dile görä gözden geçiriň.",
+    "eyebrow": "Seretmek dilleri",
+    "title": "Dil saýlaň",
+    "description": "Sebit boýunça dilleri öwreniň ýa-da doly sanawy gözden geçiriň.",
+    "searchPlaceholder": "Dilleri ýa-da ýurtlary gözläň...",
+    "searchLabel": "Dilleri ýa-da ýurtlary gözläň",
+    "clearSearch": "Gözlegi arassala",
+    "browse": "Gözden geçir",
+    "browseByRegion": "Sebit we ýurt boýunça gözden geçir",
+    "languageCount": "{count, plural, one {# dil} other {# dil}}",
+    "region": "Sebit",
+    "countryLanguages": "{country} dilleri",
+    "showLess": "Az görkez",
+    "showMore": "Ýene {count} görkez",
+    "noLanguages": "Dil tapylmady",
+    "tryAnotherSearch": "Başga gözleg sözüni synap görüň."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Seretmek taryhy | Jesus Film Project",
+    "title": "Seretmek taryhy",
+    "loading": "Taryh ýüklenýär",
+    "empty": "Bu ýerde entek hiç zat ýok",
+    "emptyDescription": "Giriş eden wagtyňyz sereden wideolaryňyz bu ýerde görkeziler.",
+    "earlier": "Öňräk",
+    "today": "Şu gün",
+    "yesterday": "Düýn"
+  },
+  "AccountControl": {
+    "account": "Hasap",
+    "accountMenu": "Hasap menýusy",
+    "signIn": "Giriş et",
+    "signOut": "Çyk",
+    "signedIn": "Giriş edilen",
+    "history": "Taryh",
+    "logOut": "Çykmak"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Sahypa tapylmady",
+    "eyebrow": "Sahypa tapylmady",
+    "screenReaderPrefix": "Sahypa tapylmady:",
+    "title": "Bu sahna bu ýerde ýok.",
+    "description": "Sahypa göçürilen bolmagy mümkin, ýöne gürrüň dowam edýär.",
+    "actionsLabel": "Sahypa tapylmady hereketleri",
+    "backToWatch": "Seretmäge dolan",
+    "browseVideos": "Wideolara göz aýla"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Gysga filmi gör",
+    "actions": {
+      "joinUs": "Bize goşulyň",
+      "shareMission": "Biziň missiýamyza goşulyň"
+    },
+    "welcomeStart": {
+      "label": "Iman we Mukaddes Yazgy",
+      "title": "Şu günki wideo saýlawlarymyz",
+      "description": "Kitaphanamyzda bar bolan, imana degişli, ylham beriji, oýlanmaga iteriji wideolar."
+    },
+    "welcomeMorning": {
+      "label": "Säher ylhamy",
+      "title": "Hoş säher! Şu günüň Mukaddes Kitap pursatlary sizi garaşýar.",
+      "description": "Günüňize ruhuňyzy güýçlendirip, ylham berjek Mukaddes Kitap pursatlary bilen başlaň."
+    },
+    "welcomeAfternoon": {
+      "label": "Gündizki ylham",
+      "title": "Gowy günortan! Günüňiz üçin Mukaddes Kitap pursatlary.",
+      "description": "Günortan arakesmäňiz ýa-da dowam edýän ylham üçin laýyk, ruhlandyryjy Mukaddes Kitap mazmuny."
+    },
+    "welcomeEvening": {
+      "label": "Agşamky ylham",
+      "title": "Agşam haýyr! Mukaddes Kitap pursatlary bilen dynç alyň.",
+      "description": "Günüňiz tamamlananda oýlanmaga we teselli tapmaga kömek edýän asuda Mukaddes Kitap pursatlary."
+    },
+    "joinUs": {
+      "label": "Bize goşulyň",
+      "title": "Milliardlar gözleýär",
+      "description": "Hasyl taýýar. Sanly media arkaly Hoş Habary dünýä bilen paýlaşmakda bize goşulyň."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Geliň, bilelikde öňe ilerläliň",
+      "title": "Isa baradaky gürrüňi bilelikde aýdalyň",
+      "description": "Şonda olar Isa-nyň söýgüsini öz dillerinde, ýaşaýan ýerlerinde eşidip hem görüp bilerler."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% gabat gelýär",
+    "none": "Bu wideo üçin şu dilde hiç hili maslahat tapylmady."
+  },
+  "BetaTesterModal": {
+    "title": "Beta synagçy bol",
+    "trigger": "Beta synagçy bol",
+    "loadFailed": "Bir ýalňyşlyk boldy.",
+    "loading": "Ýüklenýär...",
+    "openFormNewTab": "Formany täze goýma aç",
+    "close": "Ýap",
+    "iframeTitle": "Beta synagçy bol"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

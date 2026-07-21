@@ -7,7 +7,9 @@
     "noContent": "Mienz ndawj gvanj.",
     "homepageMisconfigured": "Homepage watch aeuq gvaq.",
     "defaultTemplateMisconfigured": "Template default watch aeuq gvaq.",
-    "authFailed": "Bungh ndeih dongj daengz service ndawj. Gungj liux support raeuz ndaej byok."
+    "authFailed": "Bungh ndeih dongj daengz service ndawj. Gungj liux support raeuz ndaej byok.",
+    "pageLoadFailed": "Aen daih raeuz gvaq.",
+    "tryAgain": "Deuh aen lai"
   },
   "VideosPage": {
     "title": "Gaiq daih video",
@@ -22,7 +24,8 @@
     "promoHeading": "Gij aeu bingz yiengq Bible hauj lai laeng?",
     "joinBibleStudy": "Gyaeuq Bible study raeuz",
     "previousQuote": "Bible quote boux gvaq",
-    "nextQuote": "Bible quote boux lai"
+    "nextQuote": "Bible quote boux lai",
+    "readPassage": "Doeg duenh neix ndaw Bible mwngz."
   },
   "DownloadButton": {
     "checking": "Gij daeuj lawz",
@@ -73,7 +76,8 @@
     "selectLanguage": "Gyaeuq language",
     "searchPlaceholder": "Raeuz language…",
     "languages": "Language",
-    "noMatches": "Mienz tuz"
+    "noMatches": "Mienz tuz",
+    "notAvailable": "Mbouj ndaej"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Gyaeuq language",
@@ -100,10 +104,7 @@
     "seriesLabel": "GIJ SERIES · {episodes}",
     "changeAudioLanguage": "Gaeq language audio",
     "share": "Sangh",
-    "languages": "Gij languages",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Gij languages"
   },
   "WatchModal": {
     "close": "Dej"
@@ -115,7 +116,8 @@
     "questions": "Questions related",
     "askYours": "Gyaeuq ndit ndeih",
     "chatWithPerson": "Chat daengz boux",
-    "askBibleQuestion": "Gyaeuq Bible ndit"
+    "askBibleQuestion": "Gyaeuq Bible ndit",
+    "quiz": "Sawqcam"
   },
   "WatchQuestionPanel": {
     "messageType": "Loih message",
@@ -173,7 +175,8 @@
     "searchRegion": "Raeuz video",
     "clearSearch": "Dawz search",
     "changeAudioLanguage": "Gaeq language audio",
-    "home": "Homepage JesusFilm"
+    "home": "Homepage JesusFilm",
+    "closeSearch": "Dej search"
   },
   "SearchOverlay": {
     "dialogLabel": "Raeuz haeuj browse video",
@@ -208,14 +211,19 @@
     "clearLanguages": "Dawz",
     "queryLanguageDetected": "{language} gyaeuq daeuj",
     "searchInLanguage": "Raeuz ndaw {language}",
-    "tryDifferentKeywordsOrLanguage": "Gyaeuq keywords lai rox gyaeuq search language lai"
+    "tryDifferentKeywordsOrLanguage": "Gyaeuq keywords lai rox gyaeuq search language lai",
+    "useWebsiteDefaultLanguage": "Aeu website default search language",
+    "removeLanguage": "Luk {language}",
+    "browseMode": "Mode browse search"
   },
   "HeroPlayer": {
     "playWithSound": "Doengh gwn",
-    "tapToUnmute": "Tap ndeih saeng lai"
+    "tapToUnmute": "Tap ndeih saeng lai",
+    "nextEpisode": "Episode lai"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Raenz content"
+    "loadingContent": "Raenz content",
+    "loadingVideo": "Raenz video"
   },
   "VideoLabels": {
     "video": "Aen video",
@@ -226,7 +234,8 @@
     "series": "Aen series",
     "collection": "Aen collection",
     "trailer": "Video trailer",
-    "behindTheScenes": "Ndawlaeng scene"
+    "behindTheScenes": "Ndawlaeng scene",
+    "chapter": "Aen chapter"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ndei {total}",
@@ -238,12 +247,253 @@
     "noImage": "Mienz image",
     "playingNow": "Daej byaij lawz",
     "previousChapter": "Chapter boux gvaq",
-    "nextChapter": "Chapter boux lai"
+    "nextChapter": "Chapter boux lai",
+    "thumbnailAlt": "Thumbnail {title}",
+    "relatedVideoThumbnail": "Thumbnail video related"
   },
   "SearchResultCard": {
     "experience": "Aen experience",
     "episodeCount": "{count, plural, one {# episode} other {# episodes}} gvaq",
     "thumbnailAlt": "Thumbnail video"
+  },
+  "Feedback": {
+    "openForm": "Doengh form feedback",
+    "label": "Gyaeuq feedback",
+    "couldNotLoad": "Form feedback bungh ndaej loh.",
+    "loadingForm": "Raenz form feedback…",
+    "retry": "Deuh lai",
+    "openFormShort": "Doengh form",
+    "cancel": "Gaeq",
+    "title": "Gyaeuq Beta Feedback",
+    "description": "Bunh aen baeuz laeng doengh, daeuj baeuz aen gvaq. Form neix Google cungj cungj gyaeuq.",
+    "openInNewTab": "Doengh form ndaw tab gvaq",
+    "closeForm": "Dej form feedback",
+    "loadingGoogleForm": "Raenz Google Form…",
+    "iframeTitle": "Gyaeuq Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video Christian laeuz ndaw {language} | Jesus Film Project",
+    "metadataDescription": "Bunh Jesus films, Bible stories, series disciple, rox videos outreach daengz audio dub rox subtitles ndaw {language}.",
+    "heroTitle": "Video Christian laeuz ndaw {language}",
+    "heroDescription": "Bunh Jesus films, Bible stories, series disciple, rox videos outreach ndaej ndaw {language}. Videos fully dubbed aeu gyaeuq ndeih, subtitles-only options ndaw laj.",
+    "languageCollection": "Collection language",
+    "itemCount": "{count, plural, one {# item} other {# items}} gvaq",
+    "videoCount": "{count, plural, one {# video} other {# videos}} gvaq",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} ndaw {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Sections language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Lai",
+    "videoBible": "Bible aeu video",
+    "bibleProject": "BibleProject",
+    "sports": "Gij sports",
+    "collections": "Gij collections",
+    "subtitlesOnly": "Dan miz subtitles",
+    "newlyAdded": "Aeu lai",
+    "newVideosTitle": "Video Christian lai ndaw {language}",
+    "newestFirst": "Gyaeuq lai ndeih",
+    "noPublishedVideos": "Mienz videos published ndaej gvaq daengz language neix.",
+    "bibleAndGospelFilms": "Bible rox Gospel films",
+    "videoBibleCollectionsTitle": "Collections {language} Video Bible",
+    "videoBibleDescription": "Collections Scripture-centered aeu LUMO, JESUS, Magdalena, rox Acts ndaw {language}.",
+    "noVideoBibleCollections": "Mienz Video Bible collections ndaej daengz language neix.",
+    "bibleProjectCollectionsTitle": "Collections {language} BibleProject",
+    "bibleProjectDescription": "BibleProject series rox studies ndaej ndaw {language}.",
+    "noBibleProjectCollections": "Mienz BibleProject collections ndaej daengz language neix.",
+    "sportsStories": "Stories sports",
+    "sportsTitle": "Sports rox athlete stories {language}",
+    "sportsDescription": "Sports stories faith-centered rox collections athlete-focused ndaej ndaw {language}.",
+    "noSportsCollections": "Mienz sports rox athlete-story collections ndaej daengz language neix.",
+    "fullyDubbed": "Dubbed ciengz",
+    "dubbedVideosTitle": "Videos {language} aeu collection",
+    "dubbedVideosDescription": "Bunh videos {language} fully dubbed ndaej group daengz collection raeuz, gyaeuq nguenzgij ndeih.",
+    "noDubbedVideos": "Mienz videos fully dubbed ndaej daengz language neix.",
+    "subtitlesAvailable": "Subtitles ndaej gvaq",
+    "subtitlesTitle": "Videos {language} aeu subtitles",
+    "subtitlesDescription": "Videos neix aeu subtitles {language} ndaej lawz audio spoken {language} mbouj lai ndaej gvaq.",
+    "noSubtitleVideos": "Mienz subtitle-only videos ndaej daengz language neix.",
+    "dubbed": "Dubbed gvaq",
+    "subtitles": "Gij subtitles",
+    "newLabel": "Lai",
+    "fromCollection": "Daej {collection}",
+    "standaloneVideos": "Videos standalone",
+    "videosFromCollection": "Videos daej {collection}.",
+    "standaloneDescription": "Standalone videos ndaw language neix.",
+    "openCollection": "Doengh collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project ndeih Watch",
+    "watch": "Yawj video",
+    "watchNow": "Watch seizneix",
+    "mutePreview": "Preview mbouj saeng",
+    "unmutePreview": "Preview saeng lai",
+    "nextVideo": "Video lai",
+    "featured": "Gij ndaej gyaeuq",
+    "showVideo": "Bunh {title}",
+    "previousVideoPreview": "Preview video boux gvaq",
+    "nextVideoPreview": "Preview video boux lai",
+    "mediaCollection": "Collection media",
+    "scrollToVideo": "Lohj daengz video {title}"
+  },
+  "WatchFooter": {
+    "home": "Homepage Jesus Film Project",
+    "navigation": "Navigation footer",
+    "share": "Sangh",
+    "watch": "Yawj video",
+    "giving": "Gaej cienz",
+    "about": "Gij raeuz",
+    "products": "Gij products",
+    "resources": "Gij resources",
+    "partners": "Gij partners",
+    "contact": "Gvengz daengz",
+    "giveNow": "Gaej cienz seizneix",
+    "resourcesVersion": "Gij resources ({version})",
+    "office": "Office raeuz",
+    "fax": "Aen fax",
+    "privacyPolicy": "Policy privacy",
+    "legalStatement": "Statement legal",
+    "newsletter": "Sign up newsletter raeuz"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Guh ndeih mission worldwide",
+    "title": "Message mbouj yiengq. Way people watch yiengq.",
+    "description": "Raez video library rox tools raeuz ndeih lawz gvaq, gving decades translation work daengz platforms ndaej boux gyaeuq lai, watch, rox share.",
+    "translatedLibraryTitle": "Library film gyaeuq translation hauj ndaw duniya",
+    "translatedLibraryDescription": "Decades translation work, carried by ministry partners trust, aeu library aeu thousands language tracks, ndeih boux ndaej gyaeuq story Jesus ndaw language raeuz doengh daengz.",
+    "trustedVoicesTitle": "Carrying trusted voices daengz format lai",
+    "trustedVoicesDescription": "Raez how gospel stories aeu told visually, pairing translations trust daengz modern formats, ndeih message ndaej move freely daengz platforms, cultures, rox screens.",
+    "missionTeamTitle": "Lai gvaq library. A mission-driven team.",
+    "missionTeamDescription": "Jesus Film Project aeu team global aeu translators, media specialists, editors, rox creators, turning decades ministry experience daengz tools deaeg disciple-makers ndaej gvaq.",
+    "buildingNext": "Gij raeuz building ndeih lai",
+    "nextStepsTitle": "Platform Next Steps",
+    "nextStepsDescription": "Connect viewers daengz opportunities tangible ndaw spiritual journey raeuz, gving ndeih step lai daengz community, Scripture, rox mission.",
+    "mediaLibraryTitle": "Library Media Evangelism",
+    "mediaLibraryDescription": "A Christian media library laeuz aeu thousands videos, films, rox resources ndaej ndaw languages lai, ndeih ministry rox evangelism worldwide.",
+    "ministryToolsTitle": "Tools Digital ndeih Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, rox analytics aeu designed ndeih ministries ndaej reach people lai laengg.",
+    "invitationEyebrow": "Gij ndaej invited",
+    "invitationTitle": "Bauq build <highlight>the next generation</highlight> mission tools",
+    "invitationDescription": "Raeuz invite practitioners, creators, rox partners daengz early access. Test tools lai gvaq, gyaeuq feedback, rox bauq products aeu designed ndeih mission work daengz daeuj.",
+    "betaTester": "Become beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collection Video Bible",
+    "gospelRailTitle": "Bunh story ciengz",
+    "videoBibleDescription": "Bunh collection videos rox resources aeu Bible doengh daengz life daengz stories rox teachings engaging.",
+    "showcaseTitle": "Scripture ndaej gangj aeu film",
+    "adventEyebrow": "Advent ndeih Christmas",
+    "adventTitle": "Countdown Christmas Advent",
+    "adventDescription": "Gyaeuq journey Advent raeuz daengz video daily aeu build anticipation ndeih Christmas, bunh hope, joy, rox promise Jesus daeuj.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Series NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Course aeu video",
+    "journeyWithJesusTitle": "Journey daengz Jesus",
+    "gospelsOnVideoEyebrow": "Gospel cungj gyaeuj, gangj aeu video",
+    "scriptureAsWrittenTitle": "Scripture, gangj yiengh gij ndaej sij",
+    "merryChristmas": "Nin Christmas angqyangz!",
+    "daysUntilChristmas": "{count, plural, other {Lij miz # ngoenz couh daengz Christmas}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gij languages",
+    "metadataDescription": "Browse videos JesusFilm aeu language.",
+    "eyebrow": "Languages ndeih watch",
+    "title": "Gyaeuq language",
+    "description": "Bunh languages aeu region rox browse list gvaq.",
+    "searchPlaceholder": "Raeuz languages rox countries...",
+    "searchLabel": "Raeuz languages rox countries",
+    "clearSearch": "Dawz search",
+    "browse": "Browse gvaq",
+    "browseByRegion": "Browse aeu region rox country",
+    "languageCount": "{count, plural, one {# language} other {# languages}} gvaq",
+    "region": "Gij region",
+    "countryLanguages": "Languages {country}",
+    "showLess": "Bunh lai doj",
+    "showMore": "Bunh {count} lai",
+    "noLanguages": "Mienz language ndaej gvaq",
+    "tryAnotherSearch": "Gyaeuq search term lai."
+  },
+  "WatchHistory": {
+    "metadataTitle": "History Watch | Jesus Film Project",
+    "title": "History Watch",
+    "loading": "Raenz history",
+    "empty": "Mienz gvaq lai",
+    "emptyDescription": "Videos ndeih watch haej sign in aeu bunh ndaw neix.",
+    "earlier": "Boux gvaq",
+    "today": "Ndeiz neix",
+    "yesterday": "Moux gvaq"
+  },
+  "AccountControl": {
+    "account": "Aen account",
+    "accountMenu": "Menu account",
+    "signIn": "Daej sign in",
+    "signOut": "Sign out account",
+    "signedIn": "Sign in gvaq",
+    "history": "Gij history",
+    "logOut": "Loh account"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page mbouj gvaq",
+    "eyebrow": "Page mbouj gvaq",
+    "screenReaderPrefix": "Page mbouj gvaq:",
+    "title": "Scene neix mbouj miz ndaw neix.",
+    "description": "Page ndaej yiengq loh, ndaej story continue.",
+    "actionsLabel": "Actions page mbouj gvaq",
+    "backToWatch": "Daej lai daengz Watch",
+    "browseVideos": "Browse gij videos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Yawj film dinj",
+    "actions": {
+      "joinUs": "Gyaeuq raeuz",
+      "shareMission": "Sangh ndaw mission raeuz"
+    },
+    "welcomeStart": {
+      "label": "Singqyangj caeuq Sing Ging",
+      "title": "Video picks ndei ndeiz neix",
+      "description": "Aen video content aeu faith ndaw library raeuz ndeih ndei, aeu byok, challenge, rox bunh reflection."
+    },
+    "welcomeMorning": {
+      "label": "Inspiration ndeizcog",
+      "title": "Ndeiz neix! Bible moments ndei daeuj.",
+      "description": "Doengh ndeiz aeu Bible moments bunh byok, aeu inspire rox uplift spirit raeuz."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspiration banngoenz",
+      "title": "Ndeiz boux lai! Bible moments aeu ndeiz neix.",
+      "description": "Aen Bible content byok ndei aeu afternoon break rox continue inspiration."
+    },
+    "welcomeEvening": {
+      "label": "Inspiration seizhaemh",
+      "title": "Moux neix! Gyaeuq ndeih daengz Bible moments.",
+      "description": "Bible moments aeu gvanj, aeu byok reflection rox comfort daengz ndeiz raeuz deih lawz."
+    },
+    "joinUs": {
+      "label": "Gyaeuq raeuz",
+      "title": "Billions gyaeuq baeuz",
+      "description": "Gij harvest ndaej lawz. Gyaeuq raeuz daengz gyaeuq gospel daengz duniya aeu digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Daej raeuz ndaej baeuz",
+      "title": "Gangj story Jesus, baeuz raeuz",
+      "description": "Ndaej byaij rox yawj love Jesus ndaw language raeuz, ndaw doengh ndeih lawz gyaeuq."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Doengz {percent}%",
+    "none": "Mienz gij video ndaej gyaeuq daengz video neix ndaw language neix."
+  },
+  "BetaTesterModal": {
+    "title": "Become beta tester",
+    "trigger": "Become beta tester",
+    "loadFailed": "Aen daih raeuz gvaq.",
+    "loading": "Raenz...",
+    "openFormNewTab": "Doengh form ndaw tab gvaq",
+    "close": "Dej",
+    "iframeTitle": "Become beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

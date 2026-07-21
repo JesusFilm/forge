@@ -80,6 +80,7 @@ export function HeroPlayerControls({
   wrapperRef,
   overlayAnchor,
   playbackId,
+  playbackLoading = false,
   onLanguageClick,
   languageCode,
   subtitleLanguageCode,
@@ -101,6 +102,7 @@ export function HeroPlayerControls({
    */
   overlayAnchor: HTMLDivElement | null
   playbackId?: string
+  playbackLoading?: boolean
   /** Click handler for the in-chrome audio and subtitle controls. */
   onLanguageClick?: () => void
   /** Active audio language code displayed beside the in-chrome voice icon. */
@@ -974,7 +976,17 @@ export function HeroPlayerControls({
         ariaLabel={playing ? t("pause") : t("play")}
         testId="hero-chrome-play"
       >
-        {playing ? <PauseIcon /> : <PlayIcon />}
+        {playbackLoading ? (
+          <span
+            aria-hidden="true"
+            data-testid="hero-chrome-loading"
+            className="h-5 w-5 rounded-full border-2 border-white/25 border-t-white/95 motion-safe:animate-spin"
+          />
+        ) : playing ? (
+          <PauseIcon />
+        ) : (
+          <PlayIcon />
+        )}
       </ChromeButton>
 
       <div

@@ -1,5 +1,9 @@
 import { vi } from "vitest"
 import enMessages from "./messages/en.json"
+import ruMessages from "./messages/ru.json"
+
+const { createTranslator } =
+  await vi.importActual<typeof import("next-intl")>("next-intl")
 
 process.env.CI ??= "1"
 process.env.STRAPI_PREVIEW_SECRET ??= "test-strapi-preview-secret"
@@ -7,62 +11,51 @@ process.env.REVALIDATION_SECRET ??= "test-revalidation-secret"
 process.env.ADMIN_GRAPHQL_URL ??= "http://localhost:1437/admin/api/graphql"
 process.env.WEB_ADMIN_API_KEYS ??= "test-admin-bearer-key"
 
-// next-intl provider context isn't set up in route-render tests. Mock
-// useTranslations / getTranslations to look up keys in messages/en.json
-// so assertions on user-visible English copy keep working without a
-// provider wrap. Minimal ICU formatter below covers the two shapes our
-// catalogs use: simple `{name}` interpolation and `{count, plural, one
-// {…} other {…}}` (with `#` → the count). NOT a full ICU engine — if a
-// catalog grows select/selectordinal/nested-plural, swap this for the
-// real intl-messageformat. Keep in sync across both next-intl exports.
-const enCatalog = enMessages as Record<string, Record<string, string>>
+// next-intl provider context isn't set up in route-render tests. Reuse the
+// production translator so the hook/server mocks still exercise real ICU and
+// rich-text behavior without wrapping every test in a provider.
+const catalogs: Record<string, Record<string, Record<string, string>>> = {
+  en: enMessages,
+  ru: ruMessages,
+}
+let activeLocale = "en"
 
-function selectPlural(template: string, values: Record<string, unknown>) {
-  // {var, plural, one {…} other {…}} — one nesting level of braces in arms.
-  return template.replace(
-    /\{(\w+),\s*plural,\s*((?:[^{}]|\{[^{}]*\})*)\}/g,
-    (_, name: string, body: string) => {
-      const n = Number(values[name])
-      if (Number.isNaN(n)) return `{${name}}`
-      const arms: Record<string, string> = {}
-      const armRe = /(=\d+|zero|one|two|few|many|other)\s*\{([^{}]*)\}/g
-      let m: RegExpExecArray | null
-      while ((m = armRe.exec(body)) !== null) arms[m[1]] = m[2]
-      const category = new Intl.PluralRules("en").select(n)
-      const chosen = arms[`=${n}`] ?? arms[category] ?? arms.other ?? ""
-      return chosen.replace(/#/g, String(n))
+function makeT(namespace: string, locale = activeLocale) {
+  return createTranslator({
+    locale,
+    namespace,
+    messages: catalogs[locale] ?? catalogs.en,
+    onError() {},
+    getMessageFallback({ namespace: fallbackNamespace, key }) {
+      return `${fallbackNamespace}.${key}`
     },
-  )
-}
-
-function formatIcu(template: string, values?: Record<string, unknown>) {
-  if (!values) return template
-  const withPlurals = selectPlural(template, values)
-  // Simple {name} substitution (runs after plural so `#` inside arms is
-  // already resolved and arm-local placeholders still interpolate).
-  return withPlurals.replace(/\{(\w+)\}/g, (_, name: string) =>
-    name in values ? String(values[name]) : `{${name}}`,
-  )
-}
-
-function lookup(namespace: string, key: string): string {
-  return enCatalog[namespace]?.[key] ?? `${namespace}.${key}`
-}
-
-function makeT(namespace: string) {
-  return (key: string, values?: Record<string, unknown>) =>
-    formatIcu(lookup(namespace, key), values)
+  })
 }
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => makeT(namespace),
+  useFormatter: () => ({
+    dateTime: (value: Date, options?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat(activeLocale, options).format(value),
+    number: (value: number) =>
+      new Intl.NumberFormat(activeLocale).format(value),
+  }),
   NextIntlClientProvider: ({ children }: { children: unknown }) => children,
 }))
 
 vi.mock("next-intl/server", () => ({
-  setRequestLocale: vi.fn(),
-  getLocale: vi.fn(async () => "en"),
-  getTranslations: vi.fn(async (namespace: string) => makeT(namespace)),
+  setRequestLocale: vi.fn((locale: string) => {
+    activeLocale = locale
+  }),
+  getLocale: vi.fn(async () => activeLocale),
+  getTranslations: vi.fn(
+    async (request: string | { locale?: string; namespace: string }) => {
+      const namespace =
+        typeof request === "string" ? request : request.namespace
+      const locale = typeof request === "string" ? activeLocale : request.locale
+      return makeT(namespace, locale ?? activeLocale)
+    },
+  ),
 }))
 
 // Required for React 19 + react-dom/client `act` under vitest jsdom environment.

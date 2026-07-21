@@ -7,7 +7,9 @@
     "noContent": "Content-ть аш",
     "homepageMisconfigured": "Watch homepage-ть налкстеме",
     "defaultTemplateMisconfigured": "Watch-ть default template-ть налкстеме",
-    "authFailed": "Content service-ть марто авторизациясь аф лезь. Монь лембеск лангс ветямс, ако те эрьваполавтомс теи."
+    "authFailed": "Content service-ть марто авторизациясь аф лезь. Монь лембеск лангс ветямс, ако те эрьваполавтомс теи.",
+    "pageLoadFailed": "Эрьва мезе теи эзь лезь.",
+    "tryAgain": "Вановт ськамось"
   },
   "VideosPage": {
     "title": "Весе videos",
@@ -22,7 +24,8 @@
     "promoHeading": "Bible-ть седе чоподнемс тонавтнемс ливтямо?",
     "joinBibleStudy": "Bible study-сь марто колгозь",
     "previousQuote": "Прежней Bible quote",
-    "nextQuote": "Сиведьме Bible quote"
+    "nextQuote": "Сиведьме Bible quote",
+    "readPassage": "Ловнок те тарканть эсеть Библият лангсо."
   },
   "DownloadButton": {
     "checking": "Текснемс",
@@ -73,7 +76,8 @@
     "selectLanguage": "Language-ть вешемс",
     "searchPlaceholder": "Language-ть вешемс…",
     "languages": "Кельть",
-    "noMatches": "Ашот"
+    "noMatches": "Ашот",
+    "notAvailable": "Аш"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Кель",
@@ -100,10 +104,7 @@
     "seriesLabel": "СЕРИЯ · {episodes}",
     "changeAudioLanguage": "Audio language-ть вастомс",
     "share": "Таравтомс",
-    "languages": "Кельть",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Кельть"
   },
   "WatchModal": {
     "close": "Питнемс"
@@ -115,7 +116,8 @@
     "questions": "Лия вешемат",
     "askYours": "Вешемат ветямс",
     "chatWithPerson": "Киянзэ марто кортнемс",
-    "askBibleQuestion": "Bible-ть вешемась вешемс"
+    "askBibleQuestion": "Bible-ть вешемась вешемс",
+    "quiz": "Тест"
   },
   "WatchQuestionPanel": {
     "messageType": "Сёрмадовксонь тип",
@@ -173,7 +175,8 @@
     "searchRegion": "Video-ть вешемс",
     "clearSearch": "Вешемась чистомс",
     "changeAudioLanguage": "Audio language-ть вастомс",
-    "home": "JesusFilm прявт лопа"
+    "home": "JesusFilm прявт лопа",
+    "closeSearch": "Вешемась питнемс"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-ть вешемс и вановтомс",
@@ -208,14 +211,19 @@
     "clearLanguages": "Чистомс",
     "queryLanguageDetected": "{language} онкстамс",
     "searchInLanguage": "{language}-са вешемс",
-    "tryDifferentKeywordsOrLanguage": "Лия keyword-тнэ вешемс эли лият search language-ть венемс"
+    "tryDifferentKeywordsOrLanguage": "Лия keyword-тнэ вешемс эли лият search language-ть венемс",
+    "useWebsiteDefaultLanguage": "Website default search language-ть пайдаломс",
+    "removeLanguage": "{language}-ть онксемс",
+    "browseMode": "Вешемань вановтома режим"
   },
   "HeroPlayer": {
     "playWithSound": "СЫ ТЕ",
-    "tapToUnmute": "Тыкснемс тонгань пазомс"
+    "tapToUnmute": "Тыкснемс тонгань пазомс",
+    "nextEpisode": "Сиведьме episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Content-ть лофтозь"
+    "loadingContent": "Content-ть лофтозь",
+    "loadingVideo": "Video-ть лофтозь"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -226,7 +234,8 @@
     "series": "Серия",
     "collection": "Коллекция",
     "trailer": "Трейлер",
-    "behindTheScenes": "Сценатнень удало"
+    "behindTheScenes": "Сценатнень удало",
+    "chapter": "Глава"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} из {total}",
@@ -238,12 +247,253 @@
     "noImage": "Image аш",
     "playingNow": "Одо лезь",
     "previousChapter": "Прежней chapter",
-    "nextChapter": "Сиведьме chapter"
+    "nextChapter": "Сиведьме chapter",
+    "thumbnailAlt": "{title} миниатюразо",
+    "relatedVideoThumbnail": "Сязэ video thumbnail"
   },
   "SearchResultCard": {
     "experience": "Редямо",
     "episodeCount": "{count, plural, one {# episode} other {# episode-т}}",
     "thumbnailAlt": "Video-ть thumbnail"
+  },
+  "Feedback": {
+    "openForm": "Feedback form-ть аштямс",
+    "label": "Мельть яволявтома",
+    "couldNotLoad": "Feedback form-ть аф лезь аштямс.",
+    "loadingForm": "Feedback form-ть лофтозь…",
+    "retry": "Вановт эйстэ",
+    "openFormShort": "Form-ть аштямс",
+    "cancel": "Отказамс",
+    "title": "Beta feedback",
+    "description": "Лезекс, мезе лезь, и мезе моштезь лиякштомс. Те form-ть Google-сь аскезь.",
+    "openInNewTab": "Form-ть аштямс седе лият тяштень",
+    "closeForm": "Feedback form-ть питнемс",
+    "loadingGoogleForm": "Google Form-ть лофтозь…",
+    "iframeTitle": "Beta feedback-ть ветямс"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Платасыз христианонь видеот — {language} | Jesus Film Project",
+    "metadataDescription": "Jesus films, Bible stories, disciple-making series, and outreach videos with dubbed audio or subtitles in {language} vanny.",
+    "heroTitle": "Платасыз христианонь видеот — {language}",
+    "heroDescription": "Jesus films, Bible stories, disciple-making series, and outreach videos available in {language} vanny. Fully dubbed videos are highlighted first, with subtitle-only options below.",
+    "languageCollection": "Келень collection",
+    "itemCount": "{count, plural, one {# тевлема} other {# тевлемат}}",
+    "videoCount": "{count, plural, one {# video} other {# video-т}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video-т}} · {groupCount, plural, one {# группа} other {# группат}}",
+    "sectionNavLabel": "Келень inventory пелькст",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Од",
+    "videoBible": "Видео-Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Коллекцият",
+    "subtitlesOnly": "Ансяк subtitles",
+    "newlyAdded": "Неень шкань поладозь",
+    "newVideosTitle": "Од христианонь видеот — {language}",
+    "newestFirst": "Васня седе одтне",
+    "noPublishedVideos": "Te language-ть лангс published videos ашолжа.",
+    "bibleAndGospelFilms": "Bible и Евангелиянь фильмт",
+    "videoBibleCollectionsTitle": "Video Bible collections · {language}",
+    "videoBibleDescription": "Святой Сёрмадовкс лангс нежедезь LUMO, JESUS, Magdalena ды Acts collections. Кель: {language}.",
+    "noVideoBibleCollections": "Te language-ть лангс Video Bible collections ашолжа.",
+    "bibleProjectCollectionsTitle": "BibleProject collections · {language}",
+    "bibleProjectDescription": "BibleProject series-т и тонавтнемат. Кель: {language}.",
+    "noBibleProjectCollections": "Te language-ть лангс BibleProject collections ашолжа.",
+    "sportsStories": "Спортонь историят",
+    "sportsTitle": "Спортонь ды спортсментнэнь историяст — {language}",
+    "sportsDescription": "Кемемалангсо спортонь историят ды спортсментнэнь колга collections. Кель: {language}.",
+    "noSportsCollections": "Te language-ть лангс sports эли athlete-story collections ашолжа.",
+    "fullyDubbed": "Топавтозь вайгельсэ",
+    "dubbedVideosTitle": "Collection-тнэнь коряс видеот — {language}",
+    "dubbedVideosDescription": "Fully dubbed {language} videos grouped with their collection for easier discovery.",
+    "noDubbedVideos": "Te language-ть лангс fully dubbed videos ашолжа.",
+    "subtitlesAvailable": "Subtitles ашт",
+    "subtitlesTitle": "Subtitles марто видеот — {language}",
+    "subtitlesDescription": "Te videos include {language} subtitles when spoken {language} audio is not yet available.",
+    "noSubtitleVideos": "Te language-ть лангс subtitle-only videos ашолжа.",
+    "dubbed": "Вайгельсэ ютавтозь",
+    "subtitles": "Субтитрт",
+    "newLabel": "Од",
+    "fromCollection": "Collection: {collection}",
+    "standaloneVideos": "Башка видеот",
+    "videosFromCollection": "Collection: {collection}.",
+    "standaloneDescription": "Те кельсэ башка видеот.",
+    "openCollection": "Collection-ть аштямс"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — вановтома",
+    "watch": "Вановтомс",
+    "watchNow": "Неень вановтомс",
+    "mutePreview": "Preview-ть тонгань",
+    "unmutePreview": "Preview-ть тонгань пазомс",
+    "nextVideo": "Сиведьме video",
+    "featured": "Кочказь",
+    "showVideo": "{title} лемдемс",
+    "previousVideoPreview": "Прежней video preview",
+    "nextVideoPreview": "Сиведьме video preview",
+    "mediaCollection": "Медиа collection",
+    "scrollToVideo": "{title} video-ть лангс ваштомс"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project прявт лопа",
+    "navigation": "Алоцёконь навигация",
+    "share": "Таравтомс",
+    "watch": "Вановтомс",
+    "giving": "Пожертвованият",
+    "about": "Минек колганок",
+    "products": "Продуктт",
+    "resources": "Ресурст",
+    "partners": "Партнёрт",
+    "contact": "Сюлмавомс",
+    "giveNow": "Неень максомс",
+    "resourcesVersion": "Ресурст ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Шкавтомань политика",
+    "legalStatement": "Юридической азовкс",
+    "newsletter": "Совамс минек од хабаронь сёрмадовксос"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Теезь масторлангонь миссиятнень туртов",
+    "title": "Message-сь аф васты. Кода тевтемат вановт, тежесь васты.",
+    "description": "Монь видеобиблиотекаме и tools-мне лангссэ лиякштомс, десятилетият translation work-ть тема платформатнень лангс вадемс, коса инят уже колгодт, вановт, и таравтомс.",
+    "translatedLibraryTitle": "Мирса эйстэ вельть translated film library",
+    "translatedLibraryDescription": "Десятилетия translation work, trusted ministry partners-ть korяс ветязь, тысячалекс language tracks-мне марто library-ть теемс, сонзэ коряс кенярдома Иисус-ть каязь кортамось кельсэ, кона лангс мезде чоподнязь.",
+    "trustedVoicesTitle": "Trusted voices-ть vitjams new formats-ь лангс",
+    "trustedVoicesDescription": "Монь gospel stories-ть видеолангс кортнема кода теемс, trusted translations-ть modern formats-ть марто вастомс, сытьстэ message-сь freely platforms, cultures, and screens-ть лангс велявтомс.",
+    "missionTeamTitle": "Library-ть седе лемде. Mission-driven team.",
+    "missionTeamDescription": "Jesus Film Project — global team of translators, media specialists, editors, and creators, decades of ministry experience-ть disciple-makers everywhere-ть tools-ть лангс лиякштомс.",
+    "buildingNext": "Мезе монь лангс лиякштомс",
+    "nextStepsTitle": "Седе товонь тевтнэнь платформа",
+    "nextStepsDescription": "Viewer-ть spiritual journey-ть лангс tangible opportunities-ть вастомс, community, Scripture, эли mission-ть лангс next step-ть теемс.",
+    "mediaLibraryTitle": "Евангелизациянь медиа-библиотека",
+    "mediaLibraryDescription": "Multiple languages-са ministry and evangelism worldwide-ть лангс thousands of videos, films, and resources-ть марто extensive Christian media library.",
+    "ministryToolsTitle": "Служениятнень туртов цифровой tools",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, and analytics, ministries-ть people-ть кельгемс седе лемде лиякштомс.",
+    "invitationEyebrow": "You’re invited",
+    "invitationTitle": "Лездыка теемс миссиянь tools-нэнь <highlight>од покшкс</highlight>",
+    "invitationDescription": "Early access-ть лангс practitioners, creators, and partners-ть вешемс. New tools-ть first test-немс, feedback ветемс, real mission work-ть лангс product-ть лиякштомс.",
+    "betaTester": "Кармамс beta tester-экс"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible коллекция",
+    "gospelRailTitle": "Муить весе историянть",
+    "videoBibleDescription": "Bible-ть ливтямс videos and resources-ть collection-сь вановтомс, stories and teachings-ть коряс.",
+    "showcaseTitle": "Святой Сёрмадовксь фильмсэ ёвтазь",
+    "adventEyebrow": "Роштувань Адвент",
+    "adventTitle": "Роштувань Адвентень ловома",
+    "adventDescription": "Advent journey-ть марто daily video-ть коряс колгодтомс, Christmas-ть пурныцяке тевть, Jesus' arrival-ть hope, joy, and promise-ть вановтомс.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видеокурс",
+    "journeyWithJesusTitle": "Ки Иисус марто",
+    "gospelsOnVideoEyebrow": "Эрьва Евангелия video-со ёвтазь",
+    "scriptureAsWrittenTitle": "Святой Сёрмадовксь кортозь истя, кода сон сёрмадозь",
+    "merryChristmas": "Роштува марто!",
+    "daysUntilChristmas": "{count, plural, one {Роштувашка # чи} other {Роштувашка # чит}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Кельть",
+    "metadataDescription": "JesusFilm videos-ть language-ть коряс вановтомс.",
+    "eyebrow": "Вановтомань кельть",
+    "title": "Language-ть вешемс",
+    "description": "Language-ть region-ть коряс вановтомс эли весе list-ть вановтомс.",
+    "searchPlaceholder": "Language-ть эли country-ть вешемс...",
+    "searchLabel": "Language-ть эли country-ть вешемс",
+    "clearSearch": "Search-ть чистомс",
+    "browse": "Вановтомс",
+    "browseByRegion": "Region and country-ть коряс вановтомс",
+    "languageCount": "{count, plural, one {# кель} other {# кельть}}",
+    "region": "Регион",
+    "countryLanguages": "Мастор: {country} · кельть",
+    "showLess": "Седе аламо ваны",
+    "showMore": "{count} седе олонь ваны",
+    "noLanguages": "Languages ашталт",
+    "tryAnotherSearch": "Лия search term-ть вешемс."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Вановтомань история | Jesus Film Project",
+    "title": "Вановтомань история",
+    "loading": "History-ть лофтозь",
+    "empty": "Мезе эзь олда",
+    "emptyDescription": "Signed in-са вановт video-ть теде лангс лиякштомс.",
+    "earlier": "Моро лемде",
+    "today": "Тев",
+    "yesterday": "Инеш"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунтэнь меню",
+    "signIn": "Совамс",
+    "signOut": "Лисемс",
+    "signedIn": "Совазь",
+    "history": "История",
+    "logOut": "Лисемс аккаунтсто"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Лопась а муеви",
+    "eyebrow": "Лопась а муеви",
+    "screenReaderPrefix": "Лопась а муеви:",
+    "title": "Te scene-сь arziat ash.",
+    "description": "Page-сь velavtoms avol, story-сь moles.",
+    "actionsLabel": "Лопась а муеви — тевть",
+    "backToWatch": "Watch-ть лангс велявтомс",
+    "browseVideos": "Videos-ть вановтомс"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Нурькине фильм вановтомс",
+    "actions": {
+      "joinUs": "Минек марто совамс",
+      "shareMission": "Минек миссиянь коряс явомс"
+    },
+    "welcomeStart": {
+      "label": "Вера ды Святой Сёрмадовкс",
+      "title": "Тонеть неень видеокочкат",
+      "description": "Минек библиотекасо верань видеот, кона теть витсь, вешемс, ды оймезь вешемс."
+    },
+    "welcomeMorning": {
+      "label": "Кирань вдохновениесь",
+      "title": "Доброе утро! Неень Bible moments васькстат.",
+      "description": "Кичень вельде тыныцят Bible moments-ть, кона теть вить, лемдь, ды оймезь вельть лездезь."
+    },
+    "welcomeAfternoon": {
+      "label": "Пельгень вдохновениесь",
+      "title": "Добрый день! Тонеть Bible moments.",
+      "description": "Ведьме Bible content, кона пек лезь тонеть пельгень пурныньштямсто эли седе лемс вдохновениесе."
+    },
+    "welcomeEvening": {
+      "label": "Вечерь вдохновениесь",
+      "title": "Добрый вечер! Bible moments марто оймсэ тон.",
+      "description": "Парь Bible moments, кона теть оймезь вешемс ды тыныцямс лезь, кода келензь шкатнешк."
+    },
+    "joinUs": {
+      "label": "Минек марто совамс",
+      "title": "Миллиардась те вешень",
+      "description": "Пайремась седе те. Совамс минек марто, кода минек цифровой media лангсо gospel-ть явтомс масторсонть."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Кода тов совамс",
+      "title": "Иисус-ть повесть явомс, минек марто",
+      "description": "Тие лембт, сонтне и вазьт Iisus-ть кенярдома, өзсень кельсэнзэ, кода сонтне сонзэ теевтстат."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% вастови",
+    "none": "Те видеонтень те кельсэ рекомендацият а муевсть."
+  },
+  "BetaTesterModal": {
+    "title": "Кармамс beta tester-экс",
+    "trigger": "Кармамс beta tester-экс",
+    "loadFailed": "Эрьва мезе теи эзь лезь.",
+    "loading": "Лофтозь...",
+    "openFormNewTab": "Form-ть аштямс седе лият тяштень",
+    "close": "Питнемс",
+    "iframeTitle": "Кармамс beta tester-экс"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

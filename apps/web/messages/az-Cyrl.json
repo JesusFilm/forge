@@ -7,7 +7,9 @@
     "noContent": "Məzmun yoxdur.",
     "homepageMisconfigured": "Baxış ana səhifəsi düzgün konfiqurasiya olunmayıb.",
     "defaultTemplateMisconfigured": "Defolt baxış şablonu düzgün konfiqurasiya olunmayıb.",
-    "authFailed": "Məzmun xidməti ilə autentifikasiya mümkün olmadı. Bu davam edərsə, dəstəyə müraciət edin."
+    "authFailed": "Məzmun xidməti ilə autentifikasiya mümkün olmadı. Bu davam edərsə, dəstəyə müraciət edin.",
+    "pageLoadFailed": "Nəsə səhv getdi.",
+    "tryAgain": "Yenidən cəhd edin"
   },
   "VideosPage": {
     "title": "Bütün videolar",
@@ -22,7 +24,8 @@
     "promoHeading": "Müqəddəs Kitabı daha dərindən anlamaq istəyirsiniz?",
     "joinBibleStudy": "Müqəddəs Kitab dərsimizə qoşulun",
     "previousQuote": "Əvvəlki Müqəddəs Kitab sitatı",
-    "nextQuote": "Növbəti Müqəddəs Kitab sitatı"
+    "nextQuote": "Növbəti Müqəddəs Kitab sitatı",
+    "readPassage": "Бу парчаны Мүгәддәс Китабынызда охујун."
   },
   "DownloadButton": {
     "checking": "Yoxlanılır",
@@ -73,7 +76,8 @@
     "selectLanguage": "Dil seçin",
     "searchPlaceholder": "Dilləri axtarın…",
     "languages": "Dillər",
-    "noMatches": "Uyğun tapılmadı"
+    "noMatches": "Uyğun tapılmadı",
+    "notAvailable": "Mövcud deyil"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Dil",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERİ · {episodes}",
     "changeAudioLanguage": "Səs dilini dəyişin",
     "share": "Paylaşın",
-    "languages": "Dillər",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Dillər"
   },
   "WatchModal": {
     "close": "Bağla"
@@ -115,7 +116,8 @@
     "questions": "Əlaqəli suallar",
     "askYours": "Öz sualınızı verin",
     "chatWithPerson": "Bir nəfərlə söhbət edin",
-    "askBibleQuestion": "Müqəddəs Kitabla bağlı sual verin"
+    "askBibleQuestion": "Müqəddəs Kitabla bağlı sual verin",
+    "quiz": "Викторина"
   },
   "WatchQuestionPanel": {
     "messageType": "Mesaj növü",
@@ -173,7 +175,8 @@
     "searchRegion": "Videoları axtarın",
     "clearSearch": "Axtarışı təmizlə",
     "changeAudioLanguage": "Səs dilini dəyişin",
-    "home": "JesusFilm ana səhifəsi"
+    "home": "JesusFilm ana səhifəsi",
+    "closeSearch": "Axtarışı bağla"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoları axtarın və gözdən keçirin",
@@ -208,14 +211,19 @@
     "clearLanguages": "Təmizlə",
     "queryLanguageDetected": "{language} aşkar edildi",
     "searchInLanguage": "{language} dilində axtarın",
-    "tryDifferentKeywordsOrLanguage": "Başqa açar sözlər sınayın və ya başqa axtarış dili seçin"
+    "tryDifferentKeywordsOrLanguage": "Başqa açar sözlər sınayın və ya başqa axtarış dili seçin",
+    "useWebsiteDefaultLanguage": "Saytın defolt axtarış dilindən istifadə edin",
+    "removeLanguage": "{language} sil",
+    "browseMode": "Axtarış-gözdən keçirmə rejimi"
   },
   "HeroPlayer": {
     "playWithSound": "İndi baxın",
-    "tapToUnmute": "Səsi açmaq üçün toxunun"
+    "tapToUnmute": "Səsi açmaq üçün toxunun",
+    "nextEpisode": "Növbəti epizod"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Məzmun yüklənir"
+    "loadingContent": "Məzmun yüklənir",
+    "loadingVideo": "Video yüklənir"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -226,7 +234,8 @@
     "series": "Seriya",
     "collection": "Kolleksiya",
     "trailer": "Treyler",
-    "behindTheScenes": "Pərdəarxası"
+    "behindTheScenes": "Pərdəarxası",
+    "chapter": "Fəsil"
   },
   "SiblingCarousel": {
     "clipPosition": "{current} / {total} klip",
@@ -238,12 +247,253 @@
     "noImage": "Şəkil yoxdur",
     "playingNow": "İndi oynayır",
     "previousChapter": "Əvvəlki fəsil",
-    "nextChapter": "Növbəti fəsil"
+    "nextChapter": "Növbəti fəsil",
+    "thumbnailAlt": "{title} miniatürü",
+    "relatedVideoThumbnail": "Əlaqəli video miniatürü"
   },
   "SearchResultCard": {
     "experience": "Təcrübə",
     "episodeCount": "{count, plural, one {# epizod} other {# epizod}}",
     "thumbnailAlt": "Video miniatürü"
+  },
+  "Feedback": {
+    "openForm": "Rəy formasını açın",
+    "label": "Rəy",
+    "couldNotLoad": "Rəy forması yüklənmədi.",
+    "loadingForm": "Rəy forması yüklənir…",
+    "retry": "Yenidən cəhd edin",
+    "openFormShort": "Formanı açın",
+    "cancel": "Ləğv edin",
+    "title": "Beta rəyi",
+    "description": "Nəyin işlədiyini və nələri yaxşılaşdıra biləcəyimizi paylaşın. Bu forma Google tərəfindən təqdim olunur.",
+    "openInNewTab": "Formanı yeni vərəqdə açın",
+    "closeForm": "Rəy formasını bağlayın",
+    "loadingGoogleForm": "Google Form yüklənir…",
+    "iframeTitle": "Beta rəyini göndərin"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} dilində pulsuz xristian videolar | Jesus Film Project",
+    "metadataDescription": "{language} dilində dublyaj olunmuş səs və ya altyazılı İsa filmlərini, Müqəddəs Kitab hekayələrini, şagird hazırlığı seriyalarını və təbliğ videolarını kəşf edin.",
+    "heroTitle": "{language} dilində pulsuz xristian videolar",
+    "heroDescription": "{language} dilində mövcud olan İsa filmlərini, Müqəddəs Kitab hekayələrini, şagird hazırlığı seriyalarını və təbliğ videolarını kəşf edin. Tam dublyaj olunmuş videolar əvvəlcə göstərilir, aşağıda isə yalnız altyazılı seçimlər var.",
+    "languageCollection": "Dil kolleksiyası",
+    "itemCount": "{count, plural, one {# element} other {# element}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} · {groupCount, plural, one {# qrupda} other {# qrupda}}",
+    "sectionNavLabel": "Dil inventarı bölmələri",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Yeni",
+    "videoBible": "Video Müqəddəs Kitab",
+    "bibleProject": "BibleProject",
+    "sports": "İdman",
+    "collections": "Kolleksiyalar",
+    "subtitlesOnly": "Yalnız altyazılar",
+    "newlyAdded": "Yeni əlavə olunub",
+    "newVideosTitle": "{language} dilində yeni xristian videolar",
+    "newestFirst": "Ən yenilər əvvəl",
+    "noPublishedVideos": "Bu dil üçün hələ dərc olunmuş video tapılmadı.",
+    "bibleAndGospelFilms": "Müqəddəs Kitab və İncil filmləri",
+    "videoBibleCollectionsTitle": "{language} dilində Video Müqəddəs Kitab kolleksiyaları",
+    "videoBibleDescription": "{language} dilində LUMO, JESUS, Magdalena və Həvarilərin İşləri daxil olmaqla Müqəddəs Yazı mərkəzli kolleksiyalar.",
+    "noVideoBibleCollections": "Bu dil üçün hələ Video Müqəddəs Kitab kolleksiyası yoxdur.",
+    "bibleProjectCollectionsTitle": "{language} dilində BibleProject kolleksiyaları",
+    "bibleProjectDescription": "{language} dilində mövcud olan BibleProject seriyaları və dərsləri.",
+    "noBibleProjectCollections": "Bu dil üçün hələ BibleProject kolleksiyası yoxdur.",
+    "sportsStories": "İdman hekayələri",
+    "sportsTitle": "{language} dilində idman və idmançı hekayələri",
+    "sportsDescription": "{language} dilində mövcud olan iman mərkəzli idman hekayələri və idmançı yönümlü kolleksiyalar.",
+    "noSportsCollections": "Bu dil üçün hələ idman və ya idmançı hekayəsi kolleksiyası yoxdur.",
+    "fullyDubbed": "Tam dublyaj olunmuş",
+    "dubbedVideosTitle": "Kolleksiyalara görə {language} videoları",
+    "dubbedVideosDescription": "Daha asan tapmaq üçün kolleksiyaları ilə qruplaşdırılmış tam dublyaj olunmuş {language} videolarına baxın.",
+    "noDubbedVideos": "Bu dil üçün hələ tam dublyaj olunmuş video yoxdur.",
+    "subtitlesAvailable": "Altyazı mövcuddur",
+    "subtitlesTitle": "Altyazılı {language} videolar",
+    "subtitlesDescription": "Danışılan {language} audio hələ mövcud olmadıqda, bu videolarda {language} altyazıları var.",
+    "noSubtitleVideos": "Bu dil üçün hələ yalnız altyazılı video yoxdur.",
+    "dubbed": "Dublyaj",
+    "subtitles": "Altyazılar",
+    "newLabel": "Yeni",
+    "fromCollection": "{collection} kolleksiyasından",
+    "standaloneVideos": "Müstəqil videolar",
+    "videosFromCollection": "{collection} kolleksiyasından videolar.",
+    "standaloneDescription": "Bu dildə müstəqil videolar.",
+    "openCollection": "Kolleksiyanı açın"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — Бахыш",
+    "watch": "Baxın",
+    "watchNow": "İndi baxın",
+    "mutePreview": "Önizləmənin səsini söndür",
+    "unmutePreview": "Önizləmənin səsini aç",
+    "nextVideo": "Növbəti video",
+    "featured": "Seçilmiş",
+    "showVideo": "{title} göstər",
+    "previousVideoPreview": "Əvvəlki video önizləməsi",
+    "nextVideoPreview": "Növbəti video önizləməsi",
+    "mediaCollection": "Media kolleksiyası",
+    "scrollToVideo": "{title} videosuna sürüşdürün"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ana səhifəsi",
+    "navigation": "Altbilgi naviqasiyası",
+    "share": "Paylaşın",
+    "watch": "Baxın",
+    "giving": "Bağış",
+    "about": "Haqqında",
+    "products": "Məhsullar",
+    "resources": "Resurslar",
+    "partners": "Tərəfdaşlar",
+    "contact": "Əlaqə",
+    "giveNow": "İndi bağış edin",
+    "resourcesVersion": "Resurslar ({version})",
+    "office": "Ofis",
+    "fax": "Faks",
+    "privacyPolicy": "Məxfilik Siyasəti",
+    "legalStatement": "Hüquqi bildiriş",
+    "newsletter": "Bülletenimizə yazılın"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Qlobal missiya üçün hazırlanıb",
+    "title": "Mesaj dəyişmir. İnsanların baxma tərzi dəyişir.",
+    "description": "Biz video kitabxanamızı və alətlərimizi sıfırdan yenidən qururuq, onilliklər boyu aparılmış tərcümə işini insanların artıq toplandığı, baxdığı və paylaşdığı platformalara gətiririk.",
+    "translatedLibraryTitle": "Dünyanın ən çox tərcümə olunmuş film kitabxanası",
+    "translatedLibraryDescription": "Etibarlı xidmət tərəfdaşlarının daşıdığı onilliklərlik tərcümə işi minlərlə dil treki olan bir kitabxana yaradıb ki, insanlar İsanın hekayəsi ilə ən dərindən toxunan dildə tanış olsunlar.",
+    "trustedVoicesTitle": "Etibarlı səsləri yeni formatlara daşımaq",
+    "trustedVoicesDescription": "Biz Müjdə hekayələrinin vizual şəkildə necə danışıldığını yenidən qururuq, etibarlı tərcümələri müasir formatlarla birləşdiririk ki, mesaj platformalar, mədəniyyətlər və ekranlar arasında sərbəst hərəkət etsin.",
+    "missionTeamTitle": "Sadəcə kitabxana deyil. Missiya yönümlü bir komanda.",
+    "missionTeamDescription": "Jesus Film Project, illərlə toplanmış xidmət təcrübəsini dünyanın hər yerində şagird hazırlayanlar üçün alətlərə çevirən tərcüməçilər, media mütəxəssisləri, redaktorlar və yaradıcıların qlobal komandasıdır.",
+    "buildingNext": "Növbəti mərhələdə qurduqlarımız",
+    "nextStepsTitle": "Növbəti Addımlar Platforması",
+    "nextStepsDescription": "İzləyiciləri ruhani yolçuluqlarında konkret imkanlarla əlaqələndirin, onlara icmaya, Müqəddəs Yazıya və ya xidmətə növbəti addımı atmağa kömək edin.",
+    "mediaLibraryTitle": "Müjdələyici Media Kitabxanası",
+    "mediaLibraryDescription": "Dünya üzrə xidmət və müjdəçilik üçün çoxdilli minlərlə video, film və resursu olan geniş xristian media kitabxanası.",
+    "ministryToolsTitle": "Xidmətlər üçün Rəqəmsal Alətlər",
+    "ministryToolsDescription": "Xidmətlərin daha çox insana səmərəli çatmasına kömək etmək üçün hazırlanmış video idarəetməsi, məzmun paylanması, auditoriya cəlbi və analitika.",
+    "invitationEyebrow": "Siz də dəvətlisiniz",
+    "invitationTitle": "Missiya alətlərinin <highlight>yeni nəslinin</highlight> qurulmasına kömək edin",
+    "invitationDescription": "Biz praktikləri, yaradıcıları və tərəfdaşları erkən girişə dəvət edirik. Yeni alətləri ilk siz sınaqdan keçirin, rəy verin və real missiya işi üçün hazırlanmış məhsulların formalaşmasına kömək edin.",
+    "betaTester": "Beta testçi olun"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Müqəddəs Kitab Kolleksiyası",
+    "gospelRailTitle": "Tam hekayəni kəşf edin",
+    "videoBibleDescription": "Müqəddəs Kitabı cəlbedici hekayələr və təlimlər vasitəsilə canlandıran video və resurs kolleksiyamızı araşdırın.",
+    "showcaseTitle": "Müqəddəs Yazı filmlə danışılır",
+    "adventEyebrow": "Milad Adventi",
+    "adventTitle": "Milad Advent sayımı",
+    "adventDescription": "Milad üçün gözləntini artıran gündəlik videolarla Advent yolçuluğumuza qoşulun, İsanın gəlişinin ümidini, sevincini və vədini araşdırın.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Adventi",
+    "nuaEyebrow": "NUA Seriyası",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Seriyası",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video kurs",
+    "journeyWithJesusTitle": "İsa ilə yolçuluq",
+    "gospelsOnVideoEyebrow": "Hər Müjdənin video ilə danışılması",
+    "scriptureAsWrittenTitle": "Müqəddəs Yazı, yazıldığı kimi dəqiq səsləndirilir",
+    "merryChristmas": "Милад байрамыныз мүбарәк!",
+    "daysUntilChristmas": "{count, plural, one {Милада # ҝүн галыб} other {Милада # ҝүн галыб}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Dillər",
+    "metadataDescription": "JesusFilm videolarına dil üzrə baxın.",
+    "eyebrow": "Baxış dilləri",
+    "title": "Dil seçin",
+    "description": "Dilləri region üzrə araşdırın və ya tam siyahıya baxın.",
+    "searchPlaceholder": "Dilləri və ya ölkələri axtarın...",
+    "searchLabel": "Dilləri və ya ölkələri axtarın",
+    "clearSearch": "Axtarışı təmizlə",
+    "browse": "Baxın",
+    "browseByRegion": "Region və ölkə üzrə baxın",
+    "languageCount": "{count, plural, one {# dil} other {# dil}}",
+    "region": "Реҝион",
+    "countryLanguages": "{country} dilləri",
+    "showLess": "Daha az göstər",
+    "showMore": "Daha {count} göstər",
+    "noLanguages": "Dil tapılmadı",
+    "tryAnotherSearch": "Başqa axtarış sözü sınayın."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Baxış Tarixi | Jesus Film Project",
+    "title": "Baxış Tarixi",
+    "loading": "Tarix yüklənir",
+    "empty": "Burada hələ heç nə yoxdur",
+    "emptyDescription": "Daxil olduğunuz halda baxdığınız videolar burada görünəcək.",
+    "earlier": "Daha əvvəl",
+    "today": "Bu gün",
+    "yesterday": "Dünən"
+  },
+  "AccountControl": {
+    "account": "Hesab",
+    "accountMenu": "Hesab menyusu",
+    "signIn": "Daxil olun",
+    "signOut": "Çıxış edin",
+    "signedIn": "Daxil olunub",
+    "history": "Tarixçə",
+    "logOut": "Çıxış edin"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Səhifə tapılmadı",
+    "eyebrow": "Səhifə tapılmadı",
+    "screenReaderPrefix": "Səhifə tapılmadı:",
+    "title": "Bu səhnə burada deyil.",
+    "description": "Səhifə yerini dəyişmiş ola bilər, amma hekayə davam edir.",
+    "actionsLabel": "Səhifə tapılmadı əmrləri",
+    "backToWatch": "Baxa qayıt",
+    "browseVideos": "Videolara baxın"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Qısa filmi izləyin",
+    "actions": {
+      "joinUs": "Bizə qoşulun",
+      "shareMission": "Missiyamızı paylaşın"
+    },
+    "welcomeStart": {
+      "label": "İman və Müqəddəs Yazı",
+      "title": "Bu günün video seçimləri",
+      "description": "İlham vermək, düşündürmək və düşüncəni oyatmaq üçün kitabxanamızdan iman mərkəzli video məzmun."
+    },
+    "welcomeMorning": {
+      "label": "Səhər ilhamı",
+      "title": "Sabahınız xeyir! Bu günün Müqəddəs Kitab anları sizi gözləyir.",
+      "description": "Gününüzü ruhlandırmaq və ürəyinizi yüksəltmək üçün hazırlanmış həvəsləndirici Müqəddəs Kitab anları ilə başlayın."
+    },
+    "welcomeAfternoon": {
+      "label": "Günorta ilhamı",
+      "title": "Günortanız xeyir! Gününüz üçün Müqəddəs Kitab anları.",
+      "description": "Günorta fasiləniz üçün uyğun, həvəsləndirici Müqəddəs Kitab məzmunu və ya davam edən ilham."
+    },
+    "welcomeEvening": {
+      "label": "Axşam ilhamı",
+      "title": "Axşamınız xeyir! Müqəddəs Kitab anları ilə dincəlin.",
+      "description": "Gününüz başa çatarkən düşünməyinizə və təsəlli tapmağınıza kömək edən sakit Müqəddəs Kitab anları."
+    },
+    "joinUs": {
+      "label": "Bizə qoşulun",
+      "title": "Milyardlarla insan axtarışdadır",
+      "description": "Məhsul vaxtı yetişib. Rəqəmsal media vasitəsilə dünyaya Müjdəni yayarkən bizə qoşulun."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Gəlin birlikdə irəliləyək",
+      "title": "İsanın hekayəsini birlikdə danışırıq",
+      "description": "Beləcə onlar olduqları yerdəcə, öz dillərində İsanın məhəbbətini eşidib görə bilsinlər."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ујғунлуг",
+    "none": "Бу дилдә бу видео үчүн төвсијә тапылмады."
+  },
+  "BetaTesterModal": {
+    "title": "Beta testçi olun",
+    "trigger": "Beta testçi olun",
+    "loadFailed": "Nəsə səhv getdi.",
+    "loading": "Yüklənir...",
+    "openFormNewTab": "Formanı yeni vərəqdə açın",
+    "close": "Bağla",
+    "iframeTitle": "Beta testçi olun"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

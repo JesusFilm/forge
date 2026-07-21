@@ -1,0 +1,29 @@
+{
+  "name": "jfp-admin",
+  "version": "0.1.0",
+  "description": "AI-assisted Jesus Film Admin workflows for locale creation.",
+  "author": {
+    "name": "Jesus Film Project",
+    "url": "https://www.jesusfilm.org"
+  },
+  "homepage": "https://admin.jesusfilm.org/dashboard/mcp",
+  "repository": "https://github.com/JesusFilm/forge",
+  "license": "UNLICENSED",
+  "keywords": ["jesus-film", "admin", "mcp", "localization"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "JFP Admin",
+    "shortDescription": "Create translated Experience locale drafts.",
+    "longDescription": "JFP Admin adds Codex skills for working with Jesus Film Admin through the JFP Admin MCP. The first workflow is Bulk Locale Factory for creating, validating, reviewing, and optionally publishing translated Experience locales.",
+    "developerName": "Jesus Film Project",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Create translated Experience locale drafts",
+      "Review missing Experience locales"
+    ],
+    "websiteURL": "https://www.jesusfilm.org/",
+    "privacyPolicyURL": "https://www.jesusfilm.org/privacy-policy/",
+    "termsOfServiceURL": "https://www.jesusfilm.org/terms-of-use/"
+  }
+}

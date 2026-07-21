@@ -7,7 +7,9 @@
     "noContent": "मजकूर उपलब्ध ना.",
     "homepageMisconfigured": "वॉच मुख्य पान चूक संरचीत आसा.",
     "defaultTemplateMisconfigured": "मूळ वॉच टेम्पलेट चूक संरचीत आसा.",
-    "authFailed": "कंटेन्ट सेवेकडेन प्रमाणीकरण करपाक जावना. हे चालू रावल्यार सपोर्टाक संपर्क करात."
+    "authFailed": "कंटेन्ट सेवेकडेन प्रमाणीकरण करपाक जावना. हे चालू रावल्यार सपोर्टाक संपर्क करात.",
+    "pageLoadFailed": "कायतरी चुकलां.",
+    "tryAgain": "परत प्रयत्न करात"
   },
   "VideosPage": {
     "title": "सगळे व्हिडिओ",
@@ -22,7 +24,8 @@
     "promoHeading": "बायबल आनीक खोलायेन समजपाची इछा आसा?",
     "joinBibleStudy": "आमच्या बायबल अभ्यासांत सहभागी जावात",
     "previousQuote": "मागली बायबल उक्ती",
-    "nextQuote": "फाटली बायबल उक्ती"
+    "nextQuote": "फाटली बायबल उक्ती",
+    "readPassage": "हो उतारो तुमच्या बायबलांत वाचात."
   },
   "DownloadButton": {
     "checking": "तपासता",
@@ -73,7 +76,8 @@
     "selectLanguage": "भास निवडात",
     "searchPlaceholder": "भास सोदात…",
     "languages": "भास",
-    "noMatches": "जुळपाचे कांय ना"
+    "noMatches": "जुळपाचे कांय ना",
+    "notAvailable": "उपलब्ध ना"
   },
   "LanguagePickerModal": {
     "dialogTitle": "भास",
@@ -100,10 +104,7 @@
     "seriesLabel": "मालिका · {episodes}",
     "changeAudioLanguage": "ऑडिओ भास बदला",
     "share": "शेअर करात",
-    "languages": "भास",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "भास"
   },
   "WatchModal": {
     "close": "बंद करात"
@@ -115,7 +116,8 @@
     "questions": "संबंधित प्रश्न",
     "askYours": "तुमचो विचारात",
     "chatWithPerson": "मनीसाकडेन गप्पा मारात",
-    "askBibleQuestion": "बायबलाचो प्रश्न विचारात"
+    "askBibleQuestion": "बायबलाचो प्रश्न विचारात",
+    "quiz": "क्विझ"
   },
   "WatchQuestionPanel": {
     "messageType": "संदेशाचो प्रकार",
@@ -173,7 +175,8 @@
     "searchRegion": "व्हिडिओ सोदात",
     "clearSearch": "शोध साफ करात",
     "changeAudioLanguage": "ऑडिओ भास बदला",
-    "home": "JesusFilm मुखपान"
+    "home": "JesusFilm मुखपान",
+    "closeSearch": "शोध बंद करात"
   },
   "SearchOverlay": {
     "dialogLabel": "व्हिडिओ सोदात आनी ब्राऊझ करात",
@@ -208,14 +211,19 @@
     "clearLanguages": "साफ करात",
     "queryLanguageDetected": "{language} सापडलें",
     "searchInLanguage": "{language} त सोदात",
-    "tryDifferentKeywordsOrLanguage": "दुसरे कीवर्ड वापरात वा दुसरो शोध भास निवडात"
+    "tryDifferentKeywordsOrLanguage": "दुसरे कीवर्ड वापरात वा दुसरो शोध भास निवडात",
+    "useWebsiteDefaultLanguage": "वेबसाइटाचो मूळ शोध भास वापरात",
+    "removeLanguage": "{language} काडात",
+    "browseMode": "शोध ब्राऊझ मोड"
   },
   "HeroPlayer": {
     "playWithSound": "आतां पळयात",
-    "tapToUnmute": "आवाज सुरू करपाक टॅप करात"
+    "tapToUnmute": "आवाज सुरू करपाक टॅप करात",
+    "nextEpisode": "पुढलो भाग"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "मजकूर लोड करत आसा"
+    "loadingContent": "मजकूर लोड करत आसा",
+    "loadingVideo": "व्हिडिओ लोड करत आसा"
   },
   "VideoLabels": {
     "video": "व्हिडिओ",
@@ -226,7 +234,8 @@
     "series": "मालिका",
     "collection": "संग्रह",
     "trailer": "ट्रेलर",
-    "behindTheScenes": "पडद्यामागलें"
+    "behindTheScenes": "पडद्यामागलें",
+    "chapter": "प्रकरण"
   },
   "SiblingCarousel": {
     "clipPosition": "क्लिप {current} एकूण {total} पैकी",
@@ -238,12 +247,253 @@
     "noImage": "प्रतिमा ना",
     "playingNow": "आतां वाजता",
     "previousChapter": "मागलें प्रकरण",
-    "nextChapter": "पुडलें प्रकरण"
+    "nextChapter": "पुडलें प्रकरण",
+    "thumbnailAlt": "{title} लहान प्रतिमा",
+    "relatedVideoThumbnail": "संबंधित व्हिडिओ लहान प्रतिमा"
   },
   "SearchResultCard": {
     "experience": "अनुभव",
     "episodeCount": "{count, plural, one {# भाग} other {# भागां}}",
     "thumbnailAlt": "व्हिडिओ लहान प्रतिमा"
+  },
+  "Feedback": {
+    "openForm": "अभिप्राय फॉर्म उगडात",
+    "label": "अभिप्राय",
+    "couldNotLoad": "अभिप्राय फॉर्म लोड जावना.",
+    "loadingForm": "अभिप्राय फॉर्म लोड करत आसा…",
+    "retry": "परत प्रयत्न करात",
+    "openFormShort": "फॉर्म उगडात",
+    "cancel": "रद्द करात",
+    "title": "बीटा अभिप्राय",
+    "description": "काय बरें चलता आनी कितें भलें करूं येता तें शेअर करात. हो फॉर्म Google कडेन पुरवतात.",
+    "openInNewTab": "फॉर्म नव्या टॅबांत उगडात",
+    "closeForm": "अभिप्राय फॉर्म बंद करात",
+    "loadingGoogleForm": "Google फॉर्म लोड करत आसा…",
+    "iframeTitle": "बीटा अभिप्राय सादर करात"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} त फुकट ख्रिस्ती व्हिडिओ | Jesus Film Project",
+    "metadataDescription": "{language} त डब केल्ले ऑडिओ वा उपशीर्षकां आसिल्ले Jesus films, बायबल कथा, शिष्यत्व मालिका, आनी प्रचार व्हिडिओ शोधात.",
+    "heroTitle": "{language} त फुकट ख्रिस्ती व्हिडिओ",
+    "heroDescription": "{language} त उपलब्ध Jesus films, बायबल कथा, शिष्यत्व मालिका, आनी प्रचार व्हिडिओ शोधात. पूर्ण डब केलेले व्हिडिओ प्रथम दाकोवतां, उपशीर्षक फकत पर्याय सकयल आसात.",
+    "languageCollection": "भाषा संग्रह",
+    "itemCount": "{count, plural, one {# घटक} other {# घटकां}}",
+    "videoCount": "{count, plural, one {# व्हिडिओ} other {# व्हिडिओं}}",
+    "videosInGroups": "{videoCount, plural, one {# व्हिडिओ} other {# व्हिडिओं}} {groupCount, plural, one {# गटांत} other {# गटांत}}",
+    "sectionNavLabel": "भाषा यादी विभाग",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "नवो",
+    "videoBible": "व्हिडिओ बायबल",
+    "bibleProject": "BibleProject",
+    "sports": "क्रीडा",
+    "collections": "संग्रह",
+    "subtitlesOnly": "फकत उपशीर्षकां",
+    "newlyAdded": "नव्येन जोडिल्लो",
+    "newVideosTitle": "{language} त नवे ख्रिस्ती व्हिडिओ",
+    "newestFirst": "सर्वांत नवें प्रथम",
+    "noPublishedVideos": "ह्या भाशें खातीर अजून प्रकाशित व्हिडिओ मेळ्ळे ना.",
+    "bibleAndGospelFilms": "बायबल आनी सुवार्तेचे चित्रपट",
+    "videoBibleCollectionsTitle": "{language} Video Bible संग्रह",
+    "videoBibleDescription": "{language} त LUMO, JESUS, Magdalena, आनी Acts हांणीं केंद्रित शास्त्राधारित संग्रह.",
+    "noVideoBibleCollections": "ह्या भाशें खातीर अजून Video Bible संग्रह उपलब्ध ना.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject संग्रह",
+    "bibleProjectDescription": "{language} त उपलब्ध BibleProject मालिका आनी अभ्यास.",
+    "noBibleProjectCollections": "ह्या भाशें खातीर अजून BibleProject संग्रह उपलब्ध ना.",
+    "sportsStories": "क्रीडा कथा",
+    "sportsTitle": "{language} त क्रीडा आनी खेळाडू कथा",
+    "sportsDescription": "{language} त उपलब्ध श्रद्धा-केंद्रित क्रीडा कथा आनी खेळाडू-केंद्रित संग्रह.",
+    "noSportsCollections": "ह्या भाशें खातीर अजून क्रीडा वा खेळाडू-कथा संग्रह उपलब्ध ना.",
+    "fullyDubbed": "पूर्ण डब केल्ले",
+    "dubbedVideosTitle": "संग्रहा प्रमाणे {language} व्हिडिओ",
+    "dubbedVideosDescription": "जडण्याक सोपे जावचे म्हणून संग्रहा प्रमाणे गट केल्ले पूर्ण डब {language} व्हिडिओ ब्राऊझ करात.",
+    "noDubbedVideos": "ह्या भाशें खातीर अजून पूर्ण डब केलेले व्हिडिओ उपलब्ध ना.",
+    "subtitlesAvailable": "उपशीर्षकां उपलब्ध",
+    "subtitlesTitle": "उपशीर्षकां सों {language} व्हिडिओ",
+    "subtitlesDescription": "जेन्नां बोलपाचो {language} ऑडिओ अजून उपलब्ध ना, तेन्नां ह्या व्हिडिओंत {language} उपशीर्षकां आसात.",
+    "noSubtitleVideos": "ह्या भाशें खातीर अजून फकत उपशीर्षक व्हिडिओ उपलब्ध ना.",
+    "dubbed": "डब केल्ले",
+    "subtitles": "उपशीर्षकां",
+    "newLabel": "नवो",
+    "fromCollection": "{collection} वांगडा",
+    "standaloneVideos": "स्वतंत्र व्हिडिओ",
+    "videosFromCollection": "{collection} तले व्हिडिओ.",
+    "standaloneDescription": "ह्या भाशेंतले स्वतंत्र व्हिडिओ.",
+    "openCollection": "संग्रह उगडात"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project पळोवपाचें पान",
+    "watch": "पळयात",
+    "watchNow": "आतां पळयात",
+    "mutePreview": "पूर्वावलोकन म्युट करात",
+    "unmutePreview": "पूर्वावलोकनाचो आवाज सुरू करात",
+    "nextVideo": "पुढलो व्हिडिओ",
+    "featured": "विशेष",
+    "showVideo": "{title} दाखयात",
+    "previousVideoPreview": "मागलो व्हिडिओ पूर्वावलोकन",
+    "nextVideoPreview": "पुढलो व्हिडिओ पूर्वावलोकन",
+    "mediaCollection": "मीडिया संग्रह",
+    "scrollToVideo": "{title} व्हिडिओक सरकात"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project मुखपान",
+    "navigation": "तळाची नेव्हिगेशन",
+    "share": "शेअर करात",
+    "watch": "पळयात",
+    "giving": "देणगी",
+    "about": "विशीं",
+    "products": "उत्पादने",
+    "resources": "संसाधनां",
+    "partners": "भागीदार",
+    "contact": "संपर्क",
+    "giveNow": "आतां देणगी दियात",
+    "resourcesVersion": "संसाधनां ({version})",
+    "office": "कार्यालय",
+    "fax": "फॅक्स",
+    "privacyPolicy": "गोपनीयता धोरण",
+    "legalStatement": "कायदेशीर निवेदन",
+    "newsletter": "आमच्या वृत्तपत्राक नोंदणी करात"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "जागतिक मिशनांखातीर घडयलें",
+    "title": "संदेश बदलत ना. लोक कशें पळयता तें बदलता.",
+    "description": "आम्ही आमची व्हिडिओ लायब्ररी आनी साधनां मुळांपासून पुनर्बांधीत आसां, दशकां येंवडली अनुवाद कामगिरी त्या व्यासपीठां कडेन वचोवन, जंय लोक आधींच जमतात, पळयतात, आनी शेअर करतात.",
+    "translatedLibraryTitle": "जगांतली सगळ्यांत जास्त अनुवादित चित्रपट लायब्ररी",
+    "translatedLibraryDescription": "भरोसेमंद सेवक भागीदारांकडेन वचयिल्ल्या दशकां येंवडल्या अनुवाद कामगिरीन हजारो भाषा ट्रॅकांसहित अशी लायब्ररी घडयली, जाका लागून लोकांक येशूची कथा तांकां खोल ज्या भाशेंत पावता त्या भाशेंत मेळचें.",
+    "trustedVoicesTitle": "भरोसेमंद आवाज नव्या स्वरूपांत वचोवन",
+    "trustedVoicesDescription": "आम्ही सुवार्तेच्या कथा दृश्य पद्धतीन सांगपाची रीती परत बांदत आसां, भरोसेमंद अनुवादां दिसांतऱ्या स्वरूपांसांगत जोडून, म्हणून संदेश व्यासपीठां, संस्कृतीं, आनी स्क्रीनां भितर मोकळ्या रीतीन फिरूं शकता.",
+    "missionTeamTitle": "फकत लायब्ररी ना. मिशन-केंद्रीत टीम.",
+    "missionTeamDescription": "Jesus Film Project ही अनुवादक, माध्यम विशारद, संपादक, आनी निर्मात्यांची जागतिक टीम आसा जी दशकां येंवडल्या सेवाभाव अनुभवाक सर्वांखातीर शिष्य घडोवपाच्या साधनां मद्दत करतात.",
+    "buildingNext": "आम्ही पुढें काय घडयत आसां",
+    "nextStepsTitle": "पुढले पावलां प्लॅटफॉर्म",
+    "nextStepsDescription": "प्रेक्षकांक तांच्या आध्यात्मिक प्रवासांत खर्‍या संधींकडेन जोडात, सामुदाय, शास्त्र, वा मिशनांत नवे पावल टाकपाक मदत करात.",
+    "mediaLibraryTitle": "सुवार्तिक माध्यम लायब्ररी",
+    "mediaLibraryDescription": "जागतिक सेवाकाम आनी सुवार्ताप्रचाराखातीर अनेक भाशांनी उपलब्ध हजारो व्हिडिओ, चित्रपट, आनी संसाधनां आशिल्ली विस्तृत ख्रिस्ती माध्यम लायब्ररी.",
+    "ministryToolsTitle": "सेवाकामांखातीर डिजिटल साधनां",
+    "ministryToolsDescription": "व्हिडिओ व्यवस्थापन, मजकूर वितरन, प्रेक्षक सहभाग, आनी विश्लेषण, जे सेवाकामांक हातांमध्ये जास्त लोकांपर्यंत प्रभावीपणेन पावपाक मदत करतात.",
+    "invitationEyebrow": "तुमकां आमंत्रण आसा",
+    "invitationTitle": "मिशन साधनांची <highlight>नवी पिढी</highlight> घडोवपाक मदत करात",
+    "invitationDescription": "आम्ही व्यावहारिक लोक, निर्माते, आनी भागीदारांक लवकर प्रवेशाक आमंत्रित करत आसां. नवी साधनां सगळ्यात पयलीं तपासात, अभिप्राय दियात, आनी खर्‍या मिशन कामाखातीर घडयिल्ले उत्पादने आकार दियाक मदत करात.",
+    "betaTester": "बीटा परीक्षक जावात"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "व्हिडिओ बायबल संग्रह",
+    "gospelRailTitle": "पूर्ण कथा शोधात",
+    "videoBibleDescription": "आमच्या व्हिडिओ आनी संसाधनांच्या संग्रहांतल्यान बायबल जिणेंता हाडपी रुचीपूर्ण कथा आनी शिकवणी शोधात.",
+    "showcaseTitle": "चित्रपटा वांगडा सांगिल्लें शास्त्र",
+    "adventEyebrow": "ख्रिसमस अॅडव्हेंट",
+    "adventTitle": "ख्रिसमस अॅडव्हेंट काउंटडाउन",
+    "adventDescription": "ख्रिसमसाक आशा, आनंद, आनी येशूच्या आगमनाचो वचन हांव्यान शोधत, रोजच्या व्हिडिओसांगत आमच्या अॅडव्हेंट यात्रेंत सहभागी जावात.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject अॅडव्हेंट",
+    "nuaEyebrow": "NUA मालिका",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth मालिका",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "व्हिडिओ कोर्स",
+    "journeyWithJesusTitle": "येशू वांगडा प्रवास करात",
+    "gospelsOnVideoEyebrow": "प्रत्येक सुवार्ता, व्हिडिओ वर सांगिल्ली",
+    "scriptureAsWrittenTitle": "शास्त्र, जशें लिहिल्लें तशेंच सांगिल्लें",
+    "merryChristmas": "ख्रिसमसाची परबीं!",
+    "daysUntilChristmas": "{count, plural, one {ख्रिसमसाक # दीस उरलो} other {ख्रिसमसाक # दीस उरले}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "भास",
+    "metadataDescription": "JesusFilm व्हिडिओ भाशेन ब्राऊझ करात.",
+    "eyebrow": "पळोवपाच्यो भास",
+    "title": "भास निवडात",
+    "description": "प्रदेशा प्रमाणे भास शोधात वा पूर्ण सूची ब्राऊझ करात.",
+    "searchPlaceholder": "भास वा देश सोदात...",
+    "searchLabel": "भास वा देश सोदात",
+    "clearSearch": "शोध साफ करात",
+    "browse": "ब्राऊझ करात",
+    "browseByRegion": "प्रदेश आनी देशा प्रमाणे ब्राऊझ करात",
+    "languageCount": "{count, plural, one {# भास} other {# भासां}}",
+    "region": "प्रदेश",
+    "countryLanguages": "{country} चे भास",
+    "showLess": "कमी दाखयात",
+    "showMore": "आणखी {count} दाखयात",
+    "noLanguages": "भास मेळ्ळे ना",
+    "tryAnotherSearch": "दुसरो शोध शब्द वापरात."
+  },
+  "WatchHistory": {
+    "metadataTitle": "पळोवपाचो इतिहास | Jesus Film Project",
+    "title": "पळोवपाचो इतिहास",
+    "loading": "इतिहास लोड करत आसा",
+    "empty": "आतां कांय ना",
+    "emptyDescription": "तुमी साइन इन आसताना पळयिल्ले व्हिडिओ हांगा दिसटले.",
+    "earlier": "आधीं",
+    "today": "आयज",
+    "yesterday": "काल"
+  },
+  "AccountControl": {
+    "account": "खातें",
+    "accountMenu": "खात्याचो मेनू",
+    "signIn": "साइन इन",
+    "signOut": "साइन आउट",
+    "signedIn": "साइन इन केलां",
+    "history": "इतिहास",
+    "logOut": "लॉग आउट"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "पान मेळ्ळें ना",
+    "eyebrow": "पान मेळ्ळें ना",
+    "screenReaderPrefix": "पान मेळ्ळें ना:",
+    "title": "हो प्रसंग हांगा ना.",
+    "description": "पान हळलो आसूं शकता, पूण कथा चालूच आसा.",
+    "actionsLabel": "पान मेळ्ळें ना क्रिया",
+    "backToWatch": "पळोवपाक परत",
+    "browseVideos": "व्हिडिओ ब्राऊझ करात"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "लहान चित्रपट पळयात",
+    "actions": {
+      "joinUs": "आमचेकडे या",
+      "shareMission": "आमच्या मिशनांत सहभागी जावात"
+    },
+    "welcomeStart": {
+      "label": "विश्वास आनी शास्त्र",
+      "title": "आतांच्यो व्हिडिओ निवडी",
+      "description": "प्रेरणा दियपाक, आव्हान करपाक, आनी चिंतन जागोवपाक आमच्या लायब्ररीतलो विश्वास-केंद्रीत व्हिडिओ मजकूर."
+    },
+    "welcomeMorning": {
+      "label": "सकाळची प्रेरणा",
+      "title": "सुप्रभात! आजचे बायबल क्षण तुमची वाट पळयतात.",
+      "description": "तुमच्या दिवसाची सुरवात उत्साहवर्धक बायबल क्षणांनी करात; ते प्रेरणा आनी उंचावपाक तयार केल्ले आसा."
+    },
+    "welcomeAfternoon": {
+      "label": "दुपारची प्रेरणा",
+      "title": "नमस्कार! तुमच्या दिवसाखातीर बायबल क्षण.",
+      "description": "दुपारच्या विसाव्याखातीर वा पुढल्या प्रेरणेखातीर योग्य असो उत्साहवर्धक बायबल मजकूर."
+    },
+    "welcomeEvening": {
+      "label": "सांजची प्रेरणा",
+      "title": "शुभ संध्याकाळ! बायबल क्षणांसांगत शांत व्हात.",
+      "description": "तुमचो दिवस संपत आसतना चिंतन करपाक आनी आधार मेळोवपाक मदत करपी शांत बायबल क्षण."
+    },
+    "joinUs": {
+      "label": "आमचेकडे या",
+      "title": "अब्जो लोक सोदत आसात",
+      "description": "पीक तयार आसा. डिजिटल माध्यमांच्या मदतीन जगाक सुवार्ता सांगत आम्हांक जोडात."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "चला एकठांय वचया",
+      "title": "येशूची कथा, एकठांय सांगत",
+      "description": "जाल्यार तांकां तांच्याच भाषेंत, तांकां जंय आसात तेंचेर, येशूचें प्रेम ऐकपाक आनी पळोवपाक मेळचें."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% जुळटा",
+    "none": "ह्या भाशेंत ह्या व्हिडिओ खातीर शिफारसी मेळ्ळ्यो ना."
+  },
+  "BetaTesterModal": {
+    "title": "बीटा परीक्षक जावात",
+    "trigger": "बीटा परीक्षक जावात",
+    "loadFailed": "कायतरी चुकलां.",
+    "loading": "लोड करत आसा...",
+    "openFormNewTab": "फॉर्म नव्या टॅबांत उगडात",
+    "close": "बंद करात",
+    "iframeTitle": "बीटा परीक्षक जावात"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

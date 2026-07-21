@@ -22,6 +22,7 @@ import {
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
 import { languageCodeFor } from "@/lib/language-code"
@@ -67,6 +68,7 @@ export function SeriesPageClient({
   const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
+  useWatchModalActivity(modalState !== "none")
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
@@ -209,6 +211,9 @@ export function SeriesPageClient({
   const currentLanguageCode = languageCodeFor(
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
+  const headerLanguageSwitcherOwnerToken = useRef(
+    Symbol("series-page-language-switcher"),
+  ).current
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
@@ -263,6 +268,7 @@ export function SeriesPageClient({
             languageCode: headerLanguageSwitcherVisible
               ? currentLanguageCode
               : null,
+            ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
       ),
@@ -272,12 +278,20 @@ export function SeriesPageClient({
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null, languageCode: null } },
+          {
+            detail: {
+              visible: false,
+              onClick: null,
+              languageCode: null,
+              ownerToken: headerLanguageSwitcherOwnerToken,
+            },
+          },
         ),
       )
     }
   }, [
     currentLanguageCode,
+    headerLanguageSwitcherOwnerToken,
     headerLanguageSwitcherVisible,
     heroOwnsHeaderLanguageSwitcher,
     openLanguage,

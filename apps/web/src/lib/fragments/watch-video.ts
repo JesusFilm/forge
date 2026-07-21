@@ -105,8 +105,7 @@ export const watchVideoShellFragment = adminGraphql(`
         # child.dubs is deliberately NOT projected — a 61-chapter ×
         # ~2,200-language fan-out (~45 MB) blows past Next's unstable_cache
         # 2 MB ceiling. Restore the per-chapter duration pill via this cheap
-        # server-side scalar (admin's Video.durationSeconds, like
-        # HybridSearchResult.durationSeconds), NOT a full dub fetch.
+        # server-side scalar (admin's Video.durationSeconds), NOT a full dub fetch.
         durationSeconds
       }
     }

@@ -16,6 +16,7 @@ const KNOWN_ERROR_KEYS: Record<string, string> = {
     "defaultTemplateMisconfigured",
   "Response not successful: Received status code 401": "authFailed",
   "Missing or invalid credentials": "authFailed",
+  "Something went wrong loading this page.": "pageLoadFailed",
 }
 
 export function ExperienceError({ message }: ExperienceErrorProps) {
@@ -27,7 +28,7 @@ export function ExperienceError({ message }: ExperienceErrorProps) {
   // reflect that. Mirrors the LANGUAGE_BCP47_MAP pattern in locale.ts.
   const friendly = Object.hasOwn(KNOWN_ERROR_KEYS, trimmed)
     ? t(KNOWN_ERROR_KEYS[trimmed])
-    : trimmed || t("unexpected")
+    : t("unexpected")
   return (
     <main className="flex min-h-[40vh] flex-col items-center justify-center p-8">
       <p className="text-lg text-red-600">

@@ -7,7 +7,9 @@
     "noContent": "Δεν υπάρχει διαθέσιμο περιεχόμενο.",
     "homepageMisconfigured": "Η αρχική σελίδα παρακολούθησης δεν έχει ρυθμιστεί σωστά.",
     "defaultTemplateMisconfigured": "Το προεπιλεγμένο πρότυπο παρακολούθησης δεν έχει ρυθμιστεί σωστά.",
-    "authFailed": "Δεν ήταν δυνατή η πιστοποίηση στην υπηρεσία περιεχομένου. Επικοινωνήστε με την υποστήριξη αν το πρόβλημα συνεχίζεται."
+    "authFailed": "Δεν ήταν δυνατή η πιστοποίηση στην υπηρεσία περιεχομένου. Επικοινωνήστε με την υποστήριξη αν το πρόβλημα συνεχίζεται.",
+    "pageLoadFailed": "Κάτι πήγε στραβά.",
+    "tryAgain": "Δοκιμάστε ξανά"
   },
   "VideosPage": {
     "title": "Όλα τα βίντεο",
@@ -22,7 +24,8 @@
     "promoHeading": "Θέλετε να κατανοήσετε βαθύτερα τη Βίβλο;",
     "joinBibleStudy": "Συμμετέχετε στη μελέτη της Βίβλου μας",
     "previousQuote": "Προηγούμενο εδάφιο της Βίβλου",
-    "nextQuote": "Επόμενο εδάφιο της Βίβλου"
+    "nextQuote": "Επόμενο εδάφιο της Βίβλου",
+    "readPassage": "Διαβάστε αυτή την περικοπή στη Βίβλο σας."
   },
   "DownloadButton": {
     "checking": "Έλεγχος",
@@ -73,7 +76,8 @@
     "selectLanguage": "Επιλέξτε γλώσσα",
     "searchPlaceholder": "Αναζήτηση γλωσσών…",
     "languages": "Γλώσσες",
-    "noMatches": "Δεν βρέθηκαν αποτελέσματα"
+    "noMatches": "Δεν βρέθηκαν αποτελέσματα",
+    "notAvailable": "Μη διαθέσιμο"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Γλώσσα",
@@ -100,10 +104,7 @@
     "seriesLabel": "ΣΕΙΡΑ · {episodes}",
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
     "share": "Κοινοποίηση",
-    "languages": "Γλώσσες",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Γλώσσες"
   },
   "WatchModal": {
     "close": "Κλείσιμο"
@@ -115,7 +116,8 @@
     "questions": "Σχετικές ερωτήσεις",
     "askYours": "Κάντε τη δική σας",
     "chatWithPerson": "Συνομιλήστε με ένα άτομο",
-    "askBibleQuestion": "Κάντε μια ερώτηση για τη Βίβλο"
+    "askBibleQuestion": "Κάντε μια ερώτηση για τη Βίβλο",
+    "quiz": "Κουίζ"
   },
   "WatchQuestionPanel": {
     "messageType": "Τύπος μηνύματος",
@@ -173,7 +175,8 @@
     "searchRegion": "Αναζήτηση βίντεο",
     "clearSearch": "Εκκαθάριση αναζήτησης",
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
-    "home": "Αρχική JesusFilm"
+    "home": "Αρχική JesusFilm",
+    "closeSearch": "Κλείσιμο αναζήτησης"
   },
   "SearchOverlay": {
     "dialogLabel": "Αναζήτηση και περιήγηση σε βίντεο",
@@ -208,14 +211,19 @@
     "clearLanguages": "Εκκαθάριση",
     "queryLanguageDetected": "Ανιχνεύτηκε {language}",
     "searchInLanguage": "Αναζήτηση στα {language}",
-    "tryDifferentKeywordsOrLanguage": "Δοκιμάστε διαφορετικές λέξεις-κλειδιά ή επιλέξτε άλλη γλώσσα αναζήτησης"
+    "tryDifferentKeywordsOrLanguage": "Δοκιμάστε διαφορετικές λέξεις-κλειδιά ή επιλέξτε άλλη γλώσσα αναζήτησης",
+    "useWebsiteDefaultLanguage": "Χρήση της προεπιλεγμένης γλώσσας αναζήτησης του ιστότοπου",
+    "removeLanguage": "Αφαίρεση {language}",
+    "browseMode": "Λειτουργία περιήγησης αναζήτησης"
   },
   "HeroPlayer": {
     "playWithSound": "Παρακολουθήστε τώρα",
-    "tapToUnmute": "Πατήστε για κατάργηση σίγασης"
+    "tapToUnmute": "Πατήστε για κατάργηση σίγασης",
+    "nextEpisode": "Επόμενο επεισόδιο"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Φόρτωση περιεχομένου"
+    "loadingContent": "Φόρτωση περιεχομένου",
+    "loadingVideo": "Φόρτωση βίντεο"
   },
   "VideoLabels": {
     "video": "Βίντεο",
@@ -226,7 +234,8 @@
     "series": "Σειρά",
     "collection": "Συλλογή",
     "trailer": "Τρέιλερ",
-    "behindTheScenes": "Παρασκήνια"
+    "behindTheScenes": "Παρασκήνια",
+    "chapter": "Κεφάλαιο"
   },
   "SiblingCarousel": {
     "clipPosition": "Κλιπ {current} από {total}",
@@ -238,12 +247,253 @@
     "noImage": "Χωρίς εικόνα",
     "playingNow": "Παίζεται τώρα",
     "previousChapter": "Προηγούμενο κεφάλαιο",
-    "nextChapter": "Επόμενο κεφάλαιο"
+    "nextChapter": "Επόμενο κεφάλαιο",
+    "thumbnailAlt": "Μικρογραφία του {title}",
+    "relatedVideoThumbnail": "Μικρογραφία σχετικού βίντεο"
   },
   "SearchResultCard": {
     "experience": "Εμπειρία",
     "episodeCount": "{count, plural, one {# επεισόδιο} other {# επεισόδια}}",
     "thumbnailAlt": "Μικρογραφία βίντεο"
+  },
+  "Feedback": {
+    "openForm": "Άνοιγμα φόρμας σχολίων",
+    "label": "Σχόλια",
+    "couldNotLoad": "Δεν ήταν δυνατή η φόρτωση της φόρμας σχολίων.",
+    "loadingForm": "Φόρτωση φόρμας σχολίων…",
+    "retry": "Επανάληψη",
+    "openFormShort": "Άνοιγμα φόρμας",
+    "cancel": "Ακύρωση",
+    "title": "Σχόλια Beta",
+    "description": "Μοιραστείτε τι λειτουργεί και τι μπορούμε να βελτιώσουμε. Αυτή η φόρμα παρέχεται από τη Google.",
+    "openInNewTab": "Άνοιγμα φόρμας σε νέα καρτέλα",
+    "closeForm": "Κλείσιμο φόρμας σχολίων",
+    "loadingGoogleForm": "Φόρτωση Google Form…",
+    "iframeTitle": "Υποβολή σχολίων Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Δωρεάν χριστιανικά βίντεο στα {language} | Jesus Film Project",
+    "metadataDescription": "Εξερευνήστε ταινίες για τον Ιησού, ιστορίες της Βίβλου, σειρές μαθητείας και βίντεο ευαγγελισμού με μεταγλωττισμένο ήχο ή υπότιτλους στα {language}.",
+    "heroTitle": "Δωρεάν χριστιανικά βίντεο στα {language}",
+    "heroDescription": "Εξερευνήστε ταινίες για τον Ιησού, ιστορίες της Βίβλου, σειρές μαθητείας και βίντεο ευαγγελισμού διαθέσιμα στα {language}. Τα πλήρως μεταγλωττισμένα βίντεο προβάλλονται πρώτα, με τις επιλογές μόνο με υπότιτλους παρακάτω.",
+    "languageCollection": "Συλλογή γλώσσας",
+    "itemCount": "{count, plural, one {# στοιχείο} other {# στοιχεία}}",
+    "videoCount": "{count, plural, one {# βίντεο} other {# βίντεο}}",
+    "videosInGroups": "{videoCount, plural, one {# βίντεο} other {# βίντεο}} σε {groupCount, plural, one {# ομάδα} other {# ομάδες}}",
+    "sectionNavLabel": "Ενότητες αποθέματος γλωσσών",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Νέο",
+    "videoBible": "Βίβλος σε βίντεο",
+    "bibleProject": "BibleProject",
+    "sports": "Αθλητισμός",
+    "collections": "Συλλογές",
+    "subtitlesOnly": "Μόνο υπότιτλοι",
+    "newlyAdded": "Νέα προσθήκη",
+    "newVideosTitle": "Νέα χριστιανικά βίντεο στα {language}",
+    "newestFirst": "Τα νεότερα πρώτα",
+    "noPublishedVideos": "Δεν βρέθηκαν ακόμη δημοσιευμένα βίντεο για αυτή τη γλώσσα.",
+    "bibleAndGospelFilms": "Ταινίες της Βίβλου και του Ευαγγελίου",
+    "videoBibleCollectionsTitle": "Συλλογές Video Bible στα {language}",
+    "videoBibleDescription": "Συλλογές με επίκεντρο τις Γραφές, όπως LUMO, JESUS, Magdalena και Acts, στα {language}.",
+    "noVideoBibleCollections": "Δεν υπάρχουν ακόμη διαθέσιμες συλλογές Video Bible για αυτή τη γλώσσα.",
+    "bibleProjectCollectionsTitle": "Συλλογές BibleProject στα {language}",
+    "bibleProjectDescription": "Σειρές και μελέτες του BibleProject διαθέσιμες στα {language}.",
+    "noBibleProjectCollections": "Δεν υπάρχουν ακόμη διαθέσιμες συλλογές BibleProject για αυτή τη γλώσσα.",
+    "sportsStories": "Αθλητικές ιστορίες",
+    "sportsTitle": "Ιστορίες αθλητισμού και αθλητών στα {language}",
+    "sportsDescription": "Ιστορίες αθλητισμού με επίκεντρο την πίστη και συλλογές για αθλητές διαθέσιμες στα {language}.",
+    "noSportsCollections": "Δεν υπάρχουν ακόμη διαθέσιμες συλλογές αθλητισμού ή ιστοριών αθλητών για αυτή τη γλώσσα.",
+    "fullyDubbed": "Πλήρως μεταγλωττισμένο",
+    "dubbedVideosTitle": "Βίντεο στα {language} ανά συλλογή",
+    "dubbedVideosDescription": "Περιηγηθείτε σε πλήρως μεταγλωττισμένα βίντεο στα {language}, ομαδοποιημένα με τη συλλογή τους για ευκολότερη αναζήτηση.",
+    "noDubbedVideos": "Δεν υπάρχουν ακόμη διαθέσιμα πλήρως μεταγλωττισμένα βίντεο για αυτή τη γλώσσα.",
+    "subtitlesAvailable": "Υπότιτλοι διαθέσιμοι",
+    "subtitlesTitle": "Βίντεο στα {language} με υπότιτλους",
+    "subtitlesDescription": "Αυτά τα βίντεο περιλαμβάνουν υπότιτλους στα {language}, όταν δεν είναι ακόμη διαθέσιμος ο προφορικός ήχος στα {language}.",
+    "noSubtitleVideos": "Δεν υπάρχουν ακόμη διαθέσιμα βίντεο μόνο με υπότιτλους για αυτή τη γλώσσα.",
+    "dubbed": "Μεταγλωττισμένο",
+    "subtitles": "Υπότιτλοι",
+    "newLabel": "Νέο",
+    "fromCollection": "Από {collection}",
+    "standaloneVideos": "Αυτόνομα βίντεο",
+    "videosFromCollection": "Βίντεο από τη συλλογή {collection}.",
+    "standaloneDescription": "Αυτόνομα βίντεο σε αυτή τη γλώσσα.",
+    "openCollection": "Άνοιγμα συλλογής"
+  },
+  "WatchHome": {
+    "pageTitle": "Παρακολούθηση Jesus Film Project",
+    "watch": "Παρακολούθηση",
+    "watchNow": "Παρακολουθήστε τώρα",
+    "mutePreview": "Σίγαση προεπισκόπησης",
+    "unmutePreview": "Κατάργηση σίγασης προεπισκόπησης",
+    "nextVideo": "Επόμενο βίντεο",
+    "featured": "Προτεινόμενα",
+    "showVideo": "Προβολή {title}",
+    "previousVideoPreview": "Προεπισκόπηση προηγούμενου βίντεο",
+    "nextVideoPreview": "Προεπισκόπηση επόμενου βίντεο",
+    "mediaCollection": "Συλλογή πολυμέσων",
+    "scrollToVideo": "Κύλιση στο βίντεο {title}"
+  },
+  "WatchFooter": {
+    "home": "Αρχική Jesus Film Project",
+    "navigation": "Πλοήγηση υποσέλιδου",
+    "share": "Κοινοποίηση",
+    "watch": "Παρακολούθηση",
+    "giving": "Δωρεές",
+    "about": "Σχετικά",
+    "products": "Προϊόντα",
+    "resources": "Πόροι",
+    "partners": "Συνεργάτες",
+    "contact": "Επικοινωνία",
+    "giveNow": "Δώστε τώρα",
+    "resourcesVersion": "Πόροι ({version})",
+    "office": "Γραφείο",
+    "fax": "Φαξ",
+    "privacyPolicy": "Πολιτική απορρήτου",
+    "legalStatement": "Νομική δήλωση",
+    "newsletter": "Εγγραφείτε στο ενημερωτικό μας δελτίο"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Σχεδιασμένο για παγκόσμιες αποστολές",
+    "title": "Το μήνυμα δεν αλλάζει. Αλλάζει ο τρόπος που το παρακολουθούν οι άνθρωποι.",
+    "description": "Αναδομούμε από την αρχή τη βιβλιοθήκη βίντεο και τα εργαλεία μας, δεσμεύοντας δεκαετίες μεταφραστικής εργασίας στις πλατφόρμες όπου οι άνθρωποι ήδη συγκεντρώνονται, παρακολουθούν και μοιράζονται.",
+    "translatedLibraryTitle": "Η πιο μεταφρασμένη βιβλιοθήκη ταινιών στον κόσμο",
+    "translatedLibraryDescription": "Δεκαετίες μεταφραστικής εργασίας, με τη στήριξη αξιόπιστων ιεραποστολικών συνεργατών, έχουν δημιουργήσει μια βιβλιοθήκη με χιλιάδες γλωσσικά κομμάτια, ώστε οι άνθρωποι να μπορούν να γνωρίσουν την ιστορία του Ιησού στη γλώσσα που τους αγγίζει πιο βαθιά.",
+    "trustedVoicesTitle": "Μεταφέροντας αξιόπιστες φωνές σε νέες μορφές",
+    "trustedVoicesDescription": "Αναδομούμε τον τρόπο με τον οποίο αφηγούνται οπτικά οι ευαγγελικές ιστορίες, συνδυάζοντας αξιόπιστες μεταφράσεις με σύγχρονες μορφές, ώστε το μήνυμα να κινείται ελεύθερα σε πλατφόρμες, κουλτούρες και οθόνες.",
+    "missionTeamTitle": "Περισσότερο από μια βιβλιοθήκη. Μια ομάδα με αποστολή.",
+    "missionTeamDescription": "Το Jesus Film Project είναι μια παγκόσμια ομάδα μεταφραστών, ειδικών στα μέσα, συντακτών και δημιουργών που μετατρέπει δεκαετίες διακονικής εμπειρίας σε εργαλεία για μαθητές παντού.",
+    "buildingNext": "Τι χτίζουμε στη συνέχεια",
+    "nextStepsTitle": "Πλατφόρμα Επόμενων Βημάτων",
+    "nextStepsDescription": "Συνδέστε τους θεατές με απτές ευκαιρίες στο πνευματικό τους ταξίδι, βοηθώντας τους να κάνουν το επόμενο βήμα προς την κοινότητα, τις Γραφές ή την αποστολή.",
+    "mediaLibraryTitle": "Βιβλιοθήκη Ευαγγελιστικού Υλικού",
+    "mediaLibraryDescription": "Μια εκτεταμένη χριστιανική βιβλιοθήκη μέσων με χιλιάδες βίντεο, ταινίες και πόρους διαθέσιμους σε πολλές γλώσσες για διακονία και ευαγγελισμό σε όλο τον κόσμο.",
+    "ministryToolsTitle": "Ψηφιακά εργαλεία για διακονίες",
+    "ministryToolsDescription": "Διαχείριση βίντεο, διανομή περιεχομένου, εμπλοκή κοινού και αναλυτικά στοιχεία, σχεδιασμένα για να βοηθούν τις διακονίες να φτάνουν αποτελεσματικά σε περισσότερους ανθρώπους.",
+    "invitationEyebrow": "Σας προσκαλούμε",
+    "invitationTitle": "Βοηθήστε να χτίσουμε <highlight>τη νέα γενιά</highlight> εργαλείων αποστολής",
+    "invitationDescription": "Προσκαλούμε επαγγελματίες, δημιουργούς και συνεργάτες σε πρόωρη πρόσβαση. Δοκιμάστε πρώτοι νέα εργαλεία, δώστε σχόλια και βοηθήστε να διαμορφώσουμε προϊόντα σχεδιασμένα για πραγματικό ιεραποστολικό έργο.",
+    "betaTester": "Γίνετε beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Συλλογή Video Bible",
+    "gospelRailTitle": "Ανακαλύψτε ολόκληρη την ιστορία",
+    "videoBibleDescription": "Εξερευνήστε τη συλλογή μας με βίντεο και πόρους που ζωντανεύουν τη Βίβλο μέσα από συναρπαστικές ιστορίες και διδασκαλίες.",
+    "showcaseTitle": "Η Γραφή αφηγείται μέσα από τον κινηματογράφο",
+    "adventEyebrow": "Χριστουγεννιάτικη Προσμονή",
+    "adventTitle": "Αντίστροφη μέτρηση για τα Χριστούγεννα",
+    "adventDescription": "Συμμετέχετε στο ταξίδι μας για την Προσμονή με ένα καθημερινό βίντεο που χτίζει την προσμονή για τα Χριστούγεννα, εξερευνώντας την ελπίδα, τη χαρά και την υπόσχεση της έλευσης του Ιησού.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Προσμονή με το BibleProject",
+    "nuaEyebrow": "Σειρά NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Σειρά Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Βιντεομάθημα",
+    "journeyWithJesusTitle": "Πορεία με τον Ιησού",
+    "gospelsOnVideoEyebrow": "Κάθε Ευαγγέλιο, σε βίντεο",
+    "scriptureAsWrittenTitle": "Η Γραφή, ειπωμένη ακριβώς όπως γράφτηκε",
+    "merryChristmas": "Καλά Χριστούγεννα!",
+    "daysUntilChristmas": "{count, plural, one {Απομένει # ημέρα μέχρι τα Χριστούγεννα} other {Απομένουν # ημέρες μέχρι τα Χριστούγεννα}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Γλώσσες",
+    "metadataDescription": "Περιηγηθείτε σε βίντεο του JesusFilm ανά γλώσσα.",
+    "eyebrow": "Γλώσσες παρακολούθησης",
+    "title": "Επιλέξτε γλώσσα",
+    "description": "Εξερευνήστε γλώσσες ανά περιοχή ή δείτε ολόκληρη τη λίστα.",
+    "searchPlaceholder": "Αναζήτηση γλωσσών ή χωρών...",
+    "searchLabel": "Αναζήτηση γλωσσών ή χωρών",
+    "clearSearch": "Εκκαθάριση αναζήτησης",
+    "browse": "Περιήγηση",
+    "browseByRegion": "Περιήγηση ανά περιοχή και χώρα",
+    "languageCount": "{count, plural, one {# γλώσσα} other {# γλώσσες}}",
+    "region": "Περιοχή",
+    "countryLanguages": "Γλώσσες για {country}",
+    "showLess": "Εμφάνιση λιγότερων",
+    "showMore": "Εμφάνιση άλλων {count}",
+    "noLanguages": "Δεν βρέθηκαν γλώσσες",
+    "tryAnotherSearch": "Δοκιμάστε άλλο όρο αναζήτησης."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ιστορικό παρακολούθησης | Jesus Film Project",
+    "title": "Ιστορικό παρακολούθησης",
+    "loading": "Φόρτωση ιστορικού",
+    "empty": "Δεν υπάρχει ακόμη τίποτα εδώ",
+    "emptyDescription": "Τα βίντεο που παρακολουθείτε ενώ είστε συνδεδεμένοι θα εμφανιστούν εδώ.",
+    "earlier": "Νωρίτερα",
+    "today": "Σήμερα",
+    "yesterday": "Χθες"
+  },
+  "AccountControl": {
+    "account": "Λογαριασμός",
+    "accountMenu": "Μενού λογαριασμού",
+    "signIn": "Σύνδεση",
+    "signOut": "Αποσύνδεση",
+    "signedIn": "Συνδεδεμένος",
+    "history": "Ιστορικό",
+    "logOut": "Έξοδος"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Η σελίδα δεν βρέθηκε",
+    "eyebrow": "Η σελίδα δεν βρέθηκε",
+    "screenReaderPrefix": "Η σελίδα δεν βρέθηκε:",
+    "title": "Αυτή η σκηνή δεν υπάρχει εδώ.",
+    "description": "Η σελίδα μπορεί να έχει μετακινηθεί, αλλά η ιστορία συνεχίζεται.",
+    "actionsLabel": "Ενέργειες για τη σελίδα που δεν βρέθηκε",
+    "backToWatch": "Επιστροφή στην Παρακολούθηση",
+    "browseVideos": "Περιήγηση σε βίντεο"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Παρακολουθήστε μικρού μήκους ταινία",
+    "actions": {
+      "joinUs": "Ελάτε μαζί μας",
+      "shareMission": "Συμμετέχετε στην αποστολή μας"
+    },
+    "welcomeStart": {
+      "label": "Πίστη & Γραφή",
+      "title": "Οι σημερινές προτάσεις βίντεο",
+      "description": "Περιεχόμενο βίντεο με επίκεντρο την πίστη από τη βιβλιοθήκη μας, για έμπνευση, πρόκληση και προβληματισμό."
+    },
+    "welcomeMorning": {
+      "label": "Πρωινή έμπνευση",
+      "title": "Καλημέρα! Σας περιμένουν οι σημερινές στιγμές της Βίβλου.",
+      "description": "Ξεκινήστε τη μέρα σας με ενθαρρυντικές στιγμές από τη Βίβλο, σχεδιασμένες να εμπνεύσουν και να αναζωογονήσουν το πνεύμα σας."
+    },
+    "welcomeAfternoon": {
+      "label": "Απογευματινή έμπνευση",
+      "title": "Καλό απόγευμα! Στιγμές από τη Βίβλο για τη μέρα σας.",
+      "description": "Ενθαρρυντικό περιεχόμενο από τη Βίβλο, ιδανικό για το απογευματινό σας διάλειμμα ή για συνεχή έμπνευση."
+    },
+    "welcomeEvening": {
+      "label": "Βραδινή έμπνευση",
+      "title": "Καλησπέρα! Χαλαρώστε με στιγμές από τη Βίβλο.",
+      "description": "Ήρεμες στιγμές από τη Βίβλο, για να σας βοηθήσουν να συλλογιστείτε και να βρείτε παρηγοριά καθώς κλείνει η μέρα σας."
+    },
+    "joinUs": {
+      "label": "Ελάτε μαζί μας",
+      "title": "Δισεκατομμύρια αναζητούν",
+      "description": "Ο θερισμός είναι εδώ. Ελάτε μαζί μας καθώς μοιραζόμαστε το ευαγγέλιο με τον κόσμο μέσω ψηφιακών μέσων."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Πάμε μαζί",
+      "title": "Αφηγούμαστε μαζί την ιστορία του Ιησού",
+      "description": "Για να μπορούν να ακούσουν και να δουν την αγάπη του Ιησού στη δική τους γλώσσα, εκεί όπου βρίσκονται."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% αντιστοιχία",
+    "none": "Δεν βρέθηκαν προτάσεις για αυτό το βίντεο σε αυτή τη γλώσσα."
+  },
+  "BetaTesterModal": {
+    "title": "Γίνετε beta tester",
+    "trigger": "Γίνετε beta tester",
+    "loadFailed": "Κάτι πήγε στραβά.",
+    "loading": "Φόρτωση...",
+    "openFormNewTab": "Άνοιγμα φόρμας σε νέα καρτέλα",
+    "close": "Κλείσιμο",
+    "iframeTitle": "Γίνετε beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

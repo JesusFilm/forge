@@ -4,8 +4,12 @@ export type SubtitleCue = { start: number; end: number; text: string }
 
 export type InitialSubtitleTranscript = {
   vttSrc: string
-  cues: SubtitleCue[] | null
+  compactText: string | null
 } | null
+
+export function formatCompactTranscript(cues: SubtitleCue[]): string {
+  return cues.map(({ text }) => text).join("\n\n")
+}
 
 const TIMING_RE =
   /(?:(\d+):)?(\d+):(\d+)[.,](\d+)\s*-->\s*(?:(\d+):)?(\d+):(\d+)[.,](\d+)/

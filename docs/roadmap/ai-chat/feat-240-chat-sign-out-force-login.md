@@ -76,6 +76,15 @@ starts gating more than that.
    script never needs to read the cookie to call same-origin routes, and
    revocation would not stop that either.
 
+   > **Superseded 2026-07-20 (feat-268):** the third mitigation's wording
+   > changed — assistant turns now render hardened markdown
+   > (`apps/chat/src/components/chat/assistant-markdown.tsx`: element
+   > allowlist, raw HTML inert-texted, https-only links; no
+   > `dangerouslySetInnerHTML`, no `rehype-raw`). The invariant this
+   > mitigation rests on is now "no raw HTML ever reaches the DOM", per
+   > the reworded discipline in `apps/chat/CLAUDE.md`. User turns remain
+   > React-escaped plain text; the mitigation itself still holds.
+
 **Incident lever.** Rotating `CHAT_SESSION_SECRET` instantly invalidates
 every chat session — everyone-at-once, zero-code (the feat-207 plan already
 records rotation as invalidating all sessions and calls it acceptable).

@@ -7,7 +7,9 @@
     "noContent": "Konteúdu i ka tene.",
     "homepageMisconfigured": "Pájina prinsipal di watch ka konfiguradu dretu.",
     "defaultTemplateMisconfigured": "Modelu padrãu di watch ka konfiguradu dretu.",
-    "authFailed": "Ka n'pudi autentika ku servisu di konteúdu. Pur favor, kontakta suporti si es kontise ta kontinua."
+    "authFailed": "Ka n'pudi autentika ku servisu di konteúdu. Pur favor, kontakta suporti si es kontise ta kontinua.",
+    "pageLoadFailed": "Algun kusa bai mal.",
+    "tryAgain": "Tenta di novu"
   },
   "VideosPage": {
     "title": "Todus Vídeus",
@@ -22,7 +24,8 @@
     "promoHeading": "Bu misti intindi Bíblia ku mas fundura?",
     "joinBibleStudy": "Junta na n'studu di Bíblia",
     "previousQuote": "Sitason di Bíblia anterior",
-    "nextQuote": "Prósimu sitason di Bíblia"
+    "nextQuote": "Prósimu sitason di Bíblia",
+    "readPassage": "Lê es pasajen na bu Bíblia."
   },
   "DownloadButton": {
     "checking": "Ta verifica",
@@ -73,7 +76,8 @@
     "selectLanguage": "Skolhi língua",
     "searchPlaceholder": "Buska línguas…",
     "languages": "Línguas",
-    "noMatches": "Ka tene korespondénsia"
+    "noMatches": "Ka tene korespondénsia",
+    "notAvailable": "Ka disponivel"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Língua",
@@ -100,10 +104,7 @@
     "seriesLabel": "SÉRIE · {episodes}",
     "changeAudioLanguage": "Muda língua di áudio",
     "share": "Partilha",
-    "languages": "Línguas",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Línguas"
   },
   "WatchModal": {
     "close": "Fixa"
@@ -115,7 +116,8 @@
     "questions": "Perguntas Relasionadu",
     "askYours": "Fazi bu pergunta",
     "chatWithPerson": "Konversa ku un pessoa",
-    "askBibleQuestion": "Fazi un pergunta di Bíblia"
+    "askBibleQuestion": "Fazi un pergunta di Bíblia",
+    "quiz": "Kuiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Tipu di mensajen",
@@ -173,7 +175,8 @@
     "searchRegion": "Buska vídeus",
     "clearSearch": "Limpa buska",
     "changeAudioLanguage": "Muda língua di áudio",
-    "home": "Inisiu di JesusFilm"
+    "home": "Inisiu di JesusFilm",
+    "closeSearch": "Fixa buska"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i navega vídeus",
@@ -208,14 +211,19 @@
     "clearLanguages": "Limpa",
     "queryLanguageDetected": "{language} detetadu",
     "searchInLanguage": "Buska na {language}",
-    "tryDifferentKeywordsOrLanguage": "Tenta palavras-chavi diferenti ou skolhi otu língua di buska"
+    "tryDifferentKeywordsOrLanguage": "Tenta palavras-chavi diferenti ou skolhi otu língua di buska",
+    "useWebsiteDefaultLanguage": "Uza língua padrãu di buska di site",
+    "removeLanguage": "Tira {language}",
+    "browseMode": "Modu di navega buska"
   },
   "HeroPlayer": {
     "playWithSound": "Odja agora",
-    "tapToUnmute": "Toká pa pô son"
+    "tapToUnmute": "Toká pa pô son",
+    "nextEpisode": "Prósimu Episódiu"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ta kariga konteúdu"
+    "loadingContent": "Ta kariga konteúdu",
+    "loadingVideo": "Ta kariga vídeu"
   },
   "VideoLabels": {
     "video": "Vídeu",
@@ -226,7 +234,8 @@
     "series": "Série",
     "collection": "Koleson",
     "trailer": "Avansu",
-    "behindTheScenes": "Bastidoris"
+    "behindTheScenes": "Bastidoris",
+    "chapter": "Kapítulu"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipi {current} di {total}",
@@ -238,12 +247,253 @@
     "noImage": "Ka tene imajen",
     "playingNow": "Ta toka agora",
     "previousChapter": "Kapítulu anterior",
-    "nextChapter": "Prósimu kapítulu"
+    "nextChapter": "Prósimu kapítulu",
+    "thumbnailAlt": "miniatura di {title}",
+    "relatedVideoThumbnail": "miniatura di vídeu relasionadu"
   },
   "SearchResultCard": {
     "experience": "Experiência",
     "episodeCount": "{count, plural, one {# episódiu} other {# episódius}}",
     "thumbnailAlt": "miniatura di vídeu"
+  },
+  "Feedback": {
+    "openForm": "Abri formuláriu di feedback",
+    "label": "Opinião",
+    "couldNotLoad": "Formuláriu di feedback ka pudi kariga.",
+    "loadingForm": "Ta kariga formuláriu di feedback…",
+    "retry": "Tenta di novu",
+    "openFormShort": "Abri formuláriu",
+    "cancel": "Kansela",
+    "title": "Feedback Beta",
+    "description": "Partilha kuza ku ta funsiona i kuza ku nu pudi midjora. Es formuláriu ben di Google.",
+    "openInNewTab": "Abri formuláriu na aba nova",
+    "closeForm": "Fixa formuláriu di feedback",
+    "loadingGoogleForm": "Ta kariga Formuláriu Google…",
+    "iframeTitle": "Mandá Feedback Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vídeus kriston grátis na {language} | Jesus Film Project",
+    "metadataDescription": "Esplora filmes di Jesus, stórias di Bíblia, séries di dishipuladu i vídeus di evangelizason ku áudio dobradu ou legendas na {language}.",
+    "heroTitle": "Vídeus kriston grátis na {language}",
+    "heroDescription": "Esplora filmes di Jesus, stórias di Bíblia, séries di dishipuladu i vídeus di evangelizason disponivel na {language}. Vídeus totalmenti dobradu ta ben primeru, i dipus opsons só ku legendas.",
+    "languageCollection": "Koleson di língua",
+    "itemCount": "{count, plural, one {# elementu} other {# elementus}}",
+    "videoCount": "{count, plural, one {# vídeu} other {# vídeus}}",
+    "videosInGroups": "{videoCount, plural, one {# vídeu} other {# vídeus}} na {groupCount, plural, one {# grupu} other {# grupus}}",
+    "sectionNavLabel": "Seksons di inventáriu di língua",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Novu",
+    "videoBible": "Bíblia na Vídeu",
+    "bibleProject": "BibleProject",
+    "sports": "Sportis",
+    "collections": "Kolesons",
+    "subtitlesOnly": "Só legendas",
+    "newlyAdded": "Adisionadu resenti",
+    "newVideosTitle": "Vídeus kriston novos na {language}",
+    "newestFirst": "Mas novu primeru",
+    "noPublishedVideos": "Nton ka atxadu nenhum vídeu publíkadu pa es língua ainda.",
+    "bibleAndGospelFilms": "Filmes di Bíblia i Evangelhu",
+    "videoBibleCollectionsTitle": "Kolesons di Bíblia na Vídeu na {language}",
+    "videoBibleDescription": "Kolesons sentradu na Skritura inkluídu LUMO, JESUS, Magdalena i Acts na {language}.",
+    "noVideoBibleCollections": "Ainda ka tene kolesons di Bíblia na Vídeu disponivel pa es língua.",
+    "bibleProjectCollectionsTitle": "Kolesons BibleProject na {language}",
+    "bibleProjectDescription": "Séries i studus di BibleProject disponivel na {language}.",
+    "noBibleProjectCollections": "Ainda ka tene kolesons BibleProject disponivel pa es língua.",
+    "sportsStories": "Stórias di sporti",
+    "sportsTitle": "Sportis i stórias di atletas na {language}",
+    "sportsDescription": "Stórias di sporti sentradu na fé i kolesons fokusadu na atletas disponivel na {language}.",
+    "noSportsCollections": "Ainda ka tene kolesons di sporti ou stórias di atletas disponivel pa es língua.",
+    "fullyDubbed": "Totalmenti dobradu",
+    "dubbedVideosTitle": "Vídeus na {language} pa koleson",
+    "dubbedVideosDescription": "Navega vídeus totalmenti dobradu na {language}, agrupadu ku ses koleson pa fasilita diskuberta.",
+    "noDubbedVideos": "Ainda ka tene vídeus totalmenti dobradu disponivel pa es língua.",
+    "subtitlesAvailable": "Legendas disponivel",
+    "subtitlesTitle": "Vídeus na {language} ku legendas",
+    "subtitlesDescription": "Es vídeus tene legendas na {language} oras ki áudio faladu na {language} ainda ka disponivel.",
+    "noSubtitleVideos": "Ainda ka tene vídeus só ku legendas disponivel pa es língua.",
+    "dubbed": "Dobradu",
+    "subtitles": "Legendas",
+    "newLabel": "Novu",
+    "fromCollection": "Di {collection}",
+    "standaloneVideos": "Vídeus independente",
+    "videosFromCollection": "Vídeus di {collection}.",
+    "standaloneDescription": "Vídeus independente na es língua.",
+    "openCollection": "Abri koleson"
+  },
+  "WatchHome": {
+    "pageTitle": "Odja Jesus Film Project",
+    "watch": "Odja",
+    "watchNow": "Odja Agora",
+    "mutePreview": "Tira son di prévia",
+    "unmutePreview": "Pô son di prévia",
+    "nextVideo": "Prósimu vídeu",
+    "featured": "Destakadu",
+    "showVideo": "Mostra {title}",
+    "previousVideoPreview": "Prévia di vídeu anterior",
+    "nextVideoPreview": "Prévia di prósimu vídeu",
+    "mediaCollection": "Koleson di média",
+    "scrollToVideo": "Rol pa vídeu {title}"
+  },
+  "WatchFooter": {
+    "home": "Inisiu di Jesus Film Project",
+    "navigation": "Navigason di rodapé",
+    "share": "Partilha",
+    "watch": "Odja",
+    "giving": "Dason",
+    "about": "Sobri",
+    "products": "Prudutus",
+    "resources": "Rikursus",
+    "partners": "Parseirus",
+    "contact": "Kontaktu",
+    "giveNow": "Dá Agora",
+    "resourcesVersion": "Rikursus ({version})",
+    "office": "Eskritóriu",
+    "fax": "Faksi",
+    "privacyPolicy": "Polítika di Privasidadi",
+    "legalStatement": "Deklarason Legal",
+    "newsletter": "Inscrevi na N'sa Newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Fetu pa misons global",
+    "title": "Mensajen ka muda. Maneira ku pessoas ta odja, sim.",
+    "description": "Nu sta torna fazi n'sa biblioteka di vídeu i ferramentas di raiz, i nu sta põi dékadas di trabadju di traduson na plataformas undi pessoas já ta djunta, odja i partilha.",
+    "translatedLibraryTitle": "Biblioteka di filmes mas traduzidu na mundu",
+    "translatedLibraryDescription": "Dékadas di trabadju di traduson, levadu pa parseirus di ministériu di konfiansa, kria un biblioteka ku milharis di pistas di língua pa pessoas pudi kontra stória di Jesus na língua ki ta toka ses kurason mas fundu.",
+    "trustedVoicesTitle": "Leva bozis di konfiansa pa formatos novos",
+    "trustedVoicesDescription": "Nu sta torna fazi manera di konta stórias di evangelhu visualmenti, juntandu tradusons di konfiansa ku formatos modernu pa mensajen pudi pasa livrimenti pa plataformas, kulturas i telas.",
+    "missionTeamTitle": "Mas ki un biblioteka. Un ekipa guiadu pa mison.",
+    "missionTeamDescription": "Jesus Film Project i un ekipa global di tradutoris, spesialistas di média, editoris i kriadoris ki ta transforma dékadas di experiência na ministériu na ferramentas pa fazedoris di disípulus na tudu ladu.",
+    "buildingNext": "Kuza ku nu sta fazi siginti",
+    "nextStepsTitle": "Plataforma Next Steps",
+    "nextStepsDescription": "Konektá pessoas ku oportunidadis palpável na ses jornada spiritual, ajudandu-s toma próximu passu pa komunidade, Skritura ou mison.",
+    "mediaLibraryTitle": "Biblioteka di Média Evangelístiku",
+    "mediaLibraryDescription": "Un grandi biblioteka kriston ku milharis di vídeus, filmes i rikursus disponivel na várias línguas pa ministériu i evangelizason na mundu intêru.",
+    "ministryToolsTitle": "Ferramentas Dijital pa Ministérius",
+    "ministryToolsDescription": "Jeston di vídeu, distribuison di konteúdu, envolvimentu di públiku i análizi fazedu pa ajudá ministérius txiga na mas pessoas ku eficácia.",
+    "invitationEyebrow": "Bo sta konvidadu",
+    "invitationTitle": "Ajuda konstrui <highlight>prósima jerason</highlight> di ferramentas di mison",
+    "invitationDescription": "Nu sta konvida pratikantis, kriadoris i parseirus pa asesu sedu. Testa ferramentas novas primeru, dá feedback i ajuda modela prudutus pensadu pa trabadju real di mison.",
+    "betaTester": "Bira testador beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleson Bíblia na Vídeu",
+    "gospelRailTitle": "Diskubri stória kumpletu",
+    "videoBibleDescription": "Esplora n'sa koleson di vídeus i rikursus ki ta dá Bíblia vida ku stórias i ensinus envolventi.",
+    "showcaseTitle": "Skritura Kontadu pa Filmi",
+    "adventEyebrow": "Adventu di Natal",
+    "adventTitle": "Kontajen regressivu di Adventu di Natal",
+    "adventDescription": "Junta na n'sa jornada di Adventu ku un vídeu kada dia ki ta aumenta spera pa Natal, esplorandu speransa, alegria i promesa di vinda di Jesus.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Adventu BibleProject",
+    "nuaEyebrow": "Série NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Série Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursu di Vídeu",
+    "journeyWithJesusTitle": "Jornada ku Jesus",
+    "gospelsOnVideoEyebrow": "Kada Evangelhu, Kontadu na Vídeu",
+    "scriptureAsWrittenTitle": "Skritura, Faladu Exatamenti Kuma sta Skritu",
+    "merryChristmas": "Bon Natal!",
+    "daysUntilChristmas": "{count, plural, one {Falta # dia pa Natal} other {Falta # dias pa Natal}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Línguas",
+    "metadataDescription": "Navega vídeus JesusFilm pa língua.",
+    "eyebrow": "Línguas di watch",
+    "title": "Skolhi un língua",
+    "description": "Esplora línguas pa região ou navega lista intêru.",
+    "searchPlaceholder": "Buska línguas ou países...",
+    "searchLabel": "Buska línguas ou países",
+    "clearSearch": "Limpa buska",
+    "browse": "Navega",
+    "browseByRegion": "Navega pa região i país",
+    "languageCount": "{count, plural, one {# língua} other {# línguas}}",
+    "region": "Região",
+    "countryLanguages": "Línguas di {country}",
+    "showLess": "Mostra menus",
+    "showMore": "Mostra mas {count}",
+    "noLanguages": "Ka atxadu línguas",
+    "tryAnotherSearch": "Tenta otu termu di buska."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istória di Watch | Jesus Film Project",
+    "title": "Istória di Watch",
+    "loading": "Ta kariga istória",
+    "empty": "Ainda ka tene nada li",
+    "emptyDescription": "Vídeus ku bo odja oras ki bo sta ligadu ta parse li.",
+    "earlier": "Antis",
+    "today": "Oji",
+    "yesterday": "Onti"
+  },
+  "AccountControl": {
+    "account": "Kontu",
+    "accountMenu": "Menu di kontu",
+    "signIn": "Intra",
+    "signOut": "Sai",
+    "signedIn": "Ligadu",
+    "history": "Istória",
+    "logOut": "Sai di kontu"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pájina ka atxadu",
+    "eyebrow": "Pájina ka atxadu",
+    "screenReaderPrefix": "Pájina ka atxadu:",
+    "title": "Es sena ka sta li.",
+    "description": "Pájina pudi ten muda, ma stória ta kontinua.",
+    "actionsLabel": "Asons pa pájina ka atxadu",
+    "backToWatch": "Volta pa Watch",
+    "browseVideos": "Navega vídeus"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Odja filmi kurtu",
+    "actions": {
+      "joinUs": "Junta ku nu",
+      "shareMission": "Partilha na n'sa mison"
+    },
+    "welcomeStart": {
+      "label": "Fé i Skritura",
+      "title": "N'sa skolta di vídeus pa oji",
+      "description": "Kontéudu di vídeu ku fé di n'sa biblioteka pa inspirá, desafiá i desparta meditación."
+    },
+    "welcomeMorning": {
+      "label": "Inspirason di manhan",
+      "title": "Bon dia! Momentus di Bíblia pa oji sta ta spera.",
+      "description": "Bia di dia ku momentus di Bíblia pa inspirá i levantá bu espírtu."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirason di tardi",
+      "title": "Bon tardi! Momentus di Bíblia pa bu dia.",
+      "description": "Kontéudu di Bíblia pa animá, prudu pa bu pausa di tardi ou pa kontinua ta inspirá."
+    },
+    "welcomeEvening": {
+      "label": "Inspirason di noti",
+      "title": "Bon noti! Deskança ku momentus di Bíblia.",
+      "description": "Momentus di Bíblia pa trankilidá ta ajuda-bu medita i atxa konsolu na fin di dia."
+    },
+    "joinUs": {
+      "label": "Junta ku nu",
+      "title": "Milhoris ta buska",
+      "description": "Kosecha li. Junta ku nu enkuantu nu ta partilha evangelhu ku mundu pa média dijital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Bai juntus",
+      "title": "Ta konta istória di Jesus, juntus",
+      "description": "Pa ki elis pudi obi i odja amor di Jesus na ses propi língua li ki elis sta."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% di korespondénsia",
+    "none": "Ka atxadu rekomendasons pa es vídeu na es língua."
+  },
+  "BetaTesterModal": {
+    "title": "Bira testador beta",
+    "trigger": "Bira testador beta",
+    "loadFailed": "Algun kusa bai mal.",
+    "loading": "Ta kariga...",
+    "openFormNewTab": "Abri formuláriu na aba nova",
+    "close": "Fixa",
+    "iframeTitle": "Bira testador beta"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

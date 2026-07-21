@@ -7,7 +7,9 @@
     "noContent": "Nta birimo bihari.",
     "homepageMisconfigured": "Ipaji y'ibanze ya Watch ntiteguye neza.",
     "defaultTemplateMisconfigured": "Icyitegererezo gisanzwe cya Watch ntiteguye neza.",
-    "authFailed": "Ntibishobotse kwemeza uburenganzira muri serivisi y'ibirimo. Niba bikomeje, mwandikire itsinda rishinzwe ubufasha."
+    "authFailed": "Ntibishobotse kwemeza uburenganzira muri serivisi y'ibirimo. Niba bikomeje, mwandikire itsinda rishinzwe ubufasha.",
+    "pageLoadFailed": "Hari ikibazo cyabaye.",
+    "tryAgain": "Gerageza nanone"
   },
   "VideosPage": {
     "title": "Video zose",
@@ -22,7 +24,8 @@
     "promoHeading": "Urashaka gusobanukirwa Bibiliya byimbitse?",
     "joinBibleStudy": "Injira mu bushakashatsi bwacu bwa Bibiliya",
     "previousQuote": "Ijambo ribanza ryo muri Bibiliya",
-    "nextQuote": "Ijambo rikurikira ryo muri Bibiliya"
+    "nextQuote": "Ijambo rikurikira ryo muri Bibiliya",
+    "readPassage": "Soma iki gice muri Bibiliya yawe."
   },
   "DownloadButton": {
     "checking": "Kugenzura",
@@ -73,7 +76,8 @@
     "selectLanguage": "Hitamo ururimi",
     "searchPlaceholder": "Shakisha indimi…",
     "languages": "Indimi",
-    "noMatches": "Nta bihuye"
+    "noMatches": "Nta bihuye",
+    "notAvailable": "Ntibihari"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ururimi",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIYE · {episodes}",
     "changeAudioLanguage": "Hindura ururimi rw'amajwi",
     "share": "Sangira",
-    "languages": "Indimi",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Indimi"
   },
   "WatchModal": {
     "close": "Funga"
@@ -115,7 +116,8 @@
     "questions": "Ibibazo bifitanye isano",
     "askYours": "Baza icyawe",
     "chatWithPerson": "Ganira n'umuntu",
-    "askBibleQuestion": "Baza ikibazo cya Bibiliya"
+    "askBibleQuestion": "Baza ikibazo cya Bibiliya",
+    "quiz": "Ikizamini"
   },
   "WatchQuestionPanel": {
     "messageType": "Ubwoko bw'ubutumwa",
@@ -173,7 +175,8 @@
     "searchRegion": "Shakisha video",
     "clearSearch": "Kuraho ubushakatsi",
     "changeAudioLanguage": "Hindura ururimi rw'amajwi",
-    "home": "Urupapuro rwa JesusFilm rwa mbere"
+    "home": "Urupapuro rwa JesusFilm rwa mbere",
+    "closeSearch": "Funga ubushakatsi"
   },
   "SearchOverlay": {
     "dialogLabel": "Shakisha kandi urebe video",
@@ -208,14 +211,19 @@
     "clearLanguages": "Siba",
     "queryLanguageDetected": "Byabonetse ko ari {language}",
     "searchInLanguage": "Shakisha mu {language}",
-    "tryDifferentKeywordsOrLanguage": "Gerageza andi magambo cyangwa uhitemo urundi rurimi rwo gushakisha"
+    "tryDifferentKeywordsOrLanguage": "Gerageza andi magambo cyangwa uhitemo urundi rurimi rwo gushakisha",
+    "useWebsiteDefaultLanguage": "Koresha ururimi rusanzwe rwa website rwo gushakisha",
+    "removeLanguage": "Kuraho {language}",
+    "browseMode": "Uburyo bwo kureba ubushakatsi"
   },
   "HeroPlayer": {
     "playWithSound": "Reba ubu",
-    "tapToUnmute": "Kanda kugira ngo ufungure ijwi"
+    "tapToUnmute": "Kanda kugira ngo ufungure ijwi",
+    "nextEpisode": "Igice gikurikira"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Birimo gupakirwa"
+    "loadingContent": "Birimo gupakirwa",
+    "loadingVideo": "Video irapakirwa"
   },
   "VideoLabels": {
     "video": "Videwo",
@@ -226,7 +234,8 @@
     "series": "Seriye",
     "collection": "Icyegeranyo",
     "trailer": "Agace kerekana",
-    "behindTheScenes": "Inyuma y'amashusho"
+    "behindTheScenes": "Inyuma y'amashusho",
+    "chapter": "Igice"
   },
   "SiblingCarousel": {
     "clipPosition": "Agace ka {current} muri {total}",
@@ -238,12 +247,253 @@
     "noImage": "Nta shusho",
     "playingNow": "Birimo gukina ubu",
     "previousChapter": "Igice kibanza",
-    "nextChapter": "Igice gikurikira"
+    "nextChapter": "Igice gikurikira",
+    "thumbnailAlt": "Ifoto nto ya {title}",
+    "relatedVideoThumbnail": "Ifoto nto ya video ifitanye isano"
   },
   "SearchResultCard": {
     "experience": "Uburambe",
     "episodeCount": "{count, plural, one {# igice} other {# ibice}}",
     "thumbnailAlt": "Ifoto nto ya video"
+  },
+  "Feedback": {
+    "openForm": "Fungura ifishi y'ibitekerezo",
+    "label": "Ibitekerezo",
+    "couldNotLoad": "Ntibishobotse gupakira ifishi y'ibitekerezo.",
+    "loadingForm": "Gupakira ifishi y'ibitekerezo…",
+    "retry": "Ongera ugerageze",
+    "openFormShort": "Fungura ifishi",
+    "cancel": "Hagarika",
+    "title": "Ibitekerezo bya Beta",
+    "description": "Sangiza ibyo bikora neza n'ibyo twakomeza kunoza. Iyi fishi itangwa na Google.",
+    "openInNewTab": "Fungura ifishi mu rundi tab",
+    "closeForm": "Funga ifishi y'ibitekerezo",
+    "loadingGoogleForm": "Gupakira Google Form…",
+    "iframeTitle": "Ohereza ibitekerezo bya Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video za gikristo z'ubuntu mu {language} | Jesus Film Project",
+    "metadataDescription": "Shakisha filime za Yesu, inkuru za Bibiliya, seriye zo guhindurira abantu abigishwa, na video zo kugeza ubutumwa hamwe n'amajwi avugijwe cyangwa subtitles mu {language}.",
+    "heroTitle": "Video za gikristo z'ubuntu mu {language}",
+    "heroDescription": "Shakisha filime za Yesu, inkuru za Bibiliya, seriye zo guhindurira abantu abigishwa, na video zo kugeza ubutumwa ziboneka mu {language}. Video zifite amajwi asobanutswe zigaragazwa mbere, hanyuma hagakurikiraho izifite subtitles gusa.",
+    "languageCollection": "Icyegeranyo cy'indimi",
+    "itemCount": "{count, plural, one {# kintu} other {# bintu}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} mu matsinda {groupCount, plural, one {# itsinda} other {# matsinda}}",
+    "sectionNavLabel": "Ibice by'ububiko bw'indimi",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Bishya",
+    "videoBible": "Bibiliya ya Video",
+    "bibleProject": "BibleProject",
+    "sports": "Imikino",
+    "collections": "Ibyegeranyo",
+    "subtitlesOnly": "Subtitles gusa",
+    "newlyAdded": "Byongewe vuba",
+    "newVideosTitle": "Video za gikristo nshya mu {language}",
+    "newestFirst": "Ibishya mbere",
+    "noPublishedVideos": "Nta video zasohotse zabonetse muri uru rurimi kugeza ubu.",
+    "bibleAndGospelFilms": "Filime za Bibiliya n'Inkuru Nziza",
+    "videoBibleCollectionsTitle": "Ibyegeranyo bya Video Bible bya {language}",
+    "videoBibleDescription": "Ibyegeranyo bishingiye ku Ijambo ry'Imana birimo LUMO, JESUS, Magdalena, na Acts mu {language}.",
+    "noVideoBibleCollections": "Nta byegeranyo bya Video Bible bihari kuri uru rurimi kugeza ubu.",
+    "bibleProjectCollectionsTitle": "Ibyegeranyo bya BibleProject bya {language}",
+    "bibleProjectDescription": "Seriye n'ibyigisho bya BibleProject biboneka mu {language}.",
+    "noBibleProjectCollections": "Nta byegeranyo bya BibleProject bihari kuri uru rurimi kugeza ubu.",
+    "sportsStories": "Inkuru z'imikino",
+    "sportsTitle": "Inkuru z'imikino n'abakinnyi mu {language}",
+    "sportsDescription": "Inkuru z'imikino zishingiye ku kwizera n'ibyegeranyo byibanda ku bakinnyi biboneka mu {language}.",
+    "noSportsCollections": "Nta byegeranyo by'imikino cyangwa by'inkuru z'abakinnyi bihari kuri uru rurimi kugeza ubu.",
+    "fullyDubbed": "Amajwi asobanutswe yose",
+    "dubbedVideosTitle": "Video za {language} hakurikijwe icyegeranyo",
+    "dubbedVideosDescription": "Reba video za {language} zose zifite amajwi asobanutswe, zishyirwa hamwe hakurikijwe icyegeranyo kugira ngo byorohe kubisanga.",
+    "noDubbedVideos": "Nta video zifite amajwi asobanutswe yose zihari kuri uru rurimi kugeza ubu.",
+    "subtitlesAvailable": "Subtitles zihari",
+    "subtitlesTitle": "Video za {language} zifite subtitles",
+    "subtitlesDescription": "Izi video zifite subtitles za {language} igihe amajwi avugwa mu {language} ataraboneka.",
+    "noSubtitleVideos": "Nta video zifite subtitles gusa zihari kuri uru rurimi kugeza ubu.",
+    "dubbed": "Byasobanutswe mu ijwi",
+    "subtitles": "Amazina asobanura ibivugwa",
+    "newLabel": "Bishya",
+    "fromCollection": "Bikomoka kuri {collection}",
+    "standaloneVideos": "Video zigenga",
+    "videosFromCollection": "Video ziva muri {collection}.",
+    "standaloneDescription": "Video zigenga muri uru rurimi.",
+    "openCollection": "Fungura icyegeranyo"
+  },
+  "WatchHome": {
+    "pageTitle": "Reba kuri Jesus Film Project",
+    "watch": "Reba",
+    "watchNow": "Reba Ubu",
+    "mutePreview": "Cecekesha udufoto tw'ibanze",
+    "unmutePreview": "Fungura amajwi y'ibanze",
+    "nextVideo": "Video ikurikira",
+    "featured": "Byatoranijwe",
+    "showVideo": "Garagaza {title}",
+    "previousVideoPreview": "Udufoto tw'ibanze twa video ibanza",
+    "nextVideoPreview": "Udufoto tw'ibanze twa video ikurikira",
+    "mediaCollection": "Icyegeranyo cy'ibitangazamakuru",
+    "scrollToVideo": "Kanda hasi werekeza kuri video ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Urupapuro rwa mbere rwa Jesus Film Project",
+    "navigation": "Igenzura ryo hasi",
+    "share": "Sangira",
+    "watch": "Reba",
+    "giving": "Ituro",
+    "about": "Ibyerekeye",
+    "products": "Ibicuruzwa",
+    "resources": "Ibikoresho",
+    "partners": "Abafatanyabikorwa",
+    "contact": "Twandikire",
+    "giveNow": "Tanga nonaha",
+    "resourcesVersion": "Ibikoresho ({version})",
+    "office": "Ibiro",
+    "fax": "Fagisi",
+    "privacyPolicy": "Politiki y'ibanga",
+    "legalStatement": "Itangazo ry'amategeko",
+    "newsletter": "Iyandikishe ku kanyamakuru kacu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yubatswe ku butumwa bwo ku isi hose",
+    "title": "Ubutumwa ntibuhinduka. Uburyo abantu bareba bwo burahinduka.",
+    "description": "Turongera kubaka isomero ryacu rya video n'ibikoresho byacu duhereye hasi, dushyira imyaka myinshi y'ubuhinduzi ku mbuga abantu basanzwe bakusanyirizaho, barebera, kandi basangizanya.",
+    "translatedLibraryTitle": "Isomero rya filime ryahinduwe mu ndimi nyinshi kurusha andi ku isi",
+    "translatedLibraryDescription": "Imyaka myinshi y'ubuhinduzi, yitiriwe abafatanyabikorwa bizewe mu murimo, yubatse isomero rifite tracks z'indimi ibihumbi byinshi kugira ngo abantu bahure n'inkuru ya Yesu mu rurimi rubageraho cyane.",
+    "trustedVoicesTitle": "Kujyana amajwi yizewe mu buryo bushya",
+    "trustedVoicesDescription": "Turongera kubaka uko inkuru z'ubutumwa bwiza zivugwa mu mashusho, duhuza ibisobanuro byizewe n'imiterere igezweho kugira ngo ubutumwa bugende mu bwisanzure ku mbuga, mu mico, no ku bikoresho by'ifoto.",
+    "missionTeamTitle": "Si isomero gusa. Ni itsinda rifite intego y'umurimo.",
+    "missionTeamDescription": "Jesus Film Project ni itsinda mpuzamahanga ry'abasemuzi, abahanga mu bitangazamakuru, abanditsi, n'abakora ibirimo bahindura imyaka myinshi y'ubunararibonye bw'umurimo mo ibikoresho by'abigisha abandi ahantu hose.",
+    "buildingNext": "Icyo turimo kubaka gikurikira",
+    "nextStepsTitle": "Urubuga rwa Next Steps",
+    "nextStepsDescription": "Huza abayireba n'amahirwe afatika mu rugendo rwabo rwo mu mwuka, ubafashe gutera intambwe ikurikira igana mu muryango, mu Ijambo ry'Imana, cyangwa mu murimo.",
+    "mediaLibraryTitle": "Isomero ry'ibitangazamakuru byo kuvuga ubutumwa",
+    "mediaLibraryDescription": "Isomero rinini ry'ibitangazamakuru bya gikristo rifite video, filime, n'ibikoresho ibihumbi byinshi biboneka mu ndimi nyinshi byo gukoreshwa mu murimo no mu ivugabutumwa ku isi hose.",
+    "ministryToolsTitle": "Ibikoresho bya digitale by'imirimo",
+    "ministryToolsDescription": "Gucunga video, gukwirakwiza ibirimo, gukorana n'abayireba, n'isesengura byagenewe gufasha imirimo kugera ku bantu benshi neza.",
+    "invitationEyebrow": "Muratumiwe",
+    "invitationTitle": "Fasha kubaka <highlight>igisekuru gishya</highlight> cy'ibikoresho by'umurimo",
+    "invitationDescription": "Turimo gutumira abakozi b'umurimo, abakora ibirimo, n'abafatanyabikorwa mu kugerwaho hakiri kare. Gerageza ibikoresho bishya mbere, tanga ibitekerezo, kandi ufashe gushyiraho ibicuruzwa bigenewe umurimo nyakuri.",
+    "betaTester": "Ba umugerageza wa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Icyegeranyo cya Video Bible",
+    "gospelRailTitle": "Menya inkuru yose",
+    "videoBibleDescription": "Shakisha icyegeranyo cyacu cya video n'ibikoresho bizana Bibiliya mu buzima binyuze mu nkuru n'inyigisho ziryoheye kureba.",
+    "showcaseTitle": "Ibyanditswe bivugwa binyuze muri filime",
+    "adventEyebrow": "Adiventi ya Noheli",
+    "adventTitle": "Kubara iminsi ya Adiventi ya Noheli",
+    "adventDescription": "Injira mu rugendo rwacu rwa Adiventi ukoresheje video ya buri munsi itegurira Noheli, dusuzuma ibyiringiro, ibyishimo, n'isezerano by'ukuza kwa Yesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Adiventi ya BibleProject",
+    "nuaEyebrow": "Urukurikirane NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Urukurikirane Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Amasomo ya Video",
+    "journeyWithJesusTitle": "Urugendo hamwe na Yesu",
+    "gospelsOnVideoEyebrow": "Buri Butumwa Bwiza bwose, bivugwa kuri video",
+    "scriptureAsWrittenTitle": "Ibyanditswe, bivugwa uko byanditswe neza",
+    "merryChristmas": "Noheli nziza!",
+    "daysUntilChristmas": "{count, plural, one {Hasigaye umunsi # ngo Noheli ibe} other {Hasigaye iminsi # ngo Noheli ibe}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Indimi",
+    "metadataDescription": "Reba video za JesusFilm hakurikijwe ururimi.",
+    "eyebrow": "Indimi zo kuri Watch",
+    "title": "Hitamo ururimi",
+    "description": "Shakisha indimi hakurikijwe akarere cyangwa urebe urutonde rwose.",
+    "searchPlaceholder": "Shakisha indimi cyangwa ibihugu...",
+    "searchLabel": "Shakisha indimi cyangwa ibihugu",
+    "clearSearch": "Siba ubushakatsi",
+    "browse": "Reba",
+    "browseByRegion": "Reba hakurikijwe akarere n'igihugu",
+    "languageCount": "{count, plural, one {# rurimi} other {# ndimi}}",
+    "region": "Akarere",
+    "countryLanguages": "Indimi za {country}",
+    "showLess": "Erekana bike",
+    "showMore": "Erekana izindi {count}",
+    "noLanguages": "Nta ndimi zabonetse",
+    "tryAnotherSearch": "Gerageza ijambo rishakishwa ritandukanye."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Amateka yo kureba | Jesus Film Project",
+    "title": "Amateka yo kureba",
+    "loading": "Birimo gupakira amateka",
+    "empty": "Nta kintu kirimo hano",
+    "emptyDescription": "Video ureba umaze kwinjira zizagaragara hano.",
+    "earlier": "Mbere",
+    "today": "Uyu munsi",
+    "yesterday": "Ejo"
+  },
+  "AccountControl": {
+    "account": "Konti",
+    "accountMenu": "Ibikubiyemo bya konti",
+    "signIn": "Injira",
+    "signOut": "Sohoka",
+    "signedIn": "Winjiye",
+    "history": "Amateka",
+    "logOut": "Sohoka"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ipaji ntibonetse",
+    "eyebrow": "Ipaji ntibonetse",
+    "screenReaderPrefix": "Ipaji ntibonetse:",
+    "title": "Iyi scene ntihari.",
+    "description": "Urupapuro rushobora kuba rwarimuwe, ariko inkuru irakomeje.",
+    "actionsLabel": "Ibikorwa byo kuri ipaji ntibonetse",
+    "backToWatch": "Subira kuri Watch",
+    "browseVideos": "Reba video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Reba filime ngufi",
+    "actions": {
+      "joinUs": "Twiyungeho",
+      "shareMission": "Fatanya natwe mu murimo wacu"
+    },
+    "welcomeStart": {
+      "label": "Kwizera & Ibyanditswe",
+      "title": "Video zatoranyijwe z'uyu munsi",
+      "description": "Ibirimo bya video bishingiye ku kwizera bivuye mu isomero ryacu kugira ngo bikangure, bisubize ibibazo, kandi biteze gutekereza."
+    },
+    "welcomeMorning": {
+      "label": "Icyemezo cya mu gitondo",
+      "title": "Mwaramutse! Uyu munsi hari amasaha ya Bibiliya ateguje.",
+      "description": "Tangira umunsi wawe n'ibice bya Bibiliya bihumuriza byateguwe kugira ngo bikugirire akamaro kandi bizamure umutima wawe."
+    },
+    "welcomeAfternoon": {
+      "label": "Icyemezo cya nyuma ya saa sita",
+      "title": "Mwiriwe! Amasaha ya Bibiliya y'umunsi wawe.",
+      "description": "Ibirimo bya Bibiliya bihumuriza byiza cyane ku kiruhuko cya nyuma ya saa sita cyangwa gukomeza guhumurizwa."
+    },
+    "welcomeEvening": {
+      "label": "Icyemezo cya nimugoroba",
+      "title": "Mwiriwe! Humura ukoresheje amasaha ya Bibiliya.",
+      "description": "Amasaha ya Bibiliya atuje agufasha gutekereza no kubona ihumure uko umunsi urangiye."
+    },
+    "joinUs": {
+      "label": "Twiyungeho",
+      "title": "Miliyari z'abantu barimo gushaka",
+      "description": "Igihe cyo gusarura kirahari. Twiyungeho dusangiza ubutumwa bwiza isi dukoresheje ibitangazamakuru bya digitale."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Reka tugende hamwe",
+      "title": "Kuvuga inkuru ya Yesu, turi kumwe",
+      "description": "Kugira ngo bashobore kumva no kubona urukundo rwa Yesu mu rurimi rwabo, aho bari hose."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Bihuye ku kigero cya {percent}%",
+    "none": "Nta videwo zishobora kugushimisha zabonetse zijyanye n'iyi videwo muri uru rurimi."
+  },
+  "BetaTesterModal": {
+    "title": "Ba umugerageza wa beta",
+    "trigger": "Ba umugerageza wa beta",
+    "loadFailed": "Hari ikibazo cyabaye.",
+    "loading": "Birapakirwa...",
+    "openFormNewTab": "Fungura ifishi mu rundi tab",
+    "close": "Funga",
+    "iframeTitle": "Ba umugerageza wa beta"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

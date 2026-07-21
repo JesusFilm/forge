@@ -7,7 +7,9 @@
     "noContent": "Nusianu ɖeke menɔa o.",
     "homepageMisconfigured": "Watch home page la meɖoɖo ŋutɔ o.",
     "defaultTemplateMisconfigured": "Watch template la medoɖo ŋutɔ o.",
-    "authFailed": "Mete ŋu wɔ authentication kple content service la o. Kpɔ ɖa le support be yeva ɖoɖo esia ne wòdoɖo ɖe eme dzi."
+    "authFailed": "Mete ŋu wɔ authentication kple content service la o. Kpɔ ɖa le support be yeva ɖoɖo esia ne wòdoɖo ɖe eme dzi.",
+    "pageLoadFailed": "Nusi aɖe va si ɖe dzi o.",
+    "tryAgain": "Kpɔe ake"
   },
   "VideosPage": {
     "title": "Video siwo katã",
@@ -22,7 +24,8 @@
     "promoHeading": "Èdi be yeate ŋu axlẽ Biblia dzi ɖe eme gɔme?",
     "joinBibleStudy": "Kplɔ mí de Biblia studium me",
     "previousQuote": "Biblia ƒe ŋugbalẽ si va se",
-    "nextQuote": "Biblia ƒe ŋugbalẽ si gbɔna"
+    "nextQuote": "Biblia ƒe ŋugbalẽ si gbɔna",
+    "readPassage": "Xlẽ akpa sia le wò Biblia me."
   },
   "DownloadButton": {
     "checking": "Kpɔm",
@@ -73,7 +76,8 @@
     "selectLanguage": "Tia gbegblẽ",
     "searchPlaceholder": "Di gbegblẽwo…",
     "languages": "Gbegblẽwo",
-    "noMatches": "Meɖo o"
+    "noMatches": "Meɖo o",
+    "notAvailable": "Menɔa o"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Gbegblẽ",
@@ -100,10 +104,7 @@
     "seriesLabel": "NYAƑOƑO · {episodes}",
     "changeAudioLanguage": "Tɔ audio ƒe gbegblẽ",
     "share": "Kpɔta",
-    "languages": "Gbegblẽwo",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Gbegblẽwo"
   },
   "WatchModal": {
     "close": "Tso ŋu"
@@ -115,7 +116,8 @@
     "questions": "Nya siwo kpɔ ɖe eŋu",
     "askYours": "Bia wò tɔ",
     "chatWithPerson": "Kplɔ ame aɖe ƒe nuƒuƒlu",
-    "askBibleQuestion": "Bia Biblia nya"
+    "askBibleQuestion": "Bia Biblia nya",
+    "quiz": "Kwis"
   },
   "WatchQuestionPanel": {
     "messageType": "Message ƒe nutata",
@@ -173,7 +175,8 @@
     "searchRegion": "Se video",
     "clearSearch": "Tso se la me",
     "changeAudioLanguage": "Tɔ audio ƒe gbegblẽ",
-    "home": "JesusFilm ƒe home"
+    "home": "JesusFilm ƒe home",
+    "closeSearch": "Tso se la ŋu"
   },
   "SearchOverlay": {
     "dialogLabel": "Se eye kpɔ video",
@@ -208,14 +211,19 @@
     "clearLanguages": "Tso",
     "queryLanguageDetected": "{language} la kɔtɔ",
     "searchInLanguage": "Se le {language} me",
-    "tryDifferentKeywordsOrLanguage": "Kpɔ keywords bubu alo tia search gbegblẽ bubu"
+    "tryDifferentKeywordsOrLanguage": "Kpɔ keywords bubu alo tia search gbegblẽ bubu",
+    "useWebsiteDefaultLanguage": "Websaịtị ƒe default search gbegblẽ la ti",
+    "removeLanguage": "Tso {language} ŋu",
+    "browseMode": "Nusiwo me didi ƒe nɔnɔme"
   },
   "HeroPlayer": {
     "playWithSound": "Kpɔ fifi laa",
-    "tapToUnmute": "Kɔ nuti be yeatɔ dziwɔ la"
+    "tapToUnmute": "Kɔ nuti be yeatɔ dziwɔ la",
+    "nextEpisode": "Episode si gbɔna"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Etsɔ content la vɛ"
+    "loadingContent": "Etsɔ content la vɛ",
+    "loadingVideo": "Etsɔ video la vɛ"
   },
   "VideoLabels": {
     "video": "Videotata",
@@ -226,7 +234,8 @@
     "series": "Nyaƒoƒo",
     "collection": "Nuƒuƒoƒo",
     "trailer": "Film ƒe ŋgɔdonya",
-    "behindTheScenes": "Nusiwo dzɔ le kamera megbe"
+    "behindTheScenes": "Nusiwo dzɔ le kamera megbe",
+    "chapter": "Ta"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} le {total} me",
@@ -238,12 +247,253 @@
     "noImage": "Bild ɖeke menɔa o",
     "playingNow": "Le yiyi tso fie",
     "previousChapter": "Chapter si va se",
-    "nextChapter": "Chapter si gbɔna"
+    "nextChapter": "Chapter si gbɔna",
+    "thumbnailAlt": "{title} ƒe nɔnɔmetata sue",
+    "relatedVideoThumbnail": "Video si le xexe thumbnail"
   },
   "SearchResultCard": {
     "experience": "Nusi woato me",
     "episodeCount": "{count, plural, one {akpa #} other {akpawo #}}",
     "thumbnailAlt": "Video ƒe nɔnɔmetata sue"
+  },
+  "Feedback": {
+    "openForm": "Vae feedback form la ŋu",
+    "label": "Nyaɖoɖo",
+    "couldNotLoad": "Mete ŋu le feedback form la la o.",
+    "loadingForm": "Etsɔ feedback form la vɛ…",
+    "retry": "Kpɔe ake",
+    "openFormShort": "Vae form la ŋu",
+    "cancel": "Nulɔlɔ",
+    "title": "Beta ƒe nyaɖoɖo",
+    "description": "Kpɔ ɖe nusi wòle wɔwɔ kple nusi míate ŋu aɖo ɖe dzi. Google na form sia.",
+    "openInNewTab": "Vae form la ŋu le tab yeye me",
+    "closeForm": "Tso feedback form la ƒe ŋu",
+    "loadingGoogleForm": "Etsɔ Google Form la vɛ…",
+    "iframeTitle": "Tɔ Beta Feedback ɖo"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian video siwo menɔa mahã le {language} me | Jesus Film Project",
+    "metadataDescription": "Kpɔ Jesus films, Bible stories, discipleship series, kple outreach videos kple dubbed audio alo subtitles le {language} me.",
+    "heroTitle": "Christian video siwo menɔa mahã le {language} me",
+    "heroDescription": "Kpɔ Jesus films, Bible stories, discipleship series, kple outreach videos siwo menɔa le {language} me. Videos siwo le dubbed la va gbɔna gbɔgblɔ sia me teti, subtitles only options le ete.",
+    "languageCollection": "Gbegblẽ collection",
+    "itemCount": "{count, plural, one {# nu} other {# nuwo}}",
+    "videoCount": "{count, plural, one {video #} other {videowo #}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} le {groupCount, plural, one {# group} other {# groups}} me",
+    "sectionNavLabel": "Gbegblẽ inventory sections",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Yeye",
+    "videoBible": "Biblia le video me",
+    "bibleProject": "BibleProject",
+    "sports": "Fefe",
+    "collections": "Nuƒuƒoƒowo",
+    "subtitlesOnly": "Subtitles ko",
+    "newlyAdded": "Wɔe yeyeye",
+    "newVideosTitle": "Christian video yeye le {language} me",
+    "newestFirst": "Yeyetɔ teti",
+    "noPublishedVideos": "Video siwo se ɖe eƒe dzesidada me menɔa na gbegblẽ sia o haɖe.",
+    "bibleAndGospelFilms": "Bible kple Gospel films",
+    "videoBibleCollectionsTitle": "Biblia le video me ƒe nuƒuƒoƒowo le {language} me",
+    "videoBibleDescription": "Scripture-centered collections siwo kplɔ LUMO, JESUS, Magdalena, kple Acts le {language} me.",
+    "noVideoBibleCollections": "Video Bible collections ɖeke menɔa na gbegblẽ sia o haɖe.",
+    "bibleProjectCollectionsTitle": "BibleProject ƒe nuƒuƒoƒowo le {language} me",
+    "bibleProjectDescription": "BibleProject series kple studies siwo menɔa le {language} me.",
+    "noBibleProjectCollections": "BibleProject collections ɖeke menɔa na gbegblẽ sia o haɖe.",
+    "sportsStories": "Sports ƒe nyanyuiwo",
+    "sportsTitle": "{language} sports kple athlete stories",
+    "sportsDescription": "Faith-centered sports stories kple athlete-focused collections siwo menɔa le {language} me.",
+    "noSportsCollections": "Sports alo athlete-story collections ɖeke menɔa na gbegblẽ sia o haɖe.",
+    "fullyDubbed": "Dubbed yome",
+    "dubbedVideosTitle": "{language} videos ɖe collection me",
+    "dubbedVideosDescription": "Kpɔ {language} videos siwo le dubbed ŋu kple wɔnɔƒe, be yeate ŋu akpɔe seŋtɔ.",
+    "noDubbedVideos": "Video siwo le dubbed yome ɖeke menɔa na gbegblẽ sia o haɖe.",
+    "subtitlesAvailable": "Subtitles le esi",
+    "subtitlesTitle": "{language} videos kple subtitles",
+    "subtitlesDescription": "Video siawo kplɔ {language} subtitles ne spoken {language} audio menɔa le esi haɖe o.",
+    "noSubtitleVideos": "Video siwo le subtitles ko ɖeke menɔa na gbegblẽ sia o haɖe.",
+    "dubbed": "Gbe si woɖo ɖe eme",
+    "subtitles": "Nuŋɔŋlɔ siwo le te",
+    "newLabel": "Yeye",
+    "fromCollection": "Tso {collection} me",
+    "standaloneVideos": "Video siwo li ɖeka",
+    "videosFromCollection": "Video tso {collection} me.",
+    "standaloneDescription": "Video siwo li ɖeka le gbegblẽ sia me.",
+    "openCollection": "Vae collection la ŋu"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Kpɔƒe",
+    "watch": "Kpɔ",
+    "watchNow": "Kpɔ fifi laa",
+    "mutePreview": "Do preview dziwɔ",
+    "unmutePreview": "Tso preview dziwɔ",
+    "nextVideo": "Video si gbɔna",
+    "featured": "Ame si woɖo ɖe dzi",
+    "showVideo": "Fia {title}",
+    "previousVideoPreview": "Video preview si va se",
+    "nextVideoPreview": "Video preview si gbɔna",
+    "mediaCollection": "Media ƒe nuƒuƒoƒo",
+    "scrollToVideo": "Kɔ video {title} ŋu"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ƒe home",
+    "navigation": "Mɔfiafia le afɔ me",
+    "share": "Kpɔta",
+    "watch": "Kpɔ",
+    "giving": "Tsɔ nu na",
+    "about": "Gake",
+    "products": "Dɔwɔnuwo",
+    "resources": "Nusɔsrɔ̃wo",
+    "partners": "Kplɔnuwo",
+    "contact": "Gbɔgbɔ",
+    "giveNow": "Tsɔ nu fifi laa",
+    "resourcesVersion": "Nusɔsrɔ̃wo ({version})",
+    "office": "Dɔwɔƒe",
+    "fax": "Faks",
+    "privacyPolicy": "Ame ƒe nya me ɣaɣla ƒe se",
+    "legalStatement": "Se me nyagblɔɖi",
+    "newsletter": "De asi ɖe míaƒe newsletter me"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Wɔe na global missions",
+    "title": "Message la métsɔ ɖe. Mɔ si me amewo kpɔe lae ŋutɔe dze.",
+    "description": "Míele míaƒe video library kple tools wo dve ɖe eŋu yi, eye míeɖo translation wòƒe dɔƒe ɖe platform siwo me amewo le, kpɔa, kpɔta.",
+    "translatedLibraryTitle": "World ƒe library si menɔa translation le eŋu teti",
+    "translatedLibraryDescription": "Translation dɔ si wòwɔna, partnerwo si wɔnɔa minɔ, ɖo library si me language tracks akpa alesi amewo mate ŋu ase Jesus ƒe nyanya le gbegblẽ si do ɖe wo dzi.",
+    "trustedVoicesTitle": "Kplɔ trusted voices de format yeye me",
+    "trustedVoicesDescription": "Míele gospel stories ƒe gblɔwɔ la wòde agbagba be yeadze eye woɖo trusted translations kple modern formats be message la nayi ɖa le platformwo, cultures, kple screens me.",
+    "missionTeamTitle": "Library ko menɔa o. Mission-driven team.",
+    "missionTeamDescription": "Jesus Film Project nye global team si me translators, media specialists, editors, kple creators le wɔnye, siwo tsɔ ministry experience wɔnónyi ɖe tools na disciple-makers le afiwo katã.",
+    "buildingNext": "Nusi míele wɔwɔe le ete",
+    "nextStepsTitle": "Afɔɖeɖe si gbɔna ƒe platform",
+    "nextStepsDescription": "Kplɔ viewers kple mɔwo siwo nye spiritual journey la ƒe agbalẽ, eye woanya mɔ ɖe community, Scripture, alo mission me.",
+    "mediaLibraryTitle": "Nyanyui la gblɔgblɔ ƒe media agbaleƒe",
+    "mediaLibraryDescription": "Christian media library akpa si me videos, films, kple resources akpa le gbegblẽ geɖewo me na ministry kple evangelism le xexeame katã.",
+    "ministryToolsTitle": "Digital Tools na Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, kple analytics si wɔna be yeakpe ministrywo be woate ŋu afia ame geɖewo.",
+    "invitationEyebrow": "Woate ŋu ava",
+    "invitationTitle": "Kpɔ amɛ <highlight>generation yeye la</highlight> ƒe mission tools",
+    "invitationDescription": "Míele practitioners, creators, kple partners abla ɖe early access me. Kpɔ tools yeye teti, na feedback, eye kplɔ products siwo wɔna be mission dɔ ŋutɔ.",
+    "betaTester": "Dze beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Biblia le video me ƒe nuƒuƒoƒo",
+    "gospelRailTitle": "Kpɔ story la katã",
+    "videoBibleDescription": "Kpɔ míaƒe videos kple resources collection siwo wɔ Biblia la va mɔ me kple nyanya kple nusrɔ̃ɖoɖo siwo dze eme.",
+    "showcaseTitle": "Scripture si woɖo kple film",
+    "adventEyebrow": "Krisimesi ŋgɔdonɔɣi",
+    "adventTitle": "Krisimesi ŋgɔdonɔŋkeke ƒe xexlẽme",
+    "adventDescription": "Kpɔ míaƒe Advent journey me kple video siaa si wɔa kuku be Christmas naŋɔ, eye wòkpɔ hope, joy, kple promise si le Jesus ƒe vava me.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject ƒe ŋgɔdonɔɣi",
+    "nuaEyebrow": "NUA ƒe nyaƒoƒo",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth ƒe nyaƒoƒo",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Nusɔsrɔ̃ le video me",
+    "journeyWithJesusTitle": "Míakpɔ Jesus kple mɔ",
+    "gospelsOnVideoEyebrow": "Gospel ɖe sia ɖe, wɔna le video me",
+    "scriptureAsWrittenTitle": "Scripture, woɖo gbɔgblɔ dzi duɖu alesi woŋlɔe",
+    "merryChristmas": "Krisimesi ƒe dzidzɔ na wò!",
+    "daysUntilChristmas": "{count, plural, one {Ŋkeke # ko susɔ hafi Krisimesi naɖo} other {Ŋkeke # susɔ hafi Krisimesi naɖo}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gbegblẽwo",
+    "metadataDescription": "Kpɔ JesusFilm videos ɖe gbegblẽ me.",
+    "eyebrow": "Watch gbegblẽwo",
+    "title": "Tia gbegblẽ ɖeka",
+    "description": "Kpɔ gbegblẽwo le regionwo me alo kpɔ xexlẽme la katã.",
+    "searchPlaceholder": "Se gbegblẽwo alo countries...",
+    "searchLabel": "Se gbegblẽwo alo countries",
+    "clearSearch": "Tso se la me",
+    "browse": "Kpɔ",
+    "browseByRegion": "Kpɔ le region kple country me",
+    "languageCount": "{count, plural, one {# gbegblẽ} other {# gbegblẽwo}}",
+    "region": "Nutome",
+    "countryLanguages": "{country} ƒe gbegblẽwo",
+    "showLess": "Fia nyitsɔe",
+    "showMore": "Fia {count} bubu",
+    "noLanguages": "Gbegblẽ ɖeke menɔa o",
+    "tryAnotherSearch": "Kpɔ se bubu dzi."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Nusiwo nèkpɔ ƒe ŋkɔgbalẽ | Jesus Film Project",
+    "title": "Nusiwo nèkpɔ ƒe ŋkɔgbalẽ",
+    "loading": "Etsɔ history la vɛ",
+    "empty": "Nusianu ɖeke le afisia haɖe",
+    "emptyDescription": "Videos siwo èkpɔ ne èle sign in me la ava va afisia.",
+    "earlier": "Va se",
+    "today": "Egbe",
+    "yesterday": "Benye"
+  },
+  "AccountControl": {
+    "account": "Akɔnta",
+    "accountMenu": "Akɔnta ƒe nuwo",
+    "signIn": "De sign in",
+    "signOut": "Tso sign out",
+    "signedIn": "De sign in le",
+    "history": "Ŋkɔgbalẽ",
+    "logOut": "Do le akɔnta me"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page medzɔ o",
+    "eyebrow": "Page medzɔ o",
+    "screenReaderPrefix": "Page medzɔ o:",
+    "title": "Scene sia menɔa afisia o.",
+    "description": "Page la ate ŋu akpɔ mɔ, gake story la le doŋgɔ.",
+    "actionsLabel": "Page medzɔ o actions",
+    "backToWatch": "Kpɔ yi Watch ŋu",
+    "browseVideos": "Kpɔ videowo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Kpɔ short film",
+    "actions": {
+      "joinUs": "Kplɔ mí",
+      "shareMission": "Kple míaƒe mission me"
+    },
+    "welcomeStart": {
+      "label": "Faith kple Scripture",
+      "title": "Egbe ƒe video siwo míatia",
+      "description": "Míaƒe library me video siwo le faith dzi, be wòafɔ dɔ, akpe ɖe ŋu, eye wòawɔ nusia."
+    },
+    "welcomeMorning": {
+      "label": "Ɣetrɔmɔ ƒe akɔm",
+      "title": "Ŋdi makɛ! Egbe ƒe Biblia ƒe nɔnɔmewo li ɖe ŋuwò.",
+      "description": "Dze wò ŋdi gɔme kple Biblia ƒe nɔnɔme siwo na bubu, fɔɖeɖe, eye woakpɔ wò gbɔgbɔ dzi."
+    },
+    "welcomeAfternoon": {
+      "label": "Ŋdi megbe ƒe akɔm",
+      "title": "Ɣetrɔmakɛ! Biblia ƒe nɔnɔmewo na wò ŋkeke.",
+      "description": "Biblia ƒe nusiwo naa akɔdzedze, sɔ gbɔ na wò ŋdi megbe break alo akɔm si gblɔ nà."
+    },
+    "welcomeEvening": {
+      "label": "Fiɛɖeƒe ƒe akɔm",
+      "title": "Fiɛɖe makɛ! Ɖi asi na Biblia ƒe nɔnɔmewo.",
+      "description": "Biblia ƒe nɔnɔme siwo le anyi le peace me be wòakpe ɖe ŋuwò eye nàkpɔ gbɔgbɔdodo ne wòŋkeke va nu."
+    },
+    "joinUs": {
+      "label": "Kplɔ mí",
+      "title": "Milliardwo le didim",
+      "description": "Harvest la va ɖo. Kplɔ mí be míakpɔm nà yina gɔme kple míaƒe gospel gbɔgblɔ dzi le digital media me."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Nyae nu kple mí",
+      "title": "Jesus ƒe nyanyui gbɔgblɔ le nuƒoƒo me, kple mí",
+      "description": "Be woate ŋu ase eye woakpɔ Jesus ƒe lɔlɔ̃ le woƒe gbegblẽ me, le afisi wonɔe ke."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% sɔ ɖe eŋu",
+    "none": "Womekpɔ video bubu si woate ŋu aɖo ɖa na video sia le gbegblẽ sia me o."
+  },
+  "BetaTesterModal": {
+    "title": "Dze beta tester",
+    "trigger": "Dze beta tester",
+    "loadFailed": "Nusi aɖe va si ɖe dzi o.",
+    "loading": "Etsɔm...",
+    "openFormNewTab": "Vae form la ŋu le tab yeye me",
+    "close": "Tso ŋu",
+    "iframeTitle": "Dze beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

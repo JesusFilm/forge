@@ -7,7 +7,9 @@
     "noContent": "ކޮންޓެންޓް ލިބޭކަށް ނުހުރޭ.",
     "homepageMisconfigured": "Watch ހޯމްޕޭޖް ތަރުތީބު ކުރަން ނުބުނެއް.",
     "defaultTemplateMisconfigured": "Default watch template ތަރުތީބު ކުރަން ނުބުނެއް.",
-    "authFailed": "ކޮންޓެންޓް ސަރވިސް އާއި އޮތެންޓިކޭޓް ކުރަން ނުބުނެއް. އެއީ ދެމިއޮތްނަމަ support އާއި ގުޅުއްވާ."
+    "authFailed": "ކޮންޓެންޓް ސަރވިސް އާއި އޮތެންޓިކޭޓް ކުރަން ނުބުނެއް. އެއީ ދެމިއޮތްނަމަ support އާއި ގުޅުއްވާ.",
+    "pageLoadFailed": "އެއްޗެއް ގެއްލިއްޖެ.",
+    "tryAgain": "އަލުން ދައްކާ"
   },
   "VideosPage": {
     "title": "މިހާރު ހުރި ހުރިހާ ވީޑިއޯ",
@@ -22,7 +24,8 @@
     "promoHeading": "ބައިބަލް އަންނަ އަޑާވެސް ބޮޑަށް ދަންނަން ބޭނުންތަ؟",
     "joinBibleStudy": "ބައިބަލް ސްޓަޑީ އަށް ގުޅުއްވާ",
     "previousQuote": "ކުރިއަށް އޮތް ބައިބަލް ވިލާ",
-    "nextQuote": "ފަހަތަށް އޮތް ބައިބަލް ވިލާ"
+    "nextQuote": "ފަހަތަށް އޮތް ބައިބަލް ވިލާ",
+    "readPassage": "މި އިބާރަތް ތިބާގެ ބައިބަލުން ކިޔާ."
   },
   "DownloadButton": {
     "checking": "ކައްޗައް ބަލަނީ",
@@ -73,7 +76,8 @@
     "selectLanguage": "ބަސް ހޮވާ",
     "searchPlaceholder": "ބަސްތައް ހޯދާ…",
     "languages": "ބަސްތައް",
-    "noMatches": "ފެންނަ އެއްޗެއް ނެތް"
+    "noMatches": "ފެންނަ އެއްޗެއް ނެތް",
+    "notAvailable": "ލިބޭކަށް ނުހުރޭ"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ބަސް",
@@ -100,10 +104,7 @@
     "seriesLabel": "ސީރީޒް · {episodes}",
     "changeAudioLanguage": "އަޑުގެ ބަސް ބަދަލު ކުރާ",
     "share": "ހިއްސާ ކުރާ",
-    "languages": "ބަސްތައް",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "ބަސްތައް"
   },
   "WatchModal": {
     "close": "ބާންދާ"
@@ -115,7 +116,8 @@
     "questions": "ގުޅޭ ސުވާލުތައް",
     "askYours": "ތިބާގެ ސުވާލް ކުރާ",
     "chatWithPerson": "މީހަކާއި ކޮށްފާނޭ ކޮށްބަހައްޓާ",
-    "askBibleQuestion": "ބައިބަލް ސުވާލް ކުރާ"
+    "askBibleQuestion": "ބައިބަލް ސުވާލް ކުރާ",
+    "quiz": "ކުއިޒް"
   },
   "WatchQuestionPanel": {
     "messageType": "މެސެޖް ބާވަތް",
@@ -173,7 +175,8 @@
     "searchRegion": "ވީޑިއޯ ހޯދާ",
     "clearSearch": "ހޯދާން ކްލީއާ ކުރާ",
     "changeAudioLanguage": "އަޑުގެ ބަސް ބަދަލު ކުރާ",
-    "home": "JesusFilm ހޯމް"
+    "home": "JesusFilm ހޯމް",
+    "closeSearch": "ހޯދާން ބާންދާ"
   },
   "SearchOverlay": {
     "dialogLabel": "ވީޑިއޯތައް ހޯދާ އަދި ބްރައުޒް ކުރާ",
@@ -208,14 +211,19 @@
     "clearLanguages": "ކްލީއާ",
     "queryLanguageDetected": "{language} ދޫކުރިއްޖެ",
     "searchInLanguage": "{language} ގައި ހޯދާ",
-    "tryDifferentKeywordsOrLanguage": "ތަފާތު keywords ނުވަތަ އެހެން ހޯދާން ބަސް ހޮވާ"
+    "tryDifferentKeywordsOrLanguage": "ތަފާތު keywords ނުވަތަ އެހެން ހޯދާން ބަސް ހޮވާ",
+    "useWebsiteDefaultLanguage": "ވެބްސައިޓުގެ default ހޯދާން ބަސް ބޭނުން ކުރާ",
+    "removeLanguage": "{language} ނައްތާލާ",
+    "browseMode": "ހޯދާ ބްރައުޒް މޯޑް"
   },
   "HeroPlayer": {
     "playWithSound": "މިހާރު ބަލާ",
-    "tapToUnmute": "އަޑު ހުޅުވާން tap ކުރާ"
+    "tapToUnmute": "އަޑު ހުޅުވާން tap ކުރާ",
+    "nextEpisode": "ފަހަތަށް އޮތް episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "ކޮންޓެންޓް ލޯޑް ކުރަނީ"
+    "loadingContent": "ކޮންޓެންޓް ލޯޑް ކުރަނީ",
+    "loadingVideo": "ވީޑިއޯ ލޯޑް ކުރަނީ"
   },
   "VideoLabels": {
     "video": "ވީޑިއޯ",
@@ -226,7 +234,8 @@
     "series": "ސީރީޒް",
     "collection": "ކޮލެކްޝަން",
     "trailer": "ޓްރޭލަރް",
-    "behindTheScenes": "ރަނގަޅު ކަންތައް ފަހުން"
+    "behindTheScenes": "ރަނގަޅު ކަންތައް ފަހުން",
+    "chapter": "ބާބު"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} / {total}",
@@ -238,12 +247,253 @@
     "noImage": "ފޮޓޯ ނެތް",
     "playingNow": "މިހާރު ކުޅޭނީ",
     "previousChapter": "ކުރިއަށް އޮތް ބާބު",
-    "nextChapter": "ފަހަތަށް އޮތް ބާބު"
+    "nextChapter": "ފަހަތަށް އޮތް ބާބު",
+    "thumbnailAlt": "{title} ޓްހަމްބިލް",
+    "relatedVideoThumbnail": "ގުޅޭ ވީޑިއޯ ޓްހަމްބިލް"
   },
   "SearchResultCard": {
     "experience": "އެކްސްපීරියන්ස්",
     "episodeCount": "{count, plural, one {# އިޕިސޯޑް} other {# އިޕިސޯޑްތައް}}",
     "thumbnailAlt": "ވީޑިއޯ ޓްހަމްބިލް"
+  },
+  "Feedback": {
+    "openForm": "ފީޑްބැක් ފޯމް ހުޅުވާ",
+    "label": "ފީޑްބැක්",
+    "couldNotLoad": "ފީޑްބැක් ފޯމް ލޯޑް ކުރަން ނުބުނެއް.",
+    "loadingForm": "ފީޑްބැක් ފޯމް ލޯޑް ކުރަނީ…",
+    "retry": "އަލުން ދައްކާ",
+    "openFormShort": "ފޯމް ހުޅުވާ",
+    "cancel": "ކެންސަލް",
+    "title": "ބީޓާ ފީޑްބැක්",
+    "description": "ކޮންކަމެއް ރަނގަޅަށް ހިނގަނީކީ އަދި ކޮންކަމެއް ހެޔޮކޮށްދޭންވީކީ ހިއްސާ ކުރާށެވެ. މި ފޯމް Google އިން ދެވޭ ކަމެކެވެ.",
+    "openInNewTab": "ފޯމް އެކެއް އަލަށް ޓެބް އެއްގައި ހުޅުވާ",
+    "closeForm": "ފީޑްބැක් ފޯމް ބާންދާ",
+    "loadingGoogleForm": "Google ފޯމް ލޯޑް ކުރަނީ…",
+    "iframeTitle": "ބීޓާ ފީޑްބැක් ހުށަހެޅުން"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} ގައި ނުވާގަތު Christian videos | Jesus Film Project",
+    "metadataDescription": "{language} ގައި dubbed audio ނުވަތަ subtitles އާއިގެ Jesus films, Bible stories, discipleship series, and outreach videos ބަލާ.",
+    "heroTitle": "{language} ގައި ނުވާގަތު Christian videos",
+    "heroDescription": "{language} ގައި ލިބޭ Jesus films, Bible stories, discipleship series, and outreach videos ބަލާ. Fully dubbed videos ފުރަތަމަ ހެޔޮކޮށް ދައްކައި، subtitle-only options ތިރިއަށް ހުރޭ.",
+    "languageCollection": "ބަސް ކޮލެކްޝަން",
+    "itemCount": "{count, plural, one {# އިޓަމް} other {# އިޓަމްތައް}}",
+    "videoCount": "{count, plural, one {# ވީޑިއޯ} other {# ވީޑިއޯތައް}}",
+    "videosInGroups": "{videoCount, plural, one {# ވީޑިއޯ} other {# ވީޑިއޯތައް}} {groupCount, plural, one {# ގްރޫޕް} other {# ގްރޫޕްތައް}} ގައި",
+    "sectionNavLabel": "ބަސް inventory ބައިތައް",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "އައު",
+    "videoBible": "ވީޑިއޯ ބައިބަލް",
+    "bibleProject": "BibleProject",
+    "sports": "ކުޅިވަރު",
+    "collections": "ކޮލެކްޝަންތައް",
+    "subtitlesOnly": "ސަބްޓައިޓަލްތައް އެކަނި",
+    "newlyAdded": "އައުކޮށް އެޅިއްޖެ",
+    "newVideosTitle": "{language} ގައި އައު Christian videos",
+    "newestFirst": "އެންމެ އައުކޮށް ފަހުން",
+    "noPublishedVideos": "މި ބަހަށް އަދި ޕަބްލިޝް ކުރެވިފައިވާ ވީޑިއޯ ނުފެންނެވެ.",
+    "bibleAndGospelFilms": "ބައިބަލް އަދި އިންޖީލް ފިލްމްތައް",
+    "videoBibleCollectionsTitle": "{language} ވީޑިއޯ ބައިބަލް ކޮލެކްޝަންތައް",
+    "videoBibleDescription": "{language} ގައި LUMO, JESUS, Magdalena, and Acts ހިމެނޭ ޤުރުއާން-މަދަރުކޮށް ހުރި ކޮލެކްޝަންތައް.",
+    "noVideoBibleCollections": "މި ބަހަށް އަދި Video Bible ކޮލެކްޝަންތައް ނުހުރޭ.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject ކޮލެކްޝަންތައް",
+    "bibleProjectDescription": "{language} ގައި ލިބޭ BibleProject series އަދި studies ބަލާ.",
+    "noBibleProjectCollections": "މި ބަހަށް އަދި BibleProject ކޮލެކްޝަންތައް ނުހުރޭ.",
+    "sportsStories": "ކުޅިވަރު ވާހަކަތައް",
+    "sportsTitle": "{language} ގައި ކުޅިވަރު އަދި އެޓްލީޓް ވާހަކަތައް",
+    "sportsDescription": "{language} ގައި ލިބޭ faith-centered sports stories އަދި athlete-focused collections ބަލާ.",
+    "noSportsCollections": "މި ބަހަށް އަދި sports ނުވަތަ athlete-story ކޮލެކްޝަންތައް ނުހުރޭ.",
+    "fullyDubbed": "ފުރަތަމަ dubbed",
+    "dubbedVideosTitle": "{language} ވީޑިއޯތައް ކޮލެކްޝަންބައިގެން",
+    "dubbedVideosDescription": "ހޯދުން އިސްކުރަން ފަސޭހަވާނެހެން, ފުރަތަމަ dubbed {language} ވީޑިއޯތައް ކޮލެކްޝަންއާއި އެއްކޮށް ބަލާ.",
+    "noDubbedVideos": "މި ބަހަށް އަދި ފުރަތަމަ dubbed ވީޑިއޯތައް ނުހުރޭ.",
+    "subtitlesAvailable": "ސަބްޓައިޓަލްތައް ލިބޭ",
+    "subtitlesTitle": "{language} ސަބްޓައިޓަލްއާއިއެކު ވީޑިއޯތައް",
+    "subtitlesDescription": "spoken {language} audio އަދި މިހާރު ނެތިއްޖެނަމަ, މި ވީޑިއޯތަކުގައި {language} subtitles ހިމެނޭ.",
+    "noSubtitleVideos": "މި ބަހަށް އަދި subtitle-only ވީޑިއޯތައް ނުހުރޭ.",
+    "dubbed": "ޑަބްކުރި",
+    "subtitles": "ސަބްޓައިޓަލްތައް",
+    "newLabel": "އައު",
+    "fromCollection": "{collection} އިން",
+    "standaloneVideos": "އެކަނި ވީޑިއޯތައް",
+    "videosFromCollection": "{collection} އިން ވީޑިއޯތައް.",
+    "standaloneDescription": "މި ބަހަށް އެކަނި ވީޑިއޯތައް.",
+    "openCollection": "ކޮލެކްޝަން ހުޅުވާ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project ބަލާ",
+    "watch": "ބަލާ",
+    "watchNow": "މިހާރު ބަލާ",
+    "mutePreview": "preview އަޑު ބާންދާ",
+    "unmutePreview": "preview އަޑު ހުޅުވާ",
+    "nextVideo": "ފަހަތަށް އޮތް ވީޑިއޯ",
+    "featured": "ހެޔޮކޮށް ހޮވިފަ",
+    "showVideo": "{title} ދައްކާ",
+    "previousVideoPreview": "ކުރިއަށް އޮތް ވީޑިއޯ preview",
+    "nextVideoPreview": "ފަހަތަށް އޮތް ވީޑިއޯ preview",
+    "mediaCollection": "މީޑިއާ ކޮލެކްޝަން",
+    "scrollToVideo": "{title} ވީޑިއޯއަށް ސްކްރޯލް ކުރާ"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ހޯމް",
+    "navigation": "ފޫޓަރު ނެވިގޭޝަން",
+    "share": "ހިއްސާ ކުރާ",
+    "watch": "ބަލާ",
+    "giving": "ދިނުން",
+    "about": "މައިމާތި",
+    "products": "ޕްރޮޑަކްޓްތައް",
+    "resources": "ސާމާނު",
+    "partners": "ޕާޓްނަރުތައް",
+    "contact": "ގުޅުން",
+    "giveNow": "މިހާރު ދޭ",
+    "resourcesVersion": "ސާމާނު ({version})",
+    "office": "އޮފީސް",
+    "fax": "ފެކްސް",
+    "privacyPolicy": "ޚާއްސަ ސިޔާސަތު",
+    "legalStatement": "ޤާނޫނީ ބަޔާން",
+    "newsletter": "މިއިން ނިއުސްލެޓަރަށް ސައިން އިން ކުރާ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "ދުނިޔެވީފަރާތު މިޝަންތަކަށް ބިނާކޮށްފަ",
+    "title": "Message ބަދަލު ނުވޭ. މީހުން ބަލާ ގޮތް ބަދަލު ވޭ.",
+    "description": "އަމިއްލަ ބަހުން އައު video library އަދި tools އެއް ފަރާތުން ބިނާކޮށް, ދިޔަވެފައިވާ ތަރުޖަމާ މަސައްކަތް މީހުން އެކި ބާވަތްތަކުގައި ބައިވެރިވާ, ބަލާ, ހިއްސާ ކުރާ ޕްލެޓްފޯމްތަކަށް ހަމައަށް ގެންދަމަވަނީ.",
+    "translatedLibraryTitle": "ދުނިޔެއިން އެންމެ ބޮޑު ތަރުޖަމާ ކުރެވިފައިވާ ފިލްމް ލައިބްރަރީ",
+    "translatedLibraryDescription": "ވާހަކަތަކާއި މިޝަން ޕާޓްނަރުތަކުގެ އިތުބާރުލަވާ ތަރުޖަމާ މަސައްކަތް އެއްކޮށް, ދުރު ކޮންމެ ބަހެއްގައި Jesus ގެ ވާހަކަ ބަލާނެ ގޮތުގައި ހާސް ބަސް ޓްރެކްތައް ހިމެނޭ ލައިބްރަރީއެއް ބިނާވަނީ.",
+    "trustedVoicesTitle": "އިތުބާރުލަވާ އަޑުތައް އައު ފޯމެޓްތަކަށް ގެންދަމަނީ",
+    "trustedVoicesDescription": "އިތުބާރުލަވާ ތަރުޖަމާތަކާއި modern formats އެއްކޮށް, އިންޖީލް ވާހަކަތައް ދައްކާ ގޮތް އަލުން ބިނާކޮށްދަމަނީ; މިހެންނުވެ މެސެޖްއެއް ޕްލެޓްފޯމް, ކަލްޗަރ, އަދި ސްކްރީންތަކުގައި ހިރަންދަނީ.",
+    "missionTeamTitle": "ލައިބްރަރީއަށް ކުރުމެއްނުވޭ. މިޝަންގެ ފަންޑުގައި ހުރި ޓީމެއް.",
+    "missionTeamDescription": "Jesus Film Project އަކީ ތަރުޖަމާކުރާ, media specialists, editors, and creators އިން ހެދި ދުނިޔެވީ ޓީމެއް. ދިޔަވެފައިވާ ministry experience އެއް ބޭނުން ކޮށް ދަންނަންވީ އަންގައިދިނުމުގެ tools ތަކަށް ބަދަލު ކުރަނީ.",
+    "buildingNext": "ފަހުން ބިނާކުރަނީ ކޮންކަމެއް",
+    "nextStepsTitle": "ފަހު ގަޑިތައް ޕްލެޓްފޯމް",
+    "nextStepsDescription": "ބަލަންތިބި މީހުންގެ އަދި އިންސާނީ ކުރަންޖެހޭ next step އަށް ގެންދަން, community, Scripture, or mission އަށް ވަދެން ފަސޭހަ ކުރާ.",
+    "mediaLibraryTitle": "އިންޖީލް މެޑިއާ ލައިބްރަރީ",
+    "mediaLibraryDescription": "މުޅި ދުނިޔެއަށް ministry އަދި evangelism އަށް ބައިވެރިކުރެވޭ ބަސްތަކުގައި ހާސް ވީޑިއޯ, ފިލްމް, އަދި ސާމާނު ހިމެނޭ ބޮޑު Christian media library އެއް.",
+    "ministryToolsTitle": "މިނިސްޓްރީތަކަށް ޑިޖިޓަލް ޓޫލްތައް",
+    "ministryToolsDescription": "ވީޑިއޯ މެނޭޖްމަންޓް, content distribution, audience engagement, and analytics އަށް ބިނާކޮށް, ministries ތަކަށް މީހުން އިތުރަށް ލިބިލައްވާނެހެން ހެދި tools ތަކެވެ.",
+    "invitationEyebrow": "ތިބާއަށް ދަޢުވަތުއެވެ",
+    "invitationTitle": "<highlight>ފަހު ޖީލު</highlight> މިޝަން tools ބިނާކުރަން އެއްކޮށް އެއްކޮށް ބައިވެރިވާ",
+    "invitationDescription": "މިހާރު early access އަށް practitioners, creators, and partners ކަންތައް ދައްކާލަނީ. އައު tools ފުރަތަމަ ޓެސްޓް ކޮށް, feedback ދީ, real mission work އަށް ހެދި products ތައް ހެޔޮކޮށްދޭ.",
+    "betaTester": "ބީޓާ tester އަކަށްވާ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "ވީޑިއޯ ބައިބަލް ކޮލެކްޝަން",
+    "gospelRailTitle": "ހުރިހާ ވާހަކަ ހޯދާ",
+    "videoBibleDescription": "ބައިބަލް މިހާރު ދިރިކޮށްދޭ engaging stories އަދި teachings އެއްކޮށް video އަދި resources ކޮލެކްޝަންތައް ބަލާ.",
+    "showcaseTitle": "ފިލްމްއާއިގެ މުޅިން ބުނެދޭ ތަޤްރީރު",
+    "adventEyebrow": "ކިރިސްމަސް އެޑްވެންޓް",
+    "adventTitle": "Christmas Advent ކައުންޓްޑައުން",
+    "adventDescription": "Jesus ގެ އައުންމަގު ކުރިއަށް އެޅުމަށް hope, joy, and promise ބަލާ ދުވަހަކު ވީޑިއޯ އެއްކޮށް Advent journey އަށް ގުޅުއްވާ.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject އެޑްވެންޓް",
+    "nuaEyebrow": "NUA ސީރީޒް",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth ސީރީޒް",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "ވީޑިއޯ ކޯސް",
+    "journeyWithJesusTitle": "Jesus އާއިއެކު ދާ މަގު",
+    "gospelsOnVideoEyebrow": "މުޅި އިންޖީލު ވީޑިއޯއިން",
+    "scriptureAsWrittenTitle": "ސްކްރިޕްޗަރ, ލިޔެފައި ހުރި ގޮތަށް ތެދުކޮށް ކިޔަވަނީ",
+    "merryChristmas": "ކިރިސްމަސް މުބާރިކް!",
+    "daysUntilChristmas": "{count, plural, one {ކިރިސްމަސް އަށް # ދުވަސް} other {ކިރިސްމަސް އަށް # ދުވަސް}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ބަސްތައް",
+    "metadataDescription": "JesusFilm ވީޑިއޯތައް ބަސްބަސް ބޭނުން ކޮށް ބަލާ.",
+    "eyebrow": "ބަލާން ބަސްތައް",
+    "title": "ބަސްއެއް ހޮވާ",
+    "description": "ރީޖަން އަށް ބަސްތައް ބަލާ ނުވަތަ މުޅި ލިސްޓް ބްރައުޒް ކުރާ.",
+    "searchPlaceholder": "ބަސް ނުވަތަ ގައުމު ހޯދާ...",
+    "searchLabel": "ބަސް ނުވަތަ ގައުމު ހޯދާ",
+    "clearSearch": "ހޯދާން ކްލީއާ ކުރާ",
+    "browse": "ބްރައުޒް ކުރާ",
+    "browseByRegion": "ރީޖަން އަދި ގައުމު ބޭނުން ކޮށް ބްރައުޒް ކުރާ",
+    "languageCount": "{count, plural, one {# ބަސް} other {# ބަސްތައް}}",
+    "region": "ރީޖަން",
+    "countryLanguages": "{country} ބަސްތައް",
+    "showLess": "މަދުކޮށް ދައްކާ",
+    "showMore": "އިތުރު {count} ދައްކާ",
+    "noLanguages": "ބަސްތައް ނުފެންނެވެ",
+    "tryAnotherSearch": "އެހެން ހޯދާން ހިންގާ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "ބަލާން ތާރީޚް | Jesus Film Project",
+    "title": "ބަލާން ތާރީޚް",
+    "loading": "ތާރީޚް ލޯޑް ކުރަނީ",
+    "empty": "އަދި އެއްޗެއް ނެތް",
+    "emptyDescription": "ސައިން އިން ކުރާ މުށައް ބަލާވާ ވީޑިއޯތައް މިތާނގެއްގައި ފާހަގަވާނެ.",
+    "earlier": "ކުރިއަށް",
+    "today": "މިއަދު",
+    "yesterday": "އިއްޔެ"
+  },
+  "AccountControl": {
+    "account": "އެކައުންޓް",
+    "accountMenu": "އެކައުންޓް މެނޫ",
+    "signIn": "ސައިން އިން",
+    "signOut": "ސައިން އައުޓް",
+    "signedIn": "ސައިން އިން ކުރެވިފަ",
+    "history": "ތާރީޚް",
+    "logOut": "ލޮގް އައުޓް"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ޞަފުހާ ނުފެނޭ",
+    "eyebrow": "ޞަފުހާ ނުފެނޭ",
+    "screenReaderPrefix": "ޞަފުހާ ނުފެނޭ:",
+    "title": "މި ސީން މިތާ ނެތް.",
+    "description": "ޞަފުހާއެއް އެއް ހިސާބަށް ދިޔަންޖެހިއްޖަމަސް, ވާހަކަ ހަމަ ހިނގަނީ.",
+    "actionsLabel": "ޞަފުހާ ނުފެނޭ ކަންތައް",
+    "backToWatch": "Watch އަށް އަނބުރާ",
+    "browseVideos": "ވީޑިއޯތައް ބްރައުޒް ކުރާ"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "ކުރު ފިލްމް ބަލާ",
+    "actions": {
+      "joinUs": "ގުޅުއްވާ",
+      "shareMission": "މިޝަން ހިއްސާ ކުރާ"
+    },
+    "welcomeStart": {
+      "label": "އީމާން އަދި ސްކްރިޕްޗަރ",
+      "title": "މިއަދުގެ ވީޑިއޯ ހޮވުންތައް",
+      "description": "އިތުބާރުލަވާ އަދި ހިތްހަމަޖައްސައިދޭ, ފިކުރުކުރުވާ ވަޒުނީ ވީޑިއޯ ކޮންޓެންޓް އަމިއްލަ ލައިބްރަރީއިން."
+    },
+    "welcomeMorning": {
+      "label": "މާދަމާގެ އިލާހީ އިންސްޕައިރޭޝަން",
+      "title": "އައި މޯނިންގް! މިއަދުގެ Bible ހިސާބުތައް ކެތްނެތި ބެހެއްޓިފަ އެވޭ.",
+      "description": "ހިތްބަރާބަރުކުރާ Bible ހިސާބުތަކާއިއެކު ދުވަހުގެ ފުރަތަމަ ހިސާބަށް ފަށާ, އެހެންމަ ހިތާވެސް މަތިވާނެ ގޮތަށް."
+    },
+    "welcomeAfternoon": {
+      "label": "ދެވަނަ ދުވަސް އިންސްޕައިރޭޝަން",
+      "title": "ހެވި ދުވަސް! މިއަދުގެ Bible ހިސާބުތައް.",
+      "description": "ދުވަސްމަތީ ބްރޭކްއަށް ނުވަތަ އިތުރަށް ހިތްހެޔޮ ކުރަން ބޭނުންވާ ހިސާބަށް މާއްދާވާ Bible ކޮންޓެންޓް."
+    },
+    "welcomeEvening": {
+      "label": "ރޭގެ އިންސްޕައިރޭޝަން",
+      "title": "ހެވި ރޭ! Bible ހިސާބުތަކާއިއެކު ދުވަސް ކުރިއަށް އަޅާލާ.",
+      "description": "ދުވަސް ނިމެންދެން ކުރިއަށް އަޅާލައި ހިތްހަމަޖައްސައިދޭ ހިސާބުތަކެއް."
+    },
+    "joinUs": {
+      "label": "ގުޅުއްވާ",
+      "title": "މިލިޔަންތަކެއް ހޯދަނީ",
+      "description": "އަދަދު ދިރޭ ވަގުތު އެއީ. ޑިޖިޓަލް މީޑިއާއާއި އެކު ދުނިޔެއަށް އިންޖީލް ހިއްސާ ކުރުމަށް އަންނާށެވެ."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "އެކުގައި ދަމާށެވެ",
+      "title": "އީސައިގެ ވާހަކަ, އެކުގައި ބުނާށެވެ",
+      "description": "އެހެންމަ ތިބާގެ އަމިއްލަ ބަހުން, ތިބާ ހުރި ތަނުގައި އީސައިގެ ލޯބި އޮންނަން އަޑަކާއި ދުރު މައިދާނެއްގައި ނުވެސް ބަލަނީ."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ގުޅުން",
+    "none": "މި ބަހުން މި ވީޑިއޯއަށް ހުށަހެޅޭ ވީޑިއޯއެއް ނުފެނުނު."
+  },
+  "BetaTesterModal": {
+    "title": "ބީޓާ tester އަކަށްވާ",
+    "trigger": "ބީޓާ tester އަކަށްވާ",
+    "loadFailed": "އެއްޗެއް ގެއްލިއްޖެ.",
+    "loading": "ލޯޑް ކުރަނީ...",
+    "openFormNewTab": "ފޯމް އެކެއް އަލަށް ޓެބް އެއްގައި ހުޅުވާ",
+    "close": "ބާންދާ",
+    "iframeTitle": "ބީޓާ tester އަކަށްވާ"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

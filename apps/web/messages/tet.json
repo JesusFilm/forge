@@ -7,7 +7,9 @@
     "noContent": "Laiha kontentu disponível.",
     "homepageMisconfigured": "Página inicial husi Watch la konfigura loos.",
     "defaultTemplateMisconfigured": "Template padraun husi Watch la konfigura loos.",
-    "authFailed": "Labele autentika ho servisu kontentu. Favor kontaktu suporti bainhira ida ne'e kontinua."
+    "authFailed": "Labele autentika ho servisu kontentu. Favor kontaktu suporti bainhira ida ne'e kontinua.",
+    "pageLoadFailed": "Aza ida la halakon.",
+    "tryAgain": "Tenta fali"
   },
   "VideosPage": {
     "title": "ভিডিও hotu-hotu",
@@ -22,7 +24,8 @@
     "promoHeading": "Ita hakarak komprende Biblía liután ho dalan kle'an?",
     "joinBibleStudy": "Junta iha ita nia estudu Biblika",
     "previousQuote": "Kótu Biblika liuba",
-    "nextQuote": "Kótu Biblika tuir mai"
+    "nextQuote": "Kótu Biblika tuir mai",
+    "readPassage": "Lee pasajen ida-ne'e iha ita nia Biblía."
   },
   "DownloadButton": {
     "checking": "Hatudu",
@@ -73,7 +76,8 @@
     "selectLanguage": "Hili língua",
     "searchPlaceholder": "Buka língua sira…",
     "languages": "Língua sira",
-    "noMatches": "La hetan rezultadu"
+    "noMatches": "La hetan rezultadu",
+    "notAvailable": "La disponível"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Língua",
@@ -100,10 +104,7 @@
     "seriesLabel": "SÉRIE · {episodes}",
     "changeAudioLanguage": "Troka lingua audiu",
     "share": "Partilla",
-    "languages": "Língua sira",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Língua sira"
   },
   "WatchModal": {
     "close": "Taka"
@@ -115,7 +116,8 @@
     "questions": "Pergunta Relasiona sira",
     "askYours": "Husu ita nia",
     "chatWithPerson": "Konsulta ho ema ida",
-    "askBibleQuestion": "Husu pergunta Biblika"
+    "askBibleQuestion": "Husu pergunta Biblika",
+    "quiz": "Kestionáriu"
   },
   "WatchQuestionPanel": {
     "messageType": "Tipu mensajen",
@@ -173,7 +175,8 @@
     "searchRegion": "Buka vídeo sira",
     "clearSearch": "Hamoos peskiza",
     "changeAudioLanguage": "Troka lingua audiu",
-    "home": "JesusFilm uma"
+    "home": "JesusFilm uma",
+    "closeSearch": "Taka peskiza"
   },
   "SearchOverlay": {
     "dialogLabel": "Buka no haree vídeo sira",
@@ -208,14 +211,19 @@
     "clearLanguages": "Hamoos",
     "queryLanguageDetected": "Deteta ona {language}",
     "searchInLanguage": "Buka iha {language}",
-    "tryDifferentKeywordsOrLanguage": "Tenta liafuan chave seluk ka hili língua peskiza seluk"
+    "tryDifferentKeywordsOrLanguage": "Tenta liafuan chave seluk ka hili língua peskiza seluk",
+    "useWebsiteDefaultLanguage": "Uza língua peskiza padraun husi website",
+    "removeLanguage": "Hasai {language}",
+    "browseMode": "Modo peskiza"
   },
   "HeroPlayer": {
     "playWithSound": "Haree agora",
-    "tapToUnmute": "Toque atu loke mute"
+    "tapToUnmute": "Toque atu loke mute",
+    "nextEpisode": "Episódiu tuir mai"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Karrega kontentu"
+    "loadingContent": "Karrega kontentu",
+    "loadingVideo": "Karrega vídeo"
   },
   "VideoLabels": {
     "video": "Vídeo",
@@ -226,7 +234,8 @@
     "series": "Série",
     "collection": "Koleksaun",
     "trailer": "Vídeu introdutóriu",
-    "behindTheScenes": "Maluk iha Bastidor"
+    "behindTheScenes": "Maluk iha Bastidor",
+    "chapter": "Kapítulu"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipu {current} husi {total}",
@@ -238,12 +247,253 @@
     "noImage": "La iha imajen",
     "playingNow": "Se halao hela agora",
     "previousChapter": "Kapítulu liuba",
-    "nextChapter": "Kapítulu tuir mai"
+    "nextChapter": "Kapítulu tuir mai",
+    "thumbnailAlt": "Thumbnail husi {title}",
+    "relatedVideoThumbnail": "Thumbnail vídeo relasionadu"
   },
   "SearchResultCard": {
     "experience": "Esperiénsia",
     "episodeCount": "{count, plural, one {# episódiu} other {# episódiu sira}}",
     "thumbnailAlt": "Thumbnail vídeo"
+  },
+  "Feedback": {
+    "openForm": "Buka formulário feedback",
+    "label": "Komentáriu",
+    "couldNotLoad": "Labele karrega formulário feedback.",
+    "loadingForm": "Karrega formulário feedback…",
+    "retry": "Tenta fali",
+    "openFormShort": "Buka formulário",
+    "cancel": "Kansela",
+    "title": "Feedback Beta",
+    "description": "Partilla saida mak lao di'ak no saida mak ita bele hadi'a. Formulariu ne'e fornese husi Google.",
+    "openInNewTab": "Buka formulário iha tab foun",
+    "closeForm": "Taka formulário feedback",
+    "loadingGoogleForm": "Karrega Google Form…",
+    "iframeTitle": "Submete Feedback Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vídeo kristaun lais iha {language} | Jesus Film Project",
+    "metadataDescription": "Haree Jesus films, istória Biblika, série disipuladu, no vídeo outreach ho áudio dubadu ka subtítulu iha {language}.",
+    "heroTitle": "Vídeo kristaun lais iha {language}",
+    "heroDescription": "Haree Jesus films, istória Biblika, série disipuladu, no vídeo outreach ne'ebé disponível iha {language}. Vídeo dubadu total iha ulun liu, ho opsaun subtítulu deit iha kraik.",
+    "languageCollection": "Koleksaun língua",
+    "itemCount": "{count, plural, one {# item} other {# item sira}}",
+    "videoCount": "{count, plural, one {# vídeo} other {# vídeo sira}}",
+    "videosInGroups": "{videoCount, plural, one {# vídeo} other {# vídeo sira}} iha {groupCount, plural, one {# grupu} other {# grupu sira}}",
+    "sectionNavLabel": "Sesaun inventáriu língua sira",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Foun",
+    "videoBible": "Biblía Vídeu",
+    "bibleProject": "BibleProject",
+    "sports": "Desportu",
+    "collections": "Koleksaun sira",
+    "subtitlesOnly": "Subtítulu deit",
+    "newlyAdded": "Tama foun",
+    "newVideosTitle": "Vídeo kristaun foun iha {language}",
+    "newestFirst": "Foun liu uluk",
+    "noPublishedVideos": "Seidauk hetan vídeo publika ba língua ida-ne'e.",
+    "bibleAndGospelFilms": "Filme Biblia no Evangeliu",
+    "videoBibleCollectionsTitle": "Koleksaun Biblía Vídeu iha {language}",
+    "videoBibleDescription": "Koleksaun sentra ba Escritura inklui LUMO, JESUS, Magdalena, no Atus iha {language}.",
+    "noVideoBibleCollections": "Seidauk iha koleksaun Biblía Vídeu disponível ba língua ida-ne'e.",
+    "bibleProjectCollectionsTitle": "Koleksaun BibleProject iha {language}",
+    "bibleProjectDescription": "Série no estudu BibleProject disponível iha {language}.",
+    "noBibleProjectCollections": "Seidauk iha koleksaun BibleProject disponível ba língua ida-ne'e.",
+    "sportsStories": "Istória desportu",
+    "sportsTitle": "Istória desportu no atletu iha {language}",
+    "sportsDescription": "Istória desportu sentra ba fuan no koleksaun fokus ba atletu disponível iha {language}.",
+    "noSportsCollections": "Seidauk iha koleksaun istória desportu ka atletu disponível ba língua ida-ne'e.",
+    "fullyDubbed": "Dubadu total",
+    "dubbedVideosTitle": "Vídeo iha {language} tuir koleksaun",
+    "dubbedVideosDescription": "Haree vídeo {language} dubadu total ne'ebé grupu ho sira nia koleksaun atu fasil hetan.",
+    "noDubbedVideos": "Seidauk iha vídeo dubadu total disponível ba língua ida-ne'e.",
+    "subtitlesAvailable": "Subtítulu disponível",
+    "subtitlesTitle": "Vídeo iha {language} ho subtítulu",
+    "subtitlesDescription": "Vídeo sira-ne'e inklui subtítulu {language} bainhira áudio {language} ne'ebé koalia seidauk disponível.",
+    "noSubtitleVideos": "Seidauk iha vídeo subtítulu deit disponível ba língua ida-ne'e.",
+    "dubbed": "Dubadu",
+    "subtitles": "Subtítulu",
+    "newLabel": "Foun",
+    "fromCollection": "Husi {collection}",
+    "standaloneVideos": "Vídeo sira independente",
+    "videosFromCollection": "Vídeo sira husi {collection}.",
+    "standaloneDescription": "Vídeo sira independente iha língua ida-ne'e.",
+    "openCollection": "Buka koleksaun"
+  },
+  "WatchHome": {
+    "pageTitle": "Haree iha Jesus Film Project",
+    "watch": "Haree",
+    "watchNow": "Haree Agora",
+    "mutePreview": "Preview mute",
+    "unmutePreview": "Preview loke volume",
+    "nextVideo": "Vídeo tuir mai",
+    "featured": "Destaque",
+    "showVideo": "Hatudu {title}",
+    "previousVideoPreview": "Preview vídeo liuba",
+    "nextVideoPreview": "Preview vídeo tuir mai",
+    "mediaCollection": "Koleksaun média",
+    "scrollToVideo": "Hamutuk ba vídeo {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project uma",
+    "navigation": "Navigasaun rohan kraik",
+    "share": "Partilla",
+    "watch": "Haree",
+    "giving": "Doador",
+    "about": "Kona-ba",
+    "products": "Produtu sira",
+    "resources": "Rekursu sira",
+    "partners": "Parsaeru sira",
+    "contact": "Kontaktu",
+    "giveNow": "Dá Agora",
+    "resourcesVersion": "Rekursu sira ({version})",
+    "office": "Ofisina",
+    "fax": "Númeru fax",
+    "privacyPolicy": "Polítika Privasidade",
+    "legalStatement": "Deklarasaun Legál",
+    "newsletter": "Subskribe ba ita nia newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Konstrui ba misan globál",
+    "title": "Mensajen la troka. Maneira ema haree mak troka.",
+    "description": "Hau nia ekipia sukat fila fali ita nia biblioteka vídeo no ferramenta sira hosi rai-baluk, dedika ona dekada sira husi traballu tradusaun ba plataforma sira ne'ebé ema sira juntu, haree, no partilla hela.",
+    "translatedLibraryTitle": "Biblioteka filme sira ne'ebé tradusaun liu iha mundu",
+    "translatedLibraryDescription": "Dekada sira husi traballu tradusaun, suportadu husi parseiru ministeriu sira ne'ebé fiar, hanesan biblioteka ho trilha língua mil sira atu ema bele hasoru istória Jesus iha língua ne'ebé to'o to'o ba nia fuan.",
+    "trustedVoicesTitle": "Tama fali voz konfiansa ba formatu foun sira",
+    "trustedVoicesDescription": "Hau nia ekipia fila fali forma husi istória Evangeliu sira ne'ebé konta vizualmente, tanba halo tradusaun fiar ho formatu modernu sira atu mensajen bele sae livre liu iha plataforma, kultura, no tela sira.",
+    "missionTeamTitle": "Laiha de'it biblioteka. Ekipia ne'ebé motiva husi misaun.",
+    "missionTeamDescription": "Jesus Film Project mak ekipia globál husi tradutor, espesialista média, editór, no kriador sira ne'ebé troka esperiénsia ministeriu dekada sira ba ferramenta sira ba ema mak halo disipulu iha ne'ebe hotu.",
+    "buildingNext": "Saida mak ami hadi'a tuir mai",
+    "nextStepsTitle": "Plataforma Tuir Mai",
+    "nextStepsDescription": "Konekta haree ba oportunidade konkreta iha sira nia dalan espirituál, ajuda sira atu sai pasu tuir ba komunidade, Escritura, ka misaun.",
+    "mediaLibraryTitle": "Biblioteka Média Evangelístika",
+    "mediaLibraryDescription": "Biblioteka média kristaun boot ho vídeo, filme, no rekursu mil sira ne'ebé disponível iha língua balun ba ministeriu no evangelizasaun iha mundu tomak.",
+    "ministryToolsTitle": "Ferramenta Digital ba Ministeriu",
+    "ministryToolsDescription": "Jerensaun vídeo, distribuisaun kontentu, envolvimentu audiência, no análise sira ne'ebé diseñadu atu ajuda ministeriu sira atu to'o ema barak liután ho di'ak.",
+    "invitationEyebrow": "Ita simu konvite",
+    "invitationTitle": "Ajuda halimar <highlight>gerasaun tuir mai</highlight> husi ferramenta misan sira",
+    "invitationDescription": "Hau nia konvite ba pratizadór, kriador, no parsaeru sira atu tama iha early access. Testa ferramenta foun sira uluk, fó feedback, no ajuda hadia produtu sira ne'ebé sai ba servisu misan di'ak liu.",
+    "betaTester": "Sai beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksaun Biblía Vídeu",
+    "gospelRailTitle": "Hatudu istória tomak",
+    "videoBibleDescription": "Haree ita nia koleksaun vídeo no rekursu sira ne'ebé halo Biblía mai moris liu ho istória no ensinamentu sira ne'ebé atrativu.",
+    "showcaseTitle": "Escritura konta liu husi Filme",
+    "adventEyebrow": "Adventu Natal",
+    "adventTitle": "Konta mundu ba Natal",
+    "adventDescription": "Junta iha ita nia dalan Adventu ho vídeo lor-loron ida ne'ebé aumenta hein ba Natal, esplora esperança, alegria, no promesa husi Jesus nia moris mai.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Adventu",
+    "nuaEyebrow": "Série NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Série Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurzu Vídeu",
+    "journeyWithJesusTitle": "Dalak hamutuk ho Jesus",
+    "gospelsOnVideoEyebrow": "Evanjélio hotu, konta iha vídeo",
+    "scriptureAsWrittenTitle": "Escritura, koalia loos hanesan hakerek ona",
+    "merryChristmas": "Feliz Natal!",
+    "daysUntilChristmas": "{count, plural, one {Falta loron # ba Natal} other {Falta loron # ba Natal}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Língua sira",
+    "metadataDescription": "Haree vídeo JesusFilm tuir língua.",
+    "eyebrow": "Língua Watch",
+    "title": "Hili língua ida",
+    "description": "Haree língua sira tuir rejiaun ka haree lista tomak.",
+    "searchPlaceholder": "Buka língua ka rai sira...",
+    "searchLabel": "Buka língua ka rai sira",
+    "clearSearch": "Hamoos peskiza",
+    "browse": "Haree",
+    "browseByRegion": "Haree tuir rejiaun no rai",
+    "languageCount": "{count, plural, one {# língua} other {# língua sira}}",
+    "region": "Rejiaun",
+    "countryLanguages": "Língua sira {country}",
+    "showLess": "Hatudu menus",
+    "showMore": "Hatudu {count} tan",
+    "noLanguages": "Laiha língua hetan",
+    "tryAnotherSearch": "Tenta liafuan peskiza seluk."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istória Haree | Jesus Film Project",
+    "title": "Istória Haree",
+    "loading": "Karrega istória",
+    "empty": "Laiha saida ho'o liu",
+    "emptyDescription": "Vídeo sira ne'ebé ita haree bainhira sesaun hela atu sai iha ne'e.",
+    "earlier": "Uluk liu",
+    "today": "Ohin",
+    "yesterday": "Horiseik"
+  },
+  "AccountControl": {
+    "account": "Konta",
+    "accountMenu": "Menu konta",
+    "signIn": "Inisiu sesaun",
+    "signOut": "Sai sesaun",
+    "signedIn": "Inisiu sesaun ona",
+    "history": "Istória",
+    "logOut": "Sai sesaun"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Página la hetan",
+    "eyebrow": "Página la hetan",
+    "screenReaderPrefix": "Página la hetan:",
+    "title": "Cena ida-ne'e laiha iha ne'e.",
+    "description": "Página bele muda ona, maibé istória la taka.",
+    "actionsLabel": "Aksaun página la hetan",
+    "backToWatch": "Fila ba Watch",
+    "browseVideos": "Haree vídeo sira"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Haree Filme Curtu",
+    "actions": {
+      "joinUs": "Tama hamutuk ho ami",
+      "shareMission": "Partilla iha ami nia misan"
+    },
+    "welcomeStart": {
+      "label": "Fiar & Escritura",
+      "title": "Hili vídeo ohin nia",
+      "description": "Kontentu vídeo sentra ba fiar hosi ita nia biblioteka atu inspira, desafia, no hasa'e hanoin."
+    },
+    "welcomeMorning": {
+      "label": "Inspirasaun iha manhã",
+      "title": "Bom dia! Moméntu Biblika ohin hein ita.",
+      "description": "Hahu ita nia loron ho moméntu Biblika ne'ebé fó coragem, diseñadu atu inspira no hasa'e ita nia espíritu."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirasaun iha tarde",
+      "title": "Boa tarde! Moméntu Biblika ba ita nia loron.",
+      "description": "Kontentu Biblika ne'ebé fó coragem, di'ak ba ita nia tempu liu iha tarde ka atu kontinua inspira."
+    },
+    "welcomeEvening": {
+      "label": "Inspirasaun iha kalan",
+      "title": "Boa noite! Relasaun malu ho moméntu Biblika.",
+      "description": "Moméntu Biblika ne'ebé hakmatek atu ajuda ita reflete no hetan konsolo bainhira ita nia loron taka ona."
+    },
+    "joinUs": {
+      "label": "Tama hamutuk ho ami",
+      "title": "Miliaun sira hela buka",
+      "description": "Moris iha ne'e. Tama hamutuk ho ami atu partilla evangelu ho mundu liu husi média digital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Bá hamutuk",
+      "title": "Kontadu Istória Jesus, Hamutuk",
+      "description": "Hodi sira bele rona no haree Jesus nia koleinu iha sira nia língua rasik iha ne'ebé sira hela."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Kompatibilidade {percent}%",
+    "none": "La hetan rekomendasaun ba vídeo ida-ne'e iha língua ida-ne'e."
+  },
+  "BetaTesterModal": {
+    "title": "Sai beta tester",
+    "trigger": "Sai beta tester",
+    "loadFailed": "Aza ida la halakon.",
+    "loading": "Karrega ona...",
+    "openFormNewTab": "Buka formulário iha tab foun",
+    "close": "Taka",
+    "iframeTitle": "Sai beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

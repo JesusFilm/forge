@@ -7,7 +7,9 @@
     "noContent": "ʻOku ʻikai ha fakamatala ʻoku lava ke maʻu.",
     "homepageMisconfigured": "ʻOku fokotuʻutuʻu hala ʻa e peesi kamata ʻo e Watch.",
     "defaultTemplateMisconfigured": "ʻOku fokotuʻutuʻu hala ʻa e template tukufakaholo ʻo e Watch.",
-    "authFailed": "ʻIkai lava ke fakapapauʻi mo e sevise fakamatala. Kataki ʻo fetuʻutaki ki he tokoni kapau ʻe hokohoko atu pe."
+    "authFailed": "ʻIkai lava ke fakapapauʻi mo e sevise fakamatala. Kataki ʻo fetuʻutaki ki he tokoni kapau ʻe hokohoko atu pe.",
+    "pageLoadFailed": "Naʻe meʻa hala.",
+    "tryAgain": "Toe feinga"
   },
   "VideosPage": {
     "title": "Kiate Videó Kotoa",
@@ -22,7 +24,8 @@
     "promoHeading": "ʻOku ke loto ke mahino loloto ange ʻa e Tohi Tapú?",
     "joinBibleStudy": "Hoko atu ki heʻemau ako Tohi Tapú",
     "previousQuote": "Tefitoʻi Folofola ki muʻa",
-    "nextQuote": "Tefitoʻi Folofola hoko"
+    "nextQuote": "Tefitoʻi Folofola hoko",
+    "readPassage": "Lau ʻa e potufolofola ni ʻi hoʻo Tohi Tapú."
   },
   "DownloadButton": {
     "checking": "Sivi",
@@ -73,7 +76,8 @@
     "selectLanguage": "Fili ʻa e lea",
     "searchPlaceholder": "Fekumi ki he ngaahi lea…",
     "languages": "Ngaahi Lea",
-    "noMatches": "ʻIkai ha tatau"
+    "noMatches": "ʻIkai ha tatau",
+    "notAvailable": "ʻIkai maʻu"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lea",
@@ -100,10 +104,7 @@
     "seriesLabel": "SILISI · {episodes}",
     "changeAudioLanguage": "Liliu ʻa e lea ʻo e ongo",
     "share": "Vahevahe",
-    "languages": "Ngaahi Lea",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Ngaahi Lea"
   },
   "WatchModal": {
     "close": "Katia"
@@ -115,7 +116,8 @@
     "questions": "Ngaahi Fehuʻi Felāveʻi",
     "askYours": "Fehuʻi hoʻo fehuʻi",
     "chatWithPerson": "Talanoa mo ha tokotaha",
-    "askBibleQuestion": "Fehuʻi ha fehuʻi Tohi Tapu"
+    "askBibleQuestion": "Fehuʻi ha fehuʻi Tohi Tapu",
+    "quiz": "Sivi"
   },
   "WatchQuestionPanel": {
     "messageType": "Fōtunga ʻo e pōpoaki",
@@ -173,7 +175,8 @@
     "searchRegion": "Fekumi ki he ngaahi vitio",
     "clearSearch": "Tamateʻi ʻa e fekumí",
     "changeAudioLanguage": "Liliu ʻa e lea ʻo e ongo",
-    "home": "Peesi kamata ʻo e JesusFilm"
+    "home": "Peesi kamata ʻo e JesusFilm",
+    "closeSearch": "Katia ʻa e fekumí"
   },
   "SearchOverlay": {
     "dialogLabel": "Fekumi mo vakaiʻi ngaahi vitio",
@@ -208,14 +211,19 @@
     "clearLanguages": "Tamateʻi",
     "queryLanguageDetected": "Kuo ʻiloʻi ʻa e {language}",
     "searchInLanguage": "Fekumi ʻi he {language}",
-    "tryDifferentKeywordsOrLanguage": "Feinga ki ha ngaahi kupuʻi lea kehe pe fili ha lea fekumi kehe"
+    "tryDifferentKeywordsOrLanguage": "Feinga ki ha ngaahi kupuʻi lea kehe pe fili ha lea fekumi kehe",
+    "useWebsiteDefaultLanguage": "Ngaueʻaki ʻa e lea fekumi tuʻufonua ʻo e uepisaiti",
+    "removeLanguage": "Toʻo {language}",
+    "browseMode": "Fōtunga vakaiʻi fekumi"
   },
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",
-    "tapToUnmute": "Tap ke ʻAʻaʻi ʻa e Leʻo"
+    "tapToUnmute": "Tap ke ʻAʻaʻi ʻa e Leʻo",
+    "nextEpisode": "ʻEpisooti Hoko"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Lolotonga laodí ʻa e fakamatala"
+    "loadingContent": "Lolotonga laodí ʻa e fakamatala",
+    "loadingVideo": "Lolotonga laodí ʻa e vitio"
   },
   "VideoLabels": {
     "video": "Vitio",
@@ -226,7 +234,8 @@
     "series": "Silisi",
     "collection": "Kolekisoni",
     "trailer": "Trailā",
-    "behindTheScenes": "Hahake ʻo e Tuʻunga Ngāue"
+    "behindTheScenes": "Hahake ʻo e Tuʻunga Ngāue",
+    "chapter": "Vahe"
   },
   "SiblingCarousel": {
     "clipPosition": "Kilipe {current} ʻo e {total}",
@@ -238,12 +247,253 @@
     "noImage": "ʻIkai ha fakatātā",
     "playingNow": "ʻOku tākanga he taimí ni",
     "previousChapter": "Vahe ki muʻa",
-    "nextChapter": "Vahe hoko"
+    "nextChapter": "Vahe hoko",
+    "thumbnailAlt": "Fakatātā iiki ʻo {title}",
+    "relatedVideoThumbnail": "Fakatātā iiki ʻo e vitio felāveʻi"
   },
   "SearchResultCard": {
     "experience": "Aʻusia",
     "episodeCount": "{count, plural, one {# episooti} other {# episooti}}",
     "thumbnailAlt": "Fakatātā iiki ʻo e vitio"
+  },
+  "Feedback": {
+    "openForm": "Fakaava ʻa e foomu fakamatala",
+    "label": "Fakamatala",
+    "couldNotLoad": "Naʻe ʻikai lava ʻo laodí ʻa e foomu fakamatala.",
+    "loadingForm": "Lolotonga laodí ʻa e foomu fakamatala…",
+    "retry": "Toe feinga",
+    "openFormShort": "Fakaava ʻa e foomu",
+    "cancel": "Luluʻi",
+    "title": "Fakamatala Beta",
+    "description": "Vahevahe ʻa e meʻa ʻoku ngāue lelei mo e meʻa te tau lava ʻo fakaleleiʻi. ʻOku ʻoange ʻa e foomu ni ʻe he Google.",
+    "openInNewTab": "Fakaava ʻa e foomu ʻi ha taba foʻou",
+    "closeForm": "Tamateʻi ʻa e foomu fakamatala",
+    "loadingGoogleForm": "Lolotonga laodí ʻa e Google Form…",
+    "iframeTitle": "Fakaʻaliʻali ʻa e Fakamatala Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ngaahi vitio fakakalisitiane taʻetotongi ʻi he {language} | Jesus Film Project",
+    "metadataDescription": "Vakaiʻi ʻa e ngaahi vitio Sīsū, ngaahi talanoa Tohi Tapu, ngaahi silisi ako, mo e ngaahi vitio fokotuʻu fakafaifekau ʻoku fakaongo pe ʻi ai ʻa e ngaahi subtitle ʻi he {language}.",
+    "heroTitle": "Ngaahi vitio fakakalisitiane taʻetotongi ʻi he {language}",
+    "heroDescription": "Vakaiʻi ʻa e ngaahi vitio Sīsū, ngaahi talanoa Tohi Tapu, ngaahi silisi ako, mo e ngaahi vitio fokotuʻu fakafaifekau ʻoku maʻu ʻi he {language}. ʻOku fakahaaʻi muʻomuʻa ʻa e ngaahi vitio kuo fakaongo kakato, pea ʻoku ʻi lalo ʻa e ngaahi fili subtitle pe.",
+    "languageCollection": "Kolekisoni ʻo e lea",
+    "itemCount": "{count, plural, one {# meʻa} other {# ngaahi meʻa}}",
+    "videoCount": "{count, plural, one {# vitio} other {# ngaahi vitio}}",
+    "videosInGroups": "{videoCount, plural, one {# vitio} other {# ngaahi vitio}} ʻi he {groupCount, plural, one {# kulupu} other {# ngaahi kulupu}}",
+    "sectionNavLabel": "Ngaahi konga ʻo e inventory lea",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Foʻou",
+    "videoBible": "Tohi Tapu Vitio",
+    "bibleProject": "BibleProject",
+    "sports": "Sipoti",
+    "collections": "Ngaahi kolekisoni",
+    "subtitlesOnly": "Ngaahi subtitle pē",
+    "newlyAdded": "Kuo toki tānaki mai",
+    "newVideosTitle": "Ngaahi vitio fakakalisitiane foʻou ʻi he {language}",
+    "newestFirst": "Foʻou taha ʻuluaki",
+    "noPublishedVideos": "ʻIkai ha ngaahi vitio kuo pulusi naʻe maʻu ki he lea ni ʻi he taimí ni.",
+    "bibleAndGospelFilms": "Ngaahi filimi Tohi Tapu mo e Kosipeli",
+    "videoBibleCollectionsTitle": "Ngaahi kolekisoni Tohi Tapu Vitio {language}",
+    "videoBibleDescription": "Ngaahi kolekisoni fakatefito ki he Folofolá ʻo kau ai ʻa e LUMO, JESUS, Magdalena, mo e Ngaahi Ngāue ʻi he {language}.",
+    "noVideoBibleCollections": "ʻOku ʻikai ha ngaahi kolekisoni Tohi Tapu Vitio ʻoku maʻu ki he lea ni ʻi he taimí ni.",
+    "bibleProjectCollectionsTitle": "Ngaahi kolekisoni BibleProject {language}",
+    "bibleProjectDescription": "Ngaahi silisi mo e ngaahi ako BibleProject ʻoku maʻu ʻi he {language}.",
+    "noBibleProjectCollections": "ʻOku ʻikai ha ngaahi kolekisoni BibleProject ʻoku maʻu ki he lea ni ʻi he taimí ni.",
+    "sportsStories": "Ngaahi talanoa sipoti",
+    "sportsTitle": "Ngaahi talanoa sipoti mo e kau tangatá ʻi he {language}",
+    "sportsDescription": "Ngaahi talanoa sipoti ʻoku fakatefito ʻi he tui mo e ngaahi kolekisoni ki he kau tākaro ʻoku maʻu ʻi he {language}.",
+    "noSportsCollections": "ʻOku ʻikai ha ngaahi kolekisoni sipoti pe talanoa ki he kau tākaro ʻoku maʻu ki he lea ni ʻi he taimí ni.",
+    "fullyDubbed": "Fakaongo kakato",
+    "dubbedVideosTitle": "Ngaahi vitio {language} ʻi he kolekisoni",
+    "dubbedVideosDescription": "Vakaiʻi ʻa e ngaahi vitio {language} kuo fakaongo kakato, ʻoku fakakulupu fakataha mo honau kolekisoni ke faingofua ange ʻa e maʻu.",
+    "noDubbedVideos": "ʻOku ʻikai ha ngaahi vitio kuo fakaongo kakato ʻoku maʻu ki he lea ni ʻi he taimí ni.",
+    "subtitlesAvailable": "ʻOku maʻu ʻa e ngaahi subtitle",
+    "subtitlesTitle": "Ngaahi vitio {language} mo e ngaahi subtitle",
+    "subtitlesDescription": "ʻOku kau ʻi he ngaahi vitio ni ʻa e ngaahi subtitle {language} ʻi he taimi ʻoku ʻikai teʻeki maʻu ai ʻa e ongo {language}.",
+    "noSubtitleVideos": "ʻOku ʻikai ha ngaahi vitio subtitle pē ʻoku maʻu ki he lea ni ʻi he taimí ni.",
+    "dubbed": "Fakaongo",
+    "subtitles": "Ngaahi subtitle",
+    "newLabel": "Foʻou",
+    "fromCollection": "Mei he {collection}",
+    "standaloneVideos": "Ngaahi vitio taʻekau",
+    "videosFromCollection": "Ngaahi vitio mei he {collection}.",
+    "standaloneDescription": "Ngaahi vitio taʻekau ʻi he lea ni.",
+    "openCollection": "Fakaava ʻa e kolekisoni"
+  },
+  "WatchHome": {
+    "pageTitle": "Sio ʻi he Jesus Film Project",
+    "watch": "Sio",
+    "watchNow": "Sio he Taimí ni",
+    "mutePreview": "Kataʻa ʻa e preview",
+    "unmutePreview": "ʻAʻaʻi ʻa e preview",
+    "nextVideo": "Vitio Hoko",
+    "featured": "Fakahaaʻi",
+    "showVideo": "Fakaʻaliʻali {title}",
+    "previousVideoPreview": "Preview ʻo e vitio ki muʻa",
+    "nextVideoPreview": "Preview ʻo e vitio hoko",
+    "mediaCollection": "Kolekisoni ʻo e media",
+    "scrollToVideo": "Loloa ki he vitio {title}"
+  },
+  "WatchFooter": {
+    "home": "Peesi kamata ʻo e Jesus Film Project",
+    "navigation": "Fakalaka ʻo e footer",
+    "share": "Vahevahe",
+    "watch": "Sio",
+    "giving": "Foaki",
+    "about": "Fekauʻaki mo",
+    "products": "Ngaahi Product",
+    "resources": "Ngaahi Maʻuʻanga Tokoni",
+    "partners": "Ngaahi hoa ngāue",
+    "contact": "Fetuʻutaki",
+    "giveNow": "Foaki He Taimí ni",
+    "resourcesVersion": "Ngaahi Maʻuʻanga Tokoni ({version})",
+    "office": "ʻOfisi",
+    "fax": "Fakisi",
+    "privacyPolicy": "Tuʻutuʻuni Tauhi Fakapulipuli",
+    "legalStatement": "Fakamatala Fakalao",
+    "newsletter": "Tohi Ki Heʻemau Newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Fokotuʻu ke ngāue fakaemāmani lahi",
+    "title": "ʻOku ʻikai liliu ʻa e pōpoakí. ʻOku liliu ʻa e founga ʻoku mamata ai ʻa e kakaí.",
+    "description": "ʻOku mau toe fokotuʻu mei he tefito ʻa ʻemau fale vitio mo e ngaahi meʻaʻanga, ʻo fakapipiki ʻa e ngaahi taʻu lahi ʻo e ngāue liliu ki he ngaahi platform ʻoku faʻahinga ʻoku fakatahataha, mamata, mo vahevahe ai.",
+    "translatedLibraryTitle": "Ko e potuʻangaʻa filimi kuo liliu lahi taha ʻi māmani",
+    "translatedLibraryDescription": "Ko e ngaahi taʻu lahi ʻo e ngāue liliu, faitāfataha mo e ngaahi hoa ngāue ngāue falalaʻanga, kuó ne langa ha potuʻangaʻa ʻoku ʻi ai ʻa e ngaahi track lea ʻe taupesi, ke lava ai ʻa e kakaí ʻo fetaulaki mo e talanoa ʻo Sīsū ʻi he lea ʻoku ongo lahi taha kiate kinautolu.",
+    "trustedVoicesTitle": "ʻO tuku ʻa e ngaahi leʻo falalaʻanga ki he ngaahi fōtunga foʻou",
+    "trustedVoicesDescription": "ʻOku mau toe fokotuʻu ʻa e founga ʻoku fakamatalaʻi fakavīsuali ai ʻa e ngaahi talanoa ʻo e ongoongoleleí, ʻo fakatahaʻi ʻa e ngaahi liliu falalaʻanga mo e ngaahi fōtunga foʻou koeʻuhí ke lava ʻo liliu frī ʻa e pōpoakí ʻi he ngaahi platform, ngaahi anga fakafonua, mo e ngaahi screen.",
+    "missionTeamTitle": "ʻIkai ko ha potuʻangaʻa pē. Ko ha timi ʻoku tataki ʻe he misioná.",
+    "missionTeamDescription": "Ko e Jesus Film Project ko ha timi māmani lahi ʻo e kau liliu, kau specialists media, kau editā, mo e kau faʻu ngāue ʻoku nau liliu ʻa e ngaahi taʻu lahi ʻo e aʻusia fakafaifekau ki he ngaahi meʻaʻanga maʻa e kau fokotuʻu ʻākonga ʻi he feituʻu kotoa pē.",
+    "buildingNext": "Ko e hā ʻoku mau langa hokó",
+    "nextStepsTitle": "Pēlesi Next Steps",
+    "nextStepsDescription": "Fakatapui ʻa e kau mamata ki he ngaahi faingamālie ʻaonga ʻi heʻenau fononga fakalaumālie, ʻo tokoniʻi kinautolu ke nau fai ha sitepu hoko ki he koinonia, Folofola, pe misiona.",
+    "mediaLibraryTitle": "Faleʻilo Media Fakafaifekau",
+    "mediaLibraryDescription": "Ko ha potuʻangaʻa lahi ʻo e media fakakalisitiane ʻoku ʻi ai ʻa e ngaahi vitio, filimi, mo e ngaahi maʻuʻanga tokoni ʻe taupesi ʻi he ngaahi lea kehekehe maʻa e ngāue mo e ngaahi ngāue fakafiefia fakaevangelio ʻi māmani lahi.",
+    "ministryToolsTitle": "Ngaahi meʻangāue fakakomipiuta maʻa e ngāue fakafaifekau",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, mo analytics kuo fokotuʻutuʻu ke tokoniʻi ʻa e ngaahi ngāue ke nau aʻu angamālie ange ki he kakai ʻe lahi.",
+    "invitationEyebrow": "ʻOku fakaafeʻi koe",
+    "invitationTitle": "Tokoni ke langa ʻa e <highlight>toʻutangata hoko</highlight> ʻo e ngaahi meʻaʻanga misiona",
+    "invitationDescription": "ʻOku mau fakaafeʻi ʻa e kau ngāue fakahoko, kau faʻu ngāue, mo e ngaahi hoa ngāue ki he early access. Sivi ʻa e ngaahi meʻaʻanga foʻou muʻomuʻa, ʻoange ha fakamatala, pea tokoni ke faʻu ʻa e ngaahi product kuo fokotuʻutuʻu maʻa e ngāue misiona moʻoni.",
+    "betaTester": "Hoko ko ha beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kolekisoni Tohi Tapu Vitio",
+    "gospelRailTitle": "ʻIloʻi ʻa e talanoa kakato",
+    "videoBibleDescription": "Vakaiʻi ʻemau kolekisoni ʻo e ngaahi vitio mo e ngaahi maʻuʻanga tokoni ʻoku ʻomi ai ʻa e Tohi Tapu ki he moʻui ʻaki ʻa e ngaahi talanoa mo e ngaahi akonaki ʻoku manako ki ai.",
+    "showcaseTitle": "Ko e Folofola ʻoku fakamatalaʻi ʻi he filimi",
+    "adventEyebrow": "Kilisimasí Advent",
+    "adventTitle": "Tatali Kilisimasi Advent",
+    "adventDescription": "Hoko atu ki heʻemau fononga Advent mo ha vitio fakaʻaho ʻoku fakalahi ai ʻa e loto talaʻofa ki he Kilisimasí, ʻo vakaiʻi ʻa e ʻamanaki lelei, fiefia, mo e talaʻofa ʻo e aʻu mai ʻa Sīsū.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent ʻa e BibleProject",
+    "nuaEyebrow": "Silisi NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Silisi Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Koosi Vitio",
+    "journeyWithJesusTitle": "Fononga mo Sīsū",
+    "gospelsOnVideoEyebrow": "ʻEvanēlio kotoa, tala ʻi he vitio",
+    "scriptureAsWrittenTitle": "Ko e Folofola, lea tonu ʻo hangē ko e hiki",
+    "merryChristmas": "Kilisimasi Fiefia!",
+    "daysUntilChristmas": "{count, plural, one {# ʻaho kae ʻoua ke hoko ʻa e Kilisimasí} other {# ngaahi ʻaho kae ʻoua ke hoko ʻa e Kilisimasí}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ngaahi Lea",
+    "metadataDescription": "Vakaiʻi ʻa e ngaahi vitio JesusFilm ʻi he lea.",
+    "eyebrow": "Ngaahi lea ʻo e Watch",
+    "title": "Fili ha lea",
+    "description": "Vakaiʻi ʻa e ngaahi lea ʻi he vahefonua pe vakaiʻi ʻa e lisi kakato.",
+    "searchPlaceholder": "Fekumi ki he ngaahi lea pe ngaahi fonua...",
+    "searchLabel": "Fekumi ki he ngaahi lea pe ngaahi fonua",
+    "clearSearch": "Tamateʻi ʻa e fekumi",
+    "browse": "Vakaiʻi",
+    "browseByRegion": "Vakaiʻi ʻi he vahefonua mo e fonua",
+    "languageCount": "{count, plural, one {# lea} other {# ngaahi lea}}",
+    "region": "Vahefonua",
+    "countryLanguages": "Ngaahi lea {country}",
+    "showLess": "Fakasiʻi ange",
+    "showMore": "Fakaha mai {count} lahi ange",
+    "noLanguages": "ʻIkai maʻu ha ngaahi lea",
+    "tryAnotherSearch": "Feinga ki ha foʻi lea fekumi kehe."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Hisitolia ʻo e Sio | Jesus Film Project",
+    "title": "Hisitolia ʻo e Sio",
+    "loading": "Lolotonga laodí ʻa e hisitoliá",
+    "empty": "ʻIkai ha meʻa ʻi heni ʻi he taimi ni",
+    "emptyDescription": "ʻE hā heni ʻa e ngaahi vitio ʻoku ke mamata ki ai ʻi he taimi ʻokú ke hu ki heʻokú.",
+    "earlier": "Muʻa ange",
+    "today": "ʻAho ni",
+    "yesterday": "ʻaneafi"
+  },
+  "AccountControl": {
+    "account": "ʻAkauni",
+    "accountMenu": "Menu ʻo e akauni",
+    "signIn": "Hu ki loto",
+    "signOut": "Hu ki tuʻa",
+    "signedIn": "Kuo hu ki loto",
+    "history": "Hisitolia",
+    "logOut": "Mavahe"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ʻIkai maʻu ʻa e peesi",
+    "eyebrow": "ʻIkai maʻu ʻa e peesi",
+    "screenReaderPrefix": "ʻIkai maʻu ʻa e peesi:",
+    "title": "ʻOku ʻikai ʻi heni ʻa e scene ni.",
+    "description": "Mahalo kuo hiki ʻa e peesí, ka ʻoku kei hoko atu pe ʻa e talanoá.",
+    "actionsLabel": "Ngaahi ngāue ʻo e peesi ʻikai maʻu",
+    "backToWatch": "Hoko ki he Watch",
+    "browseVideos": "Vakaiʻi ʻa e ngaahi vitio"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Sio ki he Filimi Nounou",
+    "actions": {
+      "joinUs": "Kau Mai",
+      "shareMission": "Kau ʻi Homau Misioná"
+    },
+    "welcomeStart": {
+      "label": "Tui & Folofola",
+      "title": "Ngaahi fili vitio ʻo e ʻaho ni",
+      "description": "Ko e ngaahi vitio mei heʻemau falaní ʻoku fakatefito ʻi he tui ke ueʻi, fakamalohia, mo fakakaukauʻi."
+    },
+    "welcomeMorning": {
+      "label": "Ueʻi Fakamālōlō",
+      "title": "Mālō e pongipongi! ʻOku tali atu ʻa e ngaahi momeniti Tohi Tapu ʻo e ʻaho ni.",
+      "description": "Kamata hoʻo ʻaho ʻaki ha ngaahi momeniti Tohi Tapu fakalotolahi ke ueʻi mo hiki hake hoʻo laumālie."
+    },
+    "welcomeAfternoon": {
+      "label": "Ueʻi ʻi he Afiafi",
+      "title": "Mālō e efiafi! Ngaahi momeniti Tohi Tapu maʻá ho ʻaho.",
+      "description": "Ko e ngaahi fakamatala Tohi Tapu fakalotolahi ʻoku feʻunga pe ki hoʻo mālōlō ʻi he efiafi pe ki ha fakalotolahi hokohoko atu."
+    },
+    "welcomeEvening": {
+      "label": "Ueʻi ʻi he Pō",
+      "title": "Mālō e pō! Malolo mo e ngaahi momeniti Tohi Tapu.",
+      "description": "Ko e ngaahi momeniti Tohi Tapu mālie ke tokoni atu ke ke fakalaulauloto mo maʻu ʻa e fiemālie ʻi he ngataʻanga hoʻo ʻaho."
+    },
+    "joinUs": {
+      "label": "Kau Mai",
+      "title": "ʻOku kumi ʻe he lau piliona",
+      "description": "Kuo aʻu mai ʻa e fua. Kau mai ke tau vahevahe ʻa e ongoongolelei ki mamani ʻaki ʻa e ngaahi media fakavahaʻa taimi."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tau fononga fakataha",
+      "title": "Tala ʻo Sīsū, fakataha",
+      "description": "Koeʻuhí ke nau fanongo mo mamata ki he ʻofa ʻa Sīsū ʻi honau lea pē ʻi honau feituʻu."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ʻoku fenāpasi",
+    "none": "ʻIkai maʻu ha ngaahi vitio fokotuʻu ki he vitio ni ʻi he lea ni."
+  },
+  "BetaTesterModal": {
+    "title": "Hoko ko ha beta tester",
+    "trigger": "Hoko ko ha beta tester",
+    "loadFailed": "Naʻe meʻa hala.",
+    "loading": "Lolotonga laodí...",
+    "openFormNewTab": "Fakaava ʻa e foomu ʻi ha taba foʻou",
+    "close": "Katia",
+    "iframeTitle": "Hoko ko ha beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

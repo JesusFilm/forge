@@ -165,7 +165,7 @@ function readStoredProgress(key: string): StoredProgress {
   } catch {
     const progress = EMPTY_STORED_PROGRESS
     storedProgressCache.set(key, {
-      raw: window.localStorage.getItem(key),
+      raw: null,
       progress,
     })
     return progress

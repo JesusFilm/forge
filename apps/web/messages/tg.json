@@ -7,7 +7,9 @@
     "noContent": "Ҳеҷ мундариҷа дастрас нест.",
     "homepageMisconfigured": "Саҳифаи асосии тамошо нодуруст танзим шудааст.",
     "defaultTemplateMisconfigured": "Шаблони пешфарзи тамошо нодуруст танзим шудааст.",
-    "authFailed": "Бо хидмати мундариҷа тасдиқи шахсият имкон надорад. Агар ин ҳолат давом кунад, ба дастгирӣ муроҷиат кунед."
+    "authFailed": "Бо хидмати мундариҷа тасдиқи шахсият имкон надорад. Агар ин ҳолат давом кунад, ба дастгирӣ муроҷиат кунед.",
+    "pageLoadFailed": "Чизе нодуруст рафт.",
+    "tryAgain": "Боз кӯшиш кунед"
   },
   "VideosPage": {
     "title": "Ҳамаи видеоҳо",
@@ -22,7 +24,8 @@
     "promoHeading": "Мехоҳед Китоби Муқаддасро амиқтар фаҳмед?",
     "joinBibleStudy": "Ба омӯзиши Китоби Муқаддас ҳамроҳ шавед",
     "previousQuote": "Қитъаи қаблӣ",
-    "nextQuote": "Қитъаи навбатӣ"
+    "nextQuote": "Қитъаи навбатӣ",
+    "readPassage": "Ин порчаро дар Китоби Муқаддаси худ хонед."
   },
   "DownloadButton": {
     "checking": "Санҷиш",
@@ -73,7 +76,8 @@
     "selectLanguage": "Забонро интихоб кунед",
     "searchPlaceholder": "Ҷустуҷӯи забонҳо…",
     "languages": "Забонҳо",
-    "noMatches": "Мутобиқат нест"
+    "noMatches": "Мутобиқат нест",
+    "notAvailable": "Дастрас нест"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Забон",
@@ -100,10 +104,7 @@
     "seriesLabel": "СЕРИЯ · {episodes}",
     "changeAudioLanguage": "Тағйири забони аудио",
     "share": "Мубодила",
-    "languages": "Забонҳо",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Забонҳо"
   },
   "WatchModal": {
     "close": "Пӯшидан"
@@ -115,7 +116,8 @@
     "questions": "Саволҳои марбут",
     "askYours": "Саволи худро диҳед",
     "chatWithPerson": "Бо шахс сӯҳбат кунед",
-    "askBibleQuestion": "Дар бораи Китоби Муқаддас савол диҳед"
+    "askBibleQuestion": "Дар бораи Китоби Муқаддас савол диҳед",
+    "quiz": "Викторина"
   },
   "WatchQuestionPanel": {
     "messageType": "Навъи паём",
@@ -173,7 +175,8 @@
     "searchRegion": "Ҷустуҷӯи видеоҳо",
     "clearSearch": "Пок кардани ҷустуҷӯ",
     "changeAudioLanguage": "Тағйири забони аудио",
-    "home": "Саҳифаи асосии JesusFilm"
+    "home": "Саҳифаи асосии JesusFilm",
+    "closeSearch": "Пӯшидани ҷустуҷӯ"
   },
   "SearchOverlay": {
     "dialogLabel": "Ҷустуҷӯ ва бозрасии видеоҳо",
@@ -208,14 +211,19 @@
     "clearLanguages": "Тоза кардан",
     "queryLanguageDetected": "{language} муайян шуд",
     "searchInLanguage": "Ҷустуҷӯ ба забони {language}",
-    "tryDifferentKeywordsOrLanguage": "Калимаҳои дигарро санҷед ё забони ҷустуҷӯи дигарро интихоб кунед"
+    "tryDifferentKeywordsOrLanguage": "Калимаҳои дигарро санҷед ё забони ҷустуҷӯи дигарро интихоб кунед",
+    "useWebsiteDefaultLanguage": "Забони пешфарзи ҷустуҷӯи вебсайтро истифода баред",
+    "removeLanguage": "{language}-ро хориҷ кунед",
+    "browseMode": "Ҳолати паймоиши ҷустуҷӯ"
   },
   "HeroPlayer": {
     "playWithSound": "Ҳозир тамошо кунед",
-    "tapToUnmute": "Барои фаъол кардани садо ламс кунед"
+    "tapToUnmute": "Барои фаъол кардани садо ламс кунед",
+    "nextEpisode": "Қисми навбатӣ"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Бор кардани мундариҷа"
+    "loadingContent": "Бор кардани мундариҷа",
+    "loadingVideo": "Бор кардани видео"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -226,7 +234,8 @@
     "series": "Серия",
     "collection": "Маҷмӯа",
     "trailer": "Трейлер",
-    "behindTheScenes": "Паси саҳна"
+    "behindTheScenes": "Паси саҳна",
+    "chapter": "Боб"
   },
   "SiblingCarousel": {
     "clipPosition": "Клипи {current} аз {total}",
@@ -238,12 +247,253 @@
     "noImage": "Тасвир нест",
     "playingNow": "Ҳоло навозиш мешавад",
     "previousChapter": "Боби қаблӣ",
-    "nextChapter": "Боби навбатӣ"
+    "nextChapter": "Боби навбатӣ",
+    "thumbnailAlt": "Намояи хурди {title}",
+    "relatedVideoThumbnail": "Намояи хурди видеои марбут"
   },
   "SearchResultCard": {
     "experience": "Таҷриба",
     "episodeCount": "{count, plural, one {# қисми} other {# қисмҳо}}",
     "thumbnailAlt": "Намояи хурди видео"
+  },
+  "Feedback": {
+    "openForm": "Формаи бозхӯрдро кушоед",
+    "label": "Бозхӯрд",
+    "couldNotLoad": "Формаи бозхӯрд бор нашуд.",
+    "loadingForm": "Бор кардани формаи бозхӯрд…",
+    "retry": "Аз нав кӯшиш кунед",
+    "openFormShort": "Формаро кушоед",
+    "cancel": "Бекор кардан",
+    "title": "Бозхӯрд барои бета",
+    "description": "Бигӯед, чӣ кор мекунад ва чиро метавон беҳтар кард. Ин форма аз ҷониби Google пешниҳод мешавад.",
+    "openInNewTab": "Формаро дар ҷадвали нав кушоед",
+    "closeForm": "Формаи бозхӯрдро пӯшед",
+    "loadingGoogleForm": "Бор кардани Google Form…",
+    "iframeTitle": "Ирсоли бозхӯрд барои бета"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Видеоҳои масеҳии ройгон ба забони {language} | Jesus Film Project",
+    "metadataDescription": "Филмҳои Исо, ҳикояҳои Китоби Муқаддас, серияҳои шогирдсозӣ ва видеоҳои башоратиро бо аудиои дубляжшуда ё субтитрҳо ба забони {language} кашф кунед.",
+    "heroTitle": "Видеоҳои масеҳии ройгон ба забони {language}",
+    "heroDescription": "Филмҳои Исо, ҳикояҳои Китоби Муқаддас, серияҳои шогирдсозӣ ва видеоҳои башоратиро, ки ба забони {language} дастрасанд, кашф кунед. Аввал видеоҳои пурра дубляжшуда нишон дода мешаванд, баъд имконоти танҳо бо субтитрҳо.",
+    "languageCollection": "Маҷмӯаи забон",
+    "itemCount": "{count, plural, one {# адад} other {# ададҳо}}",
+    "videoCount": "{count, plural, one {# видео} other {# видеоҳо}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видеоҳо}} дар {groupCount, plural, one {# гурӯҳ} other {# гурӯҳҳо}}",
+    "sectionNavLabel": "Қисмҳои феҳристи забонҳо",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Нав",
+    "videoBible": "Видео Китоби Муқаддас",
+    "bibleProject": "BibleProject",
+    "sports": "Варзиш",
+    "collections": "Маҷмӯаҳо",
+    "subtitlesOnly": "Танҳо субтитрҳо",
+    "newlyAdded": "Нав илова шудааст",
+    "newVideosTitle": "Видеоҳои масеҳии нав ба забони {language}",
+    "newestFirst": "Аввал навтарин",
+    "noPublishedVideos": "То ҳол барои ин забон ягон видеои нашршуда ёфт нашуд.",
+    "bibleAndGospelFilms": "Филмҳои Китоби Муқаддас ва Инҷил",
+    "videoBibleCollectionsTitle": "Маҷмӯаҳои Видео Китоби Муқаддас ба забони {language}",
+    "videoBibleDescription": "Маҷмӯаҳои маркази Навиштаҳо, аз ҷумла LUMO, JESUS, Magdalena ва Acts, ба забони {language}.",
+    "noVideoBibleCollections": "То ҳол барои ин забон ягон маҷмӯаи Видео Китоби Муқаддас дастрас нест.",
+    "bibleProjectCollectionsTitle": "Маҷмӯаҳои BibleProject ба забони {language}",
+    "bibleProjectDescription": "Серияҳо ва омӯзишҳои BibleProject, ки ба забони {language} дастрасанд.",
+    "noBibleProjectCollections": "То ҳол барои ин забон ягон маҷмӯаи BibleProject дастрас нест.",
+    "sportsStories": "Ҳикояҳои варзишӣ",
+    "sportsTitle": "Ҳикояҳои варзишӣ ва варзишгарон ба забони {language}",
+    "sportsDescription": "Ҳикояҳои варзишии маркази имон ва маҷмӯаҳои вобаста ба варзишгарон, ки ба забони {language} дастрасанд.",
+    "noSportsCollections": "То ҳол барои ин забон ягон маҷмӯаи варзишӣ ё ҳикояҳои варзишгарон дастрас нест.",
+    "fullyDubbed": "Комилан дубляжшуда",
+    "dubbedVideosTitle": "Видеоҳои {language} аз рӯйи маҷмӯа",
+    "dubbedVideosDescription": "Видеоҳои комилан дубляжшудаи {language}-ро, ки бо маҷмӯаашон гурӯҳбандӣ шудаанд, барои осонтар ёфтан тамошо кунед.",
+    "noDubbedVideos": "То ҳол барои ин забон ягон видеои комилан дубляжшуда дастрас нест.",
+    "subtitlesAvailable": "Субтитрҳо дастрасанд",
+    "subtitlesTitle": "Видеоҳои {language} бо субтитрҳо",
+    "subtitlesDescription": "Ин видеоҳо субтитрҳои {language} доранд, вақте ки аудиои гуфтории {language} ҳанӯз дастрас нест.",
+    "noSubtitleVideos": "То ҳол барои ин забон ягон видеои танҳо бо субтитр дастрас нест.",
+    "dubbed": "Дубляжшуда",
+    "subtitles": "Субтитрҳо",
+    "newLabel": "Нав",
+    "fromCollection": "Аз {collection}",
+    "standaloneVideos": "Видеоҳои мустақил",
+    "videosFromCollection": "Видеоҳо аз {collection}.",
+    "standaloneDescription": "Видеоҳои мустақил дар ин забон.",
+    "openCollection": "Кушодани маҷмӯа"
+  },
+  "WatchHome": {
+    "pageTitle": "Тамошои Jesus Film Project",
+    "watch": "Тамошо",
+    "watchNow": "Ҳоло тамошо кунед",
+    "mutePreview": "Пешнамоишро бесадо кунед",
+    "unmutePreview": "Пешнамоишро садодор кунед",
+    "nextVideo": "Видеои навбатӣ",
+    "featured": "Интихобшуда",
+    "showVideo": "Намоиши {title}",
+    "previousVideoPreview": "Пешнамоиши видеои қаблӣ",
+    "nextVideoPreview": "Пешнамоиши видеои навбатӣ",
+    "mediaCollection": "Маҷмӯаи медиа",
+    "scrollToVideo": "Ба видеои {title} гузаред"
+  },
+  "WatchFooter": {
+    "home": "Саҳифаи асосии Jesus Film Project",
+    "navigation": "Навигатсияи поёнӣ",
+    "share": "Мубодила",
+    "watch": "Тамошо",
+    "giving": "Ҳадя",
+    "about": "Дар бораи мо",
+    "products": "Маҳсулот",
+    "resources": "Манбаъҳо",
+    "partners": "Шарикон",
+    "contact": "Тамос",
+    "giveNow": "Ҳозир ҳадя кунед",
+    "resourcesVersion": "Манбаъҳо ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Сиёсати махфият",
+    "legalStatement": "Изҳороти ҳуқуқӣ",
+    "newsletter": "Барои номаи ахбории мо обуна шавед"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Барои рисолати ҷаҳонӣ сохта шудааст",
+    "title": "Паём тағйир намеёбад. Тарзи тамошои мардум тағйир меёбад.",
+    "description": "Мо китобхонаи видеоӣ ва абзорҳои худро аз асос бозсозӣ карда истодаем ва садсолаҳо кори тарҷумаро ба платформаҳое мебарем, ки одамон аллакай дар он ҷо ҷамъ мешаванд, тамошо мекунанд ва мубодила менамоянд.",
+    "translatedLibraryTitle": "Тарҷумашудатарин китобхонаи филмҳо дар ҷаҳон",
+    "translatedLibraryDescription": "Даҳсолаҳои кори тарҷума, ки тавассути шарикони боэътимоди хидматӣ анҷом шудаанд, китобхонае бо ҳазорон треки забонӣ бунёд кардаанд, то одамон ҳикояи Исоро ба забоне бишнаванд, ки ба дили онҳо бештар мерасад.",
+    "trustedVoicesTitle": "Гузаронидани садоҳои боэътимод ба шаклҳои нав",
+    "trustedVoicesDescription": "Мо роҳи нақли визуалии ҳикояҳои Инҷилро аз нав месозем, тарҷумаҳои боэътимодро бо шаклҳои муосир мепайвандем, то паём озодона дар платформаҳо, фарҳангҳо ва экранҳо ҳаракат кунад.",
+    "missionTeamTitle": "Беш аз як китобхона. Як дастаи рисолатманд.",
+    "missionTeamDescription": "Jesus Film Project як дастаи ҷаҳонии тарҷумонҳо, мутахассисони медиа, муҳаррирон ва офарандагон аст, ки таҷрибаи даҳсолаҳои хидматро ба абзорҳо барои шогирдсозон дар ҳама ҷо табдил медиҳанд.",
+    "buildingNext": "Он чӣ мо баъд месозем",
+    "nextStepsTitle": "Платформаи Қадамҳои баъдӣ",
+    "nextStepsDescription": "Мардумро бо имкониятҳои воқеӣ дар сафари рӯҳонии онҳо пайваст кунед, то онҳо ба ҷомеа, Навиштаҳо ё рисолат як қадами баъдӣ гузоранд.",
+    "mediaLibraryTitle": "Китобхонаи медиа барои башорат",
+    "mediaLibraryDescription": "Китобхонаи бузурги медиаҳои масеҳӣ бо ҳазорон видео, филм ва манбаъҳо дар чандин забон барои хидмат ва башорат дар саросари ҷаҳон.",
+    "ministryToolsTitle": "Абзорҳои рақамӣ барои хидматҳо",
+    "ministryToolsDescription": "Идоракунии видео, паҳнкунии мундариҷа, ҷалби аудитория ва таҳлилҳо, ки барои кӯмак ба хидматҳо дар расидан ба одамони бештар бо самаранокӣ тарҳрезӣ шудаанд.",
+    "invitationEyebrow": "Шумо даъватед",
+    "invitationTitle": "Ба сохтани <highlight>насли нав</highlight>-и абзорҳои рисолат кӯмак кунед",
+    "invitationDescription": "Мо амалкунандагон, офарандагон ва шариконро ба дастрасии барвақт даъват мекунем. Аввал абзорҳои навро санҷед, бозхӯрд диҳед ва ба шаклгирии маҳсулоте кӯмак кунед, ки барои кори воқеии рисолат тарҳрезӣ шудаанд.",
+    "betaTester": "Санҷандаи бета шавед"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Маҷмӯаи Видео Китоби Муқаддас",
+    "gospelRailTitle": "Ҳикояи пурраро кашф кунед",
+    "videoBibleDescription": "Маҷмӯаи видеоҳо ва манбаъҳои моро омӯзед, ки Китоби Муқаддасро тавассути ҳикояҳо ва таълимоти ҷолиб зинда мекунанд.",
+    "showcaseTitle": "Навиштаҳо тавассути филм нақл мешаванд",
+    "adventEyebrow": "Адвенти Мавлуди Исо",
+    "adventTitle": "Шумориши Адвенти Мавлуди Исо",
+    "adventDescription": "Ба сафари Адвенти мо ҳамроҳ шавед бо видеои ҳаррӯзае, ки интизориро барои Мавлуди Исо меафзояд ва умед, шодӣ ва ваъдаи омадани Исоро меомӯзад.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Адвенти BibleProject",
+    "nuaEyebrow": "Серияи NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Серияи Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Курси видеоӣ",
+    "journeyWithJesusTitle": "Сафари шумо бо Исо",
+    "gospelsOnVideoEyebrow": "Ҳар Инҷил, бо видео нақл мешавад",
+    "scriptureAsWrittenTitle": "Навиштаҳо, айнан чунон ки навишта шудаанд, гуфта мешаванд",
+    "merryChristmas": "Мавлуди Исо муборак!",
+    "daysUntilChristmas": "{count, plural, one {То Мавлуди Исо # рӯз мондааст} other {То Мавлуди Исо # рӯз мондааст}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Забонҳо",
+    "metadataDescription": "Видеоҳои JesusFilm-ро аз рӯйи забон паймоиш кунед.",
+    "eyebrow": "Забонҳои тамошо",
+    "title": "Забонро интихоб кунед",
+    "description": "Забонҳоро аз рӯйи минтақа омӯзед ё рӯйхати пурраро бинед.",
+    "searchPlaceholder": "Ҷустуҷӯи забонҳо ё кишварҳо...",
+    "searchLabel": "Ҷустуҷӯи забонҳо ё кишварҳо",
+    "clearSearch": "Тоза кардани ҷустуҷӯ",
+    "browse": "Паймоиш",
+    "browseByRegion": "Аз рӯйи минтақа ва кишвар паймоиш кунед",
+    "languageCount": "{count, plural, one {# забон} other {# забонҳо}}",
+    "region": "Минтақа",
+    "countryLanguages": "Забонҳои {country}",
+    "showLess": "Камтар нишон диҳед",
+    "showMore": "{count} бештар нишон диҳед",
+    "noLanguages": "Ҳеҷ забон ёфт нашуд",
+    "tryAnotherSearch": "Истилоҳи дигарро санҷед."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Таърихи тамошо | Jesus Film Project",
+    "title": "Таърихи тамошо",
+    "loading": "Бор кардани таърих",
+    "empty": "Ҳанӯз чизе нест",
+    "emptyDescription": "Видеоҳои тамошокардаи шумо ҳангоми воридшавӣ дар ин ҷо пайдо мешаванд.",
+    "earlier": "Қаблан",
+    "today": "Имрӯз",
+    "yesterday": "Дирӯз"
+  },
+  "AccountControl": {
+    "account": "Ҳисоб",
+    "accountMenu": "Менюи ҳисоб",
+    "signIn": "Ворид шудан",
+    "signOut": "Хуруҷ",
+    "signedIn": "Ворид шуд",
+    "history": "Таърих",
+    "logOut": "Баромадан"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Саҳифа ёфт нашуд",
+    "eyebrow": "Саҳифа ёфт нашуд",
+    "screenReaderPrefix": "Саҳифа ёфт нашуд:",
+    "title": "Ин саҳна дар ин ҷо нест.",
+    "description": "Шояд саҳифа ҷойашро иваз кардааст, вале ҳикоя идома дорад.",
+    "actionsLabel": "Амалиётҳои саҳифаи ёфтнашуда",
+    "backToWatch": "Бозгашт ба Тамошо",
+    "browseVideos": "Паймоиши видеоҳо"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Филми кӯтоҳро тамошо кунед",
+    "actions": {
+      "joinUs": "Ба мо ҳамроҳ шавед",
+      "shareMission": "Дар рисолати мо саҳм гузоред"
+    },
+    "welcomeStart": {
+      "label": "Имон ва Навиштаҳо",
+      "title": "Пешниҳодҳои имрӯзаи видео",
+      "description": "Мундариҷаи видеоии бар асоси имон аз китобхонаи мо, ки илҳом мебахшад, ба андеша водор мекунад ва тафаккурро бедор месозад."
+    },
+    "welcomeMorning": {
+      "label": "Илҳоми субҳ",
+      "title": "Субҳ ба хайр! Лаҳзаҳои имрӯзаи Китоби Муқаддас шуморо интизоранд.",
+      "description": "Рӯзи худро бо лаҳзаҳои рӯҳбахши Китоби Муқаддас оғоз кунед, то шуморо илҳом бахшанд ва рӯҳи шуморо боло баранд."
+    },
+    "welcomeAfternoon": {
+      "label": "Илҳоми нисфирӯзӣ",
+      "title": "Нисфирӯз ба хайр! Лаҳзаҳои Китоби Муқаддас барои рӯзи шумо.",
+      "description": "Мундариҷаи рӯҳбахши Китоби Муқаддас, ки барои танаффуси нисфирӯзӣ ё идомаи илҳом комил аст."
+    },
+    "welcomeEvening": {
+      "label": "Илҳоми шом",
+      "title": "Шом ба хайр! Бо лаҳзаҳои Китоби Муқаддас ором шавед.",
+      "description": "Лаҳзаҳои ороми Китоби Муқаддас, то ҳангоми анҷоми рӯзи худ андеша кунед ва тасаллӣ пайдо намоед."
+    },
+    "joinUs": {
+      "label": "Ба мо ҳамроҳ шавед",
+      "title": "Миллиардҳо нафар ҷустуҷӯ доранд",
+      "description": "Ҳосил ҳозир аст. Бо мо ҳамроҳ шавед, то Инҷилро бо воситаи медиаҳои рақамӣ ба ҷаҳон бирасонем."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Биёед якҷо равем",
+      "title": "Ҳикояи Исоро якҷо нақл мекунем",
+      "description": "То онҳо муҳаббати Исоро бо забони худ, дар ҷое ки ҳастанд, бишнаванд ва бубинанд."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% мувофиқат",
+    "none": "Барои ин видео ба ин забон ягон тавсия ёфт нашуд."
+  },
+  "BetaTesterModal": {
+    "title": "Санҷандаи бета шавед",
+    "trigger": "Санҷандаи бета шавед",
+    "loadFailed": "Чизе нодуруст рафт.",
+    "loading": "Боркунӣ...",
+    "openFormNewTab": "Формаро дар ҷадвали нав кушоед",
+    "close": "Пӯшидан",
+    "iframeTitle": "Санҷандаи бета шавед"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

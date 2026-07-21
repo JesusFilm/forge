@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
   LegacyFragmentValue,
@@ -36,6 +37,7 @@ function handleNavigationClick(contentId: string) {
 }
 
 function NavCard({ item, index }: { item: NavItem; index: number }) {
+  const t = useTranslations("WatchHome")
   const isFirst = index === 0
 
   return (
@@ -51,7 +53,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
       }}
       tabIndex={0}
       role="button"
-      aria-label={`Scroll to ${item.title} video`}
+      aria-label={t("scrollToVideo", { title: item.title })}
       data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
     >
       {isFirst && item.imageUrl ? (

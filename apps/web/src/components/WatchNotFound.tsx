@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, Clapperboard } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { searchPath, videosIndexPath, WATCH_BASE_PATH } from "@/lib/routes"
@@ -20,6 +21,8 @@ const secondaryActionClasses = cn(
 )
 
 export function WatchNotFound() {
+  const t = useTranslations("WatchNotFound")
+
   return (
     <main className="relative isolate min-h-svh overflow-x-hidden overflow-y-auto bg-black text-white">
       <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
@@ -54,31 +57,31 @@ export function WatchNotFound() {
 
           <div className="relative z-10">
             <p className="text-xs font-bold tracking-[0.24em] text-brand-red uppercase sm:text-sm">
-              Page not found
+              {t("eyebrow")}
             </p>
 
             <h1
               id="watch-not-found-heading"
               className="mt-4 max-w-xl text-4xl leading-[0.98] font-extrabold tracking-[-0.04em] text-white text-balance sm:mt-6 sm:text-6xl md:text-7xl"
             >
-              <span className="sr-only">Page not found: </span>
-              This scene isn&apos;t here.
+              <span className="sr-only">{t("screenReaderPrefix")} </span>
+              {t("title")}
             </h1>
             <p className="mt-5 max-w-lg text-base leading-7 font-medium text-stone-200/85 sm:text-lg sm:leading-8">
-              The page may have moved, but the story continues.
+              {t("description")}
             </p>
 
             <nav
-              aria-label="Page not found actions"
+              aria-label={t("actionsLabel")}
               className="mt-8 flex flex-col items-stretch gap-3 min-[420px]:flex-row min-[420px]:items-center sm:mt-10"
             >
               <Link href={searchPath()} className={primaryActionClasses}>
                 <ArrowLeft aria-hidden="true" className="h-5 w-5 shrink-0" />
-                Back to Watch
+                {t("backToWatch")}
               </Link>
               <Link href={videosIndexPath()} className={secondaryActionClasses}>
                 <Clapperboard aria-hidden="true" className="h-5 w-5 shrink-0" />
-                Browse videos
+                {t("browseVideos")}
               </Link>
             </nav>
           </div>

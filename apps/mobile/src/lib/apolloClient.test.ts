@@ -146,6 +146,65 @@ describe("fetchWithTimeout (client-timeout-abort marker, R12)", () => {
     jest.advanceTimersByTime(15_000)
     expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
       budget_ms: 15_000,
+      operation: "anonymous",
+    })
+  })
+
+  // feat-268: the marker must say WHICH operation blew the budget. One test
+  // per header shape so each read branch is the only way to pass (META law).
+  it("attributes the marker from a plain-object headers init", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: { "x-dd-graph-ql-operation-name": "GetVideoBySlug" },
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "GetVideoBySlug",
+    })
+  })
+
+  it("attributes the marker from a Headers-instance init (get() branch)", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    // get()-bearing shape: only the Headers-instance branch can read this —
+    // there is no matching own-key for the plain-object scan to find.
+    const headersInstance = {
+      get: (name: string) =>
+        name.toLowerCase() === "x-dd-graph-ql-operation-name" ? "Search" : null,
+    }
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: headersInstance as unknown as Headers,
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "Search",
+    })
+  })
+
+  it("degrades to 'anonymous' when the header read throws", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    const hostileHeaders = {
+      get: () => {
+        throw new Error("exotic headers shape")
+      },
+    }
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: hostileHeaders as unknown as Headers,
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "anonymous",
     })
   })
 
@@ -208,5 +267,61 @@ describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)",
     mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = undefined
     reportGraphqlOperationError(new Error("x"), "Search")
     expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // Client-initiated aborts (15s fetchWithTimeout, unmount/supersede teardown)
+  // are noise, not failures — 390 "Aborted" RUM errors in one week of dev/preview
+  // sessions. The timeout case already has its own Logs marker (R12).
+  it("skips the real RN abort shape (DOMException('Aborted', 'AbortError'))", () => {
+    const abort = new Error("Aborted")
+    abort.name = "AbortError"
+    reportGraphqlOperationError(abort, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // Isolates the name branch: message wording drift must not defeat the skip.
+  it("skips an abort by name alone, regardless of message wording", () => {
+    const abort = new Error("The operation was aborted")
+    abort.name = "AbortError"
+    reportGraphqlOperationError(abort, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // Message text alone never suppresses (AWS-NoSuchKey classification law):
+  // no real RN abort lacks the AbortError name, so this shape is a genuine error.
+  it("still reports a message-only 'Aborted' error (no AbortError name)", () => {
+    reportGraphqlOperationError(new Error("Aborted"), "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalledWith(
+      "Aborted",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetVideoBySlug" },
+    )
+  })
+
+  // Guard-vs-typed-branch precedence: a server error whose message collides
+  // with the abort sentinel must still report through the GraphQL branch.
+  it("still reports a CombinedGraphQLErrors whose message is exactly 'Aborted'", () => {
+    const err = new CombinedGraphQLErrors({ errors: [{ message: "Aborted" }] })
+    reportGraphqlOperationError(err, "Search")
+    expect(mockAddError).toHaveBeenCalledWith(
+      expect.any(String),
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_error", operation: "Search", code: "unknown" },
+    )
+  })
+
+  it("still reports RN's real network-failure shape (TypeError)", () => {
+    reportGraphqlOperationError(
+      new TypeError("Network request failed"),
+      "GetWatchHomeVideos",
+    )
+    expect(mockAddError).toHaveBeenCalledWith(
+      "Network request failed",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
+    )
   })
 })

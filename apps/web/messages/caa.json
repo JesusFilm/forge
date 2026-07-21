@@ -7,7 +7,9 @@
     "noContent": "Awan tarum.",
     "homepageMisconfigured": "Ja watch homepage ta b'anik ta chajinel.",
     "defaultTemplateMisconfigured": "Ja default watch template ta b'anik ta chajinel.",
-    "authFailed": "Mani ta yajb'ej ta tarum. Ch'atztijpa' support si ya' k'ayb'il tumin."
+    "authFailed": "Mani ta yajb'ej ta tarum. Ch'atztijpa' support si ya' k'ayb'il tumin.",
+    "pageLoadFailed": "Jun cosa t'oj. ",
+    "tryAgain": "Tawila' chik"
   },
   "VideosPage": {
     "title": "K'axoj Videos",
@@ -22,7 +24,8 @@
     "promoHeading": "Kawil ba'k ta na'oj ta Bible?",
     "joinBibleStudy": "T'och ta Bible study",
     "previousQuote": "K'utb'il ta Bible chikej",
-    "nextQuote": "K'utb'il ta Bible chik"
+    "nextQuote": "K'utb'il ta Bible chik",
+    "readPassage": "Tawilaj k'utb'il ri pa aBible."
   },
   "DownloadButton": {
     "checking": "Tawila'",
@@ -73,7 +76,8 @@
     "selectLanguage": "Chak'uxpa' ch'ab'äl",
     "searchPlaceholder": "Sa'j ch'ab'äl…",
     "languages": "Ch'ab'äl",
-    "noMatches": "Awan jun ta machb'äl"
+    "noMatches": "Awan jun ta machb'äl",
+    "notAvailable": "Mani ta xya'taj"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ch'ab'äl",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIE · {episodes}",
     "changeAudioLanguage": "Tjalpa' rutzij ta audio",
     "share": "Sa'j",
-    "languages": "Ch'ab'äl",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Ch'ab'äl"
   },
   "WatchModal": {
     "close": "Tatz'apka'"
@@ -115,7 +116,8 @@
     "questions": "K'utb'il ta jun k'utb'il",
     "askYours": "Tajb'ej awil",
     "chatWithPerson": "Tzijon pa jun winak",
-    "askBibleQuestion": "Tajb'ej jun k'utb'il ta Bible"
+    "askBibleQuestion": "Tajb'ej jun k'utb'il ta Bible",
+    "quiz": "K'utujb'il"
   },
   "WatchQuestionPanel": {
     "messageType": "Rucholaj tzij",
@@ -173,7 +175,8 @@
     "searchRegion": "Sa'j videos",
     "clearSearch": "Tz'aku' sa'j",
     "changeAudioLanguage": "Tjalpa' rutzij ta audio",
-    "home": "Ruwotot JesusFilm"
+    "home": "Ruwotot JesusFilm",
+    "closeSearch": "Tatz'apka' sa'j"
   },
   "SearchOverlay": {
     "dialogLabel": "Sa'j y k'axpa' videos",
@@ -208,14 +211,19 @@
     "clearLanguages": "Tz'aku'",
     "queryLanguageDetected": "{language} xcha'k'taj",
     "searchInLanguage": "Sa'j ta {language}",
-    "tryDifferentKeywordsOrLanguage": "Tawila' palabras clave chik o chak'uxpa' jun ch'ab'äl chik ta sa'j"
+    "tryDifferentKeywordsOrLanguage": "Tawila' palabras clave chik o chak'uxpa' jun ch'ab'äl chik ta sa'j",
+    "useWebsiteDefaultLanguage": "Tajb'ej ch'ab'äl ta sa'j default ta web",
+    "removeLanguage": "Tz'aku' {language}",
+    "browseMode": "Modo ta k'axpa' sa'j"
   },
   "HeroPlayer": {
     "playWithSound": "Watz'otz' chanim",
-    "tapToUnmute": "K'uxpa' ta q'oxom"
+    "tapToUnmute": "K'uxpa' ta q'oxom",
+    "nextEpisode": "Episodio chik"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "T'ojb'ena' tarum"
+    "loadingContent": "T'ojb'ena' tarum",
+    "loadingVideo": "T'ojb'ena' video"
   },
   "VideoLabels": {
     "video": "K'axoj",
@@ -226,7 +234,8 @@
     "series": "Serie",
     "collection": "Colección",
     "trailer": "Tráiler",
-    "behindTheScenes": "Detrás de cámaras"
+    "behindTheScenes": "Detrás de cámaras",
+    "chapter": "Capítulo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ta {total}",
@@ -238,12 +247,253 @@
     "noImage": "Awan imagen",
     "playingNow": "Watz'otz' chanim",
     "previousChapter": "Capítulo chikej",
-    "nextChapter": "Capítulo chik"
+    "nextChapter": "Capítulo chik",
+    "thumbnailAlt": "Miniatura ta {title}",
+    "relatedVideoThumbnail": "Miniatura ta video ta junach"
   },
   "SearchResultCard": {
     "experience": "Experiencia",
     "episodeCount": "{count, plural, one {# episodio} other {# episodios}}",
     "thumbnailAlt": "Miniatura ta video"
+  },
+  "Feedback": {
+    "openForm": "Taq'apa' form ta feedback",
+    "label": "Ya' na'oj",
+    "couldNotLoad": "Mani ta xak'ul form ta feedback.",
+    "loadingForm": "T'ojb'ena' form ta feedback…",
+    "retry": "Tawila' chik",
+    "openFormShort": "Taq'apa' form",
+    "cancel": "K'uchu'",
+    "title": "Na'oj ta Beta",
+    "description": "K'utuj ix mani ta ch'ojjok' u ya'ik utz, che' kab'ik ta utz ch'och'jil. Jun Google ta jachb'il form.",
+    "openInNewTab": "Taq'apa' form ta jun k'at ta tab",
+    "closeForm": "Tatz'apka' form ta feedback",
+    "loadingGoogleForm": "T'ojb'ena' Google Form…",
+    "iframeTitle": "Taq'uj Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videos cristianos gratis ta {language} | Jesus Film Project",
+    "metadataDescription": "K'axpa' Jesus films, cuentos ta Bible, series ta discipulado, y videos ta outreach yoj audio doblado o subtitles ta {language}.",
+    "heroTitle": "Videos cristianos gratis ta {language}",
+    "heroDescription": "K'axpa' Jesus films, cuentos ta Bible, series ta discipulado, y videos ta outreach available ta {language}. Videos doblados ta uchb'il primero, subtitles-only options pa k'axk'uxur.",
+    "languageCollection": "Colección ta ch'ab'äl",
+    "itemCount": "{count, plural, one {# elemento} other {# elementos}}",
+    "videoCount": "{count, plural, one {# k'axoj} other {# k'axoj}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} ta {groupCount, plural, one {# grupo} other {# grupos}}",
+    "sectionNavLabel": "Secciones ta inventario ta ch'ab'äl",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nuevo",
+    "videoBible": "Bible ta video",
+    "bibleProject": "BibleProject",
+    "sports": "Deportes",
+    "collections": "Colecciones",
+    "subtitlesOnly": "Subtitles xa'",
+    "newlyAdded": "Añadido ch'utx",
+    "newVideosTitle": "Videos cristianos nuevos ta {language}",
+    "newestFirst": "Más nuevo primero",
+    "noPublishedVideos": "Awan videos publicados ta ch'ab'äl ri.",
+    "bibleAndGospelFilms": "Películas ta Bible y Evangelio",
+    "videoBibleCollectionsTitle": "Colecciones ta Video Bible ta {language}",
+    "videoBibleDescription": "Colecciones centradas ta Escritura incluyendo LUMO, JESUS, Magdalena, y Acts ta {language}.",
+    "noVideoBibleCollections": "Awan colecciones ta Video Bible ta ch'ab'äl ri.",
+    "bibleProjectCollectionsTitle": "Colecciones ta BibleProject ta {language}",
+    "bibleProjectDescription": "Series y estudios ta BibleProject available ta {language}.",
+    "noBibleProjectCollections": "Awan colecciones ta BibleProject ta ch'ab'äl ri.",
+    "sportsStories": "Historias ta deportes",
+    "sportsTitle": "Historias ta deportes y atletas ta {language}",
+    "sportsDescription": "Historias ta deportes y colecciones ta atletas centradas ta fe available ta {language}.",
+    "noSportsCollections": "Awan colecciones ta deportes o historias ta atletas ta ch'ab'äl ri.",
+    "fullyDubbed": "Totalmente doblado",
+    "dubbedVideosTitle": "Videos ta {language} yoj colección",
+    "dubbedVideosDescription": "K'axpa' videos totalmente doblados ta {language} reunidos yoj jun colección para fácil jachb'ej.",
+    "noDubbedVideos": "Awan videos totalmente doblados ta ch'ab'äl ri.",
+    "subtitlesAvailable": "Subtitles xya'taj",
+    "subtitlesTitle": "Videos ta {language} yoj subtitles",
+    "subtitlesDescription": "Videos ri ya'om {language} subtitles xa' na'oj ri spoken {language} audio man xya'taj ta.",
+    "noSubtitleVideos": "Awan videos subtitle-only ta ch'ab'äl ri.",
+    "dubbed": "Doblado",
+    "subtitles": "Rutz'ib' ta video",
+    "newLabel": "Nuevo",
+    "fromCollection": "Ta {collection}",
+    "standaloneVideos": "Videos ta junxan",
+    "videosFromCollection": "Videos ta {collection}.",
+    "standaloneDescription": "Videos ta junxan ta ch'ab'äl ri.",
+    "openCollection": "Taq'apa' colección"
+  },
+  "WatchHome": {
+    "pageTitle": "Watz'otz' ta Jesus Film Project",
+    "watch": "Watz'otz'",
+    "watchNow": "Watz'otz' chanim",
+    "mutePreview": "Ch'upka' preview",
+    "unmutePreview": "Taqa' preview",
+    "nextVideo": "Video chik",
+    "featured": "Q'ijojb'il",
+    "showVideo": "K'ut {title}",
+    "previousVideoPreview": "Preview ta video chikej",
+    "nextVideoPreview": "Preview ta video chik",
+    "mediaCollection": "Colección ta medios",
+    "scrollToVideo": "Tz'otz' ta video {title}"
+  },
+  "WatchFooter": {
+    "home": "Ruwotot Jesus Film Project",
+    "navigation": "Navigation ta footer",
+    "share": "Sa'j",
+    "watch": "Watz'otz'",
+    "giving": "Ya'ik",
+    "about": "Ta chajinel",
+    "products": "Productos",
+    "resources": "Recursos",
+    "partners": "Compañeros",
+    "contact": "Kontakt",
+    "giveNow": "Ya' chanim",
+    "resourcesVersion": "Recursos ({version})",
+    "office": "Oficina",
+    "fax": "Raq'uj fax",
+    "privacyPolicy": "Política de privacidad",
+    "legalStatement": "Declaración legal",
+    "newsletter": "Tz'ib'ita' pa nuestra newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "B'anon para misiones globales",
+    "title": "Rutzij man yuj ta. B'ey ta jun winak ta watz'otz' ta.",
+    "description": "Yoj b'ejb'ej chik nuestra biblioteca ta videos y herramientas chiq'ijon ta cero, yoj q'ana'j jun k'axk'ol ta traducción ta decenas de años pa plataformas jarar ya' jun winak ya'k, watz'otz', y sa'j.",
+    "translatedLibraryTitle": "La biblioteca ta películas más traducida pa mundo",
+    "translatedLibraryDescription": "Decenas de años ta trabajo ta traducción, k'amom yuj compañeros ta ministerio ta k'utb'il, xq'at jun biblioteca yoj miles ta language tracks para winak ta k'ojb'ej historia ta Jesús ta ch'ab'äl jarar reach them deepest.",
+    "trustedVoicesTitle": "K'amoj trusted voices ta nueva formatos",
+    "trustedVoicesDescription": "Yoj b'ejb'ej chik jarar ta k'utb'il ta evangelio ta tzij ta obraz, yoj trusted translations y modern formats para rutzij k'axpa' libre ta platforms, cultures, y screens.",
+    "missionTeamTitle": "Más que jun biblioteca. Jun misión-driven team.",
+    "missionTeamDescription": "Jesus Film Project jun global team ta translators, media specialists, editors, y creators k'axpa' decenas de años ta ministerio ta tools para disciple-makers pa jun winak.",
+    "buildingNext": "Jarar ta yoj b'anon chik",
+    "nextStepsTitle": "Plataforma Next Steps",
+    "nextStepsDescription": "K'am viewwers yoj oportunidades tangibles pa ruj q'ij ta espiritual, y ya' jun next step ta comunidad, Escritura, o misión.",
+    "mediaLibraryTitle": "Biblioteca ta media evangelística",
+    "mediaLibraryDescription": "Jun amplia biblioteca ta Christian media yoj miles ta videos, películas, y recursos available ta múltiples ch'ab'äl para ministerio y evangelismo pa mundo.",
+    "ministryToolsTitle": "Herramientas digitales para ministerios",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, y analytics b'anon para yuj ministries k'axpa' más winak ta utz.",
+    "invitationEyebrow": "Ya'k awin",
+    "invitationTitle": "Tajb'ej b'ej ta <highlight>k'ak'al generación</highlight> ta mission tools",
+    "invitationDescription": "Yoj ya' invitación ta practitioners, creators, y partners ta early access. Tawila' tools q'ijon, ya' feedback, y k'amoj b'anon products b'anon para real mission work.",
+    "betaTester": "Tajb'ej beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Colección ta Video Bible",
+    "gospelRailTitle": "Taweta'ma' rutzij t'ojb'ej",
+    "videoBibleDescription": "K'axpa' nuestra colección ta videos y recursos ta k'utb'ej Bible ta k'utb'il yoj historias y enseñanzas.",
+    "showcaseTitle": "Escritura k'utb'il yuj film",
+    "adventEyebrow": "Adviento ta Navidad",
+    "adventTitle": "Cuenta regresiva ta Adviento ta Navidad",
+    "adventDescription": "T'och ta nuestra journey ta Adviento yoj jun video ta q'ij k'axk'uxur anticipación para Navidad, y k'axpa' esperanza, alegría, y promesa ta Jesús' arrival.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Adviento",
+    "nuaEyebrow": "Serie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curso ta Video",
+    "journeyWithJesusTitle": "B'ey yoj Jesús",
+    "gospelsOnVideoEyebrow": "Ka'ach Evangelio, K'utb'il yuj Video",
+    "scriptureAsWrittenTitle": "Escritura, tz'ib'ita' exactly as written",
+    "merryChristmas": "Utz Navidad!",
+    "daysUntilChristmas": "{count, plural, one {# q'ij para Navidad} other {# q'ij para Navidad}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ch'ab'äl",
+    "metadataDescription": "K'axpa' JesusFilm videos yoj ch'ab'äl.",
+    "eyebrow": "Ch'ab'äl ta watz'otz'",
+    "title": "Chak'uxpa' jun ch'ab'äl",
+    "description": "K'axpa' ch'ab'äl yoj región o k'axpa' lista completa.",
+    "searchPlaceholder": "Sa'j ch'ab'äl o países...",
+    "searchLabel": "Sa'j ch'ab'äl o países",
+    "clearSearch": "Tz'aku' sa'j",
+    "browse": "K'axpa'",
+    "browseByRegion": "K'axpa' yoj región y país",
+    "languageCount": "{count, plural, one {# ch'ab'äl} other {# ch'ab'äl}}",
+    "region": "Región",
+    "countryLanguages": "Ch'ab'äl ta {country}",
+    "showLess": "K'ut ch'ut",
+    "showMore": "K'ut {count} más",
+    "noLanguages": "Awan ch'ab'äl xk'ixtaj",
+    "tryAnotherSearch": "Tawila' jun sa'j chik."
+  },
+  "WatchHistory": {
+    "metadataTitle": "History ta watz'otz' | Jesus Film Project",
+    "title": "History ta watz'otz'",
+    "loading": "T'ojb'ena' history",
+    "empty": "Awan jun ta ri",
+    "emptyDescription": "Videos jarar awatwat while signed in ta k'utb'il ri.",
+    "earlier": "Q'ij chikej",
+    "today": "Chanim",
+    "yesterday": "Irir"
+  },
+  "AccountControl": {
+    "account": "Cuenta",
+    "accountMenu": "Rucholaj cuenta",
+    "signIn": "Tajb'ej sesión",
+    "signOut": "Tz'el ta sesión",
+    "signedIn": "Sesión ch'uyub'il",
+    "history": "Historia ta watz'otz'",
+    "logOut": "Tz'el"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Página man xk'ul ta",
+    "eyebrow": "Página man xk'ul ta",
+    "screenReaderPrefix": "Página man xk'ul ta:",
+    "title": "Esta escena man awan ta ri.",
+    "description": "La página xa'na'j k'axpa', pero rutzij yoj k'axk'uxur.",
+    "actionsLabel": "Acciones ta página man xk'ul ta",
+    "backToWatch": "Tatz'ul chik ta Watch",
+    "browseVideos": "K'axpa' videos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Tz'otz' película ch'ut",
+    "actions": {
+      "joinUs": "Tajb'ej junam",
+      "shareMission": "Sa'j yoj ru misión"
+    },
+    "welcomeStart": {
+      "label": "Fe y Escritura",
+      "title": "Videos ta q'ijojb'il ri",
+      "description": "Tzij ta video ta fe ta nuestra biblioteca para k'utb'ej, k'amchik, y k'ajb'ej na'oj."
+    },
+    "welcomeMorning": {
+      "label": "K'utb'il ta ajaw",
+      "title": "Buenos días! Lqi'ik ta Biblia ta q'ij ri.",
+      "description": "Taq'ape' awu'q'ij yoj k'utb'il ta Biblia ta k'amk'oja' y k'utb'ej awanima'."
+    },
+    "welcomeAfternoon": {
+      "label": "K'utb'il ta oq'oj",
+      "title": "Buenos días! K'utb'il ta Biblia pa awu'q'ij.",
+      "description": "Tzij ta Biblia ta k'amk'oja' ta noq'oj o yoj k'utb'il chik."
+    },
+    "welcomeEvening": {
+      "label": "K'utb'il ta ak'ochel",
+      "title": "Buenas noches! Tz'otz' yoj k'utb'il ta Biblia.",
+      "description": "K'utb'il ta Biblia ta k'uxch'och' para awil na'oj y utz ta awu'q'ij ta q'axem."
+    },
+    "joinUs": {
+      "label": "Tajb'ej junam",
+      "title": "Miles millones tajin k'amk'oja'",
+      "description": "Ri cosecha ya'k. Tajb'ej junam chi yoj sa'j ri evangelio pa mundo yoj media digital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tiyoj junam",
+      "title": "K'utb'ej ri historia ta Jesús, junam",
+      "description": "Pa ta kawil y ta kach'aj ri ru'amor ta Jesús pa ch'ab'äl ri, jarar ak'ojk'il."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% junam",
+    "none": "Awan k'utb'il ta video ri pa ch'ab'äl ri."
+  },
+  "BetaTesterModal": {
+    "title": "Tajb'ej beta tester",
+    "trigger": "Tajb'ej beta tester",
+    "loadFailed": "Jun cosa t'oj. ",
+    "loading": "T'ojb'ena'...",
+    "openFormNewTab": "Taq'apa' form ta jun k'at ta tab",
+    "close": "Tatz'apka'",
+    "iframeTitle": "Tajb'ej beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

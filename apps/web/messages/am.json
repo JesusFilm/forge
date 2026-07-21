@@ -7,7 +7,9 @@
     "noContent": "ምንም ይዘት አልተገኘም።",
     "homepageMisconfigured": "የዋች መነሻ ገጹ በትክክል አልተዋቀረም።",
     "defaultTemplateMisconfigured": "ነባሪው የዋች አብነት በትክክል አልተዋቀረም።",
-    "authFailed": "ከይዘት አገልግሎቱ ጋር ማረጋገጥ አልተቻለም። ይህ ከቀጠለ እባክዎን ድጋፍን ያግኙ።"
+    "authFailed": "ከይዘት አገልግሎቱ ጋር ማረጋገጥ አልተቻለም። ይህ ከቀጠለ እባክዎን ድጋፍን ያግኙ።",
+    "pageLoadFailed": "አንድ ነገር ተሳስቷል።",
+    "tryAgain": "እንደገና ይሞክሩ"
   },
   "VideosPage": {
     "title": "ሁሉም ቪዲዮዎች",
@@ -22,7 +24,8 @@
     "promoHeading": "መጽሐፍ ቅዱስን ይበልጥ በጥልቀት ማስተዋል ይፈልጋሉ?",
     "joinBibleStudy": "የመጽሐፍ ቅዱስ ጥናታችንን ይቀላቀሉ",
     "previousQuote": "የቀደመው የመጽሐፍ ቅዱስ ጥቅስ",
-    "nextQuote": "የሚቀጥለው የመጽሐፍ ቅዱስ ጥቅስ"
+    "nextQuote": "የሚቀጥለው የመጽሐፍ ቅዱስ ጥቅስ",
+    "readPassage": "ይህን ክፍል በመጽሐፍ ቅዱስዎ ያንብቡ።"
   },
   "DownloadButton": {
     "checking": "በማረጋገጥ ላይ",
@@ -73,7 +76,8 @@
     "selectLanguage": "ቋንቋ ይምረጡ",
     "searchPlaceholder": "ቋንቋዎችን ፈልግ…",
     "languages": "ቋንቋዎች",
-    "noMatches": "ምንም የሚዛመድ አልተገኘም"
+    "noMatches": "ምንም የሚዛመድ አልተገኘም",
+    "notAvailable": "አይገኝም"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ቋንቋ",
@@ -100,10 +104,7 @@
     "seriesLabel": "ተከታታይ · {episodes}",
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "share": "አጋራ",
-    "languages": "ቋንቋዎች",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "ቋንቋዎች"
   },
   "WatchModal": {
     "close": "ዝጋ"
@@ -115,7 +116,8 @@
     "questions": "ተዛማጅ ጥያቄዎች",
     "askYours": "የእርስዎን ይጠይቁ",
     "chatWithPerson": "ከሰው ጋር ይወያዩ",
-    "askBibleQuestion": "የመጽሐፍ ቅዱስ ጥያቄ ይጠይቁ"
+    "askBibleQuestion": "የመጽሐፍ ቅዱስ ጥያቄ ይጠይቁ",
+    "quiz": "ጥያቄ ፈተና"
   },
   "WatchQuestionPanel": {
     "messageType": "የመልእክት አይነት",
@@ -173,7 +175,8 @@
     "searchRegion": "ቪዲዮዎችን ፈልግ",
     "clearSearch": "ፍለጋ አጥፋ",
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
-    "home": "JesusFilm መነሻ"
+    "home": "JesusFilm መነሻ",
+    "closeSearch": "ፍለጋ ዝጋ"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -208,14 +211,19 @@
     "clearLanguages": "አጥፋ",
     "queryLanguageDetected": "{language} ተገኝቷል",
     "searchInLanguage": "በ{language} ፈልግ",
-    "tryDifferentKeywordsOrLanguage": "ሌሎች ቁልፍ ቃላትን ይሞክሩ ወይም ሌላ የፍለጋ ቋንቋ ይምረጡ"
+    "tryDifferentKeywordsOrLanguage": "ሌሎች ቁልፍ ቃላትን ይሞክሩ ወይም ሌላ የፍለጋ ቋንቋ ይምረጡ",
+    "useWebsiteDefaultLanguage": "የድረ-ገጹን ነባሪ የፍለጋ ቋንቋ ተጠቀም",
+    "removeLanguage": "{language} አስወግድ",
+    "browseMode": "የፍለጋ ማሰስ ሁኔታ"
   },
   "HeroPlayer": {
     "playWithSound": "አሁን ይመልከቱ",
-    "tapToUnmute": "ድምጽ ለማብራት ይንኩ"
+    "tapToUnmute": "ድምጽ ለማብራት ይንኩ",
+    "nextEpisode": "የሚቀጥለው ክፍል"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "ይዘት በመጫን ላይ"
+    "loadingContent": "ይዘት በመጫን ላይ",
+    "loadingVideo": "ቪዲዮ በመጫን ላይ"
   },
   "VideoLabels": {
     "video": "ቪዲዮ",
@@ -226,7 +234,8 @@
     "series": "ተከታታይ",
     "collection": "ስብስብ",
     "trailer": "ቅድመ እይታ",
-    "behindTheScenes": "ከትዕይንቱ ጀርባ"
+    "behindTheScenes": "ከትዕይንቱ ጀርባ",
+    "chapter": "ምዕራፍ"
   },
   "SiblingCarousel": {
     "clipPosition": "ክሊፕ {current} ከ {total}",
@@ -238,12 +247,253 @@
     "noImage": "ምስል የለም",
     "playingNow": "አሁን በመጫወት ላይ",
     "previousChapter": "የቀደመው ምዕራፍ",
-    "nextChapter": "የሚቀጥለው ምዕራፍ"
+    "nextChapter": "የሚቀጥለው ምዕራፍ",
+    "thumbnailAlt": "የ{title} ትንንሽ ምስል",
+    "relatedVideoThumbnail": "ተዛማጅ ቪዲዮ ትንንሽ ምስል"
   },
   "SearchResultCard": {
     "experience": "ተሞክሮ",
     "episodeCount": "{count, plural, one {# ክፍል} other {# ክፍሎች}}",
     "thumbnailAlt": "የቪዲዮ ትንንሽ ምስል"
+  },
+  "Feedback": {
+    "openForm": "የአስተያየት ቅጽ ክፈት",
+    "label": "አስተያየት",
+    "couldNotLoad": "የአስተያየት ቅጹን መጫን አልተቻለም።",
+    "loadingForm": "የአስተያየት ቅጹ በመጫን ላይ ነው…",
+    "retry": "እንደገና ሞክር",
+    "openFormShort": "ቅጽ ክፈት",
+    "cancel": "ሰርዝ",
+    "title": "የቤታ አስተያየት",
+    "description": "የሚሰራውን እና ምን ማሻሻል እንደምንችል ያካፍሉ። ይህ ቅጽ በGoogle የቀረበ ነው።",
+    "openInNewTab": "ቅጹን በአዲስ ትር ክፈት",
+    "closeForm": "የአስተያየት ቅጽ ዝጋ",
+    "loadingGoogleForm": "የGoogle ቅጽ በመጫን ላይ…",
+    "iframeTitle": "የቤታ አስተያየት አስገባ"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "በ{language} የነፃ ክርስቲያናዊ ቪዲዮዎች | Jesus Film Project",
+    "metadataDescription": "በ{language} የተተረጎመ ድምጽ ወይም ንዑስ ጽሑፍ ያላቸውን የኢየሱስ ፊልሞች፣ የመጽሐፍ ቅዱስ ታሪኮች፣ የደቀመዝሙርነት ተከታታዮች እና የቅድስና ማዳረሻ ቪዲዮዎች ያስሱ።",
+    "heroTitle": "በ{language} የነፃ ክርስቲያናዊ ቪዲዮዎች",
+    "heroDescription": "በ{language} የሚገኙ የኢየሱስ ፊልሞች፣ የመጽሐፍ ቅዱስ ታሪኮች፣ የደቀመዝሙርነት ተከታታዮች እና የቅድስና ማዳረሻ ቪዲዮዎችን ያስሱ። ሙሉ ድምጽ ያላቸው ቪዲዮዎች መጀመሪያ ይታያሉ፤ ከዚያ በታች የንዑስ ጽሑፍ ብቻ ያላቸው አማራጮች አሉ።",
+    "languageCollection": "የቋንቋ ስብስብ",
+    "itemCount": "{count, plural, one {# ንጥል} other {# ንጥሎች}}",
+    "videoCount": "{count, plural, one {# ቪዲዮ} other {# ቪዲዮዎች}}",
+    "videosInGroups": "{videoCount, plural, one {# ቪዲዮ} other {# ቪዲዮዎች}} በ{groupCount, plural, one {# ቡድን} other {# ቡድኖች}}",
+    "sectionNavLabel": "የቋንቋ ክምችት ክፍሎች",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "አዲስ",
+    "videoBible": "የቪዲዮ መጽሐፍ ቅዱስ",
+    "bibleProject": "BibleProject",
+    "sports": "ስፖርት",
+    "collections": "ስብስቦች",
+    "subtitlesOnly": "ንዑስ ጽሑፎች ብቻ",
+    "newlyAdded": "አዲስ የተጨመሩ",
+    "newVideosTitle": "በ{language} አዲስ ክርስቲያናዊ ቪዲዮዎች",
+    "newestFirst": "አዲሱ መጀመሪያ",
+    "noPublishedVideos": "ለዚህ ቋንቋ እስካሁን የታተሙ ቪዲዮዎች አልተገኙም።",
+    "bibleAndGospelFilms": "የመጽሐፍ ቅዱስ እና የወንጌል ፊልሞች",
+    "videoBibleCollectionsTitle": "የ{language} የቪዲዮ መጽሐፍ ቅዱስ ስብስቦች",
+    "videoBibleDescription": "በ{language} የሚገኙ LUMO፣ JESUS፣ Magdalena እና Acts ያሉ በመጽሐፍ ቅዱስ ላይ ያተኮሩ ስብስቦች።",
+    "noVideoBibleCollections": "ለዚህ ቋንቋ እስካሁን የቪዲዮ መጽሐፍ ቅዱስ ስብስቦች አልተገኙም።",
+    "bibleProjectCollectionsTitle": "የ{language} BibleProject ስብስቦች",
+    "bibleProjectDescription": "በ{language} የሚገኙ BibleProject ተከታታዮች እና ጥናቶች።",
+    "noBibleProjectCollections": "ለዚህ ቋንቋ እስካሁን የBibleProject ስብስቦች አልተገኙም።",
+    "sportsStories": "የስፖርት ታሪኮች",
+    "sportsTitle": "የ{language} ስፖርት እና አትሌቶች ታሪኮች",
+    "sportsDescription": "በ{language} የሚገኙ በእምነት ላይ ያተኮሩ የስፖርት ታሪኮች እና በአትሌቶች ላይ ያተኮሩ ስብስቦች።",
+    "noSportsCollections": "ለዚህ ቋንቋ እስካሁን የስፖርት ወይም የአትሌት ታሪክ ስብስቦች አልተገኙም።",
+    "fullyDubbed": "ሙሉ በሙሉ የተተረጎመ ድምጽ",
+    "dubbedVideosTitle": "የ{language} ቪዲዮዎች በስብስብ",
+    "dubbedVideosDescription": "ለቀላል ማግኘት ሙሉ በሙሉ የተተረጎመ ድምጽ ያላቸውን የ{language} ቪዲዮዎች ከስብስባቸው ጋር ያስሱ።",
+    "noDubbedVideos": "ለዚህ ቋንቋ እስካሁን ሙሉ በሙሉ የተተረጎመ ድምጽ ያላቸው ቪዲዮዎች አልተገኙም።",
+    "subtitlesAvailable": "ንዑስ ጽሑፎች አሉ",
+    "subtitlesTitle": "የ{language} ንዑስ ጽሑፍ ያላቸው ቪዲዮዎች",
+    "subtitlesDescription": "የተነገረው የ{language} ድምጽ ገና በማይገኝበት ጊዜ እነዚህ ቪዲዮዎች የ{language} ንዑስ ጽሑፎችን ያካትታሉ።",
+    "noSubtitleVideos": "ለዚህ ቋንቋ እስካሁን ንዑስ ጽሑፍ-ብቻ ያሉ ቪዲዮዎች አልተገኙም።",
+    "dubbed": "ድምጽ የተተረጎመ",
+    "subtitles": "ንዑስ ጽሑፎች",
+    "newLabel": "አዲስ",
+    "fromCollection": "ከ{collection}",
+    "standaloneVideos": "ብቻውን ያሉ ቪዲዮዎች",
+    "videosFromCollection": "ከ{collection} የተወሰዱ ቪዲዮዎች።",
+    "standaloneDescription": "በዚህ ቋንቋ ብቻውን ያሉ ቪዲዮዎች።",
+    "openCollection": "ስብስብ ክፈት"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project ዋች",
+    "watch": "ይመልከቱ",
+    "watchNow": "አሁን ይመልከቱ",
+    "mutePreview": "ቅድመ እይታን ዝም አድርግ",
+    "unmutePreview": "ቅድመ እይታን ድምጽ አብራ",
+    "nextVideo": "የሚቀጥለው ቪዲዮ",
+    "featured": "ተለይቶ የቀረበ",
+    "showVideo": "{title}ን አሳይ",
+    "previousVideoPreview": "የቀደመ ቪዲዮ ቅድመ እይታ",
+    "nextVideoPreview": "የሚቀጥለው ቪዲዮ ቅድመ እይታ",
+    "mediaCollection": "የሚዲያ ስብስብ",
+    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project መነሻ",
+    "navigation": "የግርጌ አሰሳ",
+    "share": "አጋራ",
+    "watch": "ይመልከቱ",
+    "giving": "ስጦታ",
+    "about": "ስለ",
+    "products": "ምርቶች",
+    "resources": "ምንጮች",
+    "partners": "አጋሮች",
+    "contact": "ያግኙን",
+    "giveNow": "አሁን ይስጡ",
+    "resourcesVersion": "ምንጮች ({version})",
+    "office": "ቢሮ",
+    "fax": "ፋክስ",
+    "privacyPolicy": "የግላዊነት ፖሊሲ",
+    "legalStatement": "የህግ መግለጫ",
+    "newsletter": "ለዜና መጽሔታችን ይመዝገቡ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "ለዓለም አቀፍ ተልዕኮ የተገነባ",
+    "title": "መልእክቱ አይለወጥም። ሰዎች የሚመለከቱበት መንገድ ግን ይለወጣል።",
+    "description": "የቪዲዮ ማዕከላችንን እና መሳሪያዎቻችንን ከመሠረቱ እንደገና እየገነባን ነው፤ የትርጉም ሥራን ለዐሥርተ ዓመታት የቆየ ተሞክሮ ሰዎች ቀድሞውኑ በሚሰበሰቡበት፣ በሚመለከቱበት እና በሚያጋሩበት መድረኮች ላይ እየወሰድን ነው።",
+    "translatedLibraryTitle": "በዓለም ላይ በጣም ብዙ ቋንቋዎች የተተረጎመ የፊልም ማዕከል",
+    "translatedLibraryDescription": "በተመካ የአገልግሎት አጋሮች የተሸከመ የትርጉም ሥራ ለዐሥርተ ዓመታት በሺዎች የሚቆጠሩ የቋንቋ ትራኮችን ያለው ማዕከል ገንብቷል፤ ይህም ሰዎች ኢየሱስ ታሪክን የሚደርሳቸውን በልባቸው የሚያገኘውን ቋንቋ እንዲያገኙ ያስችላል።",
+    "trustedVoicesTitle": "የተመካ ድምፆችን ወደ አዲስ ቅርጾች ማምጣት",
+    "trustedVoicesDescription": "የወንጌል ታሪኮች በምስል እንዴት እንደሚነገሩ እየተቀየረ ነው፤ ታማኝ ትርጉሞችን ከዘመናዊ ቅርጾች ጋር በማጣመር መልእክቱ በመድረኮች፣ በባህሎች እና በማያዎች ላይ በነፃነት እንዲንቀሳቀስ እንፈቅዳለን።",
+    "missionTeamTitle": "ከማዕከላዊ ማዕከል በላይ። በተልዕኮ የሚመራ ቡድን።",
+    "missionTeamDescription": "Jesus Film Project በትርጉም ባለሙያዎች፣ በሚዲያ ስፔሻሊስቶች፣ በአርታዒዎች እና በፈጣሪዎች የተዋቀረ ዓለም አቀፍ ቡድን ሲሆን የአገልግሎት ተሞክሮን ለደቀመዛሙርት አዘጋጆች በሁሉም ቦታ ወደ መሳሪያዎች እየቀየረ ነው።",
+    "buildingNext": "ቀጥሎ የምንገነባው",
+    "nextStepsTitle": "የሚቀጥሉ እርምጃዎች መድረክ",
+    "nextStepsDescription": "ተመልካቾችን በመንፈሳዊ ጉዟቸው ላይ ከተግባራዊ እድሎች ጋር ያገናኙ፤ ወደ ማህበረሰብ፣ ወደ ቅዱስ መጽሐፍ ወይም ወደ ተልዕኮ የሚወስዳቸውን ቀጣይ እርምጃ እንዲወስዱ ያግዟቸው።",
+    "mediaLibraryTitle": "የስርጭት ሚዲያ ማዕከል",
+    "mediaLibraryDescription": "በዓለም አቀፍ አገልግሎት እና በስርጭት ስራ ለሚጠቅሙ በብዙ ቋንቋዎች የሚገኙ ሺዎች የሚቆጠሩ ቪዲዮዎችን፣ ፊልሞችን እና ምንጮችን የያዘ ሰፊ የክርስቲያናዊ ሚዲያ ማዕከል።",
+    "ministryToolsTitle": "ለአገልግሎቶች ዲጂታል መሳሪያዎች",
+    "ministryToolsDescription": "ቪዲዮ አስተዳደር፣ የይዘት ስርጭት፣ የተመልካች ተሳትፎ እና የመረጃ ትንተና ብዙ ሰዎችን በብቃት ለመድረስ እንዲረዱ የተነደፉ።",
+    "invitationEyebrow": "ተጋብዘዋል",
+    "invitationTitle": "የተልዕኮ መሳሪያዎች <highlight>አዲሱን ትውልድ</highlight> ለመገንባት ይረዱ",
+    "invitationDescription": "ተግባራዊ ባለሙያዎችን፣ ፈጣሪዎችን እና አጋሮችን ወደ ቀድሞ መዳረሻ እየጋበዝን ነው። አዳዲስ መሳሪያዎችን መጀመሪያ ይሞክሩ፣ አስተያየት ይስጡ እና ለእውነተኛ የተልዕኮ ስራ የተዘጋጁ ምርቶችን ለመቅረጽ ይርዱ።",
+    "betaTester": "የቤታ ሞካሪ ይሁኑ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "የቪዲዮ መጽሐፍ ቅዱስ ስብስብ",
+    "gospelRailTitle": "ሙሉውን ታሪክ ያግኙ",
+    "videoBibleDescription": "መጽሐፍ ቅዱስን በማሳየት በሚረዱ የሚያምሩ ታሪኮች እና ትምህርቶች የተሞላ የቪዲዮ እና የምንጭ ስብስባችንን ያስሱ።",
+    "showcaseTitle": "ቅዱሳት መጻሕፍት በፊልም የተነገሩ",
+    "adventEyebrow": "የገና አድቨንት",
+    "adventTitle": "የገና አድቨንት ቆጠራ",
+    "adventDescription": "የገናን መምጣት በሚጠባበቅ ዕለታዊ ቪዲዮ ከአድቨንት ጉዟችን ጋር ይቀላቀሉ፤ ይህም የኢየሱስ መምጣት ተስፋን፣ ደስታን እና ተስፋ ያሳያል።",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject አድቨንት",
+    "nuaEyebrow": "NUA ተከታታይ",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth ተከታታይ",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "የቪዲዮ ኮርስ",
+    "journeyWithJesusTitle": "ከኢየሱስ ጋር ጉዞ ያድርጉ",
+    "gospelsOnVideoEyebrow": "እያንዳንዱ ወንጌል በቪዲዮ ተነግሮ",
+    "scriptureAsWrittenTitle": "ቅዱስ መጽሐፍ፣ እንደተጻፈ በትክክል ተነግሮ",
+    "merryChristmas": "መልካም ገና!",
+    "daysUntilChristmas": "{count, plural, one {ገና ሊደርስ # ቀን ቀርቷል} other {ገና ሊደርስ # ቀናት ቀርተዋል}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ቋንቋዎች",
+    "metadataDescription": "የJesusFilm ቪዲዮዎችን በቋንቋ ያስሱ።",
+    "eyebrow": "የማየት ቋንቋዎች",
+    "title": "ቋንቋ ይምረጡ",
+    "description": "ቋንቋዎችን በክልል ያስሱ ወይም ሙሉ ዝርዝሩን ይመልከቱ።",
+    "searchPlaceholder": "ቋንቋዎችን ወይም አገሮችን ፈልግ...",
+    "searchLabel": "ቋንቋዎችን ወይም አገሮችን ፈልግ",
+    "clearSearch": "ፍለጋ አጥፋ",
+    "browse": "አስስ",
+    "browseByRegion": "በክልል እና በአገር አስስ",
+    "languageCount": "{count, plural, one {# ቋንቋ} other {# ቋንቋዎች}}",
+    "region": "ክልል",
+    "countryLanguages": "የ{country} ቋንቋዎች",
+    "showLess": "ትንሽ አሳይ",
+    "showMore": "{count} ተጨማሪ አሳይ",
+    "noLanguages": "ምንም ቋንቋዎች አልተገኙም",
+    "tryAnotherSearch": "ሌላ የፍለጋ ቃል ይሞክሩ።"
+  },
+  "WatchHistory": {
+    "metadataTitle": "የመመልከቻ ታሪክ | Jesus Film Project",
+    "title": "የመመልከቻ ታሪክ",
+    "loading": "ታሪክ በመጫን ላይ",
+    "empty": "እስካሁን ምንም የለም",
+    "emptyDescription": "በመግባት ላይ ሳሉ የሚመለከቱት ቪዲዮዎች እዚህ ይታያሉ።",
+    "earlier": "ከዚህ በፊት",
+    "today": "ዛሬ",
+    "yesterday": "ትናንት"
+  },
+  "AccountControl": {
+    "account": "መለያ",
+    "accountMenu": "የመለያ ምናሌ",
+    "signIn": "ይግቡ",
+    "signOut": "ውጣ",
+    "signedIn": "ገብተዋል",
+    "history": "ታሪክ",
+    "logOut": "ውጣ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ገጽ አልተገኘም",
+    "eyebrow": "ገጽ አልተገኘም",
+    "screenReaderPrefix": "ገጽ አልተገኘም፦",
+    "title": "ይህ ትዕይንት እዚህ የለም።",
+    "description": "ገጹ ሊንቀሳቀስ ይችላል፣ ግን ታሪኩ ይቀጥላል።",
+    "actionsLabel": "የገጽ አልተገኘም እርምጃዎች",
+    "backToWatch": "ወደ Watch ተመለስ",
+    "browseVideos": "ቪዲዮዎችን አስስ"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}፦ {title}",
+    "watchShortFilm": "አጭር ፊልም ይመልከቱ",
+    "actions": {
+      "joinUs": "ይቀላቀሉን",
+      "shareMission": "በተልዕኳችን ይካፈሉ"
+    },
+    "welcomeStart": {
+      "label": "እምነት እና ቅዱስ መጽሐፍ",
+      "title": "የዛሬ የቪዲዮ ምርጦች",
+      "description": "ከማዕከላችን የተመረጠ በእምነት ላይ ያተኮረ የቪዲዮ ይዘት፣ ለማነሳሳት፣ ለመፈተን እና ለማሰብ የሚያነሳሳ።"
+    },
+    "welcomeMorning": {
+      "label": "የጠዋት ማበረታቻ",
+      "title": "እንደምን አደሩ! የዛሬ የመጽሐፍ ቅዱስ አፍታዎች ይጠብቁዎታል።",
+      "description": "ቀንዎን ለማበረታታት እና መንፈስዎን ለማነሳሳት በተዘጋጁ አበረታች የመጽሐፍ ቅዱስ አፍታዎች ይጀምሩ።"
+    },
+    "welcomeAfternoon": {
+      "label": "የከሰዓት ማበረታቻ",
+      "title": "እንደምን አረፈዱ! ለቀንዎ የመጽሐፍ ቅዱስ አፍታዎች።",
+      "description": "ለከሰዓት እረፍትዎ ወይም ለቀጣይ ማበረታቻ ተመራጭ የሆነ አበረታች የመጽሐፍ ቅዱስ ይዘት።"
+    },
+    "welcomeEvening": {
+      "label": "የምሽት ማበረታቻ",
+      "title": "መልካም ምሽት! በመጽሐፍ ቅዱስ አፍታዎች ዘና ይበሉ።",
+      "description": "ቀንዎ ሲያበቃ እንዲያሰላስሉ እና መጽናናት እንዲያገኙ የሚረዱ የሰላም የመጽሐፍ ቅዱስ አፍታዎች።"
+    },
+    "joinUs": {
+      "label": "ይቀላቀሉን",
+      "title": "ቢሊዮኖች እየፈለጉ ነው",
+      "description": "መከሩ አሁን አለ። ከዓለም ጋር ወንጌልን በዲጂታል ሚዲያ ለማካፈል ይቀላቀሉን።"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "አብረን እንጓዝ",
+      "title": "የኢየሱስን ታሪክ በአንድነት መንገር",
+      "description": "እርሱ ባሉበት በራሳቸው ቋንቋ የኢየሱስን ፍቅር እንዲሰሙ እና እንዲያዩ ዘንድ።"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ይዛመዳል",
+    "none": "ለዚህ ቪዲዮ በዚህ ቋንቋ ምንም የተመከሩ ቪዲዮዎች አልተገኙም።"
+  },
+  "BetaTesterModal": {
+    "title": "የቤታ ሞካሪ ይሁኑ",
+    "trigger": "የቤታ ሞካሪ ይሁኑ",
+    "loadFailed": "አንድ ነገር ተሳስቷል።",
+    "loading": "በመጫን ላይ...",
+    "openFormNewTab": "ቅጹን በአዲስ ትር ክፈት",
+    "close": "ዝጋ",
+    "iframeTitle": "የቤታ ሞካሪ ይሁኑ"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

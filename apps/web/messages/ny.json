@@ -7,7 +7,9 @@
     "noContent": "Palibe zomwe zilipo.",
     "homepageMisconfigured": "Tsamba loyambira la watch silinakhazikitsidwe bwino.",
     "defaultTemplateMisconfigured": "Chitsanzo chokhazikika cha watch sichinakhazikitsidwe bwino.",
-    "authFailed": "Sitinathe kutsimikizira ndi utumiki wa zomwe zili. Chonde funsani chithandizo ngati izi zipitirirabe."
+    "authFailed": "Sitinathe kutsimikizira ndi utumiki wa zomwe zili. Chonde funsani chithandizo ngati izi zipitirirabe.",
+    "pageLoadFailed": "Chinachake chalakwika.",
+    "tryAgain": "Yesaninso"
   },
   "VideosPage": {
     "title": "Mavidiyo Onse",
@@ -22,7 +24,8 @@
     "promoHeading": "Mukufuna kumvetsa Baibulo mozama?",
     "joinBibleStudy": "Lowani nawo phunziro lathu la Baibulo",
     "previousQuote": "Mawu a Baibulo am'mbuyomu",
-    "nextQuote": "Mawu a Baibulo otsatira"
+    "nextQuote": "Mawu a Baibulo otsatira",
+    "readPassage": "Werengani ndimeyi m'Baibulo lanu."
   },
   "DownloadButton": {
     "checking": "Kukayendera",
@@ -73,7 +76,8 @@
     "selectLanguage": "Sankhani chinenero",
     "searchPlaceholder": "Sakani zinenero…",
     "languages": "Zinenero",
-    "noMatches": "Palibe zofanana"
+    "noMatches": "Palibe zofanana",
+    "notAvailable": "Palibe"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Chinenero",
@@ -100,10 +104,7 @@
     "seriesLabel": "MNDANDANDA · {episodes}",
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
     "share": "Gawani",
-    "languages": "Zinenero",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Zinenero"
   },
   "WatchModal": {
     "close": "Tsekani"
@@ -115,7 +116,8 @@
     "questions": "Mafunso Ogwirizana",
     "askYours": "Funsani lanu",
     "chatWithPerson": "Lankhulani ndi munthu",
-    "askBibleQuestion": "Funsani funso la Baibulo"
+    "askBibleQuestion": "Funsani funso la Baibulo",
+    "quiz": "Mayeso"
   },
   "WatchQuestionPanel": {
     "messageType": "Mtundu wa uthenga",
@@ -173,7 +175,8 @@
     "searchRegion": "Sakani mavidiyo",
     "clearSearch": "Chotsani kusaka",
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
-    "home": "Tsamba loyambira la JesusFilm"
+    "home": "Tsamba loyambira la JesusFilm",
+    "closeSearch": "Tsekani kusaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Sakani ndi kufufuza mavidiyo",
@@ -208,14 +211,19 @@
     "clearLanguages": "Chotsani",
     "queryLanguageDetected": "{language} yadziwika",
     "searchInLanguage": "Sakani mu {language}",
-    "tryDifferentKeywordsOrLanguage": "Yesani mawu ena ofunika kapena sankhani chinenero china chofufuza"
+    "tryDifferentKeywordsOrLanguage": "Yesani mawu ena ofunika kapena sankhani chinenero china chofufuza",
+    "useWebsiteDefaultLanguage": "Gwiritsani ntchito chinenero chokhazikika cha webusaiti kufufuza",
+    "removeLanguage": "Chotsani {language}",
+    "browseMode": "Njira yofufuzira kusakatula"
   },
   "HeroPlayer": {
     "playWithSound": "Onerani tsopano",
-    "tapToUnmute": "Dinani kuti mubwezeretse mawu"
+    "tapToUnmute": "Dinani kuti mubwezeretse mawu",
+    "nextEpisode": "Gawo lotsatira"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Kutsegula zomwe zili"
+    "loadingContent": "Kutsegula zomwe zili",
+    "loadingVideo": "Kutsegula vidiyo"
   },
   "VideoLabels": {
     "video": "Vidiyo",
@@ -226,7 +234,8 @@
     "series": "Mndandanda",
     "collection": "Gulu",
     "trailer": "Chithunzithunzi cha kanema",
-    "behindTheScenes": "Zomwe zili kumbuyo kwa zochitika"
+    "behindTheScenes": "Zomwe zili kumbuyo kwa zochitika",
+    "chapter": "Mutu"
   },
   "SiblingCarousel": {
     "clipPosition": "Chidutswa {current} mwa {total}",
@@ -238,12 +247,253 @@
     "noImage": "Palibe chithunzi",
     "playingNow": "Ikuseweredwa tsopano",
     "previousChapter": "Mutu wapitawo",
-    "nextChapter": "Mutu wotsatira"
+    "nextChapter": "Mutu wotsatira",
+    "thumbnailAlt": "Chithunzi chaching'ono cha {title}",
+    "relatedVideoThumbnail": "Chithunzi chaching'ono cha vidiyo yogwirizana"
   },
   "SearchResultCard": {
     "experience": "Zomwe mwakumana nazo",
     "episodeCount": "{count, plural, one {# gawo} other {# magawo}}",
     "thumbnailAlt": "Chithunzi chaching'ono cha vidiyo"
+  },
+  "Feedback": {
+    "openForm": "Tsegulani fomu ya ndemanga",
+    "label": "Ndemanga",
+    "couldNotLoad": "Fomu ya ndemanga sinathe kutsegulidwa.",
+    "loadingForm": "Kutsegula fomu ya ndemanga…",
+    "retry": "Yesaninso",
+    "openFormShort": "Tsegulani fomu",
+    "cancel": "Lekani",
+    "title": "Ndemanga za Beta",
+    "description": "Gawani zimene zikuyenda bwino ndi zimene tingawongolere. Fomuyi yaperekedwa ndi Google.",
+    "openInNewTab": "Tsegulani fomu mu tabu yatsopano",
+    "closeForm": "Tsekani fomu ya ndemanga",
+    "loadingGoogleForm": "Kutsegula Google Form…",
+    "iframeTitle": "Tumizani Ndemanga za Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Mavidiyo achikhristu aulere mu {language} | Jesus Film Project",
+    "metadataDescription": "Fufuzani mafilimu a Yesu, nkhani za Baibulo, mndandanda wa ophunzitsa, ndi mavidiyo a ulaliki okhala ndi mawu opangidwanso kapena malembalo mu {language}.",
+    "heroTitle": "Mavidiyo achikhristu aulere mu {language}",
+    "heroDescription": "Fufuzani mafilimu a Yesu, nkhani za Baibulo, mndandanda wa ophunzitsa, ndi mavidiyo a ulaliki omwe akupezeka mu {language}. Mavidiyo okhala ndi mawu opangidwanso onse amawonetsedwa koyamba, ndipo zosankha za malembalo zokha zili pansipa.",
+    "languageCollection": "Gulu la chinenero",
+    "itemCount": "{count, plural, one {# chinthu} other {# zinthu}}",
+    "videoCount": "{count, plural, one {# vidiyo} other {# mavidiyo}}",
+    "videosInGroups": "{videoCount, plural, one {# vidiyo} other {# mavidiyo}} mu {groupCount, plural, one {# gulu} other {# magulu}}",
+    "sectionNavLabel": "Magawo a kalozera wa chinenero",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Zatsopano",
+    "videoBible": "Baibulo la Vidiyo",
+    "bibleProject": "BibleProject",
+    "sports": "Masewera",
+    "collections": "Magulu",
+    "subtitlesOnly": "Malembalo okha",
+    "newlyAdded": "Zangowonjezedwa",
+    "newVideosTitle": "Mavidiyo achikhristu atsopano mu {language}",
+    "newestFirst": "Zatsopano kaye",
+    "noPublishedVideos": "Palibe mavidiyo osindikizidwa omwe apezeka pa chinenerochi pano.",
+    "bibleAndGospelFilms": "Mafilimu a Baibulo ndi Uthenga Wabwino",
+    "videoBibleCollectionsTitle": "Magulu a {language} Video Bible",
+    "videoBibleDescription": "Magulu okhudzana ndi Malemba kuphatikiza LUMO, JESUS, Magdalena, ndi Acts mu {language}.",
+    "noVideoBibleCollections": "Palibe magulu a Video Bible omwe akupezeka pa chinenerochi pano.",
+    "bibleProjectCollectionsTitle": "Magulu a {language} BibleProject",
+    "bibleProjectDescription": "Mndandanda ndi maphunziro a BibleProject omwe akupezeka mu {language}.",
+    "noBibleProjectCollections": "Palibe magulu a BibleProject omwe akupezeka pa chinenerochi pano.",
+    "sportsStories": "Nkhani za masewera",
+    "sportsTitle": "Nkhani za masewera ndi othamanga mu {language}",
+    "sportsDescription": "Nkhani za masewera zokhudza chikhulupiriro ndi magulu okhudza othamanga omwe akupezeka mu {language}.",
+    "noSportsCollections": "Palibe magulu a masewera kapena nkhani za othamanga omwe akupezeka pa chinenerochi pano.",
+    "fullyDubbed": "Mawu onse opangidwanso",
+    "dubbedVideosTitle": "Mavidiyo a {language} malinga ndi gulu",
+    "dubbedVideosDescription": "Fufuzani mavidiyo a {language} okhala ndi mawu opangidwanso onse, ogwirizanitsidwa ndi gulu lawo kuti zikhale zosavuta kupeza.",
+    "noDubbedVideos": "Palibe mavidiyo okhala ndi mawu opangidwanso onse omwe akupezeka pa chinenerochi pano.",
+    "subtitlesAvailable": "Malembalo alipo",
+    "subtitlesTitle": "Mavidiyo a {language} okhala ndi malembalo",
+    "subtitlesDescription": "Mavidiyowa ali ndi malembalo a {language} pamene mawu olankhulidwa a {language} sakalipo.",
+    "noSubtitleVideos": "Palibe mavidiyo okhala ndi malembalo okha omwe akupezeka pa chinenerochi pano.",
+    "dubbed": "Mawu opangidwanso",
+    "subtitles": "Malembalo",
+    "newLabel": "Zatsopano",
+    "fromCollection": "Kuchokera ku {collection}",
+    "standaloneVideos": "Mavidiyo odziyimira okha",
+    "videosFromCollection": "Mavidiyo kuchokera ku {collection}.",
+    "standaloneDescription": "Mavidiyo odziyimira okha mu chinenerochi.",
+    "openCollection": "Tsegulani gulu"
+  },
+  "WatchHome": {
+    "pageTitle": "Onerani pa Jesus Film Project",
+    "watch": "Onerani",
+    "watchNow": "Onerani Tsopano",
+    "mutePreview": "Lekanitsani mawu a chithunzithunzi",
+    "unmutePreview": "Bwezeretsani mawu a chithunzithunzi",
+    "nextVideo": "Vidiyo yotsatira",
+    "featured": "Yodziwika",
+    "showVideo": "Onetsani {title}",
+    "previousVideoPreview": "Chithunzithunzi cha vidiyo yapitayo",
+    "nextVideoPreview": "Chithunzithunzi cha vidiyo yotsatira",
+    "mediaCollection": "Kalozera wa media",
+    "scrollToVideo": "Pitani ku vidiyo ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Tsamba loyambira la Jesus Film Project",
+    "navigation": "Kuyenda pansi pa tsamba",
+    "share": "Gawani",
+    "watch": "Onerani",
+    "giving": "Kupereka",
+    "about": "Za ife",
+    "products": "Zogulitsa",
+    "resources": "Zothandizira",
+    "partners": "Othandizana nawo",
+    "contact": "Lumikizanani",
+    "giveNow": "Perekani Tsopano",
+    "resourcesVersion": "Zothandizira ({version})",
+    "office": "Ofesi",
+    "fax": "Fakisi",
+    "privacyPolicy": "Ndondomeko ya Zinsinsi",
+    "legalStatement": "Ndemanga ya Malamulo",
+    "newsletter": "Lembetsani pa kalata yathu ya nkhani"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yomangidwa kuti itumikire ntchito za padziko lonse",
+    "title": "Uthengawo susintha. Momwe anthu amauwonera ndiwo umasinthika.",
+    "description": "Tikumanganso laibulale yathu ya mavidiyo ndi zida kuyambira poyambira, tikupereka ntchito za kutanthauzira zomwe zachitika kwa zaka zambiri ku mapulatifomu kumene anthu amasonkhana, amaonera, ndi kugawana kale.",
+    "translatedLibraryTitle": "Laibulale ya mafilimu yomasuliridwa kwambiri padziko lapansi",
+    "translatedLibraryDescription": "Ntchito za kutanthauzira za zaka zambiri, zonyamulidwa ndi anzathu odalirika a utumiki, zakhazikitsa laibulale yokhala ndi njira zambiri zazing'ono zamalankhulo kuti anthu athe kukumana ndi nkhani ya Yesu m'chinenero chimene chimafika mozama kwa iwo.",
+    "trustedVoicesTitle": "Kubweretsa mawu odalirika mu mawonekedwe atsopano",
+    "trustedVoicesDescription": "Tikukonzanso momwe nkhani za uthenga wabwino zimafotokozedwera m'njira ya zithunzi, tikuphatikiza matanthauzidwe odalirika ndi mawonekedwe amakono kuti uthengawo usamayende mfulu pa mapulatifomu, zikhalidwe, ndi zowonetsera.",
+    "missionTeamTitle": "Kuposa laibulale. Gulu loyendetsedwa ndi utumiki.",
+    "missionTeamDescription": "Jesus Film Project ndi gulu lapadziko lonse la omasulira, akatswiri a media, akonzi, ndi opanga lomwe likusandutsa zaka zambiri za utumiki kukhala zida za opanga ophunzira kulikonse.",
+    "buildingNext": "Zimene tikumanga zikubwerazi",
+    "nextStepsTitle": "Puloatifomu ya Masitepe Otsatira",
+    "nextStepsDescription": "Lumikizani owonera ndi mwayi wogwira mtima pa ulendo wawo wauzimu, kuwathandiza kutenga sitepe yotsatira yolowa mu gulu, Malemba, kapena utumiki.",
+    "mediaLibraryTitle": "Laibulale ya Media ya Uthenga Wabwino",
+    "mediaLibraryDescription": "Laibulale yayikulu ya media ya Chikhristu yokhala ndi mavidiyo, mafilimu, ndi zothandizira masauzande ambiri zomwe zikupezeka m'zinenero zambiri za utumiki ndi kulalikira padziko lonse.",
+    "ministryToolsTitle": "Zida za Digito za Ma Utumiki",
+    "ministryToolsDescription": "Kuwongolera mavidiyo, kugawa zomwe zili, kulumikizana ndi omvera, ndi ma analytics opangidwa kuti athandize mautumiki kufikira anthu ambiri bwino.",
+    "invitationEyebrow": "Mwayitanidwa",
+    "invitationTitle": "Thandizani kumanga <highlight>m'badwo wotsatira</highlight> wa zida za utumiki",
+    "invitationDescription": "Tikuyitanira anthu ogwira ntchito, opanga, ndi anzathu kuti alowe mu kuyesa koyambirira. Yesani zida zatsopano kaye, perekani ndemanga, ndipo thandizani kupanga zinthu zopangidwira ntchito yeniyeni ya utumiki.",
+    "betaTester": "Khalani woyesa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Gulu la Video Bible",
+    "gospelRailTitle": "Dziwani nkhani yonse",
+    "videoBibleDescription": "Fufuzani gulu lathu la mavidiyo ndi zothandizira zomwe zimabweretsa Baibulo ku moyo kudzera m'nkhani zosangalatsa ndi ziphunzitso.",
+    "showcaseTitle": "Malemba Ofotokozedwa Kudzera mu Filimu",
+    "adventEyebrow": "Khirisimasi Advent",
+    "adventTitle": "Kuwerengera Khirisimasi Advent",
+    "adventDescription": "Lowani nawo ulendo wathu wa Advent ndi vidiyo ya tsiku ndi tsiku yomwe imakulitsa chiyembekezo cha Khirisimasi, kufufuza chiyembekezo, chimwemwe, ndi lonjezo la kubwera kwa Yesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Mndandanda wa NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Mndandanda wa Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Maphunziro a Vidiyo",
+    "journeyWithJesusTitle": "Yendani ndi Yesu",
+    "gospelsOnVideoEyebrow": "Uthenga Wabwino Uliwonse, Wofotokozedwa pa Vidiyo",
+    "scriptureAsWrittenTitle": "Malemba, Ofotokozedwa Ndendende Monga Linalembedwera",
+    "merryChristmas": "Khrisimasi yabwino!",
+    "daysUntilChristmas": "{count, plural, one {Kwatsala tsiku # kuti Khrisimasi ifike} other {Kwatsala masiku # kuti Khrisimasi ifike}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Zinenero",
+    "metadataDescription": "Fufuzani mavidiyo a JesusFilm molingana ndi chinenero.",
+    "eyebrow": "Zinenero za Watch",
+    "title": "Sankhani chinenero",
+    "description": "Fufuzani zinenero malinga ndi dera kapena yang'anani mndandanda wonse.",
+    "searchPlaceholder": "Sakani zinenero kapena mayiko...",
+    "searchLabel": "Sakani zinenero kapena mayiko",
+    "clearSearch": "Chotsani kusaka",
+    "browse": "Fufuzani",
+    "browseByRegion": "Fufuzani ndi dera ndi dziko",
+    "languageCount": "{count, plural, one {# chinenero} other {# zinenero}}",
+    "region": "Dera",
+    "countryLanguages": "Zinenero za {country}",
+    "showLess": "Onetsani zochepa",
+    "showMore": "Onetsani {count} zina",
+    "noLanguages": "Palibe zinenero zopezeka",
+    "tryAnotherSearch": "Yesani mawu ena osaka."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Mbiri Yowonera | Jesus Film Project",
+    "title": "Mbiri Yowonera",
+    "loading": "Kutsegula mbiri",
+    "empty": "Palibe pano pakadali pano",
+    "emptyDescription": "Mavidiyo omwe muwone mukalowa adzawoneka pano.",
+    "earlier": "Kale",
+    "today": "Lero",
+    "yesterday": "Dzulo"
+  },
+  "AccountControl": {
+    "account": "Akaunti",
+    "accountMenu": "Menyu ya akaunti",
+    "signIn": "Lowani",
+    "signOut": "Tulokani",
+    "signedIn": "Mwalowa",
+    "history": "Mbiri",
+    "logOut": "Tulokani"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Tsamba silinapezeke",
+    "eyebrow": "Tsamba silinapezeke",
+    "screenReaderPrefix": "Tsamba silinapezeke:",
+    "title": "Mwachitika, chikhalidwechi palibe pano.",
+    "description": "Tsambalo mwina lasamuka, koma nkhaniyo ikupitirirabe.",
+    "actionsLabel": "Zochita za tsamba silinapezeke",
+    "backToWatch": "Kubwerera ku Watch",
+    "browseVideos": "Fufuzani mavidiyo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Onerani filimu yachidule",
+    "actions": {
+      "joinUs": "Lowani nafe",
+      "shareMission": "Gawani mu utumiki wathu"
+    },
+    "welcomeStart": {
+      "label": "Chikhulupiriro ndi Malemba",
+      "title": "Mavidiyo osankhidwa lero",
+      "description": "Zamavidiyo zochokera mu laibulale yathu zokhudza chikhulupiriro, zokulimbikitsani, kukutsutsani, ndi kukupatsani nthawi yoganizira."
+    },
+    "welcomeMorning": {
+      "label": "Kulimbikitsidwa kwa m'mawa",
+      "title": "M'mawa wabwino! Mphindi za Baibulo za lero zikukudikirirani.",
+      "description": "Yambani tsiku lanu ndi mphindi zolimbikitsa za Baibulo zokonzedwa kukulimbikitsani ndi kukweza mzimu wanu."
+    },
+    "welcomeAfternoon": {
+      "label": "Kulimbikitsidwa kwa masana",
+      "title": "Masana abwino! Mphindi za Baibulo za tsiku lanu.",
+      "description": "Zamkati za Baibulo zolimbikitsa, zoyenera kupuma masana kapena kupitiriza kulimbikitsidwa."
+    },
+    "welcomeEvening": {
+      "label": "Kulimbikitsidwa kwa madzulo",
+      "title": "Madzulo abwino! Pumulani ndi mphindi za Baibulo.",
+      "description": "Mphindi za Baibulo za mtendere zokuthandizani kuganizira ndi kupeza chitonthozo pamene tsiku lanu likutha."
+    },
+    "joinUs": {
+      "label": "Lowani nafe",
+      "title": "Mabiliyoni akufufuza",
+      "description": "Nthawi yokolola yafika. Lowani nafe tikamagawana uthenga wabwino ndi dziko lonse pogwiritsa ntchito media ya digito."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tiyeni tipite limodzi",
+      "title": "Kufotokoza Nkhani ya Yesu Pamodzi",
+      "description": "Kuti amve ndi kuwona chikondi cha Yesu m'chinenero chawo komwe ali."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Zikufanana ndi {percent}%",
+    "none": "Palibe mavidiyo ovomerezeka omwe apezeka ogwirizana ndi vidiyoyi m'chinenerochi."
+  },
+  "BetaTesterModal": {
+    "title": "Khalani woyesa beta",
+    "trigger": "Khalani woyesa beta",
+    "loadFailed": "Chinachake chalakwika.",
+    "loading": "Kutsegula...",
+    "openFormNewTab": "Tsegulani fomu mu tabu yatsopano",
+    "close": "Tsekani",
+    "iframeTitle": "Khalani woyesa beta"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

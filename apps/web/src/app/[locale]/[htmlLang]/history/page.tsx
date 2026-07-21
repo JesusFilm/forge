@@ -1,38 +1,55 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { setRequestLocale } from "next-intl/server"
+import { NextIntlClientProvider } from "next-intl"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { WatchHistoryClient } from "@/components/watch/WatchHistoryClient"
 import { verifyAuthSession } from "@/lib/auth-session"
+import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import {
+  loadClientMessages,
+  WATCH_HISTORY_CLIENT_MESSAGE_NAMESPACES,
+} from "@/i18n/client-messages"
 
 export const dynamic = "force-dynamic"
-
-export const metadata: Metadata = {
-  title: "Watch History | Jesus Film Project",
-}
 
 type HistoryPageProps = {
   params: Promise<{ locale: string }>
 }
 
-export default async function WatchHistoryPage({ params }: HistoryPageProps) {
+export async function generateMetadata({
+  params,
+}: HistoryPageProps): Promise<Metadata> {
   const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "WatchHistory" })
+  return { title: t("metadataTitle") }
+}
+
+export default async function WatchHistoryPage({ params }: HistoryPageProps) {
+  const { locale: rawLocale } = await params
+  const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
+  const [t, messages] = await Promise.all([
+    getTranslations({ locale, namespace: "WatchHistory" }),
+    loadClientMessages(locale, WATCH_HISTORY_CLIENT_MESSAGE_NAMESPACES),
+  ])
 
   const session = await verifyAuthSession(await headers())
   if (!session.authenticated) {
-    redirect("/api/auth/login?returnTo=/watch/history")
+    redirect("/api/auth/login?returnTo=/watch/history" as Route)
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] pt-24 text-white">
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
-          Watch History
-        </h1>
-        <WatchHistoryClient />
-      </div>
-    </main>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <main className="min-h-screen bg-[#050505] pt-24 text-white">
+        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">
+            {t("title")}
+          </h1>
+          <WatchHistoryClient />
+        </div>
+      </main>
+    </NextIntlClientProvider>
   )
 }

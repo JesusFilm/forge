@@ -7,7 +7,9 @@
     "noContent": "Nagina cuntegn n'è disponibel.",
     "homepageMisconfigured": "La pagina principala da guardar è configurada faussa.",
     "defaultTemplateMisconfigured": "La mula da standard da guardar è configurada faussa.",
-    "authFailed": "Betg pussaivel d'autentitgar cun il servetsch da cuntegn. Contactai per plaschair il support, sch'i dura anc."
+    "authFailed": "Betg pussaivel d'autentitgar cun il servetsch da cuntegn. Contactai per plaschair il support, sch'i dura anc.",
+    "pageLoadFailed": "Insatge n'è betg ì sco previs.",
+    "tryAgain": "Empruvai anc ina giada"
   },
   "VideosPage": {
     "title": "Tut ils videos",
@@ -22,7 +24,8 @@
     "promoHeading": "Vulais chapir pli profundamain la Bibla?",
     "joinBibleStudy": "Gidai en noss studi biblic",
     "previousQuote": "Citat biblic precedent",
-    "nextQuote": "Proxim citat biblic"
+    "nextQuote": "Proxim citat biblic",
+    "readPassage": "Legiai quest passadi en vossa Bibla."
   },
   "DownloadButton": {
     "checking": "Verificaziun",
@@ -73,7 +76,8 @@
     "selectLanguage": "Tscherner lingua",
     "searchPlaceholder": "Tschertgar linguas…",
     "languages": "Linguas",
-    "noMatches": "Nagina concordanza"
+    "noMatches": "Nagina concordanza",
+    "notAvailable": "Betg disponibel"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lingua",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIA · {episodes}",
     "changeAudioLanguage": "Midar la lingua d'audio",
     "share": "Partir",
-    "languages": "Linguas",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Linguas"
   },
   "WatchModal": {
     "close": "Serrar"
@@ -115,7 +116,8 @@
     "questions": "Dumondas cuntegnidas",
     "askYours": "Dumandai la vossa",
     "chatWithPerson": "Discurrer cun ina persuna",
-    "askBibleQuestion": "Far ina dumonda da la Bibla"
+    "askBibleQuestion": "Far ina dumonda da la Bibla",
+    "quiz": "Test"
   },
   "WatchQuestionPanel": {
     "messageType": "Tip da messadi",
@@ -173,7 +175,8 @@
     "searchRegion": "Tschertgar videos",
     "clearSearch": "Betg pli tschertgar",
     "changeAudioLanguage": "Midar la lingua d'audio",
-    "home": "Pagina principala da JesusFilm"
+    "home": "Pagina principala da JesusFilm",
+    "closeSearch": "Serrar la tschertga"
   },
   "SearchOverlay": {
     "dialogLabel": "Tschertgar e navigar tras videos",
@@ -208,14 +211,19 @@
     "clearLanguages": "Sfurzar",
     "queryLanguageDetected": "{language} identifitgà",
     "searchInLanguage": "Tschertgar en {language}",
-    "tryDifferentKeywordsOrLanguage": "Empruvai auters pleds clav u tschernai ina autra lingua da tschertga"
+    "tryDifferentKeywordsOrLanguage": "Empruvai auters pleds clav u tschernai ina autra lingua da tschertga",
+    "useWebsiteDefaultLanguage": "Utilisar la lingua da tschertga predefinida dal website",
+    "removeLanguage": "Allontanar {language}",
+    "browseMode": "Modus da navigaziun da tschertga"
   },
   "HeroPlayer": {
     "playWithSound": "Guardar ussa",
-    "tapToUnmute": "Tappa per activar il tun"
+    "tapToUnmute": "Tappa per activar il tun",
+    "nextEpisode": "Proxima episoda"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Chargiament dal cuntegn"
+    "loadingContent": "Chargiament dal cuntegn",
+    "loadingVideo": "Chargiament dal video"
   },
   "VideoLabels": {
     "video": "Videoclip",
@@ -226,7 +234,8 @@
     "series": "Seria",
     "collection": "Collecziun",
     "trailer": "Preannunzia",
-    "behindTheScenes": "Davostiers las culissas"
+    "behindTheScenes": "Davostiers las culissas",
+    "chapter": "Chapitel"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} da {total}",
@@ -238,12 +247,253 @@
     "noImage": "Nagina figura",
     "playingNow": "En reproduziun ussa",
     "previousChapter": "Chapitel precedent",
-    "nextChapter": "Proxim chapitel"
+    "nextChapter": "Proxim chapitel",
+    "thumbnailAlt": "Miniatura da {title}",
+    "relatedVideoThumbnail": "Miniatura dal video sumegliant"
   },
   "SearchResultCard": {
     "experience": "Experientscha",
     "episodeCount": "{count, plural, one {# episoda} other {# episodas}}",
     "thumbnailAlt": "Miniatura dal video"
+  },
+  "Feedback": {
+    "openForm": "Avrir il formular da feedback",
+    "label": "Resuns",
+    "couldNotLoad": "Betg reussì da chargiar il formular da feedback.",
+    "loadingForm": "Chargiament dal formular da feedback…",
+    "retry": "Empruvar anc ina giada",
+    "openFormShort": "Avrir il formular",
+    "cancel": "Interrumper",
+    "title": "Feedback da beta",
+    "description": "Partidai tge che funcziuna e tge che nus pudain meglierar. Quest formular vegn purschì da Google.",
+    "openInNewTab": "Avrir il formular en ina nova tab",
+    "closeForm": "Serrar il formular da feedback",
+    "loadingGoogleForm": "Chargiament dal formular Google…",
+    "iframeTitle": "Trametter feedback da beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videos cristians gratuits en {language} | Jesus Film Project",
+    "metadataDescription": "Scuvri films da Jesus, istorgias biblicas, serias da discipulat e videos evangelistics cun tun dubià u suttitels en {language}.",
+    "heroTitle": "Videos cristians gratuits en {language}",
+    "heroDescription": "Scuvri films da Jesus, istorgias biblicas, serias da discipulat e videos evangelistics disponibels en {language}. Videos cumplettamain dubiads vegnan mess en evidenza l'emprim, cun opziuns be cun suttitels sutvart.",
+    "languageCollection": "Collecziun da lingua",
+    "itemCount": "{count, plural, one {# object} other {# objects}}",
+    "videoCount": "{count, plural, one {# film} other {# films}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} en {groupCount, plural, one {# gruppa} other {# gruppas}}",
+    "sectionNavLabel": "Secziuns da l'inventari da linguas",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nov",
+    "videoBible": "Bibla video",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Collecziuns",
+    "subtitlesOnly": "Be suttitels",
+    "newlyAdded": "Agiuntà dacurt",
+    "newVideosTitle": "Novs videos cristians en {language}",
+    "newestFirst": "Ils pli novs l'emprim",
+    "noPublishedVideos": "Fin ussa n'èn betg vegnids chattads videos publitgads per questa lingua.",
+    "bibleAndGospelFilms": "Films biblics e da l'Evangelium",
+    "videoBibleCollectionsTitle": "Collecziuns da Bibla video en {language}",
+    "videoBibleDescription": "Collecziuns centralisadas sin la Scrittira, inclus LUMO, JESUS, Magdalena e Acts en {language}.",
+    "noVideoBibleCollections": "Per questa lingua n'èn anc betg disponiblas collecziuns da Bibla video.",
+    "bibleProjectCollectionsTitle": "Collecziuns BibleProject en {language}",
+    "bibleProjectDescription": "Serias e studis BibleProject disponibels en {language}.",
+    "noBibleProjectCollections": "Per questa lingua n'èn anc betg disponiblas collecziuns BibleProject.",
+    "sportsStories": "Istorgias da sport",
+    "sportsTitle": "Istorgias da sport e d'atletas en {language}",
+    "sportsDescription": "Istorgias da sport cun focus sin la fe e collecziuns d'atletas disponiblas en {language}.",
+    "noSportsCollections": "Per questa lingua n'èn anc betg disponiblas collecziuns da sport u d'istorgias d'atletas.",
+    "fullyDubbed": "Cumplainamain dubià",
+    "dubbedVideosTitle": "Videos en {language} tenor collecziun",
+    "dubbedVideosDescription": "Navigai tras videos cumplettamain dubiads en {language}, gruppads cun lur collecziun per chattar pli facilmain.",
+    "noDubbedVideos": "Per questa lingua n'èn anc betg disponibels videos cumplettamain dubiads.",
+    "subtitlesAvailable": "Suttitels disponibels",
+    "subtitlesTitle": "Videos en {language} cun suttitels",
+    "subtitlesDescription": "Quests videos cuntegnan suttitels en {language}, sche l'audio discurrì en {language} n'è anc betg disponibel.",
+    "noSubtitleVideos": "Per questa lingua n'èn anc betg disponibels videos be cun suttitels.",
+    "dubbed": "Dubià",
+    "subtitles": "Suttitels",
+    "newLabel": "Nov",
+    "fromCollection": "Da {collection}",
+    "standaloneVideos": "Videos independents",
+    "videosFromCollection": "Videos da {collection}.",
+    "standaloneDescription": "Videos independents en questa lingua.",
+    "openCollection": "Avrir collecziun"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project – Guardar",
+    "watch": "Guardar",
+    "watchNow": "Guardar ussa",
+    "mutePreview": "Silenziar la previsiun",
+    "unmutePreview": "Activar il tun da la previsiun",
+    "nextVideo": "Proxim video",
+    "featured": "Premà",
+    "showVideo": "Mussar {title}",
+    "previousVideoPreview": "Previsiun dal video precedent",
+    "nextVideoPreview": "Previsiun dal proxim video",
+    "mediaCollection": "Collecziun da medias",
+    "scrollToVideo": "Scrolar tar il video {title}"
+  },
+  "WatchFooter": {
+    "home": "Pagina principala da Jesus Film Project",
+    "navigation": "Navigaziun dal pei da pagina",
+    "share": "Partir",
+    "watch": "Guardar",
+    "giving": "Donate",
+    "about": "Davart nus",
+    "products": "Prodots",
+    "resources": "Resursas",
+    "partners": "Partenaris",
+    "contact": "Contactar",
+    "giveNow": "Donar ussa",
+    "resourcesVersion": "Resursas ({version})",
+    "office": "Uffizi",
+    "fax": "Telefax",
+    "privacyPolicy": "Politica da privatadad",
+    "legalStatement": "Decleraziun giuridica",
+    "newsletter": "As annunziar per novitads novitads"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Construì per novitads globalas",
+    "title": "Il messadi na mida betg. La moda co che persunas guardan, gea.",
+    "description": "Nus reconstruin nossa biblioteca da videos e novitads da fundament ensi, engaschond decennis da lavur da translaziun per las plattafurmas nua che persunas gia sa radunan, guardan e partan.",
+    "translatedLibraryTitle": "La biblioteca da films la pli translatada dal mund",
+    "translatedLibraryDescription": "Decennis da lavur da translaziun, purtads da partenaris da ministeri fidabels, han construì ina biblioteca cun millis da pistas da lingua, uschia che persunas pon scuntràr l'istorgia da Jesus en la lingua che las cuntanscha il pli profund.",
+    "trustedVoicesTitle": "Purtretsar vuschs fidablas en novitads novas",
+    "trustedVoicesDescription": "Nus reconstruin co che novitads da l'evangeli vegnan raquintadas visualmain, combinond translaziuns fidablas cun novitads modernas, uschia che il messadi po sa mover libramain tras plattafurmas, culturas e scherms.",
+    "missionTeamTitle": "Pli che ina biblioteca. In team orientà sin la missiun.",
+    "missionTeamDescription": "Jesus Film Project è in team global da translaturas e translatuors, specialists da medias, editurs e creaturs che transfurman decennis d'experientscha da ministeri en novitads per persunas che fan discipuls en tut il mund.",
+    "buildingNext": "Tge che nus construin vinavant",
+    "nextStepsTitle": "Plattafurma da proxim pass",
+    "nextStepsDescription": "Connectai persunas che guardan cun novitads concretas sin lur viadi spiertal, gidond ad ir in proxim pass en la communitad, la Scrittira u la missiun.",
+    "mediaLibraryTitle": "Biblioteca da medias evangelistica",
+    "mediaLibraryDescription": "Ina vasta biblioteca da novitads cristianas cun millis da videos, films e novitads disponibels en pliras linguas per il ministeri ed evangelisaziun mundiala.",
+    "ministryToolsTitle": "Instruments digitals per ministeris",
+    "ministryToolsDescription": "Administraziun da videos, distribuziun da cuntegn, interacziun cun il public ed analitica concepids per gidar ministeris a cuntanscher dapli persunas cun success.",
+    "invitationEyebrow": "Vus essas invitads",
+    "invitationTitle": "Gidai a construir <highlight>la proxima generaziun</highlight> d'instruments per la missiun",
+    "invitationDescription": "Nus envidain persunas praticantas, creaturs e partenaris ad access anticipà. Tschertgai ils novs instruments l'emprim, dà feedback e gidai a furmar products concepids per la lavur missionara reala.",
+    "betaTester": "Daventar beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collecziun da Bibla video",
+    "gospelRailTitle": "Scuvri l'entira istorgia",
+    "videoBibleDescription": "Explorai nossa collecziun da videos e novitads che fan viver la Bibla cun novitads captivantas e novitads d'instrucziun.",
+    "showcaseTitle": "La Scrittira raquintada tras film",
+    "adventEyebrow": "Advent da Nadal",
+    "adventTitle": "Cuntegn da Nadal",
+    "adventDescription": "Unì our viadi d'Advent cun in video quotidian che augmentsa l'attesa per Nadal ed explora l'aspectanza, la plaschair e la sanadad da la venida da Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Seria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curs video",
+    "journeyWithJesusTitle": "Viadi cun Jesus",
+    "gospelsOnVideoEyebrow": "Mintga Evangeli, raquintà en video",
+    "scriptureAsWrittenTitle": "Scrittira, pronunziada exact sco scritta",
+    "merryChristmas": "Legraivels Nadal!",
+    "daysUntilChristmas": "{count, plural, one {# di fin Nadal} other {# dis fin Nadal}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Linguas",
+    "metadataDescription": "Navigai tras videos JesusFilm tenor lingua.",
+    "eyebrow": "Linguas da guardar",
+    "title": "Tscherner ina lingua",
+    "description": "Explorai linguas tenor regiun u navigai la glista cumpletta.",
+    "searchPlaceholder": "Tschertgar linguas u pajais...",
+    "searchLabel": "Tschertgar linguas u pajais",
+    "clearSearch": "Sfurzar tschertga",
+    "browse": "Navigar",
+    "browseByRegion": "Navigar tenor regiun e pajais",
+    "languageCount": "{count, plural, one {# lingua} other {# linguas}}",
+    "region": "Regiun",
+    "countryLanguages": "Linguas da {country}",
+    "showLess": "Mussar damain",
+    "showMore": "Mussar anc {count}",
+    "noLanguages": "Naginas linguas chattadas",
+    "tryAnotherSearch": "Empruvai in auter pled da tschertga."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istorgia da guardar | Jesus Film Project",
+    "title": "Istorgia da guardar",
+    "loading": "Chargiament da l'istorgia",
+    "empty": "Anc nagut qua",
+    "emptyDescription": "Videos che vus guardais entant che vus essas annunziads cumparan qua.",
+    "earlier": "Avant",
+    "today": "Oz",
+    "yesterday": "Ier"
+  },
+  "AccountControl": {
+    "account": "Cont",
+    "accountMenu": "Menu dal conto",
+    "signIn": "S'annunziar",
+    "signOut": "Sortir",
+    "signedIn": "Annunzià",
+    "history": "Istorgia",
+    "logOut": "Sair sortir"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pagina betg chattada",
+    "eyebrow": "Pagina betg chattada",
+    "screenReaderPrefix": "Pagina betg chattada:",
+    "title": "Questa scena n'è betg qua.",
+    "description": "La pagina è eventualmain sa midada, ma l'istorgia cuntinuescha.",
+    "actionsLabel": "Acziuns per pagina betg chattada",
+    "backToWatch": "Torna a guardar",
+    "browseVideos": "Navigar videos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Guardar il film curt",
+    "actions": {
+      "joinUs": "Unì a nus",
+      "shareMission": "Partir nossa missiun"
+    },
+    "welcomeStart": {
+      "label": "Fe & Scrittira",
+      "title": "Las novitads da videos dad oz",
+      "description": "cuntegn video centrà sin la fe da nossa biblioteca per inspirar, provocar e stimular a reflitgar."
+    },
+    "welcomeMorning": {
+      "label": "Inspiraziun dal bunmain",
+      "title": "Bien di! Las novitads biblicas dad oz spetgan.",
+      "description": "Cumenzai il di cun novitads biblicas encuraschantas, fatgas per inspirar e rinforzar voss spiert."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspiraziun da la damaun tardiva",
+      "title": "Bien di! Novitads biblicas per voss di.",
+      "description": "cuntegn biblic encuraschant, ideal per la pausa da la damaun tardiva u per cuntinuar cun inspiraziun."
+    },
+    "welcomeEvening": {
+      "label": "Inspiraziun da la saira",
+      "title": "Buna saira! Relaxai cun novitads biblicas.",
+      "description": " novitads biblicas calmantas per gidar a reflitgar e chattar cumfort, cura che voss di vegn a fin."
+    },
+    "joinUs": {
+      "label": "Unì a nus",
+      "title": "Milliardas tschertgan",
+      "description": "La racolta è qua. Unì cun nus e partscha il evangelium cun il mund per meds digitals."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Vamos ensemen",
+      "title": "Raquintar ensemen l'istorgia da Jesus",
+      "description": "Aschia che persunas pon udir e vesair l'amur da Jesus en lur atgna lingua, gist là nua ch'ellas èn."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% concordanza",
+    "none": "Naginas recumandaziuns chattadas per quest video en questa lingua."
+  },
+  "BetaTesterModal": {
+    "title": "Daventar beta tester",
+    "trigger": "Daventar beta tester",
+    "loadFailed": "Insatge n'è betg ì sco previs.",
+    "loading": "Chargiament...",
+    "openFormNewTab": "Avrir il formular en ina nova tab",
+    "close": "Serrar",
+    "iframeTitle": "Daventar beta tester"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

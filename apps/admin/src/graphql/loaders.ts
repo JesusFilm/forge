@@ -233,8 +233,7 @@ export function createLoaders(prisma: PrismaClient) {
      * `children { child { durationSeconds } }` for a 61-chapter
      * collection resolves all of them in ONE query instead of 61.
      *
-     * Semantics mirror `hydrateCardPillFields` in
-     * `services/hybrid-search.service.ts`: prefer the primary-language
+     * Semantics mirror watch search card hydration: prefer the primary-language
      * playable dub, else the longest-duration playable dub. Playable =
      * published + has HLS + not soft-deleted + duration > 0 (the last
      * excludes Core sync-glitch rows that report duration 0). Returns

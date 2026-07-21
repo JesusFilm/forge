@@ -11,11 +11,7 @@ import type {
   WatchHomeModel,
   WatchHomeVideoInput,
 } from "../watchHome/model"
-import {
-  rotateLanguage,
-  type RotationState,
-  type ShowcaseDubInput,
-} from "./languageRotation"
+import { pickViewerLanguage, type ShowcaseDubInput } from "./languageRotation"
 import type {
   ExcerptWindow,
   ShowcaseChapter,
@@ -27,6 +23,9 @@ import type {
 
 /** KTD-10's reserved section title. Compared trimmed + case-folded (see below). */
 export const SHOWCASE_STATS_SECTION_TITLE = "showcase-stats"
+
+/** KTD-7's reserved category-label marker for the language chapter. Trimmed + case-folded. */
+export const SHOWCASE_LANGUAGES_CATEGORY_LABEL = "showcase-languages"
 
 /** R6's excerpt band: a bounded 20-40s portion of any catalog video. */
 export const EXCERPT_MIN_SECONDS = 20
@@ -68,6 +67,8 @@ type ShowcaseMediaCollectionLike = {
   readonly subtitle?: string | null
   readonly mcDescription?: string | null
   readonly description?: string | null
+  // KTD-7 language-chapter marker; the fragment selects it unaliased, so one name.
+  readonly categoryLabel?: string | null
   readonly items?: readonly ShowcaseExperienceItem[] | null
 }
 
@@ -113,6 +114,12 @@ function isStatsSection(title: string): boolean {
   return title.toLowerCase() === SHOWCASE_STATS_SECTION_TITLE
 }
 
+function isLanguageSection(categoryLabel: string): boolean {
+  // Sibling to isStatsSection: the marker is curator-authored, so fold case — a
+  // casing/whitespace slip must not fail to designate the language chapter.
+  return categoryLabel.toLowerCase() === SHOWCASE_LANGUAGES_CATEGORY_LABEL
+}
+
 function parseStatLines(description: string | null | undefined): string[] {
   if (!description) return []
   return description
@@ -136,7 +143,10 @@ export function parseShowcaseExperience(
 } {
   const chapters: ShowcaseChapter[] = []
   const statLines: string[] = []
-  const drops: ShowcaseParseDrops = { items: 0, chapters: 0 }
+  const drops: ShowcaseParseDrops = {
+    items: 0,
+    chapters: 0,
+  }
 
   // Top level only: KTD-10 authors one MediaCollection per chapter at the root.
   ;(blocks ?? []).forEach((block, index) => {
@@ -169,12 +179,16 @@ export function parseShowcaseExperience(
       if (authored > 0) drops.chapters += 1
       return
     }
-    chapters.push({
+    const chapter: ShowcaseChapter = {
       id: chapterId,
       title,
       subtitle: blockText(media.mcSubtitle, media.subtitle) || null,
       excerpts,
-    })
+    }
+    if (isLanguageSection(blockText(media.categoryLabel))) {
+      chapter.languageChapter = { centerpieceExcerptId: excerpts[0].id }
+    }
+    chapters.push(chapter)
   })
 
   return { chapters, statLines, drops }
@@ -375,15 +389,15 @@ export type FetchShowcaseVideo = (
 ) => Promise<ShowcaseVideoDubs | null>
 
 /**
- * Resolve one excerpt's playable stream + rotated language + window. Returns null on
- * ANY failure (fetch throw, missing video, nothing playable) so R16's ladder skips the
- * item; the caller's rotation state is left untouched on a miss.
+ * Resolve one ordinary excerpt's playable stream in the viewer's chosen language (or the
+ * default chain) plus its window. Returns null on ANY failure (fetch throw, missing video,
+ * nothing playable) so R16's ladder skips the item rather than surfacing an error.
  */
 export async function resolveExcerptStream(args: {
   excerpt: ShowcaseExcerpt
-  rotation: RotationState
+  viewerLanguageSlug: string | null
   fetchVideo: FetchShowcaseVideo
-}): Promise<{ stream: ShowcaseStream; rotation: RotationState } | null> {
+}): Promise<ShowcaseStream | null> {
   let video: ShowcaseVideoDubs | null
   try {
     video = await args.fetchVideo(args.excerpt.slug)
@@ -392,20 +406,17 @@ export async function resolveExcerptStream(args: {
   }
   if (!video) return null
 
-  const rotated = rotateLanguage(video.dubs, args.rotation)
-  if (!rotated) return null
+  const pick = pickViewerLanguage(video.dubs, args.viewerLanguageSlug)
+  if (!pick) return null
 
   return {
-    stream: {
-      hls: rotated.pick.hls,
-      languageSlug: rotated.pick.languageSlug,
-      languageName: rotated.pick.languageName,
-      muxPlaybackId: rotated.pick.muxPlaybackId,
-      // The DUB's duration is what actually plays — Video.durationSeconds is the
-      // primary language's and drifts per dub.
-      window: resolveExcerptWindow(rotated.pick.durationSeconds),
-      claimsLanguage: rotated.pick.claimsLanguage,
-    },
-    rotation: rotated.nextState,
+    hls: pick.hls,
+    languageSlug: pick.languageSlug,
+    languageName: pick.languageName,
+    muxPlaybackId: pick.muxPlaybackId,
+    // The DUB's duration is what actually plays — Video.durationSeconds is the
+    // primary language's and drifts per dub.
+    window: resolveExcerptWindow(pick.durationSeconds),
+    claimsLanguage: pick.claimsLanguage,
   }
 }

@@ -7,7 +7,9 @@
     "noContent": "Nějë żódnégò trzebła dostãpnegò.",
     "homepageMisconfigured": "Strónka głównô do òbòcznégò òglądaniô jes źle kònfigurowónô.",
     "defaultTemplateMisconfigured": "Domëslna sztëmlô do òbòcznégò òglądaniô jes źle kònfigurowónô.",
-    "authFailed": "Ni mòże sã ùwierzytelnic z sërwisã trzebła. Jemù mòże, skòntaktuj sã z pòdpòrtã, jézdrzé to trwô."
+    "authFailed": "Ni mòże sã ùwierzytelnic z sërwisã trzebła. Jemù mòże, skòntaktuj sã z pòdpòrtã, jézdrzé to trwô.",
+    "pageLoadFailed": "Cos sã pòdriło.",
+    "tryAgain": "Spróbùj jinã razã"
   },
   "VideosPage": {
     "title": "Wszëtczé widea",
@@ -22,7 +24,8 @@
     "promoHeading": "Chcesz lepiéj pòjmac Biblëjã?",
     "joinBibleStudy": "Dołączë do naju biblijnégò studium",
     "previousQuote": "Pòprzédni biblijny cytat",
-    "nextQuote": "Nôstãpny biblijny cytat"
+    "nextQuote": "Nôstãpny biblijny cytat",
+    "readPassage": "Przeczëtôj nen ùstãp w swòji Biblëji."
   },
   "DownloadButton": {
     "checking": "Sprawdzanié",
@@ -73,7 +76,8 @@
     "selectLanguage": "Wëbierz jãzëk",
     "searchPlaceholder": "Szëkôj jãzëków…",
     "languages": "Jãzëczi",
-    "noMatches": "Brëk dopasowaniów"
+    "noMatches": "Brëk dopasowaniów",
+    "notAvailable": "Nie dostãpné"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Jãzëk",
@@ -100,10 +104,7 @@
     "seriesLabel": "SERIJA · {episodes}",
     "changeAudioLanguage": "Zmieni jãzëk audio",
     "share": "Pòdzél sã",
-    "languages": "Jãzëczi",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "Jãzëczi"
   },
   "WatchModal": {
     "close": "Zatrzëmôj"
@@ -115,7 +116,8 @@
     "questions": "Pòwjązóné pëtania",
     "askYours": "Zadaj swòje",
     "chatWithPerson": "Rozmôwôj z człowiekã",
-    "askBibleQuestion": "Zadaj biblijné pëtanié"
+    "askBibleQuestion": "Zadaj biblijné pëtanié",
+    "quiz": "Kviz"
   },
   "WatchQuestionPanel": {
     "messageType": "Rodzôj wiadomòscë",
@@ -173,7 +175,8 @@
     "searchRegion": "Szëkôj wideo",
     "clearSearch": "Wëczëszczë szëkbã",
     "changeAudioLanguage": "Zmieni jãzëk audio",
-    "home": "Strona domô JesusFilm"
+    "home": "Strona domô JesusFilm",
+    "closeSearch": "Zatrzëmôj szëkbã"
   },
   "SearchOverlay": {
     "dialogLabel": "Szëkôj i przerëcëwôj wideo",
@@ -208,14 +211,19 @@
     "clearLanguages": "Wëczëszczë",
     "queryLanguageDetected": "Wëkryté {language}",
     "searchInLanguage": "Szëkôj pò {language}",
-    "tryDifferentKeywordsOrLanguage": "Spróbùj jinëch słów abò wëbiérz jinë jãzëk szëkbë"
+    "tryDifferentKeywordsOrLanguage": "Spróbùj jinëch słów abò wëbiérz jinë jãzëk szëkbë",
+    "useWebsiteDefaultLanguage": "Ùżëjë domëslnegò jãzëka szëkbë stronë",
+    "removeLanguage": "Ùsóni {language}",
+    "browseMode": "Mòd òglądaniô szëkbë"
   },
   "HeroPlayer": {
     "playWithSound": "Òglądôj terôz",
-    "tapToUnmute": "Dotkni, bë włączëc głos"
+    "tapToUnmute": "Dotkni, bë włączëc głos",
+    "nextEpisode": "Nôstãpny òdczińk"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Wczytëwanié trzebła"
+    "loadingContent": "Wczytëwanié trzebła",
+    "loadingVideo": "Wczytëwanié wideo"
   },
   "VideoLabels": {
     "video": "Wideo",
@@ -226,7 +234,8 @@
     "series": "Sérija",
     "collection": "Kolekcjô",
     "trailer": "Zapowiedz",
-    "behindTheScenes": "Za kulisama"
+    "behindTheScenes": "Za kulisama",
+    "chapter": "Rozdzél"
   },
   "SiblingCarousel": {
     "clipPosition": "Klip {current} z {total}",
@@ -238,12 +247,253 @@
     "noImage": "Brëk òbrôzka",
     "playingNow": "Gróné terôz",
     "previousChapter": "Pòprzédni rozdzél",
-    "nextChapter": "Nôstãpny rozdzél"
+    "nextChapter": "Nôstãpny rozdzél",
+    "thumbnailAlt": "Miniaturka {title}",
+    "relatedVideoThumbnail": "Miniaturka pòwjązónégò wideo"
   },
   "SearchResultCard": {
     "experience": "Dožéwiéńé",
     "episodeCount": "{count, plural, one {# òdczińk} few {# òdczińczi} many {# òdczińków} other {# òdczińka}}",
     "thumbnailAlt": "Miniaturka wideo"
+  },
+  "Feedback": {
+    "openForm": "Òtemkni fòrmùlôrz ùwôgòw",
+    "label": "Ùwôgã",
+    "couldNotLoad": "Ni mòże sã wczytac fòrmùlôrzã ùwôgòw.",
+    "loadingForm": "Wczytëwanié fòrmùlôrzã ùwôgòw…",
+    "retry": "Spróbùj jinã razã",
+    "openFormShort": "Òtemkni fòrmùlôrz",
+    "cancel": "Ùniewôżni",
+    "title": "Beta ùwôgòw",
+    "description": "Pòdzelë sã tim, co dłëgo robi i co mòżemë pòprzëc. Ten fòrmùlôrz dostôwôsz òd Google.",
+    "openInNewTab": "Òtemkni fòrmùlôrz w nowi karce",
+    "closeForm": "Zatrzëmôj fòrmùlôrz ùwôgòw",
+    "loadingGoogleForm": "Wczytëwanié fòrmùlôrzã Google…",
+    "iframeTitle": "Pòslëj beta ùwôgã"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Darmòwé chrzéścijańsczé wideo pò {language} | Jesus Film Project",
+    "metadataDescription": "Przerëcëwôj filma ò Jezusã, biblijné pòwiédzë, seriije ò ùczbë i wideo do òdpowiedzeniô ze zdublowanym audio abò titrama pò {language}.",
+    "heroTitle": "Darmòwé chrzéścijańsczé wideo pò {language}",
+    "heroDescription": "Przerëcëwôj filma ò Jezusã, biblijné pòwiédzë, seriije ò ùczbë i wideo do òdpowiedzeniô dostãpné pò {language}. W pòmòstach nôprzédni są wësztkò zdublowóne wideo, a niżi widzisz tylko z titrama.",
+    "languageCollection": "Kolekcjô jãzëka",
+    "itemCount": "{count, plural, one {# pòzycjô} few {# pòzycje} many {# pòzycjów} other {# pòzycjô}}",
+    "videoCount": "{count, plural, one {# wideo} few {# wideo} many {# wideo} other {# wideo}}",
+    "videosInGroups": "{videoCount, plural, one {# wideo} few {# wideo} many {# wideo} other {# wideo}} w {groupCount, plural, one {# grupie} few {# grupach} many {# grupach} other {# grupach}}",
+    "sectionNavLabel": "Sekcje inwëntarza jãzëków",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nowé",
+    "videoBible": "Wideo Biblëjô",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Kolekcje",
+    "subtitlesOnly": "Tylko titrë",
+    "newlyAdded": "Nowò dodóne",
+    "newVideosTitle": "Nowé chrzéścijańsczé wideo pò {language}",
+    "newestFirst": "Nônówsze nôprzéd",
+    "noPublishedVideos": "Jeszcze nie nalazłë sã zôpublikòwóné wideo do tegò jãzëka.",
+    "bibleAndGospelFilms": "Fùlme biblijné i ewangjeliczné",
+    "videoBibleCollectionsTitle": "Kolekcje Wideo Biblëjô pò {language}",
+    "videoBibleDescription": "Kolekcje òparte na Pismie, jak LUMO, JESUS, Magdalena i Dzieje w {language}.",
+    "noVideoBibleCollections": "Jeszcze nie ma kolekcji Wideo Biblëjô dlô tegò jãzëka.",
+    "bibleProjectCollectionsTitle": "Kolekcje BibleProject pò {language}",
+    "bibleProjectDescription": "Seriije i studia BibleProject dostãpné pò {language}.",
+    "noBibleProjectCollections": "Jeszcze nie ma kolekcji BibleProject dlô tegò jãzëka.",
+    "sportsStories": "Sportowé pòwiédzë",
+    "sportsTitle": "Sportowé i ò sportowcach pò {language}",
+    "sportsDescription": "Pòwiédzë ò wierze i kolekcje ò sportowcach dostãpné pò {language}.",
+    "noSportsCollections": "Jeszcze nie ma kolekcji ò sporcie abò ò sportowcach dlô tegò jãzëka.",
+    "fullyDubbed": "Cãsto zdublowóne",
+    "dubbedVideosTitle": "Wideo pò {language} pò kolekcjach",
+    "dubbedVideosDescription": "Przerëcëwôj cãsto zdublowóne wideo pò {language}, ùgrupowóné z kòlekcją, bë lepiéj je nalézc.",
+    "noDubbedVideos": "Jeszcze nie ma cãsto zdublowónëch wideo dlô tegò jãzëka.",
+    "subtitlesAvailable": "Titrë dostãpné",
+    "subtitlesTitle": "Wideo pò {language} z titrama",
+    "subtitlesDescription": "Te wideo mùją titrë pò {language}, czej mówionô audio pò {language} je jeszcze niedostãpnô.",
+    "noSubtitleVideos": "Jeszcze nie ma wideo tylko z titrama dlô tegò jãzëka.",
+    "dubbed": "Zdublowóne",
+    "subtitles": "Titrë",
+    "newLabel": "Nowé",
+    "fromCollection": "Z {collection}",
+    "standaloneVideos": "Samòstójné wideo",
+    "videosFromCollection": "Wideo z {collection}.",
+    "standaloneDescription": "Samòstójné wideo w tim jãzëku.",
+    "openCollection": "Òtemkni kolekcjã"
+  },
+  "WatchHome": {
+    "pageTitle": "Òglądôj | Jesus Film Project",
+    "watch": "Òglądôj",
+    "watchNow": "Òglądôj terôz",
+    "mutePreview": "Wëłączë pòdzérk",
+    "unmutePreview": "Włączë pòdzérk",
+    "nextVideo": "Nôstãpné wideo",
+    "featured": "Wëbróné",
+    "showVideo": "Pòkôżë {title}",
+    "previousVideoPreview": "Pòprzédny pòdzérk wideo",
+    "nextVideoPreview": "Nôstãpny pòdzérk wideo",
+    "mediaCollection": "Kolekcjô mediów",
+    "scrollToVideo": "Przesuń do wideo {title}"
+  },
+  "WatchFooter": {
+    "home": "Strona domô Jesus Film Project",
+    "navigation": "Nawigacjô w stopce",
+    "share": "Pòdzél sã",
+    "watch": "Òglądôj",
+    "giving": "Dôwanié",
+    "about": "Ò nas",
+    "products": "Produktë",
+    "resources": "Zasoby",
+    "partners": "Partnery",
+    "contact": "Kòntakt",
+    "giveNow": "Dodôj terôz",
+    "resourcesVersion": "Zasoby ({version})",
+    "office": "Bùro",
+    "fax": "Faks",
+    "privacyPolicy": "Pòlitika prywatnoscë",
+    "legalStatement": "Prawné òświadczenié",
+    "newsletter": "Zapisz sã do naszégò biuletynu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Zbùdowóné dlô òbracô globalnégò",
+    "title": "Wiadłowizna sã nie zmienia. Zmienia sã to, jak lëdze òbòczają.",
+    "description": "Przëzbudowùjemë naszą bibliotékã wideo i nôrzãdza òd zera, wkłôdając de lëtwù lat przëłożeniowégò robòtë w te platformë, gdzie lëdze ju sã zbërawają, òbòczają i dzélą sã.",
+    "translatedLibraryTitle": "Nôbarżi przëłożonô bibliotéka filmòw na swiece",
+    "translatedLibraryDescription": "De lëtwù lat przëłożeniowégò robòtë, niesóné przez zôufónëch partnérów służbë, zbudowało bibliotékã z tësãcamë jãzëkowëch trzëmów, bë lëdze mògli spòtczac historiã Jezusë w jãzëku, co jegò nôgłãbiéj doszłé.",
+    "trustedVoicesTitle": "Niesenié zôufónëch głosów w nowé fòrmatë",
+    "trustedVoicesDescription": "Przëzbudowùjemë, jak pòwiédzë ò ewangjelii są òpòwiôdóné wizualno, złączając zôufóné przëłożenié z nowoczésnymë fòrmatama, bë wiadłowizna mògła swòbòdno ùsadzac pò platformach, kùlturach i ekranach.",
+    "missionTeamTitle": "Wicy niż bibliotéka. Zespół z misją.",
+    "missionTeamDescription": "Jesus Film Project to globalny zespół tłómaczów, specjalistów òd mediów, redaktorów i twórców, co z de lëtwù lat przëdôłégò doswiadczenia robi nôrzãdza dlô wszëtczich, co ząbią do ùczbë.",
+    "buildingNext": "Co budujemë nôslédno",
+    "nextStepsTitle": "Platfòrma nôstãpnëch kroków",
+    "nextStepsDescription": "Łączë òbòczników z konkretnymë mòżlëwòtama na ich duchowni drodze, pòmôgając jim bëc nôslédnym krokã w społecznotã, Pismo abò misjã.",
+    "mediaLibraryTitle": "Ewangjeliczna bibliotéka mediów",
+    "mediaLibraryDescription": "Rozległô chrzéścijańskô bibliotéka mediów z tësãcamë wideo, filmów i zasobów dostãpnëch w wjelnëch jãzëkach do służbë i ewangjelizacjô na całim swiece.",
+    "ministryToolsTitle": "Cyfrowé nôrzãdza dlô służbów",
+    "ministryToolsDescription": "Zarządzanié wideo, rozdôwanié trzebła, zaangażowanié òdbiérców i analitëka zaprojektowóné, bë pòmòc służbama dosięgnąc wicy lëdzy efektiwni.",
+    "invitationEyebrow": "Jestecie zaprosony",
+    "invitationTitle": "Pòmòżë zbudowac <highlight>nôslédną generacjã</highlight> nôrzãdzów misji",
+    "invitationDescription": "Zapraszómë prakticzków, twórców i partnérów do wczaсznegò dostãpu. Testuj nowé nôrzãdza nôprzód, pòdzél sã ùwôgamë i pòmòżë ùkształtowac produktë zrobióné do fùl negò misijnégò robòtë.",
+    "betaTester": "Zòstań beta testerã"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kolekcjô Wideo Biblëjô",
+    "gospelRailTitle": "Òdkriwôj całi òpòwiédzã",
+    "videoBibleDescription": "Przerëcëwôj naszą kolekcjã wideo i zasobów, co òżëwiają Biblëjã przez wciągającé pòwiédzë i ùczenié.",
+    "showcaseTitle": "Pismie òpòwiedzóné przez film",
+    "adventEyebrow": "Bòżonarodzeniowô Adwent",
+    "adventTitle": "Liczenié do Bòżégò Narodzeniô",
+    "adventDescription": "Dołączë do naszegò adwentowégò pòdrożowaniô z dzélnim wideo, co budëje wëczekiwanié na Bòżé Narodzenié, pòkazywając nadzéjã, radośc i òbietnicã przëjéwë Jezusë.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Adwent BibleProject",
+    "nuaEyebrow": "Seriô NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seriô Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Wideo-kùrs",
+    "journeyWithJesusTitle": "Pòdróż z Jezusã",
+    "gospelsOnVideoEyebrow": "Wszëtczi Ewanjelje òpòwiedzóné na wideo",
+    "scriptureAsWrittenTitle": "Pismie, gôdóné dokłôdnie tak jak zapisóné",
+    "merryChristmas": "Wiesołëch Gòdów!",
+    "daysUntilChristmas": "{count, plural, one {# dzéń do Bòżégò Narodzeniô} few {# dni do Bòżégò Narodzeniô} many {# dniów do Bòżégò Narodzeniô} other {# dnia do Bòżégò Narodzeniô}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Jãzëczi",
+    "metadataDescription": "Przerëcëwôj wideo JesusFilm pò jãzëkach.",
+    "eyebrow": "Jãzëczi do òglądaniô",
+    "title": "Wëbierz jãzëk",
+    "description": "Przerëcëwôj jãzëczi pò régiónach abò przerëcëwôj całi lëstã.",
+    "searchPlaceholder": "Szëkôj jãzëków abò krajów...",
+    "searchLabel": "Szëkôj jãzëków abò krajów",
+    "clearSearch": "Wëczëszczë szëkbã",
+    "browse": "Przerëcëwôj",
+    "browseByRegion": "Przerëcëwôj pò régiónie i kraju",
+    "languageCount": "{count, plural, one {# jãzëk} few {# jãzëczi} many {# jãzëków} other {# jãzëka}}",
+    "region": "Régión",
+    "countryLanguages": "Jãzëczi {country}",
+    "showLess": "Pòkôżë mni",
+    "showMore": "Pòkôżë wicy {count}",
+    "noLanguages": "Nié nalazłë sã żódné jãzëczi",
+    "tryAnotherSearch": "Spróbùj jinégò szëkbòwégò słowa."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historiô òglądaniô | Jesus Film Project",
+    "title": "Historiô òglądaniô",
+    "loading": "Wczytëwanié historii",
+    "empty": "Tu jeszcze nic nie je",
+    "emptyDescription": "Wideo, co òglądasz bëdącé zalogòwónym, pòjawią sã tu.",
+    "earlier": "Wcześni",
+    "today": "Dzes",
+    "yesterday": "Wczora"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Ménu kònta",
+    "signIn": "Zalogùjë sã",
+    "signOut": "Wëlogùjë sã",
+    "signedIn": "Zalogòwóny",
+    "history": "Historiô",
+    "logOut": "Wëlogùjë sã"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Starna nie nalazłô sã",
+    "eyebrow": "Starna nie nalazłô sã",
+    "screenReaderPrefix": "Starna nie nalazłô sã:",
+    "title": "Tegò òbrôzù tu ni ma.",
+    "description": "Strona mògła sã przeniesc, ale òpòwiédzã brzedze dalij.",
+    "actionsLabel": "Czëńsztë do starnë nie nalazłë sã",
+    "backToWatch": "Wrócë do òglądaniô",
+    "browseVideos": "Przerëcëwôj wideo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Òglądôj krótczé wideo",
+    "actions": {
+      "joinUs": "Dołączë do naju",
+      "shareMission": "Dzielë sã naju misją"
+    },
+    "welcomeStart": {
+      "label": "Wiara ë Pismã",
+      "title": "Dzysiéjszé wideo pòzycje",
+      "description": "Treścë wideo òparte na wierze z naszi biblioteki, bë natchnąc, pòdwinąc do namësłu i zrodzëc refleksjã."
+    },
+    "welcomeMorning": {
+      "label": "Ranno inspiracjô",
+      "title": "Dziéń dobri! Dzysiéjszé biblijné chwile czekają.",
+      "description": "Zacznij dzéń òd zachęcających biblijnëch chwil, co mòją natchnąc i pòdnieść twòj duch."
+    },
+    "welcomeAfternoon": {
+      "label": "Pòpòłniowô inspiracjô",
+      "title": "Dziéń dobri! Biblijné chwile na Twòj dzéń.",
+      "description": "Zachęcającé biblijné treścë, récht dlô pòpòłniowégò òdpòczniku abò dalniejszi inspiracjë."
+    },
+    "welcomeEvening": {
+      "label": "Wieczornô inspiracjô",
+      "title": "Dobrë wieczór! Òdpòczni sã z biblijnymë chwilama.",
+      "description": "Sztëlne biblijné chwile, co pòmògą Ci przëmëslëc sã i nalézc ùspòkónié, jak dzéń sã kùńczë."
+    },
+    "joinUs": {
+      "label": "Dołączë do naju",
+      "title": "Miliardy szëkają",
+      "description": "Żniwa tu są. Dołączë do naju, jak dzélëmë sã ewangjeliją z òkrãgã przez médija cyfrowé."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Chòdzą bëmë razem",
+      "title": "Òpòwiôdanié ò Jezusie razem",
+      "description": "Bë mògli słëchac i widzec mòlëwòsc Jezusë w swòjim jãzëkù, tamò gdze są."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% dopasowaniô",
+    "none": "Nie nalazłë sã żódné pòlecenia dlô tegò wideo w tim jãzëkù."
+  },
+  "BetaTesterModal": {
+    "title": "Zòstań beta testerã",
+    "trigger": "Zòstań beta testerã",
+    "loadFailed": "Cos sã pòdriło.",
+    "loading": "Wczytëwanié...",
+    "openFormNewTab": "Òtemkni fòrmùlôrz w nowi karce",
+    "close": "Zatrzëmôj",
+    "iframeTitle": "Zòstań beta testerã"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",

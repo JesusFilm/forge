@@ -7,7 +7,9 @@
     "noContent": "ھېچقانداق مەزمۇن يوق.",
     "homepageMisconfigured": "كۆرۈش باش بېتى خاتا تەڭشەلگەن.",
     "defaultTemplateMisconfigured": "كۆرۈشنىڭ سۈكۈتتىكى قېلىپى خاتا تەڭشەلگەن.",
-    "authFailed": "مەزمۇن مۇلازىمىتى بىلەن دەلىللەش مۇمكىن بولمىدى. داۋاملاشسا قوللاشقا ئالاقىلىشىڭ."
+    "authFailed": "مەزمۇن مۇلازىمىتى بىلەن دەلىللەش مۇمكىن بولمىدى. داۋاملاشسا قوللاشقا ئالاقىلىشىڭ.",
+    "pageLoadFailed": "بىر ئىش خاتا بولدى.",
+    "tryAgain": "قايتا سىناڭ"
   },
   "VideosPage": {
     "title": "بارلىق سىنلار",
@@ -22,7 +24,8 @@
     "promoHeading": "ئىنجىلنى تېخىمۇ چوڭقۇر چۈشىنىشنى خالامسىز؟",
     "joinBibleStudy": "ئىنجىل تەتقىقاتىمىزغا قوشۇلۇڭ",
     "previousQuote": "ئالدىنقى ئىنجىل نەقىلى",
-    "nextQuote": "كېيىنكى ئىنجىل نەقىلى"
+    "nextQuote": "كېيىنكى ئىنجىل نەقىلى",
+    "readPassage": "بۇ بۆلەكنى ئىنجىلىڭىزدىن ئوقۇڭ."
   },
   "DownloadButton": {
     "checking": "تەكشۈرۈۋاتىدۇ",
@@ -73,7 +76,8 @@
     "selectLanguage": "تىل تاللاڭ",
     "searchPlaceholder": "تىللاردىن ئىزدەش…",
     "languages": "تىللەر",
-    "noMatches": "ماس نەتىجە يوق"
+    "noMatches": "ماس نەتىجە يوق",
+    "notAvailable": "مەۋجۇت ئەمەس"
   },
   "LanguagePickerModal": {
     "dialogTitle": "تىل",
@@ -100,10 +104,7 @@
     "seriesLabel": "سېرەي · {episodes}",
     "changeAudioLanguage": "ئاۋاز تىلىنى ئۆزگەرتىش",
     "share": "ھەمبەھىرلەش",
-    "languages": "تىللەر",
-    "downloadCollection": "Download all",
-    "checkingDownloads": "Checking…",
-    "downloadSessionError": "Unable to check your session. Please try again."
+    "languages": "تىللەر"
   },
   "WatchModal": {
     "close": "يېپىش"
@@ -115,7 +116,8 @@
     "questions": "مۇناسىۋەتلىك سوئاللار",
     "askYours": "ئۆزىڭىزنى سوراڭ",
     "chatWithPerson": "بىر ئادەم بىلەن پاراڭلىشىش",
-    "askBibleQuestion": "ئىنجىل سوئالى سوراش"
+    "askBibleQuestion": "ئىنجىل سوئالى سوراش",
+    "quiz": "ۋىكتورىنا"
   },
   "WatchQuestionPanel": {
     "messageType": "ئۇچۇر تۈرى",
@@ -173,7 +175,8 @@
     "searchRegion": "سىن ئىزدەش",
     "clearSearch": "ئىزدەشنى تازىلاش",
     "changeAudioLanguage": "ئاۋاز تىلىنى ئۆزگەرتىش",
-    "home": "JesusFilm باش بېتى"
+    "home": "JesusFilm باش بېتى",
+    "closeSearch": "ئىزدەشنى يېپىش"
   },
   "SearchOverlay": {
     "dialogLabel": "سىنلارنى ئىزدەش ۋە كۆرۈش",
@@ -208,14 +211,19 @@
     "clearLanguages": "تازىلاش",
     "queryLanguageDetected": "{language} بايقالدى",
     "searchInLanguage": "{language} دا ئىزدەش",
-    "tryDifferentKeywordsOrLanguage": "باشقا ئاچقۇچلۇق سۆزلەرنى ياكى باشقا ئىزدەش تىلىنى تاللاڭ"
+    "tryDifferentKeywordsOrLanguage": "باشقا ئاچقۇچلۇق سۆزلەرنى ياكى باشقا ئىزدەش تىلىنى تاللاڭ",
+    "useWebsiteDefaultLanguage": "ۋېب بېكەتنىڭ سۈكۈتتىكى ئىزدەش تىلىنى ئىشلىتىش",
+    "removeLanguage": "{language} نى چىقىرىۋېتىش",
+    "browseMode": "كۆرۈش ھالىتىدە ئىزدەش"
   },
   "HeroPlayer": {
     "playWithSound": "ھازىر كۆرۈش",
-    "tapToUnmute": "ئاۋازنى ئاچۇش ئۈچۈن چېكىڭ"
+    "tapToUnmute": "ئاۋازنى ئاچۇش ئۈچۈن چېكىڭ",
+    "nextEpisode": "كېيىنكى بۆلۈم"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "مەزمۇن يۈكلىنىۋاتىدۇ"
+    "loadingContent": "مەزمۇن يۈكلىنىۋاتىدۇ",
+    "loadingVideo": "سىن يۈكلىنىۋاتىدۇ"
   },
   "VideoLabels": {
     "video": "سىن",
@@ -226,7 +234,8 @@
     "series": "سېرەي",
     "collection": "يىغقۇ",
     "trailer": "ئالدىن كۆرسىتىش",
-    "behindTheScenes": "سەھنىنىڭ ئارقىسىدا"
+    "behindTheScenes": "سەھنىنىڭ ئارقىسىدا",
+    "chapter": "باب"
   },
   "SiblingCarousel": {
     "clipPosition": "{current}/{total} قىسقا بۆلەك",
@@ -238,12 +247,253 @@
     "noImage": "رەسىم يوق",
     "playingNow": "ھازىر قويۇلۇۋاتىدۇ",
     "previousChapter": "ئالدىنقى باب",
-    "nextChapter": "كېيىنكى باب"
+    "nextChapter": "كېيىنكى باب",
+    "thumbnailAlt": "{title} كىچىك رەسىمى",
+    "relatedVideoThumbnail": "مۇناسىۋەتلىك سىن كىچىك رەسىمى"
   },
   "SearchResultCard": {
     "experience": "تەجرىبە",
     "episodeCount": "{count, plural, one {# بۆلۈم} other {# بۆلۈم}}",
     "thumbnailAlt": "سىن كىچىك رەسىمى"
+  },
+  "Feedback": {
+    "openForm": "قايتما يوللاش جەدۋىلىنى ئېچىش",
+    "label": "قايتما",
+    "couldNotLoad": "قايتما جەدۋىلىنى يۈكلەش مۇمكىن بولمىدى.",
+    "loadingForm": "قايتما جەدۋىلى يۈكلىنىۋاتىدۇ…",
+    "retry": "قايتا سىناش",
+    "openFormShort": "جەدۋەلنى ئېچىش",
+    "cancel": "بىكار قىلىش",
+    "title": "Beta قايتما",
+    "description": "ئىشلىۋاتقانلىرى ۋە ياخشىلاشقا بولىدىغانلىرىنى ئورتاقلىشىڭ. بۇ جەدۋەل Google تەمىنلىگەن.",
+    "openInNewTab": "جەدۋەلنى يېڭى بەتكۈچتە ئېچىش",
+    "closeForm": "قايتما جەدۋىلىنى يېپىش",
+    "loadingGoogleForm": "Google جەدۋىلى يۈكلىنىۋاتىدۇ…",
+    "iframeTitle": "Beta قايتما يوللاش"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} دىكى ھەقسىز خىرىستىيان سىنلىرى | Jesus Film Project",
+    "metadataDescription": "{language} دىكى ئاۋازلىق ياكى تارتىملىق Jesus فىلىملىرى، ئىنجىل ھېكايىلىرى، شاگىرتلىق سېرەيلىرى ۋە تەبلىغ سىنلىرىنى كۆرۈڭ.",
+    "heroTitle": "{language} دىكى ھەقسىز خىرىستىيان سىنلىرى",
+    "heroDescription": "{language} دا بار بولغان Jesus فىلىملىرى، ئىنجىل ھېكايىلىرى، شاگىرتلىق سېرەيلىرى ۋە تەبلىغ سىنلىرىنى كۆرۈڭ. تولۇق دۇبلىرجە قىلىنغان سىنلار ئالدى بىلەن كۆرسىتىلىدۇ، تۆۋەندە پەقەت تارتىملىق تاللاشلار بار.",
+    "languageCollection": "تىل يىغقۇسى",
+    "itemCount": "{count, plural, one {# تۈر} other {# تۈر}}",
+    "videoCount": "{count, plural, one {# سىن} other {# سىن}}",
+    "videosInGroups": "{videoCount, plural, one {# سىن} other {# سىن}} {groupCount, plural, one {# گۇرۇپپا} other {# گۇرۇپپا}} دا",
+    "sectionNavLabel": "تىل يىغقۇ بۆلەكلىرى",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "يېڭى",
+    "videoBible": "سىنلىق ئىنجىل",
+    "bibleProject": "BibleProject",
+    "sports": "تەنتەربىيە",
+    "collections": "يىغقۇلار",
+    "subtitlesOnly": "پەقەت تارتىم",
+    "newlyAdded": "يېڭى قوشۇلغان",
+    "newVideosTitle": "{language} دىكى يېڭى خىرىستىيان سىنلىرى",
+    "newestFirst": "ئەڭ يېڭىسى ئالدىدا",
+    "noPublishedVideos": "بۇ تىل ئۈچۈن تېخى ئېلان قىلىنغان سىن تېپىلمىدى.",
+    "bibleAndGospelFilms": "ئىنجىل ۋە ئىنجىل خەۋىرى فىلىملىرى",
+    "videoBibleCollectionsTitle": "{language} سىنلىق ئىنجىل يىغقۇلىرى",
+    "videoBibleDescription": "{language} دىكى LUMO، JESUS، Magdalena ۋە Acts نى ئۆز ئىچىگە ئالغان مۇقەددەس كىتاب مەركەزلەشكەن يىغقۇلار.",
+    "noVideoBibleCollections": "بۇ تىل ئۈچۈن تېخى سىنلىق ئىنجىل يىغقۇسى يوق.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject يىغقۇلىرى",
+    "bibleProjectDescription": "{language} دا بار بولغان BibleProject سېرەيلىرى ۋە تەتقىقاتلىرى.",
+    "noBibleProjectCollections": "بۇ تىل ئۈچۈن تېخى BibleProject يىغقۇسى يوق.",
+    "sportsStories": "تەنتەربىيە ھېكايىلىرى",
+    "sportsTitle": "{language} تەنتەربىيە ۋە ئاتلېت ھېكايىلىرى",
+    "sportsDescription": "{language} دا بار بولغان ئېتىقاد مەركەزلەشكەن تەنتەربىيە ھېكايىلىرى ۋە ئاتلېتلارغا مەركەزلەشكەن يىغقۇلار.",
+    "noSportsCollections": "بۇ تىل ئۈچۈن تېخى تەنتەربىيە ياكى ئاتلېت ھېكايىسى يىغقۇسى يوق.",
+    "fullyDubbed": "تولۇق دۇبلىرجە قىلىنغان",
+    "dubbedVideosTitle": "{language} سىنلىرى يىغقۇ بويىچە",
+    "dubbedVideosDescription": "تېخىمۇ ئاسان تېپىش ئۈچۈن يىغقۇلىرى بىلەن گۇرۇپپىلانغان تولۇق دۇبلىرجە قىلىنغان {language} سىنلىرىنى كۆرۈڭ.",
+    "noDubbedVideos": "بۇ تىل ئۈچۈن تېخى تولۇق دۇبلىرجە قىلىنغان سىن يوق.",
+    "subtitlesAvailable": "تارتىم بار",
+    "subtitlesTitle": "{language} تارتىملىق سىنلار",
+    "subtitlesDescription": "سۆزلەنگەن {language} ئاۋاز تېخى بار بولمىغاندا، بۇ سىنلار {language} تارتىمىنى ئۆز ئىچىگە ئالىدۇ.",
+    "noSubtitleVideos": "بۇ تىل ئۈچۈن تېخى پەقەت تارتىملىق سىن يوق.",
+    "dubbed": "دۇبلىرجە",
+    "subtitles": "تارتىم",
+    "newLabel": "يېڭى",
+    "fromCollection": "{collection} دىن",
+    "standaloneVideos": "مۇستەقىل سىنلار",
+    "videosFromCollection": "{collection} دىكى سىنلار.",
+    "standaloneDescription": "بۇ تىلدىكى مۇستەقىل سىنلار.",
+    "openCollection": "يىغقۇنى ئېچىش"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project كۆرۈش",
+    "watch": "كۆرۈش",
+    "watchNow": "ھازىر كۆرۈش",
+    "mutePreview": "ئالدىن كۆرۈشنى ئاۋازسىز قىلىش",
+    "unmutePreview": "ئالدىن كۆرۈش ئاۋازىنى قايتۇرۇش",
+    "nextVideo": "كېيىنكى سىن",
+    "featured": "تاللانغان",
+    "showVideo": "{title} نى كۆرسىتىش",
+    "previousVideoPreview": "ئالدىنقى سىن ئالدىن كۆرۈشى",
+    "nextVideoPreview": "كېيىنكى سىن ئالدىن كۆرۈشى",
+    "mediaCollection": "مېدىيا يىغقۇسى",
+    "scrollToVideo": "{title} سىنىغا سۈرۈش"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project باش بېتى",
+    "navigation": "پۇت قىسىم يول باشلاش",
+    "share": "ھەمبەھىرلەش",
+    "watch": "كۆرۈش",
+    "giving": "ھىدايە",
+    "about": "ھەققىدە",
+    "products": "مەھسۇلاتلار",
+    "resources": "مەنبەلەر",
+    "partners": "ھەمكارلاشقۇچىلار",
+    "contact": "ئالاقە",
+    "giveNow": "ھازىر بېرىش",
+    "resourcesVersion": "مەنبەلەر ({version})",
+    "office": "ئامبار",
+    "fax": "فاكس",
+    "privacyPolicy": "مەخپىيەتلىك سىياسىتى",
+    "legalStatement": "قانۇنىي بايان",
+    "newsletter": "خەۋەرنامىمىزگە تىزىملىتىڭ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "دۇنياۋى ۋەزىپە ئۈچۈن قۇرۇلغان",
+    "title": "ئۇچۇر ئۆزگەرمەيدۇ. كىشىلەرنىڭ كۆرۈش ئۇسۇلى ئۆزگىرىدۇ.",
+    "description": "بىز سىن كۇتۇپخانىسى ۋە قوراللىرىمىزنى نۆلدىن قايتا قۇرۇۋاتىمىز، نەچچە ئون يىللىق تەرجىمە خىزمىتىنى كىشىلەر ئاللىبۇرۇن جەم بولۇپ، كۆرۈپ ۋە ھەمبەھىرلىنىدىغان سۇپىلارغا يۆتكەۋاتىمىز.",
+    "translatedLibraryTitle": "دۇنيادىكى ئەڭ كۆپ تەرجىمە قىلىنغان فىلىم كۇتۇپخانىسى",
+    "translatedLibraryDescription": "ئىشەنچلىك خىزمەتداشلار كۆتۈرۈپ يۈرگەن نەچچە ئون يىللىق تەرجىمە خىزمىتى مىڭلىغان تىل يوللىرىغا ئىگە كۇتۇپخانا بەرپا قىلدى، شۇنداق قىلىپ كىشىلەر ئەيسا مەسىھ ھېكايىسىنى ئۆزلىرىگە ئەڭ چوڭقۇر يېتىدىغان تىلدا قوبۇل قىلالايدۇ.",
+    "trustedVoicesTitle": "ئىشەنچلىك ئاۋازلارنى يېڭى فورماتلارغا ئېلىپ كىرىش",
+    "trustedVoicesDescription": "بىز ئىنجىل خەۋىرى ھېكايىلىرىنى كۆرۈنۈش ئارقىلىق قانداق سۆزلەشنى قايتا قۇرۇۋاتىمىز، ئىشەنچلىك تەرجىمىلەرنى زامانىۋى فورماتلار بىلەن بىرلەشتۈرۈپ، ئۇچۇر سۇپىلار، مەدەنىيەتلەر ۋە ئېكرانلار ئارىسىدا ئەركىن يۆتكىلىشى ئۈچۈن.",
+    "missionTeamTitle": "پەقەت كۇتۇپخانا ئەمەس. ۋەزىپە مەركەزلىك گۇرۇپپا.",
+    "missionTeamDescription": "Jesus Film Project دۇنيانىڭ ھەرقايسى جايلىرىدىكى شاگىرت يېتىشتۈرگۈچىلەر ئۈچۈن نەچچە ئون يىللىق خىزمەت تەجرىبىسىنى قوراللارغا ئايلاندۇرىدىغان تەرجىمانلار، مېدىيا مۇتەخەسسىسلەر، تەھرىرلەر ۋە ئىجادكارلاردىن تەركىب تاپقان دۇنياۋى گۇرۇپپىدۇر.",
+    "buildingNext": "كېيىن نېمە قۇرۇۋاتىمىز",
+    "nextStepsTitle": "كېيىنكى قەدەملەر سۇپىسى",
+    "nextStepsDescription": "كۆرگۈچىلەرنى ئۇلارنىڭ روھىي سەپىرىدىكى ئەمەلىي پۇرسەتلەر بىلەن باغلاپ، جامائەت، مۇقەددەس كىتاب ياكى ۋەزىپە تەرەپكە كېيىنكى قەدەم ئېلىشىغا ياردەم بېرىش.",
+    "mediaLibraryTitle": "تەبلىغ مېدىيا كۇتۇپخانىسى",
+    "mediaLibraryDescription": "دۇنيا بويىچە خىزمەت ۋە تەبلىغ ئۈچۈن كۆپ تىلدا بار بولغان مىڭلىغان سىن، فىلىم ۋە مەنبەلەرنى ئۆز ئىچىگە ئالغان كەڭ خىرىستىيان مېدىيا كۇتۇپخانىسى.",
+    "ministryToolsTitle": "خىزمەتلەر ئۈچۈن رەقەملىك قوراللار",
+    "ministryToolsDescription": "سىن باشقۇرۇش، مەزمۇن تارقىتىش، تاماشىبىنلار بىلەن ئالاقە ۋە ئانالىتىكا خىزمەتلەرنىڭ تېخىمۇ كۆپ كىشىگە ئۈنۈملۈك يېتىشى ئۈچۈن لايىھەلەنگەن.",
+    "invitationEyebrow": "سىزنى تەكلىپ قىلىمىز",
+    "invitationTitle": "ۋەزىپە قوراللىرىنىڭ <highlight>كېيىنكى ئەۋلادىنى</highlight> قۇرۇشقا ياردەم بېرىڭ",
+    "invitationDescription": "بىز ئەمەلىيەتچىلەر، ئىجادكارلار ۋە ھەمكارلاشقۇچىلارنى بالدۇر زىيارەت قىلىشقا تەكلىپ قىلىۋاتىمىز. يېڭى قوراللارنى ئالدى بىلەن سىناڭ، قايتما بېرىڭ ۋە ھەقىقىي ۋەزىپە خىزمىتى ئۈچۈن لايىھەلەنگەن مەھسۇلاتلارنى شەكىللەندۈرۈشكە ياردەم بېرىڭ.",
+    "betaTester": "Beta سىناقتا قاتنىشىش"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "سىنلىق ئىنجىل يىغقۇسى",
+    "gospelRailTitle": "تولۇق ھېكايىنى بايقاڭ",
+    "videoBibleDescription": "ئىنجىلنى جانلاندۇرىدىغان جەلپكار ھېكايىلەر ۋە تەلىملەرنى ئۆز ئىچىگە ئالغان سىن ۋە مەنبەلەر يىغقۇمىزنى كۆرۈڭ.",
+    "showcaseTitle": "فىلىم ئارقىلىق سۆزلەنگەن مۇقەددەس كىتاب",
+    "adventEyebrow": "روزا پائالىيىتى",
+    "adventTitle": "روزا پائالىيىتى ساناقى",
+    "adventDescription": "ئەيسا مەسىھنىڭ كېلىشىدىكى ئۈمىد، خۇشاللىق ۋە ۋەدىنى ئىزدىنىدىغان كۈندىلىك بىر سىن بىلەن روزا سەپىرىمىزگە قوشۇلۇڭ، Christmas ئۈچۈن كۈتۈش ھېسىياتىنى كۈچەيتىڭ.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject روزا پائالىيىتى",
+    "nuaEyebrow": "NUA سېرەي",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth سېرەي",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "سىن دەرسى",
+    "journeyWithJesusTitle": "ئەيسا بىلەن سەپەر",
+    "gospelsOnVideoEyebrow": "ھەر بىر ئىنجىل خەۋىرى، سىن ئارقىلىق",
+    "scriptureAsWrittenTitle": "مۇقەددەس كىتاب، يېزىلغىنى بويىچە دەل سۆزلەنگەن",
+    "merryChristmas": "روژدېستۋو بايرىمىڭىزغا مۇبارەك بولسۇن!",
+    "daysUntilChristmas": "{count, plural, one {روژدېستۋو بايرىمىغا # كۈن قالدى} other {روژدېستۋو بايرىمىغا # كۈن قالدى}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "تىللەر",
+    "metadataDescription": "JesusFilm سىنلىرىنى تىل بويىچە كۆرۈڭ.",
+    "eyebrow": "كۆرۈش تىللىرى",
+    "title": "بىر تىل تاللاڭ",
+    "description": "تىللەرنى رايون بويىچە كۆرۈڭ ياكى تولۇق تىزىملىكنى كۆرۈڭ.",
+    "searchPlaceholder": "تىل ياكى دۆلەت ئىزدەش...",
+    "searchLabel": "تىل ياكى دۆلەت ئىزدەش",
+    "clearSearch": "ئىزدەشنى تازىلاش",
+    "browse": "كۆرۈش",
+    "browseByRegion": "رايون ۋە دۆلەت بويىچە كۆرۈش",
+    "languageCount": "{count, plural, one {# تىل} other {# تىل}}",
+    "region": "رايون",
+    "countryLanguages": "{country} تىللىرى",
+    "showLess": "ئازراق كۆرسىتىش",
+    "showMore": "يەنە {count} نى كۆرسىتىش",
+    "noLanguages": "ھېچقانداق تىل تېپىلمىدى",
+    "tryAnotherSearch": "باشقا ئىزدەش سۆزىنى سىناڭ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "كۆرۈش تارىخى | Jesus Film Project",
+    "title": "كۆرۈش تارىخى",
+    "loading": "تارىخ يۈكلىنىۋاتىدۇ",
+    "empty": "بۇ يەردە تېخى ھېچنېمە يوق",
+    "emptyDescription": "كىرىپ تۇرۇپ كۆرگەن سىنلىرىڭىز بۇ يەردە كۆرۈنىدۇ.",
+    "earlier": "ئىلگىرى",
+    "today": "بۈگۈن",
+    "yesterday": "تۈنۈگۈن"
+  },
+  "AccountControl": {
+    "account": "ھېسابات",
+    "accountMenu": "ھېسابات تىزىملىكى",
+    "signIn": "كىرىش",
+    "signOut": "چىقىش",
+    "signedIn": "كىرگەن",
+    "history": "تارىخ",
+    "logOut": "چېكىنىش"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "بەت تېپىلمىدى",
+    "eyebrow": "بەت تېپىلمىدى",
+    "screenReaderPrefix": "بەت تېپىلمىدى:",
+    "title": "بۇ كۆرۈنۈش بۇ يەردە يوق.",
+    "description": "بەت يۆتكىلىپ كەتكەن بولۇشى مۇمكىن، ئەمما ھېكايە داۋام قىلىدۇ.",
+    "actionsLabel": "بەت تېپىلمىغان ھەرىكەتلەر",
+    "backToWatch": "كۆرۈشكە قايتىش",
+    "browseVideos": "سىنلارنى كۆرۈش"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "قىسقا فىلىمنى كۆرۈش",
+    "actions": {
+      "joinUs": "بىزگە قوشۇلۇڭ",
+      "shareMission": "بىزنىڭ ۋەزىپىمىزگە قوشۇلۇڭ"
+    },
+    "welcomeStart": {
+      "label": "ئېتىقاد ۋە مۇقەددەس كىتاب",
+      "title": "بۈگۈنكى تاللانغان سىنلار",
+      "description": "مەنبە كۇتۇپخانىسىمىزدىكى ئېتىقاد مەركەزلەشكەن سىن مەزمۇنى سىزنى ئىلھاملاندۇرۇش، قىيىنلاشتۇرۇش ۋە ئويغا سالىش ئۈچۈن."
+    },
+    "welcomeMorning": {
+      "label": "ئەتىگەنلىك ئىلھام",
+      "title": "خەيرلىك سەھەر! بۈگۈنكى ئىنجىل دەقىقىلىرى سىزنى كۈتمەكتە.",
+      "description": "كۈننى كۆڭۈلنى ئىلھاملاندۇرىدىغان، روھىڭىزنى كۆتۈرىدىغان ئىنجىل دەقىقىلىرى بىلەن باشلاڭ."
+    },
+    "welcomeAfternoon": {
+      "label": "چۈشتىن كېيىنكى ئىلھام",
+      "title": "خەيرلىك چۈش! كۈنىڭىز ئۈچۈن ئىنجىل دەقىقىلىرى.",
+      "description": "چۈشتىن كېيىنكى ئارام ۋاقتىڭىز ياكى داۋاملىق ئىلھام ئېلىشىڭىز ئۈچۈن مۇۋاپىق بولغان ئىلھاملاندۇرغۇچى ئىنجىل مەزمۇنى."
+    },
+    "welcomeEvening": {
+      "label": "كەچلىك ئىلھام",
+      "title": "خەيرلىك كەچ! ئىنجىل دەقىقىلىرى بىلەن ئارام ئېلىڭ.",
+      "description": "كۈنىڭىز ئاخىرلاشقاندا ئويلىنىشىڭىز ۋە تەسەللى تېپىشىڭىزغا ياردەم بېرىدىغان تىنچ ئىنجىل دەقىقىلىرى."
+    },
+    "joinUs": {
+      "label": "بىزگە قوشۇلۇڭ",
+      "title": "مىلياردلار ئىزدەۋاتىدۇ",
+      "description": "ھوسۇل ۋاقتى كەلدى. رەقەملىك مېدىيا ئارقىلىق خۇش خەۋەرنى دۇنياغا يەتكۈزۈشتە بىزگە قوشۇلۇڭ."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "بىرلىكتە ئالغا ئىلگىرلەيلى",
+      "title": "ئەيسا مەسىھنىڭ ھېكايىسىنى بىرلىكتە سۆزلەيلى",
+      "description": "شۇنداق بولغاندا ئۇلار ئۆز تىلىدا، ئۆزلىرى تۇرغان جايىدا ئەيسانىڭ مۇھەببىتىنى ئاڭلاپ ۋە كۆرەلەيدۇ."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ماس كېلىدۇ",
+    "none": "بۇ تىلدا بۇ سىن ئۈچۈن ھېچقانداق تەۋسىيە تېپىلمىدى."
+  },
+  "BetaTesterModal": {
+    "title": "Beta سىناقتا قاتنىشىش",
+    "trigger": "Beta سىناقتا قاتنىشىش",
+    "loadFailed": "بىر ئىش خاتا بولدى.",
+    "loading": "يۈكلەۋاتىدۇ...",
+    "openFormNewTab": "جەدۋەلنى يېڭى بەتكۈچتە ئېچىش",
+    "close": "يېپىش",
+    "iframeTitle": "Beta سىناقتا قاتنىشىش"
   },
   "CollectionDownloadModal": {
     "dialogTitle": "Download collection",
