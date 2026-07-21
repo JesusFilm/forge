@@ -243,6 +243,10 @@ type VideoPickerDraft = {
 }
 
 type VideoPickerMode = "block" | "carouselAppend" | "mediaCollectionAppend"
+type VideoLibrarySearchClient =
+  | "experience-editor-video-picker"
+  | "experience-editor-video-carousel-picker"
+  | "experience-editor-media-collection-picker"
 
 type ClipHandle = "start" | "end"
 type PreviewFlashIcon = "play" | "pause" | null
@@ -276,6 +280,19 @@ type InfoBlockDragHandleState = {
   pointerOffsetX: number
   pointerOffsetY: number
 }
+
+function videoLibrarySearchClientForMode(
+  mode: VideoPickerMode,
+): VideoLibrarySearchClient {
+  if (mode === "mediaCollectionAppend") {
+    return "experience-editor-media-collection-picker"
+  }
+  if (mode === "carouselAppend") {
+    return "experience-editor-video-carousel-picker"
+  }
+  return "experience-editor-video-picker"
+}
+
 type NavigationCarouselDragState = {
   blockIndex: number
   itemIndex: number
@@ -1221,7 +1238,10 @@ export function ExperienceEditor({
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
   uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
-  searchVideoLibraryAction?: (query: string) => Promise<VideoLibraryItem[]>
+  searchVideoLibraryAction?: (
+    query: string,
+    context?: { client?: VideoLibrarySearchClient },
+  ) => Promise<VideoLibraryItem[]>
   /**
    * Optional imperative bridge published once on mount so the chat panel
    * (sibling component at the page level) can read current canvas state
@@ -1786,8 +1806,9 @@ export function ExperienceEditor({
     let ignore = false
     setVideoLibrarySearchPending(true)
     setVideoLibrarySearchError(false)
+    const client = videoLibrarySearchClientForMode(videoPickerMode)
     const timeout = window.setTimeout(() => {
-      searchVideoLibraryAction(query)
+      searchVideoLibraryAction(query, { client })
         .then((results) => {
           if (ignore) return
           setVideoLibrarySearchResultKeys(results.map((result) => result.key))
@@ -1808,7 +1829,12 @@ export function ExperienceEditor({
       ignore = true
       window.clearTimeout(timeout)
     }
-  }, [searchVideoLibraryAction, videoLibraryQuery, videoPickerBlockIndex])
+  }, [
+    searchVideoLibraryAction,
+    videoLibraryQuery,
+    videoPickerBlockIndex,
+    videoPickerMode,
+  ])
 
   const videoPickerLibraryRows = useMemo(
     () => [

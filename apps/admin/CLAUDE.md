@@ -542,6 +542,11 @@ Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
 behind a short timeout and every write/timeout failure is swallowed from the
 live search caller's perspective. Failures increment safe process-local
 counters and log `[search] event=trace_record_* ...` without raw query text.
+Experience-editor video library server-action searches use
+`recordAdminVideoLibrarySearchTraceSafely`; their raw traces set
+`requestedMode` to a closed client label such as
+`experience-editor-media-collection-picker` and keep picker context in bounded
+metadata.
 
 The internal sampling route is
 `POST /api/internal/search-traces/sample`. It is rate-limited before auth/body
