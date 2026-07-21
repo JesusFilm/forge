@@ -66,7 +66,9 @@ type VideoDubRow = VideoDub & {
   language: {
     bcp47: string | null
     countryLanguages: VideoLanguageCountryRow[]
+    id: string
     iso3: string | null
+    name: unknown
     slug: string | null
   } | null
 }
@@ -87,6 +89,7 @@ type LoadVideoRowSliceOptions = {
   category?: VideoLibraryCategory
   collection?: string
   language?: string
+  preferredLocale?: string
   principal: Principal
   limit: number
   offset: number
@@ -173,9 +176,75 @@ function durationSecondsForDub(
 }
 
 function preferredPlaybackDub(dubs: VideoDubRow[]) {
-  return dubs.find((dub) => dub.hls)?.hls
-    ? (dubs.find((dub) => dub.hls) ?? null)
-    : (dubs.find((dub) => dub.dash || dub.share) ?? null)
+  return (
+    dubs.find((dub) => dub.hls) ??
+    dubs.find((dub) => dub.dash || dub.share) ??
+    null
+  )
+}
+
+function streamUrlForDub(dub: Pick<VideoDubRow, "dash" | "hls" | "share">) {
+  return compactText(dub.hls) ?? compactText(dub.dash) ?? compactText(dub.share)
+}
+
+function localeMatchesDubLanguage(locale: string, dub: VideoDubRow) {
+  const language = dub.language
+  if (!language) return false
+
+  const normalizedLocale = compactText(locale)?.toLowerCase()
+  if (!normalizedLocale) return false
+
+  const baseLocale = normalizedLocale.split("-")[0] ?? normalizedLocale
+  const languageCodes = [
+    language.bcp47?.toLowerCase() ?? "",
+    language.slug?.toLowerCase() ?? "",
+    language.iso3?.toLowerCase() ?? "",
+  ].filter(Boolean)
+
+  return (
+    languageCodes.includes(normalizedLocale) ||
+    languageCodes.includes(baseLocale) ||
+    languageCodes.some((code) => code.startsWith(`${baseLocale}-`))
+  )
+}
+
+function playableDubsForPicker(dubs: VideoDubRow[], locale: string) {
+  const seenByLanguage = new Set<string>()
+  return dubs.flatMap((dub) => {
+    const streamUrl = streamUrlForDub(dub)
+    if (!streamUrl) return []
+
+    const languageKey =
+      dub.language?.slug ??
+      dub.language?.bcp47 ??
+      dub.language?.iso3 ??
+      dub.language?.id ??
+      dub.id
+    if (seenByLanguage.has(languageKey)) return []
+    seenByLanguage.add(languageKey)
+
+    return [
+      {
+        key: dub.id,
+        label: dub.language
+          ? languageOptionLabel(dub.language, locale)
+          : `Dub ${seenByLanguage.size}`,
+        languageSlug: dub.language?.slug ?? null,
+        bcp47: dub.language?.bcp47 ?? null,
+        streamUrl,
+        duration: formatDuration([dub]),
+        durationSeconds: durationSecondsForDub(dub),
+      },
+    ]
+  })
+}
+
+function preferredPickerDub(dubs: VideoDubRow[], locale: string) {
+  const playableDubs = dubs.filter((dub) => streamUrlForDub(dub))
+  return (
+    playableDubs.find((dub) => localeMatchesDubLanguage(locale, dub)) ??
+    preferredPlaybackDub(playableDubs)
+  )
 }
 
 function muxPlayerUrl(playbackId: string | null | undefined) {
@@ -1738,6 +1807,7 @@ async function loadVideoRowSlice({
   category,
   collection,
   language,
+  preferredLocale,
   principal,
   limit,
   offset,
@@ -1747,7 +1817,7 @@ async function loadVideoRowSlice({
   videoIds,
 }: LoadVideoRowSliceOptions) {
   const services = createServices(prisma)
-  const locale = await getAdminLocale()
+  const locale = compactText(preferredLocale) ?? (await getAdminLocale())
   // The downstream locale/dub/image mapping reads only these scalar
   // fields off each video row. Typing `videos` to exactly that subset
   // (Pick'd off the service-list row) lets the `videoIds` top-up branch
@@ -1859,7 +1929,9 @@ async function loadVideoRowSlice({
                   },
                 },
               },
+              id: true,
               iso3: true,
+              name: true,
               slug: true,
             },
           },
@@ -2024,7 +2096,8 @@ async function loadVideoRowSlice({
     const localeRow = choosePreferredLocale(localeRows, locale)
     const title = localeRow?.title?.trim() || video.slug
     const source = sourceLabel(video.videoSource)
-    const playbackDub = preferredPlaybackDub(dubRows)
+    const playbackDub = preferredPickerDub(dubRows, locale)
+    const playableDubs = playableDubsForPicker(dubRows, locale)
     const coverage = dubCoverageMetric(dubRows)
     const childCount = childCountByVideo.get(video.id) ?? 0
     const collectionPreviewItems = (
@@ -2066,6 +2139,7 @@ async function loadVideoRowSlice({
       previewImageUrl: preferredVideoImage(imageRows),
       previewStreamUrl:
         playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
+      playableDubs,
       hasGrounding: groundedIds.has(video.id),
       collectionPreviewItems,
       visitorUrl: includeVisitorUrls
@@ -2082,12 +2156,16 @@ async function loadVideoRowSlice({
 
 export async function loadVideoRows(
   principal: Principal,
-  options: { includeVideoIds?: readonly string[] } = {},
+  options: {
+    includeVideoIds?: readonly string[]
+    preferredLocale?: string
+  } = {},
 ) {
   const rows = await loadVideoRowSlice({
     principal,
     limit: VIDEO_LIBRARY_PAGE_SIZE,
     offset: 0,
+    preferredLocale: options.preferredLocale,
   })
   const have = new Set(rows.map((row) => row.key))
   const missing = Array.from(new Set(options.includeVideoIds ?? [])).filter(
@@ -2100,6 +2178,7 @@ export async function loadVideoRows(
     principal,
     limit: missing.length,
     offset: 0,
+    preferredLocale: options.preferredLocale,
     videoIds: missing,
   })
   return [...rows, ...extras]

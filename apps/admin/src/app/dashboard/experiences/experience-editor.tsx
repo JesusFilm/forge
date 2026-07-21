@@ -3,11 +3,13 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
   useTransition,
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react"
 import { createPortal } from "react-dom"
 import {
@@ -28,6 +30,7 @@ import {
   CalendarDays,
   Captions,
   Check,
+  ChevronDown,
   CirclePlay,
   ArrowLeft,
   BookMarked,
@@ -124,6 +127,7 @@ import {
   type VideoHeroHeadingSource,
   type VideoHeroSubheadingSource,
   type VideoLibraryItem,
+  type VideoLibraryPlayableDub,
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
@@ -229,6 +233,7 @@ type NavigationDestinationPickerPosition = {
 
 type VideoPickerDraft = {
   videoKey: string | null
+  dubKey: string | null
   clipStartSeconds: string
   clipEndSeconds: string
   autoplay: boolean
@@ -845,18 +850,206 @@ function formatSeconds(value: number | null) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 }
 
-function formatCompactDuration(value: number | null) {
+function formatReadableDuration(value: number | null) {
   if (value === null || !Number.isFinite(value)) return null
   const totalSeconds = Math.max(0, Math.floor(value))
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
+  const parts: string[] = []
 
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
+
+  return parts.join(" ")
+}
+
+function videoDubOptionMatchesSearch(
+  dub: VideoLibraryPlayableDub,
+  search: string,
+) {
+  const query = search.replace(/\s+/g, " ").trim().toLocaleLowerCase("en")
+  if (!query) return true
+
+  return [
+    dub.label,
+    dub.duration,
+    formatReadableDuration(dub.durationSeconds),
+    dub.languageSlug,
+    dub.bcp47,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase("en")
+    .includes(query)
+}
+
+function SearchableVideoDubControl({
+  dubs,
+  label,
+  onSelect,
+  selectedDub,
+}: {
+  dubs: VideoLibraryPlayableDub[]
+  label: string
+  onSelect: (dubKey: string) => void
+  selectedDub: VideoLibraryPlayableDub | null
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState("")
+  const controlId = useId()
+  const listboxId = `${controlId}-listbox`
+  const rootRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const selectedDuration =
+    formatReadableDuration(selectedDub?.durationSeconds ?? null) ??
+    selectedDub?.duration ??
+    null
+  const filteredDubs = useMemo(
+    () => dubs.filter((dub) => videoDubOptionMatchesSearch(dub, searchValue)),
+    [dubs, searchValue],
+  )
+
+  useEffect(() => {
+    if (!open) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    window.setTimeout(() => searchInputRef.current?.focus(), 0)
+  }, [open])
+
+  function toggleOpen() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+
+    setSearchValue("")
+    setOpen(true)
   }
 
-  return `${minutes}:${String(seconds).padStart(2, "0")}`
+  function selectDub(
+    dubKey: string,
+    event: ReactMouseEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault()
+    setOpen(false)
+    onSelect(dubKey)
+  }
+
+  return (
+    <div ref={rootRef} className="relative min-w-0">
+      <button
+        type="button"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={label}
+        className="flex h-10 w-full min-w-0 items-center justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-left text-[12px] font-medium text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface-raised)] focus-visible:border-[var(--color-brand)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
+        onClick={toggleOpen}
+        role="combobox"
+      >
+        <span className="min-w-0 truncate">
+          {selectedDub?.label ?? "Select language"}
+        </span>
+        <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
+          {selectedDuration}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]"
+          strokeWidth={1.5}
+        />
+      </button>
+
+      {open ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1 shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
+          <label className="mb-1 flex h-9 items-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-bg)] px-2">
+            <Search
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+              strokeWidth={1.5}
+            />
+            <span className="sr-only">{label}</span>
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.currentTarget.value)}
+              placeholder="Search languages"
+              className="min-w-0 flex-1 border-0 bg-transparent font-mono text-[12px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-disabled)]"
+            />
+          </label>
+
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label={label}
+            className="max-h-64 overflow-y-auto overscroll-contain py-0.5 [scrollbar-width:thin]"
+          >
+            {filteredDubs.length > 0 ? (
+              filteredDubs.map((dub) => {
+                const selected = dub.key === selectedDub?.key
+                const duration =
+                  formatReadableDuration(dub.durationSeconds) ?? dub.duration
+
+                return (
+                  <button
+                    key={dub.key}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={(event) => selectDub(dub.key, event)}
+                    className="flex min-h-9 w-full items-center justify-between gap-3 rounded-[2px] px-2 py-1 text-left text-[12px] text-[var(--color-text-secondary)] transition-colors duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-primary)] focus-visible:bg-[var(--color-surface-raised)] focus-visible:text-[var(--color-text-primary)] focus-visible:outline-none"
+                  >
+                    <span className="min-w-0 truncate">{dub.label}</span>
+                    <span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {duration}
+                    </span>
+                    <Check
+                      aria-hidden="true"
+                      className={cx(
+                        "h-3.5 w-3.5 shrink-0",
+                        selected
+                          ? "text-[var(--color-brand)]"
+                          : "text-transparent",
+                      )}
+                      strokeWidth={1.8}
+                    />
+                  </button>
+                )
+              })
+            ) : (
+              <div className="px-2 py-2 text-[12px] text-[var(--color-text-muted)]">
+                No languages found
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 function createNestedTemplateBlock(
@@ -1255,6 +1448,7 @@ export function ExperienceEditor({
     useState<VideoPickerMode>("block")
   const [videoPickerDraft, setVideoPickerDraft] = useState<VideoPickerDraft>({
     videoKey: null,
+    dubKey: null,
     clipStartSeconds: "",
     clipEndSeconds: "",
     autoplay: true,
@@ -1630,7 +1824,7 @@ export function ExperienceEditor({
   const videoLibrarySearchIsActive =
     normalizedVideoLibraryQuery.length > 0 && searchVideoLibraryAction != null
   const videoPickerDurationLabel = (video: VideoLibraryItem) =>
-    formatCompactDuration(video.durationSeconds)
+    formatReadableDuration(video.durationSeconds)
   const videoPickerSelectedVideo = findVideoLibraryItem(
     videoPickerDraft.videoKey,
   )
@@ -1643,8 +1837,67 @@ export function ExperienceEditor({
     (videoPickerSelectedVideo?.childCount ?? 0) -
       videoPickerCollectionPreviewItems.length,
   )
+  const videoPickerLanguageSlug = watchLanguageSlugForLocale(currentLocaleCode)
+  const videoPickerLocaleBase = cleanLocaleCode(currentLocaleCode, true).split(
+    "-",
+  )[0]
+
+  const preferredPlayableDubForVideo = useCallback(
+    (
+      video: VideoLibraryItem | null,
+      preferredStreamUrl: string | null,
+    ): VideoLibraryPlayableDub | null => {
+      const dubs = video?.playableDubs ?? []
+      if (dubs.length === 0) return null
+
+      if (preferredStreamUrl) {
+        const streamMatch = dubs.find(
+          (dub) => dub.streamUrl === preferredStreamUrl,
+        )
+        if (streamMatch) return streamMatch
+      }
+
+      const localeMatch = dubs.find((dub) => {
+        const bcp47 = dub.bcp47?.toLowerCase() ?? null
+        const languageSlug = dub.languageSlug?.toLowerCase() ?? null
+        return (
+          (videoPickerLanguageSlug != null &&
+            languageSlug === videoPickerLanguageSlug) ||
+          bcp47 === currentLocaleCode.toLowerCase() ||
+          bcp47 === videoPickerLocaleBase ||
+          bcp47?.startsWith(`${videoPickerLocaleBase}-`) === true
+        )
+      })
+
+      return localeMatch ?? dubs[0] ?? null
+    },
+    [currentLocaleCode, videoPickerLanguageSlug, videoPickerLocaleBase],
+  )
+
+  function selectedPlayableDubForVideo(
+    video: VideoLibraryItem | null,
+  ): VideoLibraryPlayableDub | null {
+    const dubs = video?.playableDubs ?? []
+    return (
+      dubs.find((dub) => dub.key === videoPickerDraft.dubKey) ??
+      preferredPlayableDubForVideo(
+        video,
+        asString(videoPickerBlockRecord?.streamingUrl) || null,
+      )
+    )
+  }
+
+  const videoPickerSelectedDub = selectedPlayableDubForVideo(
+    videoPickerSelectedVideo,
+  )
+  const videoPickerPreviewStreamUrl =
+    videoPickerSelectedDub?.streamUrl ??
+    videoPickerSelectedVideo?.previewStreamUrl ??
+    null
   const videoPickerDurationSeconds =
-    videoPickerSelectedVideo?.durationSeconds ?? 0
+    videoPickerSelectedDub?.durationSeconds ??
+    videoPickerSelectedVideo?.durationSeconds ??
+    0
   const videoPickerClipStart = clampNumber(
     parseClipInput(videoPickerDraft.clipStartSeconds) ?? 0,
     0,
@@ -2019,25 +2272,38 @@ export function ExperienceEditor({
     setVideoPickerDraft((current) => {
       const nextVideoKey =
         videoPickerLibraryRows[0]?.key ?? videoPickerCurrentVideo?.key ?? null
-      if (current.videoKey === nextVideoKey) {
+      const nextVideo =
+        videoPickerLibraryRows.find((video) => video.key === nextVideoKey) ??
+        videoPickerCurrentVideo ??
+        null
+      const nextDubKey =
+        preferredPlayableDubForVideo(nextVideo, null)?.key ?? null
+      if (current.videoKey === nextVideoKey && current.dubKey === nextDubKey) {
         return current
       }
       return {
         ...current,
         videoKey: nextVideoKey,
+        dubKey: nextDubKey,
       }
     })
   }, [
     videoPickerLibraryRows,
     videoPickerBlockIndex,
-    videoPickerCurrentVideo?.key,
+    videoPickerCurrentVideo,
     videoPickerDraft.videoKey,
+    videoPickerDraft.dubKey,
+    preferredPlayableDubForVideo,
   ])
 
   useEffect(() => {
     if (videoPickerBlockIndex === null) return
     setPreviewMuted(true)
-  }, [videoPickerBlockIndex, videoPickerDraft.videoKey])
+  }, [
+    videoPickerBlockIndex,
+    videoPickerDraft.videoKey,
+    videoPickerDraft.dubKey,
+  ])
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -2054,8 +2320,7 @@ export function ExperienceEditor({
 
   useEffect(() => {
     const previewEl = videoPickerPreviewRef.current
-    const selectedVideo = videoPickerSelectedVideo
-    if (!previewEl || !selectedVideo?.previewStreamUrl) return
+    if (!previewEl || !videoPickerPreviewStreamUrl) return
     const preview = previewEl
     setPreviewIsLoading(true)
 
@@ -2152,6 +2417,7 @@ export function ExperienceEditor({
     videoPickerDraft.clipStartSeconds,
     videoPickerClipEnd,
     videoPickerClipStart,
+    videoPickerPreviewStreamUrl,
     videoPickerSelectedVideo,
   ])
 
@@ -3782,7 +4048,11 @@ export function ExperienceEditor({
     })
   }
 
-  function appendVideoCarouselItem(index: number, videoKey: string) {
+  function appendVideoCarouselItem(
+    index: number,
+    videoKey: string,
+    streamUrl: string | null,
+  ) {
     const selectedVideo = findVideoLibraryItem(videoKey)
     if (!selectedVideo) return
 
@@ -3800,7 +4070,7 @@ export function ExperienceEditor({
           ...currentItems,
           {
             videoId: selectedVideo.key,
-            streamingUrl: selectedVideo.previewStreamUrl ?? "",
+            streamingUrl: streamUrl ?? selectedVideo.previewStreamUrl ?? "",
             titleOverride: "",
             subtitleOverride: "",
           },
@@ -5002,6 +5272,13 @@ export function ExperienceEditor({
         mode === "carouselAppend" || mode === "mediaCollectionAppend"
           ? null
           : (currentVideo?.key ?? null),
+      dubKey:
+        mode === "carouselAppend" || mode === "mediaCollectionAppend"
+          ? null
+          : (preferredPlayableDubForVideo(
+              currentVideo,
+              asString(block?.streamingUrl) || null,
+            )?.key ?? null),
       clipStartSeconds: stringFromOptionalNumber(block?.clipStartSeconds),
       clipEndSeconds: stringFromOptionalNumber(block?.clipEndSeconds),
       autoplay:
@@ -5044,6 +5321,7 @@ export function ExperienceEditor({
     }, 180)
     setVideoPickerDraft({
       videoKey: null,
+      dubKey: null,
       clipStartSeconds: "",
       clipEndSeconds: "",
       autoplay: true,
@@ -5058,7 +5336,11 @@ export function ExperienceEditor({
     const selectedVideo = findVideoLibraryItem(videoPickerDraft.videoKey)
     if (!selectedVideo) return
     if (videoPickerMode === "carouselAppend") {
-      appendVideoCarouselItem(videoPickerBlockIndex, selectedVideo.key)
+      appendVideoCarouselItem(
+        videoPickerBlockIndex,
+        selectedVideo.key,
+        videoPickerPreviewStreamUrl,
+      )
       closeVideoPicker()
       pushToast("Video added to carousel.", "success")
       return
@@ -5079,7 +5361,7 @@ export function ExperienceEditor({
     updateBlockAt(videoPickerBlockIndex, (block) => ({
       ...block,
       videoId: selectedVideo.key,
-      streamingUrl: selectedVideo.previewStreamUrl ?? "",
+      streamingUrl: videoPickerPreviewStreamUrl ?? "",
       useRouteVideo: false,
       headingSource:
         block.t === "videoHero" && shouldUseVideoHeroHeadingMetadata(block)
@@ -10005,6 +10287,9 @@ export function ExperienceEditor({
                               setVideoPickerDraft((current) => ({
                                 ...current,
                                 videoKey: video.key,
+                                dubKey:
+                                  preferredPlayableDubForVideo(video, null)
+                                    ?.key ?? null,
                               }))
                             }
                             className={cx(
@@ -10055,7 +10340,7 @@ export function ExperienceEditor({
                 </div>
               </div>
 
-              <div className="min-h-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)]">
+              <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] [scrollbar-width:thin]">
                 {videoPickerSelectedVideo ? (
                   <div
                     className={cx(
@@ -10073,13 +10358,13 @@ export function ExperienceEditor({
                           className="relative aspect-video cursor-pointer bg-[linear-gradient(180deg,#181c25,#0b0d12)]"
                           onClick={togglePreviewPlayback}
                         >
-                          {videoPickerSelectedVideo.previewStreamUrl ? (
+                          {videoPickerPreviewStreamUrl ? (
                             <>
                               <video
                                 key={videoPickerSelectedVideo.key}
                                 ref={videoPickerPreviewRef}
                                 className="h-full w-full object-cover"
-                                src={videoPickerSelectedVideo.previewStreamUrl}
+                                src={videoPickerPreviewStreamUrl}
                                 poster={
                                   videoPickerSelectedVideo.previewImageUrl ??
                                   undefined
@@ -10270,6 +10555,11 @@ export function ExperienceEditor({
                               }}
                             />
                           ) : null}
+                          {!videoPickerPreviewStreamUrl ? (
+                            <div className="absolute inset-0 flex items-center justify-center text-[12px] text-white">
+                              Preview image only
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -10308,6 +10598,39 @@ export function ExperienceEditor({
                         {videoPickerSelectedVideo.labelLabel ? (
                           <div className="mt-2 text-[13px] leading-6 text-[var(--color-text-secondary)]">
                             {videoPickerSelectedVideo.labelLabel}
+                          </div>
+                        ) : null}
+                        {(videoPickerSelectedVideo.playableDubs?.length ?? 0) >
+                        1 ? (
+                          <div className="mt-3 grid w-full gap-1.5">
+                            <span className="label-text">Audio language</span>
+                            <SearchableVideoDubControl
+                              dubs={videoPickerSelectedVideo.playableDubs ?? []}
+                              label="Audio language"
+                              selectedDub={videoPickerSelectedDub}
+                              onSelect={(nextDubKey) => {
+                                const nextDubKeyOrNull = nextDubKey || null
+                                const nextDub =
+                                  videoPickerSelectedVideo.playableDubs?.find(
+                                    (dub) => dub.key === nextDubKeyOrNull,
+                                  ) ?? null
+                                setVideoPickerDraft((current) => ({
+                                  ...current,
+                                  dubKey: nextDubKeyOrNull,
+                                  clipStartSeconds: "0",
+                                  clipEndSeconds: "",
+                                }))
+                                const preview = videoPickerPreviewRef.current
+                                if (preview) {
+                                  preview.pause()
+                                  preview.currentTime = 0
+                                  setPreviewCurrentTime(0)
+                                }
+                                if (nextDub?.durationSeconds != null) {
+                                  setPreviewControlsVisible(true)
+                                }
+                              }}
+                            />
                           </div>
                         ) : null}
                         {videoPickerSelectedVideo.description ? (
@@ -10398,8 +10721,8 @@ export function ExperienceEditor({
                             <div className="mt-3 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
                               <span>00:00</span>
                               <span>
-                                {formatSeconds(
-                                  videoPickerSelectedVideo.durationSeconds,
+                                {formatReadableDuration(
+                                  videoPickerDurationSeconds,
                                 )}
                               </span>
                             </div>

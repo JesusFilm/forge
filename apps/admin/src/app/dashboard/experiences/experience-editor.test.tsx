@@ -67,6 +67,17 @@ const defaultVideoLibrary: VideoLibraryItem[] = [
     durationSeconds: 754,
     previewImageUrl: "https://example.com/image.jpg",
     previewStreamUrl: "https://example.com/video.mp4",
+    playableDubs: [
+      {
+        key: "dub-en",
+        label: "English",
+        languageSlug: "english",
+        bcp47: "en",
+        streamUrl: "https://example.com/video.mp4",
+        duration: "12:34",
+        durationSeconds: 754,
+      },
+    ],
     hasGrounding: true,
   },
 ]
@@ -202,6 +213,8 @@ describe("ExperienceEditor", () => {
     window.cancelAnimationFrame ??= ((handle: number) => {
       window.clearTimeout(handle)
     }) as typeof window.cancelAnimationFrame
+    HTMLMediaElement.prototype.play = vi.fn(async () => undefined)
+    HTMLMediaElement.prototype.pause = vi.fn()
     HTMLElement.prototype.scrollIntoView ??= vi.fn()
   })
 
@@ -1472,6 +1485,118 @@ describe("ExperienceEditor", () => {
       await act(async () => {
         resolveSearch([])
       })
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("uses the selected playable dub for picker preview, trimming, and saved stream", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "single-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            previewStreamUrl: "https://example.com/en.m3u8",
+            playableDubs: [
+              {
+                key: "dub-en",
+                label: "English",
+                languageSlug: "english",
+                bcp47: "en",
+                streamUrl: "https://example.com/en.m3u8",
+                duration: "12:34",
+                durationSeconds: 754,
+              },
+              {
+                key: "dub-es",
+                label: "Spanish",
+                languageSlug: "spanish-castilian",
+                bcp47: "es",
+                streamUrl: "https://example.com/es.m3u8",
+                duration: "00:30",
+                durationSeconds: 30,
+              },
+            ],
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse library").click()
+      })
+
+      const languageCombobox = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(languageCombobox instanceof HTMLButtonElement)) {
+        throw new Error("Video language combobox not found")
+      }
+
+      expect(languageCombobox.textContent).toContain("English")
+      expect(languageCombobox.textContent).toContain("12m 34s")
+      expect(view.container.textContent).toContain("00:00 to 12:34")
+
+      act(() => {
+        languageCombobox.click()
+      })
+
+      const languageSearchInput = view.container.querySelector(
+        'input[placeholder="Search languages"]',
+      )
+      if (!(languageSearchInput instanceof HTMLInputElement)) {
+        throw new Error("Video language search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(languageSearchInput, "span")
+        languageSearchInput.dispatchEvent(
+          new InputEvent("input", {
+            bubbles: true,
+            inputType: "insertText",
+          }),
+        )
+      })
+
+      expect(view.container.textContent).toContain("Spanish")
+      expect(view.container.textContent).toContain("30s")
+
+      act(() => {
+        findButtonByText(view.container, "Spanish").click()
+      })
+
+      expect(view.container.textContent).toContain("00:00 to 00:30")
+      expect(view.container.textContent).toContain("30s")
+
+      act(() => {
+        findButtonByExactText(view.container, "Apply video").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.videoId).toBe("video-1")
+      expect(blocks[0]?.streamingUrl).toBe("https://example.com/es.m3u8")
+      expect(blocks[0]?.clipEndSeconds).toBeUndefined()
     } finally {
       view.cleanup()
     }

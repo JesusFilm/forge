@@ -272,6 +272,7 @@ export default async function ExperienceEditorPage({
   const [videoLibrary, mediaLibrary] = await Promise.all([
     loadVideoRows(principal, {
       includeVideoIds: videoIdsFromExperienceBlocks(selectedLocale.blocks),
+      preferredLocale: selectedLocale.locale,
     }),
     mediaLibraryPromise,
   ])
@@ -601,7 +602,10 @@ export default async function ExperienceEditorPage({
     "use server"
     const user = await requireSession()
     if (videoIds.length === 0) return []
-    return loadVideoRows(user, { includeVideoIds: videoIds })
+    return loadVideoRows(user, {
+      includeVideoIds: videoIds,
+      preferredLocale: selectedLocale.locale,
+    })
   }
 
   async function searchVideoLibraryAction(query: string) {
@@ -625,7 +629,10 @@ export default async function ExperienceEditorPage({
     const videoIds = response.results
       .filter((result) => result.type === "video")
       .map((result) => result.id)
-    const rows = await loadVideoRows(user, { includeVideoIds: videoIds })
+    const rows = await loadVideoRows(user, {
+      includeVideoIds: videoIds,
+      preferredLocale: selectedLocale.locale,
+    })
     const byId = new Map(rows.map((row) => [row.key, row]))
     return videoIds.flatMap((id) => {
       const row = byId.get(id)
