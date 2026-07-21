@@ -11,10 +11,10 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 20, 2026)
+## Status (July 21, 2026)
 
-- **Total tickets:** 29
-- ✅ **Complete:** 24
+- **Total tickets:** 30
+- ✅ **Complete:** 25
 - 🟡 **In progress:** 0
 - 🔵 **Not started:** 5
 - 🔴 **Blocked:** 0
@@ -52,3 +52,4 @@ from the main DS Year 1 roadmap.
 | [feat-269](feat-269-chat-sources-presentation.md)            | Chat sources presentation: heading, clamped cards, collapse               | jian wei | P1       | 2026-07-20 | 2    | ✅ complete    | [#1619](https://github.com/JesusFilm/forge/pull/1619) |
 | [feat-270](feat-270-chat-ui-cleanup-batch.md)                | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges | jian wei | P2       | 2026-07-27 | 3    | ✅ complete    | [#1626](https://github.com/JesusFilm/forge/pull/1626) |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)    | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                     |
+| [feat-275](feat-275-ai-chat-docs-audit.md)                   | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                    | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#NNNN](https://github.com/JesusFilm/forge/pull/NNNN) |
