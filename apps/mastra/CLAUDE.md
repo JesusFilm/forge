@@ -830,9 +830,9 @@ Studio from starting. URL safety remains enforced at request time before a
 bearer is sent.
 
 The website must implement the documented review-queue and saved-source
-contracts before these settings are enabled, and its scheduler must call the
-three `/forge-*-discovery` routes (or start the registered workflows). Mastra
-does not create that external scheduler.
+contracts before these settings are enabled. Mastra owns the declarative daily
+schedules for Instagram and YouTube; Pinterest remains available through its
+route or Studio until it receives its own schedule.
 
 Limitations to keep in mind:
 
@@ -858,7 +858,9 @@ playlists, and keyword queries. It accepts stable channel IDs/handles and
 playlist IDs; saved full YouTube playlist URLs are normalized to their `list`
 value, while unsupported custom-channel URLs are skipped. The output cap is 10
 videos by default, each source list is capped at 50, and the response includes
-a best-effort `reviewQueue` outcome.
+a best-effort `reviewQueue` outcome. Mastra schedules this workflow once a day
+at `01:00 UTC`, one hour after the Instagram workflow. Scheduled runs use the
+same empty-input defaults as Studio and route runs.
 
 `POST /forge-pinterest-discovery` reads public Pinterest board RSS feeds. Board
 URLs must be HTTPS `pinterest.com` hosts; query strings are removed before the
