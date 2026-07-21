@@ -74,7 +74,7 @@ Add `relative` to the scroller's className, making the scroll container the cont
 >
 ```
 
-Verified in-browser post-fix: document height stays exactly viewport-sized with the Sources disclosure AND all passage snippets expanded on a 2379px transcript; a forced `window.scrollTo` does nothing. All three laws of the adjacent sticky-overlay doc re-verified on the same component: the band sticks at the viewport bottom when scrolled up; the opaque-strip hit-test resolves to the `pointer-events-auto` wrapper (`chat.tsx:255`); a focus probe parks a deep link above the band with zero document movement; the feat-270 ResizeObserver re-pin still fires. 496/496 vitest, lint + typecheck clean. The change is an uncommitted working-tree edit on `main` as of this writing — pending, no PR yet.
+Verified in-browser post-fix: document height stays exactly viewport-sized with the Sources disclosure AND all passage snippets expanded on a 2379px transcript; a forced `window.scrollTo` does nothing. All three laws of the adjacent sticky-overlay doc re-verified on the same component: the band sticks at the viewport bottom when scrolled up; the opaque-strip hit-test resolves to the `pointer-events-auto` wrapper (`chat.tsx:255`); a focus probe parks a deep link above the band with zero document movement; the feat-270 ResizeObserver re-pin still fires. 496/496 vitest, lint + typecheck clean. Shipped via [PR #1633](https://github.com/JesusFilm/forge/pull/1633).
 
 ## Why This Works
 
