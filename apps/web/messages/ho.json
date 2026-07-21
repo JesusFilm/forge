@@ -7,7 +7,9 @@
     "noContent": "I no gat content.",
     "homepageMisconfigured": "Watch homepage i no set up stret.",
     "defaultTemplateMisconfigured": "Default watch template i no set up stret.",
-    "authFailed": "I no inap long autentikesen long content service. Plis kontaktim support sapos dispela i stap yet."
+    "authFailed": "I no inap long autentikesen long content service. Plis kontaktim support sapos dispela i stap yet.",
+    "pageLoadFailed": "Wanpela samting i go rong.",
+    "tryAgain": "Traim gen"
   },
   "VideosPage": {
     "title": "Olgeta Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Yu laik save long Baibel long hat? ",
     "joinBibleStudy": "Joinim Baibel stadi bilong mipela",
     "previousQuote": "Past Baibel kot",
-    "nextQuote": "Neks Baibel kot"
+    "nextQuote": "Neks Baibel kot",
+    "readPassage": "Hereva inai emu Baibel dekenai duahia."
   },
   "DownloadButton": {
     "checking": "Rausim save",
@@ -73,7 +76,8 @@
     "selectLanguage": "Makim tokples",
     "searchPlaceholder": "Painim ol tokples…",
     "languages": "Ol tokples",
-    "noMatches": "I no gat samting i stret"
+    "noMatches": "I no gat samting i stret",
+    "notAvailable": "I no stap"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Tokples",
@@ -112,7 +116,8 @@
     "questions": "Ol askim i poroman",
     "askYours": "Askim bilong yu",
     "chatWithPerson": "Toktok wantaim wanpela man o meri",
-    "askBibleQuestion": "Askim Baibel"
+    "askBibleQuestion": "Askim Baibel",
+    "quiz": "Henanadai"
   },
   "WatchQuestionPanel": {
     "messageType": "Kain mesej",
@@ -170,7 +175,8 @@
     "searchRegion": "Painim video",
     "clearSearch": "Rausim painim",
     "changeAudioLanguage": "Senisim tokples bilong audio",
-    "home": "JesusFilm hom"
+    "home": "JesusFilm hom",
+    "closeSearch": "Pasim painim"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na brosim ol video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Rausim",
     "queryLanguageDetected": "I painim {language}",
     "searchInLanguage": "Painim long {language}",
-    "tryDifferentKeywordsOrLanguage": "Traim narapela keyword o makim narapela tokples bilong painim"
+    "tryDifferentKeywordsOrLanguage": "Traim narapela keyword o makim narapela tokples bilong painim",
+    "useWebsiteDefaultLanguage": "Yusim website default search tokples",
+    "removeLanguage": "Rausim {language}",
+    "browseMode": "Tahua bona raraia mode"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",
-    "tapToUnmute": "Taimim bilong opim maus"
+    "tapToUnmute": "Taimim bilong opim maus",
+    "nextEpisode": "Neks Episod"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "I loadim content"
+    "loadingContent": "I loadim content",
+    "loadingVideo": "I loadim video"
   },
   "VideoLabels": {
     "video": "Vidio",
@@ -223,7 +234,8 @@
     "series": "Sirisi",
     "collection": "Koleksen",
     "trailer": "Treila",
-    "behindTheScenes": "Bihain bilong kamera"
+    "behindTheScenes": "Bihain bilong kamera",
+    "chapter": "Sapta"
   },
   "SiblingCarousel": {
     "clipPosition": "Klip {current} bilong {total}",
@@ -235,11 +247,252 @@
     "noImage": "I no gat piksa",
     "playingNow": "I plei nau",
     "previousChapter": "Past sapta",
-    "nextChapter": "Neks sapta"
+    "nextChapter": "Neks sapta",
+    "thumbnailAlt": "Thumbnail bilong {title}",
+    "relatedVideoThumbnail": "Thumbnail bilong narakain video"
   },
   "SearchResultCard": {
     "experience": "Dibaia",
     "episodeCount": "{count, plural, one {# episod} other {# episod}}",
     "thumbnailAlt": "Thumbnail bilong video"
+  },
+  "Feedback": {
+    "openForm": "Opim feedback fom",
+    "label": "Manodina hereva",
+    "couldNotLoad": "Feedback fom i no inap load.",
+    "loadingForm": "I loadim feedback fom…",
+    "retry": "Traim gen",
+    "openFormShort": "Opim fom",
+    "cancel": "Kenis",
+    "title": "Beta Manodina Hereva",
+    "description": "Serim wanem i wok na wanem yumi inap mekim i gutpela moa. Dispela fom Google i givim.",
+    "openInNewTab": "Opim fom long nupela tab",
+    "closeForm": "Pasim feedback fom",
+    "loadingGoogleForm": "I loadim Google Form…",
+    "iframeTitle": "Salim Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Fri Kristen video long {language} | Jesus Film Project",
+    "metadataDescription": "Painim ol Jesus film, Baibel stori, disiplesip series, na outreach video wantaim dubbing audio o sutaitol long {language}.",
+    "heroTitle": "Fri Kristen video long {language}",
+    "heroDescription": "Painim ol Jesus film, Baibel stori, disiplesip series, na outreach video i stap long {language}. Ol video i fully dubbed i kamap pastaim, na ol opsi bilong sutaitol tasol i stap daun.",
+    "languageCollection": "Koleksen bilong tokples",
+    "itemCount": "{count, plural, one {# samting} other {# samting}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} insait long {groupCount, plural, one {# grup} other {# grup}}",
+    "sectionNavLabel": "Ol seksen bilong tokples inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nupela",
+    "videoBible": "Video Baibel",
+    "bibleProject": "BibleProject",
+    "sports": "Spos",
+    "collections": "Ol koleksen",
+    "subtitlesOnly": "Sutaitol tasol",
+    "newlyAdded": "Nau tasol i go insait",
+    "newVideosTitle": "Nupela Kristen video long {language}",
+    "newestFirst": "Nupela pastaim",
+    "noPublishedVideos": "I no gat ol publik video yet bilong dispela tokples.",
+    "bibleAndGospelFilms": "Baibel na Gospel film",
+    "videoBibleCollectionsTitle": "{language} Video Baibel koleksen",
+    "videoBibleDescription": "Ol koleksen i stap long Skripcha, olsem LUMO, JESUS, Magdalena, na Acts long {language}.",
+    "noVideoBibleCollections": "I no gat Video Baibel koleksen yet bilong dispela tokples.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject koleksen",
+    "bibleProjectDescription": "BibleProject series na stadi i stap long {language}.",
+    "noBibleProjectCollections": "I no gat BibleProject koleksen yet bilong dispela tokples.",
+    "sportsStories": "Ol stori bilong spos",
+    "sportsTitle": "{language} ol stori bilong spos na atlit",
+    "sportsDescription": "Ol stori bilong spos i stap long bilip na ol koleksen i fokus long atlit i stap long {language}.",
+    "noSportsCollections": "I no gat ol koleksen bilong spos o stori bilong atlit yet bilong dispela tokples.",
+    "fullyDubbed": "Dubim pinis tru",
+    "dubbedVideosTitle": "{language} video long koleksen",
+    "dubbedVideosDescription": "Brosim ol fully dubbed {language} video i grup wantaim long koleksen bilong ol bilong helpim painim hariap.",
+    "noDubbedVideos": "I no gat fully dubbed video yet bilong dispela tokples.",
+    "subtitlesAvailable": "Sutaitol i stap",
+    "subtitlesTitle": "{language} video wantaim sutaitol",
+    "subtitlesDescription": "Ol dispela video i gat {language} sutaitol taim tok ples {language} audio i no yet stap.",
+    "noSubtitleVideos": "I no gat video bilong sutaitol tasol yet bilong dispela tokples.",
+    "dubbed": "Dubim",
+    "subtitles": "Sutaitol",
+    "newLabel": "Nupela",
+    "fromCollection": "Long {collection}",
+    "standaloneVideos": "Ol video i stap nating",
+    "videosFromCollection": "Ol video long {collection}.",
+    "standaloneDescription": "Ol video i stap nating long dispela tokples.",
+    "openCollection": "Opim koleksen"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Lukluk",
+    "watch": "Lukluk",
+    "watchNow": "Lukluk Nau",
+    "mutePreview": "Pasim maus bilong preview",
+    "unmutePreview": "Opim maus bilong preview",
+    "nextVideo": "Neks video",
+    "featured": "I stap antap",
+    "showVideo": "Soim {title}",
+    "previousVideoPreview": "Past video preview",
+    "nextVideoPreview": "Neks video preview",
+    "mediaCollection": "Media koleksen",
+    "scrollToVideo": "Skrol go long {title} video"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project hom",
+    "navigation": "Navigation bilong footer",
+    "share": "Serim",
+    "watch": "Lukluk",
+    "giving": "Givim",
+    "about": "Long em",
+    "products": "Ol prodakt",
+    "resources": "Ol risos",
+    "partners": "Ol partner",
+    "contact": "Kontak",
+    "giveNow": "Givim nau",
+    "resourcesVersion": "Ol risos ({version})",
+    "office": "Ofis",
+    "fax": "Faksi",
+    "privacyPolicy": "Privacy Polisi",
+    "legalStatement": "Ligal Stetmen",
+    "newsletter": "Sain ap long niusleta bilong mipela"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Wok bilong helpim olgeta kantri",
+    "title": "Mesej i no senis. Rot bilong ol man lukluk i senis.",
+    "description": "Mipela i wok gen long video library na ol tool bilong mipela long stat, na putim wok bilong planti yia translation i go long ol platfom we ol man i stap pinis, lukluk, na serim.",
+    "translatedLibraryTitle": "Film library i gat planti translation tru long wol",
+    "translatedLibraryDescription": "Planti yia wok bilong translation, i go long ol trusted ministry partner, i bin wokim wanpela library wantaim planti tausen language track olsem ol man inap bungim stori bilong Jisas long tokples i go daun tru long bel bilong ol.",
+    "trustedVoicesTitle": "Bringim ol trusted voice i go long nupela form",
+    "trustedVoicesDescription": "Mipela i wok gen long rot bilong stori bilong gospel long piksa, na pairim ol trusted translation wantaim modern form olsem mesej inap go fri long ol platfom, kultur, na skrin.",
+    "missionTeamTitle": "I no tasol library. Em wanpela team bilong mission.",
+    "missionTeamDescription": "Jesus Film Project em wanpela globol team bilong ol translator, media specialist, editor, na creator i tanim planti yia bilong ministry experience i go long ol tool bilong helpim olgeta disciple-maker.",
+    "buildingNext": "Wanem mipela i wokim nau",
+    "nextStepsTitle": "Neks Steps Platform",
+    "nextStepsDescription": "Joinim ol luklukman wantaim ol save-rot i stap long spiritual journey bilong ol, na helpim ol long kisim nupela step i go long komuniti, Skripcha, o misin.",
+    "mediaLibraryTitle": "Evangelistik Media Library",
+    "mediaLibraryDescription": "Wanpela bikpela Kristen media library wantaim planti tausen video, film, na risos i stap long planti tokples bilong ministry na evangelism long olgeta hap bilong wol.",
+    "ministryToolsTitle": "Digital Tool bilong Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, na analytics i kamap bilong helpim ol ministry long kisim planti man moa long gutpela wei.",
+    "invitationEyebrow": "Yu i singaut",
+    "invitationTitle": "Helpim long wokim <highlight>nupela generesen</highlight> bilong tool bilong misin",
+    "invitationDescription": "Mipela i singautim ol praktisen, creator, na partner long early access. Traim ol nupela tool pastaim, givim feedback, na helpim long wokim ol prodakt bilong tru wok bilong misin.",
+    "betaTester": "Kamap beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Baibel Koleksen",
+    "gospelRailTitle": "Painim olgeta stori",
+    "videoBibleDescription": "Painim ol video na risos bilong mipela i bringim Baibel i kam laip long ol gutpela stori na skul.",
+    "showcaseTitle": "Skriptcha i tok long film",
+    "adventEyebrow": "Krismas Advent",
+    "adventTitle": "Krismas Advent Kountdaun",
+    "adventDescription": "Joinim Advent journey bilong mipela wantaim wanpela video olgeta de i wokim hat bilong wetim Krismas, na painim hop, amamas, na promis bilong kam bilong Jisas.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Advent Taime",
+    "nuaEyebrow": "NUA Sirisi",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Sirisi",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video Korse",
+    "journeyWithJesusTitle": "Go wantaim Jisas",
+    "gospelsOnVideoEyebrow": "Olgeta Gospel, i tok long video",
+    "scriptureAsWrittenTitle": "Skriptcha, i tok stret olsem i bin raitim",
+    "merryChristmas": "Krismas moale!",
+    "daysUntilChristmas": "{count, plural, other {Krismas do ai dina # noho}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ol tokples",
+    "metadataDescription": "Brosim ol JesusFilm video long tokples.",
+    "eyebrow": "Lukluk ol tokples",
+    "title": "Makim wanpela tokples",
+    "description": "Painim ol tokples long hap o brosim olgeta lista.",
+    "searchPlaceholder": "Painim ol tokples o kantri...",
+    "searchLabel": "Painim ol tokples o kantri",
+    "clearSearch": "Rausim painim",
+    "browse": "Brosim",
+    "browseByRegion": "Brosim long hap na kantri",
+    "languageCount": "{count, plural, one {# tokples} other {# tokples}}",
+    "region": "Hap",
+    "countryLanguages": "Ol tokples bilong {country}",
+    "showLess": "Soim liklik",
+    "showMore": "Soim {count} moa",
+    "noLanguages": "I no gat tokples i kamap",
+    "tryAnotherSearch": "Traim narapela search toksave."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Itaia Histori | Jesus Film Project",
+    "title": "Itaia Histori",
+    "loading": "I loadim history",
+    "empty": "I no gat wanpela samting yet",
+    "emptyDescription": "Ol video yu lukluk long taim yu sain in bai kamap hia.",
+    "earlier": "Bipo",
+    "today": "Tude",
+    "yesterday": "Asde"
+  },
+  "AccountControl": {
+    "account": "Akaun",
+    "accountMenu": "Menu bilong akaun",
+    "signIn": "Sain in",
+    "signOut": "Sain aut",
+    "signedIn": "Sain in pinis",
+    "history": "Histori",
+    "logOut": "Log aut"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page i no kamap",
+    "eyebrow": "Page i no kamap",
+    "screenReaderPrefix": "Page i no kamap:",
+    "title": "Dispela scene i no stap hia.",
+    "description": "Page inap i muv pinis, tasol stori i yet i go on.",
+    "actionsLabel": "Ol aksen bilong page i no kamap",
+    "backToWatch": "Go bek long Watch",
+    "browseVideos": "Brosim ol video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Lukluk long shotpela film",
+    "actions": {
+      "joinUs": "Joinim mipela",
+      "shareMission": "Serim misin bilong mipela"
+    },
+    "welcomeStart": {
+      "label": "Bilip & Skripcha",
+      "title": "Video pick bilong tude",
+      "description": "Ol video i stap long bilip long library bilong mipela long kirapim yu, challengeim yu, na kirapim tingting bilong yu."
+    },
+    "welcomeMorning": {
+      "label": "Moning inspiration",
+      "title": "Moning gut! Ol Baibel moment bilong tude i wetim yu.",
+      "description": "Statim de bilong yu wantaim ol gutpela Baibel moment we inap kirapim na strongim spirit bilong yu."
+    },
+    "welcomeAfternoon": {
+      "label": "Aftenun inspiration",
+      "title": "Aftenun gut! Ol Baibel moment bilong de bilong yu.",
+      "description": "Ol gutpela Baibel stori i stret long aftenun brek o long kisim moa inspiration."
+    },
+    "welcomeEvening": {
+      "label": "Evening inspiration",
+      "title": "Gutnait! Sindaun isi wantaim ol Baibel moment.",
+      "description": "Ol isi Baibel moment bilong helpim yu long tingim na kisim comfort taim de i pinis."
+    },
+    "joinUs": {
+      "label": "Joinim mipela",
+      "title": "Bilikn are dispela i painim",
+      "description": "Harvest i stap nau. Joinim mipela taim mipela i serim gospel wantaim wol long digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Go wantaim mipela",
+      "title": "Tokaut long stori bilong Jisas, wantaim mipela",
+      "description": "Ol bai harim na lukim laik bilong Jisas long tokples bilong ol yet stret long hap ol i stap."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% i hegeregere",
+    "none": "Video inai dekenai, tokples inai ai video ma haida hariharilaia be lasi."
+  },
+  "BetaTesterModal": {
+    "title": "Kamap beta tester",
+    "trigger": "Kamap beta tester",
+    "loadFailed": "Wanpela samting i go rong.",
+    "loading": "I loadim...",
+    "openFormNewTab": "Opim fom long nupela tab",
+    "close": "Pasim",
+    "iframeTitle": "Kamap beta tester"
   }
 }

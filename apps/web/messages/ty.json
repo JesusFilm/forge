@@ -7,7 +7,9 @@
     "noContent": "ʻAita e tumu parau i te vai nei.",
     "homepageMisconfigured": "ʻAita i tano te API i rotopu i te watch homepage.",
     "defaultTemplateMisconfigured": "ʻAita i tano te template watch ta'ata'ita'i.",
-    "authFailed": "ʻAita e nehenehe e faatupu i te haapapuraa e te taviniraa tumu parau. A faariro atu i te paturu mai te mea e vai noa ra teie fifi."
+    "authFailed": "ʻAita e nehenehe e faatupu i te haapapuraa e te taviniraa tumu parau. A faariro atu i te paturu mai te mea e vai noa ra teie fifi.",
+    "pageLoadFailed": "Ua hape te tahi mea.",
+    "tryAgain": "A tamata faahou"
   },
   "VideosPage": {
     "title": "Te mau video ato'a",
@@ -22,7 +24,8 @@
     "promoHeading": "E hinaaro anei oe i te taa maitai a'e i te Bibilia?",
     "joinBibleStudy": "A amui mai i ta matou haapiiraa Bibilia",
     "previousQuote": "Te tata'uraa Bibilia na mua",
-    "nextQuote": "Te tata'uraa Bibilia i muri mai"
+    "nextQuote": "Te tata'uraa Bibilia i muri mai",
+    "readPassage": "A pānui i teie tuhaa i roto i ta oe Bibilia."
   },
   "DownloadButton": {
     "checking": "Te hi'opo'a nei",
@@ -73,7 +76,8 @@
     "selectLanguage": "A ma'iti i te reo",
     "searchPlaceholder": "A imi i te mau reo…",
     "languages": "Te mau reo",
-    "noMatches": "ʻAita e tano"
+    "noMatches": "ʻAita e tano",
+    "notAvailable": "ʻAita e vai nei"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Reo",
@@ -112,7 +116,8 @@
     "questions": "Te mau Uiraa Tia'i",
     "askYours": "A ui i to oe iho",
     "chatWithPerson": "A aparau e te hoê taata",
-    "askBibleQuestion": "A ui i te hoê uiraa Bibilia"
+    "askBibleQuestion": "A ui i te hoê uiraa Bibilia",
+    "quiz": "Pātaitai"
   },
   "WatchQuestionPanel": {
     "messageType": "Motu parau",
@@ -170,7 +175,8 @@
     "searchRegion": "A imi i te mau video",
     "clearSearch": "Tamâ i te imiraa",
     "changeAudioLanguage": "Taui i te reo oro",
-    "home": "Te fare JésusFilm"
+    "home": "Te fare JésusFilm",
+    "closeSearch": "A tapiri i te imiraa"
   },
   "SearchOverlay": {
     "dialogLabel": "A imi e a hi'o i te mau video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Tamâ",
     "queryLanguageDetected": "Ua ite-hia te reo {language}",
     "searchInLanguage": "A imi i roto i te {language}",
-    "tryDifferentKeywordsOrLanguage": "A tamata i te tahi atu mau parau huru aore ra a ma'iti i te tahi atu reo imi"
+    "tryDifferentKeywordsOrLanguage": "A tamata i te tahi atu mau parau huru aore ra a ma'iti i te tahi atu reo imi",
+    "useWebsiteDefaultLanguage": "Faaohipa i te reo imi taunoa o te tahua itenati",
+    "removeLanguage": "A peepe {language}",
+    "browseMode": "Te huru hi'opo'a imi"
   },
   "HeroPlayer": {
     "playWithSound": "Mata'ita'i i teie nei",
-    "tapToUnmute": "A pato no te faaiti i te oro"
+    "tapToUnmute": "A pato no te faaiti i te oro",
+    "nextEpisode": "Episode i muri mai"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Te uta nei i te tumu parau"
+    "loadingContent": "Te uta nei i te tumu parau",
+    "loadingVideo": "Te uta nei i te video"
   },
   "VideoLabels": {
     "video": "Hoho'a video",
@@ -223,7 +234,8 @@
     "series": "Serie video",
     "collection": "Ha'aputuhia",
     "trailer": "Hi'oraa i mua",
-    "behindTheScenes": "I muri mai i te scene"
+    "behindTheScenes": "I muri mai i te scene",
+    "chapter": "Motu parau"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} i roto i te {total}",
@@ -235,11 +247,252 @@
     "noImage": "ʻAita e hoho'a",
     "playingNow": "Te hāmani nei i teie nei",
     "previousChapter": "Motu parau na mua",
-    "nextChapter": "Motu parau i muri mai"
+    "nextChapter": "Motu parau i muri mai",
+    "thumbnailAlt": "Te hoho'a iti o {title}",
+    "relatedVideoThumbnail": "Te hoho'a iti o te video piri"
   },
   "SearchResultCard": {
     "experience": "Haereraa",
     "episodeCount": "{count, plural, one {# OPISETO} other {# OPISETO}}",
     "thumbnailAlt": "Te hoho'a iti o te video"
+  },
+  "Feedback": {
+    "openForm": "A iriti i te faufau faaite",
+    "label": "Faaite",
+    "couldNotLoad": "ʻAita te faufau faaite i nehenehe e uta mai.",
+    "loadingForm": "Te uta nei i te faufau faaite…",
+    "retry": "Tamata faahou",
+    "openFormShort": "A iriti i te faufau",
+    "cancel": "A faaea",
+    "title": "Faaite Beta",
+    "description": "A faaite mai i te mea e manuia ra e te mea e nehenehe e faahou. Na Google teie faufau.",
+    "openInNewTab": "A iriti i te faufau i roto i te tab apî",
+    "closeForm": "A tapiri i te faufau faaite",
+    "loadingGoogleForm": "Te uta nei i te Google Form…",
+    "iframeTitle": "Tuu i te Faaite Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Te mau video Kerisetiano tamoni ore i roto i te {language} | Jesus Film Project",
+    "metadataDescription": "A hi'o i te mau hoho'a no nia ia Iesu, te mau aamu Bibilia, te mau serie faahaapii, e te mau video evanelia ma te oro faata'ahia aore ra te mau subtitles i roto i te {language}.",
+    "heroTitle": "Te mau video Kerisetiano tamoni ore i roto i te {language}",
+    "heroDescription": "A hi'o i te mau hoho'a no nia ia Iesu, te mau aamu Bibilia, te mau serie faahaapii, e te mau video evanelia e vai nei i roto i te {language}. E faatoro'a-muamua-hia te mau video i faata'ahia te oro, i muri iho te mau maitiraa subtitles ana'e.",
+    "languageCollection": "Ha'aputuhia reo",
+    "itemCount": "{count, plural, one {# mea} other {# mau mea}}",
+    "videoCount": "{count, plural, one {# video} other {# mau video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# mau video}} i roto i te {groupCount, plural, one {# tuhaa} other {# mau tuhaa}}",
+    "sectionNavLabel": "Te mau tuhaa o te inventory reo",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Apî",
+    "videoBible": "Bible vidéo",
+    "bibleProject": "BibleProject",
+    "sports": "Te mau hākinakina",
+    "collections": "Te mau ha'aputuhia",
+    "subtitlesOnly": "Te mau subtitles ana'e",
+    "newlyAdded": "Ua tāpiri-apî-hia",
+    "newVideosTitle": "Te mau video Kerisetiano apî i roto i te {language}",
+    "newestFirst": "Te apî roa na mua",
+    "noPublishedVideos": "ʻAita anō i itehia te mau video i nene'ihia no teie reo.",
+    "bibleAndGospelFilms": "Te mau hoho'a Bibilia e Evanelia",
+    "videoBibleCollectionsTitle": "Te mau ha'aputuhia Bible Video i roto i te {language}",
+    "videoBibleDescription": "Te mau ha'aputuhia e faatumu ra i te Parau, mai te LUMO, JESUS, Magdalena, e Acts i roto i te {language}.",
+    "noVideoBibleCollections": "ʻAita anō e mau ha'aputuhia Bible Video e vai nei no teie reo.",
+    "bibleProjectCollectionsTitle": "Te mau ha'aputuhia BibleProject i roto i te {language}",
+    "bibleProjectDescription": "Te mau serie e te mau hi'opo'araa BibleProject e vai nei i roto i te {language}.",
+    "noBibleProjectCollections": "ʻAita anō e mau ha'aputuhia BibleProject e vai nei no teie reo.",
+    "sportsStories": "Te mau aamu hākinakina",
+    "sportsTitle": "Te mau aamu hākinakina e te mau taata hauti i roto i te {language}",
+    "sportsDescription": "Te mau aamu hākinakina e faatumu ra i te faaroo e te mau ha'aputuhia no nia i te mau taata hauti e vai nei i roto i te {language}.",
+    "noSportsCollections": "ʻAita anō e mau ha'aputuhia hākinakina aore ra aamu taata hauti e vai nei no teie reo.",
+    "fullyDubbed": "Ua faataahia te reo paatoa",
+    "dubbedVideosTitle": "Te mau video i roto i te {language} na roto i te ha'aputuhia",
+    "dubbedVideosDescription": "A hi'o i te mau video {language} i faata'ahia te reo e fa'a'apii-piri-hia e to ratou ha'aputuhia no te ite-ohie a'e.",
+    "noDubbedVideos": "ʻAita anō e mau video i faata'ahia te reo paatoa e vai nei no teie reo.",
+    "subtitlesAvailable": "Te vai nei te mau subtitles",
+    "subtitlesTitle": "Te mau video {language} e te mau subtitles",
+    "subtitlesDescription": "E vai ra te mau subtitles {language} i roto i teie mau video, mai te mea eita anō te reo ha'iha'i {language} e vai nei.",
+    "noSubtitleVideos": "ʻAita anō e mau video subtitles ana'e e vai nei no teie reo.",
+    "dubbed": "Faata'ahia te reo",
+    "subtitles": "Te mau Subtitles",
+    "newLabel": "Apî",
+    "fromCollection": "Mai roto mai i te {collection}",
+    "standaloneVideos": "Te mau video ta'ahiraa",
+    "videosFromCollection": "Te mau video mai roto mai i te {collection}.",
+    "standaloneDescription": "Te mau video ta'ahiraa i roto i teie reo.",
+    "openCollection": "A iriti i te ha'aputuhia"
+  },
+  "WatchHome": {
+    "pageTitle": "Mata'ita'i — Jesus Film Project",
+    "watch": "Mata'ita'i",
+    "watchNow": "Mata'ita'i i teie nei",
+    "mutePreview": "Tamumu i te hi'oraa i mua",
+    "unmutePreview": "ʻAore e tamumu i te hi'oraa i mua",
+    "nextVideo": "Video i muri mai",
+    "featured": "Faatoro'a-hia",
+    "showVideo": "A faaite {title}",
+    "previousVideoPreview": "Hi'oraa i mua o te video na mua",
+    "nextVideoPreview": "Hi'oraa i mua o te video i muri mai",
+    "mediaCollection": "Ha'aputuhia media",
+    "scrollToVideo": "A panuku i te video {title}"
+  },
+  "WatchFooter": {
+    "home": "Te fare Jesus Film Project",
+    "navigation": "Te faanahoraa i raro",
+    "share": "Faariro",
+    "watch": "Mata'ita'i",
+    "giving": "Horohororaa",
+    "about": "No nia",
+    "products": "Te mau produits",
+    "resources": "Te mau rave'a",
+    "partners": "Te mau hoa ohipa",
+    "contact": "Te faanaho parau",
+    "giveNow": "Horohororaa i teie nei",
+    "resourcesVersion": "Te mau rave'a ({version})",
+    "office": "Fare ohipa",
+    "fax": "Nūmera fax",
+    "privacyPolicy": "Politique de confidentialité",
+    "legalStatement": "Parau haamaramaramaraa ture",
+    "newsletter": "A tapa'o no ta matou niu parau apî"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Hanga-hia no te mau misioni o te ao atoa nei",
+    "title": "ʻAita te parau e taui. Te huru e mata'ita'i ai te taata, o te taui ra.",
+    "description": "Te faahou nei matou i ta matou parau video e te mau rave'a mai te ni'a roa mai, ma te tuu atu i te mau matahiti e rave rahi o te ohipa huriraa i roto i te mau tahua ta te taata i itoito, i mata'ita'i, e i faariro.",
+    "translatedLibraryTitle": "Te fare horoa'hoho'a i hurihia hau atu i te rahi roa i te ao nei",
+    "translatedLibraryDescription": "Na roto i te mau matahiti e rave rahi o te ohipa huriraa, na roto i te mau hoa ohipa no te taviniraa, ua hamanihia te hoê fare parau e te mau tausani o te mau track reo, ia nehenehe te taata e farerei i te aamu o Iesu i roto i te reo e a'ohia hohonu ia ratou.",
+    "trustedVoicesTitle": "Te faatereraa i te mau reo ti'aturihia i roto i te mau huru apî",
+    "trustedVoicesDescription": "Te faahou nei matou i te huru e faatiahia ai te mau aamu no te evanelia, ma te tuu i te mau huriraa ti'aturihia e te mau huru apî no te ao nei ia nehenehe te parau e haere ma te ti'amâ i te mau tahua, te mau fenua, e te mau écran.",
+    "missionTeamTitle": "E mea hau atu i te hoê fare parau. Te hoê pŭpŭ no te misioni.",
+    "missionTeamDescription": "E pŭpŭ ao atoa te Jesus Film Project no te mau faatāu'a, mau taata faanaho i te media, mau taata faatano, e te mau taata hamani ohipa e faariro nei i te mau matahiti o te taviniraa ei mau rave'a no te feia faafariu noa i te ao atoa nei.",
+    "buildingNext": "Te mea ta matou e faahou nei",
+    "nextStepsTitle": "Tahua Next Steps",
+    "nextStepsDescription": "A haapii i te mau taata hi'opo'a e te mau rave'a mau i roto i ta ratou tere varua, ma te tauturu ia ratou ia rave i te hoê faaotiraa i mua i roto i te oire amui, te Parau, aore ra te misioni.",
+    "mediaLibraryTitle": "Fare parau media no te evanelia",
+    "mediaLibraryDescription": "Te hoê fare parau media Kerisetiano rahi e te mau tausani video, hoho'a, e rave'a e vai nei i roto i te mau reo e rave rahi no te taviniraa e te evanelia i te ao atoa nei.",
+    "ministryToolsTitle": "Te mau rave'a numera no te mau taviniraa",
+    "ministryToolsDescription": "Te faatereraa i te video, te tuhaa o te parau, te farereiraa i te feia faaroo, e te mau hi'opo'araa i hamanihia no te tauturu i te mau taviniraa ia haapii maitai i te hau atu o te mau taata.",
+    "invitationEyebrow": "Ua titauhia oe",
+    "invitationTitle": "A tauturu i te hamani i <highlight>te reanga i muri nei</highlight> o te mau rave'a misioni",
+    "invitationDescription": "Te titau nei matou i te feia ohipa, te mau taata hamani, e te mau hoa ohipa i roto i te haereraa matamua. A tamataraa i te mau rave'a apî, a horo'a i te mana'o, e a tauturu i te faahoa i te mau taata'o i hamanihia no te ohipa misioni mau.",
+    "betaTester": "A riro ei beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Ha'aputuhia Bible Video",
+    "gospelRailTitle": "A ite i te aamu taatoa",
+    "videoBibleDescription": "A hi'o i ta matou ha'aputuhia o te mau video e te mau rave'a e faatupu nei i te Bibilia i te oraraa na roto i te mau aamu e te mau haapiiraa faafaaite.",
+    "showcaseTitle": "Te Parau Tapu i faatiahia na roto i te hoho'a",
+    "adventEyebrow": "Noel Advent",
+    "adventTitle": "Noel Advent Countdown",
+    "adventDescription": "A amui mai i ta matou tere Advent ma te hoê video i te mau mahana atoa e faatupu nei i te tiai-noa-raa no Noel, ma te hi'o i te ti'aturiraa, te oaoa, e te parau fafau no te taeraa mai o Iesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Serie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Haapiiraa Video",
+    "journeyWithJesusTitle": "Haere e Iesu",
+    "gospelsOnVideoEyebrow": "Te mau Evanelia ato'a, faatiahia na roto i te video",
+    "scriptureAsWrittenTitle": "Te Parau Tapu, te parau-hia maitai tei papaihia",
+    "merryChristmas": "Ia oaoa te Noel!",
+    "daysUntilChristmas": "{count, plural, one {# mahana e toe nei e tae i te Noel} other {# mahana e toe nei e tae i te Noel}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Te mau reo",
+    "metadataDescription": "A hi'o i te mau video JesusFilm na roto i te reo.",
+    "eyebrow": "Te mau reo no te watch",
+    "title": "A ma'iti i te hoê reo",
+    "description": "A hi'o i te mau reo na te tuhaa fenua aore ra a hi'o i te lisi taatoa.",
+    "searchPlaceholder": "A imi i te mau reo aore ra te mau fenua...",
+    "searchLabel": "A imi i te mau reo aore ra te mau fenua",
+    "clearSearch": "Tamâ i te imiraa",
+    "browse": "A hi'o",
+    "browseByRegion": "A hi'o na te tuhaa fenua e te fenua",
+    "languageCount": "{count, plural, one {# reo} other {# reo}}",
+    "region": "Tuhaa fenua",
+    "countryLanguages": "Te mau reo o {country}",
+    "showLess": "A faaite iti iho",
+    "showMore": "A faaite i te {count} hau atu",
+    "noLanguages": "ʻAita e reo i itehia",
+    "tryAnotherSearch": "A tamata i te tahi atu parau imi."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Te hitori o te mata'itairaa | Jesus Film Project",
+    "title": "Te hitori o te mata'itairaa",
+    "loading": "Te uta nei i te hitori",
+    "empty": "ʻAita anō e mea i reira",
+    "emptyDescription": "Te mau video ta oe e mata'ita'i i te taime e tapa'o ana'e oe i roto, e faahaeahia i reira.",
+    "earlier": "Na mua atu",
+    "today": "I teie mahana",
+    "yesterday": "Ananahi"
+  },
+  "AccountControl": {
+    "account": "Pūkete",
+    "accountMenu": "Te tabula o te pūkete",
+    "signIn": "Tapa'o i roto",
+    "signOut": "Tapa'o faaho'i",
+    "signedIn": "Ua tapa'o i roto",
+    "history": "Hitori",
+    "logOut": "Puta i rapae"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ʻAita te api i itehia",
+    "eyebrow": "ʻAita te api i itehia",
+    "screenReaderPrefix": "ʻAita te api i itehia:",
+    "title": "ʻAita teie scene i reira.",
+    "description": "Ua ohipa paha te api i te tahoê ê, area te aamu ra, e tamau noa ïa.",
+    "actionsLabel": "Te mau ohipa no te api i itehia-ore-hia",
+    "backToWatch": "Ho'i i te Watch",
+    "browseVideos": "A hi'o i te mau video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Mata'ita'i i te hoho'a poto",
+    "actions": {
+      "joinUs": "A hono mai",
+      "shareMission": "A amui i roto i ta matou misioni"
+    },
+    "welcomeStart": {
+      "label": "Faaroo & te Parau Papai",
+      "title": "Te mau maitiraa video no teie mahana",
+      "description": "Te mau video no nia i te faaroo i roto i ta matou fare parau, no te faauru, no te tamataraa, e no te faaara i te feruriraa."
+    },
+    "welcomeMorning": {
+      "label": "Faaururaa i te po'ipo'i",
+      "title": "Ia ora na i te po'ipo'i! Te tia'i nei te mau taime Bibilia no teie mahana.",
+      "description": "A haamata i to oe mahana ma te mau taime Bibilia e faaitoito ra e e faateitei ra i to oe varua."
+    },
+    "welcomeAfternoon": {
+      "label": "Faaururaa i te aahiata",
+      "title": "Ia ora na i te aahiata! Te mau taime Bibilia no to oe mahana.",
+      "description": "Te mau tumu parau Bibilia e faaitoito ra, e tano maitai no to oe taime faafaaearaa i te aahiata aore ra no te faahou-faahou-raa i te faaururaa."
+    },
+    "welcomeEvening": {
+      "label": "Faaururaa i te ahiahi",
+      "title": "Ia ora na i te ahiahi! A faaea ma te mau taime Bibilia.",
+      "description": "Te mau taime Bibilia hau no te tauturu ia oe ia feruri hohonu e ia ite i te tamahanahanaraa i te hopea o to oe mahana."
+    },
+    "joinUs": {
+      "label": "A hono mai",
+      "title": "Te imi nei te mau miria taata",
+      "description": "Ua tae mai teotoretoraa. A hono mai ia matou i te faaiteraa i te evanelia i te ao nei na roto i te mau media numera."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "A haere amui tatou",
+      "title": "Te faati'araa i te aamu o Iesu, amui atoa",
+      "description": "Ia nehenehe ratou e faaroo e e ite i te here o Iesu i roto i to ratou iho reo, i te vahi iho ra ratou."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "E tano {percent}%",
+    "none": "ʻAita e video i faatoro'a-hia i itehia no teie video i roto i teie reo."
+  },
+  "BetaTesterModal": {
+    "title": "A riro ei beta tester",
+    "trigger": "A riro ei beta tester",
+    "loadFailed": "Ua hape te tahi mea.",
+    "loading": "Te uta nei...",
+    "openFormNewTab": "A iriti i te faufau i roto i te tab apî",
+    "close": "A tapiri",
+    "iframeTitle": "A riro ei beta tester"
   }
 }

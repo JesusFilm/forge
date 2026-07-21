@@ -760,7 +760,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           {modalChromeHidden ? (
             <button
               type="button"
-              aria-label="Close search"
+              aria-label={t("closeSearch")}
               data-testid="floating-header-search-close"
               onClick={() => setOpen(false)}
               className={`pointer-events-auto inline-flex ${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none`}

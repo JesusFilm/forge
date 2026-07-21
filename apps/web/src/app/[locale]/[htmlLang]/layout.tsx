@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import {
   DEFAULT_LOCALE,
   resolveWatchLocaleIdentity,
+  textDirectionForLocale,
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
@@ -17,10 +18,10 @@ import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
-
-async function loadMessages(locale: UiLocale) {
-  return (await import(`../../../../messages/${locale}.json`)).default
-}
+import {
+  GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+  loadClientMessages,
+} from "@/i18n/client-messages"
 
 function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
@@ -75,12 +76,16 @@ export default async function RootLayout({
   const htmlLangIdentity = resolveWatchLocaleIdentity(rawHtmlLang)
   const htmlLang =
     htmlLangIdentity.locale === locale ? htmlLangIdentity.htmlLang : locale
+  const textDirection = textDirectionForLocale(htmlLang)
   setRequestLocale(locale)
-  const messages = await loadMessages(locale)
+  const messages = await loadClientMessages(
+    locale,
+    GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+  )
   return (
     <html
       lang={htmlLang}
-      dir="ltr"
+      dir={textDirection}
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
       <head>

@@ -7,7 +7,9 @@
     "noContent": "Kontɛntu bɔ ka na.",
     "homepageMisconfigured": "Watch homepage la dɛri yai.",
     "defaultTemplateMisconfigured": "Nɔrmal watch template la dɛri yai.",
-    "authFailed": "Bɔ ka sɛn ka kontɛntu sɛrvis. Jatɛ support kɔ nɛ sɛnna bɛsɛ if i fɔlɔ."
+    "authFailed": "Bɔ ka sɛn ka kontɛntu sɛrvis. Jatɛ support kɔ nɛ sɛnna bɛsɛ if i fɔlɔ.",
+    "pageLoadFailed": "Sɛnɲa kaŋ bɔ.",
+    "tryAgain": "Nokɔn tanɛ"
   },
   "VideosPage": {
     "title": "Videos baara",
@@ -22,7 +24,8 @@
     "promoHeading": "I bɛ wɛlɛ ka Bible la kɔnɔ kɛrɛ?",
     "joinBibleStudy": "I bɛ tɔmɛn Bible study nɔŋ",
     "previousQuote": "Bible quote tɔɲɛn",
-    "nextQuote": "Bible quote kaŋ"
+    "nextQuote": "Bible quote kaŋ",
+    "readPassage": "Nɛn fɔlɛ kɛrɛ i Bible kɔnɔ."
   },
   "DownloadButton": {
     "checking": "Check la kɛ",
@@ -73,7 +76,8 @@
     "selectLanguage": "Language sɔrɔ",
     "searchPlaceholder": "Language sɛrɛch…",
     "languages": "Languages baara",
-    "noMatches": "Dɔ ka bɔ"
+    "noMatches": "Dɔ ka bɔ",
+    "notAvailable": "Bɔ ka na"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Language sɔrɔ",
@@ -112,7 +116,8 @@
     "questions": "Sɛnna kaŋ nɔŋ jɔmɛ",
     "askYours": "I yɛrɛ la sɛn",
     "chatWithPerson": "Mɔŋ nɔŋ chat kɛ",
-    "askBibleQuestion": "Bible sɛn"
+    "askBibleQuestion": "Bible sɛn",
+    "quiz": "Kwis"
   },
   "WatchQuestionPanel": {
     "messageType": "Message tɔŋ",
@@ -170,7 +175,8 @@
     "searchRegion": "Video sɛrɛch",
     "clearSearch": "Sɛrɛch bɔ",
     "changeAudioLanguage": "Audio language kɛlɛ",
-    "home": "JesusFilm kɔnɔ"
+    "home": "JesusFilm kɔnɔ",
+    "closeSearch": "Sɛrɛch lɔ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video sɛrɛch kɔ browsɛ",
@@ -205,14 +211,19 @@
     "clearLanguages": "Languages bɔ",
     "queryLanguageDetected": "{language} sɔrɔ",
     "searchInLanguage": "{language} nɔŋ sɛrɛch",
-    "tryDifferentKeywordsOrLanguage": "Keyword dɔ tɔŋ kɛlɛ nɔŋ search language dɔ sɔrɔ"
+    "tryDifferentKeywordsOrLanguage": "Keyword dɔ tɔŋ kɛlɛ nɔŋ search language dɔ sɔrɔ",
+    "useWebsiteDefaultLanguage": "Website default search language nɔŋ kɛ",
+    "removeLanguage": "{language} bɔ",
+    "browseMode": "Sɛrɛch browsɛ mode"
   },
   "HeroPlayer": {
     "playWithSound": "Kɔrɔlɛ yɔŋ watch kɛ",
-    "tapToUnmute": "Tap ka Unmute kɛ"
+    "tapToUnmute": "Tap ka Unmute kɛ",
+    "nextEpisode": "Episode kaŋ"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Content dɔŋ"
+    "loadingContent": "Content dɔŋ",
+    "loadingVideo": "Video dɔŋ"
   },
   "VideoLabels": {
     "video": "Video sɛn",
@@ -223,7 +234,8 @@
     "series": "Series sɛn",
     "collection": "Collection sɛn",
     "trailer": "Film preview",
-    "behindTheScenes": "Scene tɔɲɛn"
+    "behindTheScenes": "Scene tɔɲɛn",
+    "chapter": "Chapter sɛn"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ka {total} nɔŋ",
@@ -235,11 +247,252 @@
     "noImage": "Image bɔ ka na",
     "playingNow": "Yɔŋ kɛ",
     "previousChapter": "Chapter tɔɲɛn",
-    "nextChapter": "Chapter kaŋ"
+    "nextChapter": "Chapter kaŋ",
+    "thumbnailAlt": "{title} foto mɛnɛn",
+    "relatedVideoThumbnail": "Video jɔmɛ foto mɛnɛn"
   },
   "SearchResultCard": {
     "experience": "Experience sɛn",
     "episodeCount": "{count, plural, one {# episode} other {# episodes baara}}",
     "thumbnailAlt": "Video foto mɛnɛn"
+  },
+  "Feedback": {
+    "openForm": "Fɔrmu feedback fɔ",
+    "label": "Fikir fɔ",
+    "couldNotLoad": "Feedback fɔrmu bɔ ka dɔŋ.",
+    "loadingForm": "Feedback fɔrmu la dɔŋ…",
+    "retry": "Try again",
+    "openFormShort": "Fɔrmu fɔ",
+    "cancel": "Sɛlɛ",
+    "title": "Beta fikir fɔ",
+    "description": "Fɔ nɛn kaŋ jɔmɛ nɛ, kaŋ bɛ kɔrɔlɛ nɛn kaŋ bɛ sɛn. Fɔrmu bɔ Google nɔɔ.",
+    "openInNewTab": "Fɔrmu fɔ taabɛ nɛŋ bɔ",
+    "closeForm": "Feedback fɔrmu lɔ",
+    "loadingGoogleForm": "Google Form la dɔŋ…",
+    "iframeTitle": "Beta Feedback sɛn"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian videos bɔ ka saraa nɔŋ {language} | Jesus Film Project",
+    "metadataDescription": "Jesus films, Bible stories, discipleship series, and outreach videos browse ka {language} audio wala subtitles nɔŋ.",
+    "heroTitle": "Christian videos bɔ ka saraa nɔŋ {language}",
+    "heroDescription": "Jesus films, Bible stories, discipleship series, and outreach videos browse ka {language} nɔŋ. Fully dubbed videos a tɔŋsɔrɔ nɔŋ, subtitles only option dɔ yɔŋ kɛ.",
+    "languageCollection": "Language collection sɛn",
+    "itemCount": "{count, plural, one {# item} other {# items baara}}",
+    "videoCount": "{count, plural, one {# video} other {# videos baara}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} nɔŋ {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Language inventory sections nɔŋ navigation",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nɛŋ",
+    "videoBible": "Bible video nɔŋ",
+    "bibleProject": "BibleProject",
+    "sports": "Sports stories",
+    "collections": "Collections baara",
+    "subtitlesOnly": "Subtitles lɔŋ",
+    "newlyAdded": "Kaŋ bɔ add",
+    "newVideosTitle": "Christian videos nɛŋ nɔŋ {language}",
+    "newestFirst": "Nɛŋ sɔŋŋɛn fɔlɔ",
+    "noPublishedVideos": "Language wɔ ka publish video dɔ ka sɔrɔ nɛn.",
+    "bibleAndGospelFilms": "Bible kɔ Gospel films",
+    "videoBibleCollectionsTitle": "Video Bible collections nɔŋ {language}",
+    "videoBibleDescription": "Scripture kɔnɔ collections, LUMO, JESUS, Magdalena, kɔ Acts nɔŋ {language}.",
+    "noVideoBibleCollections": "Video Bible collections bɔ ka na language wɔ.",
+    "bibleProjectCollectionsTitle": "BibleProject collections nɔŋ {language}",
+    "bibleProjectDescription": "BibleProject series kɔ studies bɛ na nɔŋ {language}.",
+    "noBibleProjectCollections": "BibleProject collections bɔ ka na language wɔ.",
+    "sportsStories": "Sports stories baara",
+    "sportsTitle": "Sports kɔ athletes stories nɔŋ {language}",
+    "sportsDescription": "Faith kɔnɔ sports stories kɔ athlete collections bɛ na nɔŋ {language}.",
+    "noSportsCollections": "Sports or athlete-story collections bɔ ka na language wɔ.",
+    "fullyDubbed": "Kɔrɔlɛ baara bɔ dub",
+    "dubbedVideosTitle": "{language} videos collection nɔŋ",
+    "dubbedVideosDescription": "Fully dubbed {language} videos browse ka collection nɔŋ.",
+    "noDubbedVideos": "Fully dubbed video dɔ bɔ ka na language wɔ.",
+    "subtitlesAvailable": "Subtitles bɛ na",
+    "subtitlesTitle": "{language} videos subtitles nɔŋ",
+    "subtitlesDescription": "Nɛn video dɔ nɔŋ {language} subtitles bɛ if spoken {language} audio bɔ ka na yet.",
+    "noSubtitleVideos": "Subtitle-only video dɔ bɔ ka na language wɔ.",
+    "dubbed": "Dubbed kɛ",
+    "subtitles": "Subtitles baara",
+    "newLabel": "Nɛŋ",
+    "fromCollection": "Bɔ {collection} kɔnɔ",
+    "standaloneVideos": "Videos collection bɔ ka na",
+    "videosFromCollection": "Videos bɔ {collection} kɔnɔ.",
+    "standaloneDescription": "Videos collection bɔ ka na nɛn language wɔ.",
+    "openCollection": "Collection lɔ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Watch sɛn",
+    "watch": "Watch kɛ",
+    "watchNow": "Watch kɛ nɛn",
+    "mutePreview": "Preview mute",
+    "unmutePreview": "Preview unmute",
+    "nextVideo": "Video kaŋ",
+    "featured": "Sɔŋŋɛn sɔrɔ",
+    "showVideo": "{title} nɔŋ kɛ",
+    "previousVideoPreview": "Video tɔɲɛn preview",
+    "nextVideoPreview": "Video kaŋ preview",
+    "mediaCollection": "Koleksyɔn media",
+    "scrollToVideo": "Kɛ scroll ka {title} video"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project kɔnɔ",
+    "navigation": "Footer kɔnɔ navigation",
+    "share": "Share kɛ",
+    "watch": "Watch kɛ",
+    "giving": "Saraa fɔ",
+    "about": "N nɔŋ kɔnɔ",
+    "products": "Products baara",
+    "resources": "Resources baara",
+    "partners": "Partners baara",
+    "contact": "N nɔŋ contact kɛ",
+    "giveNow": "Saraa fɔ nɛn",
+    "resourcesVersion": "Resources baara ({version})",
+    "office": "Office sɛn",
+    "fax": "Fax number",
+    "privacyPolicy": "Privacy laata",
+    "legalStatement": "Legal fɔlɛ",
+    "newsletter": "Newsletter nɔŋ sign up"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Bɔ build global missions kɛla",
+    "title": "Message bɔ ka tɔŋ. People watch kaŋ la kɛ tɔŋ.",
+    "description": "N bɛ yɔŋ video library kɔ tools bɔlɔ na tɛ, ka decade translation work nɔŋ platform dɔ nɔŋ jɔmɛ li yaŋ, watch, kɔ share.",
+    "translatedLibraryTitle": "World nɔŋ most translated film library",
+    "translatedLibraryDescription": "Decade translation work, ministry partner trusted dɔ nɔŋ, library dɔ kɛ thousands language tracks nɔŋ, ka mɔŋ dɔ Jesus story language dɔ nɔŋ sɔrɔ.",
+    "trustedVoicesTitle": "Trusted voices nɔŋ new formats kɔnɔ",
+    "trustedVoicesDescription": "N bɛ gospel stories kɛlɛ how visual nɔŋ tɔŋ, trusted translations kɔ modern formats nɔŋ, ka message platforms, cultures, screens baara dɔ nɔŋ jɔmɛ.",
+    "missionTeamTitle": "Library dɔ nɛ ka. Mission-driven team dɔ nɛ.",
+    "missionTeamDescription": "Jesus Film Project bɛ global team dɔ, translators, media specialists, editors, kɔ creators nɔŋ, decade ministry experience tools dɔ nɔŋ kɛ disciple-makers baara.",
+    "buildingNext": "N bɛ build kaŋ",
+    "nextStepsTitle": "Next Steps platform",
+    "nextStepsDescription": "Viewers nɔŋ spiritual journey kɔnɔ tangible opportunity dɔ nɔŋ connect kɛ, ka nɔŋ next step community, Scripture, wala mission kɔnɔ.",
+    "mediaLibraryTitle": "Gospel media library",
+    "mediaLibraryDescription": "Christian media library dɔ, videos, films, resources thousand dɔ nɔŋ, languages multiple nɔŋ ministry kɔ evangelism world baara.",
+    "ministryToolsTitle": "Digital tools ministry kɛla",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, kɔ analytics bɛ nɔŋ ministries mɔŋ dɔ reach kɛ yɔŋ.",
+    "invitationEyebrow": "I bɛ invited",
+    "invitationTitle": "N nɔŋ jɔmɛ ka mission tools <highlight>generation kaŋ</highlight> build kɛ",
+    "invitationDescription": "N bɛ practitioners, creators, kɔ partners early access kɔnɔ invite. Tools new dɔ test tɛrɛ, feedback fɔ, kɔ products mission work real baara nɔŋ shape kɛ.",
+    "betaTester": "Beta tester bɔ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible collection",
+    "gospelRailTitle": "Story full dɔ sɔrɔ",
+    "videoBibleDescription": "Nɔŋ collection videos kɔ resources browse ka Bible life kɛ stories kɔ teachings nɔŋ.",
+    "showcaseTitle": "Scripture fɔ film nɔŋ",
+    "adventEyebrow": "Christmas Advent bɛrɛ",
+    "adventTitle": "Christmas Advent countdown",
+    "adventDescription": "Advent journey nɔŋ tɔmɛn, daily video dɔ nɔŋ Christmas kɔnɔ hope, joy, kɔ Jesus' arrival promise sɔrɔ.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Advent bɛrɛ",
+    "nuaEyebrow": "NUA series",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth series",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video course",
+    "journeyWithJesusTitle": "Jesus nɔŋ journey",
+    "gospelsOnVideoEyebrow": "Gospel baara video nɔŋ fɔ",
+    "scriptureAsWrittenTitle": "Scripture, a sɛbɛ kɛ mɛn, a fɔ tɛn",
+    "merryChristmas": "Christmas bɛrɛ yaa!",
+    "daysUntilChristmas": "{count, plural, one {# bii ka Christmas sɛn} other {# bii ka Christmas sɛn}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Languages baara",
+    "metadataDescription": "JesusFilm videos language nɔŋ browsɛ.",
+    "eyebrow": "Watch languages baara",
+    "title": "Language dɔ sɔrɔ",
+    "description": "Region nɔŋ languages browse kɛ wala list full dɔ browsɛ.",
+    "searchPlaceholder": "Languages wala countries sɛrɛch...",
+    "searchLabel": "Languages wala countries sɛrɛch",
+    "clearSearch": "Sɛrɛch bɔ",
+    "browse": "Browsɛ kɛ",
+    "browseByRegion": "Region kɔ country nɔŋ browsɛ",
+    "languageCount": "{count, plural, one {# language} other {# languages baara}}",
+    "region": "Region sɛn",
+    "countryLanguages": "{country} languages baara",
+    "showLess": "Mɛn dɔ tɔŋ",
+    "showMore": "Dɔ {count} wulɛ kaŋ",
+    "noLanguages": "Language dɔ bɔ ka sɔrɔ",
+    "tryAnotherSearch": "Search term dɔ tɔŋ kɛlɛ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Watch history | Jesus Film Project",
+    "title": "Watch history",
+    "loading": "History dɔŋ",
+    "empty": "Dɔ bɔ ka na yet",
+    "emptyDescription": "Videos i watch kɛ while signed in bɛ nɔŋ bɔ.",
+    "earlier": "Tɔɲɛn wɔ",
+    "today": "Bii",
+    "yesterday": "Kunu"
+  },
+  "AccountControl": {
+    "account": "Account sɛn",
+    "accountMenu": "Account sɛn menu",
+    "signIn": "Sign in kɛ",
+    "signOut": "Sign out kɛ",
+    "signedIn": "Sign in bɔ kɛ",
+    "history": "History sɛn",
+    "logOut": "Account bɔ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page bɔ ka sɔrɔ",
+    "eyebrow": "Page bɔ ka sɔrɔ",
+    "screenReaderPrefix": "Page bɔ ka sɔrɔ:",
+    "title": "Nɛn scene wɔ ka na.",
+    "description": "Page bɔ bɛ move kɛ, kɔ story dɔ bɛ continue.",
+    "actionsLabel": "Page bɔ ka sɔrɔ actions",
+    "backToWatch": "Watch kɔnɔ nɔn",
+    "browseVideos": "Videos browsɛ"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Wach film mɛnɛn",
+    "actions": {
+      "joinUs": "Wɔlɛ na nɔŋ",
+      "shareMission": "Kɔrɔlɛ na nɔŋ mission"
+    },
+    "welcomeStart": {
+      "label": "Fɛith kɔ Scripture",
+      "title": "Video dɔ kɔ nɛn",
+      "description": "Video content bɔ nɔŋ nɛn library, ka i yɔŋ, ka i tɔn, kɔ ka i fikir bɔ."
+    },
+    "welcomeMorning": {
+      "label": "Morning inspiration",
+      "title": "Bii yai! Bible moment dɔ bɛ wulɛ.",
+      "description": "Day i bɔ ka tɔmɛn nɔŋ Bible moment dɔ, ka i yɔŋ kɔ ka i spirit wulɛ."
+    },
+    "welcomeAfternoon": {
+      "label": "Afternoon inspiration",
+      "title": "Ɲɔgɔn yaa! Bible moment dɔ nɔŋ i day.",
+      "description": "Bible content dɔ bɛ na ka i afternoon break fɔ, wala ka i yɔŋ kɛ kaŋ."
+    },
+    "welcomeEvening": {
+      "label": "Evening inspiration",
+      "title": "Kuntɛŋ yaa! Bible moment dɔ nɔŋ nɛn.",
+      "description": "Bible moment dɔ bɛ tɛrɛ ka i fikir bɔ kɔ ka i nɔŋ comfort sɔrɔ ka bii tɛmɛn."
+    },
+    "joinUs": {
+      "label": "Wɔlɛ na nɔŋ",
+      "title": "Miliɔn dɔ bɛ sɛrɛch",
+      "description": "Harvest bɛ nɔŋ. Wɔlɛ na nɔŋ ka gospel kɔ world nɔŋ share nɔŋ digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Wɔlɛ nɔŋ tɔŋ",
+      "title": "Jesus story kɛ, nɔŋ yɛrɛ yɛrɛ",
+      "description": "Ala ka a bɛ nɔŋ Jesus la lɔɓɛ kɔ a yɛrɛ nɔŋ language dɔ nɔŋ, a bɛ na a place wɔ."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% jɔmɛ",
+    "none": "Video recommendation dɔ bɔ ka sɔrɔ nɛn language wɔ."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester bɔ",
+    "trigger": "Beta tester bɔ",
+    "loadFailed": "Sɛnɲa kaŋ bɔ.",
+    "loading": "Dɔŋ...",
+    "openFormNewTab": "Fɔrmu fɔ taabɛ nɛŋ bɔ",
+    "close": "Lɔ",
+    "iframeTitle": "Beta tester bɔ"
   }
 }

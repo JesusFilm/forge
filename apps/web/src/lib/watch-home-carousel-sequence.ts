@@ -1,6 +1,7 @@
 import type {
   WatchHomeMuxInsertAction,
   WatchHomeMuxInsertConfig,
+  WatchHomeMuxInsertCopyId,
 } from "@/lib/watch-home-config"
 
 export const WATCH_HOME_TV_ADVANCE_THRESHOLD = 95
@@ -32,20 +33,18 @@ export type WatchHomeTvCarouselVideoSlide = {
 export type WatchHomeTvCarouselMuxSlide = {
   kind: "mux"
   id: string
-  title: string
-  description: string | null
-  label: string
+  copyId: WatchHomeMuxInsertCopyId
   href: string | null
   action: WatchHomeMuxInsertAction | null
-  secondaryAction: { label: string; type: "watch-short-film" } | null
+  secondaryAction: { type: "watch-short-film" } | null
   posterUrl: string | null
   thumbnailUrl: string | null
-  imageAlt: string
   src: string | null
   playbackId: string | null
   durationSeconds: number | null
   logo: boolean
   playbackIndex: number
+  titleDate: string | null
 }
 
 export type WatchHomeTvCarouselSlide =
@@ -434,14 +433,6 @@ function muxPosterUrl(playbackId: string, width = 1280) {
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
 }
 
-function datePrefix(now: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "America/New_York",
-  }).format(now)
-}
-
 function timeRangeMatches(start: number, end: number, hour: number) {
   if (start === end) return true
   if (start < end) return hour >= start && hour < end
@@ -473,19 +464,13 @@ function overlayForInsert(insert: WatchHomeMuxInsertConfig, now: Date) {
 
   if (!selected) {
     return {
-      label: insert.label,
-      title: insert.title,
-      collectionTitle: insert.collectionTitle,
-      description: insert.description,
+      copyId: insert.copyId,
       action: insert.action,
     }
   }
 
   return {
-    label: selected.overlay.label,
-    title: selected.overlay.title,
-    collectionTitle: selected.overlay.collectionTitle,
-    description: selected.overlay.description,
+    copyId: selected.copyId,
     action: selected.overlay.action ?? insert.action,
   }
 }
@@ -578,30 +563,23 @@ function muxInsertToSlide(
   if (!playbackId) return null
 
   const overlay = overlayForInsert(insert, options.now)
-  const title = options.prefixTitleWithDate
-    ? `${datePrefix(options.now)}: ${overlay.title}`
-    : overlay.title
   const posterUrl = insert.posterOverride ?? muxPosterUrl(playbackId)
 
   return {
     kind: "mux",
     id: `mux-${insert.id}`,
-    title,
-    description: overlay.description,
-    label: overlay.label,
+    copyId: overlay.copyId,
     href: null,
     action: overlay.action,
-    secondaryAction: overlay.action
-      ? { label: "Watch Short Film", type: "watch-short-film" }
-      : null,
+    secondaryAction: overlay.action ? { type: "watch-short-film" } : null,
     posterUrl,
     thumbnailUrl: muxPosterUrl(playbackId, 640),
-    imageAlt: title,
     src: muxStreamUrl(playbackId),
     playbackId,
     durationSeconds: insert.durationSeconds,
     logo: insert.logo,
     playbackIndex,
+    titleDate: options.prefixTitleWithDate ? options.now.toISOString() : null,
   }
 }
 

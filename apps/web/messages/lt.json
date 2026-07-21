@@ -7,7 +7,9 @@
     "noContent": "Turinio nėra.",
     "homepageMisconfigured": "Žiūrėjimo pradžios puslapis sukonfigūruotas neteisingai.",
     "defaultTemplateMisconfigured": "Numatytasis žiūrėjimo šablonas sukonfigūruotas neteisingai.",
-    "authFailed": "Nepavyko prisijungti prie turinio paslaugos. Jei tai kartosis, susisiekite su pagalba."
+    "authFailed": "Nepavyko prisijungti prie turinio paslaugos. Jei tai kartosis, susisiekite su pagalba.",
+    "pageLoadFailed": "Kažkas nepavyko.",
+    "tryAgain": "Bandykite dar kartą"
   },
   "VideosPage": {
     "title": "Visi vaizdo įrašai",
@@ -22,7 +24,8 @@
     "promoHeading": "Norite geriau suprasti Bibliją?",
     "joinBibleStudy": "Prisijunkite prie mūsų Biblijos studijos",
     "previousQuote": "Ankstesnė Biblijos citata",
-    "nextQuote": "Kita Biblijos citata"
+    "nextQuote": "Kita Biblijos citata",
+    "readPassage": "Perskaitykite šią ištrauką savo Biblijoje."
   },
   "DownloadButton": {
     "checking": "Tikrinama",
@@ -73,7 +76,8 @@
     "selectLanguage": "Pasirinkite kalbą",
     "searchPlaceholder": "Ieškoti kalbų…",
     "languages": "Kalbos",
-    "noMatches": "Nerasta atitikmenų"
+    "noMatches": "Nerasta atitikmenų",
+    "notAvailable": "Nepasiekiama"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Kalba",
@@ -112,7 +116,8 @@
     "questions": "Susiję klausimai",
     "askYours": "Užduokite savo",
     "chatWithPerson": "Pakalbėkite su žmogumi",
-    "askBibleQuestion": "Užduokite klausimą apie Bibliją"
+    "askBibleQuestion": "Užduokite klausimą apie Bibliją",
+    "quiz": "Klausimynas"
   },
   "WatchQuestionPanel": {
     "messageType": "Žinutės tipas",
@@ -170,7 +175,8 @@
     "searchRegion": "Ieškoti vaizdo įrašų",
     "clearSearch": "Išvalyti paiešką",
     "changeAudioLanguage": "Keisti garso kalbą",
-    "home": "JesusFilm pradžia"
+    "home": "JesusFilm pradžia",
+    "closeSearch": "Uždaryti paiešką"
   },
   "SearchOverlay": {
     "dialogLabel": "Ieškoti ir naršyti vaizdo įrašus",
@@ -205,14 +211,19 @@
     "clearLanguages": "Išvalyti",
     "queryLanguageDetected": "Aptikta {language} kalba",
     "searchInLanguage": "Ieškoti {language} kalba",
-    "tryDifferentKeywordsOrLanguage": "Išbandykite kitus raktažodžius arba pasirinkite kitą paieškos kalbą"
+    "tryDifferentKeywordsOrLanguage": "Išbandykite kitus raktažodžius arba pasirinkite kitą paieškos kalbą",
+    "useWebsiteDefaultLanguage": "Naudoti svetainės numatytąją paieškos kalbą",
+    "removeLanguage": "Pašalinti {language}",
+    "browseMode": "Naršymo paieškos režimas"
   },
   "HeroPlayer": {
     "playWithSound": "Žiūrėti dabar",
-    "tapToUnmute": "Bakstelėkite, kad įjungtumėte garsą"
+    "tapToUnmute": "Bakstelėkite, kad įjungtumėte garsą",
+    "nextEpisode": "Kitas epizodas"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Įkeliamas turinys"
+    "loadingContent": "Įkeliamas turinys",
+    "loadingVideo": "Įkeliamas vaizdo įrašas"
   },
   "VideoLabels": {
     "video": "Vaizdo įrašas",
@@ -223,7 +234,8 @@
     "series": "Serialas",
     "collection": "Rinkinys",
     "trailer": "Anonsas",
-    "behindTheScenes": "Už kadro"
+    "behindTheScenes": "Už kadro",
+    "chapter": "Skyrius"
   },
   "SiblingCarousel": {
     "clipPosition": "Įrašas {current} iš {total}",
@@ -235,11 +247,252 @@
     "noImage": "Nėra paveikslėlio",
     "playingNow": "Leidžiama dabar",
     "previousChapter": "Ankstesnis skyrius",
-    "nextChapter": "Kitas skyrius"
+    "nextChapter": "Kitas skyrius",
+    "thumbnailAlt": "{title} miniatiūra",
+    "relatedVideoThumbnail": "Susijusio vaizdo įrašo miniatiūra"
   },
   "SearchResultCard": {
     "experience": "Patirtis",
     "episodeCount": "{count, plural, one {# epizodas} few {# epizodai} other {# epizodų}}",
     "thumbnailAlt": "Vaizdo įrašo miniatiūra"
+  },
+  "Feedback": {
+    "openForm": "Atidaryti atsiliepimų formą",
+    "label": "Atsiliepimai",
+    "couldNotLoad": "Nepavyko įkelti atsiliepimų formos.",
+    "loadingForm": "Įkeliama atsiliepimų forma…",
+    "retry": "Bandyti dar kartą",
+    "openFormShort": "Atidaryti formą",
+    "cancel": "Atšaukti",
+    "title": "Beta versijos atsiliepimai",
+    "description": "Pasidalykite, kas veikia gerai ir ką galime patobulinti. Šią formą teikia „Google“.",
+    "openInNewTab": "Atidaryti formą naujame skirtuke",
+    "closeForm": "Uždaryti atsiliepimų formą",
+    "loadingGoogleForm": "Įkeliama „Google“ forma…",
+    "iframeTitle": "Pateikti beta versijos atsiliepimą"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Nemokami krikščioniški vaizdo įrašai {language} kalba | Jesus Film Project",
+    "metadataDescription": "Atraskite Jėzaus filmus, Biblijos istorijas, mokinystės serijas ir evangelizavimo vaizdo įrašus su įgarsinimu ar subtitrais {language} kalba.",
+    "heroTitle": "Nemokami krikščioniški vaizdo įrašai {language} kalba",
+    "heroDescription": "Atraskite Jėzaus filmus, Biblijos istorijas, mokinystės serijas ir evangelizavimo vaizdo įrašus, prieinamus {language} kalba. Pirmiausia rodomi visiškai įgarsinti vaizdo įrašai, o žemiau pateikiami tik subtitrų variantai.",
+    "languageCollection": "Kalbų rinkinys",
+    "itemCount": "{count, plural, one {# elementas} few {# elementai} other {# elementų}}",
+    "videoCount": "{count, plural, one {# vaizdo įrašas} few {# vaizdo įrašai} other {# vaizdo įrašų}}",
+    "videosInGroups": "{videoCount, plural, one {# vaizdo įrašas} few {# vaizdo įrašai} other {# vaizdo įrašų}} iš {groupCount, plural, one {# grupės} few {# grupių} other {# grupių}}",
+    "sectionNavLabel": "Kalbų katalogo skyriai",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nauja",
+    "videoBible": "Vaizdo Biblija",
+    "bibleProject": "BibleProject",
+    "sports": "Sportas",
+    "collections": "Rinkiniai",
+    "subtitlesOnly": "Tik subtitrai",
+    "newlyAdded": "Neseniai pridėta",
+    "newVideosTitle": "Nauji krikščioniški vaizdo įrašai {language} kalba",
+    "newestFirst": "Naujausi pirmiausia",
+    "noPublishedVideos": "Kol kas šiai kalbai nerasta paskelbtų vaizdo įrašų.",
+    "bibleAndGospelFilms": "Biblijos ir Evangelijos filmai",
+    "videoBibleCollectionsTitle": "{language} vaizdo Biblijos rinkiniai",
+    "videoBibleDescription": "Į Raštą sutelkti rinkiniai, įskaitant LUMO, JESUS, Magdalena ir Apaštalų darbai, {language} kalba.",
+    "noVideoBibleCollections": "Kol kas šiai kalbai nėra prieinamų vaizdo Biblijos rinkinių.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject rinkiniai",
+    "bibleProjectDescription": "BibleProject serijos ir studijos, prieinamos {language} kalba.",
+    "noBibleProjectCollections": "Kol kas šiai kalbai nėra prieinamų BibleProject rinkinių.",
+    "sportsStories": "Sporto istorijos",
+    "sportsTitle": "{language} sporto ir sportininkų istorijos",
+    "sportsDescription": "Tikėjimu paremtos sporto istorijos ir sportininkams skirti rinkiniai, prieinami {language} kalba.",
+    "noSportsCollections": "Kol kas šiai kalbai nėra prieinamų sporto ar sportininkų istorijų rinkinių.",
+    "fullyDubbed": "Pilnai įgarsinta",
+    "dubbedVideosTitle": "{language} vaizdo įrašai pagal rinkinį",
+    "dubbedVideosDescription": "Naršykite pilnai įgarsintus {language} vaizdo įrašus, sugrupuotus pagal jų rinkinius, kad būtų lengviau juos rasti.",
+    "noDubbedVideos": "Kol kas šiai kalbai nėra prieinamų pilnai įgarsintų vaizdo įrašų.",
+    "subtitlesAvailable": "Prieinami subtitrai",
+    "subtitlesTitle": "{language} vaizdo įrašai su subtitrais",
+    "subtitlesDescription": "Šiuose vaizdo įrašuose yra {language} subtitrai, kai dar nėra įgarsinto {language} garso.",
+    "noSubtitleVideos": "Kol kas šiai kalbai nėra prieinamų tik su subtitrais vaizdo įrašų.",
+    "dubbed": "Įgarsinta",
+    "subtitles": "Subtitrai",
+    "newLabel": "Nauja",
+    "fromCollection": "Iš {collection}",
+    "standaloneVideos": "Atskirti vaizdo įrašai",
+    "videosFromCollection": "Vaizdo įrašai iš {collection}.",
+    "standaloneDescription": "Atskirti šios kalbos vaizdo įrašai.",
+    "openCollection": "Atidaryti rinkinį"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project žiūrėjimas",
+    "watch": "Žiūrėti",
+    "watchNow": "Žiūrėti dabar",
+    "mutePreview": "Nutildyti peržiūrą",
+    "unmutePreview": "Įjungti peržiūros garsą",
+    "nextVideo": "Kitas vaizdo įrašas",
+    "featured": "Rekomenduojama",
+    "showVideo": "Rodyti {title}",
+    "previousVideoPreview": "Ankstesnio vaizdo įrašo peržiūra",
+    "nextVideoPreview": "Kito vaizdo įrašo peržiūra",
+    "mediaCollection": "მედijos rinkinys",
+    "scrollToVideo": "Slinkite iki {title} vaizdo įrašo"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project pradžia",
+    "navigation": "Poraštės navigacija",
+    "share": "Dalytis",
+    "watch": "Žiūrėti",
+    "giving": "Aukojimas",
+    "about": "Apie",
+    "products": "Produktai",
+    "resources": "Ištekliai",
+    "partners": "Partneriai",
+    "contact": "Kontaktai",
+    "giveNow": "Aukoti dabar",
+    "resourcesVersion": "Ištekliai ({version})",
+    "office": "Biuras",
+    "fax": "Faksas",
+    "privacyPolicy": "Privatumo politika",
+    "legalStatement": "Teisinė informacija",
+    "newsletter": "Užsiprenumeruokite mūsų naujienlaiškį"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Sukurta pasaulinei misijai",
+    "title": "Žinia nesikeičia. Keičiasi tai, kaip žmonės žiūri.",
+    "description": "Iš esmės pertvarkome savo vaizdo įrašų biblioteką ir įrankius, perkeldami dešimtmečius trukusį vertimo darbą į platformas, kuriose žmonės jau susirenka, žiūri ir dalijasi.",
+    "translatedLibraryTitle": "Labiausiai išversta filmų biblioteka pasaulyje",
+    "translatedLibraryDescription": "Dešimtmečius trunkantis vertimo darbas, kurį vykdė patikimi tarnystės partneriai, sukūrė biblioteką su tūkstančiais kalbų takelių, kad žmonės galėtų sutikti Jėzaus istoriją jiems artimiausia kalba.",
+    "trustedVoicesTitle": "Patikimi balsai naujuose formatuose",
+    "trustedVoicesDescription": "Iš naujo kuriame, kaip vizualiai pasakojamos Evangelijos istorijos, derindami patikimus vertimus su šiuolaikiniais formatais, kad žinia laisvai sklistų per platformas, kultūras ir ekranus.",
+    "missionTeamTitle": "Daugiau nei biblioteka. Misija vedama komanda.",
+    "missionTeamDescription": "Jesus Film Project yra pasaulinė vertėjų, medijos specialistų, redaktorių ir kūrėjų komanda, paverčianti dešimtmečius tarnystės patirties įrankiais mokinystės ugdytojams visur.",
+    "buildingNext": "Ką kuriame toliau",
+    "nextStepsTitle": "Kitas žingsnis platforma",
+    "nextStepsDescription": "Sujunkite žiūrovus su apčiuopiamomis galimybėmis jų dvasinėje kelionėje, padėdami jiems žengti kitą žingsnį į bendruomenę, Raštą ar misiją.",
+    "mediaLibraryTitle": "Evangelizacinė medijos biblioteka",
+    "mediaLibraryDescription": "Plati krikščioniškos medijos biblioteka su tūkstančiais vaizdo įrašų, filmų ir išteklių, prieinamų keliomis kalbomis tarnystei ir evangelizacijai visame pasaulyje.",
+    "ministryToolsTitle": "Skaitmeniniai įrankiai tarnystėms",
+    "ministryToolsDescription": "Vaizdo įrašų valdymas, turinio platinimas, auditorijos įtraukimas ir analizė, sukurti padėti tarnystėms veiksmingiau pasiekti daugiau žmonių.",
+    "invitationEyebrow": "Kviečiame",
+    "invitationTitle": "Padėkite kurti <highlight>naujos kartos</highlight> misijos įrankius",
+    "invitationDescription": "Kviečiame praktikams, kūrėjams ir partneriams išbandyti ankstyvą prieigą. Išbandykite naujus įrankius pirmieji, teikite atsiliepimus ir padėkite formuoti produktus, skirtus tikram misijos darbui.",
+    "betaTester": "Tapti beta testeriu"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Vaizdo Biblijos rinkinys",
+    "gospelRailTitle": "Atraskite visą istoriją",
+    "videoBibleDescription": "Atraskite mūsų vaizdo įrašų ir išteklių kolekciją, kuri atgaivina Bibliją įtraukiančiomis istorijomis ir mokymais.",
+    "showcaseTitle": "Raštas pasakojamas per filmą",
+    "adventEyebrow": "Kalėdų adventas",
+    "adventTitle": "Kalėdų advento skaičiavimas",
+    "adventDescription": "Prisijunkite prie mūsų advento kelionės su kasdieniu vaizdo įrašu, kuris kuria Kalėdų laukimą, tyrinėdamas Jėzaus atėjimo viltį, džiaugsmą ir pažadą.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject adventas",
+    "nuaEyebrow": "NUA serija",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth serija",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Vaizdo kursas",
+    "journeyWithJesusTitle": "Kelionė su Jėzumi",
+    "gospelsOnVideoEyebrow": "Kiekviena Evangelija, pateikta vaizdo įrašu",
+    "scriptureAsWrittenTitle": "Raštas, ištartas tiksliai taip, kaip parašytas",
+    "merryChristmas": "Linksmų Kalėdų!",
+    "daysUntilChristmas": "{count, plural, one {Iki Kalėdų liko # diena} few {Iki Kalėdų liko # dienos} other {Iki Kalėdų liko # dienų}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Kalbos",
+    "metadataDescription": "Naršykite JesusFilm vaizdo įrašus pagal kalbą.",
+    "eyebrow": "Žiūrėjimo kalbos",
+    "title": "Pasirinkite kalbą",
+    "description": "Naršykite kalbas pagal regioną arba peržiūrėkite visą sąrašą.",
+    "searchPlaceholder": "Ieškoti kalbų arba šalių...",
+    "searchLabel": "Ieškoti kalbų arba šalių",
+    "clearSearch": "Išvalyti paiešką",
+    "browse": "Naršyti",
+    "browseByRegion": "Naršyti pagal regioną ir šalį",
+    "languageCount": "{count, plural, one {# kalba} few {# kalbos} other {# kalbų}}",
+    "region": "Regionas",
+    "countryLanguages": "{country} kalbos",
+    "showLess": "Rodyti mažiau",
+    "showMore": "Rodyti dar {count}",
+    "noLanguages": "Kalbų nerasta",
+    "tryAnotherSearch": "Išbandykite kitą paieškos terminą."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Žiūrėjimo istorija | Jesus Film Project",
+    "title": "Žiūrėjimo istorija",
+    "loading": "Įkeliama istorija",
+    "empty": "Kol kas čia nieko nėra",
+    "emptyDescription": "Čia bus rodomi vaizdo įrašai, kuriuos žiūrėsite prisijungę.",
+    "earlier": "Anksčiau",
+    "today": "Šiandien",
+    "yesterday": "Vakar"
+  },
+  "AccountControl": {
+    "account": "Paskyra",
+    "accountMenu": "Paskyros meniu",
+    "signIn": "Prisijungti",
+    "signOut": "Atsijungti",
+    "signedIn": "Prisijungta",
+    "history": "Istorija",
+    "logOut": "Atsijungti"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Puslapis nerastas",
+    "eyebrow": "Puslapis nerastas",
+    "screenReaderPrefix": "Puslapis nerastas:",
+    "title": "Šios scenos čia nėra.",
+    "description": "Puslapis galėjo būti perkeltas, bet istorija tęsiasi.",
+    "actionsLabel": "Veiksmai, kai puslapis nerastas",
+    "backToWatch": "Grįžti į žiūrėjimą",
+    "browseVideos": "Naršyti vaizdo įrašus"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Žiūrėti trumpametražį filmą",
+    "actions": {
+      "joinUs": "Prisijunkite prie mūsų",
+      "shareMission": "Prisidėkite prie mūsų misijos"
+    },
+    "welcomeStart": {
+      "label": "Tikėjimas ir Raštas",
+      "title": "Šiandienos vaizdo įrašų pasirinkimai",
+      "description": "Tikėjimu grįstas vaizdo turinys iš mūsų bibliotekos, skirtas įkvėpti, paskatinti ir paskatinti apmąstymus."
+    },
+    "welcomeMorning": {
+      "label": "Rytinis įkvėpimas",
+      "title": "Labas rytas! Šiandienos Biblijos akimirkos jūsų laukia.",
+      "description": "Pradėkite dieną su padrąsinančiomis Biblijos akimirkomis, skirtomis įkvėpti ir pakylėti jūsų dvasią."
+    },
+    "welcomeAfternoon": {
+      "label": "Popietės įkvėpimas",
+      "title": "Labas! Biblijos akimirkos jūsų dienai.",
+      "description": "Padrąsinantis Biblijos turinys, puikiai tinkantis popietės pertraukai arba tolesniam įkvėpimui."
+    },
+    "welcomeEvening": {
+      "label": "Vakaro įkvėpimas",
+      "title": "Labas vakaras! Atsipalaiduokite su Biblijos akimirkomis.",
+      "description": "Ramybę suteikiančios Biblijos akimirkos, padedančios apmąstyti ir rasti paguodą dienai baigiantis."
+    },
+    "joinUs": {
+      "label": "Prisijunkite prie mūsų",
+      "title": "Milijardai ieško",
+      "description": "Derlius jau čia. Prisijunkite prie mūsų, kai dalijamės Evangelija su pasauliu naudodami skaitmenines medijas."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Eikime kartu",
+      "title": "Kartu pasakokime Jėzaus istoriją",
+      "description": "Kad jie galėtų girdėti ir matyti Jėzaus meilę savo kalba ten, kur yra."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Atitiktis: {percent} %",
+    "none": "Šiam vaizdo įrašui rekomendacijų šia kalba nerasta."
+  },
+  "BetaTesterModal": {
+    "title": "Tapti beta testeriu",
+    "trigger": "Tapti beta testeriu",
+    "loadFailed": "Kažkas nepavyko.",
+    "loading": "Įkeliama...",
+    "openFormNewTab": "Atidaryti formą naujame skirtuke",
+    "close": "Uždaryti",
+    "iframeTitle": "Tapti beta testeriu"
   }
 }

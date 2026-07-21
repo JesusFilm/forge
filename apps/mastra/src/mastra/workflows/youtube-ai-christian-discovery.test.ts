@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 
+import { Mastra } from "@mastra/core"
+import { InMemoryStore } from "@mastra/core/storage"
+
 import type { YouTubeConfig } from "../../config/env"
 import type { DiscoveredVideo } from "../../services/discovery/candidate"
 import type { YouTubeDiscoveryArtifactStore } from "../../services/youtube-discovery/artifacts"
@@ -498,13 +501,22 @@ describe("youtubeAiChristianDiscoveryWorkflow", () => {
         }
         throw new Error(`unexpected fetch: ${url}`)
       })
+    let mastra: Mastra | undefined
 
     try {
       const { youtubeAiChristianDiscoveryWorkflow: workflow } =
         await import("./youtube-ai-christian-discovery")
-      const run = await workflow.createRun({
-        runId: "run-studio-saved-youtube",
+      mastra = new Mastra({
+        logger: false,
+        storage: new InMemoryStore(),
+        workflows: { youtubeAiChristianDiscoveryWorkflow: workflow },
       })
+      await mastra.startWorkers()
+      const run = await mastra
+        .getWorkflow("youtubeAiChristianDiscoveryWorkflow")
+        .createRun({
+          runId: "run-studio-saved-youtube",
+        })
       const result = await run.start({
         inputData: {
           channels: [],
@@ -527,6 +539,7 @@ describe("youtubeAiChristianDiscoveryWorkflow", () => {
         ]),
       )
     } finally {
+      await mastra?.shutdown()
       fetchSpy.mockRestore()
       vi.unstubAllEnvs()
       vi.resetModules()
@@ -543,6 +556,7 @@ describe("youtubeAiChristianDiscoveryWorkflow", () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(async () => new Response("down", { status: 500 }))
+    let mastra: Mastra | undefined
 
     try {
       const {
@@ -556,9 +570,17 @@ describe("youtubeAiChristianDiscoveryWorkflow", () => {
         queries: [],
         persistArtifact: false,
       }
-      const run = await workflow.createRun({
-        runId: "run-studio-failed-youtube-sources",
+      mastra = new Mastra({
+        logger: false,
+        storage: new InMemoryStore(),
+        workflows: { youtubeAiChristianDiscoveryWorkflow: workflow },
       })
+      await mastra.startWorkers()
+      const run = await mastra
+        .getWorkflow("youtubeAiChristianDiscoveryWorkflow")
+        .createRun({
+          runId: "run-studio-failed-youtube-sources",
+        })
       const result = await run.start({ inputData: input })
 
       expect(result.status).toBe("failed")
@@ -577,10 +599,33 @@ describe("youtubeAiChristianDiscoveryWorkflow", () => {
         retryable: true,
       })
     } finally {
+      await mastra?.shutdown()
       fetchSpy.mockRestore()
       vi.unstubAllEnvs()
       vi.resetModules()
     }
+  })
+
+  it("runs once a day one hour after Instagram at 01:00 UTC", () => {
+    expect(youtubeAiChristianDiscoveryWorkflow.engineType).toBe("evented")
+
+    const schedules = (
+      youtubeAiChristianDiscoveryWorkflow as typeof youtubeAiChristianDiscoveryWorkflow & {
+        getScheduleConfigs: () => Array<{
+          cron: string
+          timezone?: string
+          inputData?: unknown
+        }>
+      }
+    ).getScheduleConfigs()
+
+    expect(schedules).toHaveLength(1)
+    expect(schedules[0]).toMatchObject({
+      cron: "0 1 * * *",
+      timezone: "UTC",
+    })
+    expect(schedules[0]).not.toHaveProperty("id")
+    expect(schedules[0]).not.toHaveProperty("inputData")
   })
 
   it("remains registered", () => {

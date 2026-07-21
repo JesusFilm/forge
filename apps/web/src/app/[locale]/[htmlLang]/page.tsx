@@ -1,4 +1,6 @@
+import type { ReactNode } from "react"
 import type { Metadata } from "next"
+import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 import {
   publicWatchHomeLanguageSlugForLocale,
@@ -10,6 +12,10 @@ import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
+import {
+  loadClientMessages,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+} from "@/i18n/client-messages"
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -39,13 +45,20 @@ export default async function HomePage({ params }: PageProps) {
   const { locale: rawLocale } = await params
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
-  const [heroResult, pageResult] = await Promise.all([
+  const [heroResult, pageResult, messages] = await Promise.all([
     resolveWatchHome(locale),
     resolveWatchPage(locale),
+    loadClientMessages(locale, WATCH_HOME_CLIENT_MESSAGE_NAMESPACES),
   ])
 
+  const withMessages = (children: ReactNode) => (
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      {children}
+    </NextIntlClientProvider>
+  )
+
   if (heroResult.error) {
-    return <ExperienceError message={heroResult.error.message} />
+    return withMessages(<ExperienceError message={heroResult.error.message} />)
   }
 
   const builderBlocks =
@@ -64,14 +77,14 @@ export default async function HomePage({ params }: PageProps) {
   }
 
   if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
-    return <ExperienceEmpty />
+    return withMessages(<ExperienceEmpty />)
   }
 
-  return (
+  return withMessages(
     <WatchHomeExperiencePage
       heroModel={heroResult.data}
       blocks={builderBlocks}
       languageSlug={publicWatchHomeLanguageSlugForLocale(locale) ?? "english"}
-    />
+    />,
   )
 }

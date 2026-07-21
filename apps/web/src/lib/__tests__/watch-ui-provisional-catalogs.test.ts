@@ -137,8 +137,8 @@ describe("watch UI provisional official-language catalogs", () => {
 
   it("keeps unresolved provisional catalogs seeded exactly from English", () => {
     const english = readFileSync(catalogPath("en"), "utf-8")
-    expect(manifest.provisionalLocales).toEqual(["mey-Latn"])
-    expect(manifest.summary.provisionalCatalogs).toBe(1)
+    expect(manifest.provisionalLocales).toEqual(["crk", "mey-Latn"])
+    expect(manifest.summary.provisionalCatalogs).toBe(2)
     for (const locale of manifest.provisionalLocales) {
       expect(readFileSync(catalogPath(locale), "utf-8")).toBe(english)
     }
