@@ -14,9 +14,13 @@ import { GET_SHOWCASE_SUBTITLE } from "./showcaseVideoQuery"
 /** The English reference track's own language slug — never a bcp47 prefix (en-nai collides). */
 const ENGLISH_SLUG = "english"
 
-/** Each under the caller's ~5s total budget (KTD-5), per the outbound-timeout law. */
-const SHOWCASE_VTT_QUERY_DEADLINE_MS = 2500
+// Per-op deadlines, both under and summing under the caller's total budget (KTD-5), per
+// the outbound-timeout law — so a single stalled op degrades before the total backstop.
+const SHOWCASE_VTT_QUERY_DEADLINE_MS = 2000
 const SHOWCASE_VTT_FETCH_DEADLINE_MS = 2500
+
+/** KTD-5: the total plan-build budget; a slower acquisition degrades to the fixed grid (AE5). */
+export const SHOWCASE_SENTENCE_PLAN_BUDGET_MS = 5000
 
 /**
  * Device-side pragmatic cap: reject a VTT body over ~1.5MB (a real caption track is a few
@@ -168,4 +172,28 @@ export function createSentenceTimingSource(
     cacheBounded(cache, vttSrc, timing)
     return { ok: true, timing }
   }
+}
+
+/**
+ * KTD-5: race the acquisition against the total plan-build budget so the reel never waits
+ * longer than the ceiling. An unresolved acquisition yields `timeout` and the caller plays
+ * the fixed grid (AE5). Kept out of the screen effect so it is testable without a render
+ * harness (`acquire` never throws — U3 maps its own failures to a reason).
+ */
+export async function resolveSentenceTimingWithinBudget(
+  acquire: () => Promise<SentenceTimingResult>,
+  budgetMs: number,
+): Promise<
+  | { timing: SentenceTiming }
+  | { timing: null; reason: SentenceTimingFailureReason | "timeout" }
+> {
+  let result: SentenceTimingResult
+  try {
+    result = await withTimeout(acquire(), budgetMs)
+  } catch {
+    return { timing: null, reason: "timeout" }
+  }
+  return result.ok
+    ? { timing: result.timing }
+    : { timing: null, reason: result.reason }
 }

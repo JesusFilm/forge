@@ -418,7 +418,7 @@ A reel source change performed while a full-screen overlay — a chapter card or
 
 ### Language Centerpiece
 
-The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs roughly every ten seconds, naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
+The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs at the pauses following completed sentences in the video's English subtitle track (every segment plays at least ten seconds and never cuts mid-sentence), naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. A centerpiece whose English track has no usable subtitles degrades to the earlier fixed ~10-second cadence for that video. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
 
 ### Hop Handoff
 

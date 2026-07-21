@@ -1,6 +1,9 @@
 import { parseVtt } from "../parseVtt"
 import { deriveSentenceTiming } from "./sentenceTiming"
-import { createSentenceTimingSource } from "./sentenceTimingSource"
+import {
+  createSentenceTimingSource,
+  resolveSentenceTimingWithinBudget,
+} from "./sentenceTimingSource"
 
 // A real slice of the Birth of Jesus English track — <b> tags intact to prove stripping,
 // and two real sentence pauses so the derived timing is non-empty.
@@ -254,5 +257,32 @@ describe("createSentenceTimingSource — bounded cache (KTD-7)", () => {
     expect(cache.has("https://cdn/slug-0.vtt")).toBe(false) // oldest evicted
     expect(cache.has("https://cdn/slug-1.vtt")).toBe(false)
     expect(cache.has("https://cdn/slug-9.vtt")).toBe(true) // newest kept
+  })
+})
+
+describe("resolveSentenceTimingWithinBudget — total budget (KTD-5/AE5)", () => {
+  it("returns timeout when the acquisition never resolves inside the budget", async () => {
+    // The reel must not stall on the chapter card: a never-resolving acquire yields the
+    // fixed grid within a tiny real budget.
+    const neverResolves = () => new Promise<never>(() => {})
+    const result = await resolveSentenceTimingWithinBudget(neverResolves, 30)
+    expect(result).toEqual({ timing: null, reason: "timeout" })
+  })
+
+  it("passes a resolved timing through untouched", async () => {
+    const timing = deriveSentenceTiming(parseVtt(FIXTURE_VTT))
+    const result = await resolveSentenceTimingWithinBudget(
+      async () => ({ ok: true, timing }),
+      1000,
+    )
+    expect(result).toEqual({ timing })
+  })
+
+  it("maps an acquisition failure reason straight through", async () => {
+    const result = await resolveSentenceTimingWithinBudget(
+      async () => ({ ok: false, reason: "no-subtitle" }),
+      1000,
+    )
+    expect(result).toEqual({ timing: null, reason: "no-subtitle" })
   })
 })

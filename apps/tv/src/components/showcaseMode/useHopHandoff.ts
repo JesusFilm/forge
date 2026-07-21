@@ -69,6 +69,8 @@ export type UseHopHandoffArgs = {
   confirmPlayback: () => void
   /** ReelPlayer's audio ramp (shared with the poster path). */
   fadeVolumeTo: (target: VideoPlayer, to: number, durationMs: number) => void
+  /** KTD-8: the captured library buffer default, restored on the player a flip promotes. */
+  defaultBufferOptionsRef: MutableRefObject<VideoPlayer["bufferOptions"] | null>
 }
 
 export type HopHandoff = {
@@ -101,6 +103,7 @@ export function useHopHandoff({
   shouldPlayRef,
   confirmPlayback,
   fadeVolumeTo,
+  defaultBufferOptionsRef,
 }: UseHopHandoffArgs): HopHandoff {
   const [liveKey, setLiveKey] = useState<"a" | "b">("a")
   const live = liveKey === "a" ? playerA : playerB
@@ -326,6 +329,16 @@ export function useHopHandoff({
         leadSeconds: HANDOFF_START_LEAD_SECONDS,
       })
       try {
+        // KTD-8: the standby preloaded under the 15s forward-buffer cap sized for 10s
+        // segments; promoted to live it may play a ~30s sentence-aware segment, so restore
+        // the library default (automatic buffering) before it becomes live.
+        if (defaultBufferOptionsRef.current != null) {
+          standby.bufferOptions = defaultBufferOptionsRef.current
+        }
+      } catch {
+        // Released; the align/play below settle or the watchdog recovers.
+      }
+      try {
         if (alignTo != null) standby.currentTime = alignTo
         standby.volume = 0
         if (shouldPlayRef.current) standby.play()
@@ -336,7 +349,7 @@ export function useHopHandoff({
       setPendingReveal({ token })
       setLiveKey((key) => (key === "a" ? "b" : "a"))
     },
-    [live, standby, shouldPlayRef],
+    [live, standby, shouldPlayRef, defaultBufferOptionsRef],
   )
 
   const abandonDeadFlip = useCallback(() => {

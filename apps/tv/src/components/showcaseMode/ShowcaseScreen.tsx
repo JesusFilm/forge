@@ -43,7 +43,9 @@ import {
 } from "../../lib/showcaseMode/reelState"
 import {
   buildHopSchedule,
+  HOP_TIMING_UNUSABLE,
   hopToStream,
+  type ShowcaseHop,
 } from "../../lib/showcaseMode/hopSchedule"
 import {
   buildFallbackChapters,
@@ -67,10 +69,16 @@ import {
   resolveShowcaseStartSource,
 } from "../../lib/showcaseMode/showcaseTelemetry"
 import {
+  logSentencePlanFallback,
   logShowcaseFallback,
   logShowcaseParseDrops,
 } from "../../lib/showcaseMode/logShowcaseFallback"
 import { createShowcaseVideoFetcher } from "../../lib/showcaseMode/showcaseVideoQuery"
+import {
+  SHOWCASE_SENTENCE_PLAN_BUDGET_MS,
+  createSentenceTimingSource,
+  resolveSentenceTimingWithinBudget,
+} from "../../lib/showcaseMode/sentenceTimingSource"
 import { countDistinctLanguages } from "../../lib/showcaseMode/statLines"
 import type {
   ShowcaseChapter,
@@ -396,7 +404,36 @@ export function ShowcaseScreen() {
           video = null
         }
         if (cancelled || !mountedRef.current) return
-        const plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+
+        // KTD-5/R7: acquire the English reference track's sentence timing under the total
+        // plan-build budget. Any failure or timeout degrades THIS chapter to the fixed
+        // grid (per video, never a stall, never an error) with an observable reason.
+        const acquireTiming = createSentenceTimingSource(getApolloClient())
+        const acquired = await resolveSentenceTimingWithinBudget(
+          () => acquireTiming(excerpt.slug),
+          SHOWCASE_SENTENCE_PLAN_BUDGET_MS,
+        )
+        if (cancelled || !mountedRef.current) return
+
+        let plan: ShowcaseHop[] | null
+        if (acquired.timing) {
+          const sentencePlan = buildHopSchedule({
+            dubs: video?.dubs,
+            rng: Math.random,
+            sentenceTiming: acquired.timing,
+          })
+          if (sentencePlan === HOP_TIMING_UNUSABLE) {
+            // KTD-6: the reference track had no usable sentence structure.
+            logSentencePlanFallback({ reason: "no-usable-boundaries" })
+            plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+          } else {
+            plan = sentencePlan
+          }
+        } else {
+          logSentencePlanFallback({ reason: acquired.reason })
+          plan = buildHopSchedule({ dubs: video?.dubs, rng: Math.random })
+        }
+
         if (plan != null) {
           // The hop projection owns the stream for the whole plan; a held resolved
           // stream would replay as a stale target the moment the plan completes.

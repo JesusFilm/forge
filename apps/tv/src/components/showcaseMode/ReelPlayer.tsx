@@ -324,6 +324,7 @@ export function ReelPlayer({
     shouldPlayRef,
     confirmPlayback,
     fadeVolumeTo,
+    defaultBufferOptionsRef,
   })
   liveRef.current = live
 
