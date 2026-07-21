@@ -15,8 +15,8 @@ from the main DS Year 1 roadmap.
 
 - **Total tickets:** 32
 - ✅ **Complete:** 25
-- 🟡 **In progress:** 0
-- 🔵 **Not started:** 7
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 6
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -54,4 +54,4 @@ from the main DS Year 1 roadmap.
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)    | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                     |
 | [feat-275](feat-275-ai-chat-docs-audit.md)                   | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                    | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#1638](https://github.com/JesusFilm/forge/pull/1638) |
 | [feat-281](feat-281-chat-conversation-session-module.md)     | Chat conversation session module (deepen the engine + honest gate denial) | jian wei | P2       | 2026-07-22 | 4    | 🔵 not-started | —                                                     |
-| [feat-282](feat-282-chat-shared-mastra-transport.md)         | Shared Mastra upstream transport for the chat proxies (narrowed)          | jian wei | P2       | 2026-07-21 | 5    | 🔵 not-started | —                                                     |
+| [feat-282](feat-282-chat-shared-mastra-transport.md)         | Shared Mastra upstream transport for the chat proxies (narrowed)          | jian wei | P2       | 2026-07-21 | 5    | 🟡 in-progress | —                                                     |

@@ -135,6 +135,12 @@ const privateHttp =
 if (url.protocol !== "https:" && !privateHttp) return false // ssrf_blocked
 ```
 
+> **Relocated (2026-07-21, feat-282 PR 1):** this guard now lives as
+> `hostAllowed` in `apps/chat/src/lib/server/mastra-upstream.ts`, imported by
+> BOTH the send proxy and the history proxies (it is no longer exported from
+> the seeker route file); the label-boundary test matrix is direct unit
+> coverage beside it. The logic above is unchanged.
+
 Keep the host allowlist check after the scheme floor; an unset allowlist trusts
 the operator-set host (admin parity; `redirect:"error"` still blocks off-host
 hops), but the scheme floor applies regardless — including to

@@ -3,7 +3,7 @@ id: "feat-282"
 title: "Shared Mastra upstream transport for the chat proxies (narrowed)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-21"
 duration: 5
 depends_on: []
