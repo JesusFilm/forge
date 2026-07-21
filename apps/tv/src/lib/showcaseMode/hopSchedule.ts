@@ -19,6 +19,7 @@ import {
   toDefaultSlugOptions,
   type ShowcaseDubInput,
 } from "./languageRotation"
+import type { SentenceTiming } from "./sentenceTiming"
 import { CREDITS_TAIL_SECONDS } from "./sourceResolution"
 import type { ExcerptWindow, ShowcaseStream } from "./types"
 
@@ -30,6 +31,20 @@ export const HOP_SEGMENT_SECONDS = 10
 
 /** R8/R9 ceiling: at most 9 languages, so at most 9x10 = 90s total. */
 export const MAX_HOPS = 9
+
+/**
+ * R3 pathology guard: a sentence-aware segment stretches past 10s to finish its
+ * sentence (15-20s is normal), but a track with no qualifying pause would otherwise run
+ * unbounded — so a segment is ceiling-cut at the nearest cue edge by this length.
+ */
+export const MAX_HOP_SEGMENT_SECONDS = 30
+
+/**
+ * KTD-6 sentinel: the reference track produced no usable sentence-aligned plan (its very
+ * first segment would already ceiling-cut). The caller logs `no-usable-boundaries` and
+ * rebuilds without timing — nine ceiling-cut segments would be worse than the fixed grid.
+ */
+export const HOP_TIMING_UNUSABLE = "unusable-sentence-timing"
 
 /**
  * A truncated final slice below this reads as a glitch — too short to hear the switch or
@@ -141,6 +156,125 @@ function planTiming(
   return hopLengths.length >= 2 ? { windowStart: 0, hopLengths } : null
 }
 
+// ── Sentence-aware timing (KTD-4/KTD-6/R1-R5) ───────────────────────
+
+/** Spoken seconds inside [from, to): the union spans never overlap, so this never double-counts. */
+function spokenCoverage(
+  spans: SentenceTiming["dialogueSpans"],
+  from: number,
+  to: number,
+): number {
+  let total = 0
+  for (const span of spans) {
+    const lo = Math.max(span.start, from)
+    const hi = Math.min(span.end, to)
+    if (hi > lo) total += hi - lo
+  }
+  return total
+}
+
+/**
+ * KTD-4: seed the window over the densest dialogue. Candidates are dialogue-span starts
+ * (a segment should open on speech, not mid-silence); each is scored by spoken seconds in
+ * a nominal span, highest wins, ties to earliest. Clamped so at least two segments can
+ * still fit before the credits tail — the walk enforces the real end.
+ */
+function seedWindowStart(
+  spans: SentenceTiming["dialogueSpans"],
+  desiredCount: number,
+  creditsFreeEnd: number,
+): number {
+  const nominalSpan = desiredCount * HOP_SEGMENT_SECONDS
+  const maxStart = Math.max(0, creditsFreeEnd - HOP_SEGMENT_SECONDS * 2)
+  const fitStarts = spans.map((s) => s.start).filter((s) => s <= maxStart)
+  // All dialogue sits past the fittable range → open as early as that range allows.
+  const candidates = fitStarts.length
+    ? fitStarts
+    : [Math.min(spans[0].start, maxStart)]
+
+  let best = candidates[0]
+  let bestCoverage = -1
+  for (const start of candidates) {
+    const coverage = spokenCoverage(spans, start, start + nominalSpan)
+    if (coverage > bestCoverage) {
+      bestCoverage = coverage
+      best = start
+    }
+  }
+  return best
+}
+
+/** Sorted unique span edges — the cue boundaries a ceiling-cut segment may end on (R3). */
+function dialogueEdges(spans: SentenceTiming["dialogueSpans"]): number[] {
+  const edges = new Set<number>()
+  for (const span of spans) {
+    edges.add(span.start)
+    edges.add(span.end)
+  }
+  return [...edges].sort((a, b) => a - b)
+}
+
+/** Largest cue edge within [lo, hi], or null — where a ceiling-cut segment ends (R3). */
+function largestEdgeWithin(
+  edges: readonly number[],
+  lo: number,
+  hi: number,
+): number | null {
+  let best: number | null = null
+  for (const edge of edges) {
+    if (edge >= lo && edge <= hi) best = edge // edges sorted asc → last match is largest
+  }
+  return best
+}
+
+/**
+ * Walk contiguous, sentence-aligned segments from the densest-dialogue seed (KTD-4). Each
+ * segment runs at least 10s (R1) and ends at the first padded boundary past that (R2); a
+ * segment with no boundary inside its ~30s ceiling is cut at the nearest cue edge (R3),
+ * except the FIRST — an unalignable opener fails the whole track (KTD-6/AE6), as does a
+ * plan of fewer than two switchable segments.
+ */
+function planSentenceWindows(
+  planningDuration: number,
+  desiredCount: number,
+  timing: SentenceTiming,
+): ExcerptWindow[] | typeof HOP_TIMING_UNUSABLE {
+  const creditsFreeEnd = Math.floor(planningDuration - CREDITS_TAIL_SECONDS)
+  if (creditsFreeEnd < HOP_SEGMENT_SECONDS * 2) return HOP_TIMING_UNUSABLE
+  const { boundaries, dialogueSpans } = timing
+  if (boundaries.length === 0 || dialogueSpans.length === 0) {
+    return HOP_TIMING_UNUSABLE
+  }
+
+  const edges = dialogueEdges(dialogueSpans)
+  const windows: ExcerptWindow[] = []
+  let position = seedWindowStart(dialogueSpans, desiredCount, creditsFreeEnd)
+
+  for (let i = 0; i < desiredCount; i++) {
+    const minEnd = position + HOP_SEGMENT_SECONDS
+    if (minEnd > creditsFreeEnd) break // no room for another >=10s segment before credits
+    const ceilingEnd = Math.min(
+      position + MAX_HOP_SEGMENT_SECONDS,
+      creditsFreeEnd,
+    )
+
+    const boundary = boundaries.find((b) => b.switchTime >= minEnd)
+    let end: number
+    if (boundary && boundary.switchTime <= ceilingEnd) {
+      end = boundary.switchTime // R2: first padded sentence pause past the 10s floor
+    } else if (i === 0) {
+      return HOP_TIMING_UNUSABLE // KTD-6/AE6: the opener must be sentence-aligned
+    } else {
+      end = largestEdgeWithin(edges, minEnd, ceilingEnd) ?? ceilingEnd // R3 ceiling cut
+    }
+
+    windows.push({ startSeconds: position, endSeconds: end })
+    position = end
+  }
+
+  return windows.length >= 2 ? windows : HOP_TIMING_UNUSABLE
+}
+
 /**
  * Build the centerpiece's hop plan, or null when it can't showcase a language switch.
  *
@@ -153,7 +287,17 @@ function planTiming(
 export function buildHopSchedule(args: {
   dubs: readonly ShowcaseDubInput[] | null | undefined
   rng: () => number
-}): ShowcaseHop[] | null {
+}): ShowcaseHop[] | null
+export function buildHopSchedule(args: {
+  dubs: readonly ShowcaseDubInput[] | null | undefined
+  rng: () => number
+  sentenceTiming: SentenceTiming
+}): ShowcaseHop[] | null | typeof HOP_TIMING_UNUSABLE
+export function buildHopSchedule(args: {
+  dubs: readonly ShowcaseDubInput[] | null | undefined
+  rng: () => number
+  sentenceTiming?: SentenceTiming
+}): ShowcaseHop[] | null | typeof HOP_TIMING_UNUSABLE {
   const slugBearing = dedupeBySlug(
     playableDubs(args.dubs).filter(
       (dub): dub is SlugBearingDub => dub.languageSlug != null,
@@ -191,6 +335,28 @@ export function buildHopSchedule(args: {
           : min,
       opener.durationSeconds,
     )
+
+  // KTD-1: sentence timing is a purely additive path. Absent, the code below is
+  // byte-identical to before; present, the sentence-aware planner runs and may return
+  // the KTD-6 unusable sentinel so the caller logs and rebuilds without timing.
+  if (args.sentenceTiming) {
+    const windows = planSentenceWindows(
+      planningDuration,
+      desiredCount,
+      args.sentenceTiming,
+    )
+    if (windows === HOP_TIMING_UNUSABLE) return HOP_TIMING_UNUSABLE
+    return windows.map((window, index) => {
+      const dub = orderedDubs[index]
+      return {
+        languageSlug: dub.languageSlug,
+        languageName: dub.languageName,
+        hls: dub.hls,
+        muxPlaybackId: dub.muxPlaybackId,
+        window,
+      }
+    })
+  }
 
   const timing = planTiming(planningDuration, desiredCount)
   if (!timing) return null

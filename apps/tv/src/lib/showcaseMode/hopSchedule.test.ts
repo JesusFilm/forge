@@ -5,7 +5,15 @@ import {
 } from "./audioFade"
 import type { ShowcaseDubInput } from "./languageRotation"
 import { sameHopStream } from "./hopHandoff"
-import { buildHopSchedule, hopToStream, type ShowcaseHop } from "./hopSchedule"
+import {
+  buildHopSchedule,
+  HOP_TIMING_UNUSABLE,
+  hopToStream,
+  type ShowcaseHop,
+} from "./hopSchedule"
+import type { VttCue } from "../parseVtt"
+import { deriveSentenceTiming, type SentenceTiming } from "./sentenceTiming"
+import type { ExcerptWindow } from "./types"
 
 // ── Fixtures ────────────────────────────────────────────────────────
 // One dub, shaped as showcaseVideoQuery returns them. A playable dub is
@@ -524,5 +532,350 @@ describe("hopToStream", () => {
     // The shell projects each hop TWICE (current stream + earlier as preload);
     // sameHopStream identity across those projections is what arms the flip.
     expect(sameHopStream(hopToStream(hop), hopToStream(hop))).toBe(true)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════
+//  U2: sentence-aware plan path (KTD-1/4/6/10)
+// ════════════════════════════════════════════════════════════════════
+
+// A SentenceTiming supplied directly as PLANNER input: `spans` are the spoken stretches
+// (KTD-4 density) and `boundaries` the sentence-end switch points (KTD-3). Decoupled from
+// U1's derivation so these tests pin the planner, not the parser. `gap` is Infinity here
+// because the planner only reads cueEnd/switchTime for segment ends.
+function timing(
+  boundaries: Array<[cueEnd: number, switchTime: number]>,
+  spans: Array<[start: number, end: number]>,
+): SentenceTiming {
+  return {
+    boundaries: boundaries.map(([cueEnd, switchTime]) => ({
+      cueEnd,
+      switchTime,
+      gap: Infinity,
+    })),
+    dialogueSpans: spans.map(([start, end]) => ({ start, end })),
+  }
+}
+
+function asPlan(
+  result: ShowcaseHop[] | null | typeof HOP_TIMING_UNUSABLE,
+): ShowcaseHop[] {
+  if (result === null || result === HOP_TIMING_UNUSABLE) {
+    throw new Error(`expected a hop plan, got ${String(result)}`)
+  }
+  return result
+}
+
+const segLen = (w: ExcerptWindow) => w.endSeconds - w.startSeconds
+
+// ── KTD-1: sentence timing is strictly optional ─────────────────────
+
+describe("buildHopSchedule — sentenceTiming is strictly optional (KTD-1)", () => {
+  it("returns the fixed 10s grid, unchanged, when no sentenceTiming is supplied", () => {
+    // Re-pins the pre-change offset behaviour: the no-timing overload is byte-identical.
+    const hops = buildHopSchedule({
+      dubs: centerpiece(3, { duration: 600 }),
+      rng: zeroRng,
+    })
+    expect(hops?.[0]?.window).toEqual({ startSeconds: 90, endSeconds: 100 })
+    expect((hops ?? []).map((h) => segLen(h.window))).toEqual([10, 10, 10, 10])
+  })
+})
+
+// ── AE2: segments end at the padded sentence pause, not the 10s grid ──
+
+describe("buildHopSchedule — sentence-aligned segments (AE2)", () => {
+  it("ends a segment at the padded sentence pause instead of the 10s grid", () => {
+    // Single dominant span → seed at 90. A sentence completes 13.4s in (cueEnd 103.4),
+    // switch padded to 104.4: the first segment runs 14.4s, not 10s.
+    const t = timing(
+      [
+        [103.4, 104.4],
+        [118, 119],
+        [132, 133],
+        [146, 147],
+      ],
+      [[90, 210]],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(3, { duration: 600 }),
+        rng: zeroRng,
+        sentenceTiming: t,
+      }),
+    )
+    expect(plan[0].languageSlug).toBe("english") // R8 opener preserved
+    expect(plan[0].window).toEqual({ startSeconds: 90, endSeconds: 104.4 })
+    expect(segLen(plan[0].window)).toBeCloseTo(14.4, 5)
+    expect(plan[1].window.startSeconds).toBe(104.4) // R4 contiguity
+  })
+})
+
+// ── AE4: a mid-plan ceiling cut lands on a cue edge, then plan continues ──
+
+describe("buildHopSchedule — ceiling cut then continue (AE4)", () => {
+  it("ceiling-cuts a mid-plan segment at the nearest cue edge and keeps going", () => {
+    // seg1 aligns at 104.4; seg2 finds no boundary inside its 30s ceiling, so it cuts at
+    // the nearest cue edge (132) — not the raw 134.4 ceiling — and seg3 catches 150.
+    const t = timing(
+      [
+        [103.4, 104.4],
+        [149, 150],
+      ],
+      [
+        [90, 116],
+        [118, 132],
+        [136, 148],
+      ],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(2, { duration: 600 }),
+        rng: zeroRng,
+        sentenceTiming: t,
+      }),
+    )
+    expect(plan).toHaveLength(3)
+    expect(plan[0].window.endSeconds).toBeCloseTo(104.4, 5) // sentence-aligned
+    expect(plan[1].window.endSeconds).toBe(132) // ceiling cut at a cue edge
+    expect(plan[2].window.endSeconds).toBeCloseTo(150, 5) // next real boundary
+    expect(segLen(plan[1].window)).toBeGreaterThanOrEqual(10)
+    expect(segLen(plan[1].window)).toBeLessThanOrEqual(30)
+  })
+})
+
+// ── AE6: an unalignable first segment falls the whole chapter back ──
+
+describe("buildHopSchedule — whole-chapter fallback (AE6/KTD-6)", () => {
+  it("returns the unusable sentinel when the first segment cannot reach a sentence", () => {
+    // The only boundary sits far past the first segment's 30s ceiling: the opener would
+    // ceiling-cut, so the chapter falls back rather than playing ceiling-cut segments.
+    const t = timing([[200, 201]], [[90, 300]])
+    const result = buildHopSchedule({
+      dubs: centerpiece(3, { duration: 600 }),
+      rng: zeroRng,
+      sentenceTiming: t,
+    })
+    expect(result).toBe(HOP_TIMING_UNUSABLE)
+  })
+
+  it("returns the unusable sentinel when the track has no boundaries at all", () => {
+    const result = buildHopSchedule({
+      dubs: centerpiece(3, { duration: 600 }),
+      rng: zeroRng,
+      sentenceTiming: {
+        boundaries: [],
+        dialogueSpans: [{ start: 90, end: 300 }],
+      },
+    })
+    expect(result).toBe(HOP_TIMING_UNUSABLE)
+  })
+})
+
+// ── R1/R4/R8: invariants over a sweep of counts and seeds ───────────
+
+describe("buildHopSchedule — sentence-plan invariants over a sweep", () => {
+  // Boundaries every ~12s across a long span → sentence-aligned ~12s segments.
+  const boundaries: Array<[number, number]> = []
+  for (let cueEnd = 100; cueEnd <= 400; cueEnd += 12) {
+    boundaries.push([cueEnd, cueEnd + 1])
+  }
+  const t = timing(boundaries, [[90, 420]])
+
+  it("stays english-first, contiguous, >=10s, and clear of the credits tail", () => {
+    for (const other of [2, 4, 6, 8]) {
+      for (const seed of [1, 2, 3]) {
+        const result = buildHopSchedule({
+          dubs: centerpiece(other, { duration: 600 }),
+          rng: mulberry32(seed),
+          sentenceTiming: t,
+        })
+        if (result === HOP_TIMING_UNUSABLE) continue
+        const plan = asPlan(result)
+        expect(plan.length).toBeGreaterThanOrEqual(2)
+        expect(plan.length).toBeLessThanOrEqual(9)
+        expect(plan[0].languageSlug).toBe("english")
+        for (let i = 0; i < plan.length; i++) {
+          expect(segLen(plan[i].window)).toBeGreaterThanOrEqual(10)
+          if (i > 0) {
+            expect(plan[i].window.startSeconds).toBe(
+              plan[i - 1].window.endSeconds,
+            )
+          }
+        }
+        expect(plan[plan.length - 1].window.endSeconds).toBeLessThanOrEqual(595)
+      }
+    }
+  })
+})
+
+// ── R5/KTD-4: the window seeds over the densest dialogue ────────────
+
+describe("buildHopSchedule — window seeding (R5/KTD-4)", () => {
+  it("seeds the window over the densest dialogue stretch, not the earliest chatter", () => {
+    // Sparse chatter early, a dense 80s cluster at 180. The window opens on the cluster.
+    const sparse: Array<[number, number]> = [
+      [30, 33],
+      [70, 73],
+      [110, 113],
+    ]
+    const dense: Array<[number, number]> = [[180, 260]]
+    const boundaries: Array<[number, number]> = []
+    for (let c = 190; c <= 250; c += 12) boundaries.push([c, c + 1])
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(2, { duration: 600 }),
+        rng: zeroRng,
+        sentenceTiming: timing(boundaries, [...sparse, ...dense]),
+      }),
+    )
+    expect(plan[0].window.startSeconds).toBe(180)
+  })
+})
+
+// ── R8: short sources fit fewer segments, or fall back ──────────────
+
+describe("buildHopSchedule — short sources (R8)", () => {
+  it("fits fewer sentence-aligned segments when the source is short", () => {
+    // 80s dub → credits-free 75s. Boundaries ~15s apart → only a handful of hops fit.
+    const t = timing(
+      [
+        [25, 26],
+        [42, 43],
+        [60, 61],
+        [90, 91],
+      ],
+      [[10, 75]],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(8, { duration: 80 }),
+        rng: zeroRng,
+        sentenceTiming: t,
+      }),
+    )
+    expect(plan.length).toBeGreaterThanOrEqual(2)
+    expect(plan.length).toBeLessThan(9)
+    expect(plan[plan.length - 1].window.endSeconds).toBeLessThanOrEqual(75)
+  })
+
+  it("returns the unusable sentinel when fewer than two segments fit", () => {
+    // 27s dub → credits-free 22s. One aligned segment reaches ~13s; no room for a second.
+    const result = buildHopSchedule({
+      dubs: centerpiece(8, { duration: 27 }),
+      rng: zeroRng,
+      sentenceTiming: timing([[12, 13]], [[1, 22]]),
+    })
+    expect(result).toBe(HOP_TIMING_UNUSABLE)
+  })
+})
+
+// ── KTD-10: fractional sentence seams stay drift-safe ───────────────
+
+describe("buildHopSchedule — sentence seams are drift-safe (KTD-10)", () => {
+  it("keeps every fractional segment >=10s and arming the fade at every phase offset", () => {
+    // Switch times at x.3 / x.7 — the plan must not round a segment under 10s, and each
+    // seam must still arm before its end under Android's over-1s drifting clock.
+    const t = timing(
+      [
+        [102.3, 103.3],
+        [116.7, 117.7],
+        [131.3, 132.3],
+        [147.7, 148.7],
+      ],
+      [[90, 210]],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(4, { duration: 600 }),
+        rng: mulberry32(3),
+        sentenceTiming: t,
+      }),
+    )
+    for (const h of plan) {
+      const w = h.window
+      expect(segLen(w)).toBeGreaterThanOrEqual(10)
+      for (const period of [1.01, 1.05, 1.2]) {
+        for (let phase = 0; phase < period; phase += 0.05) {
+          let firstArmRemaining: number | null = null
+          for (
+            let time = w.startSeconds + phase;
+            time <= w.endSeconds + period;
+            time += period
+          ) {
+            if (
+              firstArmRemaining == null &&
+              shouldArmFadeOut({ currentTime: time, window: w })
+            ) {
+              firstArmRemaining = w.endSeconds - time
+            }
+            if (time >= w.endSeconds) break
+          }
+          expect(firstArmRemaining).not.toBeNull()
+          expect(firstArmRemaining!).toBeGreaterThan(0)
+          expect(firstArmRemaining!).toBeLessThanOrEqual(
+            AUDIO_FADE_OUT_ARM_SECONDS,
+          )
+          expect(
+            fadeOutVolumeAt({ remainingSeconds: firstArmRemaining! }),
+          ).toBeGreaterThan(0)
+        }
+      }
+    }
+  })
+})
+
+// ── AE1: real reference track, derived then planned (U1→U2 seam) ────
+
+describe("buildHopSchedule — real reference track integration (AE1)", () => {
+  // First six cues of the production Birth of Jesus English track, carrying both real
+  // silences (00:11.63→00:18.55 and 00:32.28→00:44.98).
+  const cue = (start: number, end: number, text: string): VttCue => ({
+    start,
+    end,
+    text,
+  })
+  const REAL_CUES: VttCue[] = [
+    cue(
+      1.23,
+      6.63,
+      "an orderly account of the things that have taken place among us,",
+    ),
+    cue(
+      6.69,
+      11.63,
+      "so that you may know the absolute truth about everything.",
+    ),
+    cue(18.55, 24.44, "when Herod the Great was king of Judea,"),
+    cue(24.49, 32.28, "And the virgin's name was Mary."),
+    cue(44.98, 49.97, "Fear not Mary, for you have found favor with God."),
+    cue(50.04, 56.66, 'you will call His name "Jesus."'),
+  ]
+
+  it("seeds over real dialogue and never emits a wholly-silent segment", () => {
+    const t = deriveSentenceTiming(REAL_CUES)
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(5, { duration: 62 }),
+        rng: mulberry32(2),
+        sentenceTiming: t,
+      }),
+    )
+    const speechIn = (w: ExcerptWindow) =>
+      t.dialogueSpans.reduce(
+        (sum, s) =>
+          sum +
+          Math.max(
+            0,
+            Math.min(s.end, w.endSeconds) - Math.max(s.start, w.startSeconds),
+          ),
+        0,
+      )
+    // The whole point of the chapter: every segment carries audible speech.
+    for (const h of plan) expect(speechIn(h.window)).toBeGreaterThan(0)
+    // The opener lands on a real dialogue-span start, not mid-silence.
+    expect(
+      t.dialogueSpans.some((s) => s.start === plan[0].window.startSeconds),
+    ).toBe(true)
   })
 })
