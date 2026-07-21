@@ -96,12 +96,14 @@ the carousel or grid branch:
 The existing empty-items early return, CTA inference, links, cards, hover
 previews, backdrops, progress, and carousel branch remain unchanged.
 
-Place the title and CTA in a dedicated `flex` row with `items-start`, then keep
-the supporting title and description below that row. This makes the CTA share
-the title's top edge instead of centering against the entire header stack. Use
-explicit `font-normal` styling for the description and footer, with the
-description reduced to `text-sm xl:text-base`. When a collection has no title,
-retain the prior copy-first compact order and trailing-edge desktop CTA layout.
+Place the eyebrow and title in the left column of a two-row grid and the CTA in
+the title's right-hand grid cell. Keep the supporting title and description
+below that grid at `w-full`. This lets only the eyebrow/title header share width
+with the CTA while both supporting fields use the complete content width. Use
+explicit `font-normal` styling for the supporting title, description, and
+footer, with the description reduced to `text-sm xl:text-base`. When a
+collection has no title, retain the copy-first compact order and trailing-edge
+desktop CTA layout.
 
 ## Why This Works
 
@@ -126,6 +128,13 @@ effect, dependency, observer, or client initialization path.
   `y=3729.40`.
 - Footer copy computed to weight `400`, remained after the media cards, and
   document scroll width equaled client width at both viewports.
+- A follow-up full-width measurement rendered both supporting fields at
+  `1233px` of `1233px` available content width at 1440x900 and `335px` of
+  `335px` at 390x844. The supporting title computed to weight `400`, the
+  title/CTA top-edge delta remained `0px`, and neither viewport overflowed.
+- Follow-up screenshots:
+  `output/playwright/watch-copy-full-width-acts-wide.png` and
+  `output/playwright/watch-copy-full-width-acts-mobile.png`.
 - CTA focus and activation reached the Acts collection route; the first card
   reached its expected Watch route.
 - Dragging a live carousel changed its transform from `0` to approximately

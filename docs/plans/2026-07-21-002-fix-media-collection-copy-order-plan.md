@@ -46,6 +46,8 @@ renderer.
 - R6. Browser proof on the reported Watch surface confirms the authored copy is
   above thumbnails at compact and wide viewports without new requests,
   horizontal document overflow, console errors, or page-load work.
+- R7. The supporting title and description use the full content width below the
+  eyebrow/title/CTA header grid, and the supporting title uses regular weight.
 
 ## Key Technical Decisions
 
@@ -62,9 +64,10 @@ renderer.
   in a shared `items-start` row at compact and wide viewports. When a collection
   has no title, preserve the prior copy-first compact order and trailing-edge
   desktop CTA fallback.
-- **Refine supporting-copy typography:** Keep the supporting title emphasis,
-  render the description at `text-sm xl:text-base` and weight `400`, and make
-  footer copy explicitly weight `400`.
+- **Give supporting copy the content width:** Keep only the eyebrow and title in
+  the CTA grid. Render the supporting title and description below it at
+  `w-full`, use weight `400` for both, and retain the description's
+  `text-sm xl:text-base` sizing and the footer's explicit weight `400`.
 - **Keep footer semantics trailing:** `footerText` remains the only copy below
   the media row because it is authored as a separate closing field.
 - **Preserve empty-collection behavior:** If no item resolves, keep the current
@@ -78,8 +81,7 @@ renderer.
 - The request applies to every Web `MediaCollection` variant that uses the
   shared renderer, not only the single production section shown in the
   screenshot.
-- The supporting title keeps its existing emphasis; the user-requested
-  description and footer typography refinements stay local to this renderer.
+- Supporting-copy width and typography refinements stay local to this renderer.
 
 ## Scope Boundaries
 

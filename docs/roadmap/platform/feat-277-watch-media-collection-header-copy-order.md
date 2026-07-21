@@ -52,9 +52,12 @@ on `/watch/english.html`.
    links, hover previews, backdrops, progress, and carousel interaction.
 4. Render the collection description at a smaller regular weight and keep
    footer copy at regular weight.
-5. Add explicit DOM-order coverage for carousel and grid variants plus optional
+5. Let the supporting title and description use the full content width, keep
+   only the eyebrow/title header in the CTA grid, and render the supporting
+   title at regular weight.
+6. Add explicit DOM-order coverage for carousel and grid variants plus optional
    field combinations.
-6. Verify compact and wide layouts with browser screenshots, keyboard/card
+7. Verify compact and wide layouts with browser screenshots, keyboard/card
    interaction, overflow checks, console health, and proportionate page-load
    evidence.
 
@@ -105,5 +108,12 @@ on `/watch/english.html`.
 - Follow-up screenshots:
   `output/playwright/watch-copy-alignment-acts-wide.png` and
   `output/playwright/watch-copy-alignment-acts-mobile.png`.
+- The final copy-width follow-up measured the supporting title and description
+  at the full available content width: `1233px` at 1440x900 and `335px` at
+  390x844. The supporting title computed to weight `400`, the title/CTA top-edge
+  delta remained `0px`, and neither viewport overflowed horizontally.
+- Final copy-width screenshots:
+  `output/playwright/watch-copy-full-width-acts-wide.png` and
+  `output/playwright/watch-copy-full-width-acts-mobile.png`.
 - Follow-up test hardening is tracked separately in
   [GitHub issue #1647](https://github.com/JesusFilm/forge/issues/1647).

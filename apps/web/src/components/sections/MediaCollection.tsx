@@ -277,22 +277,31 @@ function WatchHomeMediaCollection({
   const sectionBackgroundColor =
     backgroundColor ?? (isRail ? "#5b1537" : "#050505")
   const tintStyle = tintOverlayStyle(backgroundColor, isRail)
+  const titleRowStart = categoryLabel ? "row-start-2" : "row-start-1"
   const watchCta = (
     <a
       href={watchHref}
       data-testid="media-collection-cta"
-      className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      className={cn(
+        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+        title && `col-start-2 ${titleRowStart}`,
+      )}
     >
       <PlayIcon />
       {ctaLabel ?? t("watch")}
     </a>
   )
+  const categoryEyebrow = categoryLabel ? (
+    <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+      {categoryLabel}
+    </p>
+  ) : null
   const supportingCopy = (
     <>
       {subtitle ? (
         <p
           data-testid="media-collection-supporting-title"
-          className="max-w-4xl text-lg leading-snug font-semibold text-stone-100/90 xl:text-xl"
+          className="w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl"
         >
           {subtitle}
         </p>
@@ -300,7 +309,7 @@ function WatchHomeMediaCollection({
       {description ? (
         <p
           data-testid="media-collection-description"
-          className="max-w-3xl pt-2 text-sm leading-relaxed font-normal text-stone-200/80 xl:text-base"
+          className="w-full pt-2 text-sm leading-relaxed font-normal text-stone-200/80 xl:text-base"
         >
           {description}
         </p>
@@ -445,18 +454,19 @@ function WatchHomeMediaCollection({
 
       <div className={cn("relative z-[3] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
         <div className="flex flex-col gap-1">
-          {categoryLabel && (
-            <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-              {categoryLabel}
-            </p>
-          )}
           {title ? (
             <>
               <div
                 data-testid="media-collection-title-row"
-                className="flex items-start justify-between gap-4"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1"
               >
-                <h2 className="max-w-4xl flex-1 text-2xl leading-tight font-bold tracking-normal text-white xl:text-3xl 2xl:text-4xl">
+                {categoryEyebrow}
+                <h2
+                  className={cn(
+                    "col-start-1 max-w-4xl text-2xl leading-tight font-bold tracking-normal text-white xl:text-3xl 2xl:text-4xl",
+                    titleRowStart,
+                  )}
+                >
                   {title}
                 </h2>
                 {watchCta}
@@ -464,15 +474,21 @@ function WatchHomeMediaCollection({
               {supportingCopy}
             </>
           ) : (
-            <div
-              data-testid="media-collection-titleless-layout"
-              className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"
-            >
-              <div className="flex max-w-4xl flex-col gap-1">
-                {supportingCopy}
+            <>
+              {categoryEyebrow}
+              <div
+                data-testid="media-collection-titleless-layout"
+                className="flex flex-col gap-6 lg:items-end"
+              >
+                <div
+                  data-testid="media-collection-titleless-supporting-copy"
+                  className="flex w-full flex-col gap-1"
+                >
+                  {supportingCopy}
+                </div>
+                {watchCta}
               </div>
-              {watchCta}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -525,6 +541,7 @@ function WatchHomeMediaCollection({
       ) : (
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <div
+            data-testid="media-collection-grid"
             className={cn(
               "grid",
               isVerticalGrid ? "gap-4" : "gap-5",
