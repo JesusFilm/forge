@@ -136,11 +136,7 @@ describe("CarouselVideo", () => {
     expect(selectedInteractionFrame?.className).not.toContain(
       "group-focus-visible:opacity-100",
     )
-    expect(
-      selected?.querySelector<HTMLElement>(
-        '[data-testid="carousel-video-selected-frame"]',
-      )?.className,
-    ).toContain("opacity-100")
+    expect(selectedInteractionFrame?.className).toContain("opacity-100")
     expect(inactiveInteractionFrame?.className).toContain("border-white")
     expect(inactiveInteractionFrame?.className).toContain(
       "group-hover:opacity-100",
@@ -155,11 +151,10 @@ describe("CarouselVideo", () => {
       )
     })
 
-    expect(
-      inactive?.querySelector<HTMLElement>(
-        '[data-testid="carousel-video-selected-frame"]',
-      )?.className,
-    ).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
   })
 
   it("pauses its authored carousel media when modal activity opens", async () => {

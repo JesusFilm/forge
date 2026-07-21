@@ -3,7 +3,7 @@ id: "feat-275"
 title: "Web Video Thumbnail White Interaction Frame"
 owner: "vlad"
 priority: "P2"
-status: "complete"
+status: "in-progress"
 start_date: "2026-07-20"
 duration: 1
 depends_on: []

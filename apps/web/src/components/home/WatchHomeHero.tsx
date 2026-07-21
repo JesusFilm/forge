@@ -68,10 +68,10 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-transparent" />
-                  {isInteractive ? (
+                  {isInteractive || isActive ? (
                     <VideoThumbnailInteractionFrame
                       data-testid="watch-home-hero-thumbnail-frame"
-                      interactive={!isActive}
+                      interactive={isInteractive && !isActive}
                       visible={isActive}
                     />
                   ) : null}

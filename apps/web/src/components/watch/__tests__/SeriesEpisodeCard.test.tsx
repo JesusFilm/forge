@@ -357,7 +357,10 @@ describe("SeriesEpisodeCard — href", () => {
 
   it("renders a plain div (no <a>) when the parent slug is malformed", () => {
     renderCard({
-      episode: makeEpisode({ slug: "wedding-in-cana" }),
+      episode: makeEpisode({
+        slug: "wedding-in-cana",
+        muxPlaybackId: "mux-preview-1",
+      }),
       languageSlug: "english",
       parentSlug: "Bad Parent!",
     })
@@ -370,6 +373,13 @@ describe("SeriesEpisodeCard — href", () => {
       card?.querySelector('[data-testid="series-episode-card-hover-outline"]'),
     ).toBeNull()
     expect(card?.querySelector("svg")).toBeNull()
+
+    act(() => {
+      card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    expect(card?.querySelector('[data-testid="mux-hover-preview"]')).toBeNull()
+    expect(card?.querySelectorAll("img")).toHaveLength(1)
   })
 
   it("renders a plain div (no <a>) when the slug is malformed", () => {

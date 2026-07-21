@@ -1032,6 +1032,9 @@ describe("SiblingCarousel — edge cases", () => {
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {
     const block = makeBlock(3, 1)
+    block.canonicalParent.children.forEach((child, index) => {
+      if (child != null) child.muxPlaybackId = `mux-preview-${index + 1}`
+    })
 
     act(() => {
       root.render(<SiblingCarousel block={block} languageSlug="" />)
@@ -1057,6 +1060,13 @@ describe("SiblingCarousel — edge cases", () => {
     expect(
       item!.querySelector("[data-testid='sibling-carousel-caption']"),
     ).not.toBeNull()
+
+    act(() => {
+      item!.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    expect(item!.querySelector("[data-testid='mux-hover-preview']")).toBeNull()
+    expect(item!.querySelector("[data-src*='/animated.webp']")).toBeNull()
   })
 })
 

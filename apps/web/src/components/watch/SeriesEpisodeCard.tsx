@@ -101,7 +101,7 @@ export function SeriesEpisodeCard({
         <div className="absolute inset-0 bg-stone-800" aria-hidden="true" />
       )}
       <MuxHoverPreview
-        previewUrl={muxPreviewUrl}
+        previewUrl={href ? muxPreviewUrl : null}
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
         imageClassName="object-left-top"
       />

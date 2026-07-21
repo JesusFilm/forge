@@ -417,14 +417,7 @@ function ThumbnailCard({
       <VideoThumbnailInteractionFrame
         data-testid="carousel-video-thumbnail-frame"
         interactive={!isSelected}
-      />
-      <span
-        aria-hidden="true"
-        data-testid="carousel-video-selected-frame"
-        className={cn(
-          "pointer-events-none absolute inset-0 z-[70] rounded-[inherit] border-4 border-white transition-opacity duration-200",
-          isSelected ? "opacity-100" : "opacity-0",
-        )}
+        visible={isSelected}
       />
 
       <div className="p-4">
