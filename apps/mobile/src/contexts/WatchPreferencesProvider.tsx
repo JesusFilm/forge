@@ -28,6 +28,7 @@ type WatchPreferencesContextValue = WatchPreferences & {
   setPreferredSubtitleLanguage: (slug: string | null) => void
   setPreferredSubtitleName: (name: string | null) => void
   setSubtitlesEnabled: (enabled: boolean) => void
+  setLongPressHintSeen: (seen: boolean) => void
   /** False until the persisted blob has been read from AsyncStorage. */
   isReady: boolean
 }
@@ -106,6 +107,10 @@ export function WatchPreferencesProvider({
     (enabled: boolean) => persist({ subtitlesEnabled: enabled }),
     [persist],
   )
+  const setLongPressHintSeen = useCallback(
+    (seen: boolean) => persist({ longPressHintSeen: seen }),
+    [persist],
+  )
 
   return (
     <WatchPreferencesContext.Provider
@@ -115,6 +120,7 @@ export function WatchPreferencesProvider({
         setPreferredSubtitleLanguage,
         setPreferredSubtitleName,
         setSubtitlesEnabled,
+        setLongPressHintSeen,
         isReady,
       }}
     >

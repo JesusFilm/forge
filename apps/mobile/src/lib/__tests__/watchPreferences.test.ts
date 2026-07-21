@@ -36,6 +36,7 @@ describe("parseStoredPreferences", () => {
       subtitleLanguageName: "English",
       subtitlesEnabled: true,
       wifiOnly: true,
+      longPressHintSeen: false,
     })
   })
 
@@ -48,6 +49,7 @@ describe("parseStoredPreferences", () => {
       subtitleLanguageName: null,
       subtitlesEnabled: false,
       wifiOnly: false,
+      longPressHintSeen: false,
     })
   })
 
@@ -65,6 +67,7 @@ describe("parseStoredPreferences", () => {
       subtitleLanguageName: null,
       subtitlesEnabled: true,
       wifiOnly: false,
+      longPressHintSeen: false,
     })
   })
 
@@ -100,6 +103,7 @@ describe("parseStoredPreferences", () => {
       subtitleLanguageName: "Spanish",
       subtitlesEnabled: true,
       wifiOnly: true,
+      longPressHintSeen: true,
     }
     expect(parseStoredPreferences(serializeWatchPreferences(prefs))).toEqual(
       prefs,
@@ -132,5 +136,36 @@ describe("parseStoredPreferences — wifiOnly", () => {
     )
     expect(out.audioLanguageSlug).toBe("korean")
     expect(out.wifiOnly).toBe(false)
+  })
+})
+
+describe("parseStoredPreferences — longPressHintSeen", () => {
+  it("defaults longPressHintSeen to false", () => {
+    expect(DEFAULT_WATCH_PREFERENCES.longPressHintSeen).toBe(false)
+    expect(parseStoredPreferences(null).longPressHintSeen).toBe(false)
+    expect(parseStoredPreferences("{}").longPressHintSeen).toBe(false)
+  })
+
+  it("reads longPressHintSeen true only for a strict boolean true", () => {
+    expect(
+      parseStoredPreferences(JSON.stringify({ longPressHintSeen: true }))
+        .longPressHintSeen,
+    ).toBe(true)
+    expect(
+      parseStoredPreferences(JSON.stringify({ longPressHintSeen: "yes" }))
+        .longPressHintSeen,
+    ).toBe(false)
+    expect(
+      parseStoredPreferences(JSON.stringify({ longPressHintSeen: 1 }))
+        .longPressHintSeen,
+    ).toBe(false)
+  })
+
+  it("keeps longPressHintSeen default when other fields are present (partial blob)", () => {
+    const out = parseStoredPreferences(
+      JSON.stringify({ audioLanguageSlug: "korean" }),
+    )
+    expect(out.audioLanguageSlug).toBe("korean")
+    expect(out.longPressHintSeen).toBe(false)
   })
 })

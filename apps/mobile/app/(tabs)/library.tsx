@@ -1,195 +1,232 @@
+import { useCallback, useEffect, useState } from "react"
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
-import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useExperienceContext } from "../../src/contexts/ExperienceProvider"
-import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
-import { MyDownloadsSection } from "../../src/components/watch/MyDownloadsSection"
+import { DownloadRow } from "../../src/components/library/DownloadRow"
+import { LibraryEmptyState } from "../../src/components/library/LibraryEmptyState"
+import { SeriesGroupCard } from "../../src/components/library/SeriesGroupCard"
+import { StorageSummary } from "../../src/components/library/StorageSummary"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
-  ACCENT,
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
-  hexToRgba,
 } from "../../src/lib/color"
-import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
-import { layout } from "../../src/styles/shared"
+import {
+  buildLibraryViewModel,
+  libraryRowState,
+  storageSummary,
+} from "../../src/lib/libraryDownloads"
+import { totalDiskBytes } from "../../src/lib/offlineFileSystem"
+import { feedback, layout } from "../../src/styles/shared"
 
-// Admin's `experiences` list query is ABAC-gated (not public).
-// Until it is widened, the library shows only the active experience.
+const HINT_VISIBLE_MS = 4000
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
   const router = useRouter()
-  const { experience, loading } = useExperienceContext()
-  const { currentSlug } = useExperienceSelection()
+  const {
+    offlineRecords,
+    pendingSwapSlugs,
+    isReady,
+    retryDownload,
+    resumeDownload,
+  } = useDownloads()
+  const { longPressHintSeen, setLongPressHintSeen } = useWatchPreferences()
 
-  // The Experience card depends on network/ABAC data; My Downloads does not, so
-  // it always renders above (reachable offline).
-  const experienceCard = (() => {
-    if (loading && !experience) {
-      return <Text style={styles.message}>Loading…</Text>
+  const [capacityBytes, setCapacityBytes] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    void totalDiskBytes().then((bytes) => {
+      if (!cancelled) setCapacityBytes(bytes)
+    })
+    return () => {
+      cancelled = true
     }
-    if (!experience) {
-      return <Text style={styles.message}>No experience loaded</Text>
+  }, [])
+
+  // U5 owns the selection machine; this flag exists here only to suppress the
+  // long-press hint once the user has entered selection mode.
+  const [selecting, setSelecting] = useState(false)
+  const [hintVisible, setHintVisible] = useState(false)
+
+  useEffect(() => {
+    if (
+      !isReady ||
+      offlineRecords.length === 0 ||
+      selecting ||
+      longPressHintSeen
+    ) {
+      setHintVisible(false)
+      return
     }
-    const imageUrl = resolveImageUrl(experience.ogImageUrl ?? null)
-    const isActive = experience.slug === currentSlug
-    // currentSlug is always set when an experience is loaded; the fragment's
-    // slug is the nullable-typed fallback.
-    const targetSlug = currentSlug ?? experience.slug
+    setHintVisible(true)
+    const timer = setTimeout(() => setHintVisible(false), HINT_VISIBLE_MS)
+    return () => clearTimeout(timer)
+  }, [isReady, offlineRecords.length, selecting, longPressHintSeen])
+
+  const navigateToWatch = useCallback(
+    (videoSlug: string) =>
+      router.push(`/watch/${encodeURIComponent(videoSlug)}` as never),
+    [router],
+  )
+
+  const handleSelectPress = () => {
+    // U5: selection-mode header, checkboxes, action bar
+    setSelecting(true)
+    setLongPressHintSeen(true)
+  }
+
+  if (!isReady) {
     return (
-      <Pressable
-        onPress={() => {
-          if (targetSlug == null) return
-          router.push(`/experience/${encodeURIComponent(targetSlug)}`)
-        }}
-        style={[styles.card, isActive && styles.cardActive]}
-        accessibilityRole="button"
-        accessibilityLabel={`${experience.title ?? "Untitled experience"}, currently active`}
-      >
-        <View style={styles.cardThumbnail}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.cardImage}
-              contentFit="cover"
-              recyclingKey={`library-${experience.id}`}
-              accessibilityLabel={experience.title ?? "Experience thumbnail"}
-            />
-          ) : (
-            <LinearGradient
-              colors={[SURFACE_COLOR, hexToRgba(SURFACE_COLOR, 0.6)]}
-              style={styles.cardImage}
-            >
-              <Ionicons
-                name="albums-outline"
-                size={32}
-                color={TEXT_SECONDARY}
-              />
-            </LinearGradient>
-          )}
-        </View>
-        <View style={styles.cardContent}>
-          <View style={styles.cardTitleRow}>
-            <Text
-              style={[styles.cardTitle, typography.titleSmall]}
-              numberOfLines={2}
-            >
-              {experience.title ?? "Untitled"}
-            </Text>
-            {isActive && (
-              <View style={styles.activeBadge}>
-                <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
-              </View>
-            )}
-          </View>
-          {experience.metaDescription ? (
-            <Text
-              style={[styles.cardDescription, typography.caption]}
-              numberOfLines={2}
-            >
-              {experience.metaDescription}
-            </Text>
-          ) : null}
-        </View>
-      </Pressable>
+      <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
+        <Text style={[styles.title, typography.heading]}>Library</Text>
+      </View>
     )
-  })()
+  }
+
+  const hasRecords = offlineRecords.length > 0
+  const { seriesGroups, standaloneRecords } =
+    buildLibraryViewModel(offlineRecords)
+  const summary = storageSummary(offlineRecords, capacityBytes)
 
   return (
     <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
-      <Text style={[styles.header, typography.heading]}>Library</Text>
-      <ScrollView
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <MyDownloadsSection />
-        <Text style={[styles.subheader, typography.titleSmall]}>
-          Experiences
-        </Text>
-        {experienceCard}
-      </ScrollView>
+      <View style={styles.head}>
+        <View style={styles.headRow}>
+          <Text style={[styles.title, typography.heading]}>Library</Text>
+          {hasRecords && (
+            <Pressable
+              onPress={handleSelectPress}
+              style={({ pressed }) => [
+                styles.selectPill,
+                pressed && feedback.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Select downloads"
+            >
+              <Text style={styles.selectPillText}>Select</Text>
+            </Pressable>
+          )}
+        </View>
+        {summary && <StorageSummary summary={summary} />}
+        {hintVisible && (
+          <Text style={[styles.hint, typography.caption]}>
+            Touch and hold a video to select
+          </Text>
+        )}
+      </View>
+
+      {!hasRecords ? (
+        <LibraryEmptyState />
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {seriesGroups.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, typography.caption]}>
+                Series
+              </Text>
+              {seriesGroups.map((group) => (
+                <SeriesGroupCard
+                  key={group.seriesSlug}
+                  group={group}
+                  pendingSwapSlugs={pendingSwapSlugs}
+                  onRowPress={navigateToWatch}
+                  onRetry={retryDownload}
+                  onResume={resumeDownload}
+                />
+              ))}
+            </>
+          )}
+          {standaloneRecords.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, typography.caption]}>
+                Videos
+              </Text>
+              {standaloneRecords.map((record) => (
+                <DownloadRow
+                  key={record.videoSlug}
+                  record={record}
+                  rowState={libraryRowState(
+                    record,
+                    pendingSwapSlugs.has(record.videoSlug),
+                  )}
+                  variant="standalone"
+                  onPress={navigateToWatch}
+                  onRetry={retryDownload}
+                  onResume={resumeDownload}
+                />
+              ))}
+            </>
+          )}
+        </ScrollView>
+      )}
     </View>
   )
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────
 
-const CARD_IMAGE_SIZE = 80
-const CARD_RADIUS = 12
+const PILL_BG = "rgba(255, 255, 255, 0.09)"
 
 const styles = StyleSheet.create({
-  header: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
+  head: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
   },
-  subheader: {
+  headRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  title: {
     color: TEXT_PRIMARY,
+    fontFamily: "System",
+  },
+  selectPill: {
+    height: 34,
+    paddingHorizontal: 16,
+    borderRadius: 17,
+    backgroundColor: PILL_BG,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectPillText: {
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  hint: {
+    marginTop: 10,
+    alignSelf: "center",
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    backgroundColor: SURFACE_COLOR,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  sectionLabel: {
+    color: TEXT_SECONDARY,
     fontFamily: "System",
     fontWeight: "700",
-    marginBottom: 10,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginTop: 8,
+    marginBottom: 12,
   },
-  message: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    fontSize: 16,
-  },
-  listContent: {
+  scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
-  },
-  card: {
-    flexDirection: "row",
-    backgroundColor: SURFACE_COLOR,
-    borderRadius: CARD_RADIUS,
-    marginBottom: 12,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  cardActive: {
-    borderColor: ACCENT,
-  },
-  cardThumbnail: {
-    width: CARD_IMAGE_SIZE,
-    height: CARD_IMAGE_SIZE,
-  },
-  cardImage: {
-    width: CARD_IMAGE_SIZE,
-    height: CARD_IMAGE_SIZE,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardContent: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: "center",
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardTitle: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    flex: 1,
-  },
-  activeBadge: {
-    marginLeft: 8,
-  },
-  cardDescription: {
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    marginTop: 4,
   },
 })
