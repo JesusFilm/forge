@@ -455,7 +455,7 @@ describe("MediaCollection VideoCard href", () => {
     const description = container.querySelector(
       '[data-testid="media-collection-description"]',
     )
-    const firstCard = container.querySelector('[aria-label="VideoCard"]')
+    const firstCard = container.querySelector('[data-testid="VideoCard"]')
 
     expect(supportingTitle).not.toBeNull()
     expect(description).not.toBeNull()
