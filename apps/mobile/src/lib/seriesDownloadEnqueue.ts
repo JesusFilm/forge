@@ -97,7 +97,9 @@ export type BuildRequestContext = {
   allowCellular: boolean
   /** Series identity, constant across the whole batch. */
   seriesSlug: string
-  seriesTitle: string
+  /** undefined (not "") when the series has no title — matches how a written
+   * record hydrates back (asOptionalString coerces "" to undefined too). */
+  seriesTitle: string | undefined
   /** Captured once per batch, shared by every episode's request. */
   enqueuedAt: number
 }

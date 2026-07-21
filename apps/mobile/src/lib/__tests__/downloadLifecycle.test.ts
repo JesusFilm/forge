@@ -1,4 +1,5 @@
 import {
+  buildReattachRequest,
   buildRequestRecord,
   buildSwapSnapshot,
   isStorageBlocked,
@@ -227,38 +228,7 @@ describe("swap snapshot + revert round-trip (AE2)", () => {
   })
 })
 
-// Mirrors DownloadsProvider.tsx's launch-reattach effect (~line 475-495): the
-// isBatchPlaceholderRecord branch rebuilds a StartDownloadRequest BY HAND from
-// a persisted record (no React harness here — this is a characterization of
-// that literal, kept in lockstep with the provider by hand; a mismatch would
-// only surface as a runtime/manual-QA regression, not a test failure here).
-function buildReattachRequest(
-  record: OfflineDownloadRecord,
-  allowCellular: boolean,
-): StartDownloadRequest {
-  return {
-    videoSlug: record.videoSlug,
-    title: record.title,
-    dubDocumentId: record.dubDocumentId,
-    rendition: {
-      documentId: record.renditionDocumentId,
-      quality: record.qualityLabel,
-      size: record.totalBytes > 0 ? String(record.totalBytes) : "",
-      url: "",
-    },
-    subtitleLanguageSlug: record.subtitleLanguageSlug,
-    subtitleUrl: null,
-    posterUrl: null,
-    allowCellular,
-    seriesSlug: record.seriesSlug,
-    seriesTitle: record.seriesTitle,
-    seriesEpisodeIndex: record.seriesEpisodeIndex,
-    durationSeconds: record.durationSeconds,
-    enqueuedAt: record.enqueuedAt,
-  }
-}
-
-describe("reattach requeue (DownloadsProvider batch-placeholder rebuild)", () => {
+describe("buildReattachRequest (DownloadsProvider launch-reattach seam)", () => {
   const relaunchedPlaceholder: OfflineDownloadRecord = {
     version: OFFLINE_MANIFEST_VERSION,
     videoSlug: "washi-gospel-2",
@@ -280,7 +250,20 @@ describe("reattach requeue (DownloadsProvider batch-placeholder rebuild)", () =>
     enqueuedAt: 1_753_000_000_000,
   }
 
-  it("rebuilds a request carrying the five fields from a relaunched placeholder record", () => {
+  it("rebuilds the request shape (no persisted URL — re-resolved by startDownload)", () => {
+    const request = buildReattachRequest(relaunchedPlaceholder, false)
+    expect(request.videoSlug).toBe("washi-gospel-2")
+    expect(request.dubDocumentId).toBe("dub-2")
+    expect(request.rendition).toEqual({
+      documentId: "rend-2",
+      quality: "High",
+      size: "1000",
+      url: "",
+    })
+    expect(request.allowCellular).toBe(false)
+  })
+
+  it("carries the five series/ordering fields from a relaunched placeholder record", () => {
     const request = buildReattachRequest(relaunchedPlaceholder, false)
     expect(request.seriesSlug).toBe("storyclubs")
     expect(request.seriesTitle).toBe("StoryClubs")
@@ -291,7 +274,7 @@ describe("reattach requeue (DownloadsProvider batch-placeholder rebuild)", () =>
 
   // AE7: a kill/relaunch mid-batch reattaches this placeholder, it re-enters the
   // queue via the rebuilt request above, and if the pump's start attempt fails,
-  // the failed-resurface write (DownloadsProvider.tsx:610) must still carry
+  // the failed-resurface write (DownloadsProvider.tsx's pump) must still carry
   // seriesSlug — not silently drop it back to a bare unlinked record.
   it("AE7: a failed-resurface after the reattach keeps seriesSlug", () => {
     const request = buildReattachRequest(relaunchedPlaceholder, false)

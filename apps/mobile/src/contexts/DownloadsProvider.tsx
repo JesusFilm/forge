@@ -48,6 +48,7 @@ import {
 } from "../lib/batchDownloadQueue"
 import { normalizeDubMedia } from "../lib/normalizeVideo"
 import {
+  buildReattachRequest,
   buildRequestRecord,
   createDownloadLifecycle,
   type DownloadLifecycle,
@@ -474,29 +475,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
               // concurrent native task, abandoning R14 ordering (review #2).
               batchQueueRef.current = [
                 ...batchQueueRef.current,
-                {
-                  videoSlug: record.videoSlug,
-                  title: record.title,
-                  dubDocumentId: record.dubDocumentId,
-                  rendition: {
-                    documentId: record.renditionDocumentId,
-                    quality: record.qualityLabel,
-                    size:
-                      record.totalBytes > 0 ? String(record.totalBytes) : "",
-                    // No persisted URL — startDownload re-resolves; an empty
-                    // fallback fails validation and surfaces a failed badge.
-                    url: "",
-                  },
-                  subtitleLanguageSlug: record.subtitleLanguageSlug,
-                  subtitleUrl: null,
-                  posterUrl: null,
-                  allowCellular: !wifiOnlyRef.current,
-                  seriesSlug: record.seriesSlug,
-                  seriesTitle: record.seriesTitle,
-                  seriesEpisodeIndex: record.seriesEpisodeIndex,
-                  durationSeconds: record.durationSeconds,
-                  enqueuedAt: record.enqueuedAt,
-                },
+                buildReattachRequest(record, !wifiOnlyRef.current),
               ]
               batchSlugsRef.current.add(record.videoSlug)
             } else if (record) {

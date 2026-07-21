@@ -116,6 +116,39 @@ export function buildRequestRecord(
 }
 
 /**
+ * Rebuild a StartDownloadRequest from a relaunched batch-placeholder record
+ * (DownloadsProvider's launch-reattach effect, `isBatchPlaceholderRecord`
+ * branch): no persisted media URL survives a process death, so `startDownload`
+ * re-resolves it — an empty `url` fallback fails validation and surfaces a
+ * failed badge instead of downloading a stale/missing link.
+ */
+export function buildReattachRequest(
+  record: OfflineDownloadRecord,
+  allowCellular: boolean,
+): StartDownloadRequest {
+  return {
+    videoSlug: record.videoSlug,
+    title: record.title,
+    dubDocumentId: record.dubDocumentId,
+    rendition: {
+      documentId: record.renditionDocumentId,
+      quality: record.qualityLabel,
+      size: record.totalBytes > 0 ? String(record.totalBytes) : "",
+      url: "",
+    },
+    subtitleLanguageSlug: record.subtitleLanguageSlug,
+    subtitleUrl: null,
+    posterUrl: null,
+    allowCellular,
+    seriesSlug: record.seriesSlug,
+    seriesTitle: record.seriesTitle,
+    seriesEpisodeIndex: record.seriesEpisodeIndex,
+    durationSeconds: record.durationSeconds,
+    enqueuedAt: record.enqueuedAt,
+  }
+}
+
+/**
  * Record fields that restore a mid-swap record to its pre-swap copy (AE2) — one
  * revert shape shared by the failure handlers and cancel, so the two paths can
  * never drift: restore identity + byte counts, clear pending/swap markers.

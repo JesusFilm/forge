@@ -299,7 +299,9 @@ export default function SeriesDownloadRoute() {
       subtitleLanguageSlug: subtitleSlug,
       allowCellular: !wifiOnly,
       seriesSlug: series.slug,
-      seriesTitle: series.title ?? "",
+      // ?? undefined (not ?? ""): asOptionalString hydrates "" back to
+      // undefined on read — write the same value we'd read, not a lossy one.
+      seriesTitle: series.title ?? undefined,
       enqueuedAt: Date.now(),
     }
     // Snapshot → queue placeholders → enqueue lives in runSeriesBatchEnqueue so
