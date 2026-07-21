@@ -1,10 +1,9 @@
 "use server"
 
+import { adminGraphql, type AdminVariablesOf } from "@forge/admin-graphql"
 import { headers } from "next/headers"
 
-import { isWatchAlgoliaSearchEnabled } from "./feature-flags"
-import { searchAlgoliaVideos } from "./algolia-search"
-import { transformAlgoliaVideoHits } from "./algolia-video-transform"
+import adminClient from "@/lib/admin-client"
 import { isPublicWatchLanguageSlug } from "./locale"
 import {
   searchVideos,
@@ -29,19 +28,65 @@ import {
   type WatchSearchAnalyticsInput,
   type WatchSearchRequestType,
 } from "./watch-search-analytics-contract"
+import { getSearchLanguageOptions } from "./search-language-actions"
 
-// Server-action wrapper around `searchVideos` for client-component callers
-// (search overlay, load-more button). The browser cannot reach admin
-// directly — admin requires a server-side bearer set via WEB_ADMIN_API_KEYS
-// — so client-side searches dispatch through this action which runs on the
-// Next.js server. It also owns the LaunchDarkly fork for the Algolia-backed
-// Watch video search so the modal stays canonical on the client.
-//
-// The "use server" directive limits this file to exporting async functions
-// only; the type for the action shape itself lives in search.ts.
+// Server-action wrapper around `searchVideos` for client-component callers.
+// The "use server" directive limits this file to exporting async functions only;
+// the type for the action shape itself lives in search.ts.
 
-const DEFAULT_SEARCH_MODE = "hybrid"
+const DEFAULT_SEARCH_MODE = "watch-search"
 const DEFAULT_SEMANTIC_CONTENT_TYPE: SearchContentType = "video"
+
+const recordWatchSearchEventOperation = adminGraphql(`
+  mutation RecordWatchSearchEvent(
+    $requestId: String!
+    $eventType: WatchSearchEventType!
+    $client: WatchSearchEventClient!
+    $resultId: ID
+    $resultType: WatchSearchEventResultType
+    $position: Int
+    $visibleResultIds: [String!]
+    $routeLanguageSlug: String
+    $searchLanguageSlug: String
+    $occurredAt: String
+  ) {
+    recordWatchSearchEvent(
+      requestId: $requestId
+      eventType: $eventType
+      client: $client
+      resultId: $resultId
+      resultType: $resultType
+      position: $position
+      visibleResultIds: $visibleResultIds
+      routeLanguageSlug: $routeLanguageSlug
+      searchLanguageSlug: $searchLanguageSlug
+      occurredAt: $occurredAt
+    ) {
+      id
+    }
+  }
+`)
+
+type RecordWatchSearchEventVariables = AdminVariablesOf<
+  typeof recordWatchSearchEventOperation
+>
+
+export type RecordWatchSearchResultClickInput = {
+  requestId: string
+  resultId: string
+  resultType: SearchContentType
+  position: number
+  visibleResultIds?: string[]
+  routeLanguageSlug?: string | null
+  searchLanguageSlug?: string | null
+}
+
+export type RecordWatchSearchResultsViewedInput = {
+  requestId: string
+  visibleResultIds: string[]
+  routeLanguageSlug?: string | null
+  searchLanguageSlug?: string | null
+}
 
 export async function runSearch(input: {
   analytics?: WatchSearchAnalyticsInput
@@ -52,6 +97,7 @@ export async function runSearch(input: {
   languageEnglishNames?: string[]
   languageOptions?: SearchLanguageOption[]
   languageSlug?: string | null
+  languageSlugIsExplicit?: boolean
   routeLanguageSlug?: string | null
 }): Promise<SearchActionResult> {
   const {
@@ -63,11 +109,14 @@ export async function runSearch(input: {
     languageEnglishNames = [],
     languageOptions = [],
     languageSlug,
+    languageSlugIsExplicit,
     routeLanguageSlug,
   } = input
 
   const truncatedQuery = query.slice(0, 200)
   const startedAt = performance.now()
+  let effectiveLanguageOptions: readonly SearchLanguageOption[] =
+    languageOptions
   let resolvedLanguageForAnalytics:
     | SearchActionResult["resolvedLanguage"]
     | null = null
@@ -76,101 +125,77 @@ export async function runSearch(input: {
     normalizeSearchLanguageEnglishNames(languageEnglishNames)
 
   try {
-    const [flagEnabled, acceptLanguage] = await Promise.all([
-      isWatchAlgoliaSearchEnabled({
-        custom: { surface: "floating-search-modal" },
-      }),
-      readAcceptLanguageHeader(),
-    ])
+    const acceptLanguage = await readAcceptLanguageHeader()
+    effectiveLanguageOptions =
+      await loadLanguageOptionsIfNeeded(languageOptions)
+    const queryNamedLanguage = findQueryNamedLanguageOption(
+      truncatedQuery,
+      effectiveLanguageOptions,
+    )
 
     const resolvedLanguage = resolveSearchLanguage({
       selectedEnglishNames: selectedLanguageEnglishNames,
       explicitSlug: languageSlug,
       routeLanguageSlug,
       acceptLanguage,
-      languageOptions,
+      languageOptions: effectiveLanguageOptions,
     })
     resolvedLanguageForAnalytics = resolvedLanguage
 
-    if (!flagEnabled || type != null) {
-      attemptedResultSource = "semantic"
-      try {
-        const contentType = type ?? DEFAULT_SEMANTIC_CONTENT_TYPE
-        const response = await searchVideos(
-          truncatedQuery,
-          limit,
-          offset,
-          contentType,
-          resolvedLanguage.locale,
-        )
-        const result: SearchActionResult = {
-          ...response,
-          results: withResolvedLanguageSlug(response.results, resolvedLanguage),
-          ok: true,
-          resultSource: "semantic",
-          resolvedLanguage,
-        }
-        scheduleAnalyticsForResponse({
-          analytics,
-          languageOptions,
-          languageSlug,
-          offset,
-          response: result,
+    attemptedResultSource = "watch-search"
+    try {
+      const contentType = type ?? DEFAULT_SEMANTIC_CONTENT_TYPE
+      const response = await searchVideos(
+        truncatedQuery,
+        limit,
+        offset,
+        contentType,
+        resolvedLanguage.locale,
+        {
+          clientRequestId: analytics?.searchRequestId,
+          targetLanguageSlug:
+            languageSlug != null && (languageSlugIsExplicit ?? true)
+              ? resolvedLanguage.publicSlug
+              : null,
+          queryNamedLanguageSlug: queryNamedLanguage?.publicSlug,
+          displayLanguageSlug: routeLanguageSlug ?? resolvedLanguage.publicSlug,
           routeLanguageSlug,
-          selectedLanguageEnglishNames,
-        })
-        return result
-      } catch (error) {
-        const result: SearchActionResult = {
-          ok: false,
-          results: [],
-          hasMore: false,
-          query: truncatedQuery,
-          searchMode: DEFAULT_SEARCH_MODE,
-          latencyMs: 0,
-          resultSource: "semantic",
-          resolvedLanguage,
-          error: normalizeSearchError(error),
-        }
-        scheduleAnalyticsForResponse({
-          analytics,
-          analyticsLatencyMs: performance.now() - startedAt,
-          languageOptions,
-          languageSlug,
-          offset,
-          response: result,
-          routeLanguageSlug,
-          selectedLanguageEnglishNames,
-        })
-        return result
+          acceptLanguage,
+        },
+      )
+      const result: SearchActionResult = {
+        ...response,
+        results: withResolvedLanguageSlug(response.results, resolvedLanguage),
+        ok: true,
+        resultSource: "watch-search",
+        resolvedLanguage,
       }
-    }
-
-    attemptedResultSource = "algolia"
-    const algolia = await searchAlgoliaVideos({
-      includeLanguageFacets:
-        (offset ?? 0) === 0 && selectedLanguageEnglishNames.length === 0,
-      query: truncatedQuery,
-      limit,
-      offset,
-      languageEnglishNames: selectedLanguageEnglishNames,
-    })
-
-    if (!algolia.ok) {
+      scheduleAnalyticsForResponse({
+        analytics,
+        languageOptions: effectiveLanguageOptions,
+        languageSlug,
+        offset,
+        response: result,
+        routeLanguageSlug,
+        selectedLanguageEnglishNames,
+      })
+      return result
+    } catch (error) {
       const result: SearchActionResult = {
         ok: false,
         results: [],
         hasMore: false,
-        query: algolia.query,
+        query: truncatedQuery,
         searchMode: DEFAULT_SEARCH_MODE,
-        latencyMs: algolia.latencyMs,
-        resultSource: "algolia",
+        latencyMs: 0,
+        resultSource: "watch-search",
         resolvedLanguage,
-        error: algolia.error,
+        error: normalizeSearchError(error),
       }
       scheduleAnalyticsForResponse({
         analytics,
-        languageOptions,
+        analyticsLatencyMs: performance.now() - startedAt,
+        languageOptions: effectiveLanguageOptions,
         languageSlug,
         offset,
         response: result,
@@ -179,45 +204,11 @@ export async function runSearch(input: {
       })
       return result
     }
-
-    const preferredLanguage = preferredSearchLanguage({
-      languageEnglishNames: selectedLanguageEnglishNames,
-      languageOptions,
-      resolvedLanguage,
-    })
-    const results: SearchResult[] = transformAlgoliaVideoHits({
-      hits: algolia.hits,
-      preferredLanguage,
-      languageOptions,
-    })
-
-    const result: SearchActionResult = {
-      ok: true,
-      results,
-      hasMore: algolia.hasMore,
-      query: algolia.query,
-      searchMode: DEFAULT_SEARCH_MODE,
-      latencyMs: algolia.latencyMs,
-      nextOffset: algolia.nextOffset,
-      resultSource: "algolia",
-      resolvedLanguage,
-      languageFacets: algolia.facets.languageEnglishName,
-    }
-    scheduleAnalyticsForResponse({
-      analytics,
-      languageOptions,
-      languageSlug,
-      offset,
-      response: result,
-      routeLanguageSlug,
-      selectedLanguageEnglishNames,
-    })
-    return result
   } catch (error) {
     scheduleAnalyticsForUnexpectedFailure({
       analytics,
       elapsedMs: performance.now() - startedAt,
-      languageOptions,
+      languageOptions: effectiveLanguageOptions,
       languageSlug,
       offset,
       query: truncatedQuery,
@@ -228,6 +219,122 @@ export async function runSearch(input: {
     })
     throw error
   }
+}
+
+export async function recordWatchSearchResultClick(
+  input: RecordWatchSearchResultClickInput,
+): Promise<{ ok: boolean }> {
+  const requestId = safeRequestId(input.requestId)
+  const resultId = safeToken(input.resultId)
+  if (!requestId || !resultId) return { ok: false }
+
+  const variables = {
+    requestId,
+    eventType: "RESULT_CLICKED",
+    client: "WEB",
+    resultId,
+    resultType: toWatchSearchEventResultType(input.resultType),
+    position: safePositiveInt(input.position),
+    visibleResultIds: safeVisibleResultIds(input.visibleResultIds ?? []),
+    routeLanguageSlug: safeToken(input.routeLanguageSlug),
+    searchLanguageSlug: safeToken(input.searchLanguageSlug),
+    occurredAt: new Date().toISOString(),
+  } satisfies RecordWatchSearchEventVariables
+
+  try {
+    await adminClient.mutate({
+      mutation: recordWatchSearchEventOperation,
+      variables,
+    })
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export async function recordWatchSearchResultsViewed(
+  input: RecordWatchSearchResultsViewedInput,
+): Promise<{ ok: boolean }> {
+  const requestId = safeRequestId(input.requestId)
+  const visibleResultIds = safeVisibleResultIds(input.visibleResultIds)
+  if (!requestId || visibleResultIds.length === 0) return { ok: false }
+
+  const variables = {
+    requestId,
+    eventType: "RESULTS_VIEWED",
+    client: "WEB",
+    resultId: null,
+    resultType: null,
+    position: null,
+    visibleResultIds,
+    routeLanguageSlug: safeToken(input.routeLanguageSlug),
+    searchLanguageSlug: safeToken(input.searchLanguageSlug),
+    occurredAt: new Date().toISOString(),
+  } satisfies RecordWatchSearchEventVariables
+
+  try {
+    await adminClient.mutate({
+      mutation: recordWatchSearchEventOperation,
+      variables,
+    })
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+async function loadLanguageOptionsIfNeeded(
+  languageOptions: readonly SearchLanguageOption[],
+): Promise<readonly SearchLanguageOption[]> {
+  if (languageOptions.length > 0) return languageOptions
+
+  const result = await getSearchLanguageOptions()
+  return result.ok ? result.options : languageOptions
+}
+
+function findQueryNamedLanguageOption(
+  query: string,
+  languageOptions: readonly SearchLanguageOption[],
+): SearchLanguageOption | null {
+  const normalizedQuery = normalizeQueryLanguageText(query)
+  if (!normalizedQuery) return null
+  const queryHaystack = ` ${normalizedQuery} `
+
+  const candidates = languageOptions
+    .filter((option) => option.publicSlug)
+    .flatMap((option) =>
+      queryLanguageAliases(option).map((alias) => ({
+        alias,
+        option,
+      })),
+    )
+    .filter(({ alias }) => alias.length > 0)
+    .sort((a, b) => b.alias.length - a.alias.length)
+
+  return (
+    candidates.find(({ alias }) => queryHaystack.includes(` ${alias} `))
+      ?.option ?? null
+  )
+}
+
+function queryLanguageAliases(option: SearchLanguageOption): string[] {
+  const aliases = new Set<string>()
+  aliases.add(normalizeQueryLanguageText(option.englishName))
+  aliases.add(
+    normalizeQueryLanguageText(option.englishName.split(",")[0] ?? ""),
+  )
+  aliases.add(normalizeQueryLanguageText(option.publicSlug?.replace(/-/g, " ")))
+  return [...aliases]
+}
+
+function normalizeQueryLanguageText(value: string | null | undefined): string {
+  return ` ${value ?? ""} `
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 function scheduleAnalyticsForResponse({
@@ -298,9 +405,11 @@ function scheduleAnalyticsForResponse({
     responseSearchMode: response.searchMode,
     resultCount,
     resultSource: response.resultSource,
+    degraded: response.degraded,
+    laneStatuses: response.laneStatuses,
     routeLanguageSlug,
     ...languageAttributes,
-    searchRequestId: analytics.searchRequestId,
+    searchRequestId: response.requestId ?? analytics.searchRequestId,
     surface: analytics.surface,
     visibleResultCount,
     watchContext: null,
@@ -377,15 +486,48 @@ function normalizeAnalyticsRequestType(
 }
 
 function failureCategoryForResultSource(
-  resultSource: SearchActionResultSource,
+  _resultSource: SearchActionResultSource,
 ): WatchSearchFailureCategory {
-  return resultSource === "algolia" ? "algolia_error" : "semantic_error"
+  return "watch_search_error"
 }
 
 function safeNonNegativeInt(value: number | null | undefined): number | null {
   const parsed = typeof value === "number" ? value : Number(value)
   if (!Number.isFinite(parsed) || parsed < 0) return null
   return Math.floor(parsed)
+}
+
+function safePositiveInt(value: number | null | undefined): number | null {
+  const parsed = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(parsed) || parsed < 1) return null
+  return Math.floor(parsed)
+}
+
+function safeVisibleResultIds(value: string[]): string[] {
+  return value.flatMap((id) => {
+    const safe = safeToken(id)
+    return safe ? [safe] : []
+  })
+}
+
+function safeRequestId(value: string | null | undefined): string | null {
+  const normalized = value?.trim()
+  if (!normalized || !/^[A-Za-z0-9_-]{8,80}$/.test(normalized)) return null
+  return normalized
+}
+
+function safeToken(value: string | null | undefined): string | null {
+  const normalized = value?.replace(/[\r\n\t]/g, " ").trim()
+  if (!normalized || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(normalized)) {
+    return null
+  }
+  return normalized.slice(0, 128)
+}
+
+function toWatchSearchEventResultType(
+  type: SearchContentType,
+): "VIDEO" | "EXPERIENCE" {
+  return type === "experience" ? "EXPERIENCE" : "VIDEO"
 }
 
 function trustedSearchLanguageAttributes({
@@ -459,54 +601,9 @@ async function readAcceptLanguageHeader(): Promise<string | null> {
   }
 }
 
-function preferredSearchLanguage({
-  languageEnglishNames,
-  languageOptions,
-  resolvedLanguage,
-}: {
-  languageEnglishNames: readonly string[]
-  languageOptions: readonly SearchLanguageOption[]
-  resolvedLanguage: { publicSlug: string; englishName: string | null }
-}): SearchLanguageOption | null {
-  const selectedLanguage = languageEnglishNames[0]
-    ? findSearchLanguageOptionByEnglishName(
-        languageEnglishNames[0],
-        languageOptions,
-      )
-    : null
-  if (selectedLanguage) return selectedLanguage
-
-  const resolvedOption = languageOptions.find(
-    (option) => option.publicSlug === resolvedLanguage.publicSlug,
-  )
-  if (resolvedOption) return resolvedOption
-
-  if (!resolvedLanguage.englishName) {
-    return {
-      coreId: null,
-      englishName: "English",
-      nativeName: null,
-      bcp47: "en",
-      publicSlug: resolvedLanguage.publicSlug,
-      regionNames: [],
-    }
-  }
-
-  return {
-    coreId: null,
-    englishName: resolvedLanguage.englishName,
-    nativeName: null,
-    bcp47: null,
-    publicSlug: resolvedLanguage.publicSlug,
-    regionNames: [],
-  }
-}
-
 function normalizeSearchError(error: unknown): SearchError {
   if (error != null) {
-    console.error(
-      `[watch-search][semantic] ${sanitizeErrorMessage(errorMessage(error))}`,
-    )
+    console.error(`[watch-search] ${sanitizeErrorMessage(errorMessage(error))}`)
   }
 
   const retryAfterSeconds =

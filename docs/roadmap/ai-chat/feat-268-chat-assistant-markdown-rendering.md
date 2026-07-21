@@ -3,7 +3,7 @@ id: "feat-268"
 title: "Chat assistant markdown rendering (hardened, no raw HTML)"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-07-16"
 duration: 3
 depends_on: []
@@ -11,6 +11,16 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-20 via [PR #1620](https://github.com/JesusFilm/forge/pull/1620) (`feat(chat): render assistant markdown with hardened containment (feat-268)`).
+
+**What landed.** Assistant turns render through `react-markdown@^10.1.0` + `remark-breaks` behind an element allowlist (`p/strong/em/ul/ol/li/blockquote/code/a/br`) with `unwrapDisallowed`; no `rehype-raw`, `skipHtml` stays false, zero `dangerouslySetInnerHTML` — the discipline reworded to "no raw HTML ever reaches the DOM". Links are https-only through a shared `UntrustedLink` gate (`isHttpsUrl` lifted to `lib/is-https-url.ts`), so `assistant-markdown` and `sources-list` share one hardened anchor and can't drift. User turns stay React-escaped plain text. Scope grew during review: because chat has no app-level error boundary and turns persist (feat-208) + replay (feat-241), an adversarial code-review reproduced a durable crash/freeze from pathological input, so containment shipped as THREE independent controls — a pre-parse prefix guard (short deep-nesting crash), a shape-agnostic length cap at the 8,192-unit per-message ceiling (the `*_*_…` emphasis-nesting freeze the prefix regex is blind to, reproduced at ~2 s at 24 KB), and a per-turn `MarkdownRenderBoundary`. The Seeker-side cite-by-name follow-up in the brief was left out of scope. Rebased past the concurrently-merged feat-269 sources disclosure, whose inline anchor was folded onto the shared `UntrustedLink`.
+
+**Compound docs.** [Guard recursive markdown rendering against untrusted-content crash and freeze](../../solutions/best-practices/react-markdown-untrusted-nesting-crash-freeze-guard.md) — the shape/depth axis of input bounding, sibling to the byte-cap (SIZE) and outbound-timeout (TIME) laws (ce-doc-review applied: three-layer completeness correction, render-model-scoped containment, MDX exclusion). Root `CLAUDE.md` Known-Patterns bullet added; the feat-240 ticket's stale plain-text-rendering mitigation got a dated supersession note.
+
+**Residual risk / follow-ups.** apps/web's existing react-markdown surfaces (`Text.tsx` server-rendered, `RelatedQuestions.tsx` client) render admin-sourced, partly AI-generated content and were NOT audited for this exposure — flagged in the compound doc's "When to Apply" as a verify-when-touched item, not a known defect.
 
 ## Problem
 

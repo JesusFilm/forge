@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  isDynamicLocalCodexMcpRedirectUriAllowed,
   isDynamicLocalWebRedirectUriAllowed,
   isDynamicRailwayPreviewRedirectUriAllowed,
 } from "./dynamic-preview-redirect.service"
@@ -111,6 +112,48 @@ describe("dynamic preview redirect policy", () => {
       isDynamicLocalWebRedirectUriAllowed({
         clientId: "jfp_web_local",
         redirectUri: "http://localhost:51810/api/auth/callback",
+      }),
+    ).toBe(false)
+  })
+
+  it("allows loopback Codex MCP callbacks for the dedicated client", () => {
+    expect(
+      isDynamicLocalCodexMcpRedirectUriAllowed({
+        clientId: "jfp_admin_mcp_codex",
+        redirectUri: "http://localhost:51810/auth/callback",
+      }),
+    ).toBe(true)
+    expect(
+      isDynamicLocalCodexMcpRedirectUriAllowed({
+        clientId: "jfp_admin_mcp_codex",
+        redirectUri: "http://127.0.0.1:51810/callback",
+      }),
+    ).toBe(true)
+  })
+
+  it("rejects non-loopback or non-callback Codex MCP redirect URLs", () => {
+    expect(
+      isDynamicLocalCodexMcpRedirectUriAllowed({
+        clientId: "jfp_admin_mcp_codex",
+        redirectUri: "https://localhost:51810/auth/callback",
+      }),
+    ).toBe(false)
+    expect(
+      isDynamicLocalCodexMcpRedirectUriAllowed({
+        clientId: "jfp_admin_mcp_codex",
+        redirectUri: "http://example.com:51810/auth/callback",
+      }),
+    ).toBe(false)
+    expect(
+      isDynamicLocalCodexMcpRedirectUriAllowed({
+        clientId: "jfp_admin_mcp_codex",
+        redirectUri: "http://localhost:51810/dashboard",
+      }),
+    ).toBe(false)
+    expect(
+      isDynamicLocalCodexMcpRedirectUriAllowed({
+        clientId: "jfp_admin_production",
+        redirectUri: "http://localhost:51810/auth/callback",
       }),
     ).toBe(false)
   })

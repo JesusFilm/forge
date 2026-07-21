@@ -476,10 +476,13 @@ is not the deterministic product contract here.
 ## Seeker agent
 
 `seekerAgent` (feat-198, feat-199) is the first conversational agent of the
-planned "Jesus Film AI Chat" system, **Studio-only**, proving the
+planned "Jesus Film AI Chat" system — internal-only: reachable via Studio and
+the default-off, bearer-gated `POST /forge-seeker` dogfood surface, never a
+public surface — proving the
 chat -> tool-call -> remembered-context shape: citation-disciplined
 instructions with a mandatory safety line, the `retrieveAnswer` tool backed by
-the JesusFilm RAG service (feat-199), and per-agent in-memory `Memory`. The tool
+the JesusFilm RAG service (feat-199), and the shared ai-chat lane `Memory`
+(feat-208 — Postgres-persisted; see below). The tool
 returns ranked, cited **passages** (`{ status, sources, message? }`) and the
 agent's own LLM synthesizes the source-attributed answer — the tool generates
 nothing. When the RAG env vars are unset (or the service is unreachable), the
@@ -543,9 +546,10 @@ production kill-switch via `AI_CHAT_MEMORY_BACKEND`). The section is mirrored
   (`canAiChatDataPersist`) and runs directly over the persisted `ai_chat`
   store — the kill-switch stops writes, never retention. Honest bound: the
   purge caps total junk at ~one retention window of inflow; it does NOT bound
-  in-window growth (the ceiling only bounds a cooperative client) — inbound
-  auth + rate caps remain the real flood control. Single-instance assumption:
-  add a leader guard before scaling out.
+  in-window growth (the ceiling only bounds a cooperative client) — a
+  rate/concurrency cap remains the real flood control (the chat-side per-user
+  gate shipped in feat-233/feat-239; the cap is the open piece).
+  Single-instance assumption: add a leader guard before scaling out.
 - **Operator deletion runbook** (subject-erasure requests, keyed by resource):
   `DELETE FROM ai_chat.mastra_messages WHERE thread_id IN (SELECT id FROM
 ai_chat.mastra_threads WHERE "resourceId" = $1); DELETE FROM
@@ -888,9 +892,9 @@ Studio from starting. URL safety remains enforced at request time before a
 bearer is sent.
 
 The website must implement the documented review-queue and saved-source
-contracts before these settings are enabled, and its scheduler must call the
-three `/forge-*-discovery` routes (or start the registered workflows). Mastra
-does not create that external scheduler.
+contracts before these settings are enabled. Mastra owns the declarative daily
+schedules for Instagram and YouTube; Pinterest remains available through its
+route or Studio until it receives its own schedule.
 
 Limitations to keep in mind:
 
@@ -916,7 +920,9 @@ playlists, and keyword queries. It accepts stable channel IDs/handles and
 playlist IDs; saved full YouTube playlist URLs are normalized to their `list`
 value, while unsupported custom-channel URLs are skipped. The output cap is 10
 videos by default, each source list is capped at 50, and the response includes
-a best-effort `reviewQueue` outcome.
+a best-effort `reviewQueue` outcome. Mastra schedules this workflow once a day
+at `01:00 UTC`, one hour after the Instagram workflow. Scheduled runs use the
+same empty-input defaults as Studio and route runs.
 
 `POST /forge-pinterest-discovery` reads public Pinterest board RSS feeds. Board
 URLs must be HTTPS `pinterest.com` hosts; query strings are removed before the

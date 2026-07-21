@@ -52,12 +52,13 @@ describe("GET_SHOWCASE_VIDEO — lean per-video stream query", () => {
     expect(printed).toMatch(/\bplaybackId\b/)
   })
 
-  // Rotation identity is language.slug; bcp47 collides in this catalog (ko/ko-kmr),
-  // so it is deliberately NOT selected — you cannot misuse a field you never fetched.
-  it("selects language.slug and name but never bcp47", () => {
+  // Preference identity stays language.slug (bcp47 collides: ko/ko-kmr), but bcp47 is
+  // now selected too — it feeds resolveDefaultSlug's device-locale + English prefix rungs
+  // when the viewer's language is absent. Without it the default chain degrades to first-dub.
+  it("selects language.slug, name, and bcp47", () => {
     expect(printed).toMatch(/\bslug\b/)
     expect(printed).toMatch(/\bname\b/)
-    expect(printed).not.toMatch(/\bbcp47\b/)
+    expect(printed).toMatch(/\bbcp47\b/)
   })
 
   it("selects the poster-intent image fields", () => {

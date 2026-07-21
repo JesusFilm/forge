@@ -106,6 +106,8 @@ vi.mock("next-intl", () => ({
           playingNow: "Playing now",
           previousChapter: "Previous chapter",
           nextChapter: "Next chapter",
+          thumbnailAlt: `${values?.title} thumbnail`,
+          relatedVideoThumbnail: "Related video thumbnail",
         },
         VideoLabels: {
           video: "Video",
@@ -321,7 +323,8 @@ describe("SiblingCarousel — happy path", () => {
     expect(active!.className).not.toContain("aspect-square")
     expect(active!.className).not.toContain("after:inset-0")
     expect(active!.className).not.toContain("after:border-4")
-    expect(active!.className).toContain("focus-visible:outline-white/80")
+    expect(active!.className).toContain("focus-visible:outline-none")
+    expect(active!.className).not.toContain("focus-visible:outline-2")
     expect(active!.className).toContain("shadow-[0_2px_6px_rgba")
     // Contextual 3-segment shape keeps chapter navigation inside the
     // collection instead of resolving by the child slug alone.
@@ -373,16 +376,20 @@ describe("SiblingCarousel — happy path", () => {
     expect(inactive?.className).not.toContain("border-transparent")
     expect(inactive?.className).toContain("opacity-70")
     expect(inactive?.className).toContain("hover:opacity-100")
+    expect(inactive?.className).toContain("focus-visible:opacity-100")
     const hoverOutline = inactive?.querySelector(
       "[data-testid='sibling-carousel-hover-outline']",
     )
     expect(hoverOutline?.className).toContain("inset-0")
-    expect(hoverOutline?.className).toContain("z-[70]")
+    expect(hoverOutline?.className).toContain("z-[80]")
+    expect(hoverOutline?.className).toContain("rounded-[inherit]")
     expect(hoverOutline?.className).toContain("border-4")
     expect(hoverOutline?.className).toContain("border-white")
     expect(hoverOutline?.className).not.toContain("border-brand-red")
     expect(hoverOutline?.className).not.toContain("watch-home-gradient-outline")
     expect(hoverOutline?.className).toContain("group-hover:opacity-100")
+    expect(hoverOutline?.className).toContain("group-focus-visible:opacity-100")
+    expect(hoverOutline?.className).not.toContain("shadow-")
     const outlineSegments = hoverOutline?.querySelectorAll("span")
     expect(outlineSegments).toHaveLength(0)
 
@@ -1025,6 +1032,9 @@ describe("SiblingCarousel — edge cases", () => {
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {
     const block = makeBlock(3, 1)
+    block.canonicalParent.children.forEach((child, index) => {
+      if (child != null) child.muxPlaybackId = `mux-preview-${index + 1}`
+    })
 
     act(() => {
       root.render(<SiblingCarousel block={block} languageSlug="" />)
@@ -1039,11 +1049,24 @@ describe("SiblingCarousel — edge cases", () => {
     expect(item!.tagName).toBe("DIV")
     expect(item!.getAttribute("href")).toBeNull()
     expect(item!.getAttribute("data-href")).toBeNull()
-    // Markup is otherwise identical: same className + active marker present.
+    // Static content remains, but no interaction-only classes or frame render.
     expect(item!.className).toContain("aspect-video")
+    expect(item!.className).not.toContain("group")
+    expect(item!.className).not.toContain("cursor-pointer")
+    expect(item!.className).not.toContain("focus-visible:outline-none")
+    expect(
+      item!.querySelector("[data-testid='sibling-carousel-hover-outline']"),
+    ).toBeNull()
     expect(
       item!.querySelector("[data-testid='sibling-carousel-caption']"),
     ).not.toBeNull()
+
+    act(() => {
+      item!.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    expect(item!.querySelector("[data-testid='mux-hover-preview']")).toBeNull()
+    expect(item!.querySelector("[data-src*='/animated.webp']")).toBeNull()
   })
 })
 

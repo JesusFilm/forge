@@ -303,98 +303,6 @@ type ExperienceLocale {
   updatedAt: String
 }
 
-"""Content corpus filter for hybrid search."""
-enum HybridSearchContentType {
-  EXPERIENCE
-  VIDEO
-}
-
-"""
-Which retrieval paths contributed to a response. 'keyword-only' indicates the query embedding call failed and only keyword search ran.
-"""
-enum HybridSearchMode {
-  HYBRID
-  KEYWORD_ONLY
-}
-
-"""
-Full response envelope. `hasMore` is derived without a COUNT pass by dedup-to-(offset+limit+1). `searchMode` is the degradation signal.
-"""
-type HybridSearchResponse {
-  hasMore: Boolean!
-  query: String!
-  results: [HybridSearchResult!]!
-  """
-  Embedding-degradation signal — 'hybrid' when semantic retrieval ran, 'keyword-only' when the embedding provider failed. ORTHOGONAL to the input arg `mode`, which selects the retrieval pipeline. Same name, different concern.
-  """
-  searchMode: HybridSearchMode!
-}
-
-"""
-A single hybrid-search hit. Video results carry video-level display metadata plus optional match timecode/playback data; experience results carry experience-level data.
-"""
-type HybridSearchResult {
-  """
-  Number of `video_relation` rows where this video is the parent. 0 for childless videos; null when `type=EXPERIENCE` or when the parent video was soft-deleted between the retriever pass and the hydration pass (rare race). Use `type` as the content-type discriminator — null on this field does NOT imply experience. Drives the `{n} episodes` pill on series/collection cards.
-  """
-  childCount: Int
-  """
-  Internal scoring detail. Present only when the caller passed `debug: true` AND the request origin is on the debug allowlist. Origin-gating happens at the resolver boundary; the service trusts the boolean.
-  """
-  debug: HybridSearchResultDebug
-  """
-  Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g., a SERIES/COLLECTION whose runtime lives on its children). Always null for `type=EXPERIENCE`. Drives the duration pill on singular-video cards.
-  """
-  durationSeconds: Int
-  id: String!
-  """
-  Base64 blur data URL generated from the selected VideoImage. Null for experiences or video images without generated placeholder metadata yet.
-  """
-  imageBlurDataUrl: String
-  imageUrl: String
-  """
-  Admin VideoLabel for video-type results (`EPISODE`, `SERIES`, `SHORT_FILM`, …). Always null for `type=EXPERIENCE`. Drives the type badge on the search result card.
-  """
-  label: VideoLabel
-  """
-  Base64 blur data URL for the Watch-card Mux thumbnail recipe. Null for experiences or when no playable Mux-backed dub is available.
-  """
-  muxThumbnailBlurDataUrl: String
-  playbackId: String
-  score: Float!
-  slug: String!
-  snippet: String!
-  startSeconds: Float
-  title: String!
-  type: HybridSearchContentType!
-}
-
-"""
-Per-result internal scoring detail. Origin-gated at the boundary; absent when the caller didn't request `debug` or the origin isn't on the allowlist. Carries no embedding vectors, no PII, and no credentials — only the per-retriever ranks that produced this hit, the fused RRF score, and whether the keyword-first dilution cap down-weighted the row.
-"""
-type HybridSearchResultDebug {
-  """
-  Whether the keyword-first semantic-dilution cap halved this row's score. The cap only runs in `mode="keyword-first"` when an exact-title hit covered every query token. In hybrid mode the cap never runs — the field reads `false` because 'cap was not applicable on this code path', NOT because 'cap considered this row and chose not to'. Use `mode` alongside this flag to interpret it correctly.
-  """
-  dilutionCapApplied: Boolean!
-  """
-  Reciprocal Rank Fusion score BEFORE the keyword-first dilution cap. The visible `score` field on `HybridSearchResult` reflects the post-cap value; comparing the two reveals exactly how much the cap down-weighted this row (0.5× when `dilutionCapApplied` is true, identical otherwise).
-  """
-  fusedScore: Float!
-  """
-  Per-list contributions that produced this fused result, in dispatch order (semantic-video, keyword-* / lexical retrievers, semantic-experience, keyword-experience). Each entry's `rank` is 1-based.
-  """
-  retrieverRanks: [HybridSearchRetrieverRank!]!
-}
-
-"""
-One contributing retriever's rank for a single fused result. The `label` is an UNSTABLE internal name (e.g. 'semantic-video', 'keyword-weighted-video', 'trigram-video', 'exact-title-video') — it MAY be renamed without a breaking-change marker. Operators inspecting the payload during triage are the intended audience; do NOT branch on these strings in production code.
-"""
-type HybridSearchRetrieverRank {
-  label: String!
-  rank: Int!
-}
-
 """Single entry in InfoBlocksBlock.blocks."""
 type InfoBlockItem {
   description: String
@@ -862,6 +770,7 @@ type Mutation {
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
+  recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
@@ -1057,24 +966,6 @@ type Query {
   """
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: ID): [SceneRecommendation!]!
   """
-  Hybrid (semantic + keyword) search across videos and experiences. PUBLIC — see published + non-archived rows only.
-  """
-  search(
-    """
-    When true, attaches internal scoring detail under `result.debug` (per-retriever ranks, fused score, dilution-cap state). Origin-gated at the resolver: requests from non-allowlisted origins (production browsers) silently get the payload stripped. Treat this as a soft feature flag — Origin headers are NOT an authentication mechanism.
-    """
-    debug: Boolean
-    limit: Int
-    locale: String!
-    """
-    Selects the retrieval pipeline. Default: 'hybrid' (the R4 baseline). Currently accepts 'hybrid' and 'keyword-first'. Unknown values fall back to 'hybrid' with a server-side warn log; never throws. Kept as a nullable String (not an enum) so future modes ship without GraphQL schema changes. ORTHOGONAL to the response field `searchMode`, which reports the embedding-degradation signal ('hybrid' | 'keyword-only') based on whether semantic retrieval ran — these two share a name but answer different questions.
-    """
-    mode: String
-    offset: Int
-    q: String!
-    type: HybridSearchContentType
-  ): HybridSearchResponse
-  """
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
@@ -1122,6 +1013,10 @@ type Query {
     """Maximum rows returned per bucket. Defaults to the service cap."""
     limit: Int
   ): WatchLanguageInventory!
+  """
+  Search Watch content using separated query, target language, display language, evidence, and availability signals.
+  """
+  watchSearch(input: WatchSearchInput!): WatchSearchResponse
   """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
@@ -1253,9 +1148,13 @@ type Video {
   """
   children: [VideoRelation!]
   coreId: String
+  """
+  One downloadable Dub per visible direct child for an exact language slug. Intended for lazy collection downloads without projecting every child Dub.
+  """
+  downloadableChildDubs(languageSlug: String!): [VideoDub!]!
   dubs: [VideoDub!]
   """
-  Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.
+  Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.
   """
   durationSeconds: Int
   id: ID
@@ -1949,6 +1848,163 @@ type WatchRouteSnapshotStudyQuestion {
   languageSlug: String
   order: Int
   value: String
+}
+
+type WatchSearchAction {
+  hrefLanguageSlug: String
+  kind: WatchSearchActionKind
+}
+
+enum WatchSearchActionKind {
+  OPEN_EXPERIENCE
+  WATCH
+}
+
+type WatchSearchAvailability {
+  audio: Boolean
+  kind: WatchSearchAvailabilityKind
+  languageEnglishName: String
+  languageSlug: String
+  subtitles: Boolean
+}
+
+enum WatchSearchAvailabilityKind {
+  RELATED_LANGUAGE
+  TARGET_AUDIO
+  TARGET_SUBTITLE
+  UNAVAILABLE
+}
+
+type WatchSearchEvent {
+  client: String
+  createdAt: String
+  eventType: String
+  id: ID
+  occurredAt: String
+  position: Int
+  requestId: String
+  resultId: String
+  resultType: String
+}
+
+enum WatchSearchEventClient {
+  MOBILE
+  TV
+  WEB
+}
+
+enum WatchSearchEventResultType {
+  EXPERIENCE
+  VIDEO
+}
+
+enum WatchSearchEventType {
+  LOAD_MORE
+  RESULTS_VIEWED
+  RESULT_CLICKED
+}
+
+type WatchSearchEvidence {
+  kind: WatchSearchEvidenceKind
+  label: String
+  languageSlug: String
+}
+
+enum WatchSearchEvidenceKind {
+  EXACT_TITLE
+  LANGUAGE_AVAILABILITY
+  METADATA
+  TRANSCRIPT_SEMANTIC
+}
+
+type WatchSearchFallback {
+  kind: WatchSearchFallbackKind
+  message: String
+}
+
+enum WatchSearchFallbackKind {
+  NONE
+  RELATED_LANGUAGE
+  SUBTITLE
+  UNAVAILABLE
+}
+
+input WatchSearchInput {
+  acceptLanguage: String
+  clientRequestId: String
+  currentWatchLanguageSlug: String
+  displayLanguageSlug: String
+  limit: Int
+  offset: Int
+  query: String!
+  queryLanguageSlug: String
+  queryNamedLanguageSlug: String
+  resultTypes: [WatchSearchResultType!]
+  routeLanguageSlug: String
+  targetLanguageSlug: String
+}
+
+type WatchSearchLaneStatus {
+  detail: String
+  elapsedMs: Float
+  lane: String
+  reason: String
+  resultCount: Int
+  status: String
+}
+
+type WatchSearchLanguageInterpretation {
+  acceptLanguage: String
+  acceptLanguageSlug: String
+  currentWatchLanguageSlug: String
+  displayLanguageSlug: String
+  queryLanguageSlug: String
+  queryNamedLanguageSlug: String
+  routeLanguageSlug: String
+  targetLanguageSlug: String!
+  targetLanguageSource: String!
+}
+
+type WatchSearchResponse {
+  degraded: Boolean
+  hasMore: Boolean
+  laneStatuses: [WatchSearchLaneStatus!]
+  languageInterpretation: WatchSearchLanguageInterpretation
+  latencyMs: Float
+  nextOffset: Int
+  query: String
+  requestId: String
+  results: [WatchSearchResult!]
+  searchMode: String
+}
+
+type WatchSearchResult {
+  action: WatchSearchAction
+  availability: WatchSearchAvailability
+  childCount: Int
+  description: String
+  durationSeconds: Int
+  evidence: WatchSearchEvidence
+  fallback: WatchSearchFallback
+  id: ID
+  imageBlurDataUrl: String
+  imageUrl: String
+  label: String
+  languageEnglishName: String
+  languageSlug: String
+  muxThumbnailBlurDataUrl: String
+  playbackId: String
+  score: Float
+  slug: String
+  snippet: String
+  startSeconds: Int
+  title: String
+  type: WatchSearchResultType
+}
+
+enum WatchSearchResultType {
+  EXPERIENCE
+  VIDEO
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""

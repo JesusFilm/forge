@@ -7,7 +7,9 @@
     "noContent": "Одоогоор контент байхгүй байна.",
     "homepageMisconfigured": "Үзэх нүүр хуудас буруу тохируулагдсан байна.",
     "defaultTemplateMisconfigured": "Үзэх үндсэн загвар буруу тохируулагдсан байна.",
-    "authFailed": "Контент үйлчилгээтэй нэвтэрч баталгаажуулж чадсангүй. Үргэлжилбэл тусламжийн багтай холбогдоно уу."
+    "authFailed": "Контент үйлчилгээтэй нэвтэрч баталгаажуулж чадсангүй. Үргэлжилбэл тусламжийн багтай холбогдоно уу.",
+    "pageLoadFailed": "Ямар нэгэн алдаа гарлаа.",
+    "tryAgain": "Дахин оролдох"
   },
   "VideosPage": {
     "title": "Бүх видео",
@@ -22,7 +24,8 @@
     "promoHeading": "Библийг илүү гүнзгий ойлгохыг хүсэж байна уу?",
     "joinBibleStudy": "Библи судлалд нэгдээрэй",
     "previousQuote": "Өмнөх Библийн эшлэл",
-    "nextQuote": "Дараагийн Библийн эшлэл"
+    "nextQuote": "Дараагийн Библийн эшлэл",
+    "readPassage": "Энэ хэсгийг Библиэсээ уншина уу."
   },
   "DownloadButton": {
     "checking": "Шалгаж байна",
@@ -73,7 +76,8 @@
     "selectLanguage": "Хэл сонгох",
     "searchPlaceholder": "Хэл хайх…",
     "languages": "Хэлүүд",
-    "noMatches": "Илэрц алга"
+    "noMatches": "Илэрц алга",
+    "notAvailable": "Боломжгүй"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Хэл",
@@ -112,7 +116,8 @@
     "questions": "Холбогдох асуултууд",
     "askYours": "Өөрийнхөө асуултыг асуу",
     "chatWithPerson": "Хүнтэй чатлах",
-    "askBibleQuestion": "Библиийн асуулт асуу"
+    "askBibleQuestion": "Библиийн асуулт асуу",
+    "quiz": "Шалгалт"
   },
   "WatchQuestionPanel": {
     "messageType": "Мессежийн төрөл",
@@ -170,7 +175,8 @@
     "searchRegion": "Видео хайх",
     "clearSearch": "Хайлтыг арилгах",
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
-    "home": "JesusFilm нүүр хуудас"
+    "home": "JesusFilm нүүр хуудас",
+    "closeSearch": "Хайлтыг хаах"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -205,14 +211,19 @@
     "clearLanguages": "Цэвэрлэх",
     "queryLanguageDetected": "{language} илэрлээ",
     "searchInLanguage": "{language} дээр хайх",
-    "tryDifferentKeywordsOrLanguage": "Өөр түлхүүр үг эсвэл өөр хайлтын хэл сонгоно уу"
+    "tryDifferentKeywordsOrLanguage": "Өөр түлхүүр үг эсвэл өөр хайлтын хэл сонгоно уу",
+    "useWebsiteDefaultLanguage": "Вэбсайтын анхны хайлтын хэлийг ашиглах",
+    "removeLanguage": "{language} устгах",
+    "browseMode": "Хайх горим"
   },
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",
-    "tapToUnmute": "Дууг нээхэд товшино уу"
+    "tapToUnmute": "Дууг нээхэд товшино уу",
+    "nextEpisode": "Дараагийн анги"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Контент ачаалж байна"
+    "loadingContent": "Контент ачаалж байна",
+    "loadingVideo": "Видео ачаалж байна"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -223,7 +234,8 @@
     "series": "Цуврал",
     "collection": "Цуглуулга",
     "trailer": "Трейлер",
-    "behindTheScenes": "Камерын ард"
+    "behindTheScenes": "Камерын ард",
+    "chapter": "Бүлэг"
   },
   "SiblingCarousel": {
     "clipPosition": "{current}/{total} клип",
@@ -235,11 +247,286 @@
     "noImage": "Зураг алга",
     "playingNow": "Одоо тоглож байна",
     "previousChapter": "Өмнөх бүлэг",
-    "nextChapter": "Дараагийн бүлэг"
+    "nextChapter": "Дараагийн бүлэг",
+    "thumbnailAlt": "{title} жижиг зураг",
+    "relatedVideoThumbnail": "Холбоотой видеоны жижиг зураг"
   },
   "SearchResultCard": {
     "experience": "Туршлага",
     "episodeCount": "{count, plural, one {# анги} other {# анги}}",
     "thumbnailAlt": "Видео жижиг зураг"
+  },
+  "Feedback": {
+    "openForm": "Санал хүсэлтийн маягт нээх",
+    "label": "Санал хүсэлт",
+    "couldNotLoad": "Санал хүсэлтийн маягт ачаалагдсангүй.",
+    "loadingForm": "Санал хүсэлтийн маягт ачаалж байна…",
+    "retry": "Дахин оролдох",
+    "openFormShort": "Маягт нээх",
+    "cancel": "Цуцлах",
+    "title": "Бета санал хүсэлт",
+    "description": "Ажиллаж байгаа зүйлс болон сайжруулах боломжтой хэсгүүдээ хуваалцаарай. Энэ маягтыг Google олгож байна.",
+    "openInNewTab": "Маягтыг шинэ таб дээр нээх",
+    "closeForm": "Санал хүсэлтийн маягт хаах",
+    "loadingGoogleForm": "Google Form ачаалж байна…",
+    "iframeTitle": "Бета санал хүсэлт илгээх"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-д үнэгүй Христийн видеонууд | Jesus Film Project",
+    "metadataDescription": "{language}-д дуу оруулгатай эсвэл хадмалтай Есүсийн тухай кино, Библийн түүхүүд, шавь бэлтгэх цувралууд, мөн сурталчилгааны видеонуудыг үзээрэй.",
+    "heroTitle": "{language}-д үнэгүй Христийн видеонууд",
+    "heroDescription": "{language}-д байгаа Есүсийн тухай кино, Библийн түүхүүд, шавь бэлтгэх цувралууд, мөн сурталчилгааны видеонуудыг үзээрэй. Бүрэн дуу оруулгатай видеонууд эхэнд, зөвхөн хадмалтай сонголтууд доор харагдана.",
+    "languageCollection": "Хэлний цуглуулга",
+    "itemCount": "{count, plural, one {# зүйл} other {# зүйл}}",
+    "videoCount": "{count, plural, one {# видео} other {# видео}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видео}} нь {groupCount, plural, one {# бүлэгт} other {# бүлэгт}}",
+    "sectionNavLabel": "Хэлний каталогийн хэсгүүд",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Шинэ",
+    "videoBible": "Видео Библи",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Цуглуулгууд",
+    "subtitlesOnly": "Зөвхөн хадмал",
+    "newlyAdded": "Шинээр нэмэгдсэн",
+    "newVideosTitle": "{language}-д шинэ Христийн видеонууд",
+    "newestFirst": "Шинэ эхлээд",
+    "noPublishedVideos": "Энэ хэл дээр одоогоор нийтлэгдсэн видео олдсонгүй.",
+    "bibleAndGospelFilms": "Библи ба Сайн мэдээний кинонууд",
+    "videoBibleCollectionsTitle": "{language}-ийн Видео Библийн цуглуулгууд",
+    "videoBibleDescription": "{language}-д байгаа LUMO, JESUS, Magdalena, Acts зэрэг Бичвэрт төвлөрсөн цуглуулгууд.",
+    "noVideoBibleCollections": "Энэ хэл дээр одоогоор Видео Библийн цуглуулга байхгүй байна.",
+    "bibleProjectCollectionsTitle": "{language}-ийн BibleProject цуглуулгууд",
+    "bibleProjectDescription": "{language}-д байгаа BibleProject цуврал ба судалгаанууд.",
+    "noBibleProjectCollections": "Энэ хэл дээр одоогоор BibleProject цуглуулга байхгүй байна.",
+    "sportsStories": "Спортын түүхүүд",
+    "sportsTitle": "{language}-ийн спорт ба тамирчдын түүхүүд",
+    "sportsDescription": "{language}-д байгаа итгэл төвтэй спортын түүхүүд болон тамирчдад төвлөрсөн цуглуулгууд.",
+    "noSportsCollections": "Энэ хэл дээр одоогоор спорт эсвэл тамирчдын түүхийн цуглуулга байхгүй байна.",
+    "fullyDubbed": "Бүрэн дуу оруулгатай",
+    "dubbedVideosTitle": "{language}-ийн видеонууд цуглуулгаар",
+    "dubbedVideosDescription": "Бүрэн дуу оруулгатай {language} видеонуудыг цуглуулгаар нь ангилан үзэж, олоход хялбар болгоно.",
+    "noDubbedVideos": "Энэ хэл дээр одоогоор бүрэн дуу оруулгатай видео байхгүй байна.",
+    "subtitlesAvailable": "Хадмалтай",
+    "subtitlesTitle": "{language}-ийн хадмалтай видеонууд",
+    "subtitlesDescription": "Ярьж буй {language} аудио хараахан байхгүй үед эдгээр видеонд {language} хадмал орно.",
+    "noSubtitleVideos": "Энэ хэл дээр одоогоор зөвхөн хадмалтай видео байхгүй байна.",
+    "dubbed": "Дуу оруулгатай",
+    "subtitles": "Хадмал",
+    "newLabel": "Шинэ",
+    "fromCollection": "{collection}-оос",
+    "standaloneVideos": "Бие даасан видеонууд",
+    "videosFromCollection": "{collection}-оос авсан видеонууд.",
+    "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
+    "openCollection": "Цуглуулга нээх"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project үзэх",
+    "watch": "Үзэх",
+    "watchNow": "Одоо үзэх",
+    "mutePreview": "Урьдчилсан үзүүлбэрийн дууг хаах",
+    "unmutePreview": "Урьдчилсан үзүүлбэрийн дууг нээх",
+    "nextVideo": "Дараагийн видео",
+    "featured": "Онцлох",
+    "showVideo": "{title}-г харуулах",
+    "previousVideoPreview": "Өмнөх видеоны урьдчилсан үзүүлбэр",
+    "nextVideoPreview": "Дараагийн видеоны урьдчилсан үзүүлбэр",
+    "mediaCollection": "Медиа цуглуулга",
+    "scrollToVideo": "{title} видеонд очих"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project нүүр хуудас",
+    "navigation": "Хөлийн хэсгийн навигаци",
+    "share": "Хуваалцах",
+    "watch": "Үзэх",
+    "giving": "Хандив",
+    "about": "Тухай",
+    "products": "Бүтээгдэхүүнүүд",
+    "resources": "Эх сурвалжууд",
+    "partners": "Түншүүд",
+    "contact": "Холбоо барих",
+    "giveNow": "Одоо хандивлах",
+    "resourcesVersion": "Эх сурвалжууд ({version})",
+    "office": "Алба",
+    "fax": "Факс",
+    "privacyPolicy": "Нууцлалын бодлого",
+    "legalStatement": "Хууль зүйн мэдэгдэл",
+    "newsletter": "Манай мэдээллийн товхимолд бүртгүүлэх"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Дэлхий нийтийн номлолд зориулсан",
+    "title": "Мессеж өөрчлөгдөхгүй. Харин хүмүүсийн үзэх арга өөрчлөгдөнө.",
+    "description": "Бид видео сан болон хэрэгслүүдээ эхнээс нь дахин бүтээж, олон арван жилийн орчуулгын ажлыг хүмүүсийн аль хэдийн цугларч, үзэж, хуваалцаж буй платформуудад хүргэж байна.",
+    "translatedLibraryTitle": "Дэлхий дээрх хамгийн олон хэлээр орчуулагдсан киноны сан",
+    "translatedLibraryDescription": "Итгэмжлэгдсэн үйлчлэлийн түншүүдээр дамжсан олон арван жилийн орчуулгын ажил нь мянга мянган хэлний бичлэг бүхий санг бүтээж, хүмүүс Есүсийн түүхтэй өөрсдөд нь хамгийн гүн хүрэх хэлээр танилцах боломжийг олгосон.",
+    "trustedVoicesTitle": "Итгэмжлэгдсэн дуу хоолойг шинэ хэлбэрт түгээх",
+    "trustedVoicesDescription": "Бид сайн мэдээний түүхүүдийг дүрслэн өгүүлэх аргыг дахин бүтээж, итгэмжлэгдсэн орчуулгыг орчин үеийн хэлбэртэй хослуулснаар мессеж платформ, соёл, дэлгэцүүдээр чөлөөтэй нэвтрэх боломжтой болгож байна.",
+    "missionTeamTitle": "Зөвхөн сан бус. Номлолд чиглэсэн баг.",
+    "missionTeamDescription": "Jesus Film Project бол орчуулагчид, медиа мэргэжилтнүүд, редакторууд, бүтээгчдээс бүрдсэн дэлхий нийтийн баг бөгөөд олон арван жилийн үйлчлэлийн туршлагыг хаа сайгүй шавь бэлтгэгчдэд зориулсан хэрэгсэл болгон хувиргаж байна.",
+    "buildingNext": "Бидний дараагийн бүтээж буй зүйл",
+    "nextStepsTitle": "Дараагийн Алхам платформ",
+    "nextStepsDescription": "Үзэгчдийг сүнслэг замналдаа бодит боломжуудтай холбож, олон нийт, Бичээс, эсвэл номлол руу дараагийн алхмаа хийхэд нь тусална.",
+    "mediaLibraryTitle": "Евангелийн медиа сан",
+    "mediaLibraryDescription": "Дэлхий даяарх үйлчлэл, номлолд зориулсан олон мянган видео, кино, эх сурвалж бүхий өргөн хүрээтэй Христийн медиа сан.",
+    "ministryToolsTitle": "Үйлчлэлд зориулсан дижитал хэрэгслүүд",
+    "ministryToolsDescription": "Илүү олон хүнд үр дүнтэй хүрэхэд нь үйлчлэлүүдэд туслах зорилгоор бүтээгдсэн видео удирдлага, контент түгээлт, үзэгчийн оролцоо, аналитик.",
+    "invitationEyebrow": "Уригдаж байна",
+    "invitationTitle": "Номлолын хэрэгслийн <highlight>дараагийн үеийг</highlight> бүтээхэд туслаарай",
+    "invitationDescription": "Бид практикчид, бүтээгчид, түншүүдийг эрт хандалтад урьж байна. Шинэ хэрэгслүүдийг түрүүлж туршиж, санал өгч, бодит номлолын ажилд зориулсан бүтээгдэхүүнийг хамтдаа хэлбэржүүлээрэй.",
+    "betaTester": "Бета туршигч болох"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библийн цуглуулга",
+    "gospelRailTitle": "Бүх түүхийг олж мэдэх",
+    "videoBibleDescription": "Библийг амьд мэт болгодог өгүүлэмжтэй түүхүүд, сургаалууд бүхий видео ба эх сурвалжийн цуглуулгаа судлаарай.",
+    "showcaseTitle": "Бичээсийг киноноор өгүүлэх нь",
+    "adventEyebrow": "Зул сарын Advent",
+    "adventTitle": "Зул сарын Advent тоолол",
+    "adventDescription": "Есүсийн ирэлтийн найдвар, баяр баясгалан, амлалтыг судалсан өдөр бүрийн видеотой Advent аялалд нэгдээрэй.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-ийн Advent",
+    "nuaEyebrow": "NUA цуврал",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth цуврал",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Есүстэй хамт аял",
+    "gospelsOnVideoEyebrow": "Сайн мэдээ бүрийг видеогоор өгүүлэх нь",
+    "scriptureAsWrittenTitle": "Бичээсийг яг бичигдсэнээр нь уншина",
+    "merryChristmas": "Зул сарын баярын мэнд!",
+    "daysUntilChristmas": "{count, plural, one {Зул сар хүртэл # хоног} other {Зул сар хүртэл # хоног}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Хэлүүд",
+    "metadataDescription": "JesusFilm видеонуудыг хэлээр нь үзэх.",
+    "eyebrow": "Үзэх хэлүүд",
+    "title": "Хэл сонгох",
+    "description": "Бүс нутгаар хэлүүдийг судлах эсвэл бүрэн жагсаалтыг үзнэ үү.",
+    "searchPlaceholder": "Хэл эсвэл улс хайх...",
+    "searchLabel": "Хэл эсвэл улс хайх",
+    "clearSearch": "Хайлтыг арилгах",
+    "browse": "Үзэх",
+    "browseByRegion": "Бүс нутаг, улсаар үзэх",
+    "languageCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "region": "Бүс нутаг",
+    "countryLanguages": "{country}-ийн хэлүүд",
+    "showLess": "Бага харуулах",
+    "showMore": "Даахин {count} харуулах",
+    "noLanguages": "Хэл олдсонгүй",
+    "tryAnotherSearch": "Өөр хайлтын үг туршаад үзээрэй."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Үзсэн түүх | Jesus Film Project",
+    "title": "Үзсэн түүх",
+    "loading": "Түүх ачаалж байна",
+    "empty": "Одоохондоо энд юу ч алга",
+    "emptyDescription": "Та нэвтэрсэн үед үзсэн видеонууд энд харагдана.",
+    "earlier": "Өмнө",
+    "today": "Өнөөдөр",
+    "yesterday": "Өчигдөр"
+  },
+  "AccountControl": {
+    "account": "Данс",
+    "accountMenu": "Дансны цэс",
+    "signIn": "Нэвтрэх",
+    "signOut": "Гарах",
+    "signedIn": "Нэвтэрсэн",
+    "history": "Түүх",
+    "logOut": "Гарах"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Хуудас олдсонгүй",
+    "eyebrow": "Хуудас олдсонгүй",
+    "screenReaderPrefix": "Хуудас олдсонгүй:",
+    "title": "Энэ хэсэг энд алга.",
+    "description": "Хуудас шилжсэн байж болох ч түүх үргэлжилсээр байна.",
+    "actionsLabel": "Хуудас олдсонгүй үйлдлүүд",
+    "backToWatch": "Үзэх хуудас руу буцах",
+    "browseVideos": "Видеонуудыг үзэх"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Богино киног үзэх",
+    "actions": {
+      "joinUs": "Бидэнтэй нэгдээрэй",
+      "shareMission": "Бидний номлолд нэгдээрэй"
+    },
+    "welcomeStart": {
+      "label": "Итгэл ба Бичээс",
+      "title": "Өнөөдрийн видеон сонголтууд",
+      "description": "Манай сангаас авсан итгэл төвтэй видеонууд танд урам өгч, сорьж, эргэцүүлэл төрүүлэхэд зориулагдсан."
+    },
+    "welcomeMorning": {
+      "label": "Өглөөний урам",
+      "title": "Өглөөний мэнд! Өнөөдрийн Библийн агшнууд таныг хүлээж байна.",
+      "description": "Сүнсийг тань урамшуулж, өргөхөд зориулагдсан Библийн урам өгөгч агшнуудаар өдрөө эхлүүлээрэй."
+    },
+    "welcomeAfternoon": {
+      "label": "Өдрийн урам",
+      "title": "Өдрийн мэнд! Таны өдөрт зориулсан Библийн агшнууд.",
+      "description": "Үдээс хойших амралтад тань тохирох эсвэл урам зориг өгсөөр байх Библийн урам өгөгч контент."
+    },
+    "welcomeEvening": {
+      "label": "Оройн урам",
+      "title": "Оройн мэнд! Библийн агшнаар тайвшир.",
+      "description": "Өдөр тань өндөрлөхөд эргэцүүлж, тайтгарал олоход туслах тайван Библийн агшнууд."
+    },
+    "joinUs": {
+      "label": "Бидэнтэй нэгдээрэй",
+      "title": "Тэрбум тэрбум хүн хайж байна",
+      "description": "Ургац бэлэн байна. Дижитал медиагаар дамжуулан сайн мэдээг дэлхийтэй хуваалцахад бидэнтэй нэгдээрэй."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Хамтдаа явцгаая",
+      "title": "Есүсийн түүхийг хамтдаа өгүүлцгээе",
+      "description": "Тэд Есүсийн хайрыг өөрсдийн хэлээр, өөрсдийн байгаа газар дээрээ сонсож, харж чадна."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% нийцэл",
+    "none": "Энэ хэл дээр уг видеонд тохирох санал болгосон видео олдсонгүй."
+  },
+  "BetaTesterModal": {
+    "title": "Бета туршигч болох",
+    "trigger": "Бета туршигч болох",
+    "loadFailed": "Ямар нэгэн алдаа гарлаа.",
+    "loading": "Ачаалж байна...",
+    "openFormNewTab": "Маягтыг шинэ таб дээр нээх",
+    "close": "Хаах",
+    "iframeTitle": "Бета туршигч болох"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

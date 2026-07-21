@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { getApolloClient } from "./apolloClient"
 import { datadogLog } from "./datadog"
-import { SEMANTIC_SEARCH, type SearchResult } from "./queries"
+import { type SearchResult } from "./queries"
 import { sanitizeQuery as sanitizeQueryImpl } from "./sanitizeQuery"
 import { meetsMinQueryLength } from "./searchGate"
 import {
@@ -14,9 +13,8 @@ import {
  *  fewer in-progress prefixes each fire a server-side cold embedding. */
 const DEFAULT_DEBOUNCE_MS = 900
 
-/** Force the UI out of 'loading' if the Apollo link/cache pipeline drops
- *  the response without resolving. Set below Apollo's 15 s fetch timeout
- *  so the user sees a client-side error, not two stacked timeouts. */
+/** Force the UI out of 'loading' if the active search request drops
+ *  without resolving. */
 const SEARCH_SAFETY_TIMEOUT_MS = 12_000
 
 // Re-export so search.tsx imports from the familiar ../src/lib/search path.
@@ -80,8 +78,8 @@ type UseSemanticSearchOptions = {
 }
 
 /**
- * Debounced semantic search via getApolloClient().query, fetchPolicy 'no-cache'
- * (NOT useLazyQuery — fetchMore drops page 1, mobile-search-ui-patterns). Guards:
+ * Debounced semantic search. Temporarily shimmed for non-P0 TV while Watch web
+ * search v2 lands; the hook contract stays stable for callers. Guards:
  * requestIdRef drops stale responses, isSubmittingRef blocks rapid-⏎ dups.
  */
 export function useSemanticSearch(
@@ -171,9 +169,10 @@ export function useSemanticSearch(
         console.log("[search] firing query:", { q, thisRequest, locale, limit })
       }
 
-      // Safety net: if Apollo never settles within SEARCH_SAFETY_TIMEOUT_MS,
-      // force the UI out of 'loading' so the user gets feedback. Cleared in
-      // the finally block when the request resolves normally.
+      // Safety net: if the search request never settles within
+      // SEARCH_SAFETY_TIMEOUT_MS, force the UI out of 'loading' so the user
+      // gets feedback. Cleared in the finally block when the request resolves
+      // normally.
       if (safetyTimerRef.current != null) {
         clearTimeout(safetyTimerRef.current)
       }
@@ -184,7 +183,7 @@ export function useSemanticSearch(
         if (!isSubmittingRef.current) return
         if (__DEV__) {
           console.warn(
-            "[search] safety timeout fired — Apollo never resolved for:",
+            "[search] safety timeout fired — request never resolved for:",
             q,
           )
         }
@@ -198,21 +197,12 @@ export function useSemanticSearch(
       }, SEARCH_SAFETY_TIMEOUT_MS)
 
       try {
-        const client = getApolloClient()
-        const response = await client.query({
-          query: SEMANTIC_SEARCH,
-          // Send the trimmed value: sanitizeQuery keeps whitespace at the
-          // write site, so we strip once here rather than shipping
-          // "  hello world  " to the embedding service.
-          variables: { query: trimmed, locale, limit },
-          fetchPolicy: "no-cache",
-        })
-
-        // Apollo + gql.tada infer this from SEMANTIC_SEARCH, no cast
-        // needed. Letting the schema flow through trips tsc here on a
-        // future field-type tightening instead of passing silently.
-        const payload = response.data?.semanticSearch
-        const items = payload?.results ?? []
+        // TODO(feat-254): Temporary non-P0 compile shim. TV keeps the search
+        // hook contract while Admin replaces the legacy Query.search surface
+        // for Watch web first.
+        void locale
+        void limit
+        const items: SearchResult[] = []
 
         if (__DEV__) {
           console.log("[search] response received:", {
@@ -247,10 +237,9 @@ export function useSemanticSearch(
         }
       } catch (err) {
         if (__DEV__) {
-          // Apollo errors serialize operation.variables, which
-          // contains the user query — keep this dev-only so prod
-          // logs never carry raw query strings.
-          console.error("[search] Apollo error:", err)
+          // Keep future request errors dev-only so prod logs never carry raw
+          // query strings.
+          console.error("[search] request error:", err)
         }
         if (requestIdRef.current !== thisRequest) return
         if (!mountedRef.current) return

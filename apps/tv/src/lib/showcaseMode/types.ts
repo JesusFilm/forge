@@ -18,16 +18,19 @@ export type ShowcaseExcerpt = {
   rawLabel: string | null
 }
 
-/**
- * A felt-need chapter (curated) or the single unlabeled reel (fallback). Language
- * rotation resets per chapter, so chapter boundaries are R7's rotation scope.
- */
+/** A felt-need chapter (curated) or the single unlabeled reel (fallback). */
 export type ShowcaseChapter = {
   id: string
   /** Felt-need name; "" on the fallback path, which renders no chapter card. */
   title: string
   subtitle: string | null
   excerpts: ShowcaseExcerpt[]
+  /**
+   * Set on every curated chapter carrying KTD-7's reserved marker — the curator may
+   * repeat the language chapter through the reel. `centerpieceExcerptId` is that
+   * chapter's first excerpt, the item KTD-5 dub-switches mid-play. Never on fallback.
+   */
+  languageChapter?: { centerpieceExcerptId: string }
 }
 
 export type ShowcaseQueueKind = "curated" | "fallback"
@@ -54,8 +57,8 @@ export type ShowcaseStream = {
   muxPlaybackId: string | null
   window: ExcerptWindow
   /**
-   * AE4: false when this excerpt's language did not actually rotate (single-language
-   * video, or a forced repeat) — the lower-third must make no language claim.
+   * True only for a KTD-5 hop's mid-play dub switch — the one case the lower-third
+   * announces a language. Every ordinary excerpt is false (no rotation anymore).
    */
   claimsLanguage: boolean
 }

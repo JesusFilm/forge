@@ -7,7 +7,9 @@
     "noContent": "Кунтент нуна.",
     "homepageMisconfigured": "Watch домашняя страница тямысен.",
     "defaultTemplateMisconfigured": "Watch'лыз шаблон тямысен.",
-    "authFailed": "Кунтент сервисын аутентификация кылдытэм уг поты. Кытын вожаса, поддержкалы пыдпумыт."
+    "authFailed": "Кунтент сервисын аутентификация кылдытэм уг поты. Кытын вожаса, поддержкалы пыдпумыт.",
+    "pageLoadFailed": "Ваське кылдэм.",
+    "tryAgain": "Тӧлъян гинь"
   },
   "VideosPage": {
     "title": "Тымыт видеоос",
@@ -22,7 +24,8 @@
     "promoHeading": "Библияны йыртӥсь кылдытэмсэ валан?",
     "joinBibleStudy": "Библия изучениея катытыл",
     "previousQuote": "Ӟӧкыт цитата",
-    "nextQuote": "Ӧдӥц цитата"
+    "nextQuote": "Ӧдӥц цитата",
+    "readPassage": "Вил Библия лъай тту отрывок лувчӀа."
   },
   "DownloadButton": {
     "checking": "Текшерисько",
@@ -73,7 +76,8 @@
     "selectLanguage": "Кыл бӧр",
     "searchPlaceholder": "Кылъёсэз утт…",
     "languages": "Кылъёс",
-    "noMatches": "Кылсям нуна"
+    "noMatches": "Кылсям нуна",
+    "notAvailable": "Валэктэм"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Кыл",
@@ -112,7 +116,8 @@
     "questions": "Пыддэ юанъёс",
     "askYours": "Сӧзьы юан",
     "chatWithPerson": "Кылын кылыныз кисьты",
-    "askBibleQuestion": "Библиялы юан юа"
+    "askBibleQuestion": "Библиялы юан юа",
+    "quiz": "Квиз"
   },
   "WatchQuestionPanel": {
     "messageType": "Сӧзьы тып",
@@ -170,7 +175,8 @@
     "searchRegion": "Видеоосэз утт",
     "clearSearch": "Уттонэз кышт",
     "changeAudioLanguage": "Аудио кылсэ воштӥ",
-    "home": "JesusFilm шоры"
+    "home": "JesusFilm шоры",
+    "closeSearch": "Уттонэз пыдаты"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоосэз утт да кара",
@@ -205,14 +211,19 @@
     "clearLanguages": "Кышт",
     "queryLanguageDetected": "{language} тодэм",
     "searchInLanguage": "{language} кылын утт",
-    "tryDifferentKeywordsOrLanguage": "Ӧтӥ кывъёс пыр өлы кыл бӧр"
+    "tryDifferentKeywordsOrLanguage": "Ӧтӥ кывъёс пыр өлы кыл бӧр",
+    "useWebsiteDefaultLanguage": "Сайтлы кылберган уттон кылэз пайдаланы",
+    "removeLanguage": "{language} кышт",
+    "browseMode": "Уттӥсь-карон тып"
   },
   "HeroPlayer": {
     "playWithSound": "Нунияз кыт",
-    "tapToUnmute": "Дэикись кычкан, сӥлӥсэ кышт"
+    "tapToUnmute": "Дэикись кычкан, сӥлӥсэ кышт",
+    "nextEpisode": "Ӧдӥц эпизод"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Кунтент лэсьтӥсько"
+    "loadingContent": "Кунтент лэсьтӥсько",
+    "loadingVideo": "Видео лэсьтӥсько"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -223,7 +234,8 @@
     "series": "Серия",
     "collection": "Калекцыя",
     "trailer": "Трейлер",
-    "behindTheScenes": "Сцена сьӧрын"
+    "behindTheScenes": "Сцена сьӧрын",
+    "chapter": "Глава"
   },
   "SiblingCarousel": {
     "clipPosition": "Клип {current} / {total}",
@@ -235,11 +247,286 @@
     "noImage": "Сурет нуна",
     "playingNow": "Шӧдӥсько",
     "previousChapter": "Ӟӧкыт глава",
-    "nextChapter": "Ӧдӥц глава"
+    "nextChapter": "Ӧдӥц глава",
+    "thumbnailAlt": "{title}: гьангьисса сурат",
+    "relatedVideoThumbnail": "Пыддэ видео thumbnail"
   },
   "SearchResultCard": {
     "experience": "Экспириенс",
     "episodeCount": "{count, plural, one {# эпизод} other {# эпизод}}",
     "thumbnailAlt": "Видео thumbnail"
+  },
+  "Feedback": {
+    "openForm": "Обратная связь форманы вуо",
+    "label": "Обратная связь",
+    "couldNotLoad": "Обратная связь форманы вуытэм.",
+    "loadingForm": "Обратная связь форманы лэсьтӥсько…",
+    "retry": "Кенешыт",
+    "openFormShort": "Форманы вуо",
+    "cancel": "Кырӟа",
+    "title": "Бета обратная связь",
+    "description": "Ниже что вӧсьтӥське асьме, но ма улонныз бӧрдытӥ. Форма Google пыр вуэзьтэм.",
+    "openInNewTab": "Форманы выль вкладкаын вуо",
+    "closeForm": "Обратная связь форманы пыдаты",
+    "loadingGoogleForm": "Google Form лэсьтӥсько…",
+    "iframeTitle": "Бета обратная связь вузы"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} кылын тулыс христиан видеоос | Jesus Film Project",
+    "metadataDescription": "{language} кылын дубляжирован аудио но субтитръёс пыр Jesus film, Библия веранъёс, discipleship серияос но outreach видеоосэз кара.",
+    "heroTitle": "{language} кылын тулыс христиан видеоос",
+    "heroDescription": "{language} кылын доступной Jesus film, Библия веранъёс, discipleship серияос но outreach видеоосэз кара. Тулыстэм дубляжирован видеоос йыртэм луоз, оло, субтитрлы видеолъёс со вӧлэн.",
+    "languageCollection": "Кыл калекцыя",
+    "itemCount": "{count, plural, one {# предмет} other {# предметъёс}}",
+    "videoCount": "{count, plural, one {# видео} other {# видеоос}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видеоос}} {groupCount, plural, one {# группа} other {# группаос}} пыр",
+    "sectionNavLabel": "Кыл inventory секцияос",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Выль",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Калекцыяос",
+    "subtitlesOnly": "Тикъе субтитръёс",
+    "newlyAdded": "Выль ӵемытэм",
+    "newVideosTitle": "{language} кылын выль христиан видеоос",
+    "newestFirst": "Выльдыз бӧрсьынан",
+    "noPublishedVideos": "Тазі кыллы эшшо вылӥгес published видеоос тупатытэм нуна.",
+    "bibleAndGospelFilms": "Библия но Евангелие фильмъёс",
+    "videoBibleCollectionsTitle": "{language} Видео Библия калекцыяос",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, Acts кытчысь {language} кылын Текстъёс шоры collection'ъёс.",
+    "noVideoBibleCollections": "Тазі кыллы эшшо Видео Библия калекцыяос нуна.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject калекцыяос",
+    "bibleProjectDescription": "{language} кылын доступной BibleProject серияос но изучениеос.",
+    "noBibleProjectCollections": "Тазі кыллы эшшо BibleProject калекцыяос нуна.",
+    "sportsStories": "Спорт веранъёс",
+    "sportsTitle": "{language} спорт но атлет веранъёс",
+    "sportsDescription": "{language} кылын доступной вера но спорт/атлет шоры collection'ъёс.",
+    "noSportsCollections": "Тазі кыллы эшшо спорт оло атлет веран collection'ъёс нуна.",
+    "fullyDubbed": "Тулыстэм дубляжирован",
+    "dubbedVideosTitle": "{language} кылын видеоос collection пыр",
+    "dubbedVideosDescription": "{language} кылын тулыстэм дубляжирован видеоосэз асьсэ collection'ъёсымен сертэ кара.",
+    "noDubbedVideos": "Тазі кыллы эшшо тулыстэм дубляжирован видеоос нуна.",
+    "subtitlesAvailable": "Субтитръёс валэктэм",
+    "subtitlesTitle": "{language} кылын субтитръёсын видеоос",
+    "subtitlesDescription": "Та видеоосын {language} субтитръёс нуна, мылкыд {language} аудио эшшо валэктэм уг луы.",
+    "noSubtitleVideos": "Тазі кыллы эшшо тикъе субтитрлы видеоос нуна.",
+    "dubbed": "Дубляжирован",
+    "subtitles": "Субтитръёс",
+    "newLabel": "Выль",
+    "fromCollection": "{collection} кытчысь",
+    "standaloneVideos": "Тӥндэн видеоос",
+    "videosFromCollection": "{collection} кытчысь видеоос.",
+    "standaloneDescription": "Тазі кылын тӥндэн видеоос.",
+    "openCollection": "Коллекцияны вуо"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — кара",
+    "watch": "Кара",
+    "watchNow": "Нуни азыр",
+    "mutePreview": "Предварительный просмотр сӥлӥ",
+    "unmutePreview": "Предварительный просмотр сӥлӥсэ кышт",
+    "nextVideo": "Ӧдӥц видео",
+    "featured": "Выделенный",
+    "showVideo": "{title} вылэм",
+    "previousVideoPreview": "Ӟӧкыт видео preview",
+    "nextVideoPreview": "Ӧдӥц видео preview",
+    "mediaCollection": "Медиа коллекция",
+    "scrollToVideo": "{title} видео шоры шорыты"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project шоры",
+    "navigation": "Сайтын навигация",
+    "share": "Пурты",
+    "watch": "Кара",
+    "giving": "Пожертвование",
+    "about": "Тодыт",
+    "products": "Продуктъёс",
+    "resources": "Ресурсъёс",
+    "partners": "Партнеръёс",
+    "contact": "Контакт",
+    "giveNow": "Азыр пыдыт",
+    "resourcesVersion": "Ресурсъёс ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Конфиденциальность политика",
+    "legalStatement": "Юридический заявлени",
+    "newsletter": "Newsletter-лы вуо"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Глобаль миссияослы кылдытэм",
+    "title": "Удмурт кылысь меседж воштӥське абу. Лыдӥське кылдыртэм воштӥське.",
+    "description": "Асьме видео библиотека но инструментъёсэз нуль кыштонен кайраён, десятилетия воштӥзъяныз платформъёслы, кытын пумоос луы, кара, пурты.",
+    "translatedLibraryTitle": "Дунлыкын эң көп воштӥськем фильм библиотека",
+    "translatedLibraryDescription": "Десятилетия воштӥськем жұмыс, trusted ministry партнеръёс пыр вуэм, thousands кыл трекъёсӥсь библиотека кылдытэм, сыӥз мындалыз Jesus'лы веран кылын вуэ.",
+    "trustedVoicesTitle": "Trusted вӧзъёсэз выль форматаослы алыптӥсько",
+    "trustedVoicesDescription": "Ми gospel веранъёсэз нош кыӵе пӧльэ кылдытэмез кӧтӥськом, trusted воштӥськемез modern форматаосымен бәйләп, меседж платформаос, культураос но экранъёс пыр эрсяныз луоз.",
+    "missionTeamTitle": "Библиотека генә ӧвӧл. Миссиялык команда.",
+    "missionTeamDescription": "Jesus Film Project — translatorъёс, media specialistъёс, editorъёс но creatorъёсӥсь глобаль команда, десятилетия ministry тәжірибэез disciple-maker'ъёслы инструментъёсэ воштӥсько.",
+    "buildingNext": "Ма ми вӧлэмес келяныз",
+    "nextStepsTitle": "ТӀийхъал хъамалту платформаси",
+    "nextStepsDescription": "Валэктэм ужанъёсымен contact кылдытӥсько, духовный wayында next step кылдытӥське, community, Scripture оло mission пыр вуонлы.",
+    "mediaLibraryTitle": "Евангелизациялы Media Library",
+    "mediaLibraryDescription": "Thousands видеоос, filmъёс но resource'ъёс бүдӥгес Christian media library, multiple кылъёсын, worldwide ministry no evangelismлы.",
+    "ministryToolsTitle": "Министрыліз digital tool'ъёс",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, analytics — ministerlyъёслы ваньмыз вуэныз більше.",
+    "invitationEyebrow": "Тӥ тыныд викӧтэ",
+    "invitationTitle": "<highlight>миссиялы выль бурак</highlight> инструментъёс кылдытэмлы кӧтэ",
+    "invitationDescription": "Практикъёс, creator'ъёс но partner'ъёс early access-лы вуэтэм. Выль инструментъёсэз пӧртэм азьын текшер, feedback сӥз, реаль mission ужлы продуктъёс карыны катесь.",
+    "betaTester": "Бета тестер лу"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библия коллекция",
+    "gospelRailTitle": "Тулыстэм веранэз вань",
+    "videoBibleDescription": "Библияны кылдытэм video no resource'ъёс коллекцияны кара, кызытлыз веранъёс но teaching пыр.",
+    "showcaseTitle": "Фильм пыр веран Scripture",
+    "adventEyebrow": "Рождество Advent",
+    "adventTitle": "Рождество Advent countdown",
+    "adventDescription": "Advent journey-а катытыл, daily видео пыр Рождестволы вожак кылдытӥське, Jesus'лы вуэмез вылысь улон, радость но promise эзэ каре.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject: Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Jesus'ымен юлэр",
+    "gospelsOnVideoEyebrow": "Пыддэ Евангелие, видеояз веран",
+    "scriptureAsWrittenTitle": "Scripture, мындалысӥське кыкӥзъясьтэм кылын",
+    "merryChristmas": "Рождество мубарак!",
+    "daysUntilChristmas": "{count, plural, one {Рождество хьуннин # къо} other {Рождество хьуннин # къо}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Кылъёс",
+    "metadataDescription": "JesusFilm видеоосэз кылъя кара.",
+    "eyebrow": "Кара кылъёс",
+    "title": "Кыл бӧр",
+    "description": "Регион пыр кылъёсэз кара оло тулыс list-кар.",
+    "searchPlaceholder": "Кылъёс оло странасэз утт...",
+    "searchLabel": "Кылъёс оло краинаосэз утт",
+    "clearSearch": "Уттонэз кышт",
+    "browse": "Кара",
+    "browseByRegion": "Регион но страна пыр кара",
+    "languageCount": "{count, plural, one {# кыл} other {# кылъёс}}",
+    "region": "Регион",
+    "countryLanguages": "{country} кылъёс",
+    "showLess": "Пичи кылдыт",
+    "showMore": "{count} нош",
+    "noLanguages": "Кылъёс чуча валэктэм нуна",
+    "tryAnotherSearch": "Выль уттон кыл тӧлъян."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Кара тарих | Jesus Film Project",
+    "title": "Кара тарих",
+    "loading": "Тарих лэсьтӥсько",
+    "empty": "Тӥньяшкы нуна",
+    "emptyDescription": "Войти кылдытэмын кара видеоос татын тыдӥське.",
+    "earlier": "Ӟӧкыт",
+    "today": "Ӧнӥ",
+    "yesterday": "Кунӥ"
+  },
+  "AccountControl": {
+    "account": "Акаунт",
+    "accountMenu": "Акаунт меню",
+    "signIn": "Войти",
+    "signOut": "Выйти",
+    "signedIn": "Войти кылдытэм",
+    "history": "Тарих",
+    "logOut": "Выйти"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Страница валэктэм",
+    "eyebrow": "Страница валэктэм",
+    "screenReaderPrefix": "Страница валэктэм:",
+    "title": "Та сцена татын ӧвӧл.",
+    "description": "Страница кыдӥсӥ луэ, но веран мукетын вань.",
+    "actionsLabel": "Страница валэктэм ужанъёс",
+    "backToWatch": "Watch шоры ву",
+    "browseVideos": "Видеоосэз кара"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Пичи фильм кара",
+    "actions": {
+      "joinUs": "Тӥнъёс",
+      "shareMission": "Миссияме ваньтэ кылдыт"
+    },
+    "welcomeStart": {
+      "label": "Вера но Scripture",
+      "title": "Тулыс видео пӧртэмъёс",
+      "description": "Асьме библиотекаысь вера луон видеоос тӥнъёслы, тӧдъянлы но ойдо кырӟанлы."
+    },
+    "welcomeMorning": {
+      "label": "Тулыс вдохновение",
+      "title": "Сӥзь лу! Вералысьӧн видео моментъёс валэктэм.",
+      "description": "Сӥзь кутсконды вералысь ӟучлысь видео моментъёсымен, соос тӥнъёслы вдохновение но йырсэт келяны кылдытӥсько."
+    },
+    "welcomeAfternoon": {
+      "label": "Ӧдӥс вдохновение",
+      "title": "Ӧдӥс лу! Та дырызлы вералысь видео моментъёс.",
+      "description": "Ӧдӥс тыныд кылдытэм вералысь видео контент, гырись тыныд тыныд шӧдӥське оло азьлань вдохновениея."
+    },
+    "welcomeEvening": {
+      "label": "Шӧрӥс вдохновение",
+      "title": "Шӧрӥс лу! Вера моментъёсын тыныд тынысь.",
+      "description": "Тынысь вера моментъёс, күндызь йыресен сярысь думбыртытӥсько но тыныд тыныш кылдытӥсько."
+    },
+    "joinUs": {
+      "label": "Тӥнъёс",
+      "title": "Биллионъёс утчаско",
+      "description": "Урожай татын. Диджитал медиа пыр инвожо дырмытэ но gospel вань дунъялы кылдытӥсько."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Вандыс кылим",
+      "title": "Jesus тыраныз веран, ваньмыз белән",
+      "description": "Соос асьсэ кылын, асьсэ лулэзын Jesus йыртӥськылэз кылыниське но көрыниське, татын кырӟан их."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% мувофикъ",
+    "none": "Тту мазрай тту видеолиз рекомендацияр дакъар."
+  },
+  "BetaTesterModal": {
+    "title": "Бета тестер лу",
+    "trigger": "Бета тестер лу",
+    "loadFailed": "Ваське кылдэм.",
+    "loading": "Лэсьтӥсько...",
+    "openFormNewTab": "Форманы выль вкладкаын вуо",
+    "close": "Пыдаты",
+    "iframeTitle": "Бета тестер лу"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

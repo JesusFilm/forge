@@ -7,7 +7,9 @@
     "noContent": "உள்ளடக்கம் எதுவும் இல்லை.",
     "homepageMisconfigured": "வாட்ச் முகப்புப் பக்கம் தவறாக அமைக்கப்பட்டுள்ளது.",
     "defaultTemplateMisconfigured": "இயல்புநிலை வாட்ச் வார்ப்பு தவறாக அமைக்கப்பட்டுள்ளது.",
-    "authFailed": "உள்ளடக்க சேவையுடன் அங்கீகரிக்க முடியவில்லை. இது தொடர்ந்தால், தயவுசெய்து ஆதரவைத் தொடர்புகொள்ளவும்."
+    "authFailed": "உள்ளடக்க சேவையுடன் அங்கீகரிக்க முடியவில்லை. இது தொடர்ந்தால், தயவுசெய்து ஆதரவைத் தொடர்புகொள்ளவும்.",
+    "pageLoadFailed": "ஏதோ தவறு ஏற்பட்டது.",
+    "tryAgain": "மீண்டும் முயற்சிக்கவும்"
   },
   "VideosPage": {
     "title": "அனைத்து வீடியோக்கள்",
@@ -22,7 +24,8 @@
     "promoHeading": "வேதாகமத்தை மேலும் ஆழமாகப் புரிந்துகொள்ள விரும்புகிறீர்களா?",
     "joinBibleStudy": "எங்கள் வேதாகம ஆய்வில் சேருங்கள்",
     "previousQuote": "முந்தைய வேதாகம மேற்கோள்",
-    "nextQuote": "அடுத்த வேதாகம மேற்கோள்"
+    "nextQuote": "அடுத்த வேதாகம மேற்கோள்",
+    "readPassage": "இந்தப் பகுதியை உங்கள் வேதாகமத்தில் வாசியுங்கள்."
   },
   "DownloadButton": {
     "checking": "சரிபார்க்கப்படுகிறது",
@@ -73,7 +76,8 @@
     "selectLanguage": "மொழியைத் தேர்ந்தெடுக்கவும்",
     "searchPlaceholder": "மொழிகளைத் தேடு…",
     "languages": "மொழிகள்",
-    "noMatches": "பொருத்தங்கள் இல்லை"
+    "noMatches": "பொருத்தங்கள் இல்லை",
+    "notAvailable": "கிடைக்கவில்லை"
   },
   "LanguagePickerModal": {
     "dialogTitle": "மொழி",
@@ -112,7 +116,8 @@
     "questions": "தொடர்புடைய கேள்விகள்",
     "askYours": "உங்களுடையதை கேளுங்கள்",
     "chatWithPerson": "ஒருவருடன் உரையாடுங்கள்",
-    "askBibleQuestion": "வேதாகமக் கேள்வி கேளுங்கள்"
+    "askBibleQuestion": "வேதாகமக் கேள்வி கேளுங்கள்",
+    "quiz": "வினாடி வினா"
   },
   "WatchQuestionPanel": {
     "messageType": "செய்தி வகை",
@@ -170,7 +175,8 @@
     "searchRegion": "வீடியோக்களைத் தேடவும்",
     "clearSearch": "தேடலை அழிக்கவும்",
     "changeAudioLanguage": "ஒலி மொழியை மாற்றவும்",
-    "home": "JesusFilm முகப்பு"
+    "home": "JesusFilm முகப்பு",
+    "closeSearch": "தேடலை மூடு"
   },
   "SearchOverlay": {
     "dialogLabel": "வீடியோக்களைத் தேடவும் மற்றும் உலாவவும்",
@@ -205,14 +211,19 @@
     "clearLanguages": "அழிக்கவும்",
     "queryLanguageDetected": "{language} கண்டறியப்பட்டது",
     "searchInLanguage": "{language}-இல் தேடு",
-    "tryDifferentKeywordsOrLanguage": "வேறு முக்கியச் சொற்களை முயற்சிக்கவும் அல்லது வேறு தேடல் மொழியைத் தேர்ந்தெடுக்கவும்"
+    "tryDifferentKeywordsOrLanguage": "வேறு முக்கியச் சொற்களை முயற்சிக்கவும் அல்லது வேறு தேடல் மொழியைத் தேர்ந்தெடுக்கவும்",
+    "useWebsiteDefaultLanguage": "வலைத்தளத்தின் இயல்புநிலை தேடல் மொழியைப் பயன்படுத்தவும்",
+    "removeLanguage": "{language}-ஐ அகற்று",
+    "browseMode": "தேடல் உலாவல் முறை"
   },
   "HeroPlayer": {
     "playWithSound": "இப்போது பார்க்கவும்",
-    "tapToUnmute": "ஒலியை இயக்கத் தட்டவும்"
+    "tapToUnmute": "ஒலியை இயக்கத் தட்டவும்",
+    "nextEpisode": "அடுத்த அத்தியாயம்"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "உள்ளடக்கம் ஏற்றப்படுகிறது"
+    "loadingContent": "உள்ளடக்கம் ஏற்றப்படுகிறது",
+    "loadingVideo": "வீடியோ ஏற்றப்படுகிறது"
   },
   "VideoLabels": {
     "video": "வீடியோ",
@@ -223,7 +234,8 @@
     "series": "தொடர்",
     "collection": "தொகுப்பு",
     "trailer": "முன்னோட்டம்",
-    "behindTheScenes": "திரைக்குப் பின்னால்"
+    "behindTheScenes": "திரைக்குப் பின்னால்",
+    "chapter": "அத்தியாயம்"
   },
   "SiblingCarousel": {
     "clipPosition": "கிளிப் {current} / {total}",
@@ -235,11 +247,286 @@
     "noImage": "படம் இல்லை",
     "playingNow": "இப்போது இயக்கப்படுகிறது",
     "previousChapter": "முந்தைய அத்தியாயம்",
-    "nextChapter": "அடுத்த அத்தியாயம்"
+    "nextChapter": "அடுத்த அத்தியாயம்",
+    "thumbnailAlt": "{title} சிறுபடம்",
+    "relatedVideoThumbnail": "தொடர்புடைய வீடியோ சிறுபடம்"
   },
   "SearchResultCard": {
     "experience": "அனுபவம்",
     "episodeCount": "{count, plural, one {# அத்தியாயம்} other {# அத்தியாயங்கள்}}",
     "thumbnailAlt": "வீடியோ சிறுபடம்"
+  },
+  "Feedback": {
+    "openForm": "கருத்து படிவத்தைத் திறக்கவும்",
+    "label": "கருத்து",
+    "couldNotLoad": "கருத்து படிவத்தை ஏற்ற முடியவில்லை.",
+    "loadingForm": "கருத்து படிவம் ஏற்றப்படுகிறது…",
+    "retry": "மீண்டும் முயற்சி",
+    "openFormShort": "படிவத்தைத் திறக்கவும்",
+    "cancel": "ரத்து",
+    "title": "பீட்டா கருத்து",
+    "description": "எது வேலை செய்கிறது, எதை மேம்படுத்தலாம் என்பதைப் பகிருங்கள். இந்தப் படிவம் Google மூலம் வழங்கப்படுகிறது.",
+    "openInNewTab": "படிவத்தை புதிய தாவலில் திறக்கவும்",
+    "closeForm": "கருத்து படிவத்தை மூடவும்",
+    "loadingGoogleForm": "Google படிவம் ஏற்றப்படுகிறது…",
+    "iframeTitle": "பீட்டா கருத்தை சமர்ப்பிக்கவும்"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-இல் இலவச கிறிஸ்தவ வீடியோக்கள் | Jesus Film Project",
+    "metadataDescription": "{language}-இல் டப் செய்யப்பட்ட ஒலி அல்லது வசனங்களுடன் Jesus films, வேதாகமக் கதைகள், சீஷத்துவத் தொடர்கள் மற்றும் பிரசார வீடியோக்களை ஆராயுங்கள்.",
+    "heroTitle": "{language}-இல் இலவச கிறிஸ்தவ வீடியோக்கள்",
+    "heroDescription": "{language}-இல் கிடைக்கும் Jesus films, வேதாகமக் கதைகள், சீஷத்துவத் தொடர்கள் மற்றும் பிரசார வீடியோக்களை ஆராயுங்கள். முழுமையாக டப் செய்யப்பட்ட வீடியோக்கள் முதலில் காட்டப்படும்; வசனங்கள் மட்டுமே உள்ளவை கீழே.",
+    "languageCollection": "மொழித் தொகுப்பு",
+    "itemCount": "{count, plural, one {# உருப்படி} other {# உருப்படிகள்}}",
+    "videoCount": "{count, plural, one {# வீடியோ} other {# வீடியோக்கள்}}",
+    "videosInGroups": "{videoCount, plural, one {# வீடியோ} other {# வீடியோக்கள்}} · {groupCount, plural, one {# குழு} other {# குழுக்கள்}}-இல்",
+    "sectionNavLabel": "மொழி பட்டியல் பிரிவுகள்",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "புதியது",
+    "videoBible": "வீடியோ வேதாகமம்",
+    "bibleProject": "BibleProject",
+    "sports": "விளையாட்டு",
+    "collections": "தொகுப்புகள்",
+    "subtitlesOnly": "வசனங்கள் மட்டும்",
+    "newlyAdded": "புதிதாக சேர்க்கப்பட்டது",
+    "newVideosTitle": "{language}-இல் புதிய கிறிஸ்தவ வீடியோக்கள்",
+    "newestFirst": "முதலில் சமீபத்தியது",
+    "noPublishedVideos": "இந்த மொழிக்காக இதுவரை வெளியிடப்பட்ட வீடியோக்கள் எதுவும் கிடைக்கவில்லை.",
+    "bibleAndGospelFilms": "வேதாகம மற்றும் சுவிசேஷப் படங்கள்",
+    "videoBibleCollectionsTitle": "{language} வீடியோ வேதாகமத் தொகுப்புகள்",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, Acts உள்ளிட்ட வேதாகம மையமான தொகுப்புகள் {language}-இல்.",
+    "noVideoBibleCollections": "இந்த மொழிக்காக இதுவரை Video Bible தொகுப்புகள் கிடைக்கவில்லை.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject தொகுப்புகள்",
+    "bibleProjectDescription": "{language}-இல் கிடைக்கும் BibleProject தொடர்கள் மற்றும் ஆய்வுகள்.",
+    "noBibleProjectCollections": "இந்த மொழிக்காக இதுவரை BibleProject தொகுப்புகள் கிடைக்கவில்லை.",
+    "sportsStories": "விளையாட்டு கதைகள்",
+    "sportsTitle": "{language}-இல் விளையாட்டு மற்றும் வீரர் கதைகள்",
+    "sportsDescription": "நம்பிக்கை மையமான விளையாட்டு கதைகள் மற்றும் வீரர் மையத் தொகுப்புகள் {language}-இல் கிடைக்கின்றன.",
+    "noSportsCollections": "இந்த மொழிக்காக இதுவரை விளையாட்டு அல்லது வீரர்-கதைத் தொகுப்புகள் கிடைக்கவில்லை.",
+    "fullyDubbed": "முழுமையாக டப் செய்யப்பட்டது",
+    "dubbedVideosTitle": "தொகுப்பின்படி {language} வீடியோக்கள்",
+    "dubbedVideosDescription": "எளிதாகக் கண்டறிய முழுமையாக டப் செய்யப்பட்ட {language} வீடியோக்களை அவற்றின் தொகுப்புகளுடன் உலாவவும்.",
+    "noDubbedVideos": "இந்த மொழிக்காக இதுவரை முழுமையாக டப் செய்யப்பட்ட வீடியோக்கள் கிடைக்கவில்லை.",
+    "subtitlesAvailable": "வசனங்கள் கிடைக்கின்றன",
+    "subtitlesTitle": "வசனங்களுடன் {language} வீடியோக்கள்",
+    "subtitlesDescription": "பேசப்படும் {language} ஒலி இன்னும் கிடைக்காதபோது, இவ்வீடியோக்களில் {language} வசனங்கள் உள்ளன.",
+    "noSubtitleVideos": "வசனங்கள் மட்டும் உள்ள வீடியோக்கள் எதுவும் இந்த மொழிக்காக இதுவரை கிடைக்கவில்லை.",
+    "dubbed": "டப் செய்யப்பட்ட",
+    "subtitles": "வசனங்கள்",
+    "newLabel": "புதியது",
+    "fromCollection": "{collection}-இலிருந்து",
+    "standaloneVideos": "தனிப்பட்ட வீடியோக்கள்",
+    "videosFromCollection": "{collection}-இலிருந்து வீடியோக்கள்.",
+    "standaloneDescription": "இந்த மொழியில் உள்ள தனிப்பட்ட வீடியோக்கள்.",
+    "openCollection": "தொகுப்பைத் திறக்கவும்"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project பார்வை",
+    "watch": "பார்",
+    "watchNow": "இப்போது பார்க்கவும்",
+    "mutePreview": "முன்னோட்டத்தை ஒலி நிறுத்து",
+    "unmutePreview": "முன்னோட்டத்தின் ஒலியை இயக்கு",
+    "nextVideo": "அடுத்த வீடியோ",
+    "featured": "சிறப்பு",
+    "showVideo": "{title}-ஐக் காட்டு",
+    "previousVideoPreview": "முந்தைய வீடியோ முன்னோட்டம்",
+    "nextVideoPreview": "அடுத்த வீடியோ முன்னோட்டம்",
+    "mediaCollection": "ஊடகத் தொகுப்பு",
+    "scrollToVideo": "{title} வீடியோவுக்குச் செல்லவும்"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project முகப்பு",
+    "navigation": "அடிக்குறிப்பு வழிசெலுத்தல்",
+    "share": "பகிரவும்",
+    "watch": "பார்",
+    "giving": "நன்கொடை",
+    "about": "பற்றி",
+    "products": "தயாரிப்புகள்",
+    "resources": "வளங்கள்",
+    "partners": "கூட்டாளிகள்",
+    "contact": "தொடர்பு",
+    "giveNow": "இப்போது நன்கொடை அளிக்கவும்",
+    "resourcesVersion": "வளங்கள் ({version})",
+    "office": "அலுவலகம்",
+    "fax": "தொலைநகல்",
+    "privacyPolicy": "தனியுரிமைக் கொள்கை",
+    "legalStatement": "சட்ட அறிக்கை",
+    "newsletter": "எங்கள் செய்திமடலுக்கு பதிவு செய்யவும்"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "உலகளாவிய பணிக்காக உருவாக்கப்பட்டது",
+    "title": "செய்தி மாறவில்லை. மக்கள் பார்க்கும் விதம் மாறுகிறது.",
+    "description": "நாங்கள் எங்கள் வீடியோ நூலகத்தையும் கருவிகளையும் அடிப்படையிலிருந்து மீளமைத்து, பல தசாப்தங்களான மொழிபெயர்ப்பு பணியை மக்கள் ஏற்கனவே கூடும், பார்க்கும், பகிரும் தளங்களில் கொண்டு செல்கிறோம்.",
+    "translatedLibraryTitle": "உலகிலேயே அதிகமாக மொழிபெயர்க்கப்பட்ட திரைப்பட நூலகம்",
+    "translatedLibraryDescription": "நம்பகமான ஊழிய கூட்டாளிகளால் கொண்டுசெல்லப்பட்ட பல தசாப்தங்களான மொழிபெயர்ப்பு பணிகள், ஆயிரக்கணக்கான மொழித் தடங்களைக் கொண்ட நூலகத்தை உருவாக்கியுள்ளன; இதனால் மக்கள் தங்களை ஆழமாகத் தொடும் மொழியில் இயேசுவின் கதையைச் சந்திக்க முடிகிறது.",
+    "trustedVoicesTitle": "நம்பகமான குரல்களை புதிய வடிவங்களில் கொண்டு செல்வது",
+    "trustedVoicesDescription": "நாங்கள் சுவிசேஷக் கதைகள் காட்சி முறையில் சொல்லப்படும் விதத்தை மீளமைத்து, நம்பகமான மொழிபெயர்ப்புகளை நவீன வடிவங்களுடன் இணைத்து, செய்தி தளங்கள், பண்பாடுகள், திரைகள் அனைத்திலும் சுதந்திரமாக நகரச் செய்கிறோம்.",
+    "missionTeamTitle": "ஒரு நூலகம் மட்டுமல்ல. ஒரு பணித் திசையுடைய குழு.",
+    "missionTeamDescription": "Jesus Film Project என்பது மொழிபெயர்ப்பாளர்கள், ஊடக நிபுணர்கள், தொகுப்பாசிரியர்கள் மற்றும் உருவாக்குநர்கள் சேர்ந்த ஒரு உலகளாவிய குழு; பல தசாப்த ஊழிய அனுபவத்தை எங்கும் சீஷர் உருவாக்குவோருக்கான கருவிகளாக மாற்றுகிறது.",
+    "buildingNext": "நாங்கள் அடுத்ததாக உருவாக்குவது",
+    "nextStepsTitle": "அடுத்த படிகள் தளம்",
+    "nextStepsDescription": "பார்வையாளர்களை அவர்களின் ஆன்மீக பயணத்தில் காணத்தக்க வாய்ப்புகளுடன் இணைத்து, சமூகத்திற்குள், வேதாகமத்துக்குள், அல்லது பணிக்குள் அடுத்த படியை எடுக்க உதவுகிறது.",
+    "mediaLibraryTitle": "சுவிசேஷ ஊடக நூலகம்",
+    "mediaLibraryDescription": "உலகளாவிய ஊழியம் மற்றும் சுவிசேஷப் பணிக்காக பல மொழிகளில் கிடைக்கும் ஆயிரக்கணக்கான வீடியோக்கள், படங்கள் மற்றும் வளங்களைக் கொண்ட விரிவான கிறிஸ்தவ ஊடக நூலகம்.",
+    "ministryToolsTitle": "ஊழியங்களுக்கான டிஜிட்டல் கருவிகள்",
+    "ministryToolsDescription": "ஊழியங்கள் அதிகமான மக்களை விளைவாகச் சென்றடைய உதவும் வகையில் வடிவமைக்கப்பட்ட வீடியோ மேலாண்மை, உள்ளடக்க விநியோகம், பார்வையாளர் ஈடுபாடு, பகுப்பாய்வு.",
+    "invitationEyebrow": "நீங்கள் அழைக்கப்படுகிறீர்கள்",
+    "invitationTitle": "பணிக் கருவிகளின் <highlight>அடுத்த தலைமுறையை</highlight> உருவாக்க உதவுங்கள்",
+    "invitationDescription": "நாங்கள் செயல்பாட்டாளர்கள், உருவாக்குநர்கள், கூட்டாளிகள் ஆகியோருக்கு முன்கூட்டிய அணுகலை வழங்குகிறோம். புதிய கருவிகளை முதலில் சோதித்து, கருத்து வழங்கி, நிஜமான பணிக்காக வடிவமைக்கப்பட்ட தயாரிப்புகளை வடிவமைக்க உதவுங்கள்.",
+    "betaTester": "பீட்டா சோதனையாளராகுங்கள்"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "வீடியோ வேதாகமத் தொகுப்பு",
+    "gospelRailTitle": "முழுக் கதையையும் கண்டறியுங்கள்",
+    "videoBibleDescription": "ஈர்க்கும் கதைகள் மற்றும் போதனைகளின் மூலம் வேதாகமத்தை உயிர்ப்பிக்கும் எங்கள் வீடியோக்கள் மற்றும் வளங்களின் தொகுப்பை ஆராயுங்கள்.",
+    "showcaseTitle": "திரைப்படத்தின் மூலம் சொல்லப்பட்ட வேதாகமம்",
+    "adventEyebrow": "கிறிஸ்துமஸ் வருகைக்காலம்",
+    "adventTitle": "கிறிஸ்துமஸ் வருகைக்கால எண்ணிக்கை",
+    "adventDescription": "கிறிஸ்துமஸ் நாளுக்கான எதிர்பார்ப்பை வளர்க்கும் தினசரி வீடியோவுடன் எங்கள் வருகைக்காலப் பயணத்தில் சேருங்கள்; இயேசுவின் வருகையின் நம்பிக்கை, மகிழ்ச்சி, வாக்குறுதியை ஆராயுங்கள்.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject வருகைக்காலம்",
+    "nuaEyebrow": "NUA தொடர்",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth தொடர்",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "வீடியோ பாடநெறி",
+    "journeyWithJesusTitle": "இயேசுவுடன் பயணம்",
+    "gospelsOnVideoEyebrow": "ஒவ்வொரு சுவிசேஷமும், வீடியோவில் சொல்லப்பட்டது",
+    "scriptureAsWrittenTitle": "எழுதியபடியே உரைக்கப்பட்ட வேதாகமம்",
+    "merryChristmas": "கிறிஸ்துமஸ் வாழ்த்துகள்!",
+    "daysUntilChristmas": "{count, plural, one {கிறிஸ்துமஸுக்கு இன்னும் # நாள்} other {கிறிஸ்துமஸுக்கு இன்னும் # நாட்கள்}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "மொழிகள்",
+    "metadataDescription": "JesusFilm வீடியோக்களை மொழிப்படி உலாவவும்.",
+    "eyebrow": "பார்வை மொழிகள்",
+    "title": "ஒரு மொழியைத் தேர்ந்தெடுக்கவும்",
+    "description": "பகுதியின்படி மொழிகளை ஆராயுங்கள் அல்லது முழுப் பட்டியலை உலாவுங்கள்.",
+    "searchPlaceholder": "மொழிகள் அல்லது நாடுகளைத் தேடு...",
+    "searchLabel": "மொழிகள் அல்லது நாடுகளைத் தேடு",
+    "clearSearch": "தேடலை அழிக்கவும்",
+    "browse": "உலாவவும்",
+    "browseByRegion": "பகுதி மற்றும் நாட்டின்படி உலாவவும்",
+    "languageCount": "{count, plural, one {# மொழி} other {# மொழிகள்}}",
+    "region": "பகுதி",
+    "countryLanguages": "{country} மொழிகள்",
+    "showLess": "குறைவாகக் காட்டு",
+    "showMore": "மேலும் {count} காட்டு",
+    "noLanguages": "மொழிகள் எதுவும் கிடைக்கவில்லை",
+    "tryAnotherSearch": "வேறு தேடல் சொற்றொடரை முயற்சிக்கவும்."
+  },
+  "WatchHistory": {
+    "metadataTitle": "பார்வை வரலாறு | Jesus Film Project",
+    "title": "பார்வை வரலாறு",
+    "loading": "வரலாறு ஏற்றப்படுகிறது",
+    "empty": "இங்கே இன்னும் எதுவும் இல்லை",
+    "emptyDescription": "நீங்கள் உள்நுழைந்த நிலையில் பார்ப்பதான வீடியோக்கள் இங்கே தோன்றும்.",
+    "earlier": "முன்பு",
+    "today": "இன்று",
+    "yesterday": "நேற்று"
+  },
+  "AccountControl": {
+    "account": "கணக்கு",
+    "accountMenu": "கணக்கு பட்டி",
+    "signIn": "உள்நுழைக",
+    "signOut": "வெளியேறு",
+    "signedIn": "உள்நுழைந்துள்ளார்",
+    "history": "வரலாறு",
+    "logOut": "வெளியேறவும்"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "பக்கம் கிடைக்கவில்லை",
+    "eyebrow": "பக்கம் கிடைக்கவில்லை",
+    "screenReaderPrefix": "பக்கம் கிடைக்கவில்லை:",
+    "title": "இந்த காட்சி இங்கே இல்லை.",
+    "description": "பக்கம் நகர்ந்திருக்கலாம், ஆனால் கதை தொடர்கிறது.",
+    "actionsLabel": "பக்கம் கிடைக்கவில்லை செயல்கள்",
+    "backToWatch": "பார்வைக்கு திரும்பவும்",
+    "browseVideos": "வீடியோக்களை உலாவவும்"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "குறும்படத்தைப் பார்க்கவும்",
+    "actions": {
+      "joinUs": "எங்களுடன் சேருங்கள்",
+      "shareMission": "எங்கள் பணியில் பங்கெடுக்கவும்"
+    },
+    "welcomeStart": {
+      "label": "நம்பிக்கை & வேதாகமம்",
+      "title": "இன்றைய வீடியோ தேர்வுகள்",
+      "description": "ஊக்கமளிக்கவும், சவால் செய்யவும், சிந்தனையைத் தூண்டவும் எங்கள் நூலகத்திலிருந்து நம்பிக்கை மையமான வீடியோ உள்ளடக்கம்."
+    },
+    "welcomeMorning": {
+      "label": "காலை ஊக்கம்",
+      "title": "காலை வணக்கம்! இன்றைய வேதாகம தருணங்கள் காத்திருக்கின்றன.",
+      "description": "உங்கள் நாளை உற்சாகப்படுத்தவும் உயர்த்தவும் வடிவமைக்கப்பட்ட ஊக்கமளிக்கும் வேதாகம தருணங்களுடன் தொடங்குங்கள்."
+    },
+    "welcomeAfternoon": {
+      "label": "மதிய ஊக்கம்",
+      "title": "மதிய வணக்கம்! உங்கள் நாளுக்கான வேதாகம தருணங்கள்.",
+      "description": "உங்கள் மதிய இடைவேளைக்கோ அல்லது தொடர்ந்த ஊக்கத்துக்கோ சிறந்த ஊக்கமளிக்கும் வேதாகம உள்ளடக்கம்."
+    },
+    "welcomeEvening": {
+      "label": "மாலை ஊக்கம்",
+      "title": "மாலை வணக்கம்! வேதாகம தருணங்களுடன் அமைதியாகுங்கள்.",
+      "description": "உங்கள் நாள் முடிவடையும் போது சிந்தித்து ஆறுதல் பெற உதவும் அமைதியான வேதாகம தருணங்கள்."
+    },
+    "joinUs": {
+      "label": "எங்களுடன் சேருங்கள்",
+      "title": "பில்லியன் கணக்கானோர் தேடுகிறார்கள்",
+      "description": "அறுவடை இங்கே உள்ளது. டிஜிட்டல் ஊடகத்தைப் பயன்படுத்தி உலகிற்கு சுவிசேஷத்தைப் பகிர எங்களுடன் சேருங்கள்."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "ஒன்றாகச் செல்வோம்",
+      "title": "இயேசுவின் கதையை ஒன்றாகச் சொல்லுதல்",
+      "description": "அவர்கள் இருக்கும் இடத்திலேயே, அவர்களின் சொந்த மொழியில் இயேசுவின் அன்பை கேட்டு காண முடிவதற்காக."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% பொருத்தம்",
+    "none": "இந்த மொழியில் இந்த வீடியோவுக்கான பரிந்துரைகள் எதுவும் கிடைக்கவில்லை."
+  },
+  "BetaTesterModal": {
+    "title": "பீட்டா சோதனையாளராகுங்கள்",
+    "trigger": "பீட்டா சோதனையாளராகுங்கள்",
+    "loadFailed": "ஏதோ தவறு ஏற்பட்டது.",
+    "loading": "ஏற்றப்படுகிறது...",
+    "openFormNewTab": "படிவத்தை புதிய தாவலில் திறக்கவும்",
+    "close": "மூடு",
+    "iframeTitle": "பீட்டா சோதனையாளராகுங்கள்"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

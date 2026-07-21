@@ -68,6 +68,7 @@ type MessageTree = { [key: string]: string | MessageTree }
 type TranslationPolicy = {
   humanReviewedLocales: string[]
   intentionallyLocaleNeutral: string[]
+  pendingTranslationPaths: string[]
 }
 
 function readJson<T>(path: string): T {
@@ -137,8 +138,8 @@ describe("watch UI provisional official-language catalogs", () => {
 
   it("keeps unresolved provisional catalogs seeded exactly from English", () => {
     const english = readFileSync(catalogPath("en"), "utf-8")
-    expect(manifest.provisionalLocales).toEqual(["mey-Latn"])
-    expect(manifest.summary.provisionalCatalogs).toBe(1)
+    expect(manifest.provisionalLocales).toEqual(["crk", "mey-Latn"])
+    expect(manifest.summary.provisionalCatalogs).toBe(2)
     for (const locale of manifest.provisionalLocales) {
       expect(readFileSync(catalogPath(locale), "utf-8")).toBe(english)
     }
@@ -159,9 +160,16 @@ describe("watch UI provisional official-language catalogs", () => {
       reviewStatus: "machine-translated; native-speaker review recommended",
     })
 
-    const sourceFlat = flattenCatalog(readJson<MessageTree>(catalogPath("en")))
+    const pendingTranslationPaths = new Set(
+      translationPolicy.pendingTranslationPaths,
+    )
+    const translatedSourceFlat = Object.fromEntries(
+      Object.entries(
+        flattenCatalog(readJson<MessageTree>(catalogPath("en"))),
+      ).filter(([path]) => !pendingTranslationPaths.has(path)),
+    )
     const sourceDigest = contentDigest({
-      sourceFlat,
+      sourceFlat: translatedSourceFlat,
       translationPolicy: {
         humanReviewedLocales: [...translationPolicy.humanReviewedLocales].sort(
           (left, right) => left.localeCompare(right),
@@ -182,7 +190,11 @@ describe("watch UI provisional official-language catalogs", () => {
       expect(provenance.sourceDigest, locale).toBe(sourceDigest)
       expect(provenance.catalogDigest, locale).toBe(
         contentDigest(
-          flattenCatalog(readJson<MessageTree>(catalogPath(locale))),
+          Object.fromEntries(
+            Object.entries(
+              flattenCatalog(readJson<MessageTree>(catalogPath(locale))),
+            ).filter(([path]) => !pendingTranslationPaths.has(path)),
+          ),
         ),
       )
     }

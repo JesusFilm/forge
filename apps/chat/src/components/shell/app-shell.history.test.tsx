@@ -1,7 +1,7 @@
 // feat-241 behavioral suites for the server-history surfaces (split from
 // app-shell.test.tsx so neither file crosses the 1k-line bar); the shared
 // render harness + fixtures live in app-shell-test-harness.tsx.
-import { act, fireEvent, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { buildStubReply } from "@/lib/chat-stub"
@@ -11,6 +11,7 @@ import {
   ALPHA,
   ALPHA_TRANSCRIPT,
   BETA,
+  clickNewConversation,
   container,
   deferredResponse,
   getConversationNav,
@@ -234,8 +235,9 @@ describe("Server history — replay + resume (feat-241)", () => {
     expect(getLog().querySelector("[data-engine]")).toBeNull()
     expect(getLog().querySelector("[data-grounded]")).toBeNull()
 
-    // Select away and back — the transcript is session-cached, no refetch.
-    await selectRow("New conversation")
+    // Select away (via the New action — the fresh row hides while a thread
+    // is active, feat-270) and back: session-cached, no refetch.
+    await clickNewConversation()
     await selectRow("Alpha thread")
     await waitFor(() => expect(messageTexts()).toContain("old answer"))
     expect(historyThreadCallCount(fetchMock)).toBe(1)
@@ -254,7 +256,7 @@ describe("Server history — replay + resume (feat-241)", () => {
     // Mutually exclusive pane bodies: no dead starter questions while blocked.
     expect(container).not.toHaveTextContent("What would you like to ask?")
 
-    await selectRow("New conversation")
+    await clickNewConversation()
     await selectRow("Alpha thread")
     expect(historyThreadCallCount(fetchMock)).toBe(1)
   })
@@ -285,6 +287,9 @@ describe("Server history — replay + resume (feat-241)", () => {
     await user.type(getTextarea(), "resume question")
     expect(getTextarea()).toHaveValue("resume question")
     expect(getSendButton()).toBeDisabled()
+    // R22 blocked ≠ pending: the send slot stays a disabled send control —
+    // the feat-270 stop control appears only for an in-flight reply.
+    expect(screen.queryByRole("button", { name: "Stop generating" })).toBeNull()
     fireEvent.submit(getSendButton().closest("form")!)
     expect(seekerCallBodies(fetchMock)).toHaveLength(0)
 
@@ -321,12 +326,10 @@ describe("Server history — replay + resume (feat-241)", () => {
     await sendMessage("resume the older thread")
     await waitFor(() => expect(isPending()).toBe(false))
 
+    // feat-270: the never-used fresh empty is hidden while a server thread is
+    // active, so the rail is just the two threads, resumed one on top.
     await waitFor(() =>
-      expect(navRowTitles()).toEqual([
-        "New conversation",
-        "Beta thread",
-        "Alpha thread",
-      ]),
+      expect(navRowTitles()).toEqual(["Beta thread", "Alpha thread"]),
     )
     expect(navRowTitles().filter((t) => t === "Beta thread")).toHaveLength(1)
   })
@@ -352,6 +355,45 @@ describe("Server history — replay + resume (feat-241)", () => {
     expect(navRowTitles()).not.toContain(
       deriveTitle("this must not become the title"),
     )
+  })
+
+  it("derives an untitled thread's title from its replayed first user turn (feat-270)", async () => {
+    renderSeeker(() => [], {
+      listFor: () => ({ threads: [UNTITLED] }),
+      threadFor: () => ALPHA_TRANSCRIPT,
+    })
+    const dateLabel = fallbackTitle(UNTITLED.updatedAt)
+    await waitFor(() => expect(navRowTitles()).toContain(dateLabel))
+
+    await selectRow(dateLabel)
+    await waitFor(() => expect(messageTexts()).toContain("old answer"))
+    // The client-derived snippet beats the date fallback; a non-empty LLM
+    // title would still have won (covered by the merge-precedence tests).
+    expect(navRowTitles()).toContain(deriveTitle("old question"))
+    expect(navRowTitles()).not.toContain(dateLabel)
+  })
+
+  it("derives the title from the first send into an untitled empty thread (feat-270)", async () => {
+    renderSeeker(
+      () => [
+        { event: "result", data: { text: "ok", grounded: false, sources: [] } },
+      ],
+      {
+        listFor: () => ({ threads: [UNTITLED] }),
+        threadFor: () => ({ messages: [] }),
+      },
+    )
+    const dateLabel = fallbackTitle(UNTITLED.updatedAt)
+    await waitFor(() => expect(navRowTitles()).toContain(dateLabel))
+    await selectRow(dateLabel)
+    await waitFor(() =>
+      expect(getLog().querySelector('[data-replay="loading"]')).toBeNull(),
+    )
+
+    await sendMessage("name me from this send")
+    await waitFor(() => expect(isPending()).toBe(false))
+    expect(navRowTitles()).toContain(deriveTitle("name me from this send"))
+    expect(navRowTitles()).not.toContain(dateLabel)
   })
 
   it("renders the replay failure state with a working retry; sends stay blocked until it loads (R18)", async () => {

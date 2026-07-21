@@ -26,6 +26,9 @@ export type CollapsedStyles = {
   account: string | false
   /** Account text (name/email/labels): hidden in the icon rail. */
   accountLabel: string | false
+  /** Sign-in anchor: shrink to a centered icon-only target. Deliberately NOT
+   * `newButton` — it omits that slot's `md:mx-auto` + `md:hover:border-transparent`. */
+  signIn: string | false
   /** Sign-out control: reachable only on expand (not a collapsed icon target). */
   signOut: string | false
 }
@@ -47,6 +50,9 @@ export function collapsedStyles(collapsed: boolean): CollapsedStyles {
     nav: collapsed && "md:hidden",
     account: collapsed && "md:px-0",
     accountLabel: collapsed && "md:hidden",
+    signIn:
+      collapsed &&
+      "md:w-10 md:justify-center md:gap-0 md:border-transparent md:p-0 md:py-2.5",
     signOut: collapsed && "md:hidden",
   }
 }

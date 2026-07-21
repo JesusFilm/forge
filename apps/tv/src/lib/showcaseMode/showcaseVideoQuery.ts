@@ -47,6 +47,7 @@ export const showcaseVideoFragment = graphql(`
       duration
       language {
         slug
+        bcp47
         name
       }
       muxVideo {

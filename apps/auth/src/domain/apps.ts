@@ -11,6 +11,8 @@ export const MANAGER_APP_KEY = "manager"
 export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
 export const CHAT_APP_KEY = "chat"
+export const ADMIN_MCP_APP_KEY = "admin-mcp"
+export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -71,6 +73,21 @@ export const CHAT_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
+] satisfies AuthScopeKey[]
+
+export const ADMIN_MCP_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "membership:read",
+  "experience:read",
+  "experience:locale:create",
+  "experience:locale:update",
+  "experience:locale:validate",
+  "media:read",
+  "video:read",
+  "bible:read",
+  "experience:publish",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {
@@ -338,10 +355,79 @@ export const CHAT_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
+  key: ADMIN_MCP_APP_KEY,
+  displayName: "Jesus Film Admin MCP",
+  description:
+    "OAuth client for AI-assisted Admin operations, including Experience locale creation and publishing.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_admin_mcp_local",
+      redirectUris: ["http://localhost:3003/mcp/oauth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3003/dashboard/experiences"],
+      allowedOrigins: ["http://localhost:3003"],
+      defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "preview",
+      kind: "preview",
+      clientId: "jfp_admin_mcp_preview",
+      redirectUris: ["https://admin-preview.jesusfilm.org/mcp/oauth/callback"],
+      postLogoutRedirectUris: [
+        "https://admin-preview.jesusfilm.org/dashboard/experiences",
+      ],
+      allowedOrigins: ["https://admin-preview.jesusfilm.org"],
+      defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "staging",
+      kind: "staging",
+      clientId: "jfp_admin_mcp_staging",
+      redirectUris: ["https://admin-stage.jesusfilm.org/mcp/oauth/callback"],
+      postLogoutRedirectUris: [
+        "https://admin-stage.jesusfilm.org/dashboard/experiences",
+      ],
+      allowedOrigins: ["https://admin-stage.jesusfilm.org"],
+      defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_admin_mcp_production",
+      redirectUris: ["https://admin.jesusfilm.org/mcp/oauth/callback"],
+      postLogoutRedirectUris: [
+        "https://admin.jesusfilm.org/dashboard/experiences",
+      ],
+      allowedOrigins: ["https://admin.jesusfilm.org"],
+      defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    // Codex MCP uses a loopback OAuth callback with an ephemeral port. The
+    // dynamic redirect hook admits exact callback URLs only for this client id.
+    {
+      key: "codex",
+      kind: "production",
+      clientId: ADMIN_MCP_CODEX_CLIENT_ID,
+      redirectUris: [],
+      postLogoutRedirectUris: [],
+      allowedOrigins: [],
+      defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const FIRST_PARTY_APP_SEEDS = [
   ADMIN_APP_SEED,
   MANAGER_APP_SEED,
   WEB_APP_SEED,
   MASTRA_STUDIO_APP_SEED,
   CHAT_APP_SEED,
+  ADMIN_MCP_APP_SEED,
 ] satisfies RegisteredAppSeed[]

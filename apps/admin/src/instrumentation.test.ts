@@ -18,17 +18,21 @@ const getWorld = vi.hoisted(() => vi.fn(() => ({ start: worldStart })))
 const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
+const prewarmWatchSearchQueryEmbeddings = vi.hoisted(() => vi.fn())
+const prisma = vi.hoisted(() => ({ id: "mock-prisma" }))
 
 function clearWorkflowStartupState() {
   const workflowGlobal = globalThis as typeof globalThis & {
     __forgeAdminWorkflowStartup?: {
       retryTimer?: ReturnType<typeof setTimeout>
     }
+    __forgeAdminWatchSearchPrewarm?: unknown
   }
   if (workflowGlobal.__forgeAdminWorkflowStartup?.retryTimer) {
     clearTimeout(workflowGlobal.__forgeAdminWorkflowStartup.retryTimer)
   }
   delete workflowGlobal.__forgeAdminWorkflowStartup
+  delete workflowGlobal.__forgeAdminWatchSearchPrewarm
 }
 
 vi.mock("@/config/env", () => mockEnv)
@@ -42,6 +46,10 @@ vi.mock("@/services/video-db-backup/job", () => ({
 vi.mock("@/services/search-trace-retention/job", () => ({
   ensureSearchTraceRetentionSchedulerStarted,
 }))
+vi.mock("@/services/watch-search.service", () => ({
+  prewarmWatchSearchQueryEmbeddings,
+}))
+vi.mock("@/db/client", () => ({ prisma }))
 
 describe("workflow instrumentation", () => {
   beforeEach(() => {
@@ -53,6 +61,8 @@ describe("workflow instrumentation", () => {
     startWorkflowWorkerHeartbeat.mockReset()
     ensureVideoDbBackupSchedulerStarted.mockReset()
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
+    prewarmWatchSearchQueryEmbeddings.mockReset()
+    prewarmWatchSearchQueryEmbeddings.mockResolvedValue(undefined)
     clearWorkflowStartupState()
     process.env.NEXT_RUNTIME = "nodejs"
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "false"
@@ -79,6 +89,19 @@ describe("workflow instrumentation", () => {
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledTimes(1)
+    expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledWith({ prisma })
+  })
+
+  it("starts watch search embedding prewarm only once per process", async () => {
+    const { register } = await import("./instrumentation")
+
+    await register()
+    await register()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(prewarmWatchSearchQueryEmbeddings).toHaveBeenCalledTimes(1)
   })
 
   it("does not start a world on web services that only read workflow data", async () => {

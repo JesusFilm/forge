@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
+import { clearAllHeroStreamCooldowns } from "../lib/watchHome/heroStreamCooldown"
 import { GET_WATCH_HOME_VIDEOS, GET_WATCH_SETTING } from "../lib/queries"
 import {
   ENGLISH_LANGUAGE_SLUG,
@@ -141,6 +142,9 @@ export function useWatchHome(): WatchHomeState {
         return
       }
       networkLandedRef.current = true
+      // A successful network-only refresh proves connectivity — release hero
+      // stream cooldowns so recovered slides return without waiting out windows.
+      if (mode === "refresh") clearAllHeroStreamCooldowns()
       const videos = videosOutcome.value.data?.watchHomeVideos ?? []
       // Empty-but-successful videos over a painted snapshot degrades like a
       // failed fetch — never paint full-empty over good content.

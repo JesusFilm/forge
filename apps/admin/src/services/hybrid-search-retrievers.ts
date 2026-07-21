@@ -45,7 +45,7 @@ const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
 
 export type SemanticSearchParams = {
   /** pgvector text format, e.g. "[0.1,0.2,...]" — pre-formatted by the
-   *  orchestrator (see hybrid-search.service.ts) so the shape is consistent
+   *  orchestrator (see watch-search.service.ts) so the shape is consistent
    *  across both semantic retrievers. */
   queryEmbedding: string
   locale: string
@@ -400,6 +400,7 @@ export async function searchVideoSemantic(
         FROM best_transcript_per_video b
         JOIN video v ON v.id = b.video_id
           AND v.deleted_at IS NULL
+          AND v.no_index = false
         WHERE EXISTS (
           SELECT 1
           FROM video_locale vl_visible
@@ -514,6 +515,7 @@ export async function searchVideoKeyword(
         FROM video_locale vl
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
+          AND v.no_index = false
         LEFT JOIN LATERAL (
           SELECT vi2.mobile_cinematic_high, vi2.url
           FROM video_image vi2

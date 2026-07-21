@@ -117,7 +117,7 @@ describe("buildDatadogSyslogMessage", () => {
         "watch_search.latency_ms": 42,
         "watch_search.outcome": "completed",
         "watch_search.query": "person@example.com",
-        "watch_search.result_source": "algolia",
+        "watch_search.result_source": "watch-search",
       },
       environment: "prod",
       hostname: "web-host",
@@ -132,7 +132,7 @@ describe("buildDatadogSyslogMessage", () => {
     expect(payload.message).toBe("watch_search analytics")
     expect(payload["watch_search.query"]).toBe("person@example.com")
     expect(payload["watch_search.outcome"]).toBe("completed")
-    expect(payload["watch_search.result_source"]).toBe("algolia")
+    expect(payload["watch_search.result_source"]).toBe("watch-search")
     expect(payload["watch_search.latency_ms"]).toBe(42)
   })
 })

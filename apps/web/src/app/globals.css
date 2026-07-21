@@ -175,12 +175,12 @@
     transform: scale(1.05) !important;
   }
 
-  .group:hover .search-card-hover-outline,
-  .group:focus-visible .search-card-hover-outline {
+  .group:hover .search-category-hover-outline,
+  .group:focus-visible .search-category-hover-outline {
     opacity: 1 !important;
   }
 
-  .search-card-red-outline {
+  .search-category-red-outline {
     inset: 0;
     padding: 3px;
     border-radius: inherit;
@@ -215,35 +215,6 @@
   pointer-events: none;
   mix-blend-mode: soft-light;
   border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.watch-home-gradient-outline {
-  inset: -5px;
-  padding: 10px;
-  background: linear-gradient(
-    to bottom,
-    rgba(239, 68, 68, 0.98) 0%,
-    rgba(239, 68, 68, 0.96) 48%,
-    rgba(239, 68, 68, 0.34) 70%,
-    rgba(239, 68, 68, 0) 88%,
-    rgba(239, 68, 68, 0) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-}
-
-.watch-home-gradient-outline-portrait {
-  border-radius: 17px;
-}
-
-.watch-home-gradient-outline-landscape {
-  border-radius: 16px;
 }
 
 .watch-home-media-enter {

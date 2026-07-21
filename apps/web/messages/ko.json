@@ -7,7 +7,9 @@
     "noContent": "사용할 수 있는 콘텐츠가 없습니다.",
     "homepageMisconfigured": "Watch 홈페이지가 잘못 구성되었습니다.",
     "defaultTemplateMisconfigured": "기본 Watch 템플릿이 잘못 구성되었습니다.",
-    "authFailed": "콘텐츠 서비스에 연결할 수 없습니다. 문제가 계속되면 지원팀에 문의하세요."
+    "authFailed": "콘텐츠 서비스에 연결할 수 없습니다. 문제가 계속되면 지원팀에 문의하세요.",
+    "pageLoadFailed": "문제가 발생했습니다.",
+    "tryAgain": "다시 시도"
   },
   "VideosPage": {
     "title": "모든 동영상",
@@ -22,7 +24,8 @@
     "promoHeading": "성경을 더 깊이 이해하고 싶으신가요?",
     "joinBibleStudy": "성경 공부에 참여하기",
     "previousQuote": "이전 성경 구절",
-    "nextQuote": "다음 성경 구절"
+    "nextQuote": "다음 성경 구절",
+    "readPassage": "성경에서 이 구절을 읽어 보세요."
   },
   "DownloadButton": {
     "checking": "확인 중",
@@ -36,7 +39,7 @@
     "posterAlt": "동영상 포스터",
     "noDownloads": "이 동영상에서 사용할 수 있는 다운로드가 없습니다.",
     "fileSizeLabel": "파일 크기 선택",
-    "termsAgreementPrefix": "",
+    "termsAgreementPrefix": "다음 약관에 동의합니다: ",
     "termsOfUse": "이용약관",
     "termsAgreementSuffix": "에 동의합니다",
     "close": "닫기",
@@ -73,7 +76,8 @@
     "selectLanguage": "언어 선택",
     "searchPlaceholder": "언어 검색…",
     "languages": "언어",
-    "noMatches": "일치하는 항목이 없습니다"
+    "noMatches": "일치하는 항목이 없습니다",
+    "notAvailable": "사용할 수 없음"
   },
   "LanguagePickerModal": {
     "dialogTitle": "언어",
@@ -112,7 +116,8 @@
     "questions": "관련 질문",
     "askYours": "질문하기",
     "chatWithPerson": "사람과 대화하기",
-    "askBibleQuestion": "성경에 대해 질문하기"
+    "askBibleQuestion": "성경에 대해 질문하기",
+    "quiz": "퀴즈"
   },
   "WatchQuestionPanel": {
     "messageType": "메시지 유형",
@@ -170,7 +175,8 @@
     "searchRegion": "동영상 검색",
     "clearSearch": "검색 지우기",
     "changeAudioLanguage": "오디오 언어 변경",
-    "home": "JesusFilm 홈"
+    "home": "JesusFilm 홈",
+    "closeSearch": "검색 닫기"
   },
   "SearchOverlay": {
     "dialogLabel": "동영상 검색 및 둘러보기",
@@ -205,14 +211,19 @@
     "clearLanguages": "지우기",
     "queryLanguageDetected": "{language} 감지됨",
     "searchInLanguage": "{language}로 검색",
-    "tryDifferentKeywordsOrLanguage": "다른 키워드를 사용하거나 다른 검색 언어를 선택하세요"
+    "tryDifferentKeywordsOrLanguage": "다른 키워드를 사용하거나 다른 검색 언어를 선택하세요",
+    "useWebsiteDefaultLanguage": "웹사이트 기본 검색 언어 사용",
+    "removeLanguage": "{language} 제거",
+    "browseMode": "검색 둘러보기 모드"
   },
   "HeroPlayer": {
     "playWithSound": "지금 보기",
-    "tapToUnmute": "음소거 해제"
+    "tapToUnmute": "음소거 해제",
+    "nextEpisode": "다음 에피소드"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "콘텐츠 불러오는 중"
+    "loadingContent": "콘텐츠 불러오는 중",
+    "loadingVideo": "동영상 불러오는 중"
   },
   "VideoLabels": {
     "video": "동영상",
@@ -223,7 +234,8 @@
     "series": "시리즈",
     "collection": "컬렉션",
     "trailer": "예고편",
-    "behindTheScenes": "비하인드 스토리"
+    "behindTheScenes": "비하인드 스토리",
+    "chapter": "챕터"
   },
   "SiblingCarousel": {
     "clipPosition": "{total}개 중 {current}번째 클립",
@@ -235,11 +247,286 @@
     "noImage": "이미지 없음",
     "playingNow": "재생 중",
     "previousChapter": "이전 챕터",
-    "nextChapter": "다음 챕터"
+    "nextChapter": "다음 챕터",
+    "thumbnailAlt": "{title} 썸네일",
+    "relatedVideoThumbnail": "관련 동영상 썸네일"
   },
   "SearchResultCard": {
     "experience": "체험",
     "episodeCount": "{count, plural, other {#개 에피소드}}",
     "thumbnailAlt": "동영상 썸네일"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}의 무료 기독교 동영상 | Jesus Film Project",
+    "metadataDescription": "{language} 더빙 음성 또는 자막이 있는 예수 영화, 성경 이야기, 제자훈련 시리즈, 전도용 동영상을 살펴보세요.",
+    "heroTitle": "{language}의 무료 기독교 동영상",
+    "heroDescription": "{language}로 제공되는 예수 영화, 성경 이야기, 제자훈련 시리즈, 전도용 동영상을 살펴보세요. 전체 더빙 영상이 먼저 표시되고, 아래에 자막만 제공되는 옵션이 나옵니다.",
+    "languageCollection": "언어 컬렉션",
+    "itemCount": "{count, plural, one {#개 항목} other {#개 항목}}",
+    "videoCount": "{count, plural, one {#개 동영상} other {#개 동영상}}",
+    "videosInGroups": "{videoCount, plural, one {#개 동영상} other {#개 동영상}} / {groupCount, plural, one {#개 그룹} other {#개 그룹}}",
+    "sectionNavLabel": "언어 목록 섹션",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "새로움",
+    "videoBible": "비디오 성경",
+    "bibleProject": "BibleProject",
+    "sports": "스포츠",
+    "collections": "컬렉션",
+    "subtitlesOnly": "자막만 제공",
+    "newlyAdded": "새로 추가됨",
+    "newVideosTitle": "{language}의 새로운 기독교 동영상",
+    "newestFirst": "최신순",
+    "noPublishedVideos": "이 언어로 공개된 동영상이 아직 없습니다.",
+    "bibleAndGospelFilms": "성경 및 복음 영화",
+    "videoBibleCollectionsTitle": "{language} 비디오 성경 컬렉션",
+    "videoBibleDescription": "{language}로 제공되는 LUMO, JESUS, Magdalena, Acts 등 성경 중심 컬렉션입니다.",
+    "noVideoBibleCollections": "이 언어로 제공되는 비디오 성경 컬렉션이 아직 없습니다.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject 컬렉션",
+    "bibleProjectDescription": "{language}로 제공되는 BibleProject 시리즈와 학습 자료입니다.",
+    "noBibleProjectCollections": "이 언어로 제공되는 BibleProject 컬렉션이 아직 없습니다.",
+    "sportsStories": "스포츠 이야기",
+    "sportsTitle": "{language} 스포츠 및 선수 이야기",
+    "sportsDescription": "{language}로 제공되는 믿음 중심 스포츠 이야기와 선수 중심 컬렉션입니다.",
+    "noSportsCollections": "이 언어로 제공되는 스포츠 또는 선수 이야기 컬렉션이 아직 없습니다.",
+    "fullyDubbed": "전체 더빙",
+    "dubbedVideosTitle": "컬렉션별 {language} 동영상",
+    "dubbedVideosDescription": "더 쉽게 찾을 수 있도록 컬렉션별로 묶인 전체 더빙 {language} 동영상을 둘러보세요.",
+    "noDubbedVideos": "이 언어로 제공되는 전체 더빙 동영상이 아직 없습니다.",
+    "subtitlesAvailable": "자막 제공",
+    "subtitlesTitle": "자막이 있는 {language} 동영상",
+    "subtitlesDescription": "아직 음성 {language} 오디오가 제공되지 않는 경우 이 동영상에는 {language} 자막이 포함됩니다.",
+    "noSubtitleVideos": "이 언어로 제공되는 자막 전용 동영상이 아직 없습니다.",
+    "dubbed": "더빙",
+    "subtitles": "자막",
+    "newLabel": "새로움",
+    "fromCollection": "{collection}에서",
+    "standaloneVideos": "단독 동영상",
+    "videosFromCollection": "{collection}의 동영상.",
+    "standaloneDescription": "이 언어의 단독 동영상입니다.",
+    "openCollection": "컬렉션 열기"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project 시청",
+    "watch": "시청",
+    "watchNow": "지금 시청",
+    "mutePreview": "미리보기 음소거",
+    "unmutePreview": "미리보기 음소거 해제",
+    "nextVideo": "다음 동영상",
+    "showVideo": "{title} 보기",
+    "previousVideoPreview": "이전 동영상 미리보기",
+    "nextVideoPreview": "다음 동영상 미리보기",
+    "featured": "추천",
+    "mediaCollection": "미디어 컬렉션",
+    "scrollToVideo": "{title} 동영상으로 스크롤"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "언어",
+    "metadataDescription": "언어별로 JesusFilm 동영상을 둘러보세요.",
+    "eyebrow": "Watch 언어",
+    "title": "언어를 선택하세요",
+    "description": "지역별로 언어를 살펴보거나 전체 목록을 둘러보세요.",
+    "searchPlaceholder": "언어 또는 국가 검색...",
+    "searchLabel": "언어 또는 국가 검색",
+    "clearSearch": "검색 지우기",
+    "browse": "둘러보기",
+    "browseByRegion": "지역과 국가별로 둘러보기",
+    "languageCount": "{count, plural, one {#개 언어} other {#개 언어}}",
+    "region": "지역",
+    "countryLanguages": "{country} 언어",
+    "showLess": "간단히 보기",
+    "showMore": "{count}개 더 보기",
+    "noLanguages": "언어를 찾을 수 없습니다",
+    "tryAnotherSearch": "다른 검색어를 사용해 보세요."
+  },
+  "WatchHistory": {
+    "metadataTitle": "시청 기록 | Jesus Film Project",
+    "title": "시청 기록",
+    "loading": "기록 불러오는 중",
+    "empty": "아직 내용이 없습니다",
+    "emptyDescription": "로그인한 상태에서 시청한 동영상이 여기에 표시됩니다.",
+    "earlier": "이전",
+    "today": "오늘",
+    "yesterday": "어제"
+  },
+  "AccountControl": {
+    "account": "계정",
+    "accountMenu": "계정 메뉴",
+    "signIn": "로그인",
+    "signOut": "로그아웃",
+    "signedIn": "로그인됨",
+    "history": "기록",
+    "logOut": "로그아웃"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "페이지를 찾을 수 없음",
+    "eyebrow": "페이지를 찾을 수 없음",
+    "screenReaderPrefix": "페이지를 찾을 수 없음:",
+    "title": "이 장면은 여기 없습니다.",
+    "description": "페이지는 이동했을지 모르지만, 이야기는 계속됩니다.",
+    "actionsLabel": "페이지를 찾을 수 없을 때의 작업",
+    "backToWatch": "Watch로 돌아가기",
+    "browseVideos": "동영상 둘러보기"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project 홈",
+    "navigation": "바닥글 탐색",
+    "share": "공유",
+    "watch": "시청",
+    "giving": "후원",
+    "about": "소개",
+    "products": "제품",
+    "resources": "자료",
+    "partners": "파트너",
+    "contact": "문의",
+    "giveNow": "지금 후원하기",
+    "resourcesVersion": "자료 ({version})",
+    "office": "사무실",
+    "fax": "팩스",
+    "privacyPolicy": "개인정보 처리방침",
+    "legalStatement": "법적 고지",
+    "newsletter": "뉴스레터 신청"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "전 세계 선교를 위해 설계되었습니다",
+    "title": "메시지는 변하지 않습니다. 사람들이 시청하는 방식이 달라질 뿐입니다.",
+    "description": "우리는 영상 라이브러리와 도구를 처음부터 다시 구축하며, 수십 년간의 번역 작업을 사람들이 이미 모이고 보고 공유하는 플랫폼에 담고 있습니다.",
+    "translatedLibraryTitle": "세계에서 가장 많이 번역된 영상 라이브러리",
+    "translatedLibraryDescription": "신뢰받는 사역 파트너들과 함께한 수십 년의 번역 작업이 수천 개의 언어 트랙을 갖춘 라이브러리를 만들었고, 사람들이 가장 깊이 닿는 언어로 예수님의 이야기를 만날 수 있게 합니다.",
+    "trustedVoicesTitle": "신뢰받는 목소리를 새로운 형식으로 전하다",
+    "trustedVoicesDescription": "우리는 신뢰할 수 있는 번역과 현대적 형식을 결합해 복음 이야기를 시각적으로 전하는 방식을 다시 만들고 있으며, 그 메시지가 플랫폼과 문화와 화면을 자유롭게 넘나들 수 있게 하고 있습니다.",
+    "missionTeamTitle": "단순한 라이브러리가 아닙니다. 선교에 헌신한 팀입니다.",
+    "missionTeamDescription": "Jesus Film Project는 전 세계의 제자 양육 사역자를 위한 도구로 수십 년의 사역 경험을 바꾸어 내는 번역가, 미디어 전문가, 편집자, 제작자로 이루어진 글로벌 팀입니다.",
+    "buildingNext": "우리가 다음으로 만드는 것",
+    "nextStepsTitle": "다음 단계 플랫폼",
+    "nextStepsDescription": "시청자가 영적 여정에서 실질적인 기회를 만나도록 연결해 주어, 공동체와 성경과 선교로 이어지는 다음 걸음을 내딛게 돕습니다.",
+    "mediaLibraryTitle": "복음 전도용 미디어 라이브러리",
+    "mediaLibraryDescription": "전 세계 사역과 전도를 위해 여러 언어로 제공되는 수천 편의 동영상, 영화, 자료를 갖춘 방대한 기독교 미디어 라이브러리입니다.",
+    "ministryToolsTitle": "사역을 위한 디지털 도구",
+    "ministryToolsDescription": "사역 단체가 더 많은 사람에게 효과적으로 다가가도록 돕는 동영상 관리, 콘텐츠 배포, 시청자 참여, 분석 도구입니다.",
+    "invitationEyebrow": "여러분을 초대합니다",
+    "invitationDescription": "실무자, 제작자, 파트너 여러분을 초기 사용에 초대합니다. 새 도구를 먼저 사용해 보고, 피드백을 남기며, 실제 선교 사역을 위한 제품을 함께 만들어 가세요.",
+    "betaTester": "베타 테스터 되기",
+    "invitationTitle": "<highlight>차세대</highlight> 선교 도구를 함께 만들어 주세요"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "비디오 성경 컬렉션",
+    "gospelRailTitle": "전체 이야기를 발견하세요",
+    "videoBibleDescription": "흥미로운 이야기와 가르침을 통해 성경을 생생하게 전하는 동영상과 자료 모음을 살펴보세요.",
+    "showcaseTitle": "영화를 통해 전하는 성경",
+    "adventEyebrow": "크리스마스 대림절",
+    "adventTitle": "크리스마스 대림절 카운트다운",
+    "adventDescription": "크리스마스를 향한 기대를 키워 주는 매일의 동영상과 함께 대림절 여정에 참여하며, 예수님의 오심이 주는 소망과 기쁨과 약속을 살펴보세요.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject 대림절",
+    "nuaEyebrow": "NUA 시리즈",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth 시리즈",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "비디오 강좌",
+    "journeyWithJesusTitle": "예수님과 함께하는 여정",
+    "gospelsOnVideoEyebrow": "모든 복음서를 영상으로",
+    "scriptureAsWrittenTitle": "기록된 그대로 전하는 성경",
+    "merryChristmas": "메리 크리스마스!",
+    "daysUntilChristmas": "{count, plural, other {크리스마스까지 #일}}"
+  },
+  "Feedback": {
+    "openForm": "피드백 양식 열기",
+    "label": "피드백",
+    "couldNotLoad": "피드백 양식을 불러올 수 없습니다.",
+    "loadingForm": "피드백 양식 불러오는 중…",
+    "retry": "다시 시도",
+    "openFormShort": "양식 열기",
+    "cancel": "취소",
+    "title": "베타 피드백",
+    "description": "잘 작동하는 부분과 개선할 점을 알려 주세요. 이 양식은 Google에서 제공합니다.",
+    "openInNewTab": "새 탭에서 양식 열기",
+    "closeForm": "피드백 양식 닫기",
+    "loadingGoogleForm": "Google 양식 불러오는 중…",
+    "iframeTitle": "베타 피드백 제출"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "단편 영화 시청",
+    "actions": {
+      "joinUs": "함께하기",
+      "shareMission": "우리의 사명에 함께하세요"
+    },
+    "welcomeStart": {
+      "label": "믿음과 성경",
+      "title": "오늘의 추천 동영상",
+      "description": "우리 라이브러리에서 엄선한 믿음 중심의 동영상으로, 마음에 영감을 주고 도전을 주며 묵상을 이끌어 줍니다."
+    },
+    "welcomeMorning": {
+      "label": "아침의 영감",
+      "title": "좋은 아침입니다! 오늘의 성경 묵상을 만나 보세요.",
+      "description": "격려와 힘이 되는 성경의 순간들로 하루를 시작해 보세요."
+    },
+    "welcomeAfternoon": {
+      "label": "오후의 영감",
+      "title": "좋은 오후입니다! 오늘을 위한 성경의 순간들.",
+      "description": "오후 휴식 시간이나 계속되는 영감이 필요할 때 잘 어울리는 성경 콘텐츠입니다."
+    },
+    "welcomeEvening": {
+      "label": "저녁의 영감",
+      "title": "좋은 저녁입니다! 성경의 순간들로 하루를 마무리하세요.",
+      "description": "하루를 마치며 묵상하고 위로를 얻을 수 있도록 평안한 성경의 순간들을 전해 드립니다."
+    },
+    "joinUs": {
+      "label": "함께하기",
+      "title": "수십억 명이 찾고 있습니다",
+      "description": "추수할 때가 왔습니다. 디지털 미디어를 통해 세상에 복음을 전하는 일에 함께해 주세요."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "함께 갑시다",
+      "title": "예수님의 이야기를 함께 전합니다",
+      "description": "사람들이 있는 바로 그곳에서, 각자의 언어로 예수님의 사랑을 듣고 볼 수 있도록 하기 위함입니다."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% 일치",
+    "none": "이 언어로 된 이 동영상의 추천 항목을 찾을 수 없습니다."
+  },
+  "BetaTesterModal": {
+    "title": "베타 테스터 되기",
+    "trigger": "베타 테스터 되기",
+    "loadFailed": "문제가 발생했습니다.",
+    "loading": "불러오는 중...",
+    "openFormNewTab": "새 탭에서 양식 열기",
+    "close": "닫기",
+    "iframeTitle": "베타 테스터 되기"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

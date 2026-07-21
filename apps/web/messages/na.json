@@ -7,7 +7,9 @@
     "noContent": "Content enaen re aetin.",
     "homepageMisconfigured": "Watch homepage e ka configur bwe.",
     "defaultTemplateMisconfigured": "Watch template default e ka configur bwe.",
-    "authFailed": "E igabo authenticate ngada content service. Ekoe support ne if eisewet."
+    "authFailed": "E igabo authenticate ngada content service. Ekoe support ne if eisewet.",
+    "pageLoadFailed": "Eka iren.",
+    "tryAgain": "Eka ke"
   },
   "VideosPage": {
     "title": "Videos kakku",
@@ -22,7 +24,8 @@
     "promoHeading": "E kaebwer an Bible degen?",
     "joinBibleStudy": "Renge Bible study ae",
     "previousQuote": "Bible quote adinmin",
-    "nextQuote": "Bible quote adin re"
+    "nextQuote": "Bible quote adin re",
+    "readPassage": "Passage eo yiy Bible bu ne bitaei."
   },
   "DownloadButton": {
     "checking": "Bika",
@@ -73,7 +76,8 @@
     "selectLanguage": "Language e ere",
     "searchPlaceholder": "Language ae bu...",
     "languages": "Languages re",
-    "noMatches": "Ekoe ke"
+    "noMatches": "Ekoe ke",
+    "notAvailable": "Ekoe"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Language eo",
@@ -112,7 +116,8 @@
     "questions": "Questions re",
     "askYours": "Ibu question e buata",
     "chatWithPerson": "Person me talk ae",
-    "askBibleQuestion": "Bible question e buata"
+    "askBibleQuestion": "Bible question e buata",
+    "quiz": "Quiz eo"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type eo",
@@ -170,7 +175,8 @@
     "searchRegion": "Video ae buata",
     "clearSearch": "Search e kar",
     "changeAudioLanguage": "Audio language bu",
-    "home": "JesusFilm home eo"
+    "home": "JesusFilm home eo",
+    "closeSearch": "Search e kar"
   },
   "SearchOverlay": {
     "dialogLabel": "Video ae buata me bika",
@@ -205,14 +211,19 @@
     "clearLanguages": "E kar",
     "queryLanguageDetected": "{language} e detected",
     "searchInLanguage": "{language} ne bika",
-    "tryDifferentKeywordsOrLanguage": "Keyword mweinaud me search language mweinaud e ere"
+    "tryDifferentKeywordsOrLanguage": "Keyword mweinaud me search language mweinaud e ere",
+    "useWebsiteDefaultLanguage": "Website default search language e ka",
+    "removeLanguage": "{language} e kar",
+    "browseMode": "Search browse mode eo"
   },
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",
-    "tapToUnmute": "Tap e kar me suara ae"
+    "tapToUnmute": "Tap e kar me suara ae",
+    "nextEpisode": "Episode re"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Content biga ae"
+    "loadingContent": "Content biga ae",
+    "loadingVideo": "Video biga ae"
   },
   "VideoLabels": {
     "video": "Video eo",
@@ -223,7 +234,8 @@
     "series": "Series eo",
     "collection": "Collection eo",
     "trailer": "Trailer eo",
-    "behindTheScenes": "Scenes kinano"
+    "behindTheScenes": "Scenes kinano",
+    "chapter": "Chapter eo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} me {total}",
@@ -235,11 +247,286 @@
     "noImage": "Image ekoe",
     "playingNow": "Bitaei naba",
     "previousChapter": "Chapter kinano",
-    "nextChapter": "Chapter re"
+    "nextChapter": "Chapter re",
+    "thumbnailAlt": "{title} thumbnail eo",
+    "relatedVideoThumbnail": "Video related thumbnail"
   },
   "SearchResultCard": {
     "experience": "Experience eo",
     "episodeCount": "{count, plural, one {# episode eo} other {# episodes re}}",
     "thumbnailAlt": "Video thumbnail eo"
+  },
+  "Feedback": {
+    "openForm": "Aren feedback form",
+    "label": "Feedback eo",
+    "couldNotLoad": "Feedback form e inae irababa.",
+    "loadingForm": "Biga form ae",
+    "retry": "Kewe",
+    "openFormShort": "Aren form",
+    "cancel": "Kunar",
+    "title": "Beta Feedback eo",
+    "description": "Ia report wiyebwata ma ibu me koro. Google e aen form eo.",
+    "openInNewTab": "Aren form me tab bwe",
+    "closeForm": "Kunar feedback form",
+    "loadingGoogleForm": "Biga Google Form ae",
+    "iframeTitle": "Beta Feedback bu"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian videos tei {language} ne | Jesus Film Project",
+    "metadataDescription": "Jesus films, Bible stories, discipleship series, me outreach videos {language} ne dubbed audio me subtitles ne bika.",
+    "heroTitle": "Christian videos tei {language} ne",
+    "heroDescription": "Jesus films, Bible stories, discipleship series, me outreach videos {language} ne aing wa. Dubbed videos re first e highlight ae, subtitles-only options re below.",
+    "languageCollection": "Language collection eo",
+    "itemCount": "{count, plural, one {# item eo} other {# items re}}",
+    "videoCount": "{count, plural, one {# video eo} other {# videos re}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} {groupCount, plural, one {# group} other {# groups}} ne",
+    "sectionNavLabel": "Language inventory sections re",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Bwe",
+    "videoBible": "Video Bible eo",
+    "bibleProject": "BibleProject",
+    "sports": "Sports re",
+    "collections": "Collections re",
+    "subtitlesOnly": "Subtitles degen",
+    "newlyAdded": "Bwe e karen",
+    "newVideosTitle": "Christian videos bwe {language} ne",
+    "newestFirst": "Bwe first",
+    "noPublishedVideos": "Language eo re published video ekoe.",
+    "bibleAndGospelFilms": "Bible me Gospel films",
+    "videoBibleCollectionsTitle": "{language} ne Video Bible collections",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, me Acts re {language} ne Scripture-centered collections.",
+    "noVideoBibleCollections": "Language eo re Video Bible collections ekoe.",
+    "bibleProjectCollectionsTitle": "{language} ne BibleProject collections",
+    "bibleProjectDescription": "BibleProject series me studies {language} ne aing wa.",
+    "noBibleProjectCollections": "Language eo re BibleProject collections ekoe.",
+    "sportsStories": "Sports stories re",
+    "sportsTitle": "{language} sports me athlete stories",
+    "sportsDescription": "Faith-centered sports stories me athlete-focused collections {language} ne aing wa.",
+    "noSportsCollections": "Language eo re sports me athlete-story collections ekoe.",
+    "fullyDubbed": "Fully dubbed ae",
+    "dubbedVideosTitle": "{language} videos collection ne",
+    "dubbedVideosDescription": "Collection ne fully dubbed {language} videos e browse ae.",
+    "noDubbedVideos": "Language eo re fully dubbed videos ekoe.",
+    "subtitlesAvailable": "Subtitles aing wa",
+    "subtitlesTitle": "{language} videos me subtitles",
+    "subtitlesDescription": "Video eo {language} subtitles aing wa, spoken {language} audio re kemein aing wa.",
+    "noSubtitleVideos": "Language eo re subtitle-only videos ekoe.",
+    "dubbed": "Dubbed ae",
+    "subtitles": "Subtitles re",
+    "newLabel": "Bwe",
+    "fromCollection": "{collection} ne",
+    "standaloneVideos": "Standalone videos re",
+    "videosFromCollection": "Videos {collection} ne.",
+    "standaloneDescription": "Language eo re standalone videos.",
+    "openCollection": "Collection e open"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Watch eo",
+    "watch": "Bitaei",
+    "watchNow": "Bitaei naba",
+    "mutePreview": "Preview e kar suara",
+    "unmutePreview": "Preview eo suara ae",
+    "nextVideo": "Video re",
+    "featured": "Featured eo",
+    "showVideo": "{title} e show ae",
+    "previousVideoPreview": "Video kinano preview",
+    "nextVideoPreview": "Video re preview",
+    "mediaCollection": "Media collection eo",
+    "scrollToVideo": "{title} video ne scroll ae"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project home eo",
+    "navigation": "Footer navigation eo",
+    "share": "Kekare",
+    "watch": "Bitaei",
+    "giving": "Giving eo",
+    "about": "Koro ngana",
+    "products": "Products re",
+    "resources": "Resources re",
+    "partners": "Partners re",
+    "contact": "Contact ae",
+    "giveNow": "De naba",
+    "resourcesVersion": "Resources re ({version})",
+    "office": "Office eo",
+    "fax": "Fax eo",
+    "privacyPolicy": "Privacy Policy eo",
+    "legalStatement": "Legal Statement eo",
+    "newsletter": "Newsletter eo a sign up ae"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "World missions na build ae",
+    "title": "Message eo e change ekoe. People ne watch ae e change.",
+    "description": "Video library me tools eo a rebuild ae, translation work decades eo platforms eo people e gather, watch, me share ae ne commit ae.",
+    "translatedLibraryTitle": "Film library eo e translated moded",
+    "translatedLibraryDescription": "Translation work decades, ministry partners trusted ne carry ae, library eo language tracks thousands me build ae bwe people Jesus story eo re heart eo reaching language ne encounter ae.",
+    "trustedVoicesTitle": "Trusted voices format re aing wa ne carry ae",
+    "trustedVoicesDescription": "Gospel stories eo visually e told ae e rebuild ae, trusted translations me modern formats ne pair ae bwe message eo platforms, cultures, me screens ne freely move ae.",
+    "missionTeamTitle": "Library degen ekoe. Mission-driven team e aing wa.",
+    "missionTeamDescription": "Jesus Film Project e translators, media specialists, editors, me creators global team eo decades ministry experience eo disciple-makers minde tools ne turn ae.",
+    "buildingNext": "We are building next",
+    "nextStepsTitle": "Next Steps Platform eo",
+    "nextStepsDescription": "Viewers eo spiritual journey ne tangible opportunities me connect ae, community, Scripture, me mission ne next step e de.",
+    "mediaLibraryTitle": "Evangelistic Media Library eo",
+    "mediaLibraryDescription": "Christian media library extensive, videos, films, me resources thousands me language multiple ne ministry me evangelism worldwide ne aing wa.",
+    "ministryToolsTitle": "Digital tools ministries ke",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, me analytics ministries eo people more effectively reach ae.",
+    "invitationEyebrow": "You’re invited",
+    "invitationTitle": "Mission tools generation <highlight>re</highlight> build ae ne help",
+    "invitationDescription": "Practitioners, creators, me partners early access ne invite ae. Tools new first e test ae, feedback e de, me mission work real ne products e shape ae.",
+    "betaTester": "Beta tester e da"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible Collection eo",
+    "gospelRailTitle": "Story eo full e discover ae",
+    "videoBibleDescription": "Bible eo life e de video me resources eo collection ne explore ae, stories me teachings engaging ne.",
+    "showcaseTitle": "Scripture eo film ne told ae",
+    "adventEyebrow": "Christmas Advent eo",
+    "adventTitle": "Christmas Advent countdown eo",
+    "adventDescription": "Advent journey eo re join ae, daily video ne Christmas eo anticipation e build ae, Jesus’ arrival eo hope, joy, me promise e explore ae.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Advent eo",
+    "nuaEyebrow": "NUA Series eo",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Series eo",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video Course eo",
+    "journeyWithJesusTitle": "Jesus me journey",
+    "gospelsOnVideoEyebrow": "Gospel minde video ne told ae",
+    "scriptureAsWrittenTitle": "Scripture eo, e write ae degen spoken ae",
+    "merryChristmas": "Christmas bwa!",
+    "daysUntilChristmas": "{count, plural, one {# day Christmas ke} other {# days Christmas ke}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Languages re",
+    "metadataDescription": "JesusFilm videos language ne browse ae.",
+    "eyebrow": "Watch languages re",
+    "title": "Language e choose ae",
+    "description": "Region ne languages e explore ae, catalogue full e browse ae.",
+    "searchPlaceholder": "Languages me countries e search ae...",
+    "searchLabel": "Languages me countries e search ae",
+    "clearSearch": "Search e kar",
+    "browse": "Bika",
+    "browseByRegion": "Region me country ne browse ae",
+    "languageCount": "{count, plural, one {# language eo} other {# languages re}}",
+    "region": "Region eo",
+    "countryLanguages": "{country} languages re",
+    "showLess": "Less e show ae",
+    "showMore": "{count} more e show ae",
+    "noLanguages": "Languages ekoe",
+    "tryAnotherSearch": "Search term mweinaud e try ae."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Watch History eo | Jesus Film Project",
+    "title": "Watch history eo",
+    "loading": "History biga ae",
+    "empty": "Ekoe ia",
+    "emptyDescription": "Signed in ne watch videos eo ia re appear ae.",
+    "earlier": "Kinano",
+    "today": "Yiy",
+    "yesterday": "Yiy kinano"
+  },
+  "AccountControl": {
+    "account": "Account eo",
+    "accountMenu": "Account menu eo",
+    "signIn": "Sign in ae",
+    "signOut": "Sign out ae",
+    "signedIn": "E sign in ae",
+    "history": "History eo",
+    "logOut": "Log out ae"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page ekoe",
+    "eyebrow": "Page ekoe",
+    "screenReaderPrefix": "Page ekoe:",
+    "title": "Scene eo ia ekoe.",
+    "description": "Page eo move ae wansa, a story eo bitaei naba.",
+    "actionsLabel": "Page ekoe actions",
+    "backToWatch": "Watch ne back ae",
+    "browseVideos": "Videos e browse ae"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Film keke e bitaei",
+    "actions": {
+      "joinUs": "Ngana me join ae",
+      "shareMission": "Mission bu me share ae"
+    },
+    "welcomeStart": {
+      "label": "Faith me Scripture",
+      "title": "Yiy video picks re",
+      "description": "Library bu faith-centered video content, e inspire, challenge, me reflection e start ae."
+    },
+    "welcomeMorning": {
+      "label": "Morning inspiration eo",
+      "title": "Morning bwa! Yiy Bible moments re wait ae.",
+      "description": "Day eo e start ae me Bible moments encouraging, spirit eo e inspire me uplift ae."
+    },
+    "welcomeAfternoon": {
+      "label": "Afternoon inspiration eo",
+      "title": "Afternoon bwa! Yiy Bible moments re.",
+      "description": "Bible content encouraging, afternoon break eo me inspiration e continue ae ke perfect."
+    },
+    "welcomeEvening": {
+      "label": "Evening inspiration eo",
+      "title": "Evening bwa! Bible moments me rest ae.",
+      "description": "Bible moments peaceful e help ae bwe day eo e close, a reflect me comfort e aetin."
+    },
+    "joinUs": {
+      "label": "Ngana me join ae",
+      "title": "People billions re bika",
+      "description": "Harvest eo ia. Digital media e ka me ngana join ae, gospel eo world ne share ae."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ngana together e re",
+      "title": "Jesus story eo together e told ae",
+      "description": "Bwe Jesus love eo ami language eo re hear me see ae, ia etsi."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% e match ae",
+    "none": "Video eo language eo re recommendations ekoe."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester e da",
+    "trigger": "Beta tester e da",
+    "loadFailed": "Eka iren.",
+    "loading": "Biga...",
+    "openFormNewTab": "Aren form me tab bwe",
+    "close": "Kunar",
+    "iframeTitle": "Beta tester e da"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

@@ -54,6 +54,33 @@ function totalPhaseStats(result: SyncResult) {
   )
 }
 
+function logCoreSyncRunFailure(
+  workflowRunId: string,
+  result: SyncResult,
+): void {
+  const failedPhases = result.phases
+    .filter((phase) => phase.errors > 0)
+    .map((phase) => ({
+      phase: phase.phase,
+      created: phase.created,
+      updated: phase.updated,
+      softDeleted: phase.softDeleted,
+      errors: phase.errors,
+      durationMs: phase.durationMs,
+    }))
+
+  console.error(
+    JSON.stringify({
+      event: "core-sync.run.failed",
+      workflowRunId,
+      incremental: result.incremental,
+      durationMs: result.durationMs,
+      totals: totalPhaseStats(result),
+      failedPhases,
+    }),
+  )
+}
+
 export async function createWorkflowRunLog(
   input: WorkflowRunLogInput,
   client: WorkflowRunClient = prisma,
@@ -183,6 +210,10 @@ export async function recordCoreSyncRunResult(
         Prisma.JsonNull,
     },
   })
+
+  if (totals.errors > 0) {
+    logCoreSyncRunFailure(workflowRunId, result)
+  }
 
   return client.workflowRun.update({
     where: { id: workflowRunId },

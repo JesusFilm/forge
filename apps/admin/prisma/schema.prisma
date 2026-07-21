@@ -273,7 +273,7 @@ model ManagerMembership {
 // -----------------------------------------------------------------------------
 
 /// External partner credentials for admin's public search surface
-/// (`GET /api/search` + `Query.search`). One row per issued partner key.
+/// (`GET /api/search`). One row per issued partner key.
 /// The bearer-as-passport composer (`src/auth/search-bearer.ts`) validates
 /// presented tokens against this table BEFORE falling through to the legacy
 /// `SEARCH_API_KEYS` env-CSV branch. See:
@@ -411,6 +411,7 @@ model WorkflowWorkerHeartbeat {
 /// vector, or scoring payload columns.
 model SearchTrace {
   id                   String                   @id @default(cuid())
+  requestId            String?                  @map("request_id") @db.VarChar(80)
   queryText            String                   @map("query_text") @db.VarChar(1024)
   locale               String                   @db.VarChar(32)
   routeSource          SearchTraceRouteSource   @map("route_source")
@@ -427,6 +428,7 @@ model SearchTrace {
   queryLabelVersion    String                   @default("search-query-labels/v1") @map("query_label_version") @db.VarChar(64)
   queryLabeledAt       DateTime                 @default(now()) @map("query_labeled_at")
   sampleEligible       Boolean                  @default(true) @map("sample_eligible")
+  metadata             Json?                    @map("metadata")
   llmQueryQualityLabel String?                  @map("llm_query_quality_label") @db.VarChar(64)
   llmAbuseLabel        String?                  @map("llm_abuse_label") @db.VarChar(64)
   llmLabelSource       String?                  @map("llm_label_source") @db.VarChar(64)
@@ -440,6 +442,7 @@ model SearchTrace {
 
   @@index([rawExpiresAt])
   @@index([createdAt])
+  @@index([requestId])
   @@index([locale, createdAt])
   @@index([routeSource, createdAt])
   @@index([outcome, createdAt])
@@ -820,18 +823,65 @@ model Language {
   updatedAt            DateTime   @updatedAt @map("updated_at")
 
   // Reverse relations
-  keywords         Keyword[]
-  locales          LanguageLocale[]
-  videoDubs        VideoDub[]
-  videoLocales     VideoLocale[]
-  watchEvents      WatchEvent[]
-  videoSubtitles   VideoSubtitle[]
-  studyQuestions   VideoStudyQuestion[]
-  countryLanguages CountryLanguage[]
-  videosAsPrimary  Video[]              @relation("VideoPrimaryLanguage")
+  keywords          Keyword[]
+  locales           LanguageLocale[]
+  videoDubs         VideoDub[]
+  videoLocales      VideoLocale[]
+  watchEvents       WatchEvent[]
+  videoSubtitles    VideoSubtitle[]
+  studyQuestions    VideoStudyQuestion[]
+  countryLanguages  CountryLanguage[]
+  videosAsPrimary   Video[]              @relation("VideoPrimaryLanguage")
+  fallbackLanguages LanguageFallback[]   @relation("LanguageFallbackSource")
+  fallbackFor       LanguageFallback[]   @relation("LanguageFallbackTarget")
 
   @@index([deletedAt])
   @@map("language")
+}
+
+/// Curated language fallback graph for Watch search and language-aware
+/// playback surfaces. Rows are directional because a helpful fallback for one
+/// language may not be equally helpful in reverse.
+model LanguageFallback {
+  id                 String     @id @default(cuid())
+  source             SourceTier @default(CORE)
+  sourceLanguageId   String     @map("source_language_id")
+  fallbackLanguageId String     @map("fallback_language_id")
+  sourceLanguage     Language   @relation("LanguageFallbackSource", fields: [sourceLanguageId], references: [id], onDelete: Cascade)
+  fallbackLanguage   Language   @relation("LanguageFallbackTarget", fields: [fallbackLanguageId], references: [id], onDelete: Cascade)
+  priority           Int        @default(100)
+  reason             String?
+  syncedAt           DateTime?  @map("synced_at")
+  deletedAt          DateTime?  @map("deleted_at")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  @@unique([sourceLanguageId, fallbackLanguageId])
+  @@index([sourceLanguageId, priority])
+  @@index([fallbackLanguageId])
+  @@index([deletedAt])
+  @@map("language_fallback")
+}
+
+/// Cross-process cache for short-lived query embeddings used by Watch search.
+/// The raw query text is not stored; `queryHash` is the SHA-256 hash of the
+/// normalized search text plus provider/model/dimension metadata.
+model QueryEmbeddingCache {
+  id         String   @id @default(cuid())
+  provider   String
+  model      String
+  dimensions Int
+  queryHash  String   @map("query_hash")
+  embedding  Json
+  expiresAt  DateTime @map("expires_at")
+  lastUsedAt DateTime @default(now()) @map("last_used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, model, dimensions, queryHash], map: "query_embedding_cache_key")
+  @@index([expiresAt])
+  @@index([lastUsedAt])
+  @@map("query_embedding_cache")
 }
 
 /// A localized display name for a language. Synced from Core.
@@ -1316,6 +1366,8 @@ model VideoDub {
   @@index([videoId])
   @@index([languageId])
   @@index([videoEditionId])
+  @@index([videoEditionId, deletedAt, videoId], map: "video_dub_edition_deleted_video_idx")
+  @@index([languageId, deletedAt, videoId], map: "video_dub_language_deleted_video_idx")
   @@index([muxVideoId])
   @@index([deletedAt])
   @@map("video_dub")
@@ -1343,6 +1395,26 @@ model WatchEvent {
   @@index([videoDubId])
   @@index([languageId])
   @@map("watch_event")
+}
+
+model WatchSearchEvent {
+  id         String   @id @default(cuid())
+  requestId  String   @map("request_id") @db.VarChar(80)
+  eventType  String   @map("event_type") @db.VarChar(64)
+  client     String   @db.VarChar(32)
+  resultId   String?  @map("result_id") @db.VarChar(128)
+  resultType String?  @map("result_type") @db.VarChar(32)
+  position   Int?
+  metadata   Json?    @map("metadata")
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([requestId, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([client, occurredAt])
+  @@index([expiresAt])
+  @@map("watch_search_event")
 }
 
 /// A downloadable quality tier (e.g. mp4 480p, 720p, 1080p) of a VideoDub.
@@ -1400,6 +1472,7 @@ model VideoSubtitle {
   @@index([videoEditionId])
   @@index([videoId])
   @@index([languageId])
+  @@index([languageId, deletedAt, videoEditionId], map: "video_subtitle_language_deleted_edition_idx")
   @@index([deletedAt])
   @@map("video_subtitle")
 }

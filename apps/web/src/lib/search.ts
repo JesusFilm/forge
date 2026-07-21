@@ -1,71 +1,32 @@
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
+
 import { semanticSearchAdminClient } from "@/lib/admin-client"
 import type { SearchLanguageResolution } from "./search-language"
 
-// Admin's `search(q, locale, type, limit, offset, mode, debug)` is the
-// hybrid (semantic + keyword) PUBLIC-tier search surface. Response shape
-// keeps `hasMore`, `query`, `searchMode`, and a `results[]` array. Each
-// `HybridSearchResult` carries the fields the web consumers already read
-// (`id`, `title`, `snippet`, `imageUrl`, `slug`, `type`, `playbackId`,
-// `startSeconds`, `score`) — admin's `type` is the upper-case
-// `EXPERIENCE | VIDEO` enum, normalised to the lower-case discriminator
-// the result-card components expect.
-//
-// DEPLOY ORDERING: this query selects `label`, `durationSeconds`, and
-// `childCount` from `HybridSearchResult`. Those fields land in admin's
-// resolver as part of the same branch as this query — but in a rolling
-// deploy admin must ship FIRST (receiver-first invariant). Web ahead of
-// admin yields `Cannot query field "label" on type "HybridSearchResult"`
-// for every search until admin catches up. Same pattern as the bearer-
-// keyring rotation documented at
-// docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md
-
-const WEB_SEARCH_MODE = "keyword-first"
-
-const searchVideosOperation = adminGraphql(`
-  query Search(
-    $q: String!
-    $locale: String!
-    $limit: Int
-    $offset: Int
-    $type: HybridSearchContentType
-    $mode: String
-  ) {
-    search(q: $q, locale: $locale, limit: $limit, offset: $offset, type: $type, mode: $mode) {
-      hasMore
-      query
-      searchMode
-      results {
-        id
-        slug
-        title
-        snippet
-        imageUrl
-        imageBlurDataUrl
-        muxThumbnailBlurDataUrl
-        playbackId
-        startSeconds
-        score
-        type
-        label
-        durationSeconds
-        childCount
-      }
-    }
-  }
-`)
-
 export type SearchContentType = "video" | "experience"
+export type SearchAvailabilityKind =
+  | "target_audio"
+  | "target_subtitle"
+  | "related_language"
+  | "unavailable"
 
-// Derived from the gql.tada introspection of the actual search operation
-// result. When admin adds a new VideoLabel value and the package
-// regenerates `admin-graphql-env.d.ts`, this union widens automatically
-// — no hand-mirrored string list to drift out of sync with the SDL.
-export type AdminVideoLabel = NonNullable<
-  NonNullable<
-    AdminResultOf<typeof searchVideosOperation>["search"]
-  >["results"][number]["label"]
->
+export type SearchLaneStatus = {
+  lane: string
+  status: string
+  elapsedMs: number
+  resultCount: number
+  reason: string | null
+}
+
+export type AdminVideoLabel =
+  | "BEHIND_THE_SCENES"
+  | "COLLECTION"
+  | "EPISODE"
+  | "FEATURE_FILM"
+  | "SEGMENT"
+  | "SERIES"
+  | "SHORT_FILM"
+  | "TRAILER"
 
 export type SearchResult = {
   type: SearchContentType
@@ -89,12 +50,20 @@ export type SearchResult = {
    *  experiences; 0 when a video has no children. Drives the
    *  "{n} episodes" pill on series / collection cards. */
   childCount: number | null
-  /** Source adapter that produced this row. Omitted on legacy semantic rows. */
-  source?: "semantic" | "algolia"
+  /** Search surface that produced this row. */
+  source?: "watch-search"
   /** Public Watch audio-language slug to prefer for result links. */
   languageSlug?: string | null
-  /** Algolia/Core English language label, when the result came from a language-aware index. */
+  /** English language label returned by Admin for the resolved result language. */
   languageEnglishName?: string | null
+  /** Admin-owned watchability classification for this result. */
+  availabilityKind?: SearchAvailabilityKind | null
+  /** Human-readable availability language label, e.g. Russian. */
+  availabilityLanguageEnglishName?: string | null
+  /** Safe evidence label, e.g. Title match. */
+  evidenceLabel?: string | null
+  /** Language slug for the evidence source, when Admin can identify it. */
+  evidenceLanguageSlug?: string | null
 }
 
 export type SearchError = {
@@ -110,9 +79,23 @@ export type SearchResponse = {
   searchMode: string
   latencyMs: number
   nextOffset?: number
+  requestId?: string | null
+  degraded?: boolean
+  laneStatuses?: SearchLaneStatus[]
 }
 
-export type SearchActionResultSource = "semantic" | "algolia"
+export type SearchVideosLanguageContext = {
+  clientRequestId?: string | null
+  targetLanguageSlug?: string | null
+  queryLanguageSlug?: string | null
+  queryNamedLanguageSlug?: string | null
+  displayLanguageSlug?: string | null
+  routeLanguageSlug?: string | null
+  currentWatchLanguageSlug?: string | null
+  acceptLanguage?: string | null
+}
+
+export type SearchActionResultSource = "watch-search"
 
 export type SearchActionResult =
   | (SearchResponse & {
@@ -133,29 +116,141 @@ export type SearchActionResult =
 
 const MAX_QUERY_LENGTH = 200
 
-// Admin's `HybridSearchContentType` is the SDL-side enum and is encoded
-// upper-case on the wire. The web consumer vocabulary is lower-case
-// ("video", "experience"); convert both directions at the boundary so
-// downstream React + URL handling never sees the upper-case form.
-function toAdminContentType(
+const watchSearchOperation = adminGraphql(`
+  query WatchSearch($input: WatchSearchInput!) {
+    watchSearch(input: $input) {
+      requestId
+      query
+      degraded
+      laneStatuses {
+        lane
+        status
+        elapsedMs
+        resultCount
+        reason
+      }
+      results {
+        type
+        id
+        slug
+        title
+        imageUrl
+        imageBlurDataUrl
+        muxThumbnailBlurDataUrl
+        snippet
+        playbackId
+        startSeconds
+        score
+        label
+        durationSeconds
+        childCount
+        languageSlug
+        languageEnglishName
+        availability {
+          kind
+          languageEnglishName
+        }
+        evidence {
+          label
+          languageSlug
+        }
+        action {
+          hrefLanguageSlug
+        }
+      }
+      hasMore
+      searchMode
+      latencyMs
+      nextOffset
+    }
+  }
+`)
+
+type WatchSearchResult = AdminResultOf<
+  typeof watchSearchOperation
+>["watchSearch"]
+
+type WatchSearchResultItem = NonNullable<
+  NonNullable<WatchSearchResult>["results"]
+>[number]
+
+function toWatchSearchResultType(
   type?: SearchContentType,
-): "VIDEO" | "EXPERIENCE" | undefined {
-  if (type === "video") return "VIDEO"
-  if (type === "experience") return "EXPERIENCE"
+): Array<"VIDEO" | "EXPERIENCE"> | undefined {
+  if (type === "video") return ["VIDEO"]
+  if (type === "experience") return ["EXPERIENCE"]
   return undefined
 }
 
-function normalizeResultType(raw: string): SearchContentType {
-  return raw === "EXPERIENCE" ? "experience" : "video"
+function mapWatchSearchResult(
+  result: WatchSearchResultItem,
+): SearchResult | null {
+  if (!result.type || !result.id || !result.slug || !result.title) {
+    return null
+  }
+
+  return {
+    type: result.type.toLowerCase() as SearchContentType,
+    id: result.id,
+    slug: result.slug,
+    title: result.title,
+    imageUrl: result.imageUrl,
+    imageBlurDataUrl: result.imageBlurDataUrl,
+    muxThumbnailBlurDataUrl: result.muxThumbnailBlurDataUrl,
+    snippet: htmlToPlainText(result.snippet),
+    startSeconds: result.startSeconds,
+    playbackId: result.playbackId,
+    score: result.score ?? 0,
+    label: result.label as AdminVideoLabel | null,
+    durationSeconds: result.durationSeconds,
+    childCount: result.childCount,
+    source: "watch-search",
+    languageSlug: result.action?.hrefLanguageSlug ?? result.languageSlug,
+    languageEnglishName: result.languageEnglishName,
+    availabilityKind: mapWatchSearchAvailabilityKind(result.availability?.kind),
+    availabilityLanguageEnglishName:
+      result.availability?.languageEnglishName ?? result.languageEnglishName,
+    evidenceLabel: result.evidence?.label ?? null,
+    evidenceLanguageSlug: result.evidence?.languageSlug ?? null,
+  }
 }
 
-// Admin returns `HybridSearchMode` as UPPER (`HYBRID` | `KEYWORD_ONLY`);
-// the watch-page banner consumer checks lower-case kebab (`hybrid` |
-// `keyword-only`). Normalize at the boundary so the embedding-down
-// advisory in SearchModeBanner.tsx fires correctly.
-function normalizeSearchMode(raw: string | null | undefined): string {
-  if (raw === "KEYWORD_ONLY") return "keyword-only"
-  return "hybrid"
+function htmlToPlainText(value: string | null | undefined): string {
+  if (!value) return ""
+  const normalized = value
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!normalized) return ""
+
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(normalized, "text/html")
+    return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim()
+  }
+
+  return normalized
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function mapWatchSearchAvailabilityKind(
+  kind:
+    | NonNullable<WatchSearchResultItem["availability"]>["kind"]
+    | null
+    | undefined,
+): SearchAvailabilityKind | null {
+  if (kind === "TARGET_AUDIO") return "target_audio"
+  if (kind === "TARGET_SUBTITLE") return "target_subtitle"
+  if (kind === "RELATED_LANGUAGE") return "related_language"
+  if (kind === "UNAVAILABLE") return "unavailable"
+  return null
 }
 
 export async function searchVideos(
@@ -164,84 +259,57 @@ export async function searchVideos(
   offset = 0,
   type?: SearchContentType,
   locale = "en",
+  languageContext: SearchVideosLanguageContext = {},
 ): Promise<SearchResponse> {
   const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
-
-  const startedAt = performance.now()
   const result = await semanticSearchAdminClient.query({
-    query: searchVideosOperation,
+    query: watchSearchOperation,
     variables: {
-      q: truncatedQuery,
-      locale,
-      limit,
-      offset,
-      type: toAdminContentType(type),
-      mode: WEB_SEARCH_MODE,
+      input: {
+        query: truncatedQuery,
+        clientRequestId: languageContext.clientRequestId,
+        targetLanguageSlug: languageContext.targetLanguageSlug,
+        queryLanguageSlug: languageContext.queryLanguageSlug,
+        queryNamedLanguageSlug: languageContext.queryNamedLanguageSlug,
+        displayLanguageSlug: languageContext.displayLanguageSlug ?? locale,
+        routeLanguageSlug: languageContext.routeLanguageSlug ?? locale,
+        currentWatchLanguageSlug: languageContext.currentWatchLanguageSlug,
+        acceptLanguage: languageContext.acceptLanguage,
+        limit,
+        offset,
+        resultTypes: toWatchSearchResultType(type),
+      },
     },
     fetchPolicy: "no-cache",
   })
-  const latencyMs = performance.now() - startedAt
 
   if (result.error) {
-    // Apollo's ErrorLike type is minimal but the runtime object may carry
-    // graphQLErrors with extensions from the server response.
-    const gqlErrors = (
-      result.error as unknown as {
-        graphQLErrors?: {
-          message: string
-          extensions?: Record<string, unknown>
-        }[]
-      }
-    ).graphQLErrors
-
-    if (gqlErrors?.length) {
-      const firstError = gqlErrors[0]
-      const code =
-        (firstError.extensions?.code as string) ?? "UNKNOWN_SEARCH_ERROR"
-      const message = firstError.message ?? "Search request failed"
-      const retryAfterSeconds = firstError.extensions?.retryAfterSeconds as
-        | number
-        | undefined
-
-      const searchError: SearchError = { code, message }
-      if (retryAfterSeconds != null) {
-        searchError.retryAfterSeconds = retryAfterSeconds
-      }
-      throw searchError
-    }
-
-    throw {
-      code: "NETWORK_ERROR",
-      message: result.error.message || "Search request failed",
-    } satisfies SearchError
+    throw new Error(result.error.message)
   }
 
-  const data = result.data?.search
-  const rawResults = data?.results ?? []
-  const results: SearchResult[] = rawResults.map((row) => ({
-    type: normalizeResultType(row.type),
-    id: row.id,
-    slug: row.slug,
-    title: row.title,
-    snippet: row.snippet,
-    imageUrl: row.imageUrl ?? null,
-    imageBlurDataUrl: row.imageBlurDataUrl ?? null,
-    muxThumbnailBlurDataUrl: row.muxThumbnailBlurDataUrl ?? null,
-    startSeconds: row.startSeconds ?? null,
-    playbackId: row.playbackId ?? null,
-    score: row.score,
-    label: row.label ?? null,
-    durationSeconds: row.durationSeconds ?? null,
-    childCount: row.childCount ?? null,
-    source: "semantic",
-  }))
+  const response = result.data?.watchSearch
+  if (!response) {
+    throw new Error("Watch search response was empty")
+  }
 
   return {
-    results,
-    hasMore: data?.hasMore ?? false,
-    query: data?.query ?? truncatedQuery,
-    searchMode: normalizeSearchMode(data?.searchMode),
-    latencyMs,
-    nextOffset: offset + results.length,
+    results: (response.results ?? []).flatMap((item) => {
+      const mapped = mapWatchSearchResult(item)
+      return mapped ? [mapped] : []
+    }),
+    hasMore: response.hasMore ?? false,
+    query: response.query ?? truncatedQuery,
+    searchMode: response.searchMode ?? "watch-search",
+    latencyMs: response.latencyMs ?? 0,
+    nextOffset: response.nextOffset ?? offset,
+    requestId: response.requestId ?? null,
+    degraded: response.degraded ?? false,
+    laneStatuses: (response.laneStatuses ?? []).map((status) => ({
+      lane: status.lane ?? "unknown",
+      status: status.status ?? "unknown",
+      elapsedMs: status.elapsedMs ?? 0,
+      resultCount: status.resultCount ?? 0,
+      reason: status.reason ?? null,
+    })),
   }
 }

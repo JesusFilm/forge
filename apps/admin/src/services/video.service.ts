@@ -2724,6 +2724,55 @@ export class VideoService {
       bcp47: dub.language?.bcp47 ?? null,
     }))
   }
+
+  /**
+   * One downloadable Dub per visible direct child in the requested language.
+   * The child filter mirrors getChildDubLanguages, but this intent-time query
+   * is bounded by child video id instead of language id so collection download
+   * callers receive at most one Dub (plus its selected GraphQL fields) per
+   * displayed episode.
+   */
+  async getDownloadableChildDubs({
+    videoId,
+    languageSlug,
+    user,
+    query,
+  }: {
+    videoId: string
+    languageSlug: string
+    user: Principal | null
+    query: object
+  }): Promise<VideoDub[]> {
+    const childVisibility: Prisma.VideoWhereInput = isEditorOrAdmin(user)
+      ? { deletedAt: null }
+      : {
+          deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        }
+
+    return this.prisma.videoDub.findMany({
+      ...query,
+      where: {
+        deletedAt: null,
+        published: true,
+        downloadable: true,
+        language: { slug: languageSlug, deletedAt: null },
+        downloads: {
+          some: {
+            deletedAt: null,
+            quality: { not: null },
+            url: { not: null },
+          },
+        },
+        video: {
+          ...childVisibility,
+          parents: { some: { parentId: videoId } },
+        },
+      },
+      distinct: ["videoId"],
+      orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
+    })
+  }
 }
 
 type WatchLanguageInventoryBucket =

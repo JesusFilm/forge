@@ -1,5 +1,7 @@
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { ctaSectionFragment } from "@/lib/fragments/cta-section"
+import { BETA_TESTER_URL } from "@/lib/beta-tester"
+import { BetaTesterTrigger } from "@/components/watch/BetaTesterModalProvider"
 
 export { ctaSectionFragment }
 
@@ -43,7 +45,11 @@ export function CTASection({ data }: CTASectionProps) {
       <div className={innerClass}>
         <h2 className="mb-4 text-3xl font-semibold">{heading}</h2>
         <p className={bodyClass}>{body}</p>
-        {buttonLink && (
+        {buttonLink === BETA_TESTER_URL ? (
+          <BetaTesterTrigger className={buttonClass}>
+            {buttonLabel}
+          </BetaTesterTrigger>
+        ) : buttonLink ? (
           <a
             href={buttonLink}
             rel="noopener noreferrer"
@@ -51,7 +57,7 @@ export function CTASection({ data }: CTASectionProps) {
           >
             {buttonLabel}
           </a>
-        )}
+        ) : null}
       </div>
     </section>
   )

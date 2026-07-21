@@ -11,18 +11,13 @@ import {
   env,
   getAuthBaseUrl,
   getAuthTrustedOrigins,
+  getAuthValidAudiences,
 } from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const validAudiences = [
-  getAuthBaseUrl(),
-  ...(env.AUTH_VALID_AUDIENCES ?? "")
-    .split(",")
-    .map((audience) => audience.trim())
-    .filter((audience) => audience.length > 0),
-]
+const validAudiences = getAuthValidAudiences()
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =
@@ -120,6 +115,11 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/login",
       consentPage: "/oauth/consent",
+      // MCP clients such as Codex discover and register OAuth clients at
+      // runtime. Keep these enabled so /mcp can be authenticated without an
+      // out-of-band OAuth client bootstrap.
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
       scopes: AUTH_SCOPES.map((scope) => scope.key),
       validAudiences,
       advertisedMetadata: {

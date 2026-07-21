@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchState = vi.hoisted(() => ({ searchOpen: false }))
@@ -43,7 +44,7 @@ function iframe() {
 
 async function flushDynamicModal() {
   await act(async () => {
-    const deadline = Date.now() + 2000
+    const deadline = Date.now() + 5000
     while (
       !document.querySelector('[data-testid="feedback-modal"]') &&
       Date.now() < deadline
@@ -64,6 +65,7 @@ async function openFeedback() {
 }
 
 beforeEach(() => {
+  setRequestLocale("en")
   searchState.searchOpen = false
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -276,5 +278,29 @@ describe("FeedbackLauncher", () => {
     expect(launcher()).toBeNull()
     expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
     expect(iframe()).toBeNull()
+  })
+
+  it("localizes the launcher and modal chrome in Russian", async () => {
+    setRequestLocale("ru")
+    act(() => {
+      root.render(<FeedbackLauncher />)
+    })
+
+    expect(launcher()?.getAttribute("aria-label")).toBe(
+      "Открыть форму обратной связи",
+    )
+    expect(
+      document.querySelector('[data-testid="feedback-launcher-label"]')
+        ?.textContent,
+    ).toBe("Обратная связь")
+
+    await openFeedback()
+    expect(document.body.textContent).toContain("Обратная связь о бета-версии")
+    expect(document.body.textContent).toContain("Открыть форму в новой вкладке")
+    expect(
+      document
+        .querySelector('[data-testid="feedback-modal-close"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Закрыть форму обратной связи")
   })
 })

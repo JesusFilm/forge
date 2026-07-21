@@ -125,8 +125,7 @@ function SignInLink({ styles }: { styles: CollapsedStyles }) {
       title="Sign in"
       className={cn(
         "flex w-full items-center gap-2.5 rounded-[10px] border border-linen/10 px-3.5 py-2.5 text-sm font-medium text-linen transition-colors duration-300 hover:border-linen/20 hover:bg-linen/[0.04]",
-        styles.account &&
-          "md:w-10 md:justify-center md:gap-0 md:border-transparent md:p-0 md:py-2.5",
+        styles.signIn,
       )}
     >
       <SignInIcon className="size-[18px] shrink-0 text-vesper" />

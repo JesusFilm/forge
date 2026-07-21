@@ -88,14 +88,12 @@ function makeChild(overrides: Record<string, unknown> = {}) {
         imageAlt: "Episode One still",
       },
     ],
-    variants: [
-      makeVariant({
-        documentId: "child-variant-1",
-        hls: "https://stream.example/episode-one.m3u8",
-        duration: 87,
-        muxVideo: { playbackId: "mux-episode-one" },
-      }),
-    ],
+    preferredVariant: makeVariant({
+      documentId: "child-variant-1",
+      hls: "https://stream.example/episode-one.m3u8",
+      duration: 87,
+      muxVideo: { playbackId: "mux-episode-one" },
+    }),
     ...overrides,
   }
 }
@@ -123,7 +121,7 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
         imageAlt: "Jesus still",
       },
     ],
-    variants: [makeVariant()],
+    preferredVariant: makeVariant(),
     children: [],
     ...overrides,
   }
@@ -474,7 +472,9 @@ describe("buildWatchHomeModelFromVideos", () => {
       videos: [
         makeVideo({
           images: [],
-          variants: [makeVariant({ muxVideo: { playbackId: "mux-fallback" } })],
+          preferredVariant: makeVariant({
+            muxVideo: { playbackId: "mux-fallback" },
+          }),
         }),
       ] as never,
     })
@@ -526,17 +526,15 @@ describe("resolveWatchHome", () => {
       data: {
         watchHomeVideos: [
           makeVideo({
-            variants: [
-              makeVariant({
+            preferredVariant: makeVariant({
+              slug: "spanish-latin-american",
+              language: {
+                coreId: "21028",
+                bcp47: "es-419",
                 slug: "spanish-latin-american",
-                language: {
-                  coreId: "21028",
-                  bcp47: "es-419",
-                  slug: "spanish-latin-american",
-                  name: { en: "Spanish, Latin American" },
-                },
-              }),
-            ],
+                name: { en: "Spanish, Latin American" },
+              },
+            }),
           }),
         ],
       },

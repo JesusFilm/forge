@@ -118,6 +118,20 @@ export function deriveTitle(text: string): string {
 }
 
 /**
+ * Backfill an untitled (blank) title from a first user turn's text
+ * (feat-270): the ONE implementation of "client snippet beats the date
+ * fallback" — a non-empty title (client snippet or server LLM) always wins.
+ */
+export function titleFromFirstUser(
+  currentTitle: string,
+  firstUserContent: string | undefined,
+): string {
+  return currentTitle.trim().length === 0 && firstUserContent
+    ? deriveTitle(firstUserContent)
+    : currentTitle
+}
+
+/**
  * Deterministic label for an untitled server thread (R11/AE6): derived from
  * its last-activity date in the user's timezone, e.g. "Conversation — Jul 10",
  * so pre-existing, generation-pending, and generation-failed threads stay

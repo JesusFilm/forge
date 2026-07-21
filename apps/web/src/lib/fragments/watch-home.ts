@@ -30,7 +30,7 @@ export const watchHomeVideoFragment = adminGraphql(`
       snippet
       imageAlt
     }
-    variants: dubs {
+    preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
       documentId: id
       slug
       published
@@ -80,6 +80,32 @@ export const watchHomeVideoFragment = adminGraphql(`
           description
           snippet
           imageAlt
+        }
+        preferredVariant: preferredPlayableDub(languageSlug: $languageSlug) {
+          documentId: id
+          slug
+          published
+          hls
+          duration
+          language {
+            coreId
+            bcp47
+            slug
+            name
+          }
+          muxVideo {
+            playbackId
+          }
+          videoEdition {
+            subtitles {
+              vttSrc
+              primary
+              language {
+                bcp47
+                slug
+              }
+            }
+          }
         }
       }
     }

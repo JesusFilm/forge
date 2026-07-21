@@ -7,7 +7,9 @@
     "noContent": "Аҭаҩрақәа ҳәа акгьы ыҟам.",
     "homepageMisconfigured": "Аԥхьыӡтә хатәқәа ԥсахтәуп.",
     "defaultTemplateMisconfigured": "Иҭаҩу авидео ахатә ҭаҩратә шаблон ԥсахтәуп.",
-    "authFailed": "Аҭаҩратә сервис аҟны аиқәшаҳаҭра ашьақәыргылара ауӡом. Уи аҽаҵуеит иҟалаӡом ҳәа иҟоу, ацхыраара шәацәажәа."
+    "authFailed": "Аҭаҩратә сервис аҟны аиқәшаҳаҭра ашьақәыргылара ауӡом. Уи аҽаҵуеит иҟалаӡом ҳәа иҟоу, ацхыраара шәацәажәа.",
+    "pageLoadFailed": "Акала агха ҟалеит.",
+    "tryAgain": "Еиҭашәаа"
   },
   "VideosPage": {
     "title": "Авидеонқәа зегьы",
@@ -22,7 +24,8 @@
     "promoHeading": "Абиблиа еиҳаӡа иазааҭгыланы еилышәҳәар шәҭахыума?",
     "joinBibleStudy": "Ҳабиблиа ԥҟара иҽалаҳхә",
     "previousQuote": "Аԥхьатәи абиблиатәи цитата",
-    "nextQuote": "Анашьҭатәи абиблиатәи цитата"
+    "nextQuote": "Анашьҭатәи абиблиатәи цитата",
+    "readPassage": "Ари ацыԥҵәаха шә-Библиаҿы иԥхьашәа."
   },
   "DownloadButton": {
     "checking": "Агәаҭара",
@@ -73,7 +76,8 @@
     "selectLanguage": "Абызшәа алшәх",
     "searchPlaceholder": "Абызшәақәа рыԥшаара…",
     "languages": "Абызшәақәа",
-    "noMatches": "Аиԥшра ыҟаӡам"
+    "noMatches": "Аиԥшра ыҟаӡам",
+    "notAvailable": "Иҟалом"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Абызшәа",
@@ -112,7 +116,8 @@
     "questions": "Иаҵанакуа аҵаҳәарақәа",
     "askYours": "Шәазҵаа",
     "chatWithPerson": "Ауаҩ иԥшаара",
-    "askBibleQuestion": "Абиблиа иазҵаа"
+    "askBibleQuestion": "Абиблиа иазҵаа",
+    "quiz": "Ақиқатҽеи"
   },
   "WatchQuestionPanel": {
     "messageType": "Ажәабжь атипы",
@@ -170,7 +175,8 @@
     "searchRegion": "Авидеонқәа рыԥшаара",
     "clearSearch": "Аԥшаара арнагӡара",
     "changeAudioLanguage": "Аудио бызшәa аԥсахра",
-    "home": "JesusFilm ахатә хы"
+    "home": "JesusFilm ахатә хы",
+    "closeSearch": "Аԥшаара аԥкра"
   },
   "SearchOverlay": {
     "dialogLabel": "Авидеонқәа рыԥшаара нас рылаԥшҵара",
@@ -205,14 +211,19 @@
     "clearLanguages": "Аӡбра",
     "queryLanguageDetected": "{language} аарԥшуп",
     "searchInLanguage": "{language} бызшәала аԥшаара",
-    "tryDifferentKeywordsOrLanguage": "Егьырҭ ажәартә ажәақәа ма даҽа ԥшааратә бызшәак шәалырха"
+    "tryDifferentKeywordsOrLanguage": "Егьырҭ ажәартә ажәақәа ма даҽа ԥшааратә бызшәак шәалырха",
+    "useWebsiteDefaultLanguage": "Асаит аизышьҭра бызшәала аԥшаара",
+    "removeLanguage": "{language} арыхра",
+    "browseMode": "Аԥшаара-броуз режим"
   },
   "HeroPlayer": {
     "playWithSound": "Уажәы азыԥхьақәа",
-    "tapToUnmute": "Ашәаҳәара ацҵара азы акәша ишьаҭатәуп"
+    "tapToUnmute": "Ашәаҳәара ацҵара азы акәша ишьаҭатәуп",
+    "nextEpisode": "Анашьҭатәи аепизод"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Аҭаҩрақәа ааҭгылара"
+    "loadingContent": "Аҭаҩрақәа ааҭгылара",
+    "loadingVideo": "Авидео аҭаҩра"
   },
   "VideoLabels": {
     "video": "Авидео",
@@ -223,7 +234,8 @@
     "series": "Асерии",
     "collection": "Аколлекциа",
     "trailer": "Атрейлер",
-    "behindTheScenes": "Аҟәшәақәа аҩнуҵҟа"
+    "behindTheScenes": "Аҟәшәақәа аҩнуҵҟа",
+    "chapter": "Ахәҭа"
   },
   "SiblingCarousel": {
     "clipPosition": "{current} / {total} аclip",
@@ -235,11 +247,286 @@
     "noImage": "Афото ыҟаӡам",
     "playingNow": "Уажәы иҳәаҩуп",
     "previousChapter": "Аԥхьатәи ахәҭа",
-    "nextChapter": "Анашьҭатәи ахәҭа"
+    "nextChapter": "Анашьҭатәи ахәҭа",
+    "thumbnailAlt": "{title} ҭумбнейл",
+    "relatedVideoThumbnail": "Анашьҭаԥшратә авидео ҭумбнейл"
   },
   "SearchResultCard": {
     "experience": "Аԥеиԥш",
     "episodeCount": "{count, plural, one {# аепизод} other {# аепизодқәа}}",
     "thumbnailAlt": "Авидео ҭумбнейл"
+  },
+  "Feedback": {
+    "openForm": "Агәҭахәыцрақәа рформа аарт",
+    "label": "Агәҭахәыцрақәа",
+    "couldNotLoad": "Агәҭахәыцрақәа рформа аартра ауамызт.",
+    "loadingForm": "Агәҭахәыцрақәа рформа аҭаҩра...",
+    "retry": "Еиҭашәаа",
+    "openFormShort": "Аформа аарт",
+    "cancel": "Аҟәымҵра",
+    "title": "Beta агәҭахәыцрақәа",
+    "description": "Иҿыцуи, еиӷьны иԥшуи аилкааратәы, иҟаҵатәу арҵәыжәа. Ари аформа Google иатәуп.",
+    "openInNewTab": "Аформа ҿыц ашкы аҿы аарт",
+    "closeForm": "Агәҭахәыцрақәа рформа аԥкра",
+    "loadingGoogleForm": "Google форма аҭаҩра...",
+    "iframeTitle": "Beta агәҭахәыцрақәа рышьҭаҵара"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} бызшәала акы ақыдраҿ иҟоу христиан видеоқәа | Jesus Film Project",
+    "metadataDescription": "{language} бызшәала иазгәаҭоу аудио ма аҭаҩрақәа змоу Jesus films, Абиблиа аҭоурыхқәа, аҵаҩцәа рышьҭаҵара асериақәа, насгьы аимадаратә видеоқәа гәашәҵа.",
+    "heroTitle": "{language} бызшәала акы ақыдраҿ иҟоу христиан видеоқәа",
+    "heroDescription": "{language} бызшәала иҟоу Jesus films, Абиблиа аҭоурыхқәа, аҵаҩцәа рышьҭаҵара асериақәа, насгьы аимадаратә видеоқәа гәашәҵа. Ифули дублажу авидеонқәа раԥхьа иарбоуп, аҭаҩрақәа змоуқәа ҩныҵҟала.",
+    "languageCollection": "Абызшәақәа рколлекциа",
+    "itemCount": "{count, plural, one {# объект} other {# объектқәа}}",
+    "videoCount": "{count, plural, one {# авидео} other {# авидеоқәа}}",
+    "videosInGroups": "{videoCount, plural, one {# авидео} other {# авидеоқәа}} {groupCount, plural, one {# агәыԥ} other {# агәыԥқәа}} рҟны",
+    "sectionNavLabel": "Абызшәақәа ркаталог ахәҭақәа",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Иҿыу",
+    "videoBible": "Видео-Библиа",
+    "bibleProject": "BibleProject",
+    "sports": "Аспорт",
+    "collections": "Аколлекциақәа",
+    "subtitlesOnly": "Аҭарқәа мацара",
+    "newlyAdded": "Иацаҵоу",
+    "newVideosTitle": "{language} бызшәала иҿыу христиан видеоқәа",
+    "newestFirst": "Иҿыуқәа раԥхьа",
+    "noPublishedVideos": "Ари абызшәа азы иҭыҵыз авидеонқәа аҟәшәам.",
+    "bibleAndGospelFilms": "Абиблиатәи нас Евангелиатәи афильмқәа",
+    "videoBibleCollectionsTitle": "{language} Video Bible аколлекциақәа",
+    "videoBibleDescription": "Ажәабжьтә хыҵхырҭақәа ала ишьақәгылоу аколлекциақәа, урҭ рахь иалоуп LUMO, JESUS, Magdalena, насгьы Acts {language} бызшәала.",
+    "noVideoBibleCollections": "Ари абызшәа азы Video Bible аколлекциақәа ыҟаӡам.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject аколлекциақәа",
+    "bibleProjectDescription": "{language} бызшәала иҟоу BibleProject асериақәа нас аҭҵаарақәа.",
+    "noBibleProjectCollections": "Ари абызшәа азы BibleProject аколлекциақәа ыҟаӡам.",
+    "sportsStories": "Аспорттә аҭоурыхқәа",
+    "sportsTitle": "{language} бызшәала аспорт нас аиԥырҟаратә аҭоурыхқәа",
+    "sportsDescription": "{language} бызшәала иҟоу агәрахаҵаратә аспорттә аҭоурыхқәа нас аспортсменцәа ирызку аколлекциақәа.",
+    "noSportsCollections": "Ари абызшәа азы аспорт ма аспортсмен рҭоурыхқәа змоу аколлекциақәа ыҟаӡам.",
+    "fullyDubbed": "Еизавы дублажу",
+    "dubbedVideosTitle": "{language} бызшәала иҟоу авидеонқәа аколлекциақәа рыла",
+    "dubbedVideosDescription": "Ифули дублажу {language} авидеонқәа рколлекциақәа рыла шәахәаԥш, еиҳа ирласны рыԥшааразы.",
+    "noDubbedVideos": "Ари абызшәа азы еиза дублажу авидеонқәа ыҟаӡам.",
+    "subtitlesAvailable": "Аҭарқәа ыҟоуп",
+    "subtitlesTitle": "{language} бызшәала аҭаҩрақәа змоу авидеонқәа",
+    "subtitlesDescription": "Ари авидеонқәа рҿы {language} аҭаҩрақәа ыҟоуп, {language} аудио уажәшьҭа иҟамзар.",
+    "noSubtitleVideos": "Ари абызшәа азы аҭаҩрақәа мацара змоу авидеонқәа ыҟаӡам.",
+    "dubbed": "Дублажу",
+    "subtitles": "Аҭарқәа",
+    "newLabel": "Иҿыу",
+    "fromCollection": "{collection} аҟынтәи",
+    "standaloneVideos": "Иаужьҭым авидеонқәа",
+    "videosFromCollection": "{collection} аҟынтәи авидеонқәа.",
+    "standaloneDescription": "Ари абызшәаҿы иаужьҭым авидеонқәа.",
+    "openCollection": "Аколлекциа аарт"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — Ахәаҧшра",
+    "watch": "Аԥшра",
+    "watchNow": "Уажәы аԥшра",
+    "mutePreview": "Аԥхьатәи аԥшраҿы ашәаҳәара аҿыхра",
+    "unmutePreview": "Аԥхьатәи аԥшраҿы ашәаҳәара ацҵара",
+    "nextVideo": "Анашьҭатәи авидео",
+    "featured": "Игәаҭоу",
+    "showVideo": "{title} аарԥш",
+    "previousVideoPreview": "Аԥхьатәи авидео аԥшра",
+    "nextVideoPreview": "Анашьҭатәи авидео аԥшра",
+    "mediaCollection": "Медиа коллекциа",
+    "scrollToVideo": "{title} авидео ахь аиасра"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ахатә хы",
+    "navigation": "Афутер аԥхьарақәа",
+    "share": "Иҿашәырҵ",
+    "watch": "Аԥшра",
+    "giving": "Аҳамҭа аҭара",
+    "about": "Азкны",
+    "products": "Аҭыҧқәа",
+    "resources": "Аресурсқәа",
+    "partners": "Ахаҭәацәа",
+    "contact": "Аимадара",
+    "giveNow": "Уажәы аҳамҭа шәҭ",
+    "resourcesVersion": "Аресурсқәа ({version})",
+    "office": "Аофис",
+    "fax": "Факс",
+    "privacyPolicy": "Ашәарҭадара ԥҟара",
+    "legalStatement": "Ашәағаҭараз аҳәамҭа",
+    "newsletter": "Ҳа-newsletter аҭаларатәы шәаркә"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Адунеизы аԥшьгарақәа рзы иҟаҵоуп",
+    "title": "Ажәаԥсахӡом. Ауаа ахәаԥшышьа ауп аԥсахуа.",
+    "description": "Ҳара ҳавидеотека нас ҳусԥҟа ҿыц иҳаҿәуеит, аӡәырҩы иҭаԥсоу аҭаҩратә усқәа урҭ аҭыԥқәа рахь иҳазырбо, ауаа ахьеиқәшәо, ахәаԥшуа, нас иҿырҵауа.",
+    "translatedLibraryTitle": "Адунеи аҿы еиҳа иҭаԥсоу афильмқәа ртекеабиль",
+    "translatedLibraryDescription": "Иқәҿиоу аҭыжьратә партнерцәа рӡыбзиала, аԥхынра шықәсқәа ирылагӡаны иҟаҵоу аҭаҩратә усқәа, аҟыҩцәа караҭа зышьҭра зхыԥхьаӡара зыбзазаауеи абызшәа трекқәа рацәаны ирызго, ауаа Иисус аҭоурых адгьыл иахьинҭаауа абызшәаҿы иабааҭәуп.",
+    "trustedVoicesTitle": "Ишәахьоу ажәақәа ҿыц форматқәа рахь агара",
+    "trustedVoicesDescription": "Ҳара игәбылра змоу аевангелие ажәабжьқәа визуалтә ԥышәаҿы ҿыц ҳҟаҳҵоит, иҵаӷәоу аҭаҩрақәа иахьатәи форматқәа рымацара иҳаҷуп, ажәабжь платформақәа, культурқәа, нас аекранқәа рыла аԥхарра иҿыхны идәықәылааит.",
+    "missionTeamTitle": "Акаталог аҟамҵакәа. Аԥшьгаратә команда.",
+    "missionTeamDescription": "Jesus Film Project адунеи аҿы иҟоу аҭаҩҩцәа, медиа-специалистцәа, редакторцәа, нас аԥҵаҩцәа ркоманда ауп, иареи аминистрра аус аҿынтә иаԥҵоу аԥышәа дискiple-makerцәа зегьы рзы ахархәаратә усқәа рахь еиҭазго.",
+    "buildingNext": "Ҳара иаҳдыргыло анашьҭатәи",
+    "nextStepsTitle": "Анашьҭатәи ашьаҿақәа рплатформа",
+    "nextStepsDescription": "Ахәаԥшцәа ршәыжәпаны рдуховна ҭахрақәа ирылацәажәо алшарақәеи аԥшьгарақәеи рахь ибжьоуп, урҭ амилаҭ, Аҩныҵҟатәи Ажәа, ма аԥшьгараҿы анашьҭатәи ашьаҿа ҟарҵаразы.",
+    "mediaLibraryTitle": "Евангелизациатә медиа библиотека",
+    "mediaLibraryDescription": "Христиан медиа рбиблиотека ду, иалоу авидеонқәа, афильмқәа, нас агадырқәа, абызшәақәа рацәаны, адунеи зегьы аҿы аԥшьгаратәы нас евангелизациа азы.",
+    "ministryToolsTitle": "Аминистррақәа рзы диджитал ахархәагақәа",
+    "ministryToolsDescription": "Авидео анапхгара, аҭаҩрақәа рдистрибуциа, ахәаԥшцәа рыҽлархәра, нас аналитика, аминистррақәа еиҳа ауаа ргаразы иҟаҵоу.",
+    "invitationEyebrow": "Шәара шәарҭуп",
+    "invitationTitle": "<highlight>Анашьҭатәи аиқәыршәара</highlight> ахарҳәагақәа рыҩаӡараҿы еибыҭатәуп",
+    "invitationDescription": "Ҳара раԥхьаӡа акәны аԥсахрақәа зԥырхагахауа аусуҩцәа, аԥҵаҩцәа, нас партниорцәа ааԥхьара ҳҭоит. Иҿыу ахархәагақәа раԥхьа шәҽазышәшәа, агәҭахәыцрақәа шәырҭ, нас шәара мisionтәи усқәа рзы иҟаҵоу аиқәыршәарақәа ҟаҵа.",
+    "betaTester": "Beta ҭҵаҩы шәҟала"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео-Библиа аколлекциа",
+    "gospelRailTitle": "Ахҭыс зегьы ԥшаа",
+    "videoBibleDescription": "Ҳавидеонқәеи ресурсқәеи рколлекциа гәашәҵа, урҭ Абиблиа ԥышәақәа нас аҵарақәа рыла иҿычоуп.",
+    "showcaseTitle": "Ажәабжь афильм ала иҳәоуп",
+    "adventEyebrow": "Ахәылԥазтәи Advent",
+    "adventTitle": "Ахәылԥазтәи Advent аҟынтә ахәаҿыԥшра",
+    "adventDescription": "Ҳ Advent ԥҟараҟны шәҽалахә, Қьырсааны еиԥшу агәыԥ ахәыҷы аԥсҭазаара, ашәахәа, нас Иисус иарҿиарала аҵыхәтәантәи хәыҷы агәыӷра шьҭымхра заҵәык амоуп.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject: Адвент",
+    "nuaEyebrow": "NUA асериа",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth асериа",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Авидео курс",
+    "journeyWithJesusTitle": "Иисус иҿы ԥҟара",
+    "gospelsOnVideoEyebrow": "Евангелие зегьы, авидеоҿы иҳәатәуп",
+    "scriptureAsWrittenTitle": "Ажәабжь, иарбаз еиԥшҵәҟьа иҳәоуп",
+    "merryChristmas": "Қьырса ныҳәа шәадзыҳәалаз!",
+    "daysUntilChristmas": "{count, plural, one {Қьырса ныҳәахьы # мшы нхеит} other {Қьырса ныҳәахьы # мшы нхеит}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Абызшәақәа",
+    "metadataDescription": "JesusFilm авидеонқәа абызшәа рыла шәҭҵаа.",
+    "eyebrow": "Ахәаԥшратә бызшәақәа",
+    "title": "Абызшәа алшәх",
+    "description": "Арегионқәа рыла абызшәақәа ҭышәҵаа ма зегьы рыхьӡ ԥхьашәҵа.",
+    "searchPlaceholder": "Абызшәақәеи атәылақәеи рышьҭра...",
+    "searchLabel": "Абызшәақәеи атәылақәеи рыԥшаара",
+    "clearSearch": "Аԥшаара арнагӡара",
+    "browse": "Аҭҵаара",
+    "browseByRegion": "Арегионқәеи атәылақәеи рыла иҭҵаа",
+    "languageCount": "{count, plural, one {# бызшәа} other {# бызшәақәа}}",
+    "region": "Арегион",
+    "countryLanguages": "{country} абызшәақәа",
+    "showLess": "Хәыҷны аарԥш",
+    "showMore": "Еиҭа {count} аарԥш",
+    "noLanguages": "Абызшәақәа ԥшааӡам",
+    "tryAnotherSearch": "Даҽа аԥшааратә ажәа шәхы иаҳархәо."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ахьӡара аҭоурых | Jesus Film Project",
+    "title": "Ахьӡара аҭоурых",
+    "loading": "Аҭоурых аҭаҩра",
+    "empty": "Уажәазы уаҵәтәи акгьы ыҟаӡам",
+    "emptyDescription": "Шәара иҭәзаргьы азхәыцрақәа аԥхьара ахәҭаҟны аҭагалара ҟалоит.",
+    "earlier": "Аԥхьаҟа",
+    "today": "Уажәазы",
+    "yesterday": "Иахьа ҟалаанӡа"
+  },
+  "AccountControl": {
+    "account": "Акаунт",
+    "accountMenu": "Акаунт меню",
+    "signIn": "Аҭалара",
+    "signOut": "Аҭыҵра",
+    "signedIn": "Иҭалахьеит",
+    "history": "Аҭоурых",
+    "logOut": "Аккаунт аҟынтәи аҭыҵра"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Адаҟьақәа ԥшааӡам",
+    "eyebrow": "Адаҟьақәа ԥшааӡам",
+    "screenReaderPrefix": "Адаҟьақәа ԥшааӡам:",
+    "title": "Ари асиена уаҟа иҟаӡам.",
+    "description": "Адаҟьа ииасзар ауеит, аха аҭоурых аҿынтә мшы иԥсыӡӡом.",
+    "actionsLabel": "Адаҟьақәа ԥшааӡам алагаларақәа",
+    "backToWatch": "Аԥшрахь ахынҳәра",
+    "browseVideos": "Авидеонқәа ҭышәҵаа"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Аҟәыҷьам афильм ахәаԥшра",
+    "actions": {
+      "joinUs": "Ҳара ҳзымҵашә",
+      "shareMission": "Ҳара ҳмиссиаҿы шәҽалацәшәыр"
+    },
+    "welcomeStart": {
+      "label": "Ақьырсианҵара & Аҩыра",
+      "title": "Иахьа иалху авидеонқәа",
+      "description": "Ҳбиблиотека аҟынтәи агәрахаҵаратә видеоҭыхымҭақәа — игәыӷрагьо, игәыҟаҵогьы, насгьы азхәыцра ҟазҵо."
+    },
+    "welcomeMorning": {
+      "label": "Ашьыжьтәи агәынкылара",
+      "title": "Уа бзиара! Иахьа иҟоу абиблиатәи аамҭақәа шәзыԥшуп.",
+      "description": "Шәҽазыҟашәҵа иахьатәи шәаамҭа агәырӷьара ҿыц ҭазааит ҳәа абиблиатәи аурокқәа рыла."
+    },
+    "welcomeAfternoon": {
+      "label": "Агәыбжьантәи агәынкылара",
+      "title": "Уа бзиара! Иахьа рзы абиблиатәи аамҭақәа.",
+      "description": "Агәыӷра шьҭыхтәу абиблиатәи видеоҭыхымҭақәа — аԥхынра шәаамҭаҟны ма агәылԥхара иацҵаразы."
+    },
+    "welcomeEvening": {
+      "label": "Ахәылԥазтәи агәынкылара",
+      "title": "Уа бзиара! Абиблиатәи аамҭақәа рыла шәаамҭа ҭынчашәырга.",
+      "description": "Аҭынч абиблиатәи аамҭақәа — шәаамҭа ахыркәшараҿы азхәыцра, аманшәалара, агәҭынчра рзы."
+    },
+    "joinUs": {
+      "label": "Ҳара ҳзымҵашә",
+      "title": "Миллиардла ауаа иԥшаауеит",
+      "description": "Аҳәа ԥыхьӡуп. Цифратә медиа ала адунеи ахь евангелиа ҳаԥшәаразы ҳзымҵашә."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ҳара ҳзамала",
+      "title": "Иисус иусқәа ҳалацәажәо, еицуп",
+      "description": "Убас имҳауеит, насгьы иахьеи иахьеи иҟаҵоу аҭыԥ аҟны, рхы бызшәала Иисус игәыбылра рыхәҭаҩрақәеи рҟыҩи рбарц."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Аиқәшәара — {percent}%",
+    "none": "Ари абызшәала ари авидео азы абжьгарақәа ԥшааӡам."
+  },
+  "BetaTesterModal": {
+    "title": "Beta ҭҵаҩы шәҟала",
+    "trigger": "Beta ҭҵаҩы шәҟала",
+    "loadFailed": "Акала агха ҟалеит.",
+    "loading": "Аҭаҩра...",
+    "openFormNewTab": "Аформа ҿыц ашкы аҿы аарт",
+    "close": "Аркра",
+    "iframeTitle": "Beta ҭҵаҩы шәҟала"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

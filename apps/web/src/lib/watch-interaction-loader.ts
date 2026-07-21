@@ -1,13 +1,20 @@
 "use client"
 
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
+import type { GlobalLanguageOption } from "@/lib/watch-language-switcher"
 
-export type WatchInteractionKey = "language" | "search" | "share" | "download"
+export type WatchInteractionKey =
+  | "global-language"
+  | "language"
+  | "search"
+  | "share"
+  | "download"
 
 type InteractionLoader = () => Promise<unknown>
 type LanguageOptionsLoader = (input: {
   videoSlug: string
 }) => Promise<LanguagePickerVariant[]>
+type GlobalLanguageOptionsLoader = () => Promise<GlobalLanguageOption[]>
 
 type StoredLanguageOptionsPayload = {
   version: 1
@@ -28,6 +35,8 @@ const defaultInteractionLoaders: Record<
   WatchInteractionKey,
   InteractionLoader
 > = {
+  "global-language": () =>
+    import("@/components/watch/GlobalLanguagePickerModal"),
   language: () => import("@/components/watch/LanguagePickerModal"),
   search: () => import("@/components/FloatingSearchController"),
   share: () => import("@/components/watch/ShareModal"),
@@ -42,6 +51,10 @@ let languageOptionsLoader: LanguageOptionsLoader = async ({ videoSlug }) => {
   const languageActions = await import("@/lib/watch-language-actions")
   return languageActions.loadWatchLanguageOptions({ videoSlug })
 }
+let globalLanguageOptionsLoader: GlobalLanguageOptionsLoader = async () => {
+  const languageActions = await import("@/lib/watch-language-actions")
+  return languageActions.loadGlobalWatchLanguageOptions()
+}
 
 const interactionPromises = new Map<WatchInteractionKey, Promise<unknown>>()
 const languageOptionsPromises = new Map<
@@ -50,6 +63,8 @@ const languageOptionsPromises = new Map<
 >()
 const languageOptionsResults = new Map<string, LanguagePickerVariant[]>()
 const storageHydratedLanguageOptions = new Set<string>()
+let globalLanguageOptionsPromise: Promise<GlobalLanguageOption[]> | null = null
+let globalLanguageOptionsResult: GlobalLanguageOption[] | null = null
 
 export function loadWatchInteraction(
   key: WatchInteractionKey,
@@ -63,6 +78,27 @@ export function loadWatchInteraction(
   })
   interactionPromises.set(key, promise)
   return promise
+}
+
+/** Dedupe the compact global catalog and evict only failed requests for retry. */
+export function loadGlobalWatchLanguageOptions(): Promise<
+  GlobalLanguageOption[]
+> {
+  if (globalLanguageOptionsResult) {
+    return Promise.resolve(globalLanguageOptionsResult)
+  }
+  if (globalLanguageOptionsPromise) return globalLanguageOptionsPromise
+
+  globalLanguageOptionsPromise = globalLanguageOptionsLoader()
+    .then((options) => {
+      globalLanguageOptionsResult = options
+      return options
+    })
+    .catch((error: unknown) => {
+      globalLanguageOptionsPromise = null
+      throw error
+    })
+  return globalLanguageOptionsPromise
 }
 
 export function getCachedWatchLanguageOptions(
@@ -198,11 +234,24 @@ function writeStoredWatchLanguageOptions(
 
 export async function warmWatchInteractionsNow(
   options: {
+    globalLanguage?: boolean
+    globalLanguageOptions?: boolean
+    interactionKeys?: readonly WatchInteractionKey[]
     videoSlug?: string
     signal?: { cancelled: boolean }
   } = {},
 ): Promise<void> {
-  for (const key of WATCH_INTERACTION_WARM_ORDER) {
+  if (options.globalLanguage) {
+    if (options.signal?.cancelled) return
+    await loadWatchInteraction("global-language")
+    if (options.signal?.cancelled) return
+    if (options.globalLanguageOptions !== false) {
+      void loadGlobalWatchLanguageOptions().catch(() => {})
+    }
+  }
+  const interactionKeys =
+    options.interactionKeys ?? WATCH_INTERACTION_WARM_ORDER
+  for (const key of interactionKeys) {
     if (options.signal?.cancelled) return
     await loadWatchInteraction(key)
     if (key === "language" && options.videoSlug) {
@@ -213,6 +262,9 @@ export async function warmWatchInteractionsNow(
 
 export function scheduleWatchInteractionWarmup(
   options: {
+    globalLanguage?: boolean
+    globalLanguageOptions?: boolean
+    interactionKeys?: readonly WatchInteractionKey[]
     videoSlug?: string
   } = {},
 ): () => void {
@@ -271,14 +323,28 @@ export function __setWatchLanguageOptionsLoaderForTests(
   languageOptionsResults.clear()
 }
 
+export function __setGlobalWatchLanguageOptionsLoaderForTests(
+  loader: GlobalLanguageOptionsLoader,
+): void {
+  globalLanguageOptionsLoader = loader
+  globalLanguageOptionsPromise = null
+  globalLanguageOptionsResult = null
+}
+
 export function __resetWatchInteractionLoaderForTests(): void {
   interactionLoaders = { ...defaultInteractionLoaders }
   languageOptionsLoader = async ({ videoSlug }) => {
     const languageActions = await import("@/lib/watch-language-actions")
     return languageActions.loadWatchLanguageOptions({ videoSlug })
   }
+  globalLanguageOptionsLoader = async () => {
+    const languageActions = await import("@/lib/watch-language-actions")
+    return languageActions.loadGlobalWatchLanguageOptions()
+  }
   interactionPromises.clear()
   languageOptionsPromises.clear()
   languageOptionsResults.clear()
   storageHydratedLanguageOptions.clear()
+  globalLanguageOptionsPromise = null
+  globalLanguageOptionsResult = null
 }

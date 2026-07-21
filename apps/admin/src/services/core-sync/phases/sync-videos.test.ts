@@ -357,7 +357,12 @@ describe("syncVideos", () => {
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(2)
     expect(stats.updated).toBe(1)
-    expect(stats.errors).toBe(1)
+    expect(stats.errors).toBe(0)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "core-sync.video-localized-metadata.skipped-languages",
+      ),
+    )
     warnSpy.mockRestore()
   })
 })

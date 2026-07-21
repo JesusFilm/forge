@@ -3,7 +3,7 @@ id: "feat-267"
 title: "Mobile hero stream retry cooldown (idle-Home unbounded retry loop)"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-22"
 duration: 2
 depends_on: []

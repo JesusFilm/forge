@@ -1,6 +1,7 @@
 ---
 title: "React StrictMode remount wedge — mount-effect cleanup mutates hook-lifetime refs without setup restore"
 date: 2026-07-14
+last_updated: 2026-07-20
 category: logic-errors
 module: apps/chat
 problem_type: logic_error
@@ -198,6 +199,42 @@ Checklist for any hook with mount effects + hook-lifetime refs (grep: `useRef` +
    ```
 
    Verify: `pnpm --filter @forge/chat test`
+
+## Boundary (2026-07-20, feat-269): the prescription is per-effect — cleanup-less rerender-driven trackers gain nothing from StrictMode
+
+Prevention item 5 ("render at least one suite per stateful hook/shell under `<StrictMode>`") targets this doc's actual wedge mechanism — a mount effect whose **cleanup mutates hook-lifetime refs without the setup restoring them**, poisoned across the `setup → cleanup → setup` cycle. It does **not** extend to a cleanup-less effect whose interesting transition is **rerender-driven**. For those, a StrictMode render exercises only the mount double-invoke — never the transition under test — so the suite passes identically with or without any regression: test theater, not detection.
+
+Concrete instance (feat-269; uncommitted on `feat/chat-sources-presentation`, PR not yet opened): the finalize-scroll effect in `apps/chat/src/components/chat/chat.tsx:126-144` tracks the previous in-flight assistant id in a hook-lifetime ref (`prevStreamingIdRef`, `:112`), mutated only in the effect **body** — no cleanup is returned:
+
+```tsx
+useLayoutEffect(() => {
+  const el = logRef.current
+  if (!el) return
+  const prevStreamingId = prevStreamingIdRef.current
+  prevStreamingIdRef.current = streamingMessageId
+  if (prevStreamingId !== null && streamingMessageId === null) {
+    const turn = el.querySelector(
+      `[data-message-id="${CSS.escape(prevStreamingId)}"]`,
+    )
+    if (turn) {
+      // Align the answer's top to the scrollport top (clamped by the
+      // browser when there isn't enough content below to fill the view).
+      el.scrollTop +=
+        turn.getBoundingClientRect().top - el.getBoundingClientRect().top
+      return
+    }
+  }
+  el.scrollTop = el.scrollHeight
+}, [conversation.messages, pending, conversation.id, streamingMessageId])
+```
+
+The finalize branch fires only on a **rerender** where `streamingMessageId` transitions non-null → null. StrictMode double-invokes effects at **mount only, with the same props both times**: run 1 sees `prev === null` (the ref's initial value) and stores the current id; run 2 reads back exactly what run 1 stored, so `prev === streamingMessageId` — the finalize condition (`prev !== null && current === null`) is unsatisfiable inside the cycle. The double-invoke self-neutralizes, and with no cleanup there is no mutation for a setup to restore — the poisoning mechanism this doc documents does not exist here. The discriminating test for this effect shape is a **`rerender` with changed props**, which the colocated suite already performs (`apps/chat/src/components/chat/chat.test.tsx:77-206` — finalize, error-finalize, streaming-growth, and conversation-switch transitions, each asserting WHICH scroll the effect performs).
+
+Refined rule for item 5, applied per effect: ask — **does this effect return a cleanup that mutates hook-lifetime state, arm anything at mount** (a fetch, a fired-once latch, a shared controller), **or perform non-idempotent mount-time work in its body** (appending a node, incrementing a hook-lifetime counter, emitting an event — the double-fire dual of the never-fire wedge)? If any: the prescription applies in full. The exemption covers only a cleanup-less previous-value tracker whose mount-time fall-through is idempotent — here, assigning `el.scrollTop = el.scrollHeight` twice in a row is a no-op, and that idempotence is load-bearing for the exemption. StrictMode coverage may still be warranted for OTHER hooks in the same shell; the boundary is per-effect, not per-file.
+
+The exemption attaches to this effect's current shape (cleanup-less, idempotent mount body), never to `chat.tsx` or its suite as a standing verdict: re-run the trigger question whenever this effect gains a cleanup or mount-armed work, or the rendered tree gains any new effect. A component suite may skip StrictMode only while EVERY effect in its rendered tree — child components and hooks included — is individually exempt.
+
+Session history (feat-269 review, 2026-07-20): four reviewers pattern-matched this doc and recommended a StrictMode-wrapped test of the finalize path; an independent validator rejected the recommendation with exactly the self-neutralization trace above, and two independent hand-traces concurred. The over-trigger is worth naming: the Prevention list can read as "any hook-lifetime ref near an effect ⇒ StrictMode suite" — the trigger is the cleanup-side mutation, not the ref.
 
 ## Related Issues
 
