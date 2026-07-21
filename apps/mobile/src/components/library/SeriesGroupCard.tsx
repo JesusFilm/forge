@@ -16,12 +16,18 @@ import {
   libraryRowState,
   type LibrarySeriesGroup,
 } from "../../lib/libraryDownloads"
+import {
+  seriesSelectionState,
+  type SeriesSelectionState,
+} from "../../lib/librarySelection"
 import { feedback } from "../../styles/shared"
 import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { DownloadRow } from "./DownloadRow"
+import { SelectionCheckbox } from "./SelectionCheckbox"
 
 const THUMB_GRADIENT: readonly [string, string] = ["#4a3428", "#1a1210"]
 const STACK_ICON_COLOR = "rgba(255, 255, 255, 0.85)"
+const EMPTY_SELECTION: ReadonlySet<string> = new Set()
 
 export interface SeriesGroupCardProps {
   group: LibrarySeriesGroup
@@ -29,6 +35,11 @@ export interface SeriesGroupCardProps {
   onRowPress: (videoSlug: string) => void
   onRetry: (videoSlug: string) => void
   onResume: (videoSlug: string) => void
+  /** Selection mode (R11): header shows an all/some/none checkbox and toggles the whole series. */
+  selecting?: boolean
+  selected?: ReadonlySet<string>
+  onToggleSeries?: (episodeSlugs: readonly string[]) => void
+  onLongPress?: (episodeSlugs: readonly string[]) => void
 }
 
 /** Collapsible series card (R4). Defaults collapsed; tapping the header toggles expansion. */
@@ -38,12 +49,24 @@ export function SeriesGroupCard({
   onRowPress,
   onRetry,
   onResume,
+  selecting = false,
+  selected = EMPTY_SELECTION,
+  onToggleSeries,
+  onLongPress,
 }: SeriesGroupCardProps) {
   const typography = useTypography()
   const [expanded, setExpanded] = useState(false)
   const posterPath = group.episodes[0]?.posterPath ?? null
+  const episodeSlugs = group.episodes.map((episode) => episode.videoSlug)
+  const seriesState: SeriesSelectionState = selecting
+    ? seriesSelectionState(episodeSlugs, selected)
+    : "none"
 
   const handleToggle = () => {
+    if (selecting) {
+      onToggleSeries?.(episodeSlugs)
+      return
+    }
     animateLayout()
     setExpanded((prev) => !prev)
   }
@@ -52,11 +75,13 @@ export function SeriesGroupCard({
     <View style={styles.card}>
       <Pressable
         onPress={handleToggle}
+        onLongPress={() => onLongPress?.(episodeSlugs)}
         style={({ pressed }) => [styles.header, pressed && feedback.pressed]}
         accessibilityRole="button"
         accessibilityLabel={`${group.seriesTitle}, ${group.episodeCount} videos`}
-        accessibilityState={{ expanded }}
+        accessibilityState={selecting ? undefined : { expanded }}
       >
+        {selecting && <SelectionCheckbox state={seriesState} />}
         <View style={styles.thumb}>
           {posterPath ? (
             <Image
@@ -113,6 +138,9 @@ export function SeriesGroupCard({
             onPress={onRowPress}
             onRetry={onRetry}
             onResume={onResume}
+            selecting={selecting}
+            selected={selected.has(episode.videoSlug)}
+            onLongPress={(slug) => onLongPress?.([slug])}
           />
         ))}
     </View>

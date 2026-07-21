@@ -20,6 +20,7 @@ import {
 import type { OfflineDownloadRecord } from "../../lib/offlineManifest"
 import { feedback } from "../../styles/shared"
 import { DownloadProgressRing } from "../watch/DownloadProgressRing"
+import { SelectionCheckbox } from "./SelectionCheckbox"
 
 const RING_TRACK_COLOR = "rgba(255, 255, 255, 0.18)"
 const THUMB_GRADIENT: readonly [string, string] = ["#2a2f37", "#15171c"]
@@ -42,6 +43,10 @@ export interface DownloadRowProps {
   onPress: (videoSlug: string) => void
   onRetry: (videoSlug: string) => void
   onResume: (videoSlug: string) => void
+  /** Selection mode (R11): shows a checkbox instead of the status affordance; tap toggles via onPress. */
+  selecting?: boolean
+  selected?: boolean
+  onLongPress?: (videoSlug: string) => void
 }
 
 /** One offline download's Library row: poster, title, status subtitle, and its rowState affordance (R5/R6/R8). */
@@ -52,6 +57,9 @@ export function DownloadRow({
   onPress,
   onRetry,
   onResume,
+  selecting = false,
+  selected = false,
+  onLongPress,
 }: DownloadRowProps) {
   const typography = useTypography()
   const title = record.title || slugToTitle(record.videoSlug)
@@ -61,6 +69,7 @@ export function DownloadRow({
   return (
     <Pressable
       onPress={() => onPress(record.videoSlug)}
+      onLongPress={() => onLongPress?.(record.videoSlug)}
       style={({ pressed }) => [
         styles.row,
         variant === "standalone" ? styles.rowStandalone : styles.rowGrouped,
@@ -68,7 +77,9 @@ export function DownloadRow({
       ]}
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${rowState.subtitle}`}
+      accessibilityState={selecting ? { selected } : undefined}
     >
+      {selecting && <SelectionCheckbox state={selected} />}
       <View style={styles.thumb}>
         {record.posterPath ? (
           <Image
@@ -103,7 +114,7 @@ export function DownloadRow({
         </Text>
       </View>
 
-      {rowState.affordance !== "none" && (
+      {!selecting && rowState.affordance !== "none" && (
         <View style={styles.side}>
           {rowState.affordance === "check" && (
             <Ionicons
