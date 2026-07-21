@@ -64,3 +64,6 @@ forge.code-workspace
 
 # Design mockups — untracked local reference copies; canonical source is claude.ai/design
 apps/mobile/design-mockups/
+
+# Impeccable live copy-edit hook scratch cache (per-session, per-machine)
+.impeccable/
