@@ -1,7 +1,7 @@
 ---
 title: "Sticky overlay inside a scroll container needs transparent-zone-scoped click-through, scroll-padding, AND a pre-resize re-pin basis"
 date: "2026-07-15"
-last_updated: "2026-07-20"
+last_updated: "2026-07-21"
 category: ui-bugs
 module: apps/chat
 problem_type: ui_bug
@@ -32,11 +32,13 @@ tags:
 
 # Sticky overlay inside a scroll container: scoped click-through, scroll-padding, and a pre-resize re-pin basis — the layout halves aren't testable in jsdom
 
-**The general law:** a sticky/floating overlay placed INSIDE a scroll container needs ALL THREE of these, every time:
+**The general law:** a sticky/floating overlay placed INSIDE a scroll container needs ALL of these, every time (three shipped with this doc; a fourth was added 2026-07-21 — see the addendum after the list):
 
 1. **Click-through (`pointer-events-none`) scoped strictly to the overlay's transparent zones.** Every fully-opaque region of the overlay band (solid gradient strip, side gutters, the card itself) must intercept pointer events — otherwise invisible content scrolled beneath the opaque region still receives clicks.
 2. **`scroll-padding-bottom` on the scroll container, sized to the overlay's height.** Browser focus auto-scroll (and `scrollIntoView`) targets the scrollport edge and knows nothing about overlays inside the scroller — without scroll-padding, Tab parks focused elements exactly behind the band: focused but invisible.
 3. **(feat-270 addendum) When the overlay RESIZES, any near-bottom re-pin decision must compare the PRE-resize distance from the bottom** — recovered as `distance_after - delta`, valid for grow AND shrink. A directional clamp on the compensation silently yanks scrolled-up readers on shrink. See "The third half of the law" below.
+
+> **(2026-07-21 addendum) Fourth control:** the scroll container itself must be **positioned** (`relative`) so absolutely positioned descendants — Tailwind `sr-only` spans are the sneaky case — anchor INSIDE it. Unpositioned, their static boxes escape to an outer containing block at unscrolled depths and extend the PAGE's scroll area below the app, letting the window scroll the whole pane (sticky overlay included) out of view. Full account: `sr-only-absolute-overflow-escapes-unpositioned-scroll-container.md`.
 
 And none of these failures is observable in jsdom (the third's decision ALGEBRA is unit-testable — see its Prevention bullet — but the failure itself, through layout + ResizeObserver, is not). The first two shipped through typecheck, lint, and a green 418-test unit suite; only browser-driven verification (`document.elementFromPoint` hit-testing and a focus-probe rect comparison) caught them. The third shipped past an under-scoped manual browser probe too — see below.
 
@@ -165,8 +167,9 @@ Verified across all four cases in headless Chromium — grow at bottom → re-pi
 
 ## Related Issues
 
+- `sr-only-absolute-overflow-escapes-unpositioned-scroll-container.md` — the fourth control (2026-07-21): the scroller must be positioned or its abspos sr-only descendants extend the page's scroll area (the scroll-past-the-composer bug).
 - feat-267 (chat UI quick wins) — shipped the restructure and the first two fixes via [PR #1617](https://github.com/JesusFilm/forge/pull/1617), merged.
-- `docs/roadmap/ai-chat/feat-270-chat-ui-cleanup-batch.md` — item 7 is the origin of the third control above; its fix is uncommitted on `feat/chat-ui-cleanup-batch` and ships with feat-270's pending PR, unmerged as of this writing.
+- `docs/roadmap/ai-chat/feat-270-chat-ui-cleanup-batch.md` — item 7 is the origin of the third control above; shipped via [PR #1626](https://github.com/JesusFilm/forge/pull/1626), merged.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — the META pattern this instantiates: green unit suites prove code shape, not production (here: browser) contract.
 - `docs/solutions/best-practices/base-ui-dialog-state-attribute-detection-20260520.md` — sibling browser-verification gotcha for apps/web dialogs.
 - `docs/solutions/ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md` — adjacent sticky+scroll rendering bug (Firefox compositing), same browser-only-detection family.
