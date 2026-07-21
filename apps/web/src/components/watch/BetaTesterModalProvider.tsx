@@ -13,6 +13,7 @@ import {
 } from "react"
 import dynamic from "next/dynamic"
 import { usePathname } from "next/navigation"
+import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
@@ -53,6 +54,8 @@ function BetaTesterModalLoadingShell({
   failed: boolean
   onClose: () => void
 }) {
+  const t = useTranslations("BetaTesterModal")
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
@@ -74,7 +77,7 @@ function BetaTesterModalLoadingShell({
     >
       <div className="w-full max-w-sm rounded-2xl border border-white/15 bg-stone-950 p-6 text-center shadow-2xl">
         <h2 id="beta-tester-loading-title" className="text-lg font-semibold">
-          Become a beta tester
+          {t("title")}
         </h2>
         <p
           id="beta-tester-loading-description"
@@ -82,9 +85,7 @@ function BetaTesterModalLoadingShell({
           aria-live="polite"
           className="mt-3 text-sm text-stone-300"
         >
-          {failed
-            ? "The signup form could not be loaded."
-            : "Loading beta signup…"}
+          {failed ? t("loadFailed") : t("loading")}
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <a
@@ -93,7 +94,7 @@ function BetaTesterModalLoadingShell({
             rel="noopener noreferrer nofollow"
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-stone-950 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none"
           >
-            Open signup in a new tab
+            {t("openFormNewTab")}
           </a>
           <button
             type="button"
@@ -101,7 +102,7 @@ function BetaTesterModalLoadingShell({
             onClick={onClose}
             className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-5 text-sm font-semibold text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
           >
-            Close
+            {t("close")}
           </button>
         </div>
       </div>
@@ -139,13 +140,15 @@ class BetaTesterModalLoadBoundary extends Component<
 }
 
 export function BetaTesterTrigger({
-  children = "Become a beta tester",
+  children,
   className,
 }: {
   children?: ReactNode
   className?: string
 }) {
+  const t = useTranslations("BetaTesterModal")
   const modal = useBetaTesterModal()
+  const label = children ?? t("trigger")
 
   if (!modal) {
     return (
@@ -155,7 +158,7 @@ export function BetaTesterTrigger({
         rel="noopener noreferrer nofollow"
         className={className}
       >
-        {children}
+        {label}
       </a>
     )
   }
@@ -166,7 +169,7 @@ export function BetaTesterTrigger({
       onClick={(event) => modal.openModal(event.currentTarget)}
       className={className}
     >
-      {children}
+      {label}
     </button>
   )
 }
@@ -181,6 +184,7 @@ export function BetaTesterModalProvider({ children }: { children: ReactNode }) {
 }
 
 function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
+  const t = useTranslations("BetaTesterModal")
   const { playerChromeVisible, searchOpen } = useFloatingSearchPinned()
   const [open, setOpen] = useState(false)
   const [modalEnabled, setModalEnabled] = useState(false)
@@ -244,7 +248,7 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
             : "pointer-events-none translate-y-2 opacity-0",
         )}
       >
-        Become a beta tester
+        {t("trigger")}
       </button>
       {modalEnabled ? (
         <BetaTesterModalLoadBoundary open={open} onClose={closeModal}>

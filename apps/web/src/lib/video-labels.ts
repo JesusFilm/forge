@@ -1,5 +1,6 @@
 export type VideoLabelMessageKey =
   | "behindTheScenes"
+  | "chapter"
   | "collection"
   | "episode"
   | "featureFilm"
@@ -11,6 +12,7 @@ export type VideoLabelMessageKey =
 
 const VIDEO_LABEL_KEYS: Record<string, VideoLabelMessageKey> = {
   BEHIND_THE_SCENES: "behindTheScenes",
+  CHAPTER: "chapter",
   COLLECTION: "collection",
   EPISODE: "episode",
   FEATURE_FILM: "featureFilm",

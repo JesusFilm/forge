@@ -7,7 +7,9 @@
     "noContent": "Es sind kei Inhalti verfügbar.",
     "homepageMisconfigured": "D'Watch-Startsyte isch falsch konfiguriert.",
     "defaultTemplateMisconfigured": "D'Standard-Vorlage für Watch isch falsch konfiguriert.",
-    "authFailed": "Mit em Content-Dienst isch s'Authentifiziere nöd möglich. Bitte kontaktiere de Support, falls das bliibt."
+    "authFailed": "Mit em Content-Dienst isch s'Authentifiziere nöd möglich. Bitte kontaktiere de Support, falls das bliibt.",
+    "pageLoadFailed": "Ets isch öppis schief gloffe.",
+    "tryAgain": "Nochmal versueche"
   },
   "VideosPage": {
     "title": "Alli Videos",
@@ -22,7 +24,8 @@
     "promoHeading": "Wotsch d'Bibel no tiefer verstoh?",
     "joinBibleStudy": "Mach bi unserem Bibelstudium mit",
     "previousQuote": "Vorhärigi Bibelzitatur",
-    "nextQuote": "Nächsti Bibelzitatur"
+    "nextQuote": "Nächsti Bibelzitatur",
+    "readPassage": "Lies dä Abschnitt i diner Bibel."
   },
   "DownloadButton": {
     "checking": "Wird geprüft",
@@ -73,7 +76,8 @@
     "selectLanguage": "Sprach wähle",
     "searchPlaceholder": "Sprachen sueche…",
     "languages": "Sprachen",
-    "noMatches": "Kei Treffer"
+    "noMatches": "Kei Treffer",
+    "notAvailable": "Nöd verfügbar"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Sprach",
@@ -112,7 +116,8 @@
     "questions": "Verwandti Froge",
     "askYours": "Stell dini",
     "chatWithPerson": "Mit e Person chatte",
-    "askBibleQuestion": "Stell e Bibelfroge"
+    "askBibleQuestion": "Stell e Bibelfroge",
+    "quiz": "Wüssensquiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Nachrichtetyp",
@@ -170,7 +175,8 @@
     "searchRegion": "Videos sueche",
     "clearSearch": "Suechi lösche",
     "changeAudioLanguage": "Audiosprach wechsle",
-    "home": "JesusFilm-Startsyte"
+    "home": "JesusFilm-Startsyte",
+    "closeSearch": "Suechi schliesse"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos sueche und durstöbere",
@@ -205,14 +211,19 @@
     "clearLanguages": "Lösche",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Suche uf {language}",
-    "tryDifferentKeywordsOrLanguage": "Probier anderi Stichwort oder wähle e anderi Suechispräch"
+    "tryDifferentKeywordsOrLanguage": "Probier anderi Stichwort oder wähle e anderi Suechispräch",
+    "useWebsiteDefaultLanguage": "D'Standard-Sueschispräch vo dr Website benutze",
+    "removeLanguage": "{language} entferne",
+    "browseMode": "Durstöber-Modus"
   },
   "HeroPlayer": {
     "playWithSound": "Jetzt luege",
-    "tapToUnmute": "Aatippe zum Ton iischalte"
+    "tapToUnmute": "Aatippe zum Ton iischalte",
+    "nextEpisode": "Nächsti Folg"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Inhalt wird glade"
+    "loadingContent": "Inhalt wird glade",
+    "loadingVideo": "Video wird glade"
   },
   "VideoLabels": {
     "video": "Videoclip",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Sammlig",
     "trailer": "Vorschau",
-    "behindTheScenes": "Hinter de Kulisse"
+    "behindTheScenes": "Hinter de Kulisse",
+    "chapter": "Kapitel"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} vo {total}",
@@ -235,11 +247,252 @@
     "noImage": "Kei Bild",
     "playingNow": "Lauft jetzt",
     "previousChapter": "Vorhärigs Kapitel",
-    "nextChapter": "Nächsts Kapitel"
+    "nextChapter": "Nächsts Kapitel",
+    "thumbnailAlt": "Vorschaubild vo {title}",
+    "relatedVideoThumbnail": "Vorschaubild vom verwandte Video"
   },
   "SearchResultCard": {
     "experience": "Erfahrig",
     "episodeCount": "{count, plural, one {# Folg} other {# Folge}}",
     "thumbnailAlt": "Video-Vorschaubild"
+  },
+  "Feedback": {
+    "openForm": "Feedback-Formular öppne",
+    "label": "Rückmäldig",
+    "couldNotLoad": "Feedback-Formular chonnte nöd glade werde.",
+    "loadingForm": "Feedback-Formular wird glade…",
+    "retry": "Nochmal versueche",
+    "openFormShort": "Formular öffne",
+    "cancel": "Abbreche",
+    "title": "Beta-Feedback",
+    "description": "Teile, was funktioniert und was mer verbessere chönd. Das Formular wird vo Google bereitgstellt.",
+    "openInNewTab": "Formular i neui Tab öffne",
+    "closeForm": "Feedback-Formular schliesse",
+    "loadingGoogleForm": "Google-Formular wird glade…",
+    "iframeTitle": "Beta-Feedback einsende"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Gratis christlichi Videos uf {language} | Jesus Film Project",
+    "metadataDescription": "Entdeck Jesus-Filme, Bibelgschichte, Jüngerschafts-Serie und Outreach-Videos mit synchronisiertem Ton oder Untertitel uf {language}.",
+    "heroTitle": "Gratis christlichi Videos uf {language}",
+    "heroDescription": "Entdeck Jesus-Filme, Bibelgschichte, Jüngerschafts-Serie und Outreach-Videos, verfügbar uf {language}. Voll synchronisierti Videos stöh als Erstes im Fokus, und drunter chömed Optione nur mit Untertitel.",
+    "languageCollection": "Sprachsammlig",
+    "itemCount": "{count, plural, one {# Element} other {# Element}}",
+    "videoCount": "{count, plural, one {# Video} other {# Videos}}",
+    "videosInGroups": "{videoCount, plural, one {# Video} other {# Videos}} i {groupCount, plural, one {# Gruppe} other {# Gruppe}}",
+    "sectionNavLabel": "Abschnitte vo dr Sprachübersicht",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Neu",
+    "videoBible": "Video-Bibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Sammlige",
+    "subtitlesOnly": "Nur Untertitel",
+    "newlyAdded": "Neu hizuegfüegt",
+    "newVideosTitle": "Neui christlichi Videos uf {language}",
+    "newestFirst": "Neuscht zerscht",
+    "noPublishedVideos": "Für die Sprach sind no kei veröffentlichte Videos gfunde worde.",
+    "bibleAndGospelFilms": "Bibel- und Evangeliumsfilme",
+    "videoBibleCollectionsTitle": "{language}-Video-Bibel-Sammlige",
+    "videoBibleDescription": "Schriftzentrierti Sammlige mit LUMO, JESUS, Magdalena und Apostelgschichte uf {language}.",
+    "noVideoBibleCollections": "Für die Sprach sind no kei Video-Bibel-Sammlige verfügbar.",
+    "bibleProjectCollectionsTitle": "{language}-BibleProject-Sammlige",
+    "bibleProjectDescription": "BibleProject-Serie und -Studie uf {language}.",
+    "noBibleProjectCollections": "Für die Sprach sind no kei BibleProject-Sammlige verfügbar.",
+    "sportsStories": "Sportgschichte",
+    "sportsTitle": "Sport- und Sportlergschichte uf {language}",
+    "sportsDescription": "Glaube-zentrierte Sportgschichte und Sammlige mit Fokus uf Sportler, verfügbar uf {language}.",
+    "noSportsCollections": "Für die Sprach sind no kei Sport- oder Sportlergschichte-Sammlige verfügbar.",
+    "fullyDubbed": "Voll synchronisiert",
+    "dubbedVideosTitle": "Videos uf {language} nach Sammlig",
+    "dubbedVideosDescription": "Durchstöber voll synchronisierti Videos uf {language}, gruppiert nach ihrer Sammlig für eifacheres Finde.",
+    "noDubbedVideos": "Für die Sprach sind no kei voll synchronisierti Videos verfügbar.",
+    "subtitlesAvailable": "Untertitel verfügbar",
+    "subtitlesTitle": "Videos uf {language} mit Untertitel",
+    "subtitlesDescription": "Die Videos enthalte {language}-Untertitel, wenn gsprochni {language}-Audio no nöd verfügbar isch.",
+    "noSubtitleVideos": "Für die Sprach sind no kei Videos nur mit Untertitel verfügbar.",
+    "dubbed": "Synchronisiert",
+    "subtitles": "Untertitel",
+    "newLabel": "Neu",
+    "fromCollection": "Us {collection}",
+    "standaloneVideos": "Einzelvideos",
+    "videosFromCollection": "Videos us {collection}.",
+    "standaloneDescription": "Einzelvideos i däre Sprach.",
+    "openCollection": "Sammlig öppne"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project – Luege",
+    "watch": "Luege",
+    "watchNow": "Jetzt luege",
+    "mutePreview": "Vorschau stummschalte",
+    "unmutePreview": "Vorschau Ton iischalte",
+    "nextVideo": "Nächsts Video",
+    "featured": "Empfohle",
+    "showVideo": "{title} aazeige",
+    "previousVideoPreview": "Vorschau vom vorige Video",
+    "nextVideoPreview": "Vorschau vom nächste Video",
+    "mediaCollection": "Mediakollektion",
+    "scrollToVideo": "Zum Video {title} scrollen"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-Startsyte",
+    "navigation": "Footer-Navigatioon",
+    "share": "Teile",
+    "watch": "Luege",
+    "giving": "Spende",
+    "about": "Über",
+    "products": "Produkte",
+    "resources": "Ressource",
+    "partners": "Partner",
+    "contact": "Kontakt",
+    "giveNow": "Jetzt spende",
+    "resourcesVersion": "Ressource ({version})",
+    "office": "Büro",
+    "fax": "Faxnummer",
+    "privacyPolicy": "Datenschutzerklärung",
+    "legalStatement": "Rechtlicher Hinwiis",
+    "newsletter": "Für üses Newsletter aamelde"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Gebaut für weltwiiti Mission",
+    "title": "D'Botschaft verändert sich nöd. Aber die Art, wie Lüt luege, scho.",
+    "description": "Mir baue unsere Videobibliothek und Tools vo Grund uf neu uf und bringe jahrzähntelangi Übersetzigsarbeit i die Plattformene, wo Lüt scho sind, luege und teile.",
+    "translatedLibraryTitle": "D'wältwiit meischt übersetzti Filmbibliothek",
+    "translatedLibraryDescription": "Jahrzähntelangi Übersetzigsarbeit, träge vu vertrauenswürdige Missionspartner, het e Bibliothek mit tausende vo Sprachspure ufgebaut, damit Lüt d'Gschicht vo Jesus i de Sprach erläbe, wo sie am tiefste erreicht.",
+    "trustedVoicesTitle": "Vertrauenswürdigi Stimmene i neui Formate trage",
+    "trustedVoicesDescription": "Mir baue neu, wie Evangeliumsgschichte visuell erzählt werde, und verbinde vertrauenswürdigi Übersetzige mit moderne Formate, damit d'Botschaft frei über Plattformene, Kulturen und Bildschirme chann go.",
+    "missionTeamTitle": "Meh als e Bibliothek. Es Team mit Mission.",
+    "missionTeamDescription": "Jesus Film Project isch es globales Team vu Übersetzer, Mediespezialiste, Redaktore und Schöpfer, wo jahrzähntelangi Missions-Erfahrig i Werkzüg für Jüngerschafts-Macher überall verwandle.",
+    "buildingNext": "Was mir als Nächsts baue",
+    "nextStepsTitle": "Plattform für nächsti Schritt",
+    "nextStepsDescription": "Verbinde Zueschauer mit handfeste Möglichkeit uf ihrem geistliche Wäg und hilf ihne, e nöchste Schritt i Gemeinschaf, Schrift oder Mission z'mache.",
+    "mediaLibraryTitle": "Evangelistischi Mediebibliothek",
+    "mediaLibraryDescription": "E umfangriichi christlichi Mediebibliothek mit tausende vo Videos, Filme und Ressource i mehrere Sprachen für Dienst und Evangelisation weltweit.",
+    "ministryToolsTitle": "Digitalli Werkzüg für Dient",
+    "ministryToolsDescription": "Videomanagement, Inhaltsverteilig, Zueschauer-Interaktion und Analyse, entwickelt, damit Dienste meh Lüt wirksam erreiche chönd.",
+    "invitationEyebrow": "Du bisch iiglade",
+    "invitationTitle": "Hilf mit, <highlight>d'nächsti Generation</highlight> vo Missions-Werkzüg z'baue",
+    "invitationDescription": "Mir lade Praktiker, Schöpfer und Partner zur früehe Benutzig i. Test neui Werkzüg zerscht, gää Feedback und hilf mit, Produkte für echti Missionsarbeit z'forme.",
+    "betaTester": "Werde Beta-Tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-Bibel-Sammlig",
+    "gospelRailTitle": "Entdeck d'ganz Gschicht",
+    "videoBibleDescription": "Entdeck üsi Sammlig vo Videos und Ressource, wo d'Bibel mit packende Gschichte und Lehre lebendig mache.",
+    "showcaseTitle": "Schrift uf Film erzählt",
+    "adventEyebrow": "Wienachts-Advent",
+    "adventTitle": "Wienachts-Advent-Countdown",
+    "adventDescription": "Begleit üsi Adventsreis mit eme tägliche Video, wo d'Vorfreud uf Wienachte ufaut, und erforsch d'Hoffnig, d'Freud und s'Verspreche vo Jesus sini Aankunft.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-Advent",
+    "nuaEyebrow": "NUA-Serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-Serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurs",
+    "journeyWithJesusTitle": "Uf dr Reis mit Jesus",
+    "gospelsOnVideoEyebrow": "Jedes Evangelium, uf Video erzählt",
+    "scriptureAsWrittenTitle": "Schrift, genau so gsproche wie gschribe",
+    "merryChristmas": "Frohi Wienachte!",
+    "daysUntilChristmas": "{count, plural, one {No # Tag bis Wienachte} other {No # Täg bis Wienachte}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Sprachen",
+    "metadataDescription": "Durchstöber JesusFilm-Videos nach Sprach.",
+    "eyebrow": "Watch-Sprachen",
+    "title": "Wähle e Sprach",
+    "description": "Entdeck Sprachen nach Region oder durchstöber d'ganz Liste.",
+    "searchPlaceholder": "Sprachen oder Länder sueche...",
+    "searchLabel": "Sprachen oder Länder sueche",
+    "clearSearch": "Suechi lösche",
+    "browse": "Durstöbere",
+    "browseByRegion": "Nach Region und Land durstöbere",
+    "languageCount": "{count, plural, one {# Sprach} other {# Sprachen}}",
+    "region": "Wältregion",
+    "countryLanguages": "{country}-Sprachen",
+    "showLess": "Weniger zeige",
+    "showMore": "{count} mehr zeige",
+    "noLanguages": "Kei Sprachen gfunde",
+    "tryAnotherSearch": "Probier es andere Suchbegriff."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Luege-Verlauf | Jesus Film Project",
+    "title": "Luege-Verlauf",
+    "loading": "Verlauf wird glade",
+    "empty": "No nüt da",
+    "emptyDescription": "Videos, wo du aaluegsch während du aagmeldet bisch, erschiined da.",
+    "earlier": "Früener",
+    "today": "Hüt",
+    "yesterday": "Gschter"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Kontomenü",
+    "signIn": "Aamelde",
+    "signOut": "Abmelde",
+    "signedIn": "Aagmeldet",
+    "history": "Verlauf",
+    "logOut": "Uslogge"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Syte nöd gfunde",
+    "eyebrow": "Syte nöd gfunde",
+    "screenReaderPrefix": "Syte nöd gfunde:",
+    "title": "Die Szene isch da nöd.",
+    "description": "D'Syte het sich villech verschobe, aber d'Gschicht geit witer.",
+    "actionsLabel": "Aktionen bi nöd gfunder Syte",
+    "backToWatch": "Zurück zu Watch",
+    "browseVideos": "Videos durstöbere"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Kurze Film luege",
+    "actions": {
+      "joinUs": "Mach mit",
+      "shareMission": "Teile an unserer Mission"
+    },
+    "welcomeStart": {
+      "label": "Glaube & Schrift",
+      "title": "Heutigi Video-Empfehlig",
+      "description": "Glaube-zentrierte Videoinhalte us ourere Bibliothek, wo inspiriert, herausforderet und zum Nachdenke aaregt."
+    },
+    "welcomeMorning": {
+      "label": "Morge-Inspiration",
+      "title": "Guete Morge! Heutigi Bibelmomänt warted uf dich.",
+      "description": "Starte dini Tag mit ermuetigende Bibelmomänt, wo inspiriere und dini Geischt uftriebe."
+    },
+    "welcomeAfternoon": {
+      "label": "Nachmittags-Inspiration",
+      "title": "Guete Namittag! Bibelmomänt für din Tag.",
+      "description": "Ermuetigendi Bibelinhalte für dini Nachmittags-Pause oder zum Witerinspirierig."
+    },
+    "welcomeEvening": {
+      "label": "Abig-Inspiration",
+      "title": "Guete Abig! Chumm mit Bibelmomänt zrugg zur Ru.",
+      "description": "Ruhigi Bibelmomänt, wo dir helfed z'reflektiere und Trost z'finge, wenn dini Tag z'End goht."
+    },
+    "joinUs": {
+      "label": "Mach mit",
+      "title": "Milliarde sueched",
+      "description": "D'Ernt isch da. Mach mit, wenn mir s'Evangelium mit digitale Medie i d'Wält träge."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Lah uns zäme go",
+      "title": "D'Gschicht vo Jesus zäme erzähle",
+      "description": "Damit sie d'Liebi vo Jesus i ihrer eigene Sprach chönd ghöre und gseh, grad dort wo sie sind."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % Übereinstimmig",
+    "none": "Für das Video sind i däre Sprach kei Empfehligä gfunde worde."
+  },
+  "BetaTesterModal": {
+    "title": "Werde Beta-Tester",
+    "trigger": "Werde Beta-Tester",
+    "loadFailed": "Ets isch öppis schief gloffe.",
+    "loading": "Wird glade...",
+    "openFormNewTab": "Formular i neui Tab öffne",
+    "close": "Schliesse",
+    "iframeTitle": "Werde Beta-Tester"
   }
 }

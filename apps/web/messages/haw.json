@@ -7,7 +7,9 @@
     "noContent": "ʻAʻohe maʻiʻo i loaʻa.",
     "homepageMisconfigured": "Ua hoʻonohonoho hewa ʻia ka ʻaoʻao hoʻomaka o ka nānā.",
     "defaultTemplateMisconfigured": "Ua hoʻonohonoho hewa ʻia ke kumu paʻamau o ka nānā.",
-    "authFailed": "ʻAʻole hiki ke hōʻoia i ka lawelawe maʻiʻo. E ʻoluʻolu e kāhea i ke kākoʻo inā hoʻomau kēia pilikia."
+    "authFailed": "ʻAʻole hiki ke hōʻoia i ka lawelawe maʻiʻo. E ʻoluʻolu e kāhea i ke kākoʻo inā hoʻomau kēia pilikia.",
+    "pageLoadFailed": "Ua hewa kekahi mea.",
+    "tryAgain": "E hoʻāʻo hou"
   },
   "VideosPage": {
     "title": "Nā Wikiō a Pau",
@@ -22,7 +24,8 @@
     "promoHeading": "Makemake ʻoe e hohonu aʻe ka ʻike i ka Baibala?",
     "joinBibleStudy": "E hui pū i kā mākou haʻawina Baibala",
     "previousQuote": "Huaʻōlelo Baibala ma mua",
-    "nextQuote": "Huaʻōlelo Baibala aʻe"
+    "nextQuote": "Huaʻōlelo Baibala aʻe",
+    "readPassage": "E heluhelu i kēia paukū ma kāu Baibala."
   },
   "DownloadButton": {
     "checking": "Ke nānā nei",
@@ -73,7 +76,8 @@
     "selectLanguage": "Koho i ka ʻōlelo",
     "searchPlaceholder": "Huli i nā ʻōlelo…",
     "languages": "Nā ʻōlelo",
-    "noMatches": "ʻAʻohe kūlike"
+    "noMatches": "ʻAʻohe kūlike",
+    "notAvailable": "ʻAʻole loaʻa"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ʻŌlelo",
@@ -112,7 +116,8 @@
     "questions": "Nā Nīnau Pili",
     "askYours": "E nīnau i kāu",
     "chatWithPerson": "Kūkākūkā me kekahi kanaka",
-    "askBibleQuestion": "E nīnau i kahi nīnau Baibala"
+    "askBibleQuestion": "E nīnau i kahi nīnau Baibala",
+    "quiz": "Nīnau Hōʻike"
   },
   "WatchQuestionPanel": {
     "messageType": "ʻAno leka",
@@ -170,7 +175,8 @@
     "searchRegion": "Huli i nā wikiō",
     "clearSearch": "Holoi huli",
     "changeAudioLanguage": "Hoʻololi i ka ʻōlelo leo",
-    "home": "ʻAoʻao home o JesusFilm"
+    "home": "ʻAoʻao home o JesusFilm",
+    "closeSearch": "Pani i ka huli"
   },
   "SearchOverlay": {
     "dialogLabel": "Huli a nānā i nā wikiō",
@@ -205,14 +211,19 @@
     "clearLanguages": "Holoi",
     "queryLanguageDetected": "Ua ʻike ʻia ka {language}",
     "searchInLanguage": "Huli ma {language}",
-    "tryDifferentKeywordsOrLanguage": "E hoʻāʻo i nā huaʻōlelo ʻē aʻe a i ʻole e koho i kekahi ʻōlelo huli ʻē aʻe"
+    "tryDifferentKeywordsOrLanguage": "E hoʻāʻo i nā huaʻōlelo ʻē aʻe a i ʻole e koho i kekahi ʻōlelo huli ʻē aʻe",
+    "useWebsiteDefaultLanguage": "E hoʻohana i ka ʻōlelo huli paʻamau o ka pūnaewele",
+    "removeLanguage": "Wehe {language}",
+    "browseMode": "ʻAno nānā huli"
   },
   "HeroPlayer": {
     "playWithSound": "Nānā i kēia manawa",
-    "tapToUnmute": "Kaomi e wehe i ka leo"
+    "tapToUnmute": "Kaomi e wehe i ka leo",
+    "nextEpisode": "Mokuna aʻe"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ke hoʻouka nei i ka maʻiʻo"
+    "loadingContent": "Ke hoʻouka nei i ka maʻiʻo",
+    "loadingVideo": "Ke hoʻouka nei i ke wikiō"
   },
   "VideoLabels": {
     "video": "Wikiō",
@@ -223,7 +234,8 @@
     "series": "Moʻo",
     "collection": "Hōʻiliʻili",
     "trailer": "Kākoʻo Kiʻiʻoniʻoni",
-    "behindTheScenes": "Ma hope o nā Hōkū"
+    "behindTheScenes": "Ma hope o nā Hōkū",
+    "chapter": "Mokuna"
   },
   "SiblingCarousel": {
     "clipPosition": "Paʻi  {current} o {total}",
@@ -235,11 +247,252 @@
     "noImage": "ʻAʻohe kiʻi",
     "playingNow": "Ke pāʻani nei i kēia manawa",
     "previousChapter": "Mokuna ma mua",
-    "nextChapter": "Mokuna aʻe"
+    "nextChapter": "Mokuna aʻe",
+    "thumbnailAlt": "Kiʻi liʻiliʻi o {title}",
+    "relatedVideoThumbnail": "Kiʻi liʻiliʻi o ke wikiō pili"
   },
   "SearchResultCard": {
     "experience": "ʻIke",
     "episodeCount": "{count, plural, one {# mokuna} other {# mokuna}}",
     "thumbnailAlt": "Kiʻi liʻiliʻi wikiō"
+  },
+  "Feedback": {
+    "openForm": "Wehe i ka palapala manaʻo",
+    "label": "Manaʻo",
+    "couldNotLoad": "ʻAʻole hiki ke hoʻouka i ka palapala manaʻo.",
+    "loadingForm": "Ke hoʻouka nei i ka palapala manaʻo…",
+    "retry": "E hoʻāʻo hou",
+    "openFormShort": "Wehe i ka palapala",
+    "cancel": "Hoʻopau",
+    "title": "Manaʻo Beta",
+    "description": "E kaʻana i ka mea e holo pono ana a me kā kākou e hoʻomaikaʻi ai. Hāʻawi ʻia kēia palapala e Google.",
+    "openInNewTab": "Wehe i ka palapala ma kahi kapu hou",
+    "closeForm": "Pani i ka palapala manaʻo",
+    "loadingGoogleForm": "Ke hoʻouka nei i ka Google Form…",
+    "iframeTitle": "Waiho i ka Manaʻo Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Nā wikiō Kalikiano manuahi ma {language} | Jesus Film Project",
+    "metadataDescription": "E mākaʻikaʻi i nā kiʻiʻoniʻoni no Iesu, nā moʻolelo Baibala, nā moʻo haumāna, a me nā wikiō hoʻolaha me ka leo unuhi a i ʻole nā wehewehe ma lalo ma {language}.",
+    "heroTitle": "Nā wikiō Kalikiano manuahi ma {language}",
+    "heroDescription": "E mākaʻikaʻi i nā kiʻiʻoniʻoni no Iesu, nā moʻolelo Baibala, nā moʻo haumāna, a me nā wikiō hoʻolaha i loaʻa ma {language}. Hōʻike mua ʻia nā wikiō i unuhi piha ʻia ka leo, a ma lalo nā koho me nā wehewehe ma lalo wale nō.",
+    "languageCollection": "Hōʻiliʻili ʻōlelo",
+    "itemCount": "{count, plural, one {# mea} other {# mea}}",
+    "videoCount": "{count, plural, one {# wikiō} other {# wikiō}}",
+    "videosInGroups": "{videoCount, plural, one {# wikiō} other {# wikiō}} ma {groupCount, plural, one {# hui} other {# hui}}",
+    "sectionNavLabel": "Nā māhele o ka papa kuhikuhi ʻōlelo",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Hou",
+    "videoBible": "Baibala Wikiō",
+    "bibleProject": "BibleProject",
+    "sports": "Haʻuki",
+    "collections": "Nā Hōʻiliʻili",
+    "subtitlesOnly": "Nā wehewehe ma lalo wale nō",
+    "newlyAdded": "Hoʻohui hou ʻia",
+    "newVideosTitle": "Nā wikiō Kalikiano hou ma {language}",
+    "newestFirst": "Nā mea hou ma mua",
+    "noPublishedVideos": "ʻAʻohe wikiō i paʻi ʻia i loaʻa no kēia ʻōlelo i kēia manawa.",
+    "bibleAndGospelFilms": "Nā kiʻiʻoniʻoni Baibala a me ka ʻEuanelio",
+    "videoBibleCollectionsTitle": "Nā hōʻiliʻili Baibala Wikiō ma {language}",
+    "videoBibleDescription": "Nā hōʻiliʻili i hoʻokumu ʻia ma ka Palapala Hemolele, me LUMO, JESUS, Magdalena, a me Acts ma {language}.",
+    "noVideoBibleCollections": "ʻAʻohe hōʻiliʻili Baibala Wikiō i loaʻa no kēia ʻōlelo i kēia manawa.",
+    "bibleProjectCollectionsTitle": "Nā hōʻiliʻili BibleProject ma {language}",
+    "bibleProjectDescription": "Nā moʻo a me nā haʻawina BibleProject i loaʻa ma {language}.",
+    "noBibleProjectCollections": "ʻAʻohe hōʻiliʻili BibleProject i loaʻa no kēia ʻōlelo i kēia manawa.",
+    "sportsStories": "Nā moʻolelo haʻuki",
+    "sportsTitle": "Nā moʻolelo haʻuki a me nā moʻolelo mea pāʻani ma {language}",
+    "sportsDescription": "Nā moʻolelo haʻuki i hoʻokumu ʻia i ka manaʻoʻiʻo a me nā hōʻiliʻili e pili ana i nā mea pāʻani i loaʻa ma {language}.",
+    "noSportsCollections": "ʻAʻohe hōʻiliʻili haʻuki a i ʻole moʻolelo mea pāʻani i loaʻa no kēia ʻōlelo i kēia manawa.",
+    "fullyDubbed": "Ua unuhi piha ʻia ka leo",
+    "dubbedVideosTitle": "Nā wikiō ma {language} ma ka hōʻiliʻili",
+    "dubbedVideosDescription": "E nānā i nā wikiō ma {language} i unuhi piha ʻia ka leo, i hui pū ʻia me kā lākou hōʻiliʻili no ka maʻalahi o ka ʻimi ʻana.",
+    "noDubbedVideos": "ʻAʻohe wikiō i unuhi piha ʻia ka leo i loaʻa no kēia ʻōlelo i kēia manawa.",
+    "subtitlesAvailable": "Loaʻa nā wehewehe ma lalo",
+    "subtitlesTitle": "Nā wikiō ma {language} me nā wehewehe ma lalo",
+    "subtitlesDescription": "Aia i loko o kēia mau wikiō nā wehewehe ma lalo ma {language} ke loaʻa ʻole ka leo i ʻōlelo ʻia ma {language}.",
+    "noSubtitleVideos": "ʻAʻohe wikiō me nā wehewehe ma lalo wale nō i loaʻa no kēia ʻōlelo i kēia manawa.",
+    "dubbed": "Unuhi leo ʻia",
+    "subtitles": "Nā wehewehe ma lalo",
+    "newLabel": "Hou",
+    "fromCollection": "Mai {collection}",
+    "standaloneVideos": "Nā wikiō kūʻokoʻa",
+    "videosFromCollection": "Nā wikiō mai {collection}.",
+    "standaloneDescription": "Nā wikiō kūʻokoʻa ma kēia ʻōlelo.",
+    "openCollection": "Wehe i ka hōʻiliʻili"
+  },
+  "WatchHome": {
+    "pageTitle": "Nānā ʻo Jesus Film Project",
+    "watch": "Nānā",
+    "watchNow": "Nānā I kēia manawa",
+    "mutePreview": "Pani leo i ka nāmua",
+    "unmutePreview": "Wehe leo i ka nāmua",
+    "nextVideo": "Wikiō aʻe",
+    "featured": "Koho ʻia",
+    "showVideo": "Hōʻike i {title}",
+    "previousVideoPreview": "Nāmua wikiō ma mua",
+    "nextVideoPreview": "Nāmua wikiō aʻe",
+    "mediaCollection": "Hōʻiliʻili Media",
+    "scrollToVideo": "ʻAu i ka wikiō {title}"
+  },
+  "WatchFooter": {
+    "home": "ʻAoʻao home o Jesus Film Project",
+    "navigation": "Nā loulou ma lalo",
+    "share": "Kaʻana",
+    "watch": "Nānā",
+    "giving": "Hāʻawi",
+    "about": "No mākou",
+    "products": "Nā huahana",
+    "resources": "Nā punawai",
+    "partners": "Nā hoa hana",
+    "contact": "Hoʻokaʻaʻike",
+    "giveNow": "Hāʻawi i kēia manawa",
+    "resourcesVersion": "Nā punawai ({version})",
+    "office": "Keʻena",
+    "fax": "Kelepaʻi",
+    "privacyPolicy": "Kulekele Pilikino",
+    "legalStatement": "ʻŌlelo Kānāwai",
+    "newsletter": "Kākau inoa no kā mākou nūpepa leka"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Kūkulu ʻia no nā mikionali honua",
+    "title": "ʻAʻole loli ka ʻōlelo. Loli ke ʻano o ka nānā ʻana o nā kānaka.",
+    "description": "Ke kūkulu hou nei mākou i kā mākou waihona wikiō a me nā mea paahana mai ke kumu mai, me ka hoʻokō ʻana i nā makahiki he nui o ka hana unuhi i nā paepae kahi e hui, nānā, a kaʻana ai nā kānaka.",
+    "translatedLibraryTitle": "ʻO ka waihona kiʻiʻoniʻoni i unuhi nui loa ma ka honua",
+    "translatedLibraryDescription": "Ua kūkulu nā makahiki he nui o ka hana unuhi, i hāpai ʻia e nā hoa lawelawe hilinaʻi, i kahi waihona me nā tausani o nā ala ʻōlelo, i hiki ai i nā kānaka ke ʻike i ka moʻolelo o Iesu ma ka ʻōlelo e hiki loa aku ai i ko lākou naʻau.",
+    "trustedVoicesTitle": "Ke lawe nei i nā leo hilinaʻi i nā ʻano hou",
+    "trustedVoicesDescription": "Ke kūkulu hou nei mākou i ke ʻano o ka haʻi kiʻi ʻana i nā moʻolelo euanelio ma ke kiʻi, me ka hoʻohui ʻana i nā unuhi hilinaʻi me nā ʻano hou i hiki ai i ka ʻōlelo ke neʻe manuahi ma nā paepae, nā moʻomeheu, a me nā pale.",
+    "missionTeamTitle": "ʻAʻole wale he waihona. He hui i alakaʻi ʻia e ka mikionali.",
+    "missionTeamDescription": "He hui honua ʻo Jesus Film Project o nā unuhi ʻōlelo, nā loea media, nā luna hoʻoponopono, a me nā mea haku e hoʻololi ana i nā makahiki he nui o ka ʻike lawelawe i mau mea paahana no nā mea hana haumāna ma nā wahi a pau.",
+    "buildingNext": "Ka mea e kūkulu nei mākou aʻe",
+    "nextStepsTitle": "Paepae Nā Hana Aʻe",
+    "nextStepsDescription": "Hoʻohui i nā mea nānā me nā manawa maopopo ma ko lākou huakaʻi ʻuhane, e kōkua iā lākou e hana i kahi ʻanuʻu aʻe i ke kaiāulu, ka Palapala Hemolele, a i ʻole ka mikionali.",
+    "mediaLibraryTitle": "Waihona Media ʻEuanelio",
+    "mediaLibraryDescription": "He waihona media Kalikiano nui me nā tausani o nā wikiō, nā kiʻiʻoniʻoni, a me nā punawai i loaʻa ma nā ʻōlelo he nui no ka lawelawe a me ka hoʻolaha ʻana i ka honua holoʻokoʻa.",
+    "ministryToolsTitle": "Nā Mea Paahana Kikohoʻe no nā Lawelawe",
+    "ministryToolsDescription": "Hoʻolālā ʻia ka mālama wikiō, ka hāʻawi maʻiʻo, ka hoʻopili ʻana i ka poʻe hālāwai, a me ka ʻikepili e kōkua i nā lawelawe e hiki aku i nā kānaka he nui aʻe me ka pono.",
+    "invitationEyebrow": "Ua kono ʻia ʻoe",
+    "invitationTitle": "Kōkua i ke kūkulu ʻana i <highlight>ka hanauna aʻe</highlight> o nā mea paahana mikionali",
+    "invitationDescription": "Ke kono nei mākou i nā loea hana, nā mea haku, a me nā hoa hana i ka loaʻa mua. E ho'āʻo mua i nā mea paahana hou, e hāʻawi i kou manaʻo, a e kōkua i ka hoʻohālike ʻana i nā huahana i hoʻolālā ʻia no ka hana mikionali maoli.",
+    "betaTester": "Lilo i mea hoʻāʻo beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Hōʻiliʻili Baibala Wikiō",
+    "gospelRailTitle": "E ʻike i ka moʻolelo piha",
+    "videoBibleDescription": "E mākaʻikaʻi i kā mākou hōʻiliʻili o nā wikiō a me nā punawai e hoʻōla ai i ka Baibala ma o nā moʻolelo a me nā aʻo hoʻohihi.",
+    "showcaseTitle": "Ua Hōʻike ʻia ka Palapala Hemolele ma o ke Kiʻiʻoniʻoni",
+    "adventEyebrow": "Kalikimaka Advent",
+    "adventTitle": "Heluhelu Hope Kalikimaka Advent",
+    "adventDescription": "E hui pū i kā mākou huakaʻi Advent me kahi wikiō i kēlā me kēia lā e kūkulu ana i ka manaʻo kakali no Kalikimaka, e ʻimi ana i ka manaʻolana, ka hauʻoli, a me ka ʻōlelo hoʻohiki o ka hiki ʻana mai o Iesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Ka Advent a BibleProject",
+    "nuaEyebrow": "Moʻo NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Moʻo Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Papa Haʻawina Wikiō",
+    "journeyWithJesusTitle": "Huakaʻi me Iesu",
+    "gospelsOnVideoEyebrow": "ʻO kēlā me kēia Euanelio, ma ke Wikiō",
+    "scriptureAsWrittenTitle": "Ka Palapala Hemolele, i ʻōlelo pololei ʻia e like me ka mea i kākau ʻia",
+    "merryChristmas": "Mele Kalikimaka!",
+    "daysUntilChristmas": "{count, plural, one {# lā a hiki i Kalikimaka} other {# lā a hiki i Kalikimaka}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Nā ʻōlelo",
+    "metadataDescription": "E mākaʻikaʻi i nā wikiō JesusFilm ma ka ʻōlelo.",
+    "eyebrow": "Nā ʻōlelo nānā",
+    "title": "Koho i kahi ʻōlelo",
+    "description": "E mākaʻikaʻi i nā ʻōlelo ma ka ʻāina a i ʻole e nānā i ka papa inoa piha.",
+    "searchPlaceholder": "Huli i nā ʻōlelo a i ʻole nā ʻāina...",
+    "searchLabel": "Huli i nā ʻōlelo a i ʻole nā ʻāina",
+    "clearSearch": "Holoi huli",
+    "browse": "Nānā",
+    "browseByRegion": "E nānā ma ka ʻāina a me ka ʻāina kūʻokoʻa",
+    "languageCount": "{count, plural, one {# ʻōlelo} other {# ʻōlelo}}",
+    "region": "ʻĀina",
+    "countryLanguages": "Nā ʻōlelo o {country}",
+    "showLess": "Hōʻike liʻiliʻi",
+    "showMore": "Hōʻike i {count} hou aʻe",
+    "noLanguages": "ʻAʻohe ʻōlelo i loaʻa",
+    "tryAnotherSearch": "E hoʻāʻo i kekahi huaʻōlelo huli ʻē aʻe."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Mōʻaukala Nānā | Jesus Film Project",
+    "title": "Mōʻaukala Nānā",
+    "loading": "Ke hoʻouka nei i ka mōʻaukala",
+    "empty": "ʻAʻohe mea ma ʻaneʻi i kēia manawa",
+    "emptyDescription": "E hōʻike ʻia ma ʻaneʻi nā wikiō āu e nānā ai ke komo ʻoe i loko.",
+    "earlier": "Ma mua",
+    "today": "I kēia lā",
+    "yesterday": "I nehinei"
+  },
+  "AccountControl": {
+    "account": "Moʻokāki",
+    "accountMenu": "Papa kuhikuhi moʻokāki",
+    "signIn": "Komo i loko",
+    "signOut": "Puka i waho",
+    "signedIn": "Ua komo i loko",
+    "history": "Mōʻaukala",
+    "logOut": "Puka i waho"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ʻAʻole i loaʻa ka ʻaoʻao",
+    "eyebrow": "ʻAʻole i loaʻa ka ʻaoʻao",
+    "screenReaderPrefix": "ʻAʻole i loaʻa ka ʻaoʻao:",
+    "title": "ʻAʻole kēia wahi i laila.",
+    "description": "Ua neʻe paha ka ʻaoʻao, akā ke hoʻomau nei ka moʻolelo.",
+    "actionsLabel": "Nā hana no ka ʻaoʻao ʻaʻole i loaʻa",
+    "backToWatch": "Hoʻi i Nānā",
+    "browseVideos": "Nānā i nā wikiō"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Nānā Kiʻiʻoniʻoni Pōkole",
+    "actions": {
+      "joinUs": "E hui pū me mākou",
+      "shareMission": "E kaʻana i kā mākou mikionali"
+    },
+    "welcomeStart": {
+      "label": "ʻO ka manaʻoʻiʻo a me ka Palapala Hemolele",
+      "title": "Nā Koho Wikiō o kēia Lā",
+      "description": "Nā wikiō ma muli o ka manaʻoʻiʻo mai kā mākou waihona e hoʻoulu, e hoʻāʻo, a e hoʻāla i ka noʻonoʻo."
+    },
+    "welcomeMorning": {
+      "label": "Hoʻoulu no ke Kakahiaka",
+      "title": "Aloha kakahiaka! E kali mai ana nā manawa Baibala o kēia lā.",
+      "description": "E hoʻomaka i kou lā me nā manawa Baibala hoʻoulu e paipai a hoʻokiʻekiʻe i kou ʻuhane."
+    },
+    "welcomeAfternoon": {
+      "label": "Hoʻoulu no ke Auinalā",
+      "title": "Aloha auinalā! Nā manawa Baibala no kou lā.",
+      "description": "Nā maʻiʻo Baibala hoʻoulu kūpono no kou wā hoʻomaha auinalā a i ʻole no ka hoʻomau ʻana i ka hoʻoikaika."
+    },
+    "welcomeEvening": {
+      "label": "Hoʻoulu no ke Ahiahi",
+      "title": "Aloha ahiahi! E hoʻomaha me nā manawa Baibala.",
+      "description": "Nā manawa Baibala mālie e kōkua iā ʻoe e noʻonoʻo a loaʻa ka hōʻoluʻolu i ka pau ʻana o kou lā."
+    },
+    "joinUs": {
+      "label": "E hui pū me mākou",
+      "title": "Ke ʻimi nei nā piliona",
+      "description": "Aia ka ʻohi. E hui pū me mākou i ko kākou kaʻana ʻana i ka ʻeuanelio i ka honua ma o nā media kikohoʻe."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "E hele pū kākou",
+      "title": "Ke haʻi pū nei i ka Moʻolelo no Iesu",
+      "description": "I lohe a ʻike lākou i ke aloha o Iesu ma kā lākou ʻōlelo iho ma kahi a lākou e noho ai."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% kūlike",
+    "none": "ʻAʻohe wikiō paipai i loaʻa no kēia wikiō ma kēia ʻōlelo."
+  },
+  "BetaTesterModal": {
+    "title": "Lilo i mea hoʻāʻo beta",
+    "trigger": "Lilo i mea hoʻāʻo beta",
+    "loadFailed": "Ua hewa kekahi mea.",
+    "loading": "Ke hoʻouka nei...",
+    "openFormNewTab": "Wehe i ka palapala ma kahi kapu hou",
+    "close": "Pani",
+    "iframeTitle": "Lilo i mea hoʻāʻo beta"
   }
 }

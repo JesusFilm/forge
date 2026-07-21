@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
   LegacyFragmentValue,
@@ -120,6 +121,7 @@ function QuestionItem({
 }
 
 export function RelatedQuestions({ data }: RelatedQuestionsProps) {
+  const t = useTranslations("WatchStudyQuestions")
   const { id, sectionKey, heading, questions } = data
   const ctaLabel = String((data as Record<string, unknown>).ctaLabel ?? "")
   const ctaLink = String((data as Record<string, unknown>).ctaLink ?? "")
@@ -160,13 +162,13 @@ export function RelatedQuestions({ data }: RelatedQuestionsProps) {
           <Button
             variant="pill"
             nativeButton={false}
-            aria-label={ctaLabel || "Ask a question"}
+            aria-label={ctaLabel || t("askYours")}
             render={
               <a href={ctaLink} target="_blank" rel="noopener noreferrer" />
             }
           >
             <MessageCircleIcon />
-            <span>{ctaLabel || "Ask yours"}</span>
+            <span>{ctaLabel || t("askYours")}</span>
           </Button>
         )}
       </div>

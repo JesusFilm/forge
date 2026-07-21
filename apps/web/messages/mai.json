@@ -7,7 +7,9 @@
     "noContent": "कुनो सामग्री उपलब्ध नहि अछि।",
     "homepageMisconfigured": "वॉच होमपेज ठीकसँ विन्यस्त नहि अछि।",
     "defaultTemplateMisconfigured": "डिफ़ॉल्ट वॉच टेम्पलेट ठीकसँ विन्यस्त नहि अछि।",
-    "authFailed": "सामग्री सेवाक संग प्रमाणीकरण करबामे असमर्थ। ई समस्या जारी रहल तँ कृपया सहायता सँ संपर्क करू।"
+    "authFailed": "सामग्री सेवाक संग प्रमाणीकरण करबामे असमर्थ। ई समस्या जारी रहल तँ कृपया सहायता सँ संपर्क करू।",
+    "pageLoadFailed": "किछु ग़लत भेल।",
+    "tryAgain": "फेरसँ कोशिश करू"
   },
   "VideosPage": {
     "title": "सभ वीडियो",
@@ -22,7 +24,8 @@
     "promoHeading": "की अहाँ बाइबल केँ आओर गहराइ सँ बुझय चाहैत छी?",
     "joinBibleStudy": "हमर बाइबल अध्ययनमे जुड़ू",
     "previousQuote": "पिछला बाइबल उद्धरण",
-    "nextQuote": "अगिला बाइबल उद्धरण"
+    "nextQuote": "अगिला बाइबल उद्धरण",
+    "readPassage": "ई अंश अपन बाइबलमे पढ़ू।"
   },
   "DownloadButton": {
     "checking": "जाँचि रहल अछि",
@@ -73,7 +76,8 @@
     "selectLanguage": "भाषा चुनू",
     "searchPlaceholder": "भाषा खोजू…",
     "languages": "भाषा सभ",
-    "noMatches": "कोनो मिलान नहि"
+    "noMatches": "कोनो मिलान नहि",
+    "notAvailable": "उपलब्ध नहि"
   },
   "LanguagePickerModal": {
     "dialogTitle": "भाषा",
@@ -112,7 +116,8 @@
     "questions": "संबंधित प्रश्न",
     "askYours": "अहाँक प्रश्न पुछू",
     "chatWithPerson": "ककरोसँ बातचीत करू",
-    "askBibleQuestion": "बाइबल सम्बन्धी प्रश्न पुछू"
+    "askBibleQuestion": "बाइबल सम्बन्धी प्रश्न पुछू",
+    "quiz": "क्विज़"
   },
   "WatchQuestionPanel": {
     "messageType": "संदेशक प्रकार",
@@ -170,7 +175,8 @@
     "searchRegion": "वीडियो खोजू",
     "clearSearch": "खोज साफ करू",
     "changeAudioLanguage": "ऑडियो भाषा बदलू",
-    "home": "JesusFilm होम"
+    "home": "JesusFilm होम",
+    "closeSearch": "खोज बन्द करू"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोजू आ ब्राउज़ करू",
@@ -205,14 +211,19 @@
     "clearLanguages": "साफ करू",
     "queryLanguageDetected": "{language} पेल गेल",
     "searchInLanguage": "{language} मे खोजू",
-    "tryDifferentKeywordsOrLanguage": "अलग कीवर्ड आजमाउ वा दोसर खोज भाषा चुनू"
+    "tryDifferentKeywordsOrLanguage": "अलग कीवर्ड आजमाउ वा दोसर खोज भाषा चुनू",
+    "useWebsiteDefaultLanguage": "वेबसाइटक डिफ़ॉल्ट खोज भाषा उपयोग करू",
+    "removeLanguage": "{language} हटाउ",
+    "browseMode": "ब्राउज़ मोडमे खोज"
   },
   "HeroPlayer": {
     "playWithSound": "अहिने देखू",
-    "tapToUnmute": "म्यूट हटाबय लेल टैप करू"
+    "tapToUnmute": "म्यूट हटाबय लेल टैप करू",
+    "nextEpisode": "अगिला एपिसोड"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "सामग्री लोड भ रहल अछि"
+    "loadingContent": "सामग्री लोड भ रहल अछि",
+    "loadingVideo": "वीडियो लोड भ रहल अछि"
   },
   "VideoLabels": {
     "video": "वीडियो",
@@ -223,7 +234,8 @@
     "series": "श्रृंखला",
     "collection": "संग्रह",
     "trailer": "ट्रेलर",
-    "behindTheScenes": "पर्दाक पाछाँ"
+    "behindTheScenes": "पर्दाक पाछाँ",
+    "chapter": "अध्याय"
   },
   "SiblingCarousel": {
     "clipPosition": "क्लिप {current} / {total}",
@@ -235,11 +247,252 @@
     "noImage": "कोनो छवि नहि",
     "playingNow": "एखन चलि रहल अछि",
     "previousChapter": "पछिला अध्याय",
-    "nextChapter": "अगिला अध्याय"
+    "nextChapter": "अगिला अध्याय",
+    "thumbnailAlt": "{title} लघु छवि",
+    "relatedVideoThumbnail": "संबंधित वीडियो लघु छवि"
   },
   "SearchResultCard": {
     "experience": "अनुभव",
     "episodeCount": "{count, plural, one {# एपिसोड} other {# एपिसोड सभ}}",
     "thumbnailAlt": "वीडियो लघु छवि"
+  },
+  "Feedback": {
+    "openForm": "प्रतिपुष्टि फ़ॉर्म खोलू",
+    "label": "प्रतिपुष्टि",
+    "couldNotLoad": "प्रतिपुष्टि फ़ॉर्म लोड नहि भ सकल।",
+    "loadingForm": "प्रतिपुष्टि फ़ॉर्म लोड भ रहल अछि…",
+    "retry": "फेर कोशिश करू",
+    "openFormShort": "फ़ॉर्म खोलू",
+    "cancel": "रद्द करू",
+    "title": "बीटा प्रतिपुष्टि",
+    "description": "की नीक चलि रहल अछि आ की हमसभ सुधारि सकैत छी, से साझा करू। ई फ़ॉर्म Google द्वारा उपलब्ध कराओल गेल अछि।",
+    "openInNewTab": "नव टेबमे फ़ॉर्म खोलू",
+    "closeForm": "प्रतिपुष्टि फ़ॉर्म बन्द करू",
+    "loadingGoogleForm": "Google फ़ॉर्म लोड भ रहल अछि…",
+    "iframeTitle": "बीटा प्रतिपुष्टि जमा करू"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} मे निःशुल्क ईसाई वीडियो | Jesus Film Project",
+    "metadataDescription": "{language} मे डब ऑडियो वा उपशीर्षक संग Jesus फिल्म, बाइबल कथा, शिष्यत्व श्रृंखला, आ प्रचार वीडियो खोजू।",
+    "heroTitle": "{language} मे निःशुल्क ईसाई वीडियो",
+    "heroDescription": "{language} मे उपलब्ध Jesus फिल्म, बाइबल कथा, शिष्यत्व श्रृंखला, आ प्रचार वीडियो खोजू। पूर्णतः डब वीडियो पहिले देखाओल गेल अछि, आ नीचा उपशीर्षक-केवल विकल्प अछि।",
+    "languageCollection": "भाषा संग्रह",
+    "itemCount": "{count, plural, one {# वस्तु} other {# वस्तु सभ}}",
+    "videoCount": "{count, plural, one {# वीडियो} other {# वीडियो सभ}}",
+    "videosInGroups": "{videoCount, plural, one {# वीडियो} other {# वीडियो सभ}} {groupCount, plural, one {# समूह} other {# समूह सभ}} मे",
+    "sectionNavLabel": "भाषा सूची खण्ड",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "नव",
+    "videoBible": "वीडियो बाइबल",
+    "bibleProject": "BibleProject",
+    "sports": "खेल",
+    "collections": "संग्रह",
+    "subtitlesOnly": "केवल उपशीर्षक",
+    "newlyAdded": "नव जोड़ल गेल",
+    "newVideosTitle": "{language} मे नव ईसाई वीडियो",
+    "newestFirst": "सबसँ नया पहिले",
+    "noPublishedVideos": "एखन धरि एहि भाषाक लेल कोनो प्रकाशित वीडियो नहि भेटल।",
+    "bibleAndGospelFilms": "बाइबल आ सुसमाचार फिल्म",
+    "videoBibleCollectionsTitle": "{language} वीडियो बाइबल संग्रह",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, आ Acts सहित धर्मशास्त्र-केंद्रित संग्रह {language} मे।",
+    "noVideoBibleCollections": "एखन धरि एहि भाषाक लेल कोनो वीडियो बाइबल संग्रह उपलब्ध नहि अछि।",
+    "bibleProjectCollectionsTitle": "{language} BibleProject संग्रह",
+    "bibleProjectDescription": "{language} मे उपलब्ध BibleProject श्रृंखला आ अध्ययन।",
+    "noBibleProjectCollections": "एखन धरि एहि भाषाक लेल कोनो BibleProject संग्रह उपलब्ध नहि अछि।",
+    "sportsStories": "खेलक कथा सभ",
+    "sportsTitle": "{language} खेल आ एथलीट कथा सभ",
+    "sportsDescription": "विश्वास-केंद्रित खेल कथा आ एथलीट केन्द्रित संग्रह {language} मे उपलब्ध।",
+    "noSportsCollections": "एखन धरि एहि भाषाक लेल कोनो खेल वा एथलीट-कथा संग्रह उपलब्ध नहि अछि।",
+    "fullyDubbed": "पूर्णतः डब",
+    "dubbedVideosTitle": "संग्रह अनुसार {language} वीडियो",
+    "dubbedVideosDescription": "आसान खोज लेल संग्रह सहित पूर्णतः डब {language} वीडियो ब्राउज़ करू।",
+    "noDubbedVideos": "एखन धरि एहि भाषाक लेल कोनो पूर्णतः डब वीडियो उपलब्ध नहि अछि।",
+    "subtitlesAvailable": "उपशीर्षक उपलब्ध",
+    "subtitlesTitle": "उपशीर्षक सहित {language} वीडियो",
+    "subtitlesDescription": "ई वीडियोमे {language} उपशीर्षक अछि जतय बोली गेल {language} ऑडियो एखन उपलब्ध नहि अछि।",
+    "noSubtitleVideos": "एखन धरि एहि भाषाक लेल कोनो केवल-उपशीर्षक वीडियो उपलब्ध नहि अछि।",
+    "dubbed": "डब",
+    "subtitles": "उपशीर्षक",
+    "newLabel": "नव",
+    "fromCollection": "{collection} सँ",
+    "standaloneVideos": "अलग वीडियो",
+    "videosFromCollection": "{collection} सँ वीडियो।",
+    "standaloneDescription": "एहि भाषामे अलग वीडियो।",
+    "openCollection": "संग्रह खोलू"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project वॉच",
+    "watch": "देखू",
+    "watchNow": "अहिने देखू",
+    "mutePreview": "पूर्वावलोकन म्यूट करू",
+    "unmutePreview": "पूर्वावलोकन म्यूट हटाउ",
+    "nextVideo": "अगिला वीडियो",
+    "featured": "विशेष",
+    "showVideo": "{title} देखाउ",
+    "previousVideoPreview": "पछिला वीडियो पूर्वावलोकन",
+    "nextVideoPreview": "अगिला वीडियो पूर्वावलोकन",
+    "mediaCollection": "मीडिया संग्रह",
+    "scrollToVideo": "{title} वीडियो दिस स्क्रोल करू"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project होम",
+    "navigation": "फुटर नेविगेशन",
+    "share": "साझा करू",
+    "watch": "देखू",
+    "giving": "दान",
+    "about": "हमर बारेमे",
+    "products": "उत्पाद",
+    "resources": "संसाधन",
+    "partners": "साझेदार",
+    "contact": "संपर्क",
+    "giveNow": "अहिने दान करू",
+    "resourcesVersion": "संसाधन ({version})",
+    "office": "कार्यालय",
+    "fax": "फैक्स",
+    "privacyPolicy": "गोपनीयता नीति",
+    "legalStatement": "कानूनी कथन",
+    "newsletter": "हमर न्यूज़लेटर लेल साइन अप करू"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "वैश्विक मिशनक लेल बनाओल गेल",
+    "title": "संदेश नहि बदलैत। लोक जेना देखैत छथि, ओ बदलैत अछि।",
+    "description": "हमसभ अपन वीडियो लाइब्रेरी आ उपकरण फेरसँ नींवसँ बनाबैत छी, दशक भरिक अनुवाद कार्य केँ ओहि प्लेटफ़ॉर्म पर समर्पित करैत छी जतय लोक पहिनेसँ एकत्र होइत, देखैत, आ साझा करैत अछि।",
+    "translatedLibraryTitle": "विश्वक सबसँ बेसी अनूदित फिल्म लाइब्रेरी",
+    "translatedLibraryDescription": "दशक भरिक अनुवाद कार्य, विश्वसनीय सेवकाई साझेदारक सहयोग सँ, हजारो भाषा ट्रैक सहित एहन लाइब्रेरी बनौलक अछि जाहिसँ लोक अपन हृदय केँ छूएवाला भाषामे यीशुक कथा सँ भेटि सकय।",
+    "trustedVoicesTitle": "विश्वसनीय स्वर केँ नव प्रारूपमे लाबैत",
+    "trustedVoicesDescription": "हमसभ सुसमाचारक कथा सभक दृश्य प्रस्तुति पुनर्निर्माण क रहल छी, आधुनिक प्रारूप संग विश्वसनीय अनुवाद जोड़ि, जाहिसँ संदेश प्लेटफ़ॉर्म, संस्कृति, आ स्क्रीन पर मुक्त भावे चलि सकय।",
+    "missionTeamTitle": "केवल लाइब्रेरी नहि। मिशन-चालित टीम।",
+    "missionTeamDescription": "Jesus Film Project अनुवादक, मीडिया विशेषज्ञ, संपादक, आ रचनाकारक एकटा वैश्विक टीम अछि जे दशक भरिक सेवकाई अनुभव केँ सब जगह शिष्य-निर्माता सभक लेल उपकरणमे बदलि रहल अछि।",
+    "buildingNext": "हमसभ अगिला की बना रहल छी",
+    "nextStepsTitle": "अगिला कदम मंच",
+    "nextStepsDescription": "दर्शक सभ केँ अपन आध्यात्मिक यात्रामे ठोस अवसर सँ जोड़ू, समुदाय, धर्मशास्त्र, वा मिशनक दिस अगिला कदम लाबयमे सहायता करू।",
+    "mediaLibraryTitle": "सुसमाचारिक मीडिया लाइब्रेरी",
+    "mediaLibraryDescription": "एकटा विस्तृत ईसाई मीडिया लाइब्रेरी, जतय हजारो वीडियो, फिल्म, आ संसाधन बहुभाषी रूपमे उपलब्ध अछि — विश्वव्यापी सेवकाई आ सुसमाचार प्रचारक लेल।",
+    "ministryToolsTitle": "सेवकाईक लेल डिजिटल उपकरण",
+    "ministryToolsDescription": "वीडियो प्रबंधन, सामग्री वितरण, दर्शक संलग्नता, आ विश्लेषण — सेवकाई केँ बेसी लोक धरि प्रभावी रूपे पहुँचाबय लेल बनाओल गेल।",
+    "invitationEyebrow": "अहाँ आमंत्रित छी",
+    "invitationTitle": "मिशन उपकरणक <highlight>अगिला पीढ़ी</highlight> बनाबयमे सहायता करू",
+    "invitationDescription": "हमसभ अभ्यासकर्ता, रचनाकार, आ साझेदार सभ केँ प्रारंभिक पहुँच लेल आमंत्रित करैत छी। नव उपकरण पहिले परखू, प्रतिपुष्टि दिअ, आ वास्तविक मिशन कार्य लेल बनाओल उत्पादक आकार देबामे मदद करू।",
+    "betaTester": "बीटा परीक्षक बनू"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "वीडियो बाइबल संग्रह",
+    "gospelRailTitle": "पूर्ण कथा जानू",
+    "videoBibleDescription": "हमर वीडियो आ संसाधनक संग्रह खोजू जे आकर्षक कथा आ शिक्षाक माध्यमसँ बाइबल केँ जीवन्त बनबैत अछि।",
+    "showcaseTitle": "फिल्मक माध्यमसँ सुनाओल शास्त्र",
+    "adventEyebrow": "क्रिसमस आगमन",
+    "adventTitle": "क्रिसमस आगमन काउंटडाउन",
+    "adventDescription": "हमर आगमन यात्रामे शामिल होऊ, एकटा दैनिक वीडियो संग जे क्रिसमसक प्रतीक्षा बढ़बैत अछि आ यीशुक आगमनक आशा, आनन्द, आ प्रतिज्ञा खोजैत अछि।",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject आगमन",
+    "nuaEyebrow": "NUA श्रृंखला",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth श्रृंखला",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "वीडियो पाठ्यक्रम",
+    "journeyWithJesusTitle": "यीशु संग यात्रा करू",
+    "gospelsOnVideoEyebrow": "हर सुसमाचार, वीडियो पर सुनाओल",
+    "scriptureAsWrittenTitle": "जकाँ लिखल गेल, ठीक ओहिना सुनाओल धर्मशास्त्र",
+    "merryChristmas": "क्रिसमसक हार्दिक शुभकामना!",
+    "daysUntilChristmas": "{count, plural, one {क्रिसमस आबयमे # दिन बाँकी} other {क्रिसमस आबयमे # दिन बाँकी}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "भाषा सभ",
+    "metadataDescription": "भाषा अनुसार JesusFilm वीडियो ब्राउज़ करू।",
+    "eyebrow": "देखबाक भाषा सभ",
+    "title": "भाषा चुनू",
+    "description": "क्षेत्र अनुसार भाषा खोजू वा पूरा सूची ब्राउज़ करू।",
+    "searchPlaceholder": "भाषा वा देश खोजू...",
+    "searchLabel": "भाषा वा देश खोजू",
+    "clearSearch": "खोज साफ करू",
+    "browse": "ब्राउज़",
+    "browseByRegion": "क्षेत्र आ देश अनुसार ब्राउज़ करू",
+    "languageCount": "{count, plural, one {# भाषा} other {# भाषा सभ}}",
+    "region": "क्षेत्र",
+    "countryLanguages": "{country} भाषा सभ",
+    "showLess": "कम देखाउ",
+    "showMore": "आओर {count} देखाउ",
+    "noLanguages": "कोनो भाषा नहि भेटल",
+    "tryAnotherSearch": "अलग खोज शब्द आजमाउ।"
+  },
+  "WatchHistory": {
+    "metadataTitle": "देखबाक इतिहास | Jesus Film Project",
+    "title": "देखबाक इतिहास",
+    "loading": "इतिहास लोड भ रहल अछि",
+    "empty": "एखन धरि एतय किछु नहि अछि",
+    "emptyDescription": "अहाँ जखन साइन इन रहैत देखैत छी, ओहि वीडियो सभ एतय देखाओल जाएत।",
+    "earlier": "पहिने",
+    "today": "आज",
+    "yesterday": "काल्हि"
+  },
+  "AccountControl": {
+    "account": "खाता",
+    "accountMenu": "खाता मेनू",
+    "signIn": "साइन इन करू",
+    "signOut": "साइन आउट करू",
+    "signedIn": "साइन इन",
+    "history": "इतिहास",
+    "logOut": "लॉग आउट करू"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "पेज नहि भेटल",
+    "eyebrow": "पेज नहि भेटल",
+    "screenReaderPrefix": "पेज नहि भेटल:",
+    "title": "ई दृश्य एतय नहि अछि।",
+    "description": "पेज स्थानांतरित भ सकैत अछि, मुदा कथा जारी अछि।",
+    "actionsLabel": "पेज नहि भेटल क्रियासभ",
+    "backToWatch": "फेर वॉच पर जाउ",
+    "browseVideos": "वीडियो ब्राउज़ करू"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "लघु फिल्म देखू",
+    "actions": {
+      "joinUs": "हमर संग जुड़ू",
+      "shareMission": "हमर मिशनमे सहभागी बनू"
+    },
+    "welcomeStart": {
+      "label": "विश्वास आ धर्मशास्त्र",
+      "title": "आजक वीडियो चुनाउ",
+      "description": "हमर संग्रहसँ विश्वास-केंद्रित वीडियो सामग्री, जे प्रेरित करए, चुनौती देए, आ मनन जगा देए।"
+    },
+    "welcomeMorning": {
+      "label": "प्रभातक प्रेरणा",
+      "title": "सुप्रभात! आजक बाइबल क्षण प्रतीक्षा क रहल अछि।",
+      "description": "अपन दिनक शुरुआत उत्साहजनक बाइबल क्षणसँ करू, जे अहाँक आत्माकेँ प्रेरित आ उत्साहित करबाक लेल बनाओल गेल अछि।"
+    },
+    "welcomeAfternoon": {
+      "label": "अपराह्णक प्रेरणा",
+      "title": "शुभ अपराह्ण! अहाँक दिन लेल बाइबल क्षण।",
+      "description": "उत्साहजनक बाइबल सामग्री, अहाँक दोपहरक विराम वा चलैत प्रेरणाक लेल उत्तम।"
+    },
+    "welcomeEvening": {
+      "label": "सांझक प्रेरणा",
+      "title": "शुभ संध्या! बाइबल क्षण संग दिन समेटू।",
+      "description": "शान्त बाइबल क्षण, जे दिन समाप्त होइत समय अहाँकेँ मनन करबामे आ सान्त्वना पाबयमे सहायता करत।"
+    },
+    "joinUs": {
+      "label": "हमर संग जुड़ू",
+      "title": "अरबो लोक खोजि रहल छथि",
+      "description": "कटनी तैयार अछि। डिजिटल मीडिया क उपयोग कए संसारक संग सुसमाचार साझा करैत हमर संग जुड़ू।"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "आबू, एक संग चलू",
+      "title": "एक संग, यीशुक कथा सुनबैत",
+      "description": "ताकि ओ सभ अपनहि भाषा मे, अपनहि स्थान पर, यीशुक प्रेम सुनि आ देखि सकथि।"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% मिलान",
+    "none": "एहि भाषामे एहि वीडियो लेल कोनो सुझाव नहि भेटल।"
+  },
+  "BetaTesterModal": {
+    "title": "बीटा परीक्षक बनू",
+    "trigger": "बीटा परीक्षक बनू",
+    "loadFailed": "किछु ग़लत भेल।",
+    "loading": "लोड भ रहल अछि...",
+    "openFormNewTab": "नव टेबमे फ़ॉर्म खोलू",
+    "close": "बन्द करू",
+    "iframeTitle": "बीटा परीक्षक बनू"
   }
 }

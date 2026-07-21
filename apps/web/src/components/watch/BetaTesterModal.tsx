@@ -2,6 +2,7 @@
 
 import { useRef, useState, type RefObject } from "react"
 import { ExternalLink, Loader2, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import {
   Dialog,
@@ -20,6 +21,7 @@ export function BetaTesterModal({
   onClose: () => void
   finalFocus: false | RefObject<HTMLElement | null>
 }) {
+  const t = useTranslations("BetaTesterModal")
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [iframeLoaded, setIframeLoaded] = useState(false)
 
@@ -41,21 +43,21 @@ export function BetaTesterModal({
       >
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4 pr-2 sm:px-6 sm:pr-3">
           <DialogTitle className="min-w-0 flex-1 text-base font-semibold text-white sm:text-lg">
-            Become a beta tester
+            {t("title")}
           </DialogTitle>
           <a
             href={BETA_TESTER_URL}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            aria-label="Open beta signup in a new tab"
+            aria-label={t("openFormNewTab")}
             className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-stone-200 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
           >
-            <span className="hidden sm:inline">Open in new tab</span>
+            <span className="hidden sm:inline">{t("openFormNewTab")}</span>
             <ExternalLink aria-hidden className="h-4 w-4" />
           </a>
           <DialogClose
             ref={closeButtonRef}
-            aria-label="Close beta signup"
+            aria-label={t("close")}
             data-testid="beta-tester-modal-close"
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-stone-300 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
           >
@@ -66,12 +68,12 @@ export function BetaTesterModal({
           {!iframeLoaded ? (
             <div className="absolute inset-0 z-20 grid place-items-center text-stone-700">
               <Loader2 aria-hidden className="h-8 w-8 animate-spin" />
-              <span className="sr-only">Loading beta signup form</span>
+              <span className="sr-only">{t("loading")}</span>
             </div>
           ) : null}
           <iframe
             src={BETA_TESTER_URL}
-            title="Jesus Film Beta Testing Group"
+            title={t("iframeTitle")}
             sandbox="allow-forms allow-scripts allow-same-origin"
             referrerPolicy="strict-origin-when-cross-origin"
             onLoad={() => setIframeLoaded(true)}

@@ -7,7 +7,9 @@
     "noContent": "A hu na zwi re ngomu zwi wanalaho.",
     "homepageMisconfigured": "Pheji ya u lavhelesa yo dzudzanyiwa zwivhi.",
     "defaultTemplateMisconfigured": "Template ya tshimbidzi ya u lavhelesa yo dzudzanyiwa zwivhi.",
-    "authFailed": "Zwo kundelwa u tenda kha tshumelo ya zwi re ngomu. Ndi humbela ni kwame thuso arali hezwi zwi bvela phanḓa."
+    "authFailed": "Zwo kundelwa u tenda kha tshumelo ya zwi re ngomu. Ndi humbela ni kwame thuso arali hezwi zwi bvela phanḓa.",
+    "pageLoadFailed": "Ho bvelela tshiṅwe tshithu tsho tshinyalaho.",
+    "tryAgain": "Lingedzani hafhu"
   },
   "VideosPage": {
     "title": "Vidio dzoṱhe",
@@ -22,7 +24,8 @@
     "promoHeading": "Ni ṱoḓa u pfesesa Bivhili nga vhuphara?",
     "joinBibleStudy": "Ṱanganedzani pfunzo ya Bivhili yashu",
     "previousQuote": "Mitalo wa Bivhili wo fhiraho",
-    "nextQuote": "Mitalo wa Bivhili u tevhelaho"
+    "nextQuote": "Mitalo wa Bivhili u tevhelaho",
+    "readPassage": "Vhalani hetshi tshipiḓa Bivhilini yaṋu."
   },
   "DownloadButton": {
     "checking": "Khou ṱola",
@@ -73,7 +76,8 @@
     "selectLanguage": "Nangani luambo",
     "searchPlaceholder": "Ṱolani luambo…",
     "languages": "Luambo",
-    "noMatches": "A hu na zwi fanaho"
+    "noMatches": "A hu na zwi fanaho",
+    "notAvailable": "A zwo wanali"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Luambo",
@@ -112,7 +116,8 @@
     "questions": "Mbudziso dzo teaho",
     "askYours": "Vhudzisani yanu",
     "chatWithPerson": "Amba na muthu",
-    "askBibleQuestion": "Vhudzisani mbudziso ya Bivhili"
+    "askBibleQuestion": "Vhudzisani mbudziso ya Bivhili",
+    "quiz": "Ndingo"
   },
   "WatchQuestionPanel": {
     "messageType": "Lushaka lwa mulaedza",
@@ -170,7 +175,8 @@
     "searchRegion": "Ṱolani video",
     "clearSearch": "Thuthani ṱhoḓisiso",
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
-    "home": "Muhuri wa JesusFilm"
+    "home": "Muhuri wa JesusFilm",
+    "closeSearch": "Valani ṱhoḓisiso"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Thuthani",
     "queryLanguageDetected": "{language} yo wanala",
     "searchInLanguage": "Ṱolani kha {language}",
-    "tryDifferentKeywordsOrLanguage": "Lingedzani maipfi a fhiraho kana nange iṅwe luambo lwa u ṱola"
+    "tryDifferentKeywordsOrLanguage": "Lingedzani maipfi a fhiraho kana nange iṅwe luambo lwa u ṱola",
+    "useWebsiteDefaultLanguage": "Shumisani luambo lwa u ṱola lwa website nga default",
+    "removeLanguage": "Bvisani {language}",
+    "browseMode": "Mode ya u browse ṱhoḓisiso"
   },
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",
-    "tapToUnmute": "Kandani u bvisa u fhumutshela"
+    "tapToUnmute": "Kandani u bvisa u fhumutshela",
+    "nextEpisode": "Episode i tevhelaho"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Khou laedza zwi re ngomu"
+    "loadingContent": "Khou laedza zwi re ngomu",
+    "loadingVideo": "Khou laedza video"
   },
   "VideoLabels": {
     "video": "Vidio",
@@ -223,7 +234,8 @@
     "series": "Mutevhe",
     "collection": "Muṱaṱisano",
     "trailer": "Thireila",
-    "behindTheScenes": "Nga murahu ha zwithu zwine zwa khou itea"
+    "behindTheScenes": "Nga murahu ha zwithu zwine zwa khou itea",
+    "chapter": "Khaḽa"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ya {total}",
@@ -235,11 +247,252 @@
     "noImage": "A hu na tshifanyiso",
     "playingNow": "Zwi khou tamba zwino",
     "previousChapter": "Khaḽa i fhiraho",
-    "nextChapter": "Khaḽa i tevhelaho"
+    "nextChapter": "Khaḽa i tevhelaho",
+    "thumbnailAlt": "Thumbnail ya {title}",
+    "relatedVideoThumbnail": "Thumbnail ya video i teaho"
   },
   "SearchResultCard": {
     "experience": "Tshenzhemo",
     "episodeCount": "{count, plural, one {# tshipiḓa} other {# zwipiḓa}}",
     "thumbnailAlt": "Thumbnail ya video"
+  },
+  "Feedback": {
+    "openForm": "Vulani fomo ya mbekanyo",
+    "label": "Mbekanyo",
+    "couldNotLoad": "Fomo ya mbekanyo yo kundelwa u laedza.",
+    "loadingForm": "Khou laedza fomo ya mbekanyo…",
+    "retry": "Lingedza hafhu",
+    "openFormShort": "Vulani fomo",
+    "cancel": "Khansela",
+    "title": "Mbekanyo ya Beta",
+    "description": "Ẓanḓani zwine zwa khou shuma na zwine ra nga khwinisa. Heḽi fomo ḽiṋekedzwa nga Google.",
+    "openInNewTab": "Vulani fomo kha thebhu ntswa",
+    "closeForm": "Valani fomo ya mbekanyo",
+    "loadingGoogleForm": "Khou laedza Fomo ya Google…",
+    "iframeTitle": "Ruma Mbekanyo ya Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vidio dza Vhukriste dza mahala nga {language} | Jesus Film Project",
+    "metadataDescription": "Ṱanganelani mafhungo a Yesu, mafhungo a Bivhili, dzi-series dza u guda, na vidio dza u swikelela nga mudumo wo dabulwaho kana zwibulo nga {language}.",
+    "heroTitle": "Vidio dza Vhukriste dza mahala nga {language}",
+    "heroDescription": "Ṱanganelani mafhungo a Yesu, mafhungo a Bivhili, dzi-series dza u guda, na vidio dza u swikelela zwi wanalaho nga {language}. Vidio dzo dabulwaho zwizwiligi ndi dzine dza thoma u sumbedzwa, nga fhasi hu na zwine zwa vha na zwibulo fhedzi.",
+    "languageCollection": "Muṱaṱisano wa luambo",
+    "itemCount": "{count, plural, one {# tshithu} other {# zwithu}}",
+    "videoCount": "{count, plural, one {# video} other {# vidio}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# vidio}} kha {groupCount, plural, one {# tshigwada} other {# zwigwada}}",
+    "sectionNavLabel": "Zwigaba zwa inventory ya luambo",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Tsha vhuṱuku",
+    "videoBible": "Bivhili ya Video",
+    "bibleProject": "BibleProject",
+    "sports": "Mitambo",
+    "collections": "Miṱaṱisano",
+    "subtitlesOnly": "Zwibulo fhedzi",
+    "newlyAdded": "Zwo engedzwa zwenezwino",
+    "newVideosTitle": "Vidio dza Vhukriste dza zwenezwino nga {language}",
+    "newestFirst": "Zwine zwa vha zwiswa nga phanda",
+    "noPublishedVideos": "A hu athu wanala vidio dzo bviswaho kha heḽi luambo.",
+    "bibleAndGospelFilms": "Mafhungo a Bivhili na Filimu dza Gospel",
+    "videoBibleCollectionsTitle": "Miṱaṱisano ya {language} ya Bivhili ya Video",
+    "videoBibleDescription": "Miṱaṱisano yo sedzaho kha Maṅwalo i katelaho LUMO, JESUS, Magdalena, na Acts nga {language}.",
+    "noVideoBibleCollections": "A hu athu wanala miṱaṱisano ya Bivhili ya Video kha heḽi luambo.",
+    "bibleProjectCollectionsTitle": "Miṱaṱisano ya BibleProject ya {language}",
+    "bibleProjectDescription": "Dzi-series na zvidzidzo zwa BibleProject zwi wanalaho nga {language}.",
+    "noBibleProjectCollections": "A hu athu wanala miṱaṱisano ya BibleProject kha heḽi luambo.",
+    "sportsStories": "Mafhungo a mitambo",
+    "sportsTitle": "Mafhungo a mitambo na vhatambi nga {language}",
+    "sportsDescription": "Mafhungo a mitambo o sedzaho kha lutendo na miṱaṱisano ya vhatambi zwi wanalaho nga {language}.",
+    "noSportsCollections": "A hu athu wanala miṱaṱisano ya mitambo kana ya mafhungo a vhatambi kha heḽi luambo.",
+    "fullyDubbed": "Yo dabulwa yoṱhe",
+    "dubbedVideosTitle": "Vidio dza {language} nga muṱaṱisano",
+    "dubbedVideosDescription": "Ṱanganelani vidio dza {language} dzo dabulwaho dzoṱhe dzo vhekanywa na muṱaṱisano wadzo u itela u dzi wana luvhili.",
+    "noDubbedVideos": "A hu athu wanala vidio dzo dabulwaho dzoṱhe kha heḽi luambo.",
+    "subtitlesAvailable": "Zwibulo zwi wanala",
+    "subtitlesTitle": "Vidio dza {language} dzi re na zwibulo",
+    "subtitlesDescription": "Hezwi vidio zwi katela zwibulo zwa {language} musi mudumo wa {language} wo amba woṱhe u sa athu wanala.",
+    "noSubtitleVideos": "A hu athu wanala vidio dza zwibulo fhedzi kha heḽi luambo.",
+    "dubbed": "Yo dabulwa",
+    "subtitles": "Zwibulo",
+    "newLabel": "Tsha vhuṱuku",
+    "fromCollection": "U bva kha {collection}",
+    "standaloneVideos": "Vidio dzi imelelaho",
+    "videosFromCollection": "Vidio u bva kha {collection}.",
+    "standaloneDescription": "Vidio dzi imelelaho kha heḽi luambo.",
+    "openCollection": "Vulani muṱaṱisano"
+  },
+  "WatchHome": {
+    "pageTitle": "U Lavhelesa ha Jesus Film Project",
+    "watch": "Lavhelani",
+    "watchNow": "Lavhelani Zwino",
+    "mutePreview": "Fhumutshelani preview",
+    "unmutePreview": "Bvisani u fhumutshela preview",
+    "nextVideo": "Video i tevhelaho",
+    "featured": "Yo nangiwaho",
+    "showVideo": "Sumbedzani {title}",
+    "previousVideoPreview": "Preview ya video yo fhiraho",
+    "nextVideoPreview": "Preview ya video i tevhelaho",
+    "mediaCollection": "Muṱaṱisano wa media",
+    "scrollToVideo": "Iḓani kha video ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Muhuri wa Jesus Film Project",
+    "navigation": "U tshimbila ha footer",
+    "share": "Avelani",
+    "watch": "Lavhelani",
+    "giving": "U ṋekedza",
+    "about": "Nga ha",
+    "products": "Zwiṱumiswa",
+    "resources": "Zwishumiswa",
+    "partners": "Vhatambi-vha-shango",
+    "contact": "Kwamanani",
+    "giveNow": "Ṋekedzani Zwino",
+    "resourcesVersion": "Zwishumiswa ({version})",
+    "office": "Ofisi",
+    "fax": "Fekisi",
+    "privacyPolicy": "Policy ya Phiriwesi",
+    "legalStatement": "Tshitatamennde tsha Mulayo",
+    "newsletter": "Ṅwalelani kha newsletter yashu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yo fhaṱwa u itela mishumo ya shango ḽoṱhe",
+    "title": "Mulaedza a u shanduki. Tsela ine vhathu vha lavhelesa ngayo ndi yone i shandukaho.",
+    "description": "Ri khou fhaṱa hafhu layibureari yashu ya vidio na zwishumiswa u bva fhasi, ri tshi khou kunda miṅwaha minzhi ya mushumo wa u ṱalutshedza ri i isa kha maplatforme ane vhathu vha no zwi wana, vha lavhelesa, na u zwi avelana.",
+    "translatedLibraryTitle": "Layibureari ya mafhungo yo ṱalutshedzwaho vhupfura vhukuma kha shango ḽoṱhe",
+    "translatedLibraryDescription": "Miṅwaha minzhi ya mushumo wa u ṱalutshedza, yo tikedzwaho nga vhashumisani vha ministele vha fulufhedzeaho, yo fhaṱa layibureari i re na dzi-track dza luambo dzi vhalaho tshivhalo, uri vhathu vha kone u ṱangana na mafhungo a Yesu nga luambo lune lwa vha swikisa vhukuma.",
+    "trustedVoicesTitle": "U isa maipfi a fulufhedzeaho kha maformathi matswa",
+    "trustedVoicesDescription": "Ri khou fhaṱa hafhu nḓila ine mafhungo a gospel a amba ngayo nga mavonelo, ri tshi vhekanya ṱhalutshedzo dza fulufhedzeaho na maformathi a musalauno uri mulaedza u kone u tshimbila zwavhuḓi kha maplatforme, mvelele, na zwikirini.",
+    "missionTeamTitle": "Zwi fhiraho layibureari. Tshigwada tsho livhiswaho kha mushumo wa mishumo ya Mudzimu.",
+    "missionTeamDescription": "Jesus Film Project ndi tshigwada tsha shango ḽoṱhe tsha vhuṱalutshedzi, vhathu vha zwa media, vharangaphanḓa vha u sinya, na vhabveledzi vhane vha khou shandula miṅwaha ya tshenzhemo ya ministele ya vha zwishumiswa zwa vhathu vha itaho vhafunziwa hoṱhe.",
+    "buildingNext": "Zwe ra khou fhaṱa zwi tevhelaho",
+    "nextStepsTitle": "Pulatifomo ya Mvelelo dzi Tevhelaho",
+    "nextStepsDescription": "Konekanani vhalavhelesi na zwibuli zwine zwa vha hone kha lwendo lwavho lwa muya, u vha thusa u dzhia tshiteṅwa tshi tevhelaho kha tshitshavha, Maṅwalo, kana mushumo.",
+    "mediaLibraryTitle": "Layibureari ya Media ya u evangeliša",
+    "mediaLibraryDescription": "Layibureari ya media ya Vhukriste i re khulu, i re na vidio, mafhungo, na zwishumiswa zwi vhalaho tshivhalo zwi wanalaho nga dzi-luambo nnzhi u itela mushumo wa ministele na u evangeliša shango ḽoṱhe.",
+    "ministryToolsTitle": "Zwishumiswa zwa Digital zwa Ministele",
+    "ministryToolsDescription": "U laula video, u phaḓaladza zwi re ngomu, u shumisana na vhathetshelesi, na analytics zwe zwa itelwa u thusa ministele u swikisa vhathu vhanzhi zwavhuḓi.",
+    "invitationEyebrow": "No lavheleswa",
+    "invitationTitle": "Thusani u fhaṱa <highlight>murafho u tevhelaho</highlight> wa zwishumiswa zwa mushumo",
+    "invitationDescription": "Ri khou u ramba vhahulwane, vhabveledzi, na vhashumisani kha u swika ha vhukati. Lingedzani zwishumiswa zwiswa u thoma, ni pe mbekanyo, ni thuse u vhumba zwibveledzwa zwa mushumo wa vhukuma.",
+    "betaTester": "Vhanganani vha beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Muṱaṱisano wa Bivhili ya Video",
+    "gospelRailTitle": "Wanani ḓivhazwakale yoṱhe",
+    "videoBibleDescription": "Ṱanganelani muṱaṱisano washu wa vidio na zwishumiswa zwi funzeaho Bivhili nga maṅwalo na gudziso zwi konesaho.",
+    "showcaseTitle": "Maṅwalo o Ambiwaho nga Filimu",
+    "adventEyebrow": "Keresemusi Advent",
+    "adventTitle": "U balelwa ha Keresemusi Advent",
+    "adventDescription": "Ṱanganelani lwendo lwashu lwa Advent na video ya maḓuvha oṱhe ine ya fhaṱa u lavhelela Keresemusi, i tshi ṱolisisa fulufhelo, dakalo, na pfulufhedziso ya u swika ha Yesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Mutevhe wa NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Mutevhe wa Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Mudugu wa Video",
+    "journeyWithJesusTitle": "Tshimbilani na Yesu",
+    "gospelsOnVideoEyebrow": "Mafhungo oṱhe a Gospel, o Ambiwaho kha Video",
+    "scriptureAsWrittenTitle": "Maṅwalo, o Ambiwaho nga nḓila ye a ṅwalwa ngayo",
+    "merryChristmas": "Keresemusi yavhuḓi!",
+    "daysUntilChristmas": "{count, plural, one {Ho sala ḓuvha ḽithihi uri hu vhe Keresemusi} other {Ho sala maḓuvha a # uri hu vhe Keresemusi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Dzi-luambo",
+    "metadataDescription": "Ṱolani vidio dza JesusFilm nga luambo.",
+    "eyebrow": "Luambo lwa u lavhelesa",
+    "title": "Nangani luambo",
+    "description": "Ṱanganelani dzi-luambo nga tshiṱiriki kana ṱolangani mutevhe woṱhe.",
+    "searchPlaceholder": "Ṱolani luambo kana tshitshavha...",
+    "searchLabel": "Ṱolani luambo kana tshitshavha",
+    "clearSearch": "Thuthani ṱhoḓisiso",
+    "browse": "Ṱolani",
+    "browseByRegion": "Ṱolani nga tshiṱiriki na tshitshavha",
+    "languageCount": "{count, plural, one {# luambo} other {# luambo}}",
+    "region": "Tshiṱiriki",
+    "countryLanguages": "Luambo lwa {country}",
+    "showLess": "Sumbedzani zwiṱuku",
+    "showMore": "Sumbedzani zwiṅwe {count}",
+    "noLanguages": "A hu na luambo lwo wanalaho",
+    "tryAnotherSearch": "Lingedzani iṅwe ṱhoḓisiso."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Mvelelo dza u Lavhelesa | Jesus Film Project",
+    "title": "Mvelelo dza u Lavhelesa",
+    "loading": "Khou laedza mvelelo",
+    "empty": "A hu athu vha na tshithu hafha",
+    "emptyDescription": "Vidio dzine na dzi lavhelesa musi no dzhena zwi do bvelela hafha.",
+    "earlier": "Kale",
+    "today": "Ṱano",
+    "yesterday": "Mulovha"
+  },
+  "AccountControl": {
+    "account": "Akaunthu",
+    "accountMenu": "Menyu ya akaunthu",
+    "signIn": "Dzhena",
+    "signOut": "Bvani",
+    "signedIn": "No dzhena",
+    "history": "Mvelelo",
+    "logOut": "Bvani"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pheji a i wanali",
+    "eyebrow": "Pheji a i wanali",
+    "screenReaderPrefix": "Pheji a i wanali:",
+    "title": "Sceni iyi a i hofhoni.",
+    "description": "Pheji i nga vha yo tshimbidzwa, fhedzi mafhungo a isa phanḓa.",
+    "actionsLabel": "Zwiito zwa pheji a i wanali",
+    "backToWatch": "Vhuyelani kha Watch",
+    "browseVideos": "Ṱolani vidio"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Lavhelani Filimu Pfufhi",
+    "actions": {
+      "joinUs": "Dzhianani na Rine",
+      "shareMission": "Avelani kha Mishumo Yashu"
+    },
+    "welcomeStart": {
+      "label": "Lutendo na Maṅwalo",
+      "title": "Zwaṋu zwa Vidio zwa Ṋamusi",
+      "description": "Zwi re ngomu zwa vidio zwa lutendo u bva kha layibureari yashu zwi itelaho u ṱuṱuwedza, u ṱhasela mihumbulo, na u ita uri muṅwe a elekanye."
+    },
+    "welcomeMorning": {
+      "label": "U ṱuṱuwedza ha Muṅwe Na Muṅwe",
+      "title": "Matsheloni! Zwipiḓa zwa Bivhili zwa ṋamusi zwi khou lindela.",
+      "description": "Thomani ḓuvha ḽaṋu nga zwipiḓa zwa Bivhili zwi ṱuṱuwedzaho zwo itelwaho u ṱuṱuwedza na u khwinisa muya waṋu."
+    },
+    "welcomeAfternoon": {
+      "label": "U ṱuṱuwedza ha Thafha",
+      "title": "Masikuwani! Zwipiḓa zwa Bivhili zwa ḓuvha ḽaṋu.",
+      "description": "Zwi re ngomu zwa Bivhili zwi ṱuṱuwedzaho zwi faneleaho u awela masikuwani kana u isa phanḓa na u ṱuṱuwedzwa."
+    },
+    "welcomeEvening": {
+      "label": "U ṱuṱuwedza ha Madekwana",
+      "title": "Vhusiku! Awelani nga zwipiḓa zwa Bivhili.",
+      "description": "Zwipiḓa zwa Bivhili zwine zwa fha mulalo zwi a ni thusa u elekanya na u wana khuthadzo musi ḓuvha ḽiṋu ḽi tshi khou fhela."
+    },
+    "joinUs": {
+      "label": "Dzhianani na Rine",
+      "title": "Vhabiliyoni vha khou ṱoḓa",
+      "description": "Ṱhoḓea i fhano. Dzhianani na rine musi ri tshi kovhela vhathu vhoṱhe mafhungo maḓifha nga media dza dijithala."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "A ri tshimbile roṱhe",
+      "title": "U Anḓadza Nyambo ya Yesu, Roṱhe",
+      "description": "Uri vha kone u pfa na u vhona lufuno lwa Yesu nga luambo lwavho, fhethu he vha vha vha hone."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Zwi fana nga {percent}%",
+    "none": "A hu na vidio dzo themendelwa dzo wanalaho kha iyi video nga holu luambo."
+  },
+  "BetaTesterModal": {
+    "title": "Vhanganani vha beta tester",
+    "trigger": "Vhanganani vha beta tester",
+    "loadFailed": "Ho bvelela tshiṅwe tshithu tsho tshinyalaho.",
+    "loading": "Khou laedza...",
+    "openFormNewTab": "Vulani fomo kha thebhu ntswa",
+    "close": "Valani",
+    "iframeTitle": "Vhanganani vha beta tester"
   }
 }

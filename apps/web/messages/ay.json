@@ -7,7 +7,9 @@
     "noContent": "Janiw yatiyawi utjkiti.",
     "homepageMisconfigured": "Watch qalltawi p’iqinchirix jan waliki wakicht’atawa.",
     "defaultTemplateMisconfigured": "Watch qalltawi lurawi wakicht’awinix jan waliki wakicht’atawa.",
-    "authFailed": "Yatiyawir servicioamp mayacht’asiñax janiw atikaskiti. Aka jan walt’awix sarakiwa ukhax yanapt’añataki jawst’añamawa."
+    "authFailed": "Yatiyawir servicioamp mayacht’asiñax janiw atikaskiti. Aka jan walt’awix sarakiwa ukhax yanapt’añataki jawst’añamawa.",
+    "pageLoadFailed": "Mä jan walt’awix utjawayi.",
+    "tryAgain": "Mä kutikiw yant’añani"
   },
   "VideosPage": {
     "title": "Taqi Video-naka",
@@ -22,7 +24,8 @@
     "promoHeading": "¿Biblia juk’amp amuyt’añ munasmati?",
     "joinBibleStudy": "Biblia yatxatañan mayacht’asiña",
     "previousQuote": "Nayrïri Biblia aruskipäwi",
-    "nextQuote": "Jutiri Biblia aruskipäwi"
+    "nextQuote": "Jutiri Biblia aruskipäwi",
+    "readPassage": "Aka qillqat Biblia manqhan liyt’aña."
   },
   "DownloadButton": {
     "checking": "Uñakipañaskiwa",
@@ -73,7 +76,8 @@
     "selectLanguage": "Aru ajlliña",
     "searchPlaceholder": "Arunaka thaqhaña…",
     "languages": "Arunaka",
-    "noMatches": "Janiw kunasa jikxataskiti"
+    "noMatches": "Janiw kunasa jikxataskiti",
+    "notAvailable": "Janiw utjkiti"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Aru",
@@ -112,7 +116,8 @@
     "questions": "Mayacht’at jiskt’anaka",
     "askYours": "Nayrïri jiskt’ama",
     "chatWithPerson": "Mä jaqimp aruskipt’aña",
-    "askBibleQuestion": "Bibliat jiskt’aña"
+    "askBibleQuestion": "Bibliat jiskt’aña",
+    "quiz": "Cuestionario"
   },
   "WatchQuestionPanel": {
     "messageType": "Yatiyawi kasta",
@@ -170,7 +175,8 @@
     "searchRegion": "Video-naka thaqhaña",
     "clearSearch": "Thaqhaña q’umachaña",
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
-    "home": "JesusFilm uta"
+    "home": "JesusFilm uta",
+    "closeSearch": "Thaqhaña llawuña"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -205,14 +211,19 @@
     "clearLanguages": "Q’umachaña",
     "queryLanguageDetected": "{language} ukax jikxatäxiwa",
     "searchInLanguage": "{language} arun thaqhaña",
-    "tryDifferentKeywordsOrLanguage": "Yaqha sutinakampi thaqhaña jan ukax yaqha thaqhañ arut ajlliña"
+    "tryDifferentKeywordsOrLanguage": "Yaqha sutinakampi thaqhaña jan ukax yaqha thaqhañ arut ajlliña",
+    "useWebsiteDefaultLanguage": "Sitio web ukan sapüru thaqhañ arup apnaqaña",
+    "removeLanguage": "{language} apsuña",
+    "browseMode": "Thaqhañat uñakipaña modo"
   },
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",
-    "tapToUnmute": "Arsuwi jist’ariñatakix táctil ukar llamkt’aña"
+    "tapToUnmute": "Arsuwi jist’ariñatakix táctil ukar llamkt’aña",
+    "nextEpisode": "Jutiri episodio"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Yatiyawi apthapiñaskiwa"
+    "loadingContent": "Yatiyawi apthapiñaskiwa",
+    "loadingVideo": "Video apthapiñaskiwa"
   },
   "VideoLabels": {
     "video": "Uñacht’äwi",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Colección",
     "trailer": "Tráiler",
-    "behindTheScenes": "Pantalla qhipatpacha"
+    "behindTheScenes": "Pantalla qhipatpacha",
+    "chapter": "Capítulo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} de {total}",
@@ -235,11 +247,252 @@
     "noImage": "Janiw uñacht’äwi utjkiti",
     "playingNow": "Jichhax anatañaskiwa",
     "previousChapter": "Nayrïri capítulo",
-    "nextChapter": "Jutiri capítulo"
+    "nextChapter": "Jutiri capítulo",
+    "thumbnailAlt": "{title} uñacht’äwi jisk’a",
+    "relatedVideoThumbnail": "Aka video tuqit jilïri uñacht’äwi jisk’a"
   },
   "SearchResultCard": {
     "experience": "Experiencia",
     "episodeCount": "{count, plural, one {# episodio} other {# episodios}}",
     "thumbnailAlt": "Video uñacht’äwi jisk’a"
+  },
+  "Feedback": {
+    "openForm": "Yatiyawi formulario jist’arña",
+    "label": "Yatiyawi",
+    "couldNotLoad": "Yatiyawi formulariox janiw cargaräkaniti.",
+    "loadingForm": "Yatiyawi formulario apthapiñaskiwa…",
+    "retry": "Mä kutikiw yant’añani",
+    "openFormShort": "Formulario jist’arña",
+    "cancel": "Janiwa",
+    "title": "Beta yatiyawi",
+    "description": "Kunsa waliki irnaqaskis ukhamaraki kunsa askichsna uk yatiyama. Aka formulariox Google ukanwa churatäxi.",
+    "openInNewTab": "Formulario machaq tab ukan jist’arña",
+    "closeForm": "Yatiyawi formulario llawuña",
+    "loadingGoogleForm": "Google Formulario apthapiñaskiwa…",
+    "iframeTitle": "Beta yatiyawi apayaniña"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} arun aski cristiano video-naka | Jesus Film Project",
+    "metadataDescription": "Jesus películas, Biblia saräwinaka, discipulado series ukhamaraki outreach video-naka {language} arun doblado arumpi jan ukax subtítulos ukamp uñakipaña.",
+    "heroTitle": "{language} arun aski cristiano video-naka",
+    "heroDescription": "Jesus películas, Biblia saräwinaka, discipulado series ukhamaraki outreach video-naka {language} arun utjki ukanak uñakipaña. Llayt’at doblado video-naka nayraqata uñacht’ayatäxiwa, subtítulo nikan utjki ukanakax aynachanw uñjasïxi.",
+    "languageCollection": "Aru tantachäwi",
+    "itemCount": "{count, plural, one {# yäwi} other {# yäwinaka}}",
+    "videoCount": "{count, plural, one {# video} other {# video-naka}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video-naka}} {groupCount, plural, one {# tamar} other {# tamanaka}} ukan",
+    "sectionNavLabel": "Aru inventario phuqhanaka",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Machaqa",
+    "videoBible": "Video Biblia",
+    "bibleProject": "BibleProject",
+    "sports": "Deporte-naka",
+    "collections": "Tantachäwinaka",
+    "subtitlesOnly": "Subtítulos ukiki",
+    "newlyAdded": "Machaq uñt’atatäxi",
+    "newVideosTitle": "{language} arun machaq cristiano video-naka",
+    "newestFirst": "Machaqanak nayraqata",
+    "noPublishedVideos": "Aka arutakix janiw video publicado jikxataskiti.",
+    "bibleAndGospelFilms": "Biblia ukhamaraki Evangelio películas",
+    "videoBibleCollectionsTitle": "{language} Video Biblia tantachäwinaka",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena ukhamaraki Acts ukanakamp chikancht’at qillqatanak {language} arun.",
+    "noVideoBibleCollections": "Aka arutakix janiw Video Biblia tantachäwinakax utjkiti.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject tantachäwinaka",
+    "bibleProjectDescription": "BibleProject series ukhamaraki yatxatañanaka {language} arun utjki ukanaka.",
+    "noBibleProjectCollections": "Aka arutakix janiw BibleProject tantachäwinakax utjkiti.",
+    "sportsStories": "Deporte saräwinaka",
+    "sportsTitle": "{language} deporte ukhamaraki atleta saräwinaka",
+    "sportsDescription": "Iyawsäwi taypikirin deporte saräwinaka ukhamaraki atleta ukar uñt’ata tantachäwinaka {language} arun utjki ukanaka.",
+    "noSportsCollections": "Aka arutakix janiw deporte jan ukax atleta saräwi tantachäwinakax utjkiti.",
+    "fullyDubbed": "Llaan doblado",
+    "dubbedVideosTitle": "{language} arun video-naka tantachäwi tuqi",
+    "dubbedVideosDescription": "Taqpach doblado {language} video-naka tantachäwi taypin uñakipaña, thaqhañax juk’amp jasakiñapataki.",
+    "noDubbedVideos": "Aka arutakix janiw taqpach doblado video-nakax utjkiti.",
+    "subtitlesAvailable": "Subtítulos utji",
+    "subtitlesTitle": "{language} arun subtítulos ukani video-naka",
+    "subtitlesDescription": "Aka video-nakanx {language} subtítulos utji, {language} arun arsuwix janiw utjkipanxa.",
+    "noSubtitleVideos": "Aka arutakix janiw subtítulos-nik video-nakax utjkiti.",
+    "dubbed": "Doblado",
+    "subtitles": "Subtítulos",
+    "newLabel": "Machaqa",
+    "fromCollection": "{collection} ukan",
+    "standaloneVideos": "Sapak videos",
+    "videosFromCollection": "{collection} ukan video-naka.",
+    "standaloneDescription": "Aka arun sapak video-naka.",
+    "openCollection": "Tantachäwi jist’arña"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Uñch’ukiña",
+    "watch": "Uñch’ukiña",
+    "watchNow": "Jichhax uñch’ukiña",
+    "mutePreview": "Preview arsüwi jisk’achaña",
+    "unmutePreview": "Preview arsüwi sartayaña",
+    "nextVideo": "Jutiri video",
+    "featured": "Uñacht’ayatäxi",
+    "showVideo": "{title} uñacht’ayaña",
+    "previousVideoPreview": "Nayrïri video preview",
+    "nextVideoPreview": "Jutiri video preview",
+    "mediaCollection": "Media tantachäwi",
+    "scrollToVideo": "{title} video ukar ch’amañchaña"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project uta",
+    "navigation": "Footer ukan sarnaqawi",
+    "share": "Uñt’ayaña",
+    "watch": "Uñch’ukiña",
+    "giving": "Churaña",
+    "about": "Tuqita",
+    "products": "Yänaka",
+    "resources": "Yatiyawinaka",
+    "partners": "Compañeronaka",
+    "contact": "Jikisiña",
+    "giveNow": "Jichhax churaña",
+    "resourcesVersion": "Yatiyawinaka ({version})",
+    "office": "Oficina",
+    "fax": "Faxa",
+    "privacyPolicy": "Privacidad Política",
+    "legalStatement": "Ley tuqit yatiyawi",
+    "newsletter": "Newsletter ukar qillqt’asiña"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Taqpach uraqpach misiones ukar lurata",
+    "title": "Yatiyawi janiw mayjt’kiti. Uñch’ukiñ thakix mayjt’i.",
+    "description": "Video biblioteca ukhamaraki herramientas ukanak qalltatpach machaqar tukuyasktanwa, tunka maranak jan ukax walja maranak jaqichäwi lurawinaka ukanak mayacht’asa, kawkhankir plataformas ukanakaru, kawkhankir jaqinakax tantachasipxi, uñch’ukipxi ukhamaraki uñt’ayapxi ukar apañataki.",
+    "translatedLibraryTitle": "Qhipharux aka uraqpachankir juk’amp jaqichäwi film biblioteca",
+    "translatedLibraryDescription": "Walja maranak jaqichäwi lurawinaka, confiat ministerio compañeronakamp apatäxi, mä biblioteca lurañataki, qillqatanaka waranqa waranqani arunaka ukanakamp, ukhamat jaqinakax Jesus saräwi amuykipt’apxani kunayman arunakat qhiparux juk’amp amuyt’ata arun qullqchixäñapataki.",
+    "trustedVoicesTitle": "Confiyat arunakar machaq formato-nakar apaña",
+    "trustedVoicesDescription": "Mäkipanaka arunakat aski jaqichäwinaka uñacht’ayañ thakix machaqar tukuyasktanwa, confiat jaqukipäwinaka machaq formato-nakamp chikancht’asa, ukhamat yatiyawix plataformas, culturas ukhamaraki pantallanaka taypin jaya saraspa.",
+    "missionTeamTitle": "Biblioteca ukakiki. Misióntki ch’aman equipo.",
+    "missionTeamDescription": "Jesus Film Project ukax mä uraqpachankir equipo jaqukipirinaka, media especialistas, editores ukhamaraki luririnaka ukawa, tunka maranak ministerio experiencianaka discípulos luririnakataki yänakar tukuyaña.",
+    "buildingNext": "Kunsa jutïr lurasktan",
+    "nextStepsTitle": "Next Steps Plataforma",
+    "nextStepsDescription": "Uñch’ukirinakar espiritual sarnaqäwipan aski apnaqa wali ch’amani mayjt’äwinakamp chikancht’aña, comunidad, Qillqatanaka, jan ukax misión ukar jutiri paso apthapiñapataki.",
+    "mediaLibraryTitle": "Evangelistic Media Biblioteca",
+    "mediaLibraryDescription": "Walja waranqa video-naka, películas ukhamaraki yatiyawinaka ukani mä jach’a cristiano media biblioteca, walja arunakan mistuwayata, uraqpachan ministerio ukhamaraki evangelización yatxatañataki.",
+    "ministryToolsTitle": "Ministerionakatak digital yänaka",
+    "ministryToolsDescription": "Video apnaqaña, yatiyawi apaña, audiencia mayacht’asiña ukhamaraki analíticas, ministerionakax juk’amp jaqinakar atiniñapataki lurata.",
+    "invitationEyebrow": "Mä jawst’äwi",
+    "invitationTitle": "<highlight>Jutïr generaciones</highlight> misióntki yänaka lurañ yanapt’aña",
+    "invitationDescription": "Practitioners, creators ukhamaraki compañeronakarux nayräxat acceso ukar jawst’asktanwa. Machaq yänaka nayraqata yant’aña, feedback churaña, ukhamaraki chiqpach mission irnaqäwitanakatak lurata productos ukanak ch’amanchäwi.",
+    "betaTester": "Beta tester t’ijuksiña"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Biblia Tantachäwi",
+    "gospelRailTitle": "Taqi saräwi jikxataña",
+    "videoBibleDescription": "Biblia jakäwi ukar apkir saräwinaka ukhamaraki yatiyawinaka tantachäwi uñakipaña.",
+    "showcaseTitle": "Qillqata film ukamp yatiyata",
+    "adventEyebrow": "Cristmas Advent",
+    "adventTitle": "Cristmas Advent cuenta regresiva",
+    "adventDescription": "Advent saräwiman mayacht’asiña, urut ururu video ukamp Cristmas ukar suyt’äw lurasa, Jesus jutiwipan suyt’äwi, cusisiña ukhamaraki arunaka uñakipaña.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Adviento",
+    "nuaEyebrow": "NUA Serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video Curso",
+    "journeyWithJesusTitle": "Jesusamp sarnaqaña",
+    "gospelsOnVideoEyebrow": "Taqi Evangelio, video ukan yatiyata",
+    "scriptureAsWrittenTitle": "Qillqatkamaki Escritura arsupxi",
+    "merryChristmas": "¡Kusiskañ Navidadäpan!",
+    "daysUntilChristmas": "{count, plural, one {Navidadatak # uruki} other {Navidadatak # urunaka}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Arunaka",
+    "metadataDescription": "JesusFilm video-naka arut uñakipaña.",
+    "eyebrow": "Uñch’ukiñ arunaka",
+    "title": "Mä aru ajlliña",
+    "description": "Region tuqit arunak uñakipaña jan ukax taqpach listak uñakipaña.",
+    "searchPlaceholder": "Arunaka jan ukax markanaka thaqhaña...",
+    "searchLabel": "Arunaka jan ukax markanaka thaqhaña",
+    "clearSearch": "Thaqhañ q’umachaña",
+    "browse": "Uñakipaña",
+    "browseByRegion": "Region ukhamaraki marka tuqit uñakipaña",
+    "languageCount": "{count, plural, one {# aru} other {# arunaka}}",
+    "region": "Región",
+    "countryLanguages": "{country} arunaka",
+    "showLess": "Mä juk’a uñacht’ayaña",
+    "showMore": "{count} juk’amp uñacht’ayaña",
+    "noLanguages": "Janiw arunak jikxataskiti",
+    "tryAnotherSearch": "Yaqha thaqhaña arimpi yant’aña."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Uñch’ukiñ sarnaqäwi | Jesus Film Project",
+    "title": "Uñch’ukiñ sarnaqäwi",
+    "loading": "Sarnaqäwi apthapiñaskiwa",
+    "empty": "Janiw kunasa ukankkiti",
+    "emptyDescription": "Mantañanakamp uñch’ukta uka video-nakax aka taypin uñstani.",
+    "earlier": "Nayraqatanaka",
+    "today": "Jichhüru",
+    "yesterday": "Qhipüru"
+  },
+  "AccountControl": {
+    "account": "Cuenta",
+    "accountMenu": "Cuenta menú",
+    "signIn": "Mantaña",
+    "signOut": "Mistuña",
+    "signedIn": "Mantañatäxiwa",
+    "history": "Sarnaqäwi",
+    "logOut": "Mistuña"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Panka janiw jikxataskiti",
+    "eyebrow": "Panka janiw jikxataskiti",
+    "screenReaderPrefix": "Panka janiw jikxataskiti:",
+    "title": "Aka escena janiw akankkiti.",
+    "description": "Pankax yaqha chiqar sarañjamawa, ukampis saräwix saraski.",
+    "actionsLabel": "Panka janiw jikxataskiti luräwinaka",
+    "backToWatch": "Uñch’ukiñaru kutt’aña",
+    "browseVideos": "Video-naka uñakipaña"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Corto metraje uñch’ukiña",
+    "actions": {
+      "joinUs": "Jiwasamp mayacht’asiña",
+      "shareMission": "Misión apost’ar mayacht’asiña"
+    },
+    "welcomeStart": {
+      "label": "Iyawsäwi ukhamaraki Qillqatanaka",
+      "title": "Jichha uru video ajllitanaka",
+      "description": "Bibliasataki video yatiyawinaka, chuymacht’aña, amtasiña ukhamaraki amuyt’aña sartayañataki."
+    },
+    "welcomeMorning": {
+      "label": "Qhantati chuymacht’äwi",
+      "title": "Aski alwatäxiwa. Jichha uru Biblia yäwinakax suyt’asiwa.",
+      "description": "Uru qalltañamatakix Biblia yäwinakamp ch’amañcht’ata, chuymar aynacht’ayañataki wakichata."
+    },
+    "welcomeAfternoon": {
+      "label": "Inti jayp’u chuymacht’äwi",
+      "title": "Aski jayp’utäxiwa. Uruympi Biblia yäwinaka.",
+      "description": "Biblia yatiyawinaka chuymacht’añatakiwa, jayp’u samart’añamataki jan ukax juk’amp chuymacht’äwinakataki wali aski."
+    },
+    "welcomeEvening": {
+      "label": "Jayp’u chuymacht’äwi",
+      "title": "Aski jayp’utäxiwa. Biblia yäwinakampi samart’aña.",
+      "description": "Samarañ Biblia yäwinaka, urum tukuyki ukhaw amuyt’añataki ukhamaraki chuymachasiñataki yanapt’i."
+    },
+    "joinUs": {
+      "label": "Jiwasamp mayacht’asiña",
+      "title": "Waranqanakax thaqhapxiwa",
+      "description": "Aka yapux utjiwa. Digital media apnaqasa uraqpachar evangelio yatiyañataki jiwasamp mayacht’asiña."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Juk’amp chiqankañäni",
+      "title": "Jesus tuqit saräwi, mayacht’asisana",
+      "description": "Ukhamat kawkhankki uka chiqanxa Jesus ukan munasiwipx arupansa uñt’asa ist’asipxani."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% chikachasiwi",
+    "none": "Aka arun aka videotakix janiw kuna iwxäwinakas jikxataskiti."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester t’ijuksiña",
+    "trigger": "Beta tester t’ijuksiña",
+    "loadFailed": "Mä jan walt’awix utjawayi.",
+    "loading": "Apthapiñaskiwa...",
+    "openFormNewTab": "Formulario machaq tab ukan jist’arña",
+    "close": "Jallt’aña",
+    "iframeTitle": "Beta tester t’ijuksiña"
   }
 }

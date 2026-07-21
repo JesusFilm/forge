@@ -7,7 +7,9 @@
     "noContent": "Waxyaabo lama heli karo.",
     "homepageMisconfigured": "Bogga hore ee daawashada si khaldan ayaa loo habeeyay.",
     "defaultTemplateMisconfigured": "Template-ka caadiga ah ee daawashada si khaldan ayaa loo habeeyay.",
-    "authFailed": "Ma suurtagelin in lagu xaqiijiyo adeegga waxyaabaha. Fadlan la xiriir taageerada haddii ay tani sii socoto."
+    "authFailed": "Ma suurtagelin in lagu xaqiijiyo adeegga waxyaabaha. Fadlan la xiriir taageerada haddii ay tani sii socoto.",
+    "pageLoadFailed": "Wax baa qaldamay.",
+    "tryAgain": "Mar kale isku day"
   },
   "VideosPage": {
     "title": "Dhammaan Fiidiyowyada",
@@ -22,7 +24,8 @@
     "promoHeading": "Ma doonaysaa inaad si qoto dheer u fahanto Baybalka?",
     "joinBibleStudy": "Ku biir daraasaddeena Baybalka",
     "previousQuote": "Xigashadii Baybalka ee hore",
-    "nextQuote": "Xigashada Baybalka ee xigta"
+    "nextQuote": "Xigashada Baybalka ee xigta",
+    "readPassage": "Qaybtan ka akhri Baybalkaaga."
   },
   "DownloadButton": {
     "checking": "Hubinaya",
@@ -73,7 +76,8 @@
     "selectLanguage": "Dooro luqad",
     "searchPlaceholder": "Raadi luqado…",
     "languages": "Luqado",
-    "noMatches": "Wax la helin"
+    "noMatches": "Wax la helin",
+    "notAvailable": "Lama heli karo"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Luqad",
@@ -112,7 +116,8 @@
     "questions": "Su’aalo La Xiriira",
     "askYours": "Kuwayga weydii",
     "chatWithPerson": "La sheekayso qof",
-    "askBibleQuestion": "Weydii su’aal Baybalka ku saabsan"
+    "askBibleQuestion": "Weydii su’aal Baybalka ku saabsan",
+    "quiz": "Kedis"
   },
   "WatchQuestionPanel": {
     "messageType": "Nooca fariinta",
@@ -170,7 +175,8 @@
     "searchRegion": "Raadi fiidiyowyo",
     "clearSearch": "Nadiifi raadinta",
     "changeAudioLanguage": "Beddel luqadda codka",
-    "home": "Bogga hore ee JesusFilm"
+    "home": "Bogga hore ee JesusFilm",
+    "closeSearch": "Xir raadinta"
   },
   "SearchOverlay": {
     "dialogLabel": "Raadi oo dhex-dhaqaaq fiidiyowyo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Nadiifi",
     "queryLanguageDetected": "{language} ayaa la ogaaday",
     "searchInLanguage": "Ku raadi {language}",
-    "tryDifferentKeywordsOrLanguage": "Isku day ereyo-fure kale ama dooro luqad kale oo raadinta ah"
+    "tryDifferentKeywordsOrLanguage": "Isku day ereyo-fure kale ama dooro luqad kale oo raadinta ah",
+    "useWebsiteDefaultLanguage": "Isticmaal luqadda raadinta ee caadiga ah ee website-ka",
+    "removeLanguage": "Ka saar {language}",
+    "browseMode": "Habka dhex-dhaqaaqa raadinta"
   },
   "HeroPlayer": {
     "playWithSound": "Hadda daawo",
-    "tapToUnmute": "Taabo si codka loo daaro"
+    "tapToUnmute": "Taabo si codka loo daaro",
+    "nextEpisode": "Qaybta xigta"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Waxyaabaha ayaa la soo rarayaa"
+    "loadingContent": "Waxyaabaha ayaa la soo rarayaa",
+    "loadingVideo": "Fiidiyowga ayaa la soo rarayaa"
   },
   "VideoLabels": {
     "video": "Fiidiyow",
@@ -223,7 +234,8 @@
     "series": "Taxane",
     "collection": "Ururin",
     "trailer": "Hordhac",
-    "behindTheScenes": "Dab-adaalinta muuqaalka"
+    "behindTheScenes": "Dab-adaalinta muuqaalka",
+    "chapter": "Cutub"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} oo ka mid ah {total}",
@@ -235,11 +247,252 @@
     "noImage": "Sawir ma jiro",
     "playingNow": "Hadda waa la ciyaarayaa",
     "previousChapter": "Cutubkii hore",
-    "nextChapter": "Cutubka xiga"
+    "nextChapter": "Cutubka xiga",
+    "thumbnailAlt": "Sawirka yar ee {title}",
+    "relatedVideoThumbnail": "Sawirka yar ee fiidiyowga la xiriira"
   },
   "SearchResultCard": {
     "experience": "Khibrad",
     "episodeCount": "{count, plural, one {# qayb} other {# qaybood}}",
     "thumbnailAlt": "Sawirka yar ee fiidiyowga"
+  },
+  "Feedback": {
+    "openForm": "Fur foomka jawaab-celinta",
+    "label": "Jawaab-celin",
+    "couldNotLoad": "Foomka jawaab-celinta lama soo rari karo.",
+    "loadingForm": "Foomka jawaab-celinta waa la soo rarayaa…",
+    "retry": "Mar kale isku day",
+    "openFormShort": "Fur foomka",
+    "cancel": "Jooji",
+    "title": "Jawaab-celin Beta",
+    "description": "La wadaag waxa shaqaynaya iyo waxa aan hagaajin karno. Foomkan waxaa bixiya Google.",
+    "openInNewTab": "Foomka ku fur tab cusub",
+    "closeForm": "Xir foomka jawaab-celinta",
+    "loadingGoogleForm": "Google Form ayaa la soo rarayaa…",
+    "iframeTitle": "Gudbi Jawaab-celin Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Fiidiyowyo Masiixi ah oo bilaash ah gudaha {language} | Jesus Film Project",
+    "metadataDescription": "Baadh filimada Jesus, sheekooyinka Baybalka, taxanayaasha xerta, iyo fiidiyowyada wacyigelinta oo leh cod la dubay ama qoraal-hoosaadyo ku jira {language}.",
+    "heroTitle": "Fiidiyowyo Masiixi ah oo bilaash ah gudaha {language}",
+    "heroDescription": "Baadh filimada Jesus, sheekooyinka Baybalka, taxanayaasha xerta, iyo fiidiyowyada wacyigelinta ee laga heli karo {language}. Fiidiyowyada si buuxda loo dubay ayaa marka hore la muujinayaa, iyadoo xulashooyinka qoraal-hoosaadku ay ka hooseeyaan.",
+    "languageCollection": "Uruurinta luqadda",
+    "itemCount": "{count, plural, one {# shay} other {# shay}}",
+    "videoCount": "{count, plural, one {# fiidiyow} other {# fiidiyowyo}}",
+    "videosInGroups": "{videoCount, plural, one {# fiidiyow} other {# fiidiyowyo}} oo ku jira {groupCount, plural, one {# koox} other {# kooxo}}",
+    "sectionNavLabel": "Qaybaha buugga luqadaha",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Cusub",
+    "videoBible": "Baybal Fiidiyow ah",
+    "bibleProject": "BibleProject",
+    "sports": "Ciyaaraha",
+    "collections": "Uruurino",
+    "subtitlesOnly": "Kaliya qoraal-hoosaadyo",
+    "newlyAdded": "Cusub lagu daray",
+    "newVideosTitle": "Fiidiyowyo Masiixi ah oo cusub gudaha {language}",
+    "newestFirst": "Kuwa ugu cusub marka hore",
+    "noPublishedVideos": "Weli lama helin fiidiyowyo la daabacay oo luqaddan ku jira.",
+    "bibleAndGospelFilms": "Filimada Baybalka iyo Injiilka",
+    "videoBibleCollectionsTitle": "Uruurinta Baybalka Fiidiyowga {language}",
+    "videoBibleDescription": "Uruurino ku salaysan Qorniinka oo ay ka mid yihiin LUMO, JESUS, Magdalena, iyo Falimaha Rasuullada oo ku jira {language}.",
+    "noVideoBibleCollections": "Weli uruurinta Baybalka Fiidiyowga looma hayo luqaddan.",
+    "bibleProjectCollectionsTitle": "Uruurinta BibleProject {language}",
+    "bibleProjectDescription": "Taxanayaasha iyo daraasadaha BibleProject ee laga heli karo {language}.",
+    "noBibleProjectCollections": "Weli uruurinta BibleProject looma hayo luqaddan.",
+    "sportsStories": "Sheekooyinka ciyaaraha",
+    "sportsTitle": "Sheekooyinka ciyaaraha iyo ciyaartoyda ee {language}",
+    "sportsDescription": "Sheekooyin ciyaaraha ku salaysan iimaanka iyo uruurino diiradda saaraya ciyaartoyda oo laga heli karo {language}.",
+    "noSportsCollections": "Weli uruurinno ciyaaro ama sheekooyin ciyaartoy looma hayo luqaddan.",
+    "fullyDubbed": "Si buuxda loo dubay",
+    "dubbedVideosTitle": "Fiidiyowyada {language} ee uruurin ahaan",
+    "dubbedVideosDescription": "Baadh fiidiyowyada {language} ee si buuxda loo dubay, oo lagu soo uruuriyay ururintooda si sahlan loo helo.",
+    "noDubbedVideos": "Weli fiidiyowyo si buuxda loo dubay looma hayo luqaddan.",
+    "subtitlesAvailable": "Qoraal-hoosaadyo waa jiraan",
+    "subtitlesTitle": "Fiidiyowyada {language} ee leh qoraal-hoosaadyo",
+    "subtitlesDescription": "Fiidiyowyadani waxay leeyihiin qoraal-hoosaadyo {language} marka codka {language} ee la hadlo weli aan la helin.",
+    "noSubtitleVideos": "Weli fiidiyowyo kaliya qoraal-hoosaadyo leh looma hayo luqaddan.",
+    "dubbed": "Lagu dubay",
+    "subtitles": "Qoraal-hoosaadyo",
+    "newLabel": "Cusub",
+    "fromCollection": "Ka yimid {collection}",
+    "standaloneVideos": "Fiidiyowyo kaligood ah",
+    "videosFromCollection": "Fiidiyowyo ka yimid {collection}.",
+    "standaloneDescription": "Fiidiyowyo kaligood ah oo luqaddan ku jira.",
+    "openCollection": "Fur ururinta"
+  },
+  "WatchHome": {
+    "pageTitle": "Daawashada Jesus Film Project",
+    "watch": "Daawo",
+    "watchNow": "Hadda daawo",
+    "mutePreview": "Aamusi hor-u-muujinta",
+    "unmutePreview": "Ka saar aamusnaanta hor-u-muujinta",
+    "nextVideo": "Fiidiyowga xiga",
+    "featured": "La soo xulay",
+    "showVideo": "Muuji {title}",
+    "previousVideoPreview": "Hor-u-muujinta fiidiyowga hore",
+    "nextVideoPreview": "Hor-u-muujinta fiidiyowga xiga",
+    "mediaCollection": "Uruurinta warbaahinta",
+    "scrollToVideo": "U deg fiidiyowga {title}"
+  },
+  "WatchFooter": {
+    "home": "Bogga hore ee Jesus Film Project",
+    "navigation": "Dhulgalka hoose",
+    "share": "La wadaag",
+    "watch": "Daawo",
+    "giving": "Bixinta",
+    "about": "Ku saabsan",
+    "products": "Alaabooyinka",
+    "resources": "Khayraad",
+    "partners": "Lammaanayaal",
+    "contact": "Xiriir",
+    "giveNow": "Hadda bixi",
+    "resourcesVersion": "Khayraad ({version})",
+    "office": "Xafiis",
+    "fax": "Fakis",
+    "privacyPolicy": "Siyaasadda Asturnaanta",
+    "legalStatement": "Bayaanka Sharci",
+    "newsletter": "Isdiiwaangeli wargeyskeenna"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Loo dhisay howlaha caalamiga ah",
+    "title": "Fariintu ma is beddesho. Habka ay dadku u daawadaan ayaa is beddela.",
+    "description": "Waxaan dib uga dhiseynaa maktabaddeenna fiidiyowyada iyo qalabkeena asal ahaan, annagoo ballan-qaadeyna shaqadii turjumaadda ee tobannaan sano ahayd inaan geyno goobaha ay dadku hore ugu kulmaan, u daawadaan, uguna wadaagaan.",
+    "translatedLibraryTitle": "Maktabadda filimada ugu tarjumaadda badan dunida",
+    "translatedLibraryDescription": "Tobannaan sano oo shaqo turjumaad ah, oo ay wateen lammaanayaal adeeg oo la aamini karo, ayaa dhisay maktabad leh kumannaan raadad luqadeed si dadka ay ula kulmaan sheekada Jesus luqadda si qoto dheer u gaarta.",
+    "trustedVoicesTitle": "Codad la aamini karo oo loo gudbinayo qaabab cusub",
+    "trustedVoicesDescription": "Waxaan dib u dhiseynaa sida sheekooyinka injiilka muuqaal ahaan loo sheego, annagoo isku darayna tarjumaado la aamini karo iyo qaabab casri ah si fariintu si xor ah ugu guurto aaladaha, dhaqamada, iyo shaashadaha.",
+    "missionTeamTitle": "Wax ka badan maktabad. Waa koox ku shaqaysa howl adeeg.",
+    "missionTeamDescription": "Jesus Film Project waa koox caalami ah oo ka kooban turjubaano, khubaro warbaahin, tifaftirayaal, iyo abuurayaal u rogaya tobannaan sano oo khibrad adeeg ah qalab ay isticmaali karaan kuwa xerta sameeya meel kasta.",
+    "buildingNext": "Waxa aan dhiseyno xiga",
+    "nextStepsTitle": "Platform-ka Tallaabooyinka Xiga",
+    "nextStepsDescription": "Ku xiro daawadayaasha fursado la taaban karo oo ku saabsan safarkooda ruuxiga ah, adigoo ka caawinaya inay qaadaan tallaabo xigta oo ku saabsan bulsho, Qorniin, ama howl adeeg.",
+    "mediaLibraryTitle": "Maktabadda Warbaahinta ee Wacdinta",
+    "mediaLibraryDescription": "Maktabad warbaahin Masiixi ah oo ballaaran oo leh kumannaan fiidiyow, filim, iyo khayraad ah oo ku jira luqado badan oo loogu talagalay adeeg iyo wacdin caalami ah.",
+    "ministryToolsTitle": "Qalab Dijitaal ah oo loogu talagalay adeegyada",
+    "ministryToolsDescription": "Maareynta fiidiyowga, qaybinta waxyaabaha, ka-qaybgalka dhageystaha, iyo falanqayn loogu talagalay inay ka caawiyaan adeegyada inay si wax ku ool ah u gaaraan dad badan.",
+    "invitationEyebrow": "Waxaa lagugu casuumay",
+    "invitationTitle": "Ka caawi dhisidda <highlight>jiilka xiga</highlight> ee qalabka howlaha adeeg",
+    "invitationDescription": "Waxaan ku casuumeynaa xirfadlayaal, abuurayaal, iyo lammaanayaal helitaan hore. Tijaabi qalabka cusub marka hore, bixi jawaab-celin, kana caawi qaabeynta alaabo loogu talagalay howl adeeg oo dhab ah.",
+    "betaTester": "Noqo tijaabiye beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Uruurinta Baybalka Fiidiyowga",
+    "gospelRailTitle": "Ogow sheekada oo dhan",
+    "videoBibleDescription": "Baadh ururintayada fiidiyowyada iyo khayraadka kuwaas oo Baybalka nolol u keena sheekooyin iyo waxbaris soo jiidasho leh.",
+    "showcaseTitle": "Qorniin lagu sheegay filim",
+    "adventEyebrow": "Advent-ka Kirismaska",
+    "adventTitle": "Tirinta Advent-ka Kirismaska",
+    "adventDescription": "Ku biir safarkayaga Advent oo leh fiidiyow maalinle ah oo dhisa sugitaanka Kirismaska, isla markaana sahaminaya rajada, farxadda, iyo ballan-qaadka imaatinka Jesus.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent-ka BibleProject",
+    "nuaEyebrow": "Taxanaha NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Taxanaha Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Koorso Fiidiyow ah",
+    "journeyWithJesusTitle": "Socdaal la samee Jesus",
+    "gospelsOnVideoEyebrow": "Injiil kasta, fiidiyow ahaan loo sheegay",
+    "scriptureAsWrittenTitle": "Qorniinka, sida saxda ah ee loo qoray ayaa loo akhriyaa",
+    "merryChristmas": "Kirismas wanaagsan!",
+    "daysUntilChristmas": "{count, plural, one {# maalin ayaa ka harsan Kirismaska} other {# maalmood ayaa ka harsan Kirismaska}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Luqado",
+    "metadataDescription": "Ku dhex-dhaqaaq fiidiyowyada JesusFilm luqad ahaan.",
+    "eyebrow": "Luqadaha daawashada",
+    "title": "Dooro luqad",
+    "description": "Sahami luqadaha gobol ahaan ama dhex-dhaqaaq liiska oo dhan.",
+    "searchPlaceholder": "Raadi luqado ama waddamo...",
+    "searchLabel": "Raadi luqado ama waddamo",
+    "clearSearch": "Nadiifi raadinta",
+    "browse": "Dhex-dhaqaaq",
+    "browseByRegion": "Ku dhex-dhaqaaq gobol iyo waddan ahaan",
+    "languageCount": "{count, plural, one {# luqad} other {# luqadood}}",
+    "region": "Gobol",
+    "countryLanguages": "Luqadaha {country}",
+    "showLess": "Muuji wax yar",
+    "showMore": "Muuji {count} dheeraad ah",
+    "noLanguages": "Luqado lama helin",
+    "tryAnotherSearch": "Isku day erey raadis kale."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Taariikhda Daawashada | Jesus Film Project",
+    "title": "Taariikhda Daawashada",
+    "loading": "Taariikhda ayaa la soo rarayaa",
+    "empty": "Weli wax halkan kuma jiraan",
+    "emptyDescription": "Fiidiyowyada aad daawato markaad gashan tahay halkan ayay ka soo muuqan doonaan.",
+    "earlier": "Waqti hore",
+    "today": "Maanta",
+    "yesterday": "Shalay"
+  },
+  "AccountControl": {
+    "account": "Akoonti",
+    "accountMenu": "Menu-ga akoontiga",
+    "signIn": "Gal",
+    "signOut": "Ka bax",
+    "signedIn": "Wuu galay",
+    "history": "Taariikh",
+    "logOut": "Ka bax"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Bog lama helin",
+    "eyebrow": "Bog lama helin",
+    "screenReaderPrefix": "Bog lama helin:",
+    "title": "Muuqaalkan halkan kuma jiro.",
+    "description": "Boggu wuu guuri karaa, laakiin sheekadu way sii socotaa.",
+    "actionsLabel": "Ficillada bogga lama helin",
+    "backToWatch": "Ku noqo Daawashada",
+    "browseVideos": "Dhex-dhaqaaq fiidiyowyada"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Daawo filim gaaban",
+    "actions": {
+      "joinUs": "Nagu soo biir",
+      "shareMission": "La wadaag howlteenna"
+    },
+    "welcomeStart": {
+      "label": "Iimaan & Qorniin",
+      "title": "Xulashada fiidiyowyada maanta",
+      "description": "Waxyaabo fiidiyow ah oo ku salaysan iimaan, kana yimid maktabaddeenna, si ay kuu dhiirrigeliyaan, kuu xujeeyaan, oo ay kuu kiciyaan fikir."
+    },
+    "welcomeMorning": {
+      "label": "Dhiirrigelinta subaxnimo",
+      "title": "Subax wanaagsan! Qaybaha Baybalka ee maanta ayaa ku sugaya.",
+      "description": "Ku bilow maalintaada qaybaha Baybalka ee dhiirrigeliya, kuwaas oo loo sameeyay inay ku xoojiyaan oo ay ruuxaaga kiciyaan."
+    },
+    "welcomeAfternoon": {
+      "label": "Dhiirrigelinta galabnimo",
+      "title": "Galab wanaagsan! Qaybaha Baybalka ee maalintaada.",
+      "description": "Waxyaabo Baybal ah oo dhiirrigelin leh, ku habboon nasashadaada galabta ama dhiirrigelin sii socota."
+    },
+    "welcomeEvening": {
+      "label": "Dhiirrigelinta fiidnimo",
+      "title": "Habeen wanaagsan! Ku naso qaybaha Baybalka.",
+      "description": "Qaybaha Baybalka ee deggan si ay kaaga caawiyaan inaad milicsato oo aad hesho qalbi qabow marka maalintaadu dhammaanayso."
+    },
+    "joinUs": {
+      "label": "Nagu soo biir",
+      "title": "Bilyanno ayaa raadinaya",
+      "description": "Goosashadu waa timid. Nagu soo biir anagoo dunida ula wadaageyna injiilka warbaahin dijitaal ah."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Aan wada soconno",
+      "title": "Sheekada Jesus waan wada sheegaynaa",
+      "description": "Si ay meesha ay joogaan uga maqlaan uguna arkaan jacaylka Jesus oo ku jira afkooda."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% waafaqid",
+    "none": "Fiidiyowgan wax talooyin ah loogama helin luqaddan."
+  },
+  "BetaTesterModal": {
+    "title": "Noqo tijaabiye beta",
+    "trigger": "Noqo tijaabiye beta",
+    "loadFailed": "Wax baa qaldamay.",
+    "loading": "Soo raraya...",
+    "openFormNewTab": "Foomka ku fur tab cusub",
+    "close": "Xir",
+    "iframeTitle": "Noqo tijaabiye beta"
   }
 }

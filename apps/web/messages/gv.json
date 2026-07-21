@@ -7,7 +7,9 @@
     "noContent": "Cha nel bunys ry-gheddyn.",
     "homepageMisconfigured": "Cha nel duillag hene yn watch ry-screeuey dy mie.",
     "defaultTemplateMisconfigured": "Cha nel yn sampleyr watch gennagh ry-screeuey dy mie.",
-    "authFailed": "Cha nod shin co-haieys y chummal lesh yn shirveish bunys. Cur-my-ner shin my hegin eh chammah."
+    "authFailed": "Cha nod shin co-haieys y chummal lesh yn shirveish bunys. Cur-my-ner shin my hegin eh chammah.",
+    "pageLoadFailed": "Cha row red red erbee goll dy mie.",
+    "tryAgain": "Seeagyn reesht"
   },
   "VideosPage": {
     "title": "Ooilley ny Videoyn",
@@ -22,7 +24,8 @@
     "promoHeading": "By vie lhiat tushtey ny smoo geddyn ass y Vible?",
     "joinBibleStudy": "Joinn rish y chummal-screeu er y Vible",
     "previousQuote": "Cass y Vible roish shoh",
-    "nextQuote": "Cass y Vible er-dy-chooyl"
+    "nextQuote": "Cass y Vible er-dy-chooyl",
+    "readPassage": "Lhaih yn ayrn shoh ayns dty Vible."
   },
   "DownloadButton": {
     "checking": "Mowting",
@@ -73,7 +76,8 @@
     "selectLanguage": "Reih çhengey",
     "searchPlaceholder": "Shirrey çhengaghyn…",
     "languages": "Çhengaghyn",
-    "noMatches": "Cha nel co-ryn"
+    "noMatches": "Cha nel co-ryn",
+    "notAvailable": "Cha nel ry-gheddyn"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Çhengey",
@@ -112,7 +116,8 @@
     "questions": "Feyshtyn Boallagh",
     "askYours": "Foddeeyn dty lhiastyn",
     "chatWithPerson": "Lhieen rish peiagh",
-    "askBibleQuestion": "Faisht y Vible"
+    "askBibleQuestion": "Faisht y Vible",
+    "quiz": "Feyshtyn meen"
   },
   "WatchQuestionPanel": {
     "messageType": "Sort y cheayn",
@@ -170,7 +175,8 @@
     "searchRegion": "Shirrey videoyn",
     "clearSearch": "Scughey shirrey",
     "changeAudioLanguage": "Caghlaa çhengey yn chlashtyn",
-    "home": "Cheead JesusFilm"
+    "home": "Cheead JesusFilm",
+    "closeSearch": "Doo shirrey"
   },
   "SearchOverlay": {
     "dialogLabel": "Shirrey as scrutaghey videoyn",
@@ -205,14 +211,19 @@
     "clearLanguages": "Scughey",
     "queryLanguageDetected": "{language} er ny heeyney",
     "searchInLanguage": "Shirrey ayns {language}",
-    "tryDifferentKeywordsOrLanguage": "Jean ymmyd ass redaghyn elley ny reih çhengey shirrey elley"
+    "tryDifferentKeywordsOrLanguage": "Jean ymmyd ass redaghyn elley ny reih çhengey shirrey elley",
+    "useWebsiteDefaultLanguage": "Ymmyd ass çhengey shirrey rosc mot websayt",
+    "removeLanguage": "Geddyn {language} magh",
+    "browseMode": "Modh scrutaghey shirrey"
   },
   "HeroPlayer": {
     "playWithSound": "Jeeagh nish",
-    "tapToUnmute": "Tap dy un-tostey"
+    "tapToUnmute": "Tap dy un-tostey",
+    "nextEpisode": "Epossiod er-dy-chooyl"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Çhargaghey bunys"
+    "loadingContent": "Çhargaghey bunys",
+    "loadingVideo": "Çhargaghey video"
   },
   "VideoLabels": {
     "video": "Film",
@@ -223,7 +234,8 @@
     "series": "Straih",
     "collection": "Co-chruinnaght",
     "trailer": "Trailey",
-    "behindTheScenes": "Ny darraghyn er-dy-chooyl"
+    "behindTheScenes": "Ny darraghyn er-dy-chooyl",
+    "chapter": "Caibidil"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} jeh {total}",
@@ -235,11 +247,252 @@
     "noImage": "Cha nel aa-yn",
     "playingNow": "Clouit nish",
     "previousChapter": "Caibidil roish shoh",
-    "nextChapter": "Caibidil er-dy-chooyl"
+    "nextChapter": "Caibidil er-dy-chooyl",
+    "thumbnailAlt": "{title} minnaght",
+    "relatedVideoThumbnail": "Minnaght video coaig"
   },
   "SearchResultCard": {
     "experience": "Experiensee",
     "episodeCount": "{count, plural, one {# epossiod} other {# epossioidyn}}",
     "thumbnailAlt": "Minnaght video"
+  },
+  "Feedback": {
+    "openForm": "Foashley yn çhishiyn aash",
+    "label": "Aash",
+    "couldNotLoad": "Cha dod y çhishiyn aash lhieeney.",
+    "loadingForm": "Çhargaghey yn çhishiyn aash…",
+    "retry": "Seeagyn reesht",
+    "openFormShort": "Foashley çhishiyn",
+    "cancel": "Scuirr",
+    "title": "Aash Beta",
+    "description": "Sooil magh ny ta gobbraghey as cre'n chaoi oddain jannoo ny share jeh. Ta yn çhishiyn shoh currit liorish Google.",
+    "openInNewTab": "Foashley yn çhishiyn ayns tab noa",
+    "closeForm": "Doo ny çhishiyn aash",
+    "loadingGoogleForm": "Çhargaghey Google Form…",
+    "iframeTitle": "Cur stiagh Aash Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videoyn Creestee erskyn as {language} | Jesus Film Project",
+    "metadataDescription": "Screeu stiagh ayns films Jesus, skeealyn yn Vible, jantyssaghyn disciplyn, as videoyn soieal lesh chlashtyn dubit ny focklyn-foyshe ayns {language}.",
+    "heroTitle": "Videoyn Creestee erskyn as {language}",
+    "heroDescription": "Screeu stiagh ayns films Jesus, skeealyn yn Vible, jantyssaghyn disciplyn, as videoyn soieal ry-gheddyn ayns {language}. Ta videoyn dubit ayns slane er ny hoiaghey toshiaght, as reihyn focklyn-foyshe fo.",
+    "languageCollection": "Co-chruinnaght çhengey",
+    "itemCount": "{count, plural, one {# red} other {# reddyn}}",
+    "videoCount": "{count, plural, one {# video} other {# videoyn}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videoyn}} ayns {groupCount, plural, one {# cohorrey} other {# cohoraghyn}}",
+    "sectionNavLabel": "Eddyr-vuey rheynn çhengey",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Noa",
+    "videoBible": "Video Bijibel",
+    "bibleProject": "BibleProject",
+    "sports": "Spoyrt",
+    "collections": "Co-chruinaghtyn",
+    "subtitlesOnly": "Focklyn-foyshe ny lomarcan",
+    "newlyAdded": "Airhoyn noa",
+    "newVideosTitle": "Videoyn Creestee noa ayns {language}",
+    "newestFirst": "Nys noa toshiaght",
+    "noPublishedVideos": "Cha row videoyn er nyn ghoil magh ry-gheddyn foast son y çhengey shoh.",
+    "bibleAndGospelFilms": "Films yn Vible as y Susan",
+    "videoBibleCollectionsTitle": "Co-chruinnaghtyn Video Bijibel {language}",
+    "videoBibleDescription": "Co-chruinnaghtyn staillee yn Scryptyryn, goaill stiagh LUMO, JESUS, Magdalena, as Acts ayns {language}.",
+    "noVideoBibleCollections": "Cha nel co-chruinaghtyn Video Bijibel ry-gheddyn foast son y çhengey shoh.",
+    "bibleProjectCollectionsTitle": "Co-chruinnaghtyn BibleProject {language}",
+    "bibleProjectDescription": "Seriesyn as studeyrys BibleProject ry-gheddyn ayns {language}.",
+    "noBibleProjectCollections": "Cha nel co-chruinaghtyn BibleProject ry-gheddyn foast son y çhengey shoh.",
+    "sportsStories": "Skeealyn spoyrt",
+    "sportsTitle": "Skeealyn spoyrt as lheid liorish ben/fer elley ayns {language}",
+    "sportsDescription": "Skeealyn spoyrt lheid lesh credjue as co-chruinaghtyn stiurey er lhisagh ry-gheddyn ayns {language}.",
+    "noSportsCollections": "Cha nel co-chruinaghtyn spoyrt ny skeealyn liorish lheid ry-gheddyn foast son y çhengey shoh.",
+    "fullyDubbed": "Dubit ayns slane",
+    "dubbedVideosTitle": "Videoyn {language} liorish co-chruinnaght",
+    "dubbedVideosDescription": "Scrutagh videoyn {language} dubit ayns slane, co-chruinnit lesh nyn co-chruinnaght son feddynys ny share.",
+    "noDubbedVideos": "Cha nel videoyn dubit ayns slane ry-gheddyn foast son y çhengey shoh.",
+    "subtitlesAvailable": "Focklyn-foyshe ry-gheddyn",
+    "subtitlesTitle": "Videoyn {language} lesh focklyn-foyshe",
+    "subtitlesDescription": "Ta ny videoyn shoh goaill stiagh focklyn-foyshe {language} tra cha nel chlashtyn {language} ry-gheddyn foast.",
+    "noSubtitleVideos": "Cha nel videoyn focklyn-foyshe ny lomarcan ry-gheddyn foast son y çhengey shoh.",
+    "dubbed": "Dubit",
+    "subtitles": "Focklyn-foyshe",
+    "newLabel": "Noa",
+    "fromCollection": "Ass {collection}",
+    "standaloneVideos": "Videoyn hene shaynt",
+    "videosFromCollection": "Videoyn ass {collection}.",
+    "standaloneDescription": "Videoyn hene shaynt ayns y çhengey shoh.",
+    "openCollection": "Foashley co-chruinnaght"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — Jeeaghyn",
+    "watch": "Jeeaghyn",
+    "watchNow": "Jeeagh nish",
+    "mutePreview": "Tostey roihaghyn",
+    "unmutePreview": "Un-tostey roihaghyn",
+    "nextVideo": "Video er-dy-chooyl",
+    "featured": "Ry-choyrt",
+    "showVideo": "Soilshaghey {title}",
+    "previousVideoPreview": "Roish eisht roihaghyn video",
+    "nextVideoPreview": "Video roihaghyn er-dy-chooyl",
+    "mediaCollection": "Co-chruinnaght media",
+    "scrollToVideo": "Scroll dys video {title}"
+  },
+  "WatchFooter": {
+    "home": "Cheead Jesus Film Project",
+    "navigation": "Sheeynt yn troggal foalley",
+    "share": "Co-earroo",
+    "watch": "Jeeaghyn",
+    "giving": "Cur",
+    "about": "Mychione",
+    "products": "Troggaidyn",
+    "resources": "Ynnydyn",
+    "partners": "Co-bunnyn",
+    "contact": "Cummal-syn",
+    "giveNow": "Cur nish",
+    "resourcesVersion": "Ynnydyn ({version})",
+    "office": "Oik",
+    "fax": "Facs",
+    "privacyPolicy": "Polasey yn phrisheys",
+    "legalStatement": "Coorse lishnagh",
+    "newsletter": "Sign up son y corys-naight ain"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Toggit son sheealyn cheerey",
+    "title": "Cha nel yn naight caghlaa. Ta'n caghlaa chaa ta deiney jeeaghyn.",
+    "description": "Ta shin dy aase yn lioaryn video ain as ny greieyn ass y raad bun-neultey, cur bliadynyn jeh obbyr çhengey da ny h-ashoonyn raad ta sleih er nyn chruinnaght, jeeaghyn, as co-earroo.",
+    "translatedLibraryTitle": "Yn lioar-reill filmyn smoo er ny chaghlaa ayns y theihll",
+    "translatedLibraryDescription": "Ta bliadynyn jeh obbyr çhengey, currit lesh co-bunnyn ministerey creaghtagh, er n'orchaghey lioar-reill lesh thousaneyyn lheid ny trackyn çhengey dy bee sleih abyl dy ghoaill lhiat yn skeeal jeh Jesus ayns y çhengey ta cheet huc ny share.",
+    "trustedVoicesTitle": "Cur gollrish cooid feer-speyil ayns foirmyn noa",
+    "trustedVoicesDescription": "Ta shin dy aase yn boayl myr ta skeealyn y gospel ry-ennigys ayns shiaghtyn, co-chruinney tradishoonyn credjal lesh foirmyn noa dy vod yn naight hurrys er ny h-ashoonyn, cultooraghyn, as screeanyn.",
+    "missionTeamTitle": "Ny smoo na lioar-reill. Slyst-obbraghey lurg stiuradhey.",
+    "missionTeamDescription": "Ta Jesus Film Project ny red er nyn hoie coadey scryssyn, speeideyderyn media, redagheyryn, as cummalyn dy chaghlaa eieynyn ministerey ny hroggal greieyn son deiynaghtyn-son-disipeyl ayns dy chooilley ynnyd.",
+    "buildingNext": "Cre ta shin dy thoggal nish",
+    "nextStepsTitle": "Ard-argid Ynnyd aght ny Steps",
+    "nextStepsDescription": "Co-vriaar y jeeaghyn lesh caairyn dooinney er nyn raad spyrrydoil, cur oo abyl dy ghoaill yn un red heese ayns co-chruinney, Scryptyr, ny oorraid.",
+    "mediaLibraryTitle": "Lioar-reill Media son Sooilthaghyn",
+    "mediaLibraryDescription": "Lioar-reill media Creestee lhean lesh thousaneyyn videoyn, filmyn, as ynnydyn ry-gheddyn ayns ymmodee çhengaghyn son ministerey as feer-foghrey er feie yn theihll.",
+    "ministryToolsTitle": "Greieyn doobey son Ministereeyn",
+    "ministryToolsDescription": "Reill video, skeayley bunys, co-earroo lesh shiartanse, as anailys ry-choayl coontae dy chooney lesh ministereeyn lheiysyn ny smoo sleih adyn shassoo er.",
+    "invitationEyebrow": "Ta oo er nyn gortaghey",
+    "invitationTitle": "Cooney lesh thoggal <highlight>y cheud genney</highlight> jeh greieyn mission",
+    "invitationDescription": "Ta shin dy gortaghey lheid ny obbyr, cummalyn, as co-bunnyn stiagh ayns earroo roish. Cur proov er greieyn noa roish, cur aash, as cooney lesh cummal throggaidyn dy hooyl son obbyr mission feer.",
+    "betaTester": "Bee beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Co-chruinnaght Video Bijibel",
+    "gospelRailTitle": "Feddyn yn skeeal slane",
+    "videoBibleDescription": "Scrutagh ny co-chruinnaght videoyn as ynnydyn ain ta cur y Vible beayn trooid skeealyn as yllaghyn dooie.",
+    "showcaseTitle": "Scryptyr er ny lhieeney trooid film",
+    "adventEyebrow": "Advent Nollick",
+    "adventTitle": "Coontys-screeuee Advent Nollick",
+    "adventDescription": "Join us ayns yn çhellin Advent ain lesh video laa dy laa ta cummal eiys y traa son Nollick, cur coontey er yn treisht, gennaghtyn, as geall y cheilley jeh staydys Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent liorish BibleProject",
+    "nuaEyebrow": "Series NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Coorse Video",
+    "journeyWithJesusTitle": "Shoyllaght lesh Jesus",
+    "gospelsOnVideoEyebrow": "Dy chooilley Shangal, er ny insh ayns video",
+    "scriptureAsWrittenTitle": "Scryptyr, loayrit myr ta e scruitaghyn",
+    "merryChristmas": "Nollick Ghennal!",
+    "daysUntilChristmas": "{count, plural, one {# laa derrey Nollick} other {# laghyn derrey Nollick}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Çhengaghyn",
+    "metadataDescription": "Scrutagh videoyn JesusFilm liorish çhengey.",
+    "eyebrow": "Çhengaghyn watch",
+    "title": "Reih çhengey",
+    "description": "Screeu stiagh ayns çhengaghyn liorish rheynn ny scrutaghey yn rolley slane.",
+    "searchPlaceholder": "Shirrey çhengaghyn ny çheeraghyn...",
+    "searchLabel": "Shirrey çhengaghyn ny çheeraghyn",
+    "clearSearch": "Scughey shirrey",
+    "browse": "Scrutaghey",
+    "browseByRegion": "Scrutaghey liorish rheynn as çheer",
+    "languageCount": "{count, plural, one {# çhengey} other {# çhengaghyn}}",
+    "region": "Rheynn",
+    "countryLanguages": "Çhengaghyn {country}",
+    "showLess": "Soilshaghey ny sloo",
+    "showMore": "Soilshaghey {count} ny smoo",
+    "noLanguages": "Cha row çhengaghyn er nyn gheddyn",
+    "tryAnotherSearch": "Prowal ymmyd ass fockle shirrey elley."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Eash Watch | Jesus Film Project",
+    "title": "Eash Watch",
+    "loading": "Çhargaghey eash",
+    "empty": "Cha nel red ayn foast",
+    "emptyDescription": "Ta videoyn ta oo jeeaghyn er feeraghtagh waaghit ayn shoh fakin foast.",
+    "earlier": "Ny shinney",
+    "today": "Jiu",
+    "yesterday": "Jea"
+  },
+  "AccountControl": {
+    "account": "Coontys",
+    "accountMenu": "Clagh coontys",
+    "signIn": "Goll stiagh",
+    "signOut": "Goll magh",
+    "signedIn": "Er goll stiagh",
+    "history": "Eash",
+    "logOut": "Log magh"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Cha nel duillag ry-gheddyn",
+    "eyebrow": "Cha nel duillag ry-gheddyn",
+    "screenReaderPrefix": "Cha nel duillag ry-gheddyn:",
+    "title": "Cha nel y chenn shoh ayn.",
+    "description": "Foddee dy vel y duillag er n'gholl ersooyl, agh ta'n skeeal goaill ymmyd foast.",
+    "actionsLabel": "Gniaghyn cha nel duillag ry-gheddyn",
+    "backToWatch": "Er-ash dys Watch",
+    "browseVideos": "Scrutagh videoyn"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Jeeagh er film giare",
+    "actions": {
+      "joinUs": "Tar lhiat shin",
+      "shareMission": "Co-honney ayns nyn obbyr mission"
+    },
+    "welcomeStart": {
+      "label": "Credjue & Scryptyr",
+      "title": "Reihyn video jiu",
+      "description": "Cummal video stabbil ayns credjue ass nyn lioar-reill, dy dooyrt, cur coadey, as çhiarnaghey smooinaghtyn."
+    },
+    "welcomeMorning": {
+      "label": "Neushtys laa",
+      "title": "Moghrey mie! Ta traaghyn y Vible jiu ayn.",
+      "description": "Tòstey dty laa lesh traaghyn y Vible ta goaill lesh lurg ayns aght son cobbal as troggal dty spyrryd."
+    },
+    "welcomeAfternoon": {
+      "label": "Neushtys traa lurg y voghrey",
+      "title": "Moirrey mie! Traaghyn y Vible son dty laa.",
+      "description": "Cummal y Vible ta çhyndaait son dty neulaghyn ys lhiggey neeshtay ayns y traa lurg y voghrey ny son cur ynsagh ayns oyr."
+    },
+    "welcomeEvening": {
+      "label": "Neushtys fastyr",
+      "title": "Fastyr mie! Goll sheese lesh traaghyn y Vible.",
+      "description": "Traaghyn cloie ass y Vible son cooney dy smooinaghtyn as dy ghoaill goaillys tra ta'n laa cheet gys y jerrey."
+    },
+    "joinUs": {
+      "label": "Tar lhiat shin",
+      "title": "Ta billioyn dy hirrey",
+      "description": "Ta'n buirrin ayn. Tar lhiat shin myr ta shin goaill yn sushtal er y theihll liorish media jeeragh."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Goll cooidjagh",
+      "title": "Inshyn skeeal Yeesey, cooidjagh",
+      "description": "Dy nod ad clashtyn as fakin graih Yeesey ayns nyn çhengey hene ayns yn ynnyd t'ad ayn."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% co-chosoylaght",
+    "none": "Cha row videoyn erbee er nyn voylley son y video shoh ayns y çhengey shoh."
+  },
+  "BetaTesterModal": {
+    "title": "Bee beta tester",
+    "trigger": "Bee beta tester",
+    "loadFailed": "Cha row red red erbee goll dy mie.",
+    "loading": "Çhargaghey...",
+    "openFormNewTab": "Foashley yn çhishiyn ayns tab noa",
+    "close": "Doo",
+    "iframeTitle": "Bee beta tester"
   }
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
 import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
+import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import {
@@ -96,11 +97,13 @@ function MuteButton({
   isMuted: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={isMuted ? "Unmute" : "Mute"}
+      aria-label={isMuted ? t("unmute") : t("mute")}
       className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-black/30 text-white transition hover:bg-black/50"
       data-testid="VideoHeroMuteButton"
     >

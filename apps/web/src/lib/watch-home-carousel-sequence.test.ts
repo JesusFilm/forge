@@ -50,13 +50,10 @@ function pool(id: string, videos: string[]): WatchHomeCarouselPool {
 
 const muxInsert = {
   id: "welcome-start",
+  copyId: "welcomeStart",
   enabled: true,
   playbackIds: ["playback-a"],
   durationSeconds: 9,
-  label: "Faith & Scripture",
-  title: "Today's Video Picks",
-  collectionTitle: "Daily Inspirations",
-  description: "A welcome insert.",
   action: null,
   logo: true,
   posterOverride: null,
@@ -214,10 +211,13 @@ describe("watch home carousel sequence helpers", () => {
         {
           ...muxInsert,
           id: "join-us",
+          copyId: "joinUs",
           playbackIds: ["join-a", "join-b"],
-          title: "Join Us",
           trigger: { type: "after-count", count: 1 },
-          action: { label: "Join Us", url: "https://example.com" },
+          action: {
+            copyId: "joinUs",
+            url: "https://example.com",
+          },
         },
       ],
       new Date("2026-06-04T12:00:00.000Z"),
@@ -231,15 +231,15 @@ describe("watch home carousel sequence helpers", () => {
     ])
     expect(slides[0]).toMatchObject({
       kind: "mux",
-      title: "Jun 4: Today's Video Picks",
+      copyId: "welcomeStart",
+      titleDate: "2026-06-04T12:00:00.000Z",
       playbackId: "playback-a",
       secondaryAction: null,
     })
     expect(slides[2]).toMatchObject({
       kind: "mux",
-      title: "Join Us",
+      copyId: "joinUs",
       secondaryAction: {
-        label: "Watch Short Film",
         type: "watch-short-film",
       },
     })
@@ -248,5 +248,32 @@ describe("watch home carousel sequence helpers", () => {
         "{}",
     )
     expect(["join-a", "join-b"]).toContain(stored["join-us"])
+  })
+
+  it("preserves the stable copy id of a selected conditional overlay", () => {
+    const [slide] = mergeWatchHomeMuxInserts(
+      [],
+      [
+        {
+          ...muxInsert,
+          conditionalOverlays: [
+            {
+              copyId: "welcomeMorning",
+              priority: 10,
+              conditions: [{ type: "time-range", range: { start: 5, end: 9 } }],
+              overlay: {},
+            },
+          ],
+        },
+      ],
+      new Date("2026-06-04T12:00:00.000Z"),
+      { useStoredSelections: false },
+    )
+
+    expect(slide).toMatchObject({
+      kind: "mux",
+      copyId: "welcomeMorning",
+      titleDate: "2026-06-04T12:00:00.000Z",
+    })
   })
 })

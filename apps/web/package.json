@@ -15,6 +15,7 @@
     "prune:next-isr": "node scripts/prune-next-isr-output.mjs",
     "generate:provisional-ui-catalogs": "node scripts/generate-provisional-ui-catalogs.mjs",
     "check:provisional-ui-catalogs": "node scripts/generate-provisional-ui-catalogs.mjs --check",
+    "translate:ui-catalogs": "node scripts/translate-ui-catalogs.mjs",
     "generate:ui-locales": "node scripts/generate-ui-locales.mjs",
     "check:ui-locales": "node scripts/generate-ui-locales.mjs --check",
     "verify:categories": "tsx scripts/verify-categories.ts",
