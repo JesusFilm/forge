@@ -26,10 +26,10 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 5,
-      environments: 18,
-      oauthClients: 22,
-      scopes: 10,
+      apps: 6,
+      environments: 22,
+      oauthClients: 26,
+      scopes: 18,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -99,6 +99,32 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_admin_mcp_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_admin_mcp_local",
+          scopes: expect.arrayContaining([
+            "experience:read",
+            "experience:locale:create",
+            "experience:locale:update",
+            "experience:locale:validate",
+            "media:read",
+            "video:read",
+            "bible:read",
+            "experience:publish",
+          ]),
+          redirectUris: ["http://localhost:3003/mcp/oauth/callback"],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "admin-mcp",
+            environmentKey: "local",
+          }),
         }),
       }),
     )

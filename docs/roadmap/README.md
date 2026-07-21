@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 17, 2026)
 
-- **Total tickets:** 363
-- **Complete:** 268
+- **Total tickets:** 364
+- **Complete:** 269
 - **In progress:** 22
 - **Not started:** 29
 - **Blocked:** 44
@@ -392,6 +392,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                                     | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
 | [feat-262](topic-experiences/feat-262-tv-showcase-mode.md)                                  | TV Showcase Mode: Settings tab + felt-need excerpt reel                          | urim      | P1       | 2026-07-20 | 10   | 2026-07-29 | in-progress |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
+| [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim      | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |

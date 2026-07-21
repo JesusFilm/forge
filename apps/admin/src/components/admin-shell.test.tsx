@@ -54,6 +54,7 @@ describe("admin shell", () => {
 
     expect(html).not.toContain(adminMessages.es.nav.items.users.label)
     expect(html).not.toContain(adminMessages.es.nav.items.settings.label)
+    expect(html).not.toContain(adminMessages.es.nav.items.mcp.label)
   })
 
   it("recognizes internal dashboard navigation that should show pending feedback", () => {
