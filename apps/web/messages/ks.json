@@ -7,7 +7,9 @@
     "noContent": "کوٚنٛہہ مواد دستیاب نہٕ چھُ۔",
     "homepageMisconfigured": "واچ ہوم پیج غلط طرح سیٹ چھُ۔",
     "defaultTemplateMisconfigured": "ڈیفالٹ واچ ٹیمپلیٹ غلط طرح سیٹ چھُ۔",
-    "authFailed": "مواد سروس سۭتۍ تصدیق کرنہٕ منز ناکامی۔ اگر یہ مسئلہ برقرار رہے تو سپورٹ سۭتۍ رابطہ کرو۔"
+    "authFailed": "مواد سروس سۭتۍ تصدیق کرنہٕ منز ناکامی۔ اگر یہ مسئلہ برقرار رہے تو سپورٹ سۭتۍ رابطہ کرو۔",
+    "pageLoadFailed": "کچھ غلط گژھِ۔",
+    "tryAgain": "پھِر کوشش کرو"
   },
   "VideosPage": {
     "title": "سارے ویڈیو",
@@ -22,7 +24,8 @@
     "promoHeading": "بائبل گہری طرح سمجھنہٕ چھَوا؟",
     "joinBibleStudy": "ساں بائبل اسٹڈی منز شامل گژھیو",
     "previousQuote": "پہلے بائبل قول",
-    "nextQuote": "اگلا بائبل قول"
+    "nextQuote": "اگلا بائبل قول",
+    "readPassage": "یہ عبارت پنٛنِس بائبلس منز پڑھیو۔"
   },
   "DownloadButton": {
     "checking": "چیک کران",
@@ -73,7 +76,8 @@
     "selectLanguage": "زبان چُنئیو",
     "searchPlaceholder": "زبانہٕ تلاش کرو…",
     "languages": "زبانہٕ",
-    "noMatches": "کوٚنٛہہ میچ نہٕ"
+    "noMatches": "کوٚنٛہہ میچ نہٕ",
+    "notAvailable": "دستیاب نہٕ"
   },
   "LanguagePickerModal": {
     "dialogTitle": "زبان",
@@ -112,7 +116,8 @@
     "questions": "متعلقہ سوال",
     "askYours": "پنٛنۍ پوٚچھنۍ",
     "chatWithPerson": "شخص سۭتۍ گپ شپ کرو",
-    "askBibleQuestion": "بائبل سوال پوچھیو"
+    "askBibleQuestion": "بائبل سوال پوچھیو",
+    "quiz": "کوئز"
   },
   "WatchQuestionPanel": {
     "messageType": "پیغام قِسم",
@@ -170,7 +175,8 @@
     "searchRegion": "ویڈیو تلاش کرو",
     "clearSearch": "تلاش صاف کرو",
     "changeAudioLanguage": "آڈیو زبان بدلیو",
-    "home": "JesusFilm ہوم"
+    "home": "JesusFilm ہوم",
+    "closeSearch": "تلاش بند کرو"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیو تلاش کرو اَور براؤز کرو",
@@ -205,14 +211,19 @@
     "clearLanguages": "صاف کرو",
     "queryLanguageDetected": "{language} پہچان گژھِ",
     "searchInLanguage": "{language} منز تلاش کرو",
-    "tryDifferentKeywordsOrLanguage": "مختلف کلیدی لفظ آزمائیو یا ٻی تلاش زبان چُنئیو"
+    "tryDifferentKeywordsOrLanguage": "مختلف کلیدی لفظ آزمائیو یا ٻی تلاش زبان چُنئیو",
+    "useWebsiteDefaultLanguage": "ویب سائٹ کی ڈیفالٹ تلاش زبان استعمال کرو",
+    "removeLanguage": "{language} ہٹاؤ",
+    "browseMode": "تلاش براؤز موڈ"
   },
   "HeroPlayer": {
     "playWithSound": "ہنٛز دیکھیو",
-    "tapToUnmute": "آواز آن کرنہٕ لئی ٹیپ کرو"
+    "tapToUnmute": "آواز آن کرنہٕ لئی ٹیپ کرو",
+    "nextEpisode": "اگلی قسط"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "مواد لوڈ کران"
+    "loadingContent": "مواد لوڈ کران",
+    "loadingVideo": "ویڈیو لوڈ کران"
   },
   "VideoLabels": {
     "video": "ویڈیو",
@@ -223,7 +234,8 @@
     "series": "سیریز",
     "collection": "مجموعہ",
     "trailer": "ٹریلر",
-    "behindTheScenes": "پردے پُشت"
+    "behindTheScenes": "پردے پُشت",
+    "chapter": "باب"
   },
   "SiblingCarousel": {
     "clipPosition": "کل {total} میں سۭتۍ {current} کلپ",
@@ -235,11 +247,252 @@
     "noImage": "تصویر نہٕ",
     "playingNow": "ہنٛز چلان",
     "previousChapter": "پہلے باب",
-    "nextChapter": "اگلے باب"
+    "nextChapter": "اگلے باب",
+    "thumbnailAlt": "{title} تھمب نیل",
+    "relatedVideoThumbnail": "متعلقہ ویڈیو تھمب نیل"
   },
   "SearchResultCard": {
     "experience": "تجربہ",
     "episodeCount": "{count, plural, one {# قسط} other {# قسطہٕ}}",
     "thumbnailAlt": "ویڈیو تھمب نیل"
+  },
+  "Feedback": {
+    "openForm": "فیڈبیک فارم کھولیو",
+    "label": "فیڈبیک",
+    "couldNotLoad": "فیڈبیک فارم لوڈ نہٕ گژھ۔",
+    "loadingForm": "فیڈبیک فارم لوڈ کران۔۔۔",
+    "retry": "پھِر کوشش کرو",
+    "openFormShort": "فارم کھولیو",
+    "cancel": "منسوخ",
+    "title": "بیٹا فیڈبیک",
+    "description": "کیا چیز کام کران چھُ تہٕ اسہِ کِتھ کِتھ بہتر کرِ سون، یہ شیئر کرو۔ یہ فارم Google طرفہٕ دتھ چھُ۔",
+    "openInNewTab": "فارم نَوۍ ٹیب منز کھولیو",
+    "closeForm": "فیڈبیک فارم بند کرو",
+    "loadingGoogleForm": "Google فارم لوڈ کران۔۔۔",
+    "iframeTitle": "بیٹا فیڈبیک جمع کرو"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} منز مفت مسیحی ویڈیو | Jesus Film Project",
+    "metadataDescription": "{language} منز ڈب آڈیو یا سب ٹائٹلز سۭتۍ Jesus فلمہٕ، بائبل کہانیہٕ، شاگردی سیریز، تہٕ outreach ویڈیو دریافت کرو۔",
+    "heroTitle": "{language} منز مفت مسیحی ویڈیو",
+    "heroDescription": "{language} منز دستیاب Jesus فلمہٕ، بائبل کہانیہٕ، شاگردی سیریز، تہٕ outreach ویڈیو دریافت کرو۔ پورے ڈب ویڈیو پہلے نمایاں چھنہٕ، تہٕ سب ٹائٹل والے اختیارات نیچے چھنہٕ۔",
+    "languageCollection": "زبان مجموعہ",
+    "itemCount": "{count, plural, one {# چیز} other {# چیزہٕ}}",
+    "videoCount": "{count, plural, one {# ویڈیو} other {# ویڈیوہٕ}}",
+    "videosInGroups": "{videoCount, plural, one {# ویڈیو} other {# ویڈیوہٕ}} {groupCount, plural, one {# گروپ} other {# گروپہٕ}} منز",
+    "sectionNavLabel": "زبان inventory حصے",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "نَو",
+    "videoBible": "ویڈیو بائبل",
+    "bibleProject": "BibleProject",
+    "sports": "کھیل",
+    "collections": "مجموعہ",
+    "subtitlesOnly": "صرف سب ٹائٹلز",
+    "newlyAdded": "ہنٛز شامل",
+    "newVideosTitle": "{language} منز نَو مسیحی ویڈیو",
+    "newestFirst": "سبن منٛز نَو پہلے",
+    "noPublishedVideos": "اِس زبان لئی ہنٛوز کوٚنٛہہ شائع شدہ ویڈیو نہٕ ملے۔",
+    "bibleAndGospelFilms": "بائبل اَور خوشخبری فلمہٕ",
+    "videoBibleCollectionsTitle": "{language} ویڈیو بائبل مجموعہٕ",
+    "videoBibleDescription": "صحیفہ مرکوز مجموعہٕ جن منٛز {language} منز LUMO، JESUS، Magdalena، تہٕ Acts شامل چھنہٕ۔",
+    "noVideoBibleCollections": "اِس زبان لئی ہنٛوز کوٚنٛہہ Video Bible مجموعہٕ دستیاب نہٕ چھنہٕ۔",
+    "bibleProjectCollectionsTitle": "{language} BibleProject مجموعہٕ",
+    "bibleProjectDescription": "{language} منز دستیاب BibleProject سیریز تہٕ مطالعہ۔",
+    "noBibleProjectCollections": "اِس زبان لئی ہنٛوز کوٚنٛہہ BibleProject مجموعہٕ دستیاب نہٕ چھنہٕ۔",
+    "sportsStories": "کھیل کہانۍ",
+    "sportsTitle": "{language} کھیل اَور ایتھلیٹ کہانۍ",
+    "sportsDescription": "ایمان مرکوز کھیل کہانۍ تہٕ ایتھلیٹ-مرکوز مجموعہٕ {language} منز دستیاب چھنہٕ۔",
+    "noSportsCollections": "اِس زبان لئی ہنٛوز کوٚنٛہہ کھیل یا ایتھلیٹ-کہانی مجموعہٕ دستیاب نہٕ چھنہٕ۔",
+    "fullyDubbed": "پورے ڈب شدہ",
+    "dubbedVideosTitle": "{language} ویڈیو بحیثیت مجموعہٕ",
+    "dubbedVideosDescription": "آسان دریافت لئی مکمل ڈب {language} ویڈیو پنٛنۍ مجموعہٕ سۭتۍ براؤز کرو۔",
+    "noDubbedVideos": "اِس زبان لئی ہنٛوز کوٚنٛہہ مکمل ڈب ویڈیو دستیاب نہٕ چھنہٕ۔",
+    "subtitlesAvailable": "سب ٹائٹلز دستیاب",
+    "subtitlesTitle": "سب ٹائٹلز سۭتۍ {language} ویڈیو",
+    "subtitlesDescription": "یہ ویڈیو {language} سب ٹائٹلز سۭتۍ چھنہٕ، جتھ spoken {language} آڈیو ابھی دستیاب نہٕ چھُ۔",
+    "noSubtitleVideos": "اِس زبان لئی ہنٛوز کوٚنٛہہ صرف سب ٹائٹل ویڈیو دستیاب نہٕ چھنہٕ۔",
+    "dubbed": "ڈب شدہ",
+    "subtitles": "سب ٹائٹلز",
+    "newLabel": "نَو",
+    "fromCollection": "{collection} سۭتۍ",
+    "standaloneVideos": "الگ ویڈیو",
+    "videosFromCollection": "{collection} سۭتۍ ویڈیو۔",
+    "standaloneDescription": "اس زبان منز الگ ویڈیو۔",
+    "openCollection": "مجموعہ کھولیو"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project واچ",
+    "watch": "دیکھیو",
+    "watchNow": "ہنٛز دیکھیو",
+    "mutePreview": "پیش نظارہ خاموش کرو",
+    "unmutePreview": "پیش نظارہ آواز آن کرو",
+    "nextVideo": "اگلا ویڈیو",
+    "featured": "نمایاں",
+    "showVideo": "{title} دکھاؤ",
+    "previousVideoPreview": "پہلے ویڈیو پیش نظارہ",
+    "nextVideoPreview": "اگلے ویڈیو پیش نظارہ",
+    "mediaCollection": "میڈیا مجموعہ",
+    "scrollToVideo": "{title} ویڈیو تام سکرول کرو"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ہوم",
+    "navigation": "فوٹر نیویگیشن",
+    "share": "شیئر",
+    "watch": "دیکھیو",
+    "giving": "عطیہ",
+    "about": "بارہٕ منز",
+    "products": "مصنوعات",
+    "resources": "وسائل",
+    "partners": "شراکت دار",
+    "contact": "رابطہ",
+    "giveNow": "ہنٛز عطیہ کرو",
+    "resourcesVersion": "وسائل ({version})",
+    "office": "دفتر",
+    "fax": "فیکس",
+    "privacyPolicy": "رازداری پالیسی",
+    "legalStatement": "قانونی بیان",
+    "newsletter": "ساں نیوزلیٹر لئی سائن اپ کرو"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "عالمی مشن لئی بنایا گیا",
+    "title": "پیغام نہٕ بدلان۔ لوگ کیانہٕ ویڈیو دیکھان، اوہ بدلان۔",
+    "description": "اسہِ پنٛنۍ ویڈیو لائبریری تہٕ اوزارہٕ نَو سرے تھئین بناوان چھنہٕ، دہایانہٕ ترجمهٕ کام انہِ پلیٹ فارمہٕ تام لۭگاونہٕ جتھ لوٚک پہلے ہی جمع، دیکھان، تہٕ شیئر کران چھنہٕ۔",
+    "translatedLibraryTitle": "دنیا کی سب سے زیادہ ترجمہ شدہ فلم لائبریری",
+    "translatedLibraryDescription": "دہائیان ہُنہٕ ترجمهٕ کام، قابلِ اعتماد خدمت پارٹنرہٕ کَنٛدۍ سۭتۍ، اکھ ایسی لائبریری بنائی چھُ، جتھ ہزارَن زبان ٹریکس چھنہٕ، تاکہ لوٚک یسوع کتھ کہانی پنٛنۍ دل تام پَہُنچانہٕ والی زبان منز سُنہٕ۔",
+    "trustedVoicesTitle": "قابلِ اعتماد آواز نَو فارمہٕ منز لانا",
+    "trustedVoicesDescription": "اسہِ خوشخبری کہانۍ تصویری طور ترجُمانہ کرنہٕ کِیونز طریقہٕ نَو سرے بناوان چھنہٕ، قابلِ اعتماد ترجمہٕ جدید فارمہٕ سۭتۍ جوڑان، تاکہ پیغام پلیٹ فارم، ثقافتہٕ، تہٕ سکرینہٕ پار آزادانہ چلان۔",
+    "missionTeamTitle": "صرف اکھ لائبریری نہٕ۔ اکھ مشن-مرکوز ٹیم۔",
+    "missionTeamDescription": "Jesus Film Project اکھ عالمی ٹیم چھُ، جتھ ترجمان، میڈیا ماہر، ایڈیٹر، تہٕ تخلیق کار دہایانہٕ خدمت تجربہ دیشِی اوزارہٕ منز بدلان چھنہٕ، ساری دنیا دِسِ شاگرد سازی لئی۔",
+    "buildingNext": "اَسہِ کیہہ بنان چھنہٕ",
+    "nextStepsTitle": "اگلا قدم پلیٹ فارم",
+    "nextStepsDescription": "دیکھن والا شخصہٕ پنٛنۍ روحانی سفر منز ٹھوس مواقعہٕ سۭتۍ جوڑیو، تاکہ اوہ برادری، صحیفہ، یا مشن منز اَگلا قدم لین۔",
+    "mediaLibraryTitle": "انجیل-مرکوز میڈیا لائبریری",
+    "mediaLibraryDescription": "اکھ وسیع مسیحی میڈیا لائبریری، جتھ ہزارَن ویڈیو، فلمہٕ، تہٕ وسائل کئی زبانہٕ منز دنیا بھر خدمت تہٕ بشارت لئی دستیاب چھنہٕ۔",
+    "ministryToolsTitle": "خدمت لئی ڈیجیٹل اوزار",
+    "ministryToolsDescription": "ویڈیو مینجمنٹ، مواد تقسیم، ناظرین شمولیت، تہٕ اینالٹکس، جو خدمتہٕ کۆ زیادہ لوٚکُن تام مؤثر طریقے سۭتۍ پَہُنچانہٕ لئی بناونہٕ گژھنہٕ۔",
+    "invitationEyebrow": "تُہندۍ دعوت چھُ",
+    "invitationTitle": "مشن اوزارہٕ نَو نسل <highlight>بنانہٕ منز</highlight> مدد کرو",
+    "invitationDescription": "اسہِ practitioners، creators، تہٕ partners early access لئی دعوت دیوان چھنہٕ۔ پہلے نَو اوزار آزمائیو، فیڈبیک دیو، تہٕ اصل مشن کام لئی بننہٕ والے مصنوعات شکل دِنہٕ منز مدد کرو۔",
+    "betaTester": "بیٹا ٹیسٹر بنیو"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "ویڈیو بائبل مجموعہ",
+    "gospelRailTitle": "ساری کہانی دریافت کرو",
+    "videoBibleDescription": "ساں ویڈیو تہٕ وسائل مجموعہ دریافت کرو جو دلچسپ کہانیہٕ تہٕ تعلیمہٕ سۭتۍ بائبل زندہ کران چھنہٕ۔",
+    "showcaseTitle": "فلم سۭتۍ بیان شدہ صحیفہ",
+    "adventEyebrow": "کرسمس آڈونٹ",
+    "adventTitle": "کرسمس آڈونٹ الٹی گِنتی",
+    "adventDescription": "ہمارے آڈونٹ سفر منز شامل گژھیو، روزانہ ویڈیو سۭتۍ جو کرسمس لئی انتظار بڑھاونہٕ کران چھُ، تہٕ یسوع کی آمدک امید، خوشی، تہٕ وعدہ دریافت کران چھُ۔",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject آڈونٹ",
+    "nuaEyebrow": "NUA سیریز",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth سیریز",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "ویڈیو کورس",
+    "journeyWithJesusTitle": "یسوع سۭتۍ سفر",
+    "gospelsOnVideoEyebrow": "ہر انجیل، ویڈیو منز بیان",
+    "scriptureAsWrittenTitle": "صحیفہ، جی ہٕنٛز لکھیُک اُسی طرح",
+    "merryChristmas": "کرسمس مبارک!",
+    "daysUntilChristmas": "{count, plural, one {کرسمس تام # دۄہ باقی چھُ} other {کرسمس تام # دۄہ باقی چھنہٕ}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "زبانہٕ",
+    "metadataDescription": "JesusFilm ویڈیو زبانہٕ سۭتۍ براؤز کرو۔",
+    "eyebrow": "واچ زبانہٕ",
+    "title": "اکھ زبان چُنئیو",
+    "description": "علاقہ سۭتۍ زبانہٕ دریافت کرو یا پوری فہرست براؤز کرو۔",
+    "searchPlaceholder": "زبانہٕ یا ملکہٕ تلاش کرو...",
+    "searchLabel": "زبانہٕ یا ملکہٕ تلاش کرو",
+    "clearSearch": "تلاش صاف کرو",
+    "browse": "براؤز",
+    "browseByRegion": "علاقہ اَور ملک سۭتۍ براؤز کرو",
+    "languageCount": "{count, plural, one {# زبان} other {# زبانہٕ}}",
+    "region": "علاقہ",
+    "countryLanguages": "{country} زبانہٕ",
+    "showLess": "کم دکھاؤ",
+    "showMore": "مزید {count} دکھاؤ",
+    "noLanguages": "کوٚنٛہہ زبان نہٕ ملۍ",
+    "tryAnotherSearch": "دوسر تلاش لفظ آزمائیو۔"
+  },
+  "WatchHistory": {
+    "metadataTitle": "واچ ہسٹری | Jesus Film Project",
+    "title": "واچ ہسٹری",
+    "loading": "ہسٹری لوڈ کران",
+    "empty": "ہنٛوز کُچھ نہٕ",
+    "emptyDescription": "جیڑۍ ویڈیو تُہٕ سائن اِن ہنٛہٕ دیکھنہٕ، اوہ یتھ نظر آسنہٕ۔",
+    "earlier": "پہلے",
+    "today": "آج",
+    "yesterday": "کل"
+  },
+  "AccountControl": {
+    "account": "اکاؤنٹ",
+    "accountMenu": "اکاؤنٹ مینو",
+    "signIn": "سائن اِن",
+    "signOut": "سائن آؤٹ",
+    "signedIn": "سائن اِن چھُ",
+    "history": "ہسٹری",
+    "logOut": "لاگ آؤٹ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "صفحہ نہٕ ملۍ",
+    "eyebrow": "صفحہ نہٕ ملۍ",
+    "screenReaderPrefix": "صفحہ نہٕ ملۍ:",
+    "title": "یہ منظر یتھ نہٕ چھُ۔",
+    "description": "صفحہ ہٹ گژھِ ہاے، مگر کہانی جاری چھُ۔",
+    "actionsLabel": "صفحہ نہٕ ملنہٕ کاروائیاں",
+    "backToWatch": "واچ کُن واپس",
+    "browseVideos": "ویڈیو براؤز کرو"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "مختصر فلم دیکھیو",
+    "actions": {
+      "joinUs": "ساں شامل گژھیو",
+      "shareMission": "ساں مشن منز شریک گژھیو"
+    },
+    "welcomeStart": {
+      "label": "ایمان تہٕ صحیفہ",
+      "title": "آج ہنٛز ویڈیو پسندیاں",
+      "description": "سایہٕ لائبریری سۭتۍ ایمان مرکوز ویڈیو مواد، جو حوصلہ دِیہ، چیلنج کرِ، تہٕ سوچ پیدا کرِ۔"
+    },
+    "welcomeMorning": {
+      "label": "صبحی حوصلہ",
+      "title": "سوبھ بخیر! آج بائبل لمحات تیار چھنہٕ۔",
+      "description": "پنٛنۍ دۄہک شروعات حوصلہ افزا بائبل لمحات سۭتۍ کرو، جو اُمید تہٕ ہمت دِنہٕ لئی بناونہٕ گژھنہٕ۔"
+    },
+    "welcomeAfternoon": {
+      "label": "دوپہر حوصلہ",
+      "title": "دوپہر بخیر! تُہندِس دۄہ لئی بائبل لمحات۔",
+      "description": "حوصلہ افزا بائبل مواد، دوپہرک وقفے لئی موزوں، یا مزید حوصلہ لئی۔"
+    },
+    "welcomeEvening": {
+      "label": "شام حوصلہ",
+      "title": "شام بخیر! بائبل لمحات سۭتۍ آرام کرو۔",
+      "description": "پُرسکون بائبل لمحات، جو دۄہ ختم گژھنہٕ پر سوچن تہٕ تسلی پَتھ آسنہٕ منز مدد کرنہٕ۔"
+    },
+    "joinUs": {
+      "label": "ساں شامل گژھیو",
+      "title": "اربوں لوٚک تلاش کران چھنہٕ",
+      "description": "فصل تیار چھُ۔ ڈیجیٹل میڈیا سۭتۍ دنیہَ تام خوشخبری شِئر کران ساں شامل گژھیو۔"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "آو سۭتۍ چلو",
+      "title": "یسوع ہُند قصہ، سۭتۍ شِئریو",
+      "description": "تاکہ اوہ پنٛنۍ زبان منز، پنٛنۍ جگہہٕ تام، یسوع ہُند پیار سنن تہٕ دیکھی سکِن۔"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% میچ",
+    "none": "اِس زبان منز اِس ویڈیو لئی کوٚنٛہہ تجویز نہٕ ملۍ۔"
+  },
+  "BetaTesterModal": {
+    "title": "بیٹا ٹیسٹر بنیو",
+    "trigger": "بیٹا ٹیسٹر بنیو",
+    "loadFailed": "کچھ غلط گژھِ۔",
+    "loading": "لوڈ کران...",
+    "openFormNewTab": "فارم نَوۍ ٹیب منز کھولیو",
+    "close": "بند کرو",
+    "iframeTitle": "بیٹا ٹیسٹر بنیو"
   }
 }

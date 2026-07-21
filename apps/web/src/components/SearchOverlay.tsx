@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -15,7 +14,10 @@ import { useTranslations } from "next-intl"
 import { X } from "lucide-react"
 
 import { useFloatingSearch } from "./FloatingSearchContext"
-import { FloatingSearchFieldInput } from "./FloatingSearchField"
+import {
+  FloatingSearchFieldInput,
+  useFloatingSearchInputAutofocus,
+} from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
@@ -130,24 +132,7 @@ export function SearchOverlay() {
     setClosePortalContainer(node)
   }, [])
 
-  // Keep the modal ready for immediate typing even when portal/lazy mount work
-  // races the opening click.
-  useLayoutEffect(() => {
-    if (!open) return
-    let cancelled = false
-    const focusInput = () => {
-      if (cancelled) return
-      inputRef.current?.focus({ preventScroll: true })
-    }
-    focusInput()
-    const frame = window.requestAnimationFrame(focusInput)
-    const timer = window.setTimeout(focusInput, 100)
-    return () => {
-      cancelled = true
-      window.cancelAnimationFrame(frame)
-      window.clearTimeout(timer)
-    }
-  }, [open])
+  useFloatingSearchInputAutofocus(open, inputRef)
 
   // Escape closes the modal through the provider-owned reset boundary.
   useEffect(() => {
@@ -521,7 +506,7 @@ export function SearchOverlay() {
               {semanticLanguageOverrideActive && (
                 <button
                   type="button"
-                  aria-label="Clear search language"
+                  aria-label={t("useWebsiteDefaultLanguage")}
                   onClick={handleResetSearchLanguage}
                   className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
                 >

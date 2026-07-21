@@ -3,6 +3,7 @@
 import Image from "next/image"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
@@ -258,6 +259,7 @@ function WatchHomeMediaCollection({
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
 }) {
+  const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
   const isVerticalGrid = variant === "collection"
   const isVertical = isRail || isVerticalGrid
@@ -431,7 +433,7 @@ function WatchHomeMediaCollection({
             className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <PlayIcon />
-            {ctaLabel ?? "Watch"}
+            {ctaLabel ?? t("watch")}
           </a>
         </div>
       </div>
@@ -439,7 +441,7 @@ function WatchHomeMediaCollection({
       {isRail ? (
         <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
           <Carousel
-            aria-label={title ?? "Media collection"}
+            aria-label={title ?? t("mediaCollection")}
             data-testid="media-collection-carousel"
             opts={{
               align: "start",
@@ -543,6 +545,7 @@ function VideoCard({
   showItemNumbers: boolean | null
   onHover?: () => void
 }) {
+  const t = useTranslations("WatchHome")
   // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
   // manually. EnrichedMediaItem carries no language field, so the locale
   // segment defaults to `english` (see DEFAULT_COLLECTION_LOCALE).
@@ -568,7 +571,8 @@ function VideoCard({
           : "cursor-default",
         isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
       )}
-      aria-label="VideoCard"
+      aria-label={t("showVideo", { title: item.title })}
+      data-testid="VideoCard"
       onPointerEnter={isInteractive ? onHover : undefined}
       onFocus={isInteractive ? onHover : undefined}
     >

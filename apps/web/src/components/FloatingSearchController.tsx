@@ -197,14 +197,7 @@ export function FloatingSearchController({
   )
   const routeLanguageSlug = useMemo(() => {
     const parsed = parseWatchPath(pathname)
-    if (
-      parsed.kind === "localized-home" ||
-      parsed.kind === "video" ||
-      parsed.kind === "episode"
-    ) {
-      return parsed.lang
-    }
-    return null
+    return "lang" in parsed ? parsed.lang : null
   }, [pathname])
   const defaultSearchLanguage = useMemo(
     () =>

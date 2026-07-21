@@ -7,7 +7,9 @@
     "noContent": "Akukho mxholo ukhoyo.",
     "homepageMisconfigured": "Iphepha lasekhaya lokubukela limiselwe kakubi.",
     "defaultTemplateMisconfigured": "Itemplate emiselweyo yokubukela imiselwe kakubi.",
-    "authFailed": "Ayikwazi ukuqinisekisa isazisi ngenkonzo yomxholo. Nceda uqhagamshelane nenkxaso ukuba oku kuqhubeka."
+    "authFailed": "Ayikwazi ukuqinisekisa isazisi ngenkonzo yomxholo. Nceda uqhagamshelane nenkxaso ukuba oku kuqhubeka.",
+    "pageLoadFailed": "Kukho into engahambi kakuhle.",
+    "tryAgain": "Zama kwakhona"
   },
   "VideosPage": {
     "title": "Zonke iividiyo",
@@ -22,7 +24,8 @@
     "promoHeading": "Ufuna ukuyiqonda ngakumbi iBhayibhile?",
     "joinBibleStudy": "Joyina isifundo sethu seBhayibhile",
     "previousQuote": "Icaphulo leBhayibhile elidlulileyo",
-    "nextQuote": "Icaphulo leBhayibhile elilandelayo"
+    "nextQuote": "Icaphulo leBhayibhile elilandelayo",
+    "readPassage": "Funda esi sicatshulwa eBhayibhileni yakho."
   },
   "DownloadButton": {
     "checking": "Kuyajongwa",
@@ -73,7 +76,8 @@
     "selectLanguage": "Khetha ulwimi",
     "searchPlaceholder": "Khangela iilwimi…",
     "languages": "Iilwimi",
-    "noMatches": "Akukho kufana"
+    "noMatches": "Akukho kufana",
+    "notAvailable": "Ayifumaneki"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ulwimi",
@@ -112,7 +116,8 @@
     "questions": "Imibuzo Enefuthe",
     "askYours": "Buza owakho",
     "chatWithPerson": "Thetha nomntu",
-    "askBibleQuestion": "Buza umbuzo weBhayibhile"
+    "askBibleQuestion": "Buza umbuzo weBhayibhile",
+    "quiz": "Imibuzo emfutshane"
   },
   "WatchQuestionPanel": {
     "messageType": "Uhlobo lomyalezo",
@@ -170,7 +175,8 @@
     "searchRegion": "Khangela iividiyo",
     "clearSearch": "Cima ukukhangela",
     "changeAudioLanguage": "Tshintsha ulwimi lweaudio",
-    "home": "Ikhaya leJesusFilm"
+    "home": "Ikhaya leJesusFilm",
+    "closeSearch": "Vala ukukhangela"
   },
   "SearchOverlay": {
     "dialogLabel": "Khangela uze ubhrawuze iividiyo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Cima",
     "queryLanguageDetected": "Kufunyenwe {language}",
     "searchInLanguage": "Khangela ku {language}",
-    "tryDifferentKeywordsOrLanguage": "Zama amagama angundoqo ahlukeneyo okanye khetha olunye ulwimi lokukhangela"
+    "tryDifferentKeywordsOrLanguage": "Zama amagama angundoqo ahlukeneyo okanye khetha olunye ulwimi lokukhangela",
+    "useWebsiteDefaultLanguage": "Sebenzisa ulwimi olungagqibekanga lokukhangela lwewebhusayithi",
+    "removeLanguage": "Susa {language}",
+    "browseMode": "Imo yokubhrawuza yokukhangela"
   },
   "HeroPlayer": {
     "playWithSound": "Bukela ngoku",
-    "tapToUnmute": "Chukumisa ukuze ususe ukuthulisa"
+    "tapToUnmute": "Chukumisa ukuze ususe ukuthulisa",
+    "nextEpisode": "Isiqendu esilandelayo"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Kulayishwa umxholo"
+    "loadingContent": "Kulayishwa umxholo",
+    "loadingVideo": "Kulayishwa ividiyo"
   },
   "VideoLabels": {
     "video": "Ividiyo",
@@ -223,7 +234,8 @@
     "series": "Uthotho",
     "collection": "Ingqokelela",
     "trailer": "Itreyila",
-    "behindTheScenes": "Emva kwemiboniso"
+    "behindTheScenes": "Emva kwemiboniso",
+    "chapter": "Isahluko"
   },
   "SiblingCarousel": {
     "clipPosition": "Ikliphu {current} kwe {total}",
@@ -235,11 +247,252 @@
     "noImage": "Akukho mfanekiso",
     "playingNow": "Kudlala ngoku",
     "previousChapter": "Isahluko sangaphambili",
-    "nextChapter": "Isahluko esilandelayo"
+    "nextChapter": "Isahluko esilandelayo",
+    "thumbnailAlt": "Isithombe esincinci se {title}",
+    "relatedVideoThumbnail": "Isithombe esincinci sevidiyo enxulumeneyo"
   },
   "SearchResultCard": {
     "experience": "Amava",
     "episodeCount": "{count, plural, one {# isiqendu} other {# iziqendu}}",
     "thumbnailAlt": "Isithombe esincinci sevidiyo"
+  },
+  "Feedback": {
+    "openForm": "Vula ifomu yempendulo",
+    "label": "Impendulo",
+    "couldNotLoad": "Ifomu yempendulo ayikwazanga ukulayishwa.",
+    "loadingForm": "Kulayishwa ifomu yempendulo…",
+    "retry": "Phinda uzame",
+    "openFormShort": "Vula ifomu",
+    "cancel": "Rhoxisa",
+    "title": "Impendulo yeBeta",
+    "description": "Yabelana ngento esebenzayo nento esinokuyiphucula. Le fomu inikezelwa yiGoogle.",
+    "openInNewTab": "Vula ifomu kwithebhu entsha",
+    "closeForm": "Vala ifomu yempendulo",
+    "loadingGoogleForm": "Kulayishwa iFomu kaGoogle…",
+    "iframeTitle": "Ngenisa Impendulo yeBeta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Iividiyo zamaKristu zasimahla ngesi {language} | Jesus Film Project",
+    "metadataDescription": "Phonononga iifilimu zikaYesu, amabali eBhayibhile, uthotho lobufundi, kunye neevidiyo zofikelelo ezinoaudio othethwayo okanye imibhalo engezantsi ngesi {language}.",
+    "heroTitle": "Iividiyo zamaKristu zasimahla ngesi {language}",
+    "heroDescription": "Phonononga iifilimu zikaYesu, amabali eBhayibhile, uthotho lobufundi, kunye neevidiyo zofikelelo ezifumaneka ngesi {language}. Iividiyo ezinesandi esipheleleyo ziqaqanjiswa kuqala, ngeendlela ezinemibhalo engezantsi kuphela ezingezantsi.",
+    "languageCollection": "Ingqokelela yolwimi",
+    "itemCount": "{count, plural, one {# into} other {# izinto}}",
+    "videoCount": "{count, plural, one {# ividiyo} other {# iividiyo}}",
+    "videosInGroups": "{videoCount, plural, one {# ividiyo} other {# iividiyo}} ku {groupCount, plural, one {# iqela} other {# amaqela}}",
+    "sectionNavLabel": "Amacandelo engqokelela yolwimi",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Entsha",
+    "videoBible": "IBhayibhile yeVidiyo",
+    "bibleProject": "BibleProject",
+    "sports": "Imidlalo",
+    "collections": "Iingqokelela",
+    "subtitlesOnly": "IMibhalo engezantsi kuphela",
+    "newlyAdded": "Esanda kongezwa",
+    "newVideosTitle": "Iividiyo zamaKristu ezintsha ngesi {language}",
+    "newestFirst": "Ezintsha kuqala",
+    "noPublishedVideos": "Akukafunyanwa zividiyo zipapashiweyo kolu lwimi okwangoku.",
+    "bibleAndGospelFilms": "Iifilimu zeBhayibhile neVangeli",
+    "videoBibleCollectionsTitle": "Iingqokelela zeBhayibhile yeVidiyo ngesi {language}",
+    "videoBibleDescription": "Iingqokelela ezisekelwe eSibhalweni eziquka iLUMO, JESUS, Magdalena, neZenzo ngesi {language}.",
+    "noVideoBibleCollections": "Akukho ngqokelela yeBhayibhile yeVidiyo ekhoyo kolu lwimi okwangoku.",
+    "bibleProjectCollectionsTitle": "Iingqokelela zeBibleProject ngesi {language}",
+    "bibleProjectDescription": "Uthotho nezifundo zeBibleProject ezifumaneka ngesi {language}.",
+    "noBibleProjectCollections": "Akukho ngqokelela yeBibleProject ekhoyo kolu lwimi okwangoku.",
+    "sportsStories": "Amabali emidlalo",
+    "sportsTitle": "Amabali emidlalo kunye neembaleki ngesi {language}",
+    "sportsDescription": "Amabali emidlalo agxile elukholweni kunye neengqokelela ezijolise kubadlali ezifumaneka ngesi {language}.",
+    "noSportsCollections": "Akukho ngqokelela yemidlalo okanye yamabali ezembaleki ekhoyo kolu lwimi okwangoku.",
+    "fullyDubbed": "Isandi esipheleleyo",
+    "dubbedVideosTitle": "Iividiyo ngesi {language} ngengqokelela",
+    "dubbedVideosDescription": "Bhrawuza iividiyo ngesi {language} ezinesandi esipheleleyo, ziqokelelwe kunye nengqokelela yazo ukuze kube lula ukuzifumana.",
+    "noDubbedVideos": "Akukho vidiyo zinesandi esipheleleyo zikhoyo kolu lwimi okwangoku.",
+    "subtitlesAvailable": "IMibhalo engezantsi ikhona",
+    "subtitlesTitle": "Iividiyo ngesi {language} ezinemibhalo engezantsi",
+    "subtitlesDescription": "Ezi vidiyo ziquka imibhalo engezantsi ngesi {language} xa isandi esithethwayo ngesi {language} singekafumaneki.",
+    "noSubtitleVideos": "Akukho vidiyo zinemibhalo engezantsi kuphela zikhoyo kolu lwimi okwangoku.",
+    "dubbed": "Enezwi elithethwayo",
+    "subtitles": "IMibhalo engezantsi",
+    "newLabel": "Entsha",
+    "fromCollection": "Ukusuka ku {collection}",
+    "standaloneVideos": "Iividiyo ezizimeleyo",
+    "videosFromCollection": "Iividiyo ezivela ku {collection}.",
+    "standaloneDescription": "Iividiyo ezizimeleyo kulo lwimi.",
+    "openCollection": "Vula ingqokelela"
+  },
+  "WatchHome": {
+    "pageTitle": "Ukubukela kweJesus Film Project",
+    "watch": "Bukela",
+    "watchNow": "Bukela ngoku",
+    "mutePreview": "Thulisa umboniso wangaphambili",
+    "unmutePreview": "Susa ukuthulisa umboniso wangaphambili",
+    "nextVideo": "Ividiyo elandelayo",
+    "featured": "Ebonakalayo",
+    "showVideo": "Bonisa {title}",
+    "previousVideoPreview": "Umboniso wangaphambili wevidiyo",
+    "nextVideoPreview": "Umboniso wangaphambili wevidiyo elandelayo",
+    "mediaCollection": "Ingqokelela yemidiya",
+    "scrollToVideo": "Skrolela kwividiyo ethi {title}"
+  },
+  "WatchFooter": {
+    "home": "Ikhaya leJesus Film Project",
+    "navigation": "Ukuhamba ezantsi kwephepha",
+    "share": "Yabelana",
+    "watch": "Bukela",
+    "giving": "Ukunikela",
+    "about": "Malunga",
+    "products": "Iimveliso",
+    "resources": "Izixhobo",
+    "partners": "Amaqabane",
+    "contact": "Qhagamshelana",
+    "giveNow": "Nikela ngoku",
+    "resourcesVersion": "Izixhobo ({version})",
+    "office": "Iofisi",
+    "fax": "Ifeksi",
+    "privacyPolicy": "Umgaqo-nkqubo wabucala",
+    "legalStatement": "Ingxelo yezomthetho",
+    "newsletter": "Bhalisela incwadana yethu yeendaba"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yakhelwe imishini yehlabathi",
+    "title": "Umyalezo awutshintshi. Indlela abantu ababukela ngayo iyatshintsha.",
+    "description": "Siphinda sakha ithala lethu levidiyo nezixhobo ukusuka ekuqaleni, sisebenzisa umsebenzi weminyaka emininzi wenguqulelo kumaqonga apho abantu sele behlangana khona, bebukela, kwaye besabelana.",
+    "translatedLibraryTitle": "Ithala leencwadi leefilimu eliguqulelwe kakhulu emhlabeni",
+    "translatedLibraryDescription": "Iminyaka emininzi yomsebenzi wenguqulelo, ixhaswa ngamaqabane enkonzo athembekileyo, yakhe ithala leencwadi elinamawakawaka eetraki zolwimi ukuze abantu bakwazi ukudibana nebali likaYesu ngolwimi olubafikelela nzulu.",
+    "trustedVoicesTitle": "Ukuzisa amazwi athembekileyo kwiifomathi ezintsha",
+    "trustedVoicesDescription": "Siphinda sakha indlela amabali evangeli abaliswa ngayo ngokubonakalayo, sidibanisa iinguqulelo ezithembekileyo neefomathi zale mihla ukuze umyalezo ukwazi ukuhamba ngokukhululekileyo kumaqonga, kwiinkcubeko, nakwizikrini.",
+    "missionTeamTitle": "Ngaphezu kwethala leencwadi. Iqela eliqhutywa yimishini.",
+    "missionTeamDescription": "IJesus Film Project liqela lehlabathi labaguquleli, iingcali zemidiya, abahleli, nabadali abaguqula amava eminyaka emininzi enkonzo abe zizixhobo zabafundi benze abafundi kuyo yonke indawo.",
+    "buildingNext": "Esisakha yona elandelayo",
+    "nextStepsTitle": "Iqonga laManyathelo Alandelayo",
+    "nextStepsDescription": "Nxulumanisa ababukeli namathuba abonakalayo kuhambo lwabo lokomoya, ubanceda bathathe inyathelo elilandelayo ukuya kuluntu, eZibhalweni, okanye kwimishini.",
+    "mediaLibraryTitle": "Ithala leMidiya leVangeli",
+    "mediaLibraryDescription": "Ithala elibanzi lemidiya yobuKristu elinamawakawaka eevidiyo, iifilimu, nezixhobo ezifumaneka ngeelwimi ezininzi ukwenzela inkonzo kunye nokusasaza iindaba ezilungileyo kwihlabathi liphela.",
+    "ministryToolsTitle": "Izixhobo zeDijithali zeeNkonzo",
+    "ministryToolsDescription": "Ulawulo lwevidiyo, ukuhanjiswa komxholo, ukuzibandakanya kwabaphulaphuli, kunye nohlalutyo eyilelwe ukunceda iinkonzo zifikelele kubantu abaninzi ngokufanelekileyo.",
+    "invitationEyebrow": "Uyamenywa",
+    "invitationTitle": "Nceda wakhe <highlight>isizukulwana esilandelayo</highlight> sezixhobo zemishini",
+    "invitationDescription": "Simema iingcali, abadali, namaqabane kwangethuba. Zama izixhobo ezitsha kuqala, unike ingxelo, uze uncede ukuma iimveliso ezilungiselelwe umsebenzi wenene wemishini.",
+    "betaTester": "Yiba ngumvavanyi we-beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Ingqokelela yeBhayibhile yeVidiyo",
+    "gospelRailTitle": "Fumana ibali elipheleleyo",
+    "videoBibleDescription": "Phonononga ingqokelela yethu yevidiyo nezixhobo ezizisa iBhayibhile ebomini ngamabali anomtsalane nezi fundiso.",
+    "showcaseTitle": "ISibhalo sibaliswa ngeFilimu",
+    "adventEyebrow": "IKrismesi Advent",
+    "adventTitle": "Ukubalwa kweentsuku zeKrismesi Advent",
+    "adventDescription": "Joyina uhambo lwethu lwe-Advent ngevidiyo yemihla ngemihla eyakha ukulindela iKrismesi, iphonononge ithemba, uvuyo, nesithembiso sokufika kukaYesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "I-Advent yeBibleProject",
+    "nuaEyebrow": "Uthotho lweNUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Uthotho lweWorth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Ikhosi yeVidiyo",
+    "journeyWithJesusTitle": "Hamba noYesu",
+    "gospelsOnVideoEyebrow": "IVangeli nganye, ibaliswa ngevidiyo",
+    "scriptureAsWrittenTitle": "ISibhalo, sithethwe kanye njengoko sibhaliwe",
+    "merryChristmas": "IKrismesi emnandi!",
+    "daysUntilChristmas": "{count, plural, one {Kusele # usuku ngaphambi kweKrismesi} other {Kusele # iintsuku ngaphambi kweKrismesi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Iilwimi",
+    "metadataDescription": "Bhrawuza iividiyo zeJesusFilm ngolwimi.",
+    "eyebrow": "Iilwimi zokubukela",
+    "title": "Khetha ulwimi",
+    "description": "Phonononga iilwimi ngokwengingqi okanye ubhrawuze uluhlu olupheleleyo.",
+    "searchPlaceholder": "Khangela iilwimi okanye amazwe...",
+    "searchLabel": "Khangela iilwimi okanye amazwe",
+    "clearSearch": "Cima ukukhangela",
+    "browse": "Bhrawuza",
+    "browseByRegion": "Bhrawuza ngokwengingqi nelizwe",
+    "languageCount": "{count, plural, one {# ulwimi} other {# iilwimi}}",
+    "region": "Ingingqi",
+    "countryLanguages": "Iilwimi zase {country}",
+    "showLess": "Bonisa kancinci",
+    "showMore": "Bonisa ezinye ezi {count}",
+    "noLanguages": "Akukho lwimi lufunyenweyo",
+    "tryAnotherSearch": "Zama elinye igama lokukhangela."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Imbali yokubukela | Jesus Film Project",
+    "title": "Imbali yokubukela",
+    "loading": "Kulayishwa imbali",
+    "empty": "Akukho nto apha okwangoku",
+    "emptyDescription": "Iividiyo ozibukelayo xa ungenile ziza kuvela apha.",
+    "earlier": "Ngaphambili",
+    "today": "Namhlanje",
+    "yesterday": "Izolo"
+  },
+  "AccountControl": {
+    "account": "Iakhawunti",
+    "accountMenu": "Imenyu yeakhawunti",
+    "signIn": "Ngena",
+    "signOut": "Phuma",
+    "signedIn": "Ungenile",
+    "history": "Imbali",
+    "logOut": "Phuma"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Iphepha alifumaneki",
+    "eyebrow": "Iphepha alifumaneki",
+    "screenReaderPrefix": "Iphepha alifumaneki:",
+    "title": "Lo mboniso awukho apha.",
+    "description": "Iphepha lisenokuba lihambile, kodwa ibali liyaqhubeka.",
+    "actionsLabel": "Izenzo zephepha ezingafunyanwanga",
+    "backToWatch": "Buyela kuBukela",
+    "browseVideos": "Bhrawuza iividiyo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Bukela ifilimu emfutshane",
+    "actions": {
+      "joinUs": "Sijoyine",
+      "shareMission": "Yiba nenxaxheba kwimishini yethu"
+    },
+    "welcomeStart": {
+      "label": "Ukholo neZibhalo",
+      "title": "Iividiyo esizikhethileyo namhlanje",
+      "description": "Umxholo wevidiyo ojolise kukholo ovela kwithala lethu ukuze ukhuthaze, ucele umngeni, uze uvuse ukucamngca."
+    },
+    "welcomeMorning": {
+      "label": "Inkuthazo yasekuseni",
+      "title": "Mholo kusasa! Nantsi imizuzu yeBhayibhile yanamhlanje.",
+      "description": "Qala usuku lwakho ngemizuzu yeBhayibhile ekhuthazayo eyilelwe ukukukhuthaza nokuphakamisa umoya wakho."
+    },
+    "welcomeAfternoon": {
+      "label": "Inkuthazo yasemva kwemini",
+      "title": "Mholo emva kwemini! Imizuzu yeBhayibhile yosuku lwakho.",
+      "description": "Umxholo weBhayibhile okhuthazayo ofanelekile kwikhefu lakho lasemva kwemini okanye ukuqhubeka nokukhuthazeka."
+    },
+    "welcomeEvening": {
+      "label": "Inkuthazo yangokuhlwa",
+      "title": "Mholo ngokuhlwa! Phola ngemizuzu yeBhayibhile.",
+      "description": "Imizuzu yeBhayibhile enoxolo ekunceda ucamngce uze ufumane intuthuzelo njengokuba usuku lwakho lusondela esiphelweni."
+    },
+    "joinUs": {
+      "label": "Sijoyine",
+      "title": "Iibhiliyoni ziyafuna",
+      "description": "Isivuno silapha. Sijoyine xa sisasaza iindaba ezilungileyo kwihlabathi usebenzisa imidiya yedijithali."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Masihambe kunye",
+      "title": "Ukubalisa ibali likaYesu, kunye",
+      "description": "Ukuze beve baze babone uthando lukaYesu ngolwimi lwabo kanye apho bakhoyo."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Ihambelana nge-{percent}%",
+    "none": "Akukho ngcebiso zifunyenweyo zale vidiyo kolu lwimi."
+  },
+  "BetaTesterModal": {
+    "title": "Yiba ngumvavanyi we-beta",
+    "trigger": "Yiba ngumvavanyi we-beta",
+    "loadFailed": "Kukho into engahambi kakuhle.",
+    "loading": "Kuyalayishwa...",
+    "openFormNewTab": "Vula ifomu kwithebhu entsha",
+    "close": "Vala",
+    "iframeTitle": "Yiba ngumvavanyi we-beta"
   }
 }

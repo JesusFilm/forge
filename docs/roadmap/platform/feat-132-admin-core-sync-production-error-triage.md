@@ -3,7 +3,7 @@ id: "feat-132"
 title: "Admin Core Sync Production Error Triage"
 owner: "tataihono"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-05-24"
 duration: 1
 depends_on:

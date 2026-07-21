@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { useTranslations } from "next-intl"
 import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
@@ -26,10 +27,11 @@ function formatTimestamp(seconds: number): string {
 }
 
 function SimilarityBadge({ similarity }: { similarity: number }) {
+  const t = useTranslations("VideoRecommendations")
   const pct = Math.round(similarity * 100)
   return (
     <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-medium text-white/80">
-      {pct}% match
+      {t("match", { percent: pct })}
     </span>
   )
 }
@@ -51,6 +53,7 @@ function RecommendationCard({
   locale: string
   hrefBuilder: (rec: SceneRecommendation, locale: string) => Route
 }) {
+  const searchT = useTranslations("SearchResultCard")
   const themes = rec.themes.slice(0, 3)
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(rec.playbackId)
 
@@ -73,7 +76,7 @@ function RecommendationCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center text-stone-600">
-            No image
+            {searchT("noImage")}
           </div>
         )}
         <MuxHoverPreview
@@ -115,12 +118,9 @@ export function VideoRecommendations({
   locale,
   hrefBuilder = defaultHrefBuilder,
 }: VideoRecommendationsProps) {
+  const t = useTranslations("VideoRecommendations")
   if (recommendations.length === 0) {
-    return (
-      <div className="py-12 text-center text-stone-400">
-        No recommendations found for this video in this locale.
-      </div>
-    )
+    return <div className="py-12 text-center text-stone-400">{t("none")}</div>
   }
 
   return (

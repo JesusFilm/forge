@@ -57,6 +57,7 @@ const MAX_PATH_LEN = 2048
 // into the global search modal. Neither should become a synthetic `.html`
 // watch URL.
 const ONE_SEGMENT_EXEMPT = new Set(["languages", "search"])
+const LOCALIZED_UTILITY_SEGMENTS = new Set(["videos", "languages", "history"])
 
 // Origin-invariance + injection guard. Any input that fails MUST short-circuit
 // to `{kind: "canonical"}` (let the route handler 404 it). NEVER emit a
@@ -174,15 +175,12 @@ export function canonicalizeWatchPath(
     const segs = path.split("/").filter(Boolean)
     if (segs.length === 2) {
       const secondBare = stripHtmlSuffix(segs[1])
-      const next =
-        secondBare === "videos"
-          ? [
-              hasHtmlSuffix(segs[0])
-                ? segs[0]
-                : `${segs[0]}${HTML_SUFFIX_LOWER}`,
-              "videos",
-            ]
-          : segs.map((s) => (hasHtmlSuffix(s) ? s : `${s}${HTML_SUFFIX_LOWER}`))
+      const next = LOCALIZED_UTILITY_SEGMENTS.has(secondBare)
+        ? [
+            hasHtmlSuffix(segs[0]) ? segs[0] : `${segs[0]}${HTML_SUFFIX_LOWER}`,
+            secondBare,
+          ]
+        : segs.map((s) => (hasHtmlSuffix(s) ? s : `${s}${HTML_SUFFIX_LOWER}`))
       const candidate = `/${next.join("/")}`
       if (candidate !== path) {
         path = candidate
@@ -237,10 +235,15 @@ export function canonicalizeWatchPath(
   }
 
   // Rule 6: language-slug alias resolution on the locale segment.
-  // 2-segment: alias applies to segments[1]. 3-segment: applies to segments[2].
+  // Localized utilities carry the locale at segment 0; video and episode
+  // shapes keep it in the final segment.
   {
     const segs = path.split("/").filter(Boolean)
-    const localeIdx = getWatchLocaleSegmentIndex(segs)
+    const localeIdx =
+      segs.length === 2 &&
+      LOCALIZED_UTILITY_SEGMENTS.has(stripHtmlSuffix(segs[1]))
+        ? 0
+        : getWatchLocaleSegmentIndex(segs)
     if (localeIdx >= 0 && hasHtmlSuffix(segs[localeIdx])) {
       const bare = stripHtmlSuffix(segs[localeIdx])
       const canonical = tryResolveLanguageAlias(bare)

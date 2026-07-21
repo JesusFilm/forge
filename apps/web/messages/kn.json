@@ -7,7 +7,9 @@
     "noContent": "ಯಾವುದೇ ವಿಷಯ ಲಭ್ಯವಿಲ್ಲ.",
     "homepageMisconfigured": "ವಾಚ್ ಮುಖಪುಟವನ್ನು ತಪ್ಪಾಗಿ ಸಂರಚಿಸಲಾಗಿದೆ.",
     "defaultTemplateMisconfigured": "ಡೀಫಾಲ್ಟ್ ವಾಚ್ ಟೆಂಪ್ಲೇಟು ತಪ್ಪಾಗಿ ಸಂರಚಿಸಲಾಗಿದೆ.",
-    "authFailed": "ವಿಷಯ ಸೇವೆಗೆ ದೃಢೀಕರಿಸಲಾಗಲಿಲ್ಲ. ಇದು ಮುಂದುವರಿದರೆ ದಯವಿಟ್ಟು ಸಹಾಯ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ."
+    "authFailed": "ವಿಷಯ ಸೇವೆಗೆ ದೃಢೀಕರಿಸಲಾಗಲಿಲ್ಲ. ಇದು ಮುಂದುವರಿದರೆ ದಯವಿಟ್ಟು ಸಹಾಯ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+    "pageLoadFailed": "ಏನೋ ತಪ್ಪಾಗಿದೆ.",
+    "tryAgain": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ"
   },
   "VideosPage": {
     "title": "ಎಲ್ಲಾ ವೀಡಿಯೊಗಳು",
@@ -22,7 +24,8 @@
     "promoHeading": "ಬೈಬಲನ್ನು ಇನ್ನಷ್ಟು ಆಳವಾಗಿ ಅರ್ಥಮಾಡಿಕೊಳ್ಳಲು ಬಯಸುವಿರಾ?",
     "joinBibleStudy": "ನಮ್ಮ ಬೈಬಲ್ ಅಧ್ಯಯನಕ್ಕೆ ಸೇರಿ",
     "previousQuote": "ಹಿಂದಿನ ಬೈಬಲ್ ಉಲ್ಲೇಖ",
-    "nextQuote": "ಮುಂದಿನ ಬೈಬಲ್ ಉಲ್ಲೇಖ"
+    "nextQuote": "ಮುಂದಿನ ಬೈಬಲ್ ಉಲ್ಲೇಖ",
+    "readPassage": "ಈ ವಾಕ್ಯಭಾಗವನ್ನು ನಿಮ್ಮ ಬೈಬಲ್‌ನಲ್ಲಿ ಓದಿ."
   },
   "DownloadButton": {
     "checking": "ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ",
@@ -73,7 +76,8 @@
     "selectLanguage": "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ",
     "searchPlaceholder": "ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ…",
     "languages": "ಭಾಷೆಗಳು",
-    "noMatches": "ಯಾವುದೇ ಹೊಂದಿಕೆಗಳು ಇಲ್ಲ"
+    "noMatches": "ಯಾವುದೇ ಹೊಂದಿಕೆಗಳು ಇಲ್ಲ",
+    "notAvailable": "ಲಭ್ಯವಿಲ್ಲ"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ಭಾಷೆ",
@@ -112,7 +116,8 @@
     "questions": "ಸಂಬಂಧಿತ ಪ್ರಶ್ನೆಗಳು",
     "askYours": "ನಿಮ್ಮದನ್ನು ಕೇಳಿ",
     "chatWithPerson": "ಒಬ್ಬರೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ",
-    "askBibleQuestion": "ಬೈಬಲ್ ಪ್ರಶ್ನೆ ಕೇಳಿ"
+    "askBibleQuestion": "ಬೈಬಲ್ ಪ್ರಶ್ನೆ ಕೇಳಿ",
+    "quiz": "ಕ್ವಿಜ್"
   },
   "WatchQuestionPanel": {
     "messageType": "ಸಂದೇಶ ಪ್ರಕಾರ",
@@ -170,7 +175,8 @@
     "searchRegion": "ವೀಡಿಯೊಗಳನ್ನು ಹುಡುಕಿ",
     "clearSearch": "ಹುಡುಕಾಟವನ್ನು ತೆರವುಗೊಳಿಸಿ",
     "changeAudioLanguage": "ಆಡಿಯೊ ಭಾಷೆ ಬದಲಾಯಿಸಿ",
-    "home": "JesusFilm ಮುಖಪುಟ"
+    "home": "JesusFilm ಮುಖಪುಟ",
+    "closeSearch": "ಹುಡುಕಾಟ ಮುಚ್ಚಿ"
   },
   "SearchOverlay": {
     "dialogLabel": "ವೀಡಿಯೊಗಳನ್ನು ಹುಡುಕಿ ಮತ್ತು ಬ್ರೌಸ್ ಮಾಡಿ",
@@ -205,14 +211,19 @@
     "clearLanguages": "ತೆರವುಗೊಳಿಸಿ",
     "queryLanguageDetected": "{language} ಪತ್ತೆಯಾಗಿದೆ",
     "searchInLanguage": "{language} ನಲ್ಲಿ ಹುಡುಕಿ",
-    "tryDifferentKeywordsOrLanguage": "ಬೇರೆ ಕೀವರ್ಡ್‌ಗಳನ್ನು ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಬೇರೆ ಹುಡುಕಾಟ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ"
+    "tryDifferentKeywordsOrLanguage": "ಬೇರೆ ಕೀವರ್ಡ್‌ಗಳನ್ನು ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ಬೇರೆ ಹುಡುಕಾಟ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "useWebsiteDefaultLanguage": "ವೆಬ್‌ಸೈಟ್‌ನ ಡೀಫಾಲ್ಟ್ ಹುಡುಕಾಟ ಭಾಷೆಯನ್ನು ಬಳಸಿ",
+    "removeLanguage": "{language} ತೆಗೆದುಹಾಕಿ",
+    "browseMode": "ಹುಡುಕು ಬ್ರೌಸ್ ಮೋಡ್"
   },
   "HeroPlayer": {
     "playWithSound": "ಈಗಲೇ ವೀಕ್ಷಿಸಿ",
-    "tapToUnmute": "ಶಬ್ದ ಆನ್ ಮಾಡಲು ತಟ್ಟಿರಿ"
+    "tapToUnmute": "ಶಬ್ದ ಆನ್ ಮಾಡಲು ತಟ್ಟಿರಿ",
+    "nextEpisode": "ಮುಂದಿನ ಎಪಿಸೋಡ್"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "ವಿಷಯ ಲೋಡ್ ಆಗುತ್ತಿದೆ"
+    "loadingContent": "ವಿಷಯ ಲೋಡ್ ಆಗುತ್ತಿದೆ",
+    "loadingVideo": "ವೀಡಿಯೊ ಲೋಡ್ ಆಗುತ್ತಿದೆ"
   },
   "VideoLabels": {
     "video": "ವೀಡಿಯೊ",
@@ -223,7 +234,8 @@
     "series": "ಸೀರೀಸ್",
     "collection": "ಸಂಗ್ರಹ",
     "trailer": "ಟ್ರೇಲರ್",
-    "behindTheScenes": "ಹಿನ್ನೆಲೆ ದೃಶ್ಯಗಳು"
+    "behindTheScenes": "ಹಿನ್ನೆಲೆ ದೃಶ್ಯಗಳು",
+    "chapter": "ಅಧ್ಯಾಯ"
   },
   "SiblingCarousel": {
     "clipPosition": "ಕ್ಲಿಪ್ {current} / {total}",
@@ -235,11 +247,252 @@
     "noImage": "ಚಿತ್ರ ಇಲ್ಲ",
     "playingNow": "ಈಗ ಆಡುತ್ತಿದೆ",
     "previousChapter": "ಹಿಂದಿನ ಅಧ್ಯಾಯ",
-    "nextChapter": "ಮುಂದಿನ ಅಧ್ಯಾಯ"
+    "nextChapter": "ಮುಂದಿನ ಅಧ್ಯಾಯ",
+    "thumbnailAlt": "{title} ಚಿಕ್ಕಚಿತ್ರ",
+    "relatedVideoThumbnail": "ಸಂಬಂಧಿತ ವೀಡಿಯೊ ಚಿಕ್ಕಚಿತ್ರ"
   },
   "SearchResultCard": {
     "experience": "ಅನುಭವ",
     "episodeCount": "{count, plural, one {# ಎಪಿಸೋಡ್} other {# ಎಪಿಸೋಡ್‌ಗಳು}}",
     "thumbnailAlt": "ವೀಡಿಯೊ ಚಿಕ್ಕಚಿತ್ರ"
+  },
+  "Feedback": {
+    "openForm": "ಪ್ರತಿಕ್ರಿಯೆ ಫಾರ್ಮ್ ತೆರೆಯಿರಿ",
+    "label": "ಪ್ರತಿಕ್ರಿಯೆ",
+    "couldNotLoad": "ಪ್ರತಿಕ್ರಿಯೆ ಫಾರ್ಮ್ ಅನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+    "loadingForm": "ಪ್ರತಿಕ್ರಿಯೆ ಫಾರ್ಮ್ ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+    "retry": "ಮರುಪ್ರಯತ್ನಿಸಿ",
+    "openFormShort": "ಫಾರ್ಮ್ ತೆರೆಯಿರಿ",
+    "cancel": "ರದ್ದುಮಾಡಿ",
+    "title": "ಬೀಟಾ ಪ್ರತಿಕ್ರಿಯೆ",
+    "description": "ಏನು ಚೆನ್ನಾಗಿ ಕೆಲಸ ಮಾಡುತ್ತಿದೆ ಮತ್ತು ನಾವು ಏನನ್ನು ಉತ್ತಮಪಡಿಸಬಹುದು ಎಂಬುದನ್ನು ಹಂಚಿಕೊಳ್ಳಿ. ಈ ಫಾರ್ಮ್ ಅನ್ನು Google ಒದಗಿಸಿದೆ.",
+    "openInNewTab": "ಫಾರ್ಮ್ ಅನ್ನು ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ",
+    "closeForm": "ಪ್ರತಿಕ್ರಿಯೆ ಫಾರ್ಮ್ ಮುಚ್ಚಿ",
+    "loadingGoogleForm": "Google ಫಾರ್ಮ್ ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+    "iframeTitle": "ಬೀಟಾ ಪ್ರತಿಕ್ರಿಯೆ ಸಲ್ಲಿಸಿ"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} ನಲ್ಲಿ ಉಚಿತ ಕ್ರಿಶ್ಚಿಯನ್ ವೀಡಿಯೊಗಳು | Jesus Film Project",
+    "metadataDescription": "{language} ನಲ್ಲಿ ಡಬ್ ಮಾಡಿದ ಆಡಿಯೊ ಅಥವಾ ಉಪಶೀರ್ಷಿಕೆಗಳಿರುವ Jesus ಫಿಲ್ಮ್‌ಗಳು, ಬೈಬಲ್ ಕಥೆಗಳು, ಶಿಷ್ಯತ್ವ ಸೀರೀಸ್‌ಗಳು ಮತ್ತು ಪ್ರಚಾರ ವೀಡಿಯೊಗಳನ್ನು ಅನ್ವೇಷಿಸಿ.",
+    "heroTitle": "{language} ನಲ್ಲಿ ಉಚಿತ ಕ್ರಿಶ್ಚಿಯನ್ ವೀಡಿಯೊಗಳು",
+    "heroDescription": "{language} ನಲ್ಲಿ ಲಭ್ಯವಿರುವ Jesus ಫಿಲ್ಮ್‌ಗಳು, ಬೈಬಲ್ ಕಥೆಗಳು, ಶಿಷ್ಯತ್ವ ಸೀರೀಸ್‌ಗಳು ಮತ್ತು ಪ್ರಚಾರ ವೀಡಿಯೊಗಳನ್ನು ಅನ್ವೇಷಿಸಿ. ಸಂಪೂರ್ಣ ಡಬ್ ಮಾಡಿರುವ ವೀಡಿಯೊಗಳನ್ನು ಮೊದಲು ಹೈಲೈಟ್ ಮಾಡಲಾಗಿದೆ, ಕೆಳಗೆ ಕೇವಲ ಉಪಶೀರ್ಷಿಕೆಗಳಿರುವ ಆಯ್ಕೆಗಳು ಇವೆ.",
+    "languageCollection": "ಭಾಷಾ ಸಂಗ್ರಹ",
+    "itemCount": "{count, plural, one {# ಐಟಂ} other {# ಐಟಂಗಳು}}",
+    "videoCount": "{count, plural, one {# ವೀಡಿಯೊ} other {# ವೀಡಿಯೊಗಳು}}",
+    "videosInGroups": "{videoCount, plural, one {# ವೀಡಿಯೊ} other {# ವೀಡಿಯೊಗಳು}} in {groupCount, plural, one {# ಗುಂಪು} other {# ಗುಂಪುಗಳು}}",
+    "sectionNavLabel": "ಭಾಷಾ ಇನ್ವೆಂಟರಿ ವಿಭಾಗಗಳು",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "ಹೊಸ",
+    "videoBible": "ವೀಡಿಯೊ ಬೈಬಲ್",
+    "bibleProject": "BibleProject",
+    "sports": "ಕ್ರೀಡೆಗಳು",
+    "collections": "ಸಂಗ್ರಹಗಳು",
+    "subtitlesOnly": "ಉಪಶೀರ್ಷಿಕೆಗಳು ಮಾತ್ರ",
+    "newlyAdded": "ಹೊಸಾಗಿ ಸೇರಿಸಲಾಗಿದೆ",
+    "newVideosTitle": "{language} ನಲ್ಲಿ ಹೊಸ ಕ್ರಿಶ್ಚಿಯನ್ ವೀಡಿಯೊಗಳು",
+    "newestFirst": "ಅತ್ಯಂತ ಹೊಸದನ್ನು ಮೊದಲು",
+    "noPublishedVideos": "ಈ ಭಾಷೆಗೆ ಇನ್ನೂ ಪ್ರಕಟಿತ ವೀಡಿಯೊಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+    "bibleAndGospelFilms": "ಬೈಬಲ್ ಮತ್ತು ಸುವಾರ್ತೆ ಚಿತ್ರಗಳು",
+    "videoBibleCollectionsTitle": "{language} ವೀಡಿಯೊ ಬೈಬಲ್ ಸಂಗ್ರಹಗಳು",
+    "videoBibleDescription": "{language} ನಲ್ಲಿ LUMO, JESUS, Magdalena, ಮತ್ತು Acts ಒಳಗೊಂಡ ಶಾಸ್ತ್ರಕೇಂದ್ರೀತ ಸಂಗ್ರಹಗಳು.",
+    "noVideoBibleCollections": "ಈ ಭಾಷೆಗೆ ಇನ್ನೂ ಯಾವುದೇ ವೀಡಿಯೊ ಬೈಬಲ್ ಸಂಗ್ರಹಗಳು ಲಭ್ಯವಿಲ್ಲ.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject ಸಂಗ್ರಹಗಳು",
+    "bibleProjectDescription": "{language} ನಲ್ಲಿ ಲಭ್ಯವಿರುವ BibleProject ಸೀರೀಸ್ ಮತ್ತು ಅಧ್ಯಯನಗಳು.",
+    "noBibleProjectCollections": "ಈ ಭಾಷೆಗೆ ಇನ್ನೂ ಯಾವುದೇ BibleProject ಸಂಗ್ರಹಗಳು ಲಭ್ಯವಿಲ್ಲ.",
+    "sportsStories": "ಕ್ರೀಡಾ ಕಥೆಗಳು",
+    "sportsTitle": "{language} ಕ್ರೀಡೆಗಳು ಮತ್ತು ಕ್ರೀಡಾಪಟುಗಳ ಕಥೆಗಳು",
+    "sportsDescription": "{language} ನಲ್ಲಿ ಲಭ್ಯವಿರುವ ನಂಬಿಕೆಕೇಂದ್ರೀತ ಕ್ರೀಡಾ ಕಥೆಗಳು ಮತ್ತು ಕ್ರೀಡಾಪಟುಗಳ ಸಂಗ್ರಹಗಳು.",
+    "noSportsCollections": "ಈ ಭಾಷೆಗೆ ಇನ್ನೂ ಯಾವುದೇ ಕ್ರೀಡಾ ಅಥವಾ ಕ್ರೀಡಾಪಟು ಕಥಾ ಸಂಗ್ರಹಗಳು ಲಭ್ಯವಿಲ್ಲ.",
+    "fullyDubbed": "ಸಂಪೂರ್ಣ ಡಬ್ ಮಾಡಲಾಗಿದೆ",
+    "dubbedVideosTitle": "ಸಂಗ್ರಹದ ಪ್ರಕಾರ {language} ವೀಡಿಯೊಗಳು",
+    "dubbedVideosDescription": "ಸುಲಭವಾಗಿ ಹುಡುಕಲು ಸಂಗ್ರಹದೊಂದಿಗೆ ಗುಂಪು ಮಾಡಲಾದ ಸಂಪೂರ್ಣ ಡಬ್ ಮಾಡಿದ {language} ವೀಡಿಯೊಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ.",
+    "noDubbedVideos": "ಈ ಭಾಷೆಗೆ ಇನ್ನೂ ಸಂಪೂರ್ಣ ಡಬ್ ಮಾಡಿದ ವೀಡಿಯೊಗಳು ಲಭ್ಯವಿಲ್ಲ.",
+    "subtitlesAvailable": "ಉಪಶೀರ್ಷಿಕೆಗಳು ಲಭ್ಯವಿವೆ",
+    "subtitlesTitle": "ಉಪಶೀರ್ಷಿಕೆಗಳಿರುವ {language} ವೀಡಿಯೊಗಳು",
+    "subtitlesDescription": "ಮಾತನಾಡುವ {language} ಆಡಿಯೊ ಇನ್ನೂ ಲಭ್ಯವಿಲ್ಲದಾಗ ಈ ವೀಡಿಯೊಗಳಲ್ಲಿ {language} ಉಪಶೀರ್ಷಿಕೆಗಳು ಇರುತ್ತವೆ.",
+    "noSubtitleVideos": "ಈ ಭಾಷೆಗೆ ಇನ್ನೂ ಕೇವಲ ಉಪಶೀರ್ಷಿಕೆಗಳ ವೀಡಿಯೊಗಳು ಲಭ್ಯವಿಲ್ಲ.",
+    "dubbed": "ಡಬ್ ಮಾಡಲಾಗಿದೆ",
+    "subtitles": "ಉಪಶೀರ್ಷಿಕೆಗಳು",
+    "newLabel": "ಹೊಸ",
+    "fromCollection": "{collection} ನಿಂದ",
+    "standaloneVideos": "ಸ್ವತಂತ್ರ ವೀಡಿಯೊಗಳು",
+    "videosFromCollection": "{collection} ನಿಂದ ವೀಡಿಯೊಗಳು.",
+    "standaloneDescription": "ಈ ಭಾಷೆಯಲ್ಲಿನ ಸ್ವತಂತ್ರ ವೀಡಿಯೊಗಳು.",
+    "openCollection": "ಸಂಗ್ರಹ ತೆರೆಯಿರಿ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project ವಾಚ್",
+    "watch": "ವೀಕ್ಷಿಸಿ",
+    "watchNow": "ಈಗ ವೀಕ್ಷಿಸಿ",
+    "mutePreview": "ಪೂರ್ವವೀಕ್ಷಣೆಯನ್ನು ಮ್ಯೂಟ್ ಮಾಡಿ",
+    "unmutePreview": "ಪೂರ್ವವೀಕ್ಷಣೆಯನ್ನು ಅನ್ಮ್ಯೂಟ್ ಮಾಡಿ",
+    "nextVideo": "ಮುಂದಿನ ವೀಡಿಯೊ",
+    "featured": "ಪ್ರಮುಖ",
+    "showVideo": "{title} ತೋರಿಸಿ",
+    "previousVideoPreview": "ಹಿಂದಿನ ವೀಡಿಯೊ ಪೂರ್ವವೀಕ್ಷಣೆ",
+    "nextVideoPreview": "ಮುಂದಿನ ವೀಡಿಯೊ ಪೂರ್ವವೀಕ್ಷಣೆ",
+    "mediaCollection": "ಮಾಧ್ಯಮ ಸಂಗ್ರಹ",
+    "scrollToVideo": "{title} ವೀಡಿಯೊಗೆ ಸ್ಕ್ರಾಲ್ ಮಾಡಿ"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ಮುಖಪುಟ",
+    "navigation": "ಅಡಿತಲೆ ಸಂಚಾರ",
+    "share": "ಹಂಚಿಕೊಳ್ಳಿ",
+    "watch": "ವೀಕ್ಷಿಸಿ",
+    "giving": "ದೇಣಿಗೆ",
+    "about": "ಬಗ್ಗೆ",
+    "products": "ಉತ್ಪನ್ನಗಳು",
+    "resources": "ಸಂಪನ್ಮೂಲಗಳು",
+    "partners": "ಸಹಭಾಗಿಗಳು",
+    "contact": "ಸಂಪರ್ಕಿಸಿ",
+    "giveNow": "ಈಗ ದೇಣಿಗೆ ನೀಡಿ",
+    "resourcesVersion": "ಸಂಪನ್ಮೂಲಗಳು ({version})",
+    "office": "ಕಚೇರಿ",
+    "fax": "ಫ್ಯಾಕ್ಸ್",
+    "privacyPolicy": "ಗೌಪ್ಯತಾ ನೀತಿ",
+    "legalStatement": "ಕಾನೂನು ಹೇಳಿಕೆ",
+    "newsletter": "ನಮ್ಮ ಸುದ್ದಿಪತ್ರಕ್ಕೆ ಸೈನ್ ಅಪ್ ಮಾಡಿ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "ಜಾಗತಿಕ ಧ್ಯೇಯಕ್ಕಾಗಿ ನಿರ್ಮಿಸಲಾಗಿದೆ",
+    "title": "ಸಂದೇಶ ಬದಲಾಗುವುದಿಲ್ಲ. ಜನರು ನೋಡುವ ವಿಧಾನ ಬದಲಾಗುತ್ತದೆ.",
+    "description": "ನಾವು ನಮ್ಮ ವೀಡಿಯೊ ಗ್ರಂಥಾಲಯ ಮತ್ತು ಸಾಧನಗಳನ್ನು ಆಧಾರದಿಂದ ಮರುನಿರ್ಮಿಸುತ್ತಿದ್ದೇವೆ, ದಶಕಗಳ ಅನುವಾದ ಕಾರ್ಯವನ್ನು ಜನರು ಈಗಾಗಲೇ ಸೇರುವ, ವೀಕ್ಷಿಸುವ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳುವ ವೇದಿಕೆಗಳಿಗೆ ತರುತ್ತಿದ್ದೇವೆ.",
+    "translatedLibraryTitle": "ವಿಶ್ವದ ಅತ್ಯಂತ ಅನುವಾದಿತ ಚಲನಚಿತ್ರ ಗ್ರಂಥಾಲಯ",
+    "translatedLibraryDescription": "ನಂಬಿಕೆಯ ministry ಪಾಲುದಾರರು ಹೊತ್ತು ತಂದ ದಶಕಗಳ ಅನುವಾದ ಕಾರ್ಯವು ಸಾವಿರಾರು ಭಾಷಾ ಟ್ರ್ಯಾಕ್‌ಗಳಿರುವ ಗ್ರಂಥಾಲಯವನ್ನು ನಿರ್ಮಿಸಿದೆ, ಇದರಿಂದ ಜನರು ತಮ್ಮನ್ನು ತಲುಪುವ ಭಾಷೆಯಲ್ಲಿ ಯೇಸುವಿನ ಕಥೆಯನ್ನು ಅನುಭವಿಸಬಹುದು.",
+    "trustedVoicesTitle": "ನಂಬಿಗಸ್ತ ಧ್ವನಿಗಳನ್ನು ಹೊಸ ಸ್ವರೂಪಗಳಿಗೆ ತರುವುದು",
+    "trustedVoicesDescription": "ನಾವು ಸುವಾರ್ತೆ ಕಥೆಗಳನ್ನು ದೃಶ್ಯವಾಗಿ ಹೇಳುವ ರೀತಿಯನ್ನು ಮರುನಿರ್ಮಿಸುತ್ತಿದ್ದೇವೆ, ನಂಬಿಕೆಯ ಅನುವಾದಗಳನ್ನು ಆಧುನಿಕ ಸ್ವರೂಪಗಳೊಂದಿಗೆ ಜೋಡಿಸಿ ಸಂದೇಶವು ವೇದಿಕೆಗಳು, ಸಂಸ್ಕೃತಿಗಳು ಮತ್ತು ಪರದೆಗಳಾದ್ಯಂತ ಮುಕ್ತವಾಗಿ ಸಾಗಲು.",
+    "missionTeamTitle": "ಕೇವಲ ಗ್ರಂಥಾಲಯವಲ್ಲ. ಧ್ಯೇಯಪ್ರೇರಿತ ತಂಡ.",
+    "missionTeamDescription": "Jesus Film Project ಎನ್ನುವುದು ಅನುವಾದಕರು, ಮಾಧ್ಯಮ ಪರಿಣಿತರು, ಸಂಪಾದಕರು ಮತ್ತು ಸೃಷ್ಟಿಕರ್ತರ ಜಾಗತಿಕ ತಂಡ; ಇವರು ದಶಕಗಳ ministry ಅನುಭವವನ್ನು ಎಲ್ಲೆಡೆ ಶಿಷ್ಯ ಮಾಡುವವರಿಗೆ ಉಪಕರಣಗಳಾಗಿ ರೂಪಿಸುತ್ತಿದ್ದಾರೆ.",
+    "buildingNext": "ನಾವು ಮುಂದೆ ನಿರ್ಮಿಸುತ್ತಿರುವುದು",
+    "nextStepsTitle": "ಮುಂದಿನ ಹಂತಗಳ ವೇದಿಕೆ",
+    "nextStepsDescription": "ವೀಕ್ಷಕರನ್ನು ಅವರ ಆಧ್ಯಾತ್ಮಿಕ ಪ್ರಯಾಣದಲ್ಲಿ ಸ್ಪಷ್ಟ ಅವಕಾಶಗಳೊಂದಿಗೆ ಸಂಪರ್ಕಿಸಿ, ಸಮುದಾಯ, ಶಾಸ್ತ್ರ ಅಥವಾ ಧ್ಯೇಯದ ಕಡೆ ಮುಂದಿನ ಹೆಜ್ಜೆ ಇಡಲು ಸಹಾಯ ಮಾಡಿ.",
+    "mediaLibraryTitle": "ಸುವಾರ್ತಾಪರ ಮಾಧ್ಯಮ ಗ್ರಂಥಾಲಯ",
+    "mediaLibraryDescription": "ವಿಶ್ವದಾದ್ಯಂತ ministry ಮತ್ತು ಸುವಾರ್ತಾಪ್ರಚಾರಕ್ಕಾಗಿ ಅನೇಕ ಭಾಷೆಗಳಲ್ಲಿ ಲಭ್ಯವಿರುವ ಸಾವಿರಾರು ವೀಡಿಯೊಗಳು, ಚಲನಚಿತ್ರಗಳು ಮತ್ತು ಸಂಪನ್ಮೂಲಗಳ ವಿಶಾಲ ಕ್ರಿಶ್ಚಿಯನ್ ಮಾಧ್ಯಮ ಗ್ರಂಥಾಲಯ.",
+    "ministryToolsTitle": "ministry ಗಳಿಗಾಗಿ ಡಿಜಿಟಲ್ ಸಾಧನಗಳು",
+    "ministryToolsDescription": "ವೀಡಿಯೊ ನಿರ್ವಹಣೆ, ವಿಷಯ ಹಂಚಿಕೆ, ಪ್ರೇಕ್ಷಕರ ತೊಡಗು ಮತ್ತು ವಿಶ್ಲೇಷಣೆ — ministry ಗಳು ಹೆಚ್ಚು ಜನರನ್ನು ಪರಿಣಾಮಕಾರಿಯಾಗಿ ತಲುಪಲು ನೆರವಾಗುವಂತೆ ವಿನ್ಯಾಸಗೊಳಿಸಲಾಗಿದೆ.",
+    "invitationEyebrow": "ನಿಮ್ಮನ್ನು ಆಹ್ವಾನಿಸಲಾಗಿದೆ",
+    "invitationTitle": "ಧ್ಯೇಯ ಸಾಧನಗಳ <highlight>ಮುಂದಿನ ಪೀಳಿಗೆಯನ್ನು</highlight> ನಿರ್ಮಿಸಲು ಸಹಾಯ ಮಾಡಿ",
+    "invitationDescription": "ಪ್ರಯೋಗಕಾರರು, ಸೃಷ್ಟಿಕರ್ತರು ಮತ್ತು ಪಾಲುದಾರರನ್ನು ಮೊದಲಿನ ಪ್ರವೇಶಕ್ಕೆ ಆಹ್ವಾನಿಸುತ್ತಿದ್ದೇವೆ. ಹೊಸ ಸಾಧನಗಳನ್ನು ಮೊದಲು ಪರೀಕ್ಷಿಸಿ, ಪ್ರತಿಕ್ರಿಯೆ ನೀಡಿ, ಮತ್ತು ನೈಜ ಧ್ಯೇಯ ಕಾರ್ಯಕ್ಕಾಗಿ ವಿನ್ಯಾಸಗೊಳಿಸಿದ ಉತ್ಪನ್ನಗಳನ್ನು ರೂಪಿಸಲು ನೆರವಾಗಿರಿ.",
+    "betaTester": "ಬೀಟಾ ಪರೀಕ್ಷಕರಾಗಿರಿ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "ವೀಡಿಯೊ ಬೈಬಲ್ ಸಂಗ್ರಹ",
+    "gospelRailTitle": "ಸಂಪೂರ್ಣ ಕಥೆಯನ್ನು ಅನ್ವೇಷಿಸಿ",
+    "videoBibleDescription": "ಆಕರ್ಷಕ ಕಥೆಗಳು ಮತ್ತು ಬೋಧನೆಗಳ ಮೂಲಕ ಬೈಬಲ್‌ಗೆ ಜೀವ ತುಂಬುವ ನಮ್ಮ ವೀಡಿಯೊಗಳು ಮತ್ತು ಸಂಪನ್ಮೂಲಗಳ ಸಂಗ್ರಹವನ್ನು ಅನ್ವೇಷಿಸಿ.",
+    "showcaseTitle": "ಚಲನಚಿತ್ರದ ಮೂಲಕ ಹೇಳಲಾದ ಶಾಸ್ತ್ರ",
+    "adventEyebrow": "ಕ್ರಿಸ್ಮಸ್ ಆಗಮನ",
+    "adventTitle": "ಕ್ರಿಸ್ಮಸ್ ಆಗಮನ ಗಣನೆ",
+    "adventDescription": "ಕ್ರಿಸ್ಮಸ್‌ಗೆ ನಿರೀಕ್ಷೆಯನ್ನು ಹೆಚ್ಚಿಸುವ ದೈನಂದಿನ ವೀಡಿಯೊದೊಂದಿಗೆ ನಮ್ಮ Advent ಪ್ರಯಾಣಕ್ಕೆ ಸೇರಿ; ಯೇಸುವಿನ ಆಗಮನದ ನಿರೀಕ್ಷೆ, ಆನಂದ ಮತ್ತು ವಾಗ್ದಾನವನ್ನು ಅನ್ವೇಷಿಸಿ.",
+    "bibleProjectEyebrow": "ಬೈಬಲ್ ಪ್ರಾಜೆಕ್ಟ್",
+    "bibleProjectAdventTitle": "ಬೈಬಲ್‌ಪ್ರಾಜೆಕ್ಟ್ Advent",
+    "nuaEyebrow": "NUA ಸರಣಿ",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth ಸರಣಿ",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "ವೀಡಿಯೊ ಕೋರ್ಸ್",
+    "journeyWithJesusTitle": "ಯೇಸುವಿನೊಂದಿಗೆ ಪ್ರಯಾಣಿಸಿ",
+    "gospelsOnVideoEyebrow": "ಪ್ರತಿ ಸುವಾರ್ತೆಯೂ ವೀಡಿಯೊದಲ್ಲಿ",
+    "scriptureAsWrittenTitle": "ಶಾಸ್ತ್ರ, ಬರೆಯಲ್ಪಟ್ಟಂತೆ ನಿಖರವಾಗಿ ಮಾತನಾಡಲ್ಪಟ್ಟಿದೆ",
+    "merryChristmas": "ಕ್ರಿಸ್ಮಸ್ ಹಬ್ಬದ ಶುಭಾಶಯಗಳು!",
+    "daysUntilChristmas": "{count, plural, one {ಕ್ರಿಸ್ಮಸ್‌ಗೆ ಇನ್ನೂ # ದಿನ} other {ಕ್ರಿಸ್ಮಸ್‌ಗೆ ಇನ್ನೂ # ದಿನಗಳು}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ಭಾಷೆಗಳು",
+    "metadataDescription": "ಭಾಷೆಯ ಪ್ರಕಾರ JesusFilm ವೀಡಿಯೊಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ.",
+    "eyebrow": "ವಾಚ್ ಭಾಷೆಗಳು",
+    "title": "ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "description": "ಪ್ರದೇಶದ ಪ್ರಕಾರ ಭಾಷೆಗಳನ್ನು ಅನ್ವೇಷಿಸಿ ಅಥವಾ ಸಂಪೂರ್ಣ ಪಟ್ಟಿಯನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ.",
+    "searchPlaceholder": "ಭಾಷೆಗಳು ಅಥವಾ ದೇಶಗಳನ್ನು ಹುಡುಕಿ...",
+    "searchLabel": "ಭಾಷೆಗಳು ಅಥವಾ ದೇಶಗಳನ್ನು ಹುಡುಕಿ",
+    "clearSearch": "ಹುಡುಕಾಟ ತೆರವುಗೊಳಿಸಿ",
+    "browse": "ಬ್ರೌಸ್",
+    "browseByRegion": "ಪ್ರದೇಶ ಮತ್ತು ದೇಶದ ಪ್ರಕಾರ ಬ್ರೌಸ್ ಮಾಡಿ",
+    "languageCount": "{count, plural, one {# ಭಾಷೆ} other {# ಭಾಷೆಗಳು}}",
+    "region": "ಪ್ರದೇಶ",
+    "countryLanguages": "{country} ಭಾಷೆಗಳು",
+    "showLess": "ಕಡಿಮೆ ತೋರಿಸಿ",
+    "showMore": "ಇನ್ನೂ {count} ತೋರಿಸಿ",
+    "noLanguages": "ಯಾವುದೇ ಭಾಷೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
+    "tryAnotherSearch": "ಬೇರೆ ಹುಡುಕಾಟ ಪದವನ್ನು ಪ್ರಯತ್ನಿಸಿ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "ವೀಕ್ಷಣೆಯ ಇತಿಹಾಸ | Jesus Film Project",
+    "title": "ವೀಕ್ಷಣೆಯ ಇತಿಹಾಸ",
+    "loading": "ಇತಿಹಾಸ ಲೋಡ್ ಆಗುತ್ತಿದೆ",
+    "empty": "ಇನ್ನೂ ಇಲ್ಲಿ ಏನೂ ಇಲ್ಲ",
+    "emptyDescription": "ನೀವು ಸೈನ್ ಇನ್ ಆಗಿರುವಾಗ ವೀಕ್ಷಿಸುವ ವೀಡಿಯೊಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.",
+    "earlier": "ಮೊದಲು",
+    "today": "ಇಂದು",
+    "yesterday": "ನಿನ್ನೆ"
+  },
+  "AccountControl": {
+    "account": "ಖಾತೆ",
+    "accountMenu": "ಖಾತೆ ಮೆನು",
+    "signIn": "ಸೈನ್ ಇನ್ ಮಾಡಿ",
+    "signOut": "ಸೈನ್ ಔಟ್ ಮಾಡಿ",
+    "signedIn": "ಸೈನ್ ಇನ್ ಆಗಿದೆ",
+    "history": "ಇತಿಹಾಸ",
+    "logOut": "ಲಾಗ್ ಔಟ್ ಮಾಡಿ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
+    "eyebrow": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
+    "screenReaderPrefix": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ:",
+    "title": "ಈ ದೃಶ್ಯ ಇಲ್ಲಿ ಇಲ್ಲ.",
+    "description": "ಪುಟ ಸ್ಥಳಾಂತರಗೊಂಡಿರಬಹುದು, ಆದರೆ ಕಥೆ ಮುಂದುವರಿಯುತ್ತದೆ.",
+    "actionsLabel": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ ಕ್ರಮಗಳು",
+    "backToWatch": "ವೀಕ್ಷಣೆಗೆ ಹಿಂತಿರುಗಿ",
+    "browseVideos": "ವೀಡಿಯೊಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "ಕಿರುಚಿತ್ರ ನೋಡಿ",
+    "actions": {
+      "joinUs": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
+      "shareMission": "ನಮ್ಮ ಧ್ಯೇಯದಲ್ಲಿ ಪಾಲ್ಗೊಳ್ಳಿ"
+    },
+    "welcomeStart": {
+      "label": "ನಂಬಿಕೆ ಮತ್ತು ಶಾಸ್ತ್ರ",
+      "title": "ಇಂದಿನ ವೀಡಿಯೊ ಆಯ್ಕೆಗಳು",
+      "description": "ಪ್ರೇರಣೆ, ಸವಾಲು ಮತ್ತು ಚಿಂತನೆಯನ್ನು ಉಂಟುಮಾಡುವಂತೆ ನಮ್ಮ ಗ್ರಂಥಾಲಯದಿಂದ ನಂಬಿಕೆಕೇಂದ್ರೀತ ವೀಡಿಯೊ ವಿಷಯ."
+    },
+    "welcomeMorning": {
+      "label": "ಬೆಳಗಿನ ಪ್ರೇರಣೆ",
+      "title": "ಶುಭೋದಯ! ಇಂದಿನ ಬೈಬಲ್ ಕ್ಷಣಗಳು ಕಾಯುತ್ತಿವೆ.",
+      "description": "ಪ್ರೋತ್ಸಾಹಿಸುವ ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ನಿಮ್ಮ ದಿನವನ್ನು ಆರಂಭಿಸಿ; ನಿಮ್ಮ ಆತ್ಮವನ್ನು ಪ್ರೇರೇಪಿಸಿ ಉನ್ನತಿಗೊಳಿಸಲು ರೂಪಿಸಲಾಗಿದೆ."
+    },
+    "welcomeAfternoon": {
+      "label": "ಮಧ್ಯಾಹ್ನದ ಪ್ರೇರಣೆ",
+      "title": "ಶುಭ ಮಧ್ಯಾಹ್ನ! ನಿಮ್ಮ ದಿನಕ್ಕಾಗಿ ಬೈಬಲ್ ಕ್ಷಣಗಳು.",
+      "description": "ಮಧ್ಯಾಹ್ನದ ವಿಶ್ರಾಂತಿಗೆ ಅಥವಾ ಮುಂದಿನ ಪ್ರೇರಣೆಗೆ ಸೂಕ್ತವಾದ ಪ್ರೋತ್ಸಾಹಕ ಬೈಬಲ್ ವಿಷಯ."
+    },
+    "welcomeEvening": {
+      "label": "ಸಾಯಂಕಾಲದ ಪ್ರೇರಣೆ",
+      "title": "ಶುಭ ಸಂಜೆ! ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ.",
+      "description": "ನಿಮ್ಮ ದಿನ ಮುಗಿಯುವಾಗ ಚಿಂತನೆ ಮಾಡಿ ಸಾಂತ್ವನ ಪಡೆಯಲು ಸಹಾಯಕ ಶಾಂತ ಬೈಬಲ್ ಕ್ಷಣಗಳು."
+    },
+    "joinUs": {
+      "label": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
+      "title": "ಅನೇಕರು ಹುಡುಕುತ್ತಿದ್ದಾರೆ",
+      "description": "ಬೆಳೆ ಇಲ್ಲಿ ಇದೆ. ಡಿಜಿಟಲ್ ಮಾಧ್ಯಮದ ಮೂಲಕ ಸುವಾರ್ತೆಯನ್ನು ಜಗತ್ತಿನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳುವಾಗ ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "ಒಟ್ಟಿಗೆ ಮುಂದುವರಿಯೋಣ",
+      "title": "ಯೇಸುವಿನ ಕಥೆಯನ್ನು ಒಟ್ಟಾಗಿ ಹೇಳುವುದು",
+      "description": "ಅವರು ಇರುವಲ್ಲೇ, ಅವರದೇ ಭಾಷೆಯಲ್ಲಿ ಯೇಸುವಿನ ಪ್ರೀತಿ ಕೇಳಿ ಕಾಣಲು."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ಹೊಂದಾಣಿಕೆ",
+    "none": "ಈ ಭಾಷೆಯಲ್ಲಿ ಈ ವೀಡಿಯೊಗೆ ಯಾವುದೇ ಶಿಫಾರಸುಗಳು ಕಂಡುಬಂದಿಲ್ಲ."
+  },
+  "BetaTesterModal": {
+    "title": "ಬೀಟಾ ಪರೀಕ್ಷಕರಾಗಿರಿ",
+    "trigger": "ಬೀಟಾ ಪರೀಕ್ಷಕರಾಗಿರಿ",
+    "loadFailed": "ಏನೋ ತಪ್ಪಾಗಿದೆ.",
+    "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "openFormNewTab": "ಫಾರ್ಮ್ ಅನ್ನು ಹೊಸ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ",
+    "close": "ಮುಚ್ಚಿ",
+    "iframeTitle": "ಬೀಟಾ ಪರೀಕ್ಷಕರಾಗಿರಿ"
   }
 }

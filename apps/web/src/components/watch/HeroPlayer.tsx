@@ -34,6 +34,7 @@ import { env } from "@/env"
 import type { WatchHeroPlayerBlock, WatchVariantDownload } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
+  FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -62,7 +63,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
-import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
+import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import {
@@ -164,10 +165,13 @@ function getViewerIdServerSnapshot(): string {
 const HERO_FRAME_HEIGHT_CLASS = "h-[min(100svh,56.25vw)]"
 const HERO_FRAME_TRANSITION_CLASS =
   "transition-[height,margin-bottom,top] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-const MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]"
+const MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS =
+  "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
+const MOBILE_PORTRAIT_HEADER_CLEARANCE_CLASS = `hidden ${FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS} shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block`
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
-  "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
+  "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
+const MOBILE_PORTRAIT_PLAYBACK_FRAME_CLASS =
+  "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PREVIEW_PLAYER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:scale-y-100"
 
@@ -363,6 +367,7 @@ export function HeroPlayer({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null)
   const [nextPlaybackState, setNextPlaybackState] = useState({
     currentTime: 0,
     duration: 0,
@@ -1386,7 +1391,6 @@ export function HeroPlayer({
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-[1000ms]"
-  const posterImageMotionClass = ""
   const coverBlackoutMotionClass =
     coverBlackoutPhase === "revealing"
       ? "watch-hero-cover-black-bridge"
@@ -1423,6 +1427,9 @@ export function HeroPlayer({
     iso3: variant.language?.iso3,
     slug: variant.language?.slug ?? languageSlug,
   })
+  const headerLanguageSwitcherOwnerToken = useRef(
+    Symbol("hero-player-language-switcher"),
+  ).current
   const languageCountLabel =
     languageCount > 0
       ? tLanguagePicker("languageCount", { count: languageCount })
@@ -1453,9 +1460,15 @@ export function HeroPlayer({
   const effectivePreviewBodyOverlapPx = playbackFrameActive
     ? 0
     : previewBodyOverlapPx
-  const mobilePortraitPreviewEnabled = !playbackFrameActive && overlay == null
+  const mobilePortraitHeaderClearanceEnabled = overlay == null
+  const mobilePortraitPreviewEnabled =
+    !playbackFrameActive && mobilePortraitHeaderClearanceEnabled
   const mediaFrameClassName = `relative h-full w-full ${
-    mobilePortraitPreviewEnabled ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS : ""
+    mobilePortraitPreviewEnabled
+      ? MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS
+      : mobilePortraitHeaderClearanceEnabled
+        ? MOBILE_PORTRAIT_PLAYBACK_FRAME_CLASS
+        : ""
   }`
   const playerClassName = `watch-hero-player-video block h-full w-full origin-top ${
     playbackFrameActive
@@ -1485,6 +1498,8 @@ export function HeroPlayer({
     : 0
   const showWatchNextButton =
     chromeRevealed && nextWatchHref != null && watchNextWindowActive
+  const heroPlayerLoading =
+    playbackFrameActive && playerActivated && (!videoReady || playbackBuffering)
   const cancelWatchNextAutoAdvance = useCallback(() => {
     if (watchNextWindowActive) {
       const nextMode = { videoId: video.documentId, mode: "manual" } as const
@@ -1518,11 +1533,17 @@ export function HeroPlayer({
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
             languageCode: showTopLanguageSwitch ? languageCode : null,
+            ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
       ),
     )
-  }, [languageCode, onLanguageClick, showTopLanguageSwitch])
+  }, [
+    headerLanguageSwitcherOwnerToken,
+    languageCode,
+    onLanguageClick,
+    showTopLanguageSwitch,
+  ])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1530,11 +1551,18 @@ export function HeroPlayer({
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null, languageCode: null } },
+          {
+            detail: {
+              visible: false,
+              onClick: null,
+              languageCode: null,
+              ownerToken: headerLanguageSwitcherOwnerToken,
+            },
+          },
         ),
       )
     }
-  }, [])
+  }, [headerLanguageSwitcherOwnerToken])
 
   return (
     <>
@@ -1552,16 +1580,23 @@ export function HeroPlayer({
         data-mobile-portrait-preview={
           mobilePortraitPreviewEnabled ? "true" : "false"
         }
+        data-mobile-portrait-header-clearance={
+          mobilePortraitHeaderClearanceEnabled ? "true" : "false"
+        }
         onPointerDownCapture={handleWatchNextSurfaceInteract}
         onKeyDownCapture={handleWatchNextSurfaceInteract}
         className={`sticky relative w-full ${HERO_FRAME_HEIGHT_CLASS} bg-black ${HERO_FRAME_TRANSITION_CLASS} compact-landscape:[--watch-compact-landscape:1] ${
           defaultPreRevealOverlayInFlow ? "compact-landscape:h-[100svh]" : ""
         } ${
           playbackFrameActive
-            ? "overflow-hidden"
+            ? `overflow-hidden ${
+                mobilePortraitHeaderClearanceEnabled
+                  ? MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS
+                  : ""
+              }`
             : `overflow-x-clip ${
                 mobilePortraitPreviewEnabled
-                  ? MOBILE_PORTRAIT_PREVIEW_WRAPPER_CLASS
+                  ? MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS
                   : ""
               }`
         }`}
@@ -1581,6 +1616,13 @@ export function HeroPlayer({
               : `${-effectivePreviewBodyOverlapPx}px`,
         }}
       >
+        {mobilePortraitHeaderClearanceEnabled ? (
+          <div
+            aria-hidden="true"
+            data-testid="hero-player-mobile-header-band"
+            className={MOBILE_PORTRAIT_HEADER_CLEARANCE_CLASS}
+          />
+        ) : null}
         <div
           id={HERO_PLAYER_MEDIA_ID}
           data-testid="hero-player-media-frame"
@@ -1633,6 +1675,7 @@ export function HeroPlayer({
               onWaiting={handlePlaybackBuffering}
               onStalled={handlePlaybackBuffering}
               onSeeking={handlePlaybackBuffering}
+              onTimeUpdate={handlePlaybackReady}
               onSeeked={handlePlaybackReady}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
@@ -1672,7 +1715,7 @@ export function HeroPlayer({
                       blurDataURL: heroPosterBlurDataURL,
                     }
                   : {})}
-                className={`object-cover ${posterImageMotionClass}`}
+                className="object-cover"
               />
               {!chromeRevealed ? (
                 <div
@@ -1692,6 +1735,13 @@ export function HeroPlayer({
                   aria-hidden="true"
                   data-testid="hero-player-poster-darken-overlay"
                   className="pointer-events-none absolute inset-0 bg-black/50"
+                />
+              ) : null}
+              {coverLoading ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-cover-loading-overlay"
+                  className="pointer-events-none absolute inset-0 animate-pulse bg-white/15 motion-reduce:animate-none"
                 />
               ) : null}
               {showPosterBlackBridge ? (
@@ -1725,17 +1775,6 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {playbackFrameActive &&
-          playerActivated &&
-          (!videoReady || playbackBuffering) ? (
-            <div
-              data-testid="hero-player-loading"
-              className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
-            >
-              <WatchPlayerLoadingIndicator />
-            </div>
-          ) : null}
-
           {!chromeRevealed ? (
             <div
               aria-hidden="true"
@@ -1766,6 +1805,7 @@ export function HeroPlayer({
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
             playbackId={playbackId}
+            playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
             subtitleLanguageCode={subtitleLanguageCode}
@@ -1790,7 +1830,7 @@ export function HeroPlayer({
             data-kind={block.nextWatchItem?.kind ?? "chapter"}
             data-manual={watchNextManual ? "true" : "false"}
             data-auto-armed={watchNextAutoArmed ? "true" : "false"}
-            aria-label="Next Episode"
+            aria-label={t("nextEpisode")}
             onClick={navigateToNextWatchItem}
             className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
               watchNextManual
@@ -1808,7 +1848,7 @@ export function HeroPlayer({
             ) : null}
             <PlayIcon />
             <span className="relative text-base font-bold leading-none">
-              Next Episode
+              {t("nextEpisode")}
             </span>
           </button>
         ) : null}

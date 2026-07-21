@@ -7,7 +7,9 @@
     "noContent": "A diak a melechoad.",
     "homepageMisconfigured": "Watch homepage a metengel.",
     "defaultTemplateMisconfigured": "Watch template default a metengel.",
-    "authFailed": "A diak a diak el mengemes a content service. Ng ungil a omekachel a support ke a mo dmakl el mo er a teloltel."
+    "authFailed": "A diak a diak el mengemes a content service. Ng ungil a omekachel a support ke a mo dmakl el mo er a teloltel.",
+    "pageLoadFailed": "A klou el rokui a dirrek.",
+    "tryAgain": "Onger er a medengei"
   },
   "VideosPage": {
     "title": "Videos okedall",
@@ -22,7 +24,8 @@
     "promoHeading": "A delad a Bible el klou a cheldecheduch?",
     "joinBibleStudy": "Onger a Bible study kemam",
     "previousQuote": "Bible quote el kmo medengei",
-    "nextQuote": "Bible quote el kmo medengang"
+    "nextQuote": "Bible quote el kmo medengang",
+    "readPassage": "Monguiu a tekoi tia er a Bible er kau."
   },
   "DownloadButton": {
     "checking": "Mebek chek",
@@ -73,7 +76,8 @@
     "selectLanguage": "Onged a language",
     "searchPlaceholder": "Meses a languages…",
     "languages": "Tekoi",
-    "noMatches": "Diak a omes"
+    "noMatches": "Diak a omes",
+    "notAvailable": "Diak el ngar ngii"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Tekoi",
@@ -112,7 +116,8 @@
     "questions": "Questions el chedal",
     "askYours": "Onged a kemiu",
     "chatWithPerson": "Onged er a rengalek",
-    "askBibleQuestion": "Onged a Bible question"
+    "askBibleQuestion": "Onged a Bible question",
+    "quiz": "Kuiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Klekeradel er a message",
@@ -170,7 +175,8 @@
     "searchRegion": "Meses videos",
     "clearSearch": "Mekoreor a search",
     "changeAudioLanguage": "Mesecher a audio language",
-    "home": "Blil a JesusFilm"
+    "home": "Blil a JesusFilm",
+    "closeSearch": "Moes a search"
   },
   "SearchOverlay": {
     "dialogLabel": "Meses mar a browse a videos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Mekoreor",
     "queryLanguageDetected": "{language} a mesik",
     "searchInLanguage": "Meses er a {language}",
-    "tryDifferentKeywordsOrLanguage": "Onger a keywords el dmoel ke omeked a language el ngii a dmoel"
+    "tryDifferentKeywordsOrLanguage": "Onger a keywords el dmoel ke omeked a language el ngii a dmoel",
+    "useWebsiteDefaultLanguage": "Onger a website default search language",
+    "removeLanguage": "Mesek {language}",
+    "browseMode": "Browse mode er a search"
   },
   "HeroPlayer": {
     "playWithSound": "Omes ngii",
-    "tapToUnmute": "Meder er a Unmute"
+    "tapToUnmute": "Meder er a Unmute",
+    "nextEpisode": "Episode el ngii"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Mengil a content"
+    "loadingContent": "Mengil a content",
+    "loadingVideo": "Mengil a video"
   },
   "VideoLabels": {
     "video": "A video",
@@ -223,7 +234,8 @@
     "series": "A series",
     "collection": "A collection",
     "trailer": "A trailer",
-    "behindTheScenes": "Er a Uriul er a Scenes"
+    "behindTheScenes": "Er a Uriul er a Scenes",
+    "chapter": "A chapter"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} er a {total}",
@@ -235,11 +247,252 @@
     "noImage": "Diak a image",
     "playingNow": "Mebulai ngii",
     "previousChapter": "Chapter el medengei",
-    "nextChapter": "Chapter el ngii"
+    "nextChapter": "Chapter el ngii",
+    "thumbnailAlt": "Thumbnail er a {title}",
+    "relatedVideoThumbnail": "Thumbnail er a video el chedal"
   },
   "SearchResultCard": {
     "experience": "Omesel el mo er a reng",
     "episodeCount": "{count, plural, one {# el episode} other {# el episode}}",
     "thumbnailAlt": "Thumbnail er a video"
+  },
+  "Feedback": {
+    "openForm": "Onged el feedback form",
+    "label": "A omesik",
+    "couldNotLoad": "A feedback form a diak el mengesei.",
+    "loadingForm": "Mengil a feedback form…",
+    "retry": "Onger er a medengei",
+    "openFormShort": "Onged el form",
+    "cancel": "Mesek",
+    "title": "A omesik er a Beta",
+    "description": "Omesung a chelsel a ngakl el omesik el klou a cheldol a diak, ke a ngerul a mo ungil. A form ngera Google a obengkel.",
+    "openInNewTab": "Onged a form er a beluu el ngar a ngii a tab mar a tekoi",
+    "closeForm": "Moes a feedback form",
+    "loadingGoogleForm": "Mengil a Google Form…",
+    "iframeTitle": "Onged a Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian videos el di tia kelungel er a {language} | Jesus Film Project",
+    "metadataDescription": "Mesei a Jesus films, Bible stories, discipleship series, mar a outreach videos el ngar ngii a dubbed audio ke subtitles er a {language}.",
+    "heroTitle": "Christian videos el di tia kelungel er a {language}",
+    "heroDescription": "Mesei a Jesus films, Bible stories, discipleship series, mar a outreach videos el ngar ngii er a {language}. Videos el fully dubbed a omes el mloop, mar a subtitle-only options el ngar a rere.",
+    "languageCollection": "Collection er a language",
+    "itemCount": "{count, plural, one {# ngii} other {# ngii}}",
+    "videoCount": "{count, plural, one {# el video} other {# el video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} er a {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Sections er a language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Beches",
+    "videoBible": "Bible er a video",
+    "bibleProject": "BibleProject",
+    "sports": "Omesulang",
+    "collections": "A collections",
+    "subtitlesOnly": "Subtitles el diak a dubbed audio",
+    "newlyAdded": "Mlo new",
+    "newVideosTitle": "Beches el Christian videos er a {language}",
+    "newestFirst": "A beches a kot",
+    "noPublishedVideos": "Diak a published videos el ngii er a language tia.",
+    "bibleAndGospelFilms": "Bible mar a Gospel films",
+    "videoBibleCollectionsTitle": "Video Bible collections er a {language}",
+    "videoBibleDescription": "Scripture-centered collections el ngar ngii a LUMO, JESUS, Magdalena, mar a Acts er a {language}.",
+    "noVideoBibleCollections": "Diak a Video Bible collections el ngii er a language tia.",
+    "bibleProjectCollectionsTitle": "BibleProject collections er a {language}",
+    "bibleProjectDescription": "BibleProject series mar a studies el ngar ngii er a {language}.",
+    "noBibleProjectCollections": "Diak a BibleProject collections el ngii er a language tia.",
+    "sportsStories": "Cheldecheduch er a sports",
+    "sportsTitle": "{language} sports mar a athlete stories",
+    "sportsDescription": "Faith-centered sports stories mar a athlete-focused collections el ngar ngii er a {language}.",
+    "noSportsCollections": "Diak a sports ke athlete-story collections el ngii er a language tia.",
+    "fullyDubbed": "Ng rokui a ngerel el mekeraod",
+    "dubbedVideosTitle": "Videos er a {language} el ngar er a collections",
+    "dubbedVideosDescription": "Browse fully dubbed {language} videos el ngii a collection er a omesel.",
+    "noDubbedVideos": "Diak a fully dubbed videos el ngii er a language tia.",
+    "subtitlesAvailable": "Subtitles el ngii",
+    "subtitlesTitle": "Videos er a {language} el ngar ngii a subtitles",
+    "subtitlesDescription": "Videos tia a ngii a {language} subtitles reng a spoken {language} audio a diak ngii.",
+    "noSubtitleVideos": "Diak a subtitle-only videos el ngii er a language tia.",
+    "dubbed": "Ngerel el mekeraod",
+    "subtitles": "Tekoi el mleches",
+    "newLabel": "Beches",
+    "fromCollection": "Er a {collection}",
+    "standaloneVideos": "Videos el diak er a collection",
+    "videosFromCollection": "Videos er a {collection}.",
+    "standaloneDescription": "Standalone videos er a language tia.",
+    "openCollection": "Onged a collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Omes er a Jesus Film Project",
+    "watch": "Omes",
+    "watchNow": "Omes ngii",
+    "mutePreview": "Mekurung a preview",
+    "unmutePreview": "Mesecher a preview",
+    "nextVideo": "Video el ngii",
+    "featured": "El omesik",
+    "showVideo": "Omes {title}",
+    "previousVideoPreview": "Video preview el medengei",
+    "nextVideoPreview": "Video preview el ngii",
+    "mediaCollection": "Koleksion er a media",
+    "scrollToVideo": "Meredel er a video er a {title}"
+  },
+  "WatchFooter": {
+    "home": "Blil a Jesus Film Project",
+    "navigation": "Navigation er a footer",
+    "share": "Mekiis",
+    "watch": "Omes",
+    "giving": "Omekilu",
+    "about": "Chelsel kemam",
+    "products": "A tekoi el meruul",
+    "resources": "A resources",
+    "partners": "A partners",
+    "contact": "Omekachel",
+    "giveNow": "Mekilu er a reng",
+    "resourcesVersion": "A resources ({version})",
+    "office": "A ofes",
+    "fax": "Nmer er a fax",
+    "privacyPolicy": "Ongerachel er a omelilt",
+    "legalStatement": "Klechedaol er a llach",
+    "newsletter": "Mesing er a newsletter kemiu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Meleches el mo er a missions er a beluu rokui",
+    "title": "A message a diak el mengereker. A klekeradel er a omesel a mengereker.",
+    "description": "Kemam a mo omengerekl a video library mar a tools kemam er a alap, mekloi a decades el translation work er a platforms el ngar ngii a rengalek, o mes, mar a mekiis.",
+    "translatedLibraryTitle": "A film library el klou a mekeraod er a beluu rokui",
+    "translatedLibraryDescription": "Decades el translation work, el mekem a trusted ministry partners, a mechas a library el ngii a thousands language tracks el mo omes a story of Jesus er a language el mo klou a omesel.",
+    "trustedVoicesTitle": "Mekid a tekoi el metik er a formats el beches",
+    "trustedVoicesDescription": "Kemam a mo omengerekl a kena gospel stories a meleches er a visual, mekedi a trusted translations mar a modern formats el mo omes a message el mo dmoel er a platforms, cultures, mar a screens.",
+    "missionTeamTitle": "Ng diak el di library. Ng team el omes er a mission.",
+    "missionTeamDescription": "Jesus Film Project a global team of translators, media specialists, editors, mar a creators el mekos a decades el ministry experience er a tools er a disciple-makers er a klungsel.",
+    "buildingNext": "Ngera el kemam a mo melekoi er ngii",
+    "nextStepsTitle": "Platform er a Ongerachel el Ngii",
+    "nextStepsDescription": "Mesech a viewers er a tangible opportunities er a spiritual journey rengetik, omeked a next step er a community, Scripture, ke mission.",
+    "mediaLibraryTitle": "Library er a Media el Omesuub er a Ungil Chais",
+    "mediaLibraryDescription": "An extensive Christian media library el ngii a thousands of videos, films, mar a resources el ngar ngii er a multiple languages er a ministry mar a evangelism worldwide.",
+    "ministryToolsTitle": "Digital Tools er a Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, mar a analytics el mo omeked er a ministries el mo reach a more people effectively.",
+    "invitationEyebrow": "Ke mo cheroid",
+    "invitationTitle": "Mengesu er a omekedel a <highlight>rengalek el beches</highlight> er a tools er a mission",
+    "invitationDescription": "Kemam a mechu er a practitioners, creators, mar a partners er a early access. Test new tools el medengei, mekull a feedback, mar a omeked a products el mo omes er a real mission work.",
+    "betaTester": "Mo beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collection er a Bible er a Video",
+    "gospelRailTitle": "Meda a cheldecheduch el rokui",
+    "videoBibleDescription": "Mesei a collection er a videos mar a resources el mekid a Bible a mo mechas er a stories mar a teachings el mekerreuil.",
+    "showcaseTitle": "Scripture el melechub er a Film",
+    "adventEyebrow": "Advent er a Kismas",
+    "adventTitle": "Omelatk er a Silse el mo er a Kismas",
+    "adventDescription": "Onger er a Advent journey kemiu el ngii a daily video el mechas a anticipation er a Christmas, omesei a hope, joy, mar a promise er a Jesus' arrival.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent er a BibleProject",
+    "nuaEyebrow": "Series er a NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series er a Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursus er a Video",
+    "journeyWithJesusTitle": "Mong er a Jesus",
+    "gospelsOnVideoEyebrow": "Gospel el rokui, el melechub er a Video",
+    "scriptureAsWrittenTitle": "Scripture el mengedecheduch el ua le mleches",
+    "merryChristmas": "Ungil Kismas!",
+    "daysUntilChristmas": "{count, plural, one {# el sils el mo er a Kismas} other {# el sils el mo er a Kismas}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Tekoi",
+    "metadataDescription": "Browse a JesusFilm videos er a language.",
+    "eyebrow": "Languages er a Watch",
+    "title": "Onged a language",
+    "description": "Browse a languages er a region ke browse a full list.",
+    "searchPlaceholder": "Meses a languages ke countries...",
+    "searchLabel": "Meses a languages ke countries",
+    "clearSearch": "Mekoreor a search",
+    "browse": "Mesei",
+    "browseByRegion": "Browse er a region mar a country",
+    "languageCount": "{count, plural, one {# tekoi} other {# tekoi}}",
+    "region": "A beluu el ngar a chelsel",
+    "countryLanguages": "Languages er a {country}",
+    "showLess": "Omes a btik",
+    "showMore": "Omes {count} me a dmoel",
+    "noLanguages": "Diak a languages el ngii",
+    "tryAnotherSearch": "Onger a search term el ngii."
+  },
+  "WatchHistory": {
+    "metadataTitle": "History er a Omes | Jesus Film Project",
+    "title": "History er a Omes",
+    "loading": "Mengil a history",
+    "empty": "Diak a ngii er a rekui",
+    "emptyDescription": "Videos el mesang a omes er a signed in a mo merung er a reruich.",
+    "earlier": "Er a medengei",
+    "today": "Silse tia",
+    "yesterday": "Tial e lechub"
+  },
+  "AccountControl": {
+    "account": "A account",
+    "accountMenu": "Menu er a account",
+    "signIn": "Mesing er a sign in",
+    "signOut": "Mesing er a sign out",
+    "signedIn": "Ng ngar er a account",
+    "history": "A rekui el mla mesang",
+    "logOut": "Moes er a account"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "A page a diak el meruul",
+    "eyebrow": "A page a diak el meruul",
+    "screenReaderPrefix": "A page a diak el meruul:",
+    "title": "A scene tia a diak er tiang.",
+    "description": "A page a mo mesek, me a story a mo dmoel.",
+    "actionsLabel": "Oureor er a page el diak el meruul",
+    "backToWatch": "Mekilel er a Watch",
+    "browseVideos": "Browse a videos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Mesei a short film",
+    "actions": {
+      "joinUs": "Onger kemam",
+      "shareMission": "Mekiis er a mission kemam"
+    },
+    "welcomeStart": {
+      "label": "Faith me a Scripture",
+      "title": "A video picks er a silse tia",
+      "description": "Video content el ngii a faith-centered er a library kemam el mo omeked a reng, omesik, mar a omekedong."
+    },
+    "welcomeMorning": {
+      "label": "Omeked a reng er a tutau",
+      "title": "Ungil beluu! Bible moments er a silse tia a ngar ngii.",
+      "description": "Onged a beluu er a silse kemiu me a Bible moments el mo omeked a reng mar a omeked a spirit kemiu."
+    },
+    "welcomeAfternoon": {
+      "label": "Omeked a reng er a chelsel a sils",
+      "title": "Ungil diak? Bible moments er a silse kemiu.",
+      "description": "Bible content el omeked a reng el ta er a afternoon break kemiu ke omekid a inspiration el dmoel."
+    },
+    "welcomeEvening": {
+      "label": "Omeked a reng er a kebesengei",
+      "title": "Ungil beluu! Mekebeng a reng kemiu er a Bible moments.",
+      "description": "Bible moments el ngel a omeked a reng el mo omekedong me omekid a comfort er a silse kemiu a mo teloi."
+    },
+    "joinUs": {
+      "label": "Onger kemam",
+      "title": "Billions a merengel er a chad el omesik",
+      "description": "A harvest a mlo ngii. Onger kemam el mo omes a gospel er a beluu rokui me a digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Mong kemam ke mo mo er a ngii",
+      "title": "Metelei a story er a Jesus, kemam rokui",
+      "description": "Ng mo mengodei ke omes a love er a Jesus er a language kemiu, er a ngii a ngar a ngii."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% el osisiu",
+    "none": "Diak a video el omesik el ngar ngii er a video tia er a language tia."
+  },
+  "BetaTesterModal": {
+    "title": "Mo beta tester",
+    "trigger": "Mo beta tester",
+    "loadFailed": "A klou el rokui a dirrek.",
+    "loading": "Mengil...",
+    "openFormNewTab": "Onged a form er a beluu el ngar a ngii a tab mar a tekoi",
+    "close": "Moes",
+    "iframeTitle": "Mo beta tester"
   }
 }

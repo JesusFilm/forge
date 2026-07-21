@@ -4,8 +4,10 @@
 
 import { act, useEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
+import { WATCH_HOME_MUX_INSERTS } from "@/lib/watch-home-config"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import type { WatchHomeTvCarouselVideoSlide } from "@/lib/watch-home-carousel-sequence"
 import {
@@ -203,13 +205,10 @@ function makeCarouselSlide(
 
 const muxInsert = {
   id: "welcome-start",
+  copyId: "welcomeStart",
   enabled: true,
   playbackIds: ["mux-welcome"],
   durationSeconds: 9,
-  label: "Faith & Scripture",
-  title: "Daily Start",
-  collectionTitle: null,
-  description: "A Mux intro",
   action: null,
   logo: true,
   posterOverride: null,
@@ -219,17 +218,20 @@ const muxInsert = {
 const ctaMuxInsert = {
   ...muxInsert,
   id: "join-us",
+  copyId: "joinUs",
   playbackIds: ["mux-join"],
-  label: "Join Us",
-  title: "Join Us",
-  description: "A Mux mission film",
-  action: { label: "Join Us", url: "https://example.com/join", icon: "join" },
+  action: {
+    copyId: "joinUs",
+    url: "https://example.com/join",
+    icon: "join",
+  },
 } satisfies WatchHomeMuxInsertConfig
 
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  setRequestLocale("en")
   window.localStorage.clear()
   window.sessionStorage.clear()
   carouselApi.scrollTo.mockClear()
@@ -247,6 +249,90 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  it("localizes semantic carousel, card, and promo copy in Russian", async () => {
+    setRequestLocale("ru")
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            sections: [
+              {
+                id: "home-video-gospels",
+                eyebrow: "Video Bible Collection",
+                title: "Discover the full story",
+                description: "Explore the collection.",
+                layout: "rail",
+                orientation: "horizontal",
+                showSequenceNumbers: false,
+                cards: [
+                  makeCard({
+                    durationSeconds: null,
+                    metaLabel: "Feature film",
+                  }),
+                ],
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(container.textContent).toContain("Рекомендуем")
+    expect(container.textContent).toContain("Полнометражный фильм")
+    expect(container.textContent).toContain(
+      "Помогите создать новое поколение инструментов для миссии",
+    )
+    expect(container.textContent).not.toContain("Featured")
+    expect(container.textContent).not.toContain("Feature film")
+  })
+
+  it("localizes a configured Mux insert and its actions in Russian", async () => {
+    setRequestLocale("ru")
+    const joinUsInsert = WATCH_HOME_MUX_INSERTS.find(
+      (insert) => insert.id === "join-us",
+    )
+    if (!joinUsInsert) throw new Error("Expected the Join Us Mux insert")
+
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: [makeCarouselSlide()],
+                },
+              ],
+              muxInserts: [joinUsInsert],
+            },
+          })}
+        />,
+      )
+    })
+
+    const muxCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((card) => card.textContent?.includes("Миллиарды людей ищут ответы"))
+    expect(muxCard?.textContent).toContain("Присоединяйтесь к нам")
+
+    await act(async () => {
+      muxCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(container.textContent).toContain(
+      "Жатва уже созрела. Присоединяйтесь к нам, чтобы с помощью цифровых медиа делиться Евангелием со всем миром.",
+    )
+    expect(
+      container.querySelector('a[href="https://your.nextstep.is/joinus"]')
+        ?.textContent,
+    ).toContain("Присоединиться")
+    expect(container.textContent).toContain("Смотреть короткометражный фильм")
+    expect(container.textContent).not.toContain("Billions are searching")
+    expect(container.textContent).not.toContain("Watch Short Film")
+  })
+
   it("renders the hero, configured sections, promo content, and card links", async () => {
     await act(async () => {
       root.render(<WatchHomePage model={makeModel()} />)
@@ -1095,7 +1181,7 @@ describe("WatchHomePage", () => {
       )
     })
 
-    expect(container.textContent).toContain("Daily Start")
+    expect(container.textContent).toContain("Today's Video Picks")
     expect(container.textContent).not.toContain("Watch Short Film")
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),

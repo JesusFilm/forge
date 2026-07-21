@@ -8,8 +8,8 @@ import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
-import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
   type WatchChapterCarouselPreserveState,
@@ -43,6 +43,7 @@ import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
 import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
+import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
@@ -518,6 +519,7 @@ export function WatchPageClient({
   )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
+  useWatchModalActivity(modalState !== "none")
   const [downloadPending, setDownloadPending] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
@@ -651,6 +653,11 @@ export function WatchPageClient({
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
+    reportGoogleAnalyticsEvent("watch_download_intent", {
+      language_slug: currentLanguageSlug,
+      video_id: video.documentId,
+      video_slug: videoSlug,
+    })
     setEnabledModalChunks((prev) => ({ ...prev, download: true }))
     void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
@@ -682,54 +689,50 @@ export function WatchPageClient({
     }
   }, [
     beginDownloadSessionRequest,
+    currentLanguageSlug,
     downloadSessionErrorMessage,
     isCurrentDownloadSessionRequest,
+    video.documentId,
+    videoSlug,
   ])
   const openLanguage = useCallback(() => {
     cancelDownloadSessionRequest()
+    reportGoogleAnalyticsEvent("watch_language_picker_opened", {
+      language_slug: currentLanguageSlug,
+      video_id: video.documentId,
+      video_slug: videoSlug,
+    })
     setEnabledModalChunks((prev) => ({ ...prev, language: true }))
     void loadWatchInteraction("language").catch(() => {})
     setModalState("language")
     void loadLanguageOptions()
-  }, [cancelDownloadSessionRequest, loadLanguageOptions])
+  }, [
+    cancelDownloadSessionRequest,
+    currentLanguageSlug,
+    loadLanguageOptions,
+    video.documentId,
+    videoSlug,
+  ])
   const openShare = useCallback(() => {
     cancelDownloadSessionRequest()
+    reportGoogleAnalyticsEvent("watch_share_opened", {
+      language_slug: currentLanguageSlug,
+      video_id: video.documentId,
+      video_slug: videoSlug,
+    })
     setEnabledModalChunks((prev) => ({ ...prev, share: true }))
     void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
-  }, [cancelDownloadSessionRequest])
+  }, [
+    cancelDownloadSessionRequest,
+    currentLanguageSlug,
+    video.documentId,
+    videoSlug,
+  ])
   const closeModal = useCallback(() => {
     cancelDownloadSessionRequest()
     setModalState("none")
   }, [cancelDownloadSessionRequest])
-
-  // Pause the video whenever any modal (search / language / download / share)
-  // opens, and restore the prior playing state on close. Captures the snapshot
-  // at the open-edge so a paused video stays paused after the modal closes.
-  const { searchOpen } = useFloatingSearchPinned()
-  const anyModalOpen = searchOpen || modalState !== "none"
-  const wasPlayingRef = useRef(false)
-  const prevAnyModalOpenRef = useRef(false)
-  useEffect(() => {
-    const player = playerRef.current
-    const wasOpen = prevAnyModalOpenRef.current
-    prevAnyModalOpenRef.current = anyModalOpen
-    if (!player) return
-    if (anyModalOpen && !wasOpen) {
-      wasPlayingRef.current = !player.paused
-      if (wasPlayingRef.current) {
-        player.pause()
-      }
-    } else if (!anyModalOpen && wasOpen) {
-      if (wasPlayingRef.current) {
-        const result = player.play()
-        if (result && typeof (result as Promise<void>).then === "function") {
-          ;(result as Promise<void>).catch(() => {})
-        }
-      }
-      wasPlayingRef.current = false
-    }
-  }, [anyModalOpen])
 
   const modalCallbacks: WatchModalCallbacks = {
     openDownload,

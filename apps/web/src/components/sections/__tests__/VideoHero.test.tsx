@@ -19,6 +19,10 @@ import {
 } from "vitest"
 
 import { VideoHero } from "@/components/sections/VideoHero"
+import {
+  WatchModalActivityProvider,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
 
 const baseFragment = {
   id: "vh-1",
@@ -59,6 +63,22 @@ afterEach(async () => {
 })
 
 describe("VideoHero", () => {
+  function ModalOwner({ active }: { active: boolean }) {
+    useWatchModalActivity(active, { releaseDelayMs: 0 })
+    return null
+  }
+
+  async function renderWithModal(active: boolean) {
+    await act(async () => {
+      root.render(
+        <WatchModalActivityProvider>
+          <ModalOwner active={active} />
+          <VideoHero data={baseFragment} />
+        </WatchModalActivityProvider>,
+      )
+    })
+  }
+
   it("mounts the Mux branch and renders the shared overlay", async () => {
     await act(async () => {
       root.render(<VideoHero data={baseFragment} />)
@@ -144,5 +164,25 @@ describe("VideoHero", () => {
     // If jsdom didn't synthesize the inner <video>, the test still proves
     // the scroll handler doesn't throw — the rigorous pause assertion is
     // verified in Playwright per the U1 production-stack smoke note.
+  })
+
+  it("pauses its authored hero media when modal activity opens", async () => {
+    await renderWithModal(false)
+    const video = container.querySelector("video") as HTMLVideoElement
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      value: false,
+      writable: true,
+    })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+
+    await renderWithModal(true)
+
+    expect(pause).toHaveBeenCalledOnce()
   })
 })

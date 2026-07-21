@@ -8,16 +8,20 @@ import { cn } from "@/lib/utils"
 import {
   DEFAULT_LOCALE,
   resolveWatchLocaleIdentity,
+  textDirectionForLocale,
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
 import DatadogRum from "@/components/DatadogRum"
 import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
-
-async function loadMessages(locale: UiLocale) {
-  return (await import(`../../../../messages/${locale}.json`)).default
-}
+import GoogleAnalytics from "@/components/GoogleAnalytics"
+import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
+import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
+import {
+  GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+  loadClientMessages,
+} from "@/i18n/client-messages"
 
 function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
@@ -72,12 +76,16 @@ export default async function RootLayout({
   const htmlLangIdentity = resolveWatchLocaleIdentity(rawHtmlLang)
   const htmlLang =
     htmlLangIdentity.locale === locale ? htmlLangIdentity.htmlLang : locale
+  const textDirection = textDirectionForLocale(htmlLang)
   setRequestLocale(locale)
-  const messages = await loadMessages(locale)
+  const messages = await loadClientMessages(
+    locale,
+    GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+  )
   return (
     <html
       lang={htmlLang}
-      dir="ltr"
+      dir={textDirection}
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
       <head>
@@ -92,10 +100,13 @@ export default async function RootLayout({
       <body className="overflow-x-clip bg-black">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
-          <FloatingSearchProvider>
-            <FeedbackLauncher />
-            {children}
-          </FloatingSearchProvider>
+          <GoogleAnalytics />
+          <WatchModalActivityProvider>
+            <FloatingSearchProvider>
+              <FeedbackLauncher />
+              <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+            </FloatingSearchProvider>
+          </WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>
     </html>

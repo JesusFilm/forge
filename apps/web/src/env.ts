@@ -253,6 +253,9 @@ export const env = createEnv({
       .default("datadoghq.com"),
     NEXT_PUBLIC_DATADOG_ENV: z.string().default("development"),
     NEXT_PUBLIC_DATADOG_VERSION: z.string().optional(),
+    // Optional Google Analytics 4 measurement id. When unset, the analytics
+    // component renders nothing so local and preview environments stay quiet.
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: z.string().optional(),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
@@ -325,6 +328,9 @@ export const env = createEnv({
     NEXT_PUBLIC_DATADOG_SITE: process.env.NEXT_PUBLIC_DATADOG_SITE,
     NEXT_PUBLIC_DATADOG_ENV: datadogEnvFallback(),
     NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: emptyToUndefined(
+      process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+    ),
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },

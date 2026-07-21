@@ -19,6 +19,7 @@ import {
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
@@ -60,6 +61,7 @@ export function SeriesPageClient({
   const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
+  useWatchModalActivity(modalState !== "none")
   const openShare = useCallback(() => setModalState("share"), [])
   const openLanguage = useCallback(() => setModalState("language"), [])
   const closeModal = useCallback(() => setModalState("none"), [])
@@ -174,6 +176,9 @@ export function SeriesPageClient({
   const currentLanguageCode = languageCodeFor(
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
+  const headerLanguageSwitcherOwnerToken = useRef(
+    Symbol("series-page-language-switcher"),
+  ).current
 
   const headerLanguageSwitcherVisible = variantsForLanguagePicker.length >= 2
   const heroOwnsHeaderLanguageSwitcher = Boolean(selectedVariant?.hls)
@@ -190,6 +195,7 @@ export function SeriesPageClient({
             languageCode: headerLanguageSwitcherVisible
               ? currentLanguageCode
               : null,
+            ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
       ),
@@ -199,12 +205,20 @@ export function SeriesPageClient({
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null, languageCode: null } },
+          {
+            detail: {
+              visible: false,
+              onClick: null,
+              languageCode: null,
+              ownerToken: headerLanguageSwitcherOwnerToken,
+            },
+          },
         ),
       )
     }
   }, [
     currentLanguageCode,
+    headerLanguageSwitcherOwnerToken,
     headerLanguageSwitcherVisible,
     heroOwnsHeaderLanguageSwitcher,
     openLanguage,

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Languages } from "lucide-react"
 
 import {
@@ -21,14 +22,6 @@ type LanguageCollectionSwitcherProps = {
   totalItems: number
 }
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("en").format(value)
-}
-
-function pluralize(count: number, singular: string, plural = `${singular}s`) {
-  return `${formatNumber(count)} ${count === 1 ? singular : plural}`
-}
-
 export function LanguageCollectionSwitcher({
   className,
   currentLanguageName,
@@ -38,6 +31,7 @@ export function LanguageCollectionSwitcher({
   totalItems,
 }: LanguageCollectionSwitcherProps) {
   const router = useRouter()
+  const t = useTranslations("LanguageInventory")
   const languageOptions = useMemo<LanguageComboboxOption[]>(() => {
     const source =
       languages.length > 0
@@ -94,11 +88,11 @@ export function LanguageCollectionSwitcher({
             <Languages className="h-4 w-4" aria-hidden />
           </span>
           <span className="min-w-0 text-xs font-bold tracking-[0.18em] text-stone-300 uppercase">
-            Language collection
+            {t("languageCollection")}
           </span>
         </div>
         <span className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-xs font-bold text-stone-300">
-          {pluralize(totalItems, "item")}
+          {t("itemCount", { count: totalItems })}
         </span>
       </div>
 
@@ -106,7 +100,7 @@ export function LanguageCollectionSwitcher({
         options={languageOptions}
         value={currentSlug}
         onChange={handleLanguageChange}
-        placeholder="Language collection"
+        placeholder={t("languageCollection")}
       />
     </div>
   )

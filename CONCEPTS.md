@@ -420,6 +420,18 @@ A reel source change performed while a full-screen overlay — a chapter card or
 
 The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs roughly every ten seconds, naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
 
+### Hop Handoff
+
+The seamless boundary between two dubs in the Language Centerpiece: a second, invisible standby player preloads the next dub to just past the upcoming boundary while the current dub plays, so the boundary is a role flip plus a brief crossfade rather than a source swap on the visible player.
+
+The crossfade waits until the incoming dub is confirmed in motion — until then the outgoing player keeps rolling as the Motion Cover. A preload that is not ready in time degrades that one boundary to the ordinary poster-masked seam, and a handoff whose incoming dub never confirms is abandoned at the next boundary. The pattern deliberately supersedes the reel's original single-player rule: the platform leak that rule guarded against is triggered by player churn, not by a second permanently-bound player.
+
+### Motion Cover
+
+The outgoing dub's player left rolling silently past its window end during a Hop Handoff, so the screen shows continuous motion of the same footage while the incoming dub spins up.
+
+Its audio has already faded to silence by the window end; only the picture rolls on. The cover is retired shortly after the incoming dub's reveal, parked when the app backgrounds mid-handoff, and abandoned by the boundary that skips a dead handoff — it never outlives the seam it exists to cover.
+
 ### Stills
 
 Showcase Mode's degradation floor: a slideshow of poster art from the last-good reel, entered when consecutive excerpt failures cross the breaker or when nothing playable resolves at all. It is a holding state rather than an end state — it periodically re-attempts resolution and rejoins the reel when one succeeds, which is what keeps a network blip from ending the session.
@@ -451,7 +463,7 @@ _Avoid:_ Mux insert.
 
 The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
 
-A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. The queue holds a fixed size as content is consumed: unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
 
 ### Carousel Pool
 
@@ -465,7 +477,9 @@ An eligible film is emitted as a single parent tile, never expanded into its cha
 
 ### Played Set
 
-The per-user memory of which videos the watch-home rotation has already shown, used to exclude them from Hero Queue rebuilds so returning users lead with unseen content. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+
+A video enters the set when the rotation departs its slide, regardless of why it departed — watched to the end, navigated away, or skipped by a playback failure — so a persistently failing slide is recorded as "seen" just like a watched one and yields its priority until the set resets.
 
 ### Home Snapshot
 
@@ -478,6 +492,12 @@ An expired, shape-drifted, or empty Home Snapshot never paints — launch falls 
 The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
+
+### Watch Modal Activity
+
+The aggregate ownership state of every Watch overlay that must suspend route-owned playback, independent of which component renders the overlay or which player is active.
+
+Activity begins when the first owner opens and ends only after the final owner releases through its visible close lifecycle. Resume entitlement belongs to the exact media and source that were playing before activity began; late, replaced, or source-swapped media is paused without inheriting that entitlement.
 
 ### Chrome
 

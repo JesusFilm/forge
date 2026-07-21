@@ -7,7 +7,9 @@
     "noContent": "لا يوجد محتوى متاح.",
     "homepageMisconfigured": "صفحة Watch الرئيسية غير مهيأة بشكل صحيح.",
     "defaultTemplateMisconfigured": "قالب Watch الافتراضي غير مهيأ بشكل صحيح.",
-    "authFailed": "تعذّر الاتصال بخدمة المحتوى. يُرجى التواصل مع الدعم إذا استمرت المشكلة."
+    "authFailed": "تعذّر الاتصال بخدمة المحتوى. يُرجى التواصل مع الدعم إذا استمرت المشكلة.",
+    "pageLoadFailed": "حدث خطأ ما.",
+    "tryAgain": "حاول مرة أخرى"
   },
   "VideosPage": {
     "title": "كل الفيديوهات",
@@ -22,7 +24,8 @@
     "promoHeading": "هل تريد أن تفهم الكتاب المقدس بعمق أكبر؟",
     "joinBibleStudy": "انضم إلى دراسة الكتاب المقدس",
     "previousQuote": "الآية السابقة",
-    "nextQuote": "الآية التالية"
+    "nextQuote": "الآية التالية",
+    "readPassage": "اقرأ هذا المقطع في كتابك المقدس."
   },
   "DownloadButton": {
     "checking": "جارٍ التحقق",
@@ -73,7 +76,8 @@
     "selectLanguage": "اختر اللغة",
     "searchPlaceholder": "ابحث عن اللغات…",
     "languages": "اللغات",
-    "noMatches": "لا توجد نتائج مطابقة"
+    "noMatches": "لا توجد نتائج مطابقة",
+    "notAvailable": "غير متاح"
   },
   "LanguagePickerModal": {
     "dialogTitle": "اللغة",
@@ -112,7 +116,8 @@
     "questions": "أسئلة ذات صلة",
     "askYours": "سؤالك",
     "chatWithPerson": "تحدث مع شخص",
-    "askBibleQuestion": "اطرح سؤالًا عن الكتاب المقدس"
+    "askBibleQuestion": "اطرح سؤالًا عن الكتاب المقدس",
+    "quiz": "اختبار قصير"
   },
   "WatchQuestionPanel": {
     "messageType": "نوع الرسالة",
@@ -170,7 +175,8 @@
     "searchRegion": "البحث عن فيديوهات",
     "clearSearch": "مسح البحث",
     "changeAudioLanguage": "تغيير لغة الصوت",
-    "home": "صفحة JesusFilm الرئيسية"
+    "home": "صفحة JesusFilm الرئيسية",
+    "closeSearch": "إغلاق البحث"
   },
   "SearchOverlay": {
     "dialogLabel": "البحث عن الفيديوهات وتصفحها",
@@ -205,14 +211,19 @@
     "clearLanguages": "مسح",
     "queryLanguageDetected": "تم اكتشاف {language}",
     "searchInLanguage": "ابحث ب{language}",
-    "tryDifferentKeywordsOrLanguage": "جرّب كلمات مفتاحية مختلفة أو اختر لغة بحث أخرى"
+    "tryDifferentKeywordsOrLanguage": "جرّب كلمات مفتاحية مختلفة أو اختر لغة بحث أخرى",
+    "useWebsiteDefaultLanguage": "استخدم لغة البحث الافتراضية للموقع",
+    "removeLanguage": "إزالة {language}",
+    "browseMode": "وضع التصفح في البحث"
   },
   "HeroPlayer": {
     "playWithSound": "شاهد الآن",
-    "tapToUnmute": "تشغيل الصوت"
+    "tapToUnmute": "تشغيل الصوت",
+    "nextEpisode": "الحلقة التالية"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "جارٍ تحميل المحتوى"
+    "loadingContent": "جارٍ تحميل المحتوى",
+    "loadingVideo": "جارٍ تحميل الفيديو"
   },
   "VideoLabels": {
     "video": "فيديو",
@@ -223,7 +234,8 @@
     "series": "سلسلة",
     "collection": "مجموعة",
     "trailer": "إعلان تشويقي",
-    "behindTheScenes": "خلف الكواليس"
+    "behindTheScenes": "خلف الكواليس",
+    "chapter": "فصل"
   },
   "SiblingCarousel": {
     "clipPosition": "المقطع {current} من {total}",
@@ -235,11 +247,252 @@
     "noImage": "لا توجد صورة",
     "playingNow": "يتم التشغيل الآن",
     "previousChapter": "الفصل السابق",
-    "nextChapter": "الفصل التالي"
+    "nextChapter": "الفصل التالي",
+    "thumbnailAlt": "صورة مصغرة لـ {title}",
+    "relatedVideoThumbnail": "صورة مصغرة لفيديو ذي صلة"
   },
   "SearchResultCard": {
     "experience": "تجربة",
     "episodeCount": "{count, plural, zero {# حلقات} one {# حلقة} two {# حلقتان} few {# حلقات} many {# حلقة} other {# حلقة}}",
     "thumbnailAlt": "صورة مصغرة للفيديو"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "فيديوهات مسيحية مجانية ب{language} | Jesus Film Project",
+    "metadataDescription": "استكشف أفلام يسوع، وقصص الكتاب المقدس، وسلاسل التلمذة، وفيديوهات الكرازة بالصوت المدبلج أو الترجمة المصاحبة ب{language}.",
+    "heroTitle": "فيديوهات مسيحية مجانية ب{language}",
+    "heroDescription": "استكشف أفلام يسوع، وقصص الكتاب المقدس، وسلاسل التلمذة، وفيديوهات الكرازة المتاحة ب{language}. تظهر الفيديوهات المدبلجة بالكامل أولًا، تليها الخيارات ذات الترجمة المصاحبة فقط.",
+    "languageCollection": "مجموعة اللغة",
+    "itemCount": "{count, plural, one {# عنصر} other {# عناصر}}",
+    "videoCount": "{count, plural, one {# فيديو} other {# فيديوهات}}",
+    "videosInGroups": "{videoCount, plural, one {# فيديو} other {# فيديوهات}} في {groupCount, plural, one {# مجموعة} other {# مجموعات}}",
+    "sectionNavLabel": "أقسام فهرس اللغات",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "جديد",
+    "videoBible": "الكتاب المقدس بالفيديو",
+    "bibleProject": "BibleProject",
+    "sports": "الرياضة",
+    "collections": "مجموعات",
+    "subtitlesOnly": "الترجمة المصاحبة فقط",
+    "newlyAdded": "أُضيف حديثًا",
+    "newVideosTitle": "فيديوهات مسيحية جديدة ب{language}",
+    "newestFirst": "الأحدث أولًا",
+    "noPublishedVideos": "لم يتم العثور على أي فيديوهات منشورة لهذه اللغة بعد.",
+    "bibleAndGospelFilms": "أفلام الكتاب المقدس والأناجيل",
+    "videoBibleCollectionsTitle": "مجموعات الكتاب المقدس بالفيديو ب{language}",
+    "videoBibleDescription": "مجموعات متمحورة حول الكتاب المقدس تشمل LUMO وJESUS وMagdalena وActs ب{language}.",
+    "noVideoBibleCollections": "لا تتوفر بعد أي مجموعات للكتاب المقدس بالفيديو لهذه اللغة.",
+    "bibleProjectCollectionsTitle": "مجموعات BibleProject ب{language}",
+    "bibleProjectDescription": "سلاسل ودراسات BibleProject المتاحة ب{language}.",
+    "noBibleProjectCollections": "لا تتوفر بعد أي مجموعات من BibleProject لهذه اللغة.",
+    "sportsStories": "قصص رياضية",
+    "sportsTitle": "قصص الرياضة والرياضيين ب{language}",
+    "sportsDescription": "قصص رياضية متمحورة حول الإيمان ومجموعات تركز على الرياضيين متاحة ب{language}.",
+    "noSportsCollections": "لا تتوفر بعد أي مجموعات للرياضة أو قصص الرياضيين لهذه اللغة.",
+    "fullyDubbed": "مدبلج بالكامل",
+    "dubbedVideosTitle": "فيديوهات {language} حسب المجموعة",
+    "dubbedVideosDescription": "تصفح فيديوهات {language} المدبلجة بالكامل والمجمّعة مع مجموعاتها لتسهيل العثور عليها.",
+    "noDubbedVideos": "لا تتوفر بعد أي فيديوهات مدبلجة بالكامل لهذه اللغة.",
+    "subtitlesAvailable": "الترجمة المصاحبة متاحة",
+    "subtitlesTitle": "فيديوهات {language} مع ترجمة مصاحبة",
+    "subtitlesDescription": "تتضمن هذه الفيديوهات ترجمة مصاحبة ب{language} عندما لا يكون الصوت المنطوق ب{language} متاحًا بعد.",
+    "noSubtitleVideos": "لا تتوفر بعد أي فيديوهات تعتمد على الترجمة المصاحبة فقط لهذه اللغة.",
+    "dubbed": "مدبلج",
+    "subtitles": "الترجمة المصاحبة",
+    "newLabel": "جديد",
+    "fromCollection": "من {collection}",
+    "standaloneVideos": "فيديوهات مستقلة",
+    "videosFromCollection": "فيديوهات من {collection}.",
+    "standaloneDescription": "فيديوهات مستقلة بهذه اللغة.",
+    "openCollection": "افتح المجموعة"
+  },
+  "WatchHome": {
+    "pageTitle": "مشاهدة Jesus Film Project",
+    "watch": "مشاهدة",
+    "watchNow": "شاهد الآن",
+    "mutePreview": "كتم المعاينة",
+    "unmutePreview": "إلغاء كتم المعاينة",
+    "nextVideo": "الفيديو التالي",
+    "showVideo": "عرض {title}",
+    "previousVideoPreview": "معاينة الفيديو السابق",
+    "nextVideoPreview": "معاينة الفيديو التالي",
+    "featured": "مميّز",
+    "mediaCollection": "مجموعة وسائط",
+    "scrollToVideo": "انتقل إلى فيديو {title}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "اللغات",
+    "metadataDescription": "تصفح فيديوهات JesusFilm حسب اللغة.",
+    "eyebrow": "لغات المشاهدة",
+    "title": "اختر لغة",
+    "description": "استكشف اللغات حسب المنطقة أو تصفح القائمة الكاملة.",
+    "searchPlaceholder": "ابحث عن اللغات أو البلدان...",
+    "searchLabel": "ابحث عن اللغات أو البلدان",
+    "clearSearch": "مسح البحث",
+    "browse": "تصفح",
+    "browseByRegion": "تصفح حسب المنطقة والبلد",
+    "languageCount": "{count, plural, one {# لغة} other {# لغات}}",
+    "region": "المنطقة",
+    "countryLanguages": "لغات {country}",
+    "showLess": "عرض أقل",
+    "showMore": "عرض {count} أكثر",
+    "noLanguages": "لم يتم العثور على لغات",
+    "tryAnotherSearch": "جرّب عبارة بحث أخرى."
+  },
+  "WatchHistory": {
+    "metadataTitle": "سجل المشاهدة | Jesus Film Project",
+    "title": "سجل المشاهدة",
+    "loading": "جارٍ تحميل السجل",
+    "empty": "لا يوجد شيء هنا بعد",
+    "emptyDescription": "ستظهر هنا الفيديوهات التي تشاهدها أثناء تسجيل الدخول.",
+    "earlier": "سابقًا",
+    "today": "اليوم",
+    "yesterday": "أمس"
+  },
+  "AccountControl": {
+    "account": "الحساب",
+    "accountMenu": "قائمة الحساب",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "signedIn": "تم تسجيل الدخول",
+    "history": "السجل",
+    "logOut": "تسجيل الخروج"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "الصفحة غير موجودة",
+    "eyebrow": "الصفحة غير موجودة",
+    "screenReaderPrefix": "الصفحة غير موجودة:",
+    "title": "هذا المشهد غير موجود هنا.",
+    "description": "ربما نُقلت الصفحة، لكن القصة مستمرة.",
+    "actionsLabel": "إجراءات الصفحة غير الموجودة",
+    "backToWatch": "العودة إلى المشاهدة",
+    "browseVideos": "تصفح الفيديوهات"
+  },
+  "WatchFooter": {
+    "home": "الصفحة الرئيسية لـ Jesus Film Project",
+    "navigation": "تنقل التذييل",
+    "share": "مشاركة",
+    "watch": "مشاهدة",
+    "giving": "العطاء",
+    "about": "نبذة",
+    "products": "المنتجات",
+    "resources": "الموارد",
+    "partners": "الشركاء",
+    "contact": "اتصل بنا",
+    "giveNow": "تبرع الآن",
+    "resourcesVersion": "الموارد ({version})",
+    "office": "المكتب",
+    "fax": "فاكس",
+    "privacyPolicy": "سياسة الخصوصية",
+    "legalStatement": "البيان القانوني",
+    "newsletter": "اشترك في نشرتنا الإخبارية"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "مبني للرسالة العالمية",
+    "title": "الرسالة لا تتغير. أما طريقة المشاهدة فتتغير.",
+    "description": "نعيد بناء مكتبة الفيديو والأدوات من الأساس، وننقل عقودًا من العمل في الترجمة إلى المنصات التي يجتمع فيها الناس ويشاهدون ويتشاركون بالفعل.",
+    "translatedLibraryTitle": "أكثر مكتبة أفلام مترجمة في العالم",
+    "translatedLibraryDescription": "عقود من العمل في الترجمة، بدعم شركاء خدمة موثوقين، بنت مكتبة تضم آلاف المسارات اللغوية حتى يلتقي الناس بقصة يسوع باللغة التي تصل إلى أعماقهم.",
+    "trustedVoicesTitle": "نحمل الأصوات الموثوقة إلى صيغ جديدة",
+    "trustedVoicesDescription": "نعيد بناء كيفية سرد قصص الإنجيل بصريًا، مع الجمع بين الترجمات الموثوقة والصيغ الحديثة حتى تنتقل الرسالة بحرية عبر المنصات والثقافات والشاشات.",
+    "missionTeamTitle": "أكثر من مكتبة. فريق يقوده الدافع الإرسالي.",
+    "missionTeamDescription": "Jesus Film Project فريق عالمي من المترجمين والمتخصصين في الوسائط والمحررين والمبدعين، يحوّل عقودًا من الخبرة في الخدمة إلى أدوات لصانعي التلمذة في كل مكان.",
+    "buildingNext": "ما نبنيه بعد ذلك",
+    "nextStepsTitle": "منصة الخطوات التالية",
+    "nextStepsDescription": "نوصل المشاهدين بفرص عملية في رحلتهم الروحية، لمساعدتهم على اتخاذ خطوة تالية نحو الجماعة أو الكتاب المقدس أو الرسالة.",
+    "mediaLibraryTitle": "مكتبة وسائط للكرازة",
+    "mediaLibraryDescription": "مكتبة وسائط مسيحية واسعة تضم آلاف الفيديوهات والأفلام والموارد المتاحة بعدة لغات للخدمة والكرازة حول العالم.",
+    "ministryToolsTitle": "أدوات رقمية للخدمات",
+    "ministryToolsDescription": "إدارة الفيديو وتوزيع المحتوى وتفاعل الجمهور والتحليلات، مصممة لمساعدة الخدمات على الوصول إلى مزيد من الناس بفاعلية.",
+    "invitationEyebrow": "أنت مدعو",
+    "invitationDescription": "ندعو الممارسين والمبدعين والشركاء إلى الوصول المبكر. اختبر الأدوات الجديدة أولًا، وقدم ملاحظاتك، وساعد في تشكيل منتجات مصممة لعمل الرسالة الحقيقي.",
+    "betaTester": "كن مختبرًا تجريبيًا",
+    "invitationTitle": "ساعد في بناء <highlight>الجيل القادم</highlight> من أدوات الرسالة"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "مجموعة الكتاب المقدس بالفيديو",
+    "gospelRailTitle": "اكتشف القصة الكاملة",
+    "videoBibleDescription": "استكشف مجموعتنا من الفيديوهات والموارد التي تُحيي الكتاب المقدس من خلال قصص وتعاليم جذابة.",
+    "showcaseTitle": "الكتاب المقدس يُروى عبر الفيلم",
+    "adventEyebrow": "مجيء الميلاد",
+    "adventTitle": "عدّ تنازلي لمجيء الميلاد",
+    "adventDescription": "انضم إلى رحلة المجيء مع فيديو يومي يبني الترقب لعيد الميلاد، مستكشفًا الرجاء والفرح ووعد مجيء يسوع.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "مجيء BibleProject",
+    "nuaEyebrow": "سلسلة NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "سلسلة Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "دورة فيديو",
+    "journeyWithJesusTitle": "الرحلة مع يسوع",
+    "gospelsOnVideoEyebrow": "كل إنجيل، يُروى بالفيديو",
+    "scriptureAsWrittenTitle": "الكتاب المقدس، كما كُتب تمامًا",
+    "merryChristmas": "ميلاد مجيد!",
+    "daysUntilChristmas": "{count, plural, zero {لم يتبقَّ أي يوم حتى عيد الميلاد} one {بقي يوم واحد حتى عيد الميلاد} two {بقي يومان حتى عيد الميلاد} few {بقي # أيام حتى عيد الميلاد} many {بقي # يومًا حتى عيد الميلاد} other {بقي # يوم حتى عيد الميلاد}}"
+  },
+  "Feedback": {
+    "openForm": "افتح نموذج الملاحظات",
+    "label": "الملاحظات",
+    "couldNotLoad": "تعذّر تحميل نموذج الملاحظات.",
+    "loadingForm": "جارٍ تحميل نموذج الملاحظات…",
+    "retry": "إعادة المحاولة",
+    "openFormShort": "افتح النموذج",
+    "cancel": "إلغاء",
+    "title": "ملاحظات النسخة التجريبية",
+    "description": "شارك ما يعمل جيدًا وما يمكننا تحسينه. هذا النموذج مقدّم من Google.",
+    "openInNewTab": "افتح النموذج في علامة تبويب جديدة",
+    "closeForm": "إغلاق نموذج الملاحظات",
+    "loadingGoogleForm": "جارٍ تحميل نموذج Google…",
+    "iframeTitle": "إرسال ملاحظات النسخة التجريبية"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "شاهد الفيلم القصير",
+    "actions": {
+      "joinUs": "انضم إلينا",
+      "shareMission": "شارك في رسالتنا"
+    },
+    "welcomeStart": {
+      "label": "الإيمان والكتاب المقدس",
+      "title": "اختياراتنا من فيديوهات اليوم",
+      "description": "محتوى فيديو متمحور حول الإيمان من مكتبتنا ليُلهمك ويتحداك ويثير التفكير."
+    },
+    "welcomeMorning": {
+      "label": "إلهام الصباح",
+      "title": "صباح الخير! لحظات اليوم من الكتاب المقدس بانتظارك.",
+      "description": "ابدأ يومك بلحظات مشجعة من الكتاب المقدس صُممت لتُلهمك وترفع روحك."
+    },
+    "welcomeAfternoon": {
+      "label": "إلهام بعد الظهر",
+      "title": "مساء الخير! لحظات من الكتاب المقدس ليومك.",
+      "description": "محتوى مشجع من الكتاب المقدس مناسب لاستراحتك بعد الظهر أو لمزيد من الإلهام."
+    },
+    "welcomeEvening": {
+      "label": "إلهام المساء",
+      "title": "مساء الخير! اختم يومك بلحظات من الكتاب المقدس.",
+      "description": "لحظات هادئة من الكتاب المقدس تساعدك على التأمل وتجد فيها الراحة مع انتهاء يومك."
+    },
+    "joinUs": {
+      "label": "انضم إلينا",
+      "title": "المليارات يبحثون",
+      "description": "الحصاد هنا. انضموا إلينا ونحن نشارك الإنجيل مع العالم باستخدام الوسائط الرقمية."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "لننطلق معًا",
+      "title": "نروي قصة يسوع معًا",
+      "description": "حتى يسمعوا محبة يسوع ويروها بلغتهم، حيث هم بالضبط."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "تطابق بنسبة {percent}٪",
+    "none": "لم يتم العثور على فيديوهات مقترحة لهذا الفيديو بهذه اللغة."
+  },
+  "BetaTesterModal": {
+    "title": "كن مختبرًا تجريبيًا",
+    "trigger": "كن مختبرًا تجريبيًا",
+    "loadFailed": "حدث خطأ ما.",
+    "loading": "جارٍ التحميل...",
+    "openFormNewTab": "افتح النموذج في علامة تبويب جديدة",
+    "close": "إغلاق",
+    "iframeTitle": "كن مختبرًا تجريبيًا"
   }
 }

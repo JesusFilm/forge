@@ -123,6 +123,28 @@ export type RecordWatchSearchTraceInput = {
   retentionHealthy?: boolean
 }
 
+export type AdminVideoLibrarySearchTraceClient =
+  | "experience-editor-video-picker"
+  | "experience-editor-video-carousel-picker"
+  | "experience-editor-media-collection-picker"
+
+export type RecordAdminVideoLibrarySearchTraceInput = {
+  query: string
+  locale: string
+  client: AdminVideoLibrarySearchTraceClient
+  response?: WatchSearchResponse | null
+  resultIds?: readonly string[]
+  hydratedResultCount?: number
+  targetLanguageSlug?: string | null
+  startedAt: Date
+  completedAt: Date
+  outcome?: SearchTraceOutcomeLabel
+  traceClass?: string | null
+  now?: Date
+  timeoutMs?: number
+  retentionHealthy?: boolean
+}
+
 const TRACE_RECORD_TIMEOUT_MS = 250
 const DEFAULT_SAMPLE_LIMIT = 50
 const MAX_SAMPLE_LIMIT = 100
@@ -310,6 +332,60 @@ function watchSearchTraceMetadata(
     },
     laneStatuses: response.laneStatuses.map(safeLaneStatusMetadata),
     results: response.results.slice(0, 50).map(safeResultMetadata),
+  }
+}
+
+function safeTraceTokens(values: readonly string[] | undefined): string[] {
+  if (!values?.length) return []
+  return values
+    .flatMap((value) => {
+      const normalized = clampString(value, 128)
+      return /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(normalized)
+        ? [normalized]
+        : []
+    })
+    .slice(0, 50)
+}
+
+function normalizeAdminVideoLibrarySearchClient(
+  value: AdminVideoLibrarySearchTraceClient,
+): AdminVideoLibrarySearchTraceClient {
+  if (
+    value === "experience-editor-media-collection-picker" ||
+    value === "experience-editor-video-carousel-picker" ||
+    value === "experience-editor-video-picker"
+  ) {
+    return value
+  }
+  return "experience-editor-video-picker"
+}
+
+function adminVideoLibraryTraceMetadata(
+  input: RecordAdminVideoLibrarySearchTraceInput,
+): Prisma.InputJsonObject {
+  const response = input.response ?? null
+  const client = normalizeAdminVideoLibrarySearchClient(input.client)
+  const resultIds =
+    input.resultIds ??
+    response?.results
+      .filter((result) => result.type === "video")
+      .map((result) => result.id) ??
+    []
+
+  return {
+    version: "admin-video-library-search/v1",
+    client,
+    requestId: response?.requestId ?? null,
+    queryLength: input.query.length,
+    targetLanguageSlug:
+      input.targetLanguageSlug ??
+      response?.languageInterpretation.targetLanguageSlug ??
+      null,
+    resultTypes: ["video"],
+    resultCount: response?.results.length ?? resultIds.length,
+    hydratedResultCount: input.hydratedResultCount ?? null,
+    degraded: response?.degraded ?? input.outcome === "degraded",
+    resultIds: safeTraceTokens(resultIds),
   }
 }
 
@@ -524,6 +600,37 @@ export async function recordWatchSearchTraceSafely(
       startedAt: input.startedAt,
       completedAt: input.completedAt,
       metadata: watchSearchTraceMetadata(input.input, response),
+      now: input.now,
+      timeoutMs: input.timeoutMs,
+      retentionHealthy: input.retentionHealthy,
+    },
+    prisma,
+  )
+}
+
+export async function recordAdminVideoLibrarySearchTraceSafely(
+  input: RecordAdminVideoLibrarySearchTraceInput,
+  prisma: PrismaClient = defaultPrisma,
+): Promise<SearchTraceSafeRecordResult> {
+  const response = input.response ?? null
+  const client = normalizeAdminVideoLibrarySearchClient(input.client)
+  const resultCount = response?.results.length ?? input.resultIds?.length ?? 0
+  const outcome = input.outcome ?? (response?.degraded ? "degraded" : "success")
+
+  return recordSearchTraceSafely(
+    {
+      requestId: response?.requestId,
+      query: input.query,
+      locale: input.locale,
+      routeSource: "graphql",
+      requestedMode: client,
+      searchMode: response?.searchMode ?? "admin-video-library",
+      resultCount,
+      outcome,
+      traceClass: input.traceClass ?? "none",
+      startedAt: input.startedAt,
+      completedAt: input.completedAt,
+      metadata: adminVideoLibraryTraceMetadata(input),
       now: input.now,
       timeoutMs: input.timeoutMs,
       retentionHealthy: input.retentionHealthy,

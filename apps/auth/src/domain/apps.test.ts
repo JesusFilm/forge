@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   ADMIN_APP_SEED,
+  ADMIN_MCP_APP_KEY,
+  ADMIN_MCP_APP_SEED,
   CHAT_APP_KEY,
   CHAT_APP_SEED,
   FIRST_PARTY_APP_SEEDS,
@@ -21,6 +23,7 @@ describe("first-party app seeds", () => {
       WEB_APP_KEY,
       MASTRA_STUDIO_APP_KEY,
       CHAT_APP_KEY,
+      ADMIN_MCP_APP_KEY,
     ])
     expect(MANAGER_APP_SEED).toEqual(
       expect.objectContaining({
@@ -113,6 +116,62 @@ describe("first-party app seeds", () => {
       ]),
     )
     expect(new Set(clientIds).size).toBe(clientIds.length)
+  })
+
+  it("registers Admin MCP OAuth clients with trusted locale factory scopes", () => {
+    expect(ADMIN_MCP_APP_SEED).toEqual(
+      expect.objectContaining({
+        key: "admin-mcp",
+        displayName: "Jesus Film Admin MCP",
+        trustTier: "first_party",
+        ownerType: "jesus_film",
+      }),
+    )
+    expect(ADMIN_MCP_APP_SEED.environments.map((env) => env.key)).toEqual([
+      "local",
+      "preview",
+      "staging",
+      "production",
+    ])
+    expect(ADMIN_MCP_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "local",
+          clientId: "jfp_admin_mcp_local",
+          redirectUris: ["http://localhost:3003/mcp/oauth/callback"],
+          postLogoutRedirectUris: [
+            "http://localhost:3003/dashboard/experiences",
+          ],
+          allowedOrigins: ["http://localhost:3003"],
+          defaultScopes: expect.arrayContaining([
+            "openid",
+            "profile:read",
+            "email:read",
+            "membership:read",
+            "experience:read",
+            "experience:locale:create",
+            "experience:locale:update",
+            "experience:locale:validate",
+            "media:read",
+            "video:read",
+            "bible:read",
+            "experience:publish",
+          ]),
+          autoApprove: true,
+        }),
+        expect.objectContaining({
+          key: "production",
+          clientId: "jfp_admin_mcp_production",
+          redirectUris: ["https://admin.jesusfilm.org/mcp/oauth/callback"],
+          postLogoutRedirectUris: [
+            "https://admin.jesusfilm.org/dashboard/experiences",
+          ],
+          allowedOrigins: ["https://admin.jesusfilm.org"],
+          defaultScopes: expect.arrayContaining(["experience:publish"]),
+          autoApprove: true,
+        }),
+      ]),
+    )
   })
 
   it("registers the Chat OAuth clients for local development and production", () => {

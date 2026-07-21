@@ -20,7 +20,7 @@ import {
   type ShowcaseDubInput,
 } from "./languageRotation"
 import { CREDITS_TAIL_SECONDS } from "./sourceResolution"
-import type { ExcerptWindow } from "./types"
+import type { ExcerptWindow, ShowcaseStream } from "./types"
 
 /** English's unique language slug — exact identity, never a bcp47 prefix (en-nai collides). */
 const ENGLISH_SLUG = "english"
@@ -53,6 +53,22 @@ export type ShowcaseHop = {
 
 type SlugBearingDub = ReturnType<typeof playableDubs>[number] & {
   languageSlug: string
+}
+
+/**
+ * Project one hop onto the player's stream contract. Shared by the shell's current-hop
+ * projection and its next-hop preload, so the two can never drift (the ReelPlayer
+ * matches them by hopHandoff's sameHopStream identity).
+ */
+export function hopToStream(hop: ShowcaseHop): ShowcaseStream {
+  return {
+    hls: hop.hls,
+    languageSlug: hop.languageSlug,
+    languageName: hop.languageName,
+    muxPlaybackId: hop.muxPlaybackId,
+    window: hop.window,
+    claimsLanguage: true,
+  }
 }
 
 /** Fisher-Yates over an injected rng; clamps j so a boundary rng (>=1) can't index past the array. */

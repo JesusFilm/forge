@@ -324,6 +324,217 @@ describe("LanguageCombobox", () => {
     }
   })
 
+  it("uses the keyboard-adjusted visual viewport to place and size the popover", () => {
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(
+      window,
+      "visualViewport",
+    )
+    const visualViewport = Object.assign(new EventTarget(), {
+      height: 360,
+      offsetTop: 120,
+    }) as VisualViewport
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: visualViewport,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 416,
+            height: 56,
+            left: 20,
+            right: 380,
+            top: 360,
+            width: 360,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 360, width: 360 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.getAttribute("data-placement")).toBe("above")
+      expect(popover?.style.top).toBe("144px")
+      expect(listbox.style.maxHeight).toBe("143px")
+    } finally {
+      if (originalVisualViewport) {
+        Object.defineProperty(window, "visualViewport", originalVisualViewport)
+      } else {
+        Reflect.deleteProperty(window, "visualViewport")
+      }
+    }
+  })
+
+  it("recalculates open popover geometry when the visual viewport changes", () => {
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(
+      window,
+      "visualViewport",
+    )
+    const visualViewport = Object.assign(new EventTarget(), {
+      height: 800,
+      offsetTop: 0,
+    }) as VisualViewport
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: visualViewport,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 356,
+            height: 56,
+            left: 20,
+            right: 380,
+            top: 300,
+            width: 360,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 360, width: 360 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.getAttribute("data-placement")).toBe("below")
+      expect(popover?.style.top).toBe("364px")
+      expect(listbox.style.maxHeight).toBe("288px")
+
+      act(() => {
+        Object.assign(visualViewport, { height: 400 })
+        visualViewport.dispatchEvent(new Event("resize"))
+      })
+      expect(popover?.getAttribute("data-placement")).toBe("above")
+      expect(popover?.style.top).toBe("24px")
+      expect(listbox.style.maxHeight).toBe("203px")
+
+      act(() => {
+        Object.assign(visualViewport, { offsetTop: 100 })
+        visualViewport.dispatchEvent(new Event("scroll"))
+      })
+      expect(popover?.style.top).toBe("124px")
+      expect(listbox.style.maxHeight).toBe("103px")
+    } finally {
+      if (originalVisualViewport) {
+        Object.defineProperty(window, "visualViewport", originalVisualViewport)
+      } else {
+        Reflect.deleteProperty(window, "visualViewport")
+      }
+    }
+  })
+
+  it("recalculates from window.innerHeight when visualViewport is unavailable", () => {
+    const originalInnerHeight = window.innerHeight
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(
+      window,
+      "visualViewport",
+    )
+    Reflect.deleteProperty(window, "visualViewport")
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 356,
+            height: 56,
+            left: 20,
+            right: 380,
+            top: 300,
+            width: 360,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 360, width: 360 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.getAttribute("data-placement")).toBe("below")
+      expect(listbox.style.maxHeight).toBe("288px")
+
+      act(() => {
+        Object.defineProperty(window, "innerHeight", {
+          configurable: true,
+          value: 400,
+        })
+        window.dispatchEvent(new Event("resize"))
+      })
+      expect(popover?.getAttribute("data-placement")).toBe("above")
+      expect(popover?.style.top).toBe("24px")
+      expect(listbox.style.maxHeight).toBe("203px")
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+      if (originalVisualViewport) {
+        Object.defineProperty(window, "visualViewport", originalVisualViewport)
+      }
+    }
+  })
+
   it("allows callers to wrap the trigger without wrapping the open popover", () => {
     act(() => {
       root.render(

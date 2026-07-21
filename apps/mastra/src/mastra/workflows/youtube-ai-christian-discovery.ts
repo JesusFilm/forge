@@ -806,6 +806,10 @@ export const youtubeAiChristianDiscoveryWorkflow = createWorkflow({
     "Discover AI-generated Christian videos on YouTube via trusted channels and keyword search.",
   inputSchema: YouTubeDiscoveryWorkflowInputSchema,
   outputSchema: YouTubeDiscoveryWorkflowOutputSchema,
+  schedule: {
+    cron: "0 1 * * *",
+    timezone: "UTC",
+  },
 })
   .then(collectStep)
   .then(filterStep)

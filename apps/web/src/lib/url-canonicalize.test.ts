@@ -393,6 +393,22 @@ describe("Rule 6: language-slug alias → 307", () => {
     })
   })
 
+  it.each(["languages", "history", "videos"])(
+    "applies alias to localized %s routes",
+    (utility) => {
+      expect(
+        canonical({
+          rawPathname: `/chinese-mandarin.html/${utility}`,
+        }),
+      ).toEqual({
+        kind: "redirect",
+        pathname: `/mandarin-china.html/${utility}`,
+        status: 307,
+        cache: "short",
+      })
+    },
+  )
+
   it("does NOT apply alias to slug segment (segment 0)", () => {
     // No content slug named "chinese-mandarin", but verify shape: even if
     // it were, alias resolves only on the locale segment, not the slug.
@@ -446,6 +462,8 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/russian.html",
     "/portuguese-brazil.html",
     "/languages",
+    "/french.html/languages",
+    "/spanish-latin-american.html/history",
     "/spanish-latin-american.html/videos",
   ]
 

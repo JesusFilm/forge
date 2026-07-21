@@ -319,8 +319,8 @@ export function SiblingCarousel({
               validPendingNavigation.href === href &&
               validPendingNavigation.targetVideoDocumentId === child.documentId
             const thumbnailAlt = child.title
-              ? `${child.title} thumbnail`
-              : "Related video thumbnail"
+              ? t("thumbnailAlt", { title: child.title })
+              : t("relatedVideoThumbnail")
 
             const cardClassName = cn(
               "relative block aspect-video overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",

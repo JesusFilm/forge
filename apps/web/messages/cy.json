@@ -7,7 +7,9 @@
     "noContent": "Nid oes cynnwys ar gael.",
     "homepageMisconfigured": "Mae hafan y gwylio wedi’i ffurfweddu’n anghywir.",
     "defaultTemplateMisconfigured": "Mae’r templed gwylio diofyn wedi’i ffurfweddu’n anghywir.",
-    "authFailed": "Methu dilysu â’r gwasanaeth cynnwys. Cysylltwch â chymorth os bydd hyn yn parhau."
+    "authFailed": "Methu dilysu â’r gwasanaeth cynnwys. Cysylltwch â chymorth os bydd hyn yn parhau.",
+    "pageLoadFailed": "Aeth rhywbeth o'i le.",
+    "tryAgain": "Rhowch gynnig arall arni"
   },
   "VideosPage": {
     "title": "Pob Fideo",
@@ -22,7 +24,8 @@
     "promoHeading": "Eisiau deall y Beibl yn ddyfnach?",
     "joinBibleStudy": "Ymunwch â’n hastudiaeth Feiblaidd",
     "previousQuote": "Dyfyniad Beiblaidd blaenorol",
-    "nextQuote": "Dyfyniad Beiblaidd nesaf"
+    "nextQuote": "Dyfyniad Beiblaidd nesaf",
+    "readPassage": "Darllenwch y darn hwn yn eich Beibl."
   },
   "DownloadButton": {
     "checking": "Wrthi’n gwirio",
@@ -73,7 +76,8 @@
     "selectLanguage": "Dewis iaith",
     "searchPlaceholder": "Chwilio ieithoedd…",
     "languages": "Ieithoedd",
-    "noMatches": "Dim cyfatebiaeth"
+    "noMatches": "Dim cyfatebiaeth",
+    "notAvailable": "Ddim ar gael"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Iaith",
@@ -112,7 +116,8 @@
     "questions": "Cwestiynau Perthnasol",
     "askYours": "Gofynnwch eich un chi",
     "chatWithPerson": "Sgwrsio â pherson",
-    "askBibleQuestion": "Gofyn cwestiwn Beiblaidd"
+    "askBibleQuestion": "Gofyn cwestiwn Beiblaidd",
+    "quiz": "Cwis"
   },
   "WatchQuestionPanel": {
     "messageType": "Math o neges",
@@ -170,7 +175,8 @@
     "searchRegion": "Chwilio fideos",
     "clearSearch": "Clirio chwilio",
     "changeAudioLanguage": "Newid iaith sain",
-    "home": "Hafan JesusFilm"
+    "home": "Hafan JesusFilm",
+    "closeSearch": "Cau chwilio"
   },
   "SearchOverlay": {
     "dialogLabel": "Chwilio a phori fideos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Clirio",
     "queryLanguageDetected": "Wedi canfod {language}",
     "searchInLanguage": "Chwilio yn {language}",
-    "tryDifferentKeywordsOrLanguage": "Rhowch gynnig ar eiriau allweddol gwahanol neu ddewis iaith chwilio arall"
+    "tryDifferentKeywordsOrLanguage": "Rhowch gynnig ar eiriau allweddol gwahanol neu ddewis iaith chwilio arall",
+    "useWebsiteDefaultLanguage": "Defnyddio iaith chwilio ddiofyn y wefan",
+    "removeLanguage": "Tynnu {language}",
+    "browseMode": "Modd pori chwilio"
   },
   "HeroPlayer": {
     "playWithSound": "Gwylio nawr",
-    "tapToUnmute": "Tapio i ddad-distewi"
+    "tapToUnmute": "Tapio i ddad-distewi",
+    "nextEpisode": "Pennod Nesaf"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Wrthi’n llwytho cynnwys"
+    "loadingContent": "Wrthi’n llwytho cynnwys",
+    "loadingVideo": "Wrthi’n llwytho fideo"
   },
   "VideoLabels": {
     "video": "Fideo",
@@ -223,7 +234,8 @@
     "series": "Cyfres",
     "collection": "Casgliad",
     "trailer": "Trelar",
-    "behindTheScenes": "Y Tu Ôl i’r Llwyfan"
+    "behindTheScenes": "Y Tu Ôl i’r Llwyfan",
+    "chapter": "Pennod"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} o {total}",
@@ -235,11 +247,252 @@
     "noImage": "Dim delwedd",
     "playingNow": "Yn chwarae nawr",
     "previousChapter": "Pennod flaenorol",
-    "nextChapter": "Pennod nesaf"
+    "nextChapter": "Pennod nesaf",
+    "thumbnailAlt": "Mân-lun {title}",
+    "relatedVideoThumbnail": "Mân-lun fideo cysylltiedig"
   },
   "SearchResultCard": {
     "experience": "Profiad",
     "episodeCount": "{count, plural, one {# episod} other {# episodau}}",
     "thumbnailAlt": "Mân-lun fideo"
+  },
+  "Feedback": {
+    "openForm": "Agor ffurflen adborth",
+    "label": "Adborth",
+    "couldNotLoad": "Doedd dim modd llwytho’r ffurflen adborth.",
+    "loadingForm": "Wrthi’n llwytho’r ffurflen adborth…",
+    "retry": "Ceisio eto",
+    "openFormShort": "Agor ffurflen",
+    "cancel": "Canslo",
+    "title": "Adborth Beta",
+    "description": "Rhannwch beth sy’n gweithio a beth allwn ei wella. Darperir y ffurflen hon gan Google.",
+    "openInNewTab": "Agor ffurflen mewn tab newydd",
+    "closeForm": "Cau’r ffurflen adborth",
+    "loadingGoogleForm": "Wrthi’n llwytho Ffurflen Google…",
+    "iframeTitle": "Cyflwyno Adborth Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Fideos Cristnogol am ddim yn {language} | Jesus Film Project",
+    "metadataDescription": "Archwiliwch ffilmiau Iesu, straeon Beiblaidd, cyfresi disgyblaeth, a fideos allgymorth gyda sain wedi’i dweud neu isdeitlau yn {language}.",
+    "heroTitle": "Fideos Cristnogol am ddim yn {language}",
+    "heroDescription": "Archwiliwch ffilmiau Iesu, straeon Beiblaidd, cyfresi disgyblaeth, a fideos allgymorth sydd ar gael yn {language}. Amlygir fideos wedi’u dybio’n llawn yn gyntaf, gyda dewisiadau isdeitlau isod.",
+    "languageCollection": "Casgliad iaith",
+    "itemCount": "{count, plural, one {# eitem} other {# eitemau}}",
+    "videoCount": "{count, plural, one {# fideo} other {# fideos}}",
+    "videosInGroups": "{videoCount, plural, one {# fideo} other {# fideos}} mewn {groupCount, plural, one {# grŵp} other {# grwpiau}}",
+    "sectionNavLabel": "Adrannau’r rhestr ieithoedd",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Newydd",
+    "videoBible": "Beibl Fideo",
+    "bibleProject": "BibleProject",
+    "sports": "Chwaraeon",
+    "collections": "Casgliadau",
+    "subtitlesOnly": "Isdeitlau yn unig",
+    "newlyAdded": "Wedi’u hychwanegu’n ddiweddar",
+    "newVideosTitle": "Fideos Cristnogol newydd yn {language}",
+    "newestFirst": "Y diweddaraf yn gyntaf",
+    "noPublishedVideos": "Ni chafwyd unrhyw fideos cyhoeddedig ar gyfer yr iaith hon eto.",
+    "bibleAndGospelFilms": "Ffilmiau’r Beibl a’r Efengyl",
+    "videoBibleCollectionsTitle": "Casgliadau Beibl Fideo {language}",
+    "videoBibleDescription": "Casgliadau sy’n canolbwyntio ar yr Ysgrythur, gan gynnwys LUMO, JESUS, Magdalena, ac Actau yn {language}.",
+    "noVideoBibleCollections": "Nid oes unrhyw gasgliadau Beibl Fideo ar gael ar gyfer yr iaith hon eto.",
+    "bibleProjectCollectionsTitle": "Casgliadau BibleProject {language}",
+    "bibleProjectDescription": "Cyfresi a hastudiaethau BibleProject sydd ar gael yn {language}.",
+    "noBibleProjectCollections": "Nid oes unrhyw gasgliadau BibleProject ar gael ar gyfer yr iaith hon eto.",
+    "sportsStories": "Storïau chwaraeon",
+    "sportsTitle": "Storïau chwaraeon ac athletwyr {language}",
+    "sportsDescription": "Storïau chwaraeon sy’n canolbwyntio ar ffydd a chasgliadau sy’n canolbwyntio ar athletwyr sydd ar gael yn {language}.",
+    "noSportsCollections": "Nid oes unrhyw gasgliadau chwaraeon na storïau athletwyr ar gael ar gyfer yr iaith hon eto.",
+    "fullyDubbed": "Wedi’u dybio’n llawn",
+    "dubbedVideosTitle": "Fideos {language} fesul casgliad",
+    "dubbedVideosDescription": "Pori fideos {language} wedi’u dybio’n llawn wedi’u grwpio gyda’u casgliad er mwyn eu canfod yn haws.",
+    "noDubbedVideos": "Nid oes unrhyw fideos wedi’u dybio’n llawn ar gael ar gyfer yr iaith hon eto.",
+    "subtitlesAvailable": "Isdeitlau ar gael",
+    "subtitlesTitle": "Fideos {language} gydag isdeitlau",
+    "subtitlesDescription": "Mae’r fideos hyn yn cynnwys isdeitlau {language} pan nad yw sain llafar {language} ar gael eto.",
+    "noSubtitleVideos": "Nid oes unrhyw fideos isdeitlau yn unig ar gael ar gyfer yr iaith hon eto.",
+    "dubbed": "Wedi’i ddybio",
+    "subtitles": "Isdeitlau",
+    "newLabel": "Newydd",
+    "fromCollection": "O {collection}",
+    "standaloneVideos": "Fideos annibynnol",
+    "videosFromCollection": "Fideos o {collection}.",
+    "standaloneDescription": "Fideos annibynnol yn yr iaith hon.",
+    "openCollection": "Agor y casgliad"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch Jesus Film Project",
+    "watch": "Gwylio",
+    "watchNow": "Gwylio Nawr",
+    "mutePreview": "Distewi rhagolwg",
+    "unmutePreview": "Dad-distewi rhagolwg",
+    "nextVideo": "Fideo nesaf",
+    "featured": "Dan sylw",
+    "showVideo": "Dangos {title}",
+    "previousVideoPreview": "Rhagolwg fideo blaenorol",
+    "nextVideoPreview": "Rhagolwg fideo nesaf",
+    "mediaCollection": "Casgliad cyfryngau",
+    "scrollToVideo": "Sgrolio i fideo {title}"
+  },
+  "WatchFooter": {
+    "home": "Hafan Jesus Film Project",
+    "navigation": "Llywio’r troedyn",
+    "share": "Rhannu",
+    "watch": "Gwylio",
+    "giving": "Rhoi",
+    "about": "Amdanom ni",
+    "products": "Cynhyrchion",
+    "resources": "Adnoddau",
+    "partners": "Partneriaid",
+    "contact": "Cysylltu",
+    "giveNow": "Rhoi Nawr",
+    "resourcesVersion": "Adnoddau ({version})",
+    "office": "Swyddfa",
+    "fax": "Ffacs",
+    "privacyPolicy": "Polisi Preifatrwydd",
+    "legalStatement": "Datganiad Cyfreithiol",
+    "newsletter": "Cofrestrwch ar gyfer ein cylchlythyr"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Wedi’i adeiladu ar gyfer cenhadaeth fyd-eang",
+    "title": "Nid yw’r neges yn newid. Mae’r ffordd y mae pobl yn gwylio yn newid.",
+    "description": "Rydym yn ailadeiladu ein llyfrgell fideo a’n hoffer o’r gwaelod i fyny, gan ymrwymo degawdau o waith cyfieithu i’r llwyfannau lle mae pobl eisoes yn ymgynnull, yn gwylio, ac yn rhannu.",
+    "translatedLibraryTitle": "Y llyfrgell ffilmiau sydd wedi’i chyfieithu fwyaf yn y byd",
+    "translatedLibraryDescription": "Mae degawdau o waith cyfieithu, a gynhaliwyd gan bartneriaid gweinidogaeth dibynadwy, wedi adeiladu llyfrgell â miloedd o draciau iaith fel y gall pobl ddod i gysylltiad â stori Iesu yn yr iaith sy’n eu cyrraedd yn ddyfnaf.",
+    "trustedVoicesTitle": "Dod â lleisiau dibynadwy i fformatau newydd",
+    "trustedVoicesDescription": "Rydym yn ailadeiladu sut mae straeon yr efengyl yn cael eu hadrodd yn weledol, gan baru cyfieithiadau dibynadwy â fformatau modern fel y gall y neges symud yn rhydd ar draws llwyfannau, diwylliannau a sgriniau.",
+    "missionTeamTitle": "Mwy na llyfrgell. Tîm sy’n cael ei arwain gan genhadaeth.",
+    "missionTeamDescription": "Mae Jesus Film Project yn dîm byd-eang o gyfieithwyr, arbenigwyr cyfryngau, golygyddion a chrewyr sy’n troi degawdau o brofiad gweinidogaeth yn offer i wneuthurwyr disgyblion ym mhobman.",
+    "buildingNext": "Beth rydym yn ei adeiladu nesaf",
+    "nextStepsTitle": "Platfform Camau Nesaf",
+    "nextStepsDescription": "Cysylltu gwylwyr â chyfleoedd pendant ar eu taith ysbrydol, gan eu helpu i gymryd cam nesaf i mewn i gymuned, yr Ysgrythur, neu genhadaeth.",
+    "mediaLibraryTitle": "Llyfrgell Cyfryngau Efengylaidd",
+    "mediaLibraryDescription": "Llyfrgell helaeth o gyfryngau Cristnogol gyda miloedd o fideos, ffilmiau ac adnoddau ar gael mewn sawl iaith ar gyfer gweinidogaeth ac efengylu ledled y byd.",
+    "ministryToolsTitle": "Offer Digidol ar gyfer Gweinidogaethau",
+    "ministryToolsDescription": "Rheoli fideo, dosbarthu cynnwys, ymgysylltu â chynulleidfaoedd, a dadansoddeg wedi’u cynllunio i helpu gweinidogaethau i gyrraedd mwy o bobl yn effeithiol.",
+    "invitationEyebrow": "Rydych wedi’ch gwahodd",
+    "invitationTitle": "Helpwch i adeiladu <highlight>y genhedlaeth nesaf</highlight> o offer cenhadaeth",
+    "invitationDescription": "Rydym yn gwahodd ymarferwyr, creadwyr a phartneriaid i fynediad cynnar. Profwch offer newydd yn gyntaf, rhowch adborth, a helpwch i lunio cynhyrchion sydd wedi’u cynllunio ar gyfer gwaith cenhadol go iawn.",
+    "betaTester": "Dod yn brofwr beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Casgliad Beibl Fideo",
+    "gospelRailTitle": "Darganfod y stori lawn",
+    "videoBibleDescription": "Archwiliwch ein casgliad o fideos ac adnoddau sy’n dod â’r Beibl yn fyw drwy straeon a dysgeidiaethau deniadol.",
+    "showcaseTitle": "Yr Ysgrythur wedi’i Hadrodd Trwy Ffilm",
+    "adventEyebrow": "Adfent y Nadolig",
+    "adventTitle": "Cyfrif Adfent y Nadolig",
+    "adventDescription": "Ymunwch â’n taith Adfent gyda fideo dyddiol sy’n adeiladu disgwyliad ar gyfer y Nadolig, gan archwilio gobaith, llawenydd, ac addewid dyfodiad Iesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Adfent BibleProject",
+    "nuaEyebrow": "Cyfres NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Cyfres Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cwrs Fideo",
+    "journeyWithJesusTitle": "Taith gyda Iesu",
+    "gospelsOnVideoEyebrow": "Pob Efengyl, wedi’i Hadrodd ar Fideo",
+    "scriptureAsWrittenTitle": "Yr Ysgrythur, wedi’i Llefaru’n Union Fel y’i Ysgrifennwyd",
+    "merryChristmas": "Nadolig Llawen!",
+    "daysUntilChristmas": "{count, plural, one {# diwrnod tan y Nadolig} other {# diwrnod tan y Nadolig}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ieithoedd",
+    "metadataDescription": "Pori fideos JesusFilm yn ôl iaith.",
+    "eyebrow": "Ieithoedd gwylio",
+    "title": "Dewiswch iaith",
+    "description": "Archwiliwch ieithoedd yn ôl rhanbarth neu bori’r rhestr lawn.",
+    "searchPlaceholder": "Chwilio ieithoedd neu wledydd...",
+    "searchLabel": "Chwilio ieithoedd neu wledydd",
+    "clearSearch": "Clirio chwilio",
+    "browse": "Pori",
+    "browseByRegion": "Pori yn ôl rhanbarth a gwlad",
+    "languageCount": "{count, plural, one {# iaith} other {# ieithoedd}}",
+    "region": "Rhanbarth",
+    "countryLanguages": "Ieithoedd {country}",
+    "showLess": "Dangos llai",
+    "showMore": "Dangos {count} yn rhagor",
+    "noLanguages": "Dim ieithoedd wedi’u canfod",
+    "tryAnotherSearch": "Rhowch gynnig ar derm chwilio arall."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Hanes Gwylio | Jesus Film Project",
+    "title": "Hanes Gwylio",
+    "loading": "Wrthi’n llwytho hanes",
+    "empty": "Dim byd yma eto",
+    "emptyDescription": "Bydd fideos a wyliwch tra byddwch wedi’ch mewngofnodi yn ymddangos yma.",
+    "earlier": "Yn gynharach",
+    "today": "Heddiw",
+    "yesterday": "Ddoe"
+  },
+  "AccountControl": {
+    "account": "Cyfrif",
+    "accountMenu": "Dewislen y cyfrif",
+    "signIn": "Mewngofnodi",
+    "signOut": "Allgofnodi",
+    "signedIn": "Wedi mewngofnodi",
+    "history": "Hanes",
+    "logOut": "Allgofnodi"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ni chafwyd hyd i’r dudalen",
+    "eyebrow": "Ni chafwyd hyd i’r dudalen",
+    "screenReaderPrefix": "Ni chafwyd hyd i’r dudalen:",
+    "title": "Nid yw’r olygfa hon yma.",
+    "description": "Mae’n bosibl bod y dudalen wedi symud, ond mae’r stori’n parhau.",
+    "actionsLabel": "Camau ar gyfer tudalen heb ei chanfod",
+    "backToWatch": "Yn ôl i Wylio",
+    "browseVideos": "Pori fideos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Gwylio ffilm fer",
+    "actions": {
+      "joinUs": "Ymunwch â ni",
+      "shareMission": "Rhannu yn ein cenhadaeth"
+    },
+    "welcomeStart": {
+      "label": "Ffydd ac Ysgrythur",
+      "title": "Dewisiadau fideo heddiw",
+      "description": "Cynnwys fideo sy’n canolbwyntio ar ffydd o’n llyfrgell i ysbrydoli, herio, a chynnau myfyrdod."
+    },
+    "welcomeMorning": {
+      "label": "Ysbrydoliaeth y bore",
+      "title": "Bore da! Mae eiliadau Beiblaidd heddiw yn eich disgwyl.",
+      "description": "Dechreuwch eich diwrnod gydag eiliadau Beiblaidd calonogol sydd wedi’u cynllunio i ysbrydoli ac i godi’ch ysbryd."
+    },
+    "welcomeAfternoon": {
+      "label": "Ysbrydoliaeth y prynhawn",
+      "title": "Prynhawn da! Eiliadau Beiblaidd ar gyfer eich diwrnod.",
+      "description": "Cynnwys Beiblaidd calonogol sy’n berffaith ar gyfer eich egwyl brynhawn neu i barhau â’r ysbrydoliaeth."
+    },
+    "welcomeEvening": {
+      "label": "Ysbrydoliaeth y nos",
+      "title": "Noswaith dda! Ymlaciwch gydag eiliadau Beiblaidd.",
+      "description": "Eiliadau Beiblaidd tawel i’ch helpu i fyfyrio a chael cysur wrth i’ch diwrnod ddirwyn i ben."
+    },
+    "joinUs": {
+      "label": "Ymunwch â ni",
+      "title": "Mae biliynau yn chwilio",
+      "description": "Mae’r cynhaeaf yma. Ymunwch â ni wrth i ni rannu’r efengyl â’r byd drwy gyfryngau digidol."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Awn gyda’n gilydd",
+      "title": "Adrodd stori Iesu, gyda’n gilydd",
+      "description": "Fel y gallant glywed a gweld cariad Iesu yn eu hiaith eu hunain, yn union lle maent."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% yn cyfateb",
+    "none": "Ni chanfuwyd unrhyw argymhellion ar gyfer y fideo hwn yn yr iaith hon."
+  },
+  "BetaTesterModal": {
+    "title": "Dod yn brofwr beta",
+    "trigger": "Dod yn brofwr beta",
+    "loadFailed": "Aeth rhywbeth o'i le.",
+    "loading": "Wrthi’n llwytho...",
+    "openFormNewTab": "Agor ffurflen mewn tab newydd",
+    "close": "Cau",
+    "iframeTitle": "Dod yn brofwr beta"
   }
 }

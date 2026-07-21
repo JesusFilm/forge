@@ -29,6 +29,10 @@ vi.mock("next/image", () => ({
 }))
 
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
+import {
+  WatchModalActivityProvider,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
 
 const baseFragment = {
   t: "videoCarousel",
@@ -72,6 +76,22 @@ afterEach(async () => {
 })
 
 describe("CarouselVideo", () => {
+  function ModalOwner({ active }: { active: boolean }) {
+    useWatchModalActivity(active, { releaseDelayMs: 0 })
+    return null
+  }
+
+  async function renderWithModal(active: boolean) {
+    await act(async () => {
+      root.render(
+        <WatchModalActivityProvider>
+          <ModalOwner active={active} />
+          <CarouselVideo data={baseFragment} />
+        </WatchModalActivityProvider>,
+      )
+    })
+  }
+
   it("mounts via Mux Video for the selected item", async () => {
     await act(async () => {
       root.render(<CarouselVideo data={baseFragment} />)
@@ -100,10 +120,10 @@ describe("CarouselVideo", () => {
     })
 
     const selected = container.querySelector<HTMLElement>(
-      '[role="button"][aria-label="Play First"]',
+      '[role="button"][aria-label="Show First"]',
     )
     const inactive = container.querySelector<HTMLElement>(
-      '[role="button"][aria-label="Play Second"]',
+      '[role="button"][aria-label="Show Second"]',
     )
     const selectedInteractionFrame = selected?.querySelector<HTMLElement>(
       '[data-testid="carousel-video-thumbnail-frame"]',
@@ -140,5 +160,25 @@ describe("CarouselVideo", () => {
         '[data-testid="carousel-video-selected-frame"]',
       )?.className,
     ).toContain("opacity-100")
+  })
+
+  it("pauses its authored carousel media when modal activity opens", async () => {
+    await renderWithModal(false)
+    const video = container.querySelector("video") as HTMLVideoElement
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      value: false,
+      writable: true,
+    })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+
+    await renderWithModal(true)
+
+    expect(pause).toHaveBeenCalledOnce()
   })
 })

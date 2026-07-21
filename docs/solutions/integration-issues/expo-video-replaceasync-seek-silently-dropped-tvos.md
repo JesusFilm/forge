@@ -32,6 +32,8 @@ apps/tv Showcase Mode plays a reel of short curated excerpts. Each excerpt is a 
 
 The reel uses one long-lived player and swaps its source with `replaceAsync` (a second player is expo-video's AVPlayerViewController leak trigger — see the header of `apps/tv/src/components/showcaseMode/ReelPlayer.tsx:1`). Immediately after the swap resolves, the code seeks the player to the window start:
 
+> **Superseded in part (2026-07-21):** the single-player framing above describes the pre-`fix/tv-showcase-seamless-hop` (PR #1632) reel. The leak trigger is player/view CHURN, not a second fixed instance — the reel now runs TWO long-lived players so language hops flip between preloaded dubs, while ordinary excerpt boundaries keep the single-swap-behind-the-poster shape described here. The dropped-seek heal this doc teaches is UNCHANGED and now guards two choke points (the live window seek below, and the standby's preload park seek). See `docs/solutions/ui-bugs/tv-showcase-dual-player-crossfade-dub-hop-blanking.md`.
+
 ```ts
 // ReelPlayer.tsx — the swap effect, ~line 300
 await player.replaceAsync(target?.hls ?? null)

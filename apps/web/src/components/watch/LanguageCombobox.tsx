@@ -256,7 +256,14 @@ export function LanguageCombobox({
       if (!trigger) return
 
       const triggerRect = trigger.getBoundingClientRect()
-      const viewportHeight = window.innerHeight
+      // iOS keeps the layout viewport tall while the software keyboard
+      // shrinks and may shift the visual viewport. Measure the portion the
+      // viewer can actually see so the search field and results never land
+      // behind the keyboard or browser chrome.
+      const visualViewport = window.visualViewport
+      const viewportTop = visualViewport?.offsetTop ?? 0
+      const viewportBottom =
+        viewportTop + (visualViewport?.height ?? window.innerHeight)
       const measuredSearchHeight =
         searchFrameRef.current?.getBoundingClientRect().height ?? 0
       const searchHeight =
@@ -265,12 +272,15 @@ export function LanguageCombobox({
           : POPOVER_SEARCH_FALLBACK_HEIGHT_PX
       const desiredPopoverHeight = searchHeight + LISTBOX_MAX_HEIGHT_PX
       const spaceBelow =
-        viewportHeight -
+        viewportBottom -
         triggerRect.bottom -
         POPOVER_GAP_PX -
         POPOVER_VIEWPORT_PADDING_PX
       const spaceAbove =
-        triggerRect.top - POPOVER_GAP_PX - POPOVER_VIEWPORT_PADDING_PX
+        triggerRect.top -
+        viewportTop -
+        POPOVER_GAP_PX -
+        POPOVER_VIEWPORT_PADDING_PX
       const nextPlacement =
         spaceBelow < desiredPopoverHeight && spaceAbove > spaceBelow
           ? "above"
@@ -292,7 +302,7 @@ export function LanguageCombobox({
         top:
           nextPlacement === "above"
             ? Math.max(
-                POPOVER_VIEWPORT_PADDING_PX,
+                viewportTop + POPOVER_VIEWPORT_PADDING_PX,
                 triggerRect.top - POPOVER_GAP_PX - estimatedPopoverHeight,
               )
             : triggerRect.bottom + POPOVER_GAP_PX,
@@ -301,13 +311,22 @@ export function LanguageCombobox({
     }
 
     updatePopoverLayout()
+    const visualViewport = window.visualViewport
     window.addEventListener("resize", updatePopoverLayout, { passive: true })
+    visualViewport?.addEventListener("resize", updatePopoverLayout, {
+      passive: true,
+    })
+    visualViewport?.addEventListener("scroll", updatePopoverLayout, {
+      passive: true,
+    })
     document.addEventListener("scroll", updatePopoverLayout, {
       capture: true,
       passive: true,
     })
     return () => {
       window.removeEventListener("resize", updatePopoverLayout)
+      visualViewport?.removeEventListener("resize", updatePopoverLayout)
+      visualViewport?.removeEventListener("scroll", updatePopoverLayout)
       document.removeEventListener("scroll", updatePopoverLayout, {
         capture: true,
       })
@@ -672,7 +691,7 @@ export function LanguageCombobox({
                             {optionDisabled && !option.chipLabel ? (
                               <span className="sr-only">
                                 {" "}
-                                {option.chipLabel ?? "Not available"}
+                                {option.chipLabel ?? t("notAvailable")}
                               </span>
                             ) : null}
                           </button>

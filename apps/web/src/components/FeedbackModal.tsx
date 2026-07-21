@@ -1,6 +1,7 @@
 "use client"
 
 import { ExternalLink, Loader2, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useEffect, useState } from "react"
 
 import {
@@ -26,6 +27,7 @@ export function FeedbackModal({
   onOpenChange,
   onReady,
 }: FeedbackModalProps) {
+  const t = useTranslations("Feedback")
   const [iframeLoaded, setIframeLoaded] = useState(false)
 
   useEffect(() => {
@@ -42,11 +44,10 @@ export function FeedbackModal({
       >
         <header className="relative shrink-0 border-b border-white/10 px-5 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-4 pr-16 sm:px-6 sm:pt-5 sm:pr-20">
           <DialogTitle className="text-xl leading-tight font-semibold text-white sm:text-2xl">
-            Beta Feedback
+            {t("title")}
           </DialogTitle>
           <DialogDescription className="mt-1.5 max-w-xl text-sm leading-relaxed text-stone-300">
-            Share what is working and what we can improve. This form is provided
-            by Google.
+            {t("description")}
           </DialogDescription>
           <a
             href={FEEDBACK_FALLBACK_URL}
@@ -55,11 +56,11 @@ export function FeedbackModal({
             data-testid="feedback-fallback-link"
             className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-stone-200 underline decoration-stone-500 underline-offset-4 transition hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
           >
-            Open form in a new tab
+            {t("openInNewTab")}
             <ExternalLink aria-hidden className="size-4" />
           </a>
           <DialogClose
-            aria-label="Close feedback form"
+            aria-label={t("closeForm")}
             data-testid="feedback-modal-close"
             className="absolute top-[calc(.75rem+env(safe-area-inset-top,0px))] right-3 inline-flex size-11 cursor-pointer items-center justify-center rounded-full text-stone-200 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none sm:top-4 sm:right-4"
           >
@@ -76,14 +77,14 @@ export function FeedbackModal({
             >
               <div className="flex items-center gap-3 text-sm font-semibold">
                 <Loader2 aria-hidden className="size-5 animate-spin" />
-                Loading Google Form…
+                {t("loadingGoogleForm")}
               </div>
             </div>
           ) : null}
           {open ? (
             <iframe
               src={FEEDBACK_EMBED_URL}
-              title="Submit Beta Feedback"
+              title={t("iframeTitle")}
               loading="lazy"
               sandbox="allow-forms allow-scripts allow-same-origin"
               referrerPolicy="no-referrer"

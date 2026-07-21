@@ -118,6 +118,10 @@ export const adminMessages = {
           label: "Partner API keys",
           description: "Issued partner bearer tokens and revocation status.",
         },
+        mcp: {
+          label: "MCP",
+          description: "Admin MCP endpoints, OAuth scopes, and agent skills.",
+        },
         settings: {
           label: "Settings",
           description: "Keys, providers, and environment controls.",
@@ -1236,6 +1240,11 @@ export const adminMessages = {
         partnerKeys: {
           label: "Claves API de socios",
           description: "Tokens portadores emitidos y estado de revocacion.",
+        },
+        mcp: {
+          label: "MCP",
+          description:
+            "Endpoints MCP de Admin, alcances OAuth y skills de agentes.",
         },
         settings: {
           label: "Configuracion",

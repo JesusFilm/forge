@@ -167,7 +167,7 @@ describe("MediaCollection VideoCard href", () => {
     })
 
     const card = container.querySelector<HTMLElement>(
-      '[aria-label="VideoCard"]',
+      '[data-testid="VideoCard"]',
     )
     const outline = container.querySelector<HTMLElement>(
       '[data-testid="media-collection-card-hover-outline"]',
@@ -212,7 +212,7 @@ describe("MediaCollection VideoCard href", () => {
     expect(preview).not.toBeNull()
     expect(preview?.getAttribute("data-active")).toBe("false")
 
-    const card = container.querySelector('a[aria-label="VideoCard"]')
+    const card = container.querySelector('a[data-testid="VideoCard"]')
     act(() => {
       card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
     })
@@ -249,7 +249,7 @@ describe("MediaCollection VideoCard href", () => {
       )
     })
 
-    const card = container.querySelector('a[aria-label="VideoCard"]')
+    const card = container.querySelector('a[data-testid="VideoCard"]')
     act(() => {
       card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
     })
@@ -274,7 +274,7 @@ describe("MediaCollection VideoCard href", () => {
     })
 
     const link = container.querySelector<HTMLAnchorElement>(
-      'a[aria-label="VideoCard"]',
+      'a[data-testid="VideoCard"]',
     )
     expect(link).not.toBeNull()
     expect(link?.getAttribute("href")).toBe(
@@ -290,8 +290,8 @@ describe("MediaCollection VideoCard href", () => {
     })
 
     // Empty videoSlug → href is undefined → wrapper is a <div>, not an <a>.
-    expect(container.querySelector('a[aria-label="VideoCard"]')).toBeNull()
-    const card = container.querySelector('div[aria-label="VideoCard"]')
+    expect(container.querySelector('a[data-testid="VideoCard"]')).toBeNull()
+    const card = container.querySelector('div[data-testid="VideoCard"]')
     expect(card).not.toBeNull()
     expect(card?.className).not.toContain("pointer-events-none")
     expect(card?.className).not.toContain("group")
@@ -327,7 +327,7 @@ describe("MediaCollection VideoCard href", () => {
     })
 
     const link = container.querySelector<HTMLAnchorElement>(
-      'a[aria-label="VideoCard"]',
+      'a[data-testid="VideoCard"]',
     )
     expect(link?.getAttribute("href")).toBe(
       "/watch/the-gospel-of-luke.html/english.html",

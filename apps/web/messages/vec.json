@@ -7,7 +7,9 @@
     "noContent": "No xe disponibile nissun contenù.",
     "homepageMisconfigured": "La pagina iniziale del guardàr no l’è configurà ben.",
     "defaultTemplateMisconfigured": "El modèl predefinìo del guardàr no l’è configurà ben.",
-    "authFailed": "No se riesse a autenticarse col servizio de contenuti. Se el problema continua, contata el supporto."
+    "authFailed": "No se riesse a autenticarse col servizio de contenuti. Se el problema continua, contata el supporto.",
+    "pageLoadFailed": "Qualcosa no ga funzionà.",
+    "tryAgain": "Prova ancora"
   },
   "VideosPage": {
     "title": "Tuti i video",
@@ -22,7 +24,8 @@
     "promoHeading": "Vuto capir la Bibia più in profondità?",
     "joinBibleStudy": "Uniteve al nostro studio biblico",
     "previousQuote": "Qotazion biblica precedente",
-    "nextQuote": "Qotazion biblica dopo"
+    "nextQuote": "Qotazion biblica dopo",
+    "readPassage": "Lezi sto passo ne la to Bibia."
   },
   "DownloadButton": {
     "checking": "Controlo",
@@ -73,7 +76,8 @@
     "selectLanguage": "Seleziona lengua",
     "searchPlaceholder": "Serca lengue…",
     "languages": "Lengue",
-    "noMatches": "Nissun risultato"
+    "noMatches": "Nissun risultato",
+    "notAvailable": "No disponibile"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lengua",
@@ -112,7 +116,8 @@
     "questions": "Domande collegate",
     "askYours": "Fà la to domanda",
     "chatWithPerson": "Parla con una persona",
-    "askBibleQuestion": "Fà una domanda de Bibia"
+    "askBibleQuestion": "Fà una domanda de Bibia",
+    "quiz": "Questionario"
   },
   "WatchQuestionPanel": {
     "messageType": "Tipo de messajo",
@@ -170,7 +175,8 @@
     "searchRegion": "Serca video",
     "clearSearch": "Sbara la ricerca",
     "changeAudioLanguage": "Cambia lengua de l’audio",
-    "home": "Pagina principal de JesusFilm"
+    "home": "Pagina principal de JesusFilm",
+    "closeSearch": "Sara ricerca"
   },
   "SearchOverlay": {
     "dialogLabel": "Serca e navega video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Pulisci",
     "queryLanguageDetected": "{language} rilevà",
     "searchInLanguage": "Serca in {language}",
-    "tryDifferentKeywordsOrLanguage": "Prova con altre parole clave o elije un’altra lengua de ricerca"
+    "tryDifferentKeywordsOrLanguage": "Prova con altre parole clave o elije un’altra lengua de ricerca",
+    "useWebsiteDefaultLanguage": "Usa la lengua de ricerca predefinida del sito",
+    "removeLanguage": "Rimuovi {language}",
+    "browseMode": "Modo de navigassion"
   },
   "HeroPlayer": {
     "playWithSound": "Varda adesso",
-    "tapToUnmute": "Toca par ativar el sòno"
+    "tapToUnmute": "Toca par ativar el sòno",
+    "nextEpisode": "Episodio dopo"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Cargando el contenù"
+    "loadingContent": "Cargando el contenù",
+    "loadingVideo": "Cargando el video"
   },
   "VideoLabels": {
     "video": "Filmato",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Colession",
     "trailer": "Anteprima",
-    "behindTheScenes": "Dreto le scene"
+    "behindTheScenes": "Dreto le scene",
+    "chapter": "Capìtolo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} de {total}",
@@ -235,11 +247,252 @@
     "noImage": "Nissuna imàzin",
     "playingNow": "In riproduzion adesso",
     "previousChapter": "Capìtolo precedente",
-    "nextChapter": "Capìtolo dopo"
+    "nextChapter": "Capìtolo dopo",
+    "thumbnailAlt": "Miniatura de {title}",
+    "relatedVideoThumbnail": "Miniatura del video correlà"
   },
   "SearchResultCard": {
     "experience": "Esperiença",
     "episodeCount": "{count, plural, one {# episodio} other {# episodi}}",
     "thumbnailAlt": "Miniatura del video"
+  },
+  "Feedback": {
+    "openForm": "Sonzo el formulario de feedback",
+    "label": "Pareri",
+    "couldNotLoad": "No se ga podesto cargar el formulario de feedback.",
+    "loadingForm": "Cargando el formulario de feedback…",
+    "retry": "Torna a provar",
+    "openFormShort": "Sonzo el formulario",
+    "cancel": "Anula",
+    "title": "Feedback beta",
+    "description": "Condividi ciò che funziona e ciò che podemo melhorar. Questo formulario xe fornìo da Google.",
+    "openInNewTab": "Sonzo el formulario in una nova scheda",
+    "closeForm": "Sara el formulario de feedback",
+    "loadingGoogleForm": "Cargando el formulario Google…",
+    "iframeTitle": "Invia feedback beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video cristiani gratis in {language} | Jesus Film Project",
+    "metadataDescription": "Esplora film su Gesù, storie bibliche, serie de discepolato e video de evangelizazion co audio dopià o sottotitoli in {language}.",
+    "heroTitle": "Video cristiani gratis in {language}",
+    "heroDescription": "Esplora film su Gesù, storie bibliche, serie de discepolato e video de evangelizazion disponibili in {language}. I video co dopiagio completo i vien evidenzià par primi, co le opzioni solo sottotitoli soto.",
+    "languageCollection": "Colession de lengue",
+    "itemCount": "{count, plural, one {# elemento} other {# elementi}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} in {groupCount, plural, one {# gruppo} other {# gruppi}}",
+    "sectionNavLabel": "Sezioni del inventario de lengue",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nove",
+    "videoBible": "Bibia in video",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Colessioni",
+    "subtitlesOnly": "Solo sottotitoli",
+    "newlyAdded": "Zonta de recente",
+    "newVideosTitle": "Video cristiani novi in {language}",
+    "newestFirst": "Prima i più novì",
+    "noPublishedVideos": "No xe stà trovà ancor nessun video publicà par sta lengua.",
+    "bibleAndGospelFilms": "Film biblici e del Vanzelo",
+    "videoBibleCollectionsTitle": "Colessioni de Bibia in video in {language}",
+    "videoBibleDescription": "Colessioni centrade su le Scritture, inclusi LUMO, JESUS, Magdalena e Atti, in {language}.",
+    "noVideoBibleCollections": "No xe disponibile ancor nessuna colession de Bibia in video par sta lengua.",
+    "bibleProjectCollectionsTitle": "Colessioni BibleProject in {language}",
+    "bibleProjectDescription": "Serie e studi BibleProject disponibili in {language}.",
+    "noBibleProjectCollections": "No xe disponibile ancor nessuna colession BibleProject par sta lengua.",
+    "sportsStories": "Storie sportive",
+    "sportsTitle": "Storie sportive e de atleti in {language}",
+    "sportsDescription": "Storie sportive centrade su la fede e colessioni su atleti disponibili in {language}.",
+    "noSportsCollections": "No xe disponibile ancor nessuna colession de sport o de storie de atleti par sta lengua.",
+    "fullyDubbed": "Dopià del tuto",
+    "dubbedVideosTitle": "Video in {language} par colession",
+    "dubbedVideosDescription": "Navega tra i video in {language} dopià del tuto, organizài co la so colession par trovarli più facile.",
+    "noDubbedVideos": "No xe disponibile ancor nessun video dopià del tuto par sta lengua.",
+    "subtitlesAvailable": "Sottotitoli disponibili",
+    "subtitlesTitle": "Video in {language} co i sottotitoli",
+    "subtitlesDescription": "Ste video i ga sottotitoli in {language} quando l’audio parlà in {language} no xe ancor disponibile.",
+    "noSubtitleVideos": "No xe disponibile ancor nessun video solo con sottotitoli par sta lengua.",
+    "dubbed": "Dopià",
+    "subtitles": "Sottotitoli",
+    "newLabel": "Nove",
+    "fromCollection": "Da {collection}",
+    "standaloneVideos": "Video indipendenti",
+    "videosFromCollection": "Video da {collection}.",
+    "standaloneDescription": "Video indipendenti in sta lengua.",
+    "openCollection": "Vara colession"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Guardàr",
+    "watch": "Varda",
+    "watchNow": "Varda adesso",
+    "mutePreview": "Tasa anteprima",
+    "unmutePreview": "Mete el sòno a l’anteprima",
+    "nextVideo": "Video dopo",
+    "featured": "In evidensa",
+    "showVideo": "Mostra {title}",
+    "previousVideoPreview": "Anteprima del video precedente",
+    "nextVideoPreview": "Anteprima del video dopo",
+    "mediaCollection": "Colession de media",
+    "scrollToVideo": "Scorri al video {title}"
+  },
+  "WatchFooter": {
+    "home": "Pagina principal de Jesus Film Project",
+    "navigation": "Navigassion del piè de pagina",
+    "share": "Condividi",
+    "watch": "Varda",
+    "giving": "Donazioni",
+    "about": "Informazioni",
+    "products": "Prodoti",
+    "resources": "Risorse",
+    "partners": "Parteneri",
+    "contact": "Contati",
+    "giveNow": "Fà na donaçion adesso",
+    "resourcesVersion": "Risorse ({version})",
+    "office": "Oficio",
+    "fax": "Telefax",
+    "privacyPolicy": "Politica de privacy",
+    "legalStatement": "Dichiarazion legale",
+    "newsletter": "Iscrivite a la nostra newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Fato par le missioni globali",
+    "title": "El messajo no cambia. El modo in cui la gente guarda sì.",
+    "description": "Stemo rifazendo da zero la nostra biblioteca video e i nostri strumenti, portando decenni de lavoro de traduzione su le piattaforme dove la gente già se trovi, guarda e condivide.",
+    "translatedLibraryTitle": "La biblioteca cinematografica più tradota del mondo",
+    "translatedLibraryDescription": "Decenni de lavoro de traduzione, sostegnui da partner ministeriali de fiducia, ga costruìo una biblioteca con migliaia de tracce in diverse lengue, par che la zente possa incontrar la storia de Gesù nella lengua che la toca più fondo.",
+    "trustedVoicesTitle": "Portar voci de fiducia in novi formati",
+    "trustedVoicesDescription": "Stemo rifazendo come le storie del Vanzelo xe contade in modo visivo, unendo traduzioni de fiducia co formati moderni par che el messajo possa vardar libero tra piattaforme, culture e schermi.",
+    "missionTeamTitle": "Più che una biblioteca. Un team guidà da la missione.",
+    "missionTeamDescription": "Jesus Film Project xe un team global de traduttori, specialisti dei media, editori e creatori che trasforma decenni de esperienza ministeriale in strumenti par chi fa discepolato in ogni parte del mondo.",
+    "buildingNext": "Cossa stemo costruindo adesso",
+    "nextStepsTitle": "Piattaforma Next Steps",
+    "nextStepsDescription": "Coneta i spettatori co oportunità concrete nel so percorso spirituale, aiutandoli a far el prossimo passo verso la comunità, la Scrittura o la missione.",
+    "mediaLibraryTitle": "Biblioteca de media evangelistici",
+    "mediaLibraryDescription": "Una vasta biblioteca de media cristiani co migliaia de video, film e risorse disponibili in più lengue par ministero ed evangelizazion in tuto el mondo.",
+    "ministryToolsTitle": "Strumenti digitali par i ministeri",
+    "ministryToolsDescription": "Gestione video, distribuzion de contenuti, coinvolgimento del publico e analitiche pensade par ajudar i ministeri a reacher più persone con eficacia.",
+    "invitationEyebrow": "Te sì invità",
+    "invitationTitle": "Aiuta a costruir <highlight>la prossima generazion</highlight> de strumenti par la missione",
+    "invitationDescription": "Stemo invitando operatori, creatori e partner al accesso antecipà. Prova prima i novi strumenti, da feedback e aiuta a plasmar prodoti pensai par el vero lavoro missionario.",
+    "betaTester": "Fàte beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Colession de Bibia in video",
+    "gospelRailTitle": "Descopri la storia intera",
+    "videoBibleDescription": "Esplora la nostra colession de video e risorse che porta la Bibia a la vita co storie e insegnamenti coinvolgenti.",
+    "showcaseTitle": "La Scrittura contada tramite el film",
+    "adventEyebrow": "Avvento de Nadale",
+    "adventTitle": "Conto ala rovescia de l’Avvento de Nadale",
+    "adventDescription": "Unìte al nostro percorso de Avvento co un video al giorno che crea atesa par el Nadale, esplorando la speransa, la joie e la promessa de la venuta de Gesù.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Avvento BibleProject",
+    "nuaEyebrow": "Serie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Corso in video",
+    "journeyWithJesusTitle": "Camino co Gesù",
+    "gospelsOnVideoEyebrow": "Ogni Vangelo, contà in video",
+    "scriptureAsWrittenTitle": "Le Scritture, dite proprio come xe scrite",
+    "merryChristmas": "Bon Nadale!",
+    "daysUntilChristmas": "{count, plural, one {# giorno al Nadale} other {# giorni al Nadale}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Lengue",
+    "metadataDescription": "Navega tra i video JesusFilm per lengua.",
+    "eyebrow": "Lengue da vardar",
+    "title": "Scełi una lengua",
+    "description": "Esplora le lengue par region o navega la lista completa.",
+    "searchPlaceholder": "Serca lengue o paesi...",
+    "searchLabel": "Serca lengue o paesi",
+    "clearSearch": "Sbara la ricerca",
+    "browse": "Navega",
+    "browseByRegion": "Navega par region e paese",
+    "languageCount": "{count, plural, one {# lengua} other {# lengue}}",
+    "region": "Area geografica",
+    "countryLanguages": "Lengue de {country}",
+    "showLess": "Mostra de meno",
+    "showMore": "Mostra altri {count}",
+    "noLanguages": "No xe stà trovà lengue",
+    "tryAnotherSearch": "Prova un altro termino de ricerca."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Storia de visione | Jesus Film Project",
+    "title": "Storia de visione",
+    "loading": "Cargando la storia",
+    "empty": "Ancora nissuna roba qua",
+    "emptyDescription": "I video che te vedi quando te sì conesso i comparirà qua.",
+    "earlier": "Prima",
+    "today": "Ogi",
+    "yesterday": "Ieri"
+  },
+  "AccountControl": {
+    "account": "Conto",
+    "accountMenu": "Menu del conto",
+    "signIn": "Entra",
+    "signOut": "Sòrti",
+    "signedIn": "Entrà",
+    "history": "Storia",
+    "logOut": "Disconeteve"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pagina no trovà",
+    "eyebrow": "Pagina no trovà",
+    "screenReaderPrefix": "Pagina no trovà:",
+    "title": "Sta scena no xe qua.",
+    "description": "La pagina la pol esser stà spostà, ma la storia la continua.",
+    "actionsLabel": "Azioni par pagina no trovà",
+    "backToWatch": "Torna a Guardàr",
+    "browseVideos": "Navega tra i video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Varda el cortometragio",
+    "actions": {
+      "joinUs": "Unìteve a noi",
+      "shareMission": "Condividi la nostra mission"
+    },
+    "welcomeStart": {
+      "label": "Fede e Scrittura",
+      "title": "I video de oggi",
+      "description": "Contenuti video centrài su la fede da la nostra biblioteca, par inspirar, sfidar e far nascer riflession."
+    },
+    "welcomeMorning": {
+      "label": "Inspirassion de matina",
+      "title": "Bon dì! I momenti biblici de ogi te speta.",
+      "description": "Inizia la zornada con momenti biblici che inspiren e alzen el to spirito."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirassion de dopopranzo",
+      "title": "Bon dopopranzo! Momenti biblici par la to zornada.",
+      "description": "Contenuti biblici che infonde corajo, perfeti par na pausa de dopopranzo o par continuar a ricever inspirassion."
+    },
+    "welcomeEvening": {
+      "label": "Inspirassion de sera",
+      "title": "Bonasera! Rilassite co i momenti biblici.",
+      "description": "Momenti biblici de paix par aiutarte a rifletter e trovar conforto co la zornada che se conza."
+    },
+    "joinUs": {
+      "label": "Unìteve a noi",
+      "title": "Milliardi i xe in cerca",
+      "description": "La messe xe qua. Unìteve a noi par condivider el vangelo co el mondo tramite i media digitali."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Védemo insieme",
+      "title": "Contar la storia de Gesù, insieme",
+      "description": "Cussì che i pol sentir e veder el amor de Gesù in la so lengua, proprio là dove i xe."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% de corispondenza",
+    "none": "No xe stà trovà nissun video consiglià in sta lengua."
+  },
+  "BetaTesterModal": {
+    "title": "Fàte beta tester",
+    "trigger": "Fàte beta tester",
+    "loadFailed": "Qualcosa no ga funzionà.",
+    "loading": "Cargando...",
+    "openFormNewTab": "Sonzo el formulario in una nova scheda",
+    "close": "Sara",
+    "iframeTitle": "Fàte beta tester"
   }
 }

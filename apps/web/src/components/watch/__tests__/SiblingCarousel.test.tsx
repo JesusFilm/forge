@@ -106,6 +106,8 @@ vi.mock("next-intl", () => ({
           playingNow: "Playing now",
           previousChapter: "Previous chapter",
           nextChapter: "Next chapter",
+          thumbnailAlt: `${values?.title} thumbnail`,
+          relatedVideoThumbnail: "Related video thumbnail",
         },
         VideoLabels: {
           video: "Video",
