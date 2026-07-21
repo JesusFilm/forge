@@ -4,14 +4,24 @@ title: "Per-conversation URLs"
 owner: "jian wei"
 priority: "P2"
 status: "not-started"
-start_date: "2026-07-23"
+start_date: "2026-07-28"
 duration: 2
 depends_on:
   - "feat-241"
+  - "feat-281"
 blocks: []
 tags:
   - "web"
 ---
+
+> **Re-sequenced (2026-07-21, architecture-review adjudication):** this ticket
+> now lands AFTER feat-281 (the conversation session module) and is expected
+> to be a thin URL adapter over that module's interface — the route param
+> drives selection through the session, and the no-remount/no-dropped-streams
+> requirement is a property the session already provides. Rationale + rulings:
+> `docs/handoffs/2026-07-21-chat-architecture-review-rulings.md` (Ruling 1 +
+> "feat-209 ordering"). `start_date` pushed 2026-07-23 → 2026-07-28;
+> `depends_on: feat-281` added.
 
 ## Problem
 
@@ -42,7 +52,8 @@ matching the major AI chat products.
    route reuses this resolution.
 2. `apps/chat/src/lib/use-conversations.ts` — `activeId` /
    `selectConversation` / `newConversation`; these become URL-driven for
-   signed-in users.
+   signed-in users. (Post-feat-281 these live on the `ConversationSession`
+   interface — adapt the URL layer over the session, not over the hook.)
 3. `apps/chat/src/components/shell/app-shell.tsx` — state owner wiring the
    hook to the sidebar and pane.
 4. feat-241's replay proxy route — the deep-link restore path; this ticket
