@@ -9,6 +9,7 @@ import {
   FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
@@ -137,6 +138,9 @@ describe("content-width.ts — watch page rail lockstep", () => {
       "md:top-[calc(env(safe-area-inset-top,0px)+1rem)]",
     )
     expect(FLOATING_HEADER_HEIGHT_CLASS).toBe("h-[52px]")
+    expect(FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS).toBe(
+      "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]",
+    )
     expect(FLOATING_HEADER_GAP_CLASS).toContain("md:gap-5")
     expect(FLOATING_HEADER_LOGO_SLOT_CLASS).toContain("md:w-12")
     expect(FLOATING_HEADER_TRAILING_GROUP_CLASS).toContain("md:gap-2")

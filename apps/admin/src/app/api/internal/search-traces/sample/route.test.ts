@@ -75,7 +75,7 @@ describe("POST /api/internal/search-traces/sample", () => {
         locale: "en",
         routeSource: "rest",
         requestedMode: "hybrid",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         resultCount: 3,
         latencyBucket: "lt_250ms",
         outcome: "success",
@@ -104,7 +104,7 @@ describe("POST /api/internal/search-traces/sample", () => {
         {
           locale: "en",
           routeSource: "rest",
-          searchMode: "hybrid",
+          searchMode: "watch-search",
           since: "2026-05-25T00:00:00.000Z",
           until: "2026-05-26T00:00:00.000Z",
           limit: 500,
@@ -121,7 +121,7 @@ describe("POST /api/internal/search-traces/sample", () => {
           queryText: "Jesus film",
           locale: "en",
           routeSource: "rest",
-          searchMode: "hybrid",
+          searchMode: "watch-search",
           queryQualityLabel: "valid_viewer_intent",
           rawExpiresAt: "2026-06-23T00:00:00.000Z",
         }),
@@ -143,7 +143,7 @@ describe("POST /api/internal/search-traces/sample", () => {
       {
         locale: "en",
         routeSource: "rest",
-        searchMode: "hybrid",
+        searchMode: "watch-search",
         since: new Date("2026-05-25T00:00:00.000Z"),
         until: new Date("2026-05-26T00:00:00.000Z"),
         limit: 500,
@@ -345,7 +345,7 @@ describe("POST /api/internal/search-traces/sample", () => {
 
     const response = await POST(
       request(
-        { locale: "en\ninjected=true", searchMode: "hybrid\tmode" },
+        { locale: "en\ninjected=true", searchMode: "watch-search\tmode" },
         { authorization: "Bearer trace-key" },
       ),
     )
@@ -353,7 +353,7 @@ describe("POST /api/internal/search-traces/sample", () => {
     expect(response.status).toBe(200)
     const line = String(logSpy.mock.calls[0]?.[0] ?? "")
     expect(line).toContain("locale=en_injected_true")
-    expect(line).toContain("search_mode=hybrid_mode")
+    expect(line).toContain("search_mode=watch-search_mode")
     expect(line).not.toContain("\n")
     expect(line).not.toContain("\t")
     logSpy.mockRestore()

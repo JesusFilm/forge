@@ -744,11 +744,6 @@ describe("permission matrix completeness", () => {
       // mint WORKFLOW_TRIGGER (permission widening). The distinct
       // env vars are the load-bearing boundary.
       //
-      // `search-bearer.ts` itself no longer reads any env CSV after
-      // Plan 003 (partner-key store PR3) — it only composes the
-      // partner / consumer / workflow validators. The regression
-      // guard for that file is that it doesn't ACCIDENTALLY reach
-      // back into env vars.
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const consumerSource = await readFile(
@@ -763,10 +758,6 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./video-mapper-bearer.ts", import.meta.url)),
         "utf8",
       )
-      const searchSource = await readFile(
-        fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
-        "utf8",
-      )
       // Each narrow file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
@@ -776,13 +767,6 @@ describe("permission matrix completeness", () => {
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(videoMapperSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
       expect(videoMapperSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      // The composer reads NO env CSV directly — it only imports the
-      // narrow validators + verifyPartnerToken. Source MUST NOT
-      // reference env CSV names; a regression that re-introduced a
-      // direct env read would slip the cross-CSV isolation boundary.
-      expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
-      expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      expect(searchSource).not.toMatch(/env\.SEARCH_API_KEYS/)
     })
   })
 })

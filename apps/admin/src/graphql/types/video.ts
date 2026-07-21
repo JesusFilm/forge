@@ -564,7 +564,7 @@ builder.prismaObject("Video", {
     durationSeconds: t.int({
       nullable: true,
       description:
-        "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Mirrors HybridSearchResult.durationSeconds — picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.",
+        "Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.",
       resolve: (video, _args, ctx) =>
         ctx.loaders.videoPrimaryDubDurationById.load(video.id),
     }),

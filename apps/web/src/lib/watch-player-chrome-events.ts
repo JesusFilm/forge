@@ -25,4 +25,6 @@ export type WatchHeaderLanguageSwitcherDetail = {
   onClick: (() => void) | null
   /** Active audio language's BCP 47 primary subtag, ready for display. */
   languageCode?: string | null
+  /** Stable mount token so stale cleanup cannot clear a newer registration. */
+  ownerToken?: symbol
 }

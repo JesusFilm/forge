@@ -333,6 +333,109 @@ vi.mock("@/app/dashboard/ops-data", () => ({
     locale: "en",
     unavailableReason: null,
   })),
+  loadWatchSearchAnalyticsData: vi.fn(async () => ({
+    metrics: [
+      { label: "Searches", value: "1", footer: "LAST_24H_RAW_ROWS" },
+      { label: "Click Rate", value: "100%", footer: "REQUESTS_WITH_CLICK" },
+      { label: "No Results", value: "0", footer: "ZERO_RESULT_REQUESTS" },
+      { label: "P95 Latency", value: "120ms", footer: "TRACE_METADATA" },
+    ],
+    insights: [
+      { label: "Degraded", value: "0", detail: "detail" },
+      { label: "Selected", value: "req_1234", detail: "detail" },
+      { label: "Raw Query", value: "Visible", detail: "detail" },
+      { label: "Unavailable", value: "0", detail: "detail" },
+    ],
+    querySummaries: [
+      {
+        queryText: "JESUS Russian",
+        count: 1,
+        clickRate: "100%",
+        zeroResultCount: 0,
+        averageClickedPosition: "1.0",
+        targetLanguageSlug: "russian",
+      },
+    ],
+    qualityFlags: [
+      {
+        label: "Zero Results",
+        value: "0",
+        detail: "Queries that returned no visible results.",
+        tone: "success",
+      },
+      {
+        label: "No Click",
+        value: "0",
+        detail: "Result-bearing searches where no result was selected.",
+        tone: "success",
+      },
+    ],
+    rankingHealth: [
+      {
+        label: "Average Click Rank",
+        value: "1.0",
+        detail: "Lower is better. Only clicked requests are included.",
+      },
+      {
+        label: "Top Target Audio",
+        value: "100%",
+        detail: "First result has target-language audio.",
+      },
+    ],
+    window: "24h",
+    filters: {
+      query: "",
+      targetLanguageSlug: "",
+      outcome: "",
+      clicked: "all",
+      availability: "",
+    },
+    requests: [
+      {
+        id: "trace_1",
+        requestId: "req_12345678",
+        queryText: "JESUS Russian",
+        locale: "russian",
+        targetLanguageSlug: "russian",
+        targetLanguageSource: "query_named_language",
+        queryNamedLanguageSlug: "russian",
+        searchMode: "watch-search",
+        outcome: "success",
+        resultCount: 1,
+        latencyMs: 120,
+        clickedPosition: 1,
+        clickCount: 1,
+        createdAt: "10/24/2023, 14:02",
+        createdAtIso: "2023-10-24T14:02:00.000Z",
+        results: [
+          {
+            id: "video_1",
+            type: "video",
+            slug: "jesus",
+            title: "JESUS",
+            description: "Feature film",
+            imageUrl: "https://images.example.com/jesus.jpg",
+            score: 1,
+            availabilityKind: "target_audio",
+            evidenceKind: "exact_title",
+            actionKind: "watch",
+            clicked: true,
+            position: 1,
+          },
+        ],
+        lanes: [
+          {
+            lane: "exact_title",
+            status: "fulfilled",
+            elapsedMs: 12,
+            resultCount: 1,
+            reason: null,
+          },
+        ],
+      },
+    ],
+    selectedRequest: null,
+  })),
   loadUsersData: vi.fn(async () => ({
     metrics: [
       { label: "Admins", value: "1", footer: "GLOBAL_OVERRIDE" },
@@ -675,10 +778,14 @@ describe("dashboard UI routes", () => {
 
     expect(dashboard).toContain('role="status"')
     expect(dashboard).toContain('aria-label="Loading dashboard"')
+    expect(dashboard).toContain("fixed right-4 bottom-4")
+    expect(dashboard).toContain("route-feedback-enter")
     expect(videos).toContain('aria-label="Loading video library"')
     expect(videos).toContain("Loading video library")
+    expect(videos).toContain("fixed right-4 bottom-4")
     expect(languages).toContain('aria-label="Loading language diagnostics"')
     expect(languages).toContain("Loading language diagnostics")
+    expect(languages).toContain("fixed right-4 bottom-4")
   })
 
   it("renders primary buttons with explicit enabled and disabled affordances", () => {
@@ -1362,6 +1469,17 @@ describe("dashboard UI routes", () => {
     expect(pages[6].html).toContain("Media Library")
     expect(pages[6].html).toContain("Library")
     expect(pages[6].html).toContain("Campaigns")
+  })
+
+  it("formats Watch search analytics labels without leaking enum underscores", async () => {
+    const html = await htmlFrom(SearchPage())
+
+    expect(html).toContain("Last 24h Raw Rows")
+    expect(html).toContain("Requests With Click")
+    expect(html).not.toContain("query_named_language")
+    expect(html).not.toContain("LAST_24H_RAW_ROWS")
+    expect(html).toContain("JESUS Russian")
+    expect(html).not.toContain("requestId=req_12345678")
   })
 
   it("renders user product access controls", async () => {

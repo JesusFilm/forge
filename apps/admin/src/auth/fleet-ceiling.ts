@@ -4,10 +4,13 @@
 
 import { env } from "@/config/env"
 import { incrementFixedWindow } from "@/auth/rate-limit"
-import type { BearerCheckResult } from "@/auth/search-bearer"
 
 export const FLEET_GLOBAL_WINDOW_MS = 60_000
 const NEAR_CEILING_RATIO = 0.8
+
+export type FleetBearerCheckResult =
+  | { valid: false; source?: string | null; fleetKeyId?: string | null }
+  | { valid: true; source: string; fleetKeyId?: string | null }
 
 export type FleetCeilingDecision = { overCeiling: boolean }
 
@@ -69,7 +72,7 @@ export async function checkFleetGlobalCeiling(
  * Returns true when the request should be shed (429).
  */
 export async function shouldShedFleetRequest(
-  authResult: BearerCheckResult,
+  authResult: FleetBearerCheckResult,
   path: "graphql" | "rest",
 ): Promise<boolean> {
   if (!authResult.valid || authResult.source !== "fleet") return false

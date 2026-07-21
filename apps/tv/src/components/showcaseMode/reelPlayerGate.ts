@@ -17,6 +17,12 @@ export type ReelPlayerGateInputs = {
   excerptToken: number
   /** The excerpt whose playback the player confirmed; null before the first frame. */
   confirmedToken: number | null
+  /**
+   * KTD-5: the swap INTO this token is a hop the STANDBY player preloaded, so the
+   * boundary is a live view flip — the poster stands down. A preload-miss hop and
+   * every ordinary content cut are false: the poster owns those seams.
+   */
+  seamlessHopSwap: boolean
 }
 
 export type ReelPlayerGate = {
@@ -30,9 +36,9 @@ export type ReelPlayerGate = {
   /** Poster covers the VideoView. Must be true across every swap, seek, and unmount. */
   posterVisible: boolean
   /**
-   * The poster may dissolve IN over the outgoing frame instead of snapping (R11).
-   * Only when the VideoView is still mounted — otherwise there is nothing beneath
-   * it and a fade would bleed the bare screen background through.
+   * The poster MAY dissolve in over the outgoing frame (R11) — permission, not a
+   * promise: ReelPlayer's covered branch instead defers the cover and snaps it under
+   * the opaque overlay. False when unmounted (a fade would bleed bare background).
    */
   posterCrossfade: boolean
   /**
@@ -41,8 +47,6 @@ export type ReelPlayerGate = {
    * clock on videoReady would disarm it for the exact fault it exists to catch.
    */
   playIntended: boolean
-  /** U7's `isSourceSwapping`: a language-rotation swap is not a rebuffer (KTD-9). */
-  swapInFlight: boolean
 }
 
 /**
@@ -58,12 +62,16 @@ export function computeReelPlayerGate({
   videoReady,
   excerptToken,
   confirmedToken,
+  seamlessHopSwap,
 }: ReelPlayerGateInputs): ReelPlayerGate {
   const shouldMountVideo =
     hasStream && videoReady && screenFocused && appForeground
   // Identity, not staleness: a late confirmation for an earlier excerpt leaves the
   // poster up, because the source on screen is not the one the reel is asking for.
   const swapInFlight = confirmedToken !== excerptToken
+  // A preloaded flip keeps live frames on screen for the whole swap, so the poster
+  // stands down for it; every other swap has a real load gap the poster must cover.
+  const maskWithPoster = swapInFlight && !seamlessHopSwap
   return {
     shouldPlay: shouldMountVideo && active,
     shouldMountVideo,
@@ -71,11 +79,32 @@ export function computeReelPlayerGate({
     playIntended: active && hasStream && screenFocused && appForeground,
     // An unmounted VideoView leaves bare screen background behind it, so the
     // poster covers the lifecycle gaps as well as the swaps.
-    posterVisible: swapInFlight || !shouldMountVideo,
+    posterVisible: maskWithPoster || !shouldMountVideo,
     // An advance holds the outgoing stream mounted until its replacement resolves,
     // so its last frame is what the poster dissolves over. Android's previous-frame
     // flash lands on that same frame mid-dissolve, which is what we are showing.
-    posterCrossfade: swapInFlight && shouldMountVideo,
-    swapInFlight,
+    posterCrossfade: maskWithPoster && shouldMountVideo,
   }
+}
+
+/**
+ * AVPlayer seeks land on keyframes, so a LANDED seek can settle a few seconds shy of
+ * the requested start; only a gap past this is a dropped seek needing the heal.
+ */
+export const WINDOW_SEEK_TOLERANCE_SECONDS = 4
+
+/**
+ * tvOS can silently drop the `currentTime` write issued right after replaceAsync
+ * (the item is not yet seekable), leaving a mid-video window playing from 0:00 —
+ * latent in the shipped short-form-first fallback reel, where startSeconds is 0.
+ * True = the confirmed clock sits meaningfully below the window: re-issue the seek.
+ */
+export function needsWindowStartSeek(args: {
+  currentTime: number
+  startSeconds: number
+}): boolean {
+  return (
+    args.startSeconds > 0 &&
+    args.currentTime + WINDOW_SEEK_TOLERANCE_SECONDS < args.startSeconds
+  )
 }

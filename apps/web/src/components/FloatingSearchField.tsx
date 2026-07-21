@@ -2,9 +2,11 @@
 
 import {
   forwardRef,
+  useLayoutEffect,
   type ChangeEventHandler,
   type ComponentProps,
   type MouseEventHandler,
+  type RefObject,
 } from "react"
 import { Search } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -23,6 +25,28 @@ const FIELD_GLASS_CLASS =
   "bg-white/10 text-white backdrop-blur-[10px] hover:bg-white hover:text-stone-950"
 
 const FIELD_SOLID_CLASS = "bg-white text-stone-950"
+
+export function useFloatingSearchInputAutofocus(
+  open: boolean,
+  inputRef: RefObject<HTMLInputElement | null>,
+) {
+  useLayoutEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const focusInput = () => {
+      if (cancelled) return
+      inputRef.current?.focus({ preventScroll: true })
+    }
+    focusInput()
+    const frame = window.requestAnimationFrame(focusInput)
+    const timer = window.setTimeout(focusInput, 100)
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
+  }, [inputRef, open])
+}
 
 export function FloatingSearchFieldButton({
   display,

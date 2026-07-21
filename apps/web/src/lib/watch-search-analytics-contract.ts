@@ -26,6 +26,14 @@ export type WatchSearchAnalyticsInput = {
   watchContext?: WatchSearchAnalyticsContext | null
 }
 
+export type WatchSearchLaneStatusAnalytics = {
+  lane?: string | null
+  status?: string | null
+  elapsedMs?: number | null
+  resultCount?: number | null
+  reason?: string | null
+}
+
 export type WatchSearchResultClickAnalytics = {
   resultSource: SearchActionResultSource
   routeLanguageSlug?: string | null

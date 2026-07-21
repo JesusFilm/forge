@@ -17,24 +17,31 @@ function assertOk<T>(value: T): Exclude<T, { error: unknown } | void> {
 }
 
 const searchMock = vi.hoisted(() => vi.fn())
+const languageFindFirstMock = vi.hoisted(() => vi.fn())
 
-vi.mock("@/services/hybrid-search.service", () => ({
-  HybridSearchService: class {
+vi.mock("@/services/watch-search.service", () => ({
+  WatchSearchService: class {
     search = searchMock
   },
 }))
 
 vi.mock("@/db/client", () => ({
-  prisma: {},
+  prisma: {
+    language: {
+      findFirst: languageFindFirstMock,
+    },
+  },
 }))
 
 describe("searchVideosTool", () => {
   beforeEach(() => {
     searchMock.mockReset()
+    languageFindFirstMock.mockReset()
+    languageFindFirstMock.mockResolvedValue({ slug: "english" })
     vi.resetModules()
   })
 
-  it("calls HybridSearchService.search with the input query+locale+limit and returns trimmed playable videos, dropping playbackId-null rows", async () => {
+  it("calls WatchSearchService.search with the input query+locale+limit and returns trimmed playable videos, dropping playbackId-null rows", async () => {
     searchMock.mockResolvedValue({
       results: [
         {
@@ -73,7 +80,7 @@ describe("searchVideosTool", () => {
       ],
       hasMore: false,
       query: "jesus",
-      searchMode: "hybrid",
+      searchMode: "watch-search",
     })
 
     const { searchVideosTool } = await import("./search-videos")
@@ -86,9 +93,12 @@ describe("searchVideosTool", () => {
 
     expect(searchMock).toHaveBeenCalledWith({
       query: "jesus",
-      locale: "en",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      acceptLanguage: "en",
       limit: 5,
-      contentTypes: ["video"],
+      resultTypes: ["video"],
     })
     // vid-1 has playbackId null (no playable dub in the locale) — agents
     // write returned videoIds into blocks verbatim, so it must be dropped.
@@ -108,7 +118,7 @@ describe("searchVideosTool", () => {
       results: [],
       hasMore: false,
       query: "nothing",
-      searchMode: "hybrid",
+      searchMode: "watch-search",
     })
     const { searchVideosTool } = await import("./search-videos")
     const result = assertOk(

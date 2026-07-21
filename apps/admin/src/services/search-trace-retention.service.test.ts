@@ -24,6 +24,12 @@ function buildPrisma() {
     searchEvalCandidate: {
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
+    watchSearchEvent: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    queryEmbeddingCache: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     workflowRun: {
       findFirst: vi.fn(),
     },
@@ -39,6 +45,8 @@ describe("search trace retention service", () => {
     const prisma = buildPrisma()
     prisma.searchTrace.deleteMany.mockResolvedValueOnce({ count: 3 })
     prisma.searchEvalCandidate.deleteMany.mockResolvedValueOnce({ count: 2 })
+    prisma.watchSearchEvent.deleteMany.mockResolvedValueOnce({ count: 4 })
+    prisma.queryEmbeddingCache.deleteMany.mockResolvedValueOnce({ count: 5 })
     const now = new Date("2026-05-30T00:00:00.000Z")
 
     await expect(
@@ -47,9 +55,11 @@ describe("search trace retention service", () => {
         now,
       ),
     ).resolves.toEqual({
-      purgedCount: 5,
+      purgedCount: 14,
       purgedRawTraceCount: 3,
       purgedGeneratedCandidateCount: 2,
+      purgedWatchSearchEventCount: 4,
+      purgedQueryEmbeddingCacheCount: 5,
       purgedBefore: "2026-05-30T00:00:00.000Z",
     })
     expect(prisma.searchTrace.deleteMany).toHaveBeenCalledWith({
@@ -66,6 +76,20 @@ describe("search trace retention service", () => {
         },
         promotionStatus: {
           not: "PROMOTED",
+        },
+      },
+    })
+    expect(prisma.watchSearchEvent.deleteMany).toHaveBeenCalledWith({
+      where: {
+        expiresAt: {
+          lte: now,
+        },
+      },
+    })
+    expect(prisma.queryEmbeddingCache.deleteMany).toHaveBeenCalledWith({
+      where: {
+        expiresAt: {
+          lte: now,
         },
       },
     })

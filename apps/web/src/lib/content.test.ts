@@ -637,6 +637,46 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     ])
   })
 
+  it("keeps rendering the playable route when selected dub detail hydration is rate-limited", async () => {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            slug: "life-of-jesus-gospel-of-john",
+            variants: [makeRussianVariant()],
+            locales: [
+              {
+                documentId: "loc-ru",
+                title: "Life of Jesus RU",
+                description: "Russian description",
+                snippet: "Russian snippet",
+                imageAlt: "Russian still",
+              },
+            ],
+          }),
+        },
+      })
+      .mockRejectedValueOnce(
+        new Error("You are trying to access 'videoDub' too often"),
+      )
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug(
+      "life-of-jesus-gospel-of-john",
+      "russian",
+    )
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result?.video.slug).toBe("life-of-jesus-gospel-of-john")
+    expect(result?.selectedVariant.language?.slug).toBe("russian")
+    expect(result?.selectedVariant.hls).toBe(
+      "https://cdn.example/jesus-ru.m3u8",
+    )
+    expect(result?.selectedVariant.muxVideo).toBeNull()
+    expect(result?.selectedVariant.downloads).toEqual([])
+  })
+
   it("uses broad BCP-47 content before English when exact languageSlug content is missing", async () => {
     queryMock
       .mockResolvedValueOnce({

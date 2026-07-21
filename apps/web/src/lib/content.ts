@@ -24,6 +24,7 @@ import { slugToBcp47Tag } from "@/lib/locale"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
+import { logWatchServerEvent } from "@/lib/watch-observability"
 
 export { isSeriesRecord } from "@/lib/watch-content-kind"
 
@@ -1741,7 +1742,18 @@ async function hydrateSelectedVariant(
   record: WatchVideoRecord
   selectedVariant: WatchVariant
 }> {
-  const detail = await fetchWatchVideoDubDetail(selectedVariant.documentId)
+  let detail: AdminVideoDubDetailRaw | null
+  try {
+    detail = await fetchWatchVideoDubDetail(selectedVariant.documentId)
+  } catch (error) {
+    logWatchServerEvent("watch_video_dub_detail.hydration_failed", {
+      videoSlug: record.slug,
+      variantId: selectedVariant.documentId,
+      languageSlug: selectedVariant.language?.slug ?? null,
+      detail: error instanceof Error ? error : String(error),
+    })
+    return { record, selectedVariant }
+  }
   const hydratedVariant = detail
     ? normalizeVariant(detail as AdminVideoVariantRaw)
     : null

@@ -10,23 +10,25 @@ import type { SearchActionResultSource } from "./search"
 import {
   WATCH_SEARCH_ANALYTICS_SURFACE,
   type WatchSearchAnalyticsContext,
+  type WatchSearchLaneStatusAnalytics,
   type WatchSearchRequestType,
 } from "./watch-search-analytics-contract"
 
 export type WatchSearchAnalyticsOutcome = "completed" | "failed" | "no_result"
 
 export type WatchSearchFailureCategory =
-  | "algolia_error"
-  | "semantic_error"
+  | "watch_search_error"
   | "source_mismatch"
   | "unexpected_error"
 
 export type BuildWatchSearchAnalyticsLogEventInput = {
   addedResultCount?: number | null
+  degraded?: boolean | null
   detectedQueryLanguage?: string | null
   expectedResultSource?: SearchActionResultSource | null
   failureCategory?: WatchSearchFailureCategory | null
   latencyMs?: number | null
+  laneStatuses?: readonly WatchSearchLaneStatusAnalytics[] | null
   offset?: number | null
   outcome: WatchSearchAnalyticsOutcome
   query: string
@@ -61,6 +63,8 @@ type ScheduleWatchSearchAnalyticsOptions = {
 const MAX_QUERY_LENGTH = 200
 const MAX_SHORT_TEXT_LENGTH = 160
 const MAX_ROUTE_LENGTH = 240
+const MAX_LANE_SUMMARY_LENGTH = 500
+const MAX_LANE_STATUS_COUNT = 12
 const SEARCH_REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{8,80}$/
 const SAFE_TOKEN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/
 
@@ -98,6 +102,8 @@ export function buildWatchSearchAnalyticsLogEvent(
   )
   addNonNegativeInt(attributes, "watch_search.offset", input.offset)
   addNonNegativeNumber(attributes, "watch_search.latency_ms", input.latencyMs)
+  addBoolean(attributes, "watch_search.degraded", input.degraded)
+  addLaneStatuses(attributes, input.laneStatuses)
   addResultSource(attributes, "watch_search.result_source", input.resultSource)
   addResultSource(
     attributes,
@@ -215,6 +221,14 @@ function addNonNegativeNumber(
   attributes[key] = parsed
 }
 
+function addBoolean(
+  attributes: Record<string, boolean | number | string>,
+  key: string,
+  value: boolean | null | undefined,
+): void {
+  if (typeof value === "boolean") attributes[key] = value
+}
+
 function addBoundedText(
   attributes: Record<string, boolean | number | string>,
   key: string,
@@ -235,12 +249,93 @@ function addToken(
   attributes[key] = normalized
 }
 
+function addLaneStatuses(
+  attributes: Record<string, boolean | number | string>,
+  laneStatuses: readonly WatchSearchLaneStatusAnalytics[] | null | undefined,
+): void {
+  if (!laneStatuses?.length) return
+
+  const sanitized = laneStatuses
+    .slice(0, MAX_LANE_STATUS_COUNT)
+    .flatMap((status) => {
+      const lane = safeToken(status.lane)
+      const state = safeToken(status.status)
+      if (!lane || !state) return []
+
+      const reason = safeToken(status.reason)
+      const elapsedMs = nonNegativeNumber(status.elapsedMs)
+      const resultCount = nonNegativeInt(status.resultCount)
+      return [
+        {
+          elapsedMs,
+          lane,
+          reason,
+          resultCount,
+          status: state,
+        },
+      ]
+    })
+
+  if (sanitized.length === 0) return
+
+  attributes["watch_search.lane_count"] = sanitized.length
+  attributes["watch_search.fulfilled_lane_count"] = sanitized.filter(
+    (status) => status.status === "fulfilled",
+  ).length
+  attributes["watch_search.degraded_lane_count"] = sanitized.filter(
+    (status) => status.status === "degraded",
+  ).length
+  attributes["watch_search.skipped_lane_count"] = sanitized.filter(
+    (status) => status.status === "skipped",
+  ).length
+  attributes["watch_search.lane_elapsed_ms_max"] = Math.max(
+    ...sanitized.map((status) => status.elapsedMs ?? 0),
+  )
+  attributes["watch_search.lane_result_count"] = sanitized.reduce(
+    (sum, status) => sum + (status.resultCount ?? 0),
+    0,
+  )
+
+  const summary = sanitized
+    .map((status) => {
+      const parts = [`${status.lane}:${status.status}`]
+      if (status.reason) parts.push(`reason=${status.reason}`)
+      if (status.elapsedMs != null) parts.push(`ms=${status.elapsedMs}`)
+      if (status.resultCount != null) parts.push(`count=${status.resultCount}`)
+      return parts.join(",")
+    })
+    .join(";")
+
+  const boundedSummary = boundedText(summary, MAX_LANE_SUMMARY_LENGTH)
+  if (boundedSummary) {
+    attributes["watch_search.lane_statuses"] = boundedSummary
+  }
+}
+
 function addResultSource(
   attributes: Record<string, boolean | number | string>,
   key: string,
   value: SearchActionResultSource | null | undefined,
 ): void {
-  if (value === "algolia" || value === "semantic") attributes[key] = value
+  if (value === "watch-search") attributes[key] = value
+}
+
+function safeToken(value: string | null | undefined): string | null {
+  const normalized = boundedText(value, MAX_SHORT_TEXT_LENGTH)
+  if (!normalized || !SAFE_TOKEN_PATTERN.test(normalized)) return null
+  return normalized
+}
+
+function nonNegativeInt(value: number | null | undefined): number | null {
+  const parsed = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return null
+  return Math.floor(parsed)
+}
+
+function nonNegativeNumber(value: number | null | undefined): number | null {
+  const parsed = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return null
+  return parsed
 }
 
 function addWatchContext(

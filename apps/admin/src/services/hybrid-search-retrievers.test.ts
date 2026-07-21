@@ -310,6 +310,7 @@ describe("searchVideoSemantic", () => {
 
     const sql = latestRawSql(prisma)
     expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(1)
+    expect((sql.match(/v\.no_index = false/g) ?? []).length).toBe(1)
     expect((sql.match(/vl_visible\.status = 'published'/g) ?? []).length).toBe(
       1,
     )
@@ -431,6 +432,7 @@ describe("searchVideoSemantic", () => {
       "transcript_source AS",
     )
     expect(visibleCandidates).toContain("JOIN video v")
+    expect(visibleCandidates).toContain("v.no_index = false")
     expect(visibleCandidates).toContain("WHERE EXISTS")
     expect(visibleCandidates).toContain("FROM video_locale vl_visible")
     expect(visibleCandidates).toContain("vl_visible.status = 'published'")

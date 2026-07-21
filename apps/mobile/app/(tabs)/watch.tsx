@@ -13,17 +13,7 @@ import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { datadogLog } from "../../src/lib/datadog"
-import {
-  generateSearchRequestId,
-  parseSearchErrorCode,
-  resolveWatchSearchOutcome,
-} from "../../src/lib/watchSearchLog"
-import {
-  GET_VIDEO_BY_SLUG,
-  SEARCH,
-  type SearchResult,
-} from "../../src/lib/queries"
+import { GET_VIDEO_BY_SLUG, type SearchResult } from "../../src/lib/queries"
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
@@ -40,47 +30,8 @@ import {
 
 const MAX_QUERY_LENGTH = 200
 const DEBOUNCE_MS = 300
-const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
-
-function parseSearchError(e: unknown): string {
-  const gqlErrors = (
-    e as {
-      graphQLErrors?: {
-        message: string
-        extensions?: Record<string, unknown>
-      }[]
-    }
-  )?.graphQLErrors
-
-  if (gqlErrors?.length) {
-    const ext = gqlErrors[0].extensions
-    const code = ext?.code as string | undefined
-
-    if (code === "RATE_LIMITED") {
-      const seconds = ext?.retryAfterSeconds as number | undefined
-      return seconds
-        ? `Too many requests. Please wait ${seconds} seconds.`
-        : "Too many requests. Please try again later."
-    }
-    if (code === "SERVICE_UNAVAILABLE") {
-      return "Search is temporarily unavailable. Please try again."
-    }
-    // Admin rejected the search bearer (missing, or rotated out of the CSV).
-    // Retrying can't help — only a new token (dev) or app update (prod) can.
-    if (code === "UNAUTHENTICATED") {
-      if (__DEV__) {
-        console.warn(
-          "[search] UNAUTHENTICATED — set EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN in .env.local and cold-restart Metro",
-        )
-      }
-      return "Search isn't available in this app version. Please update the app."
-    }
-  }
-
-  return "Search failed. Please try again."
-}
 
 export default function DiscoverScreen() {
   const router = useRouter()
@@ -96,14 +47,7 @@ export default function DiscoverScreen() {
     if (result.type === "EXPERIENCE") return
     const slug = result.slug
     if (prefetchedRef.current.has(slug)) return
-    // Prefetch cap saturation (R35): a fast scroll-and-press drops warm-ups.
-    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) {
-      datadogLog.info("search.prefetch", {
-        requested: prefetchInFlightRef.current + 1,
-        capped: MAX_PREFETCH_INFLIGHT,
-      })
-      return
-    }
+    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) return
     prefetchedRef.current.add(slug)
     prefetchInFlightRef.current += 1
     getApolloClient()
@@ -123,14 +67,6 @@ export default function DiscoverScreen() {
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
-      // Join the click back to its originating search (result_clicked ↔
-      // watch_search share search_request_id); content_id = slug so the detail
-      // route's content.resolution joins the same journey.
-      datadogLog.info("search.result_clicked", {
-        search_request_id: searchRequestIdRef.current,
-        position: resultsRef.current.indexOf(result),
-        content_id: result.slug,
-      })
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
         router.push(`/experience/${encodeURIComponent(result.slug)}`)
@@ -163,10 +99,6 @@ export default function DiscoverScreen() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
-  // Current search's correlation id + a live results mirror, both read by
-  // handleSelectResult to attribute a click to its search without dep churn.
-  const searchRequestIdRef = useRef("")
-  const resultsRef = useRef<SearchResult[]>([])
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const [resultsKey, setResultsKey] = useState(0)
@@ -181,12 +113,6 @@ export default function DiscoverScreen() {
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
     }
   }, [])
-
-  // Keep the click-time position lookup current without re-memoizing the row
-  // handlers (which would churn the FlatList).
-  useEffect(() => {
-    resultsRef.current = results
-  }, [results])
 
   // Fade the browse grid in and out the same way the results animate: fade +
   // slight scale in on enter, fade out then unmount on leave.
@@ -284,43 +210,14 @@ export default function DiscoverScreen() {
         SKELETON_DELAY_MS,
       )
 
-      // One correlation id per search, joined by result_clicked (R33/R35).
-      const searchRequestId = generateSearchRequestId()
-      searchRequestIdRef.current = searchRequestId
-      const startedAt = Date.now()
-
       try {
-        const result = await getApolloClient().query({
-          query: SEARCH,
-          variables: {
-            q: trimmed,
-            locale: "en",
-            limit: PAGE_SIZE,
-            offset: 0,
-          },
-          fetchPolicy: "no-cache",
-        })
-
+        // TODO(feat-254): Temporary non-P0 compile shim while Admin replaces
+        // the legacy Query.search contract for Watch web first.
         if (requestIdRef.current !== thisRequest) return
 
-        const data = result.data?.search
-        const newResults = [...(data?.results ?? [])]
-        setResults(newResults)
-        setHasMore(data?.hasMore ?? false)
+        setResults([])
+        setHasMore(false)
         setResultsKey((k) => k + 1)
-
-        const { outcome, result_count } = resolveWatchSearchOutcome({
-          term: trimmed,
-          results: newResults,
-        })
-        datadogLog.info("watch_search", {
-          term: trimmed,
-          outcome,
-          result_count,
-          latency_ms: Date.now() - startedAt,
-          request_type: "initial",
-          search_request_id: searchRequestId,
-        })
 
         fadeAnim.setValue(0)
         scaleAnim.setValue(0.97)
@@ -337,16 +234,6 @@ export default function DiscoverScreen() {
             friction: 9,
           }),
         ]).start()
-      } catch (e: unknown) {
-        if (requestIdRef.current !== thisRequest) return
-        setError(parseSearchError(e))
-        // Rate-limit/auth reject as a 200-body GraphQL code, not a 429 (R34).
-        datadogLog.warn("watch_search_failed", {
-          term: trimmed,
-          code: parseSearchErrorCode(e),
-          request_type: "initial",
-          search_request_id: searchRequestId,
-        })
       } finally {
         if (requestIdRef.current === thisRequest) {
           if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -383,63 +270,11 @@ export default function DiscoverScreen() {
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
 
-    const thisRequest = requestIdRef.current
     setLoadingMore(true)
     setError(null)
-
-    // Pagination shares the initiating search's correlation id (request_type
-    // distinguishes the page from the initial fetch).
-    const term = query.trim().slice(0, MAX_QUERY_LENGTH)
-    const searchRequestId = searchRequestIdRef.current
-    const startedAt = Date.now()
-
-    try {
-      const result = await getApolloClient().query({
-        query: SEARCH,
-        variables: {
-          q: term,
-          locale: "en",
-          limit: PAGE_SIZE,
-          offset: results.length,
-        },
-        fetchPolicy: "no-cache",
-      })
-
-      if (requestIdRef.current !== thisRequest) return
-
-      const data = result.data?.search
-      if (data) {
-        setResults((prev) => [...prev, ...[...data.results]])
-        setHasMore(data.hasMore)
-
-        const { outcome, result_count } = resolveWatchSearchOutcome({
-          term,
-          results: data.results,
-        })
-        datadogLog.info("watch_search", {
-          term,
-          outcome,
-          result_count,
-          latency_ms: Date.now() - startedAt,
-          request_type: "page",
-          search_request_id: searchRequestId,
-        })
-      }
-    } catch (e: unknown) {
-      if (requestIdRef.current !== thisRequest) return
-      setError(parseSearchError(e))
-      datadogLog.warn("watch_search_failed", {
-        term,
-        code: parseSearchErrorCode(e),
-        request_type: "page",
-        search_request_id: searchRequestId,
-      })
-    } finally {
-      // Always clear loadingMore — even if superseded by a new search,
-      // otherwise loadingMore stays true forever and pagination breaks
-      setLoadingMore(false)
-    }
-  }, [loadingMore, hasMore, query, results.length])
+    setHasMore(false)
+    setLoadingMore(false)
+  }, [loadingMore, hasMore])
 
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
