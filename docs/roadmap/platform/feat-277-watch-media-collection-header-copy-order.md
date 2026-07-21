@@ -48,11 +48,13 @@ on `/watch/english.html`.
 1. Render category label, title, supporting title, and description as distinct
    authored values above the carousel or grid.
 2. Keep footer copy below the thumbnails.
-3. Preserve CTA placement, cards, localized links, hover previews, backdrops,
-   progress, and carousel interaction.
-4. Add explicit DOM-order coverage for carousel and grid variants plus optional
+3. Align the CTA to the top of the title row and preserve cards, localized
+   links, hover previews, backdrops, progress, and carousel interaction.
+4. Render the collection description at a smaller regular weight and keep
+   footer copy at regular weight.
+5. Add explicit DOM-order coverage for carousel and grid variants plus optional
    field combinations.
-5. Verify compact and wide layouts with browser screenshots, keyboard/card
+6. Verify compact and wide layouts with browser screenshots, keyboard/card
    interaction, overflow checks, console health, and proportionate page-load
    evidence.
 
@@ -78,7 +80,8 @@ on `/watch/english.html`.
 
 ## Completion Evidence
 
-- Focused `MediaCollection` Vitest: 22 tests passed.
+- Focused `MediaCollection` Vitest: 23 tests passed, including the title-less
+  CTA fallback.
 - `@forge/web` typecheck and lint passed.
 - The live Acts collection rendered through the local branch at 1440x900 and
   390x844 with category label, title, supporting title, and description before
@@ -95,5 +98,12 @@ on `/watch/english.html`.
 - Browser proof:
   `output/playwright/watch-copy-order-acts-wide.png` and
   `output/playwright/watch-copy-order-acts-mobile.png`.
+- Follow-up browser proof measured an exact `0px` top-edge delta between the
+  Acts title and Watch CTA at both 1440x900 and 390x844. The description
+  computed to `16px/400` wide and `14px/400` compact, while the footer computed
+  to weight `400` at both sizes. Neither viewport overflowed horizontally.
+- Follow-up screenshots:
+  `output/playwright/watch-copy-alignment-acts-wide.png` and
+  `output/playwright/watch-copy-alignment-acts-mobile.png`.
 - Follow-up test hardening is tracked separately in
   [GitHub issue #1647](https://github.com/JesusFilm/forge/issues/1647).

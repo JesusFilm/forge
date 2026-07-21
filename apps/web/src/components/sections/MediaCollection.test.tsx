@@ -401,6 +401,11 @@ describe("MediaCollection VideoCard href", () => {
     const categoryLabel = Array.from(container.querySelectorAll("p")).find(
       (element) => element.textContent === "New series",
     )
+    const title = container.querySelector("h2")
+    const titleRow = container.querySelector(
+      '[data-testid="media-collection-title-row"]',
+    )
+    const cta = container.querySelector('[data-testid="media-collection-cta"]')
     const supportingTitle = container.querySelector(
       '[data-testid="media-collection-supporting-title"]',
     )
@@ -415,13 +420,20 @@ describe("MediaCollection VideoCard href", () => {
     )
 
     expect(categoryLabel?.textContent).toBe("New series")
+    expect(title?.parentElement).toBe(titleRow)
+    expect(cta?.parentElement).toBe(titleRow)
+    expect(titleRow?.getAttribute("class")).toContain("items-start")
     expect(supportingTitle).not.toBeNull()
     expect(description).not.toBeNull()
     expect(carousel).not.toBeNull()
     expect(footer).not.toBeNull()
     expect(supportingTitle?.textContent).toBe("Short supporting title")
     expect(description?.textContent).toBe("Intro copy")
+    expect(description?.getAttribute("class")).toContain("text-sm")
+    expect(description?.getAttribute("class")).toContain("font-normal")
+    expect(description?.getAttribute("class")).toContain("xl:text-base")
     expect(footer?.textContent).toBe("Footer copy")
+    expect(footer?.getAttribute("class")).toContain("font-normal")
     expect(supportingTitle?.compareDocumentPosition(carousel!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
@@ -430,6 +442,54 @@ describe("MediaCollection VideoCard href", () => {
     )
     expect(carousel?.compareDocumentPosition(footer!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it("keeps the CTA after supporting copy when the collection has no title", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            title: null,
+            subtitle: "Supporting title",
+            mediaDescription: "Collection description",
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const supportingTitle = container.querySelector(
+      '[data-testid="media-collection-supporting-title"]',
+    )
+    const description = container.querySelector(
+      '[data-testid="media-collection-description"]',
+    )
+    const cta = container.querySelector('[data-testid="media-collection-cta"]')
+    const titlelessLayout = container.querySelector(
+      '[data-testid="media-collection-titleless-layout"]',
+    )
+
+    expect(
+      container.querySelector('[data-testid="media-collection-title-row"]'),
+    ).toBeNull()
+    expect(supportingTitle).not.toBeNull()
+    expect(description).not.toBeNull()
+    expect(cta).not.toBeNull()
+    expect(supportingTitle?.compareDocumentPosition(description!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(supportingTitle?.compareDocumentPosition(cta!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(description?.compareDocumentPosition(cta!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(titlelessLayout?.getAttribute("class")).toContain("flex-col")
+    expect(titlelessLayout?.getAttribute("class")).toContain("lg:flex-row")
+    expect(titlelessLayout?.getAttribute("class")).toContain(
+      "lg:justify-between",
     )
   })
 

@@ -9,6 +9,7 @@ symptoms:
   - "A category label suppressed the separately authored supporting title."
   - "The collection description rendered below thumbnails with footer copy."
   - "Carousel and grid collections lost the authored header-to-media reading order."
+  - "The Watch CTA centered against the full copy stack instead of aligning with the title."
 root_cause: "logic_error"
 resolution_type: "code_fix"
 severity: "medium"
@@ -95,6 +96,13 @@ the carousel or grid branch:
 The existing empty-items early return, CTA inference, links, cards, hover
 previews, backdrops, progress, and carousel branch remain unchanged.
 
+Place the title and CTA in a dedicated `flex` row with `items-start`, then keep
+the supporting title and description below that row. This makes the CTA share
+the title's top edge instead of centering against the entire header stack. Use
+explicit `font-normal` styling for the description and footer, with the
+description reduced to `text-sm xl:text-base`. When a collection has no title,
+retain the prior copy-first compact order and trailing-edge desktop CTA layout.
+
 ## Why This Works
 
 The shared header is structurally before both media variants, so carousel and
@@ -106,14 +114,18 @@ effect, dependency, observer, or client initialization path.
 
 ## Verification
 
-- Focused `MediaCollection` coverage passed all 22 tests, including DOM-order
-  assertions for carousel and grid branches and optional-field combinations.
+- Focused `MediaCollection` coverage passed all 23 tests, including DOM-order
+  assertions for carousel and grid branches, optional-field combinations, and
+  the title-less CTA fallback.
 - Web typecheck and lint passed.
-- At 1440x900, the Acts supporting title ended at `y=3408.86`, its description
-  ended at `y=3596.36`, and the first media row began at `y=3620.36`.
-- At 390x844, the supporting title ended at `y=317.38`, the description ended
-  at `y=667.38`, and the first card began at `y=747.38`. Document scroll width
-  equaled client width at both viewports.
+- At 1440x900, the Acts title and CTA both began at `y=3292.86`; the description
+  computed to `16px/400`, ended at `y=3531.36`, and the first media row began at
+  `y=3555.36`.
+- At 390x844, the title and CTA both began at `y=3280.15`; the description
+  computed to `14px/400`, ended at `y=3705.40`, and the first card began at
+  `y=3729.40`.
+- Footer copy computed to weight `400`, remained after the media cards, and
+  document scroll width equaled client width at both viewports.
 - CTA focus and activation reached the Acts collection route; the first card
   reached its expected Watch route.
 - Dragging a live carousel changed its transform from `0` to approximately
@@ -135,6 +147,8 @@ effect, dependency, observer, or client initialization path.
   both carousel and grid branches.
 - Browser-prove compact and wide geometry, overflow, real navigation, carousel
   movement, console health, and request behavior for shared Watch renderers.
+- When a CTA belongs to a specific heading, put both in a dedicated alignment
+  row rather than aligning the CTA against a variable-height copy stack.
 
 ## Related Issues
 

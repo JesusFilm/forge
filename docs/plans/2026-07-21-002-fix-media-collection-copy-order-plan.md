@@ -11,8 +11,9 @@ date: "2026-07-21"
 
 Restore the authored `MediaCollection` content order so the supporting title
 and collection description render above the carousel or grid. Preserve the
-category label, title, CTA, cards, interaction behavior, and trailing footer
-copy.
+category label, title, CTA behavior, cards, interaction behavior, and trailing
+footer copy while aligning the CTA with the title and refining supporting-copy
+typography.
 
 ## Problem Frame
 
@@ -57,11 +58,13 @@ renderer.
 - **Use one shared header before variant dispatch:** Apply the requested field
   order to every Web media-collection variant by rendering supporting copy in
   the header that precedes both carousel and grid branches.
-- **Preserve the responsive CTA hierarchy:** On compact viewports, render
-  category label, title, supporting title, description, then CTA as one vertical
-  reading order. At the `lg` breakpoint and above, keep the complete text stack
-  in the left column and the CTA in the existing centered right column; authored
-  copy wraps naturally without truncation.
+- **Align the CTA with the title:** When a title exists, render it and the CTA
+  in a shared `items-start` row at compact and wide viewports. When a collection
+  has no title, preserve the prior copy-first compact order and trailing-edge
+  desktop CTA fallback.
+- **Refine supporting-copy typography:** Keep the supporting title emphasis,
+  render the description at `text-sm xl:text-base` and weight `400`, and make
+  footer copy explicitly weight `400`.
 - **Keep footer semantics trailing:** `footerText` remains the only copy below
   the media row because it is authored as a separate closing field.
 - **Preserve empty-collection behavior:** If no item resolves, keep the current
@@ -75,16 +78,17 @@ renderer.
 - The request applies to every Web `MediaCollection` variant that uses the
   shared renderer, not only the single production section shown in the
   screenshot.
-- Existing typography can be reused; this is an ordering and field-visibility
-  correction rather than a visual redesign.
+- The supporting title keeps its existing emphasis; the user-requested
+  description and footer typography refinements stay local to this renderer.
 
 ## Scope Boundaries
 
-- In scope: the Web `MediaCollection` renderer, its focused component tests,
-  browser/performance proof, roadmap tracking, and durable solution notes.
+- In scope: the Web `MediaCollection` renderer, title/CTA alignment,
+  description/footer typography, focused component tests, browser/performance
+  proof, roadmap tracking, and durable solution notes.
 - Out of scope: Admin editor changes, schema or GraphQL changes, generated type
-  updates, production content edits, card redesign, CTA changes, and media
-  loading changes.
+  updates, production content edits, card redesign, CTA destination/behavior
+  changes, and media loading changes.
 
 ## Implementation Units
 
@@ -119,7 +123,9 @@ renderer.
 - **Approach:** Replace the `categoryLabel ?? subtitle` collapse with separate
   props. Add supporting-title and description markup to the shared header
   before the carousel/grid conditional. Remove description from the trailing
-  footer block while leaving `footerText` after media.
+  footer block while leaving `footerText` after media. Put title and CTA in a
+  dedicated top-aligned row, retain the title-less fallback, and apply the
+  requested regular-weight supporting-copy styles.
 - **Execution note:** Add failing DOM-order coverage before changing the
   renderer.
 - **Patterns to follow:** Preserve the fixed-width Embla branch documented in
