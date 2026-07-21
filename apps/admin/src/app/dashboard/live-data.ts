@@ -1807,7 +1807,12 @@ async function loadVideoRowSlice({
   let videoLocales: VideoLocaleRow[] = []
   let videoDubs: VideoDubRow[] = []
   let videoImages: VideoImageRow[] = []
-  let videoChildRelations: Array<{ parentId: string }> = []
+  let videoChildRelations: Array<{
+    parentId: string
+    childId: string
+    order: number | null
+    createdAt: Date
+  }> = []
   let groundingStudyQuestions: Array<{ videoId: string }> = []
   let groundingBibleCitations: Array<{ videoId: string }> = []
   let routeManifest: Awaited<ReturnType<typeof loadLatestWatchRouteManifest>> =
@@ -1876,7 +1881,13 @@ async function loadVideoRowSlice({
           parentId: { in: ids },
           child: { deletedAt: null },
         },
-        select: { parentId: true },
+        select: {
+          parentId: true,
+          childId: true,
+          order: true,
+          createdAt: true,
+        },
+        orderBy: [{ parentId: "asc" }, { order: "asc" }, { createdAt: "asc" }],
       }),
       // Grounding signal: videos with ≥1 non-empty study question. Batched +
       // distinct so the library list stays one query per relation regardless
@@ -1933,6 +1944,75 @@ async function loadVideoRowSlice({
     )
   }
 
+  const childPreviewIdsByVideo = new Map<string, string[]>()
+  for (const item of [...videoChildRelations].sort((left, right) => {
+    if (left.parentId !== right.parentId) {
+      return left.parentId.localeCompare(right.parentId)
+    }
+    const leftOrder = left.order ?? Number.MAX_SAFE_INTEGER
+    const rightOrder = right.order ?? Number.MAX_SAFE_INTEGER
+    if (leftOrder !== rightOrder) return leftOrder - rightOrder
+    return left.createdAt.getTime() - right.createdAt.getTime()
+  })) {
+    const current = childPreviewIdsByVideo.get(item.parentId) ?? []
+    if (current.length >= 3) continue
+    current.push(item.childId)
+    childPreviewIdsByVideo.set(item.parentId, current)
+  }
+
+  const childPreviewVideoIds = Array.from(
+    new Set(Array.from(childPreviewIdsByVideo.values()).flat()),
+  )
+  const [childPreviewLocales, childPreviewImages] =
+    childPreviewVideoIds.length === 0
+      ? [[], []]
+      : await Promise.all([
+          prisma.videoLocale.findMany({
+            where: {
+              videoId: { in: childPreviewVideoIds },
+              deletedAt: null,
+            },
+            select: {
+              videoId: true,
+              locale: true,
+              title: true,
+              description: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: "desc" },
+          }),
+          prisma.videoImage.findMany({
+            where: { videoId: { in: childPreviewVideoIds } },
+            select: {
+              videoId: true,
+              url: true,
+              kind: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "asc" },
+          }),
+        ])
+
+  const publicChildPreviewLocales = childPreviewLocales.filter(
+    (item): item is VideoLocaleRow & { locale: string } => item.locale != null,
+  )
+  const childPreviewLocalesByVideo = new Map<
+    string,
+    typeof publicChildPreviewLocales
+  >()
+  for (const item of publicChildPreviewLocales) {
+    const current = childPreviewLocalesByVideo.get(item.videoId) ?? []
+    current.push(item)
+    childPreviewLocalesByVideo.set(item.videoId, current)
+  }
+
+  const childPreviewImagesByVideo = new Map<string, VideoImageRow[]>()
+  for (const item of childPreviewImages) {
+    const current = childPreviewImagesByVideo.get(item.videoId) ?? []
+    current.push(item)
+    childPreviewImagesByVideo.set(item.videoId, current)
+  }
+
   const groundedIds = new Set<string>()
   for (const item of groundingStudyQuestions) groundedIds.add(item.videoId)
   for (const item of groundingBibleCitations) groundedIds.add(item.videoId)
@@ -1947,6 +2027,19 @@ async function loadVideoRowSlice({
     const playbackDub = preferredPlaybackDub(dubRows)
     const coverage = dubCoverageMetric(dubRows)
     const childCount = childCountByVideo.get(video.id) ?? 0
+    const collectionPreviewItems = (
+      childPreviewIdsByVideo.get(video.id) ?? []
+    ).map((childId) => {
+      const childLocaleRows = childPreviewLocalesByVideo.get(childId) ?? []
+      const childLocaleRow = choosePreferredLocale(childLocaleRows, locale)
+      return {
+        key: childId,
+        title: childLocaleRow?.title?.trim() || "Untitled video",
+        previewImageUrl: preferredVideoImage(
+          childPreviewImagesByVideo.get(childId) ?? [],
+        ),
+      }
+    })
 
     return {
       key: video.id,
@@ -1974,6 +2067,7 @@ async function loadVideoRowSlice({
       previewStreamUrl:
         playbackDub?.hls ?? playbackDub?.dash ?? playbackDub?.share ?? null,
       hasGrounding: groundedIds.has(video.id),
+      collectionPreviewItems,
       visitorUrl: includeVisitorUrls
         ? resolveVideoVisitorUrl({
             contentSlug: video.slug,
