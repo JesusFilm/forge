@@ -20,9 +20,14 @@ const IN_FLIGHT_STATES: ReadonlySet<OfflineDownloadState> = new Set([
 /**
  * Bytes credited to a record for storage/selection math: a finished copy's
  * full size, or an in-flight (downloading/paused/queued) transfer's bytes
- * written so far. Failed/canceled records and zero-progress queue entries count 0.
+ * written so far. A mid-swap record has BOTH the old committed copy and the
+ * new partial on disk, so it credits both. Failed/canceled records and
+ * zero-progress queue entries count 0.
  */
 export function effectiveDownloadBytes(record: OfflineDownloadRecord): number {
+  if (record.swapFrom != null) {
+    return record.swapFrom.totalBytes + record.bytesWritten
+  }
   if (record.state === "downloaded") return record.totalBytes
   if (IN_FLIGHT_STATES.has(record.state) && record.bytesWritten > 0) {
     return record.bytesWritten
@@ -72,15 +77,19 @@ export type LibraryRowState = {
 }
 
 /**
- * One offline record's Library row descriptor — the single source of truth
- * U4 renders. `_isPendingSwap` is part of the documented call shape but never
- * changes the output: a downloaded record mid-swap still shows its old,
- * still-playable copy (U8) until the new one commits.
+ * One offline record's Library row descriptor — the single source of truth U4
+ * renders. A mid-swap record's `state` is "downloading" even though the old
+ * copy is still the playable truth (R6) — `swapFrom`, not `state`, decides.
  */
 export function libraryRowState(
   record: OfflineDownloadRecord,
-  _isPendingSwap: boolean,
 ): LibraryRowState {
+  if (record.swapFrom != null) {
+    return {
+      subtitle: `${formatLibraryBytes(record.swapFrom.totalBytes)} · Downloaded`,
+      affordance: "check",
+    }
+  }
   switch (record.state) {
     case "downloaded":
       return {

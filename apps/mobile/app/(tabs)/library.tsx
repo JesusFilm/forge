@@ -61,7 +61,6 @@ export default function LibraryScreen() {
   const navigation = useNavigation()
   const {
     offlineRecords,
-    pendingSwapSlugs,
     isReady,
     deleteDownload,
     retryDownload,
@@ -332,7 +331,6 @@ export default function LibraryScreen() {
                 <SeriesGroupCard
                   key={group.seriesSlug}
                   group={group}
-                  pendingSwapSlugs={pendingSwapSlugs}
                   onRowPress={handleRowPress}
                   onRetry={retryDownload}
                   onResume={resumeDownload}
@@ -353,10 +351,7 @@ export default function LibraryScreen() {
                 <DownloadRow
                   key={record.videoSlug}
                   record={record}
-                  rowState={libraryRowState(
-                    record,
-                    pendingSwapSlugs.has(record.videoSlug),
-                  )}
+                  rowState={libraryRowState(record)}
                   variant="standalone"
                   onPress={handleRowPress}
                   onRetry={retryDownload}

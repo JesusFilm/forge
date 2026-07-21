@@ -1,5 +1,6 @@
 import {
   buildLibraryViewModel,
+  effectiveDownloadBytes,
   formatLibraryBytes,
   formatLibraryDuration,
   libraryRowState,
@@ -190,18 +191,42 @@ describe("buildLibraryViewModel — section emptiness", () => {
   })
 })
 
+const SWAP_FROM = {
+  committedPath: "/old/committed.mp4",
+  renditionDocumentId: "old-rend",
+  qualityLabel: "Low",
+  subtitleLanguageSlug: null,
+  totalBytes: 74 * MB,
+  posterPath: null,
+}
+
 describe("libraryRowState (R6)", () => {
   it("downloaded → check, '<size> · Downloaded'", () => {
     const r = record("a", "downloaded", { totalBytes: 74 * MB })
-    expect(libraryRowState(r, false)).toEqual({
+    expect(libraryRowState(r)).toEqual({
       subtitle: "74 MB · Downloaded",
       affordance: "check",
     })
   })
 
-  it("downloaded + pendingSwap reads identically (old copy is the truth)", () => {
-    const r = record("a", "downloaded", { totalBytes: 74 * MB })
-    expect(libraryRowState(r, true)).toEqual(libraryRowState(r, false))
+  it("mid-swap (downloading + swapFrom) renders the old copy as Downloaded, not a ring", () => {
+    const r = record("a", "downloading", {
+      bytesWritten: 12 * MB,
+      totalBytes: 200 * MB,
+      swapFrom: SWAP_FROM,
+    })
+    expect(libraryRowState(r)).toEqual({
+      subtitle: "74 MB · Downloaded",
+      affordance: "check",
+    })
+  })
+
+  it("a plain downloading record (no swapFrom) still renders as a ring", () => {
+    const r = record("a", "downloading", {
+      bytesWritten: 12 * MB,
+      totalBytes: 200 * MB,
+    })
+    expect(libraryRowState(r).affordance).toBe("ring")
   })
 
   it("downloading → ring with '<pct>% · <size>' and 0..1 progress", () => {
@@ -209,7 +234,7 @@ describe("libraryRowState (R6)", () => {
       bytesWritten: 42 * MB,
       totalBytes: 100 * MB,
     })
-    const s = libraryRowState(r, false)
+    const s = libraryRowState(r)
     expect(s.affordance).toBe("ring")
     expect(s.subtitle).toBe("42% · 100 MB")
     expect(s.progress).toBeCloseTo(0.42)
@@ -217,30 +242,51 @@ describe("libraryRowState (R6)", () => {
 
   it("downloading with an unknown total (0) reports 0 progress, no divide-by-zero", () => {
     const r = record("a", "downloading", { bytesWritten: 10, totalBytes: 0 })
-    const s = libraryRowState(r, false)
+    const s = libraryRowState(r)
     expect(s.progress).toBe(0)
     expect(s.subtitle).toBe("0% · 0 MB")
   })
 
+  it("downloading with bytesWritten past totalBytes clamps to 100%", () => {
+    const r = record("a", "downloading", {
+      bytesWritten: 110 * MB,
+      totalBytes: 100 * MB,
+    })
+    const s = libraryRowState(r)
+    expect(s.progress).toBe(1)
+    expect(s.subtitle).toBe("100% · 100 MB")
+  })
+
   it("queued → none affordance, 'Queued'", () => {
-    expect(libraryRowState(record("a", "queued"), false)).toEqual({
+    expect(libraryRowState(record("a", "queued"))).toEqual({
       subtitle: "Queued",
       affordance: "none",
     })
   })
 
   it("paused → resume affordance, 'Paused'", () => {
-    expect(libraryRowState(record("a", "paused"), false)).toEqual({
+    expect(libraryRowState(record("a", "paused"))).toEqual({
       subtitle: "Paused",
       affordance: "resume",
     })
   })
 
   it("failed → retry affordance, 'Download failed'", () => {
-    expect(libraryRowState(record("a", "failed"), false)).toEqual({
+    expect(libraryRowState(record("a", "failed"))).toEqual({
       subtitle: "Download failed",
       affordance: "retry",
     })
+  })
+})
+
+describe("effectiveDownloadBytes — mid-swap byte accounting (F2)", () => {
+  it("credits a mid-swap record the old copy's size plus bytes written so far", () => {
+    const r = record("a", "downloading", {
+      bytesWritten: 20 * MB,
+      totalBytes: 200 * MB,
+      swapFrom: SWAP_FROM,
+    })
+    expect(effectiveDownloadBytes(r)).toBe(94 * MB)
   })
 })
 
@@ -274,6 +320,11 @@ describe("storageSummary (R2, KTD9)", () => {
   it("computes a clamped usage fraction when capacity is known", () => {
     const done = record("a", "downloaded", { totalBytes: 250 })
     expect(storageSummary([done], 1000)?.usageFraction).toBeCloseTo(0.25)
+  })
+
+  it("clamps usageFraction to 1 when combined bytes exceed capacity", () => {
+    const done = record("a", "downloaded", { totalBytes: 1500 })
+    expect(storageSummary([done], 1000)?.usageFraction).toBe(1)
   })
 })
 

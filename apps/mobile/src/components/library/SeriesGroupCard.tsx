@@ -31,7 +31,6 @@ const EMPTY_SELECTION: ReadonlySet<string> = new Set()
 
 export interface SeriesGroupCardProps {
   group: LibrarySeriesGroup
-  pendingSwapSlugs: ReadonlySet<string>
   onRowPress: (videoSlug: string) => void
   onRetry: (videoSlug: string) => void
   onResume: (videoSlug: string) => void
@@ -45,7 +44,6 @@ export interface SeriesGroupCardProps {
 /** Collapsible series card (R4). Defaults collapsed; tapping the header toggles expansion. */
 export function SeriesGroupCard({
   group,
-  pendingSwapSlugs,
   onRowPress,
   onRetry,
   onResume,
@@ -130,10 +128,7 @@ export function SeriesGroupCard({
           <DownloadRow
             key={episode.videoSlug}
             record={episode}
-            rowState={libraryRowState(
-              episode,
-              pendingSwapSlugs.has(episode.videoSlug),
-            )}
+            rowState={libraryRowState(episode)}
             variant="grouped"
             onPress={onRowPress}
             onRetry={onRetry}
