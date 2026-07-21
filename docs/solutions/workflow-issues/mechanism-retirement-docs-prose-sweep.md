@@ -207,7 +207,7 @@ reads — spend and grant-surface with zero function.
   "Relocated" note (not "Superseded") naming the new home on forward-looking
   prose that cites the old location; see the `hostAllowed` move in
   `docs/solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md`
-  (feat-282 PR 1, 2026-07-21) as the worked example. Two scope inversions vs
+  (feat-282 PR 1 — #1661, 2026-07-21) as the worked example. Two scope inversions vs
   a retirement: (1) the sweep KEY inverts — prose cites a relocated
   implementation by its exact symbol and path, so grep tracked markdown for
   the OLD path and exported symbol names (identifiers, not product nouns);
