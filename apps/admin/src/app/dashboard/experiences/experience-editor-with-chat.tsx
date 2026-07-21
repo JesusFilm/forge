@@ -33,7 +33,7 @@ type ChatGenerateSectionAction = NonNullable<
 
 export type ExperienceEditorWithChatProps = Omit<
   ExperienceEditorProps,
-  "onCanvasController" | "videoLibrary"
+  "loadVideoCollectionChildrenAction" | "onCanvasController" | "videoLibrary"
 > & {
   experienceLocaleId: string
   locale: string
@@ -41,6 +41,9 @@ export type ExperienceEditorWithChatProps = Omit<
   videoLibrary: VideoLibraryItem[]
   loadVideosByIdsAction: (
     videoIds: readonly string[],
+  ) => Promise<VideoLibraryItem[]>
+  loadVideoCollectionChildrenAction: (
+    parentVideoId: string,
   ) => Promise<VideoLibraryItem[]>
   /**
    * Multi-step draft workflow trigger surfaced as the chat panel's
@@ -88,6 +91,7 @@ export function ExperienceEditorWithChat({
   chatActions,
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
+  loadVideoCollectionChildrenAction,
   searchVideoLibraryAction,
   generateDraftAction,
   generateSectionAction,
@@ -168,6 +172,15 @@ export function ExperienceEditorWithChat({
     [mergeVideoLibraryItems, searchVideoLibraryAction],
   )
 
+  const handleLoadVideoCollectionChildren = useCallback(
+    async (parentVideoId: string) => {
+      const children = await loadVideoCollectionChildrenAction(parentVideoId)
+      mergeVideoLibraryItems(children)
+      return children
+    },
+    [loadVideoCollectionChildrenAction, mergeVideoLibraryItems],
+  )
+
   // Stable proxy controller — the panel sees a single object whose
   // methods always delegate to whatever the editor most recently
   // published. Re-mounting the editor (via the parent `key`) replaces
@@ -246,6 +259,7 @@ export function ExperienceEditorWithChat({
         <ExperienceEditor
           {...editorProps}
           videoLibrary={videoLibrary}
+          loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
           searchVideoLibraryAction={handleSearchVideoLibrary}
           onCanvasController={handleCanvasController}
         />

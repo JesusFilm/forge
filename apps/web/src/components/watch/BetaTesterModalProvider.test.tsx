@@ -71,6 +71,10 @@ beforeEach(() => {
   search.playerChromeVisible = true
   search.searchOpen = false
   lazyModal.stalled = false
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ enabled: true }, { status: 200 })),
+  )
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -80,6 +84,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ""
+  vi.unstubAllGlobals()
 })
 
 function click(selector: string) {
@@ -88,13 +93,14 @@ function click(selector: string) {
   act(() => element?.click())
 }
 
-function renderProvider(children: ReactNode = <main>Watch page</main>) {
-  act(() => {
+async function renderProvider(children: ReactNode = <main>Watch page</main>) {
+  await act(async () => {
     root.render(
       <WatchModalActivityProvider>
         <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
       </WatchModalActivityProvider>,
     )
+    await Promise.resolve()
   })
 }
 
@@ -119,8 +125,29 @@ function MediaOwner({ media }: { media: ReturnType<typeof makeMedia> | null }) {
 }
 
 describe("BetaTesterModalProvider", () => {
-  it("exposes the global CTA without rendering the lazy modal initially", () => {
-    renderProvider()
+  it("defaults off, then exposes the global CTA after an enabled response", async () => {
+    let resolveFetch: ((response: Response) => void) | undefined
+    vi.mocked(fetch).mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    await renderProvider()
+
+    expect(fetch).toHaveBeenCalledWith("/watch/api/beta-tester-cta", {
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).toBeNull()
+
+    await act(async () => {
+      resolveFetch?.(Response.json({ enabled: true }))
+      await Promise.resolve()
+    })
 
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
@@ -130,9 +157,48 @@ describe("BetaTesterModalProvider", () => {
     ).toBeNull()
   })
 
-  it("renders the global CTA in the active Watch locale", () => {
+  it("stays off after a failed response while keeping nested modal triggers working", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("request failed"))
+
+    await renderProvider(
+      <BetaTesterTrigger>Home beta action</BetaTesterTrigger>,
+    )
+
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).toBeNull()
+
+    click("button")
+    expect(document.querySelectorAll("[role='dialog']")).toHaveLength(1)
+  })
+
+  it("refreshes the global CTA flag when navigation remounts the provider", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(Response.json({ enabled: false }))
+      .mockResolvedValueOnce(Response.json({ enabled: true }))
+      .mockResolvedValueOnce(Response.json({ enabled: false }))
+
+    await renderProvider()
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).toBeNull()
+
+    navigation.pathname = "/watch/videos"
+    await renderProvider()
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).not.toBeNull()
+
+    navigation.pathname = "/watch/history"
+    await renderProvider()
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).toBeNull()
+  })
+
+  it("renders the global CTA in the active Watch locale", async () => {
     setRequestLocale("ru")
-    renderProvider(<main>Страница Watch</main>)
+    await renderProvider(<main>Страница Watch</main>)
 
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']")
@@ -140,8 +206,10 @@ describe("BetaTesterModalProvider", () => {
     ).toBe("Стать бета-тестером")
   })
 
-  it("opens one shared modal from both global and nested triggers", () => {
-    renderProvider(<BetaTesterTrigger>Home beta action</BetaTesterTrigger>)
+  it("opens one shared modal from both global and nested triggers", async () => {
+    await renderProvider(
+      <BetaTesterTrigger>Home beta action</BetaTesterTrigger>,
+    )
 
     click("[data-testid='global-beta-tester-cta']")
     expect(document.querySelectorAll("[role='dialog']")).toHaveLength(1)
@@ -150,9 +218,9 @@ describe("BetaTesterModalProvider", () => {
     expect(document.querySelectorAll("[role='dialog']")).toHaveLength(1)
   })
 
-  it("recovers from the dynamic loading shell once the modal resolves", () => {
+  it("recovers from the dynamic loading shell once the modal resolves", async () => {
     lazyModal.stalled = true
-    renderProvider()
+    await renderProvider()
     click("[data-testid='global-beta-tester-cta']")
 
     expect(
@@ -163,7 +231,7 @@ describe("BetaTesterModalProvider", () => {
     ).toBeNull()
 
     lazyModal.stalled = false
-    renderProvider()
+    await renderProvider()
     expect(
       document.querySelector("[data-testid='beta-tester-modal-loading']"),
     ).toBeNull()
@@ -172,7 +240,7 @@ describe("BetaTesterModalProvider", () => {
 
   it("can dismiss a stalled modal chunk and use the external fallback", async () => {
     lazyModal.stalled = true
-    renderProvider()
+    await renderProvider()
     const trigger = document.querySelector(
       "[data-testid='global-beta-tester-cta']",
     ) as HTMLButtonElement
@@ -201,7 +269,7 @@ describe("BetaTesterModalProvider", () => {
 
   it("pauses playing media and resumes it after a same-route close", async () => {
     const media = makeMedia()
-    renderProvider(<MediaOwner media={media} />)
+    await renderProvider(<MediaOwner media={media} />)
 
     click("[data-testid='global-beta-tester-cta']")
     expect(media.pause).toHaveBeenCalledOnce()
@@ -218,9 +286,9 @@ describe("BetaTesterModalProvider", () => {
     expect(media.play).toHaveBeenCalledOnce()
   })
 
-  it("does not resume media that was already paused", () => {
+  it("does not resume media that was already paused", async () => {
     const media = makeMedia({ paused: true })
-    renderProvider(<MediaOwner media={media} />)
+    await renderProvider(<MediaOwner media={media} />)
 
     click("[data-testid='global-beta-tester-cta']")
     click("[role='dialog'] button")
@@ -231,7 +299,7 @@ describe("BetaTesterModalProvider", () => {
 
   it("handles a rejected resume without leaving the modal open", async () => {
     const media = makeMedia({ rejectPlay: true })
-    renderProvider(<MediaOwner media={media} />)
+    await renderProvider(<MediaOwner media={media} />)
     click("[data-testid='global-beta-tester-cta']")
 
     await act(async () => {
@@ -247,7 +315,7 @@ describe("BetaTesterModalProvider", () => {
     expect(document.querySelector("[role='dialog']")).toBeNull()
   })
 
-  it("pauses playing media that attaches after the modal opens", () => {
+  it("pauses playing media that attaches after the modal opens", async () => {
     const media = makeMedia()
 
     function LateMediaOwner() {
@@ -266,7 +334,7 @@ describe("BetaTesterModalProvider", () => {
       )
     }
 
-    renderProvider(<LateMediaOwner />)
+    await renderProvider(<LateMediaOwner />)
     click("[data-testid='global-beta-tester-cta']")
     expect(media.pause).not.toHaveBeenCalled()
 
@@ -277,22 +345,24 @@ describe("BetaTesterModalProvider", () => {
     expect(media.play).not.toHaveBeenCalled()
   })
 
-  it("closes without resuming route-owned media when the pathname changes", () => {
+  it("closes without resuming route-owned media when the pathname changes", async () => {
     const media = makeMedia()
-    renderProvider(<MediaOwner media={media} />)
+    await renderProvider(<MediaOwner media={media} />)
     click("[data-testid='global-beta-tester-cta']")
     expect(media.pause).toHaveBeenCalledOnce()
 
     navigation.pathname = "/watch/videos"
-    renderProvider(<MediaOwner media={media} />)
+    await renderProvider(<MediaOwner media={media} />)
 
     expect(document.querySelector("[role='dialog']")).toBeNull()
     expect(media.play).not.toHaveBeenCalled()
   })
 
-  it("blocks both beta triggers while search owns the page", () => {
+  it("blocks both beta triggers while search owns the page", async () => {
     search.searchOpen = true
-    renderProvider(<BetaTesterTrigger>Nested beta action</BetaTesterTrigger>)
+    await renderProvider(
+      <BetaTesterTrigger>Nested beta action</BetaTesterTrigger>,
+    )
 
     const globalTrigger = document.querySelector(
       "[data-testid='global-beta-tester-cta']",
@@ -302,9 +372,9 @@ describe("BetaTesterModalProvider", () => {
     expect(document.querySelector("[role='dialog']")).toBeNull()
   })
 
-  it("keeps a hidden global trigger out of keyboard and activation paths", () => {
+  it("keeps a hidden global trigger out of keyboard and activation paths", async () => {
     search.playerChromeVisible = false
-    renderProvider()
+    await renderProvider()
 
     const trigger = document.querySelector(
       "[data-testid='global-beta-tester-cta']",
@@ -316,7 +386,7 @@ describe("BetaTesterModalProvider", () => {
     expect(document.querySelector("[role='dialog']")).toBeNull()
   })
 
-  it("makes the global trigger unavailable while the question panel owns a modal", () => {
+  it("makes the global trigger unavailable while the question panel owns a modal", async () => {
     function QuestionPanelOwner() {
       const modal = useBetaTesterModal()
       const [open, setOpen] = useState(false)
@@ -334,7 +404,7 @@ describe("BetaTesterModalProvider", () => {
       )
     }
 
-    renderProvider(<QuestionPanelOwner />)
+    await renderProvider(<QuestionPanelOwner />)
     click("[data-testid='question-owner']")
 
     const trigger = document.querySelector(

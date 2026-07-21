@@ -2,9 +2,14 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import type { SceneRecommendation } from "@/lib/recommendations"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import { cn } from "@/lib/utils"
 
 type VideoRecommendationsProps = {
   recommendations: SceneRecommendation[]
@@ -55,7 +60,10 @@ function RecommendationCard({
   return (
     <Link
       href={hrefBuilder(rec, locale)}
-      className="group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700"
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-900">
         {rec.imageUrl ? (
@@ -78,6 +86,7 @@ function RecommendationCard({
         <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white/80">
           {formatTimestamp(rec.startSeconds)}
         </div>
+        <VideoThumbnailInteractionFrame data-testid="video-recommendation-thumbnail-frame" />
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">

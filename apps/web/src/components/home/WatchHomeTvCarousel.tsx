@@ -34,6 +34,10 @@ import {
 } from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
 import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
   WATCH_PAGE_CONTENT_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
 } from "@/lib/content-width"
@@ -772,10 +776,11 @@ function WatchHomeTvCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "group relative block aspect-video w-[clamp(13.5rem,68vw,26.25rem)] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:w-[clamp(14.75rem,30vw,26.25rem)] md:w-full",
+        "group relative block aspect-video w-[clamp(13.5rem,68vw,26.25rem)] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] sm:w-[clamp(14.75rem,30vw,26.25rem)] md:w-full",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
         isActive
           ? "opacity-100"
-          : "opacity-62 hover:opacity-95 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+          : "opacity-62 hover:opacity-95 focus-visible:opacity-95 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
       )}
       aria-pressed={isActive}
       aria-label={t("showVideo", { title: copy.title })}
@@ -817,14 +822,9 @@ function WatchHomeTvCard({
         data-testid="watch-home-tv-card-bevel"
         className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
       />
-      <div
-        aria-hidden
+      <VideoThumbnailInteractionFrame
         data-testid="watch-home-tv-card-hover-outline"
-        className={cn(
-          "watch-home-gradient-outline watch-home-gradient-outline-landscape pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-200",
-          !isActive &&
-            "group-hover:opacity-100 group-focus-visible:opacity-100",
-        )}
+        interactive={!isActive}
       />
       <div
         aria-hidden

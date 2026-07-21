@@ -8,6 +8,10 @@ import { Clock3, Play } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 
 import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
   getWatchProgressRatio,
   loadWatchProgressHistory,
   type WatchProgressEntry,
@@ -16,6 +20,7 @@ import type {
   WatchHistoryItem,
   WatchHistoryVideoDetails,
 } from "@/lib/watch-history"
+import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 
 type VideoState =
@@ -192,7 +197,12 @@ export function WatchHistoryClient() {
 function HistoryRow({ item }: { item: WatchHistoryItem }) {
   const videoLabels = useTranslations("VideoLabels")
   const content = (
-    <div className="grid grid-cols-[7rem_1fr] gap-4 p-3 transition-colors hover:bg-white/[0.04] sm:grid-cols-[10rem_1fr] sm:gap-5 sm:p-4">
+    <div
+      className={cn(
+        "grid grid-cols-[7rem_1fr] gap-4 p-3 transition-colors sm:grid-cols-[10rem_1fr] sm:gap-5 sm:p-4",
+        item.href && "hover:bg-white/[0.04]",
+      )}
+    >
       <div className="relative aspect-video overflow-hidden rounded-md bg-stone-900">
         {item.imageUrl ? (
           <Image
@@ -210,6 +220,9 @@ function HistoryRow({ item }: { item: WatchHistoryItem }) {
             style={{ width: `${item.progressPercent}%` }}
           />
         </div>
+        {item.href ? (
+          <VideoThumbnailInteractionFrame data-testid="watch-history-thumbnail-frame" />
+        ) : null}
       </div>
 
       <div className="flex min-w-0 items-center justify-between gap-4">
@@ -221,15 +234,23 @@ function HistoryRow({ item }: { item: WatchHistoryItem }) {
             {item.title}
           </h3>
         </div>
-        <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black sm:flex">
-          <Play aria-hidden="true" className="h-4 w-4 fill-current" />
-        </div>
+        {item.href ? (
+          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-black sm:flex">
+            <Play aria-hidden="true" className="h-4 w-4 fill-current" />
+          </div>
+        ) : null}
       </div>
     </div>
   )
 
   return item.href ? (
-    <Link href={item.href as Route} className="block text-inherit no-underline">
+    <Link
+      href={item.href as Route}
+      className={cn(
+        "group block text-inherit no-underline",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
+    >
       {content}
     </Link>
   ) : (

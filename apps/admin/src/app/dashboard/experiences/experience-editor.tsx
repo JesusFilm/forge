@@ -1207,6 +1207,7 @@ export function ExperienceEditor({
   createLocaleAction,
   restoreAction,
   uploadImageAction,
+  loadVideoCollectionChildrenAction,
   searchVideoLibraryAction,
   onCanvasController,
 }: {
@@ -1238,6 +1239,9 @@ export function ExperienceEditor({
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
   uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
+  loadVideoCollectionChildrenAction?: (
+    parentVideoId: string,
+  ) => Promise<VideoLibraryItem[]>
   searchVideoLibraryAction?: (
     query: string,
     context?: { client?: VideoLibrarySearchClient },
@@ -1491,6 +1495,7 @@ export function ExperienceEditor({
   const [videoLibrarySearchPending, setVideoLibrarySearchPending] =
     useState(false)
   const [videoLibrarySearchError, setVideoLibrarySearchError] = useState(false)
+  const [videoPickerApplyPending, setVideoPickerApplyPending] = useState(false)
   const [videoLibrarySearchResultKeys, setVideoLibrarySearchResultKeys] =
     useState<readonly string[]>([])
   const [imagePickerTarget, setImagePickerTarget] =
@@ -4074,35 +4079,51 @@ export function ExperienceEditor({
     })
   }
 
-  function appendVideoCarouselItem(
-    index: number,
-    videoKey: string,
-    streamUrl: string | null,
+  function videosNotAlreadyIncluded(
+    currentItems: unknown[],
+    videos: VideoLibraryItem[],
   ) {
-    const selectedVideo = findVideoLibraryItem(videoKey)
-    if (!selectedVideo) return
+    const includedIds = new Set(
+      currentItems.map((item) => asString(asRecord(item)?.videoId)),
+    )
+    return videos.filter((video) => {
+      if (includedIds.has(video.key)) return false
+      includedIds.add(video.key)
+      return true
+    })
+  }
+
+  function appendVideoCarouselItems(
+    index: number,
+    videos: VideoLibraryItem[],
+    selectedStreamUrl: string | null = null,
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "videoCarousel") return 0
+    const additions = videosNotAlreadyIncluded(asArray(block.items), videos)
+    if (additions.length === 0) return 0
 
     updateBlockAt(index, (block) => {
       if (block.t !== "videoCarousel") return block
       const currentItems = asArray(block.items)
-      const alreadyIncluded = currentItems.some(
-        (item) => asString(asRecord(item)?.videoId) === selectedVideo.key,
-      )
-      if (alreadyIncluded) return block
-
       return {
         ...block,
         items: [
           ...currentItems,
-          {
-            videoId: selectedVideo.key,
-            streamingUrl: streamUrl ?? selectedVideo.previewStreamUrl ?? "",
+          ...additions.map((video) => ({
+            videoId: video.key,
+            streamingUrl:
+              (videos.length === 1 ? selectedStreamUrl : null) ??
+              preferredPlayableDubForVideo(video, null)?.streamUrl ??
+              video.previewStreamUrl ??
+              "",
             titleOverride: "",
             subtitleOverride: "",
-          },
+          })),
         ],
       }
     })
+    return additions.length
   }
 
   function updateVideoCarouselItemField(
@@ -4490,31 +4511,32 @@ export function ExperienceEditor({
     })
   }
 
-  function appendMediaCollectionVideoItem(index: number, videoKey: string) {
-    const selectedVideo = findVideoLibraryItem(videoKey)
-    if (!selectedVideo) return
+  function appendMediaCollectionVideoItems(
+    index: number,
+    videos: VideoLibraryItem[],
+  ) {
+    const block = readBlockAt(index)
+    if (block?.t !== "mediaCollection") return 0
+    const additions = videosNotAlreadyIncluded(asArray(block.items), videos)
+    if (additions.length === 0) return 0
 
     updateBlockAt(index, (block) => {
       if (block.t !== "mediaCollection") return block
       const currentItems = asArray(block.items)
-      const alreadyIncluded = currentItems.some(
-        (item) => asString(asRecord(item)?.videoId) === selectedVideo.key,
-      )
-      if (alreadyIncluded) return block
-
       return {
         ...block,
         items: [
           ...currentItems,
-          {
-            videoId: selectedVideo.key,
+          ...additions.map((video) => ({
+            videoId: video.key,
             titleOverride: "",
             subtitleOverride: "",
-            imageOverrideUrl: selectedVideo.previewImageUrl ?? "",
-          },
+            imageOverrideUrl: video.previewImageUrl ?? "",
+          })),
         ],
       }
     })
+    return additions.length
   }
 
   function removeMediaCollectionItem(index: number, itemIndex: number) {
@@ -5357,14 +5379,50 @@ export function ExperienceEditor({
     })
   }
 
-  function applyVideoPickerSelection() {
+  async function applyVideoPickerSelection() {
     if (videoPickerBlockIndex === null) return
     const selectedVideo = findVideoLibraryItem(videoPickerDraft.videoKey)
     if (!selectedVideo) return
+    if (
+      (videoPickerMode === "carouselAppend" ||
+        videoPickerMode === "mediaCollectionAppend") &&
+      selectedVideo.isCollectionTarget
+    ) {
+      if (!loadVideoCollectionChildrenAction) {
+        pushToast("Unable to load collection videos.", "error")
+        return
+      }
+      setVideoPickerApplyPending(true)
+      try {
+        const children = await loadVideoCollectionChildrenAction(
+          selectedVideo.key,
+        )
+        if (children.length === 0) {
+          pushToast("This collection has no videos to add.", "error")
+          return
+        }
+        const addedCount =
+          videoPickerMode === "carouselAppend"
+            ? appendVideoCarouselItems(videoPickerBlockIndex, children)
+            : appendMediaCollectionVideoItems(videoPickerBlockIndex, children)
+        closeVideoPicker()
+        pushToast(
+          addedCount > 0
+            ? `${addedCount} collection ${addedCount === 1 ? "video" : "videos"} added.`
+            : "All collection videos are already in this block.",
+          "success",
+        )
+      } catch {
+        pushToast("Unable to load collection videos.", "error")
+      } finally {
+        setVideoPickerApplyPending(false)
+      }
+      return
+    }
     if (videoPickerMode === "carouselAppend") {
-      appendVideoCarouselItem(
+      appendVideoCarouselItems(
         videoPickerBlockIndex,
-        selectedVideo.key,
+        [selectedVideo],
         videoPickerPreviewStreamUrl,
       )
       closeVideoPicker()
@@ -5372,7 +5430,7 @@ export function ExperienceEditor({
       return
     }
     if (videoPickerMode === "mediaCollectionAppend") {
-      appendMediaCollectionVideoItem(videoPickerBlockIndex, selectedVideo.key)
+      appendMediaCollectionVideoItems(videoPickerBlockIndex, [selectedVideo])
       closeVideoPicker()
       pushToast("Video added to media collection.", "success")
       return
@@ -10208,6 +10266,7 @@ export function ExperienceEditor({
         )}
         onClick={(event) => {
           if (event.target !== event.currentTarget) return
+          if (videoPickerApplyPending) return
           closeVideoPicker()
         }}
         role="presentation"
@@ -10243,6 +10302,7 @@ export function ExperienceEditor({
             <button
               type="button"
               onClick={closeVideoPicker}
+              disabled={videoPickerApplyPending}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
@@ -10837,21 +10897,24 @@ export function ExperienceEditor({
               <button
                 type="button"
                 onClick={closeVideoPicker}
+                disabled={videoPickerApplyPending}
                 className="inline-flex h-9 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)]"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={applyVideoPickerSelection}
-                disabled={!videoPickerSelectedVideo}
+                onClick={() => void applyVideoPickerSelection()}
+                disabled={!videoPickerSelectedVideo || videoPickerApplyPending}
                 className="inline-flex h-9 cursor-pointer items-center justify-center rounded-sm bg-[var(--color-brand)] px-4 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {videoPickerMode === "carouselAppend"
-                  ? "Add video"
-                  : videoPickerMode === "mediaCollectionAppend"
+                {videoPickerApplyPending
+                  ? "Adding videos…"
+                  : videoPickerMode === "carouselAppend"
                     ? "Add video"
-                    : "Apply video"}
+                    : videoPickerMode === "mediaCollectionAppend"
+                      ? "Add video"
+                      : "Apply video"}
               </button>
             </div>
           </div>

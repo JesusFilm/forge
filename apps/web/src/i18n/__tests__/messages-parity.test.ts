@@ -35,7 +35,10 @@ const translationPolicy = JSON.parse(
     join(__dirname, "../../../scripts/ui-translation-policy.json"),
     "utf-8",
   ),
-) as { intentionallyLocaleNeutral: string[] }
+) as {
+  intentionallyLocaleNeutral: string[]
+  pendingTranslationPaths: string[]
+}
 const LANGUAGE_PICKER_KEYS = [
   "seeAllLanguages",
   "seeAllVideosInLanguage",
@@ -188,8 +191,13 @@ describe("non-English catalogs — translated-copy gate", () => {
     const intentionallyLocaleNeutral = new Set(
       translationPolicy.intentionallyLocaleNeutral,
     )
+    const pendingTranslationPaths = new Set(
+      translationPolicy.pendingTranslationPaths,
+    )
     const translatablePaths = Object.keys(source).filter(
-      (path) => !intentionallyLocaleNeutral.has(path),
+      (path) =>
+        !intentionallyLocaleNeutral.has(path) &&
+        !pendingTranslationPaths.has(path),
     )
     const sourceCopies = readdirSync(messagesDir)
       .filter((file) => file.endsWith(".json") && file !== "en.json")

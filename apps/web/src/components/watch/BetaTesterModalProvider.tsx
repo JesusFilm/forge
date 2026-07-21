@@ -29,6 +29,7 @@ type BetaTesterModalContextValue = {
 
 const BetaTesterModalContext =
   createContext<BetaTesterModalContextValue | null>(null)
+const GLOBAL_BETA_TESTER_CTA_ENDPOINT = "/watch/api/beta-tester-cta"
 
 const LazyBetaTesterModal = dynamic(
   () =>
@@ -189,8 +190,34 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const [modalEnabled, setModalEnabled] = useState(false)
   const [questionPanelOpen, setQuestionPanelOpen] = useState(false)
+  const [showGlobalTrigger, setShowGlobalTrigger] = useState(false)
   const returnFocusRef = useRef<HTMLElement | null>(null)
   useWatchModalActivity(open)
+
+  useEffect(() => {
+    let active = true
+
+    void fetch(GLOBAL_BETA_TESTER_CTA_ENDPOINT, {
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+      .then(async (response) => {
+        if (!response.ok) return null
+        return (await response.json()) as { enabled?: unknown }
+      })
+      .then((result) => {
+        if (active && typeof result?.enabled === "boolean") {
+          setShowGlobalTrigger(result.enabled)
+        }
+      })
+      .catch(() => {
+        // Fail closed: the authored nested triggers remain available.
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const openModal = useCallback(
     (trigger?: HTMLElement | null) => {
@@ -236,20 +263,22 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
       <div inert={open || undefined} aria-hidden={open || undefined}>
         {children}
       </div>
-      <button
-        type="button"
-        data-testid="global-beta-tester-cta"
-        disabled={triggerUnavailable || !triggerVisible}
-        onClick={(event) => openModal(event.currentTarget)}
-        className={cn(
-          "fixed right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[45] inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-stone-950 shadow-[0_12px_36px_rgba(0,0,0,0.4)] ring-1 ring-black/10 transition-[opacity,transform,background-color] duration-300 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none disabled:pointer-events-none sm:right-6 sm:bottom-6",
-          triggerVisible
-            ? "translate-y-0 opacity-100"
-            : "pointer-events-none translate-y-2 opacity-0",
-        )}
-      >
-        {t("trigger")}
-      </button>
+      {showGlobalTrigger ? (
+        <button
+          type="button"
+          data-testid="global-beta-tester-cta"
+          disabled={triggerUnavailable || !triggerVisible}
+          onClick={(event) => openModal(event.currentTarget)}
+          className={cn(
+            "fixed right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[45] inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-stone-950 shadow-[0_12px_36px_rgba(0,0,0,0.4)] ring-1 ring-black/10 transition-[opacity,transform,background-color] duration-300 hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none disabled:pointer-events-none sm:right-6 sm:bottom-6",
+            triggerVisible
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-2 opacity-0",
+          )}
+        >
+          {t("trigger")}
+        </button>
+      ) : null}
       {modalEnabled ? (
         <BetaTesterModalLoadBoundary open={open} onClose={closeModal}>
           <LazyBetaTesterModal

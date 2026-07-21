@@ -163,6 +163,16 @@ default and keeps anonymous downloads available through opaque download IDs;
 the gated path. Do not use this flag as restricted-content authorization; it is
 a UX/product rollout gate with a fail-open fallback.
 
+`forge.watch.globalBetaTesterCta` is a temporary LaunchDarkly-backed release
+flag for the global floating beta tester CTA. `false` omits the floating CTA
+while keeping the shared modal provider available to authored beta-tester
+links; `true` renders the floating CTA. Because public Watch routes are
+statically cached, evaluate this flag through the same-origin, no-store
+`/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
+layout. Keep
+`FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
+or rolling out the launcher.
+
 Watch Bible passage text is resolved by Admin through
 `BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
 YouVersion API directly. If the passage is absent, the watch page falls back to

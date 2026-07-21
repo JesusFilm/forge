@@ -20,6 +20,10 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
@@ -319,10 +323,16 @@ export function SiblingCarousel({
               : t("relatedVideoThumbnail")
 
             const cardClassName = cn(
-              "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
+              "relative block aspect-video overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",
+              href && "group cursor-pointer",
+              href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
               isActive
                 ? "opacity-100"
-                : "opacity-70 hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                : cn(
+                    "opacity-70",
+                    href &&
+                      "hover:opacity-100 focus-visible:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                  ),
               isPending &&
                 !isActive &&
                 "opacity-100 shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
@@ -362,7 +372,7 @@ export function SiblingCarousel({
                   </div>
                 )}
                 <MuxHoverPreview
-                  previewUrl={muxPreview}
+                  previewUrl={href ? muxPreview : null}
                   sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                 />
 
@@ -428,16 +438,13 @@ export function SiblingCarousel({
                 />
                 <WatchProgressBar videoId={child.documentId} />
 
-                <div
-                  aria-hidden="true"
-                  data-testid="sibling-carousel-hover-outline"
-                  className={cn(
-                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_-4px_22px_rgba(255,255,255,0.22)] transition-opacity duration-200",
-                    !isActive &&
-                      "group-hover:opacity-100 group-focus-visible:opacity-100",
-                    isPending && "opacity-100",
-                  )}
-                />
+                {href ? (
+                  <VideoThumbnailInteractionFrame
+                    data-testid="sibling-carousel-hover-outline"
+                    interactive={!isActive}
+                    visible={isPending}
+                  />
+                ) : null}
 
                 <div
                   aria-hidden="true"
