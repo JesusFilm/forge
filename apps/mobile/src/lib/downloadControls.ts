@@ -10,12 +10,12 @@ import type {
  * duplicated state machine. Cancel/delete confirm at the call site (R11); pause
  * and resume are non-destructive and confirm-free.
  */
-export type DownloadControl = "pause" | "resume" | "cancel" | "delete"
+export type DownloadControl = "pause" | "resume" | "cancel" | "delete" | "retry"
 
 /**
  * downloading → pause + cancel · paused → resume + cancel · queued → cancel ·
- * downloaded → delete · failed → delete · canceled → none. `queued` has no live
- * transfer to pause yet, so it offers cancel only.
+ * downloaded → delete · failed → retry + delete · canceled → none. `queued` has
+ * no live transfer to pause yet, so it offers cancel only.
  */
 export function controlsForState(
   state: OfflineDownloadState,
@@ -30,7 +30,7 @@ export function controlsForState(
     case "downloaded":
       return ["delete"]
     case "failed":
-      return ["delete"]
+      return ["retry", "delete"]
     case "canceled":
       return []
   }

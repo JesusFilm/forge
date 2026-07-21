@@ -36,6 +36,7 @@ const CONTROL_META: Record<
 > = {
   pause: { icon: "pause", verb: "Pause", danger: false },
   resume: { icon: "play", verb: "Resume", danger: false },
+  retry: { icon: "refresh", verb: "Retry", danger: false },
   cancel: { icon: "close", verb: "Cancel", danger: true },
   delete: { icon: "trash-outline", verb: "Remove", danger: true },
 }
@@ -92,6 +93,7 @@ export function MyDownloadsSection() {
     deleteDownload,
     pauseDownload,
     resumeDownload,
+    retryDownload,
     cancelDownload,
   } = useDownloads()
 
@@ -112,6 +114,7 @@ export function MyDownloadsSection() {
   ) => {
     if (control === "pause") void pauseDownload(slug)
     else if (control === "resume") void resumeDownload(slug)
+    else if (control === "retry") void retryDownload(slug)
     else if (control === "cancel")
       confirmRemove(label, () => void cancelDownload(slug))
     else confirmRemove(label, () => void deleteDownload(slug))

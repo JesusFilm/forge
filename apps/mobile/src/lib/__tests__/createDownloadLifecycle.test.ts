@@ -5,6 +5,7 @@ import type {
 } from "../downloadEngine"
 import {
   createDownloadLifecycle,
+  retryFailedDownload,
   type DownloadLifecycleDeps,
   type StartDownloadRequest,
 } from "../downloadLifecycle"
@@ -456,6 +457,22 @@ describe("restart", () => {
     expect(h.engineStart).not.toHaveBeenCalled()
   })
 
+  // D2: a delete/cancel racing the re-resolve must not resurrect the record a
+  // retry-tap just deleted (only latent while restart was single-flight-only).
+  it("bails when the record was deleted during the re-resolve — no write, no engine start", async () => {
+    const h: ReturnType<typeof makeHarness> = makeHarness({
+      records: [paused],
+      resolveImpl: async () => {
+        h.records.delete("washi-gospel-1")
+        return { mediaUrl: GOOD_URL, subtitleUrl: null }
+      },
+    })
+    await h.lifecycle.restart(paused)
+    expect(h.writes).toHaveLength(0)
+    expect(h.engineStart).not.toHaveBeenCalled()
+    expect(h.records.has("washi-gospel-1")).toBe(false)
+  })
+
   it("reuses the record's pending path and the live cellular preference", async () => {
     const h = makeHarness({ records: [paused], allowCellularForRestart: true })
     await h.lifecycle.restart(paused)
@@ -499,6 +516,73 @@ describe("restart", () => {
     expect(record?.seriesEpisodeIndex).toBe(2)
     expect(record?.durationSeconds).toBe(725)
     expect(record?.enqueuedAt).toBe(1_753_000_000_000)
+  })
+})
+
+describe("retryFailedDownload (DownloadsProvider retry guard — Part A)", () => {
+  const failed = makeRecord({
+    state: "failed",
+    committedPath: null,
+    pendingPath: `${ROOT}/washi-gospel-1/media.n1.pending`,
+  })
+
+  it("retries a failed record: restart runs and it goes downloading", async () => {
+    const h = makeHarness({ records: [failed] })
+    await retryFailedDownload(
+      {
+        getRecord: (slug) => h.records.get(slug),
+        restart: h.lifecycle.restart,
+      },
+      "washi-gospel-1",
+    )
+    expect(h.records.get("washi-gospel-1")?.state).toBe("downloading")
+    expect(h.engineStart).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["downloaded", "downloading", "queued", "paused"] as const)(
+    "no-ops on a %s record (restart not called)",
+    async (state) => {
+      const record = makeRecord({ state })
+      const h = makeHarness({ records: [record] })
+      await retryFailedDownload(
+        {
+          getRecord: (slug) => h.records.get(slug),
+          restart: h.lifecycle.restart,
+        },
+        "washi-gospel-1",
+      )
+      expect(h.engineStart).not.toHaveBeenCalled()
+      expect(h.resolveMock).not.toHaveBeenCalled()
+      expect(h.records.get("washi-gospel-1")).toBe(record)
+    },
+  )
+
+  it("no-ops on a missing record", async () => {
+    const h = makeHarness()
+    await retryFailedDownload(
+      {
+        getRecord: (slug) => h.records.get(slug),
+        restart: h.lifecycle.restart,
+      },
+      "washi-gospel-1",
+    )
+    expect(h.engineStart).not.toHaveBeenCalled()
+  })
+
+  // AE8: a null re-resolution leaves restart's existing no-write behavior
+  // untouched — the retry wrapper adds no delete/removal of its own.
+  it("AE8: a null re-resolution leaves the record failed, untouched", async () => {
+    const h = makeHarness({ records: [failed], resolveImpl: async () => null })
+    await retryFailedDownload(
+      {
+        getRecord: (slug) => h.records.get(slug),
+        restart: h.lifecycle.restart,
+      },
+      "washi-gospel-1",
+    )
+    expect(h.records.get("washi-gospel-1")).toBe(failed)
+    expect(h.removals).toHaveLength(0)
+    expect(h.engineStart).not.toHaveBeenCalled()
   })
 })
 

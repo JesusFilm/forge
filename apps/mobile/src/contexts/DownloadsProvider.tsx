@@ -51,6 +51,7 @@ import {
   buildReattachRequest,
   buildRequestRecord,
   createDownloadLifecycle,
+  retryFailedDownload,
   type DownloadLifecycle,
   type StartDownloadRequest,
   type StartDownloadResult,
@@ -117,6 +118,8 @@ type DownloadsContextValue = {
   pauseDownload: (videoSlug: string) => Promise<void>
   /** Resume a paused download; restarts cleanly if the task didn't survive. */
   resumeDownload: (videoSlug: string) => Promise<void>
+  /** Retry a failed download via restart; a no-op on any other state (R21). */
+  retryDownload: (videoSlug: string) => Promise<void>
   /** Cancel an in-flight download: stop the transfer and remove it (R1). */
   cancelDownload: (videoSlug: string) => Promise<void>
   /** Stop an in-flight task without deleting its record (U4 language-switch). */
@@ -643,6 +646,20 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
     [pumpBatchQueue, enterPendingSwap],
   )
 
+  // D2/R21: retry only ever restarts the existing failed record — never a
+  // fresh startDownload (its resolution-failure path deletes the record).
+  const retryDownload = useCallback(
+    (videoSlug: string) =>
+      retryFailedDownload(
+        {
+          getRecord: (slug) => recordsRef.current[slug],
+          restart: lifecycle.restart,
+        },
+        videoSlug,
+      ),
+    [lifecycle],
+  )
+
   const value = useMemo<DownloadsContextValue>(
     () => ({
       isReady,
@@ -671,6 +688,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       deleteDownload: lifecycle.deleteDownload,
       pauseDownload: lifecycle.pause,
       resumeDownload: lifecycle.resume,
+      retryDownload,
       cancelDownload: lifecycle.cancel,
       supersedeDownload: lifecycle.supersede,
     }),
@@ -681,6 +699,7 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
       lifecycle,
       queueBatchDownload,
       queueBatchRecords,
+      retryDownload,
     ],
   )
 

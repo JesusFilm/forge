@@ -220,6 +220,25 @@ export function attemptIdFromPendingPath(pendingPath: string): string {
   return /\.pending-(.+)\.mp4$/.exec(pendingPath)?.[1] ?? pendingPath
 }
 
+export type RetryDownloadDeps = {
+  getRecord: (videoSlug: string) => OfflineDownloadRecord | undefined
+  restart: (record: OfflineDownloadRecord) => Promise<void>
+}
+
+/**
+ * D2/R21: retry only ever targets a currently-failed record via the engine's
+ * restart — never a fresh start() (its resolution-failure path deletes the
+ * record, and a retry has no persisted URL to build a request from anyway).
+ */
+export async function retryFailedDownload(
+  deps: RetryDownloadDeps,
+  videoSlug: string,
+): Promise<void> {
+  const record = deps.getRecord(videoSlug)
+  if (record?.state !== "failed") return
+  await deps.restart(record)
+}
+
 // ── Lifecycle factory ───────────────────────────────────────────────
 
 export type MediaUrlResolution = {
@@ -606,6 +625,10 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
       } catch {
         return
       }
+      // D2: a delete/cancel during the awaits above removed the record —
+      // writing it back would resurrect a download the user just deleted.
+      // Bail; the deletion already cleaned the record and dir.
+      if (!deps.getRecord(record.videoSlug)) return
       await deps.writeRecord({
         ...record,
         state: "downloading",

@@ -38,8 +38,8 @@ describe("controlsForState (pure control-set mapping)", () => {
     expect(controlsForState("downloaded")).toEqual(["delete"])
   })
 
-  it("failed → delete only", () => {
-    expect(controlsForState("failed")).toEqual(["delete"])
+  it("failed → retry + delete (retry first)", () => {
+    expect(controlsForState("failed")).toEqual(["retry", "delete"])
   })
 
   it("canceled → no controls", () => {
