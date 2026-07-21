@@ -49,6 +49,7 @@ describe("WatchEventRecorder", () => {
 
   beforeEach(() => {
     vi.resetAllMocks()
+    window.gtag = vi.fn()
     window.localStorage.clear()
     getViewerIdMock.mockReturnValue("viewer-123")
     recordMeaningfulWatchEventMock.mockResolvedValue({
@@ -65,6 +66,7 @@ describe("WatchEventRecorder", () => {
       root.unmount()
     })
     container.remove()
+    window.gtag = undefined
     window.localStorage.clear()
   })
 
@@ -95,12 +97,167 @@ describe("WatchEventRecorder", () => {
     await vi.waitFor(() =>
       expect(recordMeaningfulWatchEventMock).toHaveBeenCalledTimes(1),
     )
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "a_media_progress25",
+      expect.objectContaining({
+        progress_percent: 25,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "video_progress",
+      expect.objectContaining({
+        position_seconds: 30,
+        progress_percent: 25,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
 
     await act(async () => {
       player.currentTime = 90
       player.dispatch("timeupdate")
     })
     expect(recordMeaningfulWatchEventMock).toHaveBeenCalledTimes(1)
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "a_media_progress50",
+      expect.objectContaining({
+        progress_percent: 50,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "a_media_progress75",
+      expect.objectContaining({
+        progress_percent: 75,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(
+      (window.gtag as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([, eventName, params]) =>
+          eventName === "a_media_progress25" && params?.progress_percent === 25,
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("reports playback start, pause, and completion with legacy GA names", async () => {
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <WatchEventRecorder
+          playerRef={{ current: player }}
+          videoId="video-1"
+          videoDubId="dub-1"
+          durationSeconds={120}
+        />,
+      )
+    })
+
+    await act(async () => {
+      player.currentTime = 2
+      player.dispatch("play")
+      player.dispatch("play")
+      player.currentTime = 12
+      player.dispatch("pause")
+      player.currentTime = 120
+      player.dispatch("ended")
+      player.dispatch("ended")
+    })
+
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "videostarts",
+      expect.objectContaining({
+        progress_percent: 0,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "videoplay",
+      expect.objectContaining({
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "video_pause",
+      expect.objectContaining({
+        position_seconds: 12,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(window.gtag).toHaveBeenCalledWith(
+      "event",
+      "videocomplete",
+      expect.objectContaining({
+        progress_percent: 100,
+        video_dub_id: "dub-1",
+        video_id: "video-1",
+      }),
+    )
+    expect(
+      (window.gtag as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([, eventName]) => eventName === "videostarts",
+      ),
+    ).toHaveLength(1)
+    expect(
+      (window.gtag as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([, eventName]) => eventName === "videoplay",
+      ),
+    ).toHaveLength(2)
+    expect(
+      (window.gtag as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([, eventName]) => eventName === "videocomplete",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("reports 10 and 90 percent media milestones once", async () => {
+    const player = makePlayer()
+
+    await act(async () => {
+      root.render(
+        <WatchEventRecorder
+          playerRef={{ current: player }}
+          videoId="video-1"
+          videoDubId="dub-1"
+          durationSeconds={120}
+        />,
+      )
+    })
+
+    await act(async () => {
+      player.currentTime = 12
+      player.dispatch("timeupdate")
+      player.dispatch("timeupdate")
+      player.currentTime = 108
+      player.dispatch("timeupdate")
+      player.dispatch("timeupdate")
+    })
+
+    expect(
+      (window.gtag as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([, eventName]) => eventName === "a_media_progress10",
+      ),
+    ).toHaveLength(1)
+    expect(
+      (window.gtag as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([, eventName]) => eventName === "a_media_progress90",
+      ),
+    ).toHaveLength(1)
   })
 
   it("queues signed-out playback locally and flushes it after sign-in", async () => {
