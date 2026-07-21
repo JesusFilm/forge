@@ -2,11 +2,16 @@
  * R8's minimal chrome: a lower-third naming the excerpt at its start, decaying to a
  * small persistent language tag. Every string comes from a resolved model — never a
  * raw CMS field, and never `rawLabel`.
+ *
+ * On the language centerpiece the whole chapter is ONE excerpt played as dub hops, so the
+ * title card reveals once (keyed on the stable excerpt id, not the per-hop swap token) and
+ * the language tag CROSSFADES between languages on each hop — no title/chapter card
+ * re-flashing. Ordinary excerpts each carry a unique id, so they still reveal per excerpt.
  */
 
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Animated, StyleSheet, Text, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -19,6 +24,8 @@ const TAG_ICON_SIZE = Math.round(scale(26))
 const CHROME_FADE_MS = 420
 /** R8's "brief": the lower-third holds ~4s, then decays to the tag. */
 const CHROME_HOLD_MS = 4000
+/** The language tag's per-hop dissolve — near the audio crossfade so they read as one. */
+const TAG_CROSSFADE_MS = 450
 
 const META_SEPARATOR = "  ·  "
 
@@ -33,8 +40,27 @@ export type ExcerptChromeProps = {
    * Trust it — naming the language anyway would be a false claim.
    */
   claimsLanguage: boolean
-  /** Restarts the reveal on each new excerpt (reelState's source-swap token). */
-  excerptToken: number
+  /**
+   * Restarts the title-card reveal. The centerpiece keeps ONE id across all its dub hops,
+   * so its card reveals once; ordinary excerpts' ids differ, so they reveal per excerpt.
+   */
+  restartKey: number | string
+}
+
+/** The pill's contents — a globe icon plus the language name. */
+function PillBody({ language }: { language: string }) {
+  return (
+    <>
+      <Ionicons
+        name="globe-outline"
+        size={TAG_ICON_SIZE}
+        color={WATCH_THEME.text}
+      />
+      <Text style={styles.tagText} numberOfLines={1}>
+        {language}
+      </Text>
+    </>
+  )
 }
 
 export function ExcerptChrome({
@@ -42,7 +68,7 @@ export function ExcerptChrome({
   feltNeed,
   languageName,
   claimsLanguage,
-  excerptToken,
+  restartKey,
 }: ExcerptChromeProps) {
   const reduceMotion = useReduceMotion()
   const lowerThird = useRef(new Animated.Value(0)).current
@@ -89,7 +115,48 @@ export function ExcerptChrome({
     ])
     anim.start()
     return () => anim.stop()
-  }, [lowerThird, tag, reduceMotion, excerptToken])
+  }, [lowerThird, tag, reduceMotion, restartKey])
+
+  // Per-hop language dissolve: the live pill shows `current`; on a hop the previous
+  // language becomes `exiting`, a second pill stacked on top that fades out to reveal the
+  // new one — a true crossfade, never a hard cut. Driven off refs (not the `current` state
+  // dep) so setting current can't re-enter this effect and cancel the fade mid-flight. A
+  // restartKey change (a new excerpt) or reduce-motion adopts the language with no fade.
+  const [current, setCurrent] = useState<string | null>(claimedLanguage)
+  const [exiting, setExiting] = useState<string | null>(null)
+  const exitOpacity = useRef(new Animated.Value(0)).current
+  const currentRef = useRef<string | null>(claimedLanguage)
+  const restartKeyRef = useRef(restartKey)
+  useEffect(() => {
+    const previous = currentRef.current
+    const sameExcerpt = restartKeyRef.current === restartKey
+    restartKeyRef.current = restartKey
+    if (claimedLanguage === previous) return
+
+    currentRef.current = claimedLanguage
+    setCurrent(claimedLanguage)
+
+    const shouldCrossfade =
+      sameExcerpt &&
+      !reduceMotion &&
+      previous != null &&
+      claimedLanguage != null
+    if (!shouldCrossfade) {
+      setExiting(null)
+      return
+    }
+    setExiting(previous)
+    exitOpacity.setValue(1)
+    const anim = Animated.timing(exitOpacity, {
+      toValue: 0,
+      duration: TAG_CROSSFADE_MS,
+      useNativeDriver: true,
+    })
+    anim.start(({ finished }) => {
+      if (finished) setExiting(null)
+    })
+    return () => anim.stop()
+  }, [claimedLanguage, restartKey, reduceMotion, exitOpacity])
 
   return (
     <View
@@ -125,19 +192,20 @@ export function ExcerptChrome({
         </View>
       </Animated.View>
 
-      {claimedLanguage != null ? (
+      {current != null ? (
         <Animated.View
           style={[styles.tag, { opacity: tag }]}
           collapsable={false}
         >
-          <Ionicons
-            name="globe-outline"
-            size={TAG_ICON_SIZE}
-            color={WATCH_THEME.text}
-          />
-          <Text style={styles.tagText} numberOfLines={1}>
-            {claimedLanguage}
-          </Text>
+          <PillBody language={current} />
+        </Animated.View>
+      ) : null}
+      {exiting != null ? (
+        <Animated.View
+          style={[styles.tag, { opacity: exitOpacity }]}
+          collapsable={false}
+        >
+          <PillBody language={exiting} />
         </Animated.View>
       ) : null}
     </View>
@@ -173,7 +241,8 @@ const styles = StyleSheet.create({
     color: WATCH_THEME.text74,
     marginTop: scale(10),
   },
-  // Anchored to the lower-third's optical edge so the copy decays in place.
+  // Anchored to the lower-third's optical edge so the copy decays in place. The exiting
+  // pill shares this exact anchor, so the two dissolve over each other in one spot.
   tag: {
     position: "absolute",
     left: scale(80),

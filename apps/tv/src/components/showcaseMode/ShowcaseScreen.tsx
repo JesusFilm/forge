@@ -694,7 +694,9 @@ function OverlaySlot({
           languageName={stream?.languageName ?? null}
           // AE4 lives on the resolved stream; re-deriving it here would drift.
           claimsLanguage={stream?.claimsLanguage ?? false}
-          excerptToken={state.excerptToken}
+          // The centerpiece's excerpt id is stable across its dub hops, so the title card
+          // reveals ONCE and the language tag crossfades per hop — no card re-flash.
+          restartKey={excerpt.id}
         />
       )
 
