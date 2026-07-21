@@ -99,7 +99,29 @@ describe("CarouselVideo", () => {
 
     // @mux/mux-video-react renders a plain <video> element.
     expect(container.querySelector("video")).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="carousel-copy"]'),
+    ).not.toBeNull()
     expect(container.textContent).toContain("Series")
+  })
+
+  it("omits the copy block when no carousel text is authored", async () => {
+    await act(async () => {
+      root.render(
+        <CarouselVideo
+          data={{
+            ...baseFragment,
+            title: undefined,
+            subtitle: undefined,
+            carouselDescription: undefined,
+          }}
+        />,
+      )
+    })
+
+    expect(container.querySelector("video")).not.toBeNull()
+    expect(container.querySelector('[data-testid="carousel-copy"]')).toBeNull()
+    expect(container.textContent).toContain("First")
   })
 
   it("pauses its authored carousel media when modal activity opens", async () => {

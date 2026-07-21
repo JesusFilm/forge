@@ -446,23 +446,24 @@ export function summarizeBlock(
   if (type === "videoCarousel") {
     const items = asArray(value.items)
     const itemsSource = asString(value.itemsSource) || "manual"
+    const usesRouteVideoChildren = itemsSource === "routeVideoChildren"
     return {
       key: summaryKey,
-      typeLabel:
-        itemsSource === "routeVideoChildren"
-          ? "Route Video Carousel"
-          : "Video Carousel",
-      title: asString(value.title) || "Video carousel",
+      typeLabel: usesRouteVideoChildren
+        ? "Route Video Carousel"
+        : "Video Carousel",
+      title:
+        asString(value.title) ||
+        (usesRouteVideoChildren ? "Related videos" : "Video carousel"),
       body:
         asString(value.description) ||
-        (itemsSource === "routeVideoChildren"
+        (usesRouteVideoChildren
           ? "Pulls from the current route video's descendants"
           : `${items.length || 0} carousel items`),
       tone: "grid",
-      badges:
-        itemsSource === "routeVideoChildren"
-          ? ["ROUTE_VIDEO_CHILDREN"]
-          : [`${items.length || 0} items`],
+      badges: usesRouteVideoChildren
+        ? ["ROUTE_VIDEO_CHILDREN"]
+        : [`${items.length || 0} items`],
     }
   }
 
@@ -711,9 +712,6 @@ export function createTemplateBlock(
       t: "videoCarousel",
       sectionKey: `video-carousel-${index}`,
       itemsSource: "manual",
-      title: "Video carousel",
-      subtitle: "Choose a story to watch",
-      description: "Carousel description",
       items: [],
     }
   }
@@ -723,9 +721,6 @@ export function createTemplateBlock(
       t: "videoCarousel",
       sectionKey: `route-video-carousel-${index}`,
       itemsSource: "routeVideoChildren",
-      title: "Related videos",
-      subtitle: "Keep watching",
-      description: "Videos connected to the current route video.",
       items: [],
     }
   }
