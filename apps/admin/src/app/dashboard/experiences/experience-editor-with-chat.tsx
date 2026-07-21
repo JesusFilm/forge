@@ -156,9 +156,12 @@ export function ExperienceEditorWithChat({
   }, [])
 
   const handleSearchVideoLibrary = useCallback(
-    async (query: string) => {
+    async (
+      query: string,
+      context?: Parameters<NonNullable<typeof searchVideoLibraryAction>>[1],
+    ) => {
       if (!searchVideoLibraryAction) return []
-      const results = await searchVideoLibraryAction(query)
+      const results = await searchVideoLibraryAction(query, context)
       mergeVideoLibraryItems(results)
       return results
     },

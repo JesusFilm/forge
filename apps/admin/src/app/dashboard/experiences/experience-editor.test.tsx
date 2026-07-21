@@ -92,7 +92,15 @@ function renderEditorElement(
     hasPublishedVersion?: boolean
     mediaLibrary?: MediaLibraryBrowserData
     videoLibrary?: VideoLibraryItem[]
-    searchVideoLibraryAction?: (query: string) => Promise<VideoLibraryItem[]>
+    searchVideoLibraryAction?: (
+      query: string,
+      context?: {
+        client?:
+          | "experience-editor-video-picker"
+          | "experience-editor-video-carousel-picker"
+          | "experience-editor-media-collection-picker"
+      },
+    ) => Promise<VideoLibraryItem[]>
   } = {},
 ) {
   return (
@@ -1192,7 +1200,9 @@ describe("ExperienceEditor", () => {
         await new Promise((resolve) => window.setTimeout(resolve, 260))
       })
 
-      expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka")
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka", {
+        client: "experience-editor-video-picker",
+      })
       expect(view.container.textContent).toContain("Server Ranked Result")
       expect(view.container.textContent).not.toContain("Local Rivka Match")
 
@@ -1357,6 +1367,9 @@ describe("ExperienceEditor", () => {
         await new Promise((resolve) => window.setTimeout(resolve, 260))
       })
 
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("banner", {
+        client: "experience-editor-media-collection-picker",
+      })
       expect(view.container.textContent).toContain("Collection Result")
       expect(view.container.textContent).toContain("Collection")
     } finally {
@@ -1474,7 +1487,9 @@ describe("ExperienceEditor", () => {
         await new Promise((resolve) => window.setTimeout(resolve, 260))
       })
 
-      expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka")
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka", {
+        client: "experience-editor-video-picker",
+      })
       expect(view.container.textContent).not.toContain(
         "Searching the full video library",
       )

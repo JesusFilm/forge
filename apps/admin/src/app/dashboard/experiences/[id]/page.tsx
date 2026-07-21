@@ -24,6 +24,10 @@ import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
 import { ForbiddenError } from "@/services/errors"
+import {
+  recordAdminVideoLibrarySearchTraceSafely,
+  type AdminVideoLibrarySearchTraceClient,
+} from "@/services/search-trace.service"
 
 type LocaleSnapshot = {
   title: string | null
@@ -608,36 +612,67 @@ export default async function ExperienceEditorPage({
     })
   }
 
-  async function searchVideoLibraryAction(query: string) {
+  async function searchVideoLibraryAction(
+    query: string,
+    context?: { client?: AdminVideoLibrarySearchTraceClient },
+  ) {
     "use server"
     const user = await requireSession()
     const services = createServices(prisma)
     const targetLanguageSlug = await languageSlugForLocale(
       selectedLocale.locale,
     )
+    const client = context?.client ?? "experience-editor-video-picker"
+    const startedAt = new Date()
     // Call the service directly so editor picker keystrokes use the new search
-    // stack without writing public Watch search traces.
-    const response = await services.watchSearch.search({
-      query,
-      targetLanguageSlug,
-      displayLanguageSlug: targetLanguageSlug,
-      routeLanguageSlug: targetLanguageSlug,
-      acceptLanguage: selectedLocale.locale,
-      limit: 30,
-      resultTypes: ["video"],
-    })
-    const videoIds = response.results
-      .filter((result) => result.type === "video")
-      .map((result) => result.id)
-    const rows = await loadVideoRows(user, {
-      includeVideoIds: videoIds,
-      preferredLocale: selectedLocale.locale,
-    })
-    const byId = new Map(rows.map((row) => [row.key, row]))
-    return videoIds.flatMap((id) => {
-      const row = byId.get(id)
-      return row ? [row] : []
-    })
+    // stack, then writes a client-identified admin trace for operator review.
+    try {
+      const response = await services.watchSearch.search({
+        query,
+        targetLanguageSlug,
+        displayLanguageSlug: targetLanguageSlug,
+        routeLanguageSlug: targetLanguageSlug,
+        acceptLanguage: selectedLocale.locale,
+        limit: 30,
+        resultTypes: ["video"],
+      })
+      const videoIds = response.results
+        .filter((result) => result.type === "video")
+        .map((result) => result.id)
+      const rows = await loadVideoRows(user, {
+        includeVideoIds: videoIds,
+        preferredLocale: selectedLocale.locale,
+      })
+      await recordAdminVideoLibrarySearchTraceSafely({
+        query,
+        locale: selectedLocale.locale,
+        client,
+        response,
+        resultIds: videoIds,
+        hydratedResultCount: rows.length,
+        targetLanguageSlug,
+        startedAt,
+        completedAt: new Date(),
+      })
+      const byId = new Map(rows.map((row) => [row.key, row]))
+      return videoIds.flatMap((id) => {
+        const row = byId.get(id)
+        return row ? [row] : []
+      })
+    } catch (error) {
+      await recordAdminVideoLibrarySearchTraceSafely({
+        query,
+        locale: selectedLocale.locale,
+        client,
+        targetLanguageSlug,
+        startedAt,
+        completedAt: new Date(),
+        outcome: "failed",
+        traceClass:
+          error instanceof Error ? error.constructor.name : "UnknownError",
+      })
+      throw error
+    }
   }
 
   async function generateDraftAction(input: {
