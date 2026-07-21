@@ -4,6 +4,7 @@ import {
   downloadAsync,
   getFreeDiskStorageAsync,
   getInfoAsync,
+  getTotalDiskCapacityAsync,
   makeDirectoryAsync,
   moveAsync,
 } from "expo-file-system/legacy"
@@ -54,6 +55,15 @@ export async function removeVideoDir(videoSlug: string): Promise<void> {
 export async function freeDiskBytes(): Promise<number> {
   try {
     return await getFreeDiskStorageAsync()
+  } catch {
+    return 0
+  }
+}
+
+/** Total internal storage capacity in bytes (0 if unavailable). */
+export async function totalDiskBytes(): Promise<number> {
+  try {
+    return await getTotalDiskCapacityAsync()
   } catch {
     return 0
   }
