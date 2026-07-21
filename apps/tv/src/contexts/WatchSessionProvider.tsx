@@ -22,11 +22,13 @@ import { ensureDubMedia } from "../lib/dubMediaFetch"
 import { GET_VIDEO_DUB } from "../lib/videoQueries"
 import { getApolloClient } from "../lib/apolloClient"
 import { useCarriedLanguageSlug } from "./SeriesLanguageContext"
+import { useWatchPreferences } from "./WatchPreferencesProvider"
 import {
   resolveDefaultSubtitleSlug,
   resolveDefaultVariantIndex,
   selectActiveVariant,
   selectDubMediaState,
+  slugToPersistForPick,
   type DubMediaState,
 } from "./watchSessionState"
 
@@ -37,6 +39,7 @@ export {
   resolveDefaultVariantIndex,
   resolveDefaultSubtitleSlug,
   selectDubMediaState,
+  slugToPersistForPick,
   type DubMediaState,
 } from "./watchSessionState"
 
@@ -92,6 +95,14 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // → feeds resolveDefaultVariantIndex's preferred-slug arg so an episode opened
   // from a series starts in the language picked there.
   const carriedLanguageSlug = useCarriedLanguageSlug()
+  // App-wide audio preference (U1/U2): persisted slug threads into default
+  // resolution; setAudioLanguageSlug persists an explicit pick; hydrated gates the
+  // first resolution so a cold start applies the stored pref (AE8).
+  const {
+    audioLanguageSlug: persistedAudioSlug,
+    setAudioLanguageSlug,
+    hydrated: preferencesHydrated,
+  } = useWatchPreferences()
 
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
   const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
@@ -111,14 +122,26 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // variants arrive (partial data lands variants after the documentId).
   const resolvedVariantForRef = useRef<string | null>(null)
   const resolvedSubtitleForRef = useRef<string | null>(null)
+  // Latest-render video snapshot so the audio setter reads the picked variant's
+  // slug without taking `video` as a dep (which would churn the setter identity,
+  // and with it the context memo). Read only inside the event handler.
+  const videoRef = useRef<WatchVideoRecord | null>(null)
+  videoRef.current = video
 
   // Exposed setters mark explicit user intent so the resolution effects below
-  // (which call the raw state setters) never trip these guards. No persistence
-  // on TV v1 — selection lives in memory for the screen ↔ overlay round trip.
-  const setActiveVariantIndex = useCallback((index: number) => {
-    userChoseVariantRef.current = true
-    setActiveVariantIndexState(index)
-  }, [])
+  // (which call the raw state setters) never trip these guards. The audio setter
+  // also persists the pick app-wide (U2); subtitles stay in-memory on TV v1.
+  const setActiveVariantIndex = useCallback(
+    (index: number) => {
+      userChoseVariantRef.current = true
+      setActiveVariantIndexState(index)
+      // Both watch surfaces (LanguagePanel + in-player menu) drive this seam.
+      // Persist only a slug-bearing pick; a slugless variant is left unwritten.
+      const slug = slugToPersistForPick(videoRef.current, index)
+      if (slug) setAudioLanguageSlug(slug)
+    },
+    [setAudioLanguageSlug],
+  )
   const setSubtitleEnabled = useCallback((enabled: boolean) => {
     userChoseSubtitleRef.current = true
     setSubtitleEnabledState(enabled)
@@ -229,24 +252,33 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     requestedRef.current.clear()
   }, [video?.documentId])
 
-  // Default the dub language once per video as variants arrive (after documentId),
-  // unless the user chose. INERT/no readiness gate on TV. Chain: carried slug (U4,
-  // soft — no match falls through) → device → primary → English → first.
+  // Default the dub once per video as variants arrive (after documentId), unless
+  // the user chose. Chain: carried (U4) → persisted (U2) → device → primary →
+  // English → first, each preference soft (no match falls through to the next).
   useEffect(() => {
     if (!video || video.variants.length === 0) return
     if (userChoseVariantRef.current) return
+    // Gate on hydration so AE8's restart applies the stored pref to the FIRST
+    // video; the store always sets hydrated (even on read failure) — never stalls.
+    if (!preferencesHydrated) return
     if (resolvedVariantForRef.current === video.documentId) return
     resolvedVariantForRef.current = video.documentId
     setActiveVariantIndexState(
-      resolveDefaultVariantIndex(video, carriedLanguageSlug),
+      resolveDefaultVariantIndex(video, [
+        carriedLanguageSlug,
+        persistedAudioSlug,
+      ]),
     )
   }, [
     video?.documentId,
     video?.variants.length,
     video?.primaryLanguageBcp47,
-    // Slug changes after this video resolved are no-ops (the ref guard above);
-    // listed so the resolving run always reads a fresh value.
+    // Preferences changing after this video resolved are no-ops (the ref guard);
+    // listed so the resolving run reads fresh values. A persisted slug landing
+    // post-resolution applies from the NEXT video by design.
     carriedLanguageSlug,
+    persistedAudioSlug,
+    preferencesHydrated,
   ])
 
   // Pre-select the subtitle language once per active variant, unless the user

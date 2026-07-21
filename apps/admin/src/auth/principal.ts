@@ -24,8 +24,8 @@
  * granted ZERO permissions beyond PUBLIC — its sole purpose is to
  * bucket consumer SSR traffic (apps/web) separately from anonymous-IP
  * traffic in admin's rate-limit identifier. The principal carries the
- * matched key as `rateLimitBucketKey` so the identifyFn can produce
- * `consumer:<key>` without re-inspecting headers downstream.
+ * matched key as `rateLimitBucketKey` so the identifyFn can form a
+ * trusted internal Web bucket without re-inspecting headers downstream.
  *
  * `MANAGER_BACKEND` is the request-bound service identity used by
  * apps/manager to call Admin-owned Manager read/job contracts. It never
@@ -61,8 +61,8 @@ export type Principal = {
    * Set on bearer principals that need rate-limit bucketing — the matched
    * CSV entry from the mint-source env var. Today: `CONSUMER_BEARER`
    * (from `WEB_ADMIN_API_KEYS`). The rate-limit identifyFn reads this
-   * without re-inspecting headers and namespaces it as `consumer:<key>`
-   * so consumer SSR traffic stays separate from anonymous-IP traffic.
+   * without re-inspecting headers and namespaces it so consumer SSR traffic
+   * stays separate from anonymous-IP traffic.
    * Never logged.
    */
   rateLimitBucketKey?: string
@@ -113,8 +113,8 @@ export const VIDEO_MAPPER_PRINCIPAL = {
 /**
  * Factory for the request-bound consumer-bearer principal. Mints a
  * Principal carrying the matched bearer key so the rate-limit
- * identifyFn can bucket as `consumer:<key>` without re-inspecting the
- * Authorization header downstream. `id: null` matches the
+ * identifyFn can bucket without re-inspecting the Authorization header
+ * downstream. `id: null` matches the
  * WORKFLOW_TRIGGER convention — bearer principals are non-user
  * identities, no DB row to point at.
  *

@@ -176,6 +176,9 @@ export function SeriesPageClient({
   const currentLanguageCode = languageCodeFor(
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
+  const headerLanguageSwitcherOwnerToken = useRef(
+    Symbol("series-page-language-switcher"),
+  ).current
 
   const headerLanguageSwitcherVisible = variantsForLanguagePicker.length >= 2
   const heroOwnsHeaderLanguageSwitcher = Boolean(selectedVariant?.hls)
@@ -192,6 +195,7 @@ export function SeriesPageClient({
             languageCode: headerLanguageSwitcherVisible
               ? currentLanguageCode
               : null,
+            ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
       ),
@@ -201,12 +205,20 @@ export function SeriesPageClient({
       window.dispatchEvent(
         new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
           WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
-          { detail: { visible: false, onClick: null, languageCode: null } },
+          {
+            detail: {
+              visible: false,
+              onClick: null,
+              languageCode: null,
+              ownerToken: headerLanguageSwitcherOwnerToken,
+            },
+          },
         ),
       )
     }
   }, [
     currentLanguageCode,
+    headerLanguageSwitcherOwnerToken,
     headerLanguageSwitcherVisible,
     heroOwnsHeaderLanguageSwitcher,
     openLanguage,

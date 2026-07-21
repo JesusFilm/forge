@@ -24,6 +24,7 @@ import {
 } from "@/services/media-asset.service"
 import { loadWorkflowRuntimeRuns } from "@/services/workflow-runtime.service"
 import { loadWorkflowWorkerStatusRows } from "@/services/workflow-worker-heartbeat.service"
+import { normalizeVideoThumbnailUrl } from "@/app/dashboard/video-library-utils"
 
 type Metric = {
   label: string
@@ -399,6 +400,71 @@ type SearchData = {
   unavailableReason: string | null
 }
 
+export type WatchSearchAnalyticsResultRow = {
+  id: string
+  type: string
+  slug: string | null
+  title: string | null
+  description: string | null
+  imageUrl: string | null
+  score: number | null
+  scoreBreakdown: {
+    total: number
+    sourceRelevance: number
+    evidenceBoost: number
+    relevance: number
+    availability: number
+    match: number
+    sourceScore: number
+  }
+  availabilityKind: string
+  evidenceKind: string
+  actionKind: string
+  clicked: boolean
+  position: number
+}
+
+export type WatchSearchAnalyticsLaneRow = {
+  lane: string
+  status: string
+  startedOffsetMs: number
+  elapsedMs: number | null
+  resultCount: number | null
+  reason: string | null
+  detail: string | null
+}
+
+export type WatchSearchAnalyticsRequestRow = {
+  id: string
+  requestId: string
+  queryText: string
+  locale: string
+  targetLanguageSlug: string
+  targetLanguageLabel: string
+  targetLanguageSource: string
+  queryNamedLanguageSlug: string | null
+  searchMode: string
+  outcome: string
+  resultCount: number
+  latencyMs: number | null
+  clickedPosition: number | null
+  clickCount: number
+  createdAt: string
+  createdAtIso: string
+  results: WatchSearchAnalyticsResultRow[]
+  lanes: WatchSearchAnalyticsLaneRow[]
+}
+
+export type WatchSearchAnalyticsData = {
+  metrics: Metric[]
+  insights: Insight[]
+  requests: WatchSearchAnalyticsRequestRow[]
+  selectedRequest: WatchSearchAnalyticsRequestRow | null
+  window: WatchSearchAnalyticsWindow
+}
+
+export type WatchSearchAnalyticsWindow = "24h" | "7d" | "30d"
+
 type EmbeddingHealthRow = {
   id: string
   locale: string
@@ -467,6 +533,11 @@ function formatDateTime(value: Date) {
     hour12: false,
     timeZone: "UTC",
   }).format(value)
+}
+
+function formatPercent(numerator: number, denominator: number) {
+  if (denominator === 0) return "0%"
+  return `${Math.round((numerator / denominator) * 100)}%`
 }
 
 function formatNullableDateTime(value: Date | null) {
@@ -2409,4 +2480,575 @@ export async function runSemanticSearch(params: {
         error instanceof Error ? error.message : "Search execution failed.",
     }
   }
+}
+
+function jsonRecord(value: Prisma.JsonValue | null | undefined) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, Prisma.JsonValue>
+}
+
+function jsonString(value: Prisma.JsonValue | undefined): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+function jsonNumber(value: Prisma.JsonValue | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+function emptyWatchSearchScoreBreakdown() {
+  return {
+    total: 0,
+    sourceRelevance: 0,
+    evidenceBoost: 0,
+    relevance: 0,
+    availability: 0,
+    match: 0,
+    sourceScore: 0,
+  }
+}
+
+function watchSearchScoreBreakdown(value: Prisma.JsonValue | undefined) {
+  const row = jsonRecord(value)
+  if (!row) return emptyWatchSearchScoreBreakdown()
+  const total = jsonNumber(row.total)
+  const sourceRelevance = jsonNumber(row.sourceRelevance)
+  const evidenceBoost = jsonNumber(row.evidenceBoost)
+  const relevance = jsonNumber(row.relevance)
+  const availability = jsonNumber(row.availability)
+  const match = jsonNumber(row.match)
+  const sourceScore = jsonNumber(row.sourceScore)
+  if (total == null || availability == null || sourceScore == null) {
+    return emptyWatchSearchScoreBreakdown()
+  }
+  const resolvedEvidenceBoost = evidenceBoost ?? match ?? 0
+  const resolvedSourceRelevance = sourceRelevance ?? relevance ?? 0
+  const resolvedRelevance =
+    relevance ?? resolvedSourceRelevance + resolvedEvidenceBoost
+  return {
+    total,
+    sourceRelevance: resolvedSourceRelevance,
+    evidenceBoost: resolvedEvidenceBoost,
+    relevance: resolvedRelevance,
+    availability,
+    match: resolvedEvidenceBoost,
+    sourceScore,
+  }
+}
+
+function watchSearchTraceResults(
+  metadata: Prisma.JsonValue | null,
+): Omit<WatchSearchAnalyticsResultRow, "clicked" | "position">[] {
+  const root = jsonRecord(metadata)
+  const results = root?.results
+  if (!Array.isArray(results)) return []
+
+  return results.flatMap((value) => {
+    const row = jsonRecord(value)
+    if (!row) return []
+    const id = jsonString(row.id)
+    if (!id) return []
+    return [
+      {
+        id,
+        type: jsonString(row.type) ?? "unknown",
+        slug: jsonString(row.slug),
+        title: jsonString(row.title),
+        description: jsonString(row.description) ?? jsonString(row.snippet),
+        imageUrl: normalizeVideoThumbnailUrl(jsonString(row.imageUrl)),
+        score: jsonNumber(row.score),
+        scoreBreakdown: watchSearchScoreBreakdown(row.scoreBreakdown),
+        availabilityKind: jsonString(row.availabilityKind) ?? "unknown",
+        evidenceKind: jsonString(row.evidenceKind) ?? "unknown",
+        actionKind: jsonString(row.actionKind) ?? "unknown",
+      },
+    ]
+  })
+}
+
+function watchSearchTraceLanes(
+  metadata: Prisma.JsonValue | null,
+): WatchSearchAnalyticsLaneRow[] {
+  const root = jsonRecord(metadata)
+  const lanes = root?.laneStatuses
+  if (!Array.isArray(lanes)) return []
+
+  return lanes.flatMap((value) => {
+    const row = jsonRecord(value)
+    if (!row) return []
+    const lane = jsonString(row.lane)
+    if (!lane) return []
+    return [
+      {
+        lane,
+        status: jsonString(row.status) ?? "unknown",
+        startedOffsetMs: jsonNumber(row.startedOffsetMs) ?? 0,
+        elapsedMs: jsonNumber(row.elapsedMs),
+        resultCount: jsonNumber(row.resultCount),
+        reason: jsonString(row.reason),
+        detail: jsonString(row.detail),
+      },
+    ]
+  })
+}
+
+function watchSearchLanguage(metadata: Prisma.JsonValue | null) {
+  const root = jsonRecord(metadata)
+  const language = jsonRecord(root?.language)
+  return {
+    targetLanguageSlug: jsonString(language?.targetLanguageSlug) ?? "unknown",
+    targetLanguageSource:
+      jsonString(language?.targetLanguageSource) ?? "unknown",
+    queryNamedLanguageSlug: jsonString(language?.queryNamedLanguageSlug),
+  }
+}
+
+function watchSearchLatency(metadata: Prisma.JsonValue | null) {
+  return jsonNumber(jsonRecord(metadata)?.latencyMs)
+}
+
+function watchSearchOffset(metadata: Prisma.JsonValue | null) {
+  return jsonNumber(jsonRecord(metadata)?.offset) ?? 0
+}
+
+type WatchSearchAnalyticsHydratedVideo = {
+  id: string
+  slug: string
+  locales: Array<{
+    locale: string | null
+    languageSlug: string | null
+    title: string | null
+    description: string | null
+  }>
+  images: Array<{
+    url: string | null
+    kind: string | null
+    createdAt: Date
+  }>
+}
+
+type WatchSearchAnalyticsLanguage = {
+  bcp47: string | null
+  name: Prisma.JsonValue
+  slug: string | null
+}
+
+async function loadWatchSearchAnalyticsLanguages(values: string[]) {
+  const normalizedValues = [
+    ...new Set(values.map((value) => value.trim()).filter(Boolean)),
+  ]
+  if (normalizedValues.length === 0) {
+    return new Map<string, WatchSearchAnalyticsLanguage>()
+  }
+
+  const languages = await withTableFallback(
+    () =>
+      prisma.language.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { slug: { in: normalizedValues } },
+            { bcp47: { in: normalizedValues } },
+          ],
+        },
+        select: {
+          bcp47: true,
+          name: true,
+          slug: true,
+        },
+      }),
+    [],
+  )
+
+  const byValue = new Map<string, WatchSearchAnalyticsLanguage>()
+  for (const language of languages) {
+    if (language.slug) byValue.set(language.slug.toLowerCase(), language)
+    if (language.bcp47) byValue.set(language.bcp47.toLowerCase(), language)
+  }
+  return byValue
+}
+
+function watchSearchLanguageName(
+  language: WatchSearchAnalyticsLanguage | undefined,
+) {
+  const names = jsonRecord(language?.name)
+  return (
+    jsonString(names?.en) ??
+    jsonString(names?.native) ??
+    language?.slug ??
+    language?.bcp47 ??
+    null
+  )
+}
+
+async function loadWatchSearchAnalyticsVideos(videoIds: string[]) {
+  const ids = [...new Set(videoIds.filter(Boolean))]
+  if (ids.length === 0)
+    return new Map<string, WatchSearchAnalyticsHydratedVideo>()
+
+  const videos = await withTableFallback(
+    () =>
+      prisma.video.findMany({
+        where: { id: { in: ids }, deletedAt: null },
+        select: {
+          id: true,
+          slug: true,
+          locales: {
+            where: { deletedAt: null },
+            select: {
+              locale: true,
+              languageSlug: true,
+              title: true,
+              description: true,
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 24,
+          },
+          images: {
+            where: { deletedAt: null },
+            select: {
+              url: true,
+              kind: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 12,
+          },
+        },
+      }),
+    [],
+  )
+
+  return new Map(videos.map((video) => [video.id, video]))
+}
+
+function preferredWatchSearchAnalyticsImage(
+  images: WatchSearchAnalyticsHydratedVideo["images"],
+) {
+  const priority = ["videoStill", "mobileCinematicHigh", "poster", "still"]
+  for (const kind of priority) {
+    const match = images.find((image) => image.kind === kind && image.url)
+    if (match?.url) return normalizeVideoThumbnailUrl(match.url)
+  }
+  return normalizeVideoThumbnailUrl(images.find((image) => image.url)?.url)
+}
+
+function preferredWatchSearchAnalyticsLocale(
+  video: WatchSearchAnalyticsHydratedVideo | undefined,
+  targetLanguageSlug: string,
+) {
+  if (!video) return null
+  const target = targetLanguageSlug.toLowerCase()
+  return (
+    video.locales.find(
+      (locale) => locale.languageSlug?.toLowerCase() === target && locale.title,
+    ) ??
+    video.locales.find(
+      (locale) => locale.locale?.toLowerCase() === "en" && locale.title,
+    ) ??
+    video.locales.find((locale) => locale.title) ??
+    null
+  )
+}
+
+function eventVisibleIds(metadata: Prisma.JsonValue | null) {
+  const root = jsonRecord(metadata)
+  return Array.isArray(root?.visibleResultIds)
+    ? root.visibleResultIds.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : []
+}
+
+export async function loadWatchSearchAnalyticsData(
+  params: {
+    requestId?: string | null
+    window?: string | null
+    now?: Date
+  } = {},
+): Promise<WatchSearchAnalyticsData> {
+  const now = params.now ?? new Date()
+  const window = normalizeWatchSearchAnalyticsWindow(params.window)
+  const windowMs =
+    window === "30d"
+      ? 30 * 24 * 60 * 60 * 1000
+      : window === "7d"
+        ? 7 * 24 * 60 * 60 * 1000
+        : 24 * 60 * 60 * 1000
+  const since = new Date(now.getTime() - windowMs)
+  const traces = await withTableFallback(
+    () =>
+      prisma.searchTrace.findMany({
+        where: {
+          searchMode: "watch-search",
+          routeSource: "GRAPHQL",
+          createdAt: { gte: since },
+        },
+        orderBy: { createdAt: "desc" },
+        take: window === "24h" ? 50 : 100,
+        select: {
+          id: true,
+          requestId: true,
+          queryText: true,
+          locale: true,
+          searchMode: true,
+          resultCount: true,
+          outcome: true,
+          metadata: true,
+          createdAt: true,
+        },
+      }),
+    [],
+  )
+  const tracesByRequestId = new Map<string, typeof traces>()
+  for (const trace of traces) {
+    const requestId = trace.requestId ?? trace.id
+    tracesByRequestId.set(requestId, [
+      ...(tracesByRequestId.get(requestId) ?? []),
+      trace,
+    ])
+  }
+  const traceGroups = [...tracesByRequestId.entries()].map(
+    ([requestId, groupedTraces]) => {
+      const sortedTraces = [...groupedTraces].sort((left, right) => {
+        const offsetDiff =
+          watchSearchOffset(left.metadata) - watchSearchOffset(right.metadata)
+        if (offsetDiff !== 0) return offsetDiff
+        return left.createdAt.getTime() - right.createdAt.getTime()
+      })
+      return {
+        requestId,
+        traces: sortedTraces,
+        primaryTrace: sortedTraces[0] ?? groupedTraces[0],
+      }
+    },
+  )
+  const requestIds = traceGroups.map((group) => group.requestId)
+  const events =
+    requestIds.length === 0
+      ? []
+      : await withTableFallback(
+          () =>
+            prisma.watchSearchEvent.findMany({
+              where: {
+                requestId: { in: requestIds },
+                occurredAt: { gte: since },
+              },
+              orderBy: { occurredAt: "asc" },
+              take: window === "24h" ? 300 : 600,
+              select: {
+                requestId: true,
+                eventType: true,
+                resultId: true,
+                position: true,
+                metadata: true,
+              },
+            }),
+          [],
+        )
+  const eventsByRequestId = new Map<string, typeof events>()
+  for (const event of events) {
+    eventsByRequestId.set(event.requestId, [
+      ...(eventsByRequestId.get(event.requestId) ?? []),
+      event,
+    ])
+  }
+  const visibleResultIdsByRequestId = new Map<string, string[]>()
+  const analyticsVideoIds = new Set<string>()
+  const targetLanguageValues = new Set<string>()
+  for (const group of traceGroups) {
+    const language = watchSearchLanguage(group.primaryTrace.metadata)
+    if (language.targetLanguageSlug !== "unknown") {
+      targetLanguageValues.add(language.targetLanguageSlug)
+    }
+    const relatedEvents = eventsByRequestId.get(group.requestId) ?? []
+    const visibleIds = relatedEvents.flatMap((event) =>
+      eventVisibleIds(event.metadata),
+    )
+    const traceResultIds = group.traces.flatMap((trace) =>
+      watchSearchTraceResults(trace.metadata).map((row) => row.id),
+    )
+    const resultIds = [...traceResultIds, ...visibleIds]
+
+    visibleResultIdsByRequestId.set(group.requestId, [...new Set(resultIds)])
+    for (const id of resultIds) analyticsVideoIds.add(id)
+  }
+  const videosById = await loadWatchSearchAnalyticsVideos([
+    ...analyticsVideoIds,
+  ])
+  const languagesByValue = await loadWatchSearchAnalyticsLanguages([
+    ...targetLanguageValues,
+  ])
+
+  const requests: WatchSearchAnalyticsRequestRow[] = traceGroups.map(
+    (group) => {
+      const trace = group.primaryTrace
+      const requestId = group.requestId
+      const relatedEvents = eventsByRequestId.get(requestId) ?? []
+      const clickedIds = new Set(
+        relatedEvents
+          .filter((event) => event.eventType === "result_clicked")
+          .map((event) => event.resultId)
+          .filter((value): value is string => Boolean(value)),
+      )
+      const firstClick = relatedEvents.find(
+        (event) => event.eventType === "result_clicked",
+      )
+      const resultIds = visibleResultIdsByRequestId.get(requestId) ?? []
+      const resultsById = new Map(
+        group.traces.flatMap((traceRow) =>
+          watchSearchTraceResults(traceRow.metadata).map((row) => [
+            row.id,
+            row,
+          ]),
+        ),
+      )
+      const language = watchSearchLanguage(trace.metadata)
+
+      return {
+        id: trace.id,
+        requestId,
+        queryText: trace.queryText,
+        locale: trace.locale,
+        targetLanguageSlug: language.targetLanguageSlug,
+        targetLanguageLabel:
+          watchSearchLanguageName(
+            languagesByValue.get(language.targetLanguageSlug.toLowerCase()),
+          ) ?? language.targetLanguageSlug,
+        targetLanguageSource: language.targetLanguageSource,
+        queryNamedLanguageSlug: language.queryNamedLanguageSlug,
+        searchMode: trace.searchMode,
+        outcome: String(trace.outcome).toLowerCase(),
+        resultCount: Math.max(trace.resultCount, resultIds.length),
+        latencyMs: watchSearchLatency(trace.metadata),
+        clickedPosition: firstClick?.position ?? null,
+        clickCount: clickedIds.size,
+        createdAt: formatDateTime(trace.createdAt),
+        createdAtIso: trace.createdAt.toISOString(),
+        lanes: watchSearchTraceLanes(trace.metadata),
+        results: resultIds.map((id, index) => {
+          const row = resultsById.get(id)
+          const video = videosById.get(id)
+          const locale = preferredWatchSearchAnalyticsLocale(
+            video,
+            language.targetLanguageSlug,
+          )
+          return {
+            id,
+            type: row?.type ?? "unknown",
+            slug: row?.slug ?? video?.slug ?? null,
+            title: row?.title ?? locale?.title?.trim() ?? video?.slug ?? null,
+            description:
+              row?.description ?? locale?.description?.trim() ?? null,
+            imageUrl:
+              row?.imageUrl ??
+              (video ? preferredWatchSearchAnalyticsImage(video.images) : null),
+            score: row?.score ?? null,
+            scoreBreakdown:
+              row?.scoreBreakdown ?? emptyWatchSearchScoreBreakdown(),
+            availabilityKind: row?.availabilityKind ?? "unknown",
+            evidenceKind: row?.evidenceKind ?? "unknown",
+            actionKind: row?.actionKind ?? "unknown",
+            clicked: clickedIds.has(id),
+            position: index + 1,
+          }
+        }),
+      }
+    },
+  )
+
+  const selectedRequest =
+    params.requestId == null
+      ? null
+      : (requests.find((request) => request.requestId === params.requestId) ??
+        null)
+  const clickedRequests = requests.filter(
+    (request) => request.clickCount > 0,
+  ).length
+  const noResultRequests = requests.filter(
+    (request) => request.resultCount === 0,
+  ).length
+  const degradedRequests = requests.filter(
+    (request) => request.outcome === "degraded",
+  ).length
+  const latencies = requests
+    .map((request) => request.latencyMs)
+    .filter((value): value is number => value !== null)
+    .sort((left, right) => left - right)
+  const p95Latency =
+    latencies.length === 0
+      ? null
+      : latencies[Math.max(0, Math.ceil(latencies.length * 0.95) - 1)]
+
+  return {
+    metrics: [
+      {
+        label: "Searches",
+        value: requests.length.toString(),
+        footer: `LAST_${window.toUpperCase()}_RAW_ROWS`,
+      },
+      {
+        label: "Click Rate",
+        value: formatPercent(clickedRequests, requests.length),
+        footer: "REQUESTS_WITH_CLICK",
+      },
+      {
+        label: "No Results",
+        value: noResultRequests.toString(),
+        footer: "ZERO_RESULT_REQUESTS",
+      },
+      {
+        label: "P95 Latency",
+        value: p95Latency === null ? "n/a" : `${Math.round(p95Latency)}ms`,
+        footer: "TRACE_METADATA",
+      },
+    ],
+    insights: [
+      {
+        label: "Degraded",
+        value: degradedRequests.toString(),
+        detail:
+          "Requests where one or more optional lanes failed or timed out.",
+      },
+      {
+        label: "Selected",
+        value: selectedRequest?.requestId.slice(0, 8) ?? "None",
+        detail:
+          "Select a request row to view result order, evidence, and clicks.",
+      },
+      {
+        label: "Raw Query",
+        value: requests.some((request) => request.queryText)
+          ? "Visible"
+          : "None",
+        detail:
+          "This operator view reads short-lived SearchTrace rows under the existing retention policy.",
+      },
+      {
+        label: "Unavailable",
+        value: requests
+          .reduce(
+            (count, request) =>
+              count +
+              request.results.filter(
+                (result) => result.availabilityKind === "unavailable",
+              ).length,
+            0,
+          )
+          .toString(),
+        detail: "Returned result rows marked unavailable by watchability.",
+      },
+    ],
+    requests,
+    selectedRequest,
+    window,
+  }
+}
+
+function normalizeWatchSearchAnalyticsWindow(
+  value: string | null | undefined,
+): WatchSearchAnalyticsWindow {
+  if (value === "7d" || value === "30d") return value
+  return "24h"
 }

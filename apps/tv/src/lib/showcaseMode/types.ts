@@ -18,16 +18,19 @@ export type ShowcaseExcerpt = {
   rawLabel: string | null
 }
 
-/**
- * A felt-need chapter (curated) or the single unlabeled reel (fallback). Language
- * rotation resets per chapter, so chapter boundaries are R7's rotation scope.
- */
+/** A felt-need chapter (curated) or the single unlabeled reel (fallback). */
 export type ShowcaseChapter = {
   id: string
   /** Felt-need name; "" on the fallback path, which renders no chapter card. */
   title: string
   subtitle: string | null
   excerpts: ShowcaseExcerpt[]
+  /**
+   * Set only on the ONE curated chapter carrying KTD-7's reserved marker (AE7: the
+   * first marked chapter wins). `centerpieceExcerptId` is that chapter's first excerpt,
+   * the item a later unit dub-switches mid-play. Never on ordinary/fallback chapters.
+   */
+  languageChapter?: { centerpieceExcerptId: string }
 }
 
 export type ShowcaseQueueKind = "curated" | "fallback"
@@ -54,8 +57,8 @@ export type ShowcaseStream = {
   muxPlaybackId: string | null
   window: ExcerptWindow
   /**
-   * AE4: false when this excerpt's language did not actually rotate (single-language
-   * video, or a forced repeat) — the lower-third must make no language claim.
+   * True only for a KTD-5 hop's mid-play dub switch — the one case the lower-third
+   * announces a language. Every ordinary excerpt is false (no rotation anymore).
    */
   claimsLanguage: boolean
 }
@@ -69,4 +72,9 @@ export type ShowcaseParseDrops = {
   items: number
   /** Chapters left with zero playable excerpts, so the whole section was dropped. */
   chapters: number
+  /**
+   * Marked chapters past the first: the reserved marker is single-use, so extras play
+   * as ordinary chapters with their language designation discarded (AE7).
+   */
+  extraLanguageMarkers: number
 }

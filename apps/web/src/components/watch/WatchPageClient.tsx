@@ -77,6 +77,7 @@ import {
 import {
   PUBLIC_SHARE_FALLBACK_ORIGIN,
   isPublicShareableOrigin,
+  resolveDownloadPosterUrl,
   resolvePosterUrl,
 } from "@/lib/url"
 import {
@@ -511,6 +512,10 @@ export function WatchPageClient({
     video.images?.[0],
     variant.muxVideo?.playbackId,
   )
+  const downloadPosterUrl = resolveDownloadPosterUrl(
+    video.images?.[0],
+    variant.muxVideo?.playbackId,
+  )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
   useWatchModalActivity(modalState !== "none")
@@ -757,7 +762,7 @@ export function WatchPageClient({
           open={modalState === "download"}
           downloads={downloadsForModal}
           videoTitle={video.title ?? null}
-          posterUrl={posterUrl}
+          posterUrl={downloadPosterUrl}
           durationSeconds={variant.duration ?? null}
           languageCode={selectedLanguageCode}
           languageName={variant.language?.name ?? null}

@@ -99,6 +99,17 @@ export function createRequestChain(): ApolloLink {
   return isDatadogProvisioned() ? authLink.concat(datadogLink) : authLink
 }
 
+// Every real RN abort carries name "AbortError" — whatwg-fetch sets it on both
+// its DOMException and fallback-Error paths. Never match on message text: a
+// server GraphQL error's message could collide (e.g. exactly "Aborted").
+function isClientAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error != null &&
+    (error as { name?: unknown }).name === "AbortError"
+  )
+}
+
 /**
  * Surfaces GraphQL failures that arrive inside an HTTP-200 body (unauthenticated,
  * rate-limited, service-unavailable, partial `errors[]`) and network errors —
@@ -118,6 +129,9 @@ export function reportGraphqlOperationError(
     reportDatadogError(error, { origin: "graphql_error", operation, code })
     return
   }
+  // Client-initiated aborts (timeout budget, unmount/supersede) are noise, not
+  // failures; the 15s timeout already emits graphql.client_timeout_abort (R12).
+  if (isClientAbortError(error)) return
   reportDatadogError(error, { origin: "graphql_network_error", operation })
 }
 

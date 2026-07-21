@@ -1,4 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react"
+import type { Route } from "next"
+import Link from "next/link"
 import { ChevronRight, Search, type LucideIcon } from "lucide-react"
 
 type StatusTone = "success" | "warning" | "danger" | "info" | "muted"
@@ -213,10 +215,12 @@ export function SearchPillButton({
 
 export function DataTable({
   columns,
+  rowHrefs,
   rows,
   selectedRow,
 }: {
   columns: readonly string[]
+  rowHrefs?: readonly Route[]
   rows: readonly (readonly ReactNode[])[]
   selectedRow?: number
 }) {
@@ -243,8 +247,23 @@ export function DataTable({
               )}
             >
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="px-4 py-2 align-middle">
-                  {cell}
+                <td
+                  key={cellIndex}
+                  className={cx(
+                    "align-middle",
+                    rowHrefs?.[rowIndex] ? "p-0" : "px-4 py-2",
+                  )}
+                >
+                  {rowHrefs?.[rowIndex] ? (
+                    <Link
+                      href={rowHrefs[rowIndex]}
+                      className="flex h-[52px] w-full cursor-pointer items-center px-4 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-brand)]"
+                    >
+                      {cell}
+                    </Link>
+                  ) : (
+                    cell
+                  )}
                 </td>
               ))}
             </tr>

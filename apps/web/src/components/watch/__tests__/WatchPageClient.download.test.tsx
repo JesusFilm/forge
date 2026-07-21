@@ -14,6 +14,7 @@ const {
   loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
+  shareModalProps,
   shouldRefreshCachedWatchLanguageOptionsMock,
 } = vi.hoisted(() => ({
   checkDownloadSessionMock: vi.fn(),
@@ -23,6 +24,7 @@ const {
   loadWatchInteractionMock: vi.fn(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
+  shareModalProps: [] as unknown[],
   shouldRefreshCachedWatchLanguageOptionsMock: vi.fn(),
 }))
 
@@ -43,7 +45,10 @@ vi.mock("next/dynamic", () => {
           return null
         }
       }
-      return () => null
+      return (props: unknown) => {
+        shareModalProps.push(props)
+        return null
+      }
     },
   }
 })
@@ -94,7 +99,11 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
     downloadPending?: boolean
     hasSubtitleOptions?: boolean
     languageSlug?: string
-    modalCallbacks: { openDownload: () => void; openLanguage: () => void }
+    modalCallbacks: {
+      openDownload: () => void
+      openLanguage: () => void
+      openShare: () => void
+    }
     shareHref?: string
     subtitleVttSrc?: string | null
     subtitleLanguageCode?: string | null
@@ -122,6 +131,13 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
         onClick={modalCallbacks.openLanguage}
       >
         Language
+      </button>
+      <button
+        data-testid="watch-share-button"
+        type="button"
+        onClick={modalCallbacks.openShare}
+      >
+        Share
       </button>
       {downloadError ? (
         <p data-testid="watch-download-error" role="alert">
@@ -163,6 +179,7 @@ beforeEach(() => {
   document.cookie = "forge_watch_subs=; path=/watch; max-age=0"
   downloadModalProps.length = 0
   languageModalProps.length = 0
+  shareModalProps.length = 0
   checkDownloadSessionMock.mockReset()
   getCachedWatchLanguageOptionsMock.mockReset()
   getCachedWatchLanguageOptionsMock.mockReturnValue(null)
@@ -182,11 +199,15 @@ afterEach(() => {
 })
 
 function renderWatchPage({
+  image,
   languageSlug = "english",
+  playbackId = "playback-1",
   subtitles = [],
   videoSlug = "jesus-is-brought-to-pilate",
 }: {
+  image?: { mobileCinematicHigh?: string | null }
   languageSlug?: string
+  playbackId?: string | null
   subtitles?: unknown[]
   videoSlug?: string
 } = {}) {
@@ -208,7 +229,7 @@ function renderWatchPage({
       slug: languageSlug,
       name: languageSlug === "english" ? "English" : languageSlug,
     },
-    muxVideo: { playbackId: "playback-1" },
+    muxVideo: playbackId ? { playbackId } : null,
   }
   const video = {
     documentId: "video-1",
@@ -216,7 +237,7 @@ function renderWatchPage({
     title: "Jesus Is Brought to Pilate",
     snippet: null,
     description: null,
-    images: [],
+    images: image ? [image] : [],
     variants: [variant],
     subtitles,
   }
@@ -289,6 +310,8 @@ describe("WatchPageClient download boundary", () => {
       languageCode: string
       languageName: string
       languageSlug: string
+      onClose: () => void
+      posterUrl: string
       variantId: string
       videoSlug: string
       accountGateEnabled: boolean
@@ -299,6 +322,9 @@ describe("WatchPageClient download boundary", () => {
     expect(latestProps.languageCode).toBe("eng")
     expect(latestProps.languageName).toBe("English")
     expect(latestProps.languageSlug).toBe("english")
+    expect(latestProps.posterUrl).toBe(
+      "https://image.mux.com/playback-1/thumbnail.jpg?width=1280&height=720&fit_mode=smartcrop&time=2",
+    )
     expect(latestProps.downloads).toEqual([
       {
         documentId: "47420a5c-0ae1-465e-bcc9-98056566d087",
@@ -308,12 +334,55 @@ describe("WatchPageClient download boundary", () => {
       },
     ])
     expect(latestProps.downloads[0]).not.toHaveProperty("url")
+
+    act(() => {
+      latestProps.onClose()
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="watch-share-button"]')
+        ?.click()
+    })
+    expect(shareModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        posterUrl:
+          "https://image.mux.com/playback-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+      }),
+    )
     expect(
       document
         .querySelector('[data-testid="watch-section-renderer"]')
         ?.getAttribute("data-language-slug"),
     ).toBe("english")
     expect(loadWatchInteractionMock).toHaveBeenCalledWith("download")
+  })
+
+  it("falls back to the editorial poster when the Dub has no Mux playback", async () => {
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: false,
+      authenticated: true,
+    })
+    renderWatchPage({
+      image: {
+        mobileCinematicHigh:
+          "https://imagedelivery.net/account/editorial.jpg/f=jpg,w=120,h=68,q=95",
+      },
+      playbackId: null,
+    })
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+
+    expect(downloadModalProps.at(-1)).toEqual(
+      expect.objectContaining({
+        posterUrl:
+          "https://imagedelivery.net/account/editorial.jpg/f=jpg,w=1280,h=720,q=95",
+      }),
+    )
   })
 
   it("opens the download modal with a sign-in prompt instead of redirecting immediately", async () => {

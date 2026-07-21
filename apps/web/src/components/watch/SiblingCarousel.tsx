@@ -287,7 +287,7 @@ export function SiblingCarousel({
         setApi={setApi}
         className="w-full pl-5 md:pl-0"
       >
-        <CarouselContent viewportClassName="overflow-x-visible md:overflow-x-clip">
+        <CarouselContent>
           {children.map((child, index) => {
             const isActive = index === visualActiveIndex
             // Prefer a Mux frame from the current watch language when admin

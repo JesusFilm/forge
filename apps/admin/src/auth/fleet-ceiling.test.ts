@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { BearerCheckResult } from "@/auth/search-bearer"
+import type { FleetBearerCheckResult } from "./fleet-ceiling"
 
 vi.mock("@/config/env", () => ({
   env: {} as {
@@ -187,20 +187,20 @@ describe("checkFleetGlobalCeiling", () => {
 
 describe("shouldShedFleetRequest", () => {
   it("returns false and does not debit for a non-fleet consumer bearer", async () => {
-    const auth: BearerCheckResult = { valid: true, source: "consumer" }
+    const auth: FleetBearerCheckResult = { valid: true, source: "consumer" }
     await expect(shouldShedFleetRequest(auth, "graphql")).resolves.toBe(false)
     expect(incrementMock).not.toHaveBeenCalled()
   })
 
   it("returns false for an invalid bearer", async () => {
-    const auth: BearerCheckResult = { valid: false }
+    const auth: FleetBearerCheckResult = { valid: false }
     await expect(shouldShedFleetRequest(auth, "rest")).resolves.toBe(false)
     expect(incrementMock).not.toHaveBeenCalled()
   })
 
   it("loud-degrades (false + logs) when a fleet result lacks a fleetKeyId", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    const auth: BearerCheckResult = { valid: true, source: "fleet" }
+    const auth: FleetBearerCheckResult = { valid: true, source: "fleet" }
     await expect(shouldShedFleetRequest(auth, "rest")).resolves.toBe(false)
     expect(incrementMock).not.toHaveBeenCalled()
     expect(
@@ -216,7 +216,7 @@ describe("shouldShedFleetRequest", () => {
       source: "redis",
       count: 11,
     })
-    const auth: BearerCheckResult = {
+    const auth: FleetBearerCheckResult = {
       valid: true,
       source: "fleet",
       fleetKeyId: "abc123def456",
@@ -235,7 +235,7 @@ describe("shouldShedFleetRequest", () => {
       source: "redis",
       count: 3,
     })
-    const auth: BearerCheckResult = {
+    const auth: FleetBearerCheckResult = {
       valid: true,
       source: "fleet",
       fleetKeyId: "abc123def456",
@@ -246,7 +246,7 @@ describe("shouldShedFleetRequest", () => {
   it("loud-degrades (false + logs error) when the ceiling check throws", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     incrementMock.mockRejectedValue(new Error("boom"))
-    const auth: BearerCheckResult = {
+    const auth: FleetBearerCheckResult = {
       valid: true,
       source: "fleet",
       fleetKeyId: "abc123def456",

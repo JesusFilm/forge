@@ -118,6 +118,14 @@ function snapshotFromLocale(locale: {
   }
 }
 
+async function languageSlugForLocale(locale: string): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: { bcp47: locale, deletedAt: null, slug: { not: null } },
+    select: { slug: true },
+  })
+  return language?.slug ?? null
+}
+
 async function loadMediaLibrary() {
   const [folders, assets] = await Promise.all([
     prisma.mediaFolder.findMany({
@@ -596,6 +604,35 @@ export default async function ExperienceEditorPage({
     return loadVideoRows(user, { includeVideoIds: videoIds })
   }
 
+  async function searchVideoLibraryAction(query: string) {
+    "use server"
+    const user = await requireSession()
+    const services = createServices(prisma)
+    const targetLanguageSlug = await languageSlugForLocale(
+      selectedLocale.locale,
+    )
+    // Call the service directly so editor picker keystrokes use the new search
+    // stack without writing public Watch search traces.
+    const response = await services.watchSearch.search({
+      query,
+      targetLanguageSlug,
+      displayLanguageSlug: targetLanguageSlug,
+      routeLanguageSlug: targetLanguageSlug,
+      acceptLanguage: selectedLocale.locale,
+      limit: 30,
+      resultTypes: ["video"],
+    })
+    const videoIds = response.results
+      .filter((result) => result.type === "video")
+      .map((result) => result.id)
+    const rows = await loadVideoRows(user, { includeVideoIds: videoIds })
+    const byId = new Map(rows.map((row) => [row.key, row]))
+    return videoIds.flatMap((id) => {
+      const row = byId.get(id)
+      return row ? [row] : []
+    })
+  }
+
   async function generateDraftAction(input: {
     prompt: string
     currentTitle?: string
@@ -685,6 +722,7 @@ export default async function ExperienceEditorPage({
       revisionEntries={revisionEntries}
       videoLibrary={videoLibrary}
       loadVideosByIdsAction={loadVideosByIdsAction}
+      searchVideoLibraryAction={searchVideoLibraryAction}
       mediaLibrary={mediaLibrary}
       canUploadImages={canUploadImages}
       saveAction={saveLocaleAction}

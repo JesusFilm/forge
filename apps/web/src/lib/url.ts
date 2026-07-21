@@ -75,6 +75,58 @@ export function resolveMuxFrameThumbnailUrl(
   return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2`
 }
 
+function resolveDownloadEditorialPosterUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname !== "imagedelivery.net") return url
+
+    const segments = parsed.pathname.split("/")
+    const transformations = segments.at(-1)?.split(",")
+    if (
+      transformations == null ||
+      !transformations.some((value) => /^w=\d+$/.test(value)) ||
+      !transformations.some((value) => /^h=\d+$/.test(value))
+    ) {
+      return url
+    }
+
+    segments[segments.length - 1] = transformations
+      .map((value) => {
+        if (/^w=\d+$/.test(value)) return "w=1280"
+        if (/^h=\d+$/.test(value)) return "h=720"
+        return value
+      })
+      .join(",")
+    parsed.pathname = segments.join("/")
+    return parsed.toString()
+  } catch {
+    return url
+  }
+}
+
+/**
+ * Resolve the poster used by the full-width mobile download modal.
+ *
+ * Card thumbnails intentionally stay capped at 448px. The modal can occupy
+ * roughly 390 CSS pixels on a 3x display, so it needs a larger source to avoid
+ * browser upscaling. Prefer the selected Dub's frame so the asset can be
+ * requested at the required resolution. Videos without Mux playback can carry
+ * Cloudflare delivery URLs whose transformation is fixed at 120x68; request a
+ * 1280x720 derivative from the same original instead of letting Next/Image
+ * upscale that tiny response. Other editorial providers remain untouched.
+ */
+export function resolveDownloadPosterUrl(
+  image: Parameters<typeof resolvePosterUrl>[0],
+  muxPlaybackId?: string | null,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) {
+    const editorial = resolvePosterUrl(image)
+    return editorial ? resolveDownloadEditorialPosterUrl(editorial) : null
+  }
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=1280&height=720&fit_mode=smartcrop&time=2`
+}
+
 export function resolveMuxAnimatedPreviewUrl(
   muxPlaybackId: string | null | undefined,
 ): string | null {

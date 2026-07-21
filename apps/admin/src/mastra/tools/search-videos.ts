@@ -1,9 +1,9 @@
 /**
  * searchVideos tool (U5).
  *
- * Lets Mastra agents call admin's existing hybrid-search service
+ * Lets Mastra agents call admin's watch-search service
  * during a chat turn instead of receiving pre-fetched candidates in
- * the prompt. Wraps `HybridSearchService.search` with a tight Zod
+ * the prompt. Wraps `WatchSearchService.search` with a tight Zod
  * surface scoped to what an editorial agent actually consumes.
  *
  * ABAC posture: the tool's `execute` runs inside the request context;
@@ -22,7 +22,7 @@ import { createTool } from "@mastra/core/tools"
 import { z } from "zod"
 
 import { prisma } from "@/db/client"
-import { HybridSearchService } from "@/services/hybrid-search.service"
+import { WatchSearchService } from "@/services/watch-search.service"
 
 /** Exported for unit-test access; createTool wraps this in a Standard Schema. */
 export const searchVideosInputSchema = z.object({
@@ -62,12 +62,16 @@ export const searchVideosTool = createTool({
   outputSchema,
   execute: async (inputData, context) => {
     void context?.requestContext // principal pulled here when service-layer ABAC needs it
-    const service = new HybridSearchService({ prisma })
+    const service = new WatchSearchService(prisma)
+    const targetLanguageSlug = await languageSlugForLocale(inputData.locale)
     const response = await service.search({
       query: inputData.q,
-      locale: inputData.locale,
+      targetLanguageSlug,
+      displayLanguageSlug: targetLanguageSlug,
+      routeLanguageSlug: targetLanguageSlug,
+      acceptLanguage: inputData.locale,
       limit: inputData.limit,
-      contentTypes: ["video"],
+      resultTypes: ["video"],
     })
 
     const videos = response.results
@@ -78,7 +82,7 @@ export const searchVideosTool = createTool({
       .map((result) => ({
         videoId: result.id,
         title: result.title,
-        snippet: result.snippet,
+        snippet: result.snippet ?? "",
         slug: result.slug,
         imageUrl: result.imageUrl,
       }))
@@ -86,3 +90,11 @@ export const searchVideosTool = createTool({
     return { videos }
   },
 })
+
+async function languageSlugForLocale(locale: string): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: { bcp47: locale, deletedAt: null, slug: { not: null } },
+    select: { slug: true },
+  })
+  return language?.slug ?? null
+}

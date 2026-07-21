@@ -180,7 +180,11 @@ function classifyRewrite(pathname: string): RewriteDecision {
 
   if (segments.length === 2) {
     const [slugSegment, localeSegment] = segments
-    if (localeSegment === "videos") {
+    if (
+      localeSegment === "videos" ||
+      localeSegment === "languages" ||
+      localeSegment === "history"
+    ) {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
       if (!rawLanguageSlug) return { kind: "not-found" }
@@ -191,7 +195,10 @@ function classifyRewrite(pathname: string): RewriteDecision {
         kind: "rewrite",
         ...resolveWatchLocaleIdentity(rawLanguageSlug),
         pathname,
-        internalPathname: `/videos/${rawLanguageSlug}`,
+        internalPathname:
+          localeSegment === "videos"
+            ? `/videos/${rawLanguageSlug}`
+            : `/${localeSegment}`,
       }
     }
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {

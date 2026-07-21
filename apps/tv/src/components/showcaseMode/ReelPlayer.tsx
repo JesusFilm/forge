@@ -18,6 +18,7 @@ import {
   shouldDriveFadeOut,
   volumeAtElapsed,
 } from "../../lib/showcaseMode/audioFade"
+import { OVERLAY_CROSSFADE_MS } from "../../lib/showcaseMode/reelState"
 import { shouldCountReelRebuffer } from "../../lib/showcaseMode/showcaseTelemetry"
 import type { ShowcaseStream } from "../../lib/showcaseMode/types"
 import { validateStreamingUrl } from "../../lib/validateUrl"
@@ -28,13 +29,26 @@ import {
 } from "../../lib/videoQoe"
 import { isAppStateForeground } from "../watch/videoBackdropGate"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { computeReelPlayerGate } from "./reelPlayerGate"
+import { computeReelPlayerGate, needsWindowStartSeek } from "./reelPlayerGate"
 import { classifyReelWatchdog } from "./reelWatchdog"
 
 // Hold the poster briefly over the confirmed video, then fade: absorbs the seek
 // settle and gives the eye a still instead of a mid-load pop (VideoBackdrop's curve).
 const POSTER_HOLD_MS = 500
 const POSTER_FADE_MS = 500
+
+// A COVERED swap (card/interstitial over the reel) holds the poster and item swap
+// back until the overlay's entry dissolve is opaque — otherwise the incoming
+// thumbnail (or a released surface) flashes through the half-transparent card.
+const POSTER_COVER_DELAY_MS = OVERLAY_CROSSFADE_MS + 80
+const SWAP_COVER_DELAY_MS = POSTER_COVER_DELAY_MS + 100
+
+// KTD-5: a hop is the SAME footage in a different dub, so its seam is a brief dim over
+// the LIVE frame — never the poster (that would read as a cut). Shorter than the poster
+// hold, and a DIM not a blackout: the frame stays legible so the dip reads as a
+// momentary darkening synced to the audio crossfade, never a black gap (R10).
+const HOP_DIP_FADE_MS = 200
+const HOP_DIP_MAX_OPACITY = 0.5
 
 /** Matches the player's own 1s timeUpdate cadence — no point sampling finer. */
 const WATCHDOG_TICK_MS = 1000
@@ -45,6 +59,12 @@ export type ReelPlayerProps = {
   posterUrl: string | null
   /** KTD-9's source-swap guard token; bumps on every new excerpt target. */
   excerptToken: number
+  /**
+   * KTD-5: the swap into this stream is a hop continuation (same footage, next dub).
+   * Masks with the dip over the live frame instead of the poster. False for the entry
+   * into the centerpiece and the exit past it — those are ordinary content cuts.
+   */
+  hopSwap: boolean
   /**
    * Play gate. False under chapter cards, interstitials and stills: the player stays
    * loaded and silent, so the card doubles as the next excerpt's buffer window (R17).
@@ -65,6 +85,7 @@ export function ReelPlayer({
   stream,
   posterUrl,
   excerptToken,
+  hopSwap,
   active,
   onPlaying,
   onEnded,
@@ -119,6 +140,8 @@ export function ReelPlayer({
     posterVisible,
     posterCrossfade,
     playIntended,
+    swapInFlight,
+    hopDipActive,
   } = computeReelPlayerGate({
     screenFocused,
     appForeground,
@@ -127,6 +150,7 @@ export function ReelPlayer({
     videoReady,
     excerptToken,
     confirmedToken,
+    hopSwap,
   })
 
   // Created ONCE with a null source: a changing useVideoPlayer source releases and
@@ -148,6 +172,9 @@ export function ReelPlayer({
   const loadedTokenRef = useRef(excerptToken)
   const confirmedTokenRef = useRef<number | null>(null)
   const shouldPlayRef = useRef(shouldPlay)
+  // Read at swap/poster start (async paths) — covered vs visible picks the sequencing.
+  const activeRef = useRef(active)
+  activeRef.current = active
   // Watchdog clocks. `playRequestedAt` starts when we ASK for playback, not when the
   // stream lands: the fetch owns its own timeout, and the player cannot start while a
   // chapter card holds it paused.
@@ -273,6 +300,14 @@ export function ReelPlayer({
 
     void (async () => {
       try {
+        // Covered: wait out the overlay dissolve + poster cover before releasing the
+        // outgoing item, so nothing beneath a half-transparent card can change.
+        if (!activeRef.current) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, SWAP_COVER_DELAY_MS),
+          )
+          if (swapIdRef.current !== swapId) return
+        }
         await player.replaceAsync(target?.hls ?? null)
         // A newer swap already owns the player; this one's seek/play would fight it.
         if (swapIdRef.current !== swapId) return
@@ -387,6 +422,22 @@ export function ReelPlayer({
       // long-form item still reports the OUTGOING item's position, which would trip
       // the window end instantly and skip an excerpt nobody watched.
       if (confirmedTokenRef.current !== loadedTokenRef.current) return
+      // The post-swap seek can be silently dropped (item not yet seekable on tvOS);
+      // heal forward until the clock is inside the window, and skip this tick's
+      // QoE/fade/end checks — a pre-seek position would pollute all three.
+      if (
+        needsWindowStartSeek({
+          currentTime,
+          startSeconds: loaded.window.startSeconds,
+        })
+      ) {
+        try {
+          player.currentTime = loaded.window.startSeconds
+        } catch {
+          // Native player already released; the next swap owns recovery.
+        }
+        return
+      }
       // Guarded above, so this is the confirmed source's own clock: an unconfirmed
       // reading is the OUTGOING excerpt's position and would pollute watched_ms.
       qoeRef.current?.onTimeUpdate(currentTime)
@@ -509,11 +560,22 @@ export function ReelPlayer({
         posterOpacity.setValue(1)
         return
       }
-      const fadeIn = Animated.timing(posterOpacity, {
-        toValue: 1,
-        duration: POSTER_FADE_MS,
-        useNativeDriver: true,
-      })
+      const fadeIn = activeRef.current
+        ? Animated.timing(posterOpacity, {
+            toValue: 1,
+            duration: POSTER_FADE_MS,
+            useNativeDriver: true,
+          })
+        : // Covered: wait out the card's dissolve, then cover silently — a visible
+          // bloom here is what flashed the incoming thumbnail through the card.
+          Animated.sequence([
+            Animated.delay(POSTER_COVER_DELAY_MS),
+            Animated.timing(posterOpacity, {
+              toValue: 1,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ])
       fadeIn.start()
       return () => fadeIn.stop()
     }
@@ -545,6 +607,44 @@ export function ReelPlayer({
     }
   }, [posterVisible, posterCrossfade, posterOpacity, fadeVolumeTo])
 
+  // KTD-5's hop seam. The dip fades IN over the live frame as a hop swap starts and OUT
+  // once the next dub confirms; the audio rides the fade-out (the swap muted the player).
+  const hopDipOpacity = useRef(new Animated.Value(0)).current
+  // Body-mutated, not cleanup-mutated: setup re-derives it from hopDipActive each run, so
+  // a StrictMode remount can't poison it. Gates the audio reveal to a real dip→confirm.
+  const hopDipWasActiveRef = useRef(false)
+  // Render mirror so the reveal branch can tell a genuine confirmation apart from a
+  // lifecycle drop (background/nav-away/plan-exit) without widening the effect's deps.
+  const hopRevealEligibleRef = useRef(false)
+  hopRevealEligibleRef.current = !swapInFlight && shouldMountVideo
+  useEffect(() => {
+    if (hopDipActive) {
+      hopDipWasActiveRef.current = true
+      const dipIn = Animated.timing(hopDipOpacity, {
+        toValue: HOP_DIP_MAX_OPACITY,
+        duration: HOP_DIP_FADE_MS,
+        useNativeDriver: true,
+      })
+      dipIn.start()
+      return () => dipIn.stop()
+    }
+    // Only reveal after a dip actually ran — never on mount or an ordinary swap, where
+    // the poster path already owns the audio fade-in.
+    if (!hopDipWasActiveRef.current) return
+    hopDipWasActiveRef.current = false
+    const dipOut = Animated.timing(hopDipOpacity, {
+      toValue: 0,
+      duration: HOP_DIP_FADE_MS,
+      useNativeDriver: true,
+    })
+    dipOut.start()
+    // Reveal ONLY on a genuine confirmation. A lifecycle drop (backgrounding, nav-away,
+    // exhausted plan) would otherwise ramp a muted mid-swap player back to full volume,
+    // and the resume would play un-dipped audio; the poster path owns those seams.
+    if (hopRevealEligibleRef.current) fadeVolumeTo(1, AUDIO_FADE_IN_MS)
+    return () => dipOut.stop()
+  }, [hopDipActive, hopDipOpacity, fadeVolumeTo])
+
   return (
     // No pointerEvents="none" anywhere above the VideoView: on a fullscreen surface
     // that blacks out the AVPlayerLayer. focusable={false} on the view is the fix.
@@ -558,6 +658,18 @@ export function ReelPlayer({
           focusable={false}
         />
       ) : null}
+
+      {/* KTD-5's hop seam: a brief dim over the LIVE frame, below the poster so the
+          poster still owns lifecycle/background gaps. Zero opacity except mid-hop-swap. */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.hopDip,
+          { opacity: hopDipOpacity },
+        ]}
+        pointerEvents="none"
+        collapsable={false}
+      />
 
       {/* Above the video (KTD-3) and covering every swap, seek and unmount gap —
           the failure window reuses this same layer, never a spinner or blank. */}
@@ -587,6 +699,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fallbackBg: {
+    backgroundColor: WATCH_THEME.below,
+  },
+  hopDip: {
     backgroundColor: WATCH_THEME.below,
   },
 })

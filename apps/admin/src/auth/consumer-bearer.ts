@@ -1,10 +1,12 @@
 // Consumer-app bearer-key auth for admin's GraphQL surface. Lets apps/web
-// SSR identify as `consumer:<key>` instead of `public:<cf-connecting-ip>`
-// (CGNAT + mobile-carrier NAT make the IP bucket too coarse for SSR fanout).
+// SSR identify as trusted internal traffic instead of
+// `public:<cf-connecting-ip>` (CGNAT + mobile-carrier NAT make the IP bucket
+// too coarse for SSR fanout).
 //
 // Two allowlists mint the CONSUMER_BEARER principal: WEB_ADMIN_API_KEYS
-// (web SSR, per-key) and FLEET_ADMIN_API_KEYS (tv/mobile, flagged `fleet`
-// so the limiter buckets per-IP). Disjoint by the env boot invariant.
+// (web SSR, request-scoped internal buckets) and FLEET_ADMIN_API_KEYS
+// (tv/mobile, flagged `fleet` so the limiter buckets per-device/IP).
+// Disjoint by the env boot invariant.
 //
 // CRITICAL: the bearer principal grants NO permissions beyond PUBLIC — its
 // sole purpose is the rate-limit bucket key. Adding any permission is a

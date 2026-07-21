@@ -1,8 +1,16 @@
-import { act, fireEvent, render, waitFor, within } from "@testing-library/react"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { buildStubReply, STUB_REPLY_DELAY_MS } from "@/lib/chat-stub"
 import { deriveTitle } from "@/lib/conversations"
+import { encodeSseFrame } from "@/lib/sse"
 
 import { AppShell } from "./app-shell"
 
@@ -10,6 +18,7 @@ import {
   awaitReply,
   clickNewConversation,
   container,
+  type Frame,
   getConversationNav,
   getLog,
   getSendButton,
@@ -17,6 +26,7 @@ import {
   isPending,
   jsonRes,
   messageTexts,
+  navRowTitles,
   renderSeeker,
   renderShell,
   seekerCallBodies,
@@ -24,6 +34,7 @@ import {
   sendMessage,
   setupShellTest,
   sidebarReplyingCount,
+  sseResponse,
   teardownShellTest,
   user,
   view,
@@ -48,18 +59,23 @@ describe("AppShell — reply lifecycle (stub path, flag off)", () => {
     expect(container).not.toHaveTextContent("What would you like to ask?")
   })
 
-  it("appends the user message, shows pending, disables controls, then replies and re-enables", async () => {
+  it("appends the user message, shows pending, swaps send for stop, then replies and re-enables", async () => {
     await sendMessage("hello")
 
     expect(messageTexts()).toContain("hello")
     expect(isPending()).toBe(true)
     expect(getTextarea()).toBeDisabled()
-    expect(getSendButton()).toBeDisabled()
+    // feat-270: while a reply is in flight the send slot IS the stop control.
+    expect(
+      screen.getByRole("button", { name: "Stop generating" }),
+    ).toBeEnabled()
+    expect(screen.queryByRole("button", { name: "Send" })).toBeNull()
 
     await awaitReply()
 
     expect(isPending()).toBe(false)
     expect(getTextarea()).toBeEnabled()
+    expect(screen.queryByRole("button", { name: "Stop generating" })).toBeNull()
     expect(messageTexts()).toHaveLength(2)
   })
 
@@ -75,6 +91,13 @@ describe("AppShell — reply lifecycle (stub path, flag off)", () => {
     expect(getSendButton()).toBeDisabled()
     await user.type(getTextarea(), "hi")
     expect(getSendButton()).toBeEnabled()
+  })
+
+  it("shows the directional send arrow only when a draft is ready (feat-270)", async () => {
+    // Idle/blocked: the dim dot (a span, no svg); ready: the arrow glyph.
+    expect(getSendButton().querySelector("svg")).toBeNull()
+    await user.type(getTextarea(), "ready to go")
+    expect(getSendButton().querySelector("svg")).not.toBeNull()
   })
 
   it("treats whitespace-only submit as a no-op", async () => {
@@ -240,6 +263,115 @@ describe("AppShell — reply lifecycle (stub path, flag off)", () => {
     await awaitReply()
     expect(getLog().querySelector('[data-engine="stub"]')).not.toBeNull()
     expect(getLog().querySelector('[data-engine="seeker"]')).toBeNull()
+    // feat-270: the marker copy is visible for stub turns.
+    expect(within(getLog()).getByText("Stub")).toBeInTheDocument()
+  })
+})
+
+describe("New conversation reuse + sidebar empties (feat-270)", () => {
+  it("no-ops onto the already-empty active pane instead of minting a duplicate row", async () => {
+    await clickNewConversation()
+    await clickNewConversation()
+    expect(navRowTitles().filter((t) => t === "New conversation")).toHaveLength(
+      1,
+    )
+    expect(container).toHaveTextContent("What would you like to ask?")
+  })
+
+  it("keeps the draft when New lands on the already-empty active pane", async () => {
+    await user.type(getTextarea(), "half a thought")
+    await clickNewConversation()
+    expect(getTextarea()).toHaveValue("half a thought")
+  })
+
+  it("hides an inactive never-used empty from the rail and reuses it from the New action", async () => {
+    await sendMessage("alpha topic")
+    await awaitReply()
+    await clickNewConversation()
+    expect(navRowTitles()).toEqual([
+      "New conversation",
+      deriveTitle("alpha topic"),
+    ])
+
+    // Selecting the old conversation leaves the fresh empty behind — it
+    // disappears from the rail instead of lingering as a dead duplicate.
+    await selectSidebarConversation(deriveTitle("alpha topic"))
+    expect(navRowTitles()).toEqual([deriveTitle("alpha topic")])
+
+    // The New action brings the SAME empty back (no second one minted).
+    await clickNewConversation()
+    expect(navRowTitles()).toEqual([
+      "New conversation",
+      deriveTitle("alpha topic"),
+    ])
+    expect(messageTexts()).toHaveLength(0)
+  })
+
+  it("focuses the composer from the New conversation action", async () => {
+    await clickNewConversation()
+    expect(getTextarea()).toHaveFocus()
+  })
+
+  it("focuses the composer after New from the mobile drawer — the trigger restore must not win", async () => {
+    await user.click(
+      within(getMain()).getByRole("button", { name: "Open menu" }),
+    )
+    expect(drawerOpen()).toBe(true)
+
+    await clickNewConversation()
+    expect(drawerOpen()).toBe(false)
+    // Deferred focus fires after the close commits and after the drawer
+    // chrome restores focus to the trigger — the composer wins.
+    await waitFor(() => expect(getTextarea()).toHaveFocus())
+  })
+
+  it("focuses the composer via the pending effect when New is clicked mid-reply", async () => {
+    await sendMessage("busy elsewhere")
+    await clickNewConversation()
+    expect(getTextarea()).toBeEnabled()
+    expect(getTextarea()).toHaveFocus()
+  })
+})
+
+describe("Stop generation (feat-270, stub path)", () => {
+  it("stop before any text drops the empty assistant turn quietly and re-enables sending", async () => {
+    await sendMessage("halt me")
+    expect(isPending()).toBe(true)
+
+    await user.click(screen.getByRole("button", { name: "Stop generating" }))
+
+    // Finalized quietly: no failure notice, no blank assistant bubble.
+    expect(isPending()).toBe(false)
+    expect(messageTexts()).toEqual(["halt me"])
+    expect(within(getLog()).queryByRole("alert")).toBeNull()
+    expect(getTextarea()).toBeEnabled()
+    expect(sidebarReplyingCount()).toBe(0)
+
+    // The slot released — a fresh send works end to end.
+    await sendMessage("try again")
+    await awaitReply()
+    expect(messageTexts()).toEqual([
+      "halt me",
+      "try again",
+      buildStubReply("try again"),
+    ])
+  })
+
+  it("stops only the ACTIVE conversation's reply", async () => {
+    await sendMessage("keep streaming")
+    await clickNewConversation()
+    await sendMessage("stop this one")
+    expect(sidebarReplyingCount()).toBe(2)
+
+    await user.click(screen.getByRole("button", { name: "Stop generating" }))
+    expect(sidebarReplyingCount()).toBe(1)
+
+    await awaitReply()
+    await selectSidebarConversation(deriveTitle("keep streaming"))
+    expect(messageTexts()).toEqual([
+      "keep streaming",
+      buildStubReply("keep streaming"),
+    ])
   })
 })
 
@@ -452,6 +584,107 @@ describe("Seeker wiring (flag on)", () => {
     await waitFor(() => expect(fetchSignal?.aborted).toBe(true))
     expect(errorSpy).not.toHaveBeenCalled()
     errorSpy.mockRestore()
+  })
+})
+
+// A Seeker fetch mock whose stream delivers `frames`, then stays OPEN until
+// the caller aborts (erroring the body like real fetch). Later /api/seeker
+// calls get `nextFrames` closed streams; history endpoints answer empty.
+function stubOpenSeekerStream(frames: Frame[], nextFrames: Frame[] = []) {
+  const encoder = new TextEncoder()
+  let seekerCalls = 0
+  const fetchMock = vi.fn().mockImplementation((url, init?: RequestInit) => {
+    if (String(url) === "/api/history/list") {
+      return Promise.resolve(jsonRes(200, { threads: [], hasMore: false }))
+    }
+    seekerCalls += 1
+    if (seekerCalls > 1) return Promise.resolve(sseResponse(nextFrames))
+    const signal = (init as { signal?: AbortSignal }).signal
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const f of frames) {
+          controller.enqueue(encoder.encode(encodeSseFrame(f.event, f.data)))
+        }
+        signal?.addEventListener("abort", () => {
+          try {
+            controller.error(new DOMException("aborted", "AbortError"))
+          } catch {
+            // already errored
+          }
+        })
+      },
+    })
+    return Promise.resolve(new Response(body, { status: 200 }))
+  })
+  view.unmount()
+  vi.stubGlobal("fetch", fetchMock)
+  renderShell(true)
+  return fetchMock
+}
+
+describe("Stop generation (feat-270, Seeker path)", () => {
+  it("keeps the streamed partial text as a plain finalized turn — no notice, no badges", async () => {
+    stubOpenSeekerStream([
+      { event: "token_delta", data: { text: "The first half of an ans" } },
+    ])
+    await sendMessage("long question")
+    await waitFor(() =>
+      expect(messageTexts()).toContain("The first half of an ans"),
+    )
+
+    await user.click(screen.getByRole("button", { name: "Stop generating" }))
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    // Partial text survives as an ordinary turn: no role="alert" failure
+    // notice, no grounding verdict, no engine stamp on the cut-short turn.
+    expect(messageTexts()).toContain("The first half of an ans")
+    expect(within(getLog()).queryByRole("alert")).toBeNull()
+    expect(getLog().querySelector("[data-grounded]")).toBeNull()
+    expect(getLog().querySelector("[data-engine]")).toBeNull()
+    expect(getTextarea()).toBeEnabled()
+    expect(sidebarReplyingCount()).toBe(0)
+  })
+
+  it("counts a stopped partial turn as persisted — a later gate denial fails visibly (KTD10)", async () => {
+    stubOpenSeekerStream(
+      [{ event: "token_delta", data: { text: "partial before stop" } }],
+      [{ event: "error", data: { reason: "gate_denied" } }],
+    )
+    await sendMessage("first — stopped")
+    await waitFor(() => expect(messageTexts()).toContain("partial before stop"))
+    await user.click(screen.getByRole("button", { name: "Stop generating" }))
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    await sendMessage("second — denied")
+    await waitFor(() => expect(isPending()).toBe(false))
+    expect(within(getLog()).getByRole("alert")).toHaveTextContent(
+      /Your access to Seeker has changed/,
+    )
+    expect(container).not.toHaveTextContent("Stubbed reply")
+  })
+
+  it("counts a ZERO-token stop as persisted too — Mastra creates the thread before generating", async () => {
+    stubOpenSeekerStream(
+      [],
+      [{ event: "error", data: { reason: "gate_denied" } }],
+    )
+    await sendMessage("stopped before any token")
+    expect(isPending()).toBe(true)
+    await user.click(screen.getByRole("button", { name: "Stop generating" }))
+    await waitFor(() => expect(isPending()).toBe(false))
+
+    // Nothing streamed: the empty assistant turn is dropped quietly.
+    expect(messageTexts()).toEqual(["stopped before any token"])
+    expect(within(getLog()).queryByRole("alert")).toBeNull()
+
+    // The thread may already exist server-side, so a later denial must fail
+    // visibly — never silently stub-fork (mark-persisted-on-stop).
+    await sendMessage("second — denied")
+    await waitFor(() => expect(isPending()).toBe(false))
+    expect(within(getLog()).getByRole("alert")).toHaveTextContent(
+      /Your access to Seeker has changed/,
+    )
+    expect(container).not.toHaveTextContent("Stubbed reply")
   })
 })
 

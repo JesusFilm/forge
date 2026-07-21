@@ -32,6 +32,19 @@ afterEach(() => {
 })
 
 describe("GET /watch/api/auth/session", () => {
+  it("accepts the relative Watch homepage as a signed-out callback", async () => {
+    const { GET } = await importRoute()
+    const response = await GET(makeRequest("/watch"))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      accountGateEnabled: false,
+      authenticated: false,
+      loginUrl:
+        "https://example.test/watch/api/auth/login?returnTo=https%3A%2F%2Fexample.test%2Fwatch",
+    })
+  })
+
   it("returns a sanitized auth login URL for signed-out watch-page callbacks", async () => {
     const { GET } = await importRoute()
     const response = await GET(

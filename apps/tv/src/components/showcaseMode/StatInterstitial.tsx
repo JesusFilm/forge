@@ -9,10 +9,18 @@ import { Animated, StyleSheet, Text, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { scale } from "../../lib/scale"
+import {
+  INTERSTITIAL_DURATION_MS,
+  OVERLAY_CROSSFADE_MS,
+  OVERLAY_EXIT_MARGIN_MS,
+} from "../../lib/showcaseMode/reelState"
 import { buildInterstitialContent } from "../../lib/showcaseMode/statLines"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 const ENTER_MS = 480
+// The root dissolves IN over the ended excerpt's frame but never out — the chapter
+// card that follows mounts opaque over the same dark stage (ChapterCard's
+// entersOpaque), so the seam is a text swap, not a dip to the frame beneath.
 
 export type StatInterstitialProps = {
   /** Authored globals from the Showcase Experience (KTD-10 `showcase-stats`). */
@@ -30,6 +38,7 @@ export function StatInterstitial({
 }: StatInterstitialProps) {
   const reduceMotion = useReduceMotion()
   const enter = useRef(new Animated.Value(0)).current
+  const rootFade = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (reduceMotion) {
@@ -43,8 +52,47 @@ export function StatInterstitial({
       useNativeDriver: true,
     })
     anim.start()
-    return () => anim.stop()
+    // The copy bows out before the phase flips, so the following card's title enters
+    // over an empty dark stage instead of hard-swapping with the stats text.
+    let copyExit: Animated.CompositeAnimation | null = null
+    const exitTimer = setTimeout(
+      () => {
+        copyExit = Animated.timing(enter, {
+          toValue: 0,
+          duration: OVERLAY_CROSSFADE_MS,
+          useNativeDriver: true,
+        })
+        copyExit.start()
+      },
+      // The margin keeps the fade ahead of the reducer's own unmount timer.
+      Math.max(
+        0,
+        INTERSTITIAL_DURATION_MS -
+          OVERLAY_CROSSFADE_MS -
+          OVERLAY_EXIT_MARGIN_MS,
+      ),
+    )
+    return () => {
+      anim.stop()
+      copyExit?.stop()
+      clearTimeout(exitTimer)
+    }
   }, [enter, reduceMotion])
+
+  useEffect(() => {
+    if (reduceMotion) {
+      rootFade.setValue(1)
+      return
+    }
+    rootFade.setValue(0)
+    const fadeIn = Animated.timing(rootFade, {
+      toValue: 1,
+      duration: OVERLAY_CROSSFADE_MS,
+      useNativeDriver: true,
+    })
+    fadeIn.start()
+    return () => fadeIn.stop()
+  }, [rootFade, reduceMotion])
 
   const content = buildInterstitialContent({
     authoredLines,
@@ -54,8 +102,8 @@ export function StatInterstitial({
   if (content == null) return null
 
   return (
-    <View
-      style={styles.root}
+    <Animated.View
+      style={[styles.root, { opacity: rootFade }]}
       pointerEvents="none"
       collapsable={false}
       accessibilityElementsHidden
@@ -75,7 +123,7 @@ export function StatInterstitial({
           </>
         ) : null}
       </Animated.View>
-    </View>
+    </Animated.View>
   )
 }
 

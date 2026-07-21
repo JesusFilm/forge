@@ -5,6 +5,7 @@ import {
   deriveTitle,
   fallbackTitle,
   NEW_CONVERSATION_TITLE,
+  titleFromFirstUser,
 } from "./conversations"
 
 describe("createConversation", () => {
@@ -79,5 +80,24 @@ describe("fallbackTitle (feat-241, R11/AE6)", () => {
   it("degrades to the bare noun for empty or unparseable input", () => {
     expect(fallbackTitle("")).toBe("Conversation")
     expect(fallbackTitle("not-a-date")).toBe("Conversation")
+  })
+})
+
+describe("titleFromFirstUser (feat-270)", () => {
+  it("backfills a blank or whitespace-only title from the first user turn", () => {
+    expect(titleFromFirstUser("", "Is doubt a sin?")).toBe(
+      deriveTitle("Is doubt a sin?"),
+    )
+    expect(titleFromFirstUser("   ", "Is doubt a sin?")).toBe(
+      deriveTitle("Is doubt a sin?"),
+    )
+  })
+
+  it("never displaces a non-empty title", () => {
+    expect(titleFromFirstUser("LLM Title", "hello there")).toBe("LLM Title")
+  })
+
+  it("keeps the blank title when no user turn exists (date fallback stays)", () => {
+    expect(titleFromFirstUser("", undefined)).toBe("")
   })
 })
