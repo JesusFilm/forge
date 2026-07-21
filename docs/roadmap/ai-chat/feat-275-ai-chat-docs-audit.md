@@ -15,7 +15,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-07-21 via [PR #NNNN](https://github.com/JesusFilm/forge/pull/NNNN) (`docs(ai-chat): fix chat + mastra CLAUDE.md drift found by docs audit (feat-275)`).
+**Shipped:** 2026-07-21 via [PR #1638](https://github.com/JesusFilm/forge/pull/1638) (`docs(ai-chat): fix chat + mastra CLAUDE.md drift found by docs audit (feat-275)`).
 
 **What landed.** A report-only claim audit of `apps/chat/CLAUDE.md` (whole
 file) and `apps/mastra/CLAUDE.md` (Seeker/ai-chat scope) against code at
