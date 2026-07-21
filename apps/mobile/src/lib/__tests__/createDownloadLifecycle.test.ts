@@ -473,6 +473,29 @@ describe("restart", () => {
     expect(h.records.has("washi-gospel-1")).toBe(false)
   })
 
+  // D2 identity gap: delete-then-fresh-start installs a NEW record object at
+  // the same slug during the re-resolve — an existence check alone would pass
+  // and clobber it. Only reference-identity catches this interleaving.
+  it("bails when the record was replaced (a fresh start) during the re-resolve — the fresh record survives untouched", async () => {
+    const fresh = makeRecord({
+      state: "downloading",
+      committedPath: null,
+      pendingPath: `${ROOT}/washi-gospel-1/media.fresh.pending`,
+      bytesWritten: 0,
+    })
+    const h: ReturnType<typeof makeHarness> = makeHarness({
+      records: [paused],
+      resolveImpl: async () => {
+        h.records.set("washi-gospel-1", fresh)
+        return { mediaUrl: GOOD_URL, subtitleUrl: null }
+      },
+    })
+    await h.lifecycle.restart(paused)
+    expect(h.writes).toHaveLength(0)
+    expect(h.engineStart).not.toHaveBeenCalled()
+    expect(h.records.get("washi-gospel-1")).toBe(fresh)
+  })
+
   it("reuses the record's pending path and the live cellular preference", async () => {
     const h = makeHarness({ records: [paused], allowCellularForRestart: true })
     await h.lifecycle.restart(paused)
@@ -567,6 +590,7 @@ describe("retryFailedDownload (DownloadsProvider retry guard — Part A)", () =>
       "washi-gospel-1",
     )
     expect(h.engineStart).not.toHaveBeenCalled()
+    expect(h.resolveMock).not.toHaveBeenCalled()
   })
 
   // AE8: a null re-resolution leaves restart's existing no-write behavior

@@ -625,10 +625,10 @@ export function createDownloadLifecycle(deps: DownloadLifecycleDeps) {
       } catch {
         return
       }
-      // D2: a delete/cancel during the awaits above removed the record —
-      // writing it back would resurrect a download the user just deleted.
-      // Bail; the deletion already cleaned the record and dir.
-      if (!deps.getRecord(record.videoSlug)) return
+      // D2: bail if the record we captured was deleted OR replaced (a fresh
+      // same-slug download started) during the awaits above — writing our stale
+      // copy back would clobber the new record and orphan its engine task.
+      if (deps.getRecord(record.videoSlug) !== record) return
       await deps.writeRecord({
         ...record,
         state: "downloading",
