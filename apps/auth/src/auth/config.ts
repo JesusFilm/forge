@@ -11,18 +11,13 @@ import {
   env,
   getAuthBaseUrl,
   getAuthTrustedOrigins,
+  getAuthValidAudiences,
 } from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const validAudiences = [
-  getAuthBaseUrl(),
-  ...(env.AUTH_VALID_AUDIENCES ?? "")
-    .split(",")
-    .map((audience) => audience.trim())
-    .filter((audience) => audience.length > 0),
-]
+const validAudiences = getAuthValidAudiences()
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =
