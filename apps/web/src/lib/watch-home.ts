@@ -53,7 +53,7 @@ type AdminHomeVideo = WatchHomeVideosData["watchHomeVideos"][number]
 type AdminHomeChildRelation = NonNullable<AdminHomeVideo["children"]>[number]
 type AdminHomeChildVideo = NonNullable<AdminHomeChildRelation["child"]>
 type AdminHomeImage = NonNullable<AdminHomeVideo["images"]>[number]
-type AdminHomeVariant = NonNullable<AdminHomeVideo["variants"]>[number]
+type AdminHomeVariant = NonNullable<AdminHomeVideo["preferredVariant"]>
 
 export type WatchHomeMissingField =
   | "record"
@@ -279,26 +279,6 @@ function muxThumbnail(playbackId: string | null): string | null {
   return playbackId ? `https://image.mux.com/${playbackId}/thumbnail.jpg` : null
 }
 
-function selectPlayableVariant(
-  variants: readonly AdminHomeVariant[],
-  languageSlug: string,
-  primaryLanguageId: string | null,
-): AdminHomeVariant | null {
-  const playable = variants.filter(
-    (variant) => variant.published === true && Boolean(variant.hls),
-  )
-  if (!playable.length) return null
-
-  const localeMatch =
-    playable.find((variant) => variant.language?.slug === languageSlug) ??
-    playable.find((variant) => variant.language?.bcp47 === languageSlug)
-  const primaryMatch = primaryLanguageId
-    ? playable.find((variant) => variant.language?.coreId === primaryLanguageId)
-    : null
-
-  return localeMatch ?? primaryMatch ?? playable[0] ?? null
-}
-
 function adminImageUrl(image: AdminHomeImage) {
   return (
     image.mobileCinematicHigh ??
@@ -382,17 +362,10 @@ function normalizeCard(args: {
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
   const locale = args.video.locales?.[0] ?? null
-  const variants =
-    "variants" in args.video && Array.isArray(args.video.variants)
-      ? args.video.variants
-      : []
-  const selectedVariant = selectPlayableVariant(
-    variants,
-    args.languageSlug,
-    "primaryLanguage" in args.video
-      ? (args.video.primaryLanguage?.coreId ?? null)
-      : null,
-  )
+  const selectedVariant =
+    "preferredVariant" in args.video
+      ? (args.video.preferredVariant ?? null)
+      : null
   const subtitleTrack = selectSubtitleTrack(selectedVariant, args.languageSlug)
   const playbackId = selectedVariant?.muxVideo?.playbackId ?? null
   const adminImage = pickAdminImage(args.video.images ?? [])
