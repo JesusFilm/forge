@@ -112,6 +112,36 @@ describe("pruneToExisting (R20 — live intersection)", () => {
     expect(result.autoExit).toBe(false)
     expect(result.state).toBe(INITIAL_SELECTION_STATE)
   })
+
+  it("never auto-exits an already-empty selection just because the list is non-empty (the spurious-exit bug)", () => {
+    const state = selectingState([])
+    const result = pruneToExisting(state, new Set(["a", "b"]))
+    expect(result.changed).toBe(false)
+    expect(result.autoExit).toBe(false)
+    expect(result.state.selecting).toBe(true)
+  })
+
+  it("auto-exits (and returns an exited state) once a non-empty selection is pruned to nothing", () => {
+    const state = selectingState(["a", "b"])
+    const result = pruneToExisting(state, new Set(["c"]))
+    expect(result.autoExit).toBe(true)
+    expect(result.state).toEqual(exitSelection())
+  })
+
+  it("auto-exits (and returns an exited state) when the whole record list empties, even with an empty selection", () => {
+    const state = selectingState([])
+    const result = pruneToExisting(state, new Set())
+    expect(result.autoExit).toBe(true)
+    expect(result.state).toEqual(exitSelection())
+  })
+
+  it("reports changed + no auto-exit for a partial prune that leaves some selection intact", () => {
+    const state = selectingState(["a", "b"])
+    const result = pruneToExisting(state, new Set(["a", "c"]))
+    expect(result.changed).toBe(true)
+    expect(result.autoExit).toBe(false)
+    expect(result.state.selected).toEqual(new Set(["a"]))
+  })
 })
 
 describe("selectionSummary — derived labels", () => {

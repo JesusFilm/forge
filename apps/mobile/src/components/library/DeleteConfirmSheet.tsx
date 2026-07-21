@@ -51,17 +51,28 @@ export function DeleteConfirmSheet({
     new Animated.Value(visible ? 0 : SHEET_OFFSCREEN),
   ).current
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current
-  const reduceMotion = useRef(false)
+  // State, not a ref: a ref wouldn't re-render, so a FIRST open that lands
+  // before the initial async read resolves would ignore reduce-motion.
+  const [reduceMotion, setReduceMotion] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     AccessibilityInfo.isReduceMotionEnabled().then((value) => {
-      reduceMotion.current = value
+      if (!cancelled) setReduceMotion(value)
     })
+    const subscription = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      setReduceMotion,
+    )
+    return () => {
+      cancelled = true
+      subscription.remove()
+    }
   }, [])
 
   useEffect(() => {
     if (visible) setMounted(true)
-    const duration = reduceMotion.current ? 0 : ANIMATION_MS
+    const duration = reduceMotion ? 0 : ANIMATION_MS
     Animated.parallel([
       Animated.timing(translateY, {
         toValue: visible ? 0 : SHEET_OFFSCREEN,
@@ -76,7 +87,7 @@ export function DeleteConfirmSheet({
     ]).start(({ finished }) => {
       if (finished && !visible) setMounted(false)
     })
-  }, [visible, translateY, opacity])
+  }, [visible, translateY, opacity, reduceMotion])
 
   if (!mounted) return null
 
