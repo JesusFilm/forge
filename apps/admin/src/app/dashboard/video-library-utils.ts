@@ -25,6 +25,16 @@ export const VIDEO_LIBRARY_DEFAULT_SORT = "recent"
 export type VideoLibraryCategory = (typeof VIDEO_LIBRARY_CATEGORIES)[number]
 export type VideoLibrarySort = (typeof VIDEO_LIBRARY_SORTS)[number]
 
+const VIDEO_LIBRARY_CATEGORY_LABELS: Record<
+  Exclude<VideoLibraryCategory, "all">,
+  readonly string[]
+> = {
+  collections: ["COLLECTION"],
+  features: ["FEATURE_FILM"],
+  shortFilms: ["SHORT_FILM"],
+  series: ["SERIES"],
+}
+
 const SLUG_PATTERN = /^[a-z0-9-]+$/
 const VIDEO_LIBRARY_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_-]*$/i
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
@@ -70,6 +80,14 @@ export function parseVideoLibraryCategory(
 ): VideoLibraryCategory {
   const candidate = firstSearchParam(value)
   return VIDEO_LIBRARY_CATEGORIES.find((item) => item === candidate) ?? "all"
+}
+
+export function matchesVideoLibraryCategory(
+  label: string | null | undefined,
+  category: VideoLibraryCategory,
+) {
+  if (category === "all") return true
+  return VIDEO_LIBRARY_CATEGORY_LABELS[category].includes(label ?? "")
 }
 
 export function parseVideoLibraryLanguage(

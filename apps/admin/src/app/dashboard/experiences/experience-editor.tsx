@@ -88,6 +88,10 @@ import { ToastStack, useToastStack } from "@/components/toast-stack"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
 import {
+  matchesVideoLibraryCategory,
+  type VideoLibraryCategory,
+} from "@/app/dashboard/video-library-utils"
+import {
   BackgroundColorPicker,
   normalizeHexColor,
 } from "./experience-editor/background-color-picker"
@@ -247,6 +251,17 @@ type VideoLibrarySearchClient =
   | "experience-editor-video-picker"
   | "experience-editor-video-carousel-picker"
   | "experience-editor-media-collection-picker"
+
+const VIDEO_PICKER_CATEGORY_OPTIONS: Array<{
+  label: string
+  value: VideoLibraryCategory
+}> = [
+  { value: "all", label: "All types" },
+  { value: "collections", label: "Collections" },
+  { value: "features", label: "Features" },
+  { value: "shortFilms", label: "Short films" },
+  { value: "series", label: "Series" },
+]
 
 type ClipHandle = "start" | "end"
 type PreviewFlashIcon = "play" | "pause" | null
@@ -1244,7 +1259,10 @@ export function ExperienceEditor({
   ) => Promise<VideoLibraryItem[]>
   searchVideoLibraryAction?: (
     query: string,
-    context?: { client?: VideoLibrarySearchClient },
+    context?: {
+      category?: VideoLibraryCategory
+      client?: VideoLibrarySearchClient
+    },
   ) => Promise<VideoLibraryItem[]>
   /**
    * Optional imperative bridge published once on mount so the chat panel
@@ -1492,6 +1510,8 @@ export function ExperienceEditor({
   const [previewIsLoading, setPreviewIsLoading] = useState(false)
   const [previewIsFullscreen, setPreviewIsFullscreen] = useState(false)
   const [videoLibraryQuery, setVideoLibraryQuery] = useState("")
+  const [videoLibraryCategory, setVideoLibraryCategory] =
+    useState<VideoLibraryCategory>("all")
   const [videoLibrarySearchPending, setVideoLibrarySearchPending] =
     useState(false)
   const [videoLibrarySearchError, setVideoLibrarySearchError] = useState(false)
@@ -1740,6 +1760,8 @@ export function ExperienceEditor({
   )
   const currentLocaleCode = activeLocaleEntry?.code ?? "en"
   const normalizedVideoLibraryQuery = videoLibraryQuery.trim().toLowerCase()
+  const videoLibraryFilterIsActive =
+    normalizedVideoLibraryQuery.length > 0 || videoLibraryCategory !== "all"
   const videoLibrarySearchResultKeySet = useMemo(
     () => new Set(videoLibrarySearchResultKeys),
     [videoLibrarySearchResultKeys],
@@ -1757,10 +1779,13 @@ export function ExperienceEditor({
         (entry) => asString(asRecord(entry)?.videoId) === item.key,
       )
     const availableVideos = videoLibrary.filter(
-      (item) => isSelectableVideo(item) && !isAlreadyInTargetCollection(item),
+      (item) =>
+        matchesVideoLibraryCategory(item.label, videoLibraryCategory) &&
+        isSelectableVideo(item) &&
+        !isAlreadyInTargetCollection(item),
     )
 
-    if (normalizedVideoLibraryQuery.length > 0 && searchVideoLibraryAction) {
+    if (videoLibraryFilterIsActive && searchVideoLibraryAction) {
       return videoLibrarySearchResultKeys.flatMap((key) => {
         const item = videoByKey.get(key)
         return item &&
@@ -1789,6 +1814,8 @@ export function ExperienceEditor({
     normalizedVideoLibraryQuery,
     searchVideoLibraryAction,
     videoLibrary,
+    videoLibraryCategory,
+    videoLibraryFilterIsActive,
     videoLibrarySearchResultKeys,
     videoLibrarySearchResultKeySet,
     videoPickerBlockRecord,
@@ -1801,7 +1828,7 @@ export function ExperienceEditor({
     if (!searchVideoLibraryAction) return
 
     const query = videoLibraryQuery.trim()
-    if (!query) {
+    if (!query && videoLibraryCategory === "all") {
       setVideoLibrarySearchPending(false)
       setVideoLibrarySearchError(false)
       setVideoLibrarySearchResultKeys([])
@@ -1813,7 +1840,10 @@ export function ExperienceEditor({
     setVideoLibrarySearchError(false)
     const client = videoLibrarySearchClientForMode(videoPickerMode)
     const timeout = window.setTimeout(() => {
-      searchVideoLibraryAction(query, { client })
+      searchVideoLibraryAction(query, {
+        category: videoLibraryCategory,
+        client,
+      })
         .then((results) => {
           if (ignore) return
           setVideoLibrarySearchResultKeys(results.map((result) => result.key))
@@ -1836,6 +1866,7 @@ export function ExperienceEditor({
     }
   }, [
     searchVideoLibraryAction,
+    videoLibraryCategory,
     videoLibraryQuery,
     videoPickerBlockIndex,
     videoPickerMode,
@@ -1853,7 +1884,7 @@ export function ExperienceEditor({
     [filteredVideoLibrary, videoPickerCurrentVideo, videoPickerMode],
   )
   const videoLibrarySearchIsActive =
-    normalizedVideoLibraryQuery.length > 0 && searchVideoLibraryAction != null
+    videoLibraryFilterIsActive && searchVideoLibraryAction != null
   const videoPickerDurationLabel = (video: VideoLibraryItem) =>
     formatReadableDuration(video.durationSeconds)
   const videoPickerSelectedVideo = findVideoLibraryItem(
@@ -5315,6 +5346,8 @@ export function ExperienceEditor({
     setVideoPickerMode(mode)
     setVideoPickerBlockIndex(index)
     setVideoLibraryQuery("")
+    setVideoLibraryCategory("all")
+    setVideoLibrarySearchResultKeys([])
     setVideoPickerDraft({
       videoKey:
         mode === "carouselAppend" || mode === "mediaCollectionAppend"
@@ -10309,7 +10342,7 @@ export function ExperienceEditor({
             </button>
           </div>
 
-          <div className="mt-5 grid gap-3 border-b border-[var(--color-hairline)] pb-4">
+          <div className="mt-5 grid gap-3 border-b border-[var(--color-hairline)] pb-4 sm:grid-cols-[minmax(0,1fr)_180px]">
             <label>
               <span className="sr-only">Search videos</span>
               <div className="flex h-10 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3">
@@ -10321,6 +10354,36 @@ export function ExperienceEditor({
                   placeholder="Search videos"
                 />
               </div>
+            </label>
+            <label className="relative block min-w-0">
+              <span className="sr-only">Filter by video type</span>
+              <select
+                aria-label="Filter by video type"
+                value={videoLibraryCategory}
+                onChange={(event) => {
+                  const nextCategory = event.currentTarget
+                    .value as VideoLibraryCategory
+                  setVideoLibraryCategory(nextCategory)
+                  setVideoLibrarySearchError(false)
+                  setVideoLibrarySearchPending(
+                    searchVideoLibraryAction != null &&
+                      (nextCategory !== "all" ||
+                        videoLibraryQuery.trim().length > 0),
+                  )
+                }}
+                className="h-10 w-full appearance-none rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] pl-3 pr-9 text-[12px] font-medium text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] focus:border-[var(--color-brand)]"
+              >
+                {VIDEO_PICKER_CATEGORY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]"
+                strokeWidth={1.5}
+              />
             </label>
           </div>
 
