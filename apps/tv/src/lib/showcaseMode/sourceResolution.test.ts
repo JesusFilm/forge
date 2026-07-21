@@ -176,7 +176,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a", "never-hydrated", "b"])],
       index,
     )
-    expect(drops).toEqual({ items: 1, chapters: 0, extraLanguageMarkers: 0 })
+    expect(drops).toEqual({ items: 1, chapters: 0 })
   })
 
   it("counts an item dropped for a null or malformed coreId", () => {
@@ -195,7 +195,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       ],
       index,
     )
-    expect(drops).toEqual({ items: 1, chapters: 1, extraLanguageMarkers: 0 })
+    expect(drops).toEqual({ items: 1, chapters: 1 })
   })
 
   it("does not count an empty section as a dropped chapter — nothing was authored to lose", () => {
@@ -211,7 +211,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a", "b"])],
       index,
     )
-    expect(drops).toEqual({ items: 0, chapters: 0, extraLanguageMarkers: 0 })
+    expect(drops).toEqual({ items: 0, chapters: 0 })
   })
 
   it("drops a chapter whose items are all unresolvable", () => {
@@ -255,7 +255,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       expect(parseShowcaseExperience(blocks, index)).toEqual({
         chapters: [],
         statLines: [],
-        drops: { items: 0, chapters: 0, extraLanguageMarkers: 0 },
+        drops: { items: 0, chapters: 0 },
       })
     }
   })
@@ -385,7 +385,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
   })
 })
 
-// ── KTD-7 language chapter (R3 / AE5 / AE7) ─────────────────────────
+// ── KTD-7 language chapters (R3 / AE5) ──────────────────────────────
 
 describe("parseShowcaseExperience — KTD-7 language chapter", () => {
   const index = buildVideoByCoreIdIndex([
@@ -450,40 +450,43 @@ describe("parseShowcaseExperience — KTD-7 language chapter", () => {
   })
 
   it("designates no language chapter when no section carries the marker (AE5)", () => {
-    const { chapters, drops } = parseShowcaseExperience(
+    const { chapters } = parseShowcaseExperience(
       [mediaCollection("Loneliness", ["a"]), mediaCollection("Hope", ["b"])],
       index,
     )
     expect(chapters.every((chapter) => chapter.languageChapter == null)).toBe(
       true,
     )
-    expect(drops.extraLanguageMarkers).toBe(0)
   })
 
-  // AE7: the curator's slip must not leak a second dub-switching centerpiece — the
-  // first marked chapter wins, the later one plays as an ordinary chapter.
-  it("lets the first marked chapter win; a later marker plays ordinary (AE7)", () => {
-    const { chapters, drops } = parseShowcaseExperience(
+  // The curator repeats the language chapter through the reel (the 2+1 cadence);
+  // every marked chapter hops, each around its own centerpiece.
+  it("designates every marked chapter, each with its own centerpiece", () => {
+    const { chapters } = parseShowcaseExperience(
       [
         mediaCollection("First langs", ["a"], { categoryLabel: MARKER }),
+        mediaCollection("Hope", ["c"]),
         mediaCollection("Second langs", ["b"], { categoryLabel: MARKER }),
       ],
       index,
     )
     expect(chapters.map((chapter) => chapter.title)).toEqual([
       "First langs",
+      "Hope",
       "Second langs",
     ])
     expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
       chapters[0]?.excerpts[0]?.id,
     )
     expect(chapters[1]?.languageChapter).toBeUndefined()
-    expect(drops.extraLanguageMarkers).toBe(1)
+    expect(chapters[2]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[2]?.excerpts[0]?.id,
+    )
   })
 
-  // A fully-dropped marked chapter has no centerpiece to designate, so the slot passes
-  // to the first marked chapter that survives — it is a dropped chapter, not an extra.
-  it("passes the designation to the first marked chapter that survives", () => {
+  // A fully-dropped marked chapter has no centerpiece to designate — it is a dropped
+  // chapter like any other, and the surviving marked chapters still designate.
+  it("drops an unhydrated marked chapter; survivors still designate", () => {
     const { chapters, drops } = parseShowcaseExperience(
       [
         mediaCollection("Ghost langs", ["never-hydrated"], {
@@ -497,7 +500,7 @@ describe("parseShowcaseExperience — KTD-7 language chapter", () => {
     expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
       chapters[0]?.excerpts[0]?.id,
     )
-    expect(drops).toMatchObject({ chapters: 1, extraLanguageMarkers: 0 })
+    expect(drops).toMatchObject({ chapters: 1 })
   })
 
   it("supports a stats section and a language chapter in one Experience", () => {
@@ -529,12 +532,11 @@ describe("parseShowcaseExperience — KTD-7 language chapter", () => {
       "showcase-languages-extra",
       "languages",
     ]) {
-      const { chapters, drops } = parseShowcaseExperience(
+      const { chapters } = parseShowcaseExperience(
         [mediaCollection("Almost", ["a"], { categoryLabel: label })],
         index,
       )
       expect(chapters[0]?.languageChapter).toBeUndefined()
-      expect(drops.extraLanguageMarkers).toBe(0)
     }
   })
 })

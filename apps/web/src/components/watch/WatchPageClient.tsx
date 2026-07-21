@@ -43,6 +43,7 @@ import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
 import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
+import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
@@ -652,6 +653,11 @@ export function WatchPageClient({
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
+    reportGoogleAnalyticsEvent("watch_download_intent", {
+      language_slug: currentLanguageSlug,
+      video_id: video.documentId,
+      video_slug: videoSlug,
+    })
     setEnabledModalChunks((prev) => ({ ...prev, download: true }))
     void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
@@ -683,22 +689,46 @@ export function WatchPageClient({
     }
   }, [
     beginDownloadSessionRequest,
+    currentLanguageSlug,
     downloadSessionErrorMessage,
     isCurrentDownloadSessionRequest,
+    video.documentId,
+    videoSlug,
   ])
   const openLanguage = useCallback(() => {
     cancelDownloadSessionRequest()
+    reportGoogleAnalyticsEvent("watch_language_picker_opened", {
+      language_slug: currentLanguageSlug,
+      video_id: video.documentId,
+      video_slug: videoSlug,
+    })
     setEnabledModalChunks((prev) => ({ ...prev, language: true }))
     void loadWatchInteraction("language").catch(() => {})
     setModalState("language")
     void loadLanguageOptions()
-  }, [cancelDownloadSessionRequest, loadLanguageOptions])
+  }, [
+    cancelDownloadSessionRequest,
+    currentLanguageSlug,
+    loadLanguageOptions,
+    video.documentId,
+    videoSlug,
+  ])
   const openShare = useCallback(() => {
     cancelDownloadSessionRequest()
+    reportGoogleAnalyticsEvent("watch_share_opened", {
+      language_slug: currentLanguageSlug,
+      video_id: video.documentId,
+      video_slug: videoSlug,
+    })
     setEnabledModalChunks((prev) => ({ ...prev, share: true }))
     void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
-  }, [cancelDownloadSessionRequest])
+  }, [
+    cancelDownloadSessionRequest,
+    currentLanguageSlug,
+    video.documentId,
+    videoSlug,
+  ])
   const closeModal = useCallback(() => {
     cancelDownloadSessionRequest()
     setModalState("none")

@@ -14,6 +14,7 @@ import { montserrat } from "@/lib/watch-font"
 import DatadogRum from "@/components/DatadogRum"
 import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
 
@@ -94,6 +95,7 @@ export default async function RootLayout({
       <body className="overflow-x-clip bg-black">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
+          <GoogleAnalytics />
           <WatchModalActivityProvider>
             <FloatingSearchProvider>
               <FeedbackLauncher />

@@ -188,6 +188,7 @@ beforeEach(() => {
   redirectToAuthMock.mockReset()
   shouldRefreshCachedWatchLanguageOptionsMock.mockReset()
   shouldRefreshCachedWatchLanguageOptionsMock.mockReturnValue(false)
+  window.gtag = undefined
 })
 
 afterEach(() => {
@@ -254,6 +255,53 @@ function renderWatchPage({
 }
 
 describe("WatchPageClient download boundary", () => {
+  it("reports GA events for Watch modal intents", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: false,
+      authenticated: true,
+    })
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="watch-share-button"]')
+        ?.click()
+      await Promise.resolve()
+    })
+
+    expect(gtag).toHaveBeenCalledWith("event", "download_intent", {
+      language_slug: "english",
+      video_id: "video-1",
+      video_slug: "jesus-is-brought-to-pilate",
+    })
+    expect(gtag).toHaveBeenCalledWith("event", "language_picker_opened", {
+      language_slug: "english",
+      video_id: "video-1",
+      video_slug: "jesus-is-brought-to-pilate",
+    })
+    expect(gtag).toHaveBeenCalledWith("event", "share_opened", {
+      language_slug: "english",
+      video_id: "video-1",
+      video_slug: "jesus-is-brought-to-pilate",
+    })
+  })
+
   it("does not mount modal chunks before the user asks for them", () => {
     renderWatchPage()
 

@@ -63,7 +63,6 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
-import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -1392,7 +1391,6 @@ export function HeroPlayer({
   const posterTransitionClass = showOptimisticPoster
     ? ""
     : "transition-opacity duration-[1000ms]"
-  const posterImageMotionClass = ""
   const coverBlackoutMotionClass =
     coverBlackoutPhase === "revealing"
       ? "watch-hero-cover-black-bridge"
@@ -1500,6 +1498,8 @@ export function HeroPlayer({
     : 0
   const showWatchNextButton =
     chromeRevealed && nextWatchHref != null && watchNextWindowActive
+  const heroPlayerLoading =
+    playbackFrameActive && playerActivated && (!videoReady || playbackBuffering)
   const cancelWatchNextAutoAdvance = useCallback(() => {
     if (watchNextWindowActive) {
       const nextMode = { videoId: video.documentId, mode: "manual" } as const
@@ -1675,6 +1675,7 @@ export function HeroPlayer({
               onWaiting={handlePlaybackBuffering}
               onStalled={handlePlaybackBuffering}
               onSeeking={handlePlaybackBuffering}
+              onTimeUpdate={handlePlaybackReady}
               onSeeked={handlePlaybackReady}
               // React's SyntheticEvent<HTMLVideoElement> is structurally
               // narrower than the native Event the handler consumes at
@@ -1714,7 +1715,7 @@ export function HeroPlayer({
                       blurDataURL: heroPosterBlurDataURL,
                     }
                   : {})}
-                className={`object-cover ${posterImageMotionClass}`}
+                className="object-cover"
               />
               {!chromeRevealed ? (
                 <div
@@ -1734,6 +1735,13 @@ export function HeroPlayer({
                   aria-hidden="true"
                   data-testid="hero-player-poster-darken-overlay"
                   className="pointer-events-none absolute inset-0 bg-black/50"
+                />
+              ) : null}
+              {coverLoading ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="hero-player-cover-loading-overlay"
+                  className="pointer-events-none absolute inset-0 animate-pulse bg-white/15 motion-reduce:animate-none"
                 />
               ) : null}
               {showPosterBlackBridge ? (
@@ -1767,17 +1775,6 @@ export function HeroPlayer({
             />
           ) : null}
 
-          {playbackFrameActive &&
-          playerActivated &&
-          (!videoReady || playbackBuffering) ? (
-            <div
-              data-testid="hero-player-loading"
-              className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
-            >
-              <WatchPlayerLoadingIndicator />
-            </div>
-          ) : null}
-
           {!chromeRevealed ? (
             <div
               aria-hidden="true"
@@ -1808,6 +1805,7 @@ export function HeroPlayer({
             wrapperRef={wrapperRef}
             overlayAnchor={overlayAnchor}
             playbackId={playbackId}
+            playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
             subtitleLanguageCode={subtitleLanguageCode}

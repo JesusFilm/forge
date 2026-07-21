@@ -26,6 +26,7 @@ type MuxVideoCapturedProps = Record<string, unknown> & {
   onWaiting?: (event: Event) => void
   onStalled?: (event: Event) => void
   onSeeking?: (event: Event) => void
+  onTimeUpdate?: (event: Event) => void
   onSeeked?: (event: Event) => void
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
@@ -484,6 +485,13 @@ async function fireSeeked() {
   })
 }
 
+async function fireTimeUpdate() {
+  const handler = lastMuxProps()?.onTimeUpdate
+  await act(async () => {
+    handler?.(new Event("timeupdate"))
+  })
+}
+
 async function fireError(code: string) {
   const handler = lastMuxProps()?.onError
   const evt = new Event("error") as Event & { detail?: { code?: string } }
@@ -898,6 +906,9 @@ describe("HeroPlayer — initial mount", () => {
     const poster = container.querySelector(
       '[data-testid="hero-player-poster"]',
     ) as HTMLImageElement
+    const loadingOverlay = container.querySelector(
+      '[data-testid="hero-player-cover-loading-overlay"]',
+    )
     const bridge = container.querySelector(
       '[data-testid="hero-player-cover-black-bridge"]',
     )
@@ -909,6 +920,8 @@ describe("HeroPlayer — initial mount", () => {
       "watch-hero-cover-reveal",
     )
     expect(poster.getAttribute("class")).not.toContain("pulse")
+    expect(loadingOverlay).not.toBeNull()
+    expect(loadingOverlay?.getAttribute("class")).toContain("animate-pulse")
     expect(bridge).toBeNull()
   })
 
@@ -1054,9 +1067,14 @@ describe("HeroPlayer — initial mount", () => {
       const poster = container.querySelector(
         '[data-testid="hero-player-poster"]',
       ) as HTMLImageElement
+      const loadingOverlay = container.querySelector(
+        '[data-testid="hero-player-cover-loading-overlay"]',
+      )
       expect(layer?.getAttribute("data-cover-loading")).toBe("true")
       expect(layer?.getAttribute("data-cover-transition")).toBe("none")
       expect(poster.getAttribute("class")).not.toContain("pulse")
+      expect(loadingOverlay).not.toBeNull()
+      expect(loadingOverlay?.getAttribute("class")).toContain("animate-pulse")
 
       await fireCanPlay()
 
@@ -1066,9 +1084,13 @@ describe("HeroPlayer — initial mount", () => {
       const readyPoster = container.querySelector(
         '[data-testid="hero-player-poster"]',
       ) as HTMLImageElement
+      const readyLoadingOverlay = container.querySelector(
+        '[data-testid="hero-player-cover-loading-overlay"]',
+      )
       expect(readyLayer?.getAttribute("data-cover-loading")).toBe("false")
       expect(readyLayer?.className).toContain("opacity-100")
       expect(readyPoster.getAttribute("class")).not.toContain("pulse")
+      expect(readyLoadingOverlay).toBeNull()
 
       await firePlaying()
 
@@ -2151,7 +2173,7 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     ).toBeNull()
   })
 
-  it("shows the spinner when committed playback buffers", async () => {
+  it("shows the chrome spinner when committed playback buffers", async () => {
     setSearchParams("autoplay=1")
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -2162,18 +2184,49 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
     ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-loading"]'),
+    ).toBeNull()
 
     await fireWaiting()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-loading"]'),
     ).not.toBeNull()
     expect(
       container.querySelector('[data-testid="watch-player-loading-indicator"]'),
-    ).not.toBeNull()
+    ).toBeNull()
 
     await fireSeeked()
     expect(
       container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-loading"]'),
+    ).toBeNull()
+  })
+
+  it("clears committed playback buffering on timeupdate", async () => {
+    setSearchParams("autoplay=1")
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    await fireCanPlay()
+    await firePlaying()
+    await fireWaiting()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-loading"]'),
+    ).not.toBeNull()
+
+    await fireTimeUpdate()
+    expect(
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="hero-chrome-loading"]'),
     ).toBeNull()
   })
 
@@ -3973,10 +4026,12 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     expect(posterLayer?.className).toContain("opacity-100")
     expect(props.style).toEqual({ objectFit: "contain" })
     expect(
-      container.querySelector('[data-testid="hero-player-loading"]')?.className,
-    ).toContain("z-40")
+      container.querySelector('[data-testid="hero-player-loading"]'),
+    ).toBeNull()
     expect(
-      container.querySelector('[data-testid="watch-player-loading-indicator"]'),
+      container.querySelector(
+        '[data-testid="hero-player-cover-loading-overlay"]',
+      ),
     ).not.toBeNull()
   })
 

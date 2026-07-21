@@ -6,8 +6,9 @@ A chat UI for the Forge Mastra agents (jesusfilm.ai). The initial styling
 follows the "Vigil" design direction (see below) — a starting point handed to
 us to get going, not a locked-in convention; expect it to evolve. Replies come
 from the client stub by default, or stream from Seeker behind the
-`SEEKER_CHAT_ENABLED` kill switch composed with the per-user seeker dogfood
-email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-205, feat-233). On the Seeker
+`SEEKER_CHAT_ENABLED` kill switch (feat-205) composed with the per-user
+seeker dogfood email allowlist (`SEEKER_ALLOWED_EMAILS`, feat-233/feat-239).
+On the Seeker
 path the SERVER side persists (feat-208): Mastra stores threads/messages in
 its `ai_chat` Postgres schema, keyed by a proxy-resolved per-user resource —
 and since feat-241 signed-in, gate-granted users get that history BACK: the
@@ -27,7 +28,7 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame the client maps to the stub). Testable core handleSeekerProxyRequest
-      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, hostAllowed reuse, min(seekerTimeoutMs,10s) budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
+      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, hostAllowed reuse, [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
       history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
@@ -105,8 +106,10 @@ public/                  Static assets served by URL (Next.js convention, matche
   so the rail was built from its tokens rather than copied from it. It is
   responsive (Gemini-style): a desktop rail that collapses to an icon column,
   and a mobile off-canvas drawer (hamburger opens; scrim / X / Escape close;
-  `<main>` is `inert` while open). This too may change. Multi-conversation state
-  is client-only and resets on refresh (no DB/users yet).
+  `<main>` is `inert` while open). This too may change. For anonymous and
+  gate-denied users, multi-conversation state is client-only and resets on
+  refresh; signed-in gate-granted users hydrate the sidebar from the server
+  and resume threads (see "Server-side conversation history (feat-241)").
 
 ### Initial design direction — "The Vigil"
 
@@ -160,21 +163,23 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   `redirect:"error"`, bounds the call with `SEEKER_TIMEOUT_MS` (95s > Mastra's
   90s ceiling), and normalizes every failure to one terminal `error{reason}` SSE
   frame. Plain-string logging only.
-- **Accepted v1 risk (restated under feat-208's durable-storage physics):** the
-  proxy is unauthenticated + un-rate-limited + world-reachable, gated only by
-  URL obscurity + a small trusted audience (NOT a gate). Since feat-208, each
-  junk POST no longer costs only an ephemeral ~90s paid generation — it also
-  writes durable rows into the SAME Postgres database as Mastra runtime
-  storage. Two bounds apply, honestly framed: the per-resource thread ceiling
-  (200, `thread_limit`) bounds a single cooperative or runaway client ONLY — a
-  cookie-refusing attacker mints a fresh `anon:<uuid>` resource per POST for
-  free. The 30-day retention purge is the only adversarial storage control
-  and it is bounded: it drains junk once aged past the window (capping total
-  junk at ~one retention window × inflow), but in-window growth is unbounded
-  and a concurrent burst can saturate Mastra's small ai-chat pool long before
-  storage matters. Inbound auth + a rate/concurrency cap remain prerequisites
-  before the audience widens — they, not the purge, are the actual flood
-  control; do not "fix" the open proxy without that work.
+- **Access posture (feat-233; supersedes the feat-205/feat-208 "open proxy"
+  framing):** an inbound per-user auth gate now EXISTS — the seeker dogfood
+  gate is enforced on every request before config checks or any upstream
+  fetch, so an anonymous or denied POST gets a terminal `gate_denied` frame
+  and never reaches Mastra (no paid generation, no durable rows). The route
+  stays world-reachable HTTPS and un-RATE-limited: each granted turn is still
+  a ~90s paid generation writing durable rows into the SAME Postgres as
+  Mastra runtime storage, so the cost/storage-amplification surface is now
+  bounded by the allowlisted dogfood roster + the prompt-length cap rather
+  than URL obscurity. Within that granted lane the storage bounds still hold,
+  honestly framed: the per-resource thread ceiling (200, `thread_limit`)
+  bounds a cooperative or runaway client; the retention purge caps total junk
+  at ~one retention window × inflow but NOT in-window growth, and a
+  concurrent burst can saturate Mastra's small ai-chat pool long before
+  storage matters. A per-caller rate/concurrency cap remains the open
+  prerequisite before the audience widens — the R15 grant log is the interim
+  volume signal; do not "fix" this surface piecemeal without that work.
 - **Memory keying (feat-208):** the proxy resolves `resourceId` server-side
   (`src/auth/anon-id.ts`): the session's verified `sub` → `user:<sub>` when
   signed in, else `anon:<uuid>` from a hardened, UUID-validated cookie that is
@@ -207,8 +212,11 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
   (since feat-250 the send path presents the same lane bearer — chat holds no
   pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the exported
-  `hostAllowed`. Read budget `min(seekerTimeoutMs(), 10s)`; upstream status
-  classified before any body parse; byte-capped buffered reads (2 MiB list /
+  `hostAllowed`. Read budget = `seekerTimeoutMs()` clamped to [9 s, 10 s]
+  (`composeHistoryTimeoutMs` — the 9 s floor keeps the budget above Mastra's
+  8 s `historyRead` even when the send-path `SEEKER_TIMEOUT_MS` escape hatch
+  lowers the send budget); upstream status classified before any body parse;
+  byte-capped buffered reads (2 MiB list /
   8 MiB thread — sized for the worst-case UTF-8 inflation of the 8,192
   UTF-16-unit per-message text cap). Deny wire (KTD8): 401 `invalid_session` (anonymous ≡ expired
   ≡ tampered), 403 `gate_denied` / `thread_forbidden`, 404 `thread_not_found`
@@ -409,14 +417,19 @@ login page instead of silently re-authenticating via the SSO session.
   Library** (`render` / `screen` / `within` + `@testing-library/user-event`,
   with `@testing-library/jest-dom` matchers); the hook test uses `renderHook`.
   jsdom is the app-wide test env (`vitest.config.ts` `environment: "jsdom"` +
-  `vitest.setup.ts`). The auth crypto/route tests (`src/auth/oauth-client`,
-  `session-cookie`, `identity`, and `src/app/api/auth/*` route tests) are one
-  class of exception: they carry a top-of-file `// @vitest-environment node`
-  directive because `jose`'s WebCrypto path throws a cross-realm `payload must be an
-instance of Uint8Array` under jsdom (jsdom's `TextEncoder` produces a
-  different-realm `Uint8Array` than jose's `instanceof` check). The feat-233
-  `lib/seeker-gate.test.ts` carries the same `node` directive — the module
-  under test is server-only and needs no DOM. Component/hook tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
+  `vitest.setup.ts`). Two classes of tests carry a top-of-file
+  `// @vitest-environment node` directive. Required: the jose-touching auth
+  tests (`src/auth/oauth-client`, `session-cookie`, `identity`, and the
+  `src/app/api/auth/*` route tests) — `jose`'s WebCrypto path throws a
+  cross-realm `payload must be an instance of Uint8Array` under jsdom (jsdom's
+  `TextEncoder` produces a different-realm `Uint8Array` than jose's
+  `instanceof` check). Opt-in: tests of server-only wiring that need no DOM —
+  `src/auth/anon-id.test.ts`, the feat-233 `lib/seeker-gate.test.ts`, and the
+  two `*.gate-wiring.test.ts` files. Not every server-module test opts in
+  (`config/env`, `auth/oauth-state`, `auth/origins`, `lib/sse`, and the main
+  proxy suites run under jsdom); when unsure,
+  `grep -rln "vitest-environment node" apps/chat/src` is authoritative.
+  Component/hook tests stay on jsdom. This is a **deliberate divergence** from the `apps/admin` /
   `apps/web` no-testing-library convention (plain `react-dom/client` + `act`),
   scoped to chat by design — it does not change those apps. Pure-function tests
   (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,

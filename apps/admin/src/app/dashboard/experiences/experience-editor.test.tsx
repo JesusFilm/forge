@@ -67,6 +67,17 @@ const defaultVideoLibrary: VideoLibraryItem[] = [
     durationSeconds: 754,
     previewImageUrl: "https://example.com/image.jpg",
     previewStreamUrl: "https://example.com/video.mp4",
+    playableDubs: [
+      {
+        key: "dub-en",
+        label: "English",
+        languageSlug: "english",
+        bcp47: "en",
+        streamUrl: "https://example.com/video.mp4",
+        duration: "12:34",
+        durationSeconds: 754,
+      },
+    ],
     hasGrounding: true,
   },
 ]
@@ -81,6 +92,15 @@ function renderEditorElement(
     hasPublishedVersion?: boolean
     mediaLibrary?: MediaLibraryBrowserData
     videoLibrary?: VideoLibraryItem[]
+    searchVideoLibraryAction?: (
+      query: string,
+      context?: {
+        client?:
+          | "experience-editor-video-picker"
+          | "experience-editor-video-carousel-picker"
+          | "experience-editor-media-collection-picker"
+      },
+    ) => Promise<VideoLibraryItem[]>
   } = {},
 ) {
   return (
@@ -103,6 +123,7 @@ function renderEditorElement(
       ]}
       videoLibrary={options.videoLibrary ?? defaultVideoLibrary}
       mediaLibrary={options.mediaLibrary ?? defaultMediaLibrary}
+      searchVideoLibraryAction={options.searchVideoLibraryAction}
       canUploadImages
       initialValues={{
         localeId: "locale-1",
@@ -200,6 +221,8 @@ describe("ExperienceEditor", () => {
     window.cancelAnimationFrame ??= ((handle: number) => {
       window.clearTimeout(handle)
     }) as typeof window.cancelAnimationFrame
+    HTMLMediaElement.prototype.play = vi.fn(async () => undefined)
+    HTMLMediaElement.prototype.pause = vi.fn()
     HTMLElement.prototype.scrollIntoView ??= vi.fn()
   })
 
@@ -1074,7 +1097,7 @@ describe("ExperienceEditor", () => {
       })
 
       const searchInput = view.container.querySelector(
-        'input[placeholder="Search title, Core ID, source, or dub coverage"]',
+        'input[placeholder="Search videos"]',
       )
       if (!(searchInput instanceof HTMLInputElement)) {
         throw new Error("Video search input not found")
@@ -1108,6 +1131,487 @@ describe("ExperienceEditor", () => {
       >
 
       expect(blocks[0]?.videoId).toBe("video-2")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("uses server-ranked video search results when searching the picker", async () => {
+    const localOnlyVideo = {
+      ...defaultVideoLibrary[0]!,
+      key: "video-2",
+      title: "Local Rivka Match",
+      description: "Rivka appears in the preloaded library.",
+      id: "core-local-rivka",
+      updated: "2026-04-20T00:00:00.000Z",
+    }
+    const serverRankedVideo = {
+      ...defaultVideoLibrary[0]!,
+      key: "video-3",
+      title: "Server Ranked Result",
+      description: "Returned by the new Watch search.",
+      id: "core-server",
+      updated: "2026-04-10T00:00:00.000Z",
+    }
+    const searchVideoLibraryAction = vi.fn(async () => [serverRankedVideo])
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "single-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [
+          ...defaultVideoLibrary,
+          localOnlyVideo,
+          serverRankedVideo,
+        ],
+        searchVideoLibraryAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse library").click()
+      })
+
+      const searchInput = view.container.querySelector(
+        'input[placeholder="Search videos"]',
+      )
+      if (!(searchInput instanceof HTMLInputElement)) {
+        throw new Error("Video search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(searchInput, "rivka")
+        searchInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 260))
+      })
+
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka", {
+        client: "experience-editor-video-picker",
+      })
+      expect(view.container.textContent).toContain("Server Ranked Result")
+      expect(view.container.textContent).not.toContain("Local Rivka Match")
+
+      act(() => {
+        findButtonByExactText(view.container, "Apply video").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.videoId).toBe("video-3")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("excludes collection targets from video picker search results", async () => {
+    const collectionResult = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Collection Result",
+      description: "A collection returned by search.",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const playableResult = {
+      ...defaultVideoLibrary[0]!,
+      key: "video-4",
+      title: "Playable Result",
+      description: "A playable video returned by search.",
+      id: "core-playable",
+      label: "SHORT_FILM",
+      labelLabel: "Short Film",
+    }
+    const searchVideoLibraryAction = vi.fn(async () => [
+      collectionResult,
+      playableResult,
+    ])
+    const view = renderEditorDom(
+      [
+        {
+          t: "videoHero",
+          sectionKey: "hero",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [collectionResult, playableResult],
+        searchVideoLibraryAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse library").click()
+      })
+
+      const searchInput = view.container.querySelector(
+        'input[placeholder="Search videos"]',
+      )
+      if (!(searchInput instanceof HTMLInputElement)) {
+        throw new Error("Video search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(searchInput, "banner")
+        searchInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 260))
+      })
+
+      expect(view.container.textContent).not.toContain("Collection Result")
+      expect(view.container.textContent).toContain("Playable Result")
+
+      act(() => {
+        findButtonByExactText(view.container, "Apply video").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.videoId).toBe("video-4")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("allows collection targets when appending to a media collection", async () => {
+    const collectionResult = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Collection Result",
+      description: "A collection returned by search.",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const searchVideoLibraryAction = vi.fn(async () => [collectionResult])
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collectionResult],
+        searchVideoLibraryAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add video").click()
+      })
+
+      const searchInput = view.container.querySelector(
+        'input[placeholder="Search videos"]',
+      )
+      if (!(searchInput instanceof HTMLInputElement)) {
+        throw new Error("Video search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(searchInput, "banner")
+        searchInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 260))
+      })
+
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("banner", {
+        client: "experience-editor-media-collection-picker",
+      })
+      expect(view.container.textContent).toContain("Collection Result")
+      expect(view.container.textContent).toContain("Collection")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows child video previews when a collection target is selected", () => {
+    const collectionResult = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Collection Result",
+      description: "A collection returned by search.",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 5,
+      collectionPreviewItems: [
+        {
+          key: "child-1",
+          title: "Episode One",
+          previewImageUrl: "https://example.com/episode-one.jpg",
+        },
+        {
+          key: "child-2",
+          title: "Episode Two",
+          previewImageUrl: "https://example.com/episode-two.jpg",
+        },
+        {
+          key: "child-3",
+          title: "Episode Three",
+          previewImageUrl: "https://example.com/episode-three.jpg",
+        },
+      ],
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      { videoLibrary: [collectionResult] },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add video").click()
+      })
+
+      expect(view.container.querySelector('[title="Episode One"]')).not.toBe(
+        null,
+      )
+      expect(view.container.querySelector('[title="Episode Two"]')).not.toBe(
+        null,
+      )
+      expect(view.container.querySelector('[title="Episode Three"]')).not.toBe(
+        null,
+      )
+      expect(view.container.textContent).toContain("+2")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows a distinct pending state while video picker search is running", async () => {
+    let resolveSearch: (results: VideoLibraryItem[]) => void = () => {}
+    const searchVideoLibraryAction = vi.fn(
+      () =>
+        new Promise<VideoLibraryItem[]>((resolve) => {
+          resolveSearch = resolve
+        }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "single-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { searchVideoLibraryAction },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse library").click()
+      })
+
+      const searchInput = view.container.querySelector(
+        'input[placeholder="Search videos"]',
+      )
+      if (!(searchInput instanceof HTMLInputElement)) {
+        throw new Error("Video search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(searchInput, "rivka")
+        searchInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 260))
+      })
+
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka", {
+        client: "experience-editor-video-picker",
+      })
+      expect(view.container.textContent).not.toContain(
+        "Searching the full video library",
+      )
+      expect(view.container.textContent).not.toContain(
+        "No videos match these filters",
+      )
+
+      await act(async () => {
+        resolveSearch([])
+      })
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("uses the selected playable dub for picker preview, trimming, and saved stream", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "single-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            previewStreamUrl: "https://example.com/en.m3u8",
+            playableDubs: [
+              {
+                key: "dub-en",
+                label: "English",
+                languageSlug: "english",
+                bcp47: "en",
+                streamUrl: "https://example.com/en.m3u8",
+                duration: "12:34",
+                durationSeconds: 754,
+              },
+              {
+                key: "dub-es",
+                label: "Spanish",
+                languageSlug: "spanish-castilian",
+                bcp47: "es",
+                streamUrl: "https://example.com/es.m3u8",
+                duration: "00:30",
+                durationSeconds: 30,
+              },
+            ],
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse library").click()
+      })
+
+      const languageCombobox = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(languageCombobox instanceof HTMLButtonElement)) {
+        throw new Error("Video language combobox not found")
+      }
+
+      expect(languageCombobox.textContent).toContain("English")
+      expect(languageCombobox.textContent).toContain("12m 34s")
+      expect(view.container.textContent).toContain("00:00 to 12:34")
+
+      act(() => {
+        languageCombobox.click()
+      })
+
+      const languageSearchInput = view.container.querySelector(
+        'input[placeholder="Search languages"]',
+      )
+      if (!(languageSearchInput instanceof HTMLInputElement)) {
+        throw new Error("Video language search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(languageSearchInput, "span")
+        languageSearchInput.dispatchEvent(
+          new InputEvent("input", {
+            bubbles: true,
+            inputType: "insertText",
+          }),
+        )
+      })
+
+      expect(view.container.textContent).toContain("Spanish")
+      expect(view.container.textContent).toContain("30s")
+
+      act(() => {
+        findButtonByText(view.container, "Spanish").click()
+      })
+
+      expect(view.container.textContent).toContain("00:00 to 00:30")
+      expect(view.container.textContent).toContain("30s")
+
+      act(() => {
+        findButtonByExactText(view.container, "Apply video").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.videoId).toBe("video-1")
+      expect(blocks[0]?.streamingUrl).toBe("https://example.com/es.m3u8")
+      expect(blocks[0]?.clipEndSeconds).toBeUndefined()
     } finally {
       view.cleanup()
     }

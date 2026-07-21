@@ -146,10 +146,7 @@ export function parseShowcaseExperience(
   const drops: ShowcaseParseDrops = {
     items: 0,
     chapters: 0,
-    extraLanguageMarkers: 0,
   }
-  // R3: exactly one language chapter — the FIRST surviving marked section claims it.
-  let languageChapterAssigned = false
 
   // Top level only: KTD-10 authors one MediaCollection per chapter at the root.
   ;(blocks ?? []).forEach((block, index) => {
@@ -189,14 +186,7 @@ export function parseShowcaseExperience(
       excerpts,
     }
     if (isLanguageSection(blockText(media.categoryLabel))) {
-      // AE7: the first marked chapter wins; a later one plays as an ordinary chapter,
-      // its designation discarded and surfaced to the curator via the drops accounting.
-      if (!languageChapterAssigned) {
-        languageChapterAssigned = true
-        chapter.languageChapter = { centerpieceExcerptId: excerpts[0].id }
-      } else {
-        drops.extraLanguageMarkers += 1
-      }
+      chapter.languageChapter = { centerpieceExcerptId: excerpts[0].id }
     }
     chapters.push(chapter)
   })

@@ -161,6 +161,8 @@ So the same `timeUpdateEventInterval = 1` yields an exact grid on one platform a
 
 The fade ramps `player.volume` on the reel's **single long-lived expo-video player** — the reel deliberately uses one player whose source swaps via `replaceAsync`, because a two-player preload pattern triggers a known unreleased tvOS memory leak (session history, from the feat-262 build). The fade exists within that architecture; there is no second player to cross-fade against, which is why volume is ramped on the one player rather than dissolved between two.
 
+> **Superseded in part (2026-07-21):** since `fix/tv-showcase-seamless-hop` (PR #1632) the reel runs TWO long-lived players — the leak trigger is player/view CHURN, not a second fixed instance — and language-hop boundaries DO hand off between them. The audio law here is unchanged: volume still ramps per-player off media-time projection (the outgoing fades to silence into its window end; the incoming fades in on confirmation), and everything this doc says about drift-safe timing windows stands. See `docs/solutions/ui-bugs/tv-showcase-dual-player-crossfade-dub-hop-blanking.md`.
+
 ## Prevention
 
 - **Never size a timing window to exactly one event-loop / player-callback interval.** "Fires once per interval" is a _nominal_ rate, not a guarantee that a sample lands in any given 1-interval window. Give the window >=1 whole spare interval of margin, and pin that margin with an invariant test (`ARM >= SPAN + 1`) so a later edit can't quietly shrink it back.
