@@ -1,11 +1,6 @@
-// Admin's `MediaCollectionBlock.items[]` is FLAT — every item carries
-// `videoId`, `imageUrl`, and `imageOverrideUrl` directly, with no nested
-// `video { ... }` join. The renderer
-// (`apps/web/src/components/sections/index.tsx:53-70`) tolerates a
-// missing video join via the `titleOverride` + image fallback path. Authored
-// items may also carry a route slug snapshot for linking, but this helper does
-// NOT hydrate the missing video record. A live videoId → title/image hydrator is
-// a deferred concern.
+// Admin's `MediaCollectionBlock.items[]` is flat. Computed fields such as
+// `resolvedTitle` are projected alongside the linked video's image and route
+// metadata so the renderer does not need a second request or client-side join.
 
 type MediaItem = {
   videoId?: string | null
@@ -14,6 +9,7 @@ type MediaItem = {
   muxPlaybackId?: string | null
   videoImageBlurDataUrl?: string | null
   videoImageDominantColor?: string | null
+  resolvedTitle?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
   labelOverride: string | null
@@ -140,7 +136,7 @@ export type EnrichedMediaItem = {
 }
 
 export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
-  const title = item.titleOverride ?? ""
+  const title = item.resolvedTitle?.trim() ?? ""
   const subtitle = item.subtitleOverride ?? ""
   const label = typeof item.labelOverride === "string" ? item.labelOverride : ""
   const collectionSize = item.collectionSize ?? ""

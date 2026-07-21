@@ -622,6 +622,8 @@ function VideoCard({
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
   const isVertical = orientation === "vertical"
   const [isMuxPreviewLoaded, setIsMuxPreviewLoaded] = useState(false)
+  const accessibleTitle =
+    item.title || [item.label, item.videoSlug].filter(Boolean).join(" ")
 
   return (
     <Wrapper
@@ -633,7 +635,9 @@ function VideoCard({
           : "cursor-default",
         isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
       )}
-      aria-label={t("showVideo", { title: item.title })}
+      aria-label={
+        isInteractive ? t("showVideo", { title: accessibleTitle }) : undefined
+      }
       data-testid="VideoCard"
       onPointerEnter={isInteractive ? onHover : undefined}
       onFocus={isInteractive ? onHover : undefined}
@@ -726,14 +730,16 @@ function VideoCard({
               {formatLabel(item.label)}
             </div>
           ) : null}
-          <h3
-            className={cn(
-              "line-clamp-2 -mt-1 text-left leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
-              isVertical ? "text-xl" : "text-lg md:text-xl",
-            )}
-          >
-            {item.title}
-          </h3>
+          {item.title ? (
+            <h3
+              className={cn(
+                "line-clamp-2 -mt-1 text-left leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
+                isVertical ? "text-xl" : "text-lg md:text-xl",
+              )}
+            >
+              {item.title}
+            </h3>
+          ) : null}
         </div>
       </div>
     </Wrapper>

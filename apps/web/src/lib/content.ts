@@ -45,7 +45,7 @@ const GET_WATCH_EXPERIENCE = adminGraphql(
   `
     query GetWatchExperience($locale: String!, $slug: String!) {
       experienceBySlug(locale: $locale, slug: $slug) {
-        ...AdminWatchExperience
+        ...WatchExperience
       }
     }
   `,
@@ -58,10 +58,10 @@ const GET_WATCH_SETTINGS = adminGraphql(
       watchSetting(locale: $locale) {
         documentId
         homepageExperience {
-          ...AdminWatchExperience
+          ...WatchExperience
         }
         defaultTemplateExperience {
-          ...AdminWatchExperience
+          ...WatchExperience
         }
       }
     }
