@@ -46,6 +46,13 @@ export const ALIGNMENT_TOLERANCE_SECONDS = 0.75
  */
 export const HANDOFF_START_LEAD_SECONDS = 0.5
 
+/**
+ * The standby parks this far PAST its window boundary (~3 frames at the film's
+ * 24fps). The outgoing cover rolls a beat beyond the boundary before the reveal, so
+ * a standby parked exactly ON it re-showed frames the cover had already played.
+ */
+export const HANDOFF_RESUME_NUDGE_SECONDS = 0.125
+
 export type StandbyPreloadPhase = "idle" | "loading" | "ready" | "failed"
 
 /**

@@ -18,6 +18,7 @@ import { Animated } from "react-native"
 import { datadogLog } from "../../lib/datadog"
 import { AUDIO_FADE_IN_MS } from "../../lib/showcaseMode/audioFade"
 import {
+  HANDOFF_RESUME_NUDGE_SECONDS,
   HANDOFF_START_LEAD_SECONDS,
   PRELOAD_DEADLINE_MS,
   alignmentSeekTarget,
@@ -189,7 +190,10 @@ export function useHopHandoff({
     let cancelled = false
     let pollTimer: ReturnType<typeof setInterval> | null = null
     const startedAt = Date.now()
-    const startSeconds = validPreload.window.startSeconds
+    // Park PAST the boundary: the cover rolls a beat beyond it before the reveal,
+    // and a standby parked exactly ON it re-shows frames the cover already played.
+    const parkSeconds =
+      validPreload.window.startSeconds + HANDOFF_RESUME_NUDGE_SECONDS
     void (async () => {
       let raceTimer: ReturnType<typeof setTimeout> | null = null
       try {
@@ -217,9 +221,9 @@ export function useHopHandoff({
         try {
           standby.pause()
           standby.volume = 0
-          // Zero-tolerance seek to the boundary; the poll below heals the tvOS
+          // Zero-tolerance seek to the park point; the poll below heals the tvOS
           // dropped-seek case (see needsWindowStartSeek) that a one-shot write hits.
-          standby.currentTime = startSeconds
+          standby.currentTime = parkSeconds
         } catch {
           // Released mid-load; the poll's deadline settles this entry.
         }
@@ -240,7 +244,7 @@ export function useHopHandoff({
           }
           const verdict = preloadPollVerdict({
             currentTime,
-            startSeconds,
+            startSeconds: parkSeconds,
             bufferedPosition,
             statusReady,
             elapsedMs: Date.now() - startedAt,
@@ -248,7 +252,7 @@ export function useHopHandoff({
           if (verdict === "wait") return
           if (verdict === "reseek") {
             try {
-              standby.currentTime = startSeconds
+              standby.currentTime = parkSeconds
             } catch {
               // Released; the deadline will fail the entry.
             }
