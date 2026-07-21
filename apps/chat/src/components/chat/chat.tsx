@@ -207,11 +207,16 @@ export function Chat({
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       {/* scroll-padding keeps focus auto-scroll from parking a focused
-          element behind the sticky composer band at the scrollport bottom. */}
+          element behind the sticky composer band at the scrollport bottom.
+          `relative` is load-bearing: absolutely positioned descendants (the
+          sr-only spans) must anchor INSIDE the scroller — anchored past it,
+          their static boxes sit at unscrolled depths and extend the PAGE's
+          scroll area below the app whenever the transcript outgrows the
+          viewport (the scroll-past-the-composer bug). */}
       <div
         ref={logRef}
         data-chat-scroller
-        className="min-h-0 flex-1 overflow-y-auto [scroll-padding-bottom:13rem]"
+        className="relative min-h-0 flex-1 overflow-y-auto [scroll-padding-bottom:13rem]"
       >
         {/* min-h-full column keeps the sticky composer pinned to the pane
             bottom even when the transcript is shorter than the viewport. */}

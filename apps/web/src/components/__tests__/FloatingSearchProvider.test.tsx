@@ -13,6 +13,7 @@ import {
   FloatingSearchProvider,
   useFloatingSearch,
 } from "@/components/FloatingSearchProvider"
+import { SearchOverlayInstantShell } from "@/components/SearchOverlayInstantShell"
 import {
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
@@ -1981,6 +1982,30 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(getSearchLanguageOptions).not.toHaveBeenCalled()
   })
 
+  it("focuses the instant-shell input as soon as the first-open shell mounts", () => {
+    vi.useFakeTimers()
+
+    act(() => {
+      root.render(
+        <SearchOverlayInstantShell
+          open
+          closing={false}
+          query=""
+          setOpen={vi.fn()}
+          setQuery={vi.fn()}
+          headerTopClass={FLOATING_HEADER_TOP_CLASS}
+          logoSlotClass="w-12"
+          headerLanguageControlVisible={false}
+        />,
+      )
+    })
+
+    const input = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    )
+    expect(document.activeElement).toBe(input)
+  })
+
   it("renders the search input shell immediately while the full controller loads", async () => {
     type LanguageOptionsResponse = Awaited<
       ReturnType<typeof getSearchLanguageOptions>
@@ -2008,9 +2033,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       searchButton.click()
     })
 
-    expect(
-      document.querySelector('input[aria-label="Search videos by keyword"]'),
-    ).not.toBeNull()
+    const instantShell = document.querySelector(
+      '[data-testid="search-overlay-instant-shell"]',
+    )
+    const instantInput = instantShell?.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    )
+    expect(instantInput).not.toBeNull()
     const overlayTopBar = document.querySelector(
       '[data-testid="search-overlay-instant-top-bar"], [data-testid="search-overlay-top-bar"]',
     )
@@ -2067,6 +2096,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   })
 
   it("reuses language metadata when reopening the search modal", async () => {
+    vi.useFakeTimers()
     mockedGetSearchLanguageOptions.mockResolvedValue({
       ok: true,
       options: [englishSearchLanguage],
@@ -2114,7 +2144,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ) as HTMLButtonElement | null
     await act(async () => {
       close?.click()
-      await new Promise((resolve) => setTimeout(resolve, 220))
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
     })
 
     await act(async () => {
@@ -2135,13 +2166,15 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   })
 
   it("resets the search field when Escape closes the modal", async () => {
+    vi.useFakeTimers()
     const input = await openSearchOverlay()
     act(() => {
       setInputValue(input, "jesus")
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
     })
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 220))
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
     })
 
     const searchButton = document.querySelector(
