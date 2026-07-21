@@ -29,6 +29,7 @@ import {
   buildSeekerModelList,
   createGatewayFetchWithTimeout,
   SEEKER_GATEWAY_FETCH_TIMEOUT_MS,
+  SEEKER_SYSTEM_PROMPT,
   seekerAgent,
 } from "./seeker-agent"
 
@@ -43,6 +44,14 @@ const GEMMA_FALLBACK_CHAIN = [
 describe("seeker agent", () => {
   it("registers a stable seeker agent name", () => {
     expect(seekerAgent.name).toBe("Seeker Agent")
+  })
+
+  it("serves exactly the exported canonical prompt on the fallback path (feat-275, KTD6)", async () => {
+    // Byte equality, not substring: the constant is the byte-identity anchor
+    // for the prompt-block fallback contract (R2/AE2). `toBe` on strings is
+    // exact value equality, so ANY reword, reorder, or join change fails here.
+    const instructions = await seekerAgent.getInstructions()
+    expect(instructions).toBe(SEEKER_SYSTEM_PROMPT)
   })
 
   it("carries the mandatory safety line in its instructions", async () => {
