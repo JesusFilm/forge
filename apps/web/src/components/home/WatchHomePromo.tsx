@@ -1,4 +1,5 @@
 import { Clapperboard, Globe2, UsersRound } from "lucide-react"
+import { BetaTesterTrigger } from "@/components/watch/BetaTesterModalProvider"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const defaultPoints = [
@@ -120,14 +121,9 @@ export function WatchHomePromo() {
                 "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work."
               }
             </p>
-            <a
-              href="https://mailchi.mp/jesusfilm/beta"
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
+            <BetaTesterTrigger className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
               Become a beta tester
-            </a>
+            </BetaTesterTrigger>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { type ReactElement, useState } from "react"
 import { Loader2, XIcon } from "lucide-react"
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 
 type QuizButtonData = {
   id: string
@@ -17,6 +18,7 @@ type QuizButtonProps = {
 export function QuizButton({ data }: QuizButtonProps): ReactElement {
   const { buttonText, iframeSrc } = data
   const [open, setOpen] = useState(false)
+  useWatchModalActivity(open)
 
   return (
     <>

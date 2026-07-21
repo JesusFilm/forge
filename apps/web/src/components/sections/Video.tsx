@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
+import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import { formatDuration } from "@/lib/format-duration"
@@ -157,7 +158,11 @@ function MuxBackedVideoPlayer({
   poster?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const {
+    media: video,
+    mediaRef: videoRef,
+    setMediaRef: setVideoRef,
+  } = useWatchModalMediaRef<HTMLVideoElement>(src)
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const userPausedRef = useRef(false)
@@ -167,7 +172,6 @@ function MuxBackedVideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadingSrc, setLoadingSrc] = useState(src)
-
   if (loadingSrc !== src) {
     setLoadingSrc(src)
     setIsLoading(true)
@@ -193,11 +197,10 @@ function MuxBackedVideoPlayer({
     if (timeRef.current) {
       timeRef.current.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`
     }
-  }, [formatTime])
+  }, [formatTime, videoRef])
 
   // Mirror media events onto local state.
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
@@ -241,12 +244,11 @@ function MuxBackedVideoPlayer({
       video.removeEventListener("seeked", hideLoadingIfReady)
       video.removeEventListener("error", hideLoading)
     }
-  }, [syncPlaybackUi])
+  }, [syncPlaybackUi, video])
 
   // Viewport autoplay (preserves the videojs path's `autoplayOnViewport: true`).
   useEffect(() => {
     const evaluate = () => {
-      const video = videoRef.current
       const element = containerRef.current
       if (!video || !element) return
       const rect = element.getBoundingClientRect()
@@ -266,7 +268,7 @@ function MuxBackedVideoPlayer({
     evaluate()
     window.addEventListener("scroll", evaluate, { passive: true })
     return () => window.removeEventListener("scroll", evaluate)
-  }, [])
+  }, [video])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -290,13 +292,13 @@ function MuxBackedVideoPlayer({
     }
     userPausedRef.current = true
     video.pause()
-  }, [])
+  }, [videoRef])
 
   const handleMuteToggle = useCallback(() => {
     const video = videoRef.current
     if (!video) return
     video.muted = !video.muted
-  }, [])
+  }, [videoRef])
 
   const handleSeek = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,7 +307,7 @@ function MuxBackedVideoPlayer({
       video.currentTime = Number(event.target.value)
       syncPlaybackUi()
     },
-    [syncPlaybackUi],
+    [syncPlaybackUi, videoRef],
   )
 
   const handleFullscreen = useCallback(() => {
@@ -326,7 +328,7 @@ function MuxBackedVideoPlayer({
           onClick={handlePlayPause}
         >
           <MuxVideo
-            ref={videoRef as React.Ref<HTMLVideoElement | undefined>}
+            ref={setVideoRef}
             src={src}
             poster={poster}
             muted

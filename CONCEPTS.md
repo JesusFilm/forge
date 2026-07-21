@@ -493,6 +493,12 @@ The TV home's top-of-screen canvas that reflects whatever card currently holds D
 
 ## Watch player UI
 
+### Watch Modal Activity
+
+The aggregate ownership state of every Watch overlay that must suspend route-owned playback, independent of which component renders the overlay or which player is active.
+
+Activity begins when the first owner opens and ends only after the final owner releases through its visible close lifecycle. Resume entitlement belongs to the exact media and source that were playing before activity began; late, replaced, or source-swapped media is paused without inheriting that entitlement.
+
 ### Chrome
 
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.

@@ -63,6 +63,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { resolveMuxHeroPosterUrl } from "@/lib/url"
+import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 import {
@@ -366,6 +367,7 @@ export function HeroPlayer({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null)
   const [nextPlaybackState, setNextPlaybackState] = useState({
     currentTime: 0,
     duration: 0,

@@ -153,6 +153,11 @@ vi.mock("@/lib/watch-interaction-loader", () => ({
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
+import {
+  WATCH_MODAL_CLOSE_DELAY_MS,
+  WatchModalActivityProvider,
+  usePauseForWatchModal,
+} from "@/components/watch/WatchModalActivityProvider"
 import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
 import type { MergedWatchBlock } from "@/lib/content"
 
@@ -243,15 +248,23 @@ function makeBlocks(): MergedWatchBlock[] {
   ]
 }
 
+function SharedWatchPlayerOwner() {
+  usePauseForWatchModal(watchPlayer)
+  return null
+}
+
 function renderWatchPage(video = makeVideo()) {
   act(() => {
     root.render(
-      <WatchPageClient
-        mergedBlocks={makeBlocks()}
-        variant={makeVariant()}
-        video={video}
-        languageSlug="english"
-      />,
+      <WatchModalActivityProvider>
+        <SharedWatchPlayerOwner />
+        <WatchPageClient
+          mergedBlocks={makeBlocks()}
+          variant={makeVariant()}
+          video={video}
+          languageSlug="english"
+        />
+      </WatchModalActivityProvider>,
     )
   })
 }
@@ -427,14 +440,10 @@ describe("WatchPageClient chapter navigation", () => {
   })
 
   it("opens Share through the page modal and restores active playback", () => {
+    vi.useFakeTimers()
     renderWatchPage()
 
     act(() => {
-      ;(
-        container.querySelector(
-          '[data-testid="set-watch-player"]',
-        ) as HTMLButtonElement
-      ).click()
       ;(
         container.querySelector(
           '[data-testid="open-share"]',
@@ -457,6 +466,9 @@ describe("WatchPageClient chapter navigation", () => {
           '[data-testid="watch-share-modal"]',
         ) as HTMLButtonElement
       ).click()
+    })
+    act(() => {
+      vi.advanceTimersByTime(WATCH_MODAL_CLOSE_DELAY_MS)
     })
 
     expect(page?.getAttribute("data-modal-state")).toBe("none")
