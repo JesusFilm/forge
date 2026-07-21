@@ -2,6 +2,7 @@ import { print } from "graphql"
 import { describe, expect, it } from "vitest"
 
 import {
+  getWatchCollectionDownloadDubsBySlugOperation,
   getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
   getWatchLanguagePickerVariantsBySlugOperation,
   getWatchVideoDubDetailOperation,
@@ -80,6 +81,17 @@ describe("WatchVideo split GraphQL operations", () => {
 })
 
 describe("WatchVideo split operation documents", () => {
+  it("keeps collection source URLs inside the server-only lookup", () => {
+    const printed = print(getWatchCollectionDownloadDubsBySlugOperation)
+
+    expect(printed).toMatch(
+      /downloadableChildDubs\(languageSlug:\s*\$languageSlug\)/,
+    )
+    expect(printed).toMatch(/downloads\s*\{/)
+    expect(printed).toMatch(/documentId\s*:\s*id/)
+    expect(printed).toMatch(/\burl\b/)
+  })
+
   it("declares only videoSlug for the stable shell lookup", () => {
     const printed = print(getWatchVideoShellBySlugOperation)
 

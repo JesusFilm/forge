@@ -134,6 +134,7 @@ describe("GET /watch/api/download - account gate", () => {
     )
 
     expect(response.status).toBe(401)
+    expect(response.headers.get("x-watch-download-error")).toBe("auth-required")
     await expect(response.json()).resolves.toEqual({
       error: "Authentication required",
     })

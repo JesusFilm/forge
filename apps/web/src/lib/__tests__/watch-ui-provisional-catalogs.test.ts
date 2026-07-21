@@ -68,6 +68,7 @@ type MessageTree = { [key: string]: string | MessageTree }
 type TranslationPolicy = {
   humanReviewedLocales: string[]
   intentionallyLocaleNeutral: string[]
+  pendingTranslationPaths: string[]
 }
 
 function readJson<T>(path: string): T {
@@ -159,9 +160,16 @@ describe("watch UI provisional official-language catalogs", () => {
       reviewStatus: "machine-translated; native-speaker review recommended",
     })
 
-    const sourceFlat = flattenCatalog(readJson<MessageTree>(catalogPath("en")))
+    const pendingTranslationPaths = new Set(
+      translationPolicy.pendingTranslationPaths,
+    )
+    const translatedSourceFlat = Object.fromEntries(
+      Object.entries(
+        flattenCatalog(readJson<MessageTree>(catalogPath("en"))),
+      ).filter(([path]) => !pendingTranslationPaths.has(path)),
+    )
     const sourceDigest = contentDigest({
-      sourceFlat,
+      sourceFlat: translatedSourceFlat,
       translationPolicy: {
         humanReviewedLocales: [...translationPolicy.humanReviewedLocales].sort(
           (left, right) => left.localeCompare(right),
@@ -182,7 +190,11 @@ describe("watch UI provisional official-language catalogs", () => {
       expect(provenance.sourceDigest, locale).toBe(sourceDigest)
       expect(provenance.catalogDigest, locale).toBe(
         contentDigest(
-          flattenCatalog(readJson<MessageTree>(catalogPath(locale))),
+          Object.fromEntries(
+            Object.entries(
+              flattenCatalog(readJson<MessageTree>(catalogPath(locale))),
+            ).filter(([path]) => !pendingTranslationPaths.has(path)),
+          ),
         ),
       )
     }
