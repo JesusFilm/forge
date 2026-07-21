@@ -21,6 +21,8 @@ export const WATCH_PAGE_LEFT_EDGE_CLASSES =
 export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
   "right-5 md:right-16 xl:right-[max(6rem,calc((100vw-1920px)/2+6rem))]"
 export const FLOATING_HEADER_HEIGHT_CLASS = "h-[52px]"
+export const FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS =
+  "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]"
 export const FLOATING_HEADER_GAP_CLASS = "gap-3 md:gap-5"
 export const FLOATING_HEADER_TOP_CLASS =
   "top-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:top-[calc(env(safe-area-inset-top,0px)+3rem)]"

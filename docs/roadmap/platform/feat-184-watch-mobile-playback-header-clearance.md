@@ -37,15 +37,16 @@ for devices that report a non-zero top safe-area inset.
      wrapper geometry.
 4. `apps/web/src/components/watch/__tests__/HeroPlayer.test.tsx`
    - focused preview, playback reveal, autoplay, and custom-overlay coverage.
-5. `apps/web/src/components/FloatingSearchProvider.tsx`
-   - established `6rem + safe-area inset` floating-header geometry.
+5. `apps/web/src/lib/content-width.ts`
+   - shared mobile floating-header boundary geometry.
 
 ## What To Build
 
 1. Keep the default Watch mobile portrait header band present during muted
    preview and committed playback.
-2. Size the band to 96px plus `env(safe-area-inset-top, 0px)` so it clears the
-   same boundary used by the floating header.
+2. Size the band to the mobile floating-header boundary with balanced spacing:
+   its 12px top offset, 52px height, 12px bottom gap, and
+   `env(safe-area-inset-top, 0px)`.
 3. Keep the muted preview square, but render committed playback as a 16:9
    media frame below the persistent band.
 4. Keep desktop, tablet, mobile landscape/fullscreen, custom-overlay hero,
@@ -53,16 +54,17 @@ for devices that report a non-zero top safe-area inset.
 
 ## Verification
 
-- Focused HeroPlayer tests cover preview, click-to-playback, autoplay, and
-  custom-overlay state boundaries: 79 tests passed with 2 existing todos.
+- Focused HeroPlayer and shared content-width tests cover preview,
+  click-to-playback, autoplay, custom-overlay state boundaries, and the shared
+  header boundary contract: 133 tests passed with 2 existing todos.
 - The adjacent HeroPlayer and FloatingSearchProvider suites passed together
   after merging current `main`: 153 tests passed with 2 existing todos.
 - `pnpm --filter @forge/web typecheck` and
   `pnpm --filter @forge/web lint` passed.
-- Browser smoke at a 390x844 portrait viewport against the merged branch
-  measured the floating header bottom at 60px and the active media-frame top
-  at 96px. The frame remained 16:9 with no horizontal overflow or console
-  errors.
+- Browser smoke at a 390x844 portrait viewport measured the visible
+  floating-header bottom at 64px and media-frame top at 76px, matching the
+  header's 12px top spacing below it. Playback preserved the 76px boundary
+  with a 375x210.9375 16:9 frame and no horizontal overflow.
 
 ## Plan
 

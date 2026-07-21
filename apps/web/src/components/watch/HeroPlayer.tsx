@@ -34,6 +34,7 @@ import { env } from "@/env"
 import type { WatchHeroPlayerBlock, WatchVariantDownload } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
+  FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
@@ -164,8 +165,7 @@ const HERO_FRAME_TRANSITION_CLASS =
   "transition-[height,margin-bottom,top] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
 const MOBILE_PORTRAIT_DEFAULT_WATCH_WRAPPER_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto"
-const MOBILE_PORTRAIT_HEADER_CLEARANCE_CLASS =
-  "hidden h-[calc(6rem+env(safe-area-inset-top,0px))] shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block"
+const MOBILE_PORTRAIT_HEADER_CLEARANCE_CLASS = `hidden ${FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS} shrink-0 bg-black [@media(max-width:767px)_and_(orientation:portrait)]:block`
 const MOBILE_PORTRAIT_PREVIEW_FRAME_CLASS =
   "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square [@media(max-width:767px)_and_(orientation:portrait)]:h-auto [@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden"
 const MOBILE_PORTRAIT_PLAYBACK_FRAME_CLASS =

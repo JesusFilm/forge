@@ -1489,7 +1489,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-mobile-header-band"]',
     ) as HTMLDivElement
     expect(band.className).toContain(
-      "h-[calc(6rem+env(safe-area-inset-top,0px))]",
+      "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]",
     )
     expect(band.className).toContain("bg-black")
     expect(band.className).toContain(
