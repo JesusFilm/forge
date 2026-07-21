@@ -195,8 +195,9 @@ export function MediaCollection({
   return (
     <WatchHomeMediaCollection
       id={id}
+      categoryLabel={categoryLabel}
       title={title}
-      eyebrow={categoryLabel ?? subtitle}
+      subtitle={subtitle}
       description={description}
       ctaLink={explicitCtaLink ?? inferredCtaLink}
       ctaLabel={ctaLabel}
@@ -231,8 +232,9 @@ function PlayIcon({ className }: { className?: string }) {
 
 function WatchHomeMediaCollection({
   id,
+  categoryLabel,
   title,
-  eyebrow,
+  subtitle,
   description,
   ctaLink,
   ctaLabel,
@@ -243,8 +245,9 @@ function WatchHomeMediaCollection({
   items,
 }: {
   id: string
+  categoryLabel: string | null
   title: string | null
-  eyebrow: string | null
+  subtitle: string | null
   description: string | null
   ctaLink: string | null
   ctaLabel: string | null
@@ -411,9 +414,9 @@ function WatchHomeMediaCollection({
       <div className={cn("relative z-[3] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex max-w-4xl flex-col gap-1">
-            {eyebrow && (
+            {categoryLabel && (
               <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-                {eyebrow}
+                {categoryLabel}
               </p>
             )}
             {title && (
@@ -421,6 +424,22 @@ function WatchHomeMediaCollection({
                 {title}
               </h2>
             )}
+            {subtitle ? (
+              <p
+                data-testid="media-collection-supporting-title"
+                className="text-lg leading-snug font-semibold text-stone-100/90 xl:text-xl"
+              >
+                {subtitle}
+              </p>
+            ) : null}
+            {description ? (
+              <p
+                data-testid="media-collection-description"
+                className="max-w-3xl pt-2 text-base leading-relaxed text-stone-200/80 xl:text-lg"
+              >
+                {description}
+              </p>
+            ) : null}
           </div>
           <a
             href={watchHref}
@@ -506,12 +525,14 @@ function WatchHomeMediaCollection({
         </div>
       )}
 
-      {description || footerText ? (
+      {footerText ? (
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
-          <div className="mt-8 max-w-5xl space-y-4 text-lg leading-relaxed text-stone-200/80 xl:text-xl">
-            {description ? <p>{description}</p> : null}
-            {footerText ? <p>{footerText}</p> : null}
-          </div>
+          <p
+            data-testid="media-collection-footer"
+            className="mt-8 max-w-5xl text-lg leading-relaxed text-stone-200/80 xl:text-xl"
+          >
+            {footerText}
+          </p>
         </div>
       ) : null}
     </section>

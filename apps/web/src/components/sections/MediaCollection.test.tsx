@@ -50,6 +50,19 @@ function makeData(
   } as unknown as Parameters<typeof MediaCollection>[0]["data"]
 }
 
+function makeManualItem(overrides: Record<string, unknown> = {}) {
+  return {
+    videoId: "v-1",
+    videoSlug: "episode-one",
+    titleOverride: "Episode One",
+    subtitleOverride: null,
+    labelOverride: null,
+    collectionSize: null,
+    imageUrl: null,
+    ...overrides,
+  }
+}
+
 function makeRouteVideo(videoSlug: string): RouteVideo {
   const relatedItems: EnrichedMediaItem[] = [
     {
@@ -369,33 +382,170 @@ describe("MediaCollection VideoCard href", () => {
     ).not.toBeNull()
   })
 
-  it("renders both description and footer copy when both are authored", () => {
+  it("renders distinct authored header copy before the carousel and footer copy after it", () => {
     act(() => {
       root.render(
         <MediaCollection
           data={makeData({
+            categoryLabel: "New series",
+            subtitle: "Short supporting title",
             mediaDescription: "Intro copy",
             footerText: "Footer copy",
             itemsSource: "manual",
-            items: [
-              {
-                videoId: "v-1",
-                videoSlug: "episode-one",
-                titleOverride: "Episode One",
-                subtitleOverride: null,
-                labelOverride: null,
-                collectionSize: null,
-                imageUrl: null,
-              },
-            ],
+            items: [makeManualItem()],
           })}
         />,
       )
     })
 
-    expect(container.textContent).toContain("Intro copy")
-    expect(container.textContent).toContain("Footer copy")
+    const categoryLabel = Array.from(container.querySelectorAll("p")).find(
+      (element) => element.textContent === "New series",
+    )
+    const supportingTitle = container.querySelector(
+      '[data-testid="media-collection-supporting-title"]',
+    )
+    const description = container.querySelector(
+      '[data-testid="media-collection-description"]',
+    )
+    const carousel = container.querySelector(
+      '[data-testid="media-collection-carousel"]',
+    )
+    const footer = container.querySelector(
+      '[data-testid="media-collection-footer"]',
+    )
+
+    expect(categoryLabel?.textContent).toBe("New series")
+    expect(supportingTitle).not.toBeNull()
+    expect(description).not.toBeNull()
+    expect(carousel).not.toBeNull()
+    expect(footer).not.toBeNull()
+    expect(supportingTitle?.textContent).toBe("Short supporting title")
+    expect(description?.textContent).toBe("Intro copy")
+    expect(footer?.textContent).toBe("Footer copy")
+    expect(supportingTitle?.compareDocumentPosition(carousel!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(description?.compareDocumentPosition(carousel!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(carousel?.compareDocumentPosition(footer!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
+
+  it("keeps authored supporting copy before the grid branch", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            categoryLabel: "Featured",
+            subtitle: "Supporting grid title",
+            mediaDescription: "Grid description",
+            mediaCollectionVariant: "grid",
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const supportingTitle = container.querySelector(
+      '[data-testid="media-collection-supporting-title"]',
+    )
+    const description = container.querySelector(
+      '[data-testid="media-collection-description"]',
+    )
+    const firstCard = container.querySelector('[aria-label="VideoCard"]')
+
+    expect(supportingTitle).not.toBeNull()
+    expect(description).not.toBeNull()
+    expect(firstCard).not.toBeNull()
+    expect(supportingTitle?.textContent).toBe("Supporting grid title")
+    expect(description?.textContent).toBe("Grid description")
+    expect(supportingTitle?.compareDocumentPosition(firstCard!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(description?.compareDocumentPosition(firstCard!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it.each([
+    {
+      name: "category only",
+      categoryLabel: "Featured",
+      subtitle: null,
+      description: null,
+      footerText: null,
+    },
+    {
+      name: "subtitle only",
+      categoryLabel: null,
+      subtitle: "Supporting title",
+      description: null,
+      footerText: null,
+    },
+    {
+      name: "category and subtitle",
+      categoryLabel: "Featured",
+      subtitle: "Supporting title",
+      description: null,
+      footerText: null,
+    },
+    {
+      name: "description without subtitle",
+      categoryLabel: null,
+      subtitle: null,
+      description: "Collection description",
+      footerText: null,
+    },
+    {
+      name: "footer only",
+      categoryLabel: null,
+      subtitle: null,
+      description: null,
+      footerText: "Closing copy",
+    },
+    {
+      name: "empty optional fields",
+      categoryLabel: "",
+      subtitle: "",
+      description: "",
+      footerText: "",
+    },
+  ])(
+    "renders optional authored fields without empty wrappers: $name",
+    (state) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              categoryLabel: state.categoryLabel,
+              subtitle: state.subtitle,
+              mediaDescription: state.description,
+              footerText: state.footerText,
+              itemsSource: "manual",
+              items: [makeManualItem()],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector(
+          '[data-testid="media-collection-supporting-title"]',
+        )?.textContent ?? null,
+      ).toBe(state.subtitle || null)
+      expect(
+        container.querySelector('[data-testid="media-collection-description"]')
+          ?.textContent ?? null,
+      ).toBe(state.description || null)
+      expect(
+        container.querySelector('[data-testid="media-collection-footer"]')
+          ?.textContent ?? null,
+      ).toBe(state.footerText || null)
+    },
+  )
 
   it("uses the authored background color as the media collection tint", () => {
     act(() => {
