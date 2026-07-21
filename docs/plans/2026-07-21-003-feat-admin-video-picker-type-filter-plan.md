@@ -1,7 +1,7 @@
 ---
 title: "feat: Add video type filter to the Admin Experience picker"
 type: "feat"
-status: "active"
+status: "completed"
 date: "2026-07-21"
 ---
 

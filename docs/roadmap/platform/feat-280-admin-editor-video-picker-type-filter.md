@@ -3,7 +3,7 @@ id: "feat-280"
 title: "Admin Editor Video Picker Type Filter"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-21"
 duration: 1
 depends_on: []
@@ -67,3 +67,14 @@ matching rows outside the first 30 videos.
 - `pnpm --filter @forge/admin typecheck`
 - Browser smoke the media-collection picker and capture the type control with a
   narrowed result set.
+
+## Completion Evidence
+
+- The focused Admin suites passed 78 tests across the category contract,
+  server-row hydration, and Experience editor interactions.
+- Admin type checking passed.
+- A local browser run opened the media-collection picker, selected Collections,
+  and showed only collection rows while excluding a known short-film row.
+- The verified navigation completed in 1.74 seconds with zero browser console
+  errors. Visual proof was captured at
+  `output/playwright/admin-media-collection-video-type-filter.png`.
