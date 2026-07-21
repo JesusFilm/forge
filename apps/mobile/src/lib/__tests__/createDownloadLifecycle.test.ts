@@ -347,6 +347,28 @@ describe("swap", () => {
     })
   })
 
+  // U1 regression: swap() spreads `...existing`, so it must preserve the five
+  // series/ordering fields without any explicit copy line.
+  it("preserves series/ordering metadata across a swap rewrite (U1 regression)", async () => {
+    const existing = makeRecord({
+      seriesSlug: "storyclubs",
+      seriesTitle: "StoryClubs",
+      seriesEpisodeIndex: 2,
+      durationSeconds: 725,
+      enqueuedAt: 1_753_000_000_000,
+    })
+    const h = makeHarness({ records: [existing] })
+    const request = makeRequest()
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    const midSwap = h.writes[0]
+    expect(midSwap.seriesSlug).toBe("storyclubs")
+    expect(midSwap.seriesTitle).toBe("StoryClubs")
+    expect(midSwap.seriesEpisodeIndex).toBe(2)
+    expect(midSwap.durationSeconds).toBe(725)
+    expect(midSwap.enqueuedAt).toBe(1_753_000_000_000)
+  })
+
   it("bails `canceled` when a cancel reverted the record during re-resolve", async () => {
     const existing = makeRecord()
     const h: ReturnType<typeof makeHarness> = makeHarness({
@@ -453,6 +475,30 @@ describe("restart", () => {
     })
     await h.lifecycle.restart(paused)
     expect(h.records.get("washi-gospel-1")?.state).toBe("failed")
+  })
+
+  // U1 regression: restart() spreads `...record`, so it must preserve the
+  // five series/ordering fields without any explicit copy line.
+  it("preserves series/ordering metadata across a restart rewrite (U1 regression)", async () => {
+    const pausedWithSeries = makeRecord({
+      state: "paused",
+      committedPath: null,
+      pendingPath: `${ROOT}/washi-gospel-1/media.n1.pending`,
+      bytesWritten: 400,
+      seriesSlug: "storyclubs",
+      seriesTitle: "StoryClubs",
+      seriesEpisodeIndex: 2,
+      durationSeconds: 725,
+      enqueuedAt: 1_753_000_000_000,
+    })
+    const h = makeHarness({ records: [pausedWithSeries] })
+    await h.lifecycle.restart(pausedWithSeries)
+    const record = h.records.get("washi-gospel-1")
+    expect(record?.seriesSlug).toBe("storyclubs")
+    expect(record?.seriesTitle).toBe("StoryClubs")
+    expect(record?.seriesEpisodeIndex).toBe(2)
+    expect(record?.durationSeconds).toBe(725)
+    expect(record?.enqueuedAt).toBe(1_753_000_000_000)
   })
 })
 

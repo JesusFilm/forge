@@ -46,6 +46,16 @@ export type StartDownloadRequest = {
   posterUrl: string | null
   /** Per-download cellular override. */
   allowCellular: boolean
+  /** Parent series slug, when this episode belongs to one. */
+  seriesSlug?: string
+  /** Parent series display title. */
+  seriesTitle?: string
+  /** Episode order within the series (series batch only; the watch route leaves it undefined). */
+  seriesEpisodeIndex?: number
+  /** Video runtime in seconds. */
+  durationSeconds?: number
+  /** Epoch ms when the download was enqueued. */
+  enqueuedAt?: number
 }
 
 export type StartDownloadResult =
@@ -97,6 +107,11 @@ export function buildRequestRecord(
     posterPath: null,
     bytesWritten: 0,
     totalBytes: requestTotalBytes(request),
+    seriesSlug: request.seriesSlug,
+    seriesTitle: request.seriesTitle,
+    seriesEpisodeIndex: request.seriesEpisodeIndex,
+    durationSeconds: request.durationSeconds,
+    enqueuedAt: request.enqueuedAt,
   }
 }
 

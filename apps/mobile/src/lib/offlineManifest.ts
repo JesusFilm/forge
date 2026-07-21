@@ -71,6 +71,16 @@ export type OfflineDownloadRecord = {
   totalBytes: number
   /** Present only mid-swap; see {@link SwapFrom}. */
   swapFrom?: SwapFrom | null
+  /** Parent series slug, when this episode belongs to one; absent for a standalone video. */
+  seriesSlug?: string
+  /** Parent series display title. */
+  seriesTitle?: string
+  /** Episode order within the series (admin's `order` relation field). */
+  seriesEpisodeIndex?: number
+  /** Video runtime in seconds. */
+  durationSeconds?: number
+  /** Epoch ms when the download was enqueued. */
+  enqueuedAt?: number
 }
 
 function asString(value: unknown): string | null {
@@ -79,6 +89,20 @@ function asString(value: unknown): string | null {
 
 function asFiniteNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+/** Optional-string reader: absent/non-string coerces to undefined, never null. */
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+/**
+ * Optional-number reader for fields where 0 is a valid value (episode index,
+ * duration) — unlike asFiniteNumber, absent/non-finite yields undefined, not 0,
+ * so a legacy record never misreads "field missing" as "field is zero".
+ */
+function asOptionalFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
 }
 
 /** Tolerant parse of the mid-swap snapshot; null unless it carries identity. */
@@ -141,6 +165,11 @@ export function parseOfflineRecord(
     bytesWritten: asFiniteNumber(obj.bytesWritten),
     totalBytes: asFiniteNumber(obj.totalBytes),
     swapFrom: parseSwapFrom(obj.swapFrom),
+    seriesSlug: asOptionalString(obj.seriesSlug),
+    seriesTitle: asOptionalString(obj.seriesTitle),
+    seriesEpisodeIndex: asOptionalFiniteNumber(obj.seriesEpisodeIndex),
+    durationSeconds: asOptionalFiniteNumber(obj.durationSeconds),
+    enqueuedAt: asOptionalFiniteNumber(obj.enqueuedAt),
   }
 }
 

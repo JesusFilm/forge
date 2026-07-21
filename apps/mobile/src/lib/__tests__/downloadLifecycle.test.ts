@@ -35,6 +35,19 @@ function makeRequest(
   }
 }
 
+function makeSeriesRequest(
+  overrides: Partial<StartDownloadRequest> = {},
+): StartDownloadRequest {
+  return makeRequest({
+    seriesSlug: "storyclubs",
+    seriesTitle: "StoryClubs",
+    seriesEpisodeIndex: 2,
+    durationSeconds: 725,
+    enqueuedAt: 1_753_000_000_000,
+    ...overrides,
+  })
+}
+
 describe("requestTotalBytes", () => {
   it("parses the rendition size", () => {
     expect(requestTotalBytes(makeRequest())).toBe(1000)
@@ -106,6 +119,29 @@ describe("buildRequestRecord", () => {
       totalBytes: 0,
     })
   })
+
+  // U1: series & ordering metadata carries through every buildRequestRecord
+  // seam (queued/downloading/failed) — the single source all three writers share.
+  it.each(["queued", "downloading", "failed"] as const)(
+    "carries the five series/ordering fields in the %s write",
+    (state) => {
+      const record = buildRequestRecord(makeSeriesRequest(), state)
+      expect(record.seriesSlug).toBe("storyclubs")
+      expect(record.seriesTitle).toBe("StoryClubs")
+      expect(record.seriesEpisodeIndex).toBe(2)
+      expect(record.durationSeconds).toBe(725)
+      expect(record.enqueuedAt).toBe(1_753_000_000_000)
+    },
+  )
+
+  it("leaves the five fields undefined for a request that doesn't carry them", () => {
+    const record = buildRequestRecord(makeRequest(), "queued")
+    expect(record.seriesSlug).toBeUndefined()
+    expect(record.seriesTitle).toBeUndefined()
+    expect(record.seriesEpisodeIndex).toBeUndefined()
+    expect(record.durationSeconds).toBeUndefined()
+    expect(record.enqueuedAt).toBeUndefined()
+  })
 })
 
 describe("swap snapshot + revert round-trip (AE2)", () => {
@@ -157,6 +193,112 @@ describe("swap snapshot + revert round-trip (AE2)", () => {
       bytesWritten: 900,
       swapFrom: null,
     })
+  })
+
+  // A12: swapRevertFields is an explicit field list that does NOT mention
+  // seriesSlug — it survives only because both revert call sites merge over
+  // the CURRENT record (`{ ...current, ...swapRevertFields(swap) }`), never
+  // replace it. Pin that the merge pattern (not the explicit list) is what
+  // carries it.
+  it("A12: a reverting swap preserves seriesSlug via the merge-over-current pattern", () => {
+    const seriesExisting: OfflineDownloadRecord = {
+      ...existing,
+      seriesSlug: "storyclubs",
+      seriesTitle: "StoryClubs",
+      seriesEpisodeIndex: 2,
+    }
+    const swap: SwapFrom = buildSwapSnapshot(
+      seriesExisting,
+      seriesExisting.committedPath!,
+    )
+    const midSwap: OfflineDownloadRecord = {
+      ...seriesExisting,
+      renditionDocumentId: "rend-new",
+      qualityLabel: "High",
+      state: "downloading",
+      committedPath: null,
+      pendingPath: "/root/washi-gospel-1/media.n1.pending",
+      swapFrom: swap,
+    }
+    const reverted = { ...midSwap, ...swapRevertFields(swap) }
+    expect(reverted.seriesSlug).toBe("storyclubs")
+    expect(reverted.seriesTitle).toBe("StoryClubs")
+    expect(reverted.seriesEpisodeIndex).toBe(2)
+  })
+})
+
+// Mirrors DownloadsProvider.tsx's launch-reattach effect (~line 475-495): the
+// isBatchPlaceholderRecord branch rebuilds a StartDownloadRequest BY HAND from
+// a persisted record (no React harness here — this is a characterization of
+// that literal, kept in lockstep with the provider by hand; a mismatch would
+// only surface as a runtime/manual-QA regression, not a test failure here).
+function buildReattachRequest(
+  record: OfflineDownloadRecord,
+  allowCellular: boolean,
+): StartDownloadRequest {
+  return {
+    videoSlug: record.videoSlug,
+    title: record.title,
+    dubDocumentId: record.dubDocumentId,
+    rendition: {
+      documentId: record.renditionDocumentId,
+      quality: record.qualityLabel,
+      size: record.totalBytes > 0 ? String(record.totalBytes) : "",
+      url: "",
+    },
+    subtitleLanguageSlug: record.subtitleLanguageSlug,
+    subtitleUrl: null,
+    posterUrl: null,
+    allowCellular,
+    seriesSlug: record.seriesSlug,
+    seriesTitle: record.seriesTitle,
+    seriesEpisodeIndex: record.seriesEpisodeIndex,
+    durationSeconds: record.durationSeconds,
+    enqueuedAt: record.enqueuedAt,
+  }
+}
+
+describe("reattach requeue (DownloadsProvider batch-placeholder rebuild)", () => {
+  const relaunchedPlaceholder: OfflineDownloadRecord = {
+    version: OFFLINE_MANIFEST_VERSION,
+    videoSlug: "washi-gospel-2",
+    dubDocumentId: "dub-2",
+    renditionDocumentId: "rend-2",
+    qualityLabel: "High",
+    title: "Washi Gospel — Episode 2",
+    subtitleLanguageSlug: null,
+    state: "queued",
+    committedPath: null,
+    pendingPath: null,
+    posterPath: null,
+    bytesWritten: 0,
+    totalBytes: 1000,
+    seriesSlug: "storyclubs",
+    seriesTitle: "StoryClubs",
+    seriesEpisodeIndex: 2,
+    durationSeconds: 725,
+    enqueuedAt: 1_753_000_000_000,
+  }
+
+  it("rebuilds a request carrying the five fields from a relaunched placeholder record", () => {
+    const request = buildReattachRequest(relaunchedPlaceholder, false)
+    expect(request.seriesSlug).toBe("storyclubs")
+    expect(request.seriesTitle).toBe("StoryClubs")
+    expect(request.seriesEpisodeIndex).toBe(2)
+    expect(request.durationSeconds).toBe(725)
+    expect(request.enqueuedAt).toBe(1_753_000_000_000)
+  })
+
+  // AE7: a kill/relaunch mid-batch reattaches this placeholder, it re-enters the
+  // queue via the rebuilt request above, and if the pump's start attempt fails,
+  // the failed-resurface write (DownloadsProvider.tsx:610) must still carry
+  // seriesSlug — not silently drop it back to a bare unlinked record.
+  it("AE7: a failed-resurface after the reattach keeps seriesSlug", () => {
+    const request = buildReattachRequest(relaunchedPlaceholder, false)
+    const failedRecord = buildRequestRecord(request, "failed")
+    expect(failedRecord.seriesSlug).toBe("storyclubs")
+    expect(failedRecord.seriesTitle).toBe("StoryClubs")
+    expect(failedRecord.seriesEpisodeIndex).toBe(2)
   })
 })
 

@@ -51,8 +51,14 @@ export type WatchSibling = {
 }
 
 // A child video of a series, rendered as a card in the episode grid. Same shape
-// as a sibling — a related video reduced to what a card needs.
-export type WatchEpisode = WatchSibling
+// as a sibling plus the series-only ordering/duration a download record needs
+// (kept off WatchSibling — a plain sibling isn't part of a downloadable series).
+export type WatchEpisode = WatchSibling & {
+  /** Episode order within the series (admin's `order` relation field). */
+  seriesEpisodeIndex?: number
+  /** Video runtime in seconds. */
+  durationSeconds?: number
+}
 
 // One language the series' episodes are available in (server-aggregated union),
 // the feed for the series language sheet. Identity is the unique `slug`, never
@@ -92,6 +98,8 @@ export type WatchVideoRecord = {
   muxPlaybackId: string | null
   duration: number | null
   primaryLanguageBcp47: string | null
+  /** The series this video is an episode of, or null for a standalone/orphan video. */
+  parentSeries: { documentId: string; slug: string; title: string } | null
   siblings: WatchSibling[]
   variants: WatchVariant[]
   studyQuestions: WatchStudyQuestion[]
@@ -279,6 +287,18 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       muxPlaybackId: v.muxVideo?.playbackId ?? null,
     }))
 
+  // Parent series (U1): parents[0].parent itself, distinct from the siblings it
+  // carries below. null when absent — either an orphan video or the lean series
+  // fragment, which omits the whole `parents` chain.
+  const parent = raw.parents?.[0]?.parent
+  const parentSeries = parent
+    ? {
+        documentId: parent.documentId ?? "",
+        slug: parent.slug ?? "",
+        title: pickFirstLocale(parent.locales).title ?? "",
+      }
+    : null
+
   // Siblings: parents[0].parent.children, minus self, deduped
   const selfId = raw.documentId
   const rawSiblings =
@@ -342,6 +362,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     muxPlaybackId: firstPlayable?.muxVideo?.playbackId ?? null,
     duration: firstPlayable?.duration ?? null,
     primaryLanguageBcp47: raw.primaryLanguage?.bcp47 ?? null,
+    parentSeries,
     siblings,
     variants,
     studyQuestions,
@@ -368,6 +389,10 @@ function buildEpisodes(raw: RawSeriesVideo): WatchEpisode[] {
       label: rel.child.label ?? null,
       title: pickFirstLocale(rel.child.locales).title,
       posterUrl: pickPosterUrl(rel.child.images),
+      // ?? undefined (not ?? 0): a real index/duration of 0 must round-trip as
+      // 0, not be conflated with "not carried" (mirrors offlineManifest's trap).
+      seriesEpisodeIndex: rel.order ?? undefined,
+      durationSeconds: rel.child.durationSeconds ?? undefined,
     }))
   return dedupeByDocumentId(episodes)
 }

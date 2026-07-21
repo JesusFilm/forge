@@ -491,6 +491,11 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
                   subtitleUrl: null,
                   posterUrl: null,
                   allowCellular: !wifiOnlyRef.current,
+                  seriesSlug: record.seriesSlug,
+                  seriesTitle: record.seriesTitle,
+                  seriesEpisodeIndex: record.seriesEpisodeIndex,
+                  durationSeconds: record.durationSeconds,
+                  enqueuedAt: record.enqueuedAt,
                 },
               ]
               batchSlugsRef.current.add(record.videoSlug)

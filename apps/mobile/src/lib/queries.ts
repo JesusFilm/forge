@@ -267,6 +267,7 @@ export const GET_SERIES_BY_SLUG = adminGraphql(
             documentId: id
             slug
             label
+            durationSeconds
             locales(locale: $locale) {
               documentId: id
               languageSlug

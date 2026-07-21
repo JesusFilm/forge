@@ -245,6 +245,23 @@ describe("normalizeVideo", () => {
     expect(result.primaryLanguageBcp47).toBe("en")
   })
 
+  // U1: the watch route needs the parent series' own identity (distinct from
+  // the sibling children it also carries) to attach seriesSlug/seriesTitle to
+  // a single-video download record.
+  it("surfaces parentSeries from parents[0].parent", () => {
+    const result = normalizeVideo(makeRawVideo())!
+    expect(result.parentSeries).toEqual({
+      documentId: "parent-1",
+      slug: "easter-story",
+      title: "The Easter Story",
+    })
+  })
+
+  it("resolves parentSeries to null when the video has no parents", () => {
+    const result = normalizeVideo(makeRawVideo({ parents: [] }))!
+    expect(result.parentSeries).toBeNull()
+  })
+
   it("filters self-references from siblings", () => {
     const result = normalizeVideo(makeRawVideo())!
 
@@ -667,6 +684,69 @@ describe("normalizeSeries", () => {
     expect(result.episodes[0].posterUrl).toBe(
       "https://img.example.com/ep1-cine.jpg",
     )
+  })
+
+  // U1: order → seriesEpisodeIndex and durationSeconds carry onto each episode
+  // (previously discarded after the sort). Fixture reuses episode 1's shape.
+  it("carries order → seriesEpisodeIndex and durationSeconds per episode", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          {
+            order: 5,
+            child: {
+              documentId: "ep-5",
+              slug: "episode-5",
+              label: "EPISODE",
+              locales: [
+                {
+                  documentId: "eploc-5",
+                  languageSlug: "english",
+                  title: "Episode 5",
+                },
+              ],
+              images: [],
+              durationSeconds: 300,
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.episodes[0].seriesEpisodeIndex).toBe(5)
+    expect(result.episodes[0].durationSeconds).toBe(300)
+  })
+
+  it("round-trips seriesEpisodeIndex: 0 / durationSeconds: 0 without conflating with absent", () => {
+    const result = normalizeSeries(
+      makeRawSeries({
+        children: [
+          {
+            order: 0,
+            child: {
+              documentId: "ep-0",
+              slug: "episode-0",
+              label: "EPISODE",
+              locales: [],
+              images: [],
+              durationSeconds: 0,
+            },
+          },
+        ],
+      }),
+    )!
+    expect(result.episodes[0].seriesEpisodeIndex).toBe(0)
+    expect(result.episodes[0].durationSeconds).toBe(0)
+  })
+
+  it("leaves durationSeconds undefined when the child omits it", () => {
+    // Default fixture children never set durationSeconds.
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.episodes[0].durationSeconds).toBeUndefined()
+  })
+
+  it("resolves parentSeries to null for the lean series fragment (no parents chain)", () => {
+    const result = normalizeSeries(makeRawSeries())!
+    expect(result.parentSeries).toBeNull()
   })
 
   it("deduplicates episodes by documentId", () => {

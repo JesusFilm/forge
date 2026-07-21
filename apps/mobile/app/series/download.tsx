@@ -271,7 +271,7 @@ export default function SeriesDownloadRoute() {
   }, [resolution, subtitleSlug, getRecord])
 
   const proceed = useCallback(async () => {
-    if (!resolution) return
+    if (!resolution || !series) return
     setStorageError(null)
 
     const free = await freeDiskBytes()
@@ -298,6 +298,9 @@ export default function SeriesDownloadRoute() {
     const ctx = {
       subtitleLanguageSlug: subtitleSlug,
       allowCellular: !wifiOnly,
+      seriesSlug: series.slug,
+      seriesTitle: series.title ?? "",
+      enqueuedAt: Date.now(),
     }
     // Snapshot → queue placeholders → enqueue lives in runSeriesBatchEnqueue so
     // the R10 ordering invariant is unit-tested off the route. Fresh starts go
@@ -317,6 +320,7 @@ export default function SeriesDownloadRoute() {
     setPhase({ kind: "done", summary })
   }, [
     resolution,
+    series,
     subtitleSlug,
     wifiOnly,
     getRecord,
