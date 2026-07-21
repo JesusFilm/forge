@@ -17,6 +17,7 @@ function useBaseEnv() {
   delete process.env.NEXT_PUBLIC_DATADOG_SITE
   delete process.env.NEXT_PUBLIC_DATADOG_ENV
   delete process.env.NEXT_PUBLIC_DATADOG_VERSION
+  delete process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID
   delete process.env.RAILWAY_ENVIRONMENT_NAME
   delete process.env.RAILWAY_GIT_COMMIT_SHA
   delete process.env.VERCEL_ENV
@@ -49,6 +50,7 @@ describe("web env — Datadog RUM config", () => {
     expect(env.NEXT_PUBLIC_DATADOG_SITE).toBe("datadoghq.com")
     expect(env.NEXT_PUBLIC_DATADOG_ENV).toBe("test")
     expect(env.NEXT_PUBLIC_DATADOG_VERSION).toBeUndefined()
+    expect(env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID).toBeUndefined()
   })
 
   it("reads explicit Datadog config", async () => {
@@ -63,6 +65,7 @@ describe("web env — Datadog RUM config", () => {
     process.env.NEXT_PUBLIC_DATADOG_SITE = "us5.datadoghq.com"
     process.env.NEXT_PUBLIC_DATADOG_ENV = "stage"
     process.env.NEXT_PUBLIC_DATADOG_VERSION = "release-1"
+    process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
 
     const { env } = await import("./env")
 
@@ -77,6 +80,7 @@ describe("web env — Datadog RUM config", () => {
     expect(env.NEXT_PUBLIC_DATADOG_SITE).toBe("us5.datadoghq.com")
     expect(env.NEXT_PUBLIC_DATADOG_ENV).toBe("stage")
     expect(env.NEXT_PUBLIC_DATADOG_VERSION).toBe("release-1")
+    expect(env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID).toBe("G-TEST12345")
   })
 
   it("normalizes deployment env and release fallbacks for Datadog", async () => {
