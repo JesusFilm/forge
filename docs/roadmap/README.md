@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 21, 2026)
 
-- **Total tickets:** 386
-- **Complete:** 287
-- **In progress:** 26
-- **Not started:** 29
-- **Blocked:** 44
+- **Total tickets:** 392
+- **Complete:** 292
+- **In progress:** 27
+- **Not started:** 30
+- **Blocked:** 43
 - **Overdue and not complete:** 75
 
 ## Feature Index
@@ -43,8 +43,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-142](content-discovery/feat-142-mastra-search-eval-suite-operator-workflow.md)                           | Mastra native Evaluation search eval suite                                                      | nisal      | P0       | 2026-05-27 | 2    | 2026-05-28 | complete    |
 | [feat-141](content-discovery/feat-141-mastra-retrieval-strategy-investigation.md)                              | Mastra retrieval strategy ownership investigation                                               | nisal      | P0       | 2026-05-29 | 2    | 2026-05-30 | blocked     |
 | [feat-148](content-discovery/feat-148-search-eval-orchestrator-workflow.md)                                    | Search eval artifact and Evaluation orchestrator                                                | nisal      | P0       | 2026-05-30 | 2    | 2026-05-31 | complete    |
-| [feat-154](content-discovery/feat-154-production-search-eval-seed-baseline.md)                                 | Production search eval seed baseline capture                                                    | nisal      | P0       | 2026-06-01 | 1    | 2026-06-01 | in-progress |
-| [feat-156](content-discovery/feat-156-mastra-ai-gateway-content-embeddings.md)                                 | Mastra AI Gateway content embeddings migration                                                  | nisal      | P0       | 2026-06-03 | 3    | 2026-06-05 | blocked     |
+| [feat-154](content-discovery/feat-154-production-search-eval-seed-baseline.md)                                 | Production search eval seed baseline capture                                                    | nisal      | P0       | 2026-06-01 | 1    | 2026-06-01 | complete    |
+| [feat-156](content-discovery/feat-156-mastra-ai-gateway-content-embeddings.md)                                 | Mastra AI Gateway content embeddings migration                                                  | nisal      | P0       | 2026-06-03 | 3    | 2026-06-05 | in-progress |
 | [feat-192](content-discovery/feat-192-enriched-transcript-semantic-search.md)                                  | Enriched Transcript Semantic Search Realignment                                                 | nisal      | P0       | 2026-06-17 | 5    | 2026-06-21 | complete    |
 | [feat-199](content-discovery/feat-199-transcript-embedding-operations-promotion.md)                            | Transcript embedding operations, promotion, and source coverage                                 | nisal      | P0       | 2026-06-30 | 5    | 2026-07-04 | not-started |
 | [feat-272](content-discovery/feat-272-admin-production-search-trace-self-heal.md)                              | Admin production search trace retention self-heal                                               | codex      | P0       | 2026-07-20 | 1    | 2026-07-20 | complete    |
@@ -325,6 +325,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-275](platform/feat-275-watch-mobile-hero-loading-affordance.md)                | Watch mobile hero loading affordance                                             | vlad       | P1       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-268](platform/feat-268-mobile-timeout-log-operation-attribution.md)            | Operation-attributed mobile client-timeout log + Datadog monitor                 | urim       | P1       | 2026-07-21 | 1    | 2026-07-21 | in-progress |
 | [feat-275](platform/feat-275-admin-editor-video-picker-language-aware-dubs.md)       | Admin Editor Video Picker Language-Aware Dubs                                    | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-277](platform/feat-277-admin-editor-collection-child-expansion.md)             | Admin Editor Collection Child Expansion                                          | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-277](platform/feat-277-watch-media-collection-header-copy-order.md)            | Watch media collection authored copy order                                       | unassigned | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -363,6 +365,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-264](platform/feat-264-watch-modal-playback-coordination.md)                   | Pause Watch playback for every modal                                             | codex      | P2       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-249](platform/feat-249-web-force-login-marker-consume-on-success.md)           | Web force-login marker: consume on callback success, not login redirect          | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)             | Scope Watch media resource hints to media routes                                 | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
+| [feat-275](platform/feat-275-watch-experience-media-card-white-outline.md)           | Web Video Thumbnail White Interaction Frame                                      | vlad       | P2       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-279](platform/feat-279-watch-global-beta-tester-cta-flag.md)                   | Watch global beta tester CTA feature flag                                        | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | in-progress |
 | [feat-267](platform/feat-267-mobile-hero-stream-retry-cooldown.md)                   | Mobile hero stream retry cooldown (idle-Home unbounded retry loop)               | urim       | P2       | 2026-07-22 | 2    | 2026-07-23 | in-progress |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
@@ -386,6 +389,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-034](topic-experiences/feat-034-ai-christmas-experience.md)                           | AI-Generated Christmas Experience                                                | ekkasit   | P0       | 2026-04-01 | 14   | 2026-04-14 | in-progress |
 | [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                                                 | ekkasit   | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit   | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
+| [feat-266](topic-experiences/feat-266-watch-collection-download-localization.md)            | Watch collection download localization                                           | vlad      | P1       | —          | 2    | —          | not-started |
 | [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim      | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
 | [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim      | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
 | [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim      | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |
@@ -410,8 +414,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-196](topic-experiences/feat-196-watch-compatible-download-filenames.md)               | Watch compatible download filenames                                              | vlad      | P1       | 2026-06-17 | 2    | 2026-06-18 | complete    |
 | [feat-246](topic-experiences/feat-246-tv-home-experience-content-parity.md)                 | TV Home content parity — render rows from the single admin watch-home Experience | urim      | P1       | 2026-07-08 | 4    | 2026-07-11 | in-progress |
 | [feat-250](topic-experiences/feat-250-watch-audio-subtitle-chrome-indicators.md)            | Watch Audio and Subtitle Chrome Indicators                                       | urim      | P1       | 2026-07-13 | 1    | 2026-07-13 | complete    |
+| [feat-251](topic-experiences/feat-251-watch-collection-sequential-downloads.md)             | Watch collection sequential downloads                                            | vlad      | P1       | 2026-07-14 | 3    | 2026-07-16 | in-progress |
 | [feat-061](topic-experiences/feat-061-watch-platform-upgrade-bible-verse-visuals.md)        | Watch Platform Upgrade (Bible Verse Visuals)                                     | tataihono | P1       | 2026-07-15 | 48   | 2026-08-31 | blocked     |
 | [feat-262](topic-experiences/feat-262-tv-showcase-mode.md)                                  | TV Showcase Mode: Settings tab + felt-need excerpt reel                          | urim      | P1       | 2026-07-20 | 10   | 2026-07-29 | in-progress |
+| [feat-279](topic-experiences/feat-279-experience-carousel-empty-copy.md)                    | Experience carousel empty copy rendering                                         | urim      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
