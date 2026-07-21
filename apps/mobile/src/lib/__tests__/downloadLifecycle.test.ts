@@ -196,11 +196,9 @@ describe("swap snapshot + revert round-trip (AE2)", () => {
     })
   })
 
-  // A12: swapRevertFields is an explicit field list that does NOT mention
-  // seriesSlug — it survives only because both revert call sites merge over
-  // the CURRENT record (`{ ...current, ...swapRevertFields(swap) }`), never
-  // replace it. Pin that the merge pattern (not the explicit list) is what
-  // carries it.
+  // A12: swapRevertFields' explicit field list omits seriesSlug — it survives
+  // only because both revert sites merge over the CURRENT record
+  // (`{ ...current, ...swapRevertFields(swap) }`). Pin the merge pattern.
   it("A12: a reverting swap preserves seriesSlug via the merge-over-current pattern", () => {
     const seriesExisting: OfflineDownloadRecord = {
       ...existing,
@@ -272,10 +270,9 @@ describe("buildReattachRequest (DownloadsProvider launch-reattach seam)", () => 
     expect(request.enqueuedAt).toBe(1_753_000_000_000)
   })
 
-  // AE7: a kill/relaunch mid-batch reattaches this placeholder, it re-enters the
-  // queue via the rebuilt request above, and if the pump's start attempt fails,
-  // the failed-resurface write (DownloadsProvider.tsx's pump) must still carry
-  // seriesSlug — not silently drop it back to a bare unlinked record.
+  // AE7: a kill/relaunch reattaches this placeholder via the rebuilt request;
+  // if the pump's start then fails, the failed-resurface write must still
+  // carry seriesSlug — never a bare unlinked record.
   it("AE7: a failed-resurface after the reattach keeps seriesSlug", () => {
     const request = buildReattachRequest(relaunchedPlaceholder, false)
     const failedRecord = buildRequestRecord(request, "failed")

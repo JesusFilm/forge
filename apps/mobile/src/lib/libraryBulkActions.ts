@@ -2,10 +2,9 @@ import { effectiveDownloadBytes } from "./libraryDownloads"
 import type { OfflineDownloadRecord } from "./offlineManifest"
 
 /**
- * Pure Library bulk-action orchestrator (U5's tested heart): injected
- * deleteDownload/retryDownload deps, no React. Re-intersects the requested
- * slugs with the LIVE records at call time and derives every count from the
- * per-slug call outcome — never from aggregate download state (KTD4).
+ * Pure Library bulk-action orchestrator (U5): injected deps, no React.
+ * Re-intersects requested slugs with the LIVE records at call time; every
+ * count derives from per-slug call outcomes, never aggregate state (KTD4).
  */
 
 export type BulkDeleteResult = {

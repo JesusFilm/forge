@@ -18,11 +18,9 @@ const IN_FLIGHT_STATES: ReadonlySet<OfflineDownloadState> = new Set([
 ])
 
 /**
- * Bytes credited to a record for storage/selection math: a finished copy's
- * full size, or an in-flight (downloading/paused/queued) transfer's bytes
- * written so far. A mid-swap record has BOTH the old committed copy and the
- * new partial on disk, so it credits both. Failed/canceled records and
- * zero-progress queue entries count 0.
+ * Bytes credited for storage/selection math: a finished copy's full size, an
+ * in-flight transfer's bytes written so far — and a mid-swap record BOTH (its
+ * old committed copy and new partial share the disk). Everything else is 0.
  */
 export function effectiveDownloadBytes(record: OfflineDownloadRecord): number {
   if (record.swapFrom != null) {
@@ -50,14 +48,18 @@ export function formatLibraryBytes(bytes: number): string {
   return `${Math.round(mb)} MB`
 }
 
-/** m:ss for a known duration; null (no badge) when durationSeconds is absent. */
+/** m:ss (h:mm:ss above an hour); null (no badge) when duration is absent. */
 export function formatLibraryDuration(
   durationSeconds: number | undefined,
 ): string | null {
   if (durationSeconds == null || durationSeconds < 0) return null
-  const mins = Math.floor(durationSeconds / 60)
+  const pad = (n: number) => n.toString().padStart(2, "0")
+  const hours = Math.floor(durationSeconds / 3600)
+  const mins = Math.floor((durationSeconds % 3600) / 60)
   const secs = Math.floor(durationSeconds % 60)
-  return `${mins}:${secs.toString().padStart(2, "0")}`
+  return hours > 0
+    ? `${hours}:${pad(mins)}:${pad(secs)}`
+    : `${mins}:${pad(secs)}`
 }
 
 // ── row-state mapping (R6) ─────────────────────────────────────────────
@@ -135,6 +137,27 @@ export type LibrarySeriesGroup = {
 export type LibraryViewModel = {
   seriesGroups: LibrarySeriesGroup[]
   standaloneRecords: OfflineDownloadRecord[]
+}
+
+/**
+ * Content equality for memoized series cards: scalar fields plus per-index
+ * episode record IDENTITY — a rebuilt wrapper with unchanged members is equal,
+ * so a progress tick only re-renders the card whose episode actually changed.
+ */
+export function seriesGroupContentEqual(
+  a: LibrarySeriesGroup,
+  b: LibrarySeriesGroup,
+): boolean {
+  if (a === b) return true
+  return (
+    a.seriesSlug === b.seriesSlug &&
+    a.seriesTitle === b.seriesTitle &&
+    a.episodeCount === b.episodeCount &&
+    a.combinedBytes === b.combinedBytes &&
+    a.failedEpisodeCount === b.failedEpisodeCount &&
+    a.episodes.length === b.episodes.length &&
+    a.episodes.every((episode, i) => episode === b.episodes[i])
+  )
 }
 
 /** Shared comparator: a known time wins; missing time sorts last, tie-broken

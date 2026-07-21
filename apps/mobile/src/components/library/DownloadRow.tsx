@@ -50,10 +50,9 @@ export interface DownloadRowProps {
 }
 
 /**
- * One offline download's Library row: poster, title, status subtitle, and its
- * rowState affordance (R5/R6/R8). rowState derives from `record` HERE (not a
- * parent-computed prop) so React.memo's `record`-identity check is the one
- * thing that decides whether this row re-renders on a progress tick.
+ * One download's Library row (R5/R6/R8). rowState derives from `record` HERE
+ * (not a parent-computed prop) so React.memo's record-identity check alone
+ * decides whether the row re-renders on a progress tick.
  */
 export const DownloadRow = memo(function DownloadRow({
   record,

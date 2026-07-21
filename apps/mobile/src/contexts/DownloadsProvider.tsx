@@ -654,10 +654,13 @@ export function DownloadsProvider({ children }: { children: ReactNode }) {
         {
           getRecord: (slug) => recordsRef.current[slug],
           restart: lifecycle.restart,
+          // Release the batch slot first: a retried episode still in scope
+          // counts as occupancy and stalls the batch's still-queued siblings.
+          onLeaveBatchScope: removeFromBatchScope,
         },
         videoSlug,
       ),
-    [lifecycle],
+    [lifecycle, removeFromBatchScope],
   )
 
   const value = useMemo<DownloadsContextValue>(

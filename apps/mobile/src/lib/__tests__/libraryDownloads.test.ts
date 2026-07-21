@@ -4,6 +4,7 @@ import {
   formatLibraryBytes,
   formatLibraryDuration,
   libraryRowState,
+  seriesGroupContentEqual,
   storageSummary,
 } from "../libraryDownloads"
 import {
@@ -355,7 +356,62 @@ describe("formatLibraryDuration — edges", () => {
     expect(formatLibraryDuration(65)).toBe("1:05")
   })
 
+  it("rolls hour-plus durations to h:mm:ss (the ~2h feature-film case)", () => {
+    expect(formatLibraryDuration(7200)).toBe("2:00:00")
+    expect(formatLibraryDuration(3725)).toBe("1:02:05")
+  })
+
   it("returns null (no badge) when duration is missing", () => {
     expect(formatLibraryDuration(undefined)).toBeNull()
+  })
+})
+
+describe("buildLibraryViewModel — reference identity + title fallback", () => {
+  it("falls back to the seriesSlug when no episode carries a seriesTitle", () => {
+    const a = record("ep-a", "downloaded", { seriesSlug: "s1" })
+    const b = record("ep-b", "downloaded", {
+      seriesSlug: "s1",
+      seriesTitle: "",
+    })
+    const model = buildLibraryViewModel([a, b])
+    expect(model.seriesGroups[0].seriesTitle).toBe("s1")
+  })
+
+  it("preserves the ORIGINAL record references in groups and standalone lists", () => {
+    const ep = record("ep-a", "downloaded", { seriesSlug: "s1" })
+    const solo = record("solo", "downloaded")
+    const model = buildLibraryViewModel([ep, solo])
+    expect(model.seriesGroups[0].episodes[0]).toBe(ep)
+    expect(model.standaloneRecords[0]).toBe(solo)
+  })
+})
+
+describe("seriesGroupContentEqual (SeriesGroupCard memo comparator)", () => {
+  const episodes = [
+    record("ep-a", "downloaded", { seriesSlug: "s1", totalBytes: 100 }),
+    record("ep-b", "downloaded", { seriesSlug: "s1", totalBytes: 50 }),
+  ]
+
+  it("treats a rebuilt wrapper with identical members as equal (the per-tick case)", () => {
+    const a = buildLibraryViewModel(episodes).seriesGroups[0]
+    const b = buildLibraryViewModel(episodes).seriesGroups[0]
+    expect(a).not.toBe(b)
+    expect(seriesGroupContentEqual(a, b)).toBe(true)
+  })
+
+  it("is unequal when a member record's identity changed (its group must re-render)", () => {
+    const a = buildLibraryViewModel(episodes).seriesGroups[0]
+    const ticked = [
+      episodes[0],
+      { ...episodes[1], state: "downloading" as const, bytesWritten: 10 },
+    ]
+    const b = buildLibraryViewModel(ticked).seriesGroups[0]
+    expect(seriesGroupContentEqual(a, b)).toBe(false)
+  })
+
+  it("is unequal when an episode was added or removed", () => {
+    const a = buildLibraryViewModel(episodes).seriesGroups[0]
+    const b = buildLibraryViewModel([episodes[0]]).seriesGroups[0]
+    expect(seriesGroupContentEqual(a, b)).toBe(false)
   })
 })

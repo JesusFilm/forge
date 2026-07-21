@@ -4,10 +4,9 @@ import {
 } from "../seriesDownloadEnqueue"
 import type { SeriesEpisodeResolution } from "../seriesDownloadResolver"
 
-// U1: seriesSlug/seriesTitle/enqueuedAt are batch-level (constant across every
-// episode in a series download); seriesEpisodeIndex/durationSeconds are
-// per-episode (vary per resolution) — buildEpisodeRequest is the seam where
-// the two sources merge into one StartDownloadRequest.
+// U1: seriesSlug/seriesTitle/enqueuedAt are batch-level constants;
+// seriesEpisodeIndex/durationSeconds vary per episode — buildEpisodeRequest
+// is the seam merging the two sources into one StartDownloadRequest.
 
 function resolvedEpisode(
   overrides: Partial<SeriesEpisodeResolution> = {},

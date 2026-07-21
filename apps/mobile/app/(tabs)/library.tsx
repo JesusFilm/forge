@@ -67,7 +67,11 @@ export default function LibraryScreen() {
     retryDownload,
     resumeDownload,
   } = useDownloads()
-  const { longPressHintSeen, setLongPressHintSeen } = useWatchPreferences()
+  const {
+    longPressHintSeen,
+    setLongPressHintSeen,
+    isReady: prefsReady,
+  } = useWatchPreferences()
 
   const [capacityBytes, setCapacityBytes] = useState(0)
   useEffect(() => {
@@ -88,9 +92,12 @@ export default function LibraryScreen() {
   const [confirmVisible, setConfirmVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
+  // Also gated on prefsReady: before the persisted blob hydrates,
+  // longPressHintSeen reads false and the hint would flash for returning users.
   useEffect(() => {
     if (
       !isReady ||
+      !prefsReady ||
       offlineRecords.length === 0 ||
       selecting ||
       longPressHintSeen
@@ -101,7 +108,7 @@ export default function LibraryScreen() {
     setHintVisible(true)
     const timer = setTimeout(() => setHintVisible(false), HINT_VISIBLE_MS)
     return () => clearTimeout(timer)
-  }, [isReady, offlineRecords.length, selecting, longPressHintSeen])
+  }, [isReady, prefsReady, offlineRecords.length, selecting, longPressHintSeen])
 
   // KTD8: the action bar replaces the tab bar during selection; restored
   // whenever selection turns off, on blur (switching tabs), and on unmount.
@@ -121,11 +128,9 @@ export default function LibraryScreen() {
     }
   }, [navigation])
 
-  // R20: live-intersection — drop selected slugs the provider no longer has
-  // (deleted/vanished elsewhere), and auto-exit once nothing valid remains.
-  // Keyed ONLY on offlineRecords (read selectionState via ref) — this must
-  // react to records changing externally, never to the user's own checkbox
-  // taps, or deselecting the last item would wrongly bounce out of selection.
+  // R20: prune selected slugs the provider no longer has; auto-exit when empty.
+  // Keyed ONLY on offlineRecords (selectionState via ref) — reacting to the
+  // user's own checkbox taps would bounce out of selection on deselect-last.
   const selectionStateRef = useRef(selectionState)
   selectionStateRef.current = selectionState
   useEffect(() => {
@@ -227,10 +232,15 @@ export default function LibraryScreen() {
     datadogLog.info("library.bulk_delete", {
       count: result.deletedCount,
       bytes: result.freedBytes,
+      failed: result.failedCount,
     })
     setSelectionState(exitSelection())
     setToastMessage(
-      `${result.deletedCount} video${result.deletedCount === 1 ? "" : "s"} deleted · ${formatLibraryBytes(result.freedBytes)} freed`,
+      `${result.deletedCount} video${result.deletedCount === 1 ? "" : "s"} deleted · ${formatLibraryBytes(result.freedBytes)} freed${
+        result.failedCount > 0
+          ? ` · ${result.failedCount} couldn't be deleted`
+          : ""
+      }`,
     )
   }, [selected, offlineRecords, deleteDownload])
 

@@ -370,6 +370,21 @@ describe("swap", () => {
     expect(midSwap.enqueuedAt).toBe(1_753_000_000_000)
   })
 
+  // Review #11: a watch-route original has no index/duration; a later batch
+  // swap's request does — the swap must adopt them or the episode sorts last.
+  it("adopts the request's seriesEpisodeIndex/durationSeconds when the existing record lacks them", async () => {
+    const existing = makeRecord({ seriesSlug: "storyclubs" })
+    const h = makeHarness({ records: [existing] })
+    const request = makeRequest()
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    request.seriesEpisodeIndex = 4
+    request.durationSeconds = 300
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    const midSwap = h.writes[0]
+    expect(midSwap.seriesEpisodeIndex).toBe(4)
+    expect(midSwap.durationSeconds).toBe(300)
+  })
+
   it("bails `canceled` when a cancel reverted the record during re-resolve", async () => {
     const existing = makeRecord()
     const h: ReturnType<typeof makeHarness> = makeHarness({
@@ -560,6 +575,44 @@ describe("retryFailedDownload (DownloadsProvider retry guard — Part A)", () =>
     )
     expect(h.records.get("washi-gospel-1")?.state).toBe("downloading")
     expect(h.engineStart).toHaveBeenCalledTimes(1)
+  })
+
+  // Review #2: release the batch slot before restarting, or a retried episode
+  // re-occupies the sequential batch slot and stalls still-queued siblings.
+  it("releases the batch scope before restarting a failed record", async () => {
+    const h = makeHarness({ records: [failed] })
+    const events: string[] = []
+    const onLeaveBatchScope = jest.fn((slug: string) => {
+      events.push(`scope:${slug}`)
+    })
+    await retryFailedDownload(
+      {
+        getRecord: (slug) => h.records.get(slug),
+        restart: async (record) => {
+          events.push("restart")
+          await h.lifecycle.restart(record)
+        },
+        onLeaveBatchScope,
+      },
+      "washi-gospel-1",
+    )
+    expect(onLeaveBatchScope).toHaveBeenCalledWith("washi-gospel-1")
+    expect(events).toEqual(["scope:washi-gospel-1", "restart"])
+  })
+
+  it("leaves the batch scope untouched for a non-failed record", async () => {
+    const record = makeRecord({ state: "queued" })
+    const h = makeHarness({ records: [record] })
+    const onLeaveBatchScope = jest.fn()
+    await retryFailedDownload(
+      {
+        getRecord: (slug) => h.records.get(slug),
+        restart: h.lifecycle.restart,
+        onLeaveBatchScope,
+      },
+      "washi-gospel-1",
+    )
+    expect(onLeaveBatchScope).not.toHaveBeenCalled()
   })
 
   it.each(["downloaded", "downloading", "queued", "paused"] as const)(

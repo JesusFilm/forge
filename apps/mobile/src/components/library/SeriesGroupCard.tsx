@@ -13,6 +13,7 @@ import {
 } from "../../lib/color"
 import {
   formatLibraryBytes,
+  seriesGroupContentEqual,
   type LibrarySeriesGroup,
 } from "../../lib/libraryDownloads"
 import {
@@ -38,6 +39,25 @@ export interface SeriesGroupCardProps {
   selected?: ReadonlySet<string>
   onToggleSeries?: (episodeSlugs: readonly string[]) => void
   onLongPress?: (episodeSlugs: readonly string[]) => void
+}
+
+// buildLibraryViewModel rebuilds every group WRAPPER on each records tick, so
+// the default shallow compare re-renders every card ~1/sec while anything
+// downloads; compare group content (member record identity) instead.
+function arePropsEqual(
+  prev: Readonly<SeriesGroupCardProps>,
+  next: Readonly<SeriesGroupCardProps>,
+): boolean {
+  return (
+    prev.onRowPress === next.onRowPress &&
+    prev.onRetry === next.onRetry &&
+    prev.onResume === next.onResume &&
+    prev.selecting === next.selecting &&
+    prev.selected === next.selected &&
+    prev.onToggleSeries === next.onToggleSeries &&
+    prev.onLongPress === next.onLongPress &&
+    seriesGroupContentEqual(prev.group, next.group)
+  )
 }
 
 /** Collapsible series card (R4). Defaults collapsed; tapping the header toggles expansion. */
@@ -89,7 +109,16 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
         style={({ pressed }) => [styles.header, pressed && feedback.pressed]}
         accessibilityRole="button"
         accessibilityLabel={`${group.seriesTitle}, ${group.episodeCount} videos`}
-        accessibilityState={selecting ? undefined : { expanded }}
+        accessibilityState={
+          // R11: expose the tri-state header checkbox ("mixed" for partial)
+          // the same way DownloadRow exposes per-row selection.
+          selecting
+            ? {
+                checked:
+                  seriesState === "some" ? "mixed" : seriesState === "all",
+              }
+            : { expanded }
+        }
       >
         {selecting && <SelectionCheckbox state={seriesState} />}
         <View style={styles.thumb}>
@@ -163,7 +192,7 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
         ))}
     </View>
   )
-})
+}, arePropsEqual)
 
 const styles = StyleSheet.create({
   card: {

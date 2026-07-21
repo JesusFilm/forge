@@ -108,11 +108,9 @@ export function pruneToExisting(
     if (existingSlugs.has(slug)) pruned.add(slug)
   }
   const changed = pruned.size !== state.selected.size
-  // autoExit means "a real vanishing happened, not the user's own choice":
-  // the whole record list emptied out, OR a NON-empty selection got pruned
-  // to nothing. An already-empty selection (e.g. right after entering
-  // selection via the Select pill) must never trip this on its own — that
-  // would exit selection on the next records tick for no user-visible reason.
+  // autoExit only on a real vanishing — the whole list emptied, or a NON-empty
+  // selection pruned to nothing. An already-empty selection (fresh Select-pill
+  // entry) must not trip it, or the next records tick would exit selection.
   const autoExit =
     existingSlugs.size === 0 || (state.selected.size > 0 && pruned.size === 0)
   return {
