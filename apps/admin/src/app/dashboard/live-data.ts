@@ -2021,10 +2021,7 @@ async function loadVideoRowSlice({
     if (left.parentId !== right.parentId) {
       return left.parentId.localeCompare(right.parentId)
     }
-    const leftOrder = left.order ?? Number.MAX_SAFE_INTEGER
-    const rightOrder = right.order ?? Number.MAX_SAFE_INTEGER
-    if (leftOrder !== rightOrder) return leftOrder - rightOrder
-    return left.createdAt.getTime() - right.createdAt.getTime()
+    return compareCollectionChildRelations(left, right)
   })) {
     const current = childPreviewIdsByVideo.get(item.parentId) ?? []
     if (current.length >= 3) continue
@@ -2182,6 +2179,50 @@ export async function loadVideoRows(
     videoIds: missing,
   })
   return [...rows, ...extras]
+}
+
+type CollectionChildRelation = {
+  childId: string
+  order: number | null
+  createdAt: Date
+}
+
+function compareCollectionChildRelations(
+  left: CollectionChildRelation,
+  right: CollectionChildRelation,
+) {
+  const leftOrder = left.order ?? Number.MAX_SAFE_INTEGER
+  const rightOrder = right.order ?? Number.MAX_SAFE_INTEGER
+  if (leftOrder !== rightOrder) return leftOrder - rightOrder
+  return left.createdAt.getTime() - right.createdAt.getTime()
+}
+
+export async function loadVideoCollectionChildren(
+  principal: Principal,
+  parentVideoId: string,
+  options: { preferredLocale?: string } = {},
+) {
+  const relations = await prisma.videoRelation.findMany({
+    where: { parentId: parentVideoId, child: { deletedAt: null } },
+    select: { childId: true, order: true, createdAt: true },
+  })
+  const childIds = relations
+    .sort(compareCollectionChildRelations)
+    .map((relation) => relation.childId)
+  if (childIds.length === 0) return []
+
+  const rows = await loadVideoRowSlice({
+    principal,
+    limit: childIds.length,
+    offset: 0,
+    preferredLocale: options.preferredLocale,
+    videoIds: childIds,
+  })
+  const rowsById = new Map(rows.map((row) => [row.key, row]))
+  return childIds.flatMap((childId) => {
+    const row = rowsById.get(childId)
+    return row ? [row] : []
+  })
 }
 
 export async function loadVideoLibraryPage(

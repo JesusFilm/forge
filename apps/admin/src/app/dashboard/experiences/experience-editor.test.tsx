@@ -101,6 +101,9 @@ function renderEditorElement(
           | "experience-editor-media-collection-picker"
       },
     ) => Promise<VideoLibraryItem[]>
+    loadVideoCollectionChildrenAction?: (
+      parentVideoId: string,
+    ) => Promise<VideoLibraryItem[]>
   } = {},
 ) {
   return (
@@ -124,6 +127,9 @@ function renderEditorElement(
       videoLibrary={options.videoLibrary ?? defaultVideoLibrary}
       mediaLibrary={options.mediaLibrary ?? defaultMediaLibrary}
       searchVideoLibraryAction={options.searchVideoLibraryAction}
+      loadVideoCollectionChildrenAction={
+        options.loadVideoCollectionChildrenAction
+      }
       canUploadImages
       initialValues={{
         localeId: "locale-1",
@@ -1435,6 +1441,287 @@ describe("ExperienceEditor", () => {
         null,
       )
       expect(view.container.textContent).toContain("+2")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("expands a collection into ordered video carousel children", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Ordered Collection",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const childOne = {
+      ...defaultVideoLibrary[0]!,
+      key: "child-1",
+      title: "Episode One",
+      id: "core-child-1",
+      previewStreamUrl: "https://example.com/episode-one.m3u8",
+      playableDubs: [
+        {
+          ...defaultVideoLibrary[0]!.playableDubs![0]!,
+          key: "child-1-dub-en",
+          streamUrl: "https://example.com/episode-one.m3u8",
+        },
+      ],
+    }
+    const childTwo = {
+      ...defaultVideoLibrary[0]!,
+      key: "child-2",
+      title: "Episode Two",
+      id: "core-child-2",
+      previewStreamUrl: "https://example.com/episode-two.m3u8",
+      playableDubs: [
+        {
+          ...defaultVideoLibrary[0]!.playableDubs![0]!,
+          key: "child-2-dub-en",
+          streamUrl: "https://example.com/episode-two.m3u8",
+        },
+      ],
+    }
+    const loadVideoCollectionChildrenAction = vi.fn(async () => [
+      childOne,
+      childTwo,
+    ])
+    const view = renderEditorDom(
+      [
+        {
+          t: "videoCarousel",
+          sectionKey: "carousel",
+          itemsSource: "manual",
+          title: "Carousel",
+          items: [{ videoId: "child-1", streamingUrl: "existing.m3u8" }],
+        },
+      ],
+      {
+        videoLibrary: [collection, childOne, childTwo],
+        loadVideoCollectionChildrenAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add from media library").click()
+      })
+      act(() => {
+        findButtonByText(view.container, "Ordered Collection").click()
+      })
+      await act(async () => {
+        findButtonByExactText(view.container, "Add video").click()
+      })
+
+      expect(loadVideoCollectionChildrenAction).toHaveBeenCalledWith(
+        "collection-1",
+      )
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<{
+        items?: Array<Record<string, unknown>>
+      }>
+      expect(blocks[0]?.items?.map((item) => item.videoId)).toEqual([
+        "child-1",
+        "child-2",
+      ])
+      expect(blocks[0]?.items?.[1]?.streamingUrl).toBe(
+        "https://example.com/episode-two.m3u8",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it.each(["carousel", "grid", "collection"])(
+    "expands a collection into ordered %s media collection children",
+    async (variant) => {
+      const collection = {
+        ...defaultVideoLibrary[0]!,
+        key: "collection-1",
+        title: "Ordered Collection",
+        id: "core-collection",
+        label: "COLLECTION",
+        labelLabel: "Collection",
+        isCollectionTarget: true,
+      }
+      const childOne = {
+        ...defaultVideoLibrary[0]!,
+        key: "child-1",
+        title: "Episode One",
+        id: "core-child-1",
+        previewImageUrl: "https://example.com/episode-one.jpg",
+      }
+      const childTwo = {
+        ...defaultVideoLibrary[0]!,
+        key: "child-2",
+        title: "Episode Two",
+        id: "core-child-2",
+        previewImageUrl: "https://example.com/episode-two.jpg",
+      }
+      const view = renderEditorDom(
+        [
+          {
+            t: "mediaCollection",
+            sectionKey: `media-${variant}`,
+            variant,
+            itemsSource: "manual",
+            title: "Media",
+            items: [],
+          },
+        ],
+        {
+          videoLibrary: [collection, childOne, childTwo],
+          loadVideoCollectionChildrenAction: vi.fn(async () => [
+            childOne,
+            childTwo,
+          ]),
+        },
+      )
+
+      try {
+        act(() => {
+          findButtonByText(view.container, "Add video").click()
+        })
+        act(() => {
+          findButtonByText(view.container, "Ordered Collection").click()
+        })
+        await act(async () => {
+          findButtonByExactText(view.container, "Add video").click()
+        })
+
+        const blocksInput = view.container.querySelector('input[name="blocks"]')
+        if (!(blocksInput instanceof HTMLInputElement)) {
+          throw new Error("Blocks input not found")
+        }
+        const blocks = JSON.parse(blocksInput.value) as Array<{
+          items?: Array<Record<string, unknown>>
+        }>
+        expect(blocks[0]?.items?.map((item) => item.videoId)).toEqual([
+          "child-1",
+          "child-2",
+        ])
+        expect(blocks[0]?.items?.map((item) => item.imageOverrideUrl)).toEqual([
+          "https://example.com/episode-one.jpg",
+          "https://example.com/episode-two.jpg",
+        ])
+      } finally {
+        view.cleanup()
+      }
+    },
+  )
+
+  it("keeps the picker open and the block unchanged when collection loading fails", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Broken Collection",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenAction: vi.fn(async () => {
+          throw new Error("network unavailable")
+        }),
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add video").click()
+      })
+      await act(async () => {
+        findButtonByExactText(view.container, "Add video").click()
+      })
+
+      expect(view.container.textContent).toContain("Broken Collection")
+      expect(view.container.textContent).toContain(
+        "Unable to load collection videos.",
+      )
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<{
+        items?: unknown[]
+      }>
+      expect(blocks[0]?.items).toEqual([])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("disables collection confirmation while children load", async () => {
+    let resolveChildren: (children: VideoLibraryItem[]) => void = () => {}
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Slow Collection",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenAction: vi.fn(
+          () =>
+            new Promise<VideoLibraryItem[]>((resolve) => {
+              resolveChildren = resolve
+            }),
+        ),
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add video").click()
+      })
+      act(() => {
+        findButtonByExactText(view.container, "Add video").click()
+      })
+
+      const pendingButton = findButtonByExactText(
+        view.container,
+        "Adding videos…",
+      )
+      expect(pendingButton.disabled).toBe(true)
+
+      await act(async () => {
+        resolveChildren([])
+      })
+      expect(view.container.textContent).toContain(
+        "This collection has no videos to add.",
+      )
     } finally {
       view.cleanup()
     }
