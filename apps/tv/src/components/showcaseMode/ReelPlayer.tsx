@@ -16,6 +16,7 @@ import { datadogLog, reportDatadogError } from "../../lib/datadog"
 import {
   AUDIO_FADE_IN_MS,
   AUDIO_FADE_TICK_MS,
+  crossfadeGainsAt,
   fadeOutVolumeAt,
   shouldDriveFadeOut,
   volumeAtElapsed,
@@ -279,6 +280,28 @@ export function ReelPlayer({
     [stopFade, setVolumeOn],
   )
 
+  // The hop seam's true crossfade: one timer drives BOTH dubs at once — outgoing down,
+  // incoming up, equal-power — so there is no silent gap between languages. The single
+  // shared fade timer is why a crossfade cannot be two overlapping fadeVolumeTo calls.
+  const crossfadeVolumes = useCallback(
+    (outgoing: VideoPlayer, incoming: VideoPlayer, durationMs: number) => {
+      stopFade()
+      const startedAt = Date.now()
+      const tick = () => {
+        const gains = crossfadeGainsAt({
+          elapsedMs: Date.now() - startedAt,
+          durationMs,
+        })
+        setVolumeOn(outgoing, gains.outgoing)
+        setVolumeOn(incoming, gains.incoming)
+        if (Date.now() - startedAt >= durationMs) stopFade()
+      }
+      tick()
+      fadeTimerRef.current = setInterval(tick, AUDIO_FADE_TICK_MS)
+    },
+    [stopFade, setVolumeOn],
+  )
+
   useEffect(() => stopFade, [stopFade])
 
   const confirmPlayback = useCallback(() => {
@@ -324,6 +347,7 @@ export function ReelPlayer({
     shouldPlayRef,
     confirmPlayback,
     fadeVolumeTo,
+    crossfadeVolumes,
     defaultBufferOptionsRef,
   })
   liveRef.current = live
@@ -376,13 +400,10 @@ export function ReelPlayer({
     }
 
     if (hopMode === "flip" && target != null) {
-      // Seamless boundary. The outgoing player is NOT paused — the end-of-window
-      // path left it rolling silently as the motion cover; the hook's reveal owns
-      // the crossfade from here.
+      // Seamless boundary. The outgoing player is NOT paused OR silenced — the end-of-
+      // window path left it rolling AT VOLUME as the motion cover, and the hook's reveal
+      // crossfades it out against the incoming dub, so the two never break to silence.
       stopFade()
-      // A failure-driven advance (watchdog/error mid-window) reaches this branch with
-      // the outgoing still AUDIBLE — the window-end fade only covers the natural path.
-      setVolumeOn(live, 0)
       loadedStreamRef.current = target
       loadedTokenRef.current = token
       flip({ target, token })
@@ -532,9 +553,11 @@ export function ReelPlayer({
       // Guarded above, so this is the confirmed source's own clock: an unconfirmed
       // reading is the OUTGOING excerpt's position and would pollute watched_ms.
       qoeRef.current?.onTimeUpdate(currentTime)
-      // Ramp down INTO the end, not out of it: the pause below is the hard cut the
-      // viewer hears, and a fade past the end would play the credits R6 keeps clear.
+      // Ramp down INTO the end only when NO flip is armed: a flip crossfades the
+      // outgoing out against the incoming at the reveal, so pre-fading here would drain
+      // the outgoing to silence and leave the crossfade nothing to fade out.
       if (
+        !nextFlipArmedRef.current &&
         shouldDriveFadeOut({
           armedForToken: fadeOutArmedForRef.current,
           loadedToken: loadedTokenRef.current,
@@ -547,13 +570,12 @@ export function ReelPlayer({
         driveFadeOut(currentTime, loaded.window.endSeconds)
       }
       if (currentTime < loaded.window.endSeconds) return
-      // Silence it now — the poster hides the picture, but this excerpt's audio
-      // would otherwise run on underneath until the next stream resolves.
       stopFade()
-      setVolumeOn(live, 0)
-      // A ready flip leaves the player ROLLING past its end: the same footage
-      // continues, and it is the visible motion cover until the incoming confirms.
+      // A ready flip leaves the outgoing ROLLING AT VOLUME past its end: it is both the
+      // visible motion cover AND the audio the reveal crossfades out. Only the non-flip
+      // (poster-masked) swap silences + pauses here — it has no incoming to cross with.
       if (!nextFlipArmedRef.current) {
+        setVolumeOn(live, 0)
         try {
           live.pause()
         } catch {

@@ -16,7 +16,10 @@ import {
 import { Animated } from "react-native"
 
 import { datadogLog } from "../../lib/datadog"
-import { AUDIO_FADE_IN_MS } from "../../lib/showcaseMode/audioFade"
+import {
+  AUDIO_CROSSFADE_MS,
+  AUDIO_FADE_IN_MS,
+} from "../../lib/showcaseMode/audioFade"
 import {
   HANDOFF_RESUME_NUDGE_SECONDS,
   HANDOFF_START_LEAD_SECONDS,
@@ -69,6 +72,12 @@ export type UseHopHandoffArgs = {
   confirmPlayback: () => void
   /** ReelPlayer's audio ramp (shared with the poster path). */
   fadeVolumeTo: (target: VideoPlayer, to: number, durationMs: number) => void
+  /** ReelPlayer's two-player crossfade: outgoing down + incoming up on one timer. */
+  crossfadeVolumes: (
+    outgoing: VideoPlayer,
+    incoming: VideoPlayer,
+    durationMs: number,
+  ) => void
   /** KTD-8: the captured library buffer default, restored on the player a flip promotes. */
   defaultBufferOptionsRef: MutableRefObject<VideoPlayer["bufferOptions"] | null>
 }
@@ -103,6 +112,7 @@ export function useHopHandoff({
   shouldPlayRef,
   confirmPlayback,
   fadeVolumeTo,
+  crossfadeVolumes,
   defaultBufferOptionsRef,
 }: UseHopHandoffArgs): HopHandoff {
   const [liveKey, setLiveKey] = useState<"a" | "b">("a")
@@ -420,24 +430,33 @@ export function useHopHandoff({
       pendingRetiredRef.current = null
       setPendingReveal(null)
       if (pendingReveal.token === confirmedToken) {
-        // The incoming dub is moving: ride the crossfade with the audio ramp, then
-        // retire the cover and release the reservation for the next preload.
-        fadeVolumeTo(live, 1, AUDIO_FADE_IN_MS)
+        // The incoming dub is moving: crossfade the two audio tracks — outgoing (the
+        // still-rolling cover, at volume) down while the incoming rises — so there is no
+        // silent gap. With no cover to fade (the opener), fall back to a plain fade-in.
+        if (retired != null) {
+          crossfadeVolumes(retired, live, AUDIO_CROSSFADE_MS)
+        } else {
+          fadeVolumeTo(live, 1, AUDIO_FADE_IN_MS)
+        }
         // Ref-held, latest-wins, cleared on UNMOUNT only: this effect re-runs the
         // instant setPendingReveal(null) lands, so a cleanup-cleared timer would die
-        // before firing and the reservation would never release.
+        // before firing and the reservation would never release. Retire only AFTER the
+        // audio crossfade finishes, or pausing the cover would cut it off mid-fade.
         if (revealRetireTimerRef.current != null) {
           clearTimeout(revealRetireTimerRef.current)
         }
-        revealRetireTimerRef.current = setTimeout(() => {
-          revealRetireTimerRef.current = null
-          try {
-            retired?.pause()
-          } catch {
-            // Released; benign.
-          }
-          setStandbyReady(null)
-        }, HANDOFF_CROSSFADE_MS + 40)
+        revealRetireTimerRef.current = setTimeout(
+          () => {
+            revealRetireTimerRef.current = null
+            try {
+              retired?.pause()
+            } catch {
+              // Released; benign.
+            }
+            setStandbyReady(null)
+          },
+          Math.max(HANDOFF_CROSSFADE_MS, AUDIO_CROSSFADE_MS) + 40,
+        )
       } else {
         // A dead flip recovered through the poster fallback: just silence the
         // rolling cover — the next preload will reclaim its player.
@@ -456,6 +475,7 @@ export function useHopHandoff({
     liveKey,
     live,
     fadeVolumeTo,
+    crossfadeVolumes,
     viewBOpacity,
   ])
 

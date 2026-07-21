@@ -56,6 +56,34 @@ export function fadeOutVolumeAt({
   return clamp01(remainingSeconds / AUDIO_FADE_OUT_SECONDS)
 }
 
+/**
+ * The hop crossfade's duration: the outgoing dub ramps down while the incoming ramps up
+ * over this span, so the two overlap with no silent gap between languages.
+ */
+export const AUDIO_CROSSFADE_MS = 500
+
+/**
+ * Equal-power crossfade gains at `elapsedMs` into the ramp: outgoing falls 1->0 as
+ * incoming rises 0->1, with the two summing to constant PERCEIVED loudness (cos/sin, not
+ * linear) so there is no dip at the midpoint — a seamless language handoff, not a gap.
+ */
+export function crossfadeGainsAt({
+  elapsedMs,
+  durationMs,
+}: {
+  elapsedMs: number
+  durationMs: number
+}): { outgoing: number; incoming: number } {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return { outgoing: 0, incoming: 1 }
+  }
+  const t = clamp01(
+    (Number.isFinite(elapsedMs) ? elapsedMs : durationMs) / durationMs,
+  )
+  const quarterTurn = (t * Math.PI) / 2
+  return { outgoing: Math.cos(quarterTurn), incoming: Math.sin(quarterTurn) }
+}
+
 /** True once the excerpt is close enough to its end to start watching the curve. */
 export function shouldArmFadeOut({
   currentTime,
