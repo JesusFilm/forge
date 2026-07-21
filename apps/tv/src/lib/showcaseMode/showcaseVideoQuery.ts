@@ -70,6 +70,42 @@ export const GET_SHOWCASE_VIDEO = graphql(
 
 export type ShowcaseVideoData = ResultOf<typeof GET_SHOWCASE_VIDEO>
 
+/**
+ * KTD-2's sentence-timing input: the English dub's edition subtitles, nothing else. Kept
+ * OFF the bulk ShowcaseVideo fragment (which forbids `subtitles`) — widening that would
+ * add ~2,250 fields per showcase video. `preferredPlayableDub` resolves the English dub;
+ * the client picks its English edition subtitle (language.slug === "english") downstream.
+ */
+export const showcaseSubtitleFragment = graphql(`
+  fragment ShowcaseSubtitle on Video @_unmask {
+    preferredPlayableDub(languageSlug: "english") {
+      videoEdition {
+        subtitles {
+          vttSrc
+          primary
+          aiGenerated
+          language {
+            slug
+          }
+        }
+      }
+    }
+  }
+`)
+
+export const GET_SHOWCASE_SUBTITLE = graphql(
+  `
+    query GetShowcaseSubtitle($slug: String!) {
+      videoBySlug(slug: $slug) {
+        ...ShowcaseSubtitle
+      }
+    }
+  `,
+  [showcaseSubtitleFragment],
+)
+
+export type ShowcaseSubtitleData = ResultOf<typeof GET_SHOWCASE_SUBTITLE>
+
 // Type-only reference to the app's Apollo client — erased at runtime, so this module
 // stays free of the client's (native-adjacent) import graph and unit-tests cleanly.
 type ShowcaseApolloClient = ReturnType<
