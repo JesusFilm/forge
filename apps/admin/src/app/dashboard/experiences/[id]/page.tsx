@@ -14,6 +14,7 @@ import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-v
 import { buildMediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
 import {
+  loadVideoCollectionChildren,
   loadVideoRows,
   videoIdsFromExperienceBlocks,
 } from "@/app/dashboard/live-data"
@@ -612,6 +613,14 @@ export default async function ExperienceEditorPage({
     })
   }
 
+  async function loadVideoCollectionChildrenAction(parentVideoId: string) {
+    "use server"
+    const user = await requireSession()
+    return loadVideoCollectionChildren(user, parentVideoId, {
+      preferredLocale: selectedLocale.locale,
+    })
+  }
+
   async function searchVideoLibraryAction(
     query: string,
     context?: { client?: AdminVideoLibrarySearchTraceClient },
@@ -764,6 +773,7 @@ export default async function ExperienceEditorPage({
       revisionEntries={revisionEntries}
       videoLibrary={videoLibrary}
       loadVideosByIdsAction={loadVideosByIdsAction}
+      loadVideoCollectionChildrenAction={loadVideoCollectionChildrenAction}
       searchVideoLibraryAction={searchVideoLibraryAction}
       mediaLibrary={mediaLibrary}
       canUploadImages={canUploadImages}
