@@ -561,6 +561,99 @@ describe("WatchSearchService", () => {
     )
   })
 
+  it("ranks a whole-title match above higher-availability metadata matches", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          {
+            resultType: "video",
+            resultId: "video-exact",
+            videoCoreId: "core-exact",
+            videoSlug: "jesus",
+            videoTitle: "JESUS",
+            imageUrl: null,
+            description: "Exact title result.",
+            titleLength: 5,
+          },
+        ],
+        keywordWeighted: [
+          {
+            resultType: "video",
+            resultId: "video-metadata",
+            videoCoreId: "core-metadata",
+            videoSlug: "jesus-lessons",
+            videoTitle: "Jesus Lessons",
+            imageUrl: null,
+            description: "Metadata result with the strongest lexical score.",
+            rank: 1,
+          },
+        ],
+        trigram: [
+          {
+            resultType: "video",
+            resultId: "video-metadata",
+            videoCoreId: "core-metadata",
+            videoSlug: "jesus-lessons",
+            videoTitle: "Jesus Lessons",
+            imageUrl: null,
+            description: "Metadata result with the strongest lexical score.",
+            similarity: 1,
+          },
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            videoId === "video-exact"
+              ? {
+                  videoId,
+                  kind: "unavailable",
+                  languageSlug: null,
+                  languageEnglishName: null,
+                  audio: false,
+                  subtitles: false,
+                  playbackId: null,
+                  videoDubId: null,
+                  videoSubtitleId: null,
+                  durationSeconds: null,
+                  hrefLanguageSlug: null,
+                }
+              : targetAudioWatchability(videoId),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "JESUS",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 10,
+    })
+
+    expect(result.results.map((row) => row.slug)).toEqual([
+      "jesus",
+      "jesus-lessons",
+    ])
+    expect(result.results[0]).toMatchObject({
+      evidence: { kind: "exact_title" },
+      score: 1,
+      scoreBreakdown: {
+        sourceRelevance: 0.55,
+        evidenceBoost: 0.45,
+        availability: 0,
+        total: 1,
+      },
+    })
+    expect(result.results[1]).toMatchObject({
+      evidence: { kind: "metadata" },
+      score: 0.94,
+      availability: { kind: "target_audio" },
+    })
+  })
+
   it("does not expose semantic playback ids without a watchable option", async () => {
     searchVideoSemanticMock.mockResolvedValueOnce([
       {

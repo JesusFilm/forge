@@ -7,7 +7,9 @@
     "noContent": "Imarisassaqanngilaq.",
     "homepageMisconfigured": "Isiginnaagaqarnermut nittartagaq eqqortumik aaqqissuussaanngilaq.",
     "defaultTemplateMisconfigured": "Isiginnaagaqarnermut templatesi aallarniutaasoq eqqortumik aaqqissuussaanngilaq.",
-    "authFailed": "Imarisat sullissivianut uppernarsaatissaqanngilaq. Taamaattuarpat ikiortissarsiuk."
+    "authFailed": "Imarisat sullissivianut uppernarsaatissaqanngilaq. Taamaattuarpat ikiortissarsiuk.",
+    "pageLoadFailed": "Ajortoqarsimavoq.",
+    "tryAgain": "Nutaamik misiliigit"
   },
   "VideosPage": {
     "title": "Videot tamakkerlugit",
@@ -22,7 +24,8 @@
     "promoHeading": "Biibilimik annertunerusumik paasisaqarusuppit?",
     "joinBibleStudy": "Biibilimik atuaqqissaarnerput peqataaffigiuk",
     "previousQuote": "Biibilimi oqaatsit siullermut",
-    "nextQuote": "Biibilimi oqaatsit tullianut"
+    "nextQuote": "Biibilimi oqaatsit tullianut",
+    "readPassage": "Immikkoortoq taanna Biibilinni atuaruk."
   },
   "DownloadButton": {
     "checking": "Misissuineq",
@@ -73,7 +76,8 @@
     "selectLanguage": "Oqaatsit toqqaruk",
     "searchPlaceholder": "Oqaatsinik ujarlerit…",
     "languages": "Oqaatsit",
-    "noMatches": "Naammassisaqanngilaq"
+    "noMatches": "Naammassisaqanngilaq",
+    "notAvailable": "Pissarsiarineqanngilaq"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Oqaatsit",
@@ -112,7 +116,8 @@
     "questions": "Apeqqutit attuumassutillit",
     "askYours": "Apeqqutigigit",
     "chatWithPerson": "Inummik oqaloqatiginnigit",
-    "askBibleQuestion": "Biibilimut apeqqut apeqqutigiuk"
+    "askBibleQuestion": "Biibilimut apeqqut apeqqutigiuk",
+    "quiz": "Apeqqutinik misiliut"
   },
   "WatchQuestionPanel": {
     "messageType": "Oqaatsip suunera",
@@ -170,7 +175,8 @@
     "searchRegion": "Videot ujartukkit",
     "clearSearch": "Ujarlerneq piiaruk",
     "changeAudioLanguage": "Oqaatsit allanngortikkit",
-    "home": "JesusFilm-imi angerlarsimaffik"
+    "home": "JesusFilm-imi angerlarsimaffik",
+    "closeSearch": "Ujarlerneq matuuk"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-t ujarlerlugillu tamanut takuguk",
@@ -205,14 +211,19 @@
     "clearLanguages": "Piiaruk",
     "queryLanguageDetected": "{language} paasineqarpoq",
     "searchInLanguage": "{language}-imi ujarlerit",
-    "tryDifferentKeywordsOrLanguage": "Oqaatsit allaanerusut imaluunniit oqaatsit allanik toqqarit"
+    "tryDifferentKeywordsOrLanguage": "Oqaatsit allaanerusut imaluunniit oqaatsit allanik toqqarit",
+    "useWebsiteDefaultLanguage": "Nittartakkami toqqarneqarsimasoq oqaatsit atorneqassapput",
+    "removeLanguage": "{language} piiaruk",
+    "browseMode": "Ujarliup qanoq ingerlanera"
   },
   "HeroPlayer": {
     "playWithSound": "Maanna isigiuk",
-    "tapToUnmute": "Nipip ilannguguk toqukkit"
+    "tapToUnmute": "Nipip ilannguguk toqukkit",
+    "nextEpisode": "Immikkoortoq tulleq"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Imarisat aaneqassapput"
+    "loadingContent": "Imarisat aaneqassapput",
+    "loadingVideo": "Video aaneqassaaq"
   },
   "VideoLabels": {
     "video": "Isiginnaagassiaq",
@@ -223,7 +234,8 @@
     "series": "Ataatsimoortoq",
     "collection": "Katersugaasivik",
     "trailer": "Takussutissiaq",
-    "behindTheScenes": "Suliarineqarnerata iluani"
+    "behindTheScenes": "Suliarineqarnerata iluani",
+    "chapter": "Kapitali"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current}/{total}",
@@ -235,11 +247,286 @@
     "noImage": "Asseqanngilaq",
     "playingNow": "Maanna atorneqartoq",
     "previousChapter": "Kapitali siulleq",
-    "nextChapter": "Kapitali tulleq"
+    "nextChapter": "Kapitali tulleq",
+    "thumbnailAlt": "{title}-ip thumbnailia",
+    "relatedVideoThumbnail": "Video-p attuumassuteqartup thumbnailia"
   },
   "SearchResultCard": {
     "experience": "Misigisap aallartinnera",
     "episodeCount": "{count, plural, one {# immikkoortortaqarpoq} other {# immikkoortortaqarput}}",
     "thumbnailAlt": "Video-p thumbnailia"
+  },
+  "Feedback": {
+    "openForm": "Oqaluttuarisaanut immersugassaq ammaruk",
+    "label": "Oqaluttuarineq",
+    "couldNotLoad": "Oqaluttuarisaanut immersugassaq ammarneqarsinnaanngilaq.",
+    "loadingForm": "Oqaluttuarisaanut immersugassaq aaneqassaaq…",
+    "retry": "Nutaamik misiliigit",
+    "openFormShort": "Immersugassaq ammaruk",
+    "cancel": "Unitsiinnaruk",
+    "title": "Beta-mi oqaaseqarneq",
+    "description": "Suut pitsaasuunersut aammalu qanoq pitsaanerulersinneqarsinnaanersut pillugit oqaluttuariuk. Immersugassaq taanna Google-imit tunniunneqarpoq.",
+    "openInNewTab": "Immersugassaq tabimi nutaami ammaruk",
+    "closeForm": "Oqaluttuarisaanut immersugassaq matuneqassaaq",
+    "loadingGoogleForm": "Google Form aaneqassaaq…",
+    "iframeTitle": "Beta-mi oqaaseqarneq nassiuguk"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-imi kristumiut video-t akeqanngitsut | Jesus Film Project",
+    "metadataDescription": "Jesus-filmit, Biibilimi oqaluttuat, discipelinngorniarluni aaqqissuussat, aammalu saqqummiussivinnut video-t oqaatsini {language} nammineq oqalunneq imaluunniit ilanngussat atorlugit alakkarit.",
+    "heroTitle": "{language}-imi kristumiut video-t akeqanngitsut",
+    "heroDescription": "Jesus-filmit, Biibilimi oqaluttuat, discipelinngorniarluni aaqqissuussat, aammalu saqqummiussivinnut video-t {language}-imi atorneqarsinnaasut alakkarit. Video-t oqaatsinik tamakkerlutik naqinneqarsimasut siulliullugit ersersinneqassapput, kingorna ilanngunneqartut ataasiinnaat periarfissaassapput.",
+    "languageCollection": "Oqaatsit ataatsimut katersugaasiviat",
+    "itemCount": "{count, plural, one {# ataasiuppoq} other {# ataasiupput}}",
+    "videoCount": "{count, plural, one {# video} other {# video-t}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video-t}} {groupCount, plural, one {# immikkoortoq} other {# immikkoortoq}}-mi",
+    "sectionNavLabel": "Oqaatsit immikkoortui",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nutaaq",
+    "videoBible": "Video-biibili",
+    "bibleProject": "BibleProject",
+    "sports": "Timersorneq",
+    "collections": "Katersukkat",
+    "subtitlesOnly": "Ilanngunneqartut kisimik",
+    "newlyAdded": "Nutaanik ilanngunneqartut",
+    "newVideosTitle": "{language}-imi kristumiut video-t nutaat",
+    "newestFirst": "Nutaanerit siulliullugit",
+    "noPublishedVideos": "Oqaatsit tassunga video-nik saqqummersinneqarsimasunik maanna nassaartoqanngilaq.",
+    "bibleAndGospelFilms": "Biibilimi aammalu Nallittuiusup filmii",
+    "videoBibleCollectionsTitle": "{language}-imi Video-biibili katersukkat",
+    "videoBibleDescription": "Oqaasissap tunngavigisaanik katersukkat soorlu LUMO, JESUS, Magdalena, aammalu Acts oqaatsini {language}.",
+    "noVideoBibleCollections": "Oqaatsit tassunga Video-biibili katersukkat maanna nassaaneqanngilaq.",
+    "bibleProjectCollectionsTitle": "{language}-imi BibleProject katersukkat",
+    "bibleProjectDescription": "BibleProject-ip immikkoortui aamma atuagarsornermi oqaluuserisat oqaatsini {language} atorneqarsinnaasut.",
+    "noBibleProjectCollections": "Oqaatsit tassunga BibleProject katersukkat maanna nassaaneqanngilaq.",
+    "sportsStories": "Timersornermut tunngasut oqaluttuat",
+    "sportsTitle": "{language}-imi timersorneq aamma atleterit pillugit oqaluttuat",
+    "sportsDescription": "Uppernermik tunngaveqartut timersornermut oqaluttuat aammalu atleterinik tunngasut katersukkat oqaatsini {language} atorneqarsinnaasut.",
+    "noSportsCollections": "Oqaatsit tassunga timersorneq imaluunniit atleterit oqaluttuaannik katersukkat maanna nassaaneqanngilaq.",
+    "fullyDubbed": "Oqaatsit tamakkerlugit allanngortinneqartut",
+    "dubbedVideosTitle": "{language}-imi video-t katersukkat naapertorlugit",
+    "dubbedVideosDescription": "{language}-imi video-t tamakkerlugit oqaatsit allanngortinneqarsimasut katersukkat naapertorlugit ujaruk.",
+    "noDubbedVideos": "Oqaatsit tassunga tamakkerlutik oqaatsinik allanngortinneqarsimasunik video-qanngilaq.",
+    "subtitlesAvailable": "Ilanngussat periarfissaapput",
+    "subtitlesTitle": "{language}-imi video-t ilanngussallit",
+    "subtitlesDescription": "Video-t taakku oqaatsini {language} ilanngussallit, oqaatsit {language} atorneqarnissaannut periarfissaqanngilaq.",
+    "noSubtitleVideos": "Oqaatsit tassunga ilanngussallit kisimik video-nik nassaartoqanngilaq.",
+    "dubbed": "Oqaatsinik allanngortinneqartoq",
+    "subtitles": "Ilanngussat",
+    "newLabel": "Nutaaq",
+    "fromCollection": "{collection}-imit",
+    "standaloneVideos": "Video-t nammineertut",
+    "videosFromCollection": "Video-t {collection}-imit.",
+    "standaloneDescription": "Oqaatsit taakku iluani video-t nammineertut.",
+    "openCollection": "Katersugaasivik ammaruk"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project-imi isiginnaarit",
+    "watch": "Isigiuk",
+    "watchNow": "Maanna isigiuk",
+    "mutePreview": "Oqaatsit ilanngarlugu sioraartoq",
+    "unmutePreview": "Oqaatsit ilanngarlugu sioraaruk",
+    "nextVideo": "Video tulleq",
+    "featured": "Eqqarasaateqartut",
+    "showVideo": "{title} takutiguk",
+    "previousVideoPreview": "Video siornaartoq",
+    "nextVideoPreview": "Video tulleq takussutissaq",
+    "mediaCollection": "Media-katersugaasivik",
+    "scrollToVideo": "{title}-mik video-mut ingerlaarit"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-imi angerlarsimaffik",
+    "navigation": "Najoqqutassaq qulaaniittoq",
+    "share": "Avitseqatigiigit",
+    "watch": "Isigiuk",
+    "giving": "Tunissutit",
+    "about": "Pillugu",
+    "products": "Nioqqutit",
+    "resources": "Ikuutissat",
+    "partners": "Peqataasut",
+    "contact": "Attavigit",
+    "giveNow": "Maanna tunniugit",
+    "resourcesVersion": "Ikuutissat ({version})",
+    "office": "Allaffik",
+    "fax": "Faksi",
+    "privacyPolicy": "Paasissutissat illersorneqarnissaat pillugu politikkit",
+    "legalStatement": "Inatsisit pillugit nalunaarut",
+    "newsletter": "Qaammammut nalunaarutitsinnut ilanngugit"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Nunarsuaq tamakkerlugu aallartitaasunut sananeqarsimavoq",
+    "title": "Oqaluttuaq allanngorneq ajorpoq. Inuppassuit qanoq isiginnaartarnerat allanngortarpoq.",
+    "description": "Videotigut aammalu atortutigut aallartisaqqilerpugut, ukiuni ingerlaneranni nutserinermi sulineq platforminut allisarlugu, sumiiffinni inuppassuit katersuuffigisartagaannut, isiginnaartarfigisartagaannut, aammalu avitseqatigiittarfiisigut.",
+    "translatedLibraryTitle": "Nunarsuarmi filmi oqaatsinik amerlanerpaanik nutserneqarsimasoq",
+    "translatedLibraryDescription": "Ukiuni ingerlaneranni nutserinermi sulineq, suleqatigisatigut qulakkeerneqartoq, oqaatsit thousandit ingerlaneranni track-inik saqqummersitsivoq, taamaalillutik inuit Jesuusi pillugu oqaluttuaq oqaatsini imminnut attuumassuteqarnerpaasumi naapissinnaavaat.",
+    "trustedVoicesTitle": "Oqaatsit upperisarsiornermik tatiginartut nutaanik ilusilinnik ingerlateqqillugit",
+    "trustedVoicesDescription": "Evangeliumip oqaluttuaanik ilusilersuineq nutarterparput, nutsernerit tatiginartut teknologi nutaanerusumut ataqatigiissarlugit, taamaalilluni oqaluttuaq platformit, kulturit, aammalu qarasaasiaqarfiit akornanni ungasinngitsumik ingerlaarsinnaaniassammat.",
+    "missionTeamTitle": "Katersugaasivittuaannaanngilaq. Suliniaqatigiiffik ingerlaqatiginneq.",
+    "missionTeamDescription": "Jesus Film Project tassaavoq oqaatsinik nutserisunik, media pillugu immikkut ilisimasalinnik, aaqqiissisartunik, aammalu pilersitsisartunik nunarsuaq tamakkerlugu sulisoqartut, ukiuni ingerlaneranni misilittakkat tamanut discipelinut iluaqutaasussanngorlugit ikiuutaasut.",
+    "buildingNext": "Suleqataaffigisarput nutaaq",
+    "nextStepsTitle": "Nutaaliaq platformi",
+    "nextStepsDescription": "Isiginnaartut inuunerata ingerlanerani ingerlaqqiffiusinnaasunik periarfissanik attavigisigit, taamaalillutik ataatsimoorneq, Oqaatsit, imaluunniit sulinermik tungaanut alloriarsinnaaniassammata.",
+    "mediaLibraryTitle": "Evangeliuminut tunngatillugu media katersugaasivik",
+    "mediaLibraryDescription": "Kristumiut mediaanik katersugaasivik annertooq, videonik, film-inik, aammalu atortunittaanik oqaatsit assigiinngitsut atorlugit pisariaqartitsineq naapertorlugu misilittagaqarneq aammalu evangelisationi pillugu atorneqarsinnaasoq.",
+    "ministryToolsTitle": "Suliaqarfiit digitalimik atortuutaat",
+    "ministryToolsDescription": "Video-nik ingerlatsineq, imarisassanik agguaaneq, atorneqartut akornanni attaveqarneq, aammalu naatsorsuinikkut paasissutissat suliaqarnissamut inuiaqatigiinnut amerlanernut pitsaasumik atorneqarsinnaasut.",
+    "invitationEyebrow": "Qaaqqusaavutit",
+    "invitationTitle": "<highlight>talittarfimmi</highlight> sulinermut atortuutit tullii ineriartortitseqataagit",
+    "invitationDescription": "Siusinaarluni atorneqarnissaanut suliaqartut, pilersitsisut, aammalu suleqatit qaaqquagut. Atortuutit nutaat siulliullutik misilikkit, oqaaseqaateqarit, aammalu suliat misigisaqarfiusut aaqqiissutissanut ilusilersuiffigeqqillugit.",
+    "betaTester": "Beta-mik misiliisunngoruk"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-biibili katersugaasivik",
+    "gospelRailTitle": "Oqaluttuaq tamakkerlugu paasisaqarit",
+    "videoBibleDescription": "Video-t aammalu paasissutissat ilanngullugit Biibili inuunermut tunngasumik oqaluttuanit aammalu ilinniartitsinernit malugineqarsinnaasut alakkarit.",
+    "showcaseTitle": "Nalersaarneq film-itigut oqaluttuarineqartoq",
+    "adventEyebrow": "Juullip tungaanut Advent",
+    "adventTitle": "Juullimut Advent aallartisaanermik naatsorsuut",
+    "adventDescription": "Adventimut ingerlaqarnerput peqataaffigiuk, ulloq ataasiarlugu video atorlugu Juullip tungaanut qilanaarnermik pilersitsisoq, Jesusip tikiunnerata neriunnera, nuannaaruta, aammalu pitsaassusia misigalugit.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject-ip Adventia",
+    "nuaEyebrow": "NUA-imik aalajangersagaq",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-imik aalajangersagaq",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video-kursus",
+    "journeyWithJesusTitle": "Jesus ilagalugu ingerlaarit",
+    "gospelsOnVideoEyebrow": "Evangeliumit tamakkerlugit, video-kkut oqaluttuarineqartut",
+    "scriptureAsWrittenTitle": "Oqaasissat allassimaffiattut saqqummiunneqartut",
+    "merryChristmas": "Juullimi pilluarit!",
+    "daysUntilChristmas": "{count, plural, one {Juullimut # ulloq} other {Juullimut # ullut}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Oqaatsit",
+    "metadataDescription": "JesusFilm video-t oqaatsit naapertorlugit ujaruk.",
+    "eyebrow": "Isiginnaagassiat oqaatsit",
+    "title": "Oqaatsit toqqaruk",
+    "description": "Sumiiffik naapertorlugu oqaatsit alakkarit imaluunniit tamakkerlugit nalunaarsuiffik alakkaruk.",
+    "searchPlaceholder": "Oqaatsit imaluunniit nunat ujarleruk...",
+    "searchLabel": "Oqaatsit imaluunniit nunat ujarleruk",
+    "clearSearch": "Ujarlertarneq peeruk",
+    "browse": "Alakkarit",
+    "browseByRegion": "Sumiiffik aammalu nunat naapertorlugit alakkarit",
+    "languageCount": "{count, plural, one {# oqaatsi} other {# oqaatsit}}",
+    "region": "Sumiiffik",
+    "countryLanguages": "{country}-imi oqaatsit",
+    "showLess": "Ikinnerit takutiguk",
+    "showMore": "{count} amerlanerit takutiguk",
+    "noLanguages": "Oqaatsinik nassaartoqanngilaq",
+    "tryAnotherSearch": "Ujarlerneq allarluinnaq atorlugu misiliguk."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Isiginnaagaqarnerit oqaluttuarisaanera | Jesus Film Project",
+    "title": "Isiginnaagaqarnerit oqaluttuarisaanera",
+    "loading": "Oqaluttuarisaanera aaneqassaaq",
+    "empty": "Maanna eqqaaneqanngilaq",
+    "emptyDescription": "Video-t isiginikkit iserfigisaqaruit tassunga takussutissiissapput.",
+    "earlier": "Siornaqqi",
+    "today": "Ullumikkut",
+    "yesterday": "Aqagu"
+  },
+  "AccountControl": {
+    "account": "Kontu",
+    "accountMenu": "Kontu menu",
+    "signIn": "Iserit",
+    "signOut": "Anigit",
+    "signedIn": "Isersimavoq",
+    "history": "Oqaluttuarisaanera",
+    "logOut": "Anigit"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Qupperneq nassaarineqanngilaq",
+    "eyebrow": "Qupperneq nassaarineqanngilaq",
+    "screenReaderPrefix": "Qupperneq nassaarineqanngilaq:",
+    "title": "Scenit taannaanngilaq.",
+    "description": "Quppiaq nuussimasinnaavoq, kisianni oqaluttuaq ingerlaannartarpoq.",
+    "actionsLabel": "Qupperneq nassaarineqanngilaq iliuutsit",
+    "backToWatch": "Watch-imut uterit",
+    "browseVideos": "Videot alakkarit"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Isiginnaarsiuk filmiliaq mikisooq",
+    "actions": {
+      "joinUs": "Peqataagit",
+      "shareMission": "Suliaq siunertarigutsigu avitseqatigiigit"
+    },
+    "welcomeStart": {
+      "label": "Upperneq & Oqaatsit allassimasut",
+      "title": "Ullumi videot siunnersuutit",
+      "description": "Katersugaasivitsinni uppernermut tunngasut videot eqqarsalersitsisut, ataatsimoortitsisut, aammalu misissueqqissaarnernik aallartisaarisut."
+    },
+    "welcomeMorning": {
+      "label": "Ullaap tungaanut eqqarsaatigalugit",
+      "title": "Ullaakkoq! Ullumi Biibilimi pisoqarfiit utaqqipput.",
+      "description": "Ullup aallartinnerani Biibilimi pisoqarfinnik pitsaasunik eqqarsalersitsisunik aallartigit, qiimmaallannermillu pilersitsisunik."
+    },
+    "welcomeAfternoon": {
+      "label": "Unnuap tungaanut eqqarsaatigalugit",
+      "title": "Ullasoq pitsaasoq! Ullormut Biibilimi pisoqarfiit.",
+      "description": "Biibilimik paasissutissat eqqarsalersitsisut ulloqeqqata kingorna imaluunniit ingerlaqqilluni eqqarsalersitsissutitut naleqquttut."
+    },
+    "welcomeEvening": {
+      "label": "Unnukkut eqqarsaatigalugit",
+      "title": "Unnukkut pitsaasoq! Biibilimi pisoqarfinnik naggasiigit.",
+      "description": "Biibilimi pisoqarfiit eqqissisimanartut ulloq naammassinialerpat eqqarsaatigalugit eqqissiallannissannut iluaqutaassapput."
+    },
+    "joinUs": {
+      "label": "Peqataagit",
+      "title": "Milliarderit ujartuipput",
+      "description": "Periuseq aallartippoq. Nutaaliaq media atorlugu nunarsuaq tamakkerlugu evangeliumi avitseqatigalugit peqataagit."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ilisimatitsineq ataatsimoorullugu",
+      "title": "Jesusip oqaluttuarnera ataatsimoorluta oqaluttuaralugu",
+      "description": "Taamaalillutik nammineq oqaatsiminnik, nammineq sumiiffimminni, Jesusip asanninnera tusaasinnaassavaat takusinnaassallugulu."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}%-imik naleqquppoq",
+    "none": "Video taanna oqaatsini taakkunani innersuussutissaqarfigineqanngilaq."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-mik misiliisunngoruk",
+    "trigger": "Beta-mik misiliisunngoruk",
+    "loadFailed": "Ajortoqarsimavoq.",
+    "loading": "Aaneqassaaq...",
+    "openFormNewTab": "Immersugassaq tabimi nutaami ammaruk",
+    "close": "Matuuk",
+    "iframeTitle": "Beta-mik misiliisunngoruk"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

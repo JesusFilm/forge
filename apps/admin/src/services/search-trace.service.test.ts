@@ -36,6 +36,7 @@ import {
 } from "@/services/search-trace-retention.service"
 import {
   classifyLatencyBucket,
+  recordAdminVideoLibrarySearchTraceSafely,
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
   sampleSearchTraces,
@@ -379,6 +380,132 @@ describe("search trace service", () => {
     expect(JSON.stringify(aggregateCreate)).not.toContain(
       "Should I pray to God?",
     )
+  })
+
+  it("records admin video-library traces with closed client metadata", async () => {
+    const prisma = buildPrisma()
+
+    await recordAdminVideoLibrarySearchTraceSafely(
+      {
+        query: "Rivka testimony",
+        locale: "en",
+        client: "experience-editor-media-collection-picker",
+        response: {
+          query: "Rivka testimony",
+          requestId: "watch_req_admin_123",
+          searchMode: "watch-search",
+          degraded: false,
+          latencyMs: 88,
+          hasMore: false,
+          nextOffset: 30,
+          languageInterpretation: {
+            queryLanguageSlug: null,
+            queryNamedLanguageSlug: null,
+            targetLanguageSlug: "english",
+            targetLanguageSource: "route",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: "english",
+            currentWatchLanguageSlug: null,
+            acceptLanguage: "en",
+            acceptLanguageSlug: "english",
+          },
+          laneStatuses: [],
+          results: [
+            {
+              type: "video",
+              id: "video-rivka",
+              slug: "rivka",
+              title: "Rivka",
+              description: "This text must not enter metadata.",
+              snippet: "This snippet must not enter metadata.",
+              imageUrl: null,
+              imageBlurDataUrl: null,
+              muxThumbnailBlurDataUrl: null,
+              playbackId: "playback-secret-ish",
+              startSeconds: null,
+              score: 0.9,
+              scoreBreakdown: {
+                total: 0.9,
+                sourceRelevance: 0.5,
+                evidenceBoost: 0.15,
+                relevance: 0.65,
+                availability: 0.25,
+                match: 0.15,
+                sourceScore: 0.91,
+              },
+              label: "SHORT_FILM",
+              durationSeconds: 120,
+              childCount: 0,
+              languageSlug: "english",
+              languageEnglishName: "English",
+              availability: {
+                kind: "target_audio",
+                languageSlug: "english",
+                languageEnglishName: "English",
+                audio: true,
+                subtitles: false,
+              },
+              evidence: {
+                kind: "transcript_semantic",
+                languageSlug: "english",
+                label: "Transcript match",
+              },
+              action: {
+                kind: "watch",
+                hrefLanguageSlug: "english",
+              },
+              fallback: {
+                kind: "none",
+                message: null,
+              },
+            },
+          ],
+        },
+        resultIds: ["video-rivka", "bad token with spaces"],
+        hydratedResultCount: 1,
+        targetLanguageSlug: "english",
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.088Z"),
+        now: new Date("2026-05-01T00:00:00.088Z"),
+      },
+      prisma as unknown as Parameters<
+        typeof recordAdminVideoLibrarySearchTraceSafely
+      >[1],
+    )
+
+    const rawData = prisma.searchTrace.create.mock.calls[0]?.[0]?.data
+    expect(rawData).toMatchObject({
+      requestId: "watch_req_admin_123",
+      locale: "en",
+      routeSource: "GRAPHQL",
+      requestedMode: "experience-editor-media-collection-picker",
+      searchMode: "watch-search",
+      resultCount: 1,
+      outcome: "SUCCESS",
+      traceClass: "none",
+    })
+    expect(rawData.metadata).toMatchObject({
+      version: "admin-video-library-search/v1",
+      client: "experience-editor-media-collection-picker",
+      queryLength: "Rivka testimony".length,
+      targetLanguageSlug: "english",
+      resultTypes: ["video"],
+      resultCount: 1,
+      hydratedResultCount: 1,
+      degraded: false,
+      resultIds: ["video-rivka"],
+    })
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "This snippet must not enter metadata",
+    )
+    expect(JSON.stringify(rawData.metadata)).not.toContain(
+      "playback-secret-ish",
+    )
+
+    const aggregateCreate =
+      prisma.searchTraceAggregate.upsert.mock.calls[0]?.[0]?.create
+    expect(JSON.stringify(aggregateCreate)).not.toContain("metadata")
+    expect(JSON.stringify(aggregateCreate)).not.toContain("Rivka testimony")
   })
 
   it("does not throw or log raw query text when persistence fails", async () => {

@@ -691,7 +691,7 @@ export function LanguageCombobox({
                             {optionDisabled && !option.chipLabel ? (
                               <span className="sr-only">
                                 {" "}
-                                {option.chipLabel ?? "Not available"}
+                                {option.chipLabel ?? t("notAvailable")}
                               </span>
                             ) : null}
                           </button>

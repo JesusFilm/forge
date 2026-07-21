@@ -7,7 +7,9 @@
     "noContent": "Pas cap de contengut disponible.",
     "homepageMisconfigured": "La pagina d'acuèlh del visionament es mal configurada.",
     "defaultTemplateMisconfigured": "Lo modèl de visionament per defaut es mal configurat.",
-    "authFailed": "Impossible d'aconseguir l'autentificacion amb lo servici de contengut. Mercés de contactar l'assisténcia se aquò contunha."
+    "authFailed": "Impossible d'aconseguir l'autentificacion amb lo servici de contengut. Mercés de contactar l'assisténcia se aquò contunha.",
+    "pageLoadFailed": "Quicòm a mal anat.",
+    "tryAgain": "Tornar ensajar"
   },
   "VideosPage": {
     "title": "Totes los vidèos",
@@ -22,7 +24,8 @@
     "promoHeading": "Volètz comprene mai prigondament la Bíblia?",
     "joinBibleStudy": "Rejonhètz nòstra escòla biblica",
     "previousQuote": "Citacion biblica precedenta",
-    "nextQuote": "Citacion biblica seguenta"
+    "nextQuote": "Citacion biblica seguenta",
+    "readPassage": "Legissètz aqueste passatge dins vòstra Bíblia."
   },
   "DownloadButton": {
     "checking": "Verificacion",
@@ -73,7 +76,8 @@
     "selectLanguage": "Seleccionar la lenga",
     "searchPlaceholder": "Recercar de lengas…",
     "languages": "Lengas",
-    "noMatches": "Pas cap de resultats"
+    "noMatches": "Pas cap de resultats",
+    "notAvailable": "Pas disponible"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lenga",
@@ -112,7 +116,8 @@
     "questions": "Questions associadas",
     "askYours": "Pauser la vòstra",
     "chatWithPerson": "Charrar amb una persona",
-    "askBibleQuestion": "Pausar una question biblica"
+    "askBibleQuestion": "Pausar una question biblica",
+    "quiz": "Qüiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Tipe de messatge",
@@ -170,7 +175,8 @@
     "searchRegion": "Recercar de vidèos",
     "clearSearch": "Escafar la recèrca",
     "changeAudioLanguage": "Cambiar la lenga de l'àudio",
-    "home": "Pagina d'acuèlh JesusFilm"
+    "home": "Pagina d'acuèlh JesusFilm",
+    "closeSearch": "Tampar la recèrca"
   },
   "SearchOverlay": {
     "dialogLabel": "Recercar e explorar de vidèos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Escafar",
     "queryLanguageDetected": "{language} detectat",
     "searchInLanguage": "Recercar en {language}",
-    "tryDifferentKeywordsOrLanguage": "Ensajatz d'autres mots-clau o causissètz una autra lenga de recèrca"
+    "tryDifferentKeywordsOrLanguage": "Ensajatz d'autres mots-clau o causissètz una autra lenga de recèrca",
+    "useWebsiteDefaultLanguage": "Utilizar la lenga de recèrca per defaut del site",
+    "removeLanguage": "Quitar {language}",
+    "browseMode": "Mòde de navigacion de la recèrca"
   },
   "HeroPlayer": {
     "playWithSound": "Veire ara",
-    "tapToUnmute": "Picatz per tornar activar lo son"
+    "tapToUnmute": "Picatz per tornar activar lo son",
+    "nextEpisode": "Episòdi seguent"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Cargament del contengut"
+    "loadingContent": "Cargament del contengut",
+    "loadingVideo": "Cargament del vidèo"
   },
   "VideoLabels": {
     "video": "Vidèo",
@@ -223,7 +234,8 @@
     "series": "Seria",
     "collection": "Colleccion",
     "trailer": "Avanç",
-    "behindTheScenes": "Darrièr las scènas"
+    "behindTheScenes": "Darrièr las scènas",
+    "chapter": "Capítol"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} de {total}",
@@ -235,11 +247,286 @@
     "noImage": "Pas cap d'imatge",
     "playingNow": "Ara en lectura",
     "previousChapter": "Capítol precedent",
-    "nextChapter": "Capítol seguent"
+    "nextChapter": "Capítol seguent",
+    "thumbnailAlt": "Miniatura de {title}",
+    "relatedVideoThumbnail": "Miniatura de vidèo associat"
   },
   "SearchResultCard": {
     "experience": "Experiéncia",
     "episodeCount": "{count, plural, one {# episòdi} other {# episòdis}}",
     "thumbnailAlt": "Miniatura del vidèo"
+  },
+  "Feedback": {
+    "openForm": "Dobrir lo formulari de comentaris",
+    "label": "Comentaris",
+    "couldNotLoad": "Lo formulari de comentaris a pas pogut se cargar.",
+    "loadingForm": "Cargament del formulari de comentaris…",
+    "retry": "Tornar ensajar",
+    "openFormShort": "Dobrir lo formulari",
+    "cancel": "Anullar",
+    "title": "Comentaris beta",
+    "description": "Partatz çò que fonciona e çò que podèm melhorar. Aqueste formulari es provesit per Google.",
+    "openInNewTab": "Dobrir lo formulari dins un onglet novèl",
+    "closeForm": "Tampar lo formulari de comentaris",
+    "loadingGoogleForm": "Cargament del formulari Google…",
+    "iframeTitle": "Enviar de comentaris beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vidèos crestianas gratuitas en {language} | Jesus Film Project",
+    "metadataDescription": "Exploratz de films sus Jesus, d'istòrias biblicas, de serias de discipolat e de vidèos d'evangelizacion amb àudio doblat o sostítols en {language}.",
+    "heroTitle": "Vidèos crestianas gratuitas en {language}",
+    "heroDescription": "Exploratz de films sus Jesus, d'istòrias biblicas, de serias de discipolat e de vidèos d'evangelizacion disponibles en {language}. Los vidèos totalament doblats son mostrats primièr, amb las opcions solament amb sostítols çaijós.",
+    "languageCollection": "Colleccion de lenga",
+    "itemCount": "{count, plural, one {# element} other {# elements}}",
+    "videoCount": "{count, plural, one {# vidèo} other {# vidèos}}",
+    "videosInGroups": "{videoCount, plural, one {# vidèo} other {# vidèos}} en {groupCount, plural, one {# grop} other {# grops}}",
+    "sectionNavLabel": "Seccions de l'inventari de las lengas",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nòu",
+    "videoBible": "Bíblia vidèo",
+    "bibleProject": "BibleProject",
+    "sports": "Espòrt",
+    "collections": "Colleccions",
+    "subtitlesOnly": "Solament sostítols",
+    "newlyAdded": "Ajustat recentament",
+    "newVideosTitle": "Vidèos crestianas novèlas en {language}",
+    "newestFirst": "Los mai recents primièr",
+    "noPublishedVideos": "Cap de vidèo publicada foguèt pas trobada encara per aquesta lenga.",
+    "bibleAndGospelFilms": "Films biblics e evangelics",
+    "videoBibleCollectionsTitle": "Colleccions de Bíblia vidèo en {language}",
+    "videoBibleDescription": "Colleccions centratadas sus las Escrituras, compres LUMO, JESUS, Magdalena e Actes en {language}.",
+    "noVideoBibleCollections": "Cap de colleccion de Bíblia vidèo es pas encara disponibla per aquesta lenga.",
+    "bibleProjectCollectionsTitle": "Colleccions BibleProject en {language}",
+    "bibleProjectDescription": "Serias e estudis BibleProject disponibles en {language}.",
+    "noBibleProjectCollections": "Cap de colleccion BibleProject es pas encara disponibla per aquesta lenga.",
+    "sportsStories": "Istòrias esportivas",
+    "sportsTitle": "Istòrias esportivas e d'atletas en {language}",
+    "sportsDescription": "Istòrias esportivas centradas sus la fe e colleccions focalizadas sus d'atletas disponiblas en {language}.",
+    "noSportsCollections": "Cap de colleccion esportiva o sus d'atletas es pas encara disponibla per aquesta lenga.",
+    "fullyDubbed": "Totalament doblat",
+    "dubbedVideosTitle": "Vidèos en {language} per colleccion",
+    "dubbedVideosDescription": "Exploratz de vidèos totalament doblats en {language} amainadas amb lor colleccion per una descobèrta mai aisida.",
+    "noDubbedVideos": "Cap de vidèo totalament doblada es pas encara disponibla per aquesta lenga.",
+    "subtitlesAvailable": "Sostítols disponibles",
+    "subtitlesTitle": "Vidèos en {language} amb sostítols",
+    "subtitlesDescription": "Aquestes vidèos contenon de sostítols en {language} quand l'àudio parlat en {language} es pas encara disponible.",
+    "noSubtitleVideos": "Cap de vidèo sonque amb sostítols es pas encara disponibla per aquesta lenga.",
+    "dubbed": "Doblat",
+    "subtitles": "Sostítols",
+    "newLabel": "Nòu",
+    "fromCollection": "De {collection}",
+    "standaloneVideos": "Vidèos independentas",
+    "videosFromCollection": "Vidèos de {collection}.",
+    "standaloneDescription": "Vidèos independentas dins aquesta lenga.",
+    "openCollection": "Dobrir la colleccion"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Visionament",
+    "watch": "Veire",
+    "watchNow": "Veire ara",
+    "mutePreview": "Copar lo son de l'apercebut",
+    "unmutePreview": "Restablir lo son de l'apercebut",
+    "nextVideo": "Vidèo seguenta",
+    "featured": "A la una",
+    "showVideo": "Mostrar {title}",
+    "previousVideoPreview": "Apercebut del vidèo precedent",
+    "nextVideoPreview": "Apercebut del vidèo seguent",
+    "mediaCollection": "Colleccion de mèdias",
+    "scrollToVideo": "Far defilar cap al vidèo {title}"
+  },
+  "WatchFooter": {
+    "home": "Pagina d'acuèlh Jesus Film Project",
+    "navigation": "Navigacion de pè de pagina",
+    "share": "Partejar",
+    "watch": "Veire",
+    "giving": "Donacions",
+    "about": "A prepaus",
+    "products": "Prodches",
+    "resources": "Recorsas",
+    "partners": "Partenaris",
+    "contact": "Contacte",
+    "giveNow": "Donar ara",
+    "resourcesVersion": "Recorsas ({version})",
+    "office": "Burèu",
+    "fax": "Telecòpia",
+    "privacyPolicy": "Politica de confidencialitat",
+    "legalStatement": "Declaracion legala",
+    "newsletter": "Inscrivètz-vos a nòstra letra d'informacion"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Construch per las missions globalas",
+    "title": "Lo messatge càmbia pas. La faiçon que las personas regardan, òc.",
+    "description": "Tornam bastir nòstra bibliotèca de vidèos e nòstres outils de la basa en amont, en comprometent de decennias de trabalh de traduccion sus las plataformas ont las gens ja se recampan, veson e partajan.",
+    "translatedLibraryTitle": "La bibliotèca cinematografica la mai traducha del monde",
+    "translatedLibraryDescription": "De decennias de trabalh de traduccion, portadas per de partenaris de ministèri de fisança, an bastit una bibliotèca amb de milièrs de pistas de lenga per que las personas pòscan rencontrar l'istòria de Jesus dins la lenga que los tòca mai prigondament.",
+    "trustedVoicesTitle": "Portar de voses de fisança cap a de formats novèls",
+    "trustedVoicesDescription": "Tornam bastir la manièra dont las istòrias de l'Evangèli son contadas visualament, en associant traduccions de fisança amb de formats modèrnes per que lo messatge pòsca circular liurament entre plataformas, culturas e ecrans.",
+    "missionTeamTitle": "Mai qu'una bibliotèca. Una còla al servici de la mission.",
+    "missionTeamDescription": "Jesus Film Project es una còla mondiala de traductors, d'especialistas dels mèdias, d'editores e de creators que transforman de decennias d'experiéncia de ministèri en outils per totes los faciadors de disciples.",
+    "buildingNext": "Çò que bastissèm ara",
+    "nextStepsTitle": "Platafòrma de las etapas seguentas",
+    "nextStepsDescription": "Metètz los espectadors en contacte amb d'opportunitats concrètas dins lor caminament espiritual, per los ajudar a far un pas seguent cap a la comunautat, las Escrituras o la mission.",
+    "mediaLibraryTitle": "Bibliotèca de mèdias evangelics",
+    "mediaLibraryDescription": "Una bibliotèca extensa de mèdias crestians amb de milièrs de vidèos, films e recorsas disponiblas en mantas lengas per lo ministèri e l'evangelizacion dins lo monde entièr.",
+    "ministryToolsTitle": "Outils numerics per las comunautats",
+    "ministryToolsDescription": "Gestion de vidèos, distribucion de contengut, participacion de l'audiéncia e analitica concebuts per ajudar las comunautats a aténher mai de personas eficaçament.",
+    "invitationEyebrow": "Sètz convidats",
+    "invitationTitle": "Ajutatz a bastir <highlight>la novèla generacion</highlight> d'otisses per la mission",
+    "invitationDescription": "Convidam de professionals, creators e partenaris a un accès anticipat. Ensajatz los novèls outils primièr, donatz vòstres comentaris e ajudatz a modelar de produches concebuts per la vertadièra mission.",
+    "betaTester": "Venètz tester la beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Colleccion Bíblia Vidèo",
+    "gospelRailTitle": "Descobrissètz l'istòria complèta",
+    "videoBibleDescription": "Exploratz nòstra colleccion de vidèos e de recorsas que fan prene vida a la Bíblia amb d'istòrias e d'ensenhament captivadors.",
+    "showcaseTitle": "Escritura contada per lo film",
+    "adventEyebrow": "Advent de Noël",
+    "adventTitle": "Còmpta endarrièr d'Advent de Noël",
+    "adventDescription": "Rejonhètz nòstre camin d'Advent amb un vidèo quotidian que fa montar l'esperança per Noël, en explorant l'espèr, la jòia e la promesa de la venguda de Jèsus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Seria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cors vidèo",
+    "journeyWithJesusTitle": "Caminada amb Jèsus",
+    "gospelsOnVideoEyebrow": "Cada Evangèli, contat en vidèo",
+    "scriptureAsWrittenTitle": "Escritura, dicha exactament coma es escricha",
+    "merryChristmas": "Bon Nadal !",
+    "daysUntilChristmas": "{count, plural, one {# jorn abans Noël} other {# jorns abans Noël}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Lengas",
+    "metadataDescription": "Exploratz de vidèos JesusFilm per lenga.",
+    "eyebrow": "Lengas de visionament",
+    "title": "Causissètz una lenga",
+    "description": "Exploratz las lengas per region o navegatz dins la lista completa.",
+    "searchPlaceholder": "Recercar de lengas o de païses...",
+    "searchLabel": "Recercar de lengas o de païses",
+    "clearSearch": "Escafar la recèrca",
+    "browse": "Navegar",
+    "browseByRegion": "Navegar per region e país",
+    "languageCount": "{count, plural, one {# lenga} other {# lengas}}",
+    "region": "Region geografica",
+    "countryLanguages": "Lengas de {country}",
+    "showLess": "Afichar mens",
+    "showMore": "Mostrar {count} mai",
+    "noLanguages": "Pas cap de lenga trobada",
+    "tryAnotherSearch": "Ensajatz un autre tèrme de recèrca."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istoric de visionament | Jesus Film Project",
+    "title": "Istoric de visionament",
+    "loading": "Cargament de l'istoric",
+    "empty": "Pas encara res aicí",
+    "emptyDescription": "Los vidèos que visionatz mentre sètz connectat apareisseràn aicí.",
+    "earlier": "Mai d'ora",
+    "today": "Uèi",
+    "yesterday": "Ièr"
+  },
+  "AccountControl": {
+    "account": "Compte",
+    "accountMenu": "Menut del compte",
+    "signIn": "Se connectar",
+    "signOut": "Se desconnectar",
+    "signedIn": "Connectat",
+    "history": "Istoric",
+    "logOut": "Desconnexion"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pagina pas trobada",
+    "eyebrow": "Pagina pas trobada",
+    "screenReaderPrefix": "Pagina pas trobada :",
+    "title": "Aquesta scèna es pas aicí.",
+    "description": "La pagina a benlèu cambiat de lòc, mas l'istòria contunha.",
+    "actionsLabel": "Accions per pagina pas trobada",
+    "backToWatch": "Tornar a Visionament",
+    "browseVideos": "Navegar pels vidèos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date} : {title}",
+    "watchShortFilm": "Veire lo cort-metratge",
+    "actions": {
+      "joinUs": "Rejonhètz-nos",
+      "shareMission": "Partejar nòstra mission"
+    },
+    "welcomeStart": {
+      "label": "Fe e Escritura",
+      "title": "Las causidas vidèo d'uèi",
+      "description": "Contengut vidèo centrat sus la fe de nòstra bibliotèca per inspirar, desafiar e espotir la reflexion."
+    },
+    "welcomeMorning": {
+      "label": "Inspiracion del matin",
+      "title": "Bonjorn ! Las moments biblicas d'uèi vos espèran.",
+      "description": "Començatz la jornada amb de moments biblics encoratjants concebuts per inspirar e elevar vòstre esperit."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspiracion de la tantòst",
+      "title": "Bon vèspre ! Moments biblics per vòstre jorn.",
+      "description": "Contengut biblic encoratjant, ideal per una pausa de la tantòst o per contunhar d'èsser inspirat."
+    },
+    "welcomeEvening": {
+      "label": "Inspiracion de ser",
+      "title": "Bon ser ! Relaxatz-vos amb de moments biblics.",
+      "description": "De moments biblics pacifics per vos ajudar a reflectir e trobar de consòrt a mesura que la jornada s'acaba."
+    },
+    "joinUs": {
+      "label": "Rejonhètz-nos",
+      "title": "De miliards recercan",
+      "description": "La meisson es aquí. Rejonhètz-nos per partejar l'evangèli amb lo mond per mejan dels mèdias numerics."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Anem amassa",
+      "title": "Contar l'istòria de Jèsus, amassa",
+      "description": "Per que pòscan ausir e veire l'amor de Jèsus dins lor pròpria lenga, aquí ont son."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Correspondéncia de {percent} %",
+    "none": "Cap de recomandacion trobada per aqueste vidèo dins aquesta lenga."
+  },
+  "BetaTesterModal": {
+    "title": "Venètz tester la beta",
+    "trigger": "Venètz tester la beta",
+    "loadFailed": "Quicòm a mal anat.",
+    "loading": "Cargament...",
+    "openFormNewTab": "Dobrir lo formulari dins un onglet novèl",
+    "close": "Tampar",
+    "iframeTitle": "Venètz tester la beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

@@ -7,7 +7,9 @@
     "noContent": "Content biara mfa hɔ.",
     "homepageMisconfigured": "Watch homepage no yɛ misconfigured.",
     "defaultTemplateMisconfigured": "Default watch template no yɛ misconfigured.",
-    "authFailed": "Yentumi nkyerɛ yɛn ho kyerɛ content service no ho. Sɛ eyi to so a, yɛsrɛ sɛ nya support so nkitaho."
+    "authFailed": "Yentumi nkyerɛ yɛn ho kyerɛ content service no ho. Sɛ eyi to so a, yɛsrɛ sɛ nya support so nkitaho.",
+    "pageLoadFailed": "Biribi asi mfomso.",
+    "tryAgain": "San bɔ hwɛ bio"
   },
   "VideosPage": {
     "title": "Video Nyinaa",
@@ -22,7 +24,8 @@
     "promoHeading": "Wopɛ sɛ wote Bible no ase kɔ akyiri yiye?",
     "joinBibleStudy": "Ka yɛn Bible adesua no ho",
     "previousQuote": "Bible asɛm a edi kan",
-    "nextQuote": "Bible asɛm a edi hɔ"
+    "nextQuote": "Bible asɛm a edi hɔ",
+    "readPassage": "Kan kuku nɛɛ yɛ bo Biblia mli."
   },
   "DownloadButton": {
     "checking": "Yɛrehwɛ mu",
@@ -73,7 +76,8 @@
     "selectLanguage": "Paw kasa",
     "searchPlaceholder": "Hwehwɛ kasa…",
     "languages": "Kasa horow",
-    "noMatches": "Emu biara nni hɔ"
+    "noMatches": "Emu biara nni hɔ",
+    "notAvailable": "Enni hɔ"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Kasa",
@@ -112,7 +116,8 @@
     "questions": "Nsɛmmisa a ɛfa ho",
     "askYours": "Bisa wode no",
     "chatWithPerson": "Kasa ne onipa bi",
-    "askBibleQuestion": "Bisa Bible asɛm"
+    "askBibleQuestion": "Bisa Bible asɛm",
+    "quiz": "Bɔkwiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Shɛɛ nɔmee",
@@ -170,7 +175,8 @@
     "searchRegion": "Hwehwɛ videos",
     "clearSearch": "Pepa search no",
     "changeAudioLanguage": "Sesa audio kasa no",
-    "home": "JesusFilm fie"
+    "home": "JesusFilm fie",
+    "closeSearch": "To search no mu"
   },
   "SearchOverlay": {
     "dialogLabel": "Hwehwɛ na browse videos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Pepa",
     "queryLanguageDetected": "Wɔahu {language}",
     "searchInLanguage": "Hwehwɛ wɔ {language} mu",
-    "tryDifferentKeywordsOrLanguage": "Fa kasafra foforo anaa paw search language foforo"
+    "tryDifferentKeywordsOrLanguage": "Fa kasafra foforo anaa paw search language foforo",
+    "useWebsiteDefaultLanguage": "Fa website no default search language di dwuma",
+    "removeLanguage": "Yi {language} fi hɔ",
+    "browseMode": "Hwehwɛɛ kɛ kpɛlɛɛ gbɛ"
   },
   "HeroPlayer": {
     "playWithSound": "Hwɛ seesei",
-    "tapToUnmute": "Bɔ so na yi dinn no fi hɔ"
+    "tapToUnmute": "Bɔ so na yi dinn no fi hɔ",
+    "nextEpisode": "Episode a edi hɔ"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Yɛreload content no"
+    "loadingContent": "Yɛreload content no",
+    "loadingVideo": "Yɛreload video no"
   },
   "VideoLabels": {
     "video": "Mfonin-gbɛjianɔ",
@@ -223,7 +234,8 @@
     "series": "Gbɛjianɔ",
     "collection": "Nhyiam",
     "trailer": "Video tsutsu",
-    "behindTheScenes": "Wɔ akyi"
+    "behindTheScenes": "Wɔ akyi",
+    "chapter": "Ti"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} wɔ {total} mu",
@@ -235,11 +247,286 @@
     "noImage": "Mfonini biara nni hɔ",
     "playingNow": "Rebɔ seesei",
     "previousChapter": "Ti a edi kan",
-    "nextChapter": "Ti a edi hɔ"
+    "nextChapter": "Ti a edi hɔ",
+    "thumbnailAlt": "{title} mfonin bibioo",
+    "relatedVideoThumbnail": "Video a ɛfa ho thumbnail"
   },
   "SearchResultCard": {
     "experience": "Nuunɔ",
     "episodeCount": "{count, plural, one {kpa #} other {kpai #}}",
     "thumbnailAlt": "Video mfonin bibioo"
+  },
+  "Feedback": {
+    "openForm": "Bue feedback form no",
+    "label": "Hemɔkɛyeli",
+    "couldNotLoad": "Yentumi mfa feedback form no mmra.",
+    "loadingForm": "Yɛreload feedback form no…",
+    "retry": "San bɔ hwɛ bio",
+    "openFormShort": "Bue form no",
+    "cancel": "Siw so",
+    "title": "Beta Hemɔkɛyeli",
+    "description": "Ka nea reyɛ adwuma na nea yebetumi ama ayɛ yiye kyerɛ yɛn. Google na ɛde form yi ma.",
+    "openInNewTab": "Bue form no wɔ tab foforo mu",
+    "closeForm": "To feedback form no mu",
+    "loadingGoogleForm": "Yɛreloadd Google Form no…",
+    "iframeTitle": "Fa Beta Feedback mena"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian videos kwa wɔ {language} mu | Jesus Film Project",
+    "metadataDescription": "Hwehwɛ Jesus fim, Bible nsɛm, disciple-making series, ne outreach videos a audio anaa subtitles wɔ {language} mu.",
+    "heroTitle": "Christian videos kwa wɔ {language} mu",
+    "heroDescription": "Hwehwɛ Jesus fim, Bible nsɛm, disciple-making series, ne outreach videos a ɛwɔ {language} mu. Videos a wɔaka no nyinaa da adi kan, na subtitle-only options wɔ ase.",
+    "languageCollection": "Kasa nhyiam",
+    "itemCount": "{count, plural, one {# ade} other {# nneɛma}}",
+    "videoCount": "{count, plural, one {video #} other {videoi #}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} wɔ {groupCount, plural, one {# group} other {# groups}} mu",
+    "sectionNavLabel": "Kasa inventory afã horow",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Foforo",
+    "videoBible": "Video Baiblo",
+    "bibleProject": "BibleProject",
+    "sports": "Agumadi",
+    "collections": "Nhyiam",
+    "subtitlesOnly": "Subtitles nko ara",
+    "newlyAdded": "Wɔde aka ho foforo ara",
+    "newVideosTitle": "Christian videos foforo wɔ {language} mu",
+    "newestFirst": "Nea aba foforo no kan",
+    "noPublishedVideos": "Wɔannya video biara a wɔatintim ama kasa yi so.",
+    "bibleAndGospelFilms": "Bible ne Gospel fim",
+    "videoBibleCollectionsTitle": "{language} Video Bible nhyiam",
+    "videoBibleDescription": "Nhyiam a wɔde Kyerɛwsɛm di kan a LUMO, JESUS, Magdalena, ne Acts ka ho wɔ {language} mu.",
+    "noVideoBibleCollections": "Video Bible nhyiam biara nni hɔ mma kasa yi so.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject nhyiam",
+    "bibleProjectDescription": "BibleProject series ne adesua a wɔwɔ {language} mu.",
+    "noBibleProjectCollections": "BibleProject nhyiam biara nni hɔ mma kasa yi so.",
+    "sportsStories": "Agumadi nsɛm",
+    "sportsTitle": "{language} agumadi ne agumadifo nsɛm",
+    "sportsDescription": "Asɔre gyidi a ɛfa agumadi ho ne agumadifo a wɔn ho hia nhyiam a wɔwɔ {language} mu.",
+    "noSportsCollections": "Agumadi anaa agumadifo nsɛm nhyiam biara nni hɔ mma kasa yi so.",
+    "fullyDubbed": "Wɔaka nsɛm nyinaa mu",
+    "dubbedVideosTitle": "{language} videos a wɔahyehyɛ no sɛ nhyiam",
+    "dubbedVideosDescription": "Hwehwɛ {language} videos a wɔaka no nyinaa mu, a wɔahyehyɛ wɔn ne wɔn nhyiam mu na ɛyɛ mmerɛw sɛ wobɛhunu wɔn.",
+    "noDubbedVideos": "Video biara a wɔaka no nyinaa mu nni hɔ mma kasa yi so.",
+    "subtitlesAvailable": "Subtitles wɔ hɔ",
+    "subtitlesTitle": "{language} videos a subtitles wɔ hɔ",
+    "subtitlesDescription": "Videos yi kura {language} subtitles bere a kasa a wɔaka no {language} no nnya nni hɔ no.",
+    "noSubtitleVideos": "Video biara a subtitle-only wɔ hɔ nni hɔ mma kasa yi so.",
+    "dubbed": "Wɔaka mu",
+    "subtitles": "Shishi-gbɛi",
+    "newLabel": "Foforo",
+    "fromCollection": "Fi {collection} mu",
+    "standaloneVideos": "Videos a ɛgyina hɔ ankasa",
+    "videosFromCollection": "Videos fi {collection} mu.",
+    "standaloneDescription": "Videos a ɛgyina hɔ ankasa wɔ kasa yi mu.",
+    "openCollection": "Bue collection no"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Hwɛ",
+    "watch": "Hwɛ",
+    "watchNow": "Hwɛ seesei",
+    "mutePreview": "Yɛ preview no dinn",
+    "unmutePreview": "Yi preview dinn no fi hɔ",
+    "nextVideo": "Video a edi hɔ",
+    "featured": "Wɔayi no kyerɛ",
+    "showVideo": "Kyerɛ {title}",
+    "previousVideoPreview": "Video a edi kan preview",
+    "nextVideoPreview": "Video a edi hɔ preview",
+    "mediaCollection": "Media nhyiam",
+    "scrollToVideo": "Kɔ ha na hwɛ {title} video no"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project fie",
+    "navigation": "Shishi gbɛtsɔɔmɔ",
+    "share": "Kyɛ",
+    "watch": "Hwɛ",
+    "giving": "Dom",
+    "about": "Fa ho",
+    "products": "Nneɛma",
+    "resources": "Nsuahu",
+    "partners": "Adwumayɛfo",
+    "contact": "Nkitahodi",
+    "giveNow": "Ma mprempren",
+    "resourcesVersion": "Nsuahu ({version})",
+    "office": "Ofie",
+    "fax": "Fax nɔmba",
+    "privacyPolicy": "Kokoam-bɔɔ he Mla",
+    "legalStatement": "Mmara Nsɛm",
+    "newsletter": "Kyerɛw wo din ma yɛn newsletter no"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Wɔayɛ ama asɛmpaka wiase nyinaa",
+    "title": "Asɛm no nsesa. Nanso ɔkwan a nkurɔfo hwɛ no, ɛsesa.",
+    "description": "Yɛresan yɛ yɛn video library ne nnwinnade no fi ase koraa, na yɛde translation adwuma a wɔayɛ mfe pii no rema platforms a nkurɔfo wɔ hɔ dedaw, na wɔhwɛ na wɔkyɛ.",
+    "translatedLibraryTitle": "Fim library a wɔakyerɛ ase sen biara wɔ wiase",
+    "translatedLibraryDescription": "Translation adwuma a wɔayɛ mfe pii, a ministry partners a wɔde wɔn ho to so na wɔakɔ so de aba, ayɛ library a ɛwɔ kasa tracks mpempem pii na nkurɔfo betumi ahu Yesu asɛm no wɔ kasa a ɛka wɔn koma sen biara mu.",
+    "trustedVoicesTitle": "Yɛde nne a wobu wɔn ho so reba formats foforo mu",
+    "trustedVoicesDescription": "Yɛresan yɛ ɔkwan a wɔfa so ka asɛmpa nsɛm no wɔ mfonini mu, na yɛka translations a wotumi de wo ho to so no ne modern formats bom na asɛm no atumi akɔ platforms, amammerɛ, ne screens nyinaa so.",
+    "missionTeamTitle": "Ɛnyɛ library nko ara. Ɔsom adwumayɛfo kuw.",
+    "missionTeamDescription": "Jesus Film Project yɛ world-wide kuw a wɔkyerɛ kasa, media specialists, editors, ne creators a wɔresesa ministry experience a ɛwɔ mfe pii no ayɛ nnwinnade ma disciple-makers baabiara.",
+    "buildingNext": "Nea yɛrekyekye aba so",
+    "nextStepsTitle": "Anɔkwayeli ni Nyɛ Ba Platifɔm",
+    "nextStepsDescription": "Ka viewers no bɔ mu ma wɔnya akwannya a ɛda wɔn honhom mu kwan so, na mmoa wɔn ma wɔmfa wɔn anammɔn a edi hɔ nkɔ community, Kyerɛwsɛm, anaa mission mu.",
+    "mediaLibraryTitle": "Sɛŋmaa Mediai Kpɔlɔ",
+    "mediaLibraryDescription": "Christian media library kɛse a ɛwɔ videos, fim, ne resources mpempem pii a wɔwɔ kasa ahorow mu ma ministry ne evangelism wiase nyinaa.",
+    "ministryToolsTitle": "Dijital Nitsumɔ-nibii kɛha Sɔlemɔ Nitsumɔi",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, ne analytics a wɔayɛ ama ministries atumi akɔ nkurɔfo pii so yie.",
+    "invitationEyebrow": "Wɔfrɛ wo",
+    "invitationTitle": "Boa ma <highlight>nkyirimma foforo</highlight> a wɔde mission tools bedi dwuma no nyɛ",
+    "invitationDescription": "Yɛrefrɛ practitioners, creators, ne partners ma wɔnkɔ early access mu. Sɔ nnwinnade foforo no hwɛ kane, ma feedback, na boa yɛ products a wɔayɛ ama mission adwuma nokware mu.",
+    "betaTester": "Bɛ beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Baiblo Kpekpei",
+    "gospelRailTitle": "Hu asɛm no nyinaa",
+    "videoBibleDescription": "Hwehwɛ yɛn videos ne resources nhyiam a ɛma Bible no ba nkwa mu denam nsɛm ne nkyerɛkyerɛ a ɛyɛ anigye so.",
+    "showcaseTitle": "Kyerɛwsɛm a wɔka no denam fim so",
+    "adventEyebrow": "Christimas Advent",
+    "adventTitle": "Christimas Advent Countdown",
+    "adventDescription": "Ka yɛn Advent akwantu no ho denam video a da biara da a ɛma Christimas ho anidaso kɛse, anigye, ne Yesu aba ho bɔhyɛ no mu hwehwɛ.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Krismasi Hiemɔ",
+    "nuaEyebrow": "NUA Gbɛjianɔ",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Gbɛjianɔ",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video Sukuu",
+    "journeyWithJesusTitle": "Nnante ne Yesu",
+    "gospelsOnVideoEyebrow": "Gospel biara, wɔaka no wɔ video mu",
+    "scriptureAsWrittenTitle": "Kyerɛwsɛm, wɔaka no pɛpɛɛpɛ sɛnea wɔakyerɛw no",
+    "merryChristmas": "Krismasi pa!",
+    "daysUntilChristmas": "{count, plural, one {Gbi # ni aka ma Krismasi} other {Gbii # ni aka ma Krismasi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Kasa horow",
+    "metadataDescription": "Browe JesusFilm videos denam kasa so.",
+    "eyebrow": "Watch kasa horow",
+    "title": "Paw kasa bi",
+    "description": "Hwehwɛ kasa horow denam mantam so anaa browse list no nyinaa mu.",
+    "searchPlaceholder": "Hwehwɛ kasa anaa aman...",
+    "searchLabel": "Hwehwɛ kasa anaa aman",
+    "clearSearch": "Pepa search no",
+    "browse": "Kpɛlɛ",
+    "browseByRegion": "Browse denam mantam ne ɔman so",
+    "languageCount": "{count, plural, one {# kasa} other {# kasa horow}}",
+    "region": "Mantam",
+    "countryLanguages": "{country} kasa horow",
+    "showLess": "Kyerɛ kakra",
+    "showMore": "Kyerɛ {count} bio",
+    "noLanguages": "Kasa biara nni hɔ",
+    "tryAnotherSearch": "Sɔ search nsɛm foforo hwɛ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Nii ni Ohwɛ | Jesus Film Project",
+    "title": "Nii ni Ohwɛ",
+    "loading": "Yɛreload history no",
+    "empty": "Hwɛ ha nnya bi",
+    "emptyDescription": "Videos a wobɛhwɛ bere a wokɔ mu no bɛda adi wɔ ha.",
+    "earlier": "Kan no",
+    "today": "Ɛnnɛ",
+    "yesterday": "Ɔnnora"
+  },
+  "AccountControl": {
+    "account": "Akaunt",
+    "accountMenu": "Akaunt menu",
+    "signIn": "Kɔ mu",
+    "signOut": "Fi mu",
+    "signedIn": "Wokɔ mu",
+    "history": "Abakɔsɛm",
+    "logOut": "Fi mu"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page no nni hɔ",
+    "eyebrow": "Page no nni hɔ",
+    "screenReaderPrefix": "Page no nni hɔ:",
+    "title": "Scene yi nni ha.",
+    "description": "Page no betumi atu, nanso asɛm no kɔ so.",
+    "actionsLabel": "Page no nni hɔ actions",
+    "backToWatch": "San kɔ Watch no so",
+    "browseVideos": "Kpɛlɛ videoi"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Hwɛ fim ketewa no",
+    "actions": {
+      "joinUs": "Bra bɛka yɛn ho",
+      "shareMission": "Ka yɛn asɔre adwuma no kyɛ"
+    },
+    "welcomeStart": {
+      "label": "Gyidi & Kyerɛwsɛm",
+      "title": "Video a yɛayi no ma ɛnnɛ",
+      "description": "Video a egyina gyidi so fi yɛn library mu a ɛbɛkanyan wo, ama wo asusuw ho, na woadwene asɔre so."
+    },
+    "welcomeMorning": {
+      "label": "Anɔpa nkuranhyɛ",
+      "title": "Mema wo maraba! Bible mu nsɛm a ɛbɛka wo no retwɛn wo.",
+      "description": "Fi wo da no ase denam Bible mu nsɛm a ɛhyɛ nkuran, a wɔayɛ no sɛ ɛnkanyan wo na ɛma w’ahonim so no so."
+    },
+    "welcomeAfternoon": {
+      "label": "Awia nkuranhyɛ",
+      "title": "Mema wo awia! Bible mu nsɛm ma wo da no.",
+      "description": "Bible mu nsɛm a ɛhyɛ nkuran a ɛfata wo awia home anaa sɛ wowɔ nkuranhyɛ a ɛkɔ so."
+    },
+    "welcomeEvening": {
+      "label": "Anadwo nkuranhyɛ",
+      "title": "Mema wo anwummere pa! Dwo wo ho ne Bible mu nsɛm.",
+      "description": "Bible mu nsɛm a ɛyɛ komm a ɛbɛboa wo ma woasusuw ho na woanya awerɛkyekye bere a wo da no rebɛsa awiei no."
+    },
+    "joinUs": {
+      "label": "Bra bɛka yɛn ho",
+      "title": "Miliɔn pii rehwɛ asɛm no",
+      "description": "Otwa bere no ni. Bra bɛka yɛn ho ma yɛne wiase nka asɛmpa no denam dijital media so."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Momma yɛnkɔ bom",
+      "title": "Yɛreka Yesu asɛm no, bom",
+      "description": "Na wɔate na wɔahu Yesu dɔ no wɔ wɔn ankasa kasa mu wɔ baabi a wɔwɔ."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ni sa",
+    "none": "Yená video krokomɛ ni sa kɛ video nɛɛ yɛ kasa nɛɛ mli."
+  },
+  "BetaTesterModal": {
+    "title": "Bɛ beta tester",
+    "trigger": "Bɛ beta tester",
+    "loadFailed": "Biribi asi mfomso.",
+    "loading": "Yɛreload...",
+    "openFormNewTab": "Bue form no wɔ tab foforo mu",
+    "close": "To mu",
+    "iframeTitle": "Bɛ beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

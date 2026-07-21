@@ -7,7 +7,9 @@
     "noContent": "Ga go na dikahare tše di lego gona.",
     "homepageMisconfigured": "Leina la gae la watch le beakantšwe ka phošo.",
     "defaultTemplateMisconfigured": "Template ya maemo ya watch e beakantšwe ka phošo.",
-    "authFailed": "Ga go kgonege go netefatša ka tirelo ya dikahare. Hle ikgokaganye le thekgo ge se se tšwela pele."
+    "authFailed": "Ga go kgonege go netefatša ka tirelo ya dikahare. Hle ikgokaganye le thekgo ge se se tšwela pele.",
+    "pageLoadFailed": "Go sentšwe sengwe.",
+    "tryAgain": "Leka gape"
   },
   "VideosPage": {
     "title": "Divideo ka moka",
@@ -22,7 +24,8 @@
     "promoHeading": "Na o nyaka go kwešiša Beibele ka botebo?",
     "joinBibleStudy": "Tsena thutong ya rena ya Beibele",
     "previousQuote": "Tlhalošo ya Beibele e fetilego",
-    "nextQuote": "Tlhalošo e latelago ya Beibele"
+    "nextQuote": "Tlhalošo e latelago ya Beibele",
+    "readPassage": "Bala temana ye ka Beibeleng ya gago."
   },
   "DownloadButton": {
     "checking": "Go hlahloba",
@@ -73,7 +76,8 @@
     "selectLanguage": "Kgetha polelo",
     "searchPlaceholder": "Nyaka dipolelo…",
     "languages": "Dipolelo",
-    "noMatches": "Ga go na tše di swanago"
+    "noMatches": "Ga go na tše di swanago",
+    "notAvailable": "Ga e hwetšagale"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Polelo",
@@ -112,7 +116,8 @@
     "questions": "Dipotšišo tše di Amanago",
     "askYours": "Botšiša ya gago",
     "chatWithPerson": "Bua le motho",
-    "askBibleQuestion": "Botšiša potšišo ya Beibele"
+    "askBibleQuestion": "Botšiša potšišo ya Beibele",
+    "quiz": "Potšišo"
   },
   "WatchQuestionPanel": {
     "messageType": "Mohuta wa molaetša",
@@ -170,7 +175,8 @@
     "searchRegion": "Nyaka divideo",
     "clearSearch": "Phumula nyakišišo",
     "changeAudioLanguage": "Fetola polelo ya modumo",
-    "home": "Legae la JesusFilm"
+    "home": "Legae la JesusFilm",
+    "closeSearch": "Tswalela nyakišišo"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla divideo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Phumula",
     "queryLanguageDetected": "{language} e lemogilwe",
     "searchInLanguage": "Nyaka ka {language}",
-    "tryDifferentKeywordsOrLanguage": "Leka mantšu a mangwe goba o kgethe polelo ye nngwe ya go nyaka"
+    "tryDifferentKeywordsOrLanguage": "Leka mantšu a mangwe goba o kgethe polelo ye nngwe ya go nyaka",
+    "useWebsiteDefaultLanguage": "Diriša polelo ya go nyaka ya sefala ka tlwaelo",
+    "removeLanguage": "Tloša {language}",
+    "browseMode": "Mokgwa wa go phetla nyakišišo"
   },
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
-    "tapToUnmute": "Kgotla gore o bule modumo"
+    "tapToUnmute": "Kgotla gore o bule modumo",
+    "nextEpisode": "Kgaolo e Latelago"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Go laetša dikahare"
+    "loadingContent": "Go laetša dikahare",
+    "loadingVideo": "Go laetša video"
   },
   "VideoLabels": {
     "video": "Bidio",
@@ -223,7 +234,8 @@
     "series": "Lenaneo",
     "collection": "Kgoboketšo",
     "trailer": "Thrilara",
-    "behindTheScenes": "Ka morago ga khamera"
+    "behindTheScenes": "Ka morago ga khamera",
+    "chapter": "Kgaolo"
   },
   "SiblingCarousel": {
     "clipPosition": "Sekotwana {current} sa {total}",
@@ -235,11 +247,286 @@
     "noImage": "Ga go na seswantšho",
     "playingNow": "E bapalwa bjale",
     "previousChapter": "Kgaolo e fetilego",
-    "nextChapter": "Kgaolo e latelago"
+    "nextChapter": "Kgaolo e latelago",
+    "thumbnailAlt": "Seswantšho se sennyane sa {title}",
+    "relatedVideoThumbnail": "Seswantšho se sennyane sa video ye e amanago"
   },
   "SearchResultCard": {
     "experience": "Maitemogelo",
     "episodeCount": "{count, plural, one {# kgaolo} other {# dikgaolo}}",
     "thumbnailAlt": "Seswantšho se sennyane sa video"
+  },
+  "Feedback": {
+    "openForm": "Bula foromo ya maikemišetšo",
+    "label": "Maikemišetšo",
+    "couldNotLoad": "Foromo ya maikemišetšo e ka se laetšwe.",
+    "loadingForm": "Go laetša foromo ya maikemišetšo…",
+    "retry": "Leka gape",
+    "openFormShort": "Bula foromo",
+    "cancel": "Khansela",
+    "title": "Maikemišetšo a Beta",
+    "description": "Abelana ka seo se šomago le seo re ka se kaonefatšago. Foromo ye e fiwa ke Google.",
+    "openInNewTab": "Bula foromo ka tab ye mpsha",
+    "closeForm": "Tswalela foromo ya maikemišetšo",
+    "loadingGoogleForm": "Go laetša Google Form…",
+    "iframeTitle": "Romela Maikemišetšo a Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Divideo tša mahala tša Bokriste ka {language} | Jesus Film Project",
+    "metadataDescription": "Hlahloba difilimi tša Jesu, dikanegelo tša Beibele, mananeo a borutiši, le divideo tša phatlalatšo ka modumo wo o dubiditšwego goba dikapotši ka {language}.",
+    "heroTitle": "Divideo tša mahala tša Bokriste ka {language}",
+    "heroDescription": "Hlahloba difilimi tša Jesu, dikanegelo tša Beibele, mananeo a borutiši, le divideo tša phatlalatšo tšeo di lego ka {language}. Divideo tše di dubiditšwego ka botlalo di laetšwa pele, ka dikgetho tša dikapotši feela ka mo tlase.",
+    "languageCollection": "Kgoboketšo ya polelo",
+    "itemCount": "{count, plural, one {# selo} other {# dilo}}",
+    "videoCount": "{count, plural, one {# video} other {# divideo}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# divideo}} ka {groupCount, plural, one {# setlhopha} other {# dihlopha}}",
+    "sectionNavLabel": "Dikarolo tša kgoboketšo ya polelo",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Mpsha",
+    "videoBible": "Beibele ya Video",
+    "bibleProject": "BibleProject",
+    "sports": "Dipapadi",
+    "collections": "Dikgoboketšo",
+    "subtitlesOnly": "Dikapotši feela",
+    "newlyAdded": "E sa tšwago go oketšwa",
+    "newVideosTitle": "Divideo tše mpsha tša Bokriste ka {language}",
+    "newestFirst": "Tša moragorago pele",
+    "noPublishedVideos": "Ga go sa hwetšwa divideo tšeo di phatlaladitšwego bakeng sa polelo ye.",
+    "bibleAndGospelFilms": "Difilimi tša Beibele le Ebangedi",
+    "videoBibleCollectionsTitle": "Dikgoboketšo tša Beibele ya Video tša {language}",
+    "videoBibleDescription": "Dikgoboketšo tše di theilwego Mangwalong tšeo di akaretšago LUMO, JESUS, Magdalena, le Ditiro ka {language}.",
+    "noVideoBibleCollections": "Ga go sa na dikgoboketšo tša Beibele ya Video tšeo di lego gona bakeng sa polelo ye.",
+    "bibleProjectCollectionsTitle": "Dikgoboketšo tša BibleProject tša {language}",
+    "bibleProjectDescription": "Mananeo le dithuto tša BibleProject tšeo di lego ka {language}.",
+    "noBibleProjectCollections": "Ga go sa na dikgoboketšo tša BibleProject tšeo di lego gona bakeng sa polelo ye.",
+    "sportsStories": "Dikanegelo tša dipapadi",
+    "sportsTitle": "Dikanegelo tša dipapadi le tša baatlelete tša {language}",
+    "sportsDescription": "Dikanegelo tša dipapadi tše di theilwego tumelong le dikgoboketšo tše di tsepeletšego baatlelete tšeo di lego ka {language}.",
+    "noSportsCollections": "Ga go na dikgoboketšo tša dipapadi goba tša dikanegelo tša baatlelete tšeo di lego gona bakeng sa polelo ye.",
+    "fullyDubbed": "Di dubiditšwe ka botlalo",
+    "dubbedVideosTitle": "Divideo tša {language} ka kgoboketšo",
+    "dubbedVideosDescription": "Phetla divideo tša {language} tše di dubiditšwego ka botlalo tšeo di hlophilwego le kgoboketšo ya tšona gore go be bonolo go di hwetša.",
+    "noDubbedVideos": "Ga go sa na divideo tše di dubiditšwego ka botlalo tšeo di lego gona bakeng sa polelo ye.",
+    "subtitlesAvailable": "Dikapotši di hwetšagala",
+    "subtitlesTitle": "Divideo tša {language} tšeo di nago le dikapotši",
+    "subtitlesDescription": "Divideo tše di na le dikapotši tša {language} ge modumo wa {language} wo o boletšwego o sešo o hwetšagala.",
+    "noSubtitleVideos": "Ga go na divideo tša dikapotši feela tšeo di lego gona bakeng sa polelo ye.",
+    "dubbed": "E dubiditšwe",
+    "subtitles": "Dikapotši",
+    "newLabel": "Mpsha",
+    "fromCollection": "Go tšwa go {collection}",
+    "standaloneVideos": "Divideo tše di ikemetšego",
+    "videosFromCollection": "Divideo go tšwa go {collection}.",
+    "standaloneDescription": "Divideo tše di ikemetšego ka polelong ye.",
+    "openCollection": "Bula kgoboketšo"
+  },
+  "WatchHome": {
+    "pageTitle": "Bogela go Jesus Film Project",
+    "watch": "Bogela",
+    "watchNow": "Bogela Bjale",
+    "mutePreview": "Tima modumo wa ponelopele",
+    "unmutePreview": "Bula modumo wa ponelopele",
+    "nextVideo": "Video e latelago",
+    "featured": "E kgethilwego",
+    "showVideo": "Laetša {title}",
+    "previousVideoPreview": "Ponelopele ya video e fetilego",
+    "nextVideoPreview": "Ponelopele ya video e latelago",
+    "mediaCollection": "Kgoboketšo ya media",
+    "scrollToVideo": "Phetlela video ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Legae la Jesus Film Project",
+    "navigation": "Tsela ya go sepelasepela ya fase",
+    "share": "Abelana",
+    "watch": "Bogela",
+    "giving": "Nea",
+    "about": "Ka ga rena",
+    "products": "Ditšweletšwa",
+    "resources": "Didirišwa",
+    "partners": "Badirišani",
+    "contact": "Ikopanye",
+    "giveNow": "Nea Bjale",
+    "resourcesVersion": "Didirišwa ({version})",
+    "office": "Ofisi",
+    "fax": "Fekse",
+    "privacyPolicy": "Pholisi ya Bophelo bja Sephiri",
+    "legalStatement": "Setatemente sa Molao",
+    "newsletter": "Ingolwa go ditaba tša rena"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "E agilwe bakeng sa boromiwa bja lefase ka bophara",
+    "title": "Molaetša ga o fetoge. Tsela yeo batho ba bogelago ka yona ke yona e fetogago.",
+    "description": "Re aga lefsa laeborari ya rena ya divideo le didirišwa go tloga mathomong, re gafa mengwaga ye mentši ya phetolelo go diphata tšeo batho ba šetšego ba kopanela, ba bogela, le go abelana go tšona.",
+    "translatedLibraryTitle": "Laeborari ya difilimi ye e fetoletšwego ka mananeo a mantši kudu lefaseng",
+    "translatedLibraryDescription": "Mengwaga ye mentši ya phetolelo, e rwadišitšwego ke badirišani ba bodiredi ba tshepšegago, e agile laeborari yeo e nago le dikete tša dikanegelo tša polelo gore batho ba kopane le kanegelo ya Jesu ka polelong yeo e fihlelelago pelo ya bona kudu.",
+    "trustedVoicesTitle": "Go iša mantšu a tshepšegago mefomeng ye mefsa",
+    "trustedVoicesDescription": "Re aga lefsa tsela yeo dikanegelo tša ebangedi di anegwago ka yona ka pono, re kopanya diphetolelo tše di tshepšegago le difomo tša sebjalebjale gore molaetša o kgone go sepela ka bolokologi go ralala le diphata, ditšhaba, le disekerine.",
+    "missionTeamTitle": "Go feta laeborari. Ke sehlopha se se šomago ka morero.",
+    "missionTeamDescription": "Jesus Film Project ke sehlopha sa lefase ka bophara sa bafetoledi, ditsebi tša media, bahlophisi, le baagiši bao ba fetolago mengwaga ya phihlelo ya bodiredi gore e be didirišwa tša bao ba dirago barutwana lefaseng ka bophara.",
+    "buildingNext": "Seo re se agago ka morago",
+    "nextStepsTitle": "Sefala sa Dikgato tše Latelago",
+    "nextStepsDescription": "Kgokaganya babogedi le dibaka tše di bonagalago leetong la bona la semoya, o ba thuše go tšea kgato e latelago go ya setšhabeng, Mangwalong, goba thomong.",
+    "mediaLibraryTitle": "Laeborari ya Media ya Evangedi",
+    "mediaLibraryDescription": "Laeborari ye e nabilego ya media wa Bokriste ye e nago le dikete tša divideo, difilimi, le didirišwa tšeo di lego gona ka maleme a mantši bakeng sa bodiredi le boevangedi lefaseng ka bophara.",
+    "ministryToolsTitle": "Didirišwa tša Digital bakeng sa Dibodiredi",
+    "ministryToolsDescription": "Taolo ya video, kabo ya dikagare, boikgokaganyo bja batheeletši, le analytics tšeo di hlametšwego go thuša bodiredi go fihlelela batho ba bantši ka bokgoni.",
+    "invitationEyebrow": "O laleditšwe",
+    "invitationTitle": "Thuša go aga <highlight>moloko o latelago</highlight> wa didirišwa tša thomo",
+    "invitationDescription": "Re laletša batšweletši, baagiši, le badirišani go tsena kgale. Leka didirišwa tše mpsha la mathomo, nea maikemišetšo, gomme o thuše go bopelela ditšweletšwa tše di hlametšwego modiro wa nnete wa thomo.",
+    "betaTester": "Eba molekodi wa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kgoboketšo ya Beibele ya Video",
+    "gospelRailTitle": "Kgonthiša kanegelo ka botlalo",
+    "videoBibleDescription": "Hlahloba kgoboketšo ya rena ya divideo le didirišwa tšeo di phedišago Beibele ka dikanegelo le dithuto tše di kgahlišago.",
+    "showcaseTitle": "Mangwalo a Anegwa ka Filimi",
+    "adventEyebrow": "Keresemose Advent",
+    "adventTitle": "Go Balela Keresemose Advent",
+    "adventDescription": "Tsena leeto la rena la Advent ka video ya letšatši le letšatši yeo e agago tebelelo ya Keresemose, e hlahloba kholofelo, lethabo, le tshepišo ya go tla ga Jesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Lenaneo la NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Lenaneo la Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Thuto ya Video",
+    "journeyWithJesusTitle": "Sepela le Jesu",
+    "gospelsOnVideoEyebrow": "Ebangedi Ye Nngwe le Ye Nngwe, e Anetšwe ka Video",
+    "scriptureAsWrittenTitle": "Mangwalo, a Bolelwa Kgoši ka Moo a Ngwadilwego",
+    "merryChristmas": "Keresemose ye Mbotse!",
+    "daysUntilChristmas": "{count, plural, one {Go šetše letšatši le # pele ga Keresemose} other {Go šetše matšatši a # pele ga Keresemose}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Dipolelo",
+    "metadataDescription": "Phetla divideo tša JesusFilm ka polelo.",
+    "eyebrow": "Dipolelo tša go bogela",
+    "title": "Kgetha polelo",
+    "description": "Hlahloba dipolelo ka selete goba phetla lenaneokgolo ka moka.",
+    "searchPlaceholder": "Nyaka dipolelo goba dinaga...",
+    "searchLabel": "Nyaka dipolelo goba dinaga",
+    "clearSearch": "Phumula nyakišišo",
+    "browse": "Phetla",
+    "browseByRegion": "Phetla ka selete le naga",
+    "languageCount": "{count, plural, one {# polelo} other {# dipolelo}}",
+    "region": "Selete",
+    "countryLanguages": "Dipolelo tša {country}",
+    "showLess": "Bontšha tše sego kae",
+    "showMore": "Bontšha tše dingwe tše {count}",
+    "noLanguages": "Ga go na dipolelo tše di hweditšwego",
+    "tryAnotherSearch": "Leka lentšu le lengwe la nyakišišo."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Histori ya go Bogela | Jesus Film Project",
+    "title": "Histori ya go Bogela",
+    "loading": "Go laetša histori",
+    "empty": "Ga go na selo mo bjale",
+    "emptyDescription": "Divideo tšeo o di bogelago ge o tsene di tla hlaha mo.",
+    "earlier": "Pele",
+    "today": "Lehono",
+    "yesterday": "Maabane"
+  },
+  "AccountControl": {
+    "account": "Akhaonto",
+    "accountMenu": "Lenaneo la akhaonto",
+    "signIn": "Tsena",
+    "signOut": "Tšwa",
+    "signedIn": "O tsene",
+    "history": "Histori",
+    "logOut": "Tšwa"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Letlakala ga se la hwetšwa",
+    "eyebrow": "Letlakala ga se la hwetšwa",
+    "screenReaderPrefix": "Letlakala ga se la hwetšwa:",
+    "title": "Ponagalo ye ga e gona mo.",
+    "description": "Letlakala le ka ba le suthile, eupša kanegelo e a tšwela pele.",
+    "actionsLabel": "Ditiro tša letlakala le le sa hwetšagalego",
+    "backToWatch": "Morago go Watch",
+    "browseVideos": "Phetla divideo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Bogela filimi ye kopana",
+    "actions": {
+      "joinUs": "Tsenela rena",
+      "shareMission": "Abelana ka morero wa rena"
+    },
+    "welcomeStart": {
+      "label": "Tumelo & Mangwalo",
+      "title": "Dikgetho tša Video tša Lehono",
+      "description": "Diteng tša video tše di theilwego tumelong go tšwa laeboraring ya rena tše di go hlohleletšago, di go hlohla, gomme tša tsosa ponelopele."
+    },
+    "welcomeMorning": {
+      "label": "Tlhotlheletšo ya Mesong",
+      "title": "Mesong ye Mebotse! Ditsela tša Beibele tša Lehono di a go leta.",
+      "description": "Thoma letšatši la gago ka ditsela tša Beibele tše di kgothatšago tšeo di hlametšwego go go hlohleletša le go go homotša moya wa gago."
+    },
+    "welcomeAfternoon": {
+      "label": "Tlhotlheletšo ya Thapama",
+      "title": "Thapama ye Mbotse! Ditsela tša Beibele tša Letšatši la Gago.",
+      "description": "Diteng tša Beibele tše di kgothatšago tše di swanetšego go ikhutša ga gago ga thapama goba go tšwela pele ga tlhotlheletšo."
+    },
+    "welcomeEvening": {
+      "label": "Tlhotlheletšo ya Mantšiboa",
+      "title": "Mantšiboa a Mabotse! Khutša ka Ditsela tša Beibele.",
+      "description": "Ditsela tša Beibele tša khutšo tše di go thušago go nagana le go hwetša kgomotšo ge letšatši la gago le fihla mafelelong."
+    },
+    "joinUs": {
+      "label": "Tsenela rena",
+      "title": "Dimilione tše dikete di a nyaka",
+      "description": "Kotulo e fihlile. Tsenela rena ge re abelana ebangedi le lefase ka media wa digital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "A re ye mmogo",
+      "title": "Go Anela Kanegelo ya Jesu, Mmogo",
+      "description": "Gore ba kgone go kwa le go bona lerato la Jesu ka polelo ya bona moo ba lego gona."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "E swana ka {percent}%",
+    "none": "Ga go na ditšhišinyo tše di hweditšwego tša video ye ka polelo ye."
+  },
+  "BetaTesterModal": {
+    "title": "Eba molekodi wa beta",
+    "trigger": "Eba molekodi wa beta",
+    "loadFailed": "Go sentšwe sengwe.",
+    "loading": "Go laetša...",
+    "openFormNewTab": "Bula foromo ka tab ye mpsha",
+    "close": "Tswalela",
+    "iframeTitle": "Eba molekodi wa beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

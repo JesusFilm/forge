@@ -10,6 +10,10 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { Video } from "@/components/sections/Video"
+import {
+  WatchModalActivityProvider,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
 
 const baseFragment = {
   id: "v-1",
@@ -45,6 +49,22 @@ afterEach(async () => {
 })
 
 describe("Video", () => {
+  function ModalOwner({ active }: { active: boolean }) {
+    useWatchModalActivity(active, { releaseDelayMs: 0 })
+    return null
+  }
+
+  async function renderWithModal(active: boolean) {
+    await act(async () => {
+      root.render(
+        <WatchModalActivityProvider>
+          <ModalOwner active={active} />
+          <Video data={baseFragment} />
+        </WatchModalActivityProvider>,
+      )
+    })
+  }
+
   it("mounts via Mux and exposes the section testid", async () => {
     await act(async () => {
       root.render(<Video data={baseFragment} />)
@@ -116,5 +136,25 @@ describe("Video", () => {
     })
 
     expect(container.querySelector('[data-testid="VideoSection"]')).toBeNull()
+  })
+
+  it("pauses its authored media when modal activity opens", async () => {
+    await renderWithModal(false)
+    const video = container.querySelector("video") as HTMLVideoElement
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      value: false,
+      writable: true,
+    })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+
+    await renderWithModal(true)
+
+    expect(pause).toHaveBeenCalledOnce()
   })
 })

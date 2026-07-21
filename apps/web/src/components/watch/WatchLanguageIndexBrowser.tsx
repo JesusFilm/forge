@@ -3,6 +3,7 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { ArrowRight, ChevronDown, Globe2, Search, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useMemo, useState } from "react"
 
 import type {
@@ -60,14 +61,6 @@ const COUNTRY_LANGUAGE_PREVIEW_COUNT = 4
 
 function normalizeText(value: string): string {
   return value.trim().toLowerCase()
-}
-
-function formatCount(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value)
-}
-
-function formatLanguageCount(value: number): string {
-  return `${formatCount(value)} ${value === 1 ? "language" : "languages"}`
 }
 
 function languageMatchesQuery(
@@ -179,6 +172,7 @@ function CountryLanguages({
   onToggle: () => void
   regionName: string
 }) {
+  const t = useTranslations("WatchLanguageIndex")
   const hiddenLanguageCount = Math.max(
     0,
     country.languages.length - COUNTRY_LANGUAGE_PREVIEW_COUNT,
@@ -193,7 +187,7 @@ function CountryLanguages({
   return (
     <section
       className="border-t border-white/10 py-5 first:border-t-0 first:pt-0"
-      aria-label={`${country.name} languages`}
+      aria-label={t("countryLanguages", { country: country.name })}
     >
       <header className="mb-3 flex items-center gap-3">
         {country.flagPngSrc ? (
@@ -215,7 +209,7 @@ function CountryLanguages({
             {country.name}
           </h4>
           <p className="m-0 mt-0.5 text-sm leading-tight font-semibold text-stone-400">
-            {formatLanguageCount(country.languages.length)}
+            {t("languageCount", { count: country.languages.length })}
           </p>
         </div>
       </header>
@@ -241,8 +235,8 @@ function CountryLanguages({
           onClick={onToggle}
         >
           {expanded
-            ? "Show less"
-            : `Show ${formatCount(hiddenLanguageCount)} more`}
+            ? t("showLess")
+            : t("showMore", { count: hiddenLanguageCount })}
           <ChevronDown
             className={`size-4 transition-transform ${
               expanded ? "rotate-180" : ""
@@ -264,6 +258,7 @@ function RegionLanguages({
   onToggleCountry: (key: string) => void
   region: WatchLanguageIndexRegion
 }) {
+  const t = useTranslations("WatchLanguageIndex")
   const artwork = REGION_ARTWORK[region.name] ?? FALLBACK_REGION_ARTWORK
 
   return (
@@ -278,13 +273,13 @@ function RegionLanguages({
         <span className="absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-25 mix-blend-soft-light" />
         <span className="relative z-[1] flex h-full min-h-48 flex-col justify-end p-5 lg:min-h-[24rem]">
           <span className="mb-3 w-fit rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold tracking-[0.2em] text-amber-200 uppercase backdrop-blur-sm">
-            Region
+            {t("region")}
           </span>
           <h3 className="m-0 text-3xl leading-none font-bold text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
             {region.name}
           </h3>
           <span className="mt-2 text-lg leading-none font-bold text-stone-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
-            {formatLanguageCount(region.languages.length)}
+            {t("languageCount", { count: region.languages.length })}
           </span>
         </span>
       </header>
@@ -310,6 +305,7 @@ function RegionLanguages({
 export function WatchLanguageIndexBrowser({
   regions,
 }: WatchLanguageIndexBrowserProps) {
+  const t = useTranslations("WatchLanguageIndex")
   const [searchValue, setSearchValue] = useState("")
   const [expandedCountryKeys, setExpandedCountryKeys] = useState<
     ReadonlySet<string>
@@ -403,16 +399,16 @@ export function WatchLanguageIndexBrowser({
         </span>
         <span className="min-w-0">
           <span className="mb-1 block text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
-            Watch languages
+            {t("eyebrow")}
           </span>
           <h1
             id="language-index-title"
             className="m-0 text-2xl leading-tight font-bold tracking-normal text-white sm:text-3xl"
           >
-            Choose a language
+            {t("title")}
           </h1>
           <span className="mt-1 block text-sm leading-tight font-semibold text-stone-300/80 sm:text-base">
-            Explore languages by region or browse the full list.
+            {t("description")}
           </span>
         </span>
       </header>
@@ -426,8 +422,8 @@ export function WatchLanguageIndexBrowser({
           type="search"
           value={searchValue}
           onChange={(event) => setSearchValue(event.target.value)}
-          placeholder="Search languages or countries..."
-          aria-label="Search languages or countries"
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchLabel")}
           className="h-14 w-full rounded-[35px] border border-white/10 bg-white/10 pr-12 pl-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40"
         />
         {searchValue ? (
@@ -435,7 +431,7 @@ export function WatchLanguageIndexBrowser({
             type="button"
             className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
             onClick={() => setSearchValue("")}
-            aria-label="Clear search"
+            aria-label={t("clearSearch")}
           >
             <X className="size-4" aria-hidden="true" />
           </button>
@@ -443,16 +439,16 @@ export function WatchLanguageIndexBrowser({
       </label>
 
       <p className="m-0 text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
-        Browse
+        {t("browse")}
       </p>
       <h2 className="m-0 mt-1 text-xl leading-tight font-bold text-white sm:text-2xl">
-        Browse by region and country
+        {t("browseByRegion")}
       </h2>
       <p
         className="m-0 mt-2 text-sm font-bold text-stone-400"
         aria-live="polite"
       >
-        {formatCount(visibleLanguageCount)} languages
+        {t("languageCount", { count: visibleLanguageCount })}
       </p>
 
       {regionGroups.length > 0 ? (
@@ -467,10 +463,10 @@ export function WatchLanguageIndexBrowser({
       ) : (
         <section className="border-t border-white/10 py-12 text-center">
           <h3 className="m-0 text-lg font-bold text-white">
-            No languages found
+            {t("noLanguages")}
           </h3>
           <p className="m-0 mt-2 text-sm font-semibold text-stone-400">
-            Try another search term.
+            {t("tryAnotherSearch")}
           </p>
         </section>
       )}

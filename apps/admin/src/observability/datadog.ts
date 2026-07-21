@@ -1,5 +1,6 @@
 import tracer from "dd-trace"
 
+import { env } from "@/config/env"
 import { configureDatadogLogForwarding } from "./datadog-logs"
 
 let configured = false
@@ -19,7 +20,7 @@ export function configureDatadog(): void {
   tracer.init({
     logInjection: true,
     runtimeMetrics: true,
-    service: "forge-admin",
+    service: env.DD_SERVICE ?? "forge-admin",
   })
 
   tracer.use("graphql", DATADOG_GRAPHQL_CONFIG)

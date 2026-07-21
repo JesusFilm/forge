@@ -7,7 +7,9 @@
     "noContent": "Konteni taŋ te.",
     "homepageMisconfigured": "Sa watch homepage taŋ a pa tsɛ̃ nɛ.",
     "defaultTemplateMisconfigured": "Template watch default taŋ a pa tsɛ̃ nɛ.",
-    "authFailed": "A taŋ ka authenticate sevis konteni. Ne le suporto a ba tɛkɔ sɔrɔ eŋga a bɛ kɛ."
+    "authFailed": "A taŋ ka authenticate sevis konteni. Ne le suporto a ba tɛkɔ sɔrɔ eŋga a bɛ kɛ.",
+    "pageLoadFailed": "Ntoŋ a sɔrɔ.",
+    "tryAgain": "Fa kaŋa bɛ"
   },
   "VideosPage": {
     "title": "Videos kɛŋ",
@@ -22,7 +24,8 @@
     "promoHeading": "A bɛ nɛŋ Bible ka dɔɔ fɔ?",
     "joinBibleStudy": "Dɔɔ Bible study te",
     "previousQuote": "Bible quote a nyɛŋ",
-    "nextQuote": "Bible quote a kɛrɛ"
+    "nextQuote": "Bible quote a kɛrɛ",
+    "readPassage": "Passage nin dɔɔ kɛ Bible i te."
   },
   "DownloadButton": {
     "checking": "A ka check",
@@ -73,7 +76,8 @@
     "selectLanguage": "Language dɔɔ",
     "searchPlaceholder": "Languages sɛbɛ…",
     "languages": "Languages kɛŋ",
-    "noMatches": "Dɔɔ te"
+    "noMatches": "Dɔɔ te",
+    "notAvailable": "A taŋ te"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Language dɔɔ",
@@ -112,7 +116,8 @@
     "questions": "Questions dɔɔ",
     "askYours": "Fo aŋ yaa",
     "chatWithPerson": "Mɔŋ ka dɔɔ fɔ",
-    "askBibleQuestion": "Bible question fɔ"
+    "askBibleQuestion": "Bible question fɔ",
+    "quiz": "ಕ್ವಿಜ್"
   },
   "WatchQuestionPanel": {
     "messageType": "Message type dɔɔ",
@@ -170,7 +175,8 @@
     "searchRegion": "Video search",
     "clearSearch": "Search mɛ",
     "changeAudioLanguage": "Audio language kɛ",
-    "home": "JesusFilm sa"
+    "home": "JesusFilm sa",
+    "closeSearch": "Search mɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video search o browse kɛ",
@@ -205,14 +211,19 @@
     "clearLanguages": "Mɛ",
     "queryLanguageDetected": "{language} a sɔrɔ",
     "searchInLanguage": "{language} te search kɛ",
-    "tryDifferentKeywordsOrLanguage": "Keyword dɔɔ kɛ o search language dɔɔ dɔɔ dɔɔ"
+    "tryDifferentKeywordsOrLanguage": "Keyword dɔɔ kɛ o search language dɔɔ dɔɔ dɔɔ",
+    "useWebsiteDefaultLanguage": "Website default search language kɛ",
+    "removeLanguage": "{language} bɔ",
+    "browseMode": "Search browse mode i"
   },
   "HeroPlayer": {
     "playWithSound": "Wa yɔrɔ watch",
-    "tapToUnmute": "Tap kɛ unmute te"
+    "tapToUnmute": "Tap kɛ unmute te",
+    "nextEpisode": "Episode kɛrɛ"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Content loading"
+    "loadingContent": "Content loading",
+    "loadingVideo": "Video loading"
   },
   "VideoLabels": {
     "video": "Video dɔɔ",
@@ -223,7 +234,8 @@
     "series": "Series dɔɔ",
     "collection": "Collection dɔɔ",
     "trailer": "Film preview",
-    "behindTheScenes": "Film kɛŋ kɛrɛ te"
+    "behindTheScenes": "Film kɛŋ kɛrɛ te",
+    "chapter": "Chapter dɔɔ"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ti {total} ra",
@@ -235,11 +247,286 @@
     "noImage": "Image te",
     "playingNow": "A ka play now",
     "previousChapter": "Chapter nyɛŋ",
-    "nextChapter": "Chapter kɛrɛ"
+    "nextChapter": "Chapter kɛrɛ",
+    "thumbnailAlt": "{title} image dɔɔ",
+    "relatedVideoThumbnail": "Video related image dɔɔ"
   },
   "SearchResultCard": {
     "experience": "Experience dɔɔ",
     "episodeCount": "{count, plural, one {# ಎಪಿಸೋಡ್} other {# ಎಪಿಸೋಡ್‌ಗಳು}}",
     "thumbnailAlt": "Video image dɔɔ"
+  },
+  "Feedback": {
+    "openForm": "Fɛmbu feedback form",
+    "label": "Naŋkaŋ fɔ",
+    "couldNotLoad": "Feedback form taŋ ka load.",
+    "loadingForm": "A taŋ ka load feedback form…",
+    "retry": "Fa kaŋa bɛ",
+    "openFormShort": "Fɛmbu form",
+    "cancel": "Bɔ",
+    "title": "Beta naŋkaŋ fɔ",
+    "description": "Kɛŋ naŋ a kɛ, naŋ aŋ ka bɛ tɛkɔ. Form nin Google ye a kɛ.",
+    "openInNewTab": "Fɛmbu form a new tab te",
+    "closeForm": "Mɛ feedback form",
+    "loadingGoogleForm": "A taŋ ka load Google Form…",
+    "iframeTitle": "Sɔrɔ Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Christian videos free in {language} | Jesus Film Project",
+    "metadataDescription": "Jesus films, Bible stories, discipleship series, o outreach videos browse kɛ, dubbed audio o subtitles in {language} naŋ.",
+    "heroTitle": "Christian videos free in {language}",
+    "heroDescription": "Jesus films, Bible stories, discipleship series, o outreach videos available in {language} browse kɛ. Fully dubbed videos a nyɛŋ first, subtitles-only options a nyɛŋ wa.",
+    "languageCollection": "Language collection i",
+    "itemCount": "{count, plural, one {# aŋga} other {# aŋga kɛŋ}}",
+    "videoCount": "{count, plural, one {# ವಿಡಿಯೋ} other {# ವಿಡಿಯೋಗಳು}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} ti {groupCount, plural, one {# group} other {# groups}} ra",
+    "sectionNavLabel": "Language inventory yɔrɔ kɛŋ",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "A bɛ new",
+    "videoBible": "Bible video",
+    "bibleProject": "BibleProject",
+    "sports": "Sports kɛŋ",
+    "collections": "Collections kɛŋ",
+    "subtitlesOnly": "Subtitles taŋ",
+    "newlyAdded": "A add new",
+    "newVideosTitle": "Christian videos dɔɔ in {language}",
+    "newestFirst": "New first",
+    "noPublishedVideos": "Language nin te published videos te sɔrɔ.",
+    "bibleAndGospelFilms": "Bible o Gospel films",
+    "videoBibleCollectionsTitle": "{language} Bible video collections",
+    "videoBibleDescription": "Scripture-centered collections including LUMO, JESUS, Magdalena, o Acts in {language} naŋ.",
+    "noVideoBibleCollections": "Language nin te Video Bible collections te sɔrɔ.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject collections kɛŋ",
+    "bibleProjectDescription": "BibleProject series o studies available in {language} naŋ.",
+    "noBibleProjectCollections": "Language nin te BibleProject collections te sɔrɔ.",
+    "sportsStories": "Sports stories kɛŋ",
+    "sportsTitle": "{language} sports o athlete stories",
+    "sportsDescription": "Faith-centered sports stories o athlete-focused collections available in {language} naŋ.",
+    "noSportsCollections": "Language nin te sports o athlete-story collections te sɔrɔ.",
+    "fullyDubbed": "Dubbed full",
+    "dubbedVideosTitle": "{language} videos collection te",
+    "dubbedVideosDescription": "Fully dubbed {language} videos browse kɛ, collection te group kɛ, a bɛ sɔrɔ nɔŋ.",
+    "noDubbedVideos": "Language nin te fully dubbed videos te sɔrɔ.",
+    "subtitlesAvailable": "Subtitles a bɛ",
+    "subtitlesTitle": "{language} videos subtitles naŋ",
+    "subtitlesDescription": "Video nin a bɛ {language} subtitles, spoken {language} audio a taŋ taŋ a bɛ.",
+    "noSubtitleVideos": "Language nin te subtitle-only videos te sɔrɔ.",
+    "dubbed": "A dub",
+    "subtitles": "Subtitles kɛŋ",
+    "newLabel": "A bɛ new",
+    "fromCollection": "{collection} te",
+    "standaloneVideos": "Standalone videos kɛŋ",
+    "videosFromCollection": "Videos {collection} te.",
+    "standaloneDescription": "Language nin te standalone videos.",
+    "openCollection": "Collection fɛmbu"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Watch sa",
+    "watch": "Watch kɛ",
+    "watchNow": "Watch kɛ tada",
+    "mutePreview": "Preview mute",
+    "unmutePreview": "Preview unmute",
+    "nextVideo": "Video kɛrɛ",
+    "featured": "A dɔɔ first",
+    "showVideo": "{title} nɛŋ",
+    "previousVideoPreview": "Video preview nyɛŋ",
+    "nextVideoPreview": "Video preview kɛrɛ",
+    "mediaCollection": "ಮೀಡಿಯಾ ಸಂಗ್ರಹ",
+    "scrollToVideo": "{title} ವಿಡಿಯೋಗೆ ಸ್ಕ್ರೋಲ್ ಮಾಡಿ"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project sa",
+    "navigation": "Footer navigation i",
+    "share": "Share kɛ",
+    "watch": "Watch kɛ",
+    "giving": "Aŋga di",
+    "about": "Ne wule",
+    "products": "Products kɛŋ",
+    "resources": "Resources kɛŋ",
+    "partners": "Partners kɛŋ",
+    "contact": "Ne ka fɔ",
+    "giveNow": "Aŋga di tada",
+    "resourcesVersion": "Resources ({version}) kɛŋ",
+    "office": "Bureau i",
+    "fax": "Fax numero",
+    "privacyPolicy": "Privacy policy i",
+    "legalStatement": "Legal statement i",
+    "newsletter": "Our Newsletter te sign up kɛ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Global missions te kɛ",
+    "title": "Message a taŋ change. People a video watch kɛ way a change.",
+    "description": "Ne bɛ video library o tools kɛŋ, translation work decades a kɛ platforms te nɔŋ sɔrɔ, yɔrɔ people a ka gather, watch, o share kɛ naŋ.",
+    "translatedLibraryTitle": "World te most translated film library",
+    "translatedLibraryDescription": "Translation work decades, ministry partners trusted a dɔɔ, a library kɛ thousands language tracks te, a bɛ people a bɛ story Jesus nɛŋ language a bɛ reach aŋ dɔɔ te.",
+    "trustedVoicesTitle": "Trusted voices new formats te kɛŋ",
+    "trustedVoicesDescription": "Ne bɛ gospel stories fɔŋ visual te kɛŋ, trusted translations kɛ modern formats te pɔŋ, message a bɛ move freely across platforms, cultures, o screens.",
+    "missionTeamTitle": "Library nɛŋ taŋ te. Mission-driven team a bɛ.",
+    "missionTeamDescription": "Jesus Film Project a bɛ global team of translators, media specialists, editors, o creators, decades of ministry experience a kɛ tools disciple-makers kɛŋ te.",
+    "buildingNext": "A bɛ ne next kɛŋ",
+    "nextStepsTitle": "Next Steps platform i",
+    "nextStepsDescription": "Viewers connect kɛ spiritual journey te opportunities tangible with, community, Scripture, o mission te next step kɛ.",
+    "mediaLibraryTitle": "Evangelism media library",
+    "mediaLibraryDescription": "Christian media library a bɛ, thousands of videos, films, o resources multiple languages te, ministry o evangelism worldwide te.",
+    "ministryToolsTitle": "Ministries digital tools kɛŋ",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, o analytics ministry a bɛ more people reach effectively kɛ te.",
+    "invitationEyebrow": "Aŋ a bɛ invited",
+    "invitationTitle": "Ne nɛ mission tools <highlight>generation kɛrɛ</highlight> kɛ",
+    "invitationDescription": "Ne bɛ practitioners, creators, o partners early access te invite. Tools new first test kɛ, feedback dɔɔ fɔ, o products mission work real te designed a kɛ shape kɛ.",
+    "betaTester": "Beta tester kɛ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Bible video collection",
+    "gospelRailTitle": "Story full nɛŋ dɔɔ",
+    "videoBibleDescription": "Video o resources collection nin browse kɛ, Bible a bɛ life te bring through stories o teachings engaging naŋ.",
+    "showcaseTitle": "Scripture a fɔ film te",
+    "adventEyebrow": "Christmas Advent i",
+    "adventTitle": "Christmas Advent countdown i",
+    "adventDescription": "Advent journey te join kɛ, daily video a bɛ Christmas kɛŋ anticipation kɛ, hope, joy, o Jesus' arrival promise browse kɛ.",
+    "bibleProjectEyebrow": "BibleProject series",
+    "bibleProjectAdventTitle": "BibleProject Advent i",
+    "nuaEyebrow": "NUA series i",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth series i",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video course dɔɔ",
+    "journeyWithJesusTitle": "Jesus naŋ journey kɛ",
+    "gospelsOnVideoEyebrow": "Gospel kɛŋ video te",
+    "scriptureAsWrittenTitle": "Scripture fɔ, a sɛbɛ naŋ",
+    "merryChristmas": "Christmas di!",
+    "daysUntilChristmas": "{count, plural, one {# day Christmas te} other {# days Christmas te}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Languages kɛŋ",
+    "metadataDescription": "JesusFilm videos language naŋ browse kɛ.",
+    "eyebrow": "Watch languages kɛŋ",
+    "title": "Language dɔɔ",
+    "description": "Region te language dɔɔ browse kɛ o list full nɛŋ browse kɛ.",
+    "searchPlaceholder": "Languages o countries search...",
+    "searchLabel": "Languages o countries search",
+    "clearSearch": "Search mɛ",
+    "browse": "Browse kɛ",
+    "browseByRegion": "Region o country te browse kɛ",
+    "languageCount": "{count, plural, one {# ಭಾಷೆ} other {# ಭಾಷೆಗಳು}}",
+    "region": "Region dɔɔ",
+    "countryLanguages": "{country} languages kɛŋ",
+    "showLess": "Dɔɔ dɔɔ",
+    "showMore": "{count} dɔɔ",
+    "noLanguages": "Languages te sɔrɔ",
+    "tryAnotherSearch": "Search term dɔɔ dɔɔ kɛ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Watch history | Jesus Film Project",
+    "title": "Watch history i",
+    "loading": "History loading",
+    "empty": "Yɔrɔ te",
+    "emptyDescription": "Videos aŋ bɛ watch sign in te, a bɛ yɔrɔ nin te sɔrɔ.",
+    "earlier": "A nyɛŋ",
+    "today": "Bi",
+    "yesterday": "Kunɔŋ"
+  },
+  "AccountControl": {
+    "account": "Account i",
+    "accountMenu": "Account menu i",
+    "signIn": "Sign in kɛ",
+    "signOut": "Sign out kɛ",
+    "signedIn": "A sign in",
+    "history": "History i",
+    "logOut": "Log out kɛ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page a te te",
+    "eyebrow": "Page a te te",
+    "screenReaderPrefix": "Page a te te:",
+    "title": "Scene nin a te te.",
+    "description": "Page a bɛ move, ya story a bɛ continue.",
+    "actionsLabel": "Page a te te actions kɛŋ",
+    "backToWatch": "Watch te kɛrɛ",
+    "browseVideos": "Video dɔɔ browse kɛ"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "ಕಿರುಚಿತ್ರ ನೋಡಿ",
+    "actions": {
+      "joinUs": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
+      "shareMission": "ನಮ್ಮ ಧ್ಯೇಯದಲ್ಲಿ ಪಾಲುಗೊಳ್ಳಿ"
+    },
+    "welcomeStart": {
+      "label": "ನಂಬಿಕೆ ಮತ್ತು ಶಾಸ್ತ್ರ",
+      "title": "ಇಂದಿನ ವಿಡಿಯೋ ಆಯ್ಕೆಗಳು",
+      "description": "ಪ್ರೇರಣೆ, ಸವಾಲು ಮತ್ತು ಚಿಂತನೆಗೆ ದಾರಿ ಮಾಡುವ ನಮ್ಮ ಸಂಗ್ರಹದ ನಂಬಿಕೆ-ಕೇಂದ್ರಿತ ವಿಡಿಯೋ ವಿಷಯ."
+    },
+    "welcomeMorning": {
+      "label": "ಬೆಳಗಿನ ಪ್ರೇರಣೆ",
+      "title": "ಶುಭೋದಯ! ಇಂದಿನ ಬೈಬಲ್ ಕ್ಷಣಗಳು ನಿಮ್ಮನ್ನು ಕಾಯುತ್ತಿವೆ.",
+      "description": "ನಿಮ್ಮ ದಿನವನ್ನು ಪ್ರೋತ್ಸಾಹಕಾರಿ ಬೈಬಲ್ ಕ್ಷಣಗಳಿಂದ ಆರಂಭಿಸಿ; ಅವು ನಿಮ್ಮ ಆತ್ಮವನ್ನು ಉನ್ನತಗೊಳಿಸಲು ರೂಪಿಸಲಾಗಿದೆ."
+    },
+    "welcomeAfternoon": {
+      "label": "ಮಧ್ಯಾಹ್ನದ ಪ್ರೇರಣೆ",
+      "title": "ಶುಭ ಮಧ್ಯಾಹ್ನ! ನಿಮ್ಮ ದಿನಕ್ಕೆ ಬೈಬಲ್ ಕ್ಷಣಗಳು.",
+      "description": "ಮಧ್ಯಾಹ್ನದ ವಿರಾಮಕ್ಕೆ ಅಥವಾ ಮುಂದುವರಿದ ಪ್ರೇರಣೆಗೆ ಸೂಕ್ತವಾದ ಪ್ರೋತ್ಸಾಹಕಾರಿ ಬೈಬಲ್ ವಿಷಯ."
+    },
+    "welcomeEvening": {
+      "label": "ಸಂಜೆಯ ಪ್ರೇರಣೆ",
+      "title": "ಶುಭ ಸಂಜೆ! ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ.",
+      "description": "ನಿಮ್ಮ ದಿನ ಮುಕ್ತಾಯವಾಗುವಾಗ ಚಿಂತಿಸಲು ಮತ್ತು ಸಮಾಧಾನ ಪಡೆಯಲು ಸಹಾಯಕವಾದ ಶಾಂತ ಬೈಬಲ್ ಕ್ಷಣಗಳು."
+    },
+    "joinUs": {
+      "label": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
+      "title": "ಕೋಟ್ಯಂತರ ಜನರು ಹುಡುಕುತ್ತಿದ್ದಾರೆ",
+      "description": "ಬೆಳೆ ಈಗಿದೆ. ಡಿಜಿಟಲ್ ಮೀಡಿಯಾ ಬಳಸಿ ವಿಶ್ವಕ್ಕೆ ಸುವಾರ್ತೆಯನ್ನು ಹಂಚುವಲ್ಲಿ ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "ಒಟ್ಟಾಗಿ ಸಾಗೋಣ",
+      "title": "ಯೇಸುವಿನ ಕಥೆಯನ್ನು ಒಟ್ಟಾಗಿ ಹೇಳುವುದು",
+      "description": "ಅವರು ಇರುವಲ್ಲೇ, ಅವರದೇ ಭಾಷೆಯಲ್ಲಿ ಯೇಸುವಿನ ಪ್ರೀತಿ ಕೇಳಿ ಮತ್ತು ನೋಡಿ ಅರಿಯುವಂತೆ."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% a match",
+    "none": "Video nin te recommendation te sɔrɔ language nin te."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester kɛ",
+    "trigger": "Beta tester kɛ",
+    "loadFailed": "Ntoŋ a sɔrɔ.",
+    "loading": "A ka load...",
+    "openFormNewTab": "Fɛmbu form a new tab te",
+    "close": "Mɛ",
+    "iframeTitle": "Beta tester kɛ"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

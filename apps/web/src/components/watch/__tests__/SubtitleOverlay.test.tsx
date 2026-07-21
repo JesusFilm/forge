@@ -39,7 +39,24 @@ class MockTextTrack extends EventTarget {
     this.activeCues =
       activeText == null
         ? null
-        : ([{ text: activeText }] as unknown as TextTrackCueList)
+        : ([
+            {
+              text: activeText,
+              getCueAsHTML: () => {
+                const parsed = new DOMParser().parseFromString(
+                  activeText,
+                  "text/html",
+                )
+                const fragment = document.createDocumentFragment()
+                fragment.append(
+                  ...Array.from(parsed.body.childNodes, (node) =>
+                    node.cloneNode(true),
+                  ),
+                )
+                return fragment
+              },
+            },
+          ] as unknown as TextTrackCueList)
   }
 }
 

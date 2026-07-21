@@ -7,7 +7,9 @@
     "noContent": "Sisältöä ei ole saatavilla.",
     "homepageMisconfigured": "Katselun etusivu on määritetty virheellisesti.",
     "defaultTemplateMisconfigured": "Oletuskatselumalli on määritetty virheellisesti.",
-    "authFailed": "Sisältöpalveluun ei voitu tunnistautua. Ota yhteyttä tukeen, jos ongelma jatkuu."
+    "authFailed": "Sisältöpalveluun ei voitu tunnistautua. Ota yhteyttä tukeen, jos ongelma jatkuu.",
+    "pageLoadFailed": "Jokin meni pieleen.",
+    "tryAgain": "Yritä uudelleen"
   },
   "VideosPage": {
     "title": "Kaikki videot",
@@ -22,7 +24,8 @@
     "promoHeading": "Haluatko ymmärtää Raamattua syvemmin?",
     "joinBibleStudy": "Liity raamatunopiskeluryhmäämme",
     "previousQuote": "Edellinen raamatun lainaus",
-    "nextQuote": "Seuraava raamatun lainaus"
+    "nextQuote": "Seuraava raamatun lainaus",
+    "readPassage": "Lue tämä kohta omasta Raamatustasi."
   },
   "DownloadButton": {
     "checking": "Tarkistetaan",
@@ -73,7 +76,8 @@
     "selectLanguage": "Valitse kieli",
     "searchPlaceholder": "Hae kieliä…",
     "languages": "Kielet",
-    "noMatches": "Ei osumia"
+    "noMatches": "Ei osumia",
+    "notAvailable": "Ei saatavilla"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Kieli",
@@ -112,7 +116,8 @@
     "questions": "Aiheeseen liittyvät kysymykset",
     "askYours": "Esitä omasi",
     "chatWithPerson": "Keskustele henkilön kanssa",
-    "askBibleQuestion": "Kysy raamatunkysymys"
+    "askBibleQuestion": "Kysy raamatunkysymys",
+    "quiz": "Tietovisa"
   },
   "WatchQuestionPanel": {
     "messageType": "Viestin tyyppi",
@@ -170,7 +175,8 @@
     "searchRegion": "Hae videoita",
     "clearSearch": "Tyhjennä haku",
     "changeAudioLanguage": "Vaihda äänikieltä",
-    "home": "JesusFilm-etusivu"
+    "home": "JesusFilm-etusivu",
+    "closeSearch": "Sulje haku"
   },
   "SearchOverlay": {
     "dialogLabel": "Hae ja selaa videoita",
@@ -205,14 +211,19 @@
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "Havaittu kieli: {language}",
     "searchInLanguage": "Hae kielellä {language}",
-    "tryDifferentKeywordsOrLanguage": "Kokeile eri hakusanoja tai valitse toinen hakukieli"
+    "tryDifferentKeywordsOrLanguage": "Kokeile eri hakusanoja tai valitse toinen hakukieli",
+    "useWebsiteDefaultLanguage": "Käytä sivuston oletushakukieltä",
+    "removeLanguage": "Poista {language}",
+    "browseMode": "Hakuselailutila"
   },
   "HeroPlayer": {
     "playWithSound": "Katso nyt",
-    "tapToUnmute": "Napauta poistaaksesi mykistyksen"
+    "tapToUnmute": "Napauta poistaaksesi mykistyksen",
+    "nextEpisode": "Seuraava jakso"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ladataan sisältöä"
+    "loadingContent": "Ladataan sisältöä",
+    "loadingVideo": "Ladataan videota"
   },
   "VideoLabels": {
     "video": "Videosisältö",
@@ -223,7 +234,8 @@
     "series": "Sarja",
     "collection": "Kokoelma",
     "trailer": "Traileri",
-    "behindTheScenes": "Kulissien takaa"
+    "behindTheScenes": "Kulissien takaa",
+    "chapter": "Luku"
   },
   "SiblingCarousel": {
     "clipPosition": "Klippi {current} / {total}",
@@ -235,11 +247,286 @@
     "noImage": "Ei kuvaa",
     "playingNow": "Toistetaan nyt",
     "previousChapter": "Edellinen luku",
-    "nextChapter": "Seuraava luku"
+    "nextChapter": "Seuraava luku",
+    "thumbnailAlt": "{title}-pikkukuva",
+    "relatedVideoThumbnail": "Aiheeseen liittyvän videon pikkukuva"
   },
   "SearchResultCard": {
     "experience": "Kokemus",
     "episodeCount": "{count, plural, one {# jakso} other {# jaksoa}}",
     "thumbnailAlt": "Videon pikkukuva"
+  },
+  "Feedback": {
+    "openForm": "Avaa palautelomake",
+    "label": "Palaute",
+    "couldNotLoad": "Palautelomaketta ei voitu ladata.",
+    "loadingForm": "Ladataan palautelomaketta…",
+    "retry": "Yritä uudelleen",
+    "openFormShort": "Avaa lomake",
+    "cancel": "Peruuta",
+    "title": "Beta-palaute",
+    "description": "Kerro, mikä toimii ja mitä voimme parantaa. Google tarjoaa tämän lomakkeen.",
+    "openInNewTab": "Avaa lomake uudessa välilehdessä",
+    "closeForm": "Sulje palautelomake",
+    "loadingGoogleForm": "Ladataan Google-lomaketta…",
+    "iframeTitle": "Lähetä beta-palaute"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ilmaisia kristillisiä videoita kielellä {language} | Jesus Film Project",
+    "metadataDescription": "Tutustu Jeesus-filmeihin, raamatunkertomuksiin, opetuslapseuttamissarjoihin ja evankeliointivideoihin, joissa on {language}-äänitys tai tekstitykset.",
+    "heroTitle": "Ilmaisia kristillisiä videoita kielellä {language}",
+    "heroDescription": "Tutustu Jeesus-filmeihin, raamatunkertomuksiin, opetuslapseuttamissarjoihin ja evankeliointivideoihin, jotka ovat saatavilla kielellä {language}. Täysin äänitetyt videot nostetaan ensin esiin, ja tekstitysvaihtoehdot näkyvät alempana.",
+    "languageCollection": "Kielikokoelma",
+    "itemCount": "{count, plural, one {# kohde} other {# kohdetta}}",
+    "videoCount": "{count, plural, one {# video} other {# videota}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videota}} {groupCount, plural, one {# ryhmässä} other {# ryhmässä}}",
+    "sectionNavLabel": "Kielivalikoiman osiot",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Uusi",
+    "videoBible": "VideoBible",
+    "bibleProject": "BibleProject",
+    "sports": "Urheilu",
+    "collections": "Kokoelmat",
+    "subtitlesOnly": "Vain tekstitykset",
+    "newlyAdded": "Äskettäin lisätty",
+    "newVideosTitle": "Uusia kristillisiä videoita kielellä {language}",
+    "newestFirst": "Uusin ensin",
+    "noPublishedVideos": "Tälle kielelle ei löytynyt vielä julkaistuja videoita.",
+    "bibleAndGospelFilms": "Raamattu- ja evankeliumielokuvat",
+    "videoBibleCollectionsTitle": "VideoBible-kokoelmat kielellä {language}",
+    "videoBibleDescription": "Raamattuun keskittyvät kokoelmat, kuten LUMO, JESUS, Magdalena ja Apostolien teot, kielellä {language}.",
+    "noVideoBibleCollections": "Tälle kielelle ei ole vielä saatavilla VideoBible-kokoelmia.",
+    "bibleProjectCollectionsTitle": "BibleProject-kokoelmat kielellä {language}",
+    "bibleProjectDescription": "BibleProject-sarjat ja -oppaat kielellä {language}.",
+    "noBibleProjectCollections": "Tälle kielelle ei ole vielä saatavilla BibleProject-kokoelmia.",
+    "sportsStories": "Urheilukertomukset",
+    "sportsTitle": "Urheilu- ja urheilijatarinat kielellä {language}",
+    "sportsDescription": "Uskoon keskittyvät urheilukertomukset ja urheilijoihin liittyvät kokoelmat kielellä {language}.",
+    "noSportsCollections": "Tälle kielelle ei ole vielä saatavilla urheilu- tai urheilijakertomuskokoelmia.",
+    "fullyDubbed": "Täysin äänitetty",
+    "dubbedVideosTitle": "Kielellä {language} äänitetyt videot kokoelmittain",
+    "dubbedVideosDescription": "Selaa täysin kielellä {language} äänitettyjä videoita ryhmiteltyinä kokoelmien mukaan helpompaa löytämistä varten.",
+    "noDubbedVideos": "Tälle kielelle ei ole vielä saatavilla täysin äänitettyjä videoita.",
+    "subtitlesAvailable": "Tekstitykset saatavilla",
+    "subtitlesTitle": "Kielellä {language} tekstitetyt videot",
+    "subtitlesDescription": "Näissä videoissa on {language}-tekstitykset, kun puhuttu {language}-äänitys ei ole vielä saatavilla.",
+    "noSubtitleVideos": "Tälle kielelle ei ole vielä saatavilla vain tekstityksin varustettuja videoita.",
+    "dubbed": "Äänitetty",
+    "subtitles": "Tekstitykset",
+    "newLabel": "Uusi",
+    "fromCollection": "Kokoelmasta {collection}",
+    "standaloneVideos": "Itsenäiset videot",
+    "videosFromCollection": "Videot kokoelmasta {collection}.",
+    "standaloneDescription": "Itsenäiset videot tällä kielellä.",
+    "openCollection": "Avaa kokoelma"
+  },
+  "WatchHome": {
+    "pageTitle": "Katso | Jesus Film Project",
+    "watch": "Katso",
+    "watchNow": "Katso nyt",
+    "mutePreview": "Mykistä esikatselu",
+    "unmutePreview": "Poista esikatselun mykistys",
+    "nextVideo": "Seuraava video",
+    "featured": "Esittelyssä",
+    "showVideo": "Näytä {title}",
+    "previousVideoPreview": "Edellisen videon esikatselu",
+    "nextVideoPreview": "Seuraavan videon esikatselu",
+    "mediaCollection": "Mediakokoelma",
+    "scrollToVideo": "Vieritä videoon {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project -etusivu",
+    "navigation": "Alatunnisteen navigointi",
+    "share": "Jaa",
+    "watch": "Katso",
+    "giving": "Lahjoittaminen",
+    "about": "Tietoa",
+    "products": "Tuotteet",
+    "resources": "Resurssit",
+    "partners": "Kumppanit",
+    "contact": "Yhteystiedot",
+    "giveNow": "Lahjoita nyt",
+    "resourcesVersion": "Resurssit ({version})",
+    "office": "Toimisto",
+    "fax": "Faksi",
+    "privacyPolicy": "Tietosuojakäytäntö",
+    "legalStatement": "Oikeudellinen ilmoitus",
+    "newsletter": "Tilaa uutiskirjeemme"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Rakennettu globaalia lähetystyötä varten",
+    "title": "Sanoma ei muutu. Tapa, jolla ihmiset katsovat, muuttuu.",
+    "description": "Rakennamme videokirjastomme ja työkalumme uudelleen alusta alkaen ja viemme vuosikymmenten käännöstyön sinne, missä ihmiset jo kokoontuvat, katsovat ja jakavat sisältöä.",
+    "translatedLibraryTitle": "Maailman eniten käännetty elokuvakirjasto",
+    "translatedLibraryDescription": "Vuosikymmenten käännöstyö luotettujen seurakuntakumppaneiden tukemana on rakentanut kirjaston, jossa on tuhansia kieliraitoja, jotta ihmiset voivat kohdata Jeesuksen tarinan kielellä, joka puhuttelee heitä syvimmin.",
+    "trustedVoicesTitle": "Luotettavat äänet uusiin muotoihin",
+    "trustedVoicesDescription": "Rakennamme uudelleen tapaa, jolla evankeliumin tarinoita kerrotaan visuaalisesti, yhdistäen luotetut käännökset moderneihin muotoihin, jotta sanoma voi liikkua vapaasti alustojen, kulttuurien ja näyttöjen yli.",
+    "missionTeamTitle": "Enemmän kuin kirjasto. Lähetyslähtöinen tiimi.",
+    "missionTeamDescription": "Jesus Film Project on maailmanlaajuinen tiimi kääntäjiä, mediaspesialisteja, toimittajia ja sisällöntuottajia, jotka muuttavat vuosikymmenten palvelukokemuksen työkaluiksi opetuslapseuttajille kaikkialla.",
+    "buildingNext": "Mitä rakennamme seuraavaksi",
+    "nextStepsTitle": "Seuraavat askeleet -alusta",
+    "nextStepsDescription": "Yhdistä katsojat konkreettisiin mahdollisuuksiin heidän hengellisellä matkallaan ja auta heitä ottamaan seuraava askel yhteisöön, Raamattuun tai lähetystyöhön.",
+    "mediaLibraryTitle": "Evankelioiva mediakirjasto",
+    "mediaLibraryDescription": "Laaja kristillinen mediakirjasto, jossa on tuhansia videoita, elokuvia ja resursseja useilla kielillä seurakunta- ja evankeliointityöhön maailmanlaajuisesti.",
+    "ministryToolsTitle": "Digitaaliset työkalut seurakunnille",
+    "ministryToolsDescription": "Videonhallinta, sisällön jakelu, yleisövuorovaikutus ja analytiikka, jotka on suunniteltu auttamaan seurakuntia tavoittamaan enemmän ihmisiä tehokkaasti.",
+    "invitationEyebrow": "Olet tervetullut",
+    "invitationTitle": "Auta rakentamaan <highlight>seuraavan sukupolven</highlight> lähetystyökaluja",
+    "invitationDescription": "Kutsumme käytännön tekijöitä, sisällöntuottajia ja kumppaneita mukaan varhaiseen käyttöön. Kokeile uusia työkaluja ensimmäisten joukossa, anna palautetta ja auta muovaamaan tuotteita, jotka on suunniteltu todelliseen lähetystyöhön.",
+    "betaTester": "Ryhdy beta-testaajaksi"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "VideoBible-kokoelma",
+    "gospelRailTitle": "Löydä koko kertomus",
+    "videoBibleDescription": "Tutustu videoiden ja resurssien kokoelmaamme, joka tekee Raamatun eläväksi puhuttelevien kertomusten ja opetusten kautta.",
+    "showcaseTitle": "Raamattu kerrottuna elokuvan kautta",
+    "adventEyebrow": "Jouluodotus",
+    "adventTitle": "Jouluodotuksen lähtölaskenta",
+    "adventDescription": "Lähde mukaan adventtimatkallemme päivittäisen videon avulla, joka kasvattaa joulun odotusta ja tutkii Jeesuksen tulon toivoa, iloa ja lupausta.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-adventti",
+    "nuaEyebrow": "NUA-sarja",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-sarja",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurssi",
+    "journeyWithJesusTitle": "Matka Jeesuksen kanssa",
+    "gospelsOnVideoEyebrow": "Jokainen evankeliumi videolla",
+    "scriptureAsWrittenTitle": "Raamattu, juuri niin kuin se on kirjoitettu",
+    "merryChristmas": "Hyvää joulua!",
+    "daysUntilChristmas": "{count, plural, one {# päivä jouluun} other {# päivää jouluun}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Kielet",
+    "metadataDescription": "Selaa JesusFilm-videoita kielen mukaan.",
+    "eyebrow": "Katselukielet",
+    "title": "Valitse kieli",
+    "description": "Tutustu kieliin alueittain tai selaa koko listaa.",
+    "searchPlaceholder": "Hae kieliä tai maita...",
+    "searchLabel": "Hae kieliä tai maita",
+    "clearSearch": "Tyhjennä haku",
+    "browse": "Selaa",
+    "browseByRegion": "Selaa alueen ja maan mukaan",
+    "languageCount": "{count, plural, one {# kieli} other {# kieltä}}",
+    "region": "Alue",
+    "countryLanguages": "Maan {country} kielet",
+    "showLess": "Näytä vähemmän",
+    "showMore": "Näytä {count} lisää",
+    "noLanguages": "Kieliä ei löytynyt",
+    "tryAnotherSearch": "Kokeile toista hakusanaa."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Katseluhistoria | Jesus Film Project",
+    "title": "Katseluhistoria",
+    "loading": "Ladataan historiaa",
+    "empty": "Ei vielä mitään täällä",
+    "emptyDescription": "Videot, joita katsot kirjautuneena, näkyvät tässä.",
+    "earlier": "Aiemmin",
+    "today": "Tänään",
+    "yesterday": "Eilen"
+  },
+  "AccountControl": {
+    "account": "Tili",
+    "accountMenu": "Tilivalikko",
+    "signIn": "Kirjaudu sisään",
+    "signOut": "Kirjaudu ulos",
+    "signedIn": "Kirjautunut sisään",
+    "history": "Historia",
+    "logOut": "Kirjaudu ulos"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Sivua ei löydy",
+    "eyebrow": "Sivua ei löydy",
+    "screenReaderPrefix": "Sivua ei löydy:",
+    "title": "Tätä kohtausta ei ole täällä.",
+    "description": "Sivu on ehkä siirtynyt, mutta kertomus jatkuu.",
+    "actionsLabel": "Sivua ei löydy -toiminnot",
+    "backToWatch": "Takaisin katseluun",
+    "browseVideos": "Selaa videoita"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Katso lyhytelokuva",
+    "actions": {
+      "joinUs": "Liity mukaan",
+      "shareMission": "Osallistu lähetystehtäväämme"
+    },
+    "welcomeStart": {
+      "label": "Usko ja Raamattu",
+      "title": "Tämän päivän videovalinnat",
+      "description": "Uskoon keskittyviä videoita kirjastostamme inspiroimaan, haastamaan ja herättämään ajatuksia."
+    },
+    "welcomeMorning": {
+      "label": "Aamun inspiraatio",
+      "title": "Hyvää huomenta! Tämän päivän raamatulliset hetket odottavat.",
+      "description": "Aloita päiväsi rohkaisevilla raamatunkohdilla, jotka on suunniteltu innostamaan ja kohottamaan mieltäsi."
+    },
+    "welcomeAfternoon": {
+      "label": "Iltapäivän inspiraatio",
+      "title": "Hyvää iltapäivää! Raamatullisia hetkiä päivääsi.",
+      "description": "Rohkaisevaa raamatullista sisältöä iltapäivän tauolle tai jatkamaan inspiraatiota."
+    },
+    "welcomeEvening": {
+      "label": "Illan inspiraatio",
+      "title": "Hyvää iltaa! Rentoudu raamatullisten hetkien parissa.",
+      "description": "Rauhallisia raamatullisia hetkiä, jotka auttavat sinua pohtimaan ja löytämään lohtua päivän päättyessä."
+    },
+    "joinUs": {
+      "label": "Liity mukaan",
+      "title": "Miljardit etsivät",
+      "description": "Sadonkorjuun aika on nyt. Tule mukaan, kun jaamme evankeliumia maailmalle digitaalisen median avulla."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Lähdetään yhdessä",
+      "title": "Kerrotaan Jeesuksen tarina yhdessä",
+      "description": "Jotta ihmiset voisivat kuulla ja nähdä Jeesuksen rakkauden omalla kielellään siellä missä ovat."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % vastaavuus",
+    "none": "Tälle videolle ei löytynyt suosituksia tällä kielellä."
+  },
+  "BetaTesterModal": {
+    "title": "Ryhdy beta-testaajaksi",
+    "trigger": "Ryhdy beta-testaajaksi",
+    "loadFailed": "Jokin meni pieleen.",
+    "loading": "Ladataan...",
+    "openFormNewTab": "Avaa lomake uudessa välilehdessä",
+    "close": "Sulje",
+    "iframeTitle": "Ryhdy beta-testaajaksi"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

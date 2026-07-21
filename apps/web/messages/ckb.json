@@ -7,7 +7,9 @@
     "noContent": "هیچ ناوەڕۆکێک بەردەست نییە.",
     "homepageMisconfigured": "سەرەکیی پەڕەی Watch ڕێکخراو نییە.",
     "defaultTemplateMisconfigured": "قالبی بنەڕەتی Watch ڕێکخراو نییە.",
-    "authFailed": "نەتوانرا لەگەڵ خزمەتگوزاری ناوەڕۆکەکە پشتڕاست‌کردنەوە بکرێت. تکایە ئەگەر ئەمە بەردەوام بوو پەیوەندی بە پشتگیری بکەن."
+    "authFailed": "نەتوانرا لەگەڵ خزمەتگوزاری ناوەڕۆکەکە پشتڕاست‌کردنەوە بکرێت. تکایە ئەگەر ئەمە بەردەوام بوو پەیوەندی بە پشتگیری بکەن.",
+    "pageLoadFailed": "شتێک هەڵە بوو.",
+    "tryAgain": "دووبارە هەوڵ بدە"
   },
   "VideosPage": {
     "title": "هەموو ویدۆکان",
@@ -22,7 +24,8 @@
     "promoHeading": "دەتەوێت قوتابیی پەیامی مەسیحیەت بە قووڵی تێبگەیت؟",
     "joinBibleStudy": "بەشداری لە خوێندنی مەسیحی بکە",
     "previousQuote": "دەقی پێشووتر",
-    "nextQuote": "دەقی داهاتوو"
+    "nextQuote": "دەقی داهاتوو",
+    "readPassage": "ئەم بەشە لە کتێبی پیرۆزەکەتدا بخوێنەوە."
   },
   "DownloadButton": {
     "checking": "پشکنین",
@@ -73,7 +76,8 @@
     "selectLanguage": "هەڵبژاردنی زمان",
     "searchPlaceholder": "گەڕان بەدوای زمانەکان…",
     "languages": "زمانەکان",
-    "noMatches": "هیچ هاوشێوەیەک نەدۆزرایەوە"
+    "noMatches": "هیچ هاوشێوەیەک نەدۆزرایەوە",
+    "notAvailable": "بەردەست نییە"
   },
   "LanguagePickerModal": {
     "dialogTitle": "زمان",
@@ -112,7 +116,8 @@
     "questions": "پرسیارە پەیوەندیدارەکان",
     "askYours": "پرسیاری خۆت بکە",
     "chatWithPerson": "لەگەڵ کەسێک گفتوگۆ بکە",
-    "askBibleQuestion": "پرسیاری مەسیحیەت بکە"
+    "askBibleQuestion": "پرسیاری مەسیحیەت بکە",
+    "quiz": "تاقیکردنەوە"
   },
   "WatchQuestionPanel": {
     "messageType": "جۆری پەیام",
@@ -170,7 +175,8 @@
     "searchRegion": "گەڕان لە ویدۆکان",
     "clearSearch": "سڕینەوەی گەڕان",
     "changeAudioLanguage": "گۆڕینی زمانی دەنگ",
-    "home": "سەرەکیی JesusFilm"
+    "home": "سەرەکیی JesusFilm",
+    "closeSearch": "داخستنی گەڕان"
   },
   "SearchOverlay": {
     "dialogLabel": "گەڕان و گەڕان لە ویدۆکان",
@@ -205,14 +211,19 @@
     "clearLanguages": "پاککردنەوە",
     "queryLanguageDetected": "{language} دۆزرایەوە",
     "searchInLanguage": "گەڕان بە {language}",
-    "tryDifferentKeywordsOrLanguage": "وشە کلیلیی جیاواز تاقی بکەرەوە یان زمانێکی تر هەڵبژێرە"
+    "tryDifferentKeywordsOrLanguage": "وشە کلیلیی جیاواز تاقی بکەرەوە یان زمانێکی تر هەڵبژێرە",
+    "useWebsiteDefaultLanguage": "بەکارهێنانی زمانی بنەڕەتی ماڵپەڕ بۆ گەڕان",
+    "removeLanguage": "لابردنی {language}",
+    "browseMode": "دۆخی گەڕانی بڕۆس"
   },
   "HeroPlayer": {
     "playWithSound": "ئێستا ببینە",
-    "tapToUnmute": "دەست لێبدە بۆ لابردنی بێدەنگی"
+    "tapToUnmute": "دەست لێبدە بۆ لابردنی بێدەنگی",
+    "nextEpisode": "پێشەکی داهاتوو"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "ناوەڕۆک بار دەکرێت"
+    "loadingContent": "ناوەڕۆک بار دەکرێت",
+    "loadingVideo": "ویدۆ بار دەکرێت"
   },
   "VideoLabels": {
     "video": "ویدۆ",
@@ -223,7 +234,8 @@
     "series": "زنجیرە",
     "collection": "کۆمەڵە",
     "trailer": "تەریلەر",
-    "behindTheScenes": "لە پشتەوەی دیمەنەکان"
+    "behindTheScenes": "لە پشتەوەی دیمەنەکان",
+    "chapter": "بەش"
   },
   "SiblingCarousel": {
     "clipPosition": "کلیپی {current} لە {total}",
@@ -235,11 +247,286 @@
     "noImage": "وێنە نییە",
     "playingNow": "ئێستا دەستی پێکردووە",
     "previousChapter": "بەشی پێشووتر",
-    "nextChapter": "بەشی داهاتوو"
+    "nextChapter": "بەشی داهاتوو",
+    "thumbnailAlt": "وێنۆچکەی {title}",
+    "relatedVideoThumbnail": "وێنۆچکەی ویدۆی پەیوەندیدار"
   },
   "SearchResultCard": {
     "experience": "ئەزموون",
     "episodeCount": "{count, plural, one {# پێشەکی} other {# پێشەکی}}",
     "thumbnailAlt": "وێنۆچکەی ویدۆ"
+  },
+  "Feedback": {
+    "openForm": "فۆرمی ڕا و بۆچوون بکەرەوە",
+    "label": "ڕا و بۆچوون",
+    "couldNotLoad": "نەتوانرا فۆڕمی ڕا و بۆچوون بار بکرێت.",
+    "loadingForm": "فۆڕمی ڕا و بۆچوون بار دەکرێت…",
+    "retry": "دووبارە هەوڵدان",
+    "openFormShort": "فۆرم بکەرەوە",
+    "cancel": "هەڵوەشاندنەوە",
+    "title": "ڕا و بۆچوونی بتا",
+    "description": "باس بکە چی باشە و چی دەتوانرێت باشتر بکرێت. ئەم فۆرمە لەلایەن Google دابین کراوە.",
+    "openInNewTab": "فۆرمەکە لە تابێکی نوێدا بکەرەوە",
+    "closeForm": "فۆڕمی ڕا و بۆچوون دابخە",
+    "loadingGoogleForm": "Google Form بار دەکرێت…",
+    "iframeTitle": "ناردنی ڕا و بۆچوونی بتا"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "ویدۆی مەسیحی بەخۆڕایی بە {language} | Jesus Film Project",
+    "metadataDescription": "فلیمەکانی عیسا، چیرۆکی مەسیحیەت، زنجیرەی قوتابی‌کردن، و ویدۆکانی بانگەواز بگەڕێ لەگەڵ دەنگی دەبڕاویان یان ژێرنوسین بە {language}.",
+    "heroTitle": "ویدۆی مەسیحی بەخۆڕایی بە {language}",
+    "heroDescription": "فلیمەکانی عیسا، چیرۆکی مەسیحیەت، زنجیرەی قوتابی‌کردن، و ویدۆکانی بانگەواز بگەڕێ کە بە {language} بەردەستن. ویدۆکانی بە تەواوی دەبڕاو پێشتر پیشان دەدرێن، و هەڵبژاردەکانی تەنها ژێرنوسین لە خوارەوەیەن.",
+    "languageCollection": "کۆمەڵەی زمان",
+    "itemCount": "{count, plural, one {# دانە} other {# دانە}}",
+    "videoCount": "{count, plural, one {# ویدۆ} other {# ویدۆ}}",
+    "videosInGroups": "{videoCount, plural, one {# ویدۆ} other {# ویدۆ}} لە {groupCount, plural, one {# گروپ} other {# گروپ}}",
+    "sectionNavLabel": "بەشەکانی فهرستی زمانەکان",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "نوێ",
+    "videoBible": "مسیحییەتی ویدۆیی",
+    "bibleProject": "BibleProject",
+    "sports": "وەرزش",
+    "collections": "کۆمەڵەکان",
+    "subtitlesOnly": "تەنها ژێرنوسین",
+    "newlyAdded": "تازە زیادکراو",
+    "newVideosTitle": "ویدۆی مەسیحی نوێ بە {language}",
+    "newestFirst": "نوێترین لە سەرەوە",
+    "noPublishedVideos": "هێشتا هیچ ویدۆی بڵاوکراوە بۆ ئەم زمانە نەدۆزرایەوە.",
+    "bibleAndGospelFilms": "فیلمەکانی مەسیحییەتی و ئینجیل",
+    "videoBibleCollectionsTitle": "کۆمەڵەکانی مەسیحییەتی ویدۆیی بە {language}",
+    "videoBibleDescription": "کۆمەڵەی ناوەڕۆکی ناو نووسراوی پیرۆز وەک LUMO، JESUS، Magdalena، و Acts بە {language}.",
+    "noVideoBibleCollections": "هێشتا هیچ کۆمەڵەی مەسیحییەتی ویدۆیی بۆ ئەم زمانە بەردەست نییە.",
+    "bibleProjectCollectionsTitle": "کۆمەڵەکانی BibleProject بە {language}",
+    "bibleProjectDescription": "زنجیرە و خوێندنەکانی BibleProject کە بە {language} بەردەستن.",
+    "noBibleProjectCollections": "هێشتا هیچ کۆمەڵەی BibleProject بۆ ئەم زمانە بەردەست نییە.",
+    "sportsStories": "چیرۆکی وەرزشی",
+    "sportsTitle": "چیرۆکی وەرزشی و وەرزشوانان بە {language}",
+    "sportsDescription": "چیرۆکە وەرزشییە بنەما ئیمان‌دار و کۆمەڵەی سەر بە وەرزشوانان کە بە {language} بەردەستن.",
+    "noSportsCollections": "هێشتا هیچ کۆمەڵەی چیرۆکی وەرزشی یان وەرزشوانان بۆ ئەم زمانە بەردەست نییە.",
+    "fullyDubbed": "تەواو دەبڕاو",
+    "dubbedVideosTitle": "ویدۆکانی {language} بە پێی کۆمەڵە",
+    "dubbedVideosDescription": "ویدۆکانی {language}ی تەواو دەبڕاو بگەڕێ کە بە پێی کۆمەڵەیان پۆلێنکراون بۆ دۆزینەوەی ئاسانتر.",
+    "noDubbedVideos": "هێشتا هیچ ویدۆی تەواو دەبڕاو بۆ ئەم زمانە بەردەست نییە.",
+    "subtitlesAvailable": "ژێرنوسین بەردەستن",
+    "subtitlesTitle": "ویدۆکانی {language} لەگەڵ ژێرنوسین",
+    "subtitlesDescription": "ئەم ویدۆیانە ژێرنوسینی {language}یان تێدایە کاتێک دەنگی وتراوی {language} هێشتا بەردەست نییە.",
+    "noSubtitleVideos": "هێشتا هیچ ویدۆی تەنها-ژێرنوسین بۆ ئەم زمانە بەردەست نییە.",
+    "dubbed": "دەبڕاو",
+    "subtitles": "ژێرنوسین",
+    "newLabel": "نوێ",
+    "fromCollection": "لە {collection}",
+    "standaloneVideos": "ویدۆی سەربەخۆ",
+    "videosFromCollection": "ویدۆ لە {collection}.",
+    "standaloneDescription": "ویدۆی سەربەخۆ لەم زمانەدا.",
+    "openCollection": "کردنەوەی کۆمەڵە"
+  },
+  "WatchHome": {
+    "pageTitle": "Watchی Jesus Film Project",
+    "watch": "سەیرکردن",
+    "watchNow": "ئێستا سەیری بکە",
+    "mutePreview": "پێشبینی بێدەنگ بکە",
+    "unmutePreview": "پێشبینی دەنگدار بکە",
+    "nextVideo": "ویدۆی داهاتوو",
+    "featured": "دیاریکراو",
+    "showVideo": "پیشاندانی {title}",
+    "previousVideoPreview": "پێشبینی ویدۆی پێشووتر",
+    "nextVideoPreview": "پێشبینی ویدۆی داهاتوو",
+    "mediaCollection": "کۆمەڵەی میدیا",
+    "scrollToVideo": "بڕۆ بۆ ویدۆی {title}"
+  },
+  "WatchFooter": {
+    "home": "سەرەکیی Jesus Film Project",
+    "navigation": "ڕێبەری پێبەندەکان",
+    "share": "هاوبەشکردن",
+    "watch": "سەیرکردن",
+    "giving": "بەخشین",
+    "about": "دەربارە",
+    "products": "بەرهەمەکان",
+    "resources": "سەرچاوەکان",
+    "partners": "هاوبەشەکان",
+    "contact": "پەیوەندی",
+    "giveNow": "ئێستا ببەخشە",
+    "resourcesVersion": "سەرچاوەکان ({version})",
+    "office": "نووسینگە",
+    "fax": "فاکس",
+    "privacyPolicy": "سیاسەتی تایبەتمەندی",
+    "legalStatement": "ڕاگەیاندنی یاسایی",
+    "newsletter": "بۆ نامەنامەکەمان خۆت تۆمار بکە"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "بۆ میسۆنەکانی جیهانی دروستکراوە",
+    "title": "پەیامەکە ناگۆڕێت. شێوازی سەیرکردنی خەڵک دەگۆڕێت.",
+    "description": "ئێمە کتابخانەی ویدۆ و ئامرازەکانمان لە بنەڕەتەوە دروست دەکەینەوە، و کارە بەرێکخستنی دەیەکانەی وەرگێڕانمان دەبەستینەوە بەو پلاتفۆڕمانەی کە خەڵک پێشتر لێی کۆدەبنەوە، سەیر دەکەن، و هاوبەشی دەکەن.",
+    "translatedLibraryTitle": "زۆرترین کتابخانەی فیلمی وەرگێڕدراو لە جیهان",
+    "translatedLibraryDescription": "دەیەکان کارکردنی وەرگێڕان، لەلایەن هاوبەشانی باوەڕپێکراوی خزمەتگوزارییەوە هەڵگریراو، کتابخانەیەکی بە هەزاران تاقی زمانی دروست کردووە تا خەڵک بتوانن چیرۆکی عیسا ببینن لەو زمانەی کە قووڵترین شوێنیان دەگات.",
+    "trustedVoicesTitle": "دەنگە باوەڕپێکراوەکان بۆ شێوەی نوێ دەهێنین",
+    "trustedVoicesDescription": "ئێمە شێوازی گێڕانەوەی چیرۆکە ئینجیلییەکان لە شێوەی بینراودا دروست دەکەینەوە، و وەرگێڕانە باوەڕپێکراوەکان لەگەڵ شێوەی نوێدا دەگونجێنین تا پەیامەکە بە ئازادی لە نێوان پلاتفۆڕمەکان، کەلتوورەکان، و شاشەکاندا بجوڵێت.",
+    "missionTeamTitle": "زیاتر لە کتابخانەیەک. تیمێکی پێویندیدار بە میسۆن.",
+    "missionTeamDescription": "Jesus Film Project تیمێکی جیهانیی وەرگێڕانکاران، پسپۆڕانی میدیا، دەستکاریکاران، و دروستکەرانە کە دەیەکانی ئەزموونی خزمەتگوزاری دەگۆڕن بۆ ئامرازێک بۆ دروستکەرانی قوتابی لە هەموو شوێنێک.",
+    "buildingNext": "ئەوەی داهاتوو دروست دەکەین",
+    "nextStepsTitle": "پلاتفۆڕمی هەنگاوی داهاتوو",
+    "nextStepsDescription": "بینەرەکان پەیوەست بکە بە هەلە عەملییەکانی سەر ڕێگەی گیانییان، یارمەتیدەری ئەوەی هەنگاوی داهاتوو بنێن بۆ کۆمەڵگە، دەقە پیرۆز، یان میسۆن.",
+    "mediaLibraryTitle": "کتابخانەی میدیایی بانگەشەیی",
+    "mediaLibraryDescription": "کتابخانەیەکی فراوانی میدیای مەسیحییەتی لەگەڵ هەزاران ویدۆ، فیلم، و سەرچاوە بە چەندین زمان بۆ خزمەتگوزاری و بانگەشە لە سەرتاسەری جیهان.",
+    "ministryToolsTitle": "ئامرازە دیجیتاڵەکان بۆ خزمەتگوزارییەکان",
+    "ministryToolsDescription": "بەڕێوەبردنی ویدۆ، دابەشکردنی ناوەڕۆک، تێکەڵبوونی ئەکەونت، و شیکارییەکان کە دروستکراون بۆ یارمەتیدانی خزمەتگوزارییەکان بۆ گەیاندنی خەڵکی زیاتر بە شێوەیەکی کاریگەر.",
+    "invitationEyebrow": "بانگهێشت کراویت",
+    "invitationTitle": "یارمەتی دروستکردنی <highlight>نەوەی داهاتوو</highlight>ی ئامرازەکانی میسۆن بدە",
+    "invitationDescription": "ئێمە پڕاکتیشنەرەکان، دروستکەران، و هاوبەشەکان بانگهێشت دەکەین بۆ دەستگەیشتنی سەرەتایی. یەکەمجار ئامرازە نوێیەکان تاقی بکەرەوە، ڕا و بۆچوون بدەن، و یارمەتی شێوەبەخشی بەرهەمەکانی پێویست بۆ کارێکی ڕاستەقینەی میسۆن بدەن.",
+    "betaTester": "بوون بە تاقیکەرەوەی بتا"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "کۆمەڵەی مەسیحییەتی ویدۆیی",
+    "gospelRailTitle": "چیرۆکی تەواو بدۆزەوە",
+    "videoBibleDescription": "کۆمەڵەیەک لە ویدۆ و سەرچاوەکان بگەڕێ کە مەسیحییەت بە چیرۆک و فێرکارییە هەڵسوکێنەرەکان بە ژیان دەهێنن.",
+    "showcaseTitle": "دەقی پیرۆز بە شێوەی فیلم باسی دەکرێت",
+    "adventEyebrow": "ئەدوێنتی کریسمس",
+    "adventTitle": "ژماردنەوەی ئەدوێنتی کریسمس",
+    "adventDescription": "لە گەشتە ئەدوێنتییەکەماندا بە ویدۆی ڕۆژانە بەشداری بکە کە چاوەڕوانی بۆ کریسمس زیاد دەکات، هیوای، خۆشی، و بەڵێنی هاتنی عیسا بگەڕێنێتەوە.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "ئەدوێنتی BibleProject",
+    "nuaEyebrow": "زنجیرەی NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "زنجیرەی Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "کۆرسی ویدۆیی",
+    "journeyWithJesusTitle": "گەشت لەگەڵ عیسا",
+    "gospelsOnVideoEyebrow": "هەموو مەرجەعان، بە ویدۆ باسکراوە",
+    "scriptureAsWrittenTitle": "دەقی پیرۆز، وەک نووسراوە بە هەمان شێوە قسە دەکرێت",
+    "merryChristmas": "کریسمستان پیرۆز بێت!",
+    "daysUntilChristmas": "{count, plural, one {# ڕۆژ ماوە بۆ کریسمس} other {# ڕۆژ ماوە بۆ کریسمس}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "زمانەکان",
+    "metadataDescription": "ویدۆکانی JesusFilm بە پێی زمان بگەڕێ.",
+    "eyebrow": "زمانەکانی Watch",
+    "title": "زمانێک هەڵبژێرە",
+    "description": "زمانەکان بە پێی ناوچە بگەڕێ یان هەموو لیستەکە ببینە.",
+    "searchPlaceholder": "گەڕان بەدوای زمان یان وڵات...",
+    "searchLabel": "گەڕان بەدوای زمان یان وڵات",
+    "clearSearch": "پاککردنەوەی گەڕان",
+    "browse": "گەڕان",
+    "browseByRegion": "گەڕان بە پێی ناوچە و وڵات",
+    "languageCount": "{count, plural, one {# زمان} other {# زمان}}",
+    "region": "ناوچە",
+    "countryLanguages": "زمانەکانی {country}",
+    "showLess": "کەمتر پیشان بدە",
+    "showMore": "{count} زیاتر پیشان بدە",
+    "noLanguages": "هیچ زمانێک نەدۆزرایەوە",
+    "tryAnotherSearch": "وشەی گەڕانی تر تاقی بکەرەوە."
+  },
+  "WatchHistory": {
+    "metadataTitle": "مێژووی سەیرکردن | Jesus Film Project",
+    "title": "مێژووی سەیرکردن",
+    "loading": "مێژوو بار دەکرێت",
+    "empty": "هێشتا هیچ شتێک نییە",
+    "emptyDescription": "ویدۆکان کە لە کاتی چوونەژوورەوە سەیریان دەکەیت لێرە دەرکەون.",
+    "earlier": "پێشووتر",
+    "today": "ئەمڕۆ",
+    "yesterday": "دوێنێ"
+  },
+  "AccountControl": {
+    "account": "هەژمار",
+    "accountMenu": "لیستی هەژمار",
+    "signIn": "چوونەژوورەوە",
+    "signOut": "دەرچوون",
+    "signedIn": "چوونەژوورەوە کرا",
+    "history": "مێژوو",
+    "logOut": "دەرچوون"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "پەڕەکە نەدۆزرایەوە",
+    "eyebrow": "پەڕەکە نەدۆزرایەوە",
+    "screenReaderPrefix": "پەڕەکە نەدۆزرایەوە:",
+    "title": "ئەم دیمەنە لێرە نییە.",
+    "description": "لەوانەیە پەڕەکە گواسترابێتەوە، بەڵام چیرۆکەکە بەردەوامە.",
+    "actionsLabel": "کردارەکانی پەڕە نەدۆزرایەوە",
+    "backToWatch": "گەڕانەوە بۆ Watch",
+    "browseVideos": "گەڕان لە ویدۆکان"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "فیلمی کورت ببینە",
+    "actions": {
+      "joinUs": "پەیوەندیمان پێوە بکە",
+      "shareMission": "له‌ میسۆنەکەماندا هاوبەش بە"
+    },
+    "welcomeStart": {
+      "label": "باوەڕ و دەقی پیرۆز",
+      "title": "هەڵبژاردەکانی ویدۆی ئەمڕۆ",
+      "description": "ناوەڕۆکی ویدۆیی بنەڕەت باوەڕیی لە کۆگاکەمانەوە بۆ هاندان، ڕووبەڕووبوونەوە، و هەڵچوونی بیرکردنەوە."
+    },
+    "welcomeMorning": {
+      "label": "هاندان بۆ بەیانی",
+      "title": "بەیانی باش! خولەکەکانی کتێبی پیرۆزت ئەمڕۆ چاوەڕێت دەکەن.",
+      "description": "ڕۆژەکەت بە خولەکە هاندانکەرەکانی کتێبی پیرۆز دەست پێ بکە کە بۆ هاندانی دڵ و بەرزکردنەوەی ڕووحەت دروستکراون."
+    },
+    "welcomeAfternoon": {
+      "label": "هاندان بۆ نیوەڕۆ",
+      "title": "نیوەڕۆ باش! خولەکەکانی کتێبی پیرۆز بۆ ڕۆژەکەت.",
+      "description": "ناوەڕۆکی هاندانکەری کتێبی پیرۆز کە بۆ پشووی نیوەڕۆکەت یان بۆ بەردەوامبوونی هاندانت گونجاوە."
+    },
+    "welcomeEvening": {
+      "label": "هاندان بۆ ئێوارە",
+      "title": "شەوی باش! بە خولەکەکانی کتێبی پیرۆز ئارام ببە.",
+      "description": "خولەکە ئارامەکانی کتێبی پیرۆز بۆ ئەوەی بیر بکەیتەوە و ئاسوودەیی بدۆزیەوە کە ڕۆژەکەت کۆتایی دێت."
+    },
+    "joinUs": {
+      "label": "پەیوەندیمان پێوە بکە",
+      "title": "میلیاردەها کەس دەگەڕێن",
+      "description": "کاتی دڕوو دەگات. پەیوەندیمان پێوە بکە لەکاتی هاوبەشکردنی ئینجیل لەگەڵ جیهان بە بەکارهێنانی میدیای دیجیتاڵ."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "بە یەکەوە بڕۆین",
+      "title": "چیرۆکی عیسا، بە یەکەوە دەگێڕینەوە",
+      "description": "تا بتوانن لە زمانە خۆیاندا، لەو شوێنەی خۆیانن، خۆشەویستی عیسا بشنێن و ببینن."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "لە سەدا {percent} هاوتایە",
+    "none": "هیچ پێشنیارێک بۆ ئەم ویدۆیە بەم زمانە نەدۆزرایەوە."
+  },
+  "BetaTesterModal": {
+    "title": "بوون بە تاقیکەرەوەی بتا",
+    "trigger": "بوون بە تاقیکەرەوەی بتا",
+    "loadFailed": "شتێک هەڵە بوو.",
+    "loading": "بار دەکرێت...",
+    "openFormNewTab": "فۆرمەکە لە تابێکی نوێدا بکەرەوە",
+    "close": "داخستن",
+    "iframeTitle": "بوون بە تاقیکەرەوەی بتا"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

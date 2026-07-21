@@ -7,7 +7,9 @@
     "noContent": "Nü iirkunghaid ferfügber.",
     "homepageMisconfigured": "De watch-hooftsiid is ferkeard konfiguriert.",
     "defaultTemplateMisconfigured": "De standard watch-template is ferkeard konfiguriert.",
-    "authFailed": "Aauthentisierng mit de contentservice leet nü. Wenn dat anhold, nim kontakt mit support op."
+    "authFailed": "Aauthentisierng mit de contentservice leet nü. Wenn dat anhold, nim kontakt mit support op.",
+    "pageLoadFailed": "Wat is schiif gieng.",
+    "tryAgain": "Noch emol versuchen"
   },
   "VideosPage": {
     "title": "Aule Video's",
@@ -22,7 +24,8 @@
     "promoHeading": "Wilstu de Bibel dieper ferstaun?",
     "joinBibleStudy": "Nim an us Bibelstudium deel",
     "previousQuote": "Foorgaande Bibel-zitaat",
-    "nextQuote": "Neiste Bibel-zitaat"
+    "nextQuote": "Neiste Bibel-zitaat",
+    "readPassage": "Lees dizze Bibelpassage in din Bibel."
   },
   "DownloadButton": {
     "checking": "Tjoon",
@@ -73,7 +76,8 @@
     "selectLanguage": "Språk wielen",
     "searchPlaceholder": "Spraken soken…",
     "languages": "Spraken",
-    "noMatches": "Nü treffer"
+    "noMatches": "Nü treffer",
+    "notAvailable": "Naad ferfügber"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Språk",
@@ -112,7 +116,8 @@
     "questions": "Ferwandte Fraagn",
     "askYours": "Stell dine Fraag",
     "chatWithPerson": "Mit en Persoon praaten",
-    "askBibleQuestion": "En Bibel-fraag stellen"
+    "askBibleQuestion": "En Bibel-fraag stellen",
+    "quiz": "Fraagspil"
   },
   "WatchQuestionPanel": {
     "messageType": "Meldingsart",
@@ -170,7 +175,8 @@
     "searchRegion": "Video's soken",
     "clearSearch": "Sook leegd maken",
     "changeAudioLanguage": "Audiosprak ännern",
-    "home": "JesusFilm-hooftside"
+    "home": "JesusFilm-hooftside",
+    "closeSearch": "Sook sluten"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's soken un bruken",
@@ -205,14 +211,19 @@
     "clearLanguages": "Lääg maken",
     "queryLanguageDetected": "{language} detekteerd",
     "searchInLanguage": "In {language} soken",
-    "tryDifferentKeywordsOrLanguage": "Versök annere Steekwöör of wähl en anner Sookspraak"
+    "tryDifferentKeywordsOrLanguage": "Versök annere Steekwöör of wähl en anner Sookspraak",
+    "useWebsiteDefaultLanguage": "Bruk de website-standaard-sookspraak",
+    "removeLanguage": "{language} wegnim",
+    "browseMode": "Sook-blaadmodus"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kieken",
-    "tapToUnmute": "Tipp foar't Still-ofmaken"
+    "tapToUnmute": "Tipp foar't Still-ofmaken",
+    "nextEpisode": "Neiste Afleerung"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Iirkunghaid wurdt laadt"
+    "loadingContent": "Iirkunghaid wurdt laadt",
+    "loadingVideo": "Video wurdt laadt"
   },
   "VideoLabels": {
     "video": "Video-opnam",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Sammlung",
     "trailer": "Foarsehoon",
-    "behindTheScenes": "Hinter de Kulissen"
+    "behindTheScenes": "Hinter de Kulissen",
+    "chapter": "Kapitel"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} fan {total}",
@@ -235,11 +247,286 @@
     "noImage": "Kein Bild",
     "playingNow": "Spielt nu",
     "previousChapter": "Foorgaande Kapitel",
-    "nextChapter": "Neiste Kapitel"
+    "nextChapter": "Neiste Kapitel",
+    "thumbnailAlt": "Miniatur fan {title}",
+    "relatedVideoThumbnail": "Miniatur fan ferwandt Video"
   },
   "SearchResultCard": {
     "experience": "Iirkunghaid",
     "episodeCount": "{count, plural, one {# afleerung} other {# afleerungen}}",
     "thumbnailAlt": "Video-miniatur"
+  },
+  "Feedback": {
+    "openForm": "Feedback-formular oopen",
+    "label": "Feedback jaan",
+    "couldNotLoad": "Feedback-formular kon naad laadt wurde.",
+    "loadingForm": "Feedback-formular wurdt laadt…",
+    "retry": "Nij versöken",
+    "openFormShort": "Formular oopen",
+    "cancel": "Afbreken",
+    "title": "Beta-Feedback",
+    "description": "Deel wat goot wurket un wat wi beter maken könen. Dit formular warrt von Google stelt.",
+    "openInNewTab": "Formular in nien Tab oopen",
+    "closeForm": "Feedback-formular sluten",
+    "loadingGoogleForm": "Google-Formular wurdt laadt…",
+    "iframeTitle": "Beta-Feedback inßenden"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Frieh kristelike Video's in {language} | Jesus Film Project",
+    "metadataDescription": "Entdeek Jesus-films, Bibelverhalen, discipelskip-series un outreach-video's mit ingesprooken Audio of Ündertitels in {language}.",
+    "heroTitle": "Frieh kristelike Video's in {language}",
+    "heroDescription": "Entdeek Jesus-films, Bibelverhalen, discipelskip-series un outreach-video's, ferfügber in {language}. Folstendig ingesprooken Video's stoon foarenan, mit Ündertitel-only opsjes nörden.",
+    "languageCollection": "Språk-sammlung",
+    "itemCount": "{count, plural, one {# stück} other {# stücken}}",
+    "videoCount": "{count, plural, one {# video} other {# video's}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video's}} in {groupCount, plural, one {# groep} other {# groepen}}",
+    "sectionNavLabel": "Språk-inventar seksjonstrie",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nij",
+    "videoBible": "Video-Bibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Sammlingen",
+    "subtitlesOnly": "Nuur Ündertitel",
+    "newlyAdded": "Nij tafoegd",
+    "newVideosTitle": "Nije kristelike Video's in {language}",
+    "newestFirst": "Nijst foaranan",
+    "noPublishedVideos": "Foar dizze Sprak sünd noch keene publiseerede Video's funden.",
+    "bibleAndGospelFilms": "Bibel- un Evangelie-films",
+    "videoBibleCollectionsTitle": "{language} Video-Bibel-sammlingen",
+    "videoBibleDescription": "Skrift-centreerde sammlingen, ûnder oaren LUMO, JESUS, Magdalena un Acts in {language}.",
+    "noVideoBibleCollections": "Foar dizze Sprak sünd noch keene Video-Bibel-sammlingen ferfügber.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject-sammlingen",
+    "bibleProjectDescription": "BibleProject-series un studien ferfügber in {language}.",
+    "noBibleProjectCollections": "Foar dizze Sprak sünd noch keene BibleProject-sammlingen ferfügber.",
+    "sportsStories": "Sportverhalen",
+    "sportsTitle": "{language} Sport- un Atleetverhalen",
+    "sportsDescription": "Glaubenscentreerde sportverhalen un op Atleten richte sammlingen ferfügber in {language}.",
+    "noSportsCollections": "Foar dizze Sprak sünd noch keene Sport- of Atleetverhaal-sammlingen ferfügber.",
+    "fullyDubbed": "Folstendig ingesprooken",
+    "dubbedVideosTitle": "{language} Video's na Sammlung",
+    "dubbedVideosDescription": "Blaad folstendig ingesprooken {language} Video's, gegroepeerd mit deer Sammlung foar makliker fynden.",
+    "noDubbedVideos": "Foar dizze Sprak sünd noch keene folstendig ingesprooken Video's ferfügber.",
+    "subtitlesAvailable": "Ündertitel ferfügber",
+    "subtitlesTitle": "{language} Video's mit Ündertitel",
+    "subtitlesDescription": "Dizze Video's hebben {language} Ündertitel, wenn spraken {language} Audio noch naad ferfügber is.",
+    "noSubtitleVideos": "Foar dizze Sprak sünd noch keene Video's nuur mit Ündertitel ferfügber.",
+    "dubbed": "Ingesprooken",
+    "subtitles": "Ündertitel",
+    "newLabel": "Nij",
+    "fromCollection": "Ut {collection}",
+    "standaloneVideos": "Onafhängige Video's",
+    "videosFromCollection": "Video's ut {collection}.",
+    "standaloneDescription": "Onafhängige Video's in dizze Sprak.",
+    "openCollection": "Sammlung oopen"
+  },
+  "WatchHome": {
+    "pageTitle": "Kieken | Jesus Film Project",
+    "watch": "Kieken",
+    "watchNow": "Nu kieken",
+    "mutePreview": "Foarsehoon still maken",
+    "unmutePreview": "Foarsehoon still ofmaken",
+    "nextVideo": "Neist Video",
+    "featured": "Utlichte",
+    "showVideo": "Toon {title}",
+    "previousVideoPreview": "Foorgaande Video-foarsehoon",
+    "nextVideoPreview": "Neiste Video-foarsehoon",
+    "mediaCollection": "Media-sammlung",
+    "scrollToVideo": "Na {title} Video skrolle"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-hooftside",
+    "navigation": "Footer-navigaasje",
+    "share": "Deelen",
+    "watch": "Kieken",
+    "giving": "Givven",
+    "about": "Ower",
+    "products": "Produkten",
+    "resources": "Ressourcen",
+    "partners": "Partner",
+    "contact": "Kontakt",
+    "giveNow": "Nu givven",
+    "resourcesVersion": "Ressourcen ({version})",
+    "office": "Kantoor",
+    "fax": "Faks",
+    "privacyPolicy": "Privaatspolitik",
+    "legalStatement": "Jurdiske Erklaring",
+    "newsletter": "Foar us Newsletter anmellen"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Foar globale Missies boud",
+    "title": "De Botskap ändert naad. De Weeg wo minsken kieken, dat ändert.",
+    "description": "Wi bouwen us Video-bibliotheek un Warktüch fan nien op, un bringe desektenen van Översettingswark na de Plattformen, wiar minsken al tüskenkumt, kiekt un deelt.",
+    "translatedLibraryTitle": "De meist oersatte Film-bibliotheek in de Wält",
+    "translatedLibraryDescription": "Desektenen van översettingswark, gedragen fan fertroude missionspartners, hebben en bibliotheek mit tusenden Sprakspuren boued, dat minsken de Verhalen fan Jesus in de Sprak ûntmoete können, de hjarst is.",
+    "trustedVoicesTitle": "Fertroude Stimmen in nie Foarmen dragen",
+    "trustedVoicesDescription": "Wi bouwen op nien, wo evangelieverhalen visueel fertelt wurden, un ferbinen fertroude Översettings mit moderne Foarmen, dat de Botskap frij ower Plattformen, Kulturen un Skermen gean kann.",
+    "missionTeamTitle": "Meer as en Bibliotheek. En missje-driwen Team.",
+    "missionTeamDescription": "Jesus Film Project is en globaal Team fan översetters, mediapersonen, redakteuren un maakers, de desektenen van missionservaring in Warktüch foar discipelmakkers oweral omset.",
+    "buildingNext": "Wat wi as neiste bouwen",
+    "nextStepsTitle": "Nächste-Schritt-Plattform",
+    "nextStepsDescription": "Ferbind kiekers mit tastbaare Möglikheden op hjar geestelike Rees, un help hjar en neisten Schrit to Gemeenschap, Skrift of Missie to doon.",
+    "mediaLibraryTitle": "Evangelistiske Media-Bibliotheek",
+    "mediaLibraryDescription": "En utgebreede kristelike Media-bibliotheek mit tusenden Video's, Films un Ressourcen, ferfügber in meedere Spraken foar Missie un Evangelisaasje weltwäit.",
+    "ministryToolsTitle": "Digitale Warktüch foar Ministerien",
+    "ministryToolsDescription": "Video-Beheer, Inhoaldsversprieding, Publikums-Engaagement un Analytics, ontwurpen to helpen Ministerien mee menschen effektiver to berieken.",
+    "invitationEyebrow": "Du bis inloot",
+    "invitationTitle": "Help mit bouen <highlight>de neiste Generaasje</highlight> fan Missie-Warktüch",
+    "invitationDescription": "Wi node Praktikeren, Maakers un Partners in vroege Toegang ut. Test nie Warktüch as earste, geef Feedback, un help producten foarm geven, de foar echt Missiewark ontwurpen sün.",
+    "betaTester": "Wert Beta-tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-Bibel-sammlung",
+    "gospelRailTitle": "Ontdeek de hele Verhaal",
+    "videoBibleDescription": "Entdeek us Sammlung fan Video's un Ressourcen, de de Bibel mit fängjende Verhalen un Lehren to Live brengen.",
+    "showcaseTitle": "Skrift troegh Film ferteld",
+    "adventEyebrow": "Kryst-Advent",
+    "adventTitle": "Kryst-Advent-Countdown",
+    "adventDescription": "Nim deel an us Adventsreis mit en daagelik Video, de Vorfreude op Kryst opboud, un de Hope, Freude un Beloofte fan Jesus sien Komst ûntdeekt.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-Advent",
+    "nuaEyebrow": "NUA-Serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-Serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video-Kursus",
+    "journeyWithJesusTitle": "Rees mit Jesus",
+    "gospelsOnVideoEyebrow": "Elk Evangelie, op Video ferteld",
+    "scriptureAsWrittenTitle": "Skrift, genau saa't schreven is",
+    "merryChristmas": "Frohe Kryst!",
+    "daysUntilChristmas": "{count, plural, one {# Daag bet Kryst} other {# Daagen bet Kryst}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Spraken",
+    "metadataDescription": "Blaad JesusFilm-Video's na Sprak.",
+    "eyebrow": "Kiek-Spraken",
+    "title": "Wähl en Sprak",
+    "description": "Entdeek Spraken na Regioon of blaad de hele List.",
+    "searchPlaceholder": "Spraken of Länner soken...",
+    "searchLabel": "Spraken of Länner soken",
+    "clearSearch": "Sook leegd maken",
+    "browse": "Blaad",
+    "browseByRegion": "Na Regioon un Land blaad",
+    "languageCount": "{count, plural, one {# sprak} other {# spraken}}",
+    "region": "Regioon",
+    "countryLanguages": "{country}-spraken",
+    "showLess": "Minder toon",
+    "showMore": "Toon {count} meer",
+    "noLanguages": "Keene Spraken funden",
+    "tryAnotherSearch": "Versök en anner Sookterm."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Kiek-Geschicht | Jesus Film Project",
+    "title": "Kiek-Geschicht",
+    "loading": "Geschicht wordt laadt",
+    "empty": "Hier noch nü",
+    "emptyDescription": "Video's, de du kieks whylst du anmellt bis, wörden hier tonen.",
+    "earlier": "Eerher",
+    "today": "Vandaag",
+    "yesterday": "Gausteren"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Konto-menu",
+    "signIn": "Anmellen",
+    "signOut": "Utmellen",
+    "signedIn": "Anmelded",
+    "history": "Geschicht",
+    "logOut": "Utloggen"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Side naad funden",
+    "eyebrow": "Side naad funden",
+    "screenReaderPrefix": "Side naad funden:",
+    "title": "Dizze Scene is hier naad.",
+    "description": "De Side mag ferhust sin, man de Verhaal geit wieder.",
+    "actionsLabel": "Side-naad-funden-aksjens",
+    "backToWatch": "Torük na Watch",
+    "browseVideos": "Video's blaad"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Koortfilm kieken",
+    "actions": {
+      "joinUs": "Doon mit",
+      "shareMission": "Deel in us Missie"
+    },
+    "welcomeStart": {
+      "label": "Glaube & Skrift",
+      "title": "Vandaag s Video-uutwalen",
+      "description": "Glaubenscentreerde Video's ut us Bibliotheek, de inspirier, uutfoordern un to Nadenken anreeg."
+    },
+    "welcomeMorning": {
+      "label": "Morgeninspiratie",
+      "title": "Morgen! Vandaags Bibel-momenten wachte.",
+      "description": "Begjin din Daag mit ermutigende Bibel-momenten, de inspirier un din Geest opkerre sollen."
+    },
+    "welcomeAfternoon": {
+      "label": "Middag-inspiratie",
+      "title": "Guten middag! Bibel-momenten foar din Daag.",
+      "description": "Ermutigende Bibel-inhoald, perfect foar din middag-pause of foar weider Inspiratioun."
+    },
+    "welcomeEvening": {
+      "label": "Abend-inspiratie",
+      "title": "Guten Abend! Entspanne mit Bibel-momenten.",
+      "description": "Friddege Bibel-momenten, de di helpen, to nadenken un Troost to vinden, as din Daag to Enn geit."
+    },
+    "joinUs": {
+      "label": "Doon mit",
+      "title": "Milliarden soken",
+      "description": "De Ernte is hier. Doon mit, as wi de Evangelium mit de Wält dör digitale Media deelen."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Latt us tosam go",
+      "title": "De Geschichte fan Jesus tosam vertellen",
+      "description": "Dat se de Leevde fan Jesus in jür egen Språk hören un sehn könn, genau dor, wo se sünd."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% Öwereenkomst",
+    "none": "Foar dit Video sünd in dizze Sprak keene Anbefelingen funden."
+  },
+  "BetaTesterModal": {
+    "title": "Wert Beta-tester",
+    "trigger": "Wert Beta-tester",
+    "loadFailed": "Wat is schiif gieng.",
+    "loading": "Laadt...",
+    "openFormNewTab": "Formular in nien Tab oopen",
+    "close": "Sluten",
+    "iframeTitle": "Wert Beta-tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

@@ -7,7 +7,9 @@
     "noContent": "冇可用內容。",
     "homepageMisconfigured": "收看首頁設定有誤。",
     "defaultTemplateMisconfigured": "預設收看範本設定有誤。",
-    "authFailed": "無法向內容服務驗證。若情況持續，請聯絡支援。"
+    "authFailed": "無法向內容服務驗證。若情況持續，請聯絡支援。",
+    "pageLoadFailed": "出咗啲問題。",
+    "tryAgain": "再試一次"
   },
   "VideosPage": {
     "title": "全部影片",
@@ -22,7 +24,8 @@
     "promoHeading": "想更深入了解聖經？",
     "joinBibleStudy": "加入我哋嘅查經班",
     "previousQuote": "上一段聖經金句",
-    "nextQuote": "下一段聖經金句"
+    "nextQuote": "下一段聖經金句",
+    "readPassage": "請喺你嘅聖經閱讀呢段經文。"
   },
   "DownloadButton": {
     "checking": "檢查中",
@@ -73,7 +76,8 @@
     "selectLanguage": "選擇語言",
     "searchPlaceholder": "搜尋語言…",
     "languages": "語言",
-    "noMatches": "冇符合項目"
+    "noMatches": "冇符合項目",
+    "notAvailable": "未提供"
   },
   "LanguagePickerModal": {
     "dialogTitle": "語言",
@@ -112,7 +116,8 @@
     "questions": "相關問題",
     "askYours": "提出你嘅問題",
     "chatWithPerson": "同人傾偈",
-    "askBibleQuestion": "問一條聖經問題"
+    "askBibleQuestion": "問一條聖經問題",
+    "quiz": "小測驗"
   },
   "WatchQuestionPanel": {
     "messageType": "訊息類型",
@@ -170,7 +175,8 @@
     "searchRegion": "搜尋影片",
     "clearSearch": "清除搜尋",
     "changeAudioLanguage": "更改音訊語言",
-    "home": "JesusFilm 首頁"
+    "home": "JesusFilm 首頁",
+    "closeSearch": "關閉搜尋"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋及瀏覽影片",
@@ -205,14 +211,19 @@
     "clearLanguages": "清除",
     "queryLanguageDetected": "偵測到 {language}",
     "searchInLanguage": "以 {language} 搜尋",
-    "tryDifferentKeywordsOrLanguage": "試吓其他關鍵字，或者揀另一種搜尋語言"
+    "tryDifferentKeywordsOrLanguage": "試吓其他關鍵字，或者揀另一種搜尋語言",
+    "useWebsiteDefaultLanguage": "使用網站預設搜尋語言",
+    "removeLanguage": "移除 {language}",
+    "browseMode": "搜尋瀏覽模式"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",
-    "tapToUnmute": "撳一下取消靜音"
+    "tapToUnmute": "撳一下取消靜音",
+    "nextEpisode": "下一集"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "載入內容中"
+    "loadingContent": "載入內容中",
+    "loadingVideo": "載入影片中"
   },
   "VideoLabels": {
     "video": "影片",
@@ -223,7 +234,8 @@
     "series": "系列",
     "collection": "合集",
     "trailer": "預告片",
-    "behindTheScenes": "幕後花絮"
+    "behindTheScenes": "幕後花絮",
+    "chapter": "章節"
   },
   "SiblingCarousel": {
     "clipPosition": "第 {current} 段，共 {total} 段",
@@ -235,11 +247,286 @@
     "noImage": "冇圖片",
     "playingNow": "而家播放中",
     "previousChapter": "上一章",
-    "nextChapter": "下一章"
+    "nextChapter": "下一章",
+    "thumbnailAlt": "{title} 縮圖",
+    "relatedVideoThumbnail": "相關影片縮圖"
   },
   "SearchResultCard": {
     "experience": "體驗",
     "episodeCount": "{count, plural, one {# 集} other {# 集}}",
     "thumbnailAlt": "影片縮圖"
+  },
+  "Feedback": {
+    "openForm": "開啟意見表格",
+    "label": "意見",
+    "couldNotLoad": "無法載入意見表格。",
+    "loadingForm": "載入意見表格中…",
+    "retry": "重試",
+    "openFormShort": "開啟表格",
+    "cancel": "取消",
+    "title": "測試版意見",
+    "description": "分享邊啲功能好用，同埋我哋可以改善啲乜。呢個表格由 Google 提供。",
+    "openInNewTab": "喺新分頁開啟表格",
+    "closeForm": "關閉意見表格",
+    "loadingGoogleForm": "載入 Google 表格中…",
+    "iframeTitle": "提交測試版意見"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} 免費基督教影片 | Jesus Film Project",
+    "metadataDescription": "瀏覽 {language} 配音或字幕嘅耶穌影片、聖經故事、門徒訓練系列同佈道影片。",
+    "heroTitle": "{language} 免費基督教影片",
+    "heroDescription": "探索有 {language} 版本嘅耶穌影片、聖經故事、門徒訓練系列同佈道影片。已完整配音嘅影片會優先顯示，下面則係只有字幕嘅選項。",
+    "languageCollection": "語言合集",
+    "itemCount": "{count, plural, one {# 個項目} other {# 個項目}}",
+    "videoCount": "{count, plural, one {# 條影片} other {# 條影片}}",
+    "videosInGroups": "{videoCount, plural, one {# 條影片} other {# 條影片}}，分 {groupCount, plural, one {# 個組} other {# 個組}}",
+    "sectionNavLabel": "語言目錄章節",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "新",
+    "videoBible": "視像聖經",
+    "bibleProject": "BibleProject",
+    "sports": "運動",
+    "collections": "合集",
+    "subtitlesOnly": "只得字幕",
+    "newlyAdded": "新加入",
+    "newVideosTitle": "{language} 新基督教影片",
+    "newestFirst": "最新優先",
+    "noPublishedVideos": "暫時未搵到呢個語言已發佈嘅影片。",
+    "bibleAndGospelFilms": "聖經及福音電影",
+    "videoBibleCollectionsTitle": "{language} 視像聖經合集",
+    "videoBibleDescription": "以聖經為中心嘅合集，包括 {language} 版 LUMO、JESUS、Magdalena 同 Acts。",
+    "noVideoBibleCollections": "暫時未有呢個語言嘅視像聖經合集。",
+    "bibleProjectCollectionsTitle": "{language} BibleProject 合集",
+    "bibleProjectDescription": "可供 {language} 使用嘅 BibleProject 系列同查考。",
+    "noBibleProjectCollections": "暫時未有呢個語言嘅 BibleProject 合集。",
+    "sportsStories": "運動故事",
+    "sportsTitle": "{language} 運動同運動員故事",
+    "sportsDescription": "以信仰為中心嘅運動故事同運動員主題合集，可供 {language} 使用。",
+    "noSportsCollections": "暫時未有呢個語言嘅運動或運動員故事合集。",
+    "fullyDubbed": "完整配音",
+    "dubbedVideosTitle": "按合集分類嘅 {language} 影片",
+    "dubbedVideosDescription": "瀏覽完整配音嘅 {language} 影片，並按合集分組，方便搵片。",
+    "noDubbedVideos": "暫時未有呢個語言嘅完整配音影片。",
+    "subtitlesAvailable": "有字幕",
+    "subtitlesTitle": "附字幕嘅 {language} 影片",
+    "subtitlesDescription": "呢啲影片喺暫時未有 {language} 配音時，會提供 {language} 字幕。",
+    "noSubtitleVideos": "暫時未有只得字幕嘅影片。",
+    "dubbed": "配音",
+    "subtitles": "字幕",
+    "newLabel": "新",
+    "fromCollection": "來自 {collection}",
+    "standaloneVideos": "獨立影片",
+    "videosFromCollection": "來自 {collection} 嘅影片。",
+    "standaloneDescription": "本語言嘅獨立影片。",
+    "openCollection": "開啟合集"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project 收看頁面",
+    "watch": "觀看",
+    "watchNow": "立即觀看",
+    "mutePreview": "預覽靜音",
+    "unmutePreview": "取消預覽靜音",
+    "nextVideo": "下一段影片",
+    "featured": "精選",
+    "showVideo": "顯示 {title}",
+    "previousVideoPreview": "上一段影片預覽",
+    "nextVideoPreview": "下一段影片預覽",
+    "mediaCollection": "媒體合集",
+    "scrollToVideo": "捲去 {title} 影片"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project 首頁",
+    "navigation": "頁尾導覽",
+    "share": "分享",
+    "watch": "觀看",
+    "giving": "奉獻",
+    "about": "關於",
+    "products": "產品",
+    "resources": "資源",
+    "partners": "合作夥伴",
+    "contact": "聯絡",
+    "giveNow": "立即奉獻",
+    "resourcesVersion": "資源（{version}）",
+    "office": "辦公室",
+    "fax": "傳真",
+    "privacyPolicy": "私隱政策",
+    "legalStatement": "法律聲明",
+    "newsletter": "訂閱我哋嘅通訊"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "為全球宣教而建",
+    "title": "信息唔會變，改變嘅係人哋點樣睇。",
+    "description": "我哋正由零開始重建影片庫同工具，將幾十年嘅翻譯工作帶去人哋已經聚集、觀看同分享嘅平台。",
+    "translatedLibraryTitle": "全球翻譯最多嘅電影庫",
+    "translatedLibraryDescription": "幾十年嘅翻譯工作，加上可信賴嘅事工夥伴，建立咗一個擁有數千種語言配音嘅影片庫，讓人喺最觸動佢哋心靈嘅語言中認識耶穌嘅故事。",
+    "trustedVoicesTitle": "將可信賴嘅聲音帶入新格式",
+    "trustedVoicesDescription": "我哋正重建福音故事嘅視覺表達，將可信賴嘅譯本配合現代格式，等信息可以喺平台、文化同螢幕之間自由流通。",
+    "missionTeamTitle": "唔只係一個資料庫，而係一支使命導向嘅團隊。",
+    "missionTeamDescription": "Jesus Film Project 係一支全球團隊，由翻譯員、媒體專家、編輯同創作者組成，將幾十年事工經驗轉化為俾各地門徒訓練者使用嘅工具。",
+    "buildingNext": "我哋下一步會建造咩",
+    "nextStepsTitle": "下一步平台",
+    "nextStepsDescription": "連結觀眾喺屬靈旅程中可行嘅機會，幫佢哋踏出下一步，進入群體、聖經或宣教。",
+    "mediaLibraryTitle": "福音媒體資料庫",
+    "mediaLibraryDescription": "一個龐大嘅基督教媒體資料庫，提供數千條影片、電影同資源，支援全球多種語言嘅事工同佈道。",
+    "ministryToolsTitle": "俾事工用嘅數碼工具",
+    "ministryToolsDescription": "影片管理、內容發佈、觀眾互動同分析工具，旨在幫助事工更有效接觸更多人。",
+    "invitationEyebrow": "誠邀你參與",
+    "invitationTitle": "幫手建立 <highlight>下一代</highlight> 使命工具",
+    "invitationDescription": "我哋邀請實踐者、創作者同合作夥伴提早試用。率先測試新工具，提供意見，並幫手塑造真正為宣教工作而設嘅產品。",
+    "betaTester": "成為測試版試用者"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "視像聖經合集",
+    "gospelRailTitle": "探索完整故事",
+    "videoBibleDescription": "探索我哋嘅影片同資源合集，透過引人入勝嘅故事同教導，令聖經活現。",
+    "showcaseTitle": "透過電影講述聖經",
+    "adventEyebrow": "聖誕將臨期",
+    "adventTitle": "聖誕將臨期倒數",
+    "adventDescription": "加入我哋嘅將臨期旅程，每日睇一段影片，建立對聖誕嘅期待，探索耶穌降臨帶嚟嘅盼望、喜樂同應許。",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject 將臨期",
+    "nuaEyebrow": "NUA 系列",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth 系列",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "影片課程",
+    "journeyWithJesusTitle": "與耶穌同行",
+    "gospelsOnVideoEyebrow": "四福音，影片講述",
+    "scriptureAsWrittenTitle": "聖經，按原文逐字宣讀",
+    "merryChristmas": "聖誕快樂！",
+    "daysUntilChristmas": "{count, plural, other {距離聖誕節仲有 # 日}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "語言",
+    "metadataDescription": "按語言瀏覽 JesusFilm 影片。",
+    "eyebrow": "收看語言",
+    "title": "選擇語言",
+    "description": "按地區探索語言，或者瀏覽完整列表。",
+    "searchPlaceholder": "搜尋語言或國家...",
+    "searchLabel": "搜尋語言或國家",
+    "clearSearch": "清除搜尋",
+    "browse": "瀏覽",
+    "browseByRegion": "按地區同國家瀏覽",
+    "languageCount": "{count, plural, one {# 種語言} other {# 種語言}}",
+    "region": "地區",
+    "countryLanguages": "{country} 語言",
+    "showLess": "顯示更少",
+    "showMore": "顯示多 {count} 項",
+    "noLanguages": "搵唔到語言",
+    "tryAnotherSearch": "試吓另一個搜尋詞。"
+  },
+  "WatchHistory": {
+    "metadataTitle": "觀看歷史 | Jesus Film Project",
+    "title": "觀看歷史",
+    "loading": "載入歷史中",
+    "empty": "暫時未有內容",
+    "emptyDescription": "你登入期間睇過嘅影片會顯示喺呢度。",
+    "earlier": "較早之前",
+    "today": "今日",
+    "yesterday": "尋日"
+  },
+  "AccountControl": {
+    "account": "帳戶",
+    "accountMenu": "帳戶選單",
+    "signIn": "登入",
+    "signOut": "登出",
+    "signedIn": "已登入",
+    "history": "歷史",
+    "logOut": "登出"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "搵唔到頁面",
+    "eyebrow": "搵唔到頁面",
+    "screenReaderPrefix": "搵唔到頁面：",
+    "title": "呢個場景唔喺度。",
+    "description": "頁面可能搬咗，但故事仍然繼續。",
+    "actionsLabel": "搵唔到頁面嘅操作",
+    "backToWatch": "返回收看頁面",
+    "browseVideos": "瀏覽影片"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}：{title}",
+    "watchShortFilm": "睇短片",
+    "actions": {
+      "joinUs": "加入我哋",
+      "shareMission": "一齊參與我哋嘅使命"
+    },
+    "welcomeStart": {
+      "label": "信仰與聖經",
+      "title": "今日精選影片",
+      "description": "來自我哋資料庫、以信仰為中心嘅影片內容，鼓勵你、挑戰你，並激發你反思。"
+    },
+    "welcomeMorning": {
+      "label": "晨間靈感",
+      "title": "早晨好！今日聖經時刻等緊你。",
+      "description": "用充滿鼓勵嘅聖經時刻開始你嘅一日，帶嚟靈感同提振。"
+    },
+    "welcomeAfternoon": {
+      "label": "下午靈感",
+      "title": "下午好！今日聖經時刻陪你過日子。",
+      "description": "適合你下午休息時間、又或者繼續獲得靈感嘅聖經內容。"
+    },
+    "welcomeEvening": {
+      "label": "晚間靈感",
+      "title": "晚安！用聖經時刻放鬆一下。",
+      "description": "平靜嘅聖經時刻，幫你反思，亦喺一日完結時搵到安慰。"
+    },
+    "joinUs": {
+      "label": "加入我哋",
+      "title": "十億人正喺度尋求答案",
+      "description": "收割已經嚟到。加入我哋，一齊用數碼媒體向世界傳講福音。"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "一齊同行",
+      "title": "一齊講述耶穌嘅故事",
+      "description": "等佢哋可以喺自己嘅語言、喺自己所處嘅地方，聽見同看見耶穌嘅愛。"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% 匹配",
+    "none": "搵唔到呢段影片以呢種語言提供嘅推薦內容。"
+  },
+  "BetaTesterModal": {
+    "title": "成為測試版試用者",
+    "trigger": "成為測試版試用者",
+    "loadFailed": "出咗啲問題。",
+    "loading": "載入中...",
+    "openFormNewTab": "喺新分頁開啟表格",
+    "close": "關閉",
+    "iframeTitle": "成為測試版試用者"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }
