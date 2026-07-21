@@ -28,7 +28,7 @@ src/
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame the client maps to the stub). Testable core handleSeekerProxyRequest
-      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, hostAllowed reuse, [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
+      history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, the shared hostAllowed (lib/server/mastra-upstream), [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
       history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
@@ -50,7 +50,7 @@ src/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text)
       sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, sub-rows in the sidebar-* components
       use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener, drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
-      sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav)
+      sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav/account/signIn/signOut/…); signIn is deliberately NOT newButton (differs by md:mx-auto + md:hover:border-transparent)
       sidebar-header.tsx           Brand mark + wordmark + the three mutually-exclusive controls (desktop collapse toggle / collapsed expand affordance / mobile close X); presentational
       sidebar-new-conversation.tsx New-conversation action (full-width labeled ↔ centered icon-only when collapsed); presentational
       sidebar-conversation-list.tsx Conversation history nav (select + per-row replying pulse; hidden when collapsed); presentational
@@ -71,6 +71,7 @@ src/
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
+    server/mastra-upstream.ts feat-282: shared Mastra upstream primitives both proxy families import — hostAllowed (the SSRF guard: https floor with loopback + *.railway.internal http carve-outs, optional host allowlist) + MAX_CONVERSATION_ID_CHARS. Pure (no env reads), `import "server-only"`-guarded; deny ladders, budgets, and response channels stay per-proxy. Its test file carries the railway.internal label-boundary matrix as direct unit coverage
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
@@ -211,8 +212,9 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
 - **Proxies** (`src/app/api/history/*`): POST-shaped (thread ids never in
   URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
   (since feat-250 the send path presents the same lane bearer — chat holds no
-  pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the exported
-  `hostAllowed`. Read budget = `seekerTimeoutMs()` clamped to [9 s, 10 s]
+  pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the shared
+  `hostAllowed` from `lib/server/mastra-upstream` (feat-282 — both proxy
+  families import it; the seeker route no longer exports SSRF primitives). Read budget = `seekerTimeoutMs()` clamped to [9 s, 10 s]
   (`composeHistoryTimeoutMs` — the 9 s floor keeps the budget above Mastra's
   8 s `historyRead` even when the send-path `SEEKER_TIMEOUT_MS` escape hatch
   lowers the send budget); upstream status classified before any body parse;
@@ -406,8 +408,9 @@ login page instead of silently re-authenticating via the SSO session.
   them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
   (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`, the `app/`
   entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`,
-  `app/api/auth/*`, `auth/*` — note `auth/identity.ts` uses `next/headers` — and the
-  feat-233 `lib/seeker-gate.ts`, `import "server-only"`)
+  `app/api/auth/*`, `auth/*` — note `auth/identity.ts` uses `next/headers` — the
+  feat-233 `lib/seeker-gate.ts`, and the feat-282 `lib/server/mastra-upstream.ts`,
+  both `import "server-only"`)
   stay server / framework-agnostic.
 - Strict TypeScript, `src/` layout, `@/*` path alias — config mirrors
   `apps/web` (the CI-proven template).

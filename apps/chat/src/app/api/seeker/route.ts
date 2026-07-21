@@ -36,6 +36,10 @@
 
 import { env, seekerTimeoutMs } from "@/config/env"
 import { resolveSeekerGate, type SeekerGateDecision } from "@/lib/seeker-gate"
+import {
+  hostAllowed,
+  MAX_CONVERSATION_ID_CHARS,
+} from "@/lib/server/mastra-upstream"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 import type { ReplyFailureReason } from "@/lib/conversations"
 import {
@@ -52,10 +56,9 @@ import {
 export const dynamic = "force-dynamic"
 
 // Cost-amplification bound (R5 defers the rate/concurrency cap, not input
-// bounds). A single caller must not be able to POST a multi-megabyte prompt
-// into a ~90s paid generation.
+// bounds) on a multi-megabyte prompt into a ~90s paid generation. The
+// conversation-id bound is the shared MAX_CONVERSATION_ID_CHARS.
 const MAX_PROMPT_CHARS = 8000
-const MAX_CONVERSATION_ID_CHARS = 200
 
 /** Server-resolved Seeker proxy configuration (the bearer + base URL never
  * leave the server). Built from env in `POST`; injected directly in tests.
@@ -112,62 +115,6 @@ function isProxyBody(
   if (v.text.length > MAX_PROMPT_CHARS) return false
   if (v.conversationId.length > MAX_CONVERSATION_ID_CHARS) return false
   return true
-}
-
-// Loopback hosts may use http: — the bearer never leaves the machine, so the
-// cleartext concern doesn't apply, and this is what local Mastra dev serves.
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
-
-// Railway private-network hosts may also use http: — Mastra has no public
-// domain, the WireGuard mesh encrypts transport, and Railway issues no TLS
-// cert for *.railway.internal.
-const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
-
-// True full-label suffix match: a bare endsWith would also admit empty-label
-// hosts (".railway.internal", "a..railway.internal"), which parse fine in the
-// WHATWG URL parser and would otherwise slip past the scheme floor.
-function isRailwayInternalHost(host: string): boolean {
-  return (
-    host.endsWith(RAILWAY_INTERNAL_SUFFIX) &&
-    !host.startsWith(".") &&
-    !host.includes("..")
-  )
-}
-
-/**
- * SSRF guard. The base URL must be `https:` — the bearer rides this request, so
- * an `http:` base would egress it in cleartext — EXCEPT loopback hosts (local
- * dev) and `*.railway.internal` hosts (the prod transport: Railway private
- * networking is plain HTTP at the app layer over a WireGuard-encrypted mesh,
- * and Mastra deliberately has no public https domain). When an allowlist is set
- * the host must be in it. An unset allowlist trusts the operator-set host
- * (admin parity; `redirect:"error"` still blocks off-host hops) but the scheme
- * floor applies regardless. Exported for the feat-241 history proxies, which
- * reuse the same base URL + allowlist.
- */
-export function hostAllowed(
-  baseUrl: string,
-  allowedHostsCsv: string | undefined,
-): boolean {
-  let url: URL
-  try {
-    url = new URL(baseUrl)
-  } catch {
-    return false
-  }
-  const host = url.hostname.toLowerCase()
-  const privateHttp =
-    url.protocol === "http:" &&
-    (LOOPBACK_HOSTS.has(host) || isRailwayInternalHost(host))
-  if (url.protocol !== "https:" && !privateHttp) return false
-  if (!allowedHostsCsv) return true
-  const allowed = new Set(
-    allowedHostsCsv
-      .split(",")
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean),
-  )
-  return allowed.has(host)
 }
 
 /**

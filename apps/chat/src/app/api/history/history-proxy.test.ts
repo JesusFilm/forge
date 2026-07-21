@@ -236,6 +236,19 @@ describe("history proxy — config + SSRF guard (AE11)", () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  // Wiring case for the PROD transport shape (label-boundary matrix lives in
+  // lib/server/mastra-upstream's unit suite): the history proxy must keep
+  // admitting an http *.railway.internal base end-to-end.
+  it("allows an http *.railway.internal base URL (prod transport wiring) → 200", async () => {
+    const res = await runList({
+      config: {
+        ...BASE_CONFIG,
+        baseUrl: "http://example-service.railway.internal:4111",
+      },
+    })
+    expect(res.status).toBe(200)
+  })
+
   it("maps a hanging upstream to 504 timeout within the configured budget", async () => {
     const fetchImpl: typeof fetch = (_url, init) =>
       new Promise((_resolve, reject) => {

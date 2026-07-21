@@ -3,7 +3,7 @@ id: "feat-282"
 title: "Shared Mastra upstream transport for the chat proxies (narrowed)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-21"
 duration: 5
 depends_on: []
@@ -11,6 +11,38 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution (PR 1 of 2 — arc in progress, ticket flips complete in PR 2)
+
+**Shipped:** 2026-07-21 via [PR #1661](https://github.com/JesusFilm/forge/pull/1661)
+(`feat(chat): extract shared Mastra upstream SSRF primitives (feat-282 PR 1)`).
+PR 2 (the narrowed shared layer) waits on the feat-281 arc and flips this
+ticket `complete` with the full arc Resolution.
+
+**What landed.** `hostAllowed` + the loopback/railway helpers + the duplicated
+`MAX_CONVERSATION_ID_CHARS` moved into the new server-only
+`apps/chat/src/lib/server/mastra-upstream.ts`; both proxies import it and the
+seeker route no longer exports SSRF primitives. The railway.internal
+label-boundary matrix became direct unit coverage beside the module (22
+tests), and each proxy suite carries a prod-transport
+(`http://*.railway.internal`) allow-path wiring case — a Tier-2 review
+addition closing a green-while-red gap the bare move would have opened.
+Ruling 4a's `signIn` slot landed with a slot-identity test. One addition
+beyond the ticket's letter: `import "server-only"` on the new module (five
+review lenses converged on the unguarded `lib/server/` boundary; PR 2 adds
+bearer-adjacent helpers there). Wire behavior identical; 510 tests /
+typecheck / lint green.
+
+**Compound docs.** Two worked-instance rows + the refactor-relocates-risk rule
+in `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`;
+relocation scope note in
+`docs/solutions/workflow-issues/mechanism-retirement-docs-prose-sweep.md`.
+
+**Residual risk / follow-ups.** PR 2 carries the remaining scope (shared fetch
+shape + signal composition + error-discriminant classifier, `readJsonCapped`
+moving shared with the seeker 503 path adopting it as the one declared
+hardening delta). The per-caller rate cap on `/api/seeker` remains the
+standing open prerequisite before the audience widens (unchanged here).
 
 ## Problem
 
