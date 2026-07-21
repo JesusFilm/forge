@@ -59,13 +59,19 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
     ? seriesSelectionState(episodeSlugs, selected)
     : "none"
 
+  const handleExpandToggle = useCallback(() => {
+    animateLayout()
+    setExpanded((prev) => !prev)
+  }, [])
+
   const handleToggle = () => {
+    // In selection mode the header body selects the whole series; the chevron
+    // (its own Pressable below) stays the way to expand and pick episodes.
     if (selecting) {
       onToggleSeries?.(episodeSlugs)
       return
     }
-    animateLayout()
-    setExpanded((prev) => !prev)
+    handleExpandToggle()
   }
 
   // One stable callback shared by every episode row (not one per .map()
@@ -122,11 +128,23 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
           </Text>
         </View>
 
-        <AnimatedChevron
-          isExpanded={expanded}
-          glyph="›"
-          style={styles.chevron}
-        />
+        <Pressable
+          onPress={handleExpandToggle}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${group.seriesTitle}`}
+          accessibilityState={{ expanded }}
+          style={({ pressed }) => [
+            styles.chevronButton,
+            pressed && feedback.pressed,
+          ]}
+        >
+          <AnimatedChevron
+            isExpanded={expanded}
+            glyph="›"
+            style={styles.chevron}
+          />
+        </Pressable>
       </Pressable>
 
       {expanded &&
@@ -194,6 +212,10 @@ const styles = StyleSheet.create({
   metaFailed: {
     color: STATUS_FAILED_COLOR,
     fontWeight: "700",
+  },
+  chevronButton: {
+    padding: 6,
+    marginRight: -6,
   },
   chevron: {
     color: TEXT_SECONDARY,
