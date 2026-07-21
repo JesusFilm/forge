@@ -705,6 +705,10 @@ type MediaCollectionItem {
   Best playable Mux playback id for this media collection item when it references a Video row.
   """
   muxPlaybackId(languageSlug: String): String
+  """
+  Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
+  """
+  resolvedTitle(locale: String!): String
   subtitleOverride: String
   titleOverride: String
   videoId: String
