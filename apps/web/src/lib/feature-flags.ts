@@ -21,6 +21,8 @@ const webFeatureFlagClient = createFeatureFlagClient({
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT:
+      env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
@@ -29,6 +31,7 @@ const webFeatureFlagClient = createFeatureFlagClient({
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
     "forge.watch.ctaTextCopy": false,
     "forge.watch.downloadAccountGate": false,
+    "forge.watch.globalBetaTesterCta": false,
     "forge.watch.hideBibleQuotes": false,
     "forge.watch.questionPanel": false,
   },
@@ -82,6 +85,15 @@ export async function isWatchDownloadAccountGateEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchDownloadAccountGate,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchGlobalBetaTesterCtaEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchGlobalBetaTesterCta,
     createWebFeatureFlagContext(context),
   )
 }

@@ -11,6 +11,7 @@ function setRequiredWebEnv() {
   delete process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT
   delete process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT
   delete process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT
+  delete process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT
   delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
   delete process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
@@ -62,6 +63,25 @@ describe("web feature flag helpers", () => {
     const { isWatchCtaTextCopyEnabled } = await import("./feature-flags")
 
     await expect(isWatchCtaTextCopyEnabled()).resolves.toBe(true)
+  })
+
+  it("keeps the global beta tester CTA hidden by default", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+
+    const { isWatchGlobalBetaTesterCtaEnabled } =
+      await import("./feature-flags")
+
+    await expect(isWatchGlobalBetaTesterCtaEnabled()).resolves.toBe(false)
+  })
+
+  it("shows the global beta tester CTA from the server-side fallback", async () => {
+    delete process.env.LAUNCHDARKLY_SDK_KEY
+    process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT = "true"
+
+    const { isWatchGlobalBetaTesterCtaEnabled } =
+      await import("./feature-flags")
+
+    await expect(isWatchGlobalBetaTesterCtaEnabled()).resolves.toBe(true)
   })
 
   it("keeps the watch download account gate disabled by default", async () => {
@@ -122,6 +142,7 @@ describe("web feature flag helpers", () => {
     process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT = "true"
     process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT = "false"
     process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT = "true"
+    process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT = "true"
     process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
     process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT = "false"
     const booleanVariation = vi.fn(async () => false)
@@ -147,6 +168,7 @@ describe("web feature flag helpers", () => {
           FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
           FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: "false",
           FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: "true",
+          FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: "true",
           FORGE_WATCH_QUESTION_PANEL_DEFAULT: "true",
           FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: "false",
         },
@@ -154,6 +176,7 @@ describe("web feature flag helpers", () => {
           "forge.watch.playerMigration": false,
           "forge.watch.ctaTextCopy": false,
           "forge.watch.downloadAccountGate": false,
+          "forge.watch.globalBetaTesterCta": false,
           "forge.watch.questionPanel": false,
           "forge.watch.hideBibleQuotes": false,
         },
