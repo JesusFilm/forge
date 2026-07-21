@@ -11,13 +11,13 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 21, 2026)
+## Status (July 22, 2026)
 
-- **Total tickets:** 30
+- **Total tickets:** 31
 - ✅ **Complete:** 25
 - 🟡 **In progress:** 0
 - 🔵 **Not started:** 5
-- 🔴 **Blocked:** 0
+- 🔴 **Blocked:** 1
 
 ## Feature Index
 
@@ -53,3 +53,4 @@ from the main DS Year 1 roadmap.
 | [feat-270](feat-270-chat-ui-cleanup-batch.md)                | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges | jian wei | P2       | 2026-07-27 | 3    | ✅ complete    | [#1626](https://github.com/JesusFilm/forge/pull/1626) |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)    | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                     |
 | [feat-275](feat-275-ai-chat-docs-audit.md)                   | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                    | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#1638](https://github.com/JesusFilm/forge/pull/1638) |
+| [feat-279](feat-279-seeker-prompt-studio-block.md)           | Seeker system prompt as a Mastra Editor prompt block (Studio-editable)    | jaco     | P2       | 2026-07-21 | 3    | 🔴 blocked     | —                                                     |
