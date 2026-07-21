@@ -170,6 +170,7 @@ export const env = createEnv({
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
@@ -299,6 +300,8 @@ export const env = createEnv({
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT:
+      process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:

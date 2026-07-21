@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 21, 2026)
 
-- **Total tickets:** 385
+- **Total tickets:** 386
 - **Complete:** 287
-- **In progress:** 25
+- **In progress:** 26
 - **Not started:** 29
 - **Blocked:** 44
 - **Overdue and not complete:** 75
@@ -363,6 +363,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-264](platform/feat-264-watch-modal-playback-coordination.md)                   | Pause Watch playback for every modal                                             | codex      | P2       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-249](platform/feat-249-web-force-login-marker-consume-on-success.md)           | Web force-login marker: consume on callback success, not login redirect          | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)             | Scope Watch media resource hints to media routes                                 | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
+| [feat-279](platform/feat-279-watch-global-beta-tester-cta-flag.md)                   | Watch global beta tester CTA feature flag                                        | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | in-progress |
 | [feat-267](platform/feat-267-mobile-hero-stream-retry-cooldown.md)                   | Mobile hero stream retry cooldown (idle-Home unbounded retry loop)               | urim       | P2       | 2026-07-22 | 2    | 2026-07-23 | in-progress |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)              | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
