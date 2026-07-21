@@ -73,7 +73,7 @@ export type HomeHeroPagerHandle = {
 /** Bottom offset of the chrome row above the hero's bottom edge. */
 export const HERO_CHROME_BOTTOM = 44
 /** Overlay CTA pill height (also the mute circle's diameter). */
-export const HERO_CTA_HEIGHT = 48
+export const HERO_CTA_HEIGHT = 44
 /** Vertical footprint the text block reserves for the CTA (pill + 16 gap). */
 export const HERO_CTA_FOOTPRINT = HERO_CTA_HEIGHT + 16
 

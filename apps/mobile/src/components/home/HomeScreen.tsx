@@ -610,10 +610,9 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     paddingHorizontal: 24,
-    paddingVertical: 12,
     borderRadius: 999,
     backgroundColor: ACCENT,
-    minHeight: HERO_CTA_HEIGHT,
+    height: HERO_CTA_HEIGHT,
     justifyContent: "center",
   },
   ctaText: {
