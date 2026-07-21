@@ -11,6 +11,7 @@ export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "Feedback",
   "FloatingSearch",
   "LanguageCombobox",
+  "LanguagePickerModal",
   "SearchOverlay",
   "SearchResultCard",
   "VideoLabels",
@@ -63,6 +64,7 @@ export const WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES = [
 ] as const satisfies readonly ClientMessageNamespace[]
 
 export const LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES = [
+  "LanguageCombobox",
   "LanguageInventory",
   "VideoLabels",
   "WatchHome",

@@ -1,5 +1,5 @@
 ---
-id: "feat-253"
+id: "feat-276"
 title: "Watch Russian UI localization coverage"
 owner: "vlad"
 priority: "P1"
@@ -8,8 +8,8 @@ start_date: "2026-07-14"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-254"
-  - "feat-255"
+  - "feat-277"
+  - "feat-278"
 tags:
   - "platform"
   - "web"
@@ -110,4 +110,4 @@ copy, producing mixed-language pages even where components already use
   request, dependency, or client initialization path was added.
 - The browser audit separately identified incomplete Admin-authored Russian
   titles/descriptions and unreviewed copy in other authored UI catalogs. Those
-  are tracked in `feat-254` and `feat-255` rather than hidden by UI fallbacks.
+  are tracked in `feat-277` and `feat-278` rather than hidden by UI fallbacks.

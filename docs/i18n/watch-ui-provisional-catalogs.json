@@ -202,12 +202,6 @@
           "catalogDigest": "bfba6aee1a54b796a0d92cfd6cc1928b8583790bbdc5aeeaf9cbb15c45a77339",
           "generatedOn": "2026-07-21"
         },
-        "crk": {
-          "model": "gpt-5.6-sol",
-          "sourceDigest": "949e3cd4991eb9cc1f733b576e7cea65e65096cfe914f188b73bf0e15cbb71a0",
-          "catalogDigest": "4d19dde8717f14804f9049af18b507320cb960228676daf8cab6aceaa1149967",
-          "generatedOn": "2026-07-21"
-        },
         "cs": {
           "model": "gpt-5.6-sol",
           "sourceDigest": "949e3cd4991eb9cc1f733b576e7cea65e65096cfe914f188b73bf0e15cbb71a0",
@@ -769,7 +763,7 @@
         "mt": {
           "model": "gpt-5.6-sol",
           "sourceDigest": "949e3cd4991eb9cc1f733b576e7cea65e65096cfe914f188b73bf0e15cbb71a0",
-          "catalogDigest": "9384fd506c9cf2eb895b2d91931a4f625c31b61ff219ad56adbd107b985cc1ee",
+          "catalogDigest": "aee838ef8b0b89dd76cd334728c8311a03c9c518b95c1baed3b626297a2399ed",
           "generatedOn": "2026-07-21"
         },
         "my": {
@@ -1352,9 +1346,9 @@
   },
   "summary": {
     "inventoryLanguageTags": 223,
-    "authoredInventoryCatalogs": 222,
-    "machineTranslatedCatalogs": 222,
-    "provisionalCatalogs": 1,
+    "authoredInventoryCatalogs": 221,
+    "machineTranslatedCatalogs": 221,
+    "provisionalCatalogs": 2,
     "existingNonInventoryCatalogs": 2,
     "missingCatalogs": 0
   },
@@ -1391,7 +1385,6 @@
     "ch",
     "chp",
     "ckb",
-    "crk",
     "cs",
     "csb",
     "cy",
@@ -1615,7 +1608,6 @@
     "ch",
     "chp",
     "ckb",
-    "crk",
     "cs",
     "csb",
     "cy",
@@ -1806,7 +1798,7 @@
     "zh-Hant",
     "zu"
   ],
-  "provisionalLocales": ["mey-Latn"],
+  "provisionalLocales": ["crk", "mey-Latn"],
   "existingNonInventoryLocales": ["tl", "zh-Hans"],
   "missingCatalogs": []
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Route } from "next"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
@@ -37,7 +37,7 @@ export default async function WatchHistoryPage({ params }: HistoryPageProps) {
 
   const session = await verifyAuthSession(await headers())
   if (!session.authenticated) {
-    redirect("/api/auth/login?returnTo=/watch/history")
+    redirect("/api/auth/login?returnTo=/watch/history" as Route)
   }
 
   return (

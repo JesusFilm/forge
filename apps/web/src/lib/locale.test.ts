@@ -213,6 +213,11 @@ describe("textDirectionForLocale", () => {
     },
   )
 
+  it("falls back to the primary language for extlang-style Arabic tags", () => {
+    expect(textDirectionForLocale("ar-mey")).toBe("rtl")
+    expect(textDirectionForLocale("ar-arz")).toBe("rtl")
+  })
+
   it("falls back safely for invalid locale tags", () => {
     expect(textDirectionForLocale("not_a_locale")).toBe("ltr")
   })
@@ -333,6 +338,18 @@ describe("resolveWatchLocaleIdentity", () => {
       locale: "zh",
       htmlLang: "zh",
     })
+  })
+
+  it("keeps Hassaniyya on its explicit Latin-script UI catalog", () => {
+    expect(resolveWatchLocaleIdentity("arabic-hassaniya")).toEqual({
+      locale: "mey-Latn",
+      htmlLang: "mey-Latn",
+    })
+    expect(resolveWatchLocaleIdentity("ar-mey")).toEqual({
+      locale: "mey-Latn",
+      htmlLang: "mey-Latn",
+    })
+    expect(textDirectionForLocale("mey-Latn")).toBe("ltr")
   })
 
   it("does not preserve the stale home-only German language alias", () => {

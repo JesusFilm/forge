@@ -148,6 +148,10 @@ export function textDirectionForLocale(locale: string): LocaleTextDirection {
 
     return textInfo?.direction === "rtl" ? "rtl" : "ltr"
   } catch {
+    const primaryLocale = locale.split("-")[0]
+    if (primaryLocale && primaryLocale !== locale) {
+      return textDirectionForLocale(primaryLocale)
+    }
     return "ltr"
   }
 }
@@ -322,12 +326,24 @@ export type WatchLocaleIdentity = {
   htmlLang: string
 }
 
+const WATCH_LOCALE_IDENTITY_OVERRIDES: Readonly<
+  Record<string, WatchLocaleIdentity>
+> = Object.freeze({
+  // Admin exposes Hassaniyya through the extlang-style `ar-mey` tag, while
+  // the UI inventory owns an explicit Latin-script catalog. Keep that
+  // intentional provisional catalog reachable instead of collapsing to `ar`.
+  "arabic-hassaniya": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+  "ar-mey": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+})
+
 export function resolveWatchLocaleIdentity(
   localeSegment: string | null | undefined,
 ): WatchLocaleIdentity {
   if (!localeSegment) {
     return { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
   }
+  const override = WATCH_LOCALE_IDENTITY_OVERRIDES[localeSegment]
+  if (override) return override
   const locale = resolveUiLocale(localeSegment) ?? DEFAULT_LOCALE
   const tag = slugToBcp47Tag(localeSegment)
   const htmlLang = tag && resolveUiLocale(tag) === locale ? tag : locale

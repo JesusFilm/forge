@@ -1,5 +1,5 @@
 ---
-id: "feat-254"
+id: "feat-277"
 title: "Watch authored UI catalog translation completion"
 owner: "vlad"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-07-14"
 duration: 3
 depends_on:
-  - "feat-253"
+  - "feat-276"
 blocks: []
 tags:
   - "platform"
@@ -78,16 +78,18 @@ OpenAI API for that work.
 
 - Shipped exact structural parity across 225 UI catalogs: English plus 224
   non-English catalogs, covering all 223 inventory languages and both existing
-  non-inventory UI catalogs. There are no provisional or missing catalogs.
-- Preserved reviewed English and Russian copy. The other 223 catalogs are
+  non-inventory UI catalogs. There are no missing catalogs; Western Cree and
+  Hassaniyya-Latin remain explicit English-seeded provisional catalogs because
+  their generated copy did not meet the translation-quality gate.
+- Preserved reviewed English and Russian copy. Another 221 catalogs are
   recorded as contextual machine translations using `gpt-5.6-sol`, with a
   final model, source digest, current catalog digest, and generation date for
   every locale in `docs/i18n/watch-ui-provisional-catalogs.json`.
   Native-speaker review remains recommended.
-- Enforced 395 string leaves per catalog, exact ICU variable/rich-tag and
+- Enforced 397 string leaves per catalog, exact ICU variable/rich-tag and
   plural/select contracts, real `next-intl` formatting, and zero non-neutral
   English-source copies. The final audit found zero exact source matches across
-  all 86,688 translatable non-English leaves; the only eight permitted
+  all 86,358 translatable non-provisional leaves; the only eight permitted
   exceptions are explicitly enumerated locale-neutral product/title templates.
 - Browser-smoked representative Latin, Cyrillic, Arabic/RTL, and CJK routes.
   The root layout now derives document direction for both Node 20/22's

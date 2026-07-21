@@ -2,6 +2,12 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  isSourceEquivalent,
+  messageContractError,
+  PermanentApiError,
+  requestTranslations,
+} from "./openai-catalog-translator.mjs"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appDir = join(scriptDir, "..")
@@ -22,24 +28,32 @@ const DEFAULT_CONCURRENCY = 4
 const DEFAULT_MAX_ATTEMPTS = 4
 const SOURCE_LOCALE = "en"
 const MAXIMUM_SOURCE_COPY_RATIO = 0
+const MAXIMUM_NORMALIZED_SOURCE_COPY_RATIO = 0.05
 
-const FALLBACK_LANGUAGE_NAMES = {
-  bjt: "Balanta-Ganja",
-  bsc: "Bassari (Oniyan)",
-  caa: "Ch'orti'",
-  cak: "Kaqchikel",
-  ixl: "Ixil",
-  knf: "Mankanya",
-  lbe: "Lak",
-  mdh: "Maguindanao",
-  mfv: "Mandjak",
-  quv: "Sacapulteco",
-  sav: "Saafi-Saafi",
-  snf: "Noon",
-  tnr: "Bedik",
-  tsg: "Tausug",
-  usp: "Uspanteco",
-  xin: "Xinca",
+class TranslationPipelineError extends Error {
+  constructor(name, code, message, options) {
+    super(message, options)
+    this.name = name
+    this.code = code
+  }
+}
+
+class TranslationCliError extends TranslationPipelineError {
+  constructor(code, message, options) {
+    super("TranslationCliError", code, message, options)
+  }
+}
+
+class CatalogValidationError extends TranslationPipelineError {
+  constructor(code, message, options) {
+    super("CatalogValidationError", code, message, options)
+  }
+}
+
+class TranslationStateError extends TranslationPipelineError {
+  constructor(code, message, options) {
+    super("TranslationStateError", code, message, options)
+  }
 }
 
 function argValue(name, fallback, args = process.argv) {
@@ -47,7 +61,10 @@ function argValue(name, fallback, args = process.argv) {
   if (index === -1) return fallback
   const value = args[index + 1]
   if (!value || value.startsWith("--")) {
-    throw new Error(`Missing value for ${name}`)
+    throw new TranslationCliError(
+      "MISSING_ARGUMENT_VALUE",
+      `Missing value for ${name}`,
+    )
   }
   return value
 }
@@ -55,7 +72,10 @@ function argValue(name, fallback, args = process.argv) {
 function integerArg(name, fallback, args = process.argv) {
   const value = Number.parseInt(argValue(name, String(fallback), args), 10)
   if (!Number.isInteger(value) || value < 1) {
-    throw new Error(`${name} must be a positive integer`)
+    throw new TranslationCliError(
+      "INVALID_POSITIVE_INTEGER",
+      `${name} must be a positive integer`,
+    )
   }
   return value
 }
@@ -106,7 +126,10 @@ function flattenCatalog(catalog) {
       return
     }
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      throw new Error(`Invalid message value at ${path.join(".")}`)
+      throw new CatalogValidationError(
+        "INVALID_MESSAGE_VALUE",
+        `Invalid message value at ${path.join(".")}`,
+      )
     }
     for (const [key, child] of Object.entries(value)) {
       visit(child, [...path, key])
@@ -121,7 +144,12 @@ function unflattenCatalog(flatCatalog) {
   const catalog = {}
   for (const [path, value] of Object.entries(flatCatalog)) {
     const parts = path.split(".")
-    if (parts.length < 2) throw new Error(`Invalid message path: ${path}`)
+    if (parts.length < 2) {
+      throw new CatalogValidationError(
+        "INVALID_MESSAGE_PATH",
+        `Invalid message path: ${path}`,
+      )
+    }
     let cursor = catalog
     for (const part of parts.slice(0, -1)) {
       cursor[part] ??= {}
@@ -134,62 +162,6 @@ function unflattenCatalog(flatCatalog) {
 
 function sortedUnique(values) {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b))
-}
-
-function sameSet(left, right) {
-  return (
-    left.size === right.size && [...left].every((value) => right.has(value))
-  )
-}
-
-function messageVariables(message) {
-  const variables = new Set()
-  for (const match of message.matchAll(
-    /\{([A-Za-z][A-Za-z0-9_]*)\s*(?:,|\})/g,
-  )) {
-    variables.add(match[1])
-  }
-  return variables
-}
-
-function richTextTags(message) {
-  return new Set(
-    [...message.matchAll(/<\/?([A-Za-z][A-Za-z0-9_]*)>/g)].map(
-      (match) => match[1],
-    ),
-  )
-}
-
-function hasBalancedBraces(message) {
-  let depth = 0
-  for (const character of message) {
-    if (character === "{") depth += 1
-    if (character === "}") depth -= 1
-    if (depth < 0) return false
-  }
-  return depth === 0
-}
-
-function messageContractError(key, source, value) {
-  if (typeof value !== "string") return `Missing translation: ${key}`
-  if (source.length === 0 && value.length === 0) return null
-  if (value.trim().length === 0) return `Empty translation: ${key}`
-  if (value.includes("```")) return `Markdown fence in translation: ${key}`
-  if (!hasBalancedBraces(value)) return `Unbalanced ICU braces: ${key}`
-  if (!sameSet(messageVariables(source), messageVariables(value))) {
-    return `ICU variable mismatch: ${key}`
-  }
-  if (!sameSet(richTextTags(source), richTextTags(value))) {
-    return `Rich-text tag mismatch: ${key}`
-  }
-  if (
-    source.includes("#") &&
-    source.includes("plural") &&
-    !value.includes("#")
-  ) {
-    return `Plural substitution marker missing: ${key}`
-  }
-  return null
 }
 
 function catalogKeyDifferences(sourceMessages, catalogMessages) {
@@ -209,7 +181,8 @@ function validateCatalogKeys(sourceMessages, catalogMessages) {
     catalogMessages,
   )
   if (missing.length > 0 || unexpected.length > 0) {
-    throw new Error(
+    throw new CatalogValidationError(
+      "CATALOG_KEY_MISMATCH",
       `Catalog key mismatch; missing=${missing.slice(0, 8).join(",")}; unexpected=${unexpected.slice(0, 8).join(",")}`,
     )
   }
@@ -223,7 +196,9 @@ function validateCatalogIntegrity(
   validateCatalogKeys(sourceMessages, catalogMessages)
   for (const [key, source] of Object.entries(sourceMessages)) {
     const error = messageContractError(key, source, catalogMessages[key])
-    if (error) throw new Error(error)
+    if (error) {
+      throw new CatalogValidationError("MESSAGE_CONTRACT_MISMATCH", error)
+    }
   }
 
   const sourceCopiedMessages = Object.entries(sourceMessages).filter(
@@ -231,305 +206,27 @@ function validateCatalogIntegrity(
       !INTENTIONALLY_LOCALE_NEUTRAL.has(key) && catalogMessages[key] === source,
   ).length
   if (sourceCopiedMessages > maximumSourceCopiedMessages) {
-    throw new Error(
+    throw new CatalogValidationError(
+      "SOURCE_COPY_LIMIT_EXCEEDED",
       `Catalog retains ${sourceCopiedMessages} exact English messages; maximum is ${maximumSourceCopiedMessages}`,
     )
   }
-}
 
-function validateTranslation(sourceMessages, translations, minimumChangeRatio) {
-  if (!Array.isArray(translations)) {
-    throw new Error("Response translations must be an array")
-  }
-
-  const expectedKeys = Object.keys(sourceMessages)
-  const translated = new Map()
-  for (const entry of translations) {
-    if (
-      typeof entry !== "object" ||
-      entry === null ||
-      typeof entry.key !== "string" ||
-      typeof entry.value !== "string"
-    ) {
-      throw new Error("Every translation must contain string key and value")
-    }
-    if (translated.has(entry.key)) {
-      throw new Error(`Duplicate translated key: ${entry.key}`)
-    }
-    translated.set(entry.key, entry.value)
-  }
-
-  const missing = expectedKeys.filter((key) => !translated.has(key))
-  const unexpected = [...translated.keys()].filter(
-    (key) => !Object.hasOwn(sourceMessages, key),
-  )
-  if (missing.length > 0 || unexpected.length > 0) {
-    throw new Error(
-      `Translation key mismatch; missing=${missing.slice(0, 8).join(",")}; unexpected=${unexpected.slice(0, 8).join(",")}`,
-    )
-  }
-
-  for (const [key, source] of Object.entries(sourceMessages)) {
-    const value = translated.get(key)
-    const error = messageContractError(key, source, value)
-    if (error) throw new Error(error)
-  }
-
-  const changedMessages = Object.entries(sourceMessages).filter(
-    ([key, source]) => translated.get(key) !== source,
+  const normalizedSourceCopiedMessages = Object.entries(sourceMessages).filter(
+    ([key, source]) =>
+      !INTENTIONALLY_LOCALE_NEUTRAL.has(key) &&
+      catalogMessages[key] !== source &&
+      isSourceEquivalent(source, catalogMessages[key]),
   ).length
-  if (
-    minimumChangeRatio > 0 &&
-    changedMessages / Object.keys(sourceMessages).length < minimumChangeRatio
-  ) {
-    throw new Error(
-      `Translation changed only ${changedMessages}/${Object.keys(sourceMessages).length} messages; at least ${Math.ceil(minimumChangeRatio * Object.keys(sourceMessages).length)} must change to keep the whole catalog below the English-copy limit`,
+  const maximumNormalizedSourceCopiedMessages = Math.floor(
+    Object.keys(sourceMessages).length * MAXIMUM_NORMALIZED_SOURCE_COPY_RATIO,
+  )
+  if (normalizedSourceCopiedMessages > maximumNormalizedSourceCopiedMessages) {
+    throw new CatalogValidationError(
+      "NORMALIZED_SOURCE_COPY_LIMIT_EXCEEDED",
+      `Catalog retains ${normalizedSourceCopiedMessages} case/format-only English messages; maximum is ${maximumNormalizedSourceCopiedMessages}`,
     )
   }
-
-  return Object.fromEntries(translated)
-}
-
-function localeDisplayName(locale) {
-  if (FALLBACK_LANGUAGE_NAMES[locale]) return FALLBACK_LANGUAGE_NAMES[locale]
-  try {
-    const displayName = new Intl.DisplayNames(["en"], {
-      type: "language",
-    }).of(locale)
-    if (displayName && displayName !== locale) return displayName
-  } catch {
-    // The explicit BCP-47 tag and country context are still supplied below.
-  }
-  return locale
-}
-
-function buildSystemPrompt() {
-  return `You are a senior software localization translator for Jesus Film Project, a Christian video-streaming and discipleship website.
-
-Translate each supplied English UI message into the requested target language. The dotted key identifies the component and contextual purpose. Write natural, concise interface copy appropriate to the message's position, not a word-for-word gloss.
-
-Requirements:
-- Preserve every ICU variable name exactly, including variables inside plural/select messages.
-- Preserve XML-like rich-text tag names exactly, but move tagged phrases where target-language grammar requires it.
-- Adapt ICU plural categories to the target language when needed while keeping the original variable.
-- Runtime {language} values are native language names. Prefer case-neutral punctuation such as a colon when grammatical inflection would otherwise be required.
-- Keep product and series names such as Jesus Film Project, BibleProject, NUA, and NUA: Origins unchanged unless a standard local form is supplied in the source context.
-- Keep URLs, keyboard tokens, abbreviations, and technical identifiers unchanged.
-- Use established Christian terminology in the target language and a respectful, accessible tone.
-- For low-resource languages, produce the best natural target-language copy you can; do not leave full English sentences merely because a borrowed technical noun is common.
-- Every supplied message is intentionally translatable and currently requires work. Return a value different from its English source for every entry; explicit locale-neutral exceptions are excluded before this request.
-- Return one entry for every requested key and no extra keys.`
-}
-
-function buildUserPrompt({ locale, inventoryEntry, messages, references }) {
-  const countries = (inventoryEntry?.countries ?? [])
-    .map((country) => country.name)
-    .join(", ")
-  return JSON.stringify(
-    {
-      targetLocale: locale,
-      targetLanguage: localeDisplayName(locale),
-      scriptAndRegion: locale,
-      officialLanguageCountries: countries || "not specified",
-      contextualInstructions: [
-        "Translate only the message values; return dotted keys unchanged.",
-        "Headings, buttons, aria labels, errors, metadata, and promotional copy should fit their named UI context.",
-        "Existing non-English reference translations show preferred terminology; do not rewrite them.",
-      ],
-      existingReferenceTranslations: references,
-      messagesToTranslate: messages,
-    },
-    null,
-    2,
-  )
-}
-
-const RESPONSE_SCHEMA = {
-  name: "watch_ui_catalog_translation",
-  strict: true,
-  schema: {
-    type: "object",
-    properties: {
-      translations: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            key: { type: "string" },
-            value: { type: "string" },
-          },
-          required: ["key", "value"],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ["translations"],
-    additionalProperties: false,
-  },
-}
-
-function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds))
-}
-
-class PermanentApiError extends Error {}
-
-function retryAfterMilliseconds(value) {
-  if (!value) return 0
-  const seconds = Number(value)
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
-  const date = Date.parse(value)
-  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : 0
-}
-
-function retryDelay(attempt, retryAfterHeader) {
-  return (
-    Math.max(retryAfterMilliseconds(retryAfterHeader), attempt * 4000) +
-    Math.floor(Math.random() * 500)
-  )
-}
-
-async function requestTranslations({
-  apiKey,
-  locale,
-  inventoryEntry,
-  messages,
-  references,
-  model,
-  maxAttempts,
-  minimumChangeRatio,
-  fetchImpl = globalThis.fetch,
-  waitForRetry = wait,
-}) {
-  let previousError = ""
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const useResponsesApi =
-      model.includes("-pro") || model.startsWith("gpt-5.6-")
-    const userPrompt = `${buildUserPrompt({
-      locale,
-      inventoryEntry,
-      messages,
-      references,
-    })}${
-      previousError
-        ? `\n\nThe previous response failed validation: ${previousError}. Return a corrected complete result.`
-        : ""
-    }`
-    let response
-    try {
-      response = await fetchImpl(
-        useResponsesApi
-          ? "https://api.openai.com/v1/responses"
-          : "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(
-            useResponsesApi
-              ? {
-                  model,
-                  instructions: buildSystemPrompt(),
-                  input: userPrompt,
-                  max_output_tokens: 40_000,
-                  store: false,
-                  text: {
-                    format: { type: "json_schema", ...RESPONSE_SCHEMA },
-                  },
-                }
-              : {
-                  model,
-                  messages: [
-                    { role: "system", content: buildSystemPrompt() },
-                    { role: "user", content: userPrompt },
-                  ],
-                  max_completion_tokens: 20_000,
-                  response_format: {
-                    type: "json_schema",
-                    json_schema: RESPONSE_SCHEMA,
-                  },
-                },
-          ),
-          signal: AbortSignal.timeout(useResponsesApi ? 900_000 : 240_000),
-        },
-      )
-    } catch (error) {
-      previousError = `OpenAI request failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-      if (attempt < maxAttempts) {
-        await waitForRetry(retryDelay(attempt))
-        continue
-      }
-      throw new Error(previousError)
-    }
-
-    if (!response.ok) {
-      let detail = "response body unavailable"
-      try {
-        detail = (await response.text()).slice(0, 800)
-      } catch (error) {
-        detail = `response body unavailable: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      }
-      previousError = `OpenAI HTTP ${response.status}: ${detail}`
-      const retryable =
-        [408, 409, 429].includes(response.status) || response.status >= 500
-      if (!retryable) throw new PermanentApiError(previousError)
-      if (attempt < maxAttempts) {
-        await waitForRetry(
-          retryDelay(attempt, response.headers.get("retry-after")),
-        )
-        continue
-      }
-      throw new Error(previousError)
-    }
-
-    try {
-      const payload = await response.json()
-      const outputContent = useResponsesApi
-        ? (payload.output ?? []).flatMap((item) => item.content ?? [])
-        : []
-      const refusal = useResponsesApi
-        ? outputContent.find((item) => item.type === "refusal")?.refusal
-        : payload.choices?.[0]?.message?.refusal
-      if (refusal) throw new Error(`Model refused: ${refusal}`)
-
-      const content = useResponsesApi
-        ? (payload.output_text ??
-          outputContent.find((item) => item.type === "output_text")?.text)
-        : payload.choices?.[0]?.message?.content
-      if (typeof content !== "string") {
-        throw new Error("Model returned no JSON content")
-      }
-
-      let parsed = JSON.parse(content)
-      if (typeof parsed === "string") parsed = JSON.parse(parsed)
-      return {
-        translations: validateTranslation(
-          messages,
-          parsed.translations,
-          minimumChangeRatio,
-        ),
-        usage: useResponsesApi
-          ? {
-              prompt_tokens: payload.usage?.input_tokens ?? 0,
-              completion_tokens: payload.usage?.output_tokens ?? 0,
-              total_tokens: payload.usage?.total_tokens ?? 0,
-            }
-          : (payload.usage ?? {}),
-      }
-    } catch (error) {
-      previousError = error instanceof Error ? error.message : String(error)
-    }
-
-    if (attempt < maxAttempts) await waitForRetry(retryDelay(attempt))
-  }
-
-  throw new Error(previousError || "Translation failed validation")
 }
 
 function loadProgress(path, model, sourceDigest) {
@@ -545,12 +242,14 @@ function loadProgress(path, model, sourceDigest) {
   }
   const progress = readJson(path)
   if (progress.model !== model) {
-    throw new Error(
+    throw new TranslationStateError(
+      "PROGRESS_MODEL_MISMATCH",
       `Progress file model ${progress.model} does not match requested model ${model}`,
     )
   }
   if (progress.sourceDigest !== sourceDigest) {
-    throw new Error(
+    throw new TranslationStateError(
+      "PROGRESS_SOURCE_MISMATCH",
       "Progress file does not match the current English catalog and translation policy. Use a fresh --progress path.",
     )
   }
@@ -590,7 +289,8 @@ function updateManifestAfterTranslation({
     machineTranslatedLocales.map((locale) => {
       const catalogDigest = catalogDigests[locale]
       if (typeof catalogDigest !== "string" || catalogDigest.length === 0) {
-        throw new Error(
+        throw new TranslationStateError(
+          "MISSING_CATALOG_DIGEST",
           `Cannot promote machine-translated locale ${locale}: current catalog digest is missing`,
         )
       }
@@ -601,19 +301,13 @@ function updateManifestAfterTranslation({
 
       const previous = previousLocaleProvenance[locale]
       if (!previous) {
-        throw new Error(
+        throw new TranslationStateError(
+          "MISSING_LOCALE_PROVENANCE",
           `Cannot promote machine-translated locale ${locale}: final per-locale provenance is missing`,
         )
       }
 
-      return [
-        locale,
-        {
-          ...previous,
-          sourceDigest,
-          catalogDigest,
-        },
-      ]
+      return [locale, previous]
     }),
   )
   const localeCountByModel = {}
@@ -702,14 +396,16 @@ function validateCompletedProvisionalCatalogs({
 
     const path = join(messagesDir, `${locale}.json`)
     if (!existsSync(path)) {
-      throw new Error(
+      throw new TranslationStateError(
+        "MISSING_PROVISIONAL_CATALOG",
         `Cannot promote completed provisional locale ${locale}: catalog is missing`,
       )
     }
     const flatCatalog = flattenCatalog(readJson(path))
     const catalogDigest = contentDigest(flatCatalog)
     if (progress.catalogDigests[locale] !== catalogDigest) {
-      throw new Error(
+      throw new TranslationStateError(
+        "PROVISIONAL_DIGEST_MISMATCH",
         `Cannot promote completed provisional locale ${locale}: catalog changed after its progress digest was recorded`,
       )
     }
@@ -731,7 +427,8 @@ function validatedCatalogDigests({
     locales.map((locale) => {
       const path = join(messagesDir, `${locale}.json`)
       if (!existsSync(path)) {
-        throw new Error(
+        throw new TranslationStateError(
+          "MISSING_MACHINE_CATALOG",
           `Cannot record provenance for machine-translated locale ${locale}: catalog is missing`,
         )
       }
@@ -757,7 +454,10 @@ async function main({ args = process.argv, environment = process.env } = {}) {
   const shouldPromote = args.includes("--promote")
   const apiKey = environment.OPENAI_API_KEY ?? environment.API_OPENAI
   if (!apiKey) {
-    throw new Error("Set OPENAI_API_KEY or API_OPENAI")
+    throw new TranslationCliError(
+      "MISSING_OPENAI_API_KEY",
+      "Set OPENAI_API_KEY or API_OPENAI",
+    )
   }
 
   const sourceCatalog = readJson(join(messagesDir, `${SOURCE_LOCALE}.json`))
@@ -818,7 +518,12 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       const locale = queue[index]
       const path = join(messagesDir, `${locale}.json`)
       try {
-        if (!existsSync(path)) throw new Error(`Missing catalog ${path}`)
+        if (!existsSync(path)) {
+          throw new CatalogValidationError(
+            "MISSING_CATALOG",
+            `Missing catalog ${path}`,
+          )
+        }
         const catalog = readJson(path)
         const flatCatalog = flattenCatalog(catalog)
         const catalogDigest = contentDigest(flatCatalog)
@@ -827,7 +532,8 @@ async function main({ args = process.argv, environment = process.env } = {}) {
           flatCatalog,
         )
         if (unexpected.length > 0) {
-          throw new Error(
+          throw new CatalogValidationError(
+            "UNEXPECTED_CATALOG_KEYS",
             `Catalog contains unexpected keys: ${unexpected.slice(0, 8).join(",")}`,
           )
         }
@@ -837,10 +543,15 @@ async function main({ args = process.argv, environment = process.env } = {}) {
           machineTranslatedLocales.has(locale) &&
           !localeProvenance[locale] &&
           !generated.has(locale)
+        const hasStaleSourceProvenance =
+          machineTranslatedLocales.has(locale) &&
+          localeProvenance[locale]?.sourceDigest !== sourceDigest &&
+          !generated.has(locale)
 
         if (
           missing.length === 0 &&
           !requiresFinalProvenance &&
+          !hasStaleSourceProvenance &&
           completed.has(locale) &&
           progress.catalogDigests[locale] === catalogDigest
         ) {
@@ -871,7 +582,9 @@ async function main({ args = process.argv, environment = process.env } = {}) {
 
         const isProvisional = manifest.provisionalLocales.includes(locale)
         const shouldTranslateEntireCatalog =
-          (isProvisional && !completed.has(locale)) || requiresFinalProvenance
+          (isProvisional && !completed.has(locale)) ||
+          requiresFinalProvenance ||
+          hasStaleSourceProvenance
         const missingKeys = new Set(missing)
         const keysToTranslate = Object.keys(sourceFlat).filter(
           (key) =>
@@ -991,6 +704,17 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       sourceDigest,
       catalogDigests,
     })
+    const staleProvenanceLocales = nextManifest.machineTranslatedLocales.filter(
+      (locale) =>
+        nextManifest.metadata.translation.localeProvenance[locale]
+          ?.sourceDigest !== sourceDigest,
+    )
+    if (staleProvenanceLocales.length > 0) {
+      throw new TranslationStateError(
+        "STALE_PROMOTION_PROVENANCE",
+        `Cannot promote while machine-translated locales retain stale source provenance: ${staleProvenanceLocales.slice(0, 12).join(",")}`,
+      )
+    }
     writeJsonAtomic(manifestPath, nextManifest)
   }
 
@@ -1008,8 +732,8 @@ async function main({ args = process.argv, environment = process.env } = {}) {
 export {
   contentDigest,
   flattenCatalog,
+  isSourceEquivalent,
   main,
-  requestTranslations,
   sourceDigestForFlatCatalog,
   updateManifestAfterTranslation,
   validateCatalogIntegrity,

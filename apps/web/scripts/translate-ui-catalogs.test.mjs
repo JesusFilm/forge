@@ -13,11 +13,14 @@ import {
   contentDigest,
   flattenCatalog,
   main,
-  requestTranslations,
   sourceDigestForFlatCatalog,
   updateManifestAfterTranslation,
   validateCatalogIntegrity,
 } from "./translate-ui-catalogs.mjs"
+import {
+  isSourceEquivalent,
+  requestTranslations,
+} from "./openai-catalog-translator.mjs"
 
 const MODEL = "gpt-5.4-mini-2026-03-17"
 const temporaryDirectories = []
@@ -249,7 +252,7 @@ describe("translate UI catalogs", () => {
     ).toBe("Mensaje diecinueve")
   })
 
-  it("rejects even one non-neutral exact English source copy", () => {
+  it("rejects non-neutral English copies after case and format normalization", () => {
     expect(() =>
       validateCatalogIntegrity(
         { "common.greeting": "Hello" },
@@ -257,6 +260,16 @@ describe("translate UI catalogs", () => {
         0,
       ),
     ).toThrow("Catalog retains 1 exact English messages; maximum is 0")
+    expect(() =>
+      validateCatalogIntegrity(
+        { "common.greeting": "Download" },
+        { "common.greeting": "download\u200b" },
+        0,
+      ),
+    ).toThrow(
+      "Catalog retains 1 case/format-only English messages; maximum is 0",
+    )
+    expect(isSourceEquivalent("  Account", "account\u200b")).toBe(true)
   })
 
   it("retries when a successful response leaves a selected message unchanged", async () => {
@@ -319,6 +332,103 @@ describe("translate UI catalogs", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
     expect(waitForRetry).toHaveBeenCalledTimes(1)
     expect(waitForRetry.mock.calls[0][0]).toBeGreaterThan(0)
+  })
+
+  it("uses the Responses API contract for gpt-5.6 translation models", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify({
+                    translations: [{ key: "common.greeting", value: "Hola" }],
+                  }),
+                },
+              ],
+            },
+          ],
+          usage: {
+            input_tokens: 12,
+            output_tokens: 7,
+            total_tokens: 19,
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+    const timeoutSignal = new AbortController().signal
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(timeoutSignal)
+
+    const result = await requestTranslations({
+      apiKey: "test-api-key",
+      locale: "es",
+      inventoryEntry: { countries: [{ name: "Spain" }] },
+      messages: { "common.greeting": "Hello" },
+      references: {},
+      model: "gpt-5.6-sol",
+      maxAttempts: 1,
+      minimumChangeRatio: 1,
+      fetchImpl,
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://api.openai.com/v1/responses",
+    )
+    const request = JSON.parse(fetchImpl.mock.calls[0][1].body)
+    expect(request).toMatchObject({
+      model: "gpt-5.6-sol",
+      store: false,
+      max_output_tokens: 40_000,
+      text: { format: { type: "json_schema" } },
+    })
+    expect(request.instructions).toContain("senior software localization")
+    expect(JSON.parse(request.input).messagesToTranslate).toEqual({
+      "common.greeting": "Hello",
+    })
+    expect(timeoutSpy).toHaveBeenCalledWith(900_000)
+    expect(result).toEqual({
+      translations: { "common.greeting": "Hola" },
+      usage: {
+        prompt_tokens: 12,
+        completion_tokens: 7,
+        total_tokens: 19,
+      },
+    })
+  })
+
+  it("surfaces a Responses API refusal after retries are exhausted", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [{ type: "refusal", refusal: "Cannot translate" }],
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    await expect(
+      requestTranslations({
+        apiKey: "test-api-key",
+        locale: "es",
+        inventoryEntry: { countries: [{ name: "Spain" }] },
+        messages: { "common.greeting": "Hello" },
+        references: {},
+        model: "gpt-5.6-sol",
+        maxAttempts: 1,
+        minimumChangeRatio: 1,
+        fetchImpl,
+      }),
+    ).rejects.toThrow("Model refused: Cannot translate")
   })
 
   it("retries a retryable status when its response body cannot be read", async () => {
@@ -633,6 +743,124 @@ describe("translate UI catalogs", () => {
     })
   })
 
+  it("regenerates a machine catalog when its source provenance is stale", async () => {
+    const source = sourceCatalog()
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: translatedCatalog(source) },
+      manifest: {
+        metadata: {
+          translation: {
+            model: "gpt-old-primary",
+            localeProvenance: {
+              es: {
+                model: "gpt-old-primary",
+                sourceDigest: "old-source",
+                catalogDigest: "old-catalog",
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        authoredInventoryLocales: ["es"],
+        machineTranslatedLocales: ["es"],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+      selectedLocales: ["es"],
+    })
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((_url, options) =>
+        Promise.resolve(translatedPromptResponse(options, "ES")),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: [...fixture.args, "--promote"],
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const prompt = promptFromRequest(fetchMock.mock.calls[0][1])
+    expect(Object.keys(prompt.messagesToTranslate)).toEqual(
+      Object.keys(flattenCatalog(source)),
+    )
+    const manifest = JSON.parse(readFileSync(fixture.manifestPath, "utf-8"))
+    expect(manifest.metadata.translation.localeProvenance.es).toMatchObject({
+      model: MODEL,
+      sourceDigest: sourceDigestForFlatCatalog(flattenCatalog(source)),
+    })
+  })
+
+  it("rejects scoped promotion while another machine locale has stale source provenance", async () => {
+    const source = sourceCatalog()
+    const staleProvenance = (locale) => ({
+      model: "gpt-old-primary",
+      sourceDigest: "old-source",
+      catalogDigest: `old-${locale}`,
+      generatedOn: "2026-07-01",
+    })
+    const fixture = createBatchFixture({
+      source,
+      catalogs: {
+        es: translatedCatalog(source),
+        fr: translatedCatalog(source),
+      },
+      manifest: {
+        metadata: {
+          translation: {
+            model: "gpt-old-primary",
+            localeProvenance: {
+              es: staleProvenance("es"),
+              fr: staleProvenance("fr"),
+            },
+          },
+        },
+        authoredInventoryLocales: ["es", "fr"],
+        machineTranslatedLocales: ["es", "fr"],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+      selectedLocales: ["es"],
+    })
+    const originalManifest = readFileSync(fixture.manifestPath, "utf-8")
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((_url, options) =>
+        Promise.resolve(translatedPromptResponse(options, "ES")),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: [...fixture.args, "--promote"],
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toThrow(
+      "Cannot promote while machine-translated locales retain stale source provenance: fr",
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(readFileSync(fixture.manifestPath, "utf-8")).toBe(originalManifest)
+  })
+
   it("replaces regenerated locale provenance and derives disjoint fallback models", () => {
     const generatedOn = "2026-07-14"
     const manifest = updateManifestAfterTranslation({
@@ -682,8 +910,8 @@ describe("translate UI catalogs", () => {
       },
       fr: {
         model: "gpt-primary",
-        sourceDigest: "current-source",
-        catalogDigest: "current-fr",
+        sourceDigest: "old-source",
+        catalogDigest: "old-fr",
         generatedOn: "2026-07-01",
       },
     })

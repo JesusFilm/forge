@@ -15,7 +15,7 @@ import {
 } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 import MuxVideo from "@forge/video-player/mux-video"
-import { useFormatter, useTranslations } from "next-intl"
+import { useTranslations } from "next-intl"
 import {
   Play,
   Share2,
@@ -55,6 +55,10 @@ import {
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import {
+  useWatchHomeTvSlideCopy,
+  watchHomeMuxActionMessageKey,
+} from "@/components/home/useWatchHomeTvSlideCopy"
 
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
@@ -64,84 +68,6 @@ type WatchHomeTvCarouselProps = {
 type WatchHomeShortFilmPhase = "transitioning" | "playing"
 
 const WATCH_HOME_SHORT_FILM_TRANSITION_MS = 360
-
-const WATCH_HOME_MUX_COPY_KEYS = {
-  welcomeStart: {
-    label: "welcomeStart.label",
-    title: "welcomeStart.title",
-    description: "welcomeStart.description",
-  },
-  welcomeMorning: {
-    label: "welcomeMorning.label",
-    title: "welcomeMorning.title",
-    description: "welcomeMorning.description",
-  },
-  welcomeAfternoon: {
-    label: "welcomeAfternoon.label",
-    title: "welcomeAfternoon.title",
-    description: "welcomeAfternoon.description",
-  },
-  welcomeEvening: {
-    label: "welcomeEvening.label",
-    title: "welcomeEvening.title",
-    description: "welcomeEvening.description",
-  },
-  joinUs: {
-    label: "joinUs.label",
-    title: "joinUs.title",
-    description: "joinUs.description",
-  },
-  tellingTheStoryOfJesus: {
-    label: "tellingTheStoryOfJesus.label",
-    title: "tellingTheStoryOfJesus.title",
-    description: "tellingTheStoryOfJesus.description",
-  },
-} as const satisfies Record<
-  WatchHomeTvCarouselMuxSlide["copyId"],
-  { label: string; title: string; description: string }
->
-
-const WATCH_HOME_MUX_ACTION_KEYS = {
-  joinUs: "actions.joinUs",
-  shareMission: "actions.shareMission",
-} as const satisfies Record<
-  NonNullable<WatchHomeTvCarouselMuxSlide["action"]>["copyId"],
-  string
->
-
-function useWatchHomeTvSlideCopy(slide: WatchHomeTvCarouselSlide) {
-  const format = useFormatter()
-  const muxCopy = useTranslations("WatchHomeMuxInserts")
-
-  if (slide.kind === "video") {
-    return {
-      description: slide.description,
-      imageAlt: slide.imageAlt,
-      label: slide.label,
-      title: slide.title,
-    }
-  }
-
-  const keys = WATCH_HOME_MUX_COPY_KEYS[slide.copyId]
-  const title = muxCopy(keys.title)
-  const localizedTitle = slide.titleDate
-    ? muxCopy("datedTitle", {
-        date: format.dateTime(new Date(slide.titleDate), {
-          day: "numeric",
-          month: "short",
-          timeZone: "America/New_York",
-        }),
-        title,
-      })
-    : title
-
-  return {
-    description: muxCopy(keys.description),
-    imageAlt: localizedTitle,
-    label: muxCopy(keys.label),
-    title: localizedTitle,
-  }
-}
 
 function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
@@ -251,7 +177,7 @@ function PrimaryAction({
         <a href={slide.action.url} className={primaryClassName}>
           <PrimaryActionIcon icon={slide.action.icon} />
           <span className="truncate">
-            {muxCopy(WATCH_HOME_MUX_ACTION_KEYS[slide.action.copyId])}
+            {muxCopy(watchHomeMuxActionMessageKey(slide.action.copyId))}
           </span>
         </a>
         {secondaryAction}

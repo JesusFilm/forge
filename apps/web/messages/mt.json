@@ -279,7 +279,7 @@
     "languageCollection": "Kollezzjoni tal-lingwa",
     "itemCount": "{count, plural, one {# oġġett} other {# oġġetti}}",
     "videoCount": "{count, plural, one {# vidjo} other {# vidjows}}",
-    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} f'{groupCount, plural, one {# grupp} other {# gruppi}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} f’{groupCount, plural, one {# grupp} other {# gruppi}}",
     "sectionNavLabel": "Sezzjonijiet tal-inventarju tal-lingwi",
     "sectionMetricLabel": "{label}: {count}",
     "new": "Ġdid",

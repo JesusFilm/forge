@@ -7,6 +7,7 @@ import {
   DEFAULT_LOCALE,
   hasUiLocale,
 } from "@/i18n/generated-ui-locales"
+import { isSourceEquivalent } from "../../../scripts/openai-catalog-translator.mjs"
 
 vi.unmock("next-intl")
 
@@ -42,6 +43,7 @@ const LANGUAGE_PICKER_KEYS = [
   "notAvailable",
   "switching",
 ] as const
+const MAXIMUM_NORMALIZED_SOURCE_COPY_RATIO = 0.05
 
 type MessageTree = {
   [key: string]: string | MessageTree
@@ -195,11 +197,22 @@ describe("non-English catalogs — translated-copy gate", () => {
       .filter((locale) => !provisionalLocales.has(locale))
       .flatMap((locale) => {
         const catalog = flattenCatalog(locale)
-        const copiedPaths = translatablePaths.filter(
+        const exactCopies = translatablePaths.filter(
           (path) => catalog[path] === source[path],
         )
-        return copiedPaths.length > 0
-          ? [`${locale}: ${copiedPaths.join(", ")}`]
+        const normalizedCopies = translatablePaths.filter(
+          (path) =>
+            catalog[path] !== source[path] &&
+            isSourceEquivalent(source[path], catalog[path]),
+        )
+        const maximumNormalizedCopies = Math.floor(
+          translatablePaths.length * MAXIMUM_NORMALIZED_SOURCE_COPY_RATIO,
+        )
+        return exactCopies.length > 0 ||
+          normalizedCopies.length > maximumNormalizedCopies
+          ? [
+              `${locale}: exact=${exactCopies.join(", ") || "none"}; normalized=${normalizedCopies.join(", ") || "none"}; maximumNormalized=${maximumNormalizedCopies}`,
+            ]
           : []
       })
 
@@ -316,7 +329,15 @@ describe("messages catalogs — ICU and rich-text syntax", () => {
       for (const [path, message] of Object.entries(flattenCatalog(locale))) {
         activePath = path
         try {
-          translateRich(path, formattingValues(message))
+          const formatted = translateRich(path, formattingValues(message))
+          if (
+            typeof formatted === "string" &&
+            /\{[A-Za-z][^{}]*,\s*(?:plural|selectordinal|select)\b/.test(
+              formatted,
+            )
+          ) {
+            errors.push(`${locale}:${path}: unexpanded ICU expression`)
+          }
         } catch (error) {
           errors.push(
             `${locale}:${path}: ${error instanceof Error ? error.message : String(error)}`,

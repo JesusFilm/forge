@@ -936,7 +936,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(searchButton?.className).toContain("hover:bg-white")
     expect(searchButton?.className).toContain("hover:text-stone-950")
     const searchLabels = searchButton?.querySelectorAll("span")
-    expect(searchLabels?.[0]?.textContent).toBe("Search")
+    expect(searchLabels?.[0]?.textContent).toBe("Search videos")
     expect(searchLabels?.[0]?.className).toContain("md:hidden")
     expect(searchLabels?.[1]?.textContent).toBe("Search or browse topics…")
     expect(searchLabels?.[1]?.className).toContain("hidden md:inline")
