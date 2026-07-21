@@ -46,7 +46,7 @@ describe("seeker agent", () => {
     expect(seekerAgent.name).toBe("Seeker Agent")
   })
 
-  it("serves exactly the exported canonical prompt on the fallback path (feat-275, KTD6)", async () => {
+  it("serves exactly the exported canonical prompt on the fallback path (feat-279, KTD6)", async () => {
     // Byte equality, not substring: the constant is the byte-identity anchor
     // for the prompt-block fallback contract (R2/AE2). `toBe` on strings is
     // exact value equality, so ANY reword, reorder, or join change fails here.

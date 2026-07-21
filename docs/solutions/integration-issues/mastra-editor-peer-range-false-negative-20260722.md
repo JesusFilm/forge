@@ -1,10 +1,40 @@
+---
+title: "@mastra/editor declared peer ranges lie: build smoke passes, only boot catches the core incompatibility"
+date: "2026-07-22"
+category: integration-issues
+module: apps/mastra
+problem_type: integration_issue
+component: dependencies
+severity: high
+symptoms:
+  - "mastra dev hard-crashes at boot: SyntaxError: The requested module '@mastra/core/llm' does not provide an export named 'modelSupportsAttachments' (from @mastra/memory dist pulled in by @mastra/editor)"
+  - "pnpm install resolves silently — zero peer warnings — because the declared peer range (@mastra/core >=1.34.0) is satisfied on paper"
+  - "pnpm --filter @forge/mastra build (mastra build --studio) PASSES with the broken dependency wired in"
+tags:
+  - mastra
+  - mastra-editor
+  - peer-dependencies
+  - build-smoke-false-negative
+  - rollup-externalization
+  - boot-smoke
+  - feat-279
+---
+
 # @mastra/editor: declared peer ranges lie, and the build smoke can't catch it — only boot can
 
-**Date:** 2026-07-22
-**Category:** integration-issues
 **Context:** feat-279 (Seeker prompt as a Mastra Editor prompt block), plan
 `docs/plans/2026-07-21-001-feat-seeker-prompt-studio-block-plan.md`, U2 stop
 condition.
+
+**Related learnings:**
+`docs/solutions/tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md`
+(the prior apps/mastra case where only boot — not build/tsc/vitest — caught the
+failure) and
+`docs/solutions/conventions/mastra-inline-gateway-construction-createrequire.md`
+(the opposite Rollup failure mode: static `@ai-sdk/*` imports cause a
+false-positive build FAILURE, where this case is a false-negative build PASS
+for externalized `@mastra/*`). Together they characterize the Mastra Rollup
+deployer's risk surface in this app.
 
 ## What happened
 

@@ -173,7 +173,7 @@ export function buildSeekerModelList(): ModelWithRetries[] {
 }
 
 /**
- * Canonical seeker system prompt (feat-275, KTD6) — the byte-identity anchor.
+ * Canonical seeker system prompt (feat-279, KTD6) — the byte-identity anchor.
  * This single exported constant is simultaneously (a) the agent's fallback
  * instructions, (b) the prompt-block reader's fallback text, (c) the runbook's
  * copy-paste source for first-time block creation, and (d) the reference the
@@ -220,7 +220,7 @@ export const seekerAgent = new Agent({
   name: "Seeker Agent",
   description:
     "Skeleton conversational agent for people exploring Christianity and who Jesus is. Studio-only, non-production prototype.",
-  // Canonical prompt constant (feat-275, U1) — see SEEKER_SYSTEM_PROMPT above.
+  // Canonical prompt constant (feat-279, U1) — see SEEKER_SYSTEM_PROMPT above.
   // U4 replaces this with the prompt-block-backed dynamic function; the
   // constant stays the byte-identical fallback either way.
   instructions: SEEKER_SYSTEM_PROMPT,

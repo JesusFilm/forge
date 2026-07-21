@@ -65,7 +65,12 @@ must be re-verified on any core bump (see `apps/mastra/CLAUDE.md`):
 When the bump lands, resume the 2026-07-21 plan from U2 — U1 is already on
 `main` and the plan's decisions (direct block read, never the stored-agent
 override path; published-status guard; fresh per-turn read; off-switch env
-var; runbook-over-seeding) carry over unchanged.
+var; runbook-over-seeding) carry over unchanged. One resume-time adjustment
+(2026-07-22 review finding): `SEEKER_SYSTEM_PROMPT` lives in
+`seeker-agent.ts`, whose module scope constructs the Agent — U3's reader
+imports the constant while U4 makes the agent consume the reader, a circular
+import through a side-effect-bearing module. Relocate the constant to a
+side-effect-free module before building U3.
 
 ## Problem
 

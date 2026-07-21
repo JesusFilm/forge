@@ -464,6 +464,17 @@ is not the deterministic product contract here.
 
 ## Seeker agent
 
+> **System prompt:** the canonical instructions are the exported
+> `SEEKER_SYSTEM_PROMPT` constant in `src/mastra/agents/seeker-agent.ts`
+> (byte-identity test-pinned, feat-279 U1). Moving it into a Studio-editable
+> Mastra Editor prompt block is **blocked**: `@mastra/editor` ≥0.13.1 is
+> hard-incompatible with the pinned `@mastra/core@1.36.0` (real floor: core
+> ≥1.43, despite declared peers; the build smoke passes anyway — only boot
+> fails). Read `docs/roadmap/ai-chat/feat-279-seeker-prompt-studio-block.md`
+> and
+> `docs/solutions/integration-issues/mastra-editor-peer-range-false-negative-20260722.md`
+> before attempting to add the editor.
+
 `seekerAgent` (feat-198, feat-199) is the first conversational agent of the
 planned "Jesus Film AI Chat" system — internal-only: reachable via Studio and
 the default-off, bearer-gated `POST /forge-seeker` dogfood surface, never a
