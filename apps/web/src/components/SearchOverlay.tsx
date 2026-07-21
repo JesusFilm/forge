@@ -615,7 +615,7 @@ export function SearchOverlay() {
                     <span
                       aria-hidden="true"
                       data-testid={`search-overlay-category-hover-outline-${cat.searchTerm.replace(/\s+/g, "-")}`}
-                      className="search-card-hover-outline search-card-red-outline pointer-events-none absolute z-20 opacity-0 transition-opacity duration-200"
+                      className="search-category-hover-outline search-category-red-outline pointer-events-none absolute z-20 opacity-0 transition-opacity duration-200"
                     />
                     <span
                       className="absolute bottom-3 left-3 z-10 text-base font-semibold leading-tight sm:text-lg md:text-xl"

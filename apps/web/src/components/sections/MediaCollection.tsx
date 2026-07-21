@@ -31,6 +31,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 
 // Collections carry no per-item language today, so card deep links default
 // to the English variant and rely on the watch route to re-resolve locale.
@@ -546,6 +550,7 @@ function VideoCard({
   const href = slug
     ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
     : undefined
+  const isInteractive = Boolean(href)
   const Wrapper = href ? "a" : "div"
   const imageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
   const blurDataUrl = item.blurDataUrl ?? undefined
@@ -556,12 +561,16 @@ function VideoCard({
   return (
     <Wrapper
       href={href}
-      className={`group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] ${
-        href ? "cursor-pointer" : "cursor-default"
-      }`}
+      className={cn(
+        "relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        isInteractive
+          ? "group cursor-pointer hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]"
+          : "cursor-default",
+        isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
       aria-label="VideoCard"
-      onPointerEnter={onHover}
-      onFocus={onHover}
+      onPointerEnter={isInteractive ? onHover : undefined}
+      onFocus={isInteractive ? onHover : undefined}
     >
       <div
         className={cn(
@@ -639,11 +648,12 @@ function VideoCard({
           data-testid="media-collection-card-bevel"
           className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
         />
-        <div
-          aria-hidden
-          data-testid="media-collection-card-hover-outline"
-          className="pointer-events-none absolute inset-0 z-[80] rounded-lg border-4 border-white opacity-0 transition-opacity duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-visible:opacity-100"
-        />
+        {isInteractive ? (
+          <VideoThumbnailInteractionFrame
+            data-testid="media-collection-card-hover-outline"
+            className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          />
+        ) : null}
         <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
           {item.label ? (
             <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">

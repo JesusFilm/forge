@@ -81,4 +81,64 @@ describe("CarouselVideo", () => {
     expect(container.querySelector("video")).not.toBeNull()
     expect(container.textContent).toContain("Series")
   })
+
+  it("uses the shared focus frame and preserves selected-state framing", async () => {
+    const data = {
+      ...baseFragment,
+      items: [
+        ...baseFragment.items,
+        {
+          ...baseFragment.items[0],
+          streamingUrl: "https://example.com/two.m3u8",
+          titleOverride: "Second",
+        },
+      ],
+    } as Parameters<typeof CarouselVideo>[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    const selected = container.querySelector<HTMLElement>(
+      '[role="button"][aria-label="Play First"]',
+    )
+    const inactive = container.querySelector<HTMLElement>(
+      '[role="button"][aria-label="Play Second"]',
+    )
+    const selectedInteractionFrame = selected?.querySelector<HTMLElement>(
+      '[data-testid="carousel-video-thumbnail-frame"]',
+    )
+    const inactiveInteractionFrame = inactive?.querySelector<HTMLElement>(
+      '[data-testid="carousel-video-thumbnail-frame"]',
+    )
+
+    expect(selected?.className).toContain("focus-visible:outline-none")
+    expect(selectedInteractionFrame?.className).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
+    expect(
+      selected?.querySelector<HTMLElement>(
+        '[data-testid="carousel-video-selected-frame"]',
+      )?.className,
+    ).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).toContain("border-white")
+    expect(inactiveInteractionFrame?.className).toContain(
+      "group-hover:opacity-100",
+    )
+    expect(inactiveInteractionFrame?.className).toContain(
+      "group-focus-visible:opacity-100",
+    )
+
+    await act(async () => {
+      inactive?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(
+      inactive?.querySelector<HTMLElement>(
+        '[data-testid="carousel-video-selected-frame"]',
+      )?.className,
+    ).toContain("opacity-100")
+  })
 })

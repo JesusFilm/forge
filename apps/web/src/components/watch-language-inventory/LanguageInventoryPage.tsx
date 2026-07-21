@@ -19,6 +19,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
@@ -304,8 +308,11 @@ function InventoryCard({
       ? pluralize(item.childCount, "video")
       : (runtime ?? formatLabel(item.label))
   const availability = availabilityCopy(item.availability)
+  const isInteractive = Boolean(item.href)
   const frameClassName = cn(
-    "group relative block h-full overflow-hidden rounded-lg bg-stone-900 text-left text-inherit shadow-xl shadow-black/35 ring-1 ring-white/10 transition duration-300 hover:-translate-y-1 hover:ring-amber-200/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300",
+    "relative block h-full overflow-hidden rounded-lg bg-stone-900 text-left text-inherit shadow-xl shadow-black/35 ring-1 ring-white/10 transition duration-300",
+    isInteractive && "group hover:-translate-y-1",
+    isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
     promoted ? "min-w-[78vw] sm:min-w-[340px] lg:min-w-[380px]" : "",
   )
 
@@ -332,6 +339,9 @@ function InventoryCard({
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#171717,#3f3f46_48%,#134e4a)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+        {isInteractive ? (
+          <VideoThumbnailInteractionFrame data-testid="language-inventory-thumbnail-frame" />
+        ) : null}
         <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">
           {item.availability === "AUDIO" ? (
             <Headphones className="h-3.5 w-3.5" aria-hidden />
@@ -472,9 +482,14 @@ function CompactVideoRow({
           className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent"
           aria-hidden
         />
-        <span className="absolute bottom-1.5 left-1.5 grid size-6 place-items-center rounded bg-black/60 text-amber-100 backdrop-blur">
-          <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
-        </span>
+        {item.href ? (
+          <span className="absolute bottom-1.5 left-1.5 grid size-6 place-items-center rounded bg-black/60 text-amber-100 backdrop-blur">
+            <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
+          </span>
+        ) : null}
+        {item.href ? (
+          <VideoThumbnailInteractionFrame data-testid="language-inventory-compact-thumbnail-frame" />
+        ) : null}
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-1 text-sm font-bold text-white">
@@ -488,8 +503,11 @@ function CompactVideoRow({
       </span>
     </>
   )
-  const className =
-    "group flex min-h-20 items-center gap-3 px-3 py-4 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-300 sm:px-4"
+  const className = cn(
+    "flex min-h-20 items-center gap-3 px-3 py-4 transition sm:px-4",
+    item.href && "group hover:bg-white/[0.055]",
+    item.href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  )
 
   if (!item.href) {
     return <div className={className}>{content}</div>

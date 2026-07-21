@@ -85,7 +85,7 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
   expect(outline).not.toBeNull()
   expect(outlineClasses).toContain("inset-0")
   expect(outlineClasses).toContain("z-[80]")
-  expect(outlineClasses).toContain("rounded-lg")
+  expect(outlineClasses).toContain("rounded-[inherit]")
   expect(outlineClasses).toContain("border-4")
   expect(outlineClasses).toContain("border-white")
   expect(outlineClasses).toContain("group-hover:opacity-100")
@@ -174,7 +174,10 @@ describe("MediaCollection VideoCard href", () => {
     )
 
     expect(card?.textContent).toContain("1")
-    expect(card?.className).not.toContain("focus-visible:outline-")
+    expect(card?.className).toContain("focus-visible:outline-none")
+    expect(card?.className).not.toContain("focus-visible:outline-2")
+    expect(card?.className).not.toContain("focus-visible:outline-offset-2")
+    expect(card?.className).not.toContain("focus-visible:outline-white/80")
     expectSolidWhiteInteractionFrame(outline)
   })
 
@@ -291,6 +294,14 @@ describe("MediaCollection VideoCard href", () => {
     const card = container.querySelector('div[aria-label="VideoCard"]')
     expect(card).not.toBeNull()
     expect(card?.className).not.toContain("pointer-events-none")
+    expect(card?.className).not.toContain("group")
+    expect(card?.className).not.toContain("focus-visible:outline-none")
+    expect(card?.className).not.toContain("hover:shadow")
+    expect(
+      card?.querySelector(
+        '[data-testid="media-collection-card-hover-outline"]',
+      ),
+    ).toBeNull()
   })
 
   it("links manual authored items when the admin payload includes a videoSlug", () => {

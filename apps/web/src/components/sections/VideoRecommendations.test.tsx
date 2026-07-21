@@ -102,6 +102,16 @@ describe("VideoRecommendations", () => {
     ).toHaveLength(1)
 
     const link = container.querySelector("a")
+    const frame = container.querySelector<HTMLElement>(
+      '[data-testid="video-recommendation-thumbnail-frame"]',
+    )
+    expect(link?.className).toContain("focus-visible:outline-none")
+    expect(frame?.className).toContain("rounded-[inherit]")
+    expect(frame?.className).toContain("border-4")
+    expect(frame?.className).toContain("border-white")
+    expect(frame?.className).toContain("group-hover:opacity-100")
+    expect(frame?.className).toContain("group-focus-visible:opacity-100")
+    expect(frame?.className).not.toMatch(/red|amber|gradient|shadow/)
     act(() => {
       link?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
     })

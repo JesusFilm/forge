@@ -287,9 +287,15 @@ describe("VideoCard", () => {
     )
 
     expect(card?.className).not.toContain("hover:scale")
+    expect(card?.className).toContain("focus-visible:outline-none")
+    expect(card?.className).not.toContain("focus-visible:outline-2")
     expect(thumbnail?.className).toContain("search-card-hover-zoom")
-    expect(hoverOutline?.className).toContain("search-card-red-outline")
-    expect(hoverOutline?.className).toContain("search-card-hover-outline")
+    expect(hoverOutline?.className).toContain("rounded-[inherit]")
+    expect(hoverOutline?.className).toContain("border-4")
+    expect(hoverOutline?.className).toContain("border-white")
+    expect(hoverOutline?.className).toContain("group-hover:opacity-100")
+    expect(hoverOutline?.className).toContain("group-focus-visible:opacity-100")
+    expect(hoverOutline?.className).not.toMatch(/red|amber|gradient|shadow/)
   })
 
   it("passes Admin image blur data URLs through to Next Image", () => {
