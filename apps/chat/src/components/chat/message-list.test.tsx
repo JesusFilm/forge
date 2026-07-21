@@ -86,6 +86,81 @@ describe("MessageList failure notices", () => {
   })
 })
 
+describe("MessageList badge copy (feat-270)", () => {
+  it("renders no visible engine copy on a Seeker turn; the machine tag stays on the turn", () => {
+    const { container } = render(
+      <MessageList
+        messages={[
+          {
+            id: "a1",
+            role: "assistant",
+            content: "an answer",
+            engine: "seeker",
+            grounded: true,
+            sources: [],
+          },
+        ]}
+        streamingMessageId={null}
+      />,
+    )
+    // The engine codename never reaches users…
+    expect(container.textContent).not.toContain("Seeker")
+    // …but the machine-readable tag survives for tests/tooling.
+    expect(container.querySelector('[data-engine="seeker"]')).not.toBeNull()
+  })
+
+  it("keeps the visible Stub marker on stub turns (mixed conversations stay distinguishable)", () => {
+    render(
+      <MessageList
+        messages={[
+          { id: "a1", role: "assistant", content: "stub", engine: "stub" },
+        ]}
+        streamingMessageId={null}
+      />,
+    )
+    expect(screen.getByText("Stub")).toBeInTheDocument()
+  })
+
+  it("gives each grounding state a plain-language title tooltip", () => {
+    const badgeFor = (grounded: boolean, sources: Message["sources"]) => {
+      const { container, unmount } = render(
+        <MessageList
+          messages={[
+            {
+              id: "a1",
+              role: "assistant",
+              content: "x",
+              engine: "seeker",
+              grounded,
+              sources,
+            },
+          ]}
+          streamingMessageId={null}
+        />,
+      )
+      const badge = container.querySelector("[data-grounded]")
+      const title = badge?.getAttribute("title") ?? ""
+      unmount()
+      return title
+    }
+    const cited = badgeFor(true, [
+      {
+        sourceName: "John",
+        title: "John 11:35",
+        url: "https://bible.example/j",
+        score: 1,
+        snippet: "s",
+      },
+    ])
+    const uncited = badgeFor(true, [])
+    const ungrounded = badgeFor(false, [])
+    expect(cited).toMatch(/cited sources below/)
+    expect(uncited).toMatch(/no source passages were cited/)
+    expect(ungrounded).toMatch(/No sources were available/)
+    expect(new Set([cited, uncited, ungrounded]).size).toBe(3)
+  })
+})
+
 describe("MessageList markdown split (feat-268)", () => {
   const MD = "**Grace** abounds"
 

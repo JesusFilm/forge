@@ -107,7 +107,7 @@ export const adminMessages = {
           description: "Vector coverage, freshness, and indexing status.",
         },
         search: {
-          label: "Semantic Search",
+          label: "Search",
           description: "Retrieval quality and trace inspection.",
         },
         users: {
@@ -788,10 +788,9 @@ export const adminMessages = {
         ],
       },
       search: {
-        eyebrow: "System / Semantic Search",
-        title: "Semantic Search",
-        description:
-          "Inspect query response quality, similarity score ranges, and hydration paths.",
+        eyebrow: "",
+        title: "Search",
+        description: "Monitor recent search requests, clicks, and latency.",
         cards: [
           { label: "Median Latency", value: "87ms", footer: "TOP_10_RESULTS" },
           { label: "Queries / Hr", value: "1.2k", footer: "EDITOR_TRAFFIC" },

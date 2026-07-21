@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const searchMock = vi.hoisted(() => vi.fn())
 
-vi.mock("@/services/hybrid-search.service", () => ({
-  HybridSearchService: class {
+vi.mock("@/services/watch-search.service", () => ({
+  WatchSearchService: class {
     search = searchMock
   },
 }))
@@ -46,10 +46,13 @@ describe("searchVideosForAgent", () => {
       ],
       hasMore: false,
       query: "jesus",
-      searchMode: "hybrid",
+      searchMode: "watch-search",
     })
+    const prisma = {
+      language: { findFirst: vi.fn().mockResolvedValue({ slug: "english" }) },
+    } as AnyPrisma
 
-    const result = await searchVideosForAgent({} as AnyPrisma, {
+    const result = await searchVideosForAgent(prisma, {
       q: "jesus",
       locale: "en",
       limit: 5,
@@ -57,9 +60,12 @@ describe("searchVideosForAgent", () => {
 
     expect(searchMock).toHaveBeenCalledWith({
       query: "jesus",
-      locale: "en",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      routeLanguageSlug: "english",
+      acceptLanguage: "en",
       limit: 5,
-      contentTypes: ["video"],
+      resultTypes: ["video"],
     })
     // ONLY the playable row survives — this is the assertion a deleted filter
     // would fail (the null-playback row would leak through).

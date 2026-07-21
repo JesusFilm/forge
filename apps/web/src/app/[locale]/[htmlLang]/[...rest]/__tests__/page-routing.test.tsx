@@ -496,7 +496,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(experienceEmptyMock).not.toHaveBeenCalled()
   })
 
-  it("dispatches one-segment public language slugs to the modern localized home", async () => {
+  it("passes the exact public language slug to localized-home content while retaining the resolved UI locale", async () => {
     resolveWatchHomeMock.mockResolvedValue({
       data: {
         heroSlides: [{ id: "hero-es" }],
@@ -509,9 +509,9 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     await render1Seg("spanish-castilian.html")
 
-    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
     expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         heroModel: {
           heroSlides: [{ id: "hero-es" }],
           sections: [],
@@ -519,8 +519,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           missingData: [],
         },
         blocks: [],
-        languageSlug: "spanish-castilian",
-      },
+      }),
       undefined,
     )
     expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
@@ -1174,6 +1173,24 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         questionPanelEnabled: true,
       }),
     )
+  })
+
+  it("renders an error state instead of bubbling to a 500 when route resolution throws", async () => {
+    resolveWatchRouteBySlugMock.mockRejectedValue(
+      new Error("Response not successful: Received status code 503"),
+    )
+
+    await render2Seg("life-of-jesus-gospel-of-john.html", "english.html")
+
+    expect(experienceErrorMock).toHaveBeenCalledWith(
+      {
+        message: "Response not successful: Received status code 503",
+      },
+      undefined,
+    )
+    expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(resolveWatchPageMock).not.toHaveBeenCalled()
   })
 })
 

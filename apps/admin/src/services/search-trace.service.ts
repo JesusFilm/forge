@@ -23,7 +23,16 @@ import {
   type SearchTraceQueryQualityLabel,
   type SearchTraceSensitiveQueryLabel,
 } from "@/services/search-trace-privacy"
-import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
+import {
+  purgeExpiredSearchTraces,
+  readSearchTraceRetentionHealth,
+} from "@/services/search-trace-retention.service"
+import type {
+  WatchSearchInput,
+  WatchSearchLaneStatus,
+  WatchSearchResponse,
+  WatchSearchResult,
+} from "@/services/watch-search.service"
 
 export type SearchTraceRouteSourceLabel = "rest" | "graphql"
 export type SearchTraceOutcomeLabel = "success" | "degraded" | "failed"
@@ -36,6 +45,7 @@ export type SearchTraceLatencyBucketLabel =
   | "gte_2500ms"
 
 export type RecordSearchTraceInput = {
+  requestId?: string | null
   query: string
   locale: string
   routeSource: SearchTraceRouteSourceLabel
@@ -46,6 +56,7 @@ export type RecordSearchTraceInput = {
   traceClass?: string | null
   startedAt: Date
   completedAt: Date
+  metadata?: Prisma.InputJsonValue | null
   now?: Date
   timeoutMs?: number
   retentionHealthy?: boolean
@@ -102,10 +113,21 @@ export type SearchTraceSample = {
   createdAt: string
 }
 
+export type RecordWatchSearchTraceInput = {
+  input: WatchSearchInput
+  response: WatchSearchResponse
+  startedAt: Date
+  completedAt: Date
+  now?: Date
+  timeoutMs?: number
+  retentionHealthy?: boolean
+}
+
 const TRACE_RECORD_TIMEOUT_MS = 250
 const DEFAULT_SAMPLE_LIMIT = 50
 const MAX_SAMPLE_LIMIT = 100
 const MAX_SAMPLE_WINDOW_MS = 24 * 60 * 60 * 1000
+const DEFAULT_RAW_RETENTION_DAYS = 29
 export const SEARCH_TRACE_LLM_HIGH_IMPACT_RESULT_COUNT = 20
 
 export function classifyLatencyBucket(
@@ -204,16 +226,107 @@ function normalizeLocale(value: string): string {
   return clampString(value, 32) || "unknown"
 }
 
+function normalizeRequestId(value: string | null | undefined): string | null {
+  const normalized = clampString(value, 80)
+  return /^[A-Za-z0-9_-]{8,80}$/.test(normalized) ? normalized : null
+}
+
+function watchTraceClass(response: WatchSearchResponse): string {
+  const classes = new Set<string>()
+  if (response.results.length === 0) classes.add("no_result")
+  for (const lane of response.laneStatuses) {
+    if (lane.status === "fulfilled") continue
+    classes.add(`${lane.lane}_${lane.status}`)
+    if (lane.reason) classes.add(lane.reason)
+  }
+  if (classes.size === 0) return "none"
+  return traceClassOrNone(Array.from(classes).join("+"))
+}
+
+function safeLaneStatusMetadata(
+  lane: WatchSearchLaneStatus,
+): Prisma.InputJsonObject {
+  return {
+    lane: lane.lane,
+    status: lane.status,
+    startedOffsetMs: lane.startedOffsetMs,
+    elapsedMs: lane.elapsedMs,
+    resultCount: lane.resultCount,
+    reason: lane.reason,
+    detail: lane.detail,
+  }
+}
+
+function safeResultMetadata(row: WatchSearchResult): Prisma.InputJsonObject {
+  return {
+    id: row.id,
+    type: row.type,
+    score: row.score,
+    scoreBreakdown: {
+      total: row.scoreBreakdown.total,
+      sourceRelevance: row.scoreBreakdown.sourceRelevance,
+      evidenceBoost: row.scoreBreakdown.evidenceBoost,
+      relevance: row.scoreBreakdown.relevance,
+      availability: row.scoreBreakdown.availability,
+      match: row.scoreBreakdown.match,
+      sourceScore: row.scoreBreakdown.sourceScore,
+    },
+    availabilityKind: row.availability.kind,
+    availabilityLanguageSlug: row.availability.languageSlug,
+    evidenceKind: row.evidence.kind,
+    evidenceLanguageSlug: row.evidence.languageSlug,
+    actionKind: row.action.kind,
+    actionLanguageSlug: row.action.hrefLanguageSlug,
+  }
+}
+
+function watchSearchTraceMetadata(
+  input: WatchSearchInput,
+  response: WatchSearchResponse,
+): Prisma.InputJsonObject {
+  const language = response.languageInterpretation
+  return {
+    version: "watch-search-analytics/v2",
+    requestId: response.requestId,
+    queryLength: response.query.length,
+    limit: input.limit ?? null,
+    offset: input.offset ?? null,
+    resultTypes: input.resultTypes == null ? null : [...input.resultTypes],
+    resultCount: response.results.length,
+    hasMore: response.hasMore,
+    noResult: response.results.length === 0,
+    degraded: response.degraded,
+    latencyMs: response.latencyMs,
+    nextOffset: response.nextOffset,
+    language: {
+      targetLanguageSlug: language.targetLanguageSlug,
+      targetLanguageSource: language.targetLanguageSource,
+      queryLanguageSlug: language.queryLanguageSlug,
+      queryNamedLanguageSlug: language.queryNamedLanguageSlug,
+      displayLanguageSlug: language.displayLanguageSlug,
+      routeLanguageSlug: language.routeLanguageSlug,
+      currentWatchLanguageSlug: language.currentWatchLanguageSlug,
+      acceptLanguageSlug: language.acceptLanguageSlug,
+    },
+    laneStatuses: response.laneStatuses.map(safeLaneStatusMetadata),
+    results: response.results.slice(0, 50).map(safeResultMetadata),
+  }
+}
+
 function floorToHour(value: Date): Date {
   const bucket = new Date(value)
   bucket.setUTCMinutes(0, 0, 0)
   return bucket
 }
 
+function rawRetentionDays(): number {
+  const days = env.SEARCH_TRACE_RAW_RETENTION_DAYS
+  if (Number.isInteger(days) && days >= 1 && days <= 29) return days
+  return DEFAULT_RAW_RETENTION_DAYS
+}
+
 function addRetentionDays(value: Date): Date {
-  return new Date(
-    value.getTime() + env.SEARCH_TRACE_RAW_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-  )
+  return new Date(value.getTime() + rawRetentionDays() * 24 * 60 * 60 * 1000)
 }
 
 function latencyMs(input: RecordSearchTraceInput): number {
@@ -227,7 +340,13 @@ async function shouldStoreRawTrace(
   if (typeof input.retentionHealthy === "boolean") return input.retentionHealthy
   if (env.NODE_ENV !== "production") return true
   const health = await readSearchTraceRetentionHealth(prisma)
-  return health.healthy
+  if (health.healthy) return true
+
+  await purgeExpiredSearchTraces(prisma, input.now ?? input.completedAt)
+  console.warn(
+    `[search] event=trace_retention_inline_purge route=${input.routeSource} reason=${health.reason}`,
+  )
+  return true
 }
 
 export async function writeSearchTrace(
@@ -242,6 +361,7 @@ export async function writeSearchTrace(
     classifyLatencyBucket(latencyMs(input)),
   )
   const locale = normalizeLocale(input.locale)
+  const requestId = normalizeRequestId(input.requestId)
   const requestedMode = normalizeMode(input.requestedMode)
   const searchMode = clampString(input.searchMode, 64) || "unknown"
   const traceClass = traceClassOrNone(input.traceClass)
@@ -279,6 +399,7 @@ export async function writeSearchTrace(
   const rawPromise = rawEnabled
     ? prisma.searchTrace.create({
         data: {
+          requestId,
           queryText: privacy.queryText,
           locale,
           routeSource,
@@ -295,6 +416,7 @@ export async function writeSearchTrace(
           queryLabelVersion: privacy.labelVersion,
           queryLabeledAt: privacy.labeledAt,
           sampleEligible: privacy.sampleEligible,
+          metadata: input.metadata ?? undefined,
           startedAt: input.startedAt,
           completedAt,
           rawExpiresAt: addRetentionDays(createdAt),
@@ -328,6 +450,22 @@ function errorClass(error: unknown): string {
   return error instanceof Error ? error.constructor.name : "UnknownError"
 }
 
+function safeTraceErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown"
+  const diagnosticLines = error.message
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) =>
+      /^(Unknown argument|Invalid value|Argument .* is missing|Argument .* must not be|Provided|Expected|Available options)/.test(
+        line,
+      ),
+    )
+    .map((line) => line.replace(/: .+$/, ""))
+  const message =
+    diagnosticLines.length > 0 ? diagnosticLines.join(" ") : error.message
+  return message.replace(/[\r\n\t]/g, " ").slice(0, 300)
+}
+
 export async function recordSearchTraceSafely(
   input: RecordSearchTraceInput,
   prisma: PrismaClient = defaultPrisma,
@@ -346,7 +484,7 @@ export async function recordSearchTraceSafely(
       if (timeout) clearTimeout(timeout)
       recordSearchTraceWriteFailure()
       console.warn(
-        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)}`,
+        `[search] event=trace_record_failed route=${input.routeSource} outcome=${input.outcome} error_class=${errorClass(error)} message=${safeTraceErrorMessage(error)}`,
       )
       return { ok: false as const, timedOut: false as const }
     })
@@ -365,6 +503,33 @@ export async function recordSearchTraceSafely(
   const result = await Promise.race([writePromise, timeoutPromise])
   if (!timedOut && timeout) clearTimeout(timeout)
   return result
+}
+
+export async function recordWatchSearchTraceSafely(
+  input: RecordWatchSearchTraceInput,
+  prisma: PrismaClient = defaultPrisma,
+): Promise<SearchTraceSafeRecordResult> {
+  const response = input.response
+  return recordSearchTraceSafely(
+    {
+      requestId: response.requestId,
+      query: response.query,
+      locale: response.languageInterpretation.targetLanguageSlug,
+      routeSource: "graphql",
+      requestedMode: "watch-search",
+      searchMode: response.searchMode,
+      resultCount: response.results.length,
+      outcome: response.degraded ? "degraded" : "success",
+      traceClass: watchTraceClass(response),
+      startedAt: input.startedAt,
+      completedAt: input.completedAt,
+      metadata: watchSearchTraceMetadata(input.input, response),
+      now: input.now,
+      timeoutMs: input.timeoutMs,
+      retentionHealthy: input.retentionHealthy,
+    },
+    prisma,
+  )
 }
 
 function clampLimit(limit: number | undefined): number {

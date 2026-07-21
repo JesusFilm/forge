@@ -14,6 +14,8 @@ export type SearchTracePurgeResult = {
   purgedCount: number
   purgedRawTraceCount: number
   purgedGeneratedCandidateCount: number
+  purgedWatchSearchEventCount: number
+  purgedQueryEmbeddingCacheCount: number
   purgedBefore: string
 }
 
@@ -59,11 +61,33 @@ export async function purgeExpiredSearchTraces(
       },
     },
   })
+  const watchSearchEventResult = await prisma.watchSearchEvent.deleteMany({
+    where: {
+      expiresAt: {
+        lte: now,
+      },
+    },
+  })
+  const queryEmbeddingCacheResult = await prisma.queryEmbeddingCache.deleteMany(
+    {
+      where: {
+        expiresAt: {
+          lte: now,
+        },
+      },
+    },
+  )
 
   return {
-    purgedCount: rawTraceResult.count + generatedCandidateResult.count,
+    purgedCount:
+      rawTraceResult.count +
+      generatedCandidateResult.count +
+      watchSearchEventResult.count +
+      queryEmbeddingCacheResult.count,
     purgedRawTraceCount: rawTraceResult.count,
     purgedGeneratedCandidateCount: generatedCandidateResult.count,
+    purgedWatchSearchEventCount: watchSearchEventResult.count,
+    purgedQueryEmbeddingCacheCount: queryEmbeddingCacheResult.count,
     purgedBefore: now.toISOString(),
   }
 }

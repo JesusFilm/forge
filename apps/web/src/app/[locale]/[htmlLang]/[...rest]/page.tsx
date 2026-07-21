@@ -414,7 +414,7 @@ async function renderOneSegment(shape: {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
     const [heroResult, pageResult] = await Promise.all([
-      resolveWatchHome(locale),
+      resolveWatchHome(locale, slug),
       resolveWatchPage(locale),
     ])
     if (heroResult.error) {
@@ -609,7 +609,25 @@ async function renderVideo(shape: {
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
   // land in the resolver as "korean", not "en". A same-slug Experience is
   // only a fallback after video and series routes fail to render.
-  const routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+  let routeModel: Awaited<ReturnType<typeof resolveWatchRouteBySlug>>
+  try {
+    routeModel = await resolveWatchRouteBySlug(slug, rawLocale)
+  } catch (error) {
+    logWatchServerEvent(
+      "watch_route.video.resolve_failed",
+      {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      },
+      { level: "error" },
+    )
+    return (
+      <ExperienceError
+        message={error instanceof Error ? error.message : String(error)}
+      />
+    )
+  }
   if (routeModel.kind === "video") {
     const watchVideo = routeModel
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null

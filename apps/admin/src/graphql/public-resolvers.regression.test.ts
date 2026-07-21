@@ -28,7 +28,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   // Pre-existing
   "experienceBySlug",
   "searchExperiences",
-  "search",
+  "watchSearch",
+  "recordWatchSearchEvent",
   "sceneRecommendations",
   // consumer-migration U2 (2026-05-11) — see
   // docs/plans/2026-05-11-001-feat-consumer-migration-unit-2-admin-public-widening-plan.md

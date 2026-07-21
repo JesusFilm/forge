@@ -70,46 +70,49 @@ describe("identifyForRateLimit", () => {
   })
 
   // ---------------------------------------------------------------------------
-  // CONSUMER_BEARER → consumer:<bucketKey>
+  // CONSUMER_BEARER → internal Web or fleet consumer bucket
   // ---------------------------------------------------------------------------
 
-  it("buckets CONSUMER_BEARER principals by the bearer's rateLimitBucketKey", () => {
-    expect(
-      identifyForRateLimit(
-        makeCtx({
-          user: {
-            id: null,
-            role: "CONSUMER_BEARER",
-            rateLimitBucketKey: "web-key-aaa",
-          },
-          request: makeRequest({ "cf-connecting-ip": "1.2.3.4" }),
-        }),
-      ),
-    ).toBe("consumer:web-key-aaa")
+  it("buckets Web SSR bearer traffic by request-scoped internal identity", () => {
+    const request = makeRequest({ "cf-connecting-ip": "1.2.3.4" })
+    const ctx = makeCtx({
+      user: {
+        id: null,
+        role: "CONSUMER_BEARER",
+        rateLimitBucketKey: "web-key-aaa",
+      },
+      request,
+    })
+
+    const first = identifyForRateLimit(ctx)
+    const second = identifyForRateLimit(ctx)
+
+    expect(first).toBe(second)
+    expect(first).toMatch(
+      /^internal-web:web-key-aaa:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    )
   })
 
-  it("CONSUMER_BEARER bucket survives across requests from different IPs (per-key, not per-IP)", () => {
-    // CGNAT / mobile-carrier NAT scenario: two requests from
-    // different upstream IPs both forward the same bearer. They land
-    // in ONE bucket — the rate-limit isolation property of the new
-    // identity class.
+  it("does not share Web SSR rate-limit buckets across requests", () => {
+    // Web RSC is trusted server-to-server traffic. It should not accumulate
+    // unrelated production page renders into one field-limit bucket.
     const k = "shared-bucket-key"
-    expect(
-      identifyForRateLimit(
-        makeCtx({
-          user: { id: null, role: "CONSUMER_BEARER", rateLimitBucketKey: k },
-          request: makeRequest({ "cf-connecting-ip": "1.1.1.1" }),
-        }),
-      ),
-    ).toBe(`consumer:${k}`)
-    expect(
-      identifyForRateLimit(
-        makeCtx({
-          user: { id: null, role: "CONSUMER_BEARER", rateLimitBucketKey: k },
-          request: makeRequest({ "cf-connecting-ip": "2.2.2.2" }),
-        }),
-      ),
-    ).toBe(`consumer:${k}`)
+    const first = identifyForRateLimit(
+      makeCtx({
+        user: { id: null, role: "CONSUMER_BEARER", rateLimitBucketKey: k },
+        request: makeRequest({ "cf-connecting-ip": "1.1.1.1" }),
+      }),
+    )
+    const second = identifyForRateLimit(
+      makeCtx({
+        user: { id: null, role: "CONSUMER_BEARER", rateLimitBucketKey: k },
+        request: makeRequest({ "cf-connecting-ip": "2.2.2.2" }),
+      }),
+    )
+
+    expect(first).not.toBe(second)
+    expect(first).toMatch(/^internal-web:shared-bucket-key:/)
+    expect(second).toMatch(/^internal-web:shared-bucket-key:/)
   })
 
   it("two different bearer keys mint two different buckets (per-key isolation)", () => {
@@ -132,8 +135,8 @@ describe("identifyForRateLimit", () => {
       }),
     )
     expect(a).not.toBe(b)
-    expect(a).toBe("consumer:key-aaa")
-    expect(b).toBe("consumer:key-bbb")
+    expect(a).toMatch(/^internal-web:key-aaa:/)
+    expect(b).toMatch(/^internal-web:key-bbb:/)
   })
 
   // ---------------------------------------------------------------------------
@@ -171,22 +174,22 @@ describe("identifyForRateLimit", () => {
     expect(a).not.toBe(b)
   })
 
-  it("keeps a non-fleet consumer bearer per-key even with a client IP present (R2)", () => {
-    // Web SSR stays flat consumer:<key>, preserving the :91 CGNAT-isolation
-    // contract — the fleet dimension is opt-in via the fleet flag.
-    expect(
-      identifyForRateLimit(
-        makeCtx({
-          user: {
-            id: null,
-            role: "CONSUMER_BEARER",
-            rateLimitBucketKey: "web-key",
-            fleet: false,
-          },
-          request: makeRequest({ "cf-connecting-ip": "9.9.9.9" }),
-        }),
-      ),
-    ).toBe("consumer:web-key")
+  it("keeps a non-fleet consumer bearer request-scoped even with a client IP present (R2)", () => {
+    // Web SSR ignores client IP for bucketing; the request-scoped internal key
+    // prevents RSC self-throttling without changing fleet behavior.
+    const identity = identifyForRateLimit(
+      makeCtx({
+        user: {
+          id: null,
+          role: "CONSUMER_BEARER",
+          rateLimitBucketKey: "web-key",
+          fleet: false,
+        },
+        request: makeRequest({ "cf-connecting-ip": "9.9.9.9" }),
+      }),
+    )
+    expect(identity).toMatch(/^internal-web:web-key:/)
+    expect(identity).not.toContain("9.9.9.9")
   })
 
   it("buckets a fleet key with no trusted IP as consumer:<key>:unknown (R7)", () => {
@@ -313,21 +316,21 @@ describe("identifyForRateLimit", () => {
   })
 
   it("ignores x-viewer-id for a non-fleet consumer bearer (R6)", () => {
-    // Web SSR (fleet:false) stays flat consumer:<key> — viewer_id only applies
-    // to the fleet dimension.
-    expect(
-      identifyForRateLimit(
-        makeCtx({
-          user: {
-            id: null,
-            role: "CONSUMER_BEARER",
-            rateLimitBucketKey: "web-key",
-            fleet: false,
-          },
-          request: makeRequest({ "x-viewer-id": "device-abc" }),
-        }),
-      ),
-    ).toBe("consumer:web-key")
+    // Web SSR (fleet:false) stays internal request-scoped — viewer_id only
+    // applies to the fleet dimension.
+    const identity = identifyForRateLimit(
+      makeCtx({
+        user: {
+          id: null,
+          role: "CONSUMER_BEARER",
+          rateLimitBucketKey: "web-key",
+          fleet: false,
+        },
+        request: makeRequest({ "x-viewer-id": "device-abc" }),
+      }),
+    )
+    expect(identity).toMatch(/^internal-web:web-key:/)
+    expect(identity).not.toContain("device-abc")
   })
 
   it("falls back to public:<ip> when CONSUMER_BEARER lacks a bucket key (defensive)", () => {

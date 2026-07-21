@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --port 3003",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "datadog:sourcemaps": "pnpm dlx @datadog/datadog-ci@5.8.0 sourcemaps upload .next/static --service=forge-admin --release-version=${DATADOG_RELEASE_VERSION:-${NEXT_PUBLIC_DATADOG_VERSION:-${RAILWAY_GIT_COMMIT_SHA:-${VERCEL_GIT_COMMIT_SHA:-$GIT_COMMIT_SHA}}}} --minified-path-prefix=/_next/static/",
     "postinstall": "prisma generate",
@@ -36,6 +36,7 @@
     "schema:print": "tsx src/scripts/print-schema.ts",
     "seed-easter": "tsx --env-file=.env src/scripts/seed-easter.ts",
     "seed-web-fixtures": "tsx --env-file=.env src/scripts/seed-web-fixtures.ts",
+    "seed:language-fallbacks": "tsx --env-file=.env src/scripts/seed-language-fallbacks.ts",
     "seed-watch-homepage-experience": "tsx --env-file=.env src/scripts/seed-watch-homepage-experience.ts",
     "watch-route-manifest:generate": "tsx --env-file=.env src/scripts/generate-watch-route-manifest.ts",
     "watch-seo-manifest:generate": "tsx --env-file=.env src/scripts/generate-watch-seo-manifest.ts",
