@@ -4,7 +4,7 @@
  * jest covers selection order without React — pure TS, no RN imports.
  */
 
-import { validateStreamingUrl } from "../validateUrl"
+import { cleanStreamUrl, validateStreamingUrl } from "../validateUrl"
 import { ENGLISH_LANGUAGE_SLUG } from "./config"
 
 /** Structural slice of GET_VIDEO_BY_SLUG's `variants: dubs` entries — just the fields selection needs. */
@@ -24,12 +24,17 @@ export function selectHeroStreamUrl(
 ): string | null {
   if (!variants || variants.length === 0) return null
 
-  const playable = variants.filter(
-    (variant): variant is HeroStreamVariantInput & { hls: string } =>
-      variant.published === true &&
-      typeof variant.hls === "string" &&
-      validateStreamingUrl(variant.hls),
-  )
+  // Clean BEFORE validating (cleanStreamUrl): WHATWG URL strips stray
+  // whitespace so a tainted "…m3u8\n" passes validation, but the native
+  // player requests it raw → 400.
+  const playable = variants
+    .map((variant) => ({ ...variant, hls: cleanStreamUrl(variant.hls) }))
+    .filter(
+      (variant): variant is HeroStreamVariantInput & { hls: string } =>
+        variant.published === true &&
+        typeof variant.hls === "string" &&
+        validateStreamingUrl(variant.hls),
+    )
 
   const english = playable.find(
     (variant) => variant.language?.slug === ENGLISH_LANGUAGE_SLUG,
