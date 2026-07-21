@@ -9,6 +9,7 @@ import {
   buildHopSchedule,
   HOP_TIMING_UNUSABLE,
   hopToStream,
+  MAX_HOP_SEGMENT_SECONDS,
   type ShowcaseHop,
 } from "./hopSchedule"
 import type { VttCue } from "../parseVtt"
@@ -641,6 +642,35 @@ describe("buildHopSchedule — ceiling cut then continue (AE4)", () => {
     expect(plan[2].window.endSeconds).toBeCloseTo(150, 5) // next real boundary
     expect(segLen(plan[1].window)).toBeGreaterThanOrEqual(10)
     expect(segLen(plan[1].window)).toBeLessThanOrEqual(30)
+  })
+})
+
+// ── R3: ceiling cut with no boundary AND no cue edge in range ───────
+
+describe("buildHopSchedule — ceiling cut with no cue edge (R3 null-edge fallback)", () => {
+  it("cuts a boundary-and-edge-less mid-plan segment at exactly the 30s ceiling", () => {
+    // One long merged span with no interior edge, and the next boundary far past the
+    // ceiling: seg2 finds neither a boundary nor a cue edge in [minEnd, ceilingEnd], so it
+    // stretches to MAX_HOP_SEGMENT_SECONDS — isolating the `?? ceilingEnd` fallback value
+    // from both the edge-found cut (AE4) and the 10s floor.
+    const t = timing(
+      [
+        [103.4, 104.4],
+        [240, 241],
+      ],
+      [[90, 250]],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(3, { duration: 600 }),
+        rng: zeroRng,
+        sentenceTiming: t,
+      }),
+    )
+    expect(plan[0].window.endSeconds).toBeCloseTo(104.4, 5) // sentence-aligned
+    expect(plan[1].window.endSeconds).toBe(
+      plan[1].window.startSeconds + MAX_HOP_SEGMENT_SECONDS,
+    )
   })
 })
 

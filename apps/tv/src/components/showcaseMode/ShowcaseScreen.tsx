@@ -394,6 +394,14 @@ export function ShowcaseScreen() {
         // the screen is the composition root where nondeterminism lives; buildHopSchedule
         // stays pure. A null plan (too few languages / too short) falls through to play
         // the centerpiece as an ordinary excerpt (AE4/AE5 degradation).
+        // KTD-5/R7: launch the sentence-timing acquisition in parallel with the dub probe,
+        // racing it against the total budget so the worst-case plan build stays ~one budget.
+        // Any failure/timeout degrades THIS chapter to the fixed grid, never a stall.
+        const acquireTiming = createSentenceTimingSource(getApolloClient())
+        const timingPromise = resolveSentenceTimingWithinBudget(
+          () => acquireTiming(excerpt.slug),
+          SHOWCASE_SENTENCE_PLAN_BUDGET_MS,
+        )
         let video
         try {
           video = await fetchVideo(excerpt.slug)
@@ -404,15 +412,7 @@ export function ShowcaseScreen() {
           video = null
         }
         if (cancelled || !mountedRef.current) return
-
-        // KTD-5/R7: acquire the English reference track's sentence timing under the total
-        // plan-build budget. Any failure or timeout degrades THIS chapter to the fixed
-        // grid (per video, never a stall, never an error) with an observable reason.
-        const acquireTiming = createSentenceTimingSource(getApolloClient())
-        const acquired = await resolveSentenceTimingWithinBudget(
-          () => acquireTiming(excerpt.slug),
-          SHOWCASE_SENTENCE_PLAN_BUDGET_MS,
-        )
+        const acquired = await timingPromise
         if (cancelled || !mountedRef.current) return
 
         let plan: ShowcaseHop[] | null

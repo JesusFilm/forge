@@ -107,6 +107,64 @@ describe("createSentenceTimingSource — subtitle pick (KTD-2)", () => {
       expect.anything(),
     )
   })
+
+  it("picks the human track over the AI one when neither is primary", async () => {
+    // No primary row, so the aiGenerated term is the SOLE discriminator.
+    const fetchImpl = okFetch(FIXTURE_VTT)
+    const source = createSentenceTimingSource(
+      clientReturning([
+        englishSub("https://cdn/ai.vtt", { primary: false, aiGenerated: true }),
+        englishSub("https://cdn/human.vtt", { primary: false }),
+      ]),
+      { fetchImpl: asFetch(fetchImpl), cache: new Map() },
+    )
+    await source("slug")
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://cdn/human.vtt",
+      expect.anything(),
+    )
+  })
+
+  it("keeps the first row on a tie between equal-rank English tracks", async () => {
+    // Two identical-rank rows (both primary, human) — the order-preserving reduce keeps
+    // the first, so the tie-break is order, not last-wins.
+    const fetchImpl = okFetch(FIXTURE_VTT)
+    const source = createSentenceTimingSource(
+      clientReturning([
+        englishSub("https://cdn/first.vtt"),
+        englishSub("https://cdn/second.vtt"),
+      ]),
+      { fetchImpl: asFetch(fetchImpl), cache: new Map() },
+    )
+    await source("slug")
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://cdn/first.vtt",
+      expect.anything(),
+    )
+  })
+
+  it("skips a higher-ranked English row whose vttSrc is null", async () => {
+    // A primary English row marked but not yet uploaded (vttSrc null) must NOT win and
+    // report no-subtitle — the usable lower-ranked track is picked instead.
+    const fetchImpl = okFetch(FIXTURE_VTT)
+    const source = createSentenceTimingSource(
+      clientReturning([
+        {
+          vttSrc: null,
+          primary: true,
+          aiGenerated: false,
+          language: { slug: "english" },
+        },
+        englishSub("https://cdn/human.vtt", { primary: false }),
+      ]),
+      { fetchImpl: asFetch(fetchImpl), cache: new Map() },
+    )
+    await source("slug")
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://cdn/human.vtt",
+      expect.anything(),
+    )
+  })
 })
 
 describe("createSentenceTimingSource — no-subtitle", () => {
@@ -212,6 +270,20 @@ describe("createSentenceTimingSource — fetch-failed", () => {
     )
     expect(await source("slug")).toEqual({ ok: false, reason: "fetch-failed" })
     expect(captured?.aborted).toBe(true)
+  })
+
+  it("times out a stalled subtitle query at the query deadline", async () => {
+    // The per-op query bound (KTD-5 / outbound-timeout law): a never-resolving query is
+    // cut at the injected deadline and reported as fetch-failed, never a hang.
+    const client = {
+      query: jest.fn(() => new Promise(() => {})),
+    } as unknown as Parameters<typeof createSentenceTimingSource>[0]
+    const source = createSentenceTimingSource(client, {
+      fetchImpl: asFetch(okFetch(FIXTURE_VTT)),
+      cache: new Map(),
+      queryDeadlineMs: 20,
+    })
+    expect(await source("slug")).toEqual({ ok: false, reason: "fetch-failed" })
   })
 })
 
