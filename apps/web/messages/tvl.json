@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",
     "none": "Seai ne fautuaga ne maua mō te vitio tenei i te language tenei."
+  },
+  "BetaTesterModal": {
+    "title": "Ave koe mo beta tester",
+    "trigger": "Ave koe mo beta tester",
+    "loadFailed": "Fala i se mea ne sala.",
+    "loading": "Uta...",
+    "openFormNewTab": "Fakatonu te pepa i se tab fou",
+    "close": "Tapuni",
+    "iframeTitle": "Ave koe mo beta tester"
   }
 }

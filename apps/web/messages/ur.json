@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% مطابقت",
     "none": "اس زبان میں اس ویڈیو کے لیے کوئی تجویز نہیں ملی۔"
+  },
+  "BetaTesterModal": {
+    "title": "بیٹا ٹیسٹر بنیں",
+    "trigger": "بیٹا ٹیسٹر بنیں",
+    "loadFailed": "کچھ غلط ہو گیا۔",
+    "loading": "لوڈ ہو رہا ہے...",
+    "openFormNewTab": "فارم نئی ٹیب میں کھولیں",
+    "close": "بند کریں",
+    "iframeTitle": "بیٹا ٹیسٹر بنیں"
   }
 }

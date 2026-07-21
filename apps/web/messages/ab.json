@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Аиқәшәара — {percent}%",
     "none": "Ари абызшәала ари авидео азы абжьгарақәа ԥшааӡам."
+  },
+  "BetaTesterModal": {
+    "title": "Beta ҭҵаҩы шәҟала",
+    "trigger": "Beta ҭҵаҩы шәҟала",
+    "loadFailed": "Акала агха ҟалеит.",
+    "loading": "Аҭаҩра...",
+    "openFormNewTab": "Аформа ҿыц ашкы аҿы аарт",
+    "close": "Аркра",
+    "iframeTitle": "Beta ҭҵаҩы шәҟала"
   }
 }

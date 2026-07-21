@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% oerienkomst",
     "none": "Gjin oanbefellings foar dizze fideo yn dizze taal fûn."
+  },
+  "BetaTesterModal": {
+    "title": "Wurd beta-tester",
+    "trigger": "Wurd beta-tester",
+    "loadFailed": "Der is wat misgien.",
+    "loading": "Laden...",
+    "openFormNewTab": "Formulier yn in nij ljepblêd iepenje",
+    "close": "Slute",
+    "iframeTitle": "Wurd beta-tester"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Bihuye ku kigero cya {percent}%",
     "none": "Nta videwo zishobora kugushimisha zabonetse zijyanye n'iyi videwo muri uru rurimi."
+  },
+  "BetaTesterModal": {
+    "title": "Ba umugerageza wa beta",
+    "trigger": "Ba umugerageza wa beta",
+    "loadFailed": "Hari ikibazo cyabaye.",
+    "loading": "Birapakirwa...",
+    "openFormNewTab": "Fungura ifishi mu rundi tab",
+    "close": "Funga",
+    "iframeTitle": "Ba umugerageza wa beta"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% a katugma",
     "none": "Aga'y nabilay a rekomendasyon para ed sayan a video ed sayan a lengguahe."
+  },
+  "BetaTesterModal": {
+    "title": "Maging beta tester",
+    "trigger": "Maging beta tester",
+    "loadFailed": "Naibaon so sayan.",
+    "loading": "Ilo-load...",
+    "openFormNewTab": "I-abri so form ed balo a tab",
+    "close": "Isara",
+    "iframeTitle": "Maging beta tester"
   }
 }

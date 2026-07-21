@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}٪ مطابقت",
     "none": "برای این ویدیو به این زبان هیچ پیشنهادی یافت نشد."
+  },
+  "BetaTesterModal": {
+    "title": "بتا تستر شوید",
+    "trigger": "بتا تستر شوید",
+    "loadFailed": "مشکلی پیش آمد.",
+    "loading": "در حال بارگذاری...",
+    "openFormNewTab": "باز کردن فرم در یک زبانهٔ جدید",
+    "close": "بستن",
+    "iframeTitle": "بتا تستر شوید"
   }
 }

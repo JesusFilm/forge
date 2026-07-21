@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% idi iwendangana",
     "none": "Katshi na mavidiyo a kuludila afwanyikile ku video eyi mu lulaka elu."
+  },
+  "BetaTesterModal": {
+    "title": "Kua beta tester",
+    "trigger": "Kua beta tester",
+    "loadFailed": "Kintu kimue kikafueko.",
+    "loading": "Kusangula...",
+    "openFormNewTab": "Kafua fomu mu tab muepi",
+    "close": "Vuala",
+    "iframeTitle": "Kua beta tester"
   }
 }

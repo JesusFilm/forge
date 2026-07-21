@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}٪ سمون",
     "none": "په دې ژبه کې د دې ویډیو لپاره هېڅ سپارښتنه ونه موندل شوه."
+  },
+  "BetaTesterModal": {
+    "title": "بیټا ټېسټر شئ",
+    "trigger": "بیټا ټېسټر شئ",
+    "loadFailed": "یو څه سم نه وو.",
+    "loading": "بارېږي...",
+    "openFormNewTab": "فورمه په نوې ټب کې پرانیزئ",
+    "close": "تړل",
+    "iframeTitle": "بیټا ټېسټر شئ"
   }
 }

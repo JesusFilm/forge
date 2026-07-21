@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ujemanje: {percent} %",
     "none": "Za ta videoposnetek v tem jeziku ni bilo najdenih priporočil."
+  },
+  "BetaTesterModal": {
+    "title": "Postanite beta preizkuševalec",
+    "trigger": "Postanite beta preizkuševalec",
+    "loadFailed": "Nekaj je šlo narobe.",
+    "loading": "Nalaganje ...",
+    "openFormNewTab": "Odpri obrazec v novem zavihku",
+    "close": "Zapri",
+    "iframeTitle": "Postanite beta preizkuševalec"
   }
 }

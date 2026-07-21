@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% мос келади",
     "none": "Бу тилда бу видео учун тавсиялар топилмади."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер бўлинг",
+    "trigger": "Бета-тестер бўлинг",
+    "loadFailed": "Нимадир нотўғри кетди.",
+    "loading": "Юкланмоқда...",
+    "openFormNewTab": "Шаклни янги вкладкада очиш",
+    "close": "Ёпиш",
+    "iframeTitle": "Бета-тестер бўлинг"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Méngoo na {percent}% bi",
     "none": "Amul benn digal bu ñu gis ngir video bii ci làkk bii."
+  },
+  "BetaTesterModal": {
+    "title": "Doxal niki beta tester",
+    "trigger": "Doxal niki beta tester",
+    "loadFailed": "Am na lu nax.",
+    "loading": "Dañuy yeb...",
+    "openFormNewTab": "Ubbi form bi ci beneen tab",
+    "close": "Tëj",
+    "iframeTitle": "Doxal niki beta tester"
   }
 }

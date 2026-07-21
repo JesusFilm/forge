@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% méngoo",
     "none": "Amul benn wideo bu ñu digal ngir wideo bii ci làkk bii."
+  },
+  "BetaTesterModal": {
+    "title": "Doxalul beta tester",
+    "trigger": "Doxalul beta tester",
+    "loadFailed": "Am na lu ne xewul.",
+    "loading": "Daan...",
+    "openFormNewTab": "Ubbi form bi ci beneen onglet",
+    "close": "Tëj",
+    "iframeTitle": "Doxalul beta tester"
   }
 }

@@ -14,8 +14,10 @@ describe("route-scoped client messages", () => {
     )
 
     expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain("LanguagePickerModal")
+    expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain("BetaTesterModal")
     expect(messages.LanguagePickerModal?.dialogTitle).toBe("Language")
     expect(messages.LanguagePickerModal?.apply).toBe("Apply")
+    expect(messages.BetaTesterModal?.trigger).toBe("Become a beta tester")
   })
 
   it("keeps the language inventory collection switcher translated", () => {

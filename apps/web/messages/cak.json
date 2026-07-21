@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% nik'äm ri'",
     "none": "Majun chilab'enïk xk'ulutäj richin re video re' pa re ch'ab'äl re'."
+  },
+  "BetaTesterModal": {
+    "title": "Tib'an beta tester",
+    "trigger": "Tib'an beta tester",
+    "loadFailed": "Xk'ulwachitäj jun etaman ta.",
+    "loading": "Nisamajij...",
+    "openFormNewTab": "Tijaq form pa jun k'ak'a' tab",
+    "close": "Titz'apïx",
+    "iframeTitle": "Tib'an beta tester"
   }
 }

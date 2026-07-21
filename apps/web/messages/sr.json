@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% podudaranja",
     "none": "Nema preporuka za ovaj video na ovom jeziku."
+  },
+  "BetaTesterModal": {
+    "title": "Postanite beta tester",
+    "trigger": "Postanite beta tester",
+    "loadFailed": "Nešto je pošlo naopako.",
+    "loading": "Učitavanje...",
+    "openFormNewTab": "Otvori formular u novoj kartici",
+    "close": "Zatvori",
+    "iframeTitle": "Postanite beta tester"
   }
 }

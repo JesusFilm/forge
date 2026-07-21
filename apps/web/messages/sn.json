@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Zvinoenderana ne{percent}%",
     "none": "Hapana mavhidhiyo akakurudzirwa awanikwa anoenderana nevhidhiyo iyi mumutauro uyu."
+  },
+  "BetaTesterModal": {
+    "title": "Ivai beta tester",
+    "trigger": "Ivai beta tester",
+    "loadFailed": "Pane chakanganisika.",
+    "loading": "Kurodha...",
+    "openFormNewTab": "Vhura fomu mutabhu itsva",
+    "close": "Vhara",
+    "iframeTitle": "Ivai beta tester"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% e tau",
     "none": "Karewe ni video aika a kaungaaki ibukin te video aei n te i-ki aei."
+  },
+  "BetaTesterModal": {
+    "title": "Buna beta tester",
+    "trigger": "Buna beta tester",
+    "loadFailed": "E tuaoaki te taekataki.",
+    "loading": "E bukinaki...",
+    "openFormNewTab": "Buka te form n te tab ni matu",
+    "close": "Taiaki",
+    "iframeTitle": "Buna beta tester"
   }
 }

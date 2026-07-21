@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% junam",
     "none": "Man xilitäj ta jun recomendación rech le wachibʼäl riʼ pa le chʼabʼal riʼ."
+  },
+  "BetaTesterModal": {
+    "title": "Conviértase en beta tester",
+    "trigger": "Conviértase en beta tester",
+    "loadFailed": "Algo salió mal.",
+    "loading": "Cargando...",
+    "openFormNewTab": "Abrir formulario en una pestaña nueva",
+    "close": "Cerrar",
+    "iframeTitle": "Conviértase en beta tester"
   }
 }

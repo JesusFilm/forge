@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}%-imik naleqquppoq",
     "none": "Video taanna oqaatsimi uani innersuussutissaqarfigineqanngilaq."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester-inngorit",
+    "trigger": "Beta tester-inngorit",
+    "loadFailed": "Ajortoqangaatsiarpoq.",
+    "loading": "Aalartisartoq...",
+    "openFormNewTab": "Immersugassaq nutaami ameeruk",
+    "close": "Matuuk",
+    "iframeTitle": "Beta tester-inngorit"
   }
 }

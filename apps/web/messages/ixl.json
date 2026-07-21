@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% junam",
     "none": "Maj k'utb'en re video re pa b'anob' tzij re."
+  },
+  "BetaTesterModal": {
+    "title": "Tok jun beta tester",
+    "trigger": "Tok jun beta tester",
+    "loadFailed": "Jun problema xk'ulb'al.",
+    "loading": "Chi yüküj...",
+    "openFormNewTab": "Form jaq' jun k'utam q'ij chi tab",
+    "close": "K'uch",
+    "iframeTitle": "Tok jun beta tester"
   }
 }

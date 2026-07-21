@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% de corispondenza",
     "none": "No xe stà trovà nissun video consiglià in sta lengua."
+  },
+  "BetaTesterModal": {
+    "title": "Fàte beta tester",
+    "trigger": "Fàte beta tester",
+    "loadFailed": "Qualcosa no ga funzionà.",
+    "loading": "Cargando...",
+    "openFormNewTab": "Sonzo el formulario in una nova scheda",
+    "close": "Sara",
+    "iframeTitle": "Fàte beta tester"
   }
 }

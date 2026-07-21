@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% nga katugma",
     "none": "Walay nakit-an nga girekomendar nga mga video para niini nga video sa maong pinulongan."
+  },
+  "BetaTesterModal": {
+    "title": "Mahimong beta tester",
+    "trigger": "Mahimong beta tester",
+    "loadFailed": "Adunay nahimong sayop.",
+    "loading": "Gina-load...",
+    "openFormNewTab": "Ablihi ang form sa bag-ong tab",
+    "close": "Sirad-i",
+    "iframeTitle": "Mahimong beta tester"
   }
 }

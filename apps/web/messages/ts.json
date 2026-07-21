@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ku fambelana ka {percent}%",
     "none": "A ku kumekanga switsundzuxo swa vhidiyo leyi hi ririmi leri."
+  },
+  "BetaTesterModal": {
+    "title": "Va mutirhisi wa beta",
+    "trigger": "Va mutirhisi wa beta",
+    "loadFailed": "Ku lo hoxeka nchumu.",
+    "loading": "Ku layicha...",
+    "openFormNewTab": "Pfula fomo eka thebhu leyintshwa",
+    "close": "Pfala",
+    "iframeTitle": "Va mutirhisi wa beta"
   }
 }

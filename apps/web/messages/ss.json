@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Kuhambisana nga-{percent}%",
     "none": "Kute tincomo letitfolakele talividiyo ngalolulwimi."
+  },
+  "BetaTesterModal": {
+    "title": "Yiba umhloli we-beta",
+    "trigger": "Yiba umhloli we-beta",
+    "loadFailed": "Kukhona okungahambanga kahle.",
+    "loading": "Kulayishwa...",
+    "openFormNewTab": "Vula ifomu kuthebhu entsha",
+    "close": "Vala",
+    "iframeTitle": "Yiba umhloli we-beta"
   }
 }

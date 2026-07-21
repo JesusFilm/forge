@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmung",
     "none": "Für dieses Video wurden in dieser Sprache keine Empfehlungen gefunden."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-Tester werden",
+    "trigger": "Beta-Tester werden",
+    "loadFailed": "Etwas ist schiefgelaufen.",
+    "loading": "Wird geladen...",
+    "openFormNewTab": "Formular in neuem Tab öffnen",
+    "close": "Schließen",
+    "iframeTitle": "Beta-Tester werden"
   }
 }

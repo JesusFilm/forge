@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% میچ",
     "none": "اِس زبان منز اِس ویڈیو لئی کوٚنٛہہ تجویز نہٕ ملۍ۔"
+  },
+  "BetaTesterModal": {
+    "title": "بیٹا ٹیسٹر بنیو",
+    "trigger": "بیٹا ٹیسٹر بنیو",
+    "loadFailed": "کچھ غلط گژھِ۔",
+    "loading": "لوڈ کران...",
+    "openFormNewTab": "فارم نَوۍ ٹیب منز کھولیو",
+    "close": "بند کرو",
+    "iframeTitle": "بیٹا ٹیسٹر بنیو"
   }
 }

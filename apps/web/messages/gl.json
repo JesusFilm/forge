@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Coincidencia: {percent} %",
     "none": "Non se atoparon recomendacións para este vídeo neste idioma."
+  },
+  "BetaTesterModal": {
+    "title": "Convértete en probador beta",
+    "trigger": "Convértete en probador beta",
+    "loadFailed": "Algo saíu mal.",
+    "loading": "Cargando...",
+    "openFormNewTab": "Abrir o formulario nunha nova pestana",
+    "close": "Pechar",
+    "iframeTitle": "Convértete en probador beta"
   }
 }

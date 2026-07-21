@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Maidseadh: {percent}%",
     "none": "Cha deach molaidhean sam bith a lorg airson a’ bhidio seo sa chànan seo."
+  },
+  "BetaTesterModal": {
+    "title": "Bi nad dhearbhadair beta",
+    "trigger": "Bi nad dhearbhadair beta",
+    "loadFailed": "Chaidh rudeigin ceàrr.",
+    "loading": "A’ luchdadh...",
+    "openFormNewTab": "Fosgail am foirm ann an taba ùr",
+    "close": "Dùin",
+    "iframeTitle": "Bi nad dhearbhadair beta"
   }
 }

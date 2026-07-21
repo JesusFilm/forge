@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% a match",
     "none": "Video nin te recommendation te sɔrɔ language nin te."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester kɛ",
+    "trigger": "Beta tester kɛ",
+    "loadFailed": "Ntoŋ a sɔrɔ.",
+    "loading": "A ka load...",
+    "openFormNewTab": "Fɛmbu form a new tab te",
+    "close": "Mɛ",
+    "iframeTitle": "Beta tester kɛ"
   }
 }

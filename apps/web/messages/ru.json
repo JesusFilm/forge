@@ -109,6 +109,15 @@
   "WatchModal": {
     "close": "Закрыть"
   },
+  "BetaTesterModal": {
+    "title": "Стать бета-тестером",
+    "trigger": "Стать бета-тестером",
+    "loadFailed": "Произошла ошибка.",
+    "loading": "Загрузка…",
+    "openFormNewTab": "Открыть форму в новой вкладке",
+    "close": "Закрыть",
+    "iframeTitle": "Стать бета-тестером"
+  },
   "WatchStudyQuestions": {
     "quiz": "Викторина",
     "placeholderQuestion": "Если бы вы могли задать вопрос создателю этого видео, что бы вы спросили?",

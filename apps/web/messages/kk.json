@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% сәйкес",
     "none": "Бұл видеоға осы тілде ұсыныстар табылмады."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-тестер болу",
+    "trigger": "Beta-тестер болу",
+    "loadFailed": "Бірдеңе дұрыс болмады.",
+    "loading": "Жүктелуде...",
+    "openFormNewTab": "Форманы жаңа қойындыда ашу",
+    "close": "Жабу",
+    "iframeTitle": "Beta-тестер болу"
   }
 }

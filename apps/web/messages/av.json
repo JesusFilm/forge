@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% рекъола",
     "none": "Гьаб тилалда гьаб видеоялъе тавсиял батичӏо."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester бузе",
+    "trigger": "Beta tester бузе",
+    "loadFailed": "Нечидаб хъизам гьабуна.",
+    "loading": "Загруждай...",
+    "openFormNewTab": "Нухмалъиялда цӏияб табда форма къоларух",
+    "close": "Бекьизе",
+    "iframeTitle": "Beta tester бузе"
   }
 }

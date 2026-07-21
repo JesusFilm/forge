@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% æмбæлы",
     "none": "Ацы видеоæн ацы æвзагыл рекомендацитæ нæ ссардтой."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестеры кæн",
+    "trigger": "Бета-тестеры кæн",
+    "loadFailed": "Ахæм æмæгæн уыды.",
+    "loading": "Æрхæссын…",
+    "openFormNewTab": "Формæ æрмæст нæуæг табæй æрхæсс",
+    "close": "Сæйгæ",
+    "iframeTitle": "Бета-тестеры кæн"
   }
 }

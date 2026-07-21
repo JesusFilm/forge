@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ooreenstemming",
     "none": "Geen aanbevelings is vir hierdie video in dié taal gevind nie."
+  },
+  "BetaTesterModal": {
+    "title": "Word ’n beta-toetser",
+    "trigger": "Word ’n beta-toetser",
+    "loadFailed": "Iets het verkeerd geloop.",
+    "loading": "Besig om te laai...",
+    "openFormNewTab": "Maak vorm in ’n nuwe oortjie oop",
+    "close": "Sluit",
+    "iframeTitle": "Word ’n beta-toetser"
   }
 }

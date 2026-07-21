@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% тааралдана",
     "none": "Энэ хэлэн дээрэ энэ видеодо дурадхал олдобогүй."
+  },
+  "BetaTesterModal": {
+    "title": "Бета туршигч болох",
+    "trigger": "Бета туршигч болох",
+    "loadFailed": "Ямар нэг зүйл буруу боллоо.",
+    "loading": "Ачаалж байна...",
+    "openFormNewTab": "Маягтыг шинэ табд нээх",
+    "close": "Хаах",
+    "iframeTitle": "Бета туршигч болох"
   }
 }

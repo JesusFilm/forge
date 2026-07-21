@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % Iwwereestëmmung",
     "none": "Fir dëse Video goufe keng Recommandatiounen an dëser Sprooch fonnt."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-Tester ginn",
+    "trigger": "Beta-Tester ginn",
+    "loadFailed": "Eppes ass schif gelaf.",
+    "loading": "Lueden...",
+    "openFormNewTab": "Formulaire an engem neien Tab opmaachen",
+    "close": "Zoumaachen",
+    "iframeTitle": "Beta-Tester ginn"
   }
 }

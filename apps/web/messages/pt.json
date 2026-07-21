@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% de correspondência",
     "none": "Não foram encontradas recomendações para este vídeo neste idioma."
+  },
+  "BetaTesterModal": {
+    "title": "Tornar-me um testador beta",
+    "trigger": "Tornar-me um testador beta",
+    "loadFailed": "Algo correu mal.",
+    "loading": "Carregando...",
+    "openFormNewTab": "Abrir o formulário numa nova aba",
+    "close": "Fechar",
+    "iframeTitle": "Tornar-me um testador beta"
   }
 }

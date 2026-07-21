@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% мувофикъ",
     "none": "Тту мазрай тту видеолиз рекомендацияр дакъар."
+  },
+  "BetaTesterModal": {
+    "title": "Бета тестер лу",
+    "trigger": "Бета тестер лу",
+    "loadFailed": "Ваське кылдэм.",
+    "loading": "Лэсьтӥсько...",
+    "openFormNewTab": "Форманы выль вкладкаын вуо",
+    "close": "Пыдаты",
+    "iframeTitle": "Бета тестер лу"
   }
 }

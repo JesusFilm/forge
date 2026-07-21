@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% tupan",
     "none": "Kay videopaq kay simipi mana ima yuyaychasqa videopas tarisqachu."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester hina churakuy",
+    "trigger": "Beta tester hina churakuy",
+    "loadFailed": "Ima hukllapas mana allin ruwarqan.",
+    "loading": "Kargachkan...",
+    "openFormNewTab": "Formularioqa mushuq tabpi kichay",
+    "close": "Wichq’ay",
+    "iframeTitle": "Beta tester hina churakuy"
   }
 }

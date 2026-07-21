@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ᓈᒻᒪᒃᑐᖅ",
     "none": "ᑖᓐᓇ ᐊᓯᕈᑦ ᑖᓐᓇ ᓂᐱᒥ ᐊᑐᖁᔭᐅᔪᑦ ᓇᓂᔭᐅᖏᑦᑐᑦ."
+  },
+  "BetaTesterModal": {
+    "title": "ᐱᓕᕆᔨ beta ᐊᒃᑐᕐᓂᖅ",
+    "trigger": "ᐱᓕᕆᔨ beta ᐊᒃᑐᕐᓂᖅ",
+    "loadFailed": "ᑕᒪᑐᒧᖓ ᐱᐅᖏᑦᑐᖅ ᐃᓕᐊᓂᖅ ᐊᓂᕐᕋᖏᑦᑐᖅ.",
+    "loading": "ᐊᓯᔾᔨᕐᓂᖅ...",
+    "openFormNewTab": "ᐅᒃᑯᐃᕐᓗᒍ ᐊᓪᓚᖁᑎ ᐊᓯᐊᓂ ᑕᐃᒪ ᑕᒫᓂ",
+    "close": "ᒪᑐᐃᕐᓗᒍ",
+    "iframeTitle": "ᐱᓕᕆᔨ beta ᐊᒃᑐᕐᓂᖅ"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% মিল",
     "none": "এই ভাষায় এই ভিডিওটির জন্য কোনো সুপারিশ পাওয়া যায়নি।"
+  },
+  "BetaTesterModal": {
+    "title": "বেটা টেস্টার হোন",
+    "trigger": "বেটা টেস্টার হোন",
+    "loadFailed": "কিছু একটা গোলমাল হয়েছে।",
+    "loading": "লোড হচ্ছে...",
+    "openFormNewTab": "নতুন ট্যাবে ফর্ম খুলুন",
+    "close": "বন্ধ করুন",
+    "iframeTitle": "বেটা টেস্টার হোন"
   }
 }

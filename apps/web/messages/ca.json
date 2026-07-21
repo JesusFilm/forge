@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % de coincidència",
     "none": "No s’han trobat recomanacions per a aquest vídeo en aquest idioma."
+  },
+  "BetaTesterModal": {
+    "title": "Fes-te beta tester",
+    "trigger": "Fes-te beta tester",
+    "loadFailed": "S’ha produït un error.",
+    "loading": "S’està carregant...",
+    "openFormNewTab": "Obrir el formulari en una pestanya nova",
+    "close": "Tanca",
+    "iframeTitle": "Fes-te beta tester"
   }
 }

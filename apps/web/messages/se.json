@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Heiveheapmi: {percent} %",
     "none": "Dán video várás eai gávdnon ávžžuhusat dán gillii."
+  },
+  "BetaTesterModal": {
+    "title": "Became beta-geahččaleaddji",
+    "trigger": "Became beta-geahččaleaddji",
+    "loadFailed": "Juoga manne boastut.",
+    "loading": "Lohkamin...",
+    "openFormNewTab": "Raba madii ođđa gittašaŋa",
+    "close": "Gidde",
+    "iframeTitle": "Became beta-geahččaleaddji"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% sobivus",
     "none": "Sellele videole ei leitud selles keeles soovitusi."
+  },
+  "BetaTesterModal": {
+    "title": "Hakka beetatestijaks",
+    "trigger": "Hakka beetatestijaks",
+    "loadFailed": "Midagi läks valesti.",
+    "loading": "Laadimine...",
+    "openFormNewTab": "Ava vorm uuel vahekaardil",
+    "close": "Sulge",
+    "iframeTitle": "Hakka beetatestijaks"
   }
 }

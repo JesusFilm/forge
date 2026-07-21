@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "E lumellana ka {percent}%",
     "none": "Ha ho likhothaletso tse fumanoeng bakeng sa video ena ka puo ena."
+  },
+  "BetaTesterModal": {
+    "title": "Eba mohlahlobi oa beta",
+    "trigger": "Eba mohlahlobi oa beta",
+    "loadFailed": "Ho na le ho sa tsamaeeng hantle.",
+    "loading": "Ho kenya...",
+    "openFormNewTab": "Bula foromo tabeng e ncha",
+    "close": "Koala",
+    "iframeTitle": "Eba mohlahlobi oa beta"
   }
 }

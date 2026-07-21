@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmig",
     "none": "Für das Video sind i däre Sprach kei Empfehligä gfunde worde."
+  },
+  "BetaTesterModal": {
+    "title": "Werde Beta-Tester",
+    "trigger": "Werde Beta-Tester",
+    "loadFailed": "Ets isch öppis schief gloffe.",
+    "loading": "Wird glade...",
+    "openFormNewTab": "Formular i neui Tab öffne",
+    "close": "Schliesse",
+    "iframeTitle": "Werde Beta-Tester"
   }
 }

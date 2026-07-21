@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% मेल",
     "none": "हिन भाषा में हिन वीडियो लाइ काई बि सिफ़ारिश न मिली।"
+  },
+  "BetaTesterModal": {
+    "title": "بيٽا ٽيسٽر بڻجو",
+    "trigger": "بيٽا ٽيسٽر بڻجو",
+    "loadFailed": "ڪجهه غلط ٿي ويو.",
+    "loading": "لوڊ ٿي رهيو آهي...",
+    "openFormNewTab": "فارم نئين ٽئب ۾ کوليو",
+    "close": "بند ڪريو",
+    "iframeTitle": "بيٽا ٽيسٽر بڻجو"
   }
 }

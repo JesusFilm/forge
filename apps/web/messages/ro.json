@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Potrivire de {percent}%",
     "none": "Nu s-au găsit recomandări pentru acest videoclip în această limbă."
+  },
+  "BetaTesterModal": {
+    "title": "Devino tester beta",
+    "trigger": "Devino tester beta",
+    "loadFailed": "Ceva nu a mers bine.",
+    "loading": "Se încarcă...",
+    "openFormNewTab": "Deschide formularul într-o filă nouă",
+    "close": "Închide",
+    "iframeTitle": "Devino tester beta"
   }
 }

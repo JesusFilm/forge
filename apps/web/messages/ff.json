@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Nanndugol {percent}%",
     "none": "Alaa wasiyaaji heɓaaɗi ngam ngoo widewoo e ndee ɗemngal."
+  },
+  "BetaTesterModal": {
+    "title": "Wonu beta tester",
+    "trigger": "Wonu beta tester",
+    "loadFailed": "Ko ɗum jogii woni.",
+    "loading": "Wonndude...",
+    "openFormNewTab": "Uddit formileer e tabbere hesere",
+    "close": "Uddu",
+    "iframeTitle": "Wonu beta tester"
   }
 }

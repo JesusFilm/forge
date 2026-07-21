@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% la méngoo",
     "none": "Amul benn video bu ñu digal ngir video bii ci làkk bii."
+  },
+  "BetaTesterModal": {
+    "title": "Doomu beta tester",
+    "trigger": "Doomu beta tester",
+    "loadFailed": "Loxo am na lu ñuul.",
+    "loading": "Yeb…",
+    "openFormNewTab": "Ubbi form bi ci beneen tab",
+    "close": "Tëj",
+    "iframeTitle": "Doomu beta tester"
   }
 }

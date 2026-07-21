@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% overeenkomst",
     "none": "Geen aanbevelingen voor deze video gevonden in deze taal."
+  },
+  "BetaTesterModal": {
+    "title": "Word bèta-tester",
+    "trigger": "Word bèta-tester",
+    "loadFailed": "Er is iets misgegaan.",
+    "loading": "Laden...",
+    "openFormNewTab": "Formulier openen in een nieuw tabblad",
+    "close": "Sluiten",
+    "iframeTitle": "Word bèta-tester"
   }
 }

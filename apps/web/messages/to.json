@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ʻoku fenāpasi",
     "none": "ʻIkai maʻu ha ngaahi vitio fokotuʻu ki he vitio ni ʻi he lea ni."
+  },
+  "BetaTesterModal": {
+    "title": "Hoko ko ha beta tester",
+    "trigger": "Hoko ko ha beta tester",
+    "loadFailed": "Naʻe meʻa hala.",
+    "loading": "Lolotonga laodí...",
+    "openFormNewTab": "Fakaava ʻa e foomu ʻi ha taba foʻou",
+    "close": "Katia",
+    "iframeTitle": "Hoko ko ha beta tester"
   }
 }

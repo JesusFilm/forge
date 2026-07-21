@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% зэфэдэ",
     "none": "А видеом а бзэмкIэ рекомендациехэр хэмыт."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер хъун",
+    "trigger": "Бета-тестер хъун",
+    "loadFailed": "Щыжьыгъэ хъыжьыгъэ къыщыщт.",
+    "loading": "Къыжьыжьы...",
+    "openFormNewTab": "Form-ыр яtab хъум къыдэIэ",
+    "close": "Къыхэ",
+    "iframeTitle": "Бета-тестер хъун"
   }
 }

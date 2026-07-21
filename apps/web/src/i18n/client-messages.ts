@@ -7,6 +7,7 @@ type MessageCatalog = typeof englishMessages
 
 export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "AccountControl",
+  "BetaTesterModal",
   "ExperienceError",
   "Feedback",
   "FloatingSearch",

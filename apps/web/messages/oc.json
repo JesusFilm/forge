@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Correspondéncia de {percent} %",
     "none": "Cap de recomandacion trobada per aqueste vidèo dins aquesta lenga."
+  },
+  "BetaTesterModal": {
+    "title": "Venètz tester la beta",
+    "trigger": "Venètz tester la beta",
+    "loadFailed": "Quicòm a mal anat.",
+    "loading": "Cargament...",
+    "openFormNewTab": "Dobrir lo formulari dins un onglet novèl",
+    "close": "Tampar",
+    "iframeTitle": "Venètz tester la beta"
   }
 }

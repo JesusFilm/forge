@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% মিল",
     "none": "এই ভাষাত এই ভিডিঅ’টোৰ বাবে কোনো পৰামৰ্শ পোৱা নগ'ল।"
+  },
+  "BetaTesterModal": {
+    "title": "বিটা টেষ্টাৰ হওক",
+    "trigger": "বিটা টেষ্টাৰ হওক",
+    "loadFailed": "কিবা ভুল হৈছে।",
+    "loading": "লোড কৰা হৈছে...",
+    "openFormNewTab": "ফৰ্মটো নতুন টেবত খোলক",
+    "close": "বন্ধ কৰক",
+    "iframeTitle": "বিটা টেষ্টাৰ হওক"
   }
 }

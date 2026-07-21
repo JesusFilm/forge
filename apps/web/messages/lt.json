@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Atitiktis: {percent} %",
     "none": "Šiam vaizdo įrašui rekomendacijų šia kalba nerasta."
+  },
+  "BetaTesterModal": {
+    "title": "Tapti beta testeriu",
+    "trigger": "Tapti beta testeriu",
+    "loadFailed": "Kažkas nepavyko.",
+    "loading": "Įkeliama...",
+    "openFormNewTab": "Atidaryti formą naujame skirtuke",
+    "close": "Uždaryti",
+    "iframeTitle": "Tapti beta testeriu"
   }
 }

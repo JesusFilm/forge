@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % samsvar",
     "none": "Fann ingen tilrådingar for denne videoen på dette språket."
+  },
+  "BetaTesterModal": {
+    "title": "Bli betatestar",
+    "trigger": "Bli betatestar",
+    "loadFailed": "Noko gjekk gale.",
+    "loading": "Lastar...",
+    "openFormNewTab": "Opne skjema i ei ny fane",
+    "close": "Lukk",
+    "iframeTitle": "Bli betatestar"
   }
 }

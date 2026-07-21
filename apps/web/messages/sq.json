@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% përputhje",
     "none": "Nuk u gjetën rekomandime për këtë video në këtë gjuhë."
+  },
+  "BetaTesterModal": {
+    "title": "Bëhuni testues beta",
+    "trigger": "Bëhuni testues beta",
+    "loadFailed": "Diçka shkoi keq.",
+    "loading": "Po ngarkohet...",
+    "openFormNewTab": "Hap formularin në një skedë të re",
+    "close": "Mbyll",
+    "iframeTitle": "Bëhuni testues beta"
   }
 }

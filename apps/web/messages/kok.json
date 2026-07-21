@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% जुळटा",
     "none": "ह्या भाशेंत ह्या व्हिडिओ खातीर शिफारसी मेळ्ळ्यो ना."
+  },
+  "BetaTesterModal": {
+    "title": "बीटा परीक्षक जावात",
+    "trigger": "बीटा परीक्षक जावात",
+    "loadFailed": "कायतरी चुकलां.",
+    "loading": "लोड करत आसा...",
+    "openFormNewTab": "फॉर्म नव्या टॅबांत उगडात",
+    "close": "बंद करात",
+    "iframeTitle": "बीटा परीक्षक जावात"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% туры килә",
     "none": "Бу телдә бу видео өчен тәкъдимнәр табылмады."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер булу",
+    "trigger": "Бета-тестер булу",
+    "loadFailed": "Нидер дөрес булмады.",
+    "loading": "Йөкләнә...",
+    "openFormNewTab": "Форманы яңа вкладкада ачу",
+    "close": "Ябу",
+    "iframeTitle": "Бета-тестер булу"
   }
 }

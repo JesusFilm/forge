@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}٪ اویغونلوخ",
     "none": "بو دیلده بو ویدیو اوچون هئچ بیر توصیه تاپیلمادی."
+  },
+  "BetaTesterModal": {
+    "title": "بتا تستر شوید",
+    "trigger": "بتا تستر شوید",
+    "loadFailed": "مشکلی پیش آمد.",
+    "loading": "در حال بارگیری...",
+    "openFormNewTab": "باز کردن فرم در یک برگهٔ جدید",
+    "close": "بستن",
+    "iframeTitle": "بتا تستر شوید"
   }
 }

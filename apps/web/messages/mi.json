@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% te ōritetanga",
     "none": "Kāore he tūtohutanga i kitea mō tēnei ataata i tēnei reo."
+  },
+  "BetaTesterModal": {
+    "title": "Me noho hei kaiwhakamātau beta",
+    "trigger": "Me noho hei kaiwhakamātau beta",
+    "loadFailed": "I puta he raruraru.",
+    "loading": "E uta ana...",
+    "openFormNewTab": "Whakatuwhera puka ki tētahi ripa hōu",
+    "close": "Katia",
+    "iframeTitle": "Me noho hei kaiwhakamātau beta"
   }
 }

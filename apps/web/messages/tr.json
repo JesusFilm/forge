@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "%{percent} eşleşme",
     "none": "Bu video için bu dilde öneri bulunamadı."
+  },
+  "BetaTesterModal": {
+    "title": "Beta testçisi olun",
+    "trigger": "Beta testçisi olun",
+    "loadFailed": "Bir şeyler ters gitti.",
+    "loading": "Yükleniyor...",
+    "openFormNewTab": "Formu yeni bir sekmede aç",
+    "close": "Kapat",
+    "iframeTitle": "Beta testçisi olun"
   }
 }

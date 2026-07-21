@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% уйгъун",
     "none": "Бу тилде бу видеогъа тавсиялар табылмады."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер болуу",
+    "trigger": "Бета-тестер болуу",
+    "loadFailed": "Бир нерсе туура болмады.",
+    "loading": "Жүктөлүүдө...",
+    "openFormNewTab": "Форманы жаңы өтмөктө ачуу",
+    "close": "Жабуу",
+    "iframeTitle": "Бета-тестер болуу"
   }
 }

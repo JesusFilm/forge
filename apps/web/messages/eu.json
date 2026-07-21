@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "%{percent}eko bat-etortzea",
     "none": "Ez da gomendiorik aurkitu bideo honetarako hizkuntza honetan."
+  },
+  "BetaTesterModal": {
+    "title": "Bihurtu beta probatzaile",
+    "trigger": "Bihurtu beta probatzaile",
+    "loadFailed": "Zerbait gaizki joan da.",
+    "loading": "Kargatzen...",
+    "openFormNewTab": "Ireki formularioa fitxa berri batean",
+    "close": "Itxi",
+    "iframeTitle": "Bihurtu beta probatzaile"
   }
 }

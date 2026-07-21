@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Veiganiti ena {percent}%",
     "none": "E sega ni kunei e dua na vidio e vakaturi me baleta na vidio oqo ena vosa oqo."
+  },
+  "BetaTesterModal": {
+    "title": "Me da beta tester",
+    "trigger": "Me da beta tester",
+    "loadFailed": "E dua na leqa sa yaco.",
+    "loading": "Lavetaki tiko...",
+    "openFormNewTab": "Dolava na fomu ena tab vou",
+    "close": "Vakatautauvata",
+    "iframeTitle": "Me da beta tester"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% korespondans",
     "none": "Pa jwenn okenn rekòmandasyon pou videyo sa a nan lang sa a."
+  },
+  "BetaTesterModal": {
+    "title": "Vin yon tèsè beta",
+    "trigger": "Vin yon tèsè beta",
+    "loadFailed": "Gen yon bagay ki pa mache.",
+    "loading": "Ap chaje...",
+    "openFormNewTab": "Louvri fòm nan nan yon nouvo tab",
+    "close": "Fèmen",
+    "iframeTitle": "Vin yon tèsè beta"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Jaqbel {percent}%",
     "none": "Ma nstabet l-ebda rakkomandazzjoni għal dan il-vidjo b’din il-lingwa."
+  },
+  "BetaTesterModal": {
+    "title": "Sir beta tester",
+    "trigger": "Sir beta tester",
+    "loadFailed": "Xi ħaġa marret ħażin.",
+    "loading": "Qed jitgħabba...",
+    "openFormNewTab": "Iftaħ il-formola f'tab ġdida",
+    "close": "Agħlaq",
+    "iframeTitle": "Sir beta tester"
   }
 }

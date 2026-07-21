@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% התאמה",
     "none": "לא נמצאו המלצות לסרטון הזה בשפה זו."
+  },
+  "BetaTesterModal": {
+    "title": "הפכו לבודקי בטא",
+    "trigger": "הפכו לבודקי בטא",
+    "loadFailed": "משהו השתבש.",
+    "loading": "טוען...",
+    "openFormNewTab": "פתח את הטופס בלשונית חדשה",
+    "close": "סגור",
+    "iframeTitle": "הפכו לבודקי בטא"
   }
 }

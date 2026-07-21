@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% αντιστοιχία",
     "none": "Δεν βρέθηκαν προτάσεις για αυτό το βίντεο σε αυτή τη γλώσσα."
+  },
+  "BetaTesterModal": {
+    "title": "Γίνετε beta tester",
+    "trigger": "Γίνετε beta tester",
+    "loadFailed": "Κάτι πήγε στραβά.",
+    "loading": "Φόρτωση...",
+    "openFormNewTab": "Άνοιγμα φόρμας σε νέα καρτέλα",
+    "close": "Κλείσιμο",
+    "iframeTitle": "Γίνετε beta tester"
   }
 }

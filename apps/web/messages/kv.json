@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% лӧсялӧ",
     "none": "Тайӧ кывйын тайӧ видеолы лӧсяна вӧзйӧмъяс эз шедны."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер лоны",
+    "trigger": "Бета-тестер лоны",
+    "loadFailed": "Вӧт что-тӧ удж оз лоис.",
+    "loading": "Загрузитӧн…",
+    "openFormNewTab": "Формасьтыны выль вкладкаын",
+    "close": "Вӧчны",
+    "iframeTitle": "Бета-тестер лоны"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ekokani na {percent}%",
     "none": "Ba video oyo tokoki kopesa yo mpo na video oyo na monoko oyo ezwami te."
+  },
+  "BetaTesterModal": {
+    "title": "Koma beta tester",
+    "trigger": "Koma beta tester",
+    "loadFailed": "Eloko moko ekendaki mabe.",
+    "loading": "Ezali kocharger...",
+    "openFormNewTab": "Fungola formulaire na tab ya sika",
+    "close": "Kanga",
+    "iframeTitle": "Koma beta tester"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% de coincidencia",
     "none": "Nun s'atoparon recomendaciones pa esti videu nesta llingua."
+  },
+  "BetaTesterModal": {
+    "title": "Conviértete n'usuariu beta",
+    "trigger": "Conviértete n'usuariu beta",
+    "loadFailed": "Daqué salió mal.",
+    "loading": "Cargando...",
+    "openFormNewTab": "Abrir formulariu nuna llingüeta nueva",
+    "close": "Zarrar",
+    "iframeTitle": "Conviértete n'usuariu beta"
   }
 }

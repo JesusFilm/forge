@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "E tsamaelana ka {percent}%",
     "none": "Ga go na ditshitshinyo tse di bonweng tsa bidio eno ka puo eno."
+  },
+  "BetaTesterModal": {
+    "title": "Eba molekodi wa beta",
+    "trigger": "Eba molekodi wa beta",
+    "loadFailed": "Go sengwe se sa sepele gabotse.",
+    "loading": "E laiša...",
+    "openFormNewTab": "Bula foromo thebe e mpsha",
+    "close": "Tswalela",
+    "iframeTitle": "Eba molekodi wa beta"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% jingïahap",
     "none": "Ym lap ia ki jingai jingmut na bynta kane ka video ha kane ka ktien."
+  },
+  "BetaTesterModal": {
+    "title": "Long beta tester",
+    "trigger": "Long beta tester",
+    "loadFailed": "Kaba bakla ka la jia.",
+    "loading": "Dang pynkit...",
+    "openFormNewTab": "Plie form ha ka tab thymmai",
+    "close": "Pynkhap",
+    "iframeTitle": "Long beta tester"
   }
 }

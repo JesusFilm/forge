@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ਮੇਲ",
     "none": "ਇਸ ਭਾਸ਼ਾ ਵਿੱਚ ਇਸ ਵੀਡੀਓ ਲਈ ਕੋਈ ਸਿਫ਼ਾਰਸ਼ ਨਹੀਂ ਮਿਲੀ।"
+  },
+  "BetaTesterModal": {
+    "title": "ਬੀਟਾ ਟੈਸਟਰ ਬਣੋ",
+    "trigger": "ਬੀਟਾ ਟੈਸਟਰ ਬਣੋ",
+    "loadFailed": "ਕੁਝ ਗਲਤ ਹੋ ਗਿਆ।",
+    "loading": "ਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ...",
+    "openFormNewTab": "ਫਾਰਮ ਨਵੇਂ ਟੈਬ ਵਿੱਚ ਖੋਲ੍ਹੋ",
+    "close": "ਬੰਦ ਕਰੋ",
+    "iframeTitle": "ਬੀਟਾ ਟੈਸਟਰ ਬਣੋ"
   }
 }

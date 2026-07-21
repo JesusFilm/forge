@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ይዛመዳል",
     "none": "ለዚህ ቪዲዮ በዚህ ቋንቋ ምንም የተመከሩ ቪዲዮዎች አልተገኙም።"
+  },
+  "BetaTesterModal": {
+    "title": "የቤታ ሞካሪ ይሁኑ",
+    "trigger": "የቤታ ሞካሪ ይሁኑ",
+    "loadFailed": "አንድ ነገር ተሳስቷል።",
+    "loading": "በመጫን ላይ...",
+    "openFormNewTab": "ቅጹን በአዲስ ትር ክፈት",
+    "close": "ዝጋ",
+    "iframeTitle": "የቤታ ሞካሪ ይሁኑ"
   }
 }

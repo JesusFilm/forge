@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% el osisiu",
     "none": "Diak a video el omesik el ngar ngii er a video tia er a language tia."
+  },
+  "BetaTesterModal": {
+    "title": "Mo beta tester",
+    "trigger": "Mo beta tester",
+    "loadFailed": "A klou el rokui a dirrek.",
+    "loading": "Mengil...",
+    "openFormNewTab": "Onged a form er a beluu el ngar a ngii a tab mar a tekoi",
+    "close": "Moes",
+    "iframeTitle": "Mo beta tester"
   }
 }

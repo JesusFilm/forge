@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% 匹配",
     "none": "搵唔到呢段影片以呢種語言提供嘅推薦內容。"
+  },
+  "BetaTesterModal": {
+    "title": "成為測試版試用者",
+    "trigger": "成為測試版試用者",
+    "loadFailed": "出咗啲問題。",
+    "loading": "載入中...",
+    "openFormNewTab": "喺新分頁開啟表格",
+    "close": "關閉",
+    "iframeTitle": "成為測試版試用者"
   }
 }

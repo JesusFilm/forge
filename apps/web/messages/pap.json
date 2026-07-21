@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% koinsidensia",
     "none": "No a haña rekomendashon pa e video aki den e idioma aki."
+  },
+  "BetaTesterModal": {
+    "title": "Wordu un beta tester",
+    "trigger": "Wordu un beta tester",
+    "loadFailed": "Algo a bai rana.",
+    "loading": "Ta kargando...",
+    "openFormNewTab": "Habri formulario den un pestaña nobo",
+    "close": "Sera",
+    "iframeTitle": "Wordu un beta tester"
   }
 }

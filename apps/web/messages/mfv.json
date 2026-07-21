@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% di korespondénsia",
     "none": "Ka atxadu rekomendasons pa es vídeu na es língua."
+  },
+  "BetaTesterModal": {
+    "title": "Bira testador beta",
+    "trigger": "Bira testador beta",
+    "loadFailed": "Algun kusa bai mal.",
+    "loading": "Ta kariga...",
+    "openFormNewTab": "Abri formuláriu na aba nova",
+    "close": "Fixa",
+    "iframeTitle": "Bira testador beta"
   }
 }

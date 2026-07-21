@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% i stret",
     "none": "Nogat video ol i makim bilong dispela video long dispela tokples."
+  },
+  "BetaTesterModal": {
+    "title": "Kamap beta tester",
+    "trigger": "Kamap beta tester",
+    "loadFailed": "Wanpela samting i go rong.",
+    "loading": "Loadim...",
+    "openFormNewTab": "Openim form long nupela tab",
+    "close": "Pasim",
+    "iframeTitle": "Kamap beta tester"
   }
 }

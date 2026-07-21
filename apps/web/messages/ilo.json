@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% a maitutop",
     "none": "Awan ti nasarakan a mairekomenda para iti daytoy a video iti daytoy a pagsasao."
+  },
+  "BetaTesterModal": {
+    "title": "Maging beta tester",
+    "trigger": "Maging beta tester",
+    "loadFailed": "Adda napasamak a biddut.",
+    "loading": "Ikkarga...",
+    "openFormNewTab": "Ilukat ti form iti baro a tab",
+    "close": "Isarda",
+    "iframeTitle": "Maging beta tester"
   }
 }

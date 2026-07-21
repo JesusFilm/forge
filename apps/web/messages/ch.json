@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% na parehu",
     "none": "Ti guaha rekomendasión para este na video gi este na lenguahe."
+  },
+  "BetaTesterModal": {
+    "title": "Mångge' beta tester",
+    "trigger": "Mångge' beta tester",
+    "loadFailed": "Maga'het un hinanao.",
+    "loading": "Ma'loada...",
+    "openFormNewTab": "Abri formu gi nuebo na tab",
+    "close": "Serrá",
+    "iframeTitle": "Mångge' beta tester"
   }
 }

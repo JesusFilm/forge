@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Kompatibilidade {percent}%",
     "none": "La hetan rekomendasaun ba vídeo ida-ne'e iha língua ida-ne'e."
+  },
+  "BetaTesterModal": {
+    "title": "Sai beta tester",
+    "trigger": "Sai beta tester",
+    "loadFailed": "Aza ida la halakon.",
+    "loading": "Karrega ona...",
+    "openFormNewTab": "Buka formulário iha tab foun",
+    "close": "Taka",
+    "iframeTitle": "Sai beta tester"
   }
 }

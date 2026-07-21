@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% co-chosoylaght",
     "none": "Cha row videoyn erbee er nyn voylley son y video shoh ayns y çhengey shoh."
+  },
+  "BetaTesterModal": {
+    "title": "Bee beta tester",
+    "trigger": "Bee beta tester",
+    "loadFailed": "Cha row red red erbee goll dy mie.",
+    "loading": "Çhargaghey...",
+    "openFormNewTab": "Foashley yn çhishiyn ayns tab noa",
+    "close": "Doo",
+    "iframeTitle": "Bee beta tester"
   }
 }

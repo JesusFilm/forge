@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "相合度 {percent}%",
     "none": "這部影片在這種語言下尋毋著推薦內容。"
+  },
+  "BetaTesterModal": {
+    "title": "成為 Beta 測試者",
+    "trigger": "成為 Beta 測試者",
+    "loadFailed": "出了點問題。",
+    "loading": "載入中...",
+    "openFormNewTab": "在新分頁開啟表單",
+    "close": "關閉",
+    "iframeTitle": "成為 Beta 測試者"
   }
 }

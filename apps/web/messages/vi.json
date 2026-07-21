@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Phù hợp {percent}%",
     "none": "Không tìm thấy video đề xuất nào cho video này bằng ngôn ngữ này."
+  },
+  "BetaTesterModal": {
+    "title": "Trở thành người thử nghiệm beta",
+    "trigger": "Trở thành người thử nghiệm beta",
+    "loadFailed": "Đã xảy ra lỗi.",
+    "loading": "Đang tải...",
+    "openFormNewTab": "Mở biểu mẫu trong tab mới",
+    "close": "Đóng",
+    "iframeTitle": "Trở thành người thử nghiệm beta"
   }
 }

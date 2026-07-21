@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% मिलान",
     "none": "इस भाषा में इस वीडियो के लिए कोई अनुशंसा नहीं मिली।"
+  },
+  "BetaTesterModal": {
+    "title": "बीटा परीक्षक बनें",
+    "trigger": "बीटा परीक्षक बनें",
+    "loadFailed": "कुछ गलत हो गया।",
+    "loading": "लोड हो रहा है...",
+    "openFormNewTab": "फ़ॉर्म को नए टैब में खोलें",
+    "close": "बंद करें",
+    "iframeTitle": "बीटा परीक्षक बनें"
   }
 }

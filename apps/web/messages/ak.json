@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ɛne no hyia {percent}%",
     "none": "Wɔanhu video yi ho nyansahyɛ biara wɔ kasa yi mu."
+  },
+  "BetaTesterModal": {
+    "title": "Bɛ beta tester",
+    "trigger": "Bɛ beta tester",
+    "loadFailed": "Biribi mfaa no nkɔ yiye.",
+    "loading": "Rɛhyehyɛ mu...",
+    "openFormNewTab": "Bue fɔɔm no wɔ tab foforo mu",
+    "close": "Ka mu",
+    "iframeTitle": "Bɛ beta tester"
   }
 }

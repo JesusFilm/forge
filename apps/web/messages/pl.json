@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Dopasowanie: {percent}%",
     "none": "Nie znaleziono polecanych filmów w tym języku."
+  },
+  "BetaTesterModal": {
+    "title": "Zostań testerem beta",
+    "trigger": "Zostań testerem beta",
+    "loadFailed": "Coś poszło nie tak.",
+    "loading": "Wczytywanie...",
+    "openFormNewTab": "Otwórz formularz w nowej karcie",
+    "close": "Zamknij",
+    "iframeTitle": "Zostań testerem beta"
   }
 }

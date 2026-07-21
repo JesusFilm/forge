@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% n umṣada",
     "none": "Ur ttwafen ara yisumar i tvidyo-agi deg tutlayt-agi."
+  },
+  "BetaTesterModal": {
+    "title": "Kkemer d beta tester",
+    "trigger": "Kkemer d beta tester",
+    "loadFailed": "Yella wayen ur nelli ara.",
+    "loading": "Asali...",
+    "openFormNewTab": "Ldi tiferkit deg taceṭṭa tamaynut",
+    "close": "Mdel",
+    "iframeTitle": "Kkemer d beta tester"
   }
 }

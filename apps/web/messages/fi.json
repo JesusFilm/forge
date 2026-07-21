@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % vastaavuus",
     "none": "Tälle videolle ei löytynyt suosituksia tällä kielellä."
+  },
+  "BetaTesterModal": {
+    "title": "Ryhdy beta-testaajaksi",
+    "trigger": "Ryhdy beta-testaajaksi",
+    "loadFailed": "Jokin meni pieleen.",
+    "loading": "Ladataan...",
+    "openFormNewTab": "Avaa lomake uudessa välilehdessä",
+    "close": "Sulje",
+    "iframeTitle": "Ryhdy beta-testaajaksi"
   }
 }

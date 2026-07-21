@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ełàa gı̀lı̨",
     "none": "Dı̀ı̀ yatıı̀ k’e dı̀ı̀ video ghà video wèghà gı̨ı̨dè sı̀ı̀ nàgı̨ı̨t’į."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester hı̨le",
+    "trigger": "Beta tester hı̨le",
+    "loadFailed": "Nàtɂè nàtłǫ̀.",
+    "loading": "K'à",
+    "openFormNewTab": "Enı̨htł'è łahdàa enı̀xàı̨tsı",
+    "close": "Nàahdee",
+    "iframeTitle": "Beta tester hı̨le"
   }
 }

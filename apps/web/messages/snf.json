@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% méngoo",
     "none": "Giseesul benn tektal bu jëm ci widewo bii ci làkk wii."
+  },
+  "BetaTesterModal": {
+    "title": "Devenir bêta-testeur",
+    "trigger": "Devenir bêta-testeur",
+    "loadFailed": "Un problème est survenu.",
+    "loading": "Chargement...",
+    "openFormNewTab": "Ouvrir le formulaire dans un nouvel onglet",
+    "close": "Fermer",
+    "iframeTitle": "Devenir bêta-testeur"
   }
 }

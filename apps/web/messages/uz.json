@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% mos",
     "none": "Bu video uchun ushbu tilda tavsiyalar topilmadi."
+  },
+  "BetaTesterModal": {
+    "title": "Beta testchi bo‘lish",
+    "trigger": "Beta testchi bo‘lish",
+    "loadFailed": "Nimadir noto‘g‘ri ketdi.",
+    "loading": "Yuklanmoqda...",
+    "openFormNewTab": "Formani yangi tabda ochish",
+    "close": "Yopish",
+    "iframeTitle": "Beta testchi bo‘lish"
   }
 }

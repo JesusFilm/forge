@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% дуьзкъвезва",
     "none": "И чӏалда и видеодиз тавсияр таб хьанач."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер хьухь",
+    "trigger": "Бета-тестер хьухь",
+    "loadFailed": "Са зат гьалат я.",
+    "loading": "Ашкара...",
+    "openFormNewTab": "Формани цӏийи вкладкада ачухь",
+    "close": "Кьепь",
+    "iframeTitle": "Бета-тестер хьухь"
   }
 }

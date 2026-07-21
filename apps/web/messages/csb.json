@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% dopasowaniô",
     "none": "Nie nalazłë sã żódné pòlecenia dlô tegò wideo w tim jãzëkù."
+  },
+  "BetaTesterModal": {
+    "title": "Zòstań beta testerã",
+    "trigger": "Zòstań beta testerã",
+    "loadFailed": "Cos sã pòdriło.",
+    "loading": "Wczytëwanié...",
+    "openFormNewTab": "Òtemkni fòrmùlôrz w nowi karce",
+    "close": "Zatrzëmôj",
+    "iframeTitle": "Zòstań beta testerã"
   }
 }

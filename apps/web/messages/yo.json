@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ìbámu {percent}%",
     "none": "A kò rí àbá fídíò kankan fún fídíò yìí ní èdè yìí."
+  },
+  "BetaTesterModal": {
+    "title": "Di olùdánwò beta",
+    "trigger": "Di olùdánwò beta",
+    "loadFailed": "Ohun kan kò lọ dáadáa.",
+    "loading": "Ń gbé wá...",
+    "openFormNewTab": "Ṣí fọ́ọ̀mù nínú taabu tuntun",
+    "close": "Pàdé",
+    "iframeTitle": "Di olùdánwò beta"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "ກົງກັນ {percent}%",
     "none": "ບໍ່ພົບວິດີໂອແນະນຳສຳລັບວິດີໂອນີ້ໃນພາສານີ້."
+  },
+  "BetaTesterModal": {
+    "title": "ກາຍເປັນຜູ້ທົດສອບເບຕ້າ",
+    "trigger": "ກາຍເປັນຜູ້ທົດສອບເບຕ້າ",
+    "loadFailed": "ມີບາງຢ່າງຜິດພາດ.",
+    "loading": "ກຳລັງໂຫລດ...",
+    "openFormNewTab": "ເປີດແບບຟອມໃນແທັບໃໝ່",
+    "close": "ປິດ",
+    "iframeTitle": "ກາຍເປັນຜູ້ທົດສອບເບຕ້າ"
   }
 }

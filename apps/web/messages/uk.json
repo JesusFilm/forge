@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Збіг: {percent}%",
     "none": "Для цього відео немає рекомендацій цією мовою."
+  },
+  "BetaTesterModal": {
+    "title": "Стати бета-тестером",
+    "trigger": "Стати бета-тестером",
+    "loadFailed": "Щось пішло не так.",
+    "loading": "Завантаження...",
+    "openFormNewTab": "Відкрити форму в новій вкладці",
+    "close": "Закрити",
+    "iframeTitle": "Стати бета-тестером"
   }
 }

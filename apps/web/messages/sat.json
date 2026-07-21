@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% मेल",
     "none": "ए ञेरेन रे ए वीडियो ला़गित् कुनु सुझाव बाय मिला़क्।"
+  },
+  "BetaTesterModal": {
+    "title": "बीटा परीक्षक बन मे",
+    "trigger": "बीटा परीक्षक बन मे",
+    "loadFailed": "किछुञ भूला गेआना।",
+    "loading": "लोड होतोना...",
+    "openFormNewTab": "नावा टैब रे फॉर्म खोल मे",
+    "close": "बोंद मे",
+    "iframeTitle": "बीटा परीक्षक बन मे"
   }
 }

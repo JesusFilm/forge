@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Mifanentana {percent}%",
     "none": "Tsy nahitana soso-kevitra ho an'ity lahatsary ity amin'ity fiteny ity."
+  },
+  "BetaTesterModal": {
+    "title": "Lasa mpitsapa beta",
+    "trigger": "Lasa mpitsapa beta",
+    "loadFailed": "Nisy olana nitranga.",
+    "loading": "Mampiditra...",
+    "openFormNewTab": "Sokafy amin'ny kiheba vaovao",
+    "close": "Hidio",
+    "iframeTitle": "Lasa mpitsapa beta"
   }
 }

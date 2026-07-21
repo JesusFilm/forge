@@ -109,6 +109,15 @@
   "WatchModal": {
     "close": "Close"
   },
+  "BetaTesterModal": {
+    "title": "Become a beta tester",
+    "trigger": "Become a beta tester",
+    "loadFailed": "Something went wrong.",
+    "loading": "Loading...",
+    "openFormNewTab": "Open form in a new tab",
+    "close": "Close",
+    "iframeTitle": "Become a beta tester"
+  },
   "WatchStudyQuestions": {
     "quiz": "Quiz",
     "placeholderQuestion": "If you could ask the creator of this video a question, what would it be?",

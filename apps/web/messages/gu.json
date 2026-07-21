@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% મેળ",
     "none": "આ ભાષામાં આ વીડિયો માટે કોઈ ભલામણ મળી નથી."
+  },
+  "BetaTesterModal": {
+    "title": "બીટા ટેસ્ટર બનો",
+    "trigger": "બીટા ટેસ્ટર બનો",
+    "loadFailed": "કંઈક ખોટું થયું.",
+    "loading": "લોડ થઈ રહ્યું છે...",
+    "openFormNewTab": "ફોર્મ નવી ટૅબમાં ખોલો",
+    "close": "બંધ કરો",
+    "iframeTitle": "બીટા ટેસ્ટર બનો"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ihambelana nge-{percent}%",
     "none": "Akukho ngcebiso zifunyenweyo zale vidiyo kolu lwimi."
+  },
+  "BetaTesterModal": {
+    "title": "Yiba ngumvavanyi we-beta",
+    "trigger": "Yiba ngumvavanyi we-beta",
+    "loadFailed": "Kukho into engahambi kakuhle.",
+    "loading": "Kuyalayishwa...",
+    "openFormNewTab": "Vula ifomu kwithebhu entsha",
+    "close": "Vala",
+    "iframeTitle": "Yiba ngumvavanyi we-beta"
   }
 }

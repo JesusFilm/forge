@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Zikufanana ndi {percent}%",
     "none": "Palibe mavidiyo ovomerezeka omwe apezeka ogwirizana ndi vidiyoyi m'chinenerochi."
+  },
+  "BetaTesterModal": {
+    "title": "Khalani woyesa beta",
+    "trigger": "Khalani woyesa beta",
+    "loadFailed": "Chinachake chalakwika.",
+    "loading": "Kutsegula...",
+    "openFormNewTab": "Tsegulani fomu mu tabu yatsopano",
+    "close": "Tsekani",
+    "iframeTitle": "Khalani woyesa beta"
   }
 }

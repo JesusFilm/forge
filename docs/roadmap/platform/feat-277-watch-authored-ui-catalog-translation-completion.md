@@ -86,10 +86,10 @@ OpenAI API for that work.
   final model, source digest, current catalog digest, and generation date for
   every locale in `docs/i18n/watch-ui-provisional-catalogs.json`.
   Native-speaker review remains recommended.
-- Enforced 397 string leaves per catalog, exact ICU variable/rich-tag and
+- Enforced 404 string leaves per catalog, exact ICU variable/rich-tag and
   plural/select contracts, real `next-intl` formatting, and zero non-neutral
   English-source copies. The final audit found zero exact source matches across
-  all 86,358 translatable non-provisional leaves; the only eight permitted
+  all 87,912 translatable non-provisional leaves; the only eight permitted
   exceptions are explicitly enumerated locale-neutral product/title templates.
 - Browser-smoked representative Latin, Cyrillic, Arabic/RTL, and CJK routes.
   The root layout now derives document direction for both Node 20/22's
@@ -97,10 +97,18 @@ OpenAI API for that work.
 - Added a resumable, context-aware translation pipeline with structured-output
   validation, retry/backoff, strict source-copy rejection, per-catalog digests,
   final per-locale provenance promotion, and focused failure-path tests.
+- Reconciled the later global beta-tester modal with this localization scope.
+  Its seven-string client namespace is derived in every catalog from existing
+  contextual translations for the beta CTA, generic form actions, loading,
+  failure, and close states. The additive source digest and derivation map are
+  recorded in `metadata.translation.sourceExtensions`; `crk` and `mey-Latn`
+  remain exact English fallbacks.
 - Page-loading behavior remains static and locale-scoped: no new runtime
   requests, client hydration, or dependencies were added. Direction is
   resolved once in the server layout, only the active locale is loaded, and
   client messages are scoped by route instead of serializing the full active
-  catalog on every Watch page. For English, the root-provider payload dropped
-  from 6,291 to 1,519 gzip bytes; root plus language-inventory namespaces total
-  2,800 gzip bytes.
+  catalog on every Watch page. The beta-modal namespace adds 239 raw / 52 gzip
+  bytes for English and 40-62 gzip bytes across all 225 catalogs (52.8-byte
+  average); the current English global-message payload is 1,753 gzip bytes.
+  The modal implementation remains dynamically imported and only loads after
+  interaction.

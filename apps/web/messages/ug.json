@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ماس كېلىدۇ",
     "none": "بۇ تىلدا بۇ سىن ئۈچۈن ھېچقانداق تەۋسىيە تېپىلمىدى."
+  },
+  "BetaTesterModal": {
+    "title": "Beta سىناقتا قاتنىشىش",
+    "trigger": "Beta سىناقتا قاتنىشىش",
+    "loadFailed": "بىر ئىش خاتا بولدى.",
+    "loading": "يۈكلەۋاتىدۇ...",
+    "openFormNewTab": "جەدۋەلنى يېڭى بەتكۈچتە ئېچىش",
+    "close": "يېپىش",
+    "iframeTitle": "Beta سىناقتا قاتنىشىش"
   }
 }

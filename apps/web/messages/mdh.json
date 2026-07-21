@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% a katugma",
     "none": "Daa nakuan a rekomendasyon para sa ini a video sa ini a wika."
+  },
+  "BetaTesterModal": {
+    "title": "Magin beta tester",
+    "trigger": "Magin beta tester",
+    "loadFailed": "May nangyaring sayop.",
+    "loading": "Ga-load...",
+    "openFormNewTab": "Abrihi so form sa bag-o a tab",
+    "close": "Sara",
+    "iframeTitle": "Magin beta tester"
   }
 }

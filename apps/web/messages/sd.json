@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% مطابقت",
     "none": "هن ٻولي ۾ هن وڊيو لاءِ ڪا به سفارش نه ملي."
+  },
+  "BetaTesterModal": {
+    "title": "بيٽا ٽيسٽر بڻجو",
+    "trigger": "بيٽا ٽيسٽر بڻجو",
+    "loadFailed": "ڪجهه غلط ٿي ويو.",
+    "loading": "لوڊ ٿي رهيو آهي...",
+    "openFormNewTab": "فارم نئين ٽيب ۾ کوليو",
+    "close": "بند ڪريو",
+    "iframeTitle": "بيٽا ٽيسٽر بڻجو"
   }
 }

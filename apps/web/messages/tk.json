@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% gabat gelýär",
     "none": "Bu wideo üçin şu dilde hiç hili maslahat tapylmady."
+  },
+  "BetaTesterModal": {
+    "title": "Beta synagçy bol",
+    "trigger": "Beta synagçy bol",
+    "loadFailed": "Bir ýalňyşlyk boldy.",
+    "loading": "Ýüklenýär...",
+    "openFormNewTab": "Formany täze goýma aç",
+    "close": "Ýap",
+    "iframeTitle": "Beta synagçy bol"
   }
 }

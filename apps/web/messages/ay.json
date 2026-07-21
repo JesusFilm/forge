@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% chikachasiwi",
     "none": "Aka arun aka videotakix janiw kuna iwxäwinakas jikxataskiti."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester t’ijuksiña",
+    "trigger": "Beta tester t’ijuksiña",
+    "loadFailed": "Mä jan walt’awix utjawayi.",
+    "loading": "Apthapiñaskiwa...",
+    "openFormNewTab": "Formulario machaq tab ukan jist’arña",
+    "close": "Jallt’aña",
+    "iframeTitle": "Beta tester t’ijuksiña"
   }
 }

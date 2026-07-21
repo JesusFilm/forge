@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "E tano {percent}%",
     "none": "ʻAita e video i faatoro'a-hia i itehia no teie video i roto i teie reo."
+  },
+  "BetaTesterModal": {
+    "title": "A riro ei beta tester",
+    "trigger": "A riro ei beta tester",
+    "loadFailed": "Ua hape te tahi mea.",
+    "loading": "Te uta nei...",
+    "openFormNewTab": "A iriti i te faufau i roto i te tab apî",
+    "close": "A tapiri",
+    "iframeTitle": "A riro ei beta tester"
   }
 }

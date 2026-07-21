@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Meaitseáil {percent}%",
     "none": "Níor aimsíodh aon mholtaí don fhíseán seo sa teanga seo."
+  },
+  "BetaTesterModal": {
+    "title": "Bí i do thástálaí béite",
+    "trigger": "Bí i do thástálaí béite",
+    "loadFailed": "Chuaigh rud éigin mícheart.",
+    "loading": "Ag luchtú...",
+    "openFormNewTab": "Oscail an fhoirm i gcluaisín nua",
+    "close": "Dún",
+    "iframeTitle": "Bí i do thástálaí béite"
   }
 }

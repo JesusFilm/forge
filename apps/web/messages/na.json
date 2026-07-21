@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% e match ae",
     "none": "Video eo language eo re recommendations ekoe."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester e da",
+    "trigger": "Beta tester e da",
+    "loadFailed": "Eka iren.",
+    "loading": "Biga...",
+    "openFormNewTab": "Aren form me tab bwe",
+    "close": "Kunar",
+    "iframeTitle": "Beta tester e da"
   }
 }

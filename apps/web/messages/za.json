@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Doengz {percent}%",
     "none": "Mienz gij video ndaej gyaeuq daengz video neix ndaw language neix."
+  },
+  "BetaTesterModal": {
+    "title": "Become beta tester",
+    "trigger": "Become beta tester",
+    "loadFailed": "Aen daih raeuz gvaq.",
+    "loading": "Raenz...",
+    "openFormNewTab": "Doengh form ndaw tab gvaq",
+    "close": "Dej",
+    "iframeTitle": "Become beta tester"
   }
 }

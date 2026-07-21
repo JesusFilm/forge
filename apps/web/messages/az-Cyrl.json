@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ујғунлуг",
     "none": "Бу дилдә бу видео үчүн төвсијә тапылмады."
+  },
+  "BetaTesterModal": {
+    "title": "Beta testçi olun",
+    "trigger": "Beta testçi olun",
+    "loadFailed": "Nəsə səhv getdi.",
+    "loading": "Yüklənir...",
+    "openFormNewTab": "Formanı yeni vərəqdə açın",
+    "close": "Bağla",
+    "iframeTitle": "Beta testçi olun"
   }
 }

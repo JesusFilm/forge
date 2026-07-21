@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Zwi fana nga {percent}%",
     "none": "A hu na vidio dzo themendelwa dzo wanalaho kha iyi video nga holu luambo."
+  },
+  "BetaTesterModal": {
+    "title": "Vhanganani vha beta tester",
+    "trigger": "Vhanganani vha beta tester",
+    "loadFailed": "Ho bvelela tshiṅwe tshithu tsho tshinyalaho.",
+    "loading": "Khou laedza...",
+    "openFormNewTab": "Vulani fomo kha thebhu ntswa",
+    "close": "Valani",
+    "iframeTitle": "Vhanganani vha beta tester"
   }
 }

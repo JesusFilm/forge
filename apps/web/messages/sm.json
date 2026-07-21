@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% e fetaui",
     "none": "E leai ni vitio fautuaina na maua mo lenei vitio i lenei gagana."
+  },
+  "BetaTesterModal": {
+    "title": "Avea ma beta tester",
+    "trigger": "Avea ma beta tester",
+    "loadFailed": "Ua tupu se mea sese.",
+    "loading": "O lo'o utaina...",
+    "openFormNewTab": "Tatala le pepa i se tab fou",
+    "close": "Tapuni",
+    "iframeTitle": "Avea ma beta tester"
   }
 }

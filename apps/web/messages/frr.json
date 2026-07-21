@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% Öwereenkomst",
     "none": "Foar dit Video sünd in dizze Sprak keene Anbefelingen funden."
+  },
+  "BetaTesterModal": {
+    "title": "Wert Beta-tester",
+    "trigger": "Wert Beta-tester",
+    "loadFailed": "Wat is schiif gieng.",
+    "loading": "Laadt...",
+    "openFormNewTab": "Formular in nien Tab oopen",
+    "close": "Sluten",
+    "iframeTitle": "Wert Beta-tester"
   }
 }

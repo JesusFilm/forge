@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Kufana ngo-{percent}%",
     "none": "Azikho izincomo zale vidiyo ezitholakele ngalolu limi."
+  },
+  "BetaTesterModal": {
+    "title": "Yiba ngumhloli we-beta",
+    "trigger": "Yiba ngumhloli we-beta",
+    "loadFailed": "Kukhona okungahambanga kahle.",
+    "loading": "Iyalayisha...",
+    "openFormNewTab": "Vula ifomu kuthebhu entsha",
+    "close": "Vala",
+    "iframeTitle": "Yiba ngumhloli we-beta"
   }
 }

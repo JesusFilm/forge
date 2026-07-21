@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% nijunam",
     "none": "Man xkanöx ta taq video nik'utüx richin re video re' pa re ch'ab'äl re'."
+  },
+  "BetaTesterModal": {
+    "title": "Tab'ana' beta tester",
+    "trigger": "Tab'ana' beta tester",
+    "loadFailed": "Xk'ulmataj jun k'axk'ol.",
+    "loading": "Nuk'ut...",
+    "openFormNewTab": "Tija' ri form pa jun k'ak'a' tab",
+    "close": "Titz'apïx",
+    "iframeTitle": "Tab'ana' beta tester"
   }
 }

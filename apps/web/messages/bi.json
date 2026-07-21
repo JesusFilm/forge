@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% i match",
     "none": "I no faenem eni video we i stret blong rekomendem wetem video ia long lanwis ia."
+  },
+  "BetaTesterModal": {
+    "title": "Kam beta tester",
+    "trigger": "Kam beta tester",
+    "loadFailed": "Samting i no stret.",
+    "loading": "Stap loadem...",
+    "openFormNewTab": "Openem form long wan niu tab",
+    "close": "Satem",
+    "iframeTitle": "Kam beta tester"
   }
 }

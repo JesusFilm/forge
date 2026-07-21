@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% जुळते",
     "none": "या भाषेत या व्हिडिओसाठी कोणत्याही शिफारसी सापडल्या नाहीत."
+  },
+  "BetaTesterModal": {
+    "title": "बीटा टेस्टर बना",
+    "trigger": "बीटा टेस्टर बना",
+    "loadFailed": "काहीतरी चुकले.",
+    "loading": "लोड होत आहे...",
+    "openFormNewTab": "फॉर्म नवीन टॅबमध्ये उघडा",
+    "close": "बंद करा",
+    "iframeTitle": "बीटा टेस्टर बना"
   }
 }

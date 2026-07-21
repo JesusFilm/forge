@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% лӧсялӧм",
     "none": "Тай видео понда сійӧ языкын рекомендацияэз эг тӧд."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester лоӧ",
+    "trigger": "Beta tester лоӧ",
+    "loadFailed": "Сэтшӧмыс вештіс.",
+    "loading": "Лэдзӧм…",
+    "openFormNewTab": "Формаӧн вӧчны выль вкладкаын",
+    "close": "Вӧтчыны",
+    "iframeTitle": "Beta tester лоӧ"
   }
 }

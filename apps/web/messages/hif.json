@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% milta hai",
     "none": "Ee bhasha me is video ke liye koi sujhaav nai mila."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester baniye",
+    "trigger": "Beta tester baniye",
+    "loadFailed": "Kuchh galat ho gaya.",
+    "loading": "Load ho raha hai...",
+    "openFormNewTab": "Form naya tab me kholiye",
+    "close": "Band kariye",
+    "iframeTitle": "Beta tester baniye"
   }
 }

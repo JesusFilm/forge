@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% junam",
     "none": "Man xk'ulmataj ta taq video chilab'en pa re ch'ab'äl re' richin re video re'."
+  },
+  "BetaTesterModal": {
+    "title": "Kok'ëx beta tester",
+    "trigger": "Kok'ëx beta tester",
+    "loadFailed": "Xb'ano jun sachoj.",
+    "loading": "Tajin nupam...",
+    "openFormNewTab": "Tijaq form pa jun k'ak'a' tab",
+    "close": "Titz'apïx",
+    "iframeTitle": "Kok'ëx beta tester"
   }
 }

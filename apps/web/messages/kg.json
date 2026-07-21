@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% ya kufwanana",
     "none": "Ata nsonga mosi ve me monana sambu na video yayi na ndinga yayi."
+  },
+  "BetaTesterModal": {
+    "title": "Koma beta tester",
+    "trigger": "Koma beta tester",
+    "loadFailed": "Likambo moko ebéti.",
+    "loading": "Kozwa...",
+    "openFormNewTab": "Fungola formulaire na onglet ya sika",
+    "close": "Kokanga",
+    "iframeTitle": "Koma beta tester"
   }
 }

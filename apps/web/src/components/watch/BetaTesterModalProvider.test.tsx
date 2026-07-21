@@ -2,6 +2,7 @@
 
 import { act, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const navigation = { pathname: "/watch" }
@@ -65,6 +66,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  setRequestLocale("en")
   navigation.pathname = "/watch"
   search.playerChromeVisible = true
   search.searchOpen = false
@@ -126,6 +128,16 @@ describe("BetaTesterModalProvider", () => {
     expect(
       document.querySelector("[data-testid='lazy-beta-tester-modal']"),
     ).toBeNull()
+  })
+
+  it("renders the global CTA in the active Watch locale", () => {
+    setRequestLocale("ru")
+    renderProvider(<main>Страница Watch</main>)
+
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']")
+        ?.textContent,
+    ).toBe("Стать бета-тестером")
   })
 
   it("opens one shared modal from both global and nested triggers", () => {

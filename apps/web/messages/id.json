@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% cocok",
     "none": "Tidak ada rekomendasi untuk video ini dalam bahasa ini."
+  },
+  "BetaTesterModal": {
+    "title": "Jadi penguji beta",
+    "trigger": "Jadi penguji beta",
+    "loadFailed": "Ada kesalahan.",
+    "loading": "Memuat...",
+    "openFormNewTab": "Buka formulir di tab baru",
+    "close": "Tutup",
+    "iframeTitle": "Jadi penguji beta"
   }
 }

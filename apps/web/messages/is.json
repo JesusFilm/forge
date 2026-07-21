@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% samsvörun",
     "none": "Engar tillögur fundust fyrir þetta myndband á þessu tungumáli."
+  },
+  "BetaTesterModal": {
+    "title": "Gerast beta-prufari",
+    "trigger": "Gerast beta-prufari",
+    "loadFailed": "Eitthvað fór úrskeiðis.",
+    "loading": "Hleð...",
+    "openFormNewTab": "Opna eyðublað í nýjum flipa",
+    "close": "Loka",
+    "iframeTitle": "Gerast beta-prufari"
   }
 }

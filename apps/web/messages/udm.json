@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% тупаськон",
     "none": "Та кылын та видеолы сӥземъёс ӧвӧл."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер лу",
+    "trigger": "Бета-тестер лу",
+    "loadFailed": "Ваньтон воштӥсько.",
+    "loading": "Ӧтӥсько...",
+    "openFormNewTab": "Формаез вылйыт табын ӧтӥл",
+    "close": "Пыдӥл",
+    "iframeTitle": "Бета-тестер лу"
   }
 }

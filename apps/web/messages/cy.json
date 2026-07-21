@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% yn cyfateb",
     "none": "Ni chanfuwyd unrhyw argymhellion ar gyfer y fideo hwn yn yr iaith hon."
+  },
+  "BetaTesterModal": {
+    "title": "Dod yn brofwr beta",
+    "trigger": "Dod yn brofwr beta",
+    "loadFailed": "Aeth rhywbeth o'i le.",
+    "loading": "Wrthi’n llwytho...",
+    "openFormNewTab": "Agor ffurflen mewn tab newydd",
+    "close": "Cau",
+    "iframeTitle": "Dod yn brofwr beta"
   }
 }

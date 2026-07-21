@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% nga kapareho",
     "none": "Waray nakit-an nga girekomendar para hini nga video hini nga yinaknan."
+  },
+  "BetaTesterModal": {
+    "title": "Magin beta tester",
+    "trigger": "Magin beta tester",
+    "loadFailed": "May nahitabo nga sayop.",
+    "loading": "Ginlo-load...",
+    "openFormNewTab": "Ablihi an form ha bag-o nga tab",
+    "close": "Sirad-i",
+    "iframeTitle": "Magin beta tester"
   }
 }

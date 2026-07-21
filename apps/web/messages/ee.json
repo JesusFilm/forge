@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% sɔ ɖe eŋu",
     "none": "Womekpɔ video bubu si woate ŋu aɖo ɖa na video sia le gbegblẽ sia me o."
+  },
+  "BetaTesterModal": {
+    "title": "Dze beta tester",
+    "trigger": "Dze beta tester",
+    "loadFailed": "Nusi aɖe va si ɖe dzi o.",
+    "loading": "Etsɔm...",
+    "openFormNewTab": "Vae form la ŋu le tab yeye me",
+    "close": "Tso ŋu",
+    "iframeTitle": "Dze beta tester"
   }
 }

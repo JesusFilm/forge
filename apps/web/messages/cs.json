@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Shoda: {percent} %",
     "none": "Pro toto video nebyla v tomto jazyce nalezena žádná doporučení."
+  },
+  "BetaTesterModal": {
+    "title": "Staňte se beta testerem",
+    "trigger": "Staňte se beta testerem",
+    "loadFailed": "Něco se pokazilo.",
+    "loading": "Načítání...",
+    "openFormNewTab": "Otevřít formulář na nové kartě",
+    "close": "Zavřít",
+    "iframeTitle": "Staňte se beta testerem"
   }
 }

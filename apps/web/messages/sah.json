@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% сөп түбэһэр",
     "none": "Бу тылынан бу видеога сүбэлэнэр видео булуллубата."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестертэн буол",
+    "trigger": "Бета-тестертэн буол",
+    "loadFailed": "Туох эрэ буолла.",
+    "loading": "Хостообут...",
+    "openFormNewTab": "Форманы саҥа кыһылга арый",
+    "close": "Сап",
+    "iframeTitle": "Бета-тестертэн буол"
   }
 }

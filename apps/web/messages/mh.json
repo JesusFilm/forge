@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% an ekkar",
     "none": "Ejellok video kar lo ñan rōjañ kōn video in ilo kajin in."
+  },
+  "BetaTesterModal": {
+    "title": "Erā ñan erom juon beta tester",
+    "trigger": "Erā ñan erom juon beta tester",
+    "loadFailed": "Ejjelok jorrāān ej walok.",
+    "loading": "Ej load...",
+    "openFormNewTab": "Iak form ilo juon tab ekarōk",
+    "close": "Māake",
+    "iframeTitle": "Erā ñan erom juon beta tester"
   }
 }

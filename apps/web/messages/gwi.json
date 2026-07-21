@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% nihłaa ahłii",
     "none": "Jii video ts’àt jii gwich’in k’it recommendations gwiłtsąįį kwaa."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester ch’ihłii",
+    "trigger": "Beta tester ch’ihłii",
+    "loadFailed": "𐑄ᕉ𐑋 𐑄ᕉ𐑋 𐑋𐑄।",
+    "loading": "Load gwiłtsąįį...",
+    "openFormNewTab": "ᕒ𐑄𐑋 ᕑ𐑄𐑋 𐑄𐑋 ᕑ𐑄𐑋",
+    "close": "Nąįį",
+    "iframeTitle": "Beta tester ch’ihłii"
   }
 }

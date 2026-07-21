@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% junam",
     "none": "Awan k'utb'il ta video ri pa ch'ab'äl ri."
+  },
+  "BetaTesterModal": {
+    "title": "Tajb'ej beta tester",
+    "trigger": "Tajb'ej beta tester",
+    "loadFailed": "Jun cosa t'oj. ",
+    "loading": "T'ojb'ena'...",
+    "openFormNewTab": "Taq'apa' form ta jun k'at ta tab",
+    "close": "Tatz'apka'",
+    "iframeTitle": "Tajb'ej beta tester"
   }
 }

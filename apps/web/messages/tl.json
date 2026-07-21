@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% tugma",
     "none": "Walang nakitang rekomendasyon para sa video na ito sa wikang ito."
+  },
+  "BetaTesterModal": {
+    "title": "Maging beta tester",
+    "trigger": "Maging beta tester",
+    "loadFailed": "May nangyaring mali.",
+    "loading": "Naglo-load...",
+    "openFormNewTab": "Buksan ang form sa bagong tab",
+    "close": "Isara",
+    "iframeTitle": "Maging beta tester"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Ojoaju {percent}%",
     "none": "Ndojejuhúi video oñembojeroviáva ko ñe'ẽme."
+  },
+  "BetaTesterModal": {
+    "title": "Eiko beta tester ramo",
+    "trigger": "Eiko beta tester ramo",
+    "loadFailed": "Oiko peteĩ mba'e vai.",
+    "loading": "Oñemyanyhẽ hag̃uáicha...",
+    "openFormNewTab": "Eike formulario-pe peteĩ pestaña pyahúpe",
+    "close": "Emboty",
+    "iframeTitle": "Eiko beta tester ramo"
   }
 }

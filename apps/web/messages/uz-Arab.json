@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}٪ موسلیک",
     "none": "بو ویدیو اوچون بو تیلده هیچ قندای توصیه تاپیلمدی."
+  },
+  "BetaTesterModal": {
+    "title": "بتا تستر شوید",
+    "trigger": "بتا تستر شوید",
+    "loadFailed": "مشکلی پیش آمد.",
+    "loading": "در حال بارگیری...",
+    "openFormNewTab": "باز کردن فرم در زبانهٔ جدید",
+    "close": "بستن",
+    "iframeTitle": "بتا تستر شوید"
   }
 }

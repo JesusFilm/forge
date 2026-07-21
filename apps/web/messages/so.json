@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% waafaqid",
     "none": "Fiidiyowgan wax talooyin ah loogama helin luqaddan."
+  },
+  "BetaTesterModal": {
+    "title": "Noqo tijaabiye beta",
+    "trigger": "Noqo tijaabiye beta",
+    "loadFailed": "Wax baa qaldamay.",
+    "loading": "Soo raraya...",
+    "openFormNewTab": "Foomka ku fur tab cusub",
+    "close": "Xir",
+    "iframeTitle": "Noqo tijaabiye beta"
   }
 }

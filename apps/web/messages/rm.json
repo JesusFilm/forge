@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% concordanza",
     "none": "Naginas recumandaziuns chattadas per quest video en questa lingua."
+  },
+  "BetaTesterModal": {
+    "title": "Daventar beta tester",
+    "trigger": "Daventar beta tester",
+    "loadFailed": "Insatge n'è betg ì sco previs.",
+    "loading": "Chargiament...",
+    "openFormNewTab": "Avrir il formular en ina nova tab",
+    "close": "Serrar",
+    "iframeTitle": "Daventar beta tester"
   }
 }

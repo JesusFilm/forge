@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% вастови",
     "none": "Те видеонтень те кельсэ рекомендацият а муевсть."
+  },
+  "BetaTesterModal": {
+    "title": "Кармамс beta tester-экс",
+    "trigger": "Кармамс beta tester-экс",
+    "loadFailed": "Эрьва мезе теи эзь лезь.",
+    "loading": "Лофтозь...",
+    "openFormNewTab": "Form-ть аштямс седе лият тяштень",
+    "close": "Питнемс",
+    "iframeTitle": "Кармамс beta tester-экс"
   }
 }

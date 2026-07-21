@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "Inalingana kwa {percent}%",
     "none": "Hakuna mapendekezo yaliyopatikana kwa video hii katika lugha hii."
+  },
+  "BetaTesterModal": {
+    "title": "Kuwa mjaribu wa beta",
+    "trigger": "Kuwa mjaribu wa beta",
+    "loadFailed": "Kuna kitu kimeenda vibaya.",
+    "loading": "Inapakia...",
+    "openFormNewTab": "Fungua fomu katika kichupo kipya",
+    "close": "Funga",
+    "iframeTitle": "Kuwa mjaribu wa beta"
   }
 }

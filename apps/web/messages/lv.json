@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% atbilstība",
     "none": "Šim video šajā valodā ieteikumi nav atrasti."
+  },
+  "BetaTesterModal": {
+    "title": "Kļūt par beta testētāju",
+    "trigger": "Kļūt par beta testētāju",
+    "loadFailed": "Kaut kas nogāja greizi.",
+    "loading": "Notiek ielāde...",
+    "openFormNewTab": "Atvērt veidlapu jaunā cilnē",
+    "close": "Aizvērt",
+    "iframeTitle": "Kļūt par beta testētāju"
   }
 }

@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% samsvar",
     "none": "Eingi viðmæli til hetta videobrotið á hesum máli funnin."
+  },
+  "BetaTesterModal": {
+    "title": "Blív beta-testari",
+    "trigger": "Blív beta-testari",
+    "loadFailed": "Eitthvørt fór galið.",
+    "loading": "Lesur...",
+    "openFormNewTab": "Lat formulárið upp í einum nýggjum flipa",
+    "close": "Lat aftur",
+    "iframeTitle": "Blív beta-testari"
   }
 }

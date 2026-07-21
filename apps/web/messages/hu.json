@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}%-os egyezés",
     "none": "Ehhez a videóhoz ezen a nyelven nem található ajánlás."
+  },
+  "BetaTesterModal": {
+    "title": "Legyél béta tesztelő",
+    "trigger": "Legyél béta tesztelő",
+    "loadFailed": "Valami hiba történt.",
+    "loading": "Betöltés...",
+    "openFormNewTab": "Űrlap megnyitása új lapon",
+    "close": "Bezárás",
+    "iframeTitle": "Legyél béta tesztelő"
   }
 }

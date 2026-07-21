@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}%-imik naapertuuppoq",
     "none": "Video una oqaatsini taakkunani innersuussutissaqarfigineqanngilaq."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-mi misiliisutut peqataagit",
+    "trigger": "Beta-mi misiliisutut peqataagit",
+    "loadFailed": "Ajortoqarsimavoq.",
+    "loading": "Suliarineqarpoq...",
+    "openFormNewTab": "Immersugassaq tab nutaami ammaruk",
+    "close": "Matooruk",
+    "iframeTitle": "Beta-mi misiliisutut peqataagit"
   }
 }

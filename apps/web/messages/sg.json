@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% alingbi",
     "none": "A wara vidéo oko pëpe ti mû na mo na pekô ti vidéo so na yângâ so."
+  },
+  "BetaTesterModal": {
+    "title": "Kóma beta tester",
+    "trigger": "Kóma beta tester",
+    "loadFailed": "Likambo moko esalemi malamu te.",
+    "loading": "Kozalisa...",
+    "openFormNewTab": "Fungola fɔrmilɛ na onglet ya sika",
+    "close": "Kanga",
+    "iframeTitle": "Kóma beta tester"
   }
 }

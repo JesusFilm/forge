@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent} % såppâmvuõtt",
     "none": "Tän videose tän ǩiõlâst ij kaunnu ni õhtt suåvtõõzz."
+  },
+  "BetaTesterModal": {
+    "title": "Ryhdiy beta-testaajaks",
+    "trigger": "Ryhdiy beta-testaajaks",
+    "loadFailed": "Jotkand sai väärâst.",
+    "loading": "Lättee...",
+    "openFormNewTab": "Lääʹdd lomakk ođđâʹbb välipâʹstâs",
+    "close": "Peitt",
+    "iframeTitle": "Ryhdiy beta-testaajaks"
   }
 }

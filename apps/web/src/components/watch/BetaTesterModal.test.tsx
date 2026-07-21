@@ -71,7 +71,7 @@ describe("BetaTesterModal", () => {
 
     const iframe = document.querySelector("iframe") as HTMLIFrameElement
     expect(iframe.getAttribute("src")).toBe(BETA_TESTER_URL)
-    expect(iframe.title).toBe("Jesus Film Beta Testing Group")
+    expect(iframe.title).toBe("Become a beta tester")
     expect(iframe.getAttribute("sandbox")).toBe(
       "allow-forms allow-scripts allow-same-origin",
     )
@@ -99,7 +99,7 @@ describe("BetaTesterModal", () => {
 
     const iframe = document.querySelector("iframe") as HTMLIFrameElement
     const loader = document.querySelector(".z-20")
-    expect(loader?.textContent).toContain("Loading beta signup form")
+    expect(loader?.textContent).toContain("Loading...")
 
     act(() => iframe.dispatchEvent(new Event("load")))
     expect(document.querySelector(".z-20")).toBeNull()

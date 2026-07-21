@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% i hegeregere",
     "none": "Video inai dekenai, tokples inai ai video ma haida hariharilaia be lasi."
+  },
+  "BetaTesterModal": {
+    "title": "Kamap beta tester",
+    "trigger": "Kamap beta tester",
+    "loadFailed": "Wanpela samting i go rong.",
+    "loading": "I loadim...",
+    "openFormNewTab": "Opim fom long nupela tab",
+    "close": "Pasim",
+    "iframeTitle": "Kamap beta tester"
   }
 }

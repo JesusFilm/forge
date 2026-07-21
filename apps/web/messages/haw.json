@@ -485,5 +485,14 @@
   "VideoRecommendations": {
     "match": "{percent}% kūlike",
     "none": "ʻAʻohe wikiō paipai i loaʻa no kēia wikiō ma kēia ʻōlelo."
+  },
+  "BetaTesterModal": {
+    "title": "Lilo i mea hoʻāʻo beta",
+    "trigger": "Lilo i mea hoʻāʻo beta",
+    "loadFailed": "Ua hewa kekahi mea.",
+    "loading": "Ke hoʻouka nei...",
+    "openFormNewTab": "Wehe i ka palapala ma kahi kapu hou",
+    "close": "Pani",
+    "iframeTitle": "Lilo i mea hoʻāʻo beta"
   }
 }
