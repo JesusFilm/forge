@@ -56,6 +56,7 @@ import {
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import { getWebVttCueText } from "@/lib/webvtt"
 import {
   useWatchHomeTvSlideCopy,
   watchHomeMuxActionMessageKey,
@@ -311,12 +312,6 @@ function WatchHomeTvMedia({
   )
 }
 
-function stripHtmlTags(text: string): string {
-  if (typeof DOMParser === "undefined") return text.replace(/<[^>]+>/g, "")
-  const doc = new DOMParser().parseFromString(text, "text/html")
-  return doc.body.textContent ?? ""
-}
-
 function useWatchHomeMutedSubtitles({
   activeSlideId,
   onCueTextChange,
@@ -376,7 +371,7 @@ function useWatchHomeMutedSubtitles({
       const texts: string[] = []
       for (let i = 0; i < activeCues.length; i++) {
         const cue = activeCues[i] as VTTCue
-        if (cue.text) texts.push(stripHtmlTags(cue.text))
+        if (cue.text) texts.push(getWebVttCueText(cue))
       }
       onCueTextChange(texts.length > 0 ? texts.join("\n") : null)
     }
