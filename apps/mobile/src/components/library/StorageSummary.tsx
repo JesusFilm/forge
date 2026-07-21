@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
 import { useTypography } from "../../hooks/useTypography"
@@ -14,7 +15,9 @@ export interface StorageSummaryProps {
 }
 
 /** Downloads count/size under the Library title, plus an optional device-capacity usage bar (R2). */
-export function StorageSummary({ summary }: StorageSummaryProps) {
+export const StorageSummary = memo(function StorageSummary({
+  summary,
+}: StorageSummaryProps) {
   const typography = useTypography()
   const { count, combinedBytes, capacityBytes, usageFraction } = summary
 
@@ -39,7 +42,7 @@ export function StorageSummary({ summary }: StorageSummaryProps) {
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   root: {

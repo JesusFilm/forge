@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { memo, useCallback, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
@@ -13,7 +13,6 @@ import {
 } from "../../lib/color"
 import {
   formatLibraryBytes,
-  libraryRowState,
   type LibrarySeriesGroup,
 } from "../../lib/libraryDownloads"
 import {
@@ -42,7 +41,7 @@ export interface SeriesGroupCardProps {
 }
 
 /** Collapsible series card (R4). Defaults collapsed; tapping the header toggles expansion. */
-export function SeriesGroupCard({
+export const SeriesGroupCard = memo(function SeriesGroupCard({
   group,
   onRowPress,
   onRetry,
@@ -68,6 +67,13 @@ export function SeriesGroupCard({
     animateLayout()
     setExpanded((prev) => !prev)
   }
+
+  // One stable callback shared by every episode row (not one per .map()
+  // iteration) so React.memo(DownloadRow) can actually bail on this prop.
+  const handleEpisodeLongPress = useCallback(
+    (slug: string) => onLongPress?.([slug]),
+    [onLongPress],
+  )
 
   return (
     <View style={styles.card}>
@@ -128,19 +134,18 @@ export function SeriesGroupCard({
           <DownloadRow
             key={episode.videoSlug}
             record={episode}
-            rowState={libraryRowState(episode)}
             variant="grouped"
             onPress={onRowPress}
             onRetry={onRetry}
             onResume={onResume}
             selecting={selecting}
             selected={selected.has(episode.videoSlug)}
-            onLongPress={(slug) => onLongPress?.([slug])}
+            onLongPress={handleEpisodeLongPress}
           />
         ))}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   card: {

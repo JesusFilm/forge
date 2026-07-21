@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
@@ -15,7 +16,7 @@ import {
 } from "../../lib/color"
 import {
   formatLibraryDuration,
-  type LibraryRowState,
+  libraryRowState,
 } from "../../lib/libraryDownloads"
 import type { OfflineDownloadRecord } from "../../lib/offlineManifest"
 import { feedback } from "../../styles/shared"
@@ -37,7 +38,6 @@ function slugToTitle(slug: string): string {
 
 export interface DownloadRowProps {
   record: OfflineDownloadRecord
-  rowState: LibraryRowState
   /** "standalone" rows are their own card; "grouped" rows render flush inside a SeriesGroupCard. */
   variant: "standalone" | "grouped"
   onPress: (videoSlug: string) => void
@@ -49,10 +49,14 @@ export interface DownloadRowProps {
   onLongPress?: (videoSlug: string) => void
 }
 
-/** One offline download's Library row: poster, title, status subtitle, and its rowState affordance (R5/R6/R8). */
-export function DownloadRow({
+/**
+ * One offline download's Library row: poster, title, status subtitle, and its
+ * rowState affordance (R5/R6/R8). rowState derives from `record` HERE (not a
+ * parent-computed prop) so React.memo's `record`-identity check is the one
+ * thing that decides whether this row re-renders on a progress tick.
+ */
+export const DownloadRow = memo(function DownloadRow({
   record,
-  rowState,
   variant,
   onPress,
   onRetry,
@@ -64,6 +68,7 @@ export function DownloadRow({
   const typography = useTypography()
   const title = record.title || slugToTitle(record.videoSlug)
   const duration = formatLibraryDuration(record.durationSeconds)
+  const rowState = useMemo(() => libraryRowState(record), [record])
   const failed = rowState.affordance === "retry"
 
   return (
@@ -159,7 +164,7 @@ export function DownloadRow({
       )}
     </Pressable>
   )
-}
+})
 
 const styles = StyleSheet.create({
   row: {

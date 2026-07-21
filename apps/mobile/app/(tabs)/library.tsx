@@ -33,7 +33,6 @@ import {
 import {
   buildLibraryViewModel,
   formatLibraryBytes,
-  libraryRowState,
   storageSummary,
 } from "../../src/lib/libraryDownloads"
 import {
@@ -184,6 +183,13 @@ export default function LibraryScreen() {
     [setLongPressHintSeen],
   )
 
+  // Standalone rows long-press a single slug; wrap it once here (stable
+  // reference) so passing it straight through doesn't defeat DownloadRow's memo.
+  const handleRowLongPress = useCallback(
+    (videoSlug: string) => handleLongPress([videoSlug]),
+    [handleLongPress],
+  )
+
   const handleSelectPress = () => {
     setSelectionState(enterSelection([]))
     setLongPressHintSeen(true)
@@ -237,6 +243,22 @@ export default function LibraryScreen() {
     setSelectionState(exitSelection())
   }, [selected, offlineRecords, retryDownload])
 
+  // Recompute only when their own inputs change — not on every render (e.g.
+  // selection-mode UI churn, toast dismiss) — so an in-flight download's
+  // per-tick offlineRecords update is the only thing that rebuilds these.
+  const { seriesGroups, standaloneRecords } = useMemo(
+    () => buildLibraryViewModel(offlineRecords),
+    [offlineRecords],
+  )
+  const summary = useMemo(
+    () => storageSummary(offlineRecords, capacityBytes),
+    [offlineRecords, capacityBytes],
+  )
+  const selection = useMemo(
+    () => selectionSummary(selected, offlineRecords),
+    [selected, offlineRecords],
+  )
+
   if (!isReady) {
     return (
       <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
@@ -246,10 +268,6 @@ export default function LibraryScreen() {
   }
 
   const hasRecords = offlineRecords.length > 0
-  const { seriesGroups, standaloneRecords } =
-    buildLibraryViewModel(offlineRecords)
-  const summary = storageSummary(offlineRecords, capacityBytes)
-  const selection = selectionSummary(selected, offlineRecords)
 
   return (
     <View style={[layout.screenContainer, { paddingTop: insets.top }]}>
@@ -351,14 +369,13 @@ export default function LibraryScreen() {
                 <DownloadRow
                   key={record.videoSlug}
                   record={record}
-                  rowState={libraryRowState(record)}
                   variant="standalone"
                   onPress={handleRowPress}
                   onRetry={retryDownload}
                   onResume={resumeDownload}
                   selecting={selecting}
                   selected={selected.has(record.videoSlug)}
-                  onLongPress={(slug) => handleLongPress([slug])}
+                  onLongPress={handleRowLongPress}
                 />
               ))}
             </>
