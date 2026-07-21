@@ -3,6 +3,10 @@ import Link from "next/link"
 import type { Route } from "next"
 import { Play } from "lucide-react"
 import { useTranslations } from "next-intl"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
 
@@ -45,6 +49,7 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
           <div className="flex w-max gap-2 px-4 sm:px-6 md:gap-3 lg:px-8">
             {slides.map((slide, index) => {
               const isActive = index === 0
+              const isInteractive = Boolean(slide.href)
               const content = (
                 <>
                   {slide.imageUrl ? (
@@ -63,15 +68,13 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-transparent" />
-                  <div
-                    aria-hidden
-                    className={cn(
-                      "pointer-events-none absolute inset-0 rounded-lg transition",
-                      isActive
-                        ? "shadow-[inset_0_0_0_4px_#fff]"
-                        : "group-hover:shadow-[inset_0_0_0_4px_rgba(255,255,255,0.82)]",
-                    )}
-                  />
+                  {isInteractive || isActive ? (
+                    <VideoThumbnailInteractionFrame
+                      data-testid="watch-home-hero-thumbnail-frame"
+                      interactive={isInteractive && !isActive}
+                      visible={isActive}
+                    />
+                  ) : null}
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <span
                       className={cn(
@@ -94,8 +97,16 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
               )
 
               const className = cn(
-                "beveled group relative block h-[136px] w-[140px] overflow-hidden rounded-lg bg-black text-left no-underline transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:w-[260px]",
-                isActive ? "opacity-100" : "opacity-60 hover:opacity-85",
+                "beveled relative block h-[136px] w-[140px] overflow-hidden rounded-lg bg-black text-left no-underline transition-opacity duration-200 md:w-[260px]",
+                isInteractive && "group",
+                isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+                isActive
+                  ? "opacity-100"
+                  : cn(
+                      "opacity-60",
+                      isInteractive &&
+                        "hover:opacity-85 focus-visible:opacity-85",
+                    ),
               )
 
               return slide.href ? (

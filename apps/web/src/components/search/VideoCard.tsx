@@ -3,6 +3,10 @@ import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
@@ -17,6 +21,7 @@ import {
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import { cn } from "@/lib/utils"
 
 type VideoCardProps = {
   result: SearchResult
@@ -169,7 +174,10 @@ export function VideoCard({
     <Link
       href={hrefBuilder(result)}
       onClick={() => onResultClick?.(result)}
-      className="group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+      className={cn(
+        "group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
       style={{ animationDelay: `${index * 50}ms` }}
     >
       {/* Full-bleed thumbnail */}
@@ -282,11 +290,7 @@ export function VideoCard({
           )}
         </div>
       </div>
-      <div
-        aria-hidden
-        data-testid="search-card-hover-outline"
-        className="search-card-hover-outline search-card-red-outline pointer-events-none absolute z-50 opacity-0 transition-opacity duration-200"
-      />
+      <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
     </Link>
   )
 }

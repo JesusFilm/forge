@@ -19,10 +19,15 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel"
 import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { cn } from "@/lib/utils"
 
 export { videoCarouselFragment }
 
@@ -379,9 +384,10 @@ function ThumbnailCard({
         }
       }}
       aria-label={t("showVideo", { title })}
-      className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
-        isSelected ? "outline-4 outline-white" : ""
-      }`}
+      className={cn(
+        "group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
       style={{
         backgroundColor: item.backgroundColor ?? "#1a1a1a",
       }}
@@ -407,6 +413,12 @@ function ThumbnailCard({
           <path d="M8 5v14l11-7z" />
         </svg>
       </div>
+
+      <VideoThumbnailInteractionFrame
+        data-testid="carousel-video-thumbnail-frame"
+        interactive={!isSelected}
+        visible={isSelected}
+      />
 
       <div className="p-4">
         <span className="text-xs font-medium tracking-wider text-white/60 uppercase">

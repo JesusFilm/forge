@@ -33,6 +33,7 @@ function makeT(namespace: string, locale = activeLocale) {
 }
 
 vi.mock("next-intl", () => ({
+  useLocale: () => activeLocale,
   useTranslations: (namespace: string) => makeT(namespace),
   useFormatter: () => ({
     dateTime: (value: Date, options?: Intl.DateTimeFormatOptions) =>

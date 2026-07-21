@@ -520,6 +520,19 @@ describe("WatchHomePage", () => {
       container.querySelector("a[href='/jesus.html/english.html']"),
     ).toBeNull()
     expect(container.textContent).toContain("Fallback Cards")
+    expect(
+      container.querySelector('[data-testid="watch-home-card-hover-outline"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-home-hero-thumbnail-frame"]',
+      ),
+    ).toBeNull()
+    for (const fallback of container.querySelectorAll('[aria-label="Jesus"]')) {
+      expect(fallback.className).not.toContain("group")
+      expect(fallback.className).not.toContain("focus-visible:outline-none")
+      expect(fallback.className).not.toContain("hover:shadow")
+    }
   })
 
   it("hides the top-right meta label for collection cards", async () => {
@@ -984,6 +997,12 @@ describe("WatchHomePage", () => {
     )
     expect(heroRailCard?.getAttribute("class")).toContain("md:w-full")
     expect(heroRailCard?.getAttribute("class")).not.toContain("hover:scale")
+    expect(heroRailCard?.getAttribute("class")).toContain(
+      "focus-visible:outline-none",
+    )
+    expect(heroRailCard?.getAttribute("class")).toContain(
+      "focus-visible:opacity-95",
+    )
     expect(
       heroRailCard?.querySelector('[data-testid="watch-home-tv-card-bevel"]'),
     ).not.toBeNull()
@@ -995,11 +1014,20 @@ describe("WatchHomePage", () => {
     const heroRailHoverOutline = heroRailCard?.querySelector(
       '[data-testid="watch-home-tv-card-hover-outline"]',
     )
+    expect(heroRailHoverOutline?.getAttribute("class")).toContain("inset-0")
+    expect(heroRailHoverOutline?.getAttribute("class")).toContain("z-[80]")
     expect(heroRailHoverOutline?.getAttribute("class")).toContain(
+      "rounded-[inherit]",
+    )
+    expect(heroRailHoverOutline?.getAttribute("class")).toContain("border-4")
+    expect(heroRailHoverOutline?.getAttribute("class")).toContain(
+      "border-white",
+    )
+    expect(heroRailHoverOutline?.getAttribute("class")).not.toContain(
       "watch-home-gradient-outline",
     )
-    expect(heroRailHoverOutline?.getAttribute("class")).toContain(
-      "watch-home-gradient-outline-landscape",
+    expect(heroRailHoverOutline?.getAttribute("class")).not.toContain(
+      "shadow-[0_-4px_22px_rgba(239,68,68,0.26)]",
     )
     expect(heroRailHoverOutline?.querySelector("svg")).toBeNull()
     expect(
@@ -1007,6 +1035,26 @@ describe("WatchHomePage", () => {
         '[data-testid="watch-home-tv-card-hover-outline"] span',
       ),
     ).toHaveLength(0)
+    const activeHeroRailCard = container.querySelector(
+      '[data-testid="watch-home-tv-carousel-card"][aria-pressed="true"]',
+    )
+    const activeHeroRailInteractionFrame = activeHeroRailCard?.querySelector(
+      '[data-testid="watch-home-tv-card-hover-outline"]',
+    )
+    expect(activeHeroRailInteractionFrame?.getAttribute("class")).toContain(
+      "opacity-0",
+    )
+    expect(activeHeroRailInteractionFrame?.getAttribute("class")).not.toContain(
+      "group-hover:opacity-100",
+    )
+    expect(activeHeroRailInteractionFrame?.getAttribute("class")).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
+    expect(
+      activeHeroRailCard
+        ?.querySelector('[data-testid="watch-home-tv-card-active-outline"]')
+        ?.getAttribute("class"),
+    ).toContain("opacity-100")
     expect(
       heroRailCard?.querySelector('[role="img"]')?.getAttribute("class"),
     ).toContain("group-hover:scale-105")
@@ -1025,11 +1073,23 @@ describe("WatchHomePage", () => {
     const standardCardHoverOutline = standardCard?.querySelector(
       '[data-testid="watch-home-card-hover-outline"]',
     )
-    expect(standardCardHoverOutline?.getAttribute("class")).toContain(
-      "watch-home-gradient-outline",
+    expect(standardCard?.getAttribute("class")).toContain(
+      "focus-visible:outline-none",
     )
     expect(standardCardHoverOutline?.getAttribute("class")).toContain(
-      "watch-home-gradient-outline-portrait",
+      "rounded-[inherit]",
+    )
+    expect(standardCardHoverOutline?.getAttribute("class")).toContain(
+      "border-4",
+    )
+    expect(standardCardHoverOutline?.getAttribute("class")).toContain(
+      "border-white",
+    )
+    expect(standardCardHoverOutline?.getAttribute("class")).not.toContain(
+      "watch-home-gradient-outline",
+    )
+    expect(standardCardHoverOutline?.getAttribute("class")).not.toMatch(
+      /red|gradient|shadow/,
     )
     expect(standardCardHoverOutline?.querySelector("svg")).toBeNull()
     expect(
