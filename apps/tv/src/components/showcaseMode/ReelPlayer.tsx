@@ -24,7 +24,9 @@ import {
   alignmentSeekTarget,
   preloadPollVerdict,
   resolveHopSwapMode,
+  resolvePreloadAction,
   sameHopStream,
+  standbyMountEngaged,
   type StandbyPreloadPhase,
 } from "../../lib/showcaseMode/hopHandoff"
 import { OVERLAY_CROSSFADE_MS } from "../../lib/showcaseMode/reelState"
@@ -364,10 +366,18 @@ export function ReelPlayer({
   // ── Standby preload (KTD-5) ───────────────────────────────────────
 
   useEffect(() => {
-    // A reservation for the imminent/settling boundary is not ours to disturb; it is
-    // cleared on confirmation below, and this effect re-runs then.
-    if (standbyReady != null && sameHopStream(standbyReady, validStream)) return
+    const current = standbyLoadRef.current
+    // The decision table lives in hopHandoff.ts (tested); this effect only executes.
+    const action = resolvePreloadAction({
+      targetStream: validStream,
+      preloadStream: validPreload,
+      reservedStream: standbyReady,
+      loadingStream:
+        current != null && current.phase !== "failed" ? current.stream : null,
+    })
+    if (action === "hold" || action === "keep") return
     if (validPreload == null) {
+      // action === "release"
       standbyLoadRef.current = null
       if (standbyReady != null) setStandbyReady(null)
       // Out of hop mode the standby drops its item — a loaded paused player still
@@ -384,14 +394,6 @@ export function ReelPlayer({
             datadogLog.warn("showcase_hop_standby_release_failed", {})
           })
       }
-      return
-    }
-    const current = standbyLoadRef.current
-    if (
-      current != null &&
-      current.phase !== "failed" &&
-      sameHopStream(current.stream, validPreload)
-    ) {
       return
     }
     const entry: { stream: ShowcaseStream; phase: StandbyPreloadPhase } = {
@@ -1026,7 +1028,11 @@ export function ReelPlayer({
   // The standby's view stays mounted through the whole hop plan: its player decodes
   // the preloaded boundary frame under the live view, which is what makes the flip
   // instant. Outside hop mode only the live view holds a surface (R18).
-  const hopEngaged = validPreload != null || hopSwap || standbyReady != null
+  const hopEngaged = standbyMountEngaged({
+    preloadStream: validPreload,
+    hopSwap,
+    reservedStream: standbyReady,
+  })
   const mountA = shouldMountVideo && (liveKey === "a" || hopEngaged)
   const mountB = shouldMountVideo && (liveKey === "b" || hopEngaged)
 

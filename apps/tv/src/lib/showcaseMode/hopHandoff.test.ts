@@ -6,7 +6,9 @@ import {
   alignmentSeekTarget,
   preloadPollVerdict,
   resolveHopSwapMode,
+  resolvePreloadAction,
   sameHopStream,
+  standbyMountEngaged,
 } from "./hopHandoff"
 
 const hop = (hls: string, startSeconds: number) => ({
@@ -92,6 +94,122 @@ describe("resolveHopSwapMode — who performs the boundary", () => {
         standbyReadyStream: target,
       }),
     ).toBe("none")
+  })
+})
+
+describe("resolvePreloadAction — what the standby may do right now", () => {
+  const target = hop("https://a/fr.m3u8", 50)
+  const next = hop("https://a/de.m3u8", 60)
+
+  it("holds while a reservation for the current boundary stands — even with a fresh preload target waiting", () => {
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: next,
+        reservedStream: target,
+        loadingStream: null,
+      }),
+    ).toBe("hold")
+  })
+
+  it("holds the LAST hop's reservation past its own null preload target — confirmation releases it, not this decision", () => {
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: null,
+        reservedStream: target,
+        loadingStream: null,
+      }),
+    ).toBe("hold")
+  })
+
+  it("releases when nothing should be preloaded and no matching reservation stands", () => {
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: null,
+        reservedStream: null,
+        loadingStream: null,
+      }),
+    ).toBe("release")
+    // A stale reservation for a DIFFERENT stream does not block the release.
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: null,
+        reservedStream: hop("https://a/old.m3u8", 30),
+        loadingStream: null,
+      }),
+    ).toBe("release")
+  })
+
+  it("keeps an in-flight or finished load of the wanted stream", () => {
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: next,
+        reservedStream: null,
+        loadingStream: next,
+      }),
+    ).toBe("keep")
+  })
+
+  it("loads fresh over a mismatched or failed entry", () => {
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: next,
+        reservedStream: null,
+        loadingStream: hop("https://a/stale.m3u8", 40),
+      }),
+    ).toBe("load")
+    // Failed entries are passed as null loadingStream — they never block a retry.
+    expect(
+      resolvePreloadAction({
+        targetStream: target,
+        preloadStream: next,
+        reservedStream: null,
+        loadingStream: null,
+      }),
+    ).toBe("load")
+  })
+})
+
+describe("standbyMountEngaged — the second decode slot's mount gate", () => {
+  const stream = hop("https://a/de.m3u8", 60)
+
+  it("engages on each input independently", () => {
+    expect(
+      standbyMountEngaged({
+        preloadStream: stream,
+        hopSwap: false,
+        reservedStream: null,
+      }),
+    ).toBe(true)
+    expect(
+      standbyMountEngaged({
+        preloadStream: null,
+        hopSwap: true,
+        reservedStream: null,
+      }),
+    ).toBe(true)
+    expect(
+      standbyMountEngaged({
+        preloadStream: null,
+        hopSwap: false,
+        reservedStream: stream,
+      }),
+    ).toBe(true)
+  })
+
+  it("disengages — freeing the slot — only when nothing needs the standby's surface", () => {
+    expect(
+      standbyMountEngaged({
+        preloadStream: null,
+        hopSwap: false,
+        reservedStream: null,
+      }),
+    ).toBe(false)
   })
 })
 

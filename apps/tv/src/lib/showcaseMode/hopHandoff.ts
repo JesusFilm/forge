@@ -82,6 +82,46 @@ export function resolveHopSwapMode(args: {
     : "fallback"
 }
 
+export type PreloadAction = "hold" | "release" | "keep" | "load"
+
+/**
+ * What the standby may do right now. "hold": a finished reservation for the imminent
+ * or settling boundary stands — touch nothing (checked FIRST, so the last hop's
+ * reservation survives its own null preload target until confirmation releases it).
+ * "release": no preload target — drop the standby's item. "keep": the wanted stream
+ * is already loading or ready. "load": start a fresh preload.
+ */
+export function resolvePreloadAction(args: {
+  /** The stream the reel is targeting now. */
+  targetStream: Pick<ShowcaseStream, "hls" | "window"> | null
+  /** The next hop's stream the standby should hold. */
+  preloadStream: Pick<ShowcaseStream, "hls" | "window"> | null
+  /** The finished-preload reservation, when one stands. */
+  reservedStream: Pick<ShowcaseStream, "hls" | "window"> | null
+  /** The machine's current entry stream, excluding failed entries. */
+  loadingStream: Pick<ShowcaseStream, "hls" | "window"> | null
+}): PreloadAction {
+  if (sameHopStream(args.reservedStream, args.targetStream)) return "hold"
+  if (args.preloadStream == null) return "release"
+  if (sameHopStream(args.loadingStream, args.preloadStream)) return "keep"
+  return "load"
+}
+
+/**
+ * Whether the SECOND decode slot is engaged (R18 applied to the standby): its view
+ * must be mounted while a preload may be decoding under the live view, a hop swap is
+ * mid-flight, or a finished reservation is waiting out its boundary.
+ */
+export function standbyMountEngaged(args: {
+  preloadStream: Pick<ShowcaseStream, "hls" | "window"> | null
+  hopSwap: boolean
+  reservedStream: Pick<ShowcaseStream, "hls" | "window"> | null
+}): boolean {
+  return (
+    args.preloadStream != null || args.hopSwap || args.reservedStream != null
+  )
+}
+
 export type PreloadVerdict = "ready" | "reseek" | "wait" | "failed"
 
 /**
