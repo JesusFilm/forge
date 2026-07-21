@@ -1,7 +1,12 @@
-import { FIRST_PARTY_APP_SEEDS, type RegisteredAppSeed } from "@/domain/apps"
+import {
+  ADMIN_MCP_CODEX_CLIENT_ID,
+  FIRST_PARTY_APP_SEEDS,
+  type RegisteredAppSeed,
+} from "@/domain/apps"
 import { assertKnownScopes } from "@/domain/scopes"
 
 export type AppEnvironmentPolicyInput = {
+  clientId?: string
   kind: "local" | "preview" | "staging" | "production"
   status: "pending" | "approved" | "rejected" | "revoked"
   autoApprove: boolean
@@ -24,11 +29,17 @@ export function requiresProductionApproval(input: AppEnvironmentPolicyInput) {
 }
 
 export function validateAppEnvironmentPolicy(input: AppEnvironmentPolicyInput) {
-  if (input.redirectUris.length === 0) {
+  if (
+    input.redirectUris.length === 0 &&
+    input.clientId !== ADMIN_MCP_CODEX_CLIENT_ID
+  ) {
     throw new Error("App environment must define at least one redirect URI.")
   }
 
-  if (input.allowedOrigins.length === 0) {
+  if (
+    input.allowedOrigins.length === 0 &&
+    input.clientId !== ADMIN_MCP_CODEX_CLIENT_ID
+  ) {
     throw new Error("App environment must define at least one allowed origin.")
   }
 

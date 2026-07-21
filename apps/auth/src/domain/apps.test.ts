@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  ADMIN_APP_SEED,
   ADMIN_MCP_APP_KEY,
   ADMIN_MCP_APP_SEED,
+  ADMIN_APP_SEED,
   CHAT_APP_KEY,
   CHAT_APP_SEED,
   FIRST_PARTY_APP_SEEDS,
@@ -132,6 +132,7 @@ describe("first-party app seeds", () => {
       "preview",
       "staging",
       "production",
+      "codex",
     ])
     expect(ADMIN_MCP_APP_SEED.environments).toEqual(
       expect.arrayContaining([
@@ -201,6 +202,36 @@ describe("first-party app seeds", () => {
         autoApprove: true,
       }),
     ])
+  })
+
+  it("registers the Codex MCP OAuth client with locale-factory scopes", () => {
+    expect(ADMIN_MCP_APP_SEED.environments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "codex",
+          kind: "production",
+          clientId: "jfp_admin_mcp_codex",
+          redirectUris: [],
+          postLogoutRedirectUris: [],
+          allowedOrigins: [],
+          defaultScopes: expect.arrayContaining([
+            "openid",
+            "profile:read",
+            "email:read",
+            "membership:read",
+            "experience:read",
+            "experience:locale:create",
+            "experience:locale:update",
+            "experience:locale:validate",
+            "media:read",
+            "video:read",
+            "bible:read",
+            "experience:publish",
+          ]),
+          autoApprove: true,
+        }),
+      ]),
+    )
   })
 
   it("registers Mastra Studio OAuth clients for the gateway", () => {

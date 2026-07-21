@@ -120,6 +120,11 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/login",
       consentPage: "/oauth/consent",
+      // MCP clients such as Codex discover and register OAuth clients at
+      // runtime. Keep these enabled so /mcp can be authenticated without an
+      // out-of-band OAuth client bootstrap.
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
       scopes: AUTH_SCOPES.map((scope) => scope.key),
       validAudiences,
       advertisedMetadata: {

@@ -27,8 +27,8 @@ describe("seedFirstPartyApps", () => {
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
       apps: 6,
-      environments: 22,
-      oauthClients: 26,
+      environments: 23,
+      oauthClients: 27,
       scopes: 18,
     })
 
@@ -143,6 +143,37 @@ describe("seedFirstPartyApps", () => {
           metadata: expect.objectContaining({
             appKey: "chat",
             environmentKey: "production",
+          }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_admin_mcp_codex" },
+        create: expect.objectContaining({
+          clientId: "jfp_admin_mcp_codex",
+          scopes: [
+            "openid",
+            "profile:read",
+            "email:read",
+            "membership:read",
+            "experience:read",
+            "experience:locale:create",
+            "experience:locale:update",
+            "experience:locale:validate",
+            "media:read",
+            "video:read",
+            "bible:read",
+            "experience:publish",
+          ],
+          redirectUris: [],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "admin-mcp",
+            environmentKey: "codex",
+            environmentKind: "production",
           }),
         }),
       }),
