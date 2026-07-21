@@ -8,9 +8,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 - **Total tickets:** 392
 - **Complete:** 292
-- **In progress:** 27
-- **Not started:** 30
-- **Blocked:** 43
+- **In progress:** 26
+- **Not started:** 26
+- **Blocked:** 48
 - **Overdue and not complete:** 75
 
 ## Feature Index
@@ -59,14 +59,14 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-086](content-discovery/feat-086-experience-search-integration.md)                                        | Search Extension — Add Experiences to Results                                                   | nisal      | P1       | 2026-04-23 | 5    | 2026-04-27 | complete    |
 | [feat-039](content-discovery/feat-039-chapter-based-scene-boundaries.md)                                       | Video Vectorization — Chapter-Based Scene Boundaries                                            | nisal      | P1       | 2026-04-24 | 7    | 2026-04-30 | complete    |
 | [feat-109](content-discovery/feat-109-search-keyword-first-mode.md)                                            | Search — opt-in keyword-first lexical mode                                                      | nisal      | P1       | 2026-04-28 | 3    | 2026-04-30 | complete    |
-| [feat-090](content-discovery/feat-090-watch-event-collection.md)                                               | Watch Event Collection & Session Tracking                                                       | nisal      | P1       | 2026-04-30 | 10   | 2026-05-09 | in-progress |
+| [feat-090](content-discovery/feat-090-watch-event-collection.md)                                               | Watch Event Collection & Session Tracking                                                       | nisal      | P1       | 2026-04-30 | 10   | 2026-05-09 | blocked     |
 | [feat-040](content-discovery/feat-040-multimodal-scene-descriptions.md)                                        | Video Vectorization — Multimodal Scene Analysis                                                 | nisal      | P1       | 2026-05-01 | 10   | 2026-05-10 | complete    |
-| [feat-091](content-discovery/feat-091-fpmc-video-page-recommendations.md)                                      | FPMC Video Page Recommendations                                                                 | nisal      | P1       | 2026-05-10 | 14   | 2026-05-23 | not-started |
+| [feat-091](content-discovery/feat-091-fpmc-video-page-recommendations.md)                                      | FPMC Video Page Recommendations                                                                 | nisal      | P1       | 2026-05-10 | 14   | 2026-05-23 | blocked     |
 | [feat-041](content-discovery/feat-041-scene-embeddings-table.md)                                               | Video Vectorization — Scene Embeddings Table + Indexing                                         | nisal      | P1       | 2026-05-11 | 7    | 2026-05-17 | complete    |
 | [feat-120](content-discovery/feat-120-localized-scene-embeddings-and-snippets.md)                              | Raw Localized Scene Understanding + Embeddings                                                  | nisal      | P1       | 2026-05-13 | 7    | 2026-05-19 | complete    |
 | [feat-042](content-discovery/feat-042-backfill-worker.md)                                                      | Video Vectorization — Phase 1 Backfill Worker (en/es/fr)                                        | nisal      | P1       | 2026-05-18 | 10   | 2026-05-27 | complete    |
 | [feat-131](content-discovery/feat-131-mixed-scene-transcript-video-semantic-search.md)                         | Mixed scene and transcript evidence for admin video semantic search                             | nisal      | P1       | 2026-05-21 | 1    | 2026-05-21 | complete    |
-| [feat-092](content-discovery/feat-092-two-tower-neural-recommendations.md)                                     | Two-Tower Neural Recommendation Model                                                           | nisal      | P1       | 2026-05-24 | 21   | 2026-06-13 | not-started |
+| [feat-092](content-discovery/feat-092-two-tower-neural-recommendations.md)                                     | Two-Tower Neural Recommendation Model                                                           | nisal      | P1       | 2026-05-24 | 21   | 2026-06-13 | blocked     |
 | [feat-044](content-discovery/feat-044-recommendation-query-api.md)                                             | Video Vectorization — Recommendation Query API                                                  | nisal      | P1       | 2026-05-28 | 7    | 2026-06-03 | complete    |
 | [feat-055](content-discovery/feat-055-smart-video-playlists.md)                                                | Smart Video Playlists                                                                           | vlad       | P1       | 2026-05-31 | 31   | 2026-06-30 | not-started |
 | [feat-155](content-discovery/feat-155-remove-legacy-admin-search-eval-harness.md)                              | Remove legacy Admin search eval harness                                                         | nisal      | P1       | 2026-06-01 | 1    | 2026-06-01 | complete    |
@@ -98,9 +98,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
 | [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)                                         | Video Vectorization — Visual Shot Detection Fusion                                              | nisal      | P2       | 2026-06-06 | 10   | 2026-06-15 | blocked     |
-| [feat-093](content-discovery/feat-093-cold-start-context-recommendations.md)                                   | Cold Start Context-Based Recommendations                                                        | nisal      | P2       | 2026-06-14 | 7    | 2026-06-20 | not-started |
+| [feat-093](content-discovery/feat-093-cold-start-context-recommendations.md)                                   | Cold Start Context-Based Recommendations                                                        | nisal      | P2       | 2026-06-14 | 7    | 2026-06-20 | blocked     |
 | [feat-071](content-discovery/feat-071-recommendation-content-deduplication.md)                                 | Recommendation Content Deduplication                                                            | nisal      | P2       | 2026-06-15 | 5    | 2026-06-19 | complete    |
-| [feat-094](content-discovery/feat-094-recommendation-ab-comparison-logging.md)                                 | Recommendation A/B Comparison Logging                                                           | nisal      | P2       | 2026-06-21 | 7    | 2026-06-27 | not-started |
+| [feat-094](content-discovery/feat-094-recommendation-ab-comparison-logging.md)                                 | Recommendation A/B Comparison Logging                                                           | nisal      | P2       | 2026-06-21 | 7    | 2026-06-27 | blocked     |
 | [feat-197](content-discovery/feat-197-watch-search-query-outcome-logging.md)                                   | Watch search query and outcome logging                                                          | nisal      | P2       | 2026-06-22 | 5    | 2026-06-26 | complete    |
 | [feat-250](content-discovery/feat-250-watch-search-close-reset.md)                                             | Reset Watch search when the modal closes                                                        | unassigned | P2       | 2026-07-13 | 1    | 2026-07-13 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | blocked     |
