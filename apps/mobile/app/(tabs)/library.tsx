@@ -10,6 +10,8 @@ import {
 import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { TAB_BAR_STYLE } from "./_layout"
+
 import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSheet"
 import { DownloadRow } from "../../src/components/library/DownloadRow"
 import { LibraryEmptyState } from "../../src/components/library/LibraryEmptyState"
@@ -105,7 +107,7 @@ export default function LibraryScreen() {
   // whenever selection turns off, on blur (switching tabs), and on unmount.
   useEffect(() => {
     navigation.setOptions({
-      tabBarStyle: selecting ? { display: "none" } : undefined,
+      tabBarStyle: selecting ? { display: "none" } : TAB_BAR_STYLE,
     })
   }, [selecting, navigation])
 
@@ -115,7 +117,7 @@ export default function LibraryScreen() {
     })
     return () => {
       unsubscribeBlur()
-      navigation.setOptions({ tabBarStyle: undefined })
+      navigation.setOptions({ tabBarStyle: TAB_BAR_STYLE })
     }
   }, [navigation])
 
