@@ -582,6 +582,19 @@ export function ReelPlayer({
       return
     }
 
+    // A dead flip's cover must not outlive the boundary that abandoned it: without
+    // this, the rolling retired player and its reveal poll survive until the NEXT
+    // confirmation — extending the double-decode window past the watchdog's skip.
+    if (pendingReveal != null) {
+      try {
+        pendingRetiredRef.current?.pause()
+      } catch {
+        // Released; benign.
+      }
+      pendingRetiredRef.current = null
+      setPendingReveal(null)
+    }
+
     void (async () => {
       try {
         // Covered: wait out the overlay dissolve + poster cover before releasing the
@@ -629,11 +642,11 @@ export function ReelPlayer({
     excerptToken,
     hopSwap,
     hopMode,
+    pendingReveal,
     onFailed,
     finalizeQoe,
     stopFade,
     setVolumeOn,
-    fadeVolumeTo,
   ])
 
   // ── Live-player listeners ─────────────────────────────────────────
