@@ -12,6 +12,7 @@ export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
 export const CHAT_APP_KEY = "chat"
 export const ADMIN_MCP_APP_KEY = "admin-mcp"
+export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
 
 export type AppEnvironmentSeed = {
   key: string
@@ -404,6 +405,18 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
         "https://admin.jesusfilm.org/dashboard/experiences",
       ],
       allowedOrigins: ["https://admin.jesusfilm.org"],
+      defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    // Codex MCP uses a loopback OAuth callback with an ephemeral port. The
+    // dynamic redirect hook admits exact callback URLs only for this client id.
+    {
+      key: "codex",
+      kind: "production",
+      clientId: ADMIN_MCP_CODEX_CLIENT_ID,
+      redirectUris: [],
+      postLogoutRedirectUris: [],
+      allowedOrigins: [],
       defaultScopes: ADMIN_MCP_DEFAULT_SCOPES,
       autoApprove: true,
     },
