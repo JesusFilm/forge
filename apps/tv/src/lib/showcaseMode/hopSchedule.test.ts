@@ -763,6 +763,47 @@ describe("buildHopSchedule — window seeding (R5/KTD-4)", () => {
   })
 })
 
+// ── Real-data regression: densest region may be unalignable ─────────
+
+describe("buildHopSchedule — prefers an alignable seed over a denser unalignable one", () => {
+  it("seeds a slightly-less-dense start that can sentence-align rather than falling back", () => {
+    // The production Birth of Jesus shape: the DENSEST window [44.98, ~105] is a
+    // near-continuous monologue whose first sentence pause (boundary 83.56) is >30s past
+    // its start, so seeding purely by density would ceiling-cut the opener and fall the
+    // whole flagship centerpiece back to the fixed grid. An alignable start must win.
+    const t = timing(
+      [
+        [11.63, 12.63],
+        [32.28, 33.28],
+        [82.56, 83.56],
+        [107.14, 108.14],
+        [134.11, 135.11],
+      ],
+      [
+        [1.23, 11.63],
+        [18.55, 32.28],
+        [44.98, 82.56], // the dense monologue: first boundary sits at its far end
+        [83.56, 107.14],
+        [108.14, 134.11],
+      ],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(5, { duration: 223 }),
+        rng: mulberry32(42),
+        sentenceTiming: t,
+      }),
+    )
+    // The opener aligns to a real sentence boundary within its ceiling — not a ceiling cut.
+    expect(segLen(plan[0].window)).toBeLessThanOrEqual(30)
+    expect(
+      t.boundaries.some(
+        (b) => Math.abs(b.switchTime - plan[0].window.endSeconds) < 1e-6,
+      ),
+    ).toBe(true)
+  })
+})
+
 // ── R8: short sources fit fewer segments, or fall back ──────────────
 
 describe("buildHopSchedule — short sources (R8)", () => {
