@@ -65,5 +65,6 @@ page currently has 26 episodes, making field preparation slow and error-prone.
 - Focused Admin and Web unit/component tests.
 - Admin schema and `packages/admin-graphql` generation.
 - Web typecheck, lint, message parity, and focused download tests.
+- PR commit history passes the repository commitlint check.
 - Browser smoke and screenshot on the LUMO Luke collection page.
 - Resource timing confirms no collection-download request before intent.
