@@ -78,9 +78,13 @@ export type ShowcaseVideoData = ResultOf<typeof GET_SHOWCASE_VIDEO>
  */
 export const showcaseSubtitleFragment = graphql(`
   fragment ShowcaseSubtitle on Video @_unmask {
+    documentId: id
     preferredPlayableDub(languageSlug: "english") {
+      id
       videoEdition {
+        id
         subtitles {
+          id
           vttSrc
           primary
           aiGenerated
