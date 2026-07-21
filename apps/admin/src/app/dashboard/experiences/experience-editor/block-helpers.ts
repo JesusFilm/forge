@@ -101,6 +101,8 @@ export type VideoLibraryItem = {
   id: string
   label: string | null
   labelLabel: string | null
+  childCount?: number
+  isCollectionTarget?: boolean
   sourceLabel: string
   sourceTone: "success" | "warning" | "danger" | "info" | "muted"
   dubs: string
@@ -110,6 +112,11 @@ export type VideoLibraryItem = {
   previewImageUrl: string | null
   previewStreamUrl: string | null
   hasGrounding: boolean
+  collectionPreviewItems?: Array<{
+    key: string
+    title: string
+    previewImageUrl: string | null
+  }>
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
