@@ -12,6 +12,7 @@ import {
   cleanRoutePart,
   watchLanguageSlugForLocale,
 } from "./experience-editor"
+import type { VideoLibraryItem } from "./experience-editor/block-helpers"
 
 const { envState } = vi.hoisted(() => ({
   envState: {
@@ -50,6 +51,26 @@ const defaultMediaLibrary: MediaLibraryBrowserData = {
   ],
 }
 
+const defaultVideoLibrary: VideoLibraryItem[] = [
+  {
+    key: "video-1",
+    title: "The Story",
+    description: "A localized description.",
+    id: "core-video-1",
+    label: "FEATURE_FILM",
+    labelLabel: "Feature Film",
+    sourceLabel: "Core",
+    sourceTone: "success",
+    dubs: "3 dubs",
+    updated: "2026-04-16T00:00:00.000Z",
+    duration: "12:34",
+    durationSeconds: 754,
+    previewImageUrl: "https://example.com/image.jpg",
+    previewStreamUrl: "https://example.com/video.mp4",
+    hasGrounding: true,
+  },
+]
+
 function renderEditorElement(
   blocks: unknown[],
   options: {
@@ -59,6 +80,7 @@ function renderEditorElement(
     canPublish?: boolean
     hasPublishedVersion?: boolean
     mediaLibrary?: MediaLibraryBrowserData
+    videoLibrary?: VideoLibraryItem[]
   } = {},
 ) {
   return (
@@ -79,25 +101,7 @@ function renderEditorElement(
           active: true,
         },
       ]}
-      videoLibrary={[
-        {
-          key: "video-1",
-          title: "The Story",
-          description: "A localized description.",
-          id: "core-video-1",
-          label: "FEATURE_FILM",
-          labelLabel: "Feature Film",
-          sourceLabel: "Core",
-          sourceTone: "success",
-          dubs: "3 dubs",
-          updated: "2026-04-16T00:00:00.000Z",
-          duration: "12:34",
-          durationSeconds: 754,
-          previewImageUrl: "https://example.com/image.jpg",
-          previewStreamUrl: "https://example.com/video.mp4",
-          hasGrounding: true,
-        },
-      ]}
+      videoLibrary={options.videoLibrary ?? defaultVideoLibrary}
       mediaLibrary={options.mediaLibrary ?? defaultMediaLibrary}
       canUploadImages
       initialValues={{
@@ -1035,6 +1039,78 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Video Hero")
     expect(html).toContain("Video")
     expect(html).toContain("https://example.com/image.jpg")
+  })
+
+  it("updates the pending video selection when the picker search changes", () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "single-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [
+          ...defaultVideoLibrary,
+          {
+            ...defaultVideoLibrary[0]!,
+            key: "video-2",
+            title: "In the Family",
+            description: "Rivka is a friend and mentor.",
+            id: "core-family",
+            previewImageUrl: "https://example.com/family.jpg",
+            previewStreamUrl: "https://example.com/family.mp4",
+            updated: "2026-04-17T00:00:00.000Z",
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse library").click()
+      })
+
+      const searchInput = view.container.querySelector(
+        'input[placeholder="Search title, Core ID, source, or dub coverage"]',
+      )
+      if (!(searchInput instanceof HTMLInputElement)) {
+        throw new Error("Video search input not found")
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(searchInput, "rivka")
+        searchInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+
+      expect(view.container.textContent).toContain("In the Family")
+      expect(view.container.textContent).not.toContain("The Story")
+
+      act(() => {
+        findButtonByExactText(view.container, "Apply video").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<
+        Record<string, unknown>
+      >
+
+      expect(blocks[0]?.videoId).toBe("video-2")
+    } finally {
+      view.cleanup()
+    }
   })
 
   it("renders every non-layout block family in the editor shell", () => {

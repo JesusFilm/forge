@@ -3,7 +3,7 @@ id: "feat-268"
 title: "Operation-attributed mobile client-timeout log + Datadog monitor"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-21"
 duration: 1
 depends_on: []

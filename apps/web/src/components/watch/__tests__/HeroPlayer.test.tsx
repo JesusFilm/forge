@@ -1389,7 +1389,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(typeof metadata?.viewer_user_id).toBe("string")
   })
 
-  it("animates between the mobile portrait preview height and playback frame height", async () => {
+  it("keeps mobile portrait header clearance while the preview contracts into playback", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
     })
@@ -1404,16 +1404,20 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).toContain("overflow-x-clip")
     expect(wrapper.className).toContain("transition-[height,margin-bottom,top]")
     expect(wrapper.className).toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]",
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
     )
     expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("true")
+    expect(wrapper.getAttribute("data-mobile-portrait-header-clearance")).toBe(
+      "true",
+    )
     expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
     expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
     expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
 
-    expect(
-      container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
-    ).toBeNull()
+    const band = container.querySelector(
+      '[data-testid="hero-player-mobile-header-band"]',
+    ) as HTMLDivElement
+    expect(band).not.toBeNull()
 
     const mediaFrame = container.querySelector(
       '[data-testid="hero-player-media-frame"]',
@@ -1421,6 +1425,12 @@ describe("HeroPlayer — initial mount", () => {
     expect(mediaFrame.className).toContain("relative")
     expect(mediaFrame.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
     )
 
     const pill = container.querySelector(
@@ -1435,18 +1445,27 @@ describe("HeroPlayer — initial mount", () => {
     expect(wrapper.className).not.toContain("h-[calc(100svh-300px)]")
     expect(wrapper.className).not.toContain("min-h-[400px]")
     expect(wrapper.className).toContain("overflow-hidden")
-    expect(wrapper.className).not.toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]",
+    expect(wrapper.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
     )
     expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
+    expect(wrapper.getAttribute("data-mobile-portrait-header-clearance")).toBe(
+      "true",
+    )
     expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
     expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
     expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
     expect(
       container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
-    ).toBeNull()
-    expect(mediaFrame.className).not.toContain(
+    ).not.toBeNull()
+    expect(mediaFrame.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
     )
   })
 
@@ -1473,12 +1492,28 @@ describe("HeroPlayer — initial mount", () => {
     const poster = container.querySelector('[data-testid="hero-player-poster"]')
 
     expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("true")
-    expect(
-      container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
-    ).toBeNull()
+    expect(wrapper.getAttribute("data-mobile-portrait-header-clearance")).toBe(
+      "true",
+    )
+    const band = container.querySelector(
+      '[data-testid="hero-player-mobile-header-band"]',
+    ) as HTMLDivElement
+    expect(band.className).toContain(
+      "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]",
+    )
+    expect(band.className).toContain("bg-black")
+    expect(band.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:block",
+    )
     expect(mediaFrame.className).toContain("w-full")
     expect(mediaFrame.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-square",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
     )
     expect(muxVideoMock).not.toHaveBeenCalled()
     expect(poster?.parentElement?.parentElement).toBe(mediaFrame)
@@ -1526,6 +1561,9 @@ describe("HeroPlayer — initial mount", () => {
       expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
       expect(wrapper.className).not.toContain("compact-landscape:h-[100svh]")
       expect(anchor.className).not.toContain("compact-landscape:-mt-[100svh]")
+      expect(
+        wrapper.getAttribute("data-mobile-portrait-header-clearance"),
+      ).toBe("false")
       expect(
         container.querySelector(
           '[data-testid="hero-player-mobile-header-band"]',
@@ -3913,12 +3951,24 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
 
     expect(wrapper.getAttribute("data-chrome-revealed")).toBe("false")
     expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
-    expect(wrapper.className).toContain("overflow-hidden")
-    expect(wrapper.className).not.toContain(
-      "[@media(max-width:767px)_and_(orientation:portrait)]:h-[100vw]",
+    expect(wrapper.getAttribute("data-mobile-portrait-header-clearance")).toBe(
+      "true",
     )
-    expect(mediaFrame.className).not.toContain(
+    expect(wrapper.className).toContain("overflow-hidden")
+    expect(wrapper.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+    )
+    expect(
+      container.querySelector('[data-testid="hero-player-mobile-header-band"]'),
+    ).not.toBeNull()
+    expect(mediaFrame.className).toContain(
       "[@media(max-width:767px)_and_(orientation:portrait)]:overflow-hidden",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video",
+    )
+    expect(mediaFrame.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
     )
     expect(posterLayer?.className).toContain("opacity-100")
     expect(props.style).toEqual({ objectFit: "contain" })
@@ -3955,6 +4005,22 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       '[data-testid="hero-player-wrapper"]',
     )
     expect(wrapper?.getAttribute("data-chrome-revealed")).toBe("true")
+    expect(wrapper?.getAttribute("data-mobile-portrait-header-clearance")).toBe(
+      "true",
+    )
+    expect(wrapper?.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:h-auto",
+    )
+    const band = container.querySelector(
+      '[data-testid="hero-player-mobile-header-band"]',
+    )
+    const mediaFrame = container.querySelector(
+      '[data-testid="hero-player-media-frame"]',
+    )
+    expect(band).not.toBeNull()
+    expect(mediaFrame?.className).toContain(
+      "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video",
+    )
   })
 
   it("leaves the player muted when play() rejects (no MEI grant)", async () => {

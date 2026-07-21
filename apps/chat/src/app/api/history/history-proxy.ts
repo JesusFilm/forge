@@ -15,9 +15,10 @@
  * loss), 502 `unavailable`, 504 `timeout`. No anon-cookie minting here.
  *
  * Upstream handling per the repo's proxy discipline: https/loopback/railway
- * host guard before any call, `redirect: "error"`, an abort budget of
- * min(seekerTimeoutMs, 10s) — millisecond-class reads never inherit the 95s
- * generation ceiling — status classified BEFORE any body parse, and every
+ * host guard before any call, `redirect: "error"`, an abort budget clamped
+ * to [9s, 10s] (`composeHistoryTimeoutMs`) — millisecond-class reads never
+ * inherit the 95s generation ceiling — status classified BEFORE any body
+ * parse, and every
  * body read byte-capped (streamed counter, `reader.cancel()` past the cap;
  * the caught error is never logged). Logging is enum-only plain-string
  * `[history-proxy] event=… reason=…` — never ids, titles, or body fragments.

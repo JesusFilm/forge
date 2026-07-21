@@ -5,6 +5,22 @@ import { datadogLog } from "../lib/datadog"
 import { GET_VIDEO_BY_SLUG } from "../lib/queries"
 import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
+import {
+  checkHeroStreamCooldown,
+  clearHeroStreamCooldown,
+  registerHeroStreamFailure,
+  type HeroStreamCooldownCheck,
+} from "../lib/watchHome/heroStreamCooldown"
+
+// One structured log per slug per window keeps the suppression observable
+// without becoming its own flood (feat-267).
+function logCooldownSkip(slug: string, check: HeroStreamCooldownCheck): void {
+  if (check.warnRemainingMs == null) return
+  datadogLog.warn("hero_stream.cooldown_skip", {
+    slug,
+    remaining_ms: check.warnRemainingMs,
+  })
+}
 
 // Stream-resolution path (KTD-2 lazy half): the bulk home query is card-lean,
 // so hero slides carry no stream. GET_VIDEO_BY_SLUG still projects the dub list,
@@ -41,6 +57,15 @@ export function useHeroStream(slug: string | null): HeroStreamState {
       return
     }
 
+    // Failure cooldown (feat-267): within a slug's window, fail immediately
+    // with NO network — an idle Home otherwise retries dead slugs forever.
+    const cooldown = checkHeroStreamCooldown(slug, Date.now())
+    if (cooldown.suppressed) {
+      logCooldownSkip(slug, cooldown)
+      setState({ streamUrl: null, resolving: false, failed: true })
+      return
+    }
+
     setState({ streamUrl: null, resolving: true, failed: false })
     getApolloClient()
       .query({
@@ -49,6 +74,9 @@ export function useHeroStream(slug: string | null): HeroStreamState {
         fetchPolicy: "cache-first",
       })
       .then((result) => {
+        // Cooldown bookkeeping is module-global: run it even for stale
+        // responses (the guard below only protects this hook's setState).
+        clearHeroStreamCooldown(slug)
         if (requestIdRef.current !== thisRequest) return
         const streamUrl = selectHeroStreamUrl(
           result.data?.videoBySlug?.variants,
@@ -60,6 +88,7 @@ export function useHeroStream(slug: string | null): HeroStreamState {
         setState({ streamUrl, resolving: false, failed: streamUrl == null })
       })
       .catch(() => {
+        registerHeroStreamFailure(slug, Date.now())
         if (requestIdRef.current !== thisRequest) return
         datadogLog.warn("hero_stream.failed", { reason: "query_failed", slug })
         setState({ streamUrl: null, resolving: false, failed: true })
@@ -82,6 +111,13 @@ export function prefetchHeroStream(slug: string | null | undefined): void {
   if (!slug) return
   if (prefetchedSlugs.has(slug)) return
   if (prefetchInFlight >= MAX_PREFETCH_INFLIGHT) return
+  // Prefetch shares the failure cooldown (feat-267): releasing a failed slug
+  // for retry is what let prefetch participate in the idle retry loop.
+  const cooldown = checkHeroStreamCooldown(slug, Date.now())
+  if (cooldown.suppressed) {
+    logCooldownSkip(slug, cooldown)
+    return
+  }
   // Apollo cache is the real dedupe; this only bounds the in-flight bookkeeping.
   if (prefetchedSlugs.size > 100) prefetchedSlugs.clear()
   prefetchedSlugs.add(slug)
@@ -93,7 +129,11 @@ export function prefetchHeroStream(slug: string | null | undefined): void {
         variables: { slug, locale: HOME_LOCALE },
         fetchPolicy: "cache-first",
       })
+      .then(() => {
+        clearHeroStreamCooldown(slug)
+      })
       .catch(() => {
+        registerHeroStreamFailure(slug, Date.now())
         // Async failure: release the slug so a later attempt can retry.
         prefetchedSlugs.delete(slug)
       })

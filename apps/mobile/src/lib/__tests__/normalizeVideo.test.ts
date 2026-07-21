@@ -262,6 +262,34 @@ describe("normalizeVideo", () => {
     expect(result.parentSeries).toBeNull()
   })
 
+  // Prod regression: a dub's hls shipped with a trailing "\n"; the raw string
+  // reaching the native player 400s at Mux. Ingest trimmed, never raw.
+  it("trims whitespace-tainted hls at ingestion (streamingUrl + variants)", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((v, index) =>
+      index === 0 ? { ...v, hls: `${v.hls}\n` } : v,
+    )
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
+    expect(
+      result.variants.map((v) => v.hls).every((h) => h === h?.trim()),
+    ).toBe(true)
+  })
+
+  it("skips a whitespace-only hls when picking the first playable variant", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((v, index) => (index === 0 ? { ...v, hls: "  \n" } : v))
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    // dub-1's hls is unplayable; the pick must advance to dub-2 (Spanish).
+    expect(result.streamingUrl).toBe("https://stream.mux.com/def456.m3u8")
+  })
+
   it("filters self-references from siblings", () => {
     const result = normalizeVideo(makeRawVideo())!
 

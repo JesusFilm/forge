@@ -5,6 +5,7 @@ import { reactPlugin } from "@datadog/browser-rum-react"
 import { useEffect, useRef } from "react"
 
 import { env } from "@/env"
+import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 
 const DATADOG_SERVICE = "forge-web"
 
@@ -58,6 +59,7 @@ export function reportDatadogRumAction(
   name: string,
   context: Record<string, unknown>,
 ) {
+  reportGoogleAnalyticsEvent(name, context)
   safeReportDatadogRum("action", () => datadogRum.addAction(name, context))
 }
 
