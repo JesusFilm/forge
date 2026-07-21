@@ -1,4 +1,5 @@
 import { Clapperboard, Globe2, UsersRound } from "lucide-react"
+import { BetaTesterTrigger } from "@/components/watch/BetaTesterModalProvider"
 import { useTranslations } from "next-intl"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
@@ -115,14 +116,9 @@ export function WatchHomePromo() {
             <p className="mx-auto mb-8 max-w-2xl text-lg text-white/80 lg:text-xl">
               {t("invitationDescription")}
             </p>
-            <a
-              href="https://mailchi.mp/jesusfilm/beta"
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
+            <BetaTesterTrigger className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
               {t("betaTester")}
-            </a>
+            </BetaTesterTrigger>
           </div>
         </div>
       </div>

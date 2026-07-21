@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import MuxVideo from "@forge/video-player/mux-video"
+import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
@@ -132,7 +133,11 @@ function MuxBackedCarouselVideoPlayer({
 }) {
   const t = useTranslations("HeroPlayerControls")
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const {
+    media: video,
+    mediaRef: videoRef,
+    setMediaRef: setVideoRef,
+  } = useWatchModalMediaRef<HTMLVideoElement>(src)
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const lastAppliedSrcRef = useRef<string | null>(null)
@@ -140,7 +145,6 @@ function MuxBackedCarouselVideoPlayer({
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-
   const formatTime = useCallback(
     (seconds: number) =>
       Number.isFinite(seconds) && seconds >= 0
@@ -161,11 +165,10 @@ function MuxBackedCarouselVideoPlayer({
     if (timeRef.current) {
       timeRef.current.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`
     }
-  }, [formatTime])
+  }, [formatTime, videoRef])
 
   // Mirror media events to local state.
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
@@ -184,19 +187,18 @@ function MuxBackedCarouselVideoPlayer({
       video.removeEventListener("timeupdate", onTime)
       video.removeEventListener("durationchange", onDuration)
     }
-  }, [syncPlaybackUi])
+  }, [syncPlaybackUi, video])
 
   // Auto-play on src change (preserves the videojs path's
   // `playOnSourceChange: true`).
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     if (lastAppliedSrcRef.current === src) return
     lastAppliedSrcRef.current = src
     void video.play().catch(() => {
       /* ignore — autoplay may be blocked */
     })
-  }, [src])
+  }, [src, video])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -218,13 +220,13 @@ function MuxBackedCarouselVideoPlayer({
       return
     }
     video.pause()
-  }, [])
+  }, [videoRef])
 
   const handleMuteToggle = useCallback(() => {
     const video = videoRef.current
     if (!video) return
     video.muted = !video.muted
-  }, [])
+  }, [videoRef])
 
   const handleSeek = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,7 +235,7 @@ function MuxBackedCarouselVideoPlayer({
       video.currentTime = Number(event.target.value)
       syncPlaybackUi()
     },
-    [syncPlaybackUi],
+    [syncPlaybackUi, videoRef],
   )
 
   const handleFullscreen = useCallback(() => {
@@ -263,7 +265,7 @@ function MuxBackedCarouselVideoPlayer({
           aria-label={isPlaying ? t("pause") : t("play")}
         >
           <MuxVideo
-            ref={videoRef as React.Ref<HTMLVideoElement | undefined>}
+            ref={setVideoRef}
             src={src}
             poster={poster}
             muted

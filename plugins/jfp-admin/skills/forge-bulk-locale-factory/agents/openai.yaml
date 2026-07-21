@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bulk Locale Factory"
+  short_description: "Create translated Experience locale drafts through JFP Admin."
+  default_prompt: "Create translated Experience locale drafts"

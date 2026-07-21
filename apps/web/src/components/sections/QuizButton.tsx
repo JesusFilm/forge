@@ -4,6 +4,7 @@ import { type ReactElement, useState } from "react"
 import { Loader2, XIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 
 type QuizButtonData = {
   id: string
@@ -20,6 +21,7 @@ export function QuizButton({ data }: QuizButtonProps): ReactElement {
   const modalT = useTranslations("WatchModal")
   const studyT = useTranslations("WatchStudyQuestions")
   const [open, setOpen] = useState(false)
+  useWatchModalActivity(open)
 
   return (
     <>

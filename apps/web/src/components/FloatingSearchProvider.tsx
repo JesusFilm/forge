@@ -27,6 +27,10 @@ import {
 import { AccountControl } from "@/components/watch/AccountControl"
 import type { GlobalLanguagePickerModalProps } from "@/components/watch/GlobalLanguagePickerModal"
 import {
+  WATCH_MODAL_CLOSE_DELAY_MS,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
+import {
   FLOATING_HEADER_GAP_CLASS,
   FLOATING_HEADER_HEIGHT_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
@@ -188,7 +192,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
           setOpenState(false)
           setClosing(false)
           closingTimerRef.current = null
-        }, 200)
+        }, WATCH_MODAL_CLOSE_DELAY_MS)
       }
     },
     [invalidateGlobalLanguageIntent, resetSearch],
@@ -507,6 +511,7 @@ export function FloatingSearchProvider({ children }: { children: ReactNode }) {
   }, [closing, headerLanguageSwitcher, open, pathname, routeIdentity])
 
   const modalChromeHidden = open || closing
+  useWatchModalActivity(modalChromeHidden, { releaseDelayMs: 0 })
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
   const pageSpecificLanguageSwitcherActive =

@@ -39,6 +39,7 @@ import {
 } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
 import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
+import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -953,11 +954,11 @@ export function WatchHomeTvCarousel({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const shortFilmTakeoverSlideIdRef = useRef<string | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForWatchModal(player, activeSlide?.id ?? null)
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
-    if (shortFilmTakeoverSlideIdRef.current == null) return
     setPlayer((current) => (current === next ? current : next))
   }, [])
   const handleOpenShortFilm = useCallback(

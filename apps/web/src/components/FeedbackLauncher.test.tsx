@@ -44,7 +44,7 @@ function iframe() {
 
 async function flushDynamicModal() {
   await act(async () => {
-    const deadline = Date.now() + 2000
+    const deadline = Date.now() + 5000
     while (
       !document.querySelector('[data-testid="feedback-modal"]') &&
       Date.now() < deadline

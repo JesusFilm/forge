@@ -29,6 +29,10 @@ vi.mock("next/image", () => ({
 }))
 
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
+import {
+  WatchModalActivityProvider,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
 
 const baseFragment = {
   t: "videoCarousel",
@@ -72,6 +76,22 @@ afterEach(async () => {
 })
 
 describe("CarouselVideo", () => {
+  function ModalOwner({ active }: { active: boolean }) {
+    useWatchModalActivity(active, { releaseDelayMs: 0 })
+    return null
+  }
+
+  async function renderWithModal(active: boolean) {
+    await act(async () => {
+      root.render(
+        <WatchModalActivityProvider>
+          <ModalOwner active={active} />
+          <CarouselVideo data={baseFragment} />
+        </WatchModalActivityProvider>,
+      )
+    })
+  }
+
   it("mounts via Mux Video for the selected item", async () => {
     await act(async () => {
       root.render(<CarouselVideo data={baseFragment} />)
@@ -80,5 +100,25 @@ describe("CarouselVideo", () => {
     // @mux/mux-video-react renders a plain <video> element.
     expect(container.querySelector("video")).not.toBeNull()
     expect(container.textContent).toContain("Series")
+  })
+
+  it("pauses its authored carousel media when modal activity opens", async () => {
+    await renderWithModal(false)
+    const video = container.querySelector("video") as HTMLVideoElement
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      value: false,
+      writable: true,
+    })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+
+    await renderWithModal(true)
+
+    expect(pause).toHaveBeenCalledOnce()
   })
 })

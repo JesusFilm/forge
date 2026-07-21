@@ -13,6 +13,7 @@ import {
 } from "react"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 
 const FEEDBACK_FALLBACK_URL = "https://forms.gle/8WddM1kuyEBznukW8"
 const FeedbackLoadingCancelContext = createContext<() => void>(() => {})
@@ -98,6 +99,7 @@ export function FeedbackLauncher() {
   const { searchOpen } = useFloatingSearchPinned()
   const [open, setOpen] = useState(false)
   const [modalReady, setModalReady] = useState(false)
+  useWatchModalActivity(open)
   const launcherRef = useRef<HTMLButtonElement>(null)
   const markModalReady = useCallback(() => setModalReady(true), [])
 

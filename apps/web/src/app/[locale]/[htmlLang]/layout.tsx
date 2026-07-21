@@ -16,6 +16,8 @@ import DatadogRum from "@/components/DatadogRum"
 import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
+import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
+import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   loadClientMessages,
@@ -99,10 +101,12 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
           <GoogleAnalytics />
-          <FloatingSearchProvider>
-            <FeedbackLauncher />
-            {children}
-          </FloatingSearchProvider>
+          <WatchModalActivityProvider>
+            <FloatingSearchProvider>
+              <FeedbackLauncher />
+              <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+            </FloatingSearchProvider>
+          </WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>
     </html>

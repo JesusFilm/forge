@@ -432,8 +432,7 @@ export async function syncVideos({
                 bcp47ByCoreId,
                 slugByCoreId,
               })
-              pageErrors +=
-                localizedResult.errors + localizedResult.skippedLanguages
+              pageErrors += localizedResult.errors
               if (localizedResult.skippedLanguages > 0) {
                 console.warn(
                   JSON.stringify({
