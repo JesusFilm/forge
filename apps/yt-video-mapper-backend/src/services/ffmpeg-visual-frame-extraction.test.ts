@@ -90,23 +90,13 @@ describe("FfmpegVisualFrameExtractor", () => {
     ).resolves.toEqual([])
   })
 
-  it("input-seeks serially to all twelve declared offsets for long media", async () => {
+  it("input-seeks to all twelve declared offsets in one ordered command", async () => {
     const calls: Parameters<FfmpegCommandRunner>[0][] = []
-    const events: string[] = []
-    let activeCommands = 0
-    let maxActiveCommands = 0
     const extractor = new FfmpegVisualFrameExtractor({
       adaptiveSeeking: true,
       runCommand: async (input) => {
-        const callIndex = calls.length
         calls.push(input)
-        events.push(`start:${callIndex}`)
-        activeCommands += 1
-        maxActiveCommands = Math.max(maxActiveCommands, activeCommands)
-        await Promise.resolve()
-        activeCommands -= 1
-        events.push(`finish:${callIndex}`)
-        return { stdout: Buffer.alloc(64, callIndex), stderr: "" }
+        return { stdout: Buffer.alloc(64 * 12), stderr: "" }
       },
     })
 
@@ -122,47 +112,56 @@ describe("FfmpegVisualFrameExtractor", () => {
       0, 50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000,
       450_000, 500_000, 550_000,
     ])
-    expect(maxActiveCommands).toBe(1)
-    expect(events).toEqual(
-      Array.from({ length: 12 }, (_, index) => [
-        `start:${index}`,
-        `finish:${index}`,
-      ]).flat(),
+    expect(calls).toHaveLength(1)
+    const args = calls[0]!.args
+    expect(args.filter((arg) => arg === "-protocol_whitelist")).toHaveLength(12)
+    const seekIndices = args.flatMap((arg, index) =>
+      arg === "-ss" ? [index] : [],
     )
-
-    for (const [index, call] of calls.entries()) {
-      const seekIndex = call.args.indexOf("-ss")
-      const inputIndex = call.args.indexOf("-i")
-      const filterIndex = call.args.indexOf("-vf")
-      const frameLimitIndex = call.args.indexOf("-frames:v")
-
-      expect(seekIndex).toBeGreaterThan(-1)
+    const inputIndices = args.flatMap((arg, index) =>
+      arg === "-i" ? [index] : [],
+    )
+    expect(seekIndices).toHaveLength(12)
+    expect(inputIndices).toHaveLength(12)
+    for (const [index, seekIndex] of seekIndices.entries()) {
+      const inputIndex = inputIndices[index]!
       expect(seekIndex).toBeLessThan(inputIndex)
-      expect(call.args[seekIndex + 1]).toBe((index * 50).toFixed(3))
-      expect(call.args.slice(4, 6)).toEqual([
+      expect(args[seekIndex + 1]).toBe((index * 50).toFixed(3))
+      expect(args.slice(seekIndex - 2, seekIndex)).toEqual([
         "-protocol_whitelist",
         "https,tls,tcp,crypto",
       ])
-      expect(call.args[inputIndex + 1]).toBe(
-        "https://media.example.com/video.mp4",
-      )
-      expect(call.args[filterIndex + 1]).toBe("scale=8:8,format=gray")
-      expect(call.args[frameLimitIndex + 1]).toBe("1")
+      expect(args[inputIndex + 1]).toBe("https://media.example.com/video.mp4")
     }
+    const filterGraph = args[args.indexOf("-filter_complex") + 1]
+    expect(filterGraph).toContain(
+      "[0:v]trim=end_frame=1,scale=8:8,format=gray,setpts=PTS-STARTPTS[v0]",
+    )
+    expect(filterGraph).toContain(
+      "[v0][v1][v2][v3][v4][v5][v6][v7][v8][v9][v10][v11]concat=n=12:v=1:a=0[out]",
+    )
+    expect(args.slice(args.indexOf("-map"))).toEqual([
+      "-map",
+      "[out]",
+      "-vsync",
+      "0",
+      "-frames:v",
+      "12",
+      "-f",
+      "rawvideo",
+      "pipe:1",
+    ])
   })
 
-  it("shares one timeout deadline across long-media seek commands", async () => {
+  it("uses one timeout budget for the consolidated long-media command", async () => {
     const calls: Parameters<FfmpegCommandRunner>[0][] = []
-    let now = 0
     const extractor = new FfmpegVisualFrameExtractor({
       adaptiveSeeking: true,
       maxFrames: 4,
       timeoutMs: 1_000,
-      now: () => now,
       runCommand: async (input) => {
         calls.push(input)
-        now += 400
-        return { stdout: Buffer.alloc(64), stderr: "" }
+        return { stdout: Buffer.alloc(64 * 4), stderr: "" }
       },
     })
 
@@ -172,20 +171,17 @@ describe("FfmpegVisualFrameExtractor", () => {
         contentType: "video/mp4",
         durationMilliseconds: 600_000,
       }),
-    ).rejects.toMatchObject({ code: "ffmpeg_timeout" })
-    expect(calls.map(({ timeoutMs }) => timeoutMs)).toEqual([1_000, 600, 200])
+    ).resolves.toHaveLength(4)
+    expect(calls.map(({ timeoutMs }) => timeoutMs)).toEqual([1_000])
   })
 
-  it("fails the entire long-media extraction when any frame is incomplete", async () => {
+  it("fails the entire long-media extraction when consolidated output is incomplete", async () => {
     let calls = 0
     const extractor = new FfmpegVisualFrameExtractor({
       adaptiveSeeking: true,
       runCommand: async () => {
         calls += 1
-        return {
-          stdout: Buffer.alloc(calls === 2 ? 63 : 64),
-          stderr: "",
-        }
+        return { stdout: Buffer.alloc(64 * 12 - 1), stderr: "" }
       },
     })
 
@@ -196,7 +192,7 @@ describe("FfmpegVisualFrameExtractor", () => {
         durationMilliseconds: 600_000,
       }),
     ).rejects.toMatchObject({ code: "ffmpeg_incomplete_frames" })
-    expect(calls).toBe(2)
+    expect(calls).toBe(1)
   })
 
   it("keeps short, unknown-duration, and opt-out long media on the single-pass path", async () => {

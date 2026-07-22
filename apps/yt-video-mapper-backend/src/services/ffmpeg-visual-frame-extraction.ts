@@ -55,7 +55,6 @@ export type FfmpegVisualFrameExtractorOptions = {
   localProtocolWhitelist?: string
   allowedHosts?: Set<string>
   adaptiveSeeking?: boolean
-  now?: () => number
 }
 
 export class FfmpegVisualFrameExtractionError extends Error {
@@ -78,7 +77,6 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
   private readonly localProtocolWhitelist: string
   private readonly allowedHosts: Set<string>
   private readonly adaptiveSeeking: boolean
-  private readonly now: () => number
 
   constructor(options: FfmpegVisualFrameExtractorOptions = {}) {
     this.runCommand = options.runCommand ?? defaultFfmpegCommandRunner
@@ -93,7 +91,6 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
     this.allowedHosts =
       options.allowedHosts ?? parseAllowedHosts(env.MEDIA_INDEX_ALLOWED_HOSTS)
     this.adaptiveSeeking = options.adaptiveSeeking ?? false
-    this.now = options.now ?? (() => performance.now())
   }
 
   async extractFromBytes({
@@ -196,47 +193,37 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
     isRemoteUrl: boolean
     durationMilliseconds: number
   }): Promise<VisualFrameFingerprint[]> {
-    const deadline = this.now() + this.timeoutMs
-    const fingerprints: VisualFrameFingerprint[] = []
-
-    for (const offsetMilliseconds of this.frameOffsets(durationMilliseconds)) {
-      const remainingTimeMs = Math.floor(deadline - this.now())
-      if (remainingTimeMs <= 0) {
-        throw new FfmpegVisualFrameExtractionError(
-          "ffmpeg_timeout",
-          `ffmpeg timed out after ${this.timeoutMs}ms`,
-        )
-      }
-
-      const result = await this.runCommand({
-        command: "ffmpeg",
-        args: this.inputSeekFfmpegArgs({
-          source,
-          isRemoteUrl,
-          offsetMilliseconds,
-        }),
-        timeoutMs: remainingTimeMs,
-      })
-      const frameBytes = this.frameWidth * this.frameHeight
-      if (result.stdout.byteLength !== frameBytes) {
-        throw new FfmpegVisualFrameExtractionError(
-          "ffmpeg_incomplete_frames",
-          `ffmpeg returned ${result.stdout.byteLength} bytes for a ${frameBytes}-byte visual frame`,
-        )
-      }
-
-      fingerprints.push({
-        offsetMilliseconds,
-        durationMilliseconds: null,
-        payload: buildVisualFrameFingerprintPayload({
-          bytes: result.stdout,
-          width: this.frameWidth,
-          height: this.frameHeight,
-        }),
-      })
+    const offsets = this.frameOffsets(durationMilliseconds)
+    const result = await this.runCommand({
+      command: "ffmpeg",
+      args: this.inputSeekFfmpegArgs({
+        source,
+        isRemoteUrl,
+        offsets,
+      }),
+      timeoutMs: this.timeoutMs,
+    })
+    const frameBytes = this.frameWidth * this.frameHeight
+    const expectedBytes = offsets.length * frameBytes
+    if (result.stdout.byteLength !== expectedBytes) {
+      throw new FfmpegVisualFrameExtractionError(
+        "ffmpeg_incomplete_frames",
+        `ffmpeg returned ${result.stdout.byteLength} bytes for ${expectedBytes} bytes of visual frames`,
+      )
     }
 
-    return fingerprints
+    return offsets.map((offsetMilliseconds, index) => ({
+      offsetMilliseconds,
+      durationMilliseconds: null,
+      payload: buildVisualFrameFingerprintPayload({
+        bytes: result.stdout.subarray(
+          index * frameBytes,
+          (index + 1) * frameBytes,
+        ),
+        width: this.frameWidth,
+        height: this.frameHeight,
+      }),
+    }))
   }
 
   private frameOffsets(durationMilliseconds: number): number[] {
@@ -249,27 +236,43 @@ export class FfmpegVisualFrameExtractor implements VisualFrameExtractor {
   private inputSeekFfmpegArgs({
     source,
     isRemoteUrl,
-    offsetMilliseconds,
+    offsets,
   }: {
     source: string
     isRemoteUrl: boolean
-    offsetMilliseconds: number
+    offsets: number[]
   }): string[] {
+    const protocolWhitelist = isRemoteUrl
+      ? this.protocolWhitelist
+      : this.localProtocolWhitelist
+    const inputArgs = offsets.flatMap((offsetMilliseconds) => [
+      "-protocol_whitelist",
+      protocolWhitelist,
+      "-ss",
+      (offsetMilliseconds / 1_000).toFixed(3),
+      "-i",
+      source,
+    ])
+    const filterLegs = offsets.map(
+      (_, index) =>
+        `[${index}:v]trim=end_frame=1,scale=${this.frameWidth}:${this.frameHeight},format=gray,setpts=PTS-STARTPTS[v${index}]`,
+    )
+    const filterOutputs = offsets.map((_, index) => `[v${index}]`).join("")
+
     return [
       "-hide_banner",
       "-loglevel",
       "error",
       "-nostdin",
-      "-protocol_whitelist",
-      isRemoteUrl ? this.protocolWhitelist : this.localProtocolWhitelist,
-      "-ss",
-      (offsetMilliseconds / 1_000).toFixed(3),
-      "-i",
-      source,
-      "-vf",
-      `scale=${this.frameWidth}:${this.frameHeight},format=gray`,
+      ...inputArgs,
+      "-filter_complex",
+      `${filterLegs.join(";")};${filterOutputs}concat=n=${offsets.length}:v=1:a=0[out]`,
+      "-map",
+      "[out]",
+      "-vsync",
+      "0",
       "-frames:v",
-      "1",
+      String(offsets.length),
       "-f",
       "rawvideo",
       "pipe:1",
