@@ -2,7 +2,11 @@
 // machine lives here behind a subscribe/getSnapshot store, consumed via the
 // use-conversations.ts adapter. No React import may ever appear here.
 
-import { type StreamReplyInput, type StreamReplyResult } from "./chat-stub"
+import {
+  buildStubReply,
+  type StreamReplyInput,
+  type StreamReplyResult,
+} from "./chat-stub"
 import {
   createConversation,
   deriveTitle,
@@ -17,26 +21,15 @@ import {
   type HistoryThreadSummary,
 } from "./history-client"
 
-/** Sidebar-facing server-history list state (feat-241, R12/R16). */
-export type HistoryListUi = {
-  /** First page in flight — the sidebar skeleton state. */
-  loading: boolean
-  /** First page failed (transport/5xx) — the error state with retry. */
-  error: boolean
-  /** More pages exist — render the Load-more control. */
-  hasMore: boolean
-  /** A Load-more fetch is in flight (inline pending on the control). */
-  loadingMore: boolean
-  /** The last Load-more failed — inline retry; page-1 rows stay rendered. */
-  loadMoreError: boolean
-}
-
 /**
  * One immutable view of the session, rebuilt only when state actually changes
  * (identity-stable between changes — the useSyncExternalStore contract).
- * Carries exactly the data half of the old hook return: the sidebar-projected
- * conversation list, the active conversation + draft, the per-conversation
- * pending set, the in-flight streaming message id, and the history list state.
+ * Carries the data half of the old hook return: the full conversation list
+ * (UNPROJECTED — the sidebar applies its own visible-row projection, Ruling
+ * 4b: `components/shell/sidebar-projection.ts`, whose `HistoryListUi` the
+ * `history` field satisfies structurally), the active conversation + draft,
+ * the per-conversation pending set, the in-flight streaming message id, and
+ * the history list state.
  */
 export type ConversationSessionSnapshot = {
   conversations: Conversation[]
@@ -47,7 +40,13 @@ export type ConversationSessionSnapshot = {
   pending: boolean
   pendingIds: ReadonlySet<string>
   streamingMessageId: string | null
-  history: HistoryListUi
+  history: {
+    loading: boolean
+    error: boolean
+    hasMore: boolean
+    loadingMore: boolean
+    loadMoreError: boolean
+  }
 }
 
 /**
@@ -209,22 +208,6 @@ export function orderConversations(
 }
 
 /**
- * The sidebar-visible projection (feat-270): ordered per orderConversations,
- * minus never-used empty local conversations that are not active — the New
- * action reuses those, so an inactive empty is pure clutter under the
- * identically-labeled action button. The active fresh row stays pinned.
- * Pure — exported for direct unit coverage.
- */
-export function listConversations(
-  conversations: Conversation[],
-  activeId: string,
-): Conversation[] {
-  return orderConversations(conversations).filter(
-    (c) => c.id === activeId || c.origin === "server" || c.messages.length > 0,
-  )
-}
-
-/**
  * Create one conversation session. Construction is side-effect-free (no
  * fetch, no timer, no subscription — safe under dev StrictMode's doubled
  * useState initializer); all effectful work starts at `activate()`.
@@ -241,10 +224,13 @@ export function listConversations(
  * server-origin row lazy-loads its transcript exactly once (single-flight,
  * session-cached); sends into a server-origin conversation are blocked unless
  * its replay is "loaded" (R22); a send that succeeded through Seeker marks the
- * conversation server-persisted, which withholds the gate-denied stub fallback
- * (KTD10 — the stamp sites all live here). History fetches track their own
- * AbortController — never the reply-slot map, which doubles as the double-send
- * guard and the sidebar "Replying" pulse.
+ * conversation server-persisted. The seam reports gate denials honestly
+ * (Ruling 3), so the stub-vs-failure decision lives HERE: never-persisted
+ * conversations get the immediate inline stub rebuilt in the finalize;
+ * persisted ones fail visibly (KTD10 — the stamp sites and the decision are
+ * all in this module). History fetches track their own AbortController —
+ * never the reply-slot map, which doubles as the double-send guard and the
+ * sidebar "Replying" pulse.
  */
 export function createConversationSession(
   deps: ConversationSessionDeps,
@@ -291,7 +277,9 @@ export function createConversationSession(
       conversations.find((conversation) => conversation.id === activeId) ??
       conversations[0]
     return {
-      conversations: listConversations(conversations, activeId),
+      // Unprojected — the current array reference is stable between commits
+      // (state updates always reassign a new array, never mutate in place).
+      conversations,
       activeId,
       activeConversation,
       draft,
@@ -590,7 +578,9 @@ export function createConversationSession(
     // loading/failed/not-available server-origin conversation are no-ops.
     if (target?.origin === "server" && target.replay !== "loaded") return
     // KTD10: persisted conversations must not stub-degrade on gate_denied.
-    const allowStubFallback = target?.serverPersisted !== true
+    // Captured at send START — the decision travels with the request, never
+    // re-read at finalize time (a mid-flight hydration must not flip it).
+    const stubOnGateDenied = target?.serverPersisted !== true
     draft = ""
 
     appendMessage(targetId, {
@@ -615,7 +605,6 @@ export function createConversationSession(
           text: trimmed,
           conversationId: targetId,
           seekerEnabled: deps.seekerEnabled,
-          allowStubFallback,
           signal: controller.signal,
           onToken: (token) =>
             updateMessage(targetId, assistantId, (message) => ({
@@ -644,6 +633,17 @@ export function createConversationSession(
             // turns that never reached the server, so tag presence is not it.
             markServerPersisted(targetId)
           }
+        } else if (result.reason === "gate_denied" && stubOnGateDenied) {
+          // Ruling 3 (feat-281): the seam reports gate denials honestly; a
+          // never-persisted conversation keeps the feat-233 stub downgrade,
+          // rebuilt inline — NEVER via streamStubReply (its 800ms delay).
+          updateMessage(targetId, assistantId, (message) => ({
+            ...message,
+            content: buildStubReply(trimmed),
+            sources: [],
+            grounded: false,
+            engine: "stub",
+          }))
         } else if (wasStopped) {
           // User stop (feat-270): finalize with partial text kept — a plain
           // turn, no role="alert" notice, no engine/grounded stamp. Nothing

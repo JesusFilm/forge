@@ -39,8 +39,9 @@ export const REPLY_FAILURE_REASONS = [
   // ceiling was hit. Distinct notices — never fold into generation_failed.
   "thread_forbidden",
   "thread_limit",
-  // feat-233: the server-side per-user gate denied seeker; the client seam
-  // maps it to the local stub rather than a failure notice.
+  // feat-233: the server-side per-user gate denied seeker. Reported honestly
+  // by the seam (feat-281 Ruling 3); the SESSION maps never-persisted
+  // conversations to the local stub, persisted ones to a visible notice.
   "gate_denied",
 ] as const
 
