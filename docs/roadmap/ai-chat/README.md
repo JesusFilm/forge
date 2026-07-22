@@ -13,10 +13,10 @@ from the main DS Year 1 roadmap.
 
 ## Status (July 22, 2026)
 
-- **Total tickets:** 35
+- **Total tickets:** 36
 - ✅ **Complete:** 29
 - 🟡 **In progress:** 1
-- 🔵 **Not started:** 5
+- 🔵 **Not started:** 6
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -58,3 +58,4 @@ from the main DS Year 1 roadmap.
 | [feat-283](feat-283-mastra-ai-chat-lane-admission.md)         | Mastra ai-chat lane admission module (flag + lane bearer)                 | jian wei | P2       | 2026-07-22 | 2    | ✅ complete    | [#1667](https://github.com/JesusFilm/forge/pull/1667)                                                        |
 | [feat-284](feat-284-mastra-thread-ownership-read-resolver.md) | Mastra thread-ownership read-path resolver (owned-existing-thread)        | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1670](https://github.com/JesusFilm/forge/pull/1670)                                                        |
 | [feat-285](feat-285-mastra-ai-chat-memory-module.md)          | Extract the Mastra ai-chat memory module + keying policy (ride-along)     | jian wei | P2       | 2026-08-17 | 1    | ✅ complete    | [#1672](https://github.com/JesusFilm/forge/pull/1672)                                                        |
+| [feat-294](feat-294-chat-validated-base-url-brand.md)         | Branded ValidatedBaseUrl input for the shared Mastra transport            | jian wei | P3       | 2026-07-27 | 1    | 🔵 not-started | —                                                                                                            |

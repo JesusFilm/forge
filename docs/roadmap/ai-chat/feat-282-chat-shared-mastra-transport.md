@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-07-21"
 duration: 5
 depends_on: []
-blocks: []
+blocks:
+  - "feat-294"
 tags:
   - "web"
 ---
