@@ -64,8 +64,7 @@ export function getDatadogRumConfig(): DatadogRumConfig | null {
     site: env.EXPO_PUBLIC_DATADOG_SITE ?? "US1",
     // Default by build type: a provisioned release fleet missing the ENV var
     // must not file its telemetry under env:development.
-    envName:
-      env.EXPO_PUBLIC_DATADOG_ENV ?? (__DEV__ ? "development" : "production"),
+    envName: env.EXPO_PUBLIC_DATADOG_ENV ?? (__DEV__ ? "development" : "prod"),
     version: env.EXPO_PUBLIC_DATADOG_VERSION,
     // Real TV sessions are comparatively rare, so sample everything.
     sessionSampleRate: 100,
