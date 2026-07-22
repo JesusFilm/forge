@@ -14,16 +14,15 @@
  * → store reads, all bounded by `TIME_BUDGET_MS.historyRead`
  * (millisecond-class queries must not inherit the 90s turn envelope).
  *
- * Replay (KTD4/KTD5): `authorizeAiChatThreadAccess` first (`thread_forbidden`
- * on owner mismatch; its write-path `thread_limit` outcome is reachable on a
- * read only when the thread is missing, so it maps to `thread_not_found`),
- * then an explicit existence check (the gate's missing-thread branch would
- * admit it as a new-thread success), then a capped `recall` that ALWAYS passes
- * `resourceId` (omitting it disables the store's own ownership throw) and an
- * explicit `perPage` (the dist default returns only the last 10). Messages are
- * projected field-by-field — user/assistant text only, per-message char cap —
- * so tool-call internals, retrieval payloads, and provider metadata never
- * reach the wire.
+ * Replay (KTD4/KTD5): `resolveOwnedExistingThread` (feat-284) answers
+ * ownership + existence from ONE `getThreadById` — missing thread →
+ * `thread_not_found`, owner mismatch → `thread_forbidden`, no ceiling branch
+ * on reads (`listThreads` is never called) — then a capped `recall` that
+ * ALWAYS passes `resourceId` (omitting it disables the store's own ownership
+ * throw) and an explicit `perPage` (the dist default returns only the last
+ * 10). Messages are projected field-by-field — user/assistant text only,
+ * per-message char cap — so tool-call internals, retrieval payloads, and
+ * provider metadata never reach the wire.
  *
  * Logging is ENUM-only plain-string `[ai-chat-history] event=… reason=…`
  * (KTD13) — never thread ids, titles, transcript text, or exception text.
@@ -32,7 +31,7 @@
 import { refuseUnlessLaneAdmitted } from "./ai-chat-lane-admission"
 import { settleWithinBudget, TIME_BUDGET_MS } from "./budgets"
 import {
-  authorizeAiChatThreadAccess,
+  resolveOwnedExistingThread,
   USER_RESOURCE_PREFIX,
 } from "./ai-chat-thread-ownership"
 import { getAiChatMemory } from "./memory"
@@ -59,8 +58,8 @@ const MAX_THREAD_ID_CHARS = 200
 /**
  * The narrow Memory surface the history handlers need (KTD3) — structural so
  * tests fake it; the real instance from `getAiChatMemory()` satisfies it. The
- * same instance feeds `authorizeAiChatThreadAccess`, so the gate and the read
- * path cannot diverge.
+ * same instance feeds `resolveOwnedExistingThread`, so ownership resolution
+ * and the read path cannot diverge.
  */
 export type AiChatHistoryMemory = {
   listThreads: (args: {
@@ -319,10 +318,10 @@ export async function handleAiChatHistoryListRequest({
 
 /**
  * `POST /forge-ai-chat-history-replay` core (R2/R3/R4/R21): the projected
- * transcript of ONE owned thread. Ownership gate → explicit existence check →
- * capped recall (KTD4); success body is `{ messages: [...] }`. A vanished
- * thread is an explicit `thread_not_found`, never an empty-transcript success;
- * a store failure after the gate is a generic failure, never `thread_not_found`
+ * transcript of ONE owned thread. Owned-existing-thread resolver → capped
+ * recall (KTD4); success body is `{ messages: [...] }`. A vanished thread is
+ * an explicit `thread_not_found`, never an empty-transcript success; a store
+ * failure after admission is a generic failure, never `thread_not_found`
  * (fail closed).
  */
 export async function handleAiChatHistoryReplayRequest({
@@ -356,43 +355,25 @@ export async function handleAiChatHistoryReplayRequest({
     // Inside the try (matching the list handler): a sync memory-construction
     // throw must map to store_failed, never escape the closed outcome shape.
     const memory = getMemory()
-    const authz = await settleWithinBudget(
-      authorizeAiChatThreadAccess({
+    const resolution = await settleWithinBudget(
+      resolveOwnedExistingThread({
         memory,
         threadId: body.threadId,
         resource: body.resourceId,
       }),
       budgetSignal,
     )
-    if (!authz.ok) {
-      // The gate's `thread_limit` is a write-path (creation-ceiling) outcome,
-      // reachable on a read only when the thread does not exist — so it maps
-      // to `thread_not_found`; the write-path reason never reaches this wire.
-      const reason =
-        authz.reason === "thread_forbidden"
-          ? ("thread_forbidden" as const)
-          : ("thread_not_found" as const)
+    if (!resolution.ok) {
       console.warn(
-        `[ai-chat-history] event=thread_access_rejected reason=${reason}`,
+        `[ai-chat-history] event=thread_access_rejected reason=${resolution.reason}`,
       )
-      return jsonOutcome(reason === "thread_forbidden" ? 403 : 404, { reason })
-    }
-
-    // The gate admits a MISSING thread (its new-thread branch is a write-path
-    // concept) — replay needs the explicit existence check (R3).
-    const thread = await settleWithinBudget(
-      memory.getThreadById({ threadId: body.threadId }),
-      budgetSignal,
-    )
-    if (thread === null) {
-      console.warn(
-        "[ai-chat-history] event=thread_access_rejected reason=thread_not_found",
-      )
-      return jsonOutcome(404, { reason: "thread_not_found" })
+      return jsonOutcome(resolution.reason === "thread_forbidden" ? 403 : 404, {
+        reason: resolution.reason,
+      })
     }
 
     // `resourceId` is ALWAYS passed — omitting it disables the store's own
-    // ownership throw (the belt-and-suspenders layer under the gate above).
+    // ownership throw (the belt-and-suspenders layer under the resolver above).
     const result = await settleWithinBudget(
       memory.recall({
         threadId: body.threadId,
@@ -408,8 +389,9 @@ export async function handleAiChatHistoryReplayRequest({
       )
     return jsonOutcome(200, { messages })
   } catch {
-    // Fail CLOSED: a store outage (including the gate's getThreadById throw)
-    // is a generic failure — never thread_not_found, never exception text.
+    // Fail CLOSED: a store outage (including the resolver's getThreadById
+    // throw) is a generic failure — never thread_not_found, never exception
+    // text.
     const reason = budgetSignal.aborted ? "timeout" : "store_failed"
     console.warn(`[ai-chat-history] event=replay_failed reason=${reason}`)
     return jsonOutcome(reason === "timeout" ? 504 : 500, { reason })

@@ -26,8 +26,10 @@
  * production kill-switch via AI_CHAT_MEMORY_BACKEND); `postgres` → the shared
  * `ai_chat` store. Ownership of a thread is NOT enforced here — Mastra's
  * message path silently adopts an existing thread regardless of the caller's
- * resource — so every ai-chat route MUST gate access through
- * `authorizeAiChatThreadAccess` (./ai-chat-thread-ownership.ts) first.
+ * resource — so every ai-chat route MUST enforce ownership via
+ * ./ai-chat-thread-ownership.ts first: `authorizeAiChatThreadAccess` on
+ * agent-turn (write) paths, `resolveOwnedExistingThread` on read-only
+ * surfaces (history replay, feat-284).
  *
  * pg pool arithmetic for this service: runtime store (index.ts) defaults to
  * max 20, experience-chat storage 5, experience-chat vector 2, ai-chat

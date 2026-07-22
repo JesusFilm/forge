@@ -76,6 +76,13 @@ dropped — see its Decision Record).
 
 ## Entry Points — Read These First
 
+> **Superseded in part (2026-07-22, feat-284):** the replay READ path no longer
+> calls `authorizeAiChatThreadAccess` — ownership + existence now resolve
+> through `resolveOwnedExistingThread` (same module; single `getThreadById`, no
+> ceiling branch, no `thread_limit` remap). The gate remains the send (write)
+> path's authority. References to the gate-based replay flow below are this
+> ticket's historical record.
+
 1. `apps/mastra/src/mastra/ai-chat-thread-ownership.ts` —
    `authorizeAiChatThreadAccess` + the narrow Memory surface. The replay route
    must call this before returning any messages; the listing route must scope

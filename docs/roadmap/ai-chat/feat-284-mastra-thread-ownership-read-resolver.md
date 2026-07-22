@@ -3,7 +3,7 @@ id: "feat-284"
 title: "Mastra thread-ownership read-path resolver (owned-existing-thread)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-24"
 duration: 1
 depends_on: []
