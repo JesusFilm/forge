@@ -27,7 +27,7 @@ src/
     page.tsx             Resolves the seeker gate (resolveSeekerGate, surface "page"; force-dynamic) → <AppShell seekerEnabled> (server)
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
     api/
-      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame the client maps to the stub). Testable core handleSeekerProxyRequest
+      seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard, redirect:"error", timeout-bounded, normalizes every failure to one terminal error{reason} frame. feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame; the SESSION stubs never-persisted conversations, feat-281 Ruling 3). Testable core handleSeekerProxyRequest
       history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, the shared hostAllowed (lib/server/mastra-upstream), [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (2/8 MiB), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
       history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
@@ -48,12 +48,13 @@ src/
   components/
     shell/
       app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text)
-      sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, sub-rows in the sidebar-* components
+      sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, visible-row policy in sidebar-projection (applied here at render, feat-281 Ruling 4b), sub-rows in the sidebar-* components
       use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener, drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
       sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav/account/signIn/signOut/…); signIn is deliberately NOT newButton (differs by md:mx-auto + md:hover:border-transparent)
       sidebar-header.tsx           Brand mark + wordmark + the three mutually-exclusive controls (desktop collapse toggle / collapsed expand affordance / mobile close X); presentational
       sidebar-new-conversation.tsx New-conversation action (full-width labeled ↔ centered icon-only when collapsed); presentational
       sidebar-conversation-list.tsx Conversation history nav (select + per-row replying pulse; hidden when collapsed); presentational
+      sidebar-projection.ts        feat-281 (Ruling 4b): the sidebar-facing projection module — listConversations (the visible-row filter + ordering the rail renders; sidebar.tsx applies it) + the HistoryListUi type (the session snapshot's history field satisfies it structurally)
       sidebar-account.tsx          Rail-foot account control (feat-207): signed-out "Sign in" anchor / signed-in identity (name→email→label, avatar→initials→icon) + "Sign out" POST form + R12 notice; presentational, three-presentation coverage; hidden when auth unconfigured
       icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
@@ -67,7 +68,7 @@ src/
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
-    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins)
+    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins). Honest since feat-281 (Ruling 3): every error frame — gate_denied included — returns { ok: false, reason, partialText } truthfully; the session owns stub-vs-failure
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
@@ -75,7 +76,8 @@ src/
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
-    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation. feat-270: stopReply (user abort → quiet finalize keeping partial text, no failure notice; every stopped Seeker turn marks the conversation server-persisted — Mastra creates the thread row before generating, so even a zero-token stop may have persisted it), New-conversation reuse of the existing empty, sidebar projection hides inactive never-used empties, snippet titles beat the date fallback via titleFromFirstUser (server LLM title still wins). feat-241: post-mount history hydration (gated on seekerEnabled), merge by conversation id, Load more, lazy single-flight replay, R22 send blocking, KTD10 allowStubFallback wiring; pure merge/order helpers exported for tests
+    conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
+    use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction (conversations = the full unprojected list since PR 2)
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
     jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx); primary favicon
@@ -83,19 +85,24 @@ public/                  Static assets served by URL (Next.js convention, matche
     jesus-film-logo.svg  Full wordmark (unused for now; kept for longer-form surfaces)
 ```
 
-- **State ownership:** all conversation state lives in `useConversations`,
-  consumed by `AppShell`, which also owns sidebar _view_ state (`collapsed`,
-  `mobileOpen`). Data flows one way: `useConversations`/view-state → `AppShell`
+- **State ownership:** all conversation state lives in the framework-agnostic
+  session module (`lib/conversation-session.ts`, feat-281); `useConversations`
+  is a thin `useSyncExternalStore` adapter over one session instance, consumed
+  by `AppShell`, which also owns sidebar _view_ state (`collapsed`,
+  `mobileOpen`). Data flows one way: session → `useConversations` → `AppShell`
   → `Sidebar` / `Chat` → leaf components. Both `chat.tsx` and `sidebar.tsx` are
   presentational compositions now: `sidebar.tsx` lays out the scrim + `<aside>`
   and delegates its local _UI mechanics_ (collapse clip animation, Escape
   listener, drawer focus trap) to the `useSidebarChrome` hook, its collapsed
-  class policy to `collapsedStyles`, and its rows to the `sidebar-*`
+  class policy to `collapsedStyles`, its visible-row projection to
+  `sidebar-projection` (feat-281 Ruling 4b — the session hands the full list;
+  the rail decides what it shows), and its rows to the `sidebar-*`
   sub-components (feat-203). State ownership stays in `AppShell` — the hook
   only derives presentation from the `collapsed`/`mobileOpen` flags.
 - **The reply seam:** reply generation is isolated in `lib/chat-stub.ts`
   (`streamReply` — stub path OR Seeker proxy, selected by the `seekerEnabled`
-  flag). The hook orchestrates the streaming lifecycle (append an empty assistant
+  flag), injected into the session as a dep. The session orchestrates the
+  streaming lifecycle (append an empty assistant
   turn, feed `onToken` into it, finalize/error on the terminal result), the
   per-conversation pending/double-send guard, and which conversation a reply
   lands in. The `Message` type + `SeekerSource` + `ReplyFailureReason` live in
@@ -147,9 +154,11 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   normalized both sides; unset/empty admits no one). `page.tsx`
   resolves it server-side (`force-dynamic`, surface `page`) into the
   `seekerEnabled` prop; the route re-resolves it on every request (surface
-  `route`) and denies with a terminal `gate_denied` frame the client maps to
-  the stub. Any deny → the original client stub (`buildStubReply`); full grant
-  → messages stream from Seeker.
+  `route`) and denies with a terminal `gate_denied` frame the seam reports
+  honestly (feat-281 Ruling 3) — the conversation session then rebuilds the
+  original client stub (`buildStubReply`) for never-persisted conversations,
+  so any deny still renders the stub; full grant → messages stream from
+  Seeker.
 - **The seam is `src/lib/chat-stub.ts`** (`streamReply` — stub path + Seeker
   path), still the single swap point. The `Message` type + `SeekerSource` +
   `ReplyFailureReason` live in `src/lib/conversations.ts` so they outlive the seam.
@@ -228,8 +237,9 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   silent fall-back to the client-only sidebar, no nudge (R16; the sign-in
   nudge is deferred to feat-236); `not_available` → the "no longer available"
   state; `unavailable` → error state with retry.
-- **Hook semantics** (`lib/use-conversations.ts`): hydration fires once
-  post-mount when `seekerEnabled` (= full gate grant — anonymous/denied users
+- **Session semantics** (`lib/conversation-session.ts`, feat-281 — reached via
+  the `use-conversations` adapter): hydration fires once on activation when
+  `seekerEnabled` (= full gate grant — anonymous/denied users
   never fetch; the server render path gains no awaits); merge by conversation
   id (client conversation id === server thread id): in-session messages
   authoritative, non-empty server LLM title beats the `deriveTitle` snippet,
@@ -247,10 +257,13 @@ not_available`; failed retries only via the explicit action); sends into a
   a send's SUCCESS finalize with engine `"seeker"`, after a failed Seeker
   turn that streamed partial text, or after ANY user-stopped Seeker turn
   (feat-270 — Mastra creates the thread row before generating, so even a
-  zero-token stop may have persisted it; never from the engine tag alone). The hook passes `allowStubFallback: false` for those, so
-  `gate_denied` renders the access-changed failure copy instead of silently
+  zero-token stop may have persisted it; never from the engine tag alone).
+  The seam reports `gate_denied` honestly (feat-281 Ruling 3); the session
+  captures stub-vs-failure at send START from `serverPersisted`: persisted
+  conversations render the access-changed failure copy instead of silently
   stub-forking; never-persisted conversations keep the feat-233 stub
-  downgrade.
+  downgrade, rebuilt inline in the finalize (immediate — no
+  `STUB_REPLY_DELAY_MS`, engine `"stub"`).
 - **Titles:** LLM-generated server-side (Mastra `generateTitle`, signed-in
   threads only); untitled rows (`title: ""`) render the deterministic
   `fallbackTitle(lastActivityAt)` date label. No in-session polling — new
@@ -406,7 +419,10 @@ login page instead of silently re-authenticating via the SSO session.
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
   them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
-  (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`, the `app/`
+  (a pure class-map function), `shell/sidebar-projection.ts` (pure projection,
+  feat-281), `brand/*`, `lib/cn.ts`, `lib/sse.ts`,
+  `lib/conversation-session.ts` (feat-281 — client-shipped but React-free by
+  contract; only the `use-conversations` adapter may touch React), the `app/`
   entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`,
   `app/api/auth/*`, `auth/*` — note `auth/identity.ts` uses `next/headers` — the
   feat-233 `lib/seeker-gate.ts`, and the feat-282 `lib/server/mastra-upstream.ts`,
@@ -436,10 +452,19 @@ login page instead of silently re-authenticating via the SSO session.
   `apps/web` no-testing-library convention (plain `react-dom/client` + `act`),
   scoped to chat by design — it does not change those apps. Pure-function tests
   (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,
-  `shell/sidebar-collapsed-styles.test.ts`) stay plain vitest. The behavioral
-  suite lives in `components/shell/app-shell.test.tsx` (AppShell owns the
-  state); the extracted `use-sidebar-chrome` hook has its own colocated
-  `renderHook` unit test for its state machine in isolation. Note for the
+  `shell/sidebar-collapsed-styles.test.ts`,
+  `shell/sidebar-projection.test.ts`) stay plain vitest. The behavioral
+  suite lives in `components/shell/app-shell.test.tsx` (AppShell consumes the
+  session state); the extracted `use-sidebar-chrome` hook has its own colocated
+  `renderHook` unit test for its state machine in isolation. The conversation
+  session (feat-281) has a direct unit suite (`lib/conversation-session.test.ts`
+  — injected deps, no DOM) and the adapter a StrictMode-rendered suite
+  (`lib/use-conversations.strictmode.test.tsx`); the whole-tree suites plus
+  their `Remount safety` describe stay the extraction's acceptance gate.
+  Gotcha pinned there: `renderHook` needs RTL's `reactStrictMode: true` option
+  — a custom `<StrictMode>` wrapper doubles initializers but NOT the effect
+  cycle, silently skipping the re-arm path (see the Detection pitfall in
+  `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`). Note for the
   behavioral suite: the reply lands via `setTimeout`, so it runs on fake timers
   with `userEvent.setup({ advanceTimers, ... })` under
   `vi.useFakeTimers({ shouldAdvanceTime: true })` — a plain fake clock hangs

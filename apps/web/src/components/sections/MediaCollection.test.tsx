@@ -76,6 +76,7 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
       dominantColor: null,
       videoSlug,
       muxPlaybackId: "mux-route-child",
+      languageSlug: null,
     },
   ]
   return {
@@ -111,6 +112,65 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
 }
 
 describe("MediaCollection VideoCard href", () => {
+  it("links manual items with the resolved video dub language", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-castilian"
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              makeManualItem({
+                videoSlug: "jesus",
+                videoDub: {
+                  language: {
+                    slug: "spanish-castilian",
+                  },
+                },
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/jesus.html/spanish-castilian.html']",
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/jesus.html/english.html']",
+      ),
+    ).toBeNull()
+  })
+
+  it("falls manual item links back to the current page language", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-castilian"
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              makeManualItem({
+                videoSlug: "jesus",
+                videoDub: null,
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/jesus.html/spanish-castilian.html']",
+      ),
+    ).not.toBeNull()
+  })
+
   it("renders the carousel variant as a fixed-width horizontal rail", () => {
     act(() => {
       root.render(
@@ -347,6 +407,143 @@ describe("MediaCollection VideoCard href", () => {
     expect(link?.getAttribute("href")).toBe(
       "/watch/the-gospel-of-luke.html/english.html",
     )
+  })
+
+  it("renders the Admin-resolved linked video title", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCollectionVariant: "grid",
+            items: [
+              {
+                videoId: "v-1",
+                videoSlug: "fresh-perspective",
+                resolvedTitle: "  NUA: Fresh Perspective  ",
+                titleOverride: null,
+                subtitleOverride: null,
+                labelOverride: "Series",
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const card = container.querySelector<HTMLElement>(
+      'a[data-testid="VideoCard"]',
+    )
+    expect(card?.querySelector("h3")?.textContent).toBe(
+      "NUA: Fresh Perspective",
+    )
+    expect(card?.getAttribute("aria-label")).toBe("Show NUA: Fresh Perspective")
+  })
+
+  it("leaves null and blank linked titles visually empty without an Untitled fallback", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCollectionVariant: "grid",
+            items: [
+              {
+                videoId: "v-null",
+                videoSlug: "titleless-null",
+                resolvedTitle: null,
+                titleOverride: null,
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl:
+                  "/watch/images/thumbnails/GOMattCollection-vertical.png",
+              },
+              {
+                videoId: "v-blank",
+                videoSlug: "titleless-blank",
+                resolvedTitle: "   ",
+                titleOverride: null,
+                subtitleOverride: null,
+                labelOverride: null,
+                collectionSize: null,
+                imageUrl:
+                  "/watch/images/thumbnails/GOMarkCollection-vertical.png",
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const cards = Array.from(
+      container.querySelectorAll<HTMLElement>('a[data-testid="VideoCard"]'),
+    )
+    expect(cards).toHaveLength(2)
+    expect(cards.every((card) => card.querySelector("h3") == null)).toBe(true)
+    expect(
+      cards.map((card) => card.querySelector("img")?.getAttribute("alt")),
+    ).toEqual(["", ""])
+    expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
+      "Show titleless-null",
+      "Show titleless-blank",
+    ])
+    expect(cards.every((card) => card.textContent === "")).toBe(true)
+    expect(container.textContent).not.toContain("Untitled")
+    expect(container.textContent).not.toContain("titleless-null")
+    expect(container.textContent).not.toContain("titleless-blank")
+  })
+
+  it("distinguishes titleless linked cards that share the same visible label", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            mediaCollectionVariant: "grid",
+            items: [
+              {
+                videoId: "v-one",
+                videoSlug: "titleless-one",
+                resolvedTitle: null,
+                titleOverride: null,
+                subtitleOverride: null,
+                labelOverride: "Episode",
+                collectionSize: null,
+                imageUrl: null,
+              },
+              {
+                videoId: "v-two",
+                videoSlug: "titleless-two",
+                resolvedTitle: null,
+                titleOverride: null,
+                subtitleOverride: null,
+                labelOverride: "Episode",
+                collectionSize: null,
+                imageUrl: null,
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const cards = Array.from(
+      container.querySelectorAll<HTMLElement>('a[data-testid="VideoCard"]'),
+    )
+    expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
+      "Show Episode titleless-one",
+      "Show Episode titleless-two",
+    ])
+    expect(cards.map((card) => card.textContent)).toEqual([
+      "Episode",
+      "Episode",
+    ])
+    expect(container.textContent).not.toContain("Untitled")
+    expect(container.textContent).not.toContain("titleless-one")
+    expect(container.textContent).not.toContain("titleless-two")
   })
 
   it("uses a shared parent collection as the localized default CTA target", () => {

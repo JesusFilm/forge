@@ -7,10 +7,9 @@ const MUX_PLAYBACK_ID_RE = /^[a-zA-Z0-9]+$/
 export function deriveMuxThumbnailUrl(
   streamingUrl: string | null | undefined,
 ): string | null {
-  if (!streamingUrl) return null
-  const match = MUX_STREAM_RE.exec(streamingUrl)
-  if (!match?.[1]) return null
-  return `https://image.mux.com/${match[1]}/thumbnail.png?width=1280&fit_mode=smartcrop`
+  // Delegates so the smartcrop URL shape lives in exactly one place
+  // (muxThumbnailFromPlaybackId) — hero and card-fallback posters can't drift.
+  return muxThumbnailFromPlaybackId(extractMuxPlaybackId(streamingUrl))
 }
 
 /** Canonical Mux HLS URL from a playback ID; null if missing or non-alphanumeric. */
@@ -19,6 +18,16 @@ export function muxHlsUrlFromPlaybackId(
 ): string | null {
   if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
   return `https://stream.mux.com/${playbackId}.m3u8`
+}
+
+// Same smartcrop shape as deriveMuxThumbnailUrl, but keyed straight off the
+// playback ID an Experience item already carries — the last-resort card poster
+// when a MediaCollection item has no authored image and no hydrated video art.
+export function muxThumbnailFromPlaybackId(
+  playbackId: string | null | undefined,
+): string | null {
+  if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
+  return `https://image.mux.com/${playbackId}/thumbnail.png?width=1280&fit_mode=smartcrop`
 }
 
 /**

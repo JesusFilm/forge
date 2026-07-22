@@ -1,19 +1,20 @@
-// Admin's `MediaCollectionBlock.items[]` is FLAT — every item carries
-// `videoId`, `imageUrl`, and `imageOverrideUrl` directly, with no nested
-// `video { ... }` join. The renderer
-// (`apps/web/src/components/sections/index.tsx:53-70`) tolerates a
-// missing video join via the `titleOverride` + image fallback path. Authored
-// items may also carry a route slug snapshot for linking, but this helper does
-// NOT hydrate the missing video record. A live videoId → title/image hydrator is
-// a deferred concern.
+// Admin's `MediaCollectionBlock.items[]` is flat. Computed fields such as
+// `resolvedTitle` are projected alongside the linked video's image and route
+// metadata so the renderer does not need a second request or client-side join.
 
 type MediaItem = {
   videoId?: string | null
   coreId?: string | null
   videoSlug?: string | null
+  videoDub?: {
+    language?: {
+      slug?: string | null
+    } | null
+  } | null
   muxPlaybackId?: string | null
   videoImageBlurDataUrl?: string | null
   videoImageDominantColor?: string | null
+  resolvedTitle?: string | null
   titleOverride: string | null
   subtitleOverride: string | null
   labelOverride: string | null
@@ -136,11 +137,12 @@ export type EnrichedMediaItem = {
   blurDataUrl: string | null
   dominantColor: string | null
   videoSlug: string
+  languageSlug: string | null
   muxPlaybackId: string | null
 }
 
 export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
-  const title = item.titleOverride ?? ""
+  const title = item.resolvedTitle?.trim() ?? ""
   const subtitle = item.subtitleOverride ?? ""
   const label = typeof item.labelOverride === "string" ? item.labelOverride : ""
   const collectionSize = item.collectionSize ?? ""
@@ -180,6 +182,10 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   // Renderer skips the `<a href>` when videoSlug is empty (see
   // MediaCollection.tsx `const href = item.videoSlug ? ...`).
   const videoSlug = typeof item.videoSlug === "string" ? item.videoSlug : ""
+  const languageSlug =
+    typeof item.videoDub?.language?.slug === "string"
+      ? item.videoDub.language.slug
+      : null
   // Fall back to videoId (or empty string) when no upstream id is present.
   // React keys against an empty string repeat-collide across items, so the
   // consumer also keys by array index where this matters.
@@ -210,6 +216,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
       overrideDominantColor ??
       (hasOverrideImage ? null : (videoDominantColor ?? fallbackDominantColor)),
     videoSlug,
+    languageSlug,
     muxPlaybackId: item.muxPlaybackId ?? null,
   }
 }
@@ -230,6 +237,7 @@ export function enrichRouteRelatedVideo(
     blurDataUrl: meaningfulBlurDataUrl(video.images?.[0]?.blurDataUrl),
     dominantColor: meaningfulColor(video.images?.[0]?.dominantColor),
     videoSlug,
+    languageSlug: null,
     muxPlaybackId: video.muxPlaybackId ?? null,
   }
 }

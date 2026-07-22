@@ -92,7 +92,7 @@ export function editorTextFromContentParagraphs(
   return paragraphs.join(variant === "promotional" ? "\n\n" : "\n")
 }
 
-const legacyEditorOnlyKeys = new Set(["videoSlug"])
+const legacyEditorOnlyKeys = new Set(["streamingUrl", "videoSlug"])
 
 export type VideoLibraryItem = {
   key: string
@@ -123,6 +123,7 @@ export type VideoLibraryItem = {
 export type VideoLibraryPlayableDub = {
   key: string
   label: string
+  languageId: string | null
   languageSlug: string | null
   bcp47: string | null
   streamUrl: string
@@ -233,6 +234,7 @@ const optionalEmptyStringKeys = new Set([
   "imageAssetId",
   "imageUrl",
   "labelOverride",
+  "languageId",
   "link",
   "linkToSectionKey",
   "mediaUrl",

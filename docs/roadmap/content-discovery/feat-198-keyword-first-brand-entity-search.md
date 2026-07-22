@@ -3,7 +3,7 @@ id: "feat-198"
 title: "Keyword-first transcript relevance and entity search ranking"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "cancelled"
 start_date: "2026-06-22"
 duration: 4
 depends_on:
@@ -18,6 +18,16 @@ tags:
   - "embeddings"
   - "launch-readiness"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-22. This work is being paused rather than treated as
+delivered: the proposed brand/entity ranking path and richer transcript
+`spiritualContext` extraction are not required for the current search roadmap.
+The existing keyword-first and transcript-backed retrieval behavior remains in
+place. If entity-specific relevance becomes a priority again, reopen or replace
+this ticket after re-baselining the current ranker, corpus metadata, and eval
+coverage.
 
 ## Problem
 

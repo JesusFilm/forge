@@ -18,6 +18,11 @@ import {
   loadVideoRows,
   videoIdsFromExperienceBlocks,
 } from "@/app/dashboard/live-data"
+import {
+  matchesVideoLibraryCategory,
+  parseVideoLibraryCategory,
+  type VideoLibraryCategory,
+} from "@/app/dashboard/video-library-utils"
 import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import { env } from "@/config/env"
@@ -129,6 +134,17 @@ async function languageSlugForLocale(locale: string): Promise<string | null> {
     select: { slug: true },
   })
   return language?.slug ?? null
+}
+
+async function languageIdForLocale(locale: string): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: {
+      deletedAt: null,
+      OR: [{ bcp47: locale }, { slug: locale }, { iso3: locale }],
+    },
+    select: { id: true },
+  })
+  return language?.id ?? null
 }
 
 async function loadMediaLibrary() {
@@ -274,13 +290,15 @@ export default async function ExperienceEditorPage({
     notFound()
   }
 
-  const [videoLibrary, mediaLibrary] = await Promise.all([
-    loadVideoRows(principal, {
-      includeVideoIds: videoIdsFromExperienceBlocks(selectedLocale.blocks),
-      preferredLocale: selectedLocale.locale,
-    }),
-    mediaLibraryPromise,
-  ])
+  const [videoLibrary, mediaLibrary, selectedLocaleLanguageId] =
+    await Promise.all([
+      loadVideoRows(principal, {
+        includeVideoIds: videoIdsFromExperienceBlocks(selectedLocale.blocks),
+        preferredLocale: selectedLocale.locale,
+      }),
+      mediaLibraryPromise,
+      languageIdForLocale(selectedLocale.locale),
+    ])
 
   const currentExperienceId = experience.id
   const canUploadImages = hasPermission(principal, "write:media-assets")
@@ -623,10 +641,21 @@ export default async function ExperienceEditorPage({
 
   async function searchVideoLibraryAction(
     query: string,
-    context?: { client?: AdminVideoLibrarySearchTraceClient },
+    context?: {
+      category?: VideoLibraryCategory
+      client?: AdminVideoLibrarySearchTraceClient
+    },
   ) {
     "use server"
     const user = await requireSession()
+    const normalizedQuery = query.trim()
+    const category = parseVideoLibraryCategory(context?.category)
+    if (!normalizedQuery) {
+      return loadVideoRows(user, {
+        category,
+        preferredLocale: selectedLocale.locale,
+      })
+    }
     const services = createServices(prisma)
     const targetLanguageSlug = await languageSlugForLocale(
       selectedLocale.locale,
@@ -637,7 +666,7 @@ export default async function ExperienceEditorPage({
     // stack, then writes a client-identified admin trace for operator review.
     try {
       const response = await services.watchSearch.search({
-        query,
+        query: normalizedQuery,
         targetLanguageSlug,
         displayLanguageSlug: targetLanguageSlug,
         routeLanguageSlug: targetLanguageSlug,
@@ -652,25 +681,29 @@ export default async function ExperienceEditorPage({
         includeVideoIds: videoIds,
         preferredLocale: selectedLocale.locale,
       })
+      const filteredRows = rows.filter((row) =>
+        matchesVideoLibraryCategory(row.label, category),
+      )
+      const byId = new Map(filteredRows.map((row) => [row.key, row]))
+      const orderedRows = videoIds.flatMap((id) => {
+        const row = byId.get(id)
+        return row ? [row] : []
+      })
       await recordAdminVideoLibrarySearchTraceSafely({
-        query,
+        query: normalizedQuery,
         locale: selectedLocale.locale,
         client,
         response,
-        resultIds: videoIds,
-        hydratedResultCount: rows.length,
+        resultIds: orderedRows.map((row) => row.key),
+        hydratedResultCount: orderedRows.length,
         targetLanguageSlug,
         startedAt,
         completedAt: new Date(),
       })
-      const byId = new Map(rows.map((row) => [row.key, row]))
-      return videoIds.flatMap((id) => {
-        const row = byId.get(id)
-        return row ? [row] : []
-      })
+      return orderedRows
     } catch (error) {
       await recordAdminVideoLibrarySearchTraceSafely({
-        query,
+        query: normalizedQuery,
         locale: selectedLocale.locale,
         client,
         targetLanguageSlug,
@@ -750,6 +783,7 @@ export default async function ExperienceEditorPage({
       watchOrigin={env.WATCH_CANONICAL_ORIGIN}
       initialValues={{
         localeId: selectedLocale.id,
+        videoLanguageId: selectedLocaleLanguageId,
         title: selectedLocale.title ?? "",
         slug: selectedLocale.slug,
         metaDescription: selectedLocale.metaDescription ?? "",

@@ -229,6 +229,7 @@ function playableDubsForPicker(dubs: VideoDubRow[], locale: string) {
         label: dub.language
           ? languageOptionLabel(dub.language, locale)
           : `Dub ${seenByLanguage.size}`,
+        languageId: dub.language?.id ?? null,
         languageSlug: dub.language?.slug ?? null,
         bcp47: dub.language?.bcp47 ?? null,
         streamUrl,
@@ -2154,11 +2155,13 @@ async function loadVideoRowSlice({
 export async function loadVideoRows(
   principal: Principal,
   options: {
+    category?: VideoLibraryCategory
     includeVideoIds?: readonly string[]
     preferredLocale?: string
   } = {},
 ) {
   const rows = await loadVideoRowSlice({
+    category: options.category,
     principal,
     limit: VIDEO_LIBRARY_PAGE_SIZE,
     offset: 0,
@@ -2172,6 +2175,7 @@ export async function loadVideoRows(
   // Top-up with AI-referenced videos outside the first library page
   // (experience-AI chat; additive).
   const extras = await loadVideoRowSlice({
+    category: options.category,
     principal,
     limit: missing.length,
     offset: 0,

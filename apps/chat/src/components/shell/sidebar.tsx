@@ -1,16 +1,17 @@
 "use client"
 
+import { useMemo } from "react"
+
 import { type ChatIdentity } from "@/auth/session-cookie"
 import { cn } from "@/lib/cn"
 import { type Conversation } from "@/lib/conversations"
-
-import { type HistoryListUi } from "@/lib/use-conversations"
 
 import { SidebarAccount } from "./sidebar-account"
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { ConversationList } from "./sidebar-conversation-list"
 import { SidebarHeader } from "./sidebar-header"
 import { NewConversationButton } from "./sidebar-new-conversation"
+import { listConversations, type HistoryListUi } from "./sidebar-projection"
 import { useSidebarChrome } from "./use-sidebar-chrome"
 
 type SidebarProps = {
@@ -72,6 +73,14 @@ export function Sidebar({
 
   const styles = collapsedStyles(collapsed)
 
+  // Visible-row policy applied here (feat-281, Ruling 4b): the session hands
+  // the full list; the rail decides what it shows. Memoized so row identity
+  // only changes with the inputs (matches the old snapshot-cached semantics).
+  const visibleConversations = useMemo(
+    () => listConversations(conversations, activeId),
+    [conversations, activeId],
+  )
+
   return (
     <>
       {/* Scrim — mobile only, behind the drawer. */}
@@ -123,7 +132,7 @@ export function Sidebar({
           onCloseMobile={onCloseMobile}
         />
         <ConversationList
-          conversations={conversations}
+          conversations={visibleConversations}
           activeId={activeId}
           pendingIds={pendingIds}
           styles={styles}

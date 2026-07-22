@@ -332,7 +332,11 @@ privacy/parity axes:
 - **TV samples 100%, web samples 50%.** `getDatadogRumConfig()` sets `sessionSampleRate: 100`
   (`datadog.ts:71`, "real TV sessions are comparatively rare, so sample everything"), whereas web
   samples 50%. **Any cross-app dashboard comparing absolute counts must normalize** — a raw
-  TV-vs-web session or action count is off by 2x before you even start.
+  TV-vs-web session or action count is off by 2x before you even start. And normalizing counts
+  assumes the sessions are in the same filtered set to begin with: the `env` tag value must match
+  across apps (all tag `env:prod`), or a cross-app `env:prod` dashboard silently drops the app that
+  tags a different literal — and no count-normalization recovers rows the filter never returned.
+  See [Datadog RUM env tag: unify every app on one canonical value](../conventions/datadog-rum-env-tag-cross-app-canonical-value.md).
 
 The through-line: when you copy an analytics signal from a web app into a native anonymous client,
 audit it against the client's threat model rather than assuming parity means identical config.
