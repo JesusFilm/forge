@@ -1,5 +1,5 @@
 ---
-id: "feat-286"
+id: "feat-290"
 title: "Watch Thumbnail Caption Typography"
 owner: "codex"
 priority: "P2"
@@ -69,7 +69,7 @@ the side edge.
 - `pnpm --filter @forge/web test -- src/components/ui/video-thumbnail-caption.test.tsx src/components/watch/__tests__/SiblingCarousel.test.tsx`
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/web exec eslint src/components/home/WatchHomeCard.tsx src/components/home/WatchHomeHero.tsx src/components/home/WatchHomeTvCarousel.tsx src/components/search/VideoCard.tsx src/components/sections/CarouselVideo.tsx src/components/sections/MediaCollection.tsx src/components/sections/NavigationCarousel.tsx src/components/ui/video-thumbnail-caption.test.tsx src/components/ui/video-thumbnail-caption.tsx src/components/watch/SeriesEpisodeCard.tsx src/components/watch/SiblingCarousel.tsx src/components/watch/__tests__/SiblingCarousel.test.tsx`
-- `pnpm --filter @forge/web exec prettier --check src/components/home/WatchHomeCard.tsx src/components/home/WatchHomeHero.tsx src/components/home/WatchHomeTvCarousel.tsx src/components/search/VideoCard.tsx src/components/sections/CarouselVideo.tsx src/components/sections/MediaCollection.tsx src/components/sections/NavigationCarousel.tsx src/components/ui/video-thumbnail-caption.test.tsx src/components/ui/video-thumbnail-caption.tsx src/components/watch/SeriesEpisodeCard.tsx src/components/watch/SiblingCarousel.tsx src/components/watch/__tests__/SiblingCarousel.test.tsx ../../docs/roadmap/platform/feat-286-watch-thumbnail-caption-typography.md`
+- `pnpm --filter @forge/web exec prettier --check src/components/home/WatchHomeCard.tsx src/components/home/WatchHomeHero.tsx src/components/home/WatchHomeTvCarousel.tsx src/components/search/VideoCard.tsx src/components/sections/CarouselVideo.tsx src/components/sections/MediaCollection.tsx src/components/sections/NavigationCarousel.tsx src/components/ui/video-thumbnail-caption.test.tsx src/components/ui/video-thumbnail-caption.tsx src/components/watch/SeriesEpisodeCard.tsx src/components/watch/SiblingCarousel.tsx src/components/watch/__tests__/SiblingCarousel.test.tsx ../../docs/roadmap/platform/feat-290-watch-thumbnail-caption-typography.md`
 - `git diff --check`
 - Browser screenshot plus computed styles showing medium-weight titles with
   equal side and bottom inset.

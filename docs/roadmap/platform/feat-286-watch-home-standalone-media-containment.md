@@ -8,7 +8,7 @@ start_date: "2026-07-21"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-287"
+  - "feat-291"
 tags:
   - "platform"
   - "web"

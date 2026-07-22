@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 22, 2026)
 
-- **Total tickets:** 402
-- **Complete:** 303
+- **Total tickets:** 403
+- **Complete:** 304
 - **In progress:** 25
 - **Not started:** 25
 - **Blocked:** 49
@@ -331,6 +331,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-280](platform/feat-280-watch-media-collection-linked-titles.md)                  | Watch Media Collection Linked Titles                                             | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-280](platform/feat-280-experience-video-block-language-identity.md)              | Experience Video Block Language Identity                                         | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-281](platform/feat-281-watch-series-parent-variant-language-canonicalization.md) | Watch series parent variant language canonicalization                            | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-289](platform/feat-289-watch-modal-close-position-system.md)                     | Watch Modal Close Position System                                                | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                      | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
@@ -371,12 +372,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)               | Scope Watch media resource hints to media routes                                 | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-275](platform/feat-275-watch-experience-media-card-white-outline.md)             | Web Video Thumbnail White Interaction Frame                                      | vlad       | P2       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-279](platform/feat-279-watch-global-beta-tester-cta-flag.md)                     | Watch global beta tester CTA feature flag                                        | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | in-progress |
-| [feat-281](platform/feat-281-watch-media-collection-supporting-title-spacing.md)       | Watch media collection supporting title spacing                                  | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
-| [feat-282](platform/feat-282-watch-promotional-text-heading-alignment.md)              | Watch promotional text heading alignment                                         | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-286](platform/feat-286-watch-home-standalone-media-containment.md)               | Contain standalone Watch home media blocks                                       | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
-| [feat-286](platform/feat-286-watch-thumbnail-caption-typography.md)                    | Watch Thumbnail Caption Typography                                               | codex      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-287](platform/feat-287-watch-media-collection-supporting-title-spacing.md)       | Watch media collection supporting title spacing                                  | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-288](platform/feat-288-watch-promotional-text-heading-alignment.md)              | Watch promotional text heading alignment                                         | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-290](platform/feat-290-watch-thumbnail-caption-typography.md)                    | Watch Thumbnail Caption Typography                                               | codex      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-267](platform/feat-267-mobile-hero-stream-retry-cooldown.md)                     | Mobile hero stream retry cooldown (idle-Home unbounded retry loop)               | urim       | P2       | 2026-07-22 | 2    | 2026-07-23 | in-progress |
-| [feat-287](platform/feat-287-watch-home-standalone-media-top-spacing.md)               | Align Watch home standalone media top spacing                                    | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-291](platform/feat-291-watch-home-standalone-media-top-spacing.md)               | Align Watch home standalone media top spacing                                    | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
@@ -433,6 +434,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim      | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-255](topic-experiences/feat-255-mobile-poster-rail-signal.md)                         | Mobile Home poster rails — give the card-shape decision its own signal           | urim      | P2       | 2026-07-16 | 2    | 2026-07-17 | not-started |
-| [feat-286](topic-experiences/feat-286-watch-promotional-text-decoration-removal.md)         | Refine Watch promotional text styling                                            | urim      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-292](topic-experiences/feat-292-watch-promotional-text-decoration-removal.md)         | Refine Watch promotional text styling                                            | urim      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim      | P2       | 2026-09-01 | 14   | 2026-09-14 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |

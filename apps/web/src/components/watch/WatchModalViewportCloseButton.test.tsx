@@ -78,7 +78,7 @@ describe("WatchModalViewportCloseButton", () => {
     ).toBeNull()
   })
 
-  it("can stay inside an accessible dialog surface without changing its inset rule", () => {
+  it("escapes transformed dialog surfaces to preserve viewport positioning", () => {
     act(() => {
       root.render(
         <div data-testid="dialog-surface">
@@ -92,12 +92,33 @@ describe("WatchModalViewportCloseButton", () => {
     })
 
     const surface = container.querySelector('[data-testid="dialog-surface"]')
-    const close = container.querySelector(
+    const close = document.body.querySelector(
       '[data-testid="watch-modal-close"]',
     ) as HTMLButtonElement
-    expect(surface?.contains(close)).toBe(true)
+    expect(surface?.contains(close)).toBe(false)
+    expect(close.parentElement).toBe(document.body)
     expect(close.className).toContain("fixed")
     expect(close.style.top).toBe(WATCH_MODAL_CLOSE_INSET_STYLE.top)
     expect(close.style.right).toBe(WATCH_MODAL_CLOSE_INSET_STYLE.right)
+  })
+
+  it("portals into an explicit fullscreen container", () => {
+    const fullscreenContainer = document.createElement("div")
+    document.body.appendChild(fullscreenContainer)
+
+    act(() => {
+      root.render(
+        <WatchModalViewportCloseButton
+          open
+          onClose={vi.fn()}
+          testId="watch-modal-close"
+          portalContainer={fullscreenContainer}
+        />,
+      )
+    })
+
+    expect(
+      fullscreenContainer.querySelector('[data-testid="watch-modal-close"]'),
+    ).not.toBeNull()
   })
 })

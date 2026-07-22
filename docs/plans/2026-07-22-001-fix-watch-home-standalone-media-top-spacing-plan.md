@@ -40,7 +40,7 @@ are out of scope.
 
 - `apps/web/src/components/home/WatchHomeExperiencePage.tsx`
 - `apps/web/src/components/home/WatchHomeExperiencePage.test.tsx`
-- `docs/roadmap/platform/feat-287-watch-home-standalone-media-top-spacing.md`
+- `docs/roadmap/platform/feat-291-watch-home-standalone-media-top-spacing.md`
 
 **Approach:** Add `pt-16` to the existing homepage-only standalone media rail.
 Assert that both eligible block wrappers include it while existing selective

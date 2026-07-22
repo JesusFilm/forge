@@ -87,5 +87,5 @@ avoids double-padding nested sections and preserves generic Experience routes.
 ## Related Issues
 
 - `docs/roadmap/platform/feat-286-watch-home-standalone-media-containment.md`
-- `docs/roadmap/platform/feat-287-watch-home-standalone-media-top-spacing.md`
+- `docs/roadmap/platform/feat-291-watch-home-standalone-media-top-spacing.md`
 - `docs/plans/2026-07-21-003-fix-watch-home-media-containment-plan.md`

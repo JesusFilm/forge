@@ -1,5 +1,5 @@
 ---
-id: "feat-282"
+id: "feat-288"
 title: "Watch promotional text heading alignment"
 owner: "unassigned"
 priority: "P2"

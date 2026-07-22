@@ -701,6 +701,7 @@ export function LanguagePickerModal({
           open={open}
           onClose={onClose}
           testId="watch-language-picker-close"
+          portalContainer={portalContainer}
         />
         <DialogTitle className="sr-only">
           {subtitles.length > 0
