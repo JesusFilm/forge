@@ -17,6 +17,7 @@ import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
+import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
 import { cn } from "@/lib/utils"
 
@@ -76,6 +77,12 @@ function BetaTesterModalLoadingShell({
       data-testid="beta-tester-modal-loading"
       className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 text-white backdrop-blur-sm"
     >
+      <WatchModalViewportCloseButton
+        open
+        onClose={onClose}
+        testId="beta-tester-modal-close"
+        ariaLabel={t("close")}
+      />
       <div className="w-full max-w-sm rounded-2xl border border-white/15 bg-stone-950 p-6 text-center shadow-2xl">
         <h2 id="beta-tester-loading-title" className="text-lg font-semibold">
           {t("title")}

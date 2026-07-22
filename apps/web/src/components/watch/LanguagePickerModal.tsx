@@ -689,12 +689,6 @@ export function LanguagePickerModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <WatchModalViewportCloseButton
-        open={open}
-        onClose={onClose}
-        testId="watch-language-picker-close"
-        portalContainer={portalContainer}
-      />
       <DialogContent
         data-testid="watch-language-picker-modal"
         className="m-auto w-full max-w-[608px] shrink-0 border-0 bg-transparent p-0 text-stone-100 ring-0"
@@ -703,6 +697,11 @@ export function LanguagePickerModal({
         portalContainer={portalContainer}
         viewportClassName="fixed inset-0 z-50 flex overflow-x-hidden overflow-y-auto px-3 py-24"
       >
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={onClose}
+          testId="watch-language-picker-close"
+        />
         <DialogTitle className="sr-only">
           {subtitles.length > 0
             ? t("dialogTitleWithSubtitles")

@@ -119,7 +119,13 @@ describe("BetaTesterModal", () => {
     ) as HTMLButtonElement
     const firstIframe = document.querySelector("iframe")
     expect(document.activeElement).toBe(close)
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+    expect(close.className).toContain("z-[1100]")
     expect(firstIframe).not.toBeNull()
+
+    act(() => firstIframe?.dispatchEvent(new Event("load")))
+    expect(document.querySelector(".z-20")).toBeNull()
 
     act(() => close.click())
     await flushDialogEffects()
@@ -131,6 +137,7 @@ describe("BetaTesterModal", () => {
     const reopenedIframe = document.querySelector("iframe")
     expect(reopenedIframe).not.toBeNull()
     expect(reopenedIframe).not.toBe(firstIframe)
+    expect(document.querySelector(".z-20")?.textContent).toContain("Loading...")
   })
 
   it("dismisses on Escape", async () => {
