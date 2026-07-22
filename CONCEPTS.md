@@ -385,9 +385,23 @@ An Experience Block that groups ordered watch content beneath independently auth
 
 The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
 
+On Web, the Experience's `WatchHomeHeroBlock` can also carry the Watch Home Program: one optional intro plus typed video and promo buckets and their repeating rotation. The Admin document owns what is scheduled; Web owns hydration, sequencing, exposure, and playback. Mobile and TV do not yet consume this hero program and retain their platform-specific hero behavior.
+
 ### Home Curation
 
-The code-defined content set that fills consumer clients' home screens: a featured hero pool plus ordered content sections, declared in source and fetched by Core ID. Web, mobile, and TV now all source their rows from the Homepage Experience and keep the featured hero pool in code; the code row sections survive only as a frozen fallback rendered when the Experience is unavailable. The featured hero pool stays code-defined — its live half mirrored across clients — while the row sections are no longer mirrored where the Experience is the source.
+The editorial choices that fill a consumer client's home screen. Web, mobile, and TV source their rows from the Homepage Experience; code-defined rows survive only as a frozen fallback when that Experience is unavailable.
+
+Web's featured hero is now normally curated through the Admin-owned Watch Home Program. Its former code-defined playlist and promos remain a migration fallback for a placement-only, invalid, or wholly unplayable authored program. Mobile and TV still own their featured hero sources in client code until a separately scoped native adoption is approved, so "home curation" must name the platform when discussing hero behavior.
+
+### Watch Home Program
+
+The locale-specific editorial document nested under the Homepage Experience's `WatchHomeHeroBlock`. It contains an optional intro, typed video and promo buckets, and an ordered list of bucket IDs that defines the repeating cadence. Admin owns its stable IDs, content, copy, and actions; Web resolves those identities into public assets and playable streams, then owns the queue and media lifecycle.
+
+Each Web page entry creates a fresh random assembly. A playable intro appears once at the start, then each rotation slot draws from its referenced bucket's independent no-repeat cycle. React re-renders and visibility changes preserve that assembly; a new mount, refresh, route return, or restored back/forward-cache page creates a new entry.
+
+### Program Bucket
+
+A stable, typed source inside a Watch Home Program. A video bucket names explicit Admin video IDs, while a promo bucket contains editor-authored campaigns with their own streams, managed posters, copy, and actions. The rotation may reference one bucket more than once. Each bucket exhausts and resets independently, which preserves editorial cadence without letting one small or empty bucket reset the rest of the program.
 
 ### Cinematic
 
@@ -465,18 +479,20 @@ Touches go to the topmost layer and are never re-offered downward, so anything i
 
 ### Hero Insert
 
-An editorial slide in the watch-home Hero Queue sourced from media outside the Video catalog, carrying its own stream and overlay copy. Its greeting and daily selection are anchored to one fixed reference clock, so every user worldwide sees the same insert on a given day.
+An editor-authored promo slide in Web's Watch Home Program, sourced from media outside the Video catalog and carrying its own stream, managed poster, overlay copy, and actions. An insert can be the once-per-entry intro or an item in a repeating promo bucket. Its stable promo ID names a semantic campaign: changing the playback asset or action destination requires a new ID so earlier browser exposure cannot hide materially new content.
+
+Code-defined and date-selected inserts remain only in the Web migration fallback and in platform-specific native implementations that have not adopted the Admin program.
 _Avoid:_ Mux insert.
 
 ### Hero Queue
 
-The ordered lineup of slides the watch-home hero rotates through, built by drawing candidate videos round-robin from the Carousel Pools and merging Hero Inserts at their configured positions. The lineup is deterministic for a given calendar day — a date-seeded pick, identical for every user — so the rotation changes daily without anyone editing it.
+The ordered lineup of slides the watch-home hero rotates through. In Web's authored path, the queue starts with the optional intro and then follows the Watch Home Program's exact bucket rotation. Each page entry gets a fresh seed, while browser exposure and available signed-in history make unseen videos preferable. Empty, unresolved, or quarantined items are skipped within one bounded rotation; if nothing playable remains, Web uses the legacy queue instead of looping or blanking the page.
 
-A rebuilt Hero Queue restarts the rotation from its first slide, so clients avoid rebuilding while a user is mid-viewing unless the underlying content actually changed. The queue holds a fixed size as content is consumed: unseen videos lead, and when they cannot fill the target, already-played videos return behind them rather than the carousel shrinking. When every eligible video has already been seen, the queue wraps: it rebuilds ignoring the Played Set, and the set starts a fresh cycle.
+The Web queue is produced incrementally by a pure engine and rendered through the existing single media element. Native clients and Web's migration fallback may still use the older code-defined, date-seeded queue; do not infer Web authored behavior from that fallback algorithm.
 
 ### Carousel Pool
 
-One curated group of collections whose videos are candidates for the Hero Queue. Pools are drawn from in a fixed round-robin order, with the day's date-seeded pick choosing which candidate each pool contributes.
+The historical code-defined group of collections whose videos feed the legacy Hero Queue. The closest authored-Web concept is a video Program Bucket, but they are not interchangeable: a Program Bucket contains explicit Admin video identities and is placed through an editor-authored rotation, while a Carousel Pool expands code-configured sources through the legacy date-seeded algorithm. Native clients may still use Carousel Pools until they adopt the Admin program.
 
 ### Hero Eligibility
 
@@ -486,9 +502,13 @@ An eligible film is emitted as a single parent tile, never expanded into its cha
 
 ### Played Set
 
-The per-user memory of which videos the watch-home rotation has already shown, used so Hero Queue rebuilds lead with unseen content — played videos are deprioritized behind unseen ones rather than excluded outright. It resets each calendar month, and a Hero Queue wrap clears it early — but a content outage that merely looks like a wrap must not.
+The legacy name for browser-local memory used to prefer unseen watch-home videos. Web migrates compatible legacy IDs into the Browser Exposure Ledger when it first loads an authored program. Native clients and the Web fallback may retain their older Played Set lifecycle.
 
-A video enters the set when the rotation departs its slide, regardless of why it departed — watched to the end, navigated away, or skipped by a playback failure — so a persistently failing slide is recorded as "seen" just like a watched one and yields its priority until the set resets.
+### Browser Exposure Ledger
+
+Web's versioned, calendar-month browser state for rotating Watch Home Program items and each bucket's no-repeat cycle. A rotating item becomes exposed after three cumulative seconds of successful playback while both the document and hero are visible, after an explicit next/skip, or when a shorter promo completes. Poster dwell, buffering, blocked autoplay, rail navigation, hidden/offscreen playback, and media failure do not record exposure; a failed item is quarantined only for the current entry. The fixed intro intentionally plays on every entry and is not exposure-filtered.
+
+The ledger and account watch progress are separate history domains. Signed-in progress is read only as another unseen preference for canonical video IDs. Hero previews never write, synchronize, or masquerade as account watch progress, and promo exposure never leaves the browser.
 
 ### Home Snapshot
 

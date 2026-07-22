@@ -20,14 +20,21 @@ tags:
 
 # Watch home carousel admin data parity
 
+> **Web follow-up complete (2026-07-22).** `feat-286` moved the Web hero's
+> intro, typed video/promo buckets, and repeating rotation into the Admin-owned
+> Homepage Experience and added meaningful browser-local exposure. The static
+> playlist/insert config is now a migration fallback. Mobile/TV adoption,
+> conditional targeting, and remaining catalog-art enrichment are separate
+> residuals; this completed historical ticket does not schedule them.
+
 ## Problem
 
-`feat-159` ports the beta watch home carousel with a Forge-owned static playlist/insert config and admin-backed video data. Several upstream sources still have no admin-owned equivalent, so follow-up PRs should move those editorial decisions into admin and close the remaining design/data parity gaps.
+`feat-159` ported the beta watch home carousel with a Forge-owned static playlist/insert config and admin-backed video data. This ticket captured the producer/consumer gaps that later work needed to close; `feat-286` resolves the Web programming portion while preserving the original config as fallback.
 
 ## Missing Data And Follow-Up Work
 
-- Admin-owned watch home playlist ordering, collection groups, blacklist, and per-language fallbacks.
-- Admin-owned Mux insert records, including playback IDs, trigger rules, action links, logo flags, overlay labels, and descriptions.
+- **Resolved for Web by `feat-286`:** Admin-owned watch home playlist ordering through explicit typed video buckets and an authored rotation.
+- **Resolved for Web by `feat-286`:** Admin-owned promo and intro items, including playback IDs, action links, logo flags, managed posters, overlay labels, and descriptions.
 - Conditional insert overlays for time-of-day copy from the upstream Mux insert config.
 - Local thumbnail/poster override parity for upstream watch carousel cards.
 - Blurhash or dominant-color placeholders for cards while images load.

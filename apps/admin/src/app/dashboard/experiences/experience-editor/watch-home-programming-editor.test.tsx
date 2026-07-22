@@ -190,6 +190,30 @@ describe("WatchHomeProgrammingEditor", () => {
     )
   })
 
+  it("keeps generated promo identities unique across video items", () => {
+    const view = mount({
+      buckets: [
+        {
+          kind: "video",
+          id: "classics",
+          label: "Classics",
+          items: [{ id: "welcome-intro", videoId: "video-db-1" }],
+        },
+      ],
+      rotation: ["classics"],
+    })
+    cleanup = view.cleanup
+
+    act(() => button(view.container, "Add intro").click())
+
+    const introId = Array.from(view.container.querySelectorAll("label"))
+      .find((label) => label.textContent?.includes("Stable promo ID"))
+      ?.querySelector("input")
+    expect((introId as HTMLInputElement | undefined)?.value).toBe(
+      "welcome-intro-2",
+    )
+  })
+
   it("warns when playback or destination changes under the same promo identity", () => {
     const original: WatchHomePromoItem = {
       id: "join-us",

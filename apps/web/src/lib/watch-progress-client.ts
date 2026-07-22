@@ -60,8 +60,16 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
+function subscribeDisabled(): () => void {
+  return () => undefined
+}
+
 function getServerSnapshot(): WatchProgressEntry | null {
   return null
+}
+
+function getEmptyProgressEntries(): WatchProgressEntry[] {
+  return EMPTY_PROGRESS_ENTRIES
 }
 
 function getAuthStateSnapshot(): AuthState {
@@ -405,10 +413,14 @@ export function useWatchProgress(videoId: string | null | undefined) {
 }
 
 export function useWatchProgressEntries() {
+  return useWatchProgressEntriesWhen(true)
+}
+
+export function useWatchProgressEntriesWhen(enabled: boolean) {
   return useSyncExternalStore(
-    subscribe,
-    getWatchProgressEntries,
-    () => EMPTY_PROGRESS_ENTRIES,
+    enabled ? subscribe : subscribeDisabled,
+    enabled ? getWatchProgressEntries : getEmptyProgressEntries,
+    getEmptyProgressEntries,
   )
 }
 

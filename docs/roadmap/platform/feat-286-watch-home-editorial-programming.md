@@ -3,7 +3,7 @@ id: "feat-286"
 title: "Watch Home editorial programming"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-22"
 duration: 5
 depends_on:
@@ -18,6 +18,35 @@ tags:
 ---
 
 # Watch Home editorial programming
+
+## Resolution
+
+Completed 2026-07-22. The Homepage Experience's `WatchHomeHeroBlock` now has a
+strict, bounded editor for an optional intro, typed video/promo buckets, and an
+ordered repeating rotation. Admin GraphQL exposes the program and resolves
+stable catalog and managed-poster identities; Web performs bounded,
+language-correct normalization before handing a serializable program to a pure
+per-entry queue engine.
+
+The Web runtime preserves the existing single-player TV-like surface while
+adding independent no-repeat bucket cycles, fresh entry seeds, signed-in
+history as a read-only preference, a versioned monthly browser exposure ledger,
+meaningful visible-playback/skip exposure, runtime-failure quarantine, and
+bounded fallback to the legacy static queue. Carousel previews never write
+account watch progress. The fixed intro runs once per entry and is deliberately
+outside exposure filtering.
+
+Focused automated evidence at closure: 90 Admin domain/editor tests; 83 Admin
+and 74 Web GraphQL/normalization tests; 20 engine/ledger tests; and 44 combined
+playback-lifecycle tests. Relevant Admin, Admin GraphQL, and Web typechecks and
+focused linters are green. This resolution does not assert browser or
+page-loading-performance evidence that has not yet been supplied.
+
+The static placement seed remains intentionally placement-only because a valid
+promo program requires approved Admin `MediaAsset` poster IDs. Production
+editors publish program content through the normal Admin Experience workflow;
+the seed does not embed environment-specific assets. Mobile and TV adoption is
+an explicitly named residual, not part of this Web-scoped ticket.
 
 ## Problem
 

@@ -33,7 +33,7 @@ import {
 import type { WatchHomeProgram } from "@/lib/watch-home-types"
 import {
   getWatchProgressRatio,
-  useWatchProgressEntries,
+  useWatchProgressEntriesWhen,
   type WatchProgressEntry,
 } from "@/lib/watch-progress-client"
 
@@ -70,7 +70,6 @@ type WatchHomeAdvanceCause =
   | "ended"
   | "preview-cap"
   | "explicit-skip"
-  | "rail"
   | "failure"
 
 export function getWatchHomeAccountSeenVideoIds(
@@ -313,7 +312,11 @@ export function useWatchHomeTvCarousel(
     getClientHydrationSnapshot,
     getServerHydrationSnapshot,
   )
-  const watchProgressEntries = useWatchProgressEntries()
+  const needsAccountHistory =
+    program?.buckets.some(
+      (bucket) => bucket.kind === "video" && bucket.items.length > 0,
+    ) === true
+  const watchProgressEntries = useWatchProgressEntriesWhen(needsAccountHistory)
   const accountVideoIds = useMemo(
     () => getWatchHomeAccountSeenVideoIds(watchProgressEntries),
     [watchProgressEntries],

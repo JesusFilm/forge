@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { arrayMove } from "@dnd-kit/sortable"
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react"
 import { ConfirmModal } from "@/components/confirm-modal"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
@@ -71,6 +72,14 @@ function allPromos(program: WatchHomeProgram | undefined) {
   ]
 }
 
+function allProgramItemIds(program: WatchHomeProgram | undefined) {
+  if (!program) return []
+  return [
+    ...(program.intro ? [program.intro.id] : []),
+    ...program.buckets.flatMap((bucket) => bucket.items.map((item) => item.id)),
+  ]
+}
+
 function stableIdPart(value: string) {
   const sanitized = value
     .trim()
@@ -86,14 +95,6 @@ function nextStableId(base: string, existing: Iterable<string>) {
   let suffix = 2
   while (ids.has(`${safeBase}-${suffix}`)) suffix += 1
   return `${safeBase}-${suffix}`
-}
-
-function move<T>(items: T[], from: number, to: number) {
-  if (to < 0 || to >= items.length || from === to) return items
-  const next = [...items]
-  const [item] = next.splice(from, 1)
-  next.splice(to, 0, item)
-  return next
 }
 
 function issueMap(result: ReturnType<typeof WatchHomeProgramSchema.safeParse>) {
@@ -398,7 +399,7 @@ export function WatchHomeProgrammingEditor({
     [baseline],
   )
   const existingItemIds = useMemo(
-    () => new Set(allPromos(draft ?? undefined).map((promo) => promo.id)),
+    () => new Set(allProgramItemIds(draft ?? undefined)),
     [draft],
   )
 
@@ -474,7 +475,7 @@ export function WatchHomeProgrammingEditor({
     const bucket = draft.buckets[index]
     const to = index + offset
     if (!bucket || to < 0 || to >= draft.buckets.length) return
-    change({ ...draft, buckets: move(draft.buckets, index, to) })
+    change({ ...draft, buckets: arrayMove(draft.buckets, index, to) })
     focusTarget.current = `watch-program-bucket-${bucket.id}`
     setAnnouncement(`${bucket.label} bucket moved to position ${to + 1}.`)
   }
@@ -788,7 +789,7 @@ export function WatchHomeProgrammingEditor({
                           onClick={() =>
                             updateBucket(bucketIndex, {
                               ...bucket,
-                              items: move(
+                              items: arrayMove(
                                 bucket.items,
                                 itemIndex,
                                 itemIndex - 1,
@@ -806,7 +807,7 @@ export function WatchHomeProgrammingEditor({
                           onClick={() =>
                             updateBucket(bucketIndex, {
                               ...bucket,
-                              items: move(
+                              items: arrayMove(
                                 bucket.items,
                                 itemIndex,
                                 itemIndex + 1,
@@ -859,7 +860,11 @@ export function WatchHomeProgrammingEditor({
                         onClick={() =>
                           updateBucket(bucketIndex, {
                             ...bucket,
-                            items: move(bucket.items, itemIndex, itemIndex - 1),
+                            items: arrayMove(
+                              bucket.items,
+                              itemIndex,
+                              itemIndex - 1,
+                            ),
                           })
                         }
                         className="h-7 w-7 disabled:opacity-40"
@@ -873,7 +878,11 @@ export function WatchHomeProgrammingEditor({
                         onClick={() =>
                           updateBucket(bucketIndex, {
                             ...bucket,
-                            items: move(bucket.items, itemIndex, itemIndex + 1),
+                            items: arrayMove(
+                              bucket.items,
+                              itemIndex,
+                              itemIndex + 1,
+                            ),
                           })
                         }
                         className="h-7 w-7 disabled:opacity-40"
@@ -1011,7 +1020,11 @@ export function WatchHomeProgrammingEditor({
                 onClick={() => {
                   change({
                     ...draft,
-                    rotation: move(draft.rotation, slotIndex, slotIndex - 1),
+                    rotation: arrayMove(
+                      draft.rotation,
+                      slotIndex,
+                      slotIndex - 1,
+                    ),
                   })
                   setAnnouncement(`Rotation slot ${slotIndex + 1} moved up.`)
                 }}
@@ -1026,7 +1039,11 @@ export function WatchHomeProgrammingEditor({
                 onClick={() => {
                   change({
                     ...draft,
-                    rotation: move(draft.rotation, slotIndex, slotIndex + 1),
+                    rotation: arrayMove(
+                      draft.rotation,
+                      slotIndex,
+                      slotIndex + 1,
+                    ),
                   })
                   setAnnouncement(`Rotation slot ${slotIndex + 1} moved down.`)
                 }}
