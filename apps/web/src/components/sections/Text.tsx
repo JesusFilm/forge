@@ -106,31 +106,36 @@ export function Text({ data }: TextProps) {
         data-testid="Text"
         data-variant="promotional"
       >
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-16 xl:gap-24">
-          <header className="relative max-w-2xl lg:pr-4">
+        <div className="grid gap-x-10 gap-y-10 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] xl:gap-x-24 xl:gap-y-0">
+          <header className="relative max-w-2xl xl:contents">
             <div
-              className="mb-7 h-px w-16 bg-linear-to-r from-red-100/80 to-transparent"
-              aria-hidden="true"
-            />
-            {subtitle && (
-              <p className="mb-4 text-xs font-semibold tracking-[0.28em] text-red-100/70 uppercase sm:text-sm">
-                {subtitle}
-              </p>
-            )}
+              className="xl:col-start-1 xl:row-start-1"
+              data-testid="promotional-eyebrow-row"
+            >
+              <div
+                className="mb-4 h-px w-16 bg-linear-to-r from-red-100/80 to-transparent"
+                aria-hidden="true"
+              />
+              {subtitle && (
+                <p className="mb-4 text-xs font-semibold tracking-[0.28em] text-red-100/70 uppercase sm:text-sm">
+                  {subtitle}
+                </p>
+              )}
+            </div>
             {heading && (
-              <Tag className="text-3xl leading-[1.08] font-semibold tracking-[-0.025em] text-white sm:text-4xl lg:text-5xl xl:text-[3.5rem]">
+              <Tag className="text-3xl leading-[1.08] font-semibold tracking-[-0.025em] text-white sm:text-4xl lg:text-5xl xl:col-start-1 xl:row-start-2 xl:pr-4 xl:text-[3.5rem]">
                 {heading}
               </Tag>
             )}
             <div
-              className="mt-8 hidden h-24 w-px bg-linear-to-b from-white/25 to-transparent lg:block"
+              className="mt-8 hidden h-24 w-px bg-linear-to-b from-white/25 to-transparent xl:col-start-1 xl:row-start-3 xl:block"
               aria-hidden="true"
             />
           </header>
 
           {markdown && (
             <div
-              className="max-w-3xl border-t border-white/12 pt-8 lg:border-t-0 lg:pt-1"
+              className="max-w-3xl xl:col-start-2 xl:row-start-2 xl:self-start"
               data-testid="promotional-markdown"
             >
               <Markdown

@@ -46,9 +46,22 @@ describe("Text promotional Markdown", () => {
     expect(container.querySelector("h2")?.textContent).toBe(
       "A story worth discovering",
     )
+    expect(container.querySelector("h2")?.classList).toContain("xl:row-start-2")
     expect(container.querySelector("h3")?.textContent).toBe(
       "Why this story matters",
     )
+    expect(
+      container.querySelector('[data-testid="promotional-markdown"]')
+        ?.classList,
+    ).toContain("xl:row-start-2")
+    expect(
+      container.querySelector('[data-testid="promotional-markdown"]')
+        ?.classList,
+    ).not.toContain("border-t")
+    expect(
+      container.querySelector('[data-testid="promotional-eyebrow-row"]')
+        ?.classList,
+    ).toContain("xl:row-start-1")
     expect(container.querySelectorAll("li")).toHaveLength(2)
     expect(container.querySelector("strong")?.textContent).toBe("trusted")
     expect(container.querySelector("em")?.textContent).toBe("every nation")

@@ -296,7 +296,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+    <p className="text-xs font-semibold tracking-widest text-red-100/60 uppercase xl:text-sm 2xl:text-base">
       {categoryLabel}
     </p>
   ) : null
@@ -305,7 +305,10 @@ function WatchHomeMediaCollection({
       {subtitle ? (
         <p
           data-testid="media-collection-supporting-title"
-          className="w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl"
+          className={cn(
+            "w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
+            title && "pt-1",
+          )}
         >
           {subtitle}
         </p>
@@ -576,7 +579,7 @@ function WatchHomeMediaCollection({
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p
             data-testid="media-collection-footer"
-            className="mt-8 max-w-5xl text-lg leading-relaxed font-normal text-stone-200/80 xl:text-xl"
+            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
           >
             {footerText}
           </p>
