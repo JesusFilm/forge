@@ -238,3 +238,4 @@ Every one of these six items is a case where the SDK's naive/default behavior is
 - `docs/solutions/mobile/expo-env-file-handling.md` — EAS env visibility semantics (secret never reaches EXPO_PUBLIC bundles).
 - `docs/solutions/conventions/tv-mobile-clients-consume-only-public-admin-queries.md` — the Apollo client baseline the attribution link must not disturb.
 - `docs/solutions/architecture-patterns/canonical-server-search-analytics-supplemental-rum-pattern.md` — the repo's cross-app "RUM is supplemental, never load-bearing" philosophy.
+- `docs/solutions/conventions/datadog-rum-env-tag-cross-app-canonical-value.md` — the cross-app rule item 6's env default feeds: every app must tag the same canonical `env` value (`prod`) or a fleet-wide `env:` filter silently misses apps.
