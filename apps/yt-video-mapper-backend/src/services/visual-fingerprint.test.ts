@@ -1,14 +1,33 @@
 import { describe, expect, it } from "vitest"
 import {
+  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
   VISUAL_FRAME_FINGERPRINT_KIND,
   VisualFingerprintError,
   averageHashGrayscaleFrame,
   hammingDistance,
+  isVisualMediaSignatureAlgorithmVersion,
   parseVisualFrameFingerprintPayload,
   visualFingerprintSimilarity,
 } from "./visual-fingerprint.js"
 
 describe("visual fingerprints", () => {
+  it("recognizes only v2 and v3 as visual media signature versions", () => {
+    expect(
+      isVisualMediaSignatureAlgorithmVersion(
+        OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+      ),
+    ).toBe(true)
+    expect(
+      isVisualMediaSignatureAlgorithmVersion(
+        OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+      ),
+    ).toBe(true)
+    expect(
+      isVisualMediaSignatureAlgorithmVersion("official-media-signature-v1"),
+    ).toBe(false)
+  })
+
   it("hashes identical grayscale frames deterministically", () => {
     const frame = Buffer.alloc(64, 128)
 
