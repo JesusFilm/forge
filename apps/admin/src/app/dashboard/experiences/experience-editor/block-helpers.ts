@@ -308,6 +308,9 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
   }
 
   const record = value as BlockRecord
+  const isWatchHomePromo =
+    typeof record.playbackId === "string" &&
+    typeof record.posterAssetId === "string"
   const normalizedEntries = Object.entries(record)
     .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
     .filter(([key, item]) => {
@@ -316,6 +319,9 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
       if (item.trim().length > 0) return true
+      if (isWatchHomePromo && (key === "description" || key === "label")) {
+        return false
+      }
       return !optionalEmptyStringKeys.has(key) && !key.endsWith("Url")
     })
 
@@ -384,13 +390,18 @@ export function summarizeBlock(
   }
 
   if (type === "watchHomeHero") {
+    const program = asRecord(value.program)
+    const buckets = asArray(program?.buckets)
+    const rotation = asArray(program?.rotation)
     return {
       key: summaryKey,
       typeLabel: "Watch Home Hero",
       title: "Watch Home Hero",
-      body: "Renders the static Watch homepage hero.",
+      body: program
+        ? `${buckets.length} ${buckets.length === 1 ? "bucket" : "buckets"} • ${rotation.length} rotation ${rotation.length === 1 ? "slot" : "slots"}`
+        : "Placement only • Web fallback active",
       tone: "hero",
-      badges: ["WATCH_HOME"],
+      badges: ["WATCH_HOME", program ? "PROGRAMMED" : "PLACEMENT_ONLY"],
     }
   }
 

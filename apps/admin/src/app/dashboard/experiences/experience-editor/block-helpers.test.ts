@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import { BlockSchema, BlocksSchema } from "@/domain/blocks"
 import {
   BLOCK_TEMPLATE_KEYS,
+  asArray,
+  asRecord,
   type BlockTemplateKey,
   createContainerSlotLayout,
   createTemplateBlock,
@@ -466,10 +468,55 @@ describe("experience editor block helpers", () => {
     ).toMatchObject({
       typeLabel: "Watch Home Hero",
       title: "Watch Home Hero",
-      body: "Renders the static Watch homepage hero.",
+      body: "Placement only • Web fallback active",
       tone: "hero",
-      badges: ["WATCH_HOME"],
+      badges: ["WATCH_HOME", "PLACEMENT_ONLY"],
     })
+  })
+
+  it("summarizes programmed Watch Home heroes and normalizes empty promo optionals", () => {
+    const blocks = normalizeEditorBlocks([
+      {
+        t: "watchHomeHero",
+        sectionKey: "watch-home-hero",
+        program: {
+          buckets: [
+            {
+              kind: "promo",
+              id: "campaigns",
+              label: "Campaigns",
+              items: [
+                {
+                  id: "join-us",
+                  playbackId: "mux-join-us",
+                  posterAssetId: "asset-join-us",
+                  title: "Join us",
+                  description: "",
+                },
+              ],
+            },
+          ],
+          rotation: ["campaigns"],
+        },
+      },
+    ])
+
+    expect(BlocksSchema.safeParse(blocks).success).toBe(true)
+    expect(summarizeBlock(blocks[0], 0, [])).toMatchObject({
+      body: "1 bucket • 1 rotation slot",
+      badges: ["WATCH_HOME", "PROGRAMMED"],
+    })
+    expect(
+      asRecord(asArray(asRecord(asRecord(blocks[0])?.program)?.buckets)[0])
+        ?.items,
+    ).toEqual([
+      {
+        id: "join-us",
+        playbackId: "mux-join-us",
+        posterAssetId: "asset-join-us",
+        title: "Join us",
+      },
+    ])
   })
 
   it("summarizes unsupported payloads defensively", () => {

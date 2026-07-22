@@ -15,6 +15,7 @@ import {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  WatchHomeProgramSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -118,6 +119,226 @@ describe("BlockSchema — all top-level types validate", () => {
       sectionKey: "watch-home-hero",
     })
     expect(result.success).toBe(true)
+  })
+
+  it("accepts a strictly typed Watch Home program while preserving placement-only compatibility", () => {
+    const program = {
+      intro: {
+        id: "welcome-intro",
+        playbackId: "mux-intro-1",
+        posterAssetId: "asset-intro",
+        title: "Welcome",
+        showLogo: true,
+      },
+      buckets: [
+        {
+          kind: "video",
+          id: "classics",
+          label: "Classics",
+          items: [{ id: "classic-jesus", videoId: "video-jesus" }],
+        },
+        {
+          kind: "promo",
+          id: "campaigns",
+          label: "Campaigns",
+          items: [
+            {
+              id: "join-us",
+              playbackId: "mux-promo-1",
+              posterAssetId: "asset-join-us",
+              title: "Join us",
+              primaryAction: {
+                label: "Join us",
+                href: "https://your.nextstep.is/joinus",
+                icon: "join",
+              },
+            },
+          ],
+        },
+      ],
+      rotation: ["classics", "campaigns", "classics"],
+    }
+
+    expect(
+      WatchHomeHeroBlockSchema.safeParse({
+        t: "watchHomeHero",
+        sectionKey: "watch-home-hero",
+        program,
+      }).success,
+    ).toBe(true)
+    expect(WatchHomeProgramSchema.safeParse(program).success).toBe(true)
+  })
+
+  it("rejects invalid bucket references, duplicate stable IDs, and cross-kind items", () => {
+    const baseProgram = {
+      buckets: [
+        {
+          kind: "video" as const,
+          id: "classics",
+          label: "Classics",
+          items: [{ id: "shared-item", videoId: "video-1" }],
+        },
+        {
+          kind: "promo" as const,
+          id: "promos",
+          label: "Promos",
+          items: [
+            {
+              id: "shared-item",
+              playbackId: "mux-promo",
+              posterAssetId: "asset-promo",
+              title: "Promo",
+            },
+          ],
+        },
+      ],
+      rotation: ["classics", "missing"],
+    }
+
+    expect(WatchHomeProgramSchema.safeParse(baseProgram).success).toBe(false)
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: [
+          {
+            kind: "video",
+            id: "classics",
+            label: "Classics",
+            items: [
+              {
+                id: "not-a-video-item",
+                playbackId: "mux-wrong-kind",
+                posterAssetId: "asset-promo",
+              },
+            ],
+          },
+        ],
+        rotation: ["classics"],
+      }).success,
+    ).toBe(false)
+  })
+
+  it("enforces Watch Home action trust policy and requires managed promo posters", () => {
+    const promo = (href: string, posterAssetId: string | undefined) => ({
+      buckets: [
+        {
+          kind: "promo" as const,
+          id: "promos",
+          label: "Promos",
+          items: [
+            {
+              id: "trusted-promo",
+              playbackId: "mux-promo",
+              posterAssetId,
+              title: "Promo",
+              primaryAction: { label: "Open", href },
+            },
+          ],
+        },
+      ],
+      rotation: ["promos"],
+    })
+
+    for (const href of [
+      "/watch/jesus",
+      "https://jesusfilm.org/watch",
+      "https://www.jesusfilm.org/partners",
+      "https://your.nextstep.is/joinus",
+    ]) {
+      expect(
+        WatchHomeProgramSchema.safeParse(promo(href, "asset-1")).success,
+      ).toBe(true)
+    }
+
+    for (const href of [
+      "//evil.example/path",
+      "javascript:alert(1)",
+      "http://jesusfilm.org/watch",
+      "https://jesusfilm.org.evil.example/watch",
+      "https://sub.your.nextstep.is/joinus",
+    ]) {
+      expect(
+        WatchHomeProgramSchema.safeParse(promo(href, "asset-1")).success,
+      ).toBe(false)
+    }
+    expect(
+      WatchHomeProgramSchema.safeParse(promo("/watch", undefined)).success,
+    ).toBe(false)
+  })
+
+  it("enforces the exact bounded editorial limits, including 100/101 unique videos", () => {
+    const videoBuckets = (count: number) =>
+      Array.from({ length: Math.ceil(count / 40) }, (_, bucketIndex) => ({
+        kind: "video" as const,
+        id: `videos-${bucketIndex}`,
+        label: `Videos ${bucketIndex}`,
+        items: Array.from(
+          { length: Math.min(40, count - bucketIndex * 40) },
+          (_, itemIndex) => {
+            const index = bucketIndex * 40 + itemIndex
+            return { id: `item-${index}`, videoId: `video-${index}` }
+          },
+        ),
+      }))
+
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: videoBuckets(100),
+        rotation: ["videos-0", "videos-1", "videos-2"],
+      }).success,
+    ).toBe(true)
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: videoBuckets(101),
+        rotation: ["videos-0", "videos-1", "videos-2"],
+      }).success,
+    ).toBe(false)
+
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: Array.from({ length: 25 }, (_, index) => ({
+          kind: "video",
+          id: `bucket-${index}`,
+          label: `Bucket ${index}`,
+          items: [],
+        })),
+        rotation: [],
+      }).success,
+    ).toBe(false)
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: [],
+        rotation: Array.from({ length: 49 }, () => "bucket"),
+      }).success,
+    ).toBe(false)
+  })
+
+  it("rejects unknown programming keys and payloads over 128 KiB", () => {
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: [],
+        rotation: [],
+        surprise: true,
+      }).success,
+    ).toBe(false)
+
+    expect(
+      WatchHomeProgramSchema.safeParse({
+        buckets: [
+          {
+            kind: "promo",
+            id: "oversized-promos",
+            label: "Oversized promos",
+            items: Array.from({ length: 100 }, (_, index) => ({
+              id: `promo-${index}`,
+              playbackId: `mux-${index}-${"x".repeat(1_300)}`,
+              posterAssetId: `asset-${index}`,
+              title: `Promo ${index}`,
+            })),
+          },
+        ],
+        rotation: ["oversized-promos"],
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts promotional Markdown text and rejects unknown variants", () => {

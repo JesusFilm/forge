@@ -432,10 +432,256 @@ export const VideoHeroBlockSchema = z
   })
   .strict()
 
+export const WATCH_HOME_PROGRAM_LIMITS = {
+  bytes: 128 * 1024,
+  buckets: 24,
+  rotationSlots: 48,
+  itemsPerBucket: 40,
+  uniqueVideos: 100,
+  promos: 100,
+  labelCharacters: 80,
+  titleCharacters: 120,
+  actionLabelCharacters: 120,
+  descriptionCharacters: 500,
+} as const
+
+const watchHomeStableId = z
+  .string()
+  .min(1)
+  .max(WATCH_HOME_PROGRAM_LIMITS.labelCharacters)
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
+    "Use a stable ID containing only letters, numbers, dots, underscores, and hyphens",
+  )
+
+export function isAllowedWatchHomeActionHref(value: string): boolean {
+  if (value.startsWith("/") && !value.startsWith("//")) return true
+
+  try {
+    const url = new URL(value)
+    if (
+      url.protocol !== "https:" ||
+      url.username.length > 0 ||
+      url.password.length > 0
+    ) {
+      return false
+    }
+
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "")
+    return (
+      hostname === "jesusfilm.org" ||
+      hostname.endsWith(".jesusfilm.org") ||
+      hostname === "your.nextstep.is"
+    )
+  } catch {
+    return false
+  }
+}
+
+export const WatchHomePromoActionSchema = z
+  .object({
+    label: z
+      .string()
+      .trim()
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.actionLabelCharacters),
+    href: z
+      .string()
+      .trim()
+      .min(1)
+      .max(2_048)
+      .refine(isAllowedWatchHomeActionHref, {
+        message:
+          "Use a relative route or an approved HTTPS jesusfilm.org / your.nextstep.is destination",
+      }),
+    icon: z.enum(["join", "share"]).optional(),
+  })
+  .strict()
+
+export const WatchHomePromoItemSchema = z
+  .object({
+    id: watchHomeStableId,
+    playbackId: z.string().trim().min(1).max(2_048),
+    durationSeconds: z.number().finite().positive().max(86_400).optional(),
+    posterAssetId: z.string().trim().min(1).max(200),
+    label: z
+      .string()
+      .trim()
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.labelCharacters)
+      .optional(),
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.titleCharacters),
+    description: z
+      .string()
+      .trim()
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.descriptionCharacters)
+      .optional(),
+    showLogo: z.boolean().optional(),
+    primaryAction: WatchHomePromoActionSchema.optional(),
+    secondaryAction: WatchHomePromoActionSchema.optional(),
+  })
+  .strict()
+
+export const WatchHomeVideoBucketSchema = z
+  .object({
+    kind: z.literal("video"),
+    id: watchHomeStableId,
+    label: z
+      .string()
+      .trim()
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.labelCharacters),
+    items: z
+      .array(
+        z
+          .object({
+            id: watchHomeStableId,
+            videoId: z.string().trim().min(1).max(200),
+          })
+          .strict(),
+      )
+      .max(WATCH_HOME_PROGRAM_LIMITS.itemsPerBucket),
+  })
+  .strict()
+
+export const WatchHomePromoBucketSchema = z
+  .object({
+    kind: z.literal("promo"),
+    id: watchHomeStableId,
+    label: z
+      .string()
+      .trim()
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.labelCharacters),
+    items: z
+      .array(WatchHomePromoItemSchema)
+      .max(WATCH_HOME_PROGRAM_LIMITS.itemsPerBucket),
+  })
+  .strict()
+
+export const WatchHomeProgramSchema = z
+  .object({
+    intro: WatchHomePromoItemSchema.optional(),
+    buckets: z
+      .array(
+        z.discriminatedUnion("kind", [
+          WatchHomeVideoBucketSchema,
+          WatchHomePromoBucketSchema,
+        ]),
+      )
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.buckets),
+    rotation: z
+      .array(watchHomeStableId)
+      .min(1)
+      .max(WATCH_HOME_PROGRAM_LIMITS.rotationSlots),
+  })
+  .strict()
+  .superRefine((program, context) => {
+    const bucketIds = new Set<string>()
+    const itemIds = new Set<string>()
+    const videoIds = new Set<string>()
+    let promoCount = 0
+
+    if (program.intro) {
+      itemIds.add(program.intro.id)
+      promoCount += 1
+    }
+
+    program.buckets.forEach((bucket, bucketIndex) => {
+      if (bucketIds.has(bucket.id)) {
+        context.addIssue({
+          code: "custom",
+          path: ["buckets", bucketIndex, "id"],
+          message: `Bucket ID "${bucket.id}" must be unique`,
+        })
+      }
+      bucketIds.add(bucket.id)
+
+      function recordItemId(itemId: string, itemIndex: number) {
+        if (itemIds.has(itemId)) {
+          context.addIssue({
+            code: "custom",
+            path: ["buckets", bucketIndex, "items", itemIndex, "id"],
+            message: `Item ID "${itemId}" must be unique across the program`,
+          })
+        }
+        itemIds.add(itemId)
+      }
+
+      if (bucket.kind === "video") {
+        const bucketVideoIds = new Set<string>()
+        bucket.items.forEach((item, itemIndex) => {
+          recordItemId(item.id, itemIndex)
+          if (bucketVideoIds.has(item.videoId)) {
+            context.addIssue({
+              code: "custom",
+              path: ["buckets", bucketIndex, "items", itemIndex, "videoId"],
+              message: "A video may appear only once within a bucket",
+            })
+          }
+          bucketVideoIds.add(item.videoId)
+          videoIds.add(item.videoId)
+        })
+      } else {
+        bucket.items.forEach((item, itemIndex) => {
+          recordItemId(item.id, itemIndex)
+          promoCount += 1
+        })
+      }
+    })
+
+    program.rotation.forEach((bucketId, slotIndex) => {
+      if (!bucketIds.has(bucketId)) {
+        context.addIssue({
+          code: "custom",
+          path: ["rotation", slotIndex],
+          message: `Rotation references unknown bucket "${bucketId}"`,
+        })
+      }
+    })
+
+    if (videoIds.size > WATCH_HOME_PROGRAM_LIMITS.uniqueVideos) {
+      context.addIssue({
+        code: "custom",
+        path: ["buckets"],
+        message: `A program may reference at most ${WATCH_HOME_PROGRAM_LIMITS.uniqueVideos} unique videos`,
+      })
+    }
+    if (promoCount > WATCH_HOME_PROGRAM_LIMITS.promos) {
+      context.addIssue({
+        code: "custom",
+        path: ["buckets"],
+        message: `A program may contain at most ${WATCH_HOME_PROGRAM_LIMITS.promos} promos including the intro`,
+      })
+    }
+
+    const serialized = JSON.stringify(program)
+    if (
+      new TextEncoder().encode(serialized).byteLength >
+      WATCH_HOME_PROGRAM_LIMITS.bytes
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Watch Home programming must be 128 KiB or smaller",
+      })
+    }
+  })
+
+export type WatchHomeProgram = z.infer<typeof WatchHomeProgramSchema>
+export type WatchHomePromoItem = z.infer<typeof WatchHomePromoItemSchema>
+export type WatchHomeProgramBucket = WatchHomeProgram["buckets"][number]
+
 export const WatchHomeHeroBlockSchema = z
   .object({
     t: z.literal("watchHomeHero"),
     sectionKey,
+    program: WatchHomeProgramSchema.optional(),
   })
   .strict()
 

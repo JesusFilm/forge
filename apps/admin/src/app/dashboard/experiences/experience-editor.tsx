@@ -84,6 +84,7 @@ import {
 } from "lucide-react"
 import { cx } from "@/components/admin-ui"
 import { ConfirmModal } from "@/components/confirm-modal"
+import type { WatchHomeProgram } from "@/domain/blocks"
 import { ToastStack, useToastStack } from "@/components/toast-stack"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import type { UploadActionResult } from "@/app/dashboard/media/media-actions"
@@ -135,6 +136,7 @@ import {
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
+import { WatchHomeProgrammingEditor } from "./experience-editor/watch-home-programming-editor"
 
 type EditorActionResult = {
   ok: boolean
@@ -8263,7 +8265,23 @@ export function ExperienceEditor({
           </span>
         </div>
 
-        {block.tone === "hero" ? (
+        {type === "watchHomeHero" ? (
+          <WatchHomeProgrammingEditor
+            program={
+              asRecord(blockRecord?.program) as WatchHomeProgram | undefined
+            }
+            videoLibrary={videoLibrary}
+            mediaLibrary={mediaLibrary}
+            onChangeProgram={(program) =>
+              updateBlockAt(index, (currentBlock) => {
+                if (program) return { ...currentBlock, program }
+                const placementOnlyBlock = { ...currentBlock }
+                delete placementOnlyBlock.program
+                return placementOnlyBlock
+              })
+            }
+          />
+        ) : block.tone === "hero" ? (
           <div className="overflow-hidden rounded-sm bg-[linear-gradient(160deg,#141110_0%,#221d1b_48%,#100e0d_100%)] p-1">
             <div className="relative rounded-sm border border-[var(--color-hairline-soft)] p-5 text-left">
               <div className="absolute inset-0 overflow-hidden rounded-sm">
