@@ -392,6 +392,19 @@ MediaCollectionItemRef.implement({
     }),
     videoId: t.exposeString("videoId", { nullable: true }),
     languageId: t.exposeString("languageId", { nullable: true }),
+    languageSlug: t.string({
+      nullable: true,
+      description:
+        "Public Watch language slug resolved from the authored languageId. Lets consumers build valid collection routes even when the item references a parent collection with no direct VideoDub.",
+      resolve: async (row, _args, ctx) => {
+        const languageId = optionalString(row.languageId)
+        if (!languageId) return null
+
+        const language = await ctx.loaders.languageById.load(languageId)
+        if (language?.deletedAt) return null
+        return language?.slug ?? null
+      },
+    }),
     videoDub: t.prismaField({
       type: "VideoDub",
       nullable: true,
