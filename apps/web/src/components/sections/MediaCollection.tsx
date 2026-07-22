@@ -36,6 +36,11 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 
 // Collections carry no per-item language today, so card deep links default
 // to the English variant and rely on the watch route to re-resolve locale.
@@ -724,23 +729,18 @@ function VideoCard({
             className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           />
         ) : null}
-        <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
+        <VideoThumbnailCaption className="z-30">
           {item.label ? (
-            <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+            <VideoThumbnailEyebrow as="div">
               {formatLabel(item.label)}
-            </div>
+            </VideoThumbnailEyebrow>
           ) : null}
           {item.title ? (
-            <h3
-              className={cn(
-                "line-clamp-2 -mt-1 text-left leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
-                isVertical ? "text-xl" : "text-lg md:text-xl",
-              )}
-            >
+            <VideoThumbnailTitle size={isVertical ? "large" : "prominent"}>
               {item.title}
-            </h3>
+            </VideoThumbnailTitle>
           ) : null}
-        </div>
+        </VideoThumbnailCaption>
       </div>
     </Wrapper>
   )
