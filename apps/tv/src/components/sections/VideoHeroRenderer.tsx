@@ -10,6 +10,7 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 import { VideoBackdrop } from "../watch/VideoBackdrop"
 import { HERO_PEEK, WATCH_THEME } from "../watch/watchDetailTheme"
 import { useHeroOnScreen } from "./heroVisibility"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
   )
   const heading = section.heading
   const subheading = section.subheading
-  const streamingUrl = section.streamingUrl
+  const streamingUrl = blockStreamingUrl(section)
 
   const hasValidStream =
     typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)

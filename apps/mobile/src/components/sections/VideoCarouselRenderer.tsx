@@ -22,12 +22,18 @@ import {
 import type { AdminBlock } from "../../lib/queries"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
 import { PressableCard } from "../ui/PressableCard"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type CarouselItem = {
   videoId?: string | null
   streamingUrl?: string | null
+  videoDub?: {
+    hls?: string | null
+    dash?: string | null
+    share?: string | null
+  } | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
@@ -68,7 +74,10 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     index: number
   }) => {
     const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
-    const thumbnailUrl = resolveThumbnailUrl(item.imageUrl ?? resolvedThumb)
+    const thumbnailUrl = resolveThumbnailUrl(
+      item.imageUrl ?? resolvedThumb,
+      blockStreamingUrl(item),
+    )
     const title = item.titleOverride ?? "Untitled"
     const carouselSectionKey = s.sectionKey as string | undefined
 
