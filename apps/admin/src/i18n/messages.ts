@@ -430,6 +430,7 @@ export const adminMessages = {
         tabs: {
           all: "All",
           collections: "Collections",
+          episodes: "Single episodes",
           features: "Features",
           shortFilms: "Short films",
           series: "Series",
