@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 21, 2026)
+## Status (July 22, 2026)
 
 - **Total tickets:** 35
 - ✅ **Complete:** 25
-- 🟡 **In progress:** 1
-- 🔵 **Not started:** 9
+- 🟡 **In progress:** 2
+- 🔵 **Not started:** 8
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -53,7 +53,7 @@ from the main DS Year 1 roadmap.
 | [feat-270](feat-270-chat-ui-cleanup-batch.md)                 | Chat UI cleanup batch: mobile header, sidebar dupes, titles, stop, badges | jian wei | P2       | 2026-07-27 | 3    | ✅ complete    | [#1626](https://github.com/JesusFilm/forge/pull/1626) |
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)     | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                     |
 | [feat-275](feat-275-ai-chat-docs-audit.md)                    | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                    | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#1638](https://github.com/JesusFilm/forge/pull/1638) |
-| [feat-281](feat-281-chat-conversation-session-module.md)      | Chat conversation session module (deepen the engine + honest gate denial) | jian wei | P2       | 2026-07-22 | 4    | 🔵 not-started | —                                                     |
+| [feat-281](feat-281-chat-conversation-session-module.md)      | Chat conversation session module (deepen the engine + honest gate denial) | jian wei | P2       | 2026-07-22 | 4    | 🟡 in-progress | —                                                     |
 | [feat-282](feat-282-chat-shared-mastra-transport.md)          | Shared Mastra upstream transport for the chat proxies (narrowed)          | jian wei | P2       | 2026-07-21 | 5    | 🟡 in-progress | —                                                     |
 | [feat-283](feat-283-mastra-ai-chat-lane-admission.md)         | Mastra ai-chat lane admission module (flag + lane bearer)                 | jian wei | P2       | 2026-07-22 | 2    | 🔵 not-started | —                                                     |
 | [feat-284](feat-284-mastra-thread-ownership-read-resolver.md) | Mastra thread-ownership read-path resolver (owned-existing-thread)        | jian wei | P2       | 2026-07-24 | 1    | 🔵 not-started | —                                                     |
