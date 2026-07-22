@@ -14,11 +14,14 @@
  *   - result       { text, sources, grounded, producedBy }  — terminal success
  *   - error        { reason }                                — terminal failure
  *
- * Defense-in-depth gates, checked in order: enable flag (KTD7) → service bearer
- * (R5) → body validation (R2) → model-key preflight (R11) → thread ownership +
- * creation ceiling (feat-208; in-stream `thread_forbidden` / `thread_limit`
- * error frames) → stream. The route is MORE locked down than Mastra's built-in
- * unauthenticated `/api/agents/*` surface; it adds no CORS (R6).
+ * Defense-in-depth gates, checked in order: the shared lane admission
+ * preamble (`refuseUnlessLaneAdmitted`, feat-283 — enable flag (KTD7) → 404,
+ * then the ai-chat lane bearer (R5, feat-250) → 401, with key sourcing inside
+ * that module) → body validation (R2) → model-key preflight (R11) → thread
+ * ownership + creation ceiling (feat-208; in-stream `thread_forbidden` /
+ * `thread_limit` error frames) → stream. The route is MORE locked down than
+ * Mastra's built-in unauthenticated `/api/agents/*` surface; it adds no CORS
+ * (R6).
  *
  * Memory contract (KTD3): a memory-configured agent throws
  * `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime if a `threadId` is supplied
@@ -35,8 +38,8 @@
  * `reason` only (R12).
  */
 
-import { isValidServiceBearer } from "../../server/service-bearer"
-import { getOpenRouterApiKey, isSeekerRouteEnabled } from "../../config/env"
+import { getOpenRouterApiKey } from "../../config/env"
+import { refuseUnlessLaneAdmitted } from "../ai-chat-lane-admission"
 import { settleWithinBudget, TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
 import {
   authorizeAiChatThreadAccess,
@@ -77,15 +80,20 @@ export type SeekerRouteMastra = {
 
 export type SeekerRouteHandlerInput = {
   authHeader: string | null | undefined
-  serviceKeys: readonly string[]
   readJson: () => Promise<unknown>
   getMastra: () => SeekerRouteMastra
   /** Inbound request signal — aborts the agent run when the caller disconnects. */
   requestSignal?: AbortSignal
   /** Seam: model-key preflight (R11). Defaults to `getOpenRouterApiKey`. */
   getModelKey?: () => string | undefined
-  /** Seam: enable-gate (KTD7). Defaults to `isSeekerRouteEnabled`. */
+  /** Seam: enable-gate (KTD7). Defaults to the admission module's flag. */
   getEnabled?: () => boolean
+  /**
+   * Seam: the lane bearer allowlist (feat-283). Defaults to the admission
+   * module's lane-CSV source (`AI_CHAT_SERVICE_API_KEYS` — never the shared
+   * pool, feat-250); the registration in index.ts passes nothing.
+   */
+  getServiceKeys?: () => readonly string[]
   /**
    * Seam: the Memory instance backing the thread-ownership gate (feat-208).
    * Defaults to the shared ai-chat memory (the same instance the agent
@@ -207,25 +215,25 @@ function extractSources(chunks: SeekerToolResultChunk[]): {
 
 export async function handleSeekerRouteRequest({
   authHeader,
-  serviceKeys,
   readJson,
   getMastra,
   requestSignal,
   getModelKey = getOpenRouterApiKey,
-  getEnabled = isSeekerRouteEnabled,
+  getEnabled,
+  getServiceKeys,
   getMemory = () => getAiChatMemory(),
   budgetMs = TIME_BUDGET_MS.chatTurn,
 }: SeekerRouteHandlerInput): Promise<Response> {
-  // Gate 1 — enable flag FIRST (KTD7): unreachable unless explicitly enabled.
-  // No bearer check, no body read, no agent lookup when disabled.
-  if (!getEnabled()) {
-    return jsonResponse(404, { error: "Not found" })
-  }
-
-  // Gate 2 — service bearer (R5): before any agent work or body read.
-  if (!isValidServiceBearer({ authHeader, allowlist: serviceKeys })) {
-    return jsonResponse(401, { error: "Service bearer required" })
-  }
+  // Gates 1–2 — the shared lane admission preamble (feat-283): enable flag
+  // FIRST (KTD7, 404 — no bearer check, no body read, no agent lookup when
+  // disabled), then the ai-chat lane bearer (R5, 401), keys sourced inside
+  // the admission module (feat-250: never the shared pool).
+  const refusal = refuseUnlessLaneAdmitted({
+    authHeader,
+    getEnabled,
+    getServiceKeys,
+  })
+  if (refusal) return jsonResponse(refusal.status, refusal.body)
 
   // Gate 3 — body validation (R2).
   const raw = await readJson().catch(() => undefined)

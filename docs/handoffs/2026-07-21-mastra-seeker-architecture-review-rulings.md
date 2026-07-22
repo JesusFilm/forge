@@ -231,6 +231,20 @@ const disappears.
 `Service bearer required`, `AI_CHAT_SERVICE_API_KEYS`,
 `assertAiChatServiceKeysDisjoint`.
 
+> **Amendment (2026-07-21, PR #1667):** implementation review added two guards
+> beyond requirement 3's replace-only wording: (1) a "lane registrations inject
+> no admission seams" source pin in `seeker-route-isolation.test.ts` (per-block
+> over the enumerated lane routes, plus a parser-independent whole-source
+> seam-token backstop that also covers future lane registrations) — an
+> explicit `getServiceKeys`/`getEnabled` seam at a lane registration in
+> `index.ts` would re-grant pool keys with every other test green (future lane
+> routes, e.g. feat-247's, must NOT thread admission seams through
+> registrations); and (2) a default-flag 404 handler companion in
+> `ai-chat-lane-admission.test.ts` — a handler re-growing a local `getEnabled`
+> default would bypass the `SEEKER_ROUTE_ENABLED` kill switch unnoticed.
+> Nothing beyond the two named feat-250 pins was replaced or weakened; all
+> seven requirements hold.
+
 ## Ruling 2 — Thread-ownership read-path resolver (IMPLEMENT, minimal — ticket `feat-284`)
 
 **Files:** `apps/mastra/src/mastra/ai-chat-thread-ownership.ts` ·
