@@ -142,6 +142,7 @@ export type MediaIndexingOptions = {
   extractor?: OfficialMediaSignatureExtractor
   algorithmVersion?: string
   pageSize?: number
+  concurrency?: number
   maxMediaBytes?: number
   now?: () => Date
 }
@@ -246,6 +247,7 @@ export class MediaIndexingService {
   private readonly extractor: OfficialMediaSignatureExtractor
   private readonly algorithmVersion: string
   private readonly pageSize: number
+  private readonly concurrency: number
   private readonly maxMediaBytes: number
   private readonly now: () => Date
 
@@ -257,6 +259,18 @@ export class MediaIndexingService {
       options.extractor ??
       createDefaultOfficialMediaSignatureExtractor(this.algorithmVersion)
     this.pageSize = options.pageSize ?? env.MEDIA_INDEX_PAGE_SIZE
+    this.concurrency =
+      options.concurrency ?? env.MEDIA_INDEX_CONCURRENCY
+    if (
+      !Number.isInteger(this.concurrency) ||
+      this.concurrency < 1 ||
+      this.concurrency > 4
+    ) {
+      throw new MediaIndexingSafeError(
+        "invalid_media_index_concurrency",
+        "Media index concurrency must be an integer between 1 and 4",
+      )
+    }
     this.maxMediaBytes =
       options.maxMediaBytes ?? env.MEDIA_INDEX_MAX_FETCH_BYTES
     this.now = options.now ?? (() => new Date())
@@ -289,36 +303,55 @@ export class MediaIndexingService {
             algorithmVersion: this.algorithmVersion,
           })
 
-        for (const variant of variants) {
-          variantsAttempted += 1
+        for (
+          let batchStart = 0;
+          batchStart < variants.length;
+          batchStart += this.concurrency
+        ) {
+          const batch = variants.slice(
+            batchStart,
+            batchStart + this.concurrency,
+          )
+          const outcomes = await Promise.allSettled(
+            batch.map(async (variant) => {
+              const variantKey = mediaSignatureVariantKey(variant)
+              if (indexedVariantKeys.has(variantKey)) return false
 
-          try {
-            const alreadyIndexed = indexedVariantKeys.has(
-              mediaSignatureVariantKey(variant),
-            )
-
-            if (!alreadyIndexed) {
               await this.indexVariant(variant)
-              indexedVariantKeys.add(mediaSignatureVariantKey(variant))
-              variantsIndexed += 1
-            }
-          } catch (error) {
-            variantsFailed += 1
-            appendFailure(failures, summarizeVariantFailure(error, variant))
-          }
+              return true
+            }),
+          )
 
-          cursorVariantId = variant.id
-          run = await this.options.repository.updateIndexRun(run.id, {
-            cursorVariantId,
-            variantsAttempted,
-            variantsIndexed,
-            variantsFailed,
-            failureSummary: failureSummaryFromFailures(
-              failures,
+          for (const [index, outcome] of outcomes.entries()) {
+            const variant = batch[index]!
+            variantsAttempted += 1
+
+            if (outcome.status === "fulfilled") {
+              if (outcome.value) {
+                indexedVariantKeys.add(mediaSignatureVariantKey(variant))
+                variantsIndexed += 1
+              }
+            } else {
+              variantsFailed += 1
+              appendFailure(
+                failures,
+                summarizeVariantFailure(outcome.reason, variant),
+              )
+            }
+
+            cursorVariantId = variant.id
+            run = await this.options.repository.updateIndexRun(run.id, {
               cursorVariantId,
+              variantsAttempted,
+              variantsIndexed,
               variantsFailed,
-            ),
-          })
+              failureSummary: failureSummaryFromFailures(
+                failures,
+                cursorVariantId,
+                variantsFailed,
+              ),
+            })
+          }
         }
       }
 
