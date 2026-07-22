@@ -59,6 +59,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
           <WatchHomeTvCarousel
             slides={model.heroSlides}
             sequence={model.carousel}
+            program={model.program}
           />
           {model.sections.map((section) => (
             <WatchHomeSection key={section.id} section={section} />

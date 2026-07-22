@@ -2,14 +2,22 @@
  * @vitest-environment jsdom
  */
 
-import { act, useEffect, type ReactNode } from "react"
+import { StrictMode, act, useEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
 import { WATCH_HOME_MUX_INSERTS } from "@/lib/watch-home-config"
 import type { WatchHomeModel } from "@/lib/watch-home"
-import type { WatchHomeTvCarouselVideoSlide } from "@/lib/watch-home-carousel-sequence"
+import {
+  WATCH_HOME_PROGRAM_LEDGER_STORAGE_KEY,
+  type WatchHomeTvCarouselVideoSlide,
+} from "@/lib/watch-home-carousel-sequence"
+import type {
+  WatchHomeProgram,
+  WatchHomeProgramPromoItem,
+  WatchHomeProgramVideoItem,
+} from "@/lib/watch-home-types"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -203,6 +211,85 @@ function makeCarouselSlide(
   }
 }
 
+function makeProgramVideo(
+  id: string,
+  overrides: Partial<WatchHomeProgramVideoItem> = {},
+): WatchHomeProgramVideoItem {
+  return {
+    id: `${id}-item`,
+    videoId: id,
+    coreId: `${id}-core`,
+    title: `Program ${id}`,
+    description: `${id} description`,
+    label: "Short film",
+    href: `/${id}.html/english.html`,
+    posterUrl: `https://cdn.example/${id}.jpg`,
+    thumbnailUrl: `https://cdn.example/${id}-thumb.jpg`,
+    imageAlt: `${id} still`,
+    src: `https://stream.example/${id}.m3u8`,
+    playbackId: `${id}-playback`,
+    subtitleVttSrc: null,
+    subtitleLanguageBcp47: null,
+    durationSeconds: 10,
+    ...overrides,
+  }
+}
+
+function makeProgramPromo(
+  id: string,
+  overrides: Partial<WatchHomeProgramPromoItem> = {},
+): WatchHomeProgramPromoItem {
+  return {
+    id,
+    playbackId: `${id}-playback`,
+    src: `https://stream.mux.com/${id}-playback.m3u8`,
+    durationSeconds: 2,
+    posterUrl: `https://cdn.example/${id}.jpg`,
+    label: "Get involved",
+    title: `Program ${id}`,
+    description: `${id} description`,
+    showLogo: true,
+    primaryAction: {
+      label: "Join now",
+      href: "/watch/join",
+      icon: "join",
+    },
+    secondaryAction: null,
+    ...overrides,
+  }
+}
+
+function makeProgram(
+  overrides: Partial<WatchHomeProgram> = {},
+): WatchHomeProgram {
+  return {
+    intro: makeProgramPromo("intro", { title: "Welcome to Watch" }),
+    buckets: [
+      {
+        kind: "video",
+        id: "videos",
+        label: "Videos",
+        items: [makeProgramVideo("video-a"), makeProgramVideo("video-b")],
+      },
+      {
+        kind: "promo",
+        id: "promos",
+        label: "Promos",
+        items: [makeProgramPromo("promo-a")],
+      },
+    ],
+    rotation: ["videos", "promos"],
+    ...overrides,
+  }
+}
+
+function readProgramLedger() {
+  const raw = window.localStorage.getItem(WATCH_HOME_PROGRAM_LEDGER_STORAGE_KEY)
+  return raw
+    ? (JSON.parse(raw) as { exposures?: Record<string, number> })
+    : null
+}
+
 const muxInsert = {
   id: "welcome-start",
   copyId: "welcomeStart",
@@ -246,6 +333,7 @@ afterEach(async () => {
   })
   container.remove()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe("WatchHomePage", () => {
@@ -1185,6 +1273,261 @@ describe("WatchHomePage", () => {
     expect(container.textContent).not.toContain("Watch Short Film")
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).toHaveLength(1)
+  })
+
+  it("plays the authored intro once and records only meaningful rotating exposure", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage model={makeModel({ program: makeProgram() })} />,
+      )
+    })
+
+    expect(container.textContent).toContain("Welcome to Watch")
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-video"]'),
+    ).toHaveLength(1)
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Next video"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+    let video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    let currentTime = 0
+    Object.defineProperty(video, "paused", { configurable: true, value: false })
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get: () => currentTime,
+    })
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      value: 10,
+    })
+
+    currentTime = 1
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+
+    currentTime = 3
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(1)
+
+    const promoCard = Array.from(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).find((card) => card.textContent?.includes("Program promo-a"))
+    expect(promoCard).not.toBeUndefined()
+    await act(async () => {
+      promoCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(1)
+    expect(
+      container.querySelector('a[href="/watch/join"]')?.textContent,
+    ).toContain("Join now")
+    video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    await act(async () => {
+      video.dispatchEvent(new Event("ended", { bubbles: true }))
+      video.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+
+    expect(readProgramLedger()?.exposures).toHaveProperty("promo:promo-a")
+    expect(container.textContent).not.toContain("Welcome to Watch")
+    const exposedBeforeSkip = Object.keys(
+      readProgramLedger()?.exposures ?? {},
+    ).length
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Next video"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(
+      exposedBeforeSkip + 1,
+    )
+    expect(
+      Array.from({ length: window.localStorage.length }, (_, index) =>
+        window.localStorage.key(index),
+      ).filter((key) => key?.startsWith("forge.watch_progress")),
+    ).toEqual([])
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-video"]'),
+    ).toHaveLength(1)
+  })
+
+  it("ignores hidden and offscreen playback before the visible threshold", async () => {
+    let notifyIntersection = (_isIntersecting: boolean) => undefined
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback) {
+          notifyIntersection = (isIntersecting: boolean) => {
+            callback(
+              [{ isIntersecting } as IntersectionObserverEntry],
+              this as unknown as IntersectionObserver,
+            )
+          }
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return []
+        }
+        readonly root = null
+        readonly rootMargin = "0px"
+        readonly thresholds = [0.01]
+      },
+    )
+    const program = makeProgram({
+      intro: null,
+      buckets: [
+        {
+          kind: "video",
+          id: "videos",
+          label: "Videos",
+          items: [makeProgramVideo("visible-video")],
+        },
+      ],
+      rotation: ["videos"],
+    })
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel({ program })} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    let currentTime = 0
+    Object.defineProperty(video, "paused", { configurable: true, value: false })
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      get: () => currentTime,
+    })
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      value: 10,
+    })
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    })
+    currentTime = 1
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    })
+    notifyIntersection(false)
+    currentTime = 2
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+
+    notifyIntersection(true)
+    currentTime = 4
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+    currentTime = 5
+    await act(async () => {
+      video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+    })
+    expect(readProgramLedger()?.exposures).toHaveProperty("video:visible-video")
+    Reflect.deleteProperty(document, "visibilityState")
+  })
+
+  it("quarantines failed authored media and restarts with a fresh entry on bfcache restore", async () => {
+    const program = makeProgram({
+      buckets: [
+        {
+          kind: "video",
+          id: "videos",
+          label: "Videos",
+          items: [makeProgramVideo("only-video")],
+        },
+      ],
+      rotation: ["videos"],
+    })
+    await act(async () => {
+      root.render(<WatchHomePage model={makeModel({ program })} />)
+    })
+    const firstEntrySequenceId = container
+      .querySelector('[data-testid="watch-home-tv-video"]')
+      ?.getAttribute("data-program-sequence-id")
+    expect(firstEntrySequenceId).toBeTruthy()
+
+    let video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    await act(async () => {
+      video.dispatchEvent(new Event("error", { bubbles: true }))
+    })
+    expect(container.textContent).toContain("Program only-video")
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+
+    video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    await act(async () => {
+      video.dispatchEvent(new Event("error", { bubbles: true }))
+      video.dispatchEvent(new Event("error", { bubbles: true }))
+    })
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.getAttribute("src"),
+    ).not.toBe("https://stream.example/only-video.m3u8")
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="watch-home-tv-carousel-card"]',
+        ),
+      ).some((card) => card.textContent?.includes("Program only-video")),
+    ).toBe(false)
+    expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+
+    const pageShow = new Event("pageshow") as PageTransitionEvent
+    Object.defineProperty(pageShow, "persisted", { value: true })
+    await act(async () => {
+      window.dispatchEvent(pageShow)
+    })
+    const restoredSequenceId = container
+      .querySelector('[data-testid="watch-home-tv-video"]')
+      ?.getAttribute("data-program-sequence-id")
+    expect(restoredSequenceId).toBeTruthy()
+    expect(restoredSequenceId).not.toBe(firstEntrySequenceId)
+    expect(container.textContent).toContain("Welcome to Watch")
+  })
+
+  it("creates one program entry under StrictMode effect replay", async () => {
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.25)
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <WatchHomePage model={makeModel({ program: makeProgram() })} />
+        </StrictMode>,
+      )
+    })
+
+    expect(random).toHaveBeenCalledTimes(1)
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-video"]'),
     ).toHaveLength(1)
   })
 })

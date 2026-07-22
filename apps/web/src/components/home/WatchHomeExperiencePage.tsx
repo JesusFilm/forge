@@ -79,6 +79,7 @@ export function WatchHomeExperiencePage({
             <WatchHomeTvCarousel
               slides={heroModel.heroSlides}
               sequence={heroModel.carousel}
+              program={heroModel.program}
             />
           )}
           {blocks.map((block, index) => {
@@ -91,6 +92,7 @@ export function WatchHomeExperiencePage({
                   key={blockKey}
                   slides={heroModel.heroSlides}
                   sequence={heroModel.carousel}
+                  program={heroModel.program}
                 />
               )
             }

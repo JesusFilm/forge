@@ -24,6 +24,8 @@ export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
   id: string
   videoId?: string
+  programIdentity?: WatchHomeProgramIdentity
+  programIsIntro?: boolean
   title: string
   description: string | null
   label: string
@@ -40,9 +42,30 @@ export type WatchHomeTvCarouselVideoSlide = {
   poolIndex?: number
 }
 
+export type WatchHomeTvCarouselPromoSlide = {
+  kind: "promo"
+  id: string
+  programIdentity: WatchHomeProgramIdentity
+  programIsIntro: boolean
+  title: string
+  description: string | null
+  label: string | null
+  href: null
+  primaryAction: WatchHomeProgramPromoItem["primaryAction"]
+  secondaryAction: WatchHomeProgramPromoItem["secondaryAction"]
+  posterUrl: string | null
+  thumbnailUrl: string | null
+  src: string | null
+  playbackId: string | null
+  durationSeconds: number | null
+  logo: boolean
+}
+
 export type WatchHomeTvCarouselMuxSlide = {
   kind: "mux"
   id: string
+  programIdentity?: WatchHomeProgramIdentity
+  programIsIntro?: boolean
   copyId: WatchHomeMuxInsertCopyId
   href: string | null
   action: WatchHomeMuxInsertAction | null
@@ -60,6 +83,7 @@ export type WatchHomeTvCarouselMuxSlide = {
 export type WatchHomeTvCarouselSlide =
   | WatchHomeTvCarouselVideoSlide
   | WatchHomeTvCarouselMuxSlide
+  | WatchHomeTvCarouselPromoSlide
 
 export type WatchHomeCarouselPool = {
   id: string

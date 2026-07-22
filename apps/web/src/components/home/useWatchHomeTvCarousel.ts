@@ -13,15 +13,29 @@ import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
   buildWatchHomeVideoQueue,
+  createWatchHomeProgramEngine,
+  drawNextWatchHomeProgramItem,
+  exposeWatchHomeProgramIdentity,
   markWatchHomeVideoPlayed,
   mergeWatchHomeMuxInserts,
+  persistWatchHomeProgramLedger,
+  quarantineWatchHomeProgramIdentity,
+  readWatchHomeProgramLedger,
   readWatchHomeTvPlayedIds,
   resetWatchHomeTvPlayedIds,
   saveWatchHomeCurrentVideoSession,
   type WatchHomeCarouselSequenceData,
+  type WatchHomeProgramEngineState,
+  type WatchHomeProgramSelection,
   type WatchHomeTvCarouselSlide,
   type WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
+import type { WatchHomeProgram } from "@/lib/watch-home-types"
+import {
+  getWatchProgressRatio,
+  useWatchProgressEntries,
+  type WatchProgressEntry,
+} from "@/lib/watch-progress-client"
 
 export {
   WATCH_HOME_TV_ADVANCE_THRESHOLD,
@@ -37,6 +51,151 @@ const VIDEO_POSTER_HOLD_MS = 1500
 const VIDEO_POSTER_HOLD_SECONDS = VIDEO_POSTER_HOLD_MS / 1000
 const VIDEO_POSTER_HOLD_PROGRESS_TICK_MS = 250
 export const WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS = 30
+export const WATCH_HOME_PROGRAM_EXPOSURE_SECONDS = 3
+const WATCH_HOME_PROGRAM_MAX_SAMPLE_DELTA_SECONDS = 2
+
+type WatchHomeProgrammedSlide = {
+  selection: WatchHomeProgramSelection
+  slide: WatchHomeTvCarouselSlide
+  stateAfter: WatchHomeProgramEngineState
+}
+
+type WatchHomeProgramSession = {
+  items: WatchHomeProgrammedSlide[]
+  state: WatchHomeProgramEngineState
+  fallback: boolean
+}
+
+type WatchHomeAdvanceCause =
+  | "ended"
+  | "preview-cap"
+  | "explicit-skip"
+  | "rail"
+  | "failure"
+
+export function getWatchHomeAccountSeenVideoIds(
+  entries: readonly WatchProgressEntry[],
+) {
+  return [
+    ...new Set(
+      entries
+        .filter((entry) => getWatchProgressRatio(entry) > 0)
+        .map((entry) => entry.videoId),
+    ),
+  ]
+}
+
+export function watchHomeProgramSelectionToCarouselSlide(
+  selection: WatchHomeProgramSelection,
+): WatchHomeTvCarouselSlide {
+  if (selection.kind === "video") {
+    return {
+      kind: "video",
+      id: selection.sequenceId,
+      videoId: selection.item.videoId,
+      programIdentity: selection.identity,
+      programIsIntro: false,
+      title: selection.item.title,
+      description: selection.item.description,
+      label: selection.item.label,
+      href: selection.item.href,
+      posterUrl: selection.item.posterUrl,
+      thumbnailUrl: selection.item.thumbnailUrl,
+      imageAlt: selection.item.imageAlt,
+      src: selection.item.src,
+      playbackId: selection.item.playbackId,
+      subtitleVttSrc: selection.item.subtitleVttSrc,
+      subtitleLanguageBcp47: selection.item.subtitleLanguageBcp47,
+      durationSeconds: selection.item.durationSeconds,
+    }
+  }
+
+  return {
+    kind: "promo",
+    id: selection.sequenceId,
+    programIdentity: selection.identity,
+    programIsIntro: selection.isIntro,
+    title: selection.item.title,
+    description: selection.item.description,
+    label: selection.item.label,
+    href: null,
+    primaryAction: selection.item.primaryAction,
+    secondaryAction: selection.item.secondaryAction,
+    posterUrl: selection.item.posterUrl,
+    thumbnailUrl: selection.item.posterUrl,
+    src: selection.item.src,
+    playbackId: selection.item.playbackId,
+    durationSeconds: selection.item.durationSeconds,
+    logo: selection.item.showLogo,
+  }
+}
+
+export function accumulateWatchHomeProgramPlayback({
+  accumulatedSeconds,
+  currentTime,
+  previousTime,
+  isPlaying,
+  isVisible,
+}: {
+  accumulatedSeconds: number
+  currentTime: number
+  previousTime: number
+  isPlaying: boolean
+  isVisible: boolean
+}) {
+  const rawDelta = currentTime - previousTime
+  const delta =
+    isPlaying && isVisible && Number.isFinite(rawDelta) && rawDelta > 0
+      ? Math.min(rawDelta, WATCH_HOME_PROGRAM_MAX_SAMPLE_DELTA_SECONDS)
+      : 0
+  const nextSeconds = Math.min(
+    WATCH_HOME_PROGRAM_EXPOSURE_SECONDS,
+    accumulatedSeconds + delta,
+  )
+  return {
+    accumulatedSeconds: nextSeconds,
+    exposed: nextSeconds >= WATCH_HOME_PROGRAM_EXPOSURE_SECONDS,
+  }
+}
+
+function drawWatchHomeProgramHorizon(
+  program: WatchHomeProgram,
+  initialState: WatchHomeProgramEngineState,
+  targetCount: number,
+) {
+  let state = initialState
+  const items: WatchHomeProgrammedSlide[] = []
+  let fallback = false
+
+  while (items.length < targetCount) {
+    const result = drawNextWatchHomeProgramItem(program, state)
+    state = result.state
+    if (!result.item) {
+      fallback = result.fallback
+      break
+    }
+    items.push({
+      selection: result.item,
+      slide: watchHomeProgramSelectionToCarouselSlide(result.item),
+      stateAfter: result.state,
+    })
+  }
+
+  return { items, state, fallback }
+}
+
+function reconcileWatchHomeProgramState(
+  base: WatchHomeProgramEngineState,
+  current: WatchHomeProgramEngineState,
+  accountVideoIds: readonly string[],
+): WatchHomeProgramEngineState {
+  return {
+    ...base,
+    accountVideoIds: [...accountVideoIds],
+    exposedIdentities: [...current.exposedIdentities],
+    quarantinedIdentities: [...current.quarantinedIdentities],
+  }
+}
 
 function subscribeToHydrationStore() {
   return () => undefined
@@ -143,6 +302,7 @@ export function nextUnplayedWatchHomeTvCarouselIndex(
 export function useWatchHomeTvCarousel(
   slides: readonly WatchHomeTvCarouselSlide[],
   sequence: WatchHomeCarouselSequenceData | null = null,
+  program: WatchHomeProgram | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
     suppressLeavingSlide?: boolean
@@ -152,6 +312,31 @@ export function useWatchHomeTvCarousel(
     subscribeToHydrationStore,
     getClientHydrationSnapshot,
     getServerHydrationSnapshot,
+  )
+  const watchProgressEntries = useWatchProgressEntries()
+  const accountVideoIds = useMemo(
+    () => getWatchHomeAccountSeenVideoIds(watchProgressEntries),
+    [watchProgressEntries],
+  )
+  const accountVideoIdsKey = accountVideoIds.join("\u0000")
+  const accountVideoIdsRef = useRef(accountVideoIds)
+  useEffect(() => {
+    accountVideoIdsRef.current = accountVideoIds
+  }, [accountVideoIds])
+  const [programEntryGeneration, setProgramEntryGeneration] = useState(0)
+  const [programSession, setProgramSessionState] =
+    useState<WatchHomeProgramSession | null>(null)
+  const programSessionRef = useRef<WatchHomeProgramSession | null>(null)
+  const initializedProgramEntryRef = useRef<{
+    program: WatchHomeProgram
+    generation: number
+  } | null>(null)
+  const setProgramSession = useCallback(
+    (next: WatchHomeProgramSession | null) => {
+      programSessionRef.current = next
+      setProgramSessionState(next)
+    },
+    [],
   )
   const [prefetchedQueue, setPrefetchedQueue] = useState<{
     sequenceKey: string
@@ -175,6 +360,14 @@ export function useWatchHomeTvCarousel(
   const previousProgressRef = useRef(0)
   const imageSlideStartedAtRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const heroRef = useRef<HTMLElement | null>(null)
+  const heroVisibleRef = useRef(true)
+  const advancedSlideIdRef = useRef<string | null>(null)
+  const playbackExposureRef = useRef({
+    slideId: null as string | null,
+    previousTime: 0,
+    accumulatedSeconds: 0,
+  })
   const isSequenced = sequence != null
   const sequenceKey = useMemo(
     () =>
@@ -217,7 +410,23 @@ export function useWatchHomeTvCarousel(
     return mergedSlides.length > 0 ? mergedSlides : null
   }, [isSequenced, sequence, videoQueue])
 
-  const displaySlides = sequencedSlides ?? slides
+  const legacySlides = useMemo(
+    () => sequencedSlides ?? slides,
+    [sequencedSlides, slides],
+  )
+  const programSlides = useMemo(
+    () => programSession?.items.map((item) => item.slide) ?? [],
+    [programSession],
+  )
+  const programIsActive =
+    hasHydrated && program != null && programSlides.length > 0
+  const displaySlides = useMemo(
+    () =>
+      programIsActive
+        ? [...programSlides, ...(programSession?.fallback ? legacySlides : [])]
+        : legacySlides,
+    [legacySlides, programIsActive, programSession?.fallback, programSlides],
+  )
 
   const defaultActiveIndex = hasHydrated
     ? firstUnplayedWatchHomeTvCarouselIndex(displaySlides)
@@ -244,6 +453,98 @@ export function useWatchHomeTvCarousel(
     : 0
   const autoAdvancePausedRef = useRef(autoAdvancePaused)
 
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      if (!hasHydrated || !program) {
+        initializedProgramEntryRef.current = null
+        setProgramSession(null)
+        return
+      }
+      if (
+        initializedProgramEntryRef.current?.program === program &&
+        initializedProgramEntryRef.current.generation === programEntryGeneration
+      ) {
+        return
+      }
+      initializedProgramEntryRef.current = {
+        program,
+        generation: programEntryGeneration,
+      }
+
+      const engine = createWatchHomeProgramEngine(program, {
+        ledger: readWatchHomeProgramLedger(program),
+        accountVideoIds: accountVideoIdsRef.current,
+      })
+      const horizon = drawWatchHomeProgramHorizon(program, engine, 2)
+      setProgramSession(horizon)
+      persistWatchHomeProgramLedger(program, horizon.state)
+      setActiveSlideId(null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hasHydrated, program, programEntryGeneration, setProgramSession])
+
+  useEffect(() => {
+    if (!program) return
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setProgramEntryGeneration((value) => value + 1)
+    }
+    window.addEventListener("pageshow", handlePageShow)
+    return () => window.removeEventListener("pageshow", handlePageShow)
+  }, [program])
+
+  const previousAccountVideoIdsKeyRef = useRef(accountVideoIdsKey)
+  useEffect(() => {
+    if (previousAccountVideoIdsKeyRef.current === accountVideoIdsKey) return
+    previousAccountVideoIdsKeyRef.current = accountVideoIdsKey
+    const current = programSessionRef.current
+    if (!program || !current || current.items.length === 0) return
+
+    const activeIndex = current.items.findIndex(
+      (item) => item.slide.id === activeSlide?.id,
+    )
+    if (activeIndex < 0) return
+    const retained = current.items.slice(0, activeIndex + 1)
+    const base = reconcileWatchHomeProgramState(
+      retained[retained.length - 1]!.stateAfter,
+      current.state,
+      accountVideoIds,
+    )
+    const future = drawWatchHomeProgramHorizon(program, base, 1)
+    const next = {
+      items: [...retained, ...future.items],
+      state: future.state,
+      fallback: future.fallback,
+    }
+    setProgramSession(next)
+    persistWatchHomeProgramLedger(program, next.state)
+  }, [
+    accountVideoIds,
+    accountVideoIdsKey,
+    activeSlide?.id,
+    program,
+    setProgramSession,
+  ])
+
+  useEffect(() => {
+    const element = heroRef.current
+    if (!element || typeof IntersectionObserver === "undefined") {
+      heroVisibleRef.current = true
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        heroVisibleRef.current = Boolean(entry?.isIntersecting)
+      },
+      { threshold: 0.01 },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [programEntryGeneration])
+
   const clearVideoPosterHold = useCallback(() => {
     if (videoPosterHoldTimeoutRef.current != null) {
       window.clearTimeout(videoPosterHoldTimeoutRef.current)
@@ -262,10 +563,9 @@ export function useWatchHomeTvCarousel(
     }
   }, [])
 
-  const selectIndex = useCallback(
-    (index: number) => {
-      if (index < 0 || index >= displaySlides.length) return
-      const nextSlide = displaySlides[index] ?? null
+  const selectResolvedSlide = useCallback(
+    (nextSlide: WatchHomeTvCarouselSlide | null) => {
+      if (!nextSlide) return
       if (
         activeSlide &&
         nextSlide?.id !== activeSlide.id &&
@@ -293,27 +593,195 @@ export function useWatchHomeTvCarousel(
       activeSlide,
       clearSlideAdvanceTimeout,
       clearVideoPosterHold,
-      displaySlides,
       options.suppressLeavingSlide,
     ],
   )
 
+  const selectIndex = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= displaySlides.length) return
+      selectResolvedSlide(displaySlides[index] ?? null)
+    },
+    [displaySlides, selectResolvedSlide],
+  )
+
   const selectSlide = useCallback(
     (slideId: string) => {
+      const current = programSessionRef.current
+      const programIndex = current?.items.findIndex(
+        (item) => item.slide.id === slideId,
+      )
+      if (current && programIndex != null && programIndex > 0) {
+        setProgramSession({
+          ...current,
+          items: current.items.slice(programIndex),
+        })
+      }
       const index = displaySlides.findIndex((slide) => slide.id === slideId)
       selectIndex(index)
     },
-    [displaySlides, selectIndex],
+    [displaySlides, selectIndex, setProgramSession],
   )
 
-  const advance = useCallback(() => {
-    const nextIndex = isSequenced
-      ? safeActiveIndex + 1 < displaySlides.length
-        ? safeActiveIndex + 1
-        : 0
-      : nextUnplayedWatchHomeTvCarouselIndex(safeActiveIndex, displaySlides)
-    selectIndex(nextIndex)
-  }, [displaySlides, isSequenced, safeActiveIndex, selectIndex])
+  const recordProgramExposure = useCallback(
+    (slide: WatchHomeTvCarouselSlide | null) => {
+      if (
+        !program ||
+        !slide?.programIdentity ||
+        slide.programIsIntro === true
+      ) {
+        return
+      }
+      const current = programSessionRef.current
+      if (
+        !current ||
+        current.state.exposedIdentities.includes(slide.programIdentity)
+      ) {
+        return
+      }
+      const nextState = exposeWatchHomeProgramIdentity(
+        current.state,
+        slide.programIdentity,
+      )
+      const activeIndex = current.items.findIndex(
+        (item) => item.slide.id === slide.id,
+      )
+      if (activeIndex < 0) return
+      const retained = current.items.slice(0, activeIndex + 1)
+      const base = reconcileWatchHomeProgramState(
+        retained[retained.length - 1]!.stateAfter,
+        nextState,
+        accountVideoIdsRef.current,
+      )
+      const future = drawWatchHomeProgramHorizon(program, base, 1)
+      const next = {
+        items: [...retained, ...future.items],
+        state: future.state,
+        fallback: future.fallback,
+      }
+      setProgramSession(next)
+      persistWatchHomeProgramLedger(program, next.state)
+    },
+    [program, setProgramSession],
+  )
+
+  const advance = useCallback(
+    (cause: WatchHomeAdvanceCause = "explicit-skip") => {
+      if (!activeSlide) return
+      if (advancedSlideIdRef.current === activeSlide.id) return
+      advancedSlideIdRef.current = activeSlide.id
+
+      if (cause === "explicit-skip") {
+        recordProgramExposure(activeSlide)
+      }
+
+      const current = programSessionRef.current
+      const programIndex = current?.items.findIndex(
+        (item) => item.slide.id === activeSlide.id,
+      )
+      if (program && current && programIndex != null && programIndex >= 0) {
+        let workingSession = current
+        let nextItem = current.items[programIndex + 1]
+        if (!nextItem && !current.fallback) {
+          const future = drawWatchHomeProgramHorizon(program, current.state, 1)
+          workingSession = {
+            items: [...current.items, ...future.items],
+            state: future.state,
+            fallback: future.fallback,
+          }
+          persistWatchHomeProgramLedger(program, workingSession.state)
+          nextItem = future.items[0]
+        }
+        if (nextItem) {
+          const nextIndex = workingSession.items.findIndex(
+            (item) => item.slide.id === nextItem?.slide.id,
+          )
+          setProgramSession({
+            ...workingSession,
+            items: workingSession.items.slice(Math.max(0, nextIndex)),
+          })
+          selectResolvedSlide(nextItem.slide)
+          return
+        }
+        if (current.fallback || programSessionRef.current?.fallback) {
+          setProgramSession(null)
+          selectResolvedSlide(legacySlides[0] ?? null)
+          return
+        }
+      }
+
+      const nextIndex = isSequenced
+        ? safeActiveIndex + 1 < displaySlides.length
+          ? safeActiveIndex + 1
+          : 0
+        : nextUnplayedWatchHomeTvCarouselIndex(safeActiveIndex, displaySlides)
+      selectIndex(nextIndex)
+    },
+    [
+      activeSlide,
+      displaySlides,
+      isSequenced,
+      legacySlides,
+      program,
+      recordProgramExposure,
+      safeActiveIndex,
+      selectIndex,
+      selectResolvedSlide,
+      setProgramSession,
+    ],
+  )
+
+  const handleProgramFailure = useCallback(() => {
+    if (!activeSlide || advancedSlideIdRef.current === activeSlide.id) return
+    const current = programSessionRef.current
+    const activeIndex = current?.items.findIndex(
+      (item) => item.slide.id === activeSlide.id,
+    )
+    if (!program || !current || activeIndex == null || activeIndex < 0) {
+      advance("failure")
+      return
+    }
+
+    advancedSlideIdRef.current = activeSlide.id
+    const retained = current.items.slice(0, activeIndex)
+    let base = reconcileWatchHomeProgramState(
+      current.items[activeIndex]!.stateAfter,
+      current.state,
+      accountVideoIdsRef.current,
+    )
+    if (activeSlide.programIdentity && activeSlide.programIsIntro !== true) {
+      base = quarantineWatchHomeProgramIdentity(
+        base,
+        activeSlide.programIdentity,
+      )
+    }
+    const future = drawWatchHomeProgramHorizon(program, base, 1)
+    persistWatchHomeProgramLedger(program, future.state)
+    if (future.fallback && future.items.length === 0) {
+      setProgramSession(null)
+    } else {
+      setProgramSession({
+        items: [...retained, ...future.items],
+        state: future.state,
+        fallback: future.fallback,
+      })
+    }
+    selectResolvedSlide(future.items[0]?.slide ?? legacySlides[0] ?? null)
+  }, [
+    activeSlide,
+    advance,
+    legacySlides,
+    program,
+    selectResolvedSlide,
+    setProgramSession,
+  ])
+
+  const handleEnded = useCallback(() => {
+    if (activeSlide?.kind === "promo") {
+      recordProgramExposure(activeSlide)
+    }
+    advance("ended")
+  }, [activeSlide, advance, recordProgramExposure])
 
   const toggleMuted = useCallback(() => {
     setIsMuted((current) => {
@@ -337,7 +805,30 @@ export function useWatchHomeTvCarousel(
     })
     setProgress(nextProgress)
     previousProgressRef.current = nextProgress
-  }, [activeSlide?.id])
+
+    if (!activeSlide?.programIdentity || activeSlide.programIsIntro === true) {
+      return
+    }
+    const previous = playbackExposureRef.current
+    const previousTime =
+      previous.slideId === activeSlide.id ? previous.previousTime : 0
+    const accumulatedSeconds =
+      previous.slideId === activeSlide.id ? previous.accumulatedSeconds : 0
+    const sample = accumulateWatchHomeProgramPlayback({
+      accumulatedSeconds,
+      currentTime: video.currentTime,
+      previousTime,
+      isPlaying: !video.paused,
+      isVisible:
+        document.visibilityState === "visible" && heroVisibleRef.current,
+    })
+    playbackExposureRef.current = {
+      slideId: activeSlide.id,
+      previousTime: video.currentTime,
+      accumulatedSeconds: sample.accumulatedSeconds,
+    }
+    if (sample.exposed) recordProgramExposure(activeSlide)
+  }, [activeSlide, recordProgramExposure])
 
   const handleLoadedMetadata = useCallback(() => {
     previousProgressRef.current = 0
@@ -388,11 +879,11 @@ export function useWatchHomeTvCarousel(
       previousProgressRef.current = nextProgress
       setMediaReady(true)
       if (!autoAdvancePausedRef.current) {
-        void video.play().catch(() => undefined)
+        void video.play().catch(handleProgramFailure)
       }
       videoPosterHoldTimeoutRef.current = null
     }, VIDEO_POSTER_HOLD_MS)
-  }, [clearVideoPosterHold])
+  }, [clearVideoPosterHold, handleProgramFailure])
 
   useEffect(() => {
     autoAdvancePausedRef.current = autoAdvancePaused
@@ -424,8 +915,14 @@ export function useWatchHomeTvCarousel(
   useEffect(() => {
     imageSlideStartedAtRef.current = null
     previousProgressRef.current = 0
+    advancedSlideIdRef.current = null
+    playbackExposureRef.current = {
+      slideId: activeSlide?.id ?? null,
+      previousTime: 0,
+      accumulatedSeconds: 0,
+    }
     clearVideoPosterHold()
-    if (hasHydrated) {
+    if (hasHydrated && !activeSlide?.programIdentity) {
       if (isSequenced) {
         markWatchHomeVideoPlayed(activeSlide)
         saveWatchHomeCurrentVideoSession(activeSlide)
@@ -440,6 +937,7 @@ export function useWatchHomeTvCarousel(
   }, [
     activeSlide,
     activeSlide?.id,
+    activeSlide?.programIdentity,
     clearVideoPosterHold,
     hasHydrated,
     isSequenced,
@@ -459,7 +957,7 @@ export function useWatchHomeTvCarousel(
 
     slideAdvanceTimeoutRef.current = window.setTimeout(() => {
       slideAdvanceTimeoutRef.current = null
-      advance()
+      advance("preview-cap")
     }, advanceAfterMs)
 
     return () => {
@@ -519,6 +1017,24 @@ export function useWatchHomeTvCarousel(
   ])
 
   useEffect(() => {
+    const current = programSessionRef.current
+    if (!program || !current || current.fallback || !activeSlide) return
+    const activeIndex = current.items.findIndex(
+      (item) => item.slide.id === activeSlide.id,
+    )
+    if (activeIndex < 0 || activeIndex + 1 < current.items.length) return
+
+    const future = drawWatchHomeProgramHorizon(program, current.state, 1)
+    const next = {
+      items: [...current.items, ...future.items],
+      state: future.state,
+      fallback: future.fallback,
+    }
+    setProgramSession(next)
+    persistWatchHomeProgramLedger(program, next.state)
+  }, [activeSlide, program, setProgramSession])
+
+  useEffect(() => {
     if (!activeSlide || activeSlide.src || autoAdvancePaused) return
 
     let animationFrame = 0
@@ -547,9 +1063,10 @@ export function useWatchHomeTvCarousel(
     () => ({
       activeIndex: safeActiveIndex,
       activeSlide,
-      advance,
+      advance: () => advance("explicit-skip"),
       handleCanPlay,
-      handleEnded: advance,
+      handleEnded,
+      handleError: handleProgramFailure,
       handleLoadedMetadata,
       handleTimeUpdate,
       isMuted,
@@ -562,12 +1079,15 @@ export function useWatchHomeTvCarousel(
       slides: displaySlides,
       toggleMuted,
       videoRef,
+      heroRef,
     }),
     [
       safeActiveIndex,
       activeSlide,
       advance,
       handleCanPlay,
+      handleEnded,
+      handleProgramFailure,
       handleLoadedMetadata,
       handleTimeUpdate,
       displaySlides,

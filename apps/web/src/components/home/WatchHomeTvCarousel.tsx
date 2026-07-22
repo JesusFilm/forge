@@ -54,6 +54,7 @@ import {
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
+import type { WatchHomeProgram } from "@/lib/watch-home-types"
 import type {
   WatchHomeCarouselSequenceData,
   WatchHomeTvCarouselMuxSlide,
@@ -74,6 +75,7 @@ import {
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
+  program?: WatchHomeProgram | null
 }
 
 type WatchHomeShortFilmPhase = "transitioning" | "playing"
@@ -136,9 +138,9 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
   })
 }
 
-type PrimaryActionIconName = NonNullable<
-  WatchHomeTvCarouselMuxSlide["action"]
->["icon"]
+type PrimaryActionIconName =
+  | NonNullable<WatchHomeTvCarouselMuxSlide["action"]>["icon"]
+  | null
 
 function PrimaryActionIcon({ icon }: { icon: PrimaryActionIconName }) {
   const iconClassName = "h-5 w-5 shrink-0"
@@ -182,6 +184,28 @@ function PrimaryAction({
       </button>
     ) : null
 
+  if (slide.kind === "promo") {
+    const action = (
+      item: NonNullable<typeof slide.primaryAction>,
+      className: string,
+    ) => (
+      <a href={item.href} className={className}>
+        <PrimaryActionIcon icon={item.icon} />
+        <span className="truncate">{item.label}</span>
+      </a>
+    )
+    return slide.primaryAction || slide.secondaryAction ? (
+      <div className="flex max-w-[calc(100vw-9rem)] flex-col items-start gap-3 sm:max-w-full sm:flex-row sm:items-center">
+        {slide.primaryAction
+          ? action(slide.primaryAction, primaryClassName)
+          : null}
+        {slide.secondaryAction
+          ? action(slide.secondaryAction, secondaryClassName)
+          : null}
+      </div>
+    ) : null
+  }
+
   if (slide.kind === "mux" && slide.action) {
     return (
       <div className="flex max-w-[calc(100vw-9rem)] flex-col items-start gap-3 sm:max-w-full sm:flex-row sm:items-center">
@@ -218,6 +242,7 @@ function WatchHomeTvMedia({
   mediaReady,
   onCanPlay,
   onEnded,
+  onError,
   onLoadedMetadata,
   onPlayerReady,
   onSubtitleCueTextChange,
@@ -233,6 +258,7 @@ function WatchHomeTvMedia({
   mediaReady: boolean
   onCanPlay: () => void
   onEnded?: () => void
+  onError?: () => void
   onLoadedMetadata: () => void
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onSubtitleCueTextChange: (cueText: string | null) => void
@@ -297,10 +323,14 @@ function WatchHomeTvMedia({
           muted={takeoverActive ? false : isMuted}
           playsInline
           disableTracking
+          data-program-sequence-id={
+            activeSlide.programIdentity ? activeSlide.id : undefined
+          }
           controls={false}
           crossOrigin="anonymous"
           onCanPlay={onCanPlay}
           onEnded={takeoverActive ? undefined : onEnded}
+          onError={takeoverActive ? undefined : onError}
           onLoadedMetadata={onLoadedMetadata}
           onTimeUpdate={onTimeUpdate}
           className={cn(
@@ -552,7 +582,7 @@ function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
   const videoLabels = useTranslations("VideoLabels")
   const copy = useWatchHomeTvSlideCopy(slide)
 
-  if (slide.kind === "mux") return copy.label
+  if (slide.kind === "mux" || slide.kind === "promo") return copy.label
   if (slide.label === "Featured") return t("featured")
   return videoLabels(videoLabelMessageKey(slide.label))
 }
@@ -918,6 +948,7 @@ function WatchHomeTvRail({
 }
 
 export function WatchHomeTvCarousel({
+  program = null,
   sequence = null,
   slides,
 }: WatchHomeTvCarouselProps) {
@@ -935,6 +966,7 @@ export function WatchHomeTvCarousel({
     advance,
     handleCanPlay,
     handleEnded,
+    handleError,
     handleLoadedMetadata,
     handleTimeUpdate,
     isMuted,
@@ -946,7 +978,8 @@ export function WatchHomeTvCarousel({
     slides: displaySlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    heroRef,
+  } = useWatchHomeTvCarousel(carouselSlides, sequence, program, {
     autoAdvancePausedForSlideId: shortFilmSlide?.id ?? null,
     suppressLeavingSlide: shortFilmSlide != null,
   })
@@ -1062,7 +1095,11 @@ export function WatchHomeTvCarousel({
   if (!activeSlide) return null
 
   return (
-    <section className="relative bg-black" data-testid="watch-home-tv-carousel">
+    <section
+      ref={heroRef}
+      className="relative bg-black"
+      data-testid="watch-home-tv-carousel"
+    >
       <h1 className="sr-only">{t("pageTitle")}</h1>
       <div className="relative mx-auto h-[66svh] w-full max-w-[1920px] overflow-hidden bg-black md:h-[min(100svh,56.25vw)]">
         <WatchHomeTvMedia
@@ -1073,6 +1110,7 @@ export function WatchHomeTvCarousel({
           mediaReady={mediaReady}
           onCanPlay={handleCanPlay}
           onEnded={handleMediaEnded}
+          onError={handleError}
           onLoadedMetadata={handleLoadedMetadata}
           onPlayerReady={handlePlayerReady}
           onSubtitleCueTextChange={setSubtitleCueText}

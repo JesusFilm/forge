@@ -67,6 +67,15 @@ export function useWatchHomeTvSlideCopy(slide: WatchHomeTvCarouselSlide) {
     }
   }
 
+  if (slide.kind === "promo") {
+    return {
+      description: slide.description,
+      imageAlt: slide.title,
+      label: slide.label ?? "",
+      title: slide.title,
+    }
+  }
+
   const keys = WATCH_HOME_MUX_COPY_KEYS[slide.copyId]
   const title = muxCopy(keys.title)
   const localizedTitle = slide.titleDate

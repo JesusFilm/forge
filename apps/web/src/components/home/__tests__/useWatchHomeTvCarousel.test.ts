@@ -4,17 +4,22 @@
 
 import { beforeEach, describe, expect, it } from "vitest"
 import {
+  WATCH_HOME_PROGRAM_EXPOSURE_SECONDS,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   WATCH_HOME_TV_VIDEO_PREVIEW_MAX_SECONDS,
+  accumulateWatchHomeProgramPlayback,
   addWatchHomeTvPlayedId,
   firstUnplayedWatchHomeTvCarouselIndex,
+  getWatchHomeAccountSeenVideoIds,
   nextUnplayedWatchHomeTvCarouselIndex,
   readWatchHomeTvPlayedIds,
   shouldAdvanceWatchHomeTvCarousel,
+  watchHomeProgramSelectionToCarouselSlide,
   watchHomeTvAdvanceTargetSeconds,
   watchHomeTvProgressPercent,
 } from "@/components/home/useWatchHomeTvCarousel"
 import type { WatchHomeTvCarouselSlide } from "@/components/home/useWatchHomeTvCarousel"
+import type { WatchHomeProgramSelection } from "@/lib/watch-home-carousel-sequence"
 
 const currentMonth = new Date().toISOString().slice(0, 7)
 
@@ -129,5 +134,115 @@ describe("watch home TV carousel preview timing", () => {
     expect(watchHomeTvAdvanceTargetSeconds(20)).toBe(19)
     expect(watchHomeTvProgressPercent(9.5, 20)).toBe(50)
     expect(watchHomeTvProgressPercent(19, 20)).toBe(100)
+  })
+})
+
+describe("watch home editorial program playback", () => {
+  it("uses only account progress entries with a visible progress ratio", () => {
+    expect(
+      getWatchHomeAccountSeenVideoIds([
+        {
+          videoId: "not-started",
+          positionSeconds: 0.2,
+          durationSeconds: 100,
+          updatedAt: 1,
+        },
+        {
+          videoId: "started",
+          positionSeconds: 1,
+          durationSeconds: 100,
+          updatedAt: 2,
+        },
+        {
+          videoId: "complete",
+          positionSeconds: 100,
+          durationSeconds: 100,
+          updatedAt: 3,
+        },
+      ]),
+    ).toEqual(["started", "complete"])
+  })
+
+  it("maps authored promo copy and semantic identity without using legacy copy IDs", () => {
+    const selection: WatchHomeProgramSelection = {
+      kind: "promo",
+      identity: "promo:summer-campaign",
+      sequenceId: "program-entry-1-promo:summer-campaign",
+      itemId: "summer-campaign",
+      bucketId: "promos",
+      isIntro: false,
+      item: {
+        id: "summer-campaign",
+        playbackId: "promo-playback",
+        src: "https://stream.mux.com/promo-playback.m3u8",
+        durationSeconds: 2,
+        posterUrl: "https://cdn.example/promo.jpg",
+        label: "Get involved",
+        title: "You can help",
+        description: "Join the mission.",
+        showLogo: true,
+        primaryAction: {
+          label: "Join now",
+          href: "/watch/join",
+          icon: "join",
+        },
+        secondaryAction: {
+          label: "Learn more",
+          href: "https://www.jesusfilm.org/about",
+          icon: null,
+        },
+      },
+    }
+
+    expect(watchHomeProgramSelectionToCarouselSlide(selection)).toMatchObject({
+      kind: "promo",
+      id: selection.sequenceId,
+      programIdentity: selection.identity,
+      programIsIntro: false,
+      title: "You can help",
+      primaryAction: selection.item.primaryAction,
+      secondaryAction: selection.item.secondaryAction,
+    })
+  })
+
+  it("counts only bounded visible playing deltas toward the three-second exposure", () => {
+    let sample = accumulateWatchHomeProgramPlayback({
+      accumulatedSeconds: 0,
+      currentTime: 1.5,
+      previousTime: 0,
+      isPlaying: true,
+      isVisible: true,
+    })
+    expect(sample.accumulatedSeconds).toBe(1.5)
+    expect(sample.exposed).toBe(false)
+
+    sample = accumulateWatchHomeProgramPlayback({
+      accumulatedSeconds: sample.accumulatedSeconds,
+      currentTime: 2.5,
+      previousTime: 1.5,
+      isPlaying: true,
+      isVisible: false,
+    })
+    expect(sample.accumulatedSeconds).toBe(1.5)
+
+    sample = accumulateWatchHomeProgramPlayback({
+      accumulatedSeconds: sample.accumulatedSeconds,
+      currentTime: 4,
+      previousTime: 2.5,
+      isPlaying: true,
+      isVisible: true,
+    })
+    expect(sample.accumulatedSeconds).toBe(WATCH_HOME_PROGRAM_EXPOSURE_SECONDS)
+    expect(sample.exposed).toBe(true)
+
+    expect(
+      accumulateWatchHomeProgramPlayback({
+        accumulatedSeconds: 0,
+        currentTime: 20,
+        previousTime: 0,
+        isPlaying: true,
+        isVisible: true,
+      }),
+    ).toEqual({ accumulatedSeconds: 2, exposed: false })
   })
 })
