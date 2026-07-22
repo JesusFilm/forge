@@ -76,6 +76,21 @@ body::before {
   z-index: 0;
 }
 
+/* Tailwind v4 preflight resets buttons to cursor: default; restore the
+   affordance app-wide. @layer base so utilities can still override. */
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* Keyboard focus ring — lamplight, the one warm accent. Utilities layer
+     still wins, so the composer textarea's outline-none is preserved. */
+  :focus-visible {
+    outline: 2px solid var(--color-lamplight);
+    outline-offset: 2px;
+  }
+}
+
 /* Lamplight cursor pulse — the only "we're here" signal (no shimmer) */
 @keyframes vigil-pulse {
   0%,

@@ -71,9 +71,13 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
       aria-labelledby="watch-related-questions-heading"
       className="w-full pt-0"
     >
-      {/* Keep this header flush with the right column top so Related
-          Questions / Ask Yours align with the title / Download row. */}
-      <div className="mb-4 flex flex-wrap items-center justify-between">
+      {/* Keep this header flush with the right column top. On landscape
+          phones, match the title/Download composition by stacking Ask Yours
+          directly below and aligning it with the eyebrow. */}
+      <div
+        data-testid="watch-study-questions-header"
+        className="mb-4 flex flex-wrap items-center justify-between [@media(max-width:1023px)_and_(orientation:landscape)]:flex-col [@media(max-width:1023px)_and_(orientation:landscape)]:items-start [@media(max-width:1023px)_and_(orientation:landscape)]:gap-3"
+      >
         <h2
           id="watch-related-questions-heading"
           className={`flex shrink-0 items-center gap-4 ${WATCH_SECTION_EYEBROW_CLASS}`}

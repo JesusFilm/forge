@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from "react"
 
+function getFullscreenElement(): HTMLElement | null {
+  if (typeof document === "undefined") return null
+  return (document.fullscreenElement ??
+    (
+      document as Document & {
+        webkitFullscreenElement?: Element | null
+      }
+    ).webkitFullscreenElement ??
+    null) as HTMLElement | null
+}
+
 // Single source of truth for fullscreen state — previously HeroPlayer and
 // HeroPlayerControls each installed their own listener with independent
 // state, which could desync if chrome revealed mid-fullscreen (the
@@ -22,15 +33,7 @@ export function useIsFullscreen(): boolean {
   useEffect(() => {
     if (typeof document === "undefined") return
     function updateFullscreen() {
-      const fsElement =
-        document.fullscreenElement ??
-        (
-          document as Document & {
-            webkitFullscreenElement?: Element | null
-          }
-        ).webkitFullscreenElement ??
-        null
-      setIsFullscreen(fsElement != null)
+      setIsFullscreen(getFullscreenElement() != null)
     }
     updateFullscreen()
     document.addEventListener("fullscreenchange", updateFullscreen)
@@ -41,4 +44,9 @@ export function useIsFullscreen(): boolean {
     }
   }, [])
   return isFullscreen
+}
+
+export function useFullscreenPortalContainer(): HTMLElement | null {
+  const isFullscreen = useIsFullscreen()
+  return isFullscreen ? getFullscreenElement() : null
 }

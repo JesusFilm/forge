@@ -88,6 +88,7 @@ export function ExperienceEditorWithChat({
   chatActions,
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
+  searchVideoLibraryAction,
   generateDraftAction,
   generateSectionAction,
   generateVariantAction,
@@ -137,6 +138,31 @@ export function ExperienceEditorWithChat({
         })
     },
     [loadVideosByIdsAction, videoLibrary],
+  )
+
+  const mergeVideoLibraryItems = useCallback((items: VideoLibraryItem[]) => {
+    if (items.length === 0) return
+    setVideoLibrary((current) => {
+      const seen = new Set(current.map((item) => item.key))
+      const merged = [...current]
+      for (const item of items) {
+        if (!seen.has(item.key)) {
+          merged.push(item)
+          seen.add(item.key)
+        }
+      }
+      return merged
+    })
+  }, [])
+
+  const handleSearchVideoLibrary = useCallback(
+    async (query: string) => {
+      if (!searchVideoLibraryAction) return []
+      const results = await searchVideoLibraryAction(query)
+      mergeVideoLibraryItems(results)
+      return results
+    },
+    [mergeVideoLibraryItems, searchVideoLibraryAction],
   )
 
   // Stable proxy controller — the panel sees a single object whose
@@ -217,6 +243,7 @@ export function ExperienceEditorWithChat({
         <ExperienceEditor
           {...editorProps}
           videoLibrary={videoLibrary}
+          searchVideoLibraryAction={handleSearchVideoLibrary}
           onCanvasController={handleCanvasController}
         />
       </div>

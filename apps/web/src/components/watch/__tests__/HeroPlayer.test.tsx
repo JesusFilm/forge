@@ -540,6 +540,7 @@ describe("HeroPlayer — initial mount", () => {
     expect(share.className).toContain("border-transparent")
     expect(share.className).toContain("hover:border-white/50")
     expect(share.className).toContain("hover:bg-white/12")
+    expect(share.className).toContain("compact-landscape:min-h-11")
 
     await act(async () => {
       share.click()
@@ -637,6 +638,8 @@ describe("HeroPlayer — initial mount", () => {
     expect(languageTag.className).toContain("font-normal")
     expect(languageTag.className).toContain("hover:border-white/70")
     expect(languageTag.className).toContain("hover:bg-white/15")
+    expect(languageTag.className).toContain("compact-landscape:min-h-11")
+    expect(languageTag.className).toContain("compact-landscape:min-w-11")
     expect(
       container.querySelector('[data-testid="hero-player-runtime-tag"]'),
     ).toBeNull()
@@ -655,6 +658,11 @@ describe("HeroPlayer — initial mount", () => {
         '[data-testid="hero-player-subtitle-language-count"]',
       )?.className,
     ).toContain("text-xs")
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-subtitle-language-count"]',
+      )?.className,
+    ).toContain("compact-landscape:min-h-11")
     expect(
       container.querySelector('[data-testid="hero-player-quality-tag"]')
         ?.textContent,
@@ -717,6 +725,8 @@ describe("HeroPlayer — initial mount", () => {
     ) as HTMLSpanElement
     expect(languageTag.tagName).toBe("SPAN")
     expect(languageTag.textContent).toBe("1 language")
+    expect(languageTag.className).not.toContain("compact-landscape:min-h-11")
+    expect(languageTag.className).not.toContain("compact-landscape:min-w-11")
     expect(
       container.querySelector('[data-testid="hero-player-runtime-tag"]'),
     ).toBeNull()
@@ -1513,8 +1523,13 @@ describe("HeroPlayer — initial mount", () => {
       const mediaFrame = container.querySelector(
         '[data-testid="hero-player-media-frame"]',
       ) as HTMLDivElement
+      const anchor = container.querySelector(
+        '[data-testid="hero-player-overlay-anchor"]',
+      ) as HTMLDivElement
 
       expect(wrapper.getAttribute("data-mobile-portrait-preview")).toBe("false")
+      expect(wrapper.className).not.toContain("compact-landscape:h-[100svh]")
+      expect(anchor.className).not.toContain("compact-landscape:-mt-[100svh]")
       expect(
         container.querySelector(
           '[data-testid="hero-player-mobile-header-band"]',
@@ -1618,6 +1633,101 @@ describe("HeroPlayer — initial mount", () => {
     }
   })
 
+  it("disables preview/body overlap for the compact-landscape full-height hero", async () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 390,
+    })
+    const ro = installResizeObserverStub()
+    const setRect = (
+      el: Element,
+      rect: { top: number; bottom: number; height: number; width?: number },
+    ) => {
+      Object.defineProperty(el, "getBoundingClientRect", {
+        configurable: true,
+        value: () =>
+          ({
+            x: 0,
+            y: rect.top,
+            top: rect.top,
+            bottom: rect.bottom,
+            left: 0,
+            right: rect.width ?? 844,
+            width: rect.width ?? 844,
+            height: rect.height,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      })
+    }
+
+    let getComputedStyleSpy: { mockRestore: () => void } | undefined
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(
+          <>
+            <HeroPlayer block={makeBlock()} />
+            <section data-testid="watch-body-zone">
+              <div data-block-type="SiblingCarousel" />
+            </section>
+          </>,
+        )
+      })
+
+      const wrapper = container.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLDivElement
+      const body = container.querySelector(
+        '[data-testid="watch-body-zone"]',
+      ) as HTMLElement
+      const rail = container.querySelector(
+        '[data-block-type="SiblingCarousel"]',
+      ) as HTMLElement
+
+      expect(wrapper.className).toContain(
+        "compact-landscape:[--watch-compact-landscape:1]",
+      )
+      const getComputedStyle = window.getComputedStyle.bind(window)
+      getComputedStyleSpy = vi
+        .spyOn(window, "getComputedStyle")
+        .mockImplementation((element, pseudoElement) => {
+          const style = getComputedStyle(element, pseudoElement)
+          if (element !== wrapper) return style
+          const getPropertyValue = style.getPropertyValue.bind(style)
+          Object.defineProperty(style, "getPropertyValue", {
+            configurable: true,
+            value: (property: string) =>
+              property === "--watch-compact-landscape"
+                ? "1"
+                : getPropertyValue(property),
+          })
+          return style
+        })
+      setRect(wrapper, { top: 0, bottom: 390, height: 390 })
+      setRect(body, { top: 390, bottom: 710, height: 320 })
+      setRect(rail, { top: 406, bottom: 646, height: 240 })
+
+      await ro.setHeight(390)
+      await act(async () => {
+        window.dispatchEvent(new Event("resize"))
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(wrapper.getAttribute("data-preview-overlap")).toBe("false")
+      expect(wrapper.getAttribute("data-preview-overlap-px")).toBe("0")
+      expect(wrapper.getAttribute("style")).toContain("margin-bottom: 0px")
+    } finally {
+      getComputedStyleSpy?.mockRestore()
+      vi.useRealTimers()
+      ro.restore()
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
   it("clears the muted-preview overlap and scrolls back to the hero when sound starts from a scrolled page", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
@@ -1669,6 +1779,12 @@ describe("HeroPlayer — initial mount", () => {
     const overlay = container.querySelector(
       '[data-testid="hero-player-overlay"]',
     )
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    )
+    const anchor = container.querySelector(
+      '[data-testid="hero-player-overlay-anchor"]',
+    )
     expect(pill).not.toBeNull()
     expect(pill?.tagName.toLowerCase()).toBe("button")
     expect(pill?.getAttribute("type")).toBe("button")
@@ -1678,6 +1794,28 @@ describe("HeroPlayer — initial mount", () => {
     expect(overlay?.getAttribute("class")).toContain("gap-3")
     expect(overlay?.getAttribute("class")).not.toContain("gap-4")
     expect(overlay?.getAttribute("class")).toContain("pb-12")
+    expect(wrapper?.getAttribute("class")).toContain(
+      "compact-landscape:h-[100svh]",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:-mt-[100svh]",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:min-h-[100svh]",
+    )
+    expect(anchor?.getAttribute("class")).toContain("compact-landscape:h-auto")
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:justify-end",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:pt-[calc(env(safe-area-inset-top,0px)+4.25rem)]",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:relative",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:inset-x-auto",
+    )
     expect(pill?.getAttribute("data-state")).toBe("play-with-sound")
     expect(pill?.textContent).toContain("Watch now")
     expect(pill?.querySelector("path")?.getAttribute("d")).toBe("M8 5v14l11-7z")
@@ -1696,13 +1834,28 @@ describe("HeroPlayer — initial mount", () => {
     expect(pillClassTokens.some((token) => token.startsWith("w-"))).toBe(false)
     expect(pillClassTokens).toContain("font-medium")
     expect(pillClassTokens).not.toContain("font-semibold")
+    expect(pillClassTokens).toContain("compact-landscape:min-h-11")
     const title = container.querySelector(
       '[data-testid="hero-player-overlay-title"]',
     )
     expect(title?.getAttribute("class")).toContain("text-balance")
     expect(title?.getAttribute("class")).toContain("break-words")
     expect(title?.getAttribute("class")).toContain("max-w-[calc(100vw-5rem)]")
+    expect(title?.getAttribute("class")).toContain(
+      "compact-landscape:max-w-[min(56vw,30rem)]",
+    )
+    expect(title?.getAttribute("class")).toContain("compact-landscape:text-2xl")
     expect(title?.getAttribute("class")).not.toContain("whitespace-nowrap")
+    expect(title?.getAttribute("class")).not.toContain("line-clamp")
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:ps-[max(1.25rem,env(safe-area-inset-left,0px))]",
+    )
+    expect(anchor?.getAttribute("class")).toContain(
+      "compact-landscape:pe-[max(1.25rem,env(safe-area-inset-right,0px))]",
+    )
+    expect(overlay?.getAttribute("class")).toContain(
+      "compact-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
+    )
     expect(
       container.querySelector('[data-testid="hero-player-overlay-label"]')
         ?.className,
@@ -4259,12 +4412,13 @@ describe("HeroPlayer — Watch Next countdown", () => {
     mockPlayerRef.current?.play.mockClear()
     callPlayerListener("ended")
 
-    act(() => {
+    await act(async () => {
       ;(
         container.querySelector(
           '[data-testid="watch-end-reflection-replay"]',
         ) as HTMLButtonElement
       ).click()
+      await Promise.resolve()
     })
 
     expect(mockPlayerRef.current?.currentTime).toBe(0)
@@ -4275,6 +4429,39 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(
       container.querySelector('[data-testid="hero-player-watch-next"]'),
     ).toBeNull()
+  })
+
+  it("keeps reflection available when replay cannot start", async () => {
+    setSearchParams("autoplay=1")
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 60,
+      duration: 60,
+      paused: true,
+      ended: true,
+    })
+
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} languageSlug="english" />)
+    })
+    await revealAutoplayPlayer()
+    mockPlayerRef.current?.play.mockReset()
+    mockPlayerRef.current?.play.mockRejectedValue(new DOMException("Blocked"))
+    callPlayerListener("ended")
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-replay"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+    })
+
+    expect(mockPlayerRef.current?.currentTime).toBe(0)
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledOnce()
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection"]'),
+    ).not.toBeNull()
   })
 
   it("closes reflection before handing Share to the Watch modal owner", async () => {
@@ -4319,6 +4506,50 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(
       container.querySelector('[data-testid="watch-end-reflection"]'),
     ).toBeNull()
+  })
+
+  it("keeps reflection open when the Download modal cannot be opened", async () => {
+    setSearchParams("autoplay=1")
+    const onReflectionDownload = vi.fn(() => Promise.resolve(false))
+    mockPlayerRef.current = makeTestPlayer({
+      currentTime: 60,
+      duration: 60,
+      paused: true,
+      ended: true,
+    })
+
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          languageSlug="english"
+          onReflectionDownload={onReflectionDownload}
+        />,
+      )
+    })
+    await revealAutoplayPlayer()
+    callPlayerListener("ended")
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-download"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-end-reflection-active-action"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+    })
+
+    expect(onReflectionDownload).toHaveBeenCalledOnce()
+    expect(
+      container.querySelector('[data-testid="watch-end-reflection"]'),
+    ).not.toBeNull()
   })
 
   it("navigates when the armed Watch Next button is clicked", async () => {

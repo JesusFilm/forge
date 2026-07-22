@@ -30,13 +30,32 @@ export function selectActiveVariant(
 }
 
 /**
- * Resolve the default audio-dub index, slug-keyed via resolveDefaultSlug
- * (persisted → device → primary → English → first). TV passes null for persisted
- * (no v1 store). Returns 0 when nothing resolves so a video always opens on a dub.
+ * The first of an ordered preference chain that EXACTLY matches a variant's
+ * languageSlug, or null when none does. Exact-equality only (bcp47 prefixes
+ * collide: ko vs ko-kmr); an unavailable preference is skipped so the next rung
+ * gets a chance — this is what makes the chain's fall-through soft.
+ */
+function firstMatchingSlug(
+  options: readonly { languageSlug: string | null }[],
+  preferredSlugs: readonly (string | null)[],
+): string | null {
+  for (const slug of preferredSlugs) {
+    if (slug && options.some((o) => o.languageSlug === slug)) return slug
+  }
+  return null
+}
+
+/**
+ * Resolve the default audio-dub index. `preferredSlugs` is the ordered preference
+ * chain (carried series slug → persisted app-wide slug); the first that exactly
+ * matches a variant wins and is handed to resolveDefaultSlug, which then falls
+ * through device → primary → English → first. A preferred slug absent from this
+ * video is skipped (soft), so an unavailable preference never wedges the default.
+ * Returns 0 when nothing resolves so a video always opens on a dub.
  */
 export function resolveDefaultVariantIndex(
   video: WatchVideoRecord,
-  preferredAudioSlug: string | null,
+  preferredSlugs: readonly (string | null)[],
 ): number {
   if (video.variants.length === 0) return 0
   const options = video.variants.map((v) => ({
@@ -44,6 +63,7 @@ export function resolveDefaultVariantIndex(
     bcp47: v.languageBcp47,
     languageSlug: v.languageSlug,
   }))
+  const preferredAudioSlug = firstMatchingSlug(options, preferredSlugs)
   const best = resolveDefaultSlug(
     options,
     video.primaryLanguageBcp47,
@@ -51,6 +71,18 @@ export function resolveDefaultVariantIndex(
   )
   const idx = best ? video.variants.findIndex((v) => v.slug === best) : -1
   return idx >= 0 ? idx : 0
+}
+
+/**
+ * The language slug an explicit dub pick should persist app-wide, or null when
+ * the pick carries no slug (out-of-range index, or a variant with none) — null
+ * means "no write", leaving the store as-is. Keyed on the unique languageSlug.
+ */
+export function slugToPersistForPick(
+  video: WatchVideoRecord | null,
+  index: number,
+): string | null {
+  return video?.variants[index]?.languageSlug ?? null
 }
 
 /**

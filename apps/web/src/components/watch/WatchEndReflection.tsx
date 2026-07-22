@@ -57,6 +57,44 @@ const INACTIVITY_RESUME_MS = 6_000
 const PRIMARY_ACTION_CLASS =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] hover:scale-[1.035] hover:bg-brand-red/90 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none motion-reduce:transform-none"
 
+function getPanelTestId(kind: ActionKind): string {
+  switch (kind) {
+    case "ask":
+      return "watch-end-reflection-ask-panel"
+    case "talk":
+      return "watch-end-reflection-talk-panel"
+    case "prayer":
+      return "watch-end-reflection-prayer-panel"
+    case "share":
+      return "watch-end-reflection-share-panel"
+    default:
+      return "watch-end-reflection-action-panel"
+  }
+}
+
+function getComposerTestIds(kind: ActionKind): {
+  input: string
+  submit: string
+} {
+  switch (kind) {
+    case "ask":
+      return {
+        input: "watch-end-reflection-question-input",
+        submit: "watch-end-reflection-ask-submit",
+      }
+    case "talk":
+      return {
+        input: "watch-end-reflection-talk-input",
+        submit: "watch-end-reflection-talk-submit",
+      }
+    default:
+      return {
+        input: "watch-end-reflection-prayer-input",
+        submit: "watch-end-reflection-prayer-submit",
+      }
+  }
+}
+
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>(
@@ -84,11 +122,10 @@ export function WatchEndReflection({
   const tQuestionPanel = useTranslations("WatchQuestionPanel")
   const surfaceRef = useRef<HTMLDivElement>(null)
   const cleanedPrompts = prompts.filter((prompt) => prompt.trim().length > 0)
-  const reflectionPrompts = (
+  const reflectionPrompts =
     cleanedPrompts.length > 0
       ? cleanedPrompts
       : [tStudyQuestions("placeholderQuestion")]
-  ).slice(0, 3)
   const [selectedActionId, setSelectedActionId] = useState<string>("ask")
   const [isGuiding, setIsGuiding] = useState(true)
   const [interactionVersion, setInteractionVersion] = useState(0)
@@ -230,26 +267,37 @@ export function WatchEndReflection({
   }, [open])
 
   useEffect(() => {
-    if (!open || !isAutoCycling || actionIdSequence.length === 0) return
+    if (
+      !open ||
+      !isAutoCycling ||
+      actionIdSequence.length === 0 ||
+      customQuestion.trim().length > 0
+    )
+      return
     const actionIds = actionIdSequence.split("|")
 
     const timeout = window.setTimeout(() => {
       const currentIndex = actionIds.indexOf(selectedActionId)
       const nextIndex = Math.max(0, currentIndex + 1) % actionIds.length
       setSelectedActionId(actionIds[nextIndex]!)
-      setCustomQuestion("")
     }, CHAPTER_DURATION_MS)
 
     return () => window.clearTimeout(timeout)
-  }, [actionIdSequence, isAutoCycling, open, selectedActionId])
+  }, [actionIdSequence, customQuestion, isAutoCycling, open, selectedActionId])
 
   useEffect(() => {
-    if (!open || isGuiding || interactionVersion === 0) return
+    if (
+      !open ||
+      isGuiding ||
+      interactionVersion === 0 ||
+      customQuestion.trim().length > 0
+    )
+      return
     const timeout = window.setTimeout(() => {
       setIsGuiding(true)
     }, INACTIVITY_RESUME_MS)
     return () => window.clearTimeout(timeout)
-  }, [interactionVersion, isGuiding, open])
+  }, [customQuestion, interactionVersion, isGuiding, open])
 
   if (!open) return null
 
@@ -576,16 +624,7 @@ function SelectedConversation({
   customQuestion: string
   onQuestionChange: (question: string) => void
 }) {
-  const panelTestId =
-    action.kind === "ask"
-      ? "watch-end-reflection-ask-panel"
-      : action.kind === "talk"
-        ? "watch-end-reflection-talk-panel"
-        : action.kind === "prayer"
-          ? "watch-end-reflection-prayer-panel"
-          : action.kind === "share"
-            ? "watch-end-reflection-share-panel"
-            : "watch-end-reflection-action-panel"
+  const panelTestId = getPanelTestId(action.kind)
 
   return (
     <div data-testid={panelTestId} className="space-y-4 pt-1">
@@ -626,7 +665,10 @@ function SelectedConversation({
                     ? "text-white"
                     : "text-white/48 hover:text-white/75")
                 }
-                style={{ animationDelay: String(360 + index * 150) + "ms" }}
+                style={{
+                  animationDelay:
+                    String(Math.min(360 + index * 150, 1_200)) + "ms",
+                }}
               >
                 <span className="min-w-0 flex-1">{hint}</span>
                 <span
@@ -700,18 +742,7 @@ function ChatComposer({
 }) {
   const inputId = "watch-end-reflection-" + action.id + "-message"
   const label = action.kind === "ask" ? fieldLabel : action.detail
-  const inputTestId =
-    action.kind === "ask"
-      ? "watch-end-reflection-question-input"
-      : action.kind === "talk"
-        ? "watch-end-reflection-talk-input"
-        : "watch-end-reflection-prayer-input"
-  const submitTestId =
-    action.kind === "ask"
-      ? "watch-end-reflection-ask-submit"
-      : action.kind === "talk"
-        ? "watch-end-reflection-talk-submit"
-        : "watch-end-reflection-prayer-submit"
+  const testIds = getComposerTestIds(action.kind)
 
   return (
     <div
@@ -728,7 +759,7 @@ function ChatComposer({
           onChange={(event) => onChange(event.target.value)}
           rows={1}
           placeholder={fieldLabel}
-          data-testid={inputTestId}
+          data-testid={testIds.input}
           className="max-h-28 min-h-10 min-w-0 flex-1 resize-none bg-transparent py-2 text-sm leading-6 text-white placeholder:text-white/38 focus:outline-none sm:text-base"
         />
         <a
@@ -736,7 +767,7 @@ function ChatComposer({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={action.label}
-          data-testid={submitTestId}
+          data-testid={testIds.submit}
           className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl bg-brand-red text-white transition-[background-color,transform] hover:scale-105 hover:bg-brand-red/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none"
         >
           <SendHorizontal aria-hidden className="size-4" />
@@ -762,9 +793,9 @@ function ConversationAction({ action }: { action: NextStepAction }) {
       ? "watch-end-reflection-share-submit"
       : "watch-end-reflection-active-action"
 
-  if (action.href) {
-    return (
-      <div className="ml-10 animate-watch-chat-incoming motion-reduce:animate-none">
+  return (
+    <div className="ml-10 animate-watch-chat-incoming motion-reduce:animate-none">
+      {action.href ? (
         <a
           href={action.href}
           target="_blank"
@@ -774,20 +805,16 @@ function ConversationAction({ action }: { action: NextStepAction }) {
         >
           {content}
         </a>
-      </div>
-    )
-  }
-
-  return (
-    <div className="ml-10 animate-watch-chat-incoming motion-reduce:animate-none">
-      <button
-        type="button"
-        onClick={action.onClick}
-        data-testid={testId}
-        className={PRIMARY_ACTION_CLASS}
-      >
-        {content}
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={action.onClick}
+          data-testid={testId}
+          className={PRIMARY_ACTION_CLASS}
+        >
+          {content}
+        </button>
+      )}
     </div>
   )
 }

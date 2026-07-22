@@ -273,8 +273,9 @@ describe("SiblingCarousel — happy path", () => {
       "[data-slot='carousel-content'] > div",
     )
     const viewport = container.querySelector("[data-slot='carousel-content']")
-    expect(viewport?.className).toContain("overflow-x-visible")
-    expect(viewport?.className).toContain("md:overflow-x-clip")
+    expect(viewport?.className).toContain("overflow-x-clip")
+    expect(viewport?.className).toContain("overflow-y-visible")
+    expect(viewport?.className).not.toContain("overflow-x-visible")
     expect(content?.className).not.toContain("pl-10")
     expect(content?.className).not.toContain("md:pl-0")
     expect(content?.className).not.toContain("translate-x-14")

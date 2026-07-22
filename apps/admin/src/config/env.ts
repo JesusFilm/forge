@@ -259,8 +259,9 @@ export const env = createEnv({
     // CSV-parsed, matched against `Authorization: Bearer <key>` by
     // `consumer-bearer.ts`. A matched key mints a CONSUMER_BEARER
     // principal (permissions = empty set) whose sole effect is to
-    // bucket consumer SSR traffic as `consumer:<key>` in admin's
-    // rate-limit identifyFn — separate from anonymous-IP.
+    // identify trusted Web SSR traffic in admin's rate-limit identifyFn —
+    // separate from anonymous-IP and request-scoped so RSC traffic does not
+    // accumulate into one shared field-limit bucket.
     // `.optional()` because environments without web cutover (preview,
     // local dev) don't need it. Required-without-default would brick
     // those Railway deploys — see
@@ -288,15 +289,6 @@ export const env = createEnv({
     // workflow and consumer bearer sets so backup download access does
     // not imply GraphQL or workflow access.
     BACKUP_DOWNLOAD_API_KEYS: z.string().min(1).optional(),
-    // Plan 002 — search API bearer-key allowlist.
-    // Plan 002 — search API required-auth flag. When "true", `/api/search`
-    // and `Query.search` return 401 for missing/invalid bearer; when
-    // "false" (the default), they accept both anonymous and bearer-auth
-    // traffic (dual-accept). Enum-of-strings rather than boolean so a
-    // stray non-empty value can't silently flip the gate (z.coerce.boolean
-    // treats "false" as truthy). Decoded at call sites with
-    // `env.SEARCH_AUTH_REQUIRED === "true"`.
-    SEARCH_AUTH_REQUIRED: z.enum(["true", "false"]).optional().default("false"),
     FLEET_SEARCH_GLOBAL_CEILING_PER_MIN:
       fleetSearchGlobalCeilingPerMinEnvSchema,
     FLEET_SEARCH_CEILING_ENFORCE: fleetSearchCeilingEnforceEnvSchema,
@@ -397,19 +389,6 @@ export const env = createEnv({
     WEB_REVALIDATE_URL: z.string().url().optional(),
     WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
-    // Algolia (watch-project parity demo column on /watch/demo-keyword-search).
-    // Server-side only — the demo route's `searchAlgolia` server action
-    // (`apps/admin/src/app/watch/demo-keyword-search/algolia-action.ts`)
-    // proxies queries using ALGOLIA_SEARCH_API_KEY (the watch project's
-    // ALGOLIA_SERVER_API_KEY value, which is unrestricted; the public
-    // NEXT_PUBLIC_ALGOLIA_API_KEY is referer-locked to the watch domain
-    // and cannot be used from admin.jesusfilm.org). All three optional —
-    // the action throws `algolia_not_configured` when any is absent and
-    // the demo client renders a muted "Algolia disabled" banner.
-    // Throwaway: removed at R8 cutover when admin replaces Algolia.
-    ALGOLIA_APP_ID: z.string().min(1).optional(),
-    ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
-    ALGOLIA_INDEX: z.string().min(1).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
     // Optional OpenRouter model override used by the production search trace
     // query classifier. Defaults to the classifier module's pinned model.
@@ -674,7 +653,6 @@ export const env = createEnv({
     BACKUP_DOWNLOAD_API_KEYS: emptyToUndefined(
       process.env.BACKUP_DOWNLOAD_API_KEYS,
     ),
-    SEARCH_AUTH_REQUIRED: emptyToUndefined(process.env.SEARCH_AUTH_REQUIRED),
     FLEET_SEARCH_GLOBAL_CEILING_PER_MIN: emptyToUndefined(
       process.env.FLEET_SEARCH_GLOBAL_CEILING_PER_MIN,
     ),
@@ -758,11 +736,6 @@ export const env = createEnv({
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
-    ALGOLIA_APP_ID: emptyToUndefined(process.env.ALGOLIA_APP_ID),
-    ALGOLIA_SEARCH_API_KEY: emptyToUndefined(
-      process.env.ALGOLIA_SEARCH_API_KEY,
-    ),
-    ALGOLIA_INDEX: emptyToUndefined(process.env.ALGOLIA_INDEX),
     OPENROUTER_QUERY_CLASSIFIER_MODEL: emptyToUndefined(
       process.env.OPENROUTER_QUERY_CLASSIFIER_MODEL,
     ),

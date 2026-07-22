@@ -59,6 +59,7 @@ export type ShareModalProps = {
   posterUrl?: string | null
   /** Mux playback id — used to build a portable iframe embed via player.mux.com. */
   playbackId?: string | null
+  portalContainer?: HTMLElement | null
   onClose: () => void
 }
 
@@ -73,6 +74,7 @@ export function ShareModal({
   videoDescription,
   posterUrl,
   playbackId,
+  portalContainer = null,
   onClose,
 }: ShareModalProps) {
   const t = useTranslations("ShareModal")
@@ -192,12 +194,14 @@ export function ShareModal({
         open={open}
         onClose={() => handleOpenChange(false)}
         testId="watch-share-modal-close"
+        portalContainer={portalContainer}
       />
       <DialogContent
         data-testid="watch-share-modal"
         className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
+        portalContainer={portalContainer}
       >
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 

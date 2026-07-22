@@ -62,7 +62,7 @@ Office TVs at the ministry sit dark or idle on the app's Home screen when stakeh
 
 - R4. At mode start, the reel loads a CMS-authored Showcase Experience by slug via the existing public Experience query; its sections define the felt-need chapters and each chapter's ordered videos.
 - R5. When the Showcase Experience is missing, empty, or unfetchable, the mode composes a fallback reel from the Home pool.
-- R6. An excerpt is a bounded portion (target 20-40 seconds) of an existing catalog video; short-form items play from the start, longer items play one bounded window.
+- R6. An excerpt is a bounded portion (target 20-40 seconds) of an existing catalog video; short-form items play from the start, longer items play one bounded window. No excerpt plays into the video's final five seconds, where end credits sit; an item too short to clear that tail and still meet the 20-second floor plays out in full instead.
 - R7. Consecutive excerpts within a chapter play different languages (Dubs) where available, chosen from each video's dub list; a full loop should surface many distinct languages.
 - R16. Failures degrade down a ladder, never to an error screen: an unplayable item is skipped within a few seconds; a chapter with no playable items is skipped whole (its chapter card never shows alone); after several consecutive failures the reel stops fast-skipping and enters a poster-stills slideshow that re-attempts resolution periodically and rejoins the reel when playback succeeds.
 - R17. The first excerpt's video is visible within about five seconds of mode start on office network conditions, and the next excerpt's data (stream choice, poster) is prefetched while the current one plays.

@@ -11,11 +11,7 @@ import type {
   WatchHomeModel,
   WatchHomeVideoInput,
 } from "../watchHome/model"
-import {
-  rotateLanguage,
-  type RotationState,
-  type ShowcaseDubInput,
-} from "./languageRotation"
+import { pickViewerLanguage, type ShowcaseDubInput } from "./languageRotation"
 import type {
   ExcerptWindow,
   ShowcaseChapter,
@@ -28,10 +24,16 @@ import type {
 /** KTD-10's reserved section title. Compared trimmed + case-folded (see below). */
 export const SHOWCASE_STATS_SECTION_TITLE = "showcase-stats"
 
+/** KTD-7's reserved category-label marker for the language chapter. Trimmed + case-folded. */
+export const SHOWCASE_LANGUAGES_CATEGORY_LABEL = "showcase-languages"
+
 /** R6's excerpt band: a bounded 20-40s portion of any catalog video. */
 export const EXCERPT_MIN_SECONDS = 20
 export const EXCERPT_MAX_SECONDS = 40
 const LONG_FORM_OFFSET_RATIO = 0.15
+
+/** End credits are dead air on a reel; no excerpt may reach into this tail. */
+export const CREDITS_TAIL_SECONDS = 5
 
 const FALLBACK_CHAPTER_ID = "showcase-fallback"
 const FALLBACK_EXCERPT_TARGET = 24
@@ -65,6 +67,8 @@ type ShowcaseMediaCollectionLike = {
   readonly subtitle?: string | null
   readonly mcDescription?: string | null
   readonly description?: string | null
+  // KTD-7 language-chapter marker; the fragment selects it unaliased, so one name.
+  readonly categoryLabel?: string | null
   readonly items?: readonly ShowcaseExperienceItem[] | null
 }
 
@@ -110,6 +114,12 @@ function isStatsSection(title: string): boolean {
   return title.toLowerCase() === SHOWCASE_STATS_SECTION_TITLE
 }
 
+function isLanguageSection(categoryLabel: string): boolean {
+  // Sibling to isStatsSection: the marker is curator-authored, so fold case — a
+  // casing/whitespace slip must not fail to designate the language chapter.
+  return categoryLabel.toLowerCase() === SHOWCASE_LANGUAGES_CATEGORY_LABEL
+}
+
 function parseStatLines(description: string | null | undefined): string[] {
   if (!description) return []
   return description
@@ -133,7 +143,13 @@ export function parseShowcaseExperience(
 } {
   const chapters: ShowcaseChapter[] = []
   const statLines: string[] = []
-  const drops: ShowcaseParseDrops = { items: 0, chapters: 0 }
+  const drops: ShowcaseParseDrops = {
+    items: 0,
+    chapters: 0,
+    extraLanguageMarkers: 0,
+  }
+  // R3: exactly one language chapter — the FIRST surviving marked section claims it.
+  let languageChapterAssigned = false
 
   // Top level only: KTD-10 authors one MediaCollection per chapter at the root.
   ;(blocks ?? []).forEach((block, index) => {
@@ -166,12 +182,23 @@ export function parseShowcaseExperience(
       if (authored > 0) drops.chapters += 1
       return
     }
-    chapters.push({
+    const chapter: ShowcaseChapter = {
       id: chapterId,
       title,
       subtitle: blockText(media.mcSubtitle, media.subtitle) || null,
       excerpts,
-    })
+    }
+    if (isLanguageSection(blockText(media.categoryLabel))) {
+      // AE7: the first marked chapter wins; a later one plays as an ordinary chapter,
+      // its designation discarded and surfaced to the curator via the drops accounting.
+      if (!languageChapterAssigned) {
+        languageChapterAssigned = true
+        chapter.languageChapter = { centerpieceExcerptId: excerpts[0].id }
+      } else {
+        drops.extraLanguageMarkers += 1
+      }
+    }
+    chapters.push(chapter)
   })
 
   return { chapters, statLines, drops }
@@ -326,9 +353,9 @@ export function resolveShowcaseSource(
 // ── Excerpt windows (R6) ────────────────────────────────────────────
 
 /**
- * Short-form plays from 0; longer items play one deterministic window ~15% in, the
- * seek hidden by the poster hold. An unknown duration is still capped — unbounded on
- * a 2-hour feature would park the reel on one item.
+ * One deterministic window per item: short-form from 0, longer ~15% in under the
+ * poster hold, unknown duration still capped. Every window stops short of the credits
+ * tail — except under ~25s, where clearing it would dip below MIN, so the item plays out.
  */
 export function resolveExcerptWindow(
   durationSeconds: number | null | undefined,
@@ -340,17 +367,23 @@ export function resolveExcerptWindow(
   ) {
     return { startSeconds: 0, endSeconds: EXCERPT_MAX_SECONDS }
   }
+  // Floored, so a fractional duration can't round the end back into the tail.
+  const creditsFreeEnd = Math.floor(durationSeconds - CREDITS_TAIL_SECONDS)
   if (durationSeconds <= EXCERPT_MAX_SECONDS) {
-    return { startSeconds: 0, endSeconds: Math.round(durationSeconds) }
+    return {
+      startSeconds: 0,
+      endSeconds:
+        creditsFreeEnd >= EXCERPT_MIN_SECONDS
+          ? creditsFreeEnd
+          : Math.round(durationSeconds),
+    }
   }
-  // duration > MAX here, so the window is min(MAX, 0.85 * duration) >= 34s — inside
-  // the 20-40s band without a clamp.
+  // duration > MAX here, so the window is min(MAX, 0.85 * duration - 5) >= 29s —
+  // inside the 20-40s band without a clamp, and always clear of the tail.
   const startSeconds = Math.round(durationSeconds * LONG_FORM_OFFSET_RATIO)
   return {
     startSeconds,
-    endSeconds: Math.round(
-      Math.min(startSeconds + EXCERPT_MAX_SECONDS, durationSeconds),
-    ),
+    endSeconds: Math.min(startSeconds + EXCERPT_MAX_SECONDS, creditsFreeEnd),
   }
 }
 
@@ -366,15 +399,15 @@ export type FetchShowcaseVideo = (
 ) => Promise<ShowcaseVideoDubs | null>
 
 /**
- * Resolve one excerpt's playable stream + rotated language + window. Returns null on
- * ANY failure (fetch throw, missing video, nothing playable) so R16's ladder skips the
- * item; the caller's rotation state is left untouched on a miss.
+ * Resolve one ordinary excerpt's playable stream in the viewer's chosen language (or the
+ * default chain) plus its window. Returns null on ANY failure (fetch throw, missing video,
+ * nothing playable) so R16's ladder skips the item rather than surfacing an error.
  */
 export async function resolveExcerptStream(args: {
   excerpt: ShowcaseExcerpt
-  rotation: RotationState
+  viewerLanguageSlug: string | null
   fetchVideo: FetchShowcaseVideo
-}): Promise<{ stream: ShowcaseStream; rotation: RotationState } | null> {
+}): Promise<ShowcaseStream | null> {
   let video: ShowcaseVideoDubs | null
   try {
     video = await args.fetchVideo(args.excerpt.slug)
@@ -383,20 +416,17 @@ export async function resolveExcerptStream(args: {
   }
   if (!video) return null
 
-  const rotated = rotateLanguage(video.dubs, args.rotation)
-  if (!rotated) return null
+  const pick = pickViewerLanguage(video.dubs, args.viewerLanguageSlug)
+  if (!pick) return null
 
   return {
-    stream: {
-      hls: rotated.pick.hls,
-      languageSlug: rotated.pick.languageSlug,
-      languageName: rotated.pick.languageName,
-      muxPlaybackId: rotated.pick.muxPlaybackId,
-      // The DUB's duration is what actually plays — Video.durationSeconds is the
-      // primary language's and drifts per dub.
-      window: resolveExcerptWindow(rotated.pick.durationSeconds),
-      claimsLanguage: rotated.pick.claimsLanguage,
-    },
-    rotation: rotated.nextState,
+    hls: pick.hls,
+    languageSlug: pick.languageSlug,
+    languageName: pick.languageName,
+    muxPlaybackId: pick.muxPlaybackId,
+    // The DUB's duration is what actually plays — Video.durationSeconds is the
+    // primary language's and drifts per dub.
+    window: resolveExcerptWindow(pick.durationSeconds),
+    claimsLanguage: pick.claimsLanguage,
   }
 }

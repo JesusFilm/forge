@@ -79,6 +79,8 @@ type WatchEpisodeRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type LanguagesIndexRoute = "/languages"
 type LanguageVideosIndexRoute = `/${string}.html/videos`
+type LocalizedLanguagesRoute = `/${string}.html/languages`
+type LocalizedHistoryRoute = `/${string}.html/history`
 type SearchRoute = "/"
 
 function appendQueryString(path: string, opts?: BuildOptions): string {
@@ -132,6 +134,21 @@ export function languagesIndexPath(): LanguagesIndexRoute & Route {
   return "/languages" as LanguagesIndexRoute & Route
 }
 
+/** Build the language-bearing all-languages path `/{lang}.html/languages`. */
+export function localizedLanguagesPath(
+  lang: LocaleSlug,
+): LocalizedLanguagesRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/languages` as LocalizedLanguagesRoute &
+    Route
+}
+
+/** Build the language-bearing history path `/{lang}.html/history`. */
+export function localizedHistoryPath(
+  lang: LocaleSlug,
+): LocalizedHistoryRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/history` as LocalizedHistoryRoute & Route
+}
+
 /** @deprecated Use `languagesIndexPath()` for the canonical language index. */
 export function videosIndexPath(): LanguagesIndexRoute & Route {
   return languagesIndexPath()
@@ -150,13 +167,16 @@ export function searchPath(): SearchRoute & Route {
 }
 
 /**
- * Discriminated union returned by `parseWatchPath`. Nine kinds:
+ * Discriminated union returned by `parseWatchPath`. Twelve kinds:
  *
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
  * - `video` — `/{slug}.html/{lang}.html` (two segments)
  * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
  * - `languages` — `/languages`
+ * - `localized-languages` — `/{lang}.html/languages`
+ * - `history` — `/history`
+ * - `localized-history` — `/{lang}.html/history`
  * - `language-videos` — `/{lang}.html/videos`
  * - `search` — deprecated inbound `/search` redirect shim
  * - `reserved` — first segment is in `RESERVED_PREFIXES` (api, _next, assets, etc.)
@@ -168,6 +188,9 @@ export type ParsedWatchPath =
   | { kind: "video"; slug: string; lang: string }
   | { kind: "episode"; series: string; episode: string; lang: string }
   | { kind: "languages" }
+  | { kind: "localized-languages"; lang: string }
+  | { kind: "history" }
+  | { kind: "localized-history"; lang: string }
   | { kind: "language-videos"; lang: string }
   | { kind: "search" }
   | { kind: "reserved"; prefix: string }
@@ -193,11 +216,24 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
     if (first === "languages" || first === "videos") {
       return { kind: "languages" }
     }
+    if (first === "history") return { kind: "history" }
     if (first === "search") return { kind: "search" }
     return { kind: "localized-home", lang: stripHtmlSuffix(first) }
   }
 
   if (segments.length === 2) {
+    if (segments[1] === "languages") {
+      return {
+        kind: "localized-languages",
+        lang: stripHtmlSuffix(segments[0]),
+      }
+    }
+    if (segments[1] === "history") {
+      return {
+        kind: "localized-history",
+        lang: stripHtmlSuffix(segments[0]),
+      }
+    }
     if (segments[1] === "videos") {
       return {
         kind: "language-videos",

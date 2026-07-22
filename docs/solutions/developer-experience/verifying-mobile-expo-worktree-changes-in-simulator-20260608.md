@@ -144,6 +144,8 @@ Two ways out, preferred order:
 
 Applies to the TV dev-client (`org.jesusfilm.forgetv`, route deep-links like
 `exp+jesus-film-forge-tv:///watch/<slug>`) the same as to mobile's Expo Go.
+_(2026-07-17: TV dev-clients built after PR #1590 carry bundle id
+`org.jesusfilm.forgewatch`; the deep-link scheme is unchanged.)_
 
 ### 3. Force a full reload — fast-refresh lies
 

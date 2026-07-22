@@ -50,6 +50,7 @@ export type DownloadModalProps = {
   videoSlug: string
   accountGateEnabled?: boolean
   authRequiredLoginUrl?: string | null
+  portalContainer?: HTMLElement | null
   onClose: () => void
 }
 
@@ -117,6 +118,7 @@ export function DownloadModal({
   videoSlug,
   accountGateEnabled = false,
   authRequiredLoginUrl = null,
+  portalContainer = null,
   onClose,
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
@@ -471,6 +473,7 @@ export function DownloadModal({
           open={open}
           onClose={() => handleOpenChange(false)}
           testId="watch-download-modal-close"
+          portalContainer={portalContainer}
           className="hidden sm:flex"
         />
         <DialogContent
@@ -478,6 +481,7 @@ export function DownloadModal({
           className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
           overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
           showCloseButton={false}
+          portalContainer={portalContainer}
         >
           <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
@@ -532,6 +536,7 @@ export function DownloadModal({
         open={open}
         onClose={() => handleOpenChange(false)}
         testId="watch-download-modal-close"
+        portalContainer={portalContainer}
         className="hidden sm:flex"
       />
       <DialogContent
@@ -539,6 +544,7 @@ export function DownloadModal({
         className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
+        portalContainer={portalContainer}
       >
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
@@ -676,7 +682,7 @@ export function DownloadModal({
                             )
                           })}
                         </ul>,
-                        document.body,
+                        portalContainer ?? document.body,
                       )
                     : null}
                 </div>

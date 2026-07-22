@@ -3,10 +3,11 @@ import {
   type WatchHomeVideoInput,
 } from "../watchHome/model"
 import type { WatchHomeModel } from "../watchHome/model"
-import { initialRotationState } from "./languageRotation"
 import {
+  CREDITS_TAIL_SECONDS,
   EXCERPT_MAX_SECONDS,
   EXCERPT_MIN_SECONDS,
+  SHOWCASE_LANGUAGES_CATEGORY_LABEL,
   SHOWCASE_STATS_SECTION_TITLE,
   buildFallbackChapters,
   parseShowcaseExperience,
@@ -175,7 +176,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a", "never-hydrated", "b"])],
       index,
     )
-    expect(drops).toEqual({ items: 1, chapters: 0 })
+    expect(drops).toEqual({ items: 1, chapters: 0, extraLanguageMarkers: 0 })
   })
 
   it("counts an item dropped for a null or malformed coreId", () => {
@@ -194,7 +195,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       ],
       index,
     )
-    expect(drops).toEqual({ items: 1, chapters: 1 })
+    expect(drops).toEqual({ items: 1, chapters: 1, extraLanguageMarkers: 0 })
   })
 
   it("does not count an empty section as a dropped chapter — nothing was authored to lose", () => {
@@ -210,7 +211,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       [mediaCollection("Hope", ["a", "b"])],
       index,
     )
-    expect(drops).toEqual({ items: 0, chapters: 0 })
+    expect(drops).toEqual({ items: 0, chapters: 0, extraLanguageMarkers: 0 })
   })
 
   it("drops a chapter whose items are all unresolvable", () => {
@@ -254,7 +255,7 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
       expect(parseShowcaseExperience(blocks, index)).toEqual({
         chapters: [],
         statLines: [],
-        drops: { items: 0, chapters: 0 },
+        drops: { items: 0, chapters: 0, extraLanguageMarkers: 0 },
       })
     }
   })
@@ -384,6 +385,160 @@ describe("parseShowcaseExperience — KTD-10 authoring contract", () => {
   })
 })
 
+// ── KTD-7 language chapter (R3 / AE5 / AE7) ─────────────────────────
+
+describe("parseShowcaseExperience — KTD-7 language chapter", () => {
+  const index = buildVideoByCoreIdIndex([
+    poolVideo("a"),
+    poolVideo("b"),
+    poolVideo("c"),
+  ])
+  const MARKER = SHOWCASE_LANGUAGES_CATEGORY_LABEL
+
+  it("designates the marked chapter's first item as the centerpiece (R3)", () => {
+    const { chapters } = parseShowcaseExperience(
+      [mediaCollection("Languages", ["a", "b"], { categoryLabel: MARKER })],
+      index,
+    )
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  it("designates the sole item as centerpiece in a one-item language chapter", () => {
+    const { chapters } = parseShowcaseExperience(
+      [mediaCollection("Languages", ["a"], { categoryLabel: MARKER })],
+      index,
+    )
+    expect(chapters[0]?.excerpts).toHaveLength(1)
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  // Only the FIRST item is the centerpiece; the rest of a marked chapter's items stay
+  // ordinary excerpts (a later unit dub-switches the centerpiece alone).
+  it("keeps the marked chapter's later items as ordinary excerpts", () => {
+    const { chapters } = parseShowcaseExperience(
+      [
+        mediaCollection("Languages", ["a", "b", "c"], {
+          categoryLabel: MARKER,
+        }),
+      ],
+      index,
+    )
+    expect(chapters[0]?.excerpts.map((e) => e.coreId)).toEqual(["a", "b", "c"])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  // The marker is curator-authored free text — a casing/whitespace slip must still
+  // designate the chapter, mirroring the reserved stats title's fold.
+  it("matches the reserved marker despite casing and surrounding whitespace", () => {
+    const { chapters } = parseShowcaseExperience(
+      [
+        mediaCollection("Languages", ["a"], {
+          categoryLabel: "  Showcase-Languages  ",
+        }),
+      ],
+      index,
+    )
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+  })
+
+  it("designates no language chapter when no section carries the marker (AE5)", () => {
+    const { chapters, drops } = parseShowcaseExperience(
+      [mediaCollection("Loneliness", ["a"]), mediaCollection("Hope", ["b"])],
+      index,
+    )
+    expect(chapters.every((chapter) => chapter.languageChapter == null)).toBe(
+      true,
+    )
+    expect(drops.extraLanguageMarkers).toBe(0)
+  })
+
+  // AE7: the curator's slip must not leak a second dub-switching centerpiece — the
+  // first marked chapter wins, the later one plays as an ordinary chapter.
+  it("lets the first marked chapter win; a later marker plays ordinary (AE7)", () => {
+    const { chapters, drops } = parseShowcaseExperience(
+      [
+        mediaCollection("First langs", ["a"], { categoryLabel: MARKER }),
+        mediaCollection("Second langs", ["b"], { categoryLabel: MARKER }),
+      ],
+      index,
+    )
+    expect(chapters.map((chapter) => chapter.title)).toEqual([
+      "First langs",
+      "Second langs",
+    ])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+    expect(chapters[1]?.languageChapter).toBeUndefined()
+    expect(drops.extraLanguageMarkers).toBe(1)
+  })
+
+  // A fully-dropped marked chapter has no centerpiece to designate, so the slot passes
+  // to the first marked chapter that survives — it is a dropped chapter, not an extra.
+  it("passes the designation to the first marked chapter that survives", () => {
+    const { chapters, drops } = parseShowcaseExperience(
+      [
+        mediaCollection("Ghost langs", ["never-hydrated"], {
+          categoryLabel: MARKER,
+        }),
+        mediaCollection("Real langs", ["a"], { categoryLabel: MARKER }),
+      ],
+      index,
+    )
+    expect(chapters.map((chapter) => chapter.title)).toEqual(["Real langs"])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+    expect(drops).toMatchObject({ chapters: 1, extraLanguageMarkers: 0 })
+  })
+
+  it("supports a stats section and a language chapter in one Experience", () => {
+    const { chapters, statLines } = parseShowcaseExperience(
+      [
+        mediaCollection(SHOWCASE_STATS_SECTION_TITLE, [], {
+          mcDescription: "A claim",
+        }),
+        mediaCollection("Languages", ["a"], { categoryLabel: MARKER }),
+        mediaCollection("Hope", ["b"]),
+      ],
+      index,
+    )
+    expect(statLines).toEqual(["A claim"])
+    expect(chapters.map((chapter) => chapter.title)).toEqual([
+      "Languages",
+      "Hope",
+    ])
+    expect(chapters[0]?.languageChapter?.centerpieceExcerptId).toBe(
+      chapters[0]?.excerpts[0]?.id,
+    )
+    expect(chapters[1]?.languageChapter).toBeUndefined()
+  })
+
+  // A near-miss label is not the reserved marker: no exact fold match, no designation.
+  it("ignores a categoryLabel that is close but not the reserved marker", () => {
+    for (const label of [
+      "showcase-language",
+      "showcase-languages-extra",
+      "languages",
+    ]) {
+      const { chapters, drops } = parseShowcaseExperience(
+        [mediaCollection("Almost", ["a"], { categoryLabel: label })],
+        index,
+      )
+      expect(chapters[0]?.languageChapter).toBeUndefined()
+      expect(drops.extraLanguageMarkers).toBe(0)
+    }
+  })
+})
+
 // ── Fallback composition (R5) ───────────────────────────────────────
 
 describe("buildFallbackChapters — poster shape", () => {
@@ -422,6 +577,14 @@ describe("buildFallbackChapters — R5/AE1", () => {
     expect(chapters).toHaveLength(1)
     expect(chapters[0]?.title).toBe("")
     expect(chapters[0]?.subtitle).toBeNull()
+  })
+
+  // The centerpiece is a curated designation only; a fallback reel has no marker seam.
+  it("never designates a language chapter on the fallback path", () => {
+    const model = modelWithCards([poolCard("a", "SHORT_FILM")])
+    expect(
+      buildFallbackChapters({ model, now })[0]?.languageChapter,
+    ).toBeUndefined()
   })
 
   it("prefers short-form items ahead of long-form backfill", () => {
@@ -631,17 +794,18 @@ describe("resolveShowcaseSource — the ladder", () => {
 // ── Excerpt windows (R6) ────────────────────────────────────────────
 
 describe("resolveExcerptWindow — R6: bounded excerpts", () => {
-  it("plays a short-form item from the start, to its natural end", () => {
+  it("plays a short-form item from the start, stopping clear of the credits", () => {
     expect(resolveExcerptWindow(25)).toEqual({
       startSeconds: 0,
-      endSeconds: 25,
+      endSeconds: 20,
     })
   })
 
   it("plays an item exactly at the max window from the start", () => {
+    // 40s item, less the 5s credits tail.
     expect(resolveExcerptWindow(EXCERPT_MAX_SECONDS)).toEqual({
       startSeconds: 0,
-      endSeconds: EXCERPT_MAX_SECONDS,
+      endSeconds: 35,
     })
   })
 
@@ -698,6 +862,89 @@ describe("resolveExcerptWindow — R6: bounded excerpts", () => {
   })
 })
 
+// ── The credits tail ────────────────────────────────────────────────
+
+describe("resolveExcerptWindow — never reaches the end credits", () => {
+  // The product rule is literally five seconds, so these assert against 5 and NOT
+  // against CREDITS_TAIL_SECONDS: a self-referential bound moves with the constant
+  // and would pass vacuously if the guard were ever tuned to zero.
+  const TAIL = 5
+
+  // Every duration where the trim leaves a worthwhile excerpt, across both branches.
+  const TRIMMABLE = [
+    25, 26, 30, 39, 40, 41, 45, 47, 50, 53, 60, 120, 600, 3600, 7200,
+  ]
+
+  it("pins the credits tail to the five seconds the product rule asks for", () => {
+    expect(CREDITS_TAIL_SECONDS).toBe(TAIL)
+  })
+
+  it("stops at least five seconds short of the end", () => {
+    for (const duration of TRIMMABLE) {
+      expect(resolveExcerptWindow(duration).endSeconds).toBeLessThanOrEqual(
+        duration - TAIL,
+      )
+    }
+  })
+
+  // Every one of these ran INTO the tail before the guard (41/45/47 to the literal
+  // last frame, 50 to 48s of 50). 53 is deliberately absent: min(start+40, d) already
+  // stopped it at exactly d-5, so it would pass with the guard reverted.
+  it("covers the durations whose window used to reach the credits", () => {
+    for (const duration of [41, 45, 47, 50]) {
+      const { startSeconds, endSeconds } = resolveExcerptWindow(duration)
+      expect(endSeconds).toBeLessThanOrEqual(duration - TAIL)
+      expect(endSeconds - startSeconds).toBeGreaterThanOrEqual(
+        EXCERPT_MIN_SECONDS,
+      )
+    }
+  })
+
+  // A fractional duration must not round the end back into the tail.
+  it("floors the trimmed end rather than rounding into the credits", () => {
+    for (const duration of [25.6, 30.9, 45.7, 101.5]) {
+      expect(resolveExcerptWindow(duration).endSeconds).toBeLessThanOrEqual(
+        duration - TAIL,
+      )
+    }
+  })
+
+  // Below the trim threshold the MIN floor wins: a 6s item trimmed to 1s would be
+  // a flash, and a 5s item would be an empty window that skips instantly.
+  it("plays an item out in full when the trim would leave less than the floor", () => {
+    expect(resolveExcerptWindow(24)).toEqual({
+      startSeconds: 0,
+      endSeconds: 24,
+    })
+    expect(resolveExcerptWindow(6)).toEqual({ startSeconds: 0, endSeconds: 6 })
+    expect(resolveExcerptWindow(5)).toEqual({ startSeconds: 0, endSeconds: 5 })
+    expect(resolveExcerptWindow(1)).toEqual({ startSeconds: 0, endSeconds: 1 })
+  })
+
+  it("switches to trimming at exactly the duration where the floor still fits", () => {
+    // 24s: trimming would leave 19s, under the floor -> plays out.
+    expect(resolveExcerptWindow(24).endSeconds).toBe(24)
+    // 25s: trimming leaves exactly the floor -> trims.
+    expect(resolveExcerptWindow(25).endSeconds).toBe(EXCERPT_MIN_SECONDS)
+  })
+
+  it("never yields an empty, negative, or backwards window at any duration", () => {
+    for (let duration = 1; duration <= 400; duration += 1) {
+      const { startSeconds, endSeconds } = resolveExcerptWindow(duration)
+      expect(startSeconds).toBeGreaterThanOrEqual(0)
+      expect(endSeconds).toBeGreaterThan(startSeconds)
+      expect(endSeconds).toBeLessThanOrEqual(duration)
+    }
+  })
+
+  it("leaves the unbounded unknown-duration window alone — no tail to find", () => {
+    expect(resolveExcerptWindow(null)).toEqual({
+      startSeconds: 0,
+      endSeconds: EXCERPT_MAX_SECONDS,
+    })
+  })
+})
+
 // ── Playable stream resolution (the injectable fetch seam) ──────────
 
 describe("resolveExcerptStream", () => {
@@ -718,27 +965,31 @@ describe("resolveExcerptStream", () => {
     muxVideo: { playbackId: "pb-en" },
   }
 
-  it("resolves a playable, windowed, language-rotated stream", async () => {
+  it("resolves a playable, windowed, viewer-language stream", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => ({ dubs: [englishDub] }),
     })
-    expect(result?.stream).toMatchObject({
+    expect(result).toMatchObject({
       hls: "https://stream/en.m3u8",
       languageSlug: "english",
       languageName: "English",
       muxPlaybackId: "pb-en",
-      window: { startSeconds: 0, endSeconds: 30 },
+      // 30s dub, less the credits tail.
+      window: { startSeconds: 0, endSeconds: 25 },
       claimsLanguage: false,
     })
+    // Rotation retired: the result is the bare stream, no rotation state rides it.
+    expect(result).not.toHaveProperty("rotation")
+    expect(result).not.toHaveProperty("stream")
   })
 
   it("fetches by the excerpt's slug", async () => {
     const fetchVideo = jest.fn(async () => ({ dubs: [englishDub] }))
     await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo,
     })
     expect(fetchVideo).toHaveBeenCalledWith("a-slug")
@@ -747,51 +998,41 @@ describe("resolveExcerptStream", () => {
   it("windows the LONG-FORM dub's own duration, not the pool's durationSeconds", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => ({ dubs: [{ ...englishDub, duration: 3600 }] }),
     })
-    expect(result?.stream.window).toEqual({
+    expect(result?.window).toEqual({
       startSeconds: 540,
       endSeconds: 580,
     })
   })
 
-  it("threads rotation state forward so the next excerpt can differ", async () => {
+  // AE1: the viewer's chosen language plays on an ordinary excerpt when a dub carries it.
+  it("plays the viewer's chosen language when this video has a playable dub for it", async () => {
+    const russianDub = {
+      published: true,
+      hls: "https://stream/ru.m3u8",
+      duration: 30,
+      language: { slug: "russian", name: { en: "Russian" } },
+      muxVideo: { playbackId: "pb-ru" },
+    }
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
-      fetchVideo: async () => ({ dubs: [englishDub] }),
+      viewerLanguageSlug: "russian",
+      fetchVideo: async () => ({ dubs: [englishDub, russianDub] }),
     })
-    expect(result?.rotation.previousSlug).toBe("english")
-  })
-
-  it("rotates language across a 3-excerpt chapter (R7 end to end)", async () => {
-    const dubs = ["english", "spanish", "french"].map((slug) => ({
-      published: true,
-      hls: `https://stream/${slug}.m3u8`,
-      duration: 30,
-      language: { slug, name: { en: slug } },
-      muxVideo: { playbackId: `pb-${slug}` },
-    }))
-    let rotation = initialRotationState
-    const picked: (string | null)[] = []
-    for (const coreId of ["a", "b", "c"]) {
-      const result = await resolveExcerptStream({
-        excerpt: { ...excerpt, coreId, id: `c1:${coreId}` },
-        rotation,
-        fetchVideo: async () => ({ dubs }),
-      })
-      picked.push(result!.stream.languageSlug)
-      rotation = result!.rotation
-    }
-    expect(new Set(picked).size).toBe(3)
+    expect(result).toMatchObject({
+      hls: "https://stream/ru.m3u8",
+      languageSlug: "russian",
+      claimsLanguage: false,
+    })
   })
 
   // R16: every failure degrades to a skip signal — this seam must never throw.
   it("returns null when the video fetch rejects", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => {
         throw new Error("network down")
       },
@@ -802,7 +1043,7 @@ describe("resolveExcerptStream", () => {
   it("returns null when the video is not found", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => null,
     })
     expect(result).toBeNull()
@@ -811,23 +1052,9 @@ describe("resolveExcerptStream", () => {
   it("returns null when the video has no playable dub", async () => {
     const result = await resolveExcerptStream({
       excerpt,
-      rotation: initialRotationState,
+      viewerLanguageSlug: null,
       fetchVideo: async () => ({ dubs: [{ ...englishDub, published: false }] }),
     })
     expect(result).toBeNull()
-  })
-
-  it("leaves rotation state untouched when resolution fails", async () => {
-    const rotation = { usedSlugs: ["english"], previousSlug: "english" }
-    const result = await resolveExcerptStream({
-      excerpt,
-      rotation,
-      fetchVideo: async () => null,
-    })
-    expect(result).toBeNull()
-    expect(rotation).toEqual({
-      usedSlugs: ["english"],
-      previousSlug: "english",
-    })
   })
 })

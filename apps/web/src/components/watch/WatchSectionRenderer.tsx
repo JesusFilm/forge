@@ -31,6 +31,11 @@ import { getWatchStudyQuestionPrompts } from "@/components/watch/watch-study-que
 // content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
 const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
+type EndReflectionContent = {
+  prompts: string[]
+  bibleReadHref: string | null
+}
+
 export function WatchSectionRenderer({
   blocks,
   downloadButtonLabel,
@@ -82,8 +87,10 @@ export function WatchSectionRenderer({
       (b): b is Extract<WatchBlock, { kind: "BibleQuotes" }> =>
         isWatchBlock(b) && b.kind === "BibleQuotes",
     ) ?? null
-  const reflectionPrompts = getWatchStudyQuestionPrompts(studyQuestionsBlock)
-  const reflectionBibleReadHref = findBibleReadHref(bibleQuotesBlock?.passages)
+  const endReflection: EndReflectionContent = {
+    prompts: getWatchStudyQuestionPrompts(studyQuestionsBlock),
+    bibleReadHref: findBibleReadHref(bibleQuotesBlock?.passages),
+  }
 
   const topBlocks: MergedWatchBlock[] = []
   const bodyBlocks: MergedWatchBlock[] = []
@@ -107,8 +114,7 @@ export function WatchSectionRenderer({
           downloadHref={downloadHref}
           downloadPending={downloadPending}
           studyQuestionsBlock={studyQuestionsBlock}
-          reflectionPrompts={reflectionPrompts}
-          reflectionBibleReadHref={reflectionBibleReadHref}
+          endReflection={endReflection}
           modalCallbacks={modalCallbacks}
           onPlayerReady={onPlayerReady}
           onPlayerActivated={onPlayerActivated}
@@ -152,8 +158,7 @@ export function WatchSectionRenderer({
                   downloadHref={downloadHref}
                   downloadPending={downloadPending}
                   studyQuestionsBlock={studyQuestionsBlock}
-                  reflectionPrompts={reflectionPrompts}
-                  reflectionBibleReadHref={reflectionBibleReadHref}
+                  endReflection={endReflection}
                   modalCallbacks={modalCallbacks}
                   onPlayerReady={onPlayerReady}
                   onPlayerActivated={onPlayerActivated}
@@ -184,8 +189,7 @@ function WatchBlockEntry({
   downloadHref,
   downloadPending,
   studyQuestionsBlock,
-  reflectionPrompts,
-  reflectionBibleReadHref,
+  endReflection,
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
@@ -207,8 +211,7 @@ function WatchBlockEntry({
   downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
-  reflectionPrompts: string[]
-  reflectionBibleReadHref: string | null
+  endReflection: EndReflectionContent
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
@@ -232,8 +235,7 @@ function WatchBlockEntry({
         downloadHref={downloadHref}
         downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
-        reflectionPrompts={reflectionPrompts}
-        reflectionBibleReadHref={reflectionBibleReadHref}
+        endReflection={endReflection}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
         onPlayerActivated={onPlayerActivated}
@@ -266,8 +268,7 @@ function SyntheticBlock({
   downloadHref,
   downloadPending,
   studyQuestionsBlock,
-  reflectionPrompts,
-  reflectionBibleReadHref,
+  endReflection,
   modalCallbacks,
   onPlayerReady,
   onPlayerActivated,
@@ -288,8 +289,7 @@ function SyntheticBlock({
   downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
-  reflectionPrompts: string[]
-  reflectionBibleReadHref: string | null
+  endReflection: EndReflectionContent
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onPlayerActivated?: () => void
@@ -333,8 +333,8 @@ function SyntheticBlock({
           hasSubtitleOptions={hasSubtitleOptions}
           subtitleLanguageCode={subtitleLanguageCode}
           subtitleVttSrc={subtitleVttSrc}
-          reflectionPrompts={reflectionPrompts}
-          reflectionBibleReadHref={reflectionBibleReadHref}
+          reflectionPrompts={endReflection.prompts}
+          reflectionBibleReadHref={endReflection.bibleReadHref}
           onReflectionDownload={
             downloadHref != null ? modalCallbacks?.openDownload : undefined
           }

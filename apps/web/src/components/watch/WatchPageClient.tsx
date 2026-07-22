@@ -70,6 +70,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { buildFbShareUrl } from "@/lib/share"
+import { useFullscreenPortalContainer } from "@/lib/use-is-fullscreen"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
@@ -77,6 +78,7 @@ import {
 import {
   PUBLIC_SHARE_FALLBACK_ORIGIN,
   isPublicShareableOrigin,
+  resolveDownloadPosterUrl,
   resolvePosterUrl,
 } from "@/lib/url"
 import {
@@ -122,7 +124,7 @@ type WatchVariant = ResolvedWatchVideo["selectedVariant"]
 export type WatchModalState = "none" | "download" | "language" | "share"
 
 export type WatchModalCallbacks = {
-  openDownload: () => void
+  openDownload: () => Promise<boolean>
   openLanguage: () => void
   openShare: () => void
   closeModal: () => void
@@ -271,6 +273,7 @@ export function WatchPageClient({
   initialTranscript = null,
 }: WatchPageClientProps) {
   const router = useRouter()
+  const fullscreenPortalContainer = useFullscreenPortalContainer()
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
   const playerRef = useRef<MuxPlayerRef | null>(null)
@@ -511,6 +514,10 @@ export function WatchPageClient({
     video.images?.[0],
     variant.muxVideo?.playbackId,
   )
+  const downloadPosterUrl = resolveDownloadPosterUrl(
+    video.images?.[0],
+    variant.muxVideo?.playbackId,
+  )
 
   const [modalState, setModalState] = useState<WatchModalState>("none")
   const [downloadPending, setDownloadPending] = useState(false)
@@ -544,6 +551,12 @@ export function WatchPageClient({
     setDownloadPending(false)
   }, [])
   const languageOptionsVideoSlugRef = useRef(videoSlug)
+
+  useEffect(() => {
+    cancelDownloadSessionRequest()
+    setModalState("none")
+    setDownloadError(null)
+  }, [cancelDownloadSessionRequest, variant.documentId, videoSlug])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -645,7 +658,7 @@ export function WatchPageClient({
   }, [languageOptionsState.status, videoSlug])
 
   const openDownload = useCallback(async () => {
-    if (downloadPendingRef.current) return
+    if (downloadPendingRef.current) return false
     setEnabledModalChunks((prev) => ({ ...prev, download: true }))
     void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
@@ -654,21 +667,22 @@ export function WatchPageClient({
 
     try {
       const session = await resolveDownloadSessionAccess()
-      if (!isCurrentDownloadSessionRequest(requestVersion)) return
+      if (!isCurrentDownloadSessionRequest(requestVersion)) return false
       if (!session.ok && session.reason === "session-unavailable") {
         setDownloadError(downloadSessionErrorMessage)
-        return
+        return false
       }
       setDownloadError(null)
       if (session.ok) {
         setDownloadAccountGateEnabled(session.accountGateEnabled)
         setDownloadLoginUrl(null)
         setModalState("download")
-        return
+        return true
       }
       setDownloadAccountGateEnabled(true)
       setDownloadLoginUrl(session.loginUrl)
       setModalState("download")
+      return true
     } finally {
       if (isCurrentDownloadSessionRequest(requestVersion)) {
         downloadPendingRef.current = false
@@ -784,7 +798,7 @@ export function WatchPageClient({
           open={modalState === "download"}
           downloads={downloadsForModal}
           videoTitle={video.title ?? null}
-          posterUrl={posterUrl}
+          posterUrl={downloadPosterUrl}
           durationSeconds={variant.duration ?? null}
           languageCode={selectedLanguageCode}
           languageName={variant.language?.name ?? null}
@@ -793,6 +807,7 @@ export function WatchPageClient({
           videoSlug={videoSlug}
           accountGateEnabled={downloadAccountGateEnabled}
           authRequiredLoginUrl={downloadLoginUrl}
+          portalContainer={fullscreenPortalContainer}
           onClose={closeModal}
         />
       ) : null}
@@ -823,6 +838,7 @@ export function WatchPageClient({
           videoDescription={video.snippet ?? video.description ?? null}
           posterUrl={posterUrl}
           playbackId={variant.muxVideo?.playbackId ?? null}
+          portalContainer={fullscreenPortalContainer}
           onClose={closeModal}
         />
       ) : null}
