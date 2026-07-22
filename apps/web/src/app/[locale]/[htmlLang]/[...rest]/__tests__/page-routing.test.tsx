@@ -1377,6 +1377,20 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
     expect(args?.locale).toBe("spanish-castilian")
   })
 
+  it("does not redirect a series route when the optional parent variant language differs from the URL language", async () => {
+    const watchVideo = makeWatchVideoResult("collection", {
+      slug: "hindi",
+      bcp47: "hi",
+      name: "Hindi",
+    })
+    mockRouteSeries(watchVideo)
+    await render2Seg("how-did-we-get-here-episode-1", "spanish-castilian")
+    const args = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
+    expect(args?.locale).toBe("spanish-castilian")
+  })
+
   it("passes raw slug-form locale in static-mode (trailerless) too", async () => {
     mockRouteSeries(makeSeriesResult())
     await render2Seg("storyclubs-no-trailer", "spanish-castilian")

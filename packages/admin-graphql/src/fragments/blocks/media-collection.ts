@@ -29,12 +29,12 @@ export const adminMediaCollectionFragment = adminGraphql(
       items {
         videoId
         languageId
+        languageSlug
         coreId
         videoDub {
           ...AdminBlockVideoDub
         }
         videoSlug
-        muxPlaybackId
         videoImageBlurDataUrl
         videoImageDominantColor
         titleOverride

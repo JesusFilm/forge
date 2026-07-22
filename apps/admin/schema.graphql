@@ -701,6 +701,10 @@ type MediaCollectionItem {
   imageUrl: String
   labelOverride: String
   languageId: String
+  """
+  Public Watch language slug resolved from the authored languageId. Lets consumers build valid collection routes even when the item references a parent collection with no direct VideoDub.
+  """
+  languageSlug: String
   linkToSectionKey: String
   """
   Best playable Mux playback id for this media collection item when it references a Video row.

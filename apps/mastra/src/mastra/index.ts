@@ -6,6 +6,7 @@ import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
 import { InMemoryStore, MastraCompositeStore } from "@mastra/core/storage"
 import { DuckDBStore } from "@mastra/duckdb"
+import { MastraEditor } from "@mastra/editor"
 import { PinoLogger } from "@mastra/loggers"
 import {
   MastraStorageExporter,
@@ -23,6 +24,13 @@ import {
 import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
+import { copyAgent } from "./agents/devotional/copy-agent"
+import { highlighterAgent } from "./agents/devotional/highlighter-agent"
+import { setInstructionResolver } from "./agents/devotional/instruction-resolver"
+import { modernizerAgent } from "./agents/devotional/modernizer-agent"
+import { safetyAgent } from "./agents/devotional/safety-agent"
+import { scriptureAgent } from "./agents/devotional/scripture-agent"
+import { spurgeonRankerAgent } from "./agents/devotional/spurgeon-ranker-agent"
 import { buildDefaultChatAgent } from "./agents/default-chat-agent"
 import { buildSpecializedAgents } from "./agents/specialized-agents"
 import { buildAutoEnrichAgent } from "./agents/auto-enrich-agent"
@@ -104,6 +112,26 @@ import {
   handleInstagramDiscoveryRouteRequest,
   instagramAiChristianDiscoveryWorkflow,
 } from "./workflows/instagram-ai-christian-discovery"
+import { dailyDevotionalWorkflow } from "./workflows/daily-devotional"
+import {
+  devotionalApproveWorkflow,
+  devotionalContentWorkflow,
+  devotionalProduceWorkflow,
+  devotionalPublishWorkflow,
+  devotionalRenderWorkflow,
+  devotionalSourceWorkflow,
+  videoFirstDevotionalWorkflow,
+} from "./workflows/video-first-devotional"
+import {
+  handleVideoFirstCancelRequest,
+  handleVideoFirstResumeRequest,
+  handleVideoFirstRetryRequest,
+  handleVideoFirstStartRequest,
+  handleVideoFirstStatusRequest,
+  reservationOwnerFromState,
+  type VideoFirstLifecycleDeps,
+  type VideoFirstWorkflowAdapter,
+} from "./workflows/video-first-devotional-route"
 import {
   handleYouTubeDiscoveryRouteRequest,
   youtubeAiChristianDiscoveryWorkflow,
@@ -124,15 +152,40 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import { createUsedClipsStore } from "../services/devotional/used-clips-ledger"
+import { handleDevotionalAssetRequest } from "./devotional-asset-route"
 import {
   handleAiChatHistoryListRequest,
   handleAiChatHistoryReplayRequest,
 } from "./ai-chat-history-route"
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
+import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
 
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+const devotionalApprovalKeys = parseServiceApiKeys(
+  env.DEVOTIONAL_APPROVAL_API_KEYS,
+)
+const devotionalPlaybackKeys = parseServiceApiKeys(
+  env.DEVOTIONAL_PLAYBACK_API_KEYS,
+)
+const devotionalStatusKeys = [...serviceKeys, ...devotionalPlaybackKeys]
+const videoFirstLifecycleDeps: VideoFirstLifecycleDeps = {
+  workflow:
+    videoFirstDevotionalWorkflow as unknown as VideoFirstWorkflowAdapter,
+  async renewReservation(state) {
+    const owner = reservationOwnerFromState(state)
+    if (!owner) throw new Error(`reservation not found for run ${state.runId}`)
+    await createUsedClipsStore().renew(owner.chapterId, owner.reservationId)
+  },
+  async releaseReservation(state) {
+    const owner = reservationOwnerFromState(state)
+    // A run cancelled before Source reserved a clip has nothing to release.
+    if (!owner) return
+    await createUsedClipsStore().release(owner.chapterId, owner.reservationId)
+  },
+}
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -170,10 +223,19 @@ const redactPromptBodies: SpanOutputProcessor = {
 const experienceDraftSpecializedAgents = buildSpecializedAgents()
 
 export const mastra = new Mastra({
+  // Agent Editor: Studio draft/publish editing of agent instructions (stored
+  // configs live in the storage backend). Model/id/name stay in code.
+  editor: new MastraEditor(),
   agents: {
     smokeAgent,
     seekerAgent,
     webResearchAgent,
+    scriptureAgent,
+    safetyAgent,
+    modernizerAgent,
+    copyAgent,
+    highlighterAgent,
+    spurgeonRankerAgent,
     "experience-default-chat": buildDefaultChatAgent(),
     ...experienceDraftSpecializedAgents,
     "auto-enrich": buildAutoEnrichAgent(),
@@ -193,6 +255,14 @@ export const mastra = new Mastra({
     smartCropQaWorkflow,
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
+    dailyDevotionalWorkflow,
+    videoFirstDevotionalWorkflow,
+    devotionalSourceWorkflow,
+    devotionalContentWorkflow,
+    devotionalProduceWorkflow,
+    devotionalRenderWorkflow,
+    devotionalApproveWorkflow,
+    devotionalPublishWorkflow,
     youtubeAiChristianDiscoveryWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
@@ -242,6 +312,29 @@ export const mastra = new Mastra({
   }),
   server: {
     studioBase: "/studio",
+    middleware: [
+      {
+        path: "/api/workflows/*",
+        handler: async (c, next) => {
+          if (
+            isBlockedDevotionalNativeMutation(
+              c.req.method,
+              new URL(c.req.url).pathname,
+            )
+          ) {
+            return c.json(
+              {
+                error: "devotional_lifecycle_route_required",
+                message:
+                  "Use the authenticated /forge-daily-devotional lifecycle routes.",
+              },
+              403,
+            )
+          }
+          await next()
+        },
+      },
+    ],
     apiRoutes: [
       registerApiRoute("/forge-smoke", {
         method: "POST",
@@ -601,6 +694,113 @@ export const mastra = new Mastra({
           })
         },
       }),
+      registerApiRoute("/forge-daily-devotional", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstStartRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstStartRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId", {
+        method: "GET",
+        handler: async (c) => {
+          const authHeader = c.req.header("authorization")
+          const outcome = await handleVideoFirstStatusRequest({
+            authHeader,
+            serviceKeys: devotionalStatusKeys,
+            runId: c.req.param("runId"),
+            renewReservationOnRead: isValidServiceBearer({
+              authHeader,
+              allowlist: serviceKeys,
+            }),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId/resume", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstResumeRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys: devotionalApprovalKeys,
+            runId: c.req.param("runId"),
+            approvalActor: {
+              subject: c.req.header("x-forge-user-subject"),
+              email: c.req.header("x-forge-user-email"),
+              role: c.req.header("x-forge-studio-role"),
+            },
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId/cancel", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstCancelRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            runId: c.req.param("runId"),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute("/forge-video-first-devotional/:runId/retry", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleVideoFirstRetryRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            newRunsEnabled: env.DEVOTIONAL_NEW_RUNS_ENABLED === "true",
+            runId: c.req.param("runId"),
+            readJson: () => c.req.json(),
+            deps: videoFirstLifecycleDeps,
+          })
+          return Response.json(outcome.body, { status: outcome.status })
+        },
+      }),
+      registerApiRoute(
+        "/forge-video-first-devotional/assets/:assetId/:artifactType/:ext",
+        {
+          method: "GET",
+          handler: async (c) => {
+            return handleDevotionalAssetRequest({
+              authHeader: c.req.header("authorization"),
+              serviceKeys: devotionalPlaybackKeys,
+              assetId: c.req.param("assetId"),
+              artifactType: c.req.param("artifactType"),
+              ext: c.req.param("ext"),
+              range: c.req.header("range"),
+            })
+          },
+        },
+      ),
       registerApiRoute("/forge-youtube-discovery", {
         method: "POST",
         handler: async (c) => {
@@ -668,6 +868,19 @@ export const mastra = new Mastra({
 })
 
 configureSearchEvalNativeSuiteRuntime(() => mastra)
+
+// Studio-published instruction edits (stored agent configs) flow into the
+// devotional pipeline's LLM calls: the hybrid agent-llm adapter consults this
+// resolver before falling back to the coded instructions. Only instructions
+// are taken from the stored config — model/id/name stay pinned in code.
+setInstructionResolver(async (agentId) => {
+  const hydrated = await mastra.getEditor()?.agent.getById(agentId)
+  if (!hydrated) return null
+  const instructions = await hydrated.getInstructions()
+  return typeof instructions === "string" && instructions.trim()
+    ? instructions
+    : null
+})
 
 // ai-chat retention purge (feat-208): boot drain + daily timer over the
 // `ai_chat` schema. Gated to the deployed runtime (NODE_ENV=production) so a

@@ -8,7 +8,7 @@
 // accommodate apps/web's typed-client (gql.tada + Apollo) WatchExperience
 // fragment, which composes 17 inline block fragments plus nested
 // Section/Container subtrees. Empirically observed on web's heaviest
-// composed query: depth ~18, aliases ~80 (with Apollo's cache
+// composed query: depth ~24, aliases ~80 (with Apollo's cache
 // normalization), tokens ~3-5k. The defaults (10/15/1000) reject
 // hand-written abuse shapes but also reject legitimate typed-client
 // composition.
@@ -26,7 +26,7 @@ import { maxAliasesPlugin } from "@escape.tech/graphql-armor-max-aliases"
 import { maxTokensPlugin } from "@escape.tech/graphql-armor-max-tokens"
 
 export const armorPlugins = [
-  maxDepthPlugin({ n: 20 }),
+  maxDepthPlugin({ n: 30 }),
   maxAliasesPlugin({ n: 200 }),
   maxTokensPlugin({ n: 10000 }),
 ]

@@ -2,7 +2,6 @@ import type { ErrorLike } from "@apollo/client"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
-import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
 import { localWatchHomeBlurDataUrl } from "@/lib/enrichment"
@@ -39,12 +38,33 @@ const getWatchHomeEditorialOverridesOperation = adminGraphql(
     query GetWatchHomeEditorialOverrides($locale: String!) {
       watchSetting(locale: $locale) {
         homepageExperience {
-          ...AdminWatchExperience
+          blocks {
+            __typename
+            ... on MediaCollectionBlock {
+              sectionKey
+              items {
+                videoId
+                imageUrl
+                imageBlurDataUrl
+                imageDominantColor
+                imageOverrideUrl
+                imageOverrideBlurDataUrl
+                imageOverrideDominantColor
+              }
+            }
+            ... on VideoCarouselBlock {
+              sectionKey
+              items {
+                videoId
+                imageUrl
+                imageOverrideUrl
+              }
+            }
+          }
         }
       }
     }
   `,
-  [adminWatchExperienceFragment],
 )
 type WatchHomeEditorialOverridesData = AdminResultOf<
   typeof getWatchHomeEditorialOverridesOperation

@@ -6,6 +6,11 @@ import type { Route } from "next"
 import { Play } from "lucide-react"
 
 import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
@@ -130,14 +135,14 @@ export function SeriesEpisodeCard({
       ) : null}
 
       {/* Bottom-left text block — EPISODE eyebrow + episode title. */}
-      <div className="absolute right-3 bottom-5 left-3 flex flex-col gap-1">
-        <span className="text-[10px] font-semibold tracking-[0.18em] text-stone-300/90 uppercase">
+      <VideoThumbnailCaption inset="compact">
+        <VideoThumbnailEyebrow size="compact">
           {`Episode ${index + 1}`}
-        </span>
-        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-white drop-shadow-md md:text-base">
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle size="compact-md">
           {episode.title ?? ""}
-        </h3>
-      </div>
+        </VideoThumbnailTitle>
+      </VideoThumbnailCaption>
     </>
   )
 

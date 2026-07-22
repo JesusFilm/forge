@@ -27,6 +27,7 @@ const DEFAULT_FIRECRAWL_USER_AGENT = "forge-mastra-firecrawl/1.0"
 const DEFAULT_FIRECRAWL_TIMEOUT_MS = 60_000
 const DEFAULT_FIRECRAWL_MAX_SEARCH_RESULTS = 5
 const DEFAULT_FIRECRAWL_MAX_MARKDOWN_CHARS = 16_000
+const DEFAULT_DEVOTIONAL_MODEL = "anthropic/claude-haiku-4-5"
 const DEFAULT_YOUTUBE_ALLOWED_HOSTS = "www.googleapis.com"
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
@@ -221,6 +222,15 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  // Human devotional approval lane. Must be disjoint from the shared service
+  // pool; unset keeps resume fail-closed until mastra-gateway is provisioned.
+  DEVOTIONAL_APPROVAL_API_KEYS: z.string().min(1).optional(),
+  // Read-only devotional status/artifact playback lane. Kept disjoint from
+  // both mutation pools so the human review surface cannot start/cancel/retry.
+  DEVOTIONAL_PLAYBACK_API_KEYS: z.string().min(1).optional(),
+  // Emergency architecture-exception kill switch. False blocks new canonical
+  // starts and retries while status, playback, approval, and cancel stay live.
+  DEVOTIONAL_NEW_RUNS_ENABLED: z.enum(["true", "false"]).default("false"),
   // Dedicated bearer allowlist for the ai-chat history read routes (feat-241,
   // KTD2) — NOT the shared MASTRA_SERVICE_API_KEYS pool. Bulk conversation read
   // is scoped to its one intended holder (the chat service) so pool keys
@@ -263,6 +273,34 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default("anthropic/claude-haiku-4-5"),
+  DEVOTIONAL_SITE_INGEST_URL: z.string().url().optional(),
+  DEVOTIONAL_SITE_INGEST_API_KEY: z.string().min(1).optional(),
+  DEVOTIONAL_PARTNER_DOMAINS: z.string().min(1).optional(),
+  DEVOTIONAL_DEFAULT_VIDEO_ID: z.string().min(1).optional(),
+  DEVOTIONAL_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
+  DEVOTIONAL_SAFETY_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
+  DEVOTIONAL_ARTIFACT_DIR: z.string().min(1).optional(),
+  DEVOTIONAL_MUSIC_LIBRARY_DIR: z.string().min(1).optional(),
+  // Dedicated heavy-media boundary for video-first devotionals. Optional so
+  // unprovisioned environments still boot; the render step fails with a typed
+  // config error at runtime instead of running ffmpeg/Chromium in Mastra.
+  SHORTS_WORKER_BASE_URL: z.string().url().optional(),
+  SHORTS_WORKER_API_KEY: z.string().min(1).optional(),
+  AZURE_SPEECH_KEY: z.string().min(1).optional(),
+  AZURE_SPEECH_REGION: z.string().min(1).optional(),
+  DEVOTIONAL_VOICE: z.string().min(1).default("en-US-AndrewMultilingualNeural"),
+  DEVOTIONAL_VOICE_STYLE: z.string().min(1).optional(),
+  // ElevenLabs (voiceover + music). Absent key => audio steps skipped, not failed.
+  ELEVENLABS_API_KEY: z.string().min(1).optional(),
+  // Default narration voice — "Voice D" from the audition (deep, emotive male).
+  // Override to swap voice (e.g. per language) without code changes.
+  ELEVENLABS_VOICE_ID: z.string().min(1).default("HKFOb9iktHA85uKXydRT"),
+  ELEVENLABS_TTS_MODEL: z.string().min(1).default("eleven_multilingual_v2"),
+  ELEVENLABS_MUSIC_MODEL: z.string().min(1).default("music_v1"),
+  // Directory holding the reflection corpus JSON (Ryle / Matthew Henry /
+  // Spurgeon). Defaults to the in-repo `devo/corpus`; override on a bundled
+  // deploy where that path isn't present.
+  DEVOTIONAL_CORPUS_DIR: z.string().min(1).optional(),
   FIRECRAWL_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -562,6 +600,15 @@ export const env = envSchema.parse({
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),
+  DEVOTIONAL_APPROVAL_API_KEYS: emptyToUndefined(
+    process.env.DEVOTIONAL_APPROVAL_API_KEYS,
+  ),
+  DEVOTIONAL_PLAYBACK_API_KEYS: emptyToUndefined(
+    process.env.DEVOTIONAL_PLAYBACK_API_KEYS,
+  ),
+  DEVOTIONAL_NEW_RUNS_ENABLED: emptyToUndefined(
+    process.env.DEVOTIONAL_NEW_RUNS_ENABLED,
+  ),
   AI_CHAT_SERVICE_API_KEYS: emptyToUndefined(
     process.env.AI_CHAT_SERVICE_API_KEYS,
   ),
@@ -603,6 +650,39 @@ export const env = envSchema.parse({
   EVAL_QUERY_GENERATION_MODEL: emptyToUndefined(
     process.env.EVAL_QUERY_GENERATION_MODEL,
   ),
+  DEVOTIONAL_SITE_INGEST_URL: emptyToUndefined(
+    process.env.DEVOTIONAL_SITE_INGEST_URL,
+  ),
+  DEVOTIONAL_SITE_INGEST_API_KEY: emptyToUndefined(
+    process.env.DEVOTIONAL_SITE_INGEST_API_KEY,
+  ),
+  DEVOTIONAL_PARTNER_DOMAINS: emptyToUndefined(
+    process.env.DEVOTIONAL_PARTNER_DOMAINS,
+  ),
+  DEVOTIONAL_DEFAULT_VIDEO_ID: emptyToUndefined(
+    process.env.DEVOTIONAL_DEFAULT_VIDEO_ID,
+  ),
+  DEVOTIONAL_MODEL: emptyToUndefined(process.env.DEVOTIONAL_MODEL),
+  DEVOTIONAL_SAFETY_MODEL: emptyToUndefined(
+    process.env.DEVOTIONAL_SAFETY_MODEL,
+  ),
+  DEVOTIONAL_ARTIFACT_DIR: emptyToUndefined(
+    process.env.DEVOTIONAL_ARTIFACT_DIR,
+  ),
+  DEVOTIONAL_MUSIC_LIBRARY_DIR: emptyToUndefined(
+    process.env.DEVOTIONAL_MUSIC_LIBRARY_DIR,
+  ),
+  SHORTS_WORKER_BASE_URL: emptyToUndefined(process.env.SHORTS_WORKER_BASE_URL),
+  SHORTS_WORKER_API_KEY: emptyToUndefined(process.env.SHORTS_WORKER_API_KEY),
+  AZURE_SPEECH_KEY: emptyToUndefined(process.env.AZURE_SPEECH_KEY),
+  AZURE_SPEECH_REGION: emptyToUndefined(process.env.AZURE_SPEECH_REGION),
+  DEVOTIONAL_VOICE: emptyToUndefined(process.env.DEVOTIONAL_VOICE),
+  DEVOTIONAL_VOICE_STYLE: emptyToUndefined(process.env.DEVOTIONAL_VOICE_STYLE),
+  ELEVENLABS_API_KEY: emptyToUndefined(process.env.ELEVENLABS_API_KEY),
+  ELEVENLABS_VOICE_ID: emptyToUndefined(process.env.ELEVENLABS_VOICE_ID),
+  ELEVENLABS_TTS_MODEL: emptyToUndefined(process.env.ELEVENLABS_TTS_MODEL),
+  ELEVENLABS_MUSIC_MODEL: emptyToUndefined(process.env.ELEVENLABS_MUSIC_MODEL),
+  DEVOTIONAL_CORPUS_DIR: emptyToUndefined(process.env.DEVOTIONAL_CORPUS_DIR),
   FIRECRAWL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.FIRECRAWL_ALLOWED_HOSTS,
   ),
@@ -840,10 +920,31 @@ export function assertAiChatServiceKeysDisjoint(
   }
 }
 
+export function assertDevotionalApprovalKeysDisjoint(
+  poolCsv: string | undefined = env.MASTRA_SERVICE_API_KEYS,
+  approvalCsv: string | undefined = env.DEVOTIONAL_APPROVAL_API_KEYS,
+  playbackCsv: string | undefined = env.DEVOTIONAL_PLAYBACK_API_KEYS,
+): void {
+  const pool = new Set(parseServiceApiKeys(poolCsv))
+  const approval = new Set(parseServiceApiKeys(approvalCsv))
+  const playback = new Set(parseServiceApiKeys(playbackCsv))
+  if ([...approval].some((key) => pool.has(key))) {
+    throw new Error(
+      "DEVOTIONAL_APPROVAL_API_KEYS and MASTRA_SERVICE_API_KEYS must not share key values",
+    )
+  }
+  if ([...playback].some((key) => pool.has(key) || approval.has(key))) {
+    throw new Error(
+      "DEVOTIONAL_PLAYBACK_API_KEYS must not share key values with DEVOTIONAL_APPROVAL_API_KEYS or MASTRA_SERVICE_API_KEYS",
+    )
+  }
+}
+
 export function assertMastraRuntimeEnv() {
   // Every-environment invariant (feat-241, KTD2): an overlapping pool/lane
   // bearer is a misconfiguration everywhere, not just in production.
   assertAiChatServiceKeysDisjoint()
+  assertDevotionalApprovalKeysDisjoint()
 
   if (
     env.NODE_ENV === "production" &&
@@ -1017,6 +1118,96 @@ export function getFirecrawlConfig(): FirecrawlConfig {
     maxSearchResults: env.FIRECRAWL_MAX_SEARCH_RESULTS,
     maxMarkdownCharacters: env.FIRECRAWL_MAX_MARKDOWN_CHARS,
   }
+}
+
+export type DevotionalSiteIngestConfig = {
+  url?: string
+  apiKey?: string
+}
+
+/** Watch-site "Today's Devotional" ingest target. Both absent => publish skipped. */
+export function getDevotionalSiteIngestConfig(): DevotionalSiteIngestConfig {
+  return {
+    url: env.DEVOTIONAL_SITE_INGEST_URL,
+    apiKey: env.DEVOTIONAL_SITE_INGEST_API_KEY,
+  }
+}
+
+/** Trimmed, lower-cased partner-domain allowlist for grounding. Empty when unset. */
+export function getDevotionalPartnerDomains(): string[] {
+  return (env.DEVOTIONAL_PARTNER_DOMAINS ?? "")
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+export type DevotionalVideoSearchConfig = {
+  url?: string
+  bearer?: string
+  defaultVideoId?: string
+}
+
+/**
+ * Video matching reuses the Admin search-eval HTTP contract (A2). The optional
+ * default clip id backs the always-a-clip fallback (A8).
+ */
+export function getDevotionalVideoSearchConfig(): DevotionalVideoSearchConfig {
+  return {
+    url: env.ADMIN_SEARCH_EVAL_SEARCH_URL,
+    bearer: env.ADMIN_SEARCH_EVAL_API_KEY,
+    defaultVideoId: env.DEVOTIONAL_DEFAULT_VIDEO_ID,
+  }
+}
+
+export function getDevotionalModel(): string {
+  return env.DEVOTIONAL_MODEL
+}
+
+export function getDevotionalSafetyModel(): string {
+  return env.DEVOTIONAL_SAFETY_MODEL
+}
+
+export type AzureSpeechConfig = {
+  key?: string
+  region?: string
+}
+
+/** Azure Cognitive Services Speech (TTS). Both absent => voiceover skipped. */
+export function getAzureSpeechConfig(): AzureSpeechConfig {
+  return { key: env.AZURE_SPEECH_KEY, region: env.AZURE_SPEECH_REGION }
+}
+
+export function getDevotionalVoice(): string {
+  return env.DEVOTIONAL_VOICE
+}
+
+export function getDevotionalVoiceStyle(): string | undefined {
+  return env.DEVOTIONAL_VOICE_STYLE
+}
+
+export type ElevenLabsConfig = {
+  apiKey?: string
+  ttsModel: string
+  musicModel: string
+}
+
+/** ElevenLabs (voiceover + music). No apiKey => callers treat audio as skipped. */
+export function getElevenLabsConfig(): ElevenLabsConfig {
+  return {
+    apiKey: env.ELEVENLABS_API_KEY,
+    ttsModel: env.ELEVENLABS_TTS_MODEL,
+    musicModel: env.ELEVENLABS_MUSIC_MODEL,
+  }
+}
+
+/** Default narration voice id (overridable per language later). */
+export function getDevotionalElevenVoiceId(): string {
+  return env.ELEVENLABS_VOICE_ID
+}
+
+/** Reflection corpus dir; undefined => the reader falls back to the repo copy. */
+export function getDevotionalCorpusDir(): string | undefined {
+  return env.DEVOTIONAL_CORPUS_DIR
 }
 
 export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null {

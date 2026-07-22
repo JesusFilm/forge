@@ -273,6 +273,23 @@ describe("history proxy — config + SSRF guard (AE11)", () => {
     expect(res.status).toBe(502)
     expect(await bodyOf(res)).toEqual({ reason: "unavailable" })
   })
+
+  // Pins the Correction 3 fold: the shared classifier's "cancelled" outcome
+  // (caller aborted, budget idle) folds into 502 unavailable here — history
+  // never surfaces a distinct caller-abort status, and never 504.
+  it("maps a caller-abort during fetch to 502 unavailable (cancelled fold)", async () => {
+    const caller = new AbortController()
+    const fetchImpl: typeof fetch = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+        )
+        caller.abort()
+      })
+    const res = await runList({ requestSignal: caller.signal, fetchImpl })
+    expect(res.status).toBe(502)
+    expect(await bodyOf(res)).toEqual({ reason: "unavailable" })
+  })
 })
 
 describe("history proxy — upstream status classification (KTD8)", () => {

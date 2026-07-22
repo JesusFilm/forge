@@ -15,7 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prebundle": "tsx scripts/prebundle.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "devo:video": "node scripts/render-devotional-video.mjs",
+    "devo:detect-snippet": "node scripts/detect-and-trim-snippet.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",

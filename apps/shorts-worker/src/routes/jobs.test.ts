@@ -2,6 +2,10 @@ import type { IncomingMessage } from "node:http"
 import { Readable, Writable } from "node:stream"
 import { describe, expect, it } from "vitest"
 import { createJobLanes } from "../jobs.js"
+import type {
+  runDevotionalRender,
+  RunDevotionalRenderInput,
+} from "../devotional-render.js"
 import type { runPrepare, RunPrepareInput } from "../prepare.js"
 import type { runRender, RunRenderInput } from "../render.js"
 import { createHandleRequest } from "../server.js"
@@ -131,6 +135,15 @@ const renderBody = {
   propsHash: "f".repeat(64),
   draftVersion: 2,
   props: validProps,
+}
+
+const devotionalRenderBody = {
+  kind: "devotional-render",
+  jobId: "manager-job-devotional",
+  runId: "mastra-run-1",
+  inputAssetId: "devotional-input-run-1",
+  outputAssetId: "devotional-output-run-1",
+  inputHash: "a".repeat(64),
 }
 
 const authedHeaders = { authorization: "Bearer test-key" }
@@ -475,6 +488,158 @@ describe("render job lifecycle", () => {
       retryable: false,
     })
     expect(status.body.result).toBeNull()
+  })
+})
+
+describe("devotional render job lifecycle", () => {
+  it("requires auth and rejects unsafe identifiers", async () => {
+    const handler = buildHandler()
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        body: devotionalRenderBody,
+      }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+
+    for (const body of [
+      { ...devotionalRenderBody, runId: "../run" },
+      { ...devotionalRenderBody, inputAssetId: "input/path" },
+      { ...devotionalRenderBody, outputAssetId: "output%2Fpath" },
+      { ...devotionalRenderBody, inputHash: "not-a-hash" },
+    ]) {
+      await expect(
+        dispatch(handler, {
+          method: "POST",
+          url: "/jobs",
+          headers: authedHeaders,
+          body,
+        }),
+      ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+    }
+  })
+
+  it("returns stable portrait and wide artifact refs", async () => {
+    const inputs: RunDevotionalRenderInput[] = []
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async (input: RunDevotionalRenderInput) => {
+        inputs.push(input)
+        const portrait = {
+          artifact: {
+            assetId: input.outputAssetId,
+            artifactType: "devotional-output-portrait-v1",
+            ext: "mp4",
+          },
+          outputDurationSec: 60,
+          width: 1080,
+          height: 1920,
+        }
+        const wide = {
+          artifact: {
+            assetId: input.outputAssetId,
+            artifactType: "devotional-output-wide-v1",
+            ext: "mp4",
+          },
+          outputDurationSec: 60,
+          width: 1920,
+          height: 1080,
+        }
+        return {
+          artifacts: [portrait.artifact, wide.artifact],
+          report: { portrait, wide },
+        }
+      }) as typeof runDevotionalRender,
+    })
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${submit.body.workerJobId as string}`,
+      headers: authedHeaders,
+    })
+    expect(inputs[0]).toMatchObject({
+      runId: "mastra-run-1",
+      inputAssetId: "devotional-input-run-1",
+      outputAssetId: "devotional-output-run-1",
+      inputHash: "a".repeat(64),
+    })
+    expect(status.body).toMatchObject({
+      kind: "devotional-render",
+      status: "completed",
+      result: {
+        report: {
+          portrait: { width: 1080, height: 1920 },
+          wide: { width: 1920, height: 1080 },
+        },
+      },
+    })
+  })
+
+  it("dedupes active devotional renders by output asset and input hash", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runDevotionalRender,
+    })
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const duplicate = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...devotionalRenderBody, runId: "mastra-run-restarted" },
+    })
+    expect(duplicate.body.workerJobId).toBe(first.body.workerJobId)
+  })
+
+  it("cancels an active devotional render through the authenticated job route", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async (input: RunDevotionalRenderInput) =>
+        new Promise((_resolve, reject) => {
+          input.deps?.signal?.addEventListener(
+            "abort",
+            () => reject(new Error("aborted")),
+            { once: true },
+          )
+        })) as typeof runDevotionalRender,
+    })
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const workerJobId = submit.body.workerJobId as string
+    const cancelled = await dispatch(handler, {
+      method: "DELETE",
+      url: `/jobs/${workerJobId}`,
+      headers: authedHeaders,
+    })
+    expect(cancelled).toEqual({
+      statusCode: 202,
+      body: { workerJobId, status: "cancelled" },
+    })
+    await settle()
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${workerJobId}`,
+      headers: authedHeaders,
+    })
+    expect(status.body).toMatchObject({
+      status: "cancelled",
+      error: null,
+      result: null,
+    })
   })
 })
 

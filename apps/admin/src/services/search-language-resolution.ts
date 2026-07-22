@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 export type SearchLanguageSignalSource =
   | "explicit_target"
   | "query_named_language"
+  | "query_script"
   | "current_watch"
   | "route"
   | "display"
@@ -34,6 +35,26 @@ export type SearchLanguageResolution = {
 
 const FALLBACK_TARGET_LANGUAGE_SLUG = "english"
 const MAX_ACCEPT_LANGUAGE_CANDIDATES = 8
+const QUERY_SCRIPT_LANGUAGE_HINTS: ReadonlyArray<{
+  pattern: RegExp
+  slug: string
+  minimumCharacters: number
+}> = Object.freeze([
+  { pattern: /\p{Script=Cyrillic}/u, slug: "russian", minimumCharacters: 2 },
+  {
+    pattern: /\p{Script=Arabic}/u,
+    slug: "arabic-modern-standard",
+    minimumCharacters: 1,
+  },
+  { pattern: /\p{Script=Han}/u, slug: "mandarin-china", minimumCharacters: 1 },
+  {
+    pattern: /\p{Script=Hiragana}|\p{Script=Katakana}/u,
+    slug: "japanese",
+    minimumCharacters: 1,
+  },
+  { pattern: /\p{Script=Hangul}/u, slug: "korean", minimumCharacters: 1 },
+  { pattern: /\p{Script=Devanagari}/u, slug: "hindi", minimumCharacters: 1 },
+])
 
 function normalizeSlug(value: string | null | undefined): string | null {
   const normalized = value?.trim() ?? ""
@@ -107,6 +128,27 @@ async function slugForQueryNamedLanguage(
   return rows[0]?.slug ?? null
 }
 
+function scriptCharacterCount(
+  value: string,
+  hint: (typeof QUERY_SCRIPT_LANGUAGE_HINTS)[number],
+): number {
+  let count = 0
+  for (const character of value) {
+    if (hint.pattern.test(character)) count += 1
+  }
+  return count
+}
+
+function slugForQueryScript(query: string | null): string | null {
+  if (!query) return null
+  for (const hint of QUERY_SCRIPT_LANGUAGE_HINTS) {
+    if (scriptCharacterCount(query, hint) >= hint.minimumCharacters) {
+      return hint.slug
+    }
+  }
+  return null
+}
+
 async function slugForAcceptLanguage(
   prisma: PrismaClient,
   acceptLanguage: string | null,
@@ -147,6 +189,10 @@ export async function resolveSearchLanguageSignals({
     (explicitTarget == null
       ? await slugForQueryNamedLanguage(prisma, normalizeSlug(input.query))
       : null)
+  const queryScriptLanguage =
+    explicitTarget == null && queryNamedLanguage == null
+      ? slugForQueryScript(normalizeSlug(input.query))
+      : null
   const currentWatch = normalizeSlug(input.currentWatchLanguageSlug)
   const route = normalizeSlug(input.routeLanguageSlug)
   const display = normalizeSlug(input.displayLanguageSlug)
@@ -159,6 +205,7 @@ export async function resolveSearchLanguageSignals({
   }> = [
     { slug: explicitTarget, source: "explicit_target" },
     { slug: queryNamedLanguage, source: "query_named_language" },
+    { slug: queryScriptLanguage, source: "query_script" },
     { slug: currentWatch, source: "current_watch" },
     { slug: route, source: "route" },
     { slug: display, source: "display" },

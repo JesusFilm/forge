@@ -135,6 +135,9 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `MASTRA_SERVICE_API_KEYS`                    | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `DEVOTIONAL_APPROVAL_API_KEYS`               | Dedicated CSV bearer allowlist for the human devotional resume/publish lane. Held by `apps/mastra-gateway`, optional and fail-closed when unset, and boot-asserted disjoint from `MASTRA_SERVICE_API_KEYS`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `DEVOTIONAL_PLAYBACK_API_KEYS`               | Dedicated CSV bearer allowlist for read-only devotional status and authenticated Range playback. Held by `apps/mastra-gateway`, optional and fail-closed when unset, and boot-asserted disjoint from both mutation key sets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `DEVOTIONAL_NEW_RUNS_ENABLED`                | Release-attested exception gate. Defaults to `false`; set exactly `true` only after every exception invariant is verified. `false` rejects canonical starts and retries while status, playback, approval, and cancel remain available.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `AI_CHAT_SERVICE_API_KEYS`                   | Dedicated CSV bearer allowlist for the ai-chat lane: the history read routes (`/forge-ai-chat-history-*`, feat-241) and `/forge-seeker` sends (feat-250 — the only bearer that route accepts). Read ONLY inside the shared lane admission module (`src/mastra/ai-chat-lane-admission.ts`, feat-283) — no route registration threads a key list, and the discriminating key-source test in `ai-chat-lane-admission.test.ts` pins the default source. Deliberately NOT the shared pool above, so embedding/eval pool keys never reach conversation data. Optional, **no default** — unset = empty allowlist = the lane routes fail closed (401) until provisioned. Boot asserts it shares no key value with `MASTRA_SERVICE_API_KEYS` (`assertAiChatServiceKeysDisjoint`). Holder: the chat service (`AI_CHAT_MASTRA_API_KEY`). Deploy receiver-first: set this CSV before chat's key. |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -944,6 +947,85 @@ Failure reasons: `invalid_input` (400), `config_missing` (503, when
 configured saved-source request fails without any fallback input). Production already requires the shared
 Firecrawl env vars for Mastra's web-data surface.
 
+## Daily devotional generator
+
+The service route `POST /forge-daily-devotional` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the date-idempotent
+`video-first-devotional` workflow. It selects an unused Jesus Film passage,
+generates and safety-checks the devotional, delegates all media preparation and
+dual-aspect rendering to Shorts Worker, suspends for authenticated human review,
+and publishes only after approval. See
+`docs/plans/2026-07-10-001-feat-video-first-devotional-pipeline-plan.md`.
+
+### Owner-approved architecture exception (2026-07-21)
+
+This workflow may keep its durable control loop, approval suspension, worker
+polling, and publish handoff in Mastra instead of Manager. The exception is
+narrow: the product is intentionally composed from Mastra-native swappable
+sub-workflows and its finished-video approval occurs through authenticated
+Mastra Gateway access. It does not change the default Manager-owned control-loop
+rule for other heavy AI+media features.
+
+The exception remains valid only while all of these invariants hold:
+
+- Mastra workflow state is persisted in Postgres, never memory in production.
+- Mastra runs exactly one Railway replica because lifecycle serialization and
+  the used-clips ledger lock are process-local.
+- Lifecycle operations are authenticated and serialized; canonical starts are
+  idempotent per UTC date, and retries are idempotent per parent-run and variant
+  identity.
+- Native `/api/workflows/*` mutations are denied for the legacy, parent, and
+  devotional sub-workflow IDs. Only the dedicated lifecycle routes may start,
+  resume, cancel, or retry this pipeline.
+- Mastra Gateway revalidates the current `admin`/`editor` access record for each
+  approval, forwards bounded actor attribution, and uses
+  `DEVOTIONAL_APPROVAL_API_KEYS`. Status and Range playback use the separate
+  read-only `DEVOTIONAL_PLAYBACK_API_KEYS`; both lanes are disjoint from the
+  shared service pool. Playback-authorized status reads are side-effect free;
+  reservation renewal is limited to service polling and the approval mutation
+  path.
+- Shorts Worker owns source downloads, ffmpeg, Chromium, Remotion, video bytes,
+  cancellation, and private durable object storage; every Mastra-to-Worker job
+  and artifact route uses the worker-specific bearer, redirects are rejected,
+  and Mastra exchanges opaque refs only.
+- Shorts Worker's render deadline remains strictly below Mastra's polling
+  ceiling through boot-time schema bounds, and real-binary dual-aspect smoke
+  validation remains required.
+
+Loss of any listed invariant voids the exception. Immediately set
+`DEVOTIONAL_NEW_RUNS_ENABLED=false`, stop the external scheduler, keep status,
+playback, approval, and cancel available to drain or explicitly cancel suspended
+runs, and restore the invariant or migrate the control loop to Manager before
+new starts or retries are re-enabled.
+
+Studio-friendly input (runs with no hand-written JSON):
+
+```json
+{ "date": "2026-07-21", "chapterIndex": 19 }
+```
+
+`date` is optional (defaults to today, `YYYY-MM-DD`) and is the per-day
+idempotency key. The pipeline under `src/services/devotional/` picks an unused
+Jesus Film passage first, derives scripture and the devotional from it, produces
+narration plus a reusable library music track, and submits an opaque render spec
+to Shorts Worker.
+
+**The safety gate is load-bearing and fails closed.** It blocks on a judge
+`block`, any dimension below the confidence threshold, or any judge
+error/timeout. Publishing runs only on `pass`; a blocked devotional is a
+successful, unpublished result with a persisted report.
+
+Publishing is opt-in and approval-gated: with no
+`DEVOTIONAL_SITE_INGEST_URL` and `DEVOTIONAL_SITE_INGEST_API_KEY` it ends as
+`publish_skipped`; an accepted publish ends `published` and only then records
+the clip. Runs are idempotent per date, published runs are not retryable, and
+scheduling remains external.
+
+Lifecycle routes return `400` for invalid bodies, `401` for the wrong bearer,
+`404` for unknown runs/assets, and `409` for illegal state transitions. Workflow
+results distinguish `blocked`, `rejected`, `published`, `publish_skipped`, and
+`publish_failed`; provider/render failures remain explicit failed run states.
+
 ## YouTube and Pinterest AI/Christian discovery
 
 `POST /forge-youtube-discovery` searches configured YouTube channels,
@@ -968,6 +1050,12 @@ data uses Mastra's supported DuckDB store under `MASTRA_STORAGE_DIR`, backed by
 the Railway volume mounted at `/data`.
 If `MASTRA_STORAGE_DIR` is not set, the app derives `/data/mastra` from
 Railway's built-in `RAILWAY_VOLUME_MOUNT_PATH=/data`.
+
+The video-first devotional architecture exception additionally requires the
+Mastra Railway service dashboard to keep `numReplicas = 1`. Its lifecycle lock
+and used-clips ledger serialization are process-local; a second replica can
+launch duplicate same-date work even though workflow state itself is durable.
+Record the replica setting in each devotional release attestation.
 
 Keep `PinoLogger` configured as the app logger so runtime logs continue to flow
 to stdout/stderr for Railway's platform logs.

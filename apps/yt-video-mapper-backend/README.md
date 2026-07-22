@@ -40,7 +40,9 @@ projection for matching and indexing.
 projection rows where Admin marked the variant indexable. It records an
 `IndexRun`, writes versioned `MediaSignature` rows, skips variants already
 indexed for the same algorithm version, and captures per-variant failures
-without stopping the whole run.
+without stopping the whole run. Progress is checkpointed after each bounded
+processing batch; a retry can safely replay an uncheckpointed batch because
+same-version signature writes are idempotent.
 
 The default `official-media-signature-v1` algorithm writes structural
 byte-sample hints. It is useful as a safe deterministic baseline and can run
@@ -61,6 +63,8 @@ Optional runtime settings:
 - `MEDIA_SIGNATURE_ALGORITHM_VERSION` defaults to
   `official-media-signature-v1`
 - `MEDIA_INDEX_PAGE_SIZE` defaults to `100`
+- `MEDIA_INDEX_CONCURRENCY` controls page-local media processing, defaults to
+  `4`, and accepts values from `1` through `4`
 - `MEDIA_INDEX_MAX_FETCH_BYTES` defaults to `262144`
 - `MEDIA_INDEX_FETCH_TIMEOUT_MS` defaults to `15000`
 - `MEDIA_INDEX_ALLOWED_HOSTS` restricts official media fetches to

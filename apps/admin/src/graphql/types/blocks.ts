@@ -49,8 +49,9 @@ import type {
   WatchHomeHeroBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
-import { builder } from "@/graphql/builder"
+import { builder, type ContextShape } from "@/graphql/builder"
 import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
+import { getOrScheduleVideoImageBlurDataUrl } from "@/services/video-image-blur-data-url.service"
 
 // Typed value helpers — each block POJO mirrors its Zod schema output.
 
@@ -193,6 +194,7 @@ function isPrivateMediaAssetUrl(value: unknown) {
 }
 
 type VideoImageMetadataSource = {
+  id: string
   mobileCinematicHigh: string | null
   mobileCinematicLow: string | null
   videoStill: string | null
@@ -216,6 +218,24 @@ function selectRenderableVideoImage(
   images: readonly VideoImageMetadataSource[],
 ) {
   return images.find((image) => videoImageUrl(image)) ?? null
+}
+
+async function resolveMediaCollectionVideoImageMetadata(
+  videoId: string,
+  ctx: Pick<ContextShape, "loaders" | "prisma">,
+) {
+  const images = await ctx.loaders.videoImagesByVideoId.load(videoId)
+  const image = selectRenderableVideoImage(images)
+  const imageUrl = image ? videoImageUrl(image) : null
+  if (image && imageUrl && (!image.blurDataUrl || !image.dominantColor)) {
+    await getOrScheduleVideoImageBlurDataUrl({
+      imageId: image.id,
+      imageUrl,
+      prisma: ctx.prisma,
+    })
+  }
+
+  return image
 }
 
 /** Surfaces unknown stored `t` discriminators as GraphQL errors instead of silently dropping. */
@@ -392,6 +412,19 @@ MediaCollectionItemRef.implement({
     }),
     videoId: t.exposeString("videoId", { nullable: true }),
     languageId: t.exposeString("languageId", { nullable: true }),
+    languageSlug: t.string({
+      nullable: true,
+      description:
+        "Public Watch language slug resolved from the authored languageId. Lets consumers build valid collection routes even when the item references a parent collection with no direct VideoDub.",
+      resolve: async (row, _args, ctx) => {
+        const languageId = optionalString(row.languageId)
+        if (!languageId) return null
+
+        const language = await ctx.loaders.languageById.load(languageId)
+        if (language?.deletedAt) return null
+        return language?.slug ?? null
+      },
+    }),
     videoDub: t.prismaField({
       type: "VideoDub",
       nullable: true,
@@ -439,8 +472,11 @@ MediaCollectionItemRef.implement({
         const videoId = optionalString(row.videoId)
         if (!videoId) return null
 
-        const images = await ctx.loaders.videoImagesByVideoId.load(videoId)
-        return selectRenderableVideoImage(images)?.blurDataUrl ?? null
+        const image = await resolveMediaCollectionVideoImageMetadata(
+          videoId,
+          ctx,
+        )
+        return image?.blurDataUrl ?? null
       },
     }),
     videoImageDominantColor: t.string({
@@ -451,8 +487,11 @@ MediaCollectionItemRef.implement({
         const videoId = optionalString(row.videoId)
         if (!videoId) return null
 
-        const images = await ctx.loaders.videoImagesByVideoId.load(videoId)
-        return selectRenderableVideoImage(images)?.dominantColor ?? null
+        const image = await resolveMediaCollectionVideoImageMetadata(
+          videoId,
+          ctx,
+        )
+        return image?.dominantColor ?? null
       },
     }),
     imageOverrideUrl: t.string({

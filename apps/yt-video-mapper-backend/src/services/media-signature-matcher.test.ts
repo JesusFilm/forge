@@ -8,6 +8,7 @@ import {
 import type { UploadSignals } from "./upload-signal-extraction.js"
 import {
   OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
   VISUAL_FRAME_FINGERPRINT_KIND,
 } from "./visual-fingerprint.js"
 
@@ -268,6 +269,46 @@ describe("MediaSignatureMatcher", () => {
     expect(repository.listVisualCandidateSignaturesCalls).toEqual([
       {
         algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+        uploadVisualHashes: ["ffffffff00000000"],
+        limit: 150,
+      },
+    ])
+  })
+
+  it("uses configured v3 visual matching when upload signals omit their version", async () => {
+    const repository = new TrackingMediaSignatureMatchRepository([
+      visualSignature({
+        coreId: "core-v3",
+        videoVariantId: "variant-v3",
+        phash: "ffffffff00000000",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+      }),
+    ])
+    const matcher = new MediaSignatureMatcher(repository, {
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+    })
+
+    await expect(
+      matcher.match(
+        uploadSignals({
+          algorithmVersion: undefined,
+          sampledByteHashes: [matchingSampleHash],
+          visualHashes: ["ffffffff00000000"],
+        }),
+        { limit: 3 },
+      ),
+    ).resolves.toEqual([
+      {
+        coreId: "core-v3",
+        videoVariantId: "variant-v3",
+        confidence: 0.84,
+        matchStrength: "medium",
+      },
+    ])
+    expect(repository.listSignaturesCalls).toBe(0)
+    expect(repository.listVisualCandidateSignaturesCalls).toEqual([
+      {
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
         uploadVisualHashes: ["ffffffff00000000"],
         limit: 150,
       },
