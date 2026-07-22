@@ -62,7 +62,7 @@ Optional runtime settings:
   `official-media-signature-v1`
 - `MEDIA_INDEX_PAGE_SIZE` defaults to `100`
 - `MEDIA_INDEX_CONCURRENCY` controls page-local media processing, defaults to
-  `2`, and accepts values from `1` through `4`
+  `4`, and accepts values from `1` through `4`
 - `MEDIA_INDEX_MAX_FETCH_BYTES` defaults to `262144`
 - `MEDIA_INDEX_FETCH_TIMEOUT_MS` defaults to `15000`
 - `MEDIA_INDEX_ALLOWED_HOSTS` restricts official media fetches to
