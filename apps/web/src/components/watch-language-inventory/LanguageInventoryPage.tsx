@@ -15,11 +15,11 @@ import {
   Trophy,
 } from "lucide-react"
 
+import { CarouselItem } from "@/components/ui/carousel"
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel"
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
 import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
@@ -27,6 +27,7 @@ import {
 import { WatchHomeSection } from "@/components/home/WatchHomeSection"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
 import { cn } from "@/lib/utils"
+import { CONTENT_WIDTH_ALIGN_CLASSES } from "@/lib/content-width"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   type WatchLanguageInventoryCard,
@@ -813,15 +814,21 @@ export function LanguageInventoryPage({
         className="border-b border-white/10 bg-stone-950/92 py-7 backdrop-blur"
         data-testid="language-inventory-section-carousel"
       >
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <Carousel
+        <div className={CONTENT_WIDTH_ALIGN_CLASSES}>
+          <WatchCarousel
+            layout="inventory"
             opts={{
               align: "start",
               containScroll: "trimSnaps",
               dragFree: true,
             }}
           >
-            <CarouselContent className="-ml-5">
+            <WatchCarouselContent
+              layout="inventory"
+              className="-ml-5"
+              data-testid="language-inventory-navigation-track"
+              endSpacerTestId="language-inventory-navigation-end-spacer"
+            >
               <CarouselItem className="basis-auto pl-5">
                 <SectionMetricAnchor
                   href="#new"
@@ -876,8 +883,8 @@ export function LanguageInventoryPage({
                   value={inventory.counts.subtitleOnlyVideos}
                 />
               </CarouselItem>
-            </CarouselContent>
-          </Carousel>
+            </WatchCarouselContent>
+          </WatchCarousel>
         </div>
       </nav>
 

@@ -13,19 +13,20 @@ import { useTranslations } from "next-intl"
 import { LoaderCircle, Play } from "lucide-react"
 
 import {
-  Carousel,
-  CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel"
 import {
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
+import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
-import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 import {
@@ -249,10 +250,10 @@ export function SiblingCarousel({
     <section
       data-block-type="SiblingCarousel"
       data-mode={isParentMode ? "parent" : "chapter"}
-      className="relative -mx-5 w-[calc(100%+2.5rem)] pt-2 pb-2 md:mx-0 md:w-full"
+      className="relative w-full pt-2 pb-2"
       aria-label={ariaLabel}
     >
-      <header className="mb-4 px-5 md:px-0">
+      <header className="mb-4">
         <p className="text-sm font-normal text-stone-300">
           {parentHref != null ? (
             <Link href={parentHref} className="text-stone-100 hover:underline">
@@ -282,16 +283,16 @@ export function SiblingCarousel({
         </p>
       </header>
 
-      <Carousel
+      <WatchCarousel
         opts={{
           align: "start",
           containScroll: "trimSnaps",
           startIndex: initialCarouselState.index,
         }}
         setApi={setApi}
-        className="w-full pl-5 md:pl-0"
+        className="w-full"
       >
-        <CarouselContent>
+        <WatchCarouselContent endSpacerTestId="sibling-carousel-end-spacer">
           {children.map((child, index) => {
             const isActive = index === visualActiveIndex
             // Prefer a Mux frame from the current watch language when admin
@@ -533,15 +534,7 @@ export function SiblingCarousel({
               </CarouselItem>
             )
           })}
-          <CarouselItem
-            aria-hidden="true"
-            data-testid="sibling-carousel-end-spacer"
-            tabIndex={-1}
-            className="basis-auto pl-0"
-          >
-            <div className={CAROUSEL_END_SPACER} />
-          </CarouselItem>
-        </CarouselContent>
+        </WatchCarouselContent>
 
         {/* The shared `outline` Button variant only sets text color on
             hover (via `hover:text-foreground`); against this dark-themed
@@ -556,7 +549,7 @@ export function SiblingCarousel({
           className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
           label={t("nextChapter")}
         />
-      </Carousel>
+      </WatchCarousel>
     </section>
   )
 }

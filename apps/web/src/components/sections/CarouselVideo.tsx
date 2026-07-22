@@ -12,21 +12,18 @@ import type {
 import { formatDuration } from "@/lib/format-duration"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import {
-  Carousel,
-  CarouselContent,
   CarouselItem,
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel"
 import {
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
+import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
-import {
-  CAROUSEL_BLEED_CLASSES,
-  CAROUSEL_CONTENT_PADDING,
-  CAROUSEL_END_SPACER,
-} from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 
 export { videoCarouselFragment }
@@ -483,45 +480,37 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         />
       )}
 
-      <div className={CAROUSEL_BLEED_CLASSES}>
-        <Carousel
-          opts={{
-            align: "start",
-            loop: false,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validItems.map((item: LegacyFragmentValue, index: number) => (
-              <CarouselItem
-                key={item.id ?? index}
-                className="max-w-[200px] pl-5"
-              >
-                <ThumbnailCard
-                  item={item}
-                  isSelected={index === clampedIndex}
-                  onClick={() => setSelectedIndex(index)}
-                />
-              </CarouselItem>
-            ))}
-            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
-              <div className={CAROUSEL_END_SPACER} />
+      <WatchCarousel
+        opts={{
+          align: "start",
+          loop: false,
+        }}
+        className="w-full"
+      >
+        <WatchCarouselContent className="-ml-5">
+          {validItems.map((item: LegacyFragmentValue, index: number) => (
+            <CarouselItem key={item.id ?? index} className="max-w-[200px] pl-5">
+              <ThumbnailCard
+                item={item}
+                isSelected={index === clampedIndex}
+                onClick={() => setSelectedIndex(index)}
+              />
             </CarouselItem>
-          </CarouselContent>
-          {validItems.length > 3 && (
-            <>
-              <CarouselPrevious
-                className="hidden md:flex"
-                label={t("previousVideoPreview")}
-              />
-              <CarouselNext
-                className="hidden md:flex"
-                label={t("nextVideoPreview")}
-              />
-            </>
-          )}
-        </Carousel>
-      </div>
+          ))}
+        </WatchCarouselContent>
+        {validItems.length > 3 && (
+          <>
+            <CarouselPrevious
+              className="hidden md:flex"
+              label={t("previousVideoPreview")}
+            />
+            <CarouselNext
+              className="hidden md:flex"
+              label={t("nextVideoPreview")}
+            />
+          </>
+        )}
+      </WatchCarousel>
     </div>
   )
 }

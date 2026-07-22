@@ -7,17 +7,12 @@ import type {
   LegacyFragmentValue,
 } from "@/lib/legacy-fragment-types"
 import { navigationCarouselFragment } from "@/lib/fragments/navigation-carousel"
+import { CarouselItem } from "@/components/ui/carousel"
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel"
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
 import { Card } from "@/components/ui/card"
-import {
-  CAROUSEL_BLEED_CLASSES,
-  CAROUSEL_CONTENT_PADDING,
-  CAROUSEL_END_SPACER,
-} from "@/lib/content-width"
 
 export { navigationCarouselFragment }
 
@@ -101,11 +96,8 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
   if (!items?.length) return null
 
   return (
-    <div
-      className={`${CAROUSEL_BLEED_CLASSES}`}
-      data-testid="NavigationCarousel"
-    >
-      <Carousel
+    <div className="w-full" data-testid="NavigationCarousel">
+      <WatchCarousel
         opts={{
           dragFree: true,
           containScroll: "trimSnaps",
@@ -113,7 +105,7 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
         }}
         data-testid="NavigationCarouselSwiper"
       >
-        <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
+        <WatchCarouselContent className="-ml-5">
           {items.map((item: LegacyFragmentValue, index: number) => (
             <CarouselItem
               key={item.contentId}
@@ -123,11 +115,8 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
               <NavCard item={item} index={index} />
             </CarouselItem>
           ))}
-          <CarouselItem className="basis-auto pl-0" aria-hidden="true">
-            <div className={CAROUSEL_END_SPACER} />
-          </CarouselItem>
-        </CarouselContent>
-      </Carousel>
+        </WatchCarouselContent>
+      </WatchCarousel>
     </div>
   )
 }

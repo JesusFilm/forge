@@ -25,13 +25,15 @@ import {
   VolumeX,
 } from "lucide-react"
 import {
-  Carousel,
   type CarouselApi,
-  CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
+import {
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
 import { Button } from "@/components/ui/button"
 import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
@@ -866,7 +868,7 @@ function WatchHomeTvRail({
       data-testid="watch-home-tv-rail"
     >
       <div className={cn("relative w-full", WATCH_PAGE_CONTENT_CLASSES)}>
-        <Carousel
+        <WatchCarousel
           opts={{
             align: "start",
             containScroll: "trimSnaps",
@@ -874,12 +876,9 @@ function WatchHomeTvRail({
             loop: true,
           }}
           setApi={setApi}
-          className="-mx-5 w-[calc(100%+2.5rem)] pl-5 md:mx-0 md:w-full md:pl-0"
+          className="w-full"
         >
-          <CarouselContent
-            className="-ml-4"
-            viewportClassName="overflow-x-visible md:overflow-x-clip"
-          >
+          <WatchCarouselContent className="-ml-4" endSpacer={false}>
             {slides.map((slide) => (
               <CarouselItem
                 key={slide.id}
@@ -893,7 +892,7 @@ function WatchHomeTvRail({
                 />
               </CarouselItem>
             ))}
-          </CarouselContent>
+          </WatchCarouselContent>
           {slides.length > 2 ? (
             <>
               <CarouselPrevious
@@ -906,7 +905,7 @@ function WatchHomeTvRail({
               />
             </>
           ) : null}
-        </Carousel>
+        </WatchCarousel>
       </div>
     </div>
   )

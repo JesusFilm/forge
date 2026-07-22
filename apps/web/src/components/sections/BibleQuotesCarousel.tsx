@@ -10,16 +10,11 @@ import { BookOpen, ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { Button } from "@/components/ui/button"
+import { CarouselItem } from "@/components/ui/carousel"
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel"
-import {
-  CAROUSEL_BLEED_CLASSES,
-  CAROUSEL_CONTENT_PADDING,
-  CAROUSEL_END_SPACER,
-} from "@/lib/content-width"
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
 
 export { bibleQuotesCarouselFragment }
 
@@ -43,39 +38,30 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
   return (
     <div data-testid="bible-quotes-carousel" className="pt-14 pb-6">
       <BibleQuotesHeader heading={heading} />
-      <div className={CAROUSEL_BLEED_CLASSES}>
-        <Carousel
-          opts={{
-            align: "start",
-            dragFree: true,
-            containScroll: "trimSnaps",
-            watchDrag: (api) => api.scrollSnapList().length > 1,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validQuotes.map((quote: QuoteItem) => (
-              <CarouselItem
-                key={quote.id}
-                className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
-              >
-                {quote.ctaLabel ? (
-                  <FreeResourceCard quote={quote} />
-                ) : (
-                  <QuoteCard quote={quote} />
-                )}
-              </CarouselItem>
-            ))}
+      <WatchCarousel
+        opts={{
+          align: "start",
+          dragFree: true,
+          containScroll: "trimSnaps",
+          watchDrag: (api) => api.scrollSnapList().length > 1,
+        }}
+        className="w-full"
+      >
+        <WatchCarouselContent className="-ml-4">
+          {validQuotes.map((quote: QuoteItem) => (
             <CarouselItem
-              className="basis-auto pl-0"
-              aria-hidden="true"
-              tabIndex={-1}
+              key={quote.id}
+              className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
             >
-              <div className={CAROUSEL_END_SPACER} />
+              {quote.ctaLabel ? (
+                <FreeResourceCard quote={quote} />
+              ) : (
+                <QuoteCard quote={quote} />
+              )}
             </CarouselItem>
-          </CarouselContent>
-        </Carousel>
-      </div>
+          ))}
+        </WatchCarouselContent>
+      </WatchCarousel>
     </div>
   )
 }

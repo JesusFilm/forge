@@ -234,6 +234,32 @@ type SlotGroup = {
   items: unknown[]
 }
 
+const FULL_WIDTH_SLOT_STYLE: SlotSpanStyles = {
+  "--slot-xs": 12,
+  "--slot-sm": 12,
+  "--slot-md": 12,
+  "--slot-lg": 12,
+  "--slot-xl": 12,
+}
+
+function containsFullBleedWatchCarousel(items: unknown[]) {
+  return items.some((item) => {
+    if (!item || typeof item !== "object") return false
+    const block = item as Record<string, unknown>
+    const typename = block.__typename
+
+    if (typename === "BibleQuotesCarouselBlock") return true
+    if (
+      typename === "MediaCollectionBlock" ||
+      typename === "ComponentSectionsMediaCollection"
+    ) {
+      return (block.mediaCollectionVariant ?? block.variant) === "carousel"
+    }
+
+    return false
+  })
+}
+
 export function Container({ data, routeVideo, languageSlug }: ContainerProps) {
   const id = (data as { id?: string | null }).id
   const legacySlots = (data as { slots?: readonly unknown[] | null }).slots
@@ -282,10 +308,14 @@ export function Container({ data, routeVideo, languageSlug }: ContainerProps) {
         <div
           key={`slot-${idx}`}
           className="min-w-0 space-y-10 [grid-column:span_var(--slot-xs)_/_span_var(--slot-xs)] sm:[grid-column:span_var(--slot-sm)_/_span_var(--slot-sm)] md:space-y-6 md:[grid-column:span_var(--slot-md)_/_span_var(--slot-md)] lg:[grid-column:span_var(--slot-lg)_/_span_var(--slot-lg)] xl:[grid-column:span_var(--slot-xl)_/_span_var(--slot-xl)]"
-          style={slotSpanStyle({
-            gridSpan: group.gridSpan,
-            spans: group.spans,
-          } as unknown as Slot)}
+          style={
+            containsFullBleedWatchCarousel(group.items)
+              ? FULL_WIDTH_SLOT_STYLE
+              : slotSpanStyle({
+                  gridSpan: group.gridSpan,
+                  spans: group.spans,
+                } as unknown as Slot)
+          }
         >
           {group.items.map((item, index) => {
             if (

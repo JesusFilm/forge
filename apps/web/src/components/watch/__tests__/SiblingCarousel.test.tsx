@@ -252,14 +252,11 @@ describe("SiblingCarousel — happy path", () => {
     expect(firstItemSlot?.className).toContain("md:basis-1/3")
 
     const rail = container.querySelector("[data-block-type='SiblingCarousel']")
-    expect(rail?.className).toContain("-mx-5")
-    expect(rail?.className).toContain("w-[calc(100%+2.5rem)]")
-    expect(rail?.className).toContain("md:mx-0")
-    expect(rail?.className).toContain("md:w-full")
+    expect(rail?.className).toContain("w-full")
+    expect(rail?.className).not.toContain("-mx-5")
 
     const header = rail?.querySelector("header")
-    expect(header?.className).toContain("px-5")
-    expect(header?.className).toContain("md:px-0")
+    expect(header?.className).not.toContain("px-5")
     const headerLine = header?.querySelector("p")
     expect(headerLine?.className).toContain("font-normal")
     expect(headerLine?.className).not.toContain("font-medium")
@@ -267,8 +264,8 @@ describe("SiblingCarousel — happy path", () => {
       "font-medium",
     )
     const carousel = container.querySelector("[data-slot='carousel']")
-    expect(carousel?.className).toContain("pl-5")
-    expect(carousel?.className).toContain("md:pl-0")
+    expect(carousel?.className).toContain("w-full")
+    expect(carousel?.className).not.toContain("pl-5")
     expect(carousel?.className).not.toContain("translate-x-10")
     expect(carousel?.className).not.toContain("md:translate-x-0")
     const content = container.querySelector(
@@ -277,9 +274,13 @@ describe("SiblingCarousel — happy path", () => {
     const viewport = container.querySelector("[data-slot='carousel-content']")
     expect(viewport?.className).toContain("overflow-x-clip")
     expect(viewport?.className).toContain("overflow-y-visible")
+    expect(viewport?.className).toContain("-mx-5")
+    expect(viewport?.className).toContain("md:-mx-16")
+    expect(viewport?.className).toContain("xl:-mx-24")
     expect(viewport?.className).not.toContain("overflow-x-visible")
-    expect(content?.className).not.toContain("pl-10")
-    expect(content?.className).not.toContain("md:pl-0")
+    expect(content?.className).toContain("pl-5")
+    expect(content?.className).toContain("md:pl-16")
+    expect(content?.className).toContain("xl:pl-24")
     expect(content?.className).not.toContain("translate-x-14")
     expect(content?.className).not.toContain("md:translate-x-0")
     const endSpacer = container.querySelector(
@@ -293,9 +294,9 @@ describe("SiblingCarousel — happy path", () => {
     expect(endSpacer?.className).toContain("pl-0")
     expect(endSpacer?.className).not.toContain("basis-[52%]")
     expect(endSpacer?.className).not.toContain("md:basis-[66.666%]")
-    const endGutter = endSpacer?.querySelector("div")
-    expect(endGutter?.className).toContain("w-4")
-    expect(endGutter?.className).toContain("sm:w-6")
+    expect(endSpacer?.className).toContain("w-5")
+    expect(endSpacer?.className).toContain("md:w-16")
+    expect(endSpacer?.className).toContain("xl:w-24")
 
     // Active item carries data-active="true" and renders the "Playing now" pill.
     const active = container.querySelector(

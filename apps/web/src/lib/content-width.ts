@@ -57,6 +57,32 @@ export const FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS =
 export const WATCH_PAGE_CONTENT_CLASSES = `${CONTENT_WIDTH_ALIGN_CLASSES} ${WATCH_PAGE_RAIL_PADDING_CLASSES}`
 
 /**
+ * Watch carousel layout contract. The viewport cancels the padded Watch rail
+ * out to the centered 1920px frame, then the track restores the same leading
+ * space so an unscrolled first card stays aligned with surrounding content.
+ */
+export const WATCH_CAROUSEL_RAIL_VIEWPORT_CLASSES =
+  "-mx-5 w-[calc(100%+2.5rem)] md:-mx-16 md:w-[calc(100%+8rem)] xl:-mx-24 xl:w-[calc(100%+12rem)]"
+export const WATCH_CAROUSEL_RAIL_CONTENT_PADDING = "pl-5 md:pl-16 xl:pl-24"
+export const WATCH_CAROUSEL_RAIL_END_SPACER = "w-5 md:w-16 xl:w-24"
+export const WATCH_CAROUSEL_RAIL_ALIGN = (viewSize: number) => {
+  if (viewSize >= 1280) return 96
+  if (viewSize >= 768) return 64
+  return 20
+}
+
+/**
+ * Language inventory carousels browse across the Watch frame while card zero
+ * remains aligned with their centered max-w-7xl / px-5 sm:px-8 content.
+ */
+export const WATCH_CAROUSEL_INVENTORY_CONTENT_PADDING =
+  "pl-5 sm:pl-[max(2rem,calc(50%_-_38rem))]"
+export const WATCH_CAROUSEL_INVENTORY_END_SPACER =
+  "w-5 sm:w-[max(2rem,calc(50%_-_38rem))]"
+export const WATCH_CAROUSEL_INVENTORY_ALIGN = (viewSize: number) =>
+  viewSize >= 640 ? Math.max(32, viewSize / 2 - 608) : 20
+
+/**
  * Carousel bleed: lets a carousel inside a Section break out of the content
  * padding so cards can scroll edge-to-edge, while the first card still starts
  * aligned with the padded content area.

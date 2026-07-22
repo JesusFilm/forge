@@ -326,14 +326,18 @@ describe("BibleQuotesSection — citations + promo", () => {
     const bleed = container.querySelector(
       '[data-testid="watch-bible-quotes-carousel-bleed"]',
     )
-    expect(bleed?.className).toContain("-mx-5")
-    expect(bleed?.className).toContain("w-[calc(100%+2.5rem)]")
-    expect(bleed?.className).toContain("md:mx-0")
+    expect(bleed?.className).toContain("w-full")
+    const viewport = container.querySelector('[data-slot="carousel-content"]')
+    expect(viewport?.className).toContain("-mx-5")
+    expect(viewport?.className).toContain("md:-mx-16")
+    expect(viewport?.className).toContain("xl:-mx-24")
+    expect(viewport?.className).not.toContain("overflow-x-visible")
     const content = container.querySelector(
       '[data-testid="watch-bible-quotes-list"]',
     )
     expect(content?.className).toContain("pl-5")
-    expect(content?.className).toContain("md:pl-0")
+    expect(content?.className).toContain("md:pl-16")
+    expect(content?.className).toContain("xl:pl-24")
 
     // The two citation items render the formatted reference labels.
     const refs = container.querySelectorAll(
@@ -366,6 +370,7 @@ describe("BibleQuotesSection — citations + promo", () => {
     expect(spacer).not.toBeNull()
     expect(spacer!.getAttribute("aria-hidden")).toBe("true")
     expect(spacer!.getAttribute("tabindex")).toBe("-1")
+    expect(spacer!.className).toContain("xl:w-24")
   })
 
   it("renders visible chapter-style carousel arrow controls", () => {

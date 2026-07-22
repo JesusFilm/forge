@@ -140,9 +140,7 @@ describe("MediaCollection VideoCard href", () => {
     expect(items).toHaveLength(1)
     expect(items[0]?.getAttribute("class")).toContain("max-w-[200px]")
     expect(endSpacer?.getAttribute("class")).toContain("basis-auto")
-    expect(endSpacer?.firstElementChild?.getAttribute("class")).toContain(
-      "xl:w-24",
-    )
+    expect(endSpacer?.getAttribute("class")).toContain("xl:w-24")
   })
 
   it("keeps non-carousel variants on the grid renderer", () => {

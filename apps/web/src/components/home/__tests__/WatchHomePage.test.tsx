@@ -1118,7 +1118,7 @@ describe("WatchHomePage", () => {
     ).toBe(false)
     expect(
       container.querySelector('[data-slot="carousel"]')?.getAttribute("class"),
-    ).toContain("-mx-5")
+    ).toContain("w-full")
     expect(
       container
         .querySelector('[data-slot="carousel"]')
@@ -1128,7 +1128,17 @@ describe("WatchHomePage", () => {
       container
         .querySelector('[data-slot="carousel-content"]')
         ?.getAttribute("class"),
-    ).toContain("overflow-x-visible md:overflow-x-clip")
+    ).toContain("-mx-5")
+    expect(
+      container
+        .querySelector('[data-slot="carousel-content"]')
+        ?.getAttribute("class"),
+    ).toContain("md:-mx-16")
+    expect(
+      container
+        .querySelector('[data-slot="carousel-content"]')
+        ?.getAttribute("class"),
+    ).not.toContain("overflow-x-visible")
     expect(
       container.querySelector('button[aria-label="Previous video preview"]'),
     ).not.toBeNull()

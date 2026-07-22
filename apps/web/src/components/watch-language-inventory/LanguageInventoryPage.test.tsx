@@ -7,13 +7,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/image", () => ({ default: () => null }))
 vi.mock("@/components/ui/carousel", () => {
-  const Pass = ({ children }: { children?: React.ReactNode }) => (
-    <div>{children}</div>
-  )
   return {
-    Carousel: Pass,
-    CarouselContent: Pass,
-    CarouselItem: Pass,
+    Carousel: ({ children }: { children?: React.ReactNode }) => (
+      <div data-slot="carousel">{children}</div>
+    ),
+    CarouselContent: ({
+      children,
+      className,
+      viewportClassName,
+      ...props
+    }: React.ComponentProps<"div"> & { viewportClassName?: string }) => (
+      <div data-slot="carousel-content" className={viewportClassName}>
+        <div className={className} {...props}>
+          {children}
+        </div>
+      </div>
+    ),
+    CarouselItem: ({ children, ...props }: React.ComponentProps<"div">) => (
+      <div data-slot="carousel-item" {...props}>
+        {children}
+      </div>
+    ),
   }
 })
 vi.mock("./LanguageCollectionSwitcher", () => ({
@@ -138,5 +152,26 @@ describe("LanguageInventoryPage video thumbnails", () => {
     expect(staticCompact?.tagName).toBe("DIV")
     expect(staticCompact?.className).not.toContain("group")
     expect(staticCompact?.querySelector("svg")).toBeNull()
+
+    const navigationTrack = container.querySelector(
+      '[data-testid="language-inventory-navigation-track"]',
+    )
+    expect(navigationTrack?.className).toContain("pl-5")
+    expect(navigationTrack?.className).toContain(
+      "sm:pl-[max(2rem,calc(50%_-_38rem))]",
+    )
+    const navigationFrame = navigationTrack?.closest(
+      '[data-slot="carousel"]',
+    )?.parentElement
+    expect(navigationFrame?.className).toContain("max-w-[1920px]")
+    expect(navigationFrame?.className).not.toContain("max-w-7xl")
+
+    const navigationSpacer = container.querySelector(
+      '[data-testid="language-inventory-navigation-end-spacer"]',
+    )
+    expect(navigationSpacer?.getAttribute("aria-hidden")).toBe("true")
+    expect(navigationSpacer?.className).toContain(
+      "sm:w-[max(2rem,calc(50%_-_38rem))]",
+    )
   })
 })

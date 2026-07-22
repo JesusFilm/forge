@@ -13,13 +13,14 @@ import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { formatCitation } from "@/lib/citation-format"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
-  Carousel,
-  CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
-import { CAROUSEL_END_SPACER } from "@/lib/content-width"
+import {
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
 import {
   WATCH_PILL_BUTTON_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
@@ -133,18 +134,16 @@ export function BibleQuotesSection({
         )}
       </div>
 
-      <div
-        data-testid="watch-bible-quotes-carousel-bleed"
-        className="-mx-5 w-[calc(100%+2.5rem)] md:mx-0 md:w-full"
-      >
-        <Carousel
+      <div data-testid="watch-bible-quotes-carousel-bleed" className="w-full">
+        <WatchCarousel
           aria-label={t("title")}
           opts={CAROUSEL_OPTS}
           className="w-full"
         >
-          <CarouselContent
+          <WatchCarouselContent
             data-testid="watch-bible-quotes-list"
-            className="-ml-4 pl-5 md:pl-0"
+            className="-ml-4"
+            endSpacerTestId="watch-bible-quotes-end-spacer"
           >
             {bibleCitations.map((citation) => (
               <CarouselItem
@@ -224,15 +223,7 @@ export function BibleQuotesSection({
                 </div>
               </div>
             </CarouselItem>
-            <CarouselItem
-              className="basis-auto pl-0"
-              aria-hidden="true"
-              tabIndex={-1}
-              data-testid="watch-bible-quotes-end-spacer"
-            >
-              <div className={CAROUSEL_END_SPACER} />
-            </CarouselItem>
-          </CarouselContent>
+          </WatchCarouselContent>
           {/* Match the watch chapter carousel's visible circular step
               controls so large quote cards are browsable without dragging. */}
           <CarouselPrevious
@@ -245,7 +236,7 @@ export function BibleQuotesSection({
             label={t("nextQuote")}
             data-testid="watch-bible-quotes-next"
           />
-        </Carousel>
+        </WatchCarousel>
       </div>
     </section>
   )

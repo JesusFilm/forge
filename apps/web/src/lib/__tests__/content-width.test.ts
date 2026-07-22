@@ -14,6 +14,13 @@ import {
   FLOATING_HEADER_TOP_CLASS,
   FLOATING_HEADER_TRAILING_GROUP_CLASS,
   FLOATING_HEADER_TRAILING_SLOT_CLASS,
+  WATCH_CAROUSEL_INVENTORY_CONTENT_PADDING,
+  WATCH_CAROUSEL_INVENTORY_END_SPACER,
+  WATCH_CAROUSEL_INVENTORY_ALIGN,
+  WATCH_CAROUSEL_RAIL_ALIGN,
+  WATCH_CAROUSEL_RAIL_CONTENT_PADDING,
+  WATCH_CAROUSEL_RAIL_END_SPACER,
+  WATCH_CAROUSEL_RAIL_VIEWPORT_CLASSES,
   WATCH_PAGE_CONTENT_CLASSES,
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_LEFT_RAIL_CLASSES,
@@ -104,6 +111,45 @@ describe("content-width.ts — bleed/padding lockstep", () => {
       )
     })
   }
+})
+
+describe("content-width.ts - watch carousel lockstep", () => {
+  const rails = [
+    { bleed: "-mx-5", padding: "pl-5", spacer: "w-5" },
+    { bleed: "md:-mx-16", padding: "md:pl-16", spacer: "md:w-16" },
+    { bleed: "xl:-mx-24", padding: "xl:pl-24", spacer: "xl:w-24" },
+  ]
+
+  for (const rail of rails) {
+    it(`${rail.bleed} preserves ${rail.padding} and ${rail.spacer}`, () => {
+      expect(WATCH_CAROUSEL_RAIL_VIEWPORT_CLASSES).toContain(rail.bleed)
+      expect(WATCH_CAROUSEL_RAIL_CONTENT_PADDING).toContain(rail.padding)
+      expect(WATCH_CAROUSEL_RAIL_END_SPACER).toContain(rail.spacer)
+    })
+  }
+
+  it("aligns inventory rails to the centered max-w-7xl content column", () => {
+    expect(WATCH_CAROUSEL_INVENTORY_CONTENT_PADDING).toContain("pl-5")
+    expect(WATCH_CAROUSEL_INVENTORY_CONTENT_PADDING).toContain(
+      "sm:pl-[max(2rem,calc(50%_-_38rem))]",
+    )
+    expect(WATCH_CAROUSEL_INVENTORY_END_SPACER).toContain("w-5")
+    expect(WATCH_CAROUSEL_INVENTORY_END_SPACER).toContain(
+      "sm:w-[max(2rem,calc(50%_-_38rem))]",
+    )
+  })
+
+  it("keeps every Embla snap on the responsive Watch content rail", () => {
+    expect(WATCH_CAROUSEL_RAIL_ALIGN(390)).toBe(20)
+    expect(WATCH_CAROUSEL_RAIL_ALIGN(768)).toBe(64)
+    expect(WATCH_CAROUSEL_RAIL_ALIGN(1280)).toBe(96)
+    expect(WATCH_CAROUSEL_RAIL_ALIGN(1920)).toBe(96)
+
+    expect(WATCH_CAROUSEL_INVENTORY_ALIGN(390)).toBe(20)
+    expect(WATCH_CAROUSEL_INVENTORY_ALIGN(640)).toBe(32)
+    expect(WATCH_CAROUSEL_INVENTORY_ALIGN(1280)).toBe(32)
+    expect(WATCH_CAROUSEL_INVENTORY_ALIGN(1920)).toBe(352)
+  })
 })
 
 describe("content-width.ts — watch page rail lockstep", () => {

@@ -7,10 +7,7 @@ import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
-import {
-  CONTENT_WIDTH_ALIGN_CLASSES,
-  WATCH_PAGE_CONTENT_CLASSES,
-} from "@/lib/content-width"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { mediaCollectionFragment } from "@/lib/fragments/media-collection"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
@@ -27,11 +24,11 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
+import { CarouselItem } from "@/components/ui/carousel"
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/components/ui/carousel"
+  WatchCarousel,
+  WatchCarouselContent,
+} from "@/components/watch/WatchCarouselContent"
 import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
@@ -498,8 +495,8 @@ function WatchHomeMediaCollection({
       </div>
 
       {isRail ? (
-        <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
-          <Carousel
+        <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
+          <WatchCarousel
             aria-label={title ?? t("mediaCollection")}
             data-testid="media-collection-carousel"
             opts={{
@@ -510,9 +507,10 @@ function WatchHomeMediaCollection({
             }}
             className="w-full"
           >
-            <CarouselContent
+            <WatchCarouselContent
               data-testid="media-collection-carousel-content"
-              className="-ml-5 pl-5 md:pl-16 xl:pl-24"
+              className="-ml-5"
+              endSpacerTestId="media-collection-carousel-end-spacer"
             >
               {items.map((item: EnrichedMediaItem, index: number) => (
                 <CarouselItem
@@ -531,16 +529,8 @@ function WatchHomeMediaCollection({
                   />
                 </CarouselItem>
               ))}
-              <CarouselItem
-                aria-hidden="true"
-                tabIndex={-1}
-                data-testid="media-collection-carousel-end-spacer"
-                className="basis-auto pl-0"
-              >
-                <div className="w-5 md:w-16 xl:w-24" />
-              </CarouselItem>
-            </CarouselContent>
-          </Carousel>
+            </WatchCarouselContent>
+          </WatchCarousel>
         </div>
       ) : (
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
