@@ -536,6 +536,74 @@ describe("MediaIndexingService", () => {
     ])
   })
 
+  it("retains only durable failures and retries failures from an uncheckpointed batch", async () => {
+    const variants = Array.from({ length: 8 }, (_, index) =>
+      variant({
+        id: `variant-${String(index).padStart(2, "0")}`,
+        coreId: `core-${index}`,
+        videoVariantId: `dub-${index}`,
+        mediaSourceUrl: `https://media.example.com/${index}.mp4`,
+      }),
+    )
+    const repository = new FailingCheckpointMediaIndexRepository(variants, 2)
+    const fetcher = new StubOfficialMediaFetcher([
+      mediaSample([1]),
+      new Error("durable extraction failure"),
+      mediaSample([3]),
+      mediaSample([4]),
+      mediaSample([5]),
+      new Error("replayable extraction failure"),
+      mediaSample([7]),
+      mediaSample([8]),
+      mediaSample([6]),
+    ])
+
+    const failed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog()
+
+    expect(failed).toMatchObject({
+      status: "failed",
+      cursorVariantId: "variant-03",
+      variantsAttempted: 4,
+      variantsIndexed: 3,
+      variantsFailed: 1,
+      failureSummary: {
+        code: "media_index_failed",
+        cursorVariantId: "variant-03",
+        failedCount: 1,
+        failures: [
+          {
+            catalogVariantId: "variant-01",
+            message: "durable extraction failure",
+          },
+        ],
+      },
+    })
+    expect(repository.signatures.size).toBe(6)
+
+    const replayed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog({ resumeAfterVariantId: failed.cursorVariantId })
+
+    expect(replayed).toMatchObject({
+      status: "completed",
+      cursorVariantId: "variant-07",
+      variantsAttempted: 4,
+      variantsIndexed: 1,
+      variantsFailed: 0,
+      failureSummary: null,
+    })
+    expect(fetcher.calls).toHaveLength(9)
+    expect(repository.signatures.size).toBe(7)
+  })
+
   it("rejects programmatic concurrency above the safety limit", () => {
     expect(() =>
       createService({

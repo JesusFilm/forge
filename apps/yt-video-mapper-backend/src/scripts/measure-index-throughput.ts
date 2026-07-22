@@ -127,27 +127,39 @@ async function measureThroughput() {
 async function measureResumeSafety(): Promise<boolean> {
   const variants = benchmarkVariants(8)
   const repository = new BenchmarkRepository(variants)
+  const firstExtractor = new DelayedVisualExtractor()
   repository.failCheckpointCall = 2
 
   const first = await new MediaIndexingService({
     repository,
-    extractor: new DelayedVisualExtractor(),
+    extractor: firstExtractor,
     algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
     pageSize: variants.length,
   }).indexCatalog()
 
   repository.failCheckpointCall = null
+  const resumedExtractor = new DelayedVisualExtractor()
   const resumed = await new MediaIndexingService({
     repository,
-    extractor: new DelayedVisualExtractor(),
+    extractor: resumedExtractor,
     algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
     pageSize: variants.length,
   }).indexCatalog({ resumeAfterVariantId: first.cursorVariantId })
 
   return (
     first.status === "failed" &&
+    first.cursorVariantId === variants[3]?.id &&
+    first.variantsAttempted === 4 &&
+    first.variantsIndexed === 4 &&
+    first.variantsFailed === 0 &&
+    firstExtractor.taskDurations.length === variants.length &&
     resumed.status === "completed" &&
     resumed.cursorVariantId === variants.at(-1)?.id &&
+    resumed.variantsAttempted === 4 &&
+    resumed.variantsIndexed === 0 &&
+    resumed.variantsFailed === 0 &&
+    resumedExtractor.taskDurations.length === 0 &&
+    repository.upsertCalls === variants.length &&
     repository.signatures.size === variants.length * 12
   )
 }
