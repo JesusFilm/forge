@@ -10,6 +10,7 @@ depends_on:
   - feat-159
 blocks:
   - feat-235
+  - feat-286
 tags:
   - web
   - watch
