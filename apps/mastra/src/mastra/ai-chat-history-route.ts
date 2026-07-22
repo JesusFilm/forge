@@ -34,7 +34,7 @@ import {
   resolveOwnedExistingThread,
   USER_RESOURCE_PREFIX,
 } from "./ai-chat-thread-ownership"
-import { getAiChatMemory } from "./memory"
+import { getAiChatMemory } from "./ai-chat-memory"
 
 /** Default + ceiling for the listing page size (KTD6; the store has no cap of
  * its own). The chat side deliberately holds no copy of these — it consumes

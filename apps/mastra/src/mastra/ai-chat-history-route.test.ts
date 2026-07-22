@@ -6,7 +6,7 @@ import type { Memory } from "@mastra/memory"
 
 import { assertAiChatServiceKeysDisjoint } from "../config/env"
 
-import { buildAiChatMemory } from "./memory"
+import { buildAiChatMemory } from "./ai-chat-memory"
 import {
   AI_CHAT_HISTORY_DEFAULT_PER_PAGE,
   AI_CHAT_HISTORY_MAX_PER_PAGE,

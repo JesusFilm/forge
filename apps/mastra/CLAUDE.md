@@ -495,18 +495,22 @@ separate flag from the experience agents' `AI_GATEWAY_CHAT_ENABLED`: the two
 surfaces have different risk profiles and roll back independently. OpenRouter
 auto-reads `OPENROUTER_API_KEY`; the other agents stay on `openai/...`, so
 both keys are needed. Memory lives in
-`src/mastra/memory.ts`: the shared **ai-chat lane Memory** (feat-208) —
-Postgres-persisted in the dedicated `ai_chat` schema (backend-aware: the
-`memory` backend keeps an `InMemoryStore` for local dev/tests and as the
-production kill-switch via `AI_CHAT_MEMORY_BACKEND`). The section is mirrored
-— never imported — from admin (see that file's header for the why).
+`src/mastra/ai-chat-memory.ts` (extracted from `memory.ts` in feat-285): the
+shared **ai-chat lane Memory** (feat-208) — Postgres-persisted in the
+dedicated `ai_chat` schema (backend-aware: the `memory` backend keeps an
+`InMemoryStore` for local dev/tests and as the production kill-switch via
+`AI_CHAT_MEMORY_BACKEND`) — plus the per-call memory-keying policy
+(`aiChatMemoryConfigFor`, KTD12 titling scope). The module is mirrored —
+never imported — from admin (see its header for the why); the
+experience-chat half stays in `src/mastra/memory.ts`.
 
 ### ai-chat memory, thread ownership + retention (feat-208)
 
 - **Schema isolation:** all ai-chat conversation data lives in the `ai_chat`
   Postgres schema (same `DATABASE_URL`, separate from the `mastra` schema).
-  Future ai-chat agents share `getAiChatStorage()` so same-key threads are
-  shared by construction; cross-agent routing must be explicit per-call
+  Future ai-chat agents share `getAiChatStorage()`
+  (`src/mastra/ai-chat-memory.ts`) so same-key threads are shared by
+  construction; cross-agent routing must be explicit per-call
   `memory: { thread, resource }` — never `Agent.network()` delegation (it
   auto-isolates subagent memory).
 - **Ownership gate:** Mastra enforces NO thread ownership on the message path
@@ -594,8 +598,9 @@ proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.
   string; rides `OPENROUTER_API_KEY`, absent key = benign no-op; NEVER the
   deprecated `threads.generateTitle` nesting — it throws mid-turn). Signed-in
   scope: the send route passes a per-call `options: { generateTitle: false }`
-  override for non-`user:` resources. Fire-and-forget after the turn; `""`
-  stays the untitled sentinel and generation retries on the next turn.
+  override for non-`user:` resources via `aiChatMemoryConfigFor`
+  (`src/mastra/ai-chat-memory.ts`, feat-285). Fire-and-forget after the turn;
+  `""` stays the untitled sentinel and generation retries on the next turn.
 - Logging is enum-only plain-string `[ai-chat-history] event=… reason=…` —
   never thread ids, titles, transcript text, or exception text (KTD13).
 
@@ -740,8 +745,9 @@ the wire, and persists/re-validates the result; Mastra is the LLM generator.
   decoupled from admin's normalize class via a local `NormalizationErrorLike`
   shape).
 - **Memory**: `experience-chat` Postgres memory in `src/mastra/memory.ts`
-  (alongside the ai-chat lane's Postgres-persisted seeker memory), gated on the
-  gateway EMBEDDINGS key for semantic recall.
+  (the ai-chat lane's Postgres-persisted seeker memory lives separately in
+  `src/mastra/ai-chat-memory.ts`), gated on the gateway EMBEDDINGS key for
+  semantic recall.
 - **Service routes** (all `MASTRA_SERVICE_API_KEYS`-gated):
   - `POST /forge-experience-draft` — buffered; runs a draft workflow and
     returns `{ ok:true, draft } | { ok:false, reason, retryable }`. Internal

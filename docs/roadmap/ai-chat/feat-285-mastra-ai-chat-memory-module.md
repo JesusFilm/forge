@@ -3,7 +3,7 @@ id: "feat-285"
 title: "Extract the Mastra ai-chat memory module + keying policy (ride-along)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-17"
 duration: 1
 depends_on: []
@@ -31,6 +31,12 @@ review. The authoritative spec is
 read it first in full. Do NOT run `ce-plan`.
 
 ## Ride-along trigger — do not schedule standalone
+
+> **Amendment (2026-07-22, PR #NNNN):** executed standalone by owner decision
+> after feat-283/284 landed, rather than waiting for the ride-along trigger —
+> the trigger calibration measured priority, not risk, and a standalone PR
+> beats inheriting refactor scope inside a future feature diff. All five
+> requirements unchanged.
 
 Calibrated by the review: only one route builds a per-call memory config
 today (feat-247's delete/rename run no agent turn; feat-209 adds no Mastra
