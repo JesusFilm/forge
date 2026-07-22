@@ -429,18 +429,16 @@ async function renderOneSegment(shape: {
 }) {
   const { slug, locale, isLanguageHome } = shape
   if (isLanguageHome) {
-    const [heroResult, pageResult] = await Promise.all([
-      resolveWatchHome(locale, slug),
-      resolveWatchPage(locale),
-    ])
-    if (heroResult.error) {
-      return <ExperienceError message={heroResult.error.message} />
-    }
+    const pageResult = await resolveWatchPage(locale)
 
     const builderBlocks =
       pageResult.data?.kind === "experience"
         ? watchExperienceBlocks(pageResult.data.experience)
         : []
+    const heroResult = await resolveWatchHome(locale, slug, builderBlocks)
+    if (heroResult.error) {
+      return <ExperienceError message={heroResult.error.message} />
+    }
 
     if (
       pageResult.error &&

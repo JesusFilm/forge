@@ -85,7 +85,7 @@ describe("Watch root homepage", () => {
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
     })
 
-    expect(resolveWatchHomeMock).toHaveBeenCalledWith("en")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("en", null, blocks)
     expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
     expect(Object.keys(element.props.messages)).toEqual([
       ...WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,

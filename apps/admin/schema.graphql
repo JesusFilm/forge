@@ -1678,10 +1678,77 @@ enum WatchEventType {
   meaningful_playback
 }
 
-"""Top-level placeholder that renders the Web-owned Watch Home hero."""
+"""
+Top-level Watch Home hero placement with optional editor-owned programming; Web clients own playback behavior.
+"""
 type WatchHomeHeroBlock {
+  program: WatchHomeProgram
   sectionKey: String
   t: String
+}
+
+"""
+Editor-authored Watch Home intro, typed buckets, and repeating bucket cadence.
+"""
+type WatchHomeProgram {
+  buckets: [WatchHomeProgramBucket!]
+  intro: WatchHomePromoItem
+  rotation: [String!]
+}
+
+"""A typed video or promo bucket in the Watch Home rotation."""
+union WatchHomeProgramBucket = WatchHomePromoBucket | WatchHomeVideoBucket
+
+"""An approved action shown over a Watch Home promo."""
+type WatchHomePromoAction {
+  href: String
+  icon: String
+  label: String
+}
+
+"""A Watch Home bucket containing rotating promotional media."""
+type WatchHomePromoBucket {
+  id: String
+  items: [WatchHomePromoItem!]
+  kind: String
+  label: String
+}
+
+"""
+An editor-authored Watch Home intro or rotating promo. Poster URLs are resolved from the persisted media asset identity.
+"""
+type WatchHomePromoItem {
+  description: String
+  durationSeconds: Float
+  id: String
+  label: String
+  playbackId: String
+  posterAssetId: String
+  posterUrl: String
+  primaryAction: WatchHomePromoAction
+  secondaryAction: WatchHomePromoAction
+  showLogo: Boolean
+  title: String
+}
+
+"""A Watch Home bucket containing explicit catalog videos."""
+type WatchHomeVideoBucket {
+  id: String
+  items: [WatchHomeVideoItem!]
+  kind: String
+  label: String
+}
+
+"""
+A stable Watch Home program item that references an Admin Video identity.
+"""
+type WatchHomeVideoItem {
+  """
+  The linked Video's public Core identity used by bounded watchHomeVideos hydration.
+  """
+  coreId: String
+  id: String
+  videoId: String
 }
 
 """

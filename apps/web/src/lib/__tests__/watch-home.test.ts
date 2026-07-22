@@ -491,6 +491,151 @@ describe("buildWatchHomeModelFromVideos", () => {
       ),
     ).toBe(true)
   })
+
+  it("normalizes a typed authored program and omits only unresolved video items", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [makeVideo()] as never,
+      experienceBlocks: [
+        {
+          __typename: "WatchHomeHeroBlock",
+          t: "watchHomeHero",
+          program: {
+            intro: {
+              id: "welcome",
+              playbackId: "welcome-playback",
+              posterUrl: "https://cdn.example/welcome.jpg",
+              title: "Welcome",
+            },
+            rotation: ["classics", "campaigns"],
+            buckets: [
+              {
+                __typename: "WatchHomeVideoBucket",
+                kind: "video",
+                id: "classics",
+                label: "Classics",
+                items: [
+                  {
+                    id: "jesus-item",
+                    videoId: "video-1",
+                    coreId: "1_jf-0-0",
+                  },
+                  {
+                    id: "missing-item",
+                    videoId: "missing-video",
+                    coreId: "missing-core",
+                  },
+                ],
+              },
+              {
+                __typename: "WatchHomePromoBucket",
+                kind: "promo",
+                id: "campaigns",
+                label: "Campaigns",
+                items: [
+                  {
+                    id: "join-us",
+                    playbackId: "join-playback",
+                    posterUrl: "https://cdn.example/join.jpg",
+                    title: "Join us",
+                    primaryAction: {
+                      label: "Join",
+                      href: "https://www.jesusfilm.org/join",
+                      icon: "join",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ] as never,
+    })
+
+    expect(model.program?.intro).toMatchObject({
+      id: "welcome",
+      src: "https://stream.mux.com/welcome-playback.m3u8",
+      posterUrl: "https://cdn.example/welcome.jpg",
+    })
+    expect(model.program?.rotation).toEqual(["classics", "campaigns"])
+    expect(model.program?.buckets[0]).toMatchObject({
+      kind: "video",
+      id: "classics",
+      items: [
+        {
+          id: "jesus-item",
+          videoId: "video-1",
+          coreId: "1_jf-0-0",
+          src: "https://stream.example/jesus.m3u8",
+        },
+      ],
+    })
+    expect(model.program?.buckets[1]).toMatchObject({
+      kind: "promo",
+      items: [
+        {
+          id: "join-us",
+          primaryAction: {
+            href: "https://www.jesusfilm.org/join",
+          },
+        },
+      ],
+    })
+  })
+
+  it("rejects unsafe promo destinations while preserving the rest of the program", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [makeVideo()] as never,
+      experienceBlocks: [
+        {
+          __typename: "WatchHomeHeroBlock",
+          t: "watchHomeHero",
+          program: {
+            rotation: ["campaigns"],
+            buckets: [
+              {
+                __typename: "WatchHomePromoBucket",
+                kind: "promo",
+                id: "campaigns",
+                label: "Campaigns",
+                items: [
+                  {
+                    id: "unsafe",
+                    playbackId: "unsafe-playback",
+                    posterUrl: "https://cdn.example/unsafe.jpg",
+                    title: "Unsafe",
+                    primaryAction: {
+                      label: "Go",
+                      href: "javascript:alert(1)",
+                    },
+                  },
+                  {
+                    id: "safe",
+                    playbackId: "safe-playback",
+                    posterUrl: "https://cdn.example/safe.jpg",
+                    title: "Safe",
+                    primaryAction: { label: "Watch", href: "/watch" },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ] as never,
+    })
+
+    expect(model.program?.buckets[0]).toMatchObject({
+      kind: "promo",
+      items: [{ id: "safe" }],
+    })
+  })
 })
 
 describe("resolveWatchHome", () => {
@@ -502,12 +647,12 @@ describe("resolveWatchHome", () => {
 
   it("queries admin with the public language slug for the UI locale", async () => {
     queryMock.mockResolvedValueOnce({
+      data: { watchSetting: { homepageExperience: { blocks: [] } } },
+    })
+    queryMock.mockResolvedValueOnce({
       data: {
         watchHomeVideos: [makeVideo()],
       },
-    })
-    queryMock.mockResolvedValueOnce({
-      data: { watchSetting: { homepageExperience: { blocks: [] } } },
     })
 
     const { resolveWatchHome } = await import("../watch-home")
@@ -516,12 +661,15 @@ describe("resolveWatchHome", () => {
 
     expect(result.error).toBeNull()
     expect(queryMock).toHaveBeenCalledTimes(2)
-    expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe("russian")
-    expect(queryMock.mock.calls[0][0].variables.locale).toBe("ru")
-    expect(queryMock.mock.calls[0][0].variables.coreIds).toContain("1_jf-0-0")
+    expect(queryMock.mock.calls[1][0].variables.languageSlug).toBe("russian")
+    expect(queryMock.mock.calls[1][0].variables.locale).toBe("ru")
+    expect(queryMock.mock.calls[1][0].variables.coreIds).toContain("1_jf-0-0")
   })
 
   it("uses an explicit language slug when the caller provides one", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: { watchSetting: { homepageExperience: { blocks: [] } } },
+    })
     queryMock.mockResolvedValueOnce({
       data: {
         watchHomeVideos: [
@@ -539,9 +687,6 @@ describe("resolveWatchHome", () => {
         ],
       },
     })
-    queryMock.mockResolvedValueOnce({
-      data: { watchSetting: { homepageExperience: { blocks: [] } } },
-    })
 
     const { resolveWatchHome } = await import("../watch-home")
 
@@ -549,9 +694,9 @@ describe("resolveWatchHome", () => {
 
     expect(result.error).toBeNull()
     expect(queryMock).toHaveBeenCalledTimes(2)
-    expect(queryMock.mock.calls[0][0].variables.languageSlug).toBe(
+    expect(queryMock.mock.calls[1][0].variables.languageSlug).toBe(
       "spanish-latin-american",
     )
-    expect(queryMock.mock.calls[0][0].variables.locale).toBe("es")
+    expect(queryMock.mock.calls[1][0].variables.locale).toBe("es")
   })
 })

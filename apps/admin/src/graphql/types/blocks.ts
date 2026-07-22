@@ -47,6 +47,11 @@ import type {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  WatchHomeProgramSchema,
+  WatchHomePromoActionSchema,
+  WatchHomePromoBucketSchema,
+  WatchHomePromoItemSchema,
+  WatchHomeVideoBucketSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
@@ -81,6 +86,13 @@ type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
+type WatchHomeProgram = z.infer<typeof WatchHomeProgramSchema>
+type WatchHomePromoAction = z.infer<typeof WatchHomePromoActionSchema>
+type WatchHomePromoBucket = z.infer<typeof WatchHomePromoBucketSchema>
+type WatchHomePromoItem = z.infer<typeof WatchHomePromoItemSchema>
+type WatchHomeVideoBucket = z.infer<typeof WatchHomeVideoBucketSchema>
+type WatchHomeVideoItem = WatchHomeVideoBucket["items"][number]
+type WatchHomeProgramBucket = WatchHomeProgram["buckets"][number]
 
 type MediaPreviewContext = {
   request: {
@@ -1144,14 +1156,142 @@ VideoHeroBlockRef.implement({
   }),
 })
 
+const WatchHomePromoActionRef = builder.objectRef<WatchHomePromoAction>(
+  "WatchHomePromoAction",
+)
+WatchHomePromoActionRef.implement({
+  description: "An approved action shown over a Watch Home promo.",
+  fields: (t) => ({
+    label: t.exposeString("label"),
+    href: t.exposeString("href"),
+    icon: t.exposeString("icon", { nullable: true }),
+  }),
+})
+
+const WatchHomePromoItemRef =
+  builder.objectRef<WatchHomePromoItem>("WatchHomePromoItem")
+WatchHomePromoItemRef.implement({
+  description:
+    "An editor-authored Watch Home intro or rotating promo. Poster URLs are resolved from the persisted media asset identity.",
+  fields: (t) => ({
+    id: t.exposeString("id"),
+    playbackId: t.exposeString("playbackId"),
+    durationSeconds: t.exposeFloat("durationSeconds", { nullable: true }),
+    posterAssetId: t.exposeString("posterAssetId"),
+    posterUrl: t.string({
+      nullable: true,
+      resolve: (row, _args, ctx) =>
+        resolveMediaAssetPreviewUrl(ctx, row.posterAssetId),
+    }),
+    label: t.exposeString("label", { nullable: true }),
+    title: t.exposeString("title"),
+    description: t.exposeString("description", { nullable: true }),
+    showLogo: t.exposeBoolean("showLogo", { nullable: true }),
+    primaryAction: t.field({
+      type: WatchHomePromoActionRef,
+      nullable: true,
+      resolve: (row) => row.primaryAction ?? null,
+    }),
+    secondaryAction: t.field({
+      type: WatchHomePromoActionRef,
+      nullable: true,
+      resolve: (row) => row.secondaryAction ?? null,
+    }),
+  }),
+})
+
+const WatchHomeVideoItemRef =
+  builder.objectRef<WatchHomeVideoItem>("WatchHomeVideoItem")
+WatchHomeVideoItemRef.implement({
+  description:
+    "A stable Watch Home program item that references an Admin Video identity.",
+  fields: (t) => ({
+    id: t.exposeString("id"),
+    videoId: t.exposeString("videoId"),
+    coreId: t.string({
+      nullable: true,
+      description:
+        "The linked Video's public Core identity used by bounded watchHomeVideos hydration.",
+      resolve: async (row, _args, ctx) => {
+        const video = await ctx.loaders.videoById.load(row.videoId)
+        if (video?.deletedAt) return null
+        return video?.coreId ?? null
+      },
+    }),
+  }),
+})
+
+const WatchHomeVideoBucketRef = builder.objectRef<WatchHomeVideoBucket>(
+  "WatchHomeVideoBucket",
+)
+WatchHomeVideoBucketRef.implement({
+  description: "A Watch Home bucket containing explicit catalog videos.",
+  fields: (t) => ({
+    kind: t.exposeString("kind"),
+    id: t.exposeString("id"),
+    label: t.exposeString("label"),
+    items: t.field({
+      type: [WatchHomeVideoItemRef],
+      resolve: (row) => row.items,
+    }),
+  }),
+})
+
+const WatchHomePromoBucketRef = builder.objectRef<WatchHomePromoBucket>(
+  "WatchHomePromoBucket",
+)
+WatchHomePromoBucketRef.implement({
+  description: "A Watch Home bucket containing rotating promotional media.",
+  fields: (t) => ({
+    kind: t.exposeString("kind"),
+    id: t.exposeString("id"),
+    label: t.exposeString("label"),
+    items: t.field({
+      type: [WatchHomePromoItemRef],
+      resolve: (row) => row.items,
+    }),
+  }),
+})
+
+const WatchHomeProgramBucketRef = builder.unionType("WatchHomeProgramBucket", {
+  description: "A typed video or promo bucket in the Watch Home rotation.",
+  types: [WatchHomeVideoBucketRef, WatchHomePromoBucketRef],
+  resolveType: (bucket: WatchHomeProgramBucket) =>
+    bucket.kind === "video" ? WatchHomeVideoBucketRef : WatchHomePromoBucketRef,
+})
+
+const WatchHomeProgramRef =
+  builder.objectRef<WatchHomeProgram>("WatchHomeProgram")
+WatchHomeProgramRef.implement({
+  description:
+    "Editor-authored Watch Home intro, typed buckets, and repeating bucket cadence.",
+  fields: (t) => ({
+    intro: t.field({
+      type: WatchHomePromoItemRef,
+      nullable: true,
+      resolve: (row) => row.intro ?? null,
+    }),
+    buckets: t.field({
+      type: [WatchHomeProgramBucketRef],
+      resolve: (row) => row.buckets,
+    }),
+    rotation: t.exposeStringList("rotation"),
+  }),
+})
+
 const WatchHomeHeroBlockRef =
   builder.objectRef<WatchHomeHeroBlock>("WatchHomeHeroBlock")
 WatchHomeHeroBlockRef.implement({
   description:
-    "Top-level placeholder that renders the Web-owned Watch Home hero.",
+    "Top-level Watch Home hero placement with optional editor-owned programming; Web clients own playback behavior.",
   fields: (t) => ({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    program: t.field({
+      type: WatchHomeProgramRef,
+      nullable: true,
+      resolve: (row) => row.program ?? null,
+    }),
   }),
 })
 

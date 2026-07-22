@@ -31,6 +31,13 @@ import type {
 } from "@/lib/watch-home-carousel-sequence"
 import { getWatchHomeVideosOperation } from "@/lib/fragments/watch-home"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import {
+  WATCH_HOME_PROGRAM_DELIVERY_LIMITS,
+  type WatchHomeProgram,
+  type WatchHomeProgramAction,
+  type WatchHomeProgramPromoItem,
+  type WatchHomeProgramVideoItem,
+} from "@/lib/watch-home-types"
 
 type WatchHomeVideosData = AdminResultOf<typeof getWatchHomeVideosOperation>
 const getWatchHomeEditorialOverridesOperation = adminGraphql(
@@ -135,6 +142,7 @@ export type WatchHomeModel = {
   heroSlides: WatchHomeHeroSlide[]
   sections: WatchHomeSection[]
   carousel: WatchHomeCarouselSequenceData
+  program?: WatchHomeProgram | null
   missingData: WatchHomeMissingData[]
 }
 
@@ -207,6 +215,346 @@ function recordValue(value: unknown, key: string) {
 
 function stringValue(value: unknown) {
   return typeof value === "string" && value.length > 0 ? value : null
+}
+
+function boundedString(value: unknown, max: number) {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 && trimmed.length <= max ? trimmed : null
+}
+
+function optionalBoundedString(value: unknown, max: number) {
+  return value == null ? null : boundedString(value, max)
+}
+
+function stableProgramId(value: unknown) {
+  const id = boundedString(
+    value,
+    WATCH_HOME_PROGRAM_DELIVERY_LIMITS.labelCharacters,
+  )
+  return id && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id) ? id : null
+}
+
+function isAllowedWatchHomeActionHref(value: string): boolean {
+  if (value.startsWith("/") && !value.startsWith("//")) return true
+
+  try {
+    const url = new URL(value)
+    if (
+      url.protocol !== "https:" ||
+      url.username.length > 0 ||
+      url.password.length > 0
+    ) {
+      return false
+    }
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "")
+    return (
+      hostname === "jesusfilm.org" ||
+      hostname.endsWith(".jesusfilm.org") ||
+      hostname === "your.nextstep.is"
+    )
+  } catch {
+    return false
+  }
+}
+
+function isSafeProgramPosterUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    if (url.protocol === "https:") return true
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+    )
+  } catch {
+    return false
+  }
+}
+
+type OptionalActionResult =
+  | { valid: true; action: WatchHomeProgramAction | null }
+  | { valid: false; action: null }
+
+function normalizeProgramAction(value: unknown): OptionalActionResult {
+  if (value == null) return { valid: true, action: null }
+  const label = boundedString(
+    recordValue(value, "label"),
+    WATCH_HOME_PROGRAM_DELIVERY_LIMITS.actionLabelCharacters,
+  )
+  const href = boundedString(recordValue(value, "href"), 2_048)
+  const iconValue = recordValue(value, "icon")
+  const icon = iconValue === "join" || iconValue === "share" ? iconValue : null
+  if (!label || !href || !isAllowedWatchHomeActionHref(href)) {
+    return { valid: false, action: null }
+  }
+  if (iconValue != null && icon == null) {
+    return { valid: false, action: null }
+  }
+  return { valid: true, action: { label, href, icon } }
+}
+
+function normalizeProgramPromo(
+  value: unknown,
+): WatchHomeProgramPromoItem | null {
+  const id = stableProgramId(recordValue(value, "id"))
+  const playbackId = boundedString(recordValue(value, "playbackId"), 2_048)
+  const posterUrl = boundedString(recordValue(value, "posterUrl"), 2_048)
+  const title = boundedString(
+    recordValue(value, "title"),
+    WATCH_HOME_PROGRAM_DELIVERY_LIMITS.titleCharacters,
+  )
+  const label = optionalBoundedString(
+    recordValue(value, "label"),
+    WATCH_HOME_PROGRAM_DELIVERY_LIMITS.labelCharacters,
+  )
+  const description = optionalBoundedString(
+    recordValue(value, "description"),
+    WATCH_HOME_PROGRAM_DELIVERY_LIMITS.descriptionCharacters,
+  )
+  const primaryAction = normalizeProgramAction(
+    recordValue(value, "primaryAction"),
+  )
+  const secondaryAction = normalizeProgramAction(
+    recordValue(value, "secondaryAction"),
+  )
+  const durationValue = recordValue(value, "durationSeconds")
+  const durationSeconds =
+    typeof durationValue === "number" &&
+    Number.isFinite(durationValue) &&
+    durationValue > 0 &&
+    durationValue <= 86_400
+      ? durationValue
+      : null
+  const showLogoValue = recordValue(value, "showLogo")
+
+  if (
+    !id ||
+    !playbackId ||
+    !/^[A-Za-z0-9_-]+$/.test(playbackId) ||
+    !posterUrl ||
+    !isSafeProgramPosterUrl(posterUrl) ||
+    !title ||
+    (recordValue(value, "label") != null && label == null) ||
+    (recordValue(value, "description") != null && description == null) ||
+    (durationValue != null && durationSeconds == null) ||
+    (showLogoValue != null && typeof showLogoValue !== "boolean") ||
+    !primaryAction.valid ||
+    !secondaryAction.valid
+  ) {
+    return null
+  }
+
+  return {
+    id,
+    playbackId,
+    src: `https://stream.mux.com/${playbackId}.m3u8`,
+    durationSeconds,
+    posterUrl,
+    label,
+    title,
+    description,
+    showLogo: showLogoValue === true,
+    primaryAction: primaryAction.action,
+    secondaryAction: secondaryAction.action,
+  }
+}
+
+function normalizeProgramVideo(args: {
+  value: unknown
+  videoByCoreId: ReadonlyMap<string, AdminHomeVideo>
+  languageSlug: string
+}): WatchHomeProgramVideoItem | null {
+  const id = stableProgramId(recordValue(args.value, "id"))
+  const videoId = boundedString(recordValue(args.value, "videoId"), 200)
+  const coreId = boundedString(recordValue(args.value, "coreId"), 200)
+  if (!id || !videoId || !coreId) return null
+
+  const video = args.videoByCoreId.get(coreId)
+  if (
+    !video ||
+    video.documentId !== videoId ||
+    video.label === "COLLECTION" ||
+    video.label === "SERIES"
+  ) {
+    return null
+  }
+  const card = normalizeCard({
+    sectionId: "home-program",
+    sourceId: coreId,
+    video,
+    languageSlug: args.languageSlug,
+  })
+  const slide = card ? cardToCarouselSlide(card) : null
+  if (!slide?.src) return null
+
+  return {
+    id,
+    videoId,
+    coreId,
+    title: slide.title,
+    description: slide.description,
+    label: slide.label,
+    href: slide.href,
+    posterUrl: slide.posterUrl,
+    thumbnailUrl: slide.thumbnailUrl,
+    imageAlt: slide.imageAlt,
+    src: slide.src,
+    playbackId: slide.playbackId,
+    subtitleVttSrc: slide.subtitleVttSrc ?? null,
+    subtitleLanguageBcp47: slide.subtitleLanguageBcp47 ?? null,
+    durationSeconds: slide.durationSeconds,
+  }
+}
+
+export function collectWatchHomeProgramCoreIds(
+  blocks: readonly WatchHomeExperienceBlock[] | null | undefined,
+): string[] {
+  const ids = new Set<string>()
+  for (const block of blocks ?? []) {
+    if (recordValue(block, "__typename") !== "WatchHomeHeroBlock") continue
+    const buckets = recordValue(recordValue(block, "program"), "buckets")
+    if (!Array.isArray(buckets)) continue
+    for (const bucket of buckets) {
+      if (recordValue(bucket, "kind") !== "video") continue
+      const items = recordValue(bucket, "items")
+      if (!Array.isArray(items)) continue
+      for (const item of items) {
+        const coreId = boundedString(recordValue(item, "coreId"), 200)
+        if (coreId) ids.add(coreId)
+        if (ids.size >= WATCH_HOME_PROGRAM_DELIVERY_LIMITS.uniqueVideos) {
+          return [...ids]
+        }
+      }
+    }
+  }
+  return [...ids]
+}
+
+export function normalizeWatchHomeProgram(args: {
+  blocks: readonly WatchHomeExperienceBlock[] | null | undefined
+  videoByCoreId: ReadonlyMap<string, AdminHomeVideo>
+  languageSlug: string
+}): WatchHomeProgram | null {
+  const heroBlock = (args.blocks ?? []).find(
+    (block) => recordValue(block, "__typename") === "WatchHomeHeroBlock",
+  )
+  const rawProgram = recordValue(heroBlock, "program")
+  if (typeof rawProgram !== "object" || rawProgram == null) return null
+
+  try {
+    if (
+      new TextEncoder().encode(JSON.stringify(rawProgram)).byteLength >
+      WATCH_HOME_PROGRAM_DELIVERY_LIMITS.bytes
+    ) {
+      return null
+    }
+  } catch {
+    return null
+  }
+
+  const rawBuckets = recordValue(rawProgram, "buckets")
+  const rawRotation = recordValue(rawProgram, "rotation")
+  if (
+    !Array.isArray(rawBuckets) ||
+    rawBuckets.length < 1 ||
+    rawBuckets.length > WATCH_HOME_PROGRAM_DELIVERY_LIMITS.buckets ||
+    !Array.isArray(rawRotation) ||
+    rawRotation.length < 1 ||
+    rawRotation.length > WATCH_HOME_PROGRAM_DELIVERY_LIMITS.rotationSlots
+  ) {
+    return null
+  }
+
+  const bucketIds = new Set<string>()
+  const itemIds = new Set<string>()
+  const uniqueVideoIds = new Set<string>()
+  let promoCount = 0
+  const buckets: WatchHomeProgram["buckets"] = []
+  for (const rawBucket of rawBuckets) {
+    const kind = recordValue(rawBucket, "kind")
+    const id = stableProgramId(recordValue(rawBucket, "id"))
+    const label = boundedString(
+      recordValue(rawBucket, "label"),
+      WATCH_HOME_PROGRAM_DELIVERY_LIMITS.labelCharacters,
+    )
+    const rawItems = recordValue(rawBucket, "items")
+    if (
+      (kind !== "video" && kind !== "promo") ||
+      !id ||
+      !label ||
+      bucketIds.has(id) ||
+      !Array.isArray(rawItems) ||
+      rawItems.length > WATCH_HOME_PROGRAM_DELIVERY_LIMITS.itemsPerBucket
+    ) {
+      return null
+    }
+    bucketIds.add(id)
+
+    if (kind === "video") {
+      const items: WatchHomeProgramVideoItem[] = []
+      const bucketVideoIds = new Set<string>()
+      for (const rawItem of rawItems) {
+        const itemId = stableProgramId(recordValue(rawItem, "id"))
+        const videoId = boundedString(recordValue(rawItem, "videoId"), 200)
+        if (
+          !itemId ||
+          !videoId ||
+          itemIds.has(itemId) ||
+          bucketVideoIds.has(videoId)
+        ) {
+          return null
+        }
+        itemIds.add(itemId)
+        bucketVideoIds.add(videoId)
+        uniqueVideoIds.add(videoId)
+        const item = normalizeProgramVideo({
+          value: rawItem,
+          videoByCoreId: args.videoByCoreId,
+          languageSlug: args.languageSlug,
+        })
+        if (item) items.push(item)
+      }
+      buckets.push({ kind, id, label, items })
+    } else {
+      const items: WatchHomeProgramPromoItem[] = []
+      for (const rawItem of rawItems) {
+        const itemId = stableProgramId(recordValue(rawItem, "id"))
+        if (!itemId || itemIds.has(itemId)) return null
+        itemIds.add(itemId)
+        promoCount += 1
+        const item = normalizeProgramPromo(rawItem)
+        if (item) items.push(item)
+      }
+      buckets.push({ kind, id, label, items })
+    }
+  }
+
+  const rotation = rawRotation.map(stableProgramId)
+  if (
+    uniqueVideoIds.size > WATCH_HOME_PROGRAM_DELIVERY_LIMITS.uniqueVideos ||
+    rotation.some((id) => id == null || !bucketIds.has(id))
+  ) {
+    return null
+  }
+
+  const rawIntro = recordValue(rawProgram, "intro")
+  const intro = rawIntro == null ? null : normalizeProgramPromo(rawIntro)
+  if (rawIntro != null) {
+    const introId = stableProgramId(recordValue(rawIntro, "id"))
+    if (!introId || itemIds.has(introId)) return null
+    promoCount += 1
+  }
+  if (promoCount > WATCH_HOME_PROGRAM_DELIVERY_LIMITS.promos) return null
+
+  if (!intro && buckets.every((bucket) => bucket.items.length === 0)) {
+    return null
+  }
+
+  return {
+    intro,
+    buckets,
+    rotation: rotation as string[],
+  }
 }
 
 function collectMediaOverrides(
@@ -645,6 +993,7 @@ function cardToCarouselSlide(
   return {
     kind: "video",
     id: card.coreId,
+    videoId: card.id,
     title: card.title,
     description: card.description,
     label: card.label,
@@ -869,6 +1218,11 @@ export function buildWatchHomeModelFromVideos(args: {
     pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
     muxInserts: WATCH_HOME_MUX_INSERTS,
   }
+  const program = normalizeWatchHomeProgram({
+    blocks: args.experienceBlocks,
+    videoByCoreId,
+    languageSlug,
+  })
   const cardMissing = [
     ...heroSlides.flatMap((card) => card.missingData),
     ...sections.flatMap((section) =>
@@ -880,6 +1234,7 @@ export function buildWatchHomeModelFromVideos(args: {
     heroSlides,
     sections,
     carousel,
+    program,
     missingData: dedupeMissingData([...missingData, ...cardMissing]),
   }
 }
@@ -887,39 +1242,49 @@ export function buildWatchHomeModelFromVideos(args: {
 async function fetchWatchHomeModel(
   locale: string,
   languageSlug: string,
+  suppliedExperienceBlocks?: readonly WatchHomeExperienceBlock[] | null,
 ): Promise<WatchHomeModel> {
-  const [videosResult, overridesResult] = await Promise.all([
-    client.query({
-      query: getWatchHomeVideosOperation,
-      variables: {
-        coreIds: getWatchHomeCoreIds(),
-        locale,
-        languageSlug,
-      },
-      fetchPolicy: "no-cache",
-    }),
-    client.query({
+  let experienceBlocks = suppliedExperienceBlocks
+  if (suppliedExperienceBlocks === undefined) {
+    const overridesResult = await client.query({
       query: getWatchHomeEditorialOverridesOperation,
       variables: { locale },
       fetchPolicy: "no-cache",
-    }),
-  ])
+    })
+    const overridesError = graphqlError(
+      overridesResult as { error?: ErrorLike; errors?: unknown[] },
+    )
+    experienceBlocks = overridesError
+      ? null
+      : (overridesResult.data?.watchSetting?.homepageExperience?.blocks ?? null)
+  }
+
+  const coreIds = [
+    ...new Set([
+      ...getWatchHomeCoreIds(),
+      ...collectWatchHomeProgramCoreIds(experienceBlocks),
+    ]),
+  ]
+  const videosResult = await client.query({
+    query: getWatchHomeVideosOperation,
+    variables: {
+      coreIds,
+      locale,
+      languageSlug,
+    },
+    fetchPolicy: "no-cache",
+  })
 
   const error = graphqlError(
     videosResult as { error?: ErrorLike; errors?: unknown[] },
   )
   if (error) throw error
-  const overridesError = graphqlError(
-    overridesResult as { error?: ErrorLike; errors?: unknown[] },
-  )
-  if (overridesError) throw overridesError
 
   return buildWatchHomeModelFromVideos({
     videos: videosResult.data?.watchHomeVideos ?? [],
     locale,
     languageSlug,
-    experienceBlocks:
-      overridesResult.data?.watchSetting?.homepageExperience?.blocks ?? null,
+    experienceBlocks,
   })
 }
 
@@ -933,10 +1298,15 @@ export const resolveWatchHome = cache(
   async (
     locale: string,
     languageSlugOverride?: string | null,
+    experienceBlocks?: readonly WatchHomeExperienceBlock[] | null,
   ): Promise<WatchHomeResult> => {
     try {
       const languageSlug = languageSlugOverride ?? selectedLanguageSlug(locale)
-      const model = await getCachedWatchHomeModel(locale, languageSlug)
+      const model = await getCachedWatchHomeModel(
+        locale,
+        languageSlug,
+        experienceBlocks,
+      )
       return {
         data: JSON.parse(JSON.stringify(model)) as WatchHomeModel,
         error: null,

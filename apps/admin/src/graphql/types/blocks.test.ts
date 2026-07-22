@@ -968,6 +968,78 @@ describe("MediaCollectionItem.coreId resolver", () => {
   })
 })
 
+describe("WatchHomeHeroBlock programming contract", () => {
+  it("exposes the nested typed program surface", () => {
+    const hero = schema.getType("WatchHomeHeroBlock")
+    const heroFields = hero && "getFields" in hero ? hero.getFields() : null
+    expect(heroFields?.program).toBeDefined()
+
+    const program = schema.getType("WatchHomeProgram")
+    const programFields =
+      program && "getFields" in program ? program.getFields() : null
+    expect(programFields?.intro).toBeDefined()
+    expect(programFields?.buckets).toBeDefined()
+    expect(programFields?.rotation).toBeDefined()
+
+    expect(resolveTypeName("WatchHomeProgramBucket", { kind: "video" })).toBe(
+      "WatchHomeVideoBucket",
+    )
+    expect(resolveTypeName("WatchHomeProgramBucket", { kind: "promo" })).toBe(
+      "WatchHomePromoBucket",
+    )
+  })
+
+  it("resolves a video item's public coreId through the batched video loader", async () => {
+    const load = vi.fn().mockResolvedValue({
+      id: "video-admin-1",
+      coreId: "1_jf-0-0",
+      deletedAt: null,
+    })
+    const resolveCoreId = fieldResolver("WatchHomeVideoItem", "coreId")
+
+    await expect(
+      resolveCoreId(
+        { id: "classic-jesus", videoId: "video-admin-1" },
+        {},
+        { loaders: { videoById: { load } } },
+        fakeInfo,
+      ),
+    ).resolves.toBe("1_jf-0-0")
+    expect(load).toHaveBeenCalledOnce()
+    expect(load).toHaveBeenCalledWith("video-admin-1")
+  })
+
+  it("resolves promo poster assets at the public GraphQL boundary", async () => {
+    const resolvePosterUrl = fieldResolver("WatchHomePromoItem", "posterUrl")
+    const findUnique = vi.fn().mockResolvedValue({
+      id: "asset-1",
+      backend: "S3",
+      status: "READY",
+      visibility: "PUBLIC",
+      objectKey: "watch-home/promo.jpg",
+      previewObjectKey: "watch-home/promo-preview.jpg",
+      muxPlaybackId: null,
+      blurDataUrl: null,
+      dominantColor: null,
+    })
+
+    const posterUrl = await resolvePosterUrl(
+      { posterAssetId: "asset-1" },
+      {},
+      {
+        request: { url: "https://admin.jesusfilm.org/api/graphql" },
+        prisma: { mediaAsset: { findUnique } },
+      },
+      fakeInfo,
+    )
+
+    expect(posterUrl).toBe(
+      "http://localhost:3003/api/public/media-assets/asset-1/preview",
+    )
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: "asset-1" } })
+  })
+})
+
 describe("Edge cases", () => {
   it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
     const type = schema.getType("MediaCollectionItem")

@@ -509,7 +509,11 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     await render1Seg("spanish-castilian.html")
 
-    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith(
+      "es",
+      "spanish-castilian",
+      [],
+    )
     expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
       expect.objectContaining({
         heroModel: {
