@@ -6,6 +6,10 @@ import {
 import { assertRuntimeEnv, env } from "./config/env.js"
 import { sendJson } from "./http.js"
 import { createJobLanes, type JobQueue } from "./jobs.js"
+import {
+  createDevotionalArtifactsRoute,
+  type DevotionalArtifactsRouteOptions,
+} from "./routes/devotional-artifacts.js"
 import { createJobsRoute, type JobsRouteOptions } from "./routes/jobs.js"
 
 export type ServerDependencies = {
@@ -15,6 +19,8 @@ export type ServerDependencies = {
   allowedSourceHosts?: JobsRouteOptions["allowedSourceHosts"]
   runPrepareImpl?: JobsRouteOptions["runPrepareImpl"]
   runRenderImpl?: JobsRouteOptions["runRenderImpl"]
+  runDevotionalRenderImpl?: JobsRouteOptions["runDevotionalRenderImpl"]
+  artifactStorage?: DevotionalArtifactsRouteOptions["storage"]
 }
 
 export function createHandleRequest({
@@ -24,6 +30,8 @@ export function createHandleRequest({
   allowedSourceHosts,
   runPrepareImpl,
   runRenderImpl,
+  runDevotionalRenderImpl,
+  artifactStorage,
 }: ServerDependencies = {}) {
   const handleJobsRoute = createJobsRoute({
     queue,
@@ -32,6 +40,11 @@ export function createHandleRequest({
     allowedSourceHosts,
     runPrepareImpl,
     runRenderImpl,
+    runDevotionalRenderImpl,
+  })
+  const handleDevotionalArtifactsRoute = createDevotionalArtifactsRoute({
+    storage: artifactStorage,
+    auth,
   })
 
   return async function handleRequest(
@@ -43,6 +56,10 @@ export function createHandleRequest({
 
     if (method === "GET" && url.pathname === "/health") {
       sendJson(response, 200, { ok: true, service: "shorts-worker" })
+      return
+    }
+
+    if (await handleDevotionalArtifactsRoute(request, response, url)) {
       return
     }
 

@@ -17,6 +17,8 @@ export const env = createEnv({
     MASTRA_GATEWAY_SESSION_SECRET: z.string().min(32).optional(),
     MASTRA_INTERNAL_BASE_URL: z.string().url().optional(),
     MASTRA_INTERNAL_API_KEY: z.string().min(1).optional(),
+    MASTRA_DEVOTIONAL_APPROVAL_API_KEY: z.string().min(1).optional(),
+    MASTRA_DEVOTIONAL_PLAYBACK_API_KEY: z.string().min(1).optional(),
     MASTRA_GATEWAY_ADMIN_API_KEYS: z.string().min(1).optional(),
     MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS: z.string().optional(),
   },
@@ -42,6 +44,12 @@ export const env = createEnv({
     MASTRA_INTERNAL_API_KEY: emptyToUndefined(
       process.env.MASTRA_INTERNAL_API_KEY,
     ),
+    MASTRA_DEVOTIONAL_APPROVAL_API_KEY: emptyToUndefined(
+      process.env.MASTRA_DEVOTIONAL_APPROVAL_API_KEY,
+    ),
+    MASTRA_DEVOTIONAL_PLAYBACK_API_KEY: emptyToUndefined(
+      process.env.MASTRA_DEVOTIONAL_PLAYBACK_API_KEY,
+    ),
     MASTRA_GATEWAY_ADMIN_API_KEYS: emptyToUndefined(
       process.env.MASTRA_GATEWAY_ADMIN_API_KEYS,
     ),
@@ -63,6 +71,7 @@ export function getAuthIssuerUrl() {
 }
 
 export function assertGatewayRuntimeEnv() {
+  assertGatewayDevotionalKeysDisjoint()
   const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
   if (env.NODE_ENV !== "production" || isNextBuild) return
 
@@ -80,6 +89,21 @@ export function assertGatewayRuntimeEnv() {
   if (missing.length > 0) {
     throw new Error(
       `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required for Mastra gateway production`,
+    )
+  }
+}
+
+export function assertGatewayDevotionalKeysDisjoint(
+  serviceKey = env.MASTRA_INTERNAL_API_KEY,
+  approvalKey = env.MASTRA_DEVOTIONAL_APPROVAL_API_KEY,
+  playbackKey = env.MASTRA_DEVOTIONAL_PLAYBACK_API_KEY,
+) {
+  const configured = [serviceKey, approvalKey, playbackKey].filter(
+    (value): value is string => Boolean(value),
+  )
+  if (new Set(configured).size !== configured.length) {
+    throw new Error(
+      "MASTRA_INTERNAL_API_KEY, MASTRA_DEVOTIONAL_APPROVAL_API_KEY, and MASTRA_DEVOTIONAL_PLAYBACK_API_KEY must be disjoint",
     )
   }
 }
