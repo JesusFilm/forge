@@ -3,7 +3,7 @@ id: "feat-283"
 title: "Mastra ai-chat lane admission module (flag + lane bearer)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-22"
 duration: 2
 depends_on: []
@@ -13,6 +13,18 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-22 via [PR #1667](https://github.com/JesusFilm/forge/pull/1667) (`feat(mastra): extract the ai-chat lane admission module (feat-283)`).
+
+**What landed.** The lane admission module (`src/mastra/ai-chat-lane-admission.ts`) with key sourcing inside as injectable-for-tests seams, consumed by all three lane handlers; `index.ts` stopped threading keys and `seekerServiceKeys` is gone. Tier-2 review added three guards beyond the brief's replace-only wording — the lane-registration no-seam source pin (+ anti-vacuous positive companion), a parser-independent whole-source seam-token backstop, and a default-flag 404 handler companion — recorded as a dated amendment to Ruling 1 in the handoff doc. This feature's smoke also surfaced the `mastra dev` env-override behavior (`.env` force-writes over process env, mastra@1.10.0; `MASTRA_SKIP_DOTENV` escape hatch), documented beside `apps/mastra/CLAUDE.md`'s local-run recipes.
+
+**Compound docs.** The feat-283 worked instance (19th) in `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`.
+
+**Residual risk / follow-ups.** A NEW lane route wired with the pool-shorthand `serviceKeys:` binding still requires extending the no-seam pin's `laneRoutes` enumeration (the whole-source backstop pins only the `getServiceKeys`/`getEnabled` seam tokens); feat-247's future lane routes must call the admission module and never thread admission seams through registrations.
+
+**Unblocked.** feat-247 (documentation dependency — its lane routes consume this module).
 
 ## Problem
 

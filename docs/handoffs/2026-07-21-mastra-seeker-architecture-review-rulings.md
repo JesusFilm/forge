@@ -231,7 +231,7 @@ const disappears.
 `Service bearer required`, `AI_CHAT_SERVICE_API_KEYS`,
 `assertAiChatServiceKeysDisjoint`.
 
-> **Amendment (2026-07-21, PR #NNNN):** implementation review added two guards
+> **Amendment (2026-07-21, PR #1667):** implementation review added two guards
 > beyond requirement 3's replace-only wording: (1) a "lane registrations inject
 > no admission seams" source pin in `seeker-route-isolation.test.ts` (per-block
 > over the enumerated lane routes, plus a parser-independent whole-source
