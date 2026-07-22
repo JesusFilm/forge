@@ -14,8 +14,8 @@ from the main DS Year 1 roadmap.
 ## Status (July 22, 2026)
 
 - **Total tickets:** 36
-- ✅ **Complete:** 29
-- 🟡 **In progress:** 1
+- ✅ **Complete:** 30
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 6
 - 🔴 **Blocked:** 0
 
@@ -54,7 +54,7 @@ from the main DS Year 1 roadmap.
 | [feat-271](feat-271-seeker-corpus-boilerplate-cleanup.md)     | Seeker RAG corpus boilerplate cleanup (scraping artifacts in passages)    | jian wei | P2       | 2026-08-10 | 2    | 🔵 not-started | —                                                                                                            |
 | [feat-275](feat-275-ai-chat-docs-audit.md)                    | Docs audit: chat + mastra Seeker CLAUDE.md drift sweep                    | jian wei | P2       | 2026-07-21 | 1    | ✅ complete    | [#1638](https://github.com/JesusFilm/forge/pull/1638)                                                        |
 | [feat-281](feat-281-chat-conversation-session-module.md)      | Chat conversation session module (deepen the engine + honest gate denial) | jian wei | P2       | 2026-07-22 | 4    | ✅ complete    | [#1666](https://github.com/JesusFilm/forge/pull/1666), [#1674](https://github.com/JesusFilm/forge/pull/1674) |
-| [feat-282](feat-282-chat-shared-mastra-transport.md)          | Shared Mastra upstream transport for the chat proxies (narrowed)          | jian wei | P2       | 2026-07-21 | 5    | 🟡 in-progress | —                                                                                                            |
+| [feat-282](feat-282-chat-shared-mastra-transport.md)          | Shared Mastra upstream transport for the chat proxies (narrowed)          | jian wei | P2       | 2026-07-21 | 5    | ✅ complete    | [#1661](https://github.com/JesusFilm/forge/pull/1661), [#1690](https://github.com/JesusFilm/forge/pull/1690) |
 | [feat-283](feat-283-mastra-ai-chat-lane-admission.md)         | Mastra ai-chat lane admission module (flag + lane bearer)                 | jian wei | P2       | 2026-07-22 | 2    | ✅ complete    | [#1667](https://github.com/JesusFilm/forge/pull/1667)                                                        |
 | [feat-284](feat-284-mastra-thread-ownership-read-resolver.md) | Mastra thread-ownership read-path resolver (owned-existing-thread)        | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1670](https://github.com/JesusFilm/forge/pull/1670)                                                        |
 | [feat-285](feat-285-mastra-ai-chat-memory-module.md)          | Extract the Mastra ai-chat memory module + keying policy (ride-along)     | jian wei | P2       | 2026-08-17 | 1    | ✅ complete    | [#1672](https://github.com/JesusFilm/forge/pull/1672)                                                        |
