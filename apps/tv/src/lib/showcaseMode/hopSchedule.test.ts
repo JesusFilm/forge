@@ -804,6 +804,35 @@ describe("buildHopSchedule — prefers an alignable seed over a denser unalignab
   })
 })
 
+describe("buildHopSchedule — retries a less-dense alignable seed", () => {
+  it("uses an earlier seed when the densest alignable one yields fewer than two segments", () => {
+    // Densest alignable window (start 50) sits so close to the credits tail (creditsFree 72)
+    // that only its opener fits; the earlier, less-dense start 10 yields multiple segments.
+    // Without the densest-first retry the whole centerpiece would fall back to the fixed grid.
+    const t = timing(
+      [
+        [21, 22],
+        [33, 34],
+        [62, 63],
+      ],
+      [
+        [10, 25],
+        [50, 70],
+      ],
+    )
+    const plan = asPlan(
+      buildHopSchedule({
+        dubs: centerpiece(2, { duration: 77 }),
+        rng: zeroRng,
+        sentenceTiming: t,
+      }),
+    )
+    expect(plan.length).toBeGreaterThanOrEqual(2)
+    // Opens on the earlier alignable seed (10), not the dense-but-unusable 50.
+    expect(plan[0].window.startSeconds).toBe(10)
+  })
+})
+
 // ── R8: short sources fit fewer segments, or fall back ──────────────
 
 describe("buildHopSchedule — short sources (R8)", () => {

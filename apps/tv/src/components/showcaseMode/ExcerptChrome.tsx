@@ -16,6 +16,7 @@ import { Animated, StyleSheet, Text, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { scale } from "../../lib/scale"
+import { resolveLanguageDissolve } from "../../lib/showcaseMode/languageTag"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
 /** Optically matched to the 24pt tag text — a hair larger reads as equal weight. */
@@ -128,24 +129,21 @@ export function ExcerptChrome({
   const currentRef = useRef<string | null>(claimedLanguage)
   const restartKeyRef = useRef(restartKey)
   useEffect(() => {
-    const previous = currentRef.current
-    const sameExcerpt = restartKeyRef.current === restartKey
+    // The pure decision (tested) picks the pill, the exiting pill, and whether to fade;
+    // this effect only wires the animation. Applying it every run — never early-returning —
+    // is what tears down a stale exiting pill on a non-language re-render.
+    const dissolve = resolveLanguageDissolve({
+      previous: currentRef.current,
+      next: claimedLanguage,
+      sameExcerpt: restartKeyRef.current === restartKey,
+      reduceMotion,
+    })
     restartKeyRef.current = restartKey
-    if (claimedLanguage === previous) return
+    currentRef.current = dissolve.current
+    setCurrent(dissolve.current)
+    setExiting(dissolve.exiting)
+    if (!dissolve.crossfade) return
 
-    currentRef.current = claimedLanguage
-    setCurrent(claimedLanguage)
-
-    const shouldCrossfade =
-      sameExcerpt &&
-      !reduceMotion &&
-      previous != null &&
-      claimedLanguage != null
-    if (!shouldCrossfade) {
-      setExiting(null)
-      return
-    }
-    setExiting(previous)
     exitOpacity.setValue(1)
     const anim = Animated.timing(exitOpacity, {
       toValue: 0,

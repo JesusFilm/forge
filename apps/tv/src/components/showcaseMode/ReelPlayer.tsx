@@ -286,13 +286,23 @@ export function ReelPlayer({
   const crossfadeVolumes = useCallback(
     (outgoing: VideoPlayer, incoming: VideoPlayer, durationMs: number) => {
       stopFade()
+      // Scale the outgoing ramp by its CURRENT volume, not a forced 1. If a late preload
+      // let the window-end pre-fade drain the outgoing before the flip armed, forcing it
+      // back to full here would slam the old dub back up and fade it again — an audible
+      // pop. From its real level it just continues down; the common (un-faded) case is 1.
+      let fromOutgoing = 1
+      try {
+        fromOutgoing = outgoing.volume
+      } catch {
+        // Released; setVolumeOn's own guard no-ops the writes below.
+      }
       const startedAt = Date.now()
       const tick = () => {
         const gains = crossfadeGainsAt({
           elapsedMs: Date.now() - startedAt,
           durationMs,
         })
-        setVolumeOn(outgoing, gains.outgoing)
+        setVolumeOn(outgoing, fromOutgoing * gains.outgoing)
         setVolumeOn(incoming, gains.incoming)
         if (Date.now() - startedAt >= durationMs) stopFade()
       }

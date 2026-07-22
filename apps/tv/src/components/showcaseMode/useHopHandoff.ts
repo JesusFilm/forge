@@ -45,6 +45,15 @@ const REVEAL_POLL_MS = 150
 /** Give the flip's own play() this long before the poll starts re-issuing it. */
 const REVEAL_REPLAY_AFTER_MS = 600
 
+/**
+ * Dead-flip audio backstop: the flip leaves the outgoing dub rolling AT VOLUME as the
+ * cover, and only the reveal crossfade silences it. If the incoming never confirms, silence
+ * the cover's AUDIO after this bound (generous — past the re-issued play() + a full
+ * crossfade) so a dead flip can't bleed old-language audio; the video cover keeps rolling
+ * until the next boundary's abandonDeadFlip. Cleared the moment the crossfade takes over.
+ */
+const DEAD_FLIP_SILENCE_MS = REVEAL_REPLAY_AFTER_MS + 900
+
 /** The incoming view's opacity ramp over the outgoing frame — same footage, so short. */
 const HANDOFF_CROSSFADE_MS = 180
 
@@ -140,6 +149,10 @@ export function useHopHandoff({
   pendingRevealRef.current = pendingReveal
   /** The post-crossfade retire timer — see the reveal effect for its lifecycle. */
   const revealRetireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
+  /** Dead-flip audio backstop timer (DEAD_FLIP_SILENCE_MS) — armed at flip, cleared by reveal. */
+  const coverSilenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
 
@@ -358,6 +371,21 @@ export function useHopHandoff({
       pendingRetiredRef.current = live
       setPendingReveal({ token })
       setLiveKey((key) => (key === "a" ? "b" : "a"))
+      // Backstop the cover's audio: if this flip never confirms, the reveal crossfade never
+      // runs, so silence the outgoing dub after a bound rather than let it bleed to the next
+      // boundary. The reveal clears this the instant the crossfade takes over.
+      const cover = live
+      if (coverSilenceTimerRef.current != null) {
+        clearTimeout(coverSilenceTimerRef.current)
+      }
+      coverSilenceTimerRef.current = setTimeout(() => {
+        coverSilenceTimerRef.current = null
+        try {
+          cover.volume = 0
+        } catch {
+          // Released; benign.
+        }
+      }, DEAD_FLIP_SILENCE_MS)
     },
     [live, standby, shouldPlayRef, defaultBufferOptionsRef],
   )
@@ -429,6 +457,12 @@ export function useHopHandoff({
       const retired = pendingRetiredRef.current
       pendingRetiredRef.current = null
       setPendingReveal(null)
+      // The flip confirmed (or recovered), so the crossfade/pause owns the cover now —
+      // disarm the dead-flip audio backstop before it can silence a live crossfade.
+      if (coverSilenceTimerRef.current != null) {
+        clearTimeout(coverSilenceTimerRef.current)
+        coverSilenceTimerRef.current = null
+      }
       if (pendingReveal.token === confirmedToken) {
         // The incoming dub is moving: crossfade the two audio tracks — outgoing (the
         // still-rolling cover, at volume) down while the incoming rises — so there is no
@@ -484,6 +518,10 @@ export function useHopHandoff({
       if (revealRetireTimerRef.current != null) {
         clearTimeout(revealRetireTimerRef.current)
         revealRetireTimerRef.current = null
+      }
+      if (coverSilenceTimerRef.current != null) {
+        clearTimeout(coverSilenceTimerRef.current)
+        coverSilenceTimerRef.current = null
       }
     }
   }, [])

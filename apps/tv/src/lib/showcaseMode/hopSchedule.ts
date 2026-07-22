@@ -174,19 +174,19 @@ function spokenCoverage(
 }
 
 /**
- * KTD-4: seed the window over the densest dialogue, but only among starts whose FIRST
+ * KTD-4: candidate window seeds, densest dialogue first, but only starts whose FIRST
  * segment can sentence-align — a boundary within [start+10, ~start+30 clamped to the tail].
  * Density alone can otherwise land on a long boundary-late monologue whose opening segment
  * can't align, forcing the whole track to the fixed grid (KTD-6) even though an alignable,
- * slightly-less-dense start exists (the production Birth of Jesus shape). Densest alignable
- * start wins, ties to earliest; null when no start anywhere can open on a sentence.
+ * slightly-less-dense start exists (the production Birth of Jesus shape). Returned densest
+ * first, ties to earliest; the caller walks each until one yields a switchable plan.
  */
-function seedWindowStart(
+function rankSeedCandidates(
   spans: SentenceTiming["dialogueSpans"],
   boundaries: SentenceTiming["boundaries"],
   desiredCount: number,
   creditsFreeEnd: number,
-): number | null {
+): number[] {
   const nominalSpan = desiredCount * HOP_SEGMENT_SECONDS
   const maxStart = Math.max(0, creditsFreeEnd - HOP_SEGMENT_SECONDS * 2)
   const alignsFirstSegment = (start: number): boolean => {
@@ -196,21 +196,48 @@ function seedWindowStart(
       (b) => b.switchTime >= minEnd && b.switchTime <= ceiling,
     )
   }
-  const candidates = spans
+  return spans
     .map((s) => s.start)
     .filter((start) => start <= maxStart && alignsFirstSegment(start))
-  if (candidates.length === 0) return null
+    .map((start) => ({
+      start,
+      coverage: spokenCoverage(spans, start, start + nominalSpan),
+    }))
+    .sort((a, b) => b.coverage - a.coverage || a.start - b.start)
+    .map((candidate) => candidate.start)
+}
 
-  let best = candidates[0]
-  let bestCoverage = -1
-  for (const start of candidates) {
-    const coverage = spokenCoverage(spans, start, start + nominalSpan)
-    if (coverage > bestCoverage) {
-      bestCoverage = coverage
-      best = start
-    }
+/**
+ * Walk contiguous, sentence-aligned segments from one seed. Each segment runs at least 10s
+ * (R1) and ends at the first padded boundary past that (R2); a later segment with no
+ * boundary inside its ~30s ceiling is cut at the nearest cue edge (R3). The seed's caller
+ * only passes alignable starts, so the opener always aligns and only i>0 reaches a cut.
+ */
+function walkSentenceSegments(
+  seed: number,
+  boundaries: SentenceTiming["boundaries"],
+  edges: readonly number[],
+  desiredCount: number,
+  creditsFreeEnd: number,
+): ExcerptWindow[] {
+  const windows: ExcerptWindow[] = []
+  let position = seed
+  for (let i = 0; i < desiredCount; i++) {
+    const minEnd = position + HOP_SEGMENT_SECONDS
+    if (minEnd > creditsFreeEnd) break // no room for another >=10s segment before credits
+    const ceilingEnd = Math.min(
+      position + MAX_HOP_SEGMENT_SECONDS,
+      creditsFreeEnd,
+    )
+    const boundary = boundaries.find((b) => b.switchTime >= minEnd)
+    const end =
+      boundary && boundary.switchTime <= ceilingEnd
+        ? boundary.switchTime // R2: first padded sentence pause past the 10s floor
+        : (largestEdgeWithin(edges, minEnd, ceilingEnd) ?? ceilingEnd) // R3 ceiling cut
+    windows.push({ startSeconds: position, endSeconds: end })
+    position = end
   }
-  return best
+  return windows
 }
 
 /** Sorted unique span edges — the cue boundaries a ceiling-cut segment may end on (R3). */
@@ -237,12 +264,11 @@ function largestEdgeWithin(
 }
 
 /**
- * Walk contiguous, sentence-aligned segments from the densest alignable seed (KTD-4). Each
- * segment runs at least 10s (R1) and ends at the first padded boundary past that (R2); a
- * later segment with no boundary inside its ~30s ceiling is cut at the nearest cue edge
- * (R3). The whole track falls back (KTD-6/AE6) when no seed can open on a sentence, or when
- * fewer than two switchable segments fit. The seed guarantees the opener aligns, so only
- * i>0 ever reaches the ceiling cut.
+ * Build the sentence-aware windows, or the KTD-6 unusable sentinel. Walk each alignable
+ * seed densest-first (KTD-4) and take the first that yields >=2 switchable segments: a
+ * dense-but-boundary-late seed can align its opener yet leave no room for a second segment,
+ * so a single densest pick would fall the whole track back even when a slightly-less-dense
+ * seed produces a real plan. Fall back only when NO seed opens on a sentence AND fits two.
  */
 function planSentenceWindows(
   planningDuration: number,
@@ -256,39 +282,24 @@ function planSentenceWindows(
     return HOP_TIMING_UNUSABLE
   }
 
-  const seed = seedWindowStart(
+  const edges = dialogueEdges(dialogueSpans)
+  const seeds = rankSeedCandidates(
     dialogueSpans,
     boundaries,
     desiredCount,
     creditsFreeEnd,
   )
-  if (seed === null) return HOP_TIMING_UNUSABLE
-
-  const edges = dialogueEdges(dialogueSpans)
-  const windows: ExcerptWindow[] = []
-  let position = seed
-
-  for (let i = 0; i < desiredCount; i++) {
-    const minEnd = position + HOP_SEGMENT_SECONDS
-    if (minEnd > creditsFreeEnd) break // no room for another >=10s segment before credits
-    const ceilingEnd = Math.min(
-      position + MAX_HOP_SEGMENT_SECONDS,
+  for (const seed of seeds) {
+    const windows = walkSentenceSegments(
+      seed,
+      boundaries,
+      edges,
+      desiredCount,
       creditsFreeEnd,
     )
-
-    const boundary = boundaries.find((b) => b.switchTime >= minEnd)
-    let end: number
-    if (boundary && boundary.switchTime <= ceilingEnd) {
-      end = boundary.switchTime // R2: first padded sentence pause past the 10s floor
-    } else {
-      end = largestEdgeWithin(edges, minEnd, ceilingEnd) ?? ceilingEnd // R3 ceiling cut
-    }
-
-    windows.push({ startSeconds: position, endSeconds: end })
-    position = end
+    if (windows.length >= 2) return windows
   }
-
-  return windows.length >= 2 ? windows : HOP_TIMING_UNUSABLE
+  return HOP_TIMING_UNUSABLE
 }
 
 /**
