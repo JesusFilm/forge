@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 21, 2026)
+## Status (July 22, 2026)
 
 - **Total tickets:** 392
 - **Complete:** 293
-- **In progress:** 26
+- **In progress:** 25
 - **Not started:** 25
-- **Blocked:** 48
-- **Overdue and not complete:** 74
+- **Blocked:** 49
+- **Overdue and not complete:** 76
 
 ## Feature Index
 
@@ -82,7 +82,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-194](content-discovery/feat-194-watch-scene-embedding-ranking-evaluation.md)                             | Watch scene embedding ranking evaluation                                                        | nisal      | P1       | 2026-06-16 | 4    | 2026-06-19 | complete    |
 | [feat-196](content-discovery/feat-196-watch-language-index.md)                                                 | Watch language index                                                                            | urim       | P1       | 2026-06-16 | 1    | 2026-06-16 | complete    |
 | [feat-196](content-discovery/feat-196-watch-multilingual-search-behavior.md)                                   | Watch multilingual search behavior                                                              | nisal      | P1       | 2026-06-22 | 5    | 2026-06-26 | complete    |
-| [feat-198](content-discovery/feat-198-keyword-first-brand-entity-search.md)                                    | Keyword-first transcript relevance and entity search ranking                                    | nisal      | P1       | 2026-06-22 | 4    | 2026-06-25 | in-progress |
+| [feat-198](content-discovery/feat-198-keyword-first-brand-entity-search.md)                                    | Keyword-first transcript relevance and entity search ranking                                    | nisal      | P1       | 2026-06-22 | 4    | 2026-06-25 | blocked     |
 | [feat-193](content-discovery/feat-193-remove-legacy-scene-embedding-pipeline.md)                               | Remove Legacy Scene Embedding Pipeline                                                          | nisal      | P1       | 2026-06-24 | 3    | 2026-06-26 | complete    |
 | [feat-058](content-discovery/feat-058-deploy-semantic-search-architecture.md)                                  | Deploy Semantic Search Architecture                                                             | tataihono  | P1       | 2026-07-01 | 31   | 2026-07-31 | not-started |
 | [feat-232](content-discovery/feat-232-yt-video-mapper-arbitrary-raw-clip-matching.md)                          | YouTube mapper arbitrary raw clip matching                                                      | nisal      | P1       | 2026-07-03 | 10   | 2026-07-12 | in-progress |
