@@ -7,7 +7,8 @@ status: "not-started"
 start_date: "2026-08-10"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-272"
 tags:
   - "infrastructure"
   - "ai-pipeline"
@@ -16,26 +17,27 @@ tags:
 ## Problem
 
 The Langfuse managed-prompt retrieval mechanism (helper + `LANGFUSE_*` env
-group + production boot guard) ships in **PR #1621**
-(`feat/langfuse-prompt-helper`) — **not yet on `main`**. It is deliberately
+group + production boot guard) **shipped in
+[#1621](https://github.com/JesusFilm/forge/pull/1621) and is now on `main`**. It
+is deliberately
 unwired: no agent consumes it, and every `LANGFUSE_*` var is unset in every
 environment. Before feat-272 wires the seeker agent's system prompt to it, an
 operator has to actually stand Langfuse up: decide hosting posture, create the
 per-environment projects and key pairs, seed the smoke prompt, and set the env
 vars.
 
-That provisioning is an **operational precondition**, not code, so it needs its
-own tracked ticket rather than living only as a paragraph inside feat-272. It is
+That provisioning is an **operational precondition**, not code, so it gets its
+own tracked ticket — the fuller checklist that feat-272's short **Operational
+precondition** note defers to, rather than duplicating it. It is
 also the ticket that carries the one genuinely dangerous step in the whole
 arc — setting `LANGFUSE_BASE_URL` in production **without** a satisfying
 `LANGFUSE_ALLOWED_HOSTS` is the single configuration that fails a production
 boot. This ticket exists so that step is done in a **provably safe order**.
 
-**Relationship to other tickets** (recorded here in prose — feat-272 is not on
-`main`, so its frontmatter cannot be edited from this PR; wire the reciprocal
-`depends_on` when #1621 lands):
+**Relationship to other tickets** (the intra-lane edge is wired in frontmatter:
+this ticket `blocks` feat-272, and feat-272 `depends_on` feat-296):
 
-- **Gates feat-272** (Seeker Langfuse-managed prompt integration, PR #1621).
+- **Gates feat-272** (Seeker Langfuse-managed prompt integration).
   feat-272 must not enable production consumption until this provisioning is
   done and its access-control review has passed.
 - **Sibling of feat-279** (Studio-editable prompt block — `blocked` by a
@@ -84,8 +86,9 @@ of how Railway batches variable edits into a deploy:
    allowlist already satisfies the guard, so no intermediate state is ever
    "guard armed but unsatisfied."
 
-This is the same receiver-first discipline the repo already uses for cross-app
-keys: set the precondition before the trigger.
+This is the same precondition-before-trigger principle behind the repo's
+cross-app key rollouts — set the precondition before the trigger (here, ordering
+one service's own env vars rather than a two-service receiver/caller handoff).
 
 ### The gotcha that bricks a boot while looking correct
 
@@ -103,8 +106,9 @@ keys: set the precondition before the trigger.
 
 ## Entry Points — Read These First
 
-> All code paths below ship in **PR #1621** (`feat/langfuse-prompt-helper`) and
-> are not on `main` yet — read them from that branch until it merges.
+> All code paths below shipped in
+> [#1621](https://github.com/JesusFilm/forge/pull/1621) and are on `main` — read
+> them there.
 
 1. `apps/mastra/src/config/env.ts` — the `LANGFUSE_*` group, `getLangfuseConfig()`
    (the cooldown-≤-TTL clamp), and `assertLangfuseBaseUrlAllowedForProduction`
@@ -160,7 +164,9 @@ order:
 
 ## Constraints
 
-- **Per-environment PROJECTS, never labels-within-one-project** (KTD8).
+- **Per-environment PROJECTS, never labels-within-one-project** (KTD8) — a
+  deliberate divergence from Langfuse's own vendor-recommended "Environments"
+  feature; don't "fix" it back toward one shared project.
 - **Never set `LANGFUSE_BASE_URL` in production before `LANGFUSE_ALLOWED_HOSTS`
   is set to the exact hostname** — that is the one boot-throwing state.
 - **Do not move any `LANGFUSE_*` var into a required / no-default schema slot.**
@@ -182,7 +188,7 @@ order:
 - **Configured smoke passes:** against the dev project, the opt-in real-
   credential smoke runs green —
   `LANGFUSE_PROMPT_SMOKE_TEST=1 LANGFUSE_BASE_URL=… LANGFUSE_PUBLIC_KEY=…
-LANGFUSE_SECRET_KEY=… pnpm --filter @forge/mastra test langfuse-prompt-client.smoke`.
+LANGFUSE_SECRET_KEY=… pnpm --filter @forge/mastra test -- langfuse-prompt-client.smoke`.
 - **Guard sanity in production:** base URL `https://` + hostname present in
   `LANGFUSE_ALLOWED_HOSTS` → boots; a mismatch (http, wrong host, port, or
   allowlist unset) → the deploy **fails its healthcheck** and the previous
