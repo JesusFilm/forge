@@ -568,20 +568,24 @@ proxies. Plan: `docs/plans/2026-07-13-001-feat-chat-server-history-sidebar-plan.
   `createdAt`), server-side clamps (`perPage` default 20, max 50), rows
   projected field-by-field to `{ id, title, updatedAt }` — `""` is the
   untitled sentinel the client turns into a date fallback label.
-- **Replay (KTD4/KTD5):** `authorizeAiChatThreadAccess` → explicit
-  `getThreadById` existence check (the gate's missing-thread branch is a
-  write-path concept and would admit it) → `recall({ threadId, resourceId,
-perPage: 200 })` — `resourceId` ALWAYS passed (omitting it disables the
-  store's own ownership throw), `perPage` explicit (dist default 10). Wire
-  projection is `{ id, role, text, createdAt }`, user/assistant text parts
-  only, capped at 8,192 UTF-16 units per message (≤3 UTF-8 bytes each —
-  the chat proxy's 8 MiB thread byte-cap covers the worst case) — tool internals and provider metadata are
-  unrepresentable. The gate's `thread_limit` maps to `thread_not_found` on
-  this read wire; a store failure is a generic `store_failed` (fail closed —
-  never `thread_not_found`). Transcript order relies on `recall`'s
-  chronological return order — a pinned dist fact, CI-guarded by the
-  real-memory smoke's user-before-assistant assertion; re-verify on
-  `@mastra/*` bumps.
+- **Replay (KTD4/KTD5):** `resolveOwnedExistingThread`
+  (`src/mastra/ai-chat-thread-ownership.ts`, feat-284) resolves an owned,
+  EXISTING thread from ONE `getThreadById`: missing → 404 `thread_not_found`
+  (never an empty-transcript success), foreign owner → 403 `thread_forbidden`,
+  owner match → `recall({ threadId, resourceId, perPage: 200 })` —
+  `resourceId` ALWAYS passed (omitting it disables the store's own ownership
+  throw), `perPage` explicit (dist default 10). The read path has NO ceiling
+  branch (`listThreads` is never called — the write-path gate's
+  `thread_limit` is unrepresentable on this wire; the send route keeps
+  `authorizeAiChatThreadAccess` unchanged). Wire projection is
+  `{ id, role, text, createdAt }`, user/assistant text parts only, capped at
+  8,192 UTF-16 units per message (≤3 UTF-8 bytes each — the chat proxy's
+  8 MiB thread byte-cap covers the worst case) — tool internals and provider
+  metadata are unrepresentable. Resolver store errors propagate to a generic
+  `store_failed` (fail closed — never `thread_not_found`). Transcript order
+  relies on `recall`'s chronological return order — a pinned dist fact,
+  CI-guarded by the real-memory smoke's user-before-assistant assertion;
+  re-verify on `@mastra/*` bumps.
 - **Budget:** `TIME_BUDGET_MS.historyRead` (8s) via the `settleWithinBudget`
   pattern — millisecond-class store reads never inherit the 90s turn envelope,
   and the cap sits strictly below the chat proxy's 10s read ceiling.
