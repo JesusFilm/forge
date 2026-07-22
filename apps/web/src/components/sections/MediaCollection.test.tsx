@@ -311,7 +311,11 @@ describe("MediaCollection VideoCard href", () => {
               {
                 videoId: "v-1",
                 videoSlug: "the-gospel-of-luke",
-                muxPlaybackId: "mux-authored-item",
+                videoDub: {
+                  muxVideo: {
+                    playbackId: "mux-authored-item",
+                  },
+                },
                 titleOverride: "The Gospel of Luke",
                 subtitleOverride: null,
                 labelOverride: null,

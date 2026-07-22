@@ -34,7 +34,6 @@ export const adminMediaCollectionFragment = adminGraphql(
           ...AdminBlockVideoDub
         }
         videoSlug
-        muxPlaybackId
         videoImageBlurDataUrl
         videoImageDominantColor
         titleOverride
