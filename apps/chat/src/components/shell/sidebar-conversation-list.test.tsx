@@ -3,10 +3,10 @@ import userEvent, { type UserEvent } from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { fallbackTitle, type Conversation } from "@/lib/conversations"
-import { type HistoryListUi } from "@/lib/use-conversations"
 
 import { collapsedStyles } from "./sidebar-collapsed-styles"
 import { ConversationList } from "./sidebar-conversation-list"
+import { type HistoryListUi } from "./sidebar-projection"
 
 // Built per test (not at module load) so the instance never predates a future
 // fake-timer install in this file — matches app-shell.test.tsx.

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import type { Memory } from "@mastra/memory"
 
-import { buildAiChatMemory } from "../memory"
+import { buildAiChatMemory } from "../ai-chat-memory"
 import type { AiChatOwnershipMemory } from "../ai-chat-thread-ownership"
 import { retrieveAnswerTool } from "../tools/retrieve-answer"
 

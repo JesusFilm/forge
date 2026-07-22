@@ -16,7 +16,14 @@ export const VideoHeroFragment = graphql(`
     subheading
     ctaLabel
     ctaLink
-    streamingUrl
+    videoDub {
+      hls
+      dash
+      share
+      muxVideo {
+        playbackId
+      }
+    }
   }
 `)
 
@@ -95,10 +102,17 @@ export const CTASectionFragment = graphql(`
 export const VideoSectionFragment = graphql(`
   fragment VideoSectionFields on VideoBlock @_unmask {
     sectionKey
-    streamingUrl
     videoTitle: title
     videoSubtitle: subtitle
     videoId
+    videoDub {
+      hls
+      dash
+      share
+      muxVideo {
+        playbackId
+      }
+    }
   }
 `)
 
@@ -148,7 +162,14 @@ export const VideoCarouselFragment = graphql(`
     vcSubtitle: subtitle
     vcDescription: description
     items {
-      streamingUrl
+      videoDub {
+        hls
+        dash
+        share
+        muxVideo {
+          playbackId
+        }
+      }
       imageUrl
       titleOverride
       backgroundColor

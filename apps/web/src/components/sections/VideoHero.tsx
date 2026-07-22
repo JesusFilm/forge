@@ -11,6 +11,7 @@ import {
   CONTENT_WIDTH_CLASSES,
 } from "@/lib/content-width"
 import { videoHeroFragment } from "@/lib/fragments/video-hero"
+import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoHeroFragment }
 
@@ -266,20 +267,12 @@ function VideoHeroOverlay({
 }
 
 export function VideoHero({ data, routeVideo }: VideoHeroProps) {
-  const {
-    id,
-    heading,
-    subheading,
-    ctaLabel,
-    ctaLink,
-    streamingUrl,
-    useRouteVideo,
-  } = data
+  const { id, heading, subheading, ctaLabel, ctaLink, useRouteVideo } = data
 
   const src =
     useRouteVideo === true
       ? (routeVideo?.streamingUrl ?? null)
-      : (streamingUrl ?? null)
+      : resolvedBlockStreamingUrl(data)
   const resolvedHeading =
     heading ?? (useRouteVideo === true ? (routeVideo?.title ?? null) : null)
   const resolvedSubheading =

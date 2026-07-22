@@ -14,6 +14,7 @@ import { FocusableCard } from "../FocusableCard"
 import { useHoverPreview } from "../focus/useHoverPreview"
 import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { blockMuxPlaybackId, blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-// Derived from the fragment: streamingUrl + overrides only (no nested video
+// Derived from the fragment: resolved dub + overrides only (no nested video
 // record is fetched on TV).
 type VideoCarouselItem = NonNullable<VideoCarouselBlockModel["items"]>[number]
 
@@ -42,7 +43,8 @@ function VideoCarouselCard({
   const previewUrl = useHoverPreview({
     focused,
     enabled: true,
-    playbackId: extractMuxPlaybackId(item.streamingUrl ?? null),
+    playbackId:
+      blockMuxPlaybackId(item) ?? extractMuxPlaybackId(blockStreamingUrl(item)),
   })
 
   return (
@@ -110,7 +112,7 @@ export function VideoCarouselRenderer({
 
   const handlePress = useCallback(
     (item: VideoCarouselItem) => {
-      const streamingUrl = item.streamingUrl ?? null
+      const streamingUrl = blockStreamingUrl(item)
       if (
         typeof streamingUrl === "string" &&
         validateStreamingUrl(streamingUrl)

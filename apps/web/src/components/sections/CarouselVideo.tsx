@@ -28,6 +28,7 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
+import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoCarouselFragment }
 
@@ -476,9 +477,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         </div>
       )}
 
-      {selectedItem.streamingUrl && (
+      {resolvedBlockStreamingUrl(selectedItem) && (
         <CarouselVideoPlayer
-          src={selectedItem.streamingUrl}
+          src={resolvedBlockStreamingUrl(selectedItem) as string}
           poster={posterUrl}
         />
       )}

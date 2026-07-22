@@ -107,6 +107,32 @@ function optionalString(value: unknown) {
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
+function selectedBlockVideoDubArgs(
+  row: { videoId?: unknown; languageId?: unknown },
+  query: object,
+) {
+  const videoId = optionalString(row.videoId)
+  const languageId = optionalString(row.languageId)
+  if (!videoId || !languageId) return null
+
+  return {
+    ...query,
+    where: {
+      videoId,
+      languageId,
+      deletedAt: null,
+      published: true,
+      OR: [
+        { hls: { not: null } },
+        { dash: { not: null } },
+        { share: { not: null } },
+      ],
+      video: { deletedAt: null },
+    },
+    orderBy: [{ duration: "desc" as const }, { id: "asc" as const }],
+  }
+}
+
 async function resolveMediaAssetPreviewUrl(
   ctx: MediaPreviewContext,
   assetId: unknown,
@@ -365,6 +391,17 @@ MediaCollectionItemRef.implement({
       },
     }),
     videoId: t.exposeString("videoId", { nullable: true }),
+    languageId: t.exposeString("languageId", { nullable: true }),
+    videoDub: t.prismaField({
+      type: "VideoDub",
+      nullable: true,
+      description:
+        "Live playable dub resolved from this item's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
+      resolve: (query, row, _args, ctx) => {
+        const args = selectedBlockVideoDubArgs(row, query)
+        return args ? ctx.prisma.videoDub.findFirst(args) : null
+      },
+    }),
     videoSlug: t.string({
       nullable: true,
       description:
@@ -533,7 +570,17 @@ VideoCarouselItemRef.implement({
   description: "Single entry in VideoCarouselBlock.items.",
   fields: (t) => ({
     videoId: t.exposeString("videoId", { nullable: true }),
-    streamingUrl: t.exposeString("streamingUrl", { nullable: true }),
+    languageId: t.exposeString("languageId", { nullable: true }),
+    videoDub: t.prismaField({
+      type: "VideoDub",
+      nullable: true,
+      description:
+        "Live playable dub resolved from this item's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
+      resolve: (query, row, _args, ctx) => {
+        const args = selectedBlockVideoDubArgs(row, query)
+        return args ? ctx.prisma.videoDub.findFirst(args) : null
+      },
+    }),
     imageUrl: t.string({
       nullable: true,
       resolve: (row, _args, ctx) =>
@@ -949,8 +996,18 @@ VideoBlockRef.implement({
     t: t.exposeString("t"),
     sectionKey: t.exposeString("sectionKey", { nullable: true }),
     useRouteVideo: t.exposeBoolean("useRouteVideo"),
-    streamingUrl: t.exposeString("streamingUrl", { nullable: true }),
     videoId: t.exposeString("videoId", { nullable: true }),
+    languageId: t.exposeString("languageId", { nullable: true }),
+    videoDub: t.prismaField({
+      type: "VideoDub",
+      nullable: true,
+      description:
+        "Live playable dub resolved from this block's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
+      resolve: (query, row, _args, ctx) => {
+        const args = selectedBlockVideoDubArgs(row, query)
+        return args ? ctx.prisma.videoDub.findFirst(args) : null
+      },
+    }),
     mediaUrl: t.string({
       nullable: true,
       resolve: (row, _args, ctx) =>
@@ -1040,7 +1097,17 @@ VideoHeroBlockRef.implement({
     useRouteVideo: t.exposeBoolean("useRouteVideo"),
     ctaEnabled: t.exposeBoolean("ctaEnabled", { nullable: true }),
     videoId: t.exposeString("videoId", { nullable: true }),
-    streamingUrl: t.exposeString("streamingUrl", { nullable: true }),
+    languageId: t.exposeString("languageId", { nullable: true }),
+    videoDub: t.prismaField({
+      type: "VideoDub",
+      nullable: true,
+      description:
+        "Live playable dub resolved from this block's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
+      resolve: (query, row, _args, ctx) => {
+        const args = selectedBlockVideoDubArgs(row, query)
+        return args ? ctx.prisma.videoDub.findFirst(args) : null
+      },
+    }),
     clipStartSeconds: t.exposeFloat("clipStartSeconds", { nullable: true }),
     clipEndSeconds: t.exposeFloat("clipEndSeconds", { nullable: true }),
     autoplay: t.exposeBoolean("autoplay", { nullable: true }),
