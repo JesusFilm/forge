@@ -13,7 +13,22 @@ import { useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { getApolloClient } from "../../src/lib/apolloClient"
-import { GET_VIDEO_BY_SLUG, type SearchResult } from "../../src/lib/queries"
+import { datadogLog } from "../../src/lib/datadog"
+import {
+  generateSearchRequestId,
+  parseSearchErrorCode,
+  resolveWatchSearchOutcome,
+} from "../../src/lib/watchSearchLog"
+import {
+  buildWatchSearchInput,
+  mapWatchSearchResponse,
+  parseSearchError,
+} from "../../src/lib/watchSearch"
+import {
+  GET_VIDEO_BY_SLUG,
+  WATCH_SEARCH,
+  type SearchResult,
+} from "../../src/lib/queries"
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
@@ -30,6 +45,7 @@ import {
 
 const MAX_QUERY_LENGTH = 200
 const DEBOUNCE_MS = 300
+const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
 
@@ -47,7 +63,14 @@ export default function DiscoverScreen() {
     if (result.type === "EXPERIENCE") return
     const slug = result.slug
     if (prefetchedRef.current.has(slug)) return
-    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) return
+    // Prefetch cap saturation (R35): a fast scroll-and-press drops warm-ups.
+    if (prefetchInFlightRef.current >= MAX_PREFETCH_INFLIGHT) {
+      datadogLog.info("search.prefetch", {
+        requested: prefetchInFlightRef.current + 1,
+        capped: MAX_PREFETCH_INFLIGHT,
+      })
+      return
+    }
     prefetchedRef.current.add(slug)
     prefetchInFlightRef.current += 1
     getApolloClient()
@@ -67,6 +90,14 @@ export default function DiscoverScreen() {
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
+      // Join the click back to its originating search (result_clicked ↔
+      // watch_search share search_request_id); content_id = slug so the detail
+      // route's content.resolution joins the same journey.
+      datadogLog.info("search.result_clicked", {
+        search_request_id: searchRequestIdRef.current,
+        position: resultsRef.current.indexOf(result),
+        content_id: result.slug,
+      })
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
         router.push(`/experience/${encodeURIComponent(result.slug)}`)
@@ -90,15 +121,34 @@ export default function DiscoverScreen() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [hasMore, setHasMore] = useState(false)
+  // Admin owns the page cursor (rows can be dropped in mapping, so
+  // results.length is not a valid offset).
+  const [nextOffset, setNextOffset] = useState(0)
   const [searched, setSearched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Which request failed, so the footer Retry re-runs the search instead of
+  // paging a query the visible results don't belong to.
+  const [errorSource, setErrorSource] = useState<"search" | "page">("search")
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skeletonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestIdRef = useRef(0)
+  // Current search's correlation id + a live results mirror, both read by
+  // handleSelectResult to attribute a click to its search without dep churn.
+  const searchRequestIdRef = useRef("")
+  // Term the VISIBLE results belong to. loadMore must page this, not the live
+  // input, which can drift ahead during the debounce window.
+  const submittedTermRef = useRef("")
+  // Synchronous re-entrancy latch: `loadingMore` state is a render-time snapshot,
+  // so two presses in one frame both read false and double-append.
+  const loadingMoreRef = useRef(false)
+  // Superseded searches are already discarded by the generation guard; aborting
+  // also stops paying for them. fetchWithTimeout forwards init.signal.
+  const abortRef = useRef<AbortController | null>(null)
+  const resultsRef = useRef<SearchResult[]>([])
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
   const [resultsKey, setResultsKey] = useState(0)
@@ -113,6 +163,12 @@ export default function DiscoverScreen() {
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
     }
   }, [])
+
+  // Keep the click-time position lookup current without re-memoizing the row
+  // handlers (which would churn the FlatList).
+  useEffect(() => {
+    resultsRef.current = results
+  }, [results])
 
   // Fade the browse grid in and out the same way the results animate: fade +
   // slight scale in on enter, fade out then unmount on leave.
@@ -178,10 +234,19 @@ export default function DiscoverScreen() {
       // otherwise a stale result lands over the browse grid after clearing, and
       // its guarded finally never resets loading.
       const thisRequest = ++requestIdRef.current
+      // Bumping the generation orphans any in-flight load-more: its guarded
+      // finally can no longer fire, so release both flags here or "Load more"
+      // stays stuck on "Loading..." for the rest of the session.
+      loadingMoreRef.current = false
+      setLoadingMore(false)
+      abortRef.current?.abort()
+      abortRef.current = new AbortController()
+      const signal = abortRef.current.signal
       if (!trimmed) {
         await animateOut()
         setResults([])
         setHasMore(false)
+        setNextOffset(0)
         setSearched(false)
         setLoading(false)
         setError(null)
@@ -202,6 +267,7 @@ export default function DiscoverScreen() {
 
       setLoading(true)
       setError(null)
+      setErrorSource("search")
       setSearched(true)
 
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -210,14 +276,51 @@ export default function DiscoverScreen() {
         SKELETON_DELAY_MS,
       )
 
+      // One correlation id per search, joined by result_clicked (R33/R35).
+      const searchRequestId = generateSearchRequestId()
+      searchRequestIdRef.current = searchRequestId
+      const startedAt = Date.now()
+
       try {
-        // TODO(feat-254): Temporary non-P0 compile shim while Admin replaces
-        // the legacy Query.search contract for Watch web first.
+        const result = await getApolloClient().query({
+          query: WATCH_SEARCH,
+          variables: {
+            input: buildWatchSearchInput({
+              query: trimmed,
+              clientRequestId: searchRequestId,
+              limit: PAGE_SIZE,
+              offset: 0,
+            }),
+          },
+          fetchPolicy: "no-cache",
+          context: { fetchOptions: { signal } },
+        })
+
         if (requestIdRef.current !== thisRequest) return
 
-        setResults([])
-        setHasMore(false)
+        const page = mapWatchSearchResponse(
+          result.data?.watchSearch,
+          trimmed,
+          0,
+        )
+        submittedTermRef.current = trimmed
+        setResults([...page.results])
+        setHasMore(page.hasMore)
+        setNextOffset(page.nextOffset)
         setResultsKey((k) => k + 1)
+
+        const { outcome, result_count } = resolveWatchSearchOutcome({
+          term: trimmed,
+          results: page.results,
+        })
+        datadogLog.info("watch_search", {
+          term: trimmed,
+          outcome,
+          result_count,
+          latency_ms: Date.now() - startedAt,
+          request_type: "initial",
+          search_request_id: searchRequestId,
+        })
 
         fadeAnim.setValue(0)
         scaleAnim.setValue(0.97)
@@ -234,6 +337,22 @@ export default function DiscoverScreen() {
             friction: 9,
           }),
         ]).start()
+      } catch (e: unknown) {
+        if (requestIdRef.current !== thisRequest) return
+        // animateOut() faded the retained results to 0 and only the success path
+        // restores it. Without this the screen goes blank: results are still set,
+        // so both error branches (gated on results.length === 0) never render.
+        fadeAnim.setValue(1)
+        scaleAnim.setValue(1)
+        setErrorSource("search")
+        setError(parseSearchError(e))
+        // Rate-limit/auth reject as a 200-body GraphQL code, not a 429 (R34).
+        datadogLog.warn("watch_search_failed", {
+          term: trimmed,
+          code: parseSearchErrorCode(e),
+          request_type: "initial",
+          search_request_id: searchRequestId,
+        })
       } finally {
         if (requestIdRef.current === thisRequest) {
           if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
@@ -268,13 +387,72 @@ export default function DiscoverScreen() {
   }
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return
+    if (loadingMoreRef.current || !hasMore) return
+    loadingMoreRef.current = true
 
+    const thisRequest = requestIdRef.current
     setLoadingMore(true)
     setError(null)
-    setHasMore(false)
-    setLoadingMore(false)
-  }, [loadingMore, hasMore])
+
+    // Pagination shares the initiating search's correlation id (request_type
+    // distinguishes the page from the initial fetch).
+    const term = submittedTermRef.current
+    const searchRequestId = searchRequestIdRef.current
+    const startedAt = Date.now()
+
+    try {
+      const result = await getApolloClient().query({
+        query: WATCH_SEARCH,
+        variables: {
+          input: buildWatchSearchInput({
+            query: term,
+            clientRequestId: searchRequestId,
+            limit: PAGE_SIZE,
+            offset: nextOffset,
+          }),
+        },
+        fetchPolicy: "no-cache",
+        context: { fetchOptions: { signal: abortRef.current?.signal } },
+      })
+
+      if (requestIdRef.current !== thisRequest) return
+
+      const page = mapWatchSearchResponse(
+        result.data?.watchSearch,
+        term,
+        nextOffset,
+      )
+      setResults((prev) => [...prev, ...page.results])
+      setHasMore(page.hasMore)
+      setNextOffset(page.nextOffset)
+
+      const { outcome, result_count } = resolveWatchSearchOutcome({
+        term,
+        results: page.results,
+      })
+      datadogLog.info("watch_search", {
+        term,
+        outcome,
+        result_count,
+        latency_ms: Date.now() - startedAt,
+        request_type: "page",
+        search_request_id: searchRequestId,
+      })
+    } catch (e: unknown) {
+      if (requestIdRef.current !== thisRequest) return
+      setErrorSource("page")
+      setError(parseSearchError(e))
+      datadogLog.warn("watch_search_failed", {
+        term,
+        code: parseSearchErrorCode(e),
+        request_type: "page",
+        search_request_id: searchRequestId,
+      })
+    } finally {
+      loadingMoreRef.current = false
+      if (requestIdRef.current === thisRequest) setLoadingMore(false)
+    }
+  }, [hasMore, nextOffset])
 
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
@@ -378,7 +556,17 @@ export default function DiscoverScreen() {
                   {error && (
                     <View style={styles.inlineError}>
                       <Text style={styles.errorText}>{error}</Text>
-                      <Text style={styles.retryLink} onPress={loadMore}>
+                      {/* A failed search leaves the PREVIOUS query's results up,
+                          so retrying must re-run the search — paging here would
+                          append a different query onto them. */}
+                      <Text
+                        style={styles.retryLink}
+                        onPress={
+                          errorSource === "page"
+                            ? loadMore
+                            : () => search(query)
+                        }
+                      >
                         Retry
                       </Text>
                     </View>
