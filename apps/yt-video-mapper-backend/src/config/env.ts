@@ -40,7 +40,7 @@ const envSchema = z.object({
     .int()
     .positive()
     .max(4)
-    .default(2),
+    .default(4),
   MEDIA_INDEX_MAX_FETCH_BYTES: z.coerce
     .number()
     .int()

@@ -172,7 +172,7 @@ The command writes versioned `MediaSignature` rows for the configured
 
 - `MEDIA_INDEX_ALLOWED_HOSTS`
 - `MEDIA_INDEX_PAGE_SIZE`
-- `MEDIA_INDEX_CONCURRENCY` (defaults to `2`, maximum `4`)
+- `MEDIA_INDEX_CONCURRENCY` (defaults to `4`, maximum `4`)
 - `MEDIA_INDEX_MAX_FETCH_BYTES`
 - `MEDIA_INDEX_FETCH_TIMEOUT_MS`
 - `MEDIA_INDEX_RESUME_AFTER_VARIANT_ID`

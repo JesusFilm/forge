@@ -97,7 +97,7 @@ describe("runtime env", () => {
       "official-media-signature-v1",
     )
     expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(100)
-    expect(env.MEDIA_INDEX_CONCURRENCY).toBe(2)
+    expect(env.MEDIA_INDEX_CONCURRENCY).toBe(4)
     expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(262_144)
     expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(15_000)
     expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBeUndefined()
