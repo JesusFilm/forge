@@ -144,7 +144,7 @@
             {
               "t": "videoHero",
               "useRouteVideo": false,
-              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "videoCoreId": "fixt-jesus-feature",
               "heading": "Watch",
               "subheading": "Films that bring the Gospels to life.",
               "ctaLabel": "Start watching"
@@ -167,7 +167,7 @@
             {
               "t": "videoHero",
               "useRouteVideo": false,
-              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "videoCoreId": "fixt-easter-explained",
               "heading": "Easter",
               "subheading": "Videos and resources for the Easter season.",
               "ctaLabel": "Watch now"
@@ -183,7 +183,7 @@
             {
               "t": "videoHero",
               "useRouteVideo": false,
-              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "videoCoreId": "fixt-easter-explained",
               "heading": "Pâques",
               "subheading": "Vidéos et ressources pour la saison de Pâques.",
               "ctaLabel": "Regarder maintenant"
@@ -206,7 +206,7 @@
             {
               "t": "videoHero",
               "useRouteVideo": false,
-              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "videoCoreId": "fixt-jesus-feature",
               "heading": "Jesus",
               "subheading": "Films that introduce Jesus.",
               "ctaLabel": "Watch"
@@ -229,7 +229,7 @@
             {
               "t": "videoHero",
               "useRouteVideo": false,
-              "streamingUrl": "https://stream.mux.com/J3WBxqGgXxi01201FYmW0202ayeL7PGXfuuXR02nvjQCE7bI.m3u8",
+              "videoCoreId": "fixt-jesus-feature",
               "heading": "Watch",
               "subheading": "Default fallback template.",
               "ctaLabel": "Start"

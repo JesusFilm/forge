@@ -72,6 +72,7 @@ const defaultVideoLibrary: VideoLibraryItem[] = [
       {
         key: "dub-en",
         label: "English",
+        languageId: "language-en",
         languageSlug: "english",
         bcp47: "en",
         streamUrl: "https://example.com/video.mp4",
@@ -135,6 +136,7 @@ function renderEditorElement(
       canUploadImages
       initialValues={{
         localeId: "locale-1",
+        videoLanguageId: "language-en",
         title: "Experience title",
         slug: "experience-title",
         metaDescription: "Meta description",
@@ -1652,9 +1654,8 @@ describe("ExperienceEditor", () => {
         "child-1",
         "child-2",
       ])
-      expect(blocks[0]?.items?.[1]?.streamingUrl).toBe(
-        "https://example.com/episode-two.m3u8",
-      )
+      expect(blocks[0]?.items?.[1]?.languageId).toBe("language-en")
+      expect(blocks[0]?.items?.[1]?.streamingUrl).toBeUndefined()
     } finally {
       view.cleanup()
     }
@@ -1935,6 +1936,7 @@ describe("ExperienceEditor", () => {
               {
                 key: "dub-en",
                 label: "English",
+                languageId: "language-en",
                 languageSlug: "english",
                 bcp47: "en",
                 streamUrl: "https://example.com/en.m3u8",
@@ -1944,6 +1946,7 @@ describe("ExperienceEditor", () => {
               {
                 key: "dub-es",
                 label: "Spanish",
+                languageId: "language-es",
                 languageSlug: "spanish-castilian",
                 bcp47: "es",
                 streamUrl: "https://example.com/es.m3u8",
@@ -2021,7 +2024,8 @@ describe("ExperienceEditor", () => {
       >
 
       expect(blocks[0]?.videoId).toBe("video-1")
-      expect(blocks[0]?.streamingUrl).toBe("https://example.com/es.m3u8")
+      expect(blocks[0]?.languageId).toBe("language-es")
+      expect(blocks[0]?.streamingUrl).toBeUndefined()
       expect(blocks[0]?.clipEndSeconds).toBeUndefined()
     } finally {
       view.cleanup()
