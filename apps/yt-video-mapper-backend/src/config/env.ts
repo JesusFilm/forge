@@ -35,6 +35,12 @@ const envSchema = z.object({
     .min(1)
     .default("official-media-signature-v1"),
   MEDIA_INDEX_PAGE_SIZE: z.coerce.number().int().positive().default(100),
+  MEDIA_INDEX_CONCURRENCY: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(4)
+    .default(2),
   MEDIA_INDEX_MAX_FETCH_BYTES: z.coerce
     .number()
     .int()
@@ -80,6 +86,9 @@ export const env = envSchema.parse({
     process.env.MEDIA_SIGNATURE_ALGORITHM_VERSION,
   ),
   MEDIA_INDEX_PAGE_SIZE: emptyToUndefined(process.env.MEDIA_INDEX_PAGE_SIZE),
+  MEDIA_INDEX_CONCURRENCY: emptyToUndefined(
+    process.env.MEDIA_INDEX_CONCURRENCY,
+  ),
   MEDIA_INDEX_MAX_FETCH_BYTES: emptyToUndefined(
     process.env.MEDIA_INDEX_MAX_FETCH_BYTES,
   ),
