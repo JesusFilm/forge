@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 22, 2026)
 
-- **Total tickets:** 392
-- **Complete:** 293
+- **Total tickets:** 396
+- **Complete:** 296
 - **In progress:** 25
-- **Not started:** 25
+- **Not started:** 26
 - **Blocked:** 49
 - **Overdue and not complete:** 76
 
@@ -327,6 +327,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-275](platform/feat-275-admin-editor-video-picker-language-aware-dubs.md)       | Admin Editor Video Picker Language-Aware Dubs                                    | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-277](platform/feat-277-admin-editor-collection-child-expansion.md)             | Admin Editor Collection Child Expansion                                          | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-277](platform/feat-277-watch-media-collection-header-copy-order.md)            | Watch media collection authored copy order                                       | unassigned | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-280](platform/feat-280-admin-editor-video-picker-type-filter.md)               | Admin Editor Video Picker Type Filter                                            | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-280](platform/feat-280-watch-media-collection-linked-titles.md)                | Watch Media Collection Linked Titles                                             | codex      | P1       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-286](platform/feat-286-auth-google-account-chooser.md)                         | Auth Google Account Chooser                                                      | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-287](platform/feat-287-auth-google-account-chooser-production-verification.md) | Auth Google Account Chooser Production Verification                              | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)           | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                             | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
 | [feat-089](platform/feat-089-agent-agnostic-repo-instructions.md)                    | Agent-Agnostic Repo Instructions                                                 | josh       | P2       | 2026-04-13 | 1    | 2026-04-13 | complete    |
