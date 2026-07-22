@@ -4,6 +4,10 @@ import { z } from "zod"
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value
 
+// Mastra polls for at most 4,800,000ms. Keep 60s for the final worker cleanup,
+// terminal-state persistence, one 5s poll interval, and request latency.
+export const MAX_RENDER_JOB_TIMEOUT_MS = 4_740_000
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -36,6 +40,9 @@ const envSchema = z.object({
   // Baked Remotion bundle directory (set in Docker). Absent → render.ts
   // memoizes a runtime bundle() for local dev.
   SHORTS_WORKER_BUNDLE_DIR: z.string().min(1).optional(),
+  // Baked devotional-only Remotion bundle. Kept separate from the Shorts
+  // composition bundle; one bundle is reused for portrait + wide renders.
+  SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR: z.string().min(1).optional(),
   // Whisper model + whisper.cpp install dir. Optional outside production
   // (transcription degrades to the unsupported-language annotation);
   // required + existence-checked at boot in production.
@@ -52,7 +59,7 @@ const envSchema = z.object({
   // cover own budget + one queued predecessor; each MUST stay strictly below
   // the matching manager poll ceiling (prepare 50min, render 80min — root
   // CLAUDE.md: outbound timeout shorter than caller budget). Raise the pair
-  // together, worker strictly below manager.
+  // together, preserving at least 60s of orchestrator observation headroom.
   SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS: z.coerce
     .number()
     .int()
@@ -62,6 +69,7 @@ const envSchema = z.object({
     .number()
     .int()
     .positive()
+    .max(MAX_RENDER_JOB_TIMEOUT_MS)
     .default(4_200_000),
   // Per-invocation subprocess caps; every invocation is additionally capped
   // at the remaining job deadline.
@@ -75,6 +83,10 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(1_800_000),
+  // Optional credentials used only by the local devotional snippet helper.
+  // Keeping access here preserves the package-wide env boundary.
+  OPENROUTER_API_KEY: z.string().min(1).optional(),
+  DEVOTIONAL_MODEL: z.string().min(1).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -107,6 +119,9 @@ export function parseEnv(source: EnvSource): Env {
       source.SHORTS_WORKER_RENDER_CONCURRENCY,
     ),
     SHORTS_WORKER_BUNDLE_DIR: emptyToUndefined(source.SHORTS_WORKER_BUNDLE_DIR),
+    SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR: emptyToUndefined(
+      source.SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR,
+    ),
     SHORTS_WORKER_WHISPER_MODEL_PATH: emptyToUndefined(
       source.SHORTS_WORKER_WHISPER_MODEL_PATH,
     ),
@@ -131,6 +146,8 @@ export function parseEnv(source: EnvSource): Env {
     SHORTS_WORKER_WHISPER_TIMEOUT_MS: emptyToUndefined(
       source.SHORTS_WORKER_WHISPER_TIMEOUT_MS,
     ),
+    OPENROUTER_API_KEY: emptyToUndefined(source.OPENROUTER_API_KEY),
+    DEVOTIONAL_MODEL: emptyToUndefined(source.DEVOTIONAL_MODEL),
   })
 }
 
@@ -164,6 +181,10 @@ export function assertRuntimeEnv(
     ["RAILWAY_S3_SECRET_ACCESS_KEY", target.RAILWAY_S3_SECRET_ACCESS_KEY],
     ["SHORTS_WORKER_BUNDLE_DIR", target.SHORTS_WORKER_BUNDLE_DIR],
     [
+      "SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR",
+      target.SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR,
+    ],
+    [
       "SHORTS_WORKER_WHISPER_MODEL_PATH",
       target.SHORTS_WORKER_WHISPER_MODEL_PATH,
     ],
@@ -182,6 +203,10 @@ export function assertRuntimeEnv(
 
   const missingPaths = [
     ["SHORTS_WORKER_BUNDLE_DIR", target.SHORTS_WORKER_BUNDLE_DIR!],
+    [
+      "SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR",
+      target.SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR!,
+    ],
     [
       "SHORTS_WORKER_WHISPER_MODEL_PATH",
       target.SHORTS_WORKER_WHISPER_MODEL_PATH!,
