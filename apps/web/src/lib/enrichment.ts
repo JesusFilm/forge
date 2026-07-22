@@ -1,6 +1,7 @@
 // Admin's `MediaCollectionBlock.items[]` is flat. Computed fields such as
-// `resolvedTitle` are projected alongside the linked video's image and route
-// metadata so the renderer does not need a second request or client-side join.
+// `resolvedTitle` and `videoDub` are projected alongside the linked video's
+// image and route metadata so the renderer does not need a second request or
+// client-side join.
 
 type MediaItem = {
   videoId?: string | null
@@ -9,6 +10,9 @@ type MediaItem = {
   videoDub?: {
     language?: {
       slug?: string | null
+    } | null
+    muxVideo?: {
+      playbackId?: string | null
     } | null
   } | null
   muxPlaybackId?: string | null
@@ -166,7 +170,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     overrideUrl ??
     fallbackUrl ??
     localWatchHomeThumbnailUrl(item.coreId) ??
-    muxThumbnailUrl(item.muxPlaybackId)
+    muxThumbnailUrl(item.videoDub?.muxVideo?.playbackId)
   const hasOverrideImage = overrideUrl != null
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
     item.videoImageBlurDataUrl,
@@ -206,7 +210,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
           localWatchHomeBlurDataUrl(item.coreId) ??
           demoBlurDataUrl(
             item.coreId ??
-              item.muxPlaybackId ??
+              item.videoDub?.muxVideo?.playbackId ??
               item.videoId ??
               item.titleOverride ??
               imageUrl ??
@@ -217,7 +221,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
       (hasOverrideImage ? null : (videoDominantColor ?? fallbackDominantColor)),
     videoSlug,
     languageSlug,
-    muxPlaybackId: item.muxPlaybackId ?? null,
+    muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,
   }
 }
 
