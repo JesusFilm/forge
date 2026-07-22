@@ -3,7 +3,7 @@ id: "feat-284"
 title: "Mastra thread-ownership read-path resolver (owned-existing-thread)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-24"
 duration: 1
 depends_on: []
@@ -12,6 +12,16 @@ blocks:
 tags:
   - "ai-pipeline"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-22 via [PR #1670](https://github.com/JesusFilm/forge/pull/1670) (`feat(mastra): add thread-ownership read-path resolver (feat-284)`).
+
+**What landed.** `resolveOwnedExistingThread` resolves an owned, existing thread from one `getThreadById` with the ceiling branch made structurally unreachable (`Pick<AiChatOwnershipMemory, "getThreadById">`), and the replay handler collapsed to admission → resolver → recall — wire outcomes byte-identical, pinned by new `listThreads`-never-called / single-`getThreadById` / resolver-leg-504 assertions that discriminate a revert where the frozen wire outcomes cannot. Review-driven ride-alongs beyond the brief: a `memory.ts` lane-docstring narrowing (gate on writes, resolver on reads) and dated supersession notes on feat-241's ticket + the 2026-07-13 plan, whose forward-looking sections still taught the gate-based replay flow. Tier-2 review (10 lenses + a Codex cross-model adversarial pass) returned zero primary findings.
+
+**Residual risk / follow-ups.** The resolver's 404-for-missing rests on the pinned `@mastra/pg` null-for-miss / throw-on-outage contract (`ai-chat-pg-failmode-contract.test.ts`, untouched) — re-verify on `@mastra/*` bumps; drift fails closed (404→500), never open. The narrowed resolver→recall TOCTOU and the 403/404 existence oracle remain accepted feat-208 residue. The 3-line ownership-comparison duplication between the two entry points is deliberately deferred to [feat-247](feat-247-chat-history-management.md)'s resolver extension.
+
+**Unblocked.** [feat-247](feat-247-chat-history-management.md) (its `depends_on` on this ticket is now satisfied; feat-247's brainstorm extends the resolver rather than mirroring the old hand-rolled pattern).
 
 ## Problem
 
