@@ -1,6 +1,7 @@
 ---
 title: Next.js 16 dev blocks page-wide hydration when apps/web is loaded from 127.0.0.1 — `allowedDevOrigins` fix
 date: 2026-05-20
+last_updated: 2026-07-22
 category: docs/solutions/runtime-errors
 module: apps/web
 problem_type: runtime_error
@@ -96,6 +97,35 @@ After restart, hydration completes on the first reload. (A dev-panel click is oc
 
 Production builds strip `allowedDevOrigins` entirely. The field is a dev-only escape hatch.
 
+### Remote QA hosts such as Tailscale
+
+The same failure recurs when Tailscale Serve proxies the local dev server and
+the browser uses the device's `*.ts.net` hostname. Keep environment-specific
+hosts out of tracked source by deriving the extra development origin from the
+explicit canonical URL:
+
+```js
+const allowedDevOrigins = (() => {
+  const origins = new Set(["127.0.0.1"])
+  const canonicalOrigin = process.env.NEXT_PUBLIC_CANONICAL_ORIGIN
+
+  if (!canonicalOrigin) return [...origins]
+
+  try {
+    origins.add(new URL(canonicalOrigin).hostname)
+  } catch {
+    // Keep local development bootable when an optional override is malformed.
+  }
+
+  return [...origins]
+})()
+```
+
+Set `NEXT_PUBLIC_CANONICAL_ORIGIN` in the ignored local environment file to
+the HTTPS Tailscale Serve URL, then restart `next dev`. This keeps the tracked
+allowlist explicit, avoids a wildcard, and supports either a tailnet hostname
+or IP without committing a personal device address.
+
 ## Why This Works
 
 Next.js 16 introduced a same-origin guard on dev-only resource paths. When the request's `Origin` header doesn't match `http://localhost:<port>`, the framework refuses to serve `/_next/webpack-hmr` and the client chunk manifest. Without those, React-DOM loads but cannot complete RSC hydration — `hydrateRoot` is never called for the subtree below the root `<body>`. The app shell gets a React root; every component tree below it is inert SSR HTML.
@@ -104,7 +134,12 @@ Next.js 16 introduced a same-origin guard on dev-only resource paths. When the r
 
 The `127.0.0.1` host preference exists in this monorepo specifically because `apps/admin`'s auth-host proxy treats `localhost` as the auth-host and loops `/dashboard` redirects when admin is accessed via `localhost:3003`. The IP variant short-circuits the loop. Browser tabs that follow links from admin to apps/web inherit `127.0.0.1` as the host; apps/web's `basePath: "/watch"` shares that host, so `/watch/easter` loads from `127.0.0.1:3000` and the block fires.
 
-`apps/web/.env.local` already uses `ADMIN_GRAPHQL_URL=http://127.0.0.1:3003/api/graphql` for the server-side GraphQL client, so the `127.0.0.1` host preference is part of the documented dev convention. The hydration block is the side of that preference that hadn't surfaced because nobody had previously opened apps/web at the IP address.
+At the time of the 2026-05-20 incident, the ignored local
+`apps/web/.env.local` used
+`ADMIN_GRAPHQL_URL=http://127.0.0.1:3003/api/graphql` for the server-side
+GraphQL client, so the `127.0.0.1` host preference was part of the local dev
+convention. The hydration block was the side of that preference that had not
+surfaced because apps/web had not previously been opened at the IP address.
 
 ## Prevention
 
@@ -134,6 +169,11 @@ The `127.0.0.1` host preference exists in this monorepo specifically because `ap
 - **`allowedDevOrigins` is dev-only.** Production builds ignore it. Adding it prophylactically to any Next.js app in this monorepo that developers may access via `127.0.0.1` has zero production impact.
 
 - **`apps/admin` deliberately does NOT use this fix.** Per the related doc below, admin's auth-host proxy collides with the same setting in unsafe ways; admin's mitigation is to keep CLI workflows (no browser interaction) at `127.0.0.1` and access admin through `apps/auth` at port 3004 in OAuth mode. Do not copy this fix to `apps/admin/next.config.ts`.
+
+- **Derive remote QA hosts from an explicit canonical URL.** For Tailscale or
+  another intentional development hostname, add only
+  `new URL(NEXT_PUBLIC_CANONICAL_ORIGIN).hostname`; do not commit a personal
+  host or use a wildcard.
 
 ## Related Issues
 
