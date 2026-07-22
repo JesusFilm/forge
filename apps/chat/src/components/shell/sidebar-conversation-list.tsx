@@ -1,8 +1,7 @@
 import { cn } from "@/lib/cn"
 import { fallbackTitle, type Conversation } from "@/lib/conversations"
-import { type HistoryListUi } from "@/lib/use-conversations"
-
 import { type CollapsedStyles } from "./sidebar-collapsed-styles"
+import { type HistoryListUi } from "./sidebar-projection"
 
 type ConversationListProps = {
   conversations: Conversation[]

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   AI_CHAT_MAX_THREADS_PER_RESOURCE,
   authorizeAiChatThreadAccess,
+  resolveOwnedExistingThread,
   type AiChatOwnershipMemory,
 } from "./ai-chat-thread-ownership"
 
@@ -101,6 +102,83 @@ describe("authorizeAiChatThreadAccess", () => {
     })
     await expect(
       authorizeAiChatThreadAccess({
+        memory,
+        threadId: "t1",
+        resource: "user:alice",
+      }),
+    ).rejects.toThrow("store down")
+  })
+})
+
+describe("resolveOwnedExistingThread (read path, feat-284)", () => {
+  it("resolves ok for the owner of an existing thread", async () => {
+    const { memory } = fakeMemory({
+      getThreadById: async () => ({ resourceId: "user:alice" }),
+    })
+    const result = await resolveOwnedExistingThread({
+      memory,
+      threadId: "t1",
+      resource: "user:alice",
+    })
+    expect(result).toEqual({ ok: true })
+  })
+
+  it("refuses a missing thread with thread_not_found — never an ok, never a ceiling lookup", async () => {
+    const { memory, listThreadsCalls } = fakeMemory({
+      getThreadById: async () => null,
+    })
+    const result = await resolveOwnedExistingThread({
+      memory,
+      threadId: "t-gone",
+      resource: "user:alice",
+    })
+    expect(result).toEqual({ ok: false, reason: "thread_not_found" })
+    // No ceiling branch on reads: listThreads is structurally out of the
+    // resolver's reach (Pick<…, "getThreadById">) — pinned at runtime too.
+    expect(listThreadsCalls).toHaveLength(0)
+  })
+
+  it("refuses a foreign owner with thread_forbidden", async () => {
+    const { memory, listThreadsCalls } = fakeMemory({
+      getThreadById: async () => ({ resourceId: "user:alice" }),
+    })
+    const result = await resolveOwnedExistingThread({
+      memory,
+      threadId: "t1",
+      resource: "user:mallory",
+    })
+    expect(result).toEqual({ ok: false, reason: "thread_forbidden" })
+    expect(listThreadsCalls).toHaveLength(0)
+  })
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+  ])(
+    "refuses a thread whose stored owner is %s (never fail open)",
+    async (_label, storedOwner) => {
+      // Shape drift / legacy row without a resourceId must not be readable by
+      // anyone — strict equality against undefined/null is false by design.
+      const { memory } = fakeMemory({
+        getThreadById: async () => ({ resourceId: storedOwner }),
+      })
+      const result = await resolveOwnedExistingThread({
+        memory,
+        threadId: "t1",
+        resource: "user:alice",
+      })
+      expect(result).toEqual({ ok: false, reason: "thread_forbidden" })
+    },
+  )
+
+  it("propagates store failures so callers fail closed (no try/catch inside)", async () => {
+    const { memory } = fakeMemory({
+      getThreadById: async () => {
+        throw new Error("store down")
+      },
+    })
+    await expect(
+      resolveOwnedExistingThread({
         memory,
         threadId: "t1",
         resource: "user:alice",

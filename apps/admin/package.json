@@ -25,6 +25,7 @@
     "core-sync:run": "tsx src/scripts/run-core-sync.ts",
     "core-sync:backfill-video-localized-metadata": "tsx src/scripts/backfill-video-localized-metadata.ts",
     "core-sync:backfill-video-relation-order": "tsx src/scripts/backfill-video-relation-order.ts",
+    "backfill:experience-video-language-ids": "tsx src/scripts/backfill-experience-video-language-ids.ts",
     "backfill:video-image-blur-data-url": "tsx src/scripts/backfill-video-image-blur-data-url.ts",
     "backfill:image-dominant-colors": "tsx src/scripts/backfill-image-dominant-colors.ts",
     "refresh:core-id-mapping": "tsx src/scripts/refresh-core-id-mapping.ts",

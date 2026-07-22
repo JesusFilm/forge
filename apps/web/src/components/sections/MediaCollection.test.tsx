@@ -76,6 +76,7 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
       dominantColor: null,
       videoSlug,
       muxPlaybackId: "mux-route-child",
+      languageSlug: null,
     },
   ]
   return {
@@ -111,6 +112,65 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
 }
 
 describe("MediaCollection VideoCard href", () => {
+  it("links manual items with the resolved video dub language", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-castilian"
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              makeManualItem({
+                videoSlug: "jesus",
+                videoDub: {
+                  language: {
+                    slug: "spanish-castilian",
+                  },
+                },
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/jesus.html/spanish-castilian.html']",
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/jesus.html/english.html']",
+      ),
+    ).toBeNull()
+  })
+
+  it("falls manual item links back to the current page language", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-castilian"
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              makeManualItem({
+                videoSlug: "jesus",
+                videoDub: null,
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLAnchorElement>(
+        "a[href='/watch/jesus.html/spanish-castilian.html']",
+      ),
+    ).not.toBeNull()
+  })
+
   it("renders the carousel variant as a fixed-width horizontal rail", () => {
     act(() => {
       root.render(
@@ -286,7 +346,11 @@ describe("MediaCollection VideoCard href", () => {
               {
                 videoId: "v-1",
                 videoSlug: "the-gospel-of-luke",
-                muxPlaybackId: "mux-authored-item",
+                videoDub: {
+                  muxVideo: {
+                    playbackId: "mux-authored-item",
+                  },
+                },
                 titleOverride: "The Gospel of Luke",
                 subtitleOverride: null,
                 labelOverride: null,

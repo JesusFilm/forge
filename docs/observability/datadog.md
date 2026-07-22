@@ -182,7 +182,7 @@ EXPO_PUBLIC_DATADOG_APPLICATION_ID=
 # Mobile site enum (US1, EU1, ...), NOT web's "datadoghq.com"
 EXPO_PUBLIC_DATADOG_SITE=US1
 # preview MUST set this explicitly: preview is a release build (__DEV__ false),
-# so the unset default would tag external testers' sessions env:production.
+# so the unset default would tag external testers' sessions env:prod.
 # development leaves it unset (defaults to development).
 EXPO_PUBLIC_DATADOG_ENV=preview
 # Leave unset; the SDK defaults to the app version.
@@ -232,7 +232,7 @@ bundles at `eas update` time.
 5. **Production (privacy-gated)**: obtain product/legal sign-off on
    `TrackingConsent.GRANTED` at 100% session sampling BEFORE provisioning the
    production environment, then repeat step 1 for `production` with
-   `EXPO_PUBLIC_DATADOG_ENV` unset (release defaults to production).
+   `EXPO_PUBLIC_DATADOG_ENV` unset (release defaults to prod).
 
 Steps 3-4's "confirm a session" checks are human-in-the-Datadog-UI today; the
 agent-driven query recipe (Datadog MCP) that replaces the eyeball check is

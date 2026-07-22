@@ -218,19 +218,33 @@ function makeChildren(count: number): Series["children"] {
   })) as Series["children"]
 }
 
-function makeSelectedVariant(): SelectedVariant {
+function makeSelectedVariant(
+  language: {
+    slug: string
+    bcp47: string
+    name: string
+    coreId?: string
+    nativeName?: string
+  } = {
+    slug: "english",
+    bcp47: "en",
+    name: "English",
+    coreId: "529",
+    nativeName: "English",
+  },
+): SelectedVariant {
   return {
     documentId: "variant-1",
-    slug: "english",
+    slug: language.slug,
     published: true,
     hls: "https://cdn.example/storyclubs.m3u8",
     duration: 30,
     language: {
-      coreId: "529",
-      bcp47: "en",
-      slug: "english",
-      name: "English",
-      nativeName: "English",
+      coreId: language.coreId ?? null,
+      bcp47: language.bcp47,
+      slug: language.slug,
+      name: language.name,
+      nativeName: language.nativeName ?? language.name,
     },
     downloads: [],
     muxVideo: { playbackId: "playback-id-storyclubs" },
@@ -733,7 +747,31 @@ describe("SeriesPageClient — header language switcher + language modal", () =>
     const seriesHeroProps = vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]
     expect(seriesHeroProps?.playableLanguageCount).toBe(2)
     expect(seriesHeroProps?.onLanguageClick).toEqual(expect.any(Function))
+    expect(seriesHeroProps?.languageSlug).toBe("english")
     listener.cleanup()
+  })
+
+  it("passes the route language to the hero when the playable parent trailer has a different language", () => {
+    const childDubLanguages = makeChildDubLanguages([
+      [{ languageSlug: "spanish-castilian" }, { languageSlug: "hindi" }],
+    ])
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({ childDubLanguages })}
+          selectedVariant={makeSelectedVariant({
+            slug: "hindi",
+            bcp47: "hi",
+            name: "Hindi",
+          })}
+          locale="spanish-castilian"
+        />,
+      )
+    })
+
+    const seriesHeroProps = vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]
+    expect(seriesHeroProps?.selectedVariant?.language?.slug).toBe("hindi")
+    expect(seriesHeroProps?.languageSlug).toBe("spanish-castilian")
   })
 
   it("opens the language modal from the global header switcher", () => {

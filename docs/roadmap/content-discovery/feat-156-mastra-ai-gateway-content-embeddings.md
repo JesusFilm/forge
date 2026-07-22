@@ -3,7 +3,7 @@ id: "feat-156"
 title: "Mastra AI Gateway content embeddings migration"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-03"
 duration: 3
 depends_on:
@@ -21,6 +21,19 @@ tags:
   - "pgvector"
   - "evals"
 ---
+
+## Completion Decision
+
+Marked complete on 2026-07-21. PR #1122 delivered the shared Jesus Film AI
+Gateway provider path, provenance-aware Admin ingest, the content search-eval
+release gate, committed gate reports, and the gated all-content backfill
+operator flow. PR #1160 then aligned that path with the gateway's native
+1536-dimensional production response. The repository contains passing local
+gate and backfill artifacts under `docs/search-eval-reports/`; those artifacts
+verify the migration machinery but do not independently prove that a full
+production replacement run occurred. The scene embedding branch was retired
+later in PR #1427 without undoing the completed provider migration for the
+remaining content embedding paths.
 
 ## Problem
 
@@ -267,7 +280,10 @@ declaring the migration complete. If a rollback is needed, restore from the
 recorded backup/export first, then rerun the pre-backfill baselines and compare
 counts before reopening the migration gate.
 
-## Validation Status - 2026-06-03
+## Initial Validation Status - 2026-06-03
+
+This section records the pre-merge worktree state. The later commits and
+artifacts cited in the completion decision supersede it.
 
 - Code-level validation in this worktree passed for the gateway provider
   transform, Mastra workflow handoffs, Admin ingest provenance, sanitized eval

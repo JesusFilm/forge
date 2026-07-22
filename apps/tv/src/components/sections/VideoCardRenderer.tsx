@@ -16,6 +16,7 @@ import { useHoverPreview } from "../focus/useHoverPreview"
 import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { blockMuxPlaybackId, blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   // Playback URL: only Mux streaming URLs are allowed (validateStreamingUrl
   // enforces stream.mux.com). CMS-uploaded media URLs use different hosts
   // and cannot pass validation, so no fallback is attempted.
-  const sectionStreamingUrl = section.streamingUrl
+  const sectionStreamingUrl = blockStreamingUrl(section)
   const playbackUrl =
     typeof sectionStreamingUrl === "string" &&
     validateStreamingUrl(sectionStreamingUrl)
@@ -59,7 +60,8 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const previewUrl = useHoverPreview({
     focused,
     enabled: true,
-    playbackId: extractMuxPlaybackId(sectionStreamingUrl),
+    playbackId:
+      blockMuxPlaybackId(section) ?? extractMuxPlaybackId(sectionStreamingUrl),
     // This inline card is far larger than a rail thumb — request Mux's max-quality
     // animated preview (accepts a cold ~5s transcode); rails keep the warm default.
     previewOpts: EXPERIENCE_CARD_PREVIEW_OPTS,

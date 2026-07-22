@@ -2,6 +2,7 @@ import {
   deriveMuxThumbnailUrl,
   extractMuxPlaybackId,
   muxHlsUrlFromPlaybackId,
+  muxThumbnailFromPlaybackId,
 } from "../muxThumbnail"
 
 describe("deriveMuxThumbnailUrl", () => {
@@ -47,6 +48,25 @@ describe("muxHlsUrlFromPlaybackId", () => {
     expect(muxHlsUrlFromPlaybackId(null)).toBeNull()
     expect(muxHlsUrlFromPlaybackId(undefined)).toBeNull()
     expect(muxHlsUrlFromPlaybackId("")).toBeNull()
+  })
+})
+
+describe("muxThumbnailFromPlaybackId", () => {
+  it("builds the smartcrop thumbnail URL from a clean token", () => {
+    expect(muxThumbnailFromPlaybackId("abc123XYZ")).toBe(
+      "https://image.mux.com/abc123XYZ/thumbnail.png?width=1280&fit_mode=smartcrop",
+    )
+  })
+
+  it("returns null for a token with non-alphanumeric characters (no injection)", () => {
+    expect(muxThumbnailFromPlaybackId("evil.com/x")).toBeNull()
+    expect(muxThumbnailFromPlaybackId("ab cd")).toBeNull()
+  })
+
+  it("returns null for null / undefined / empty", () => {
+    expect(muxThumbnailFromPlaybackId(null)).toBeNull()
+    expect(muxThumbnailFromPlaybackId(undefined)).toBeNull()
+    expect(muxThumbnailFromPlaybackId("")).toBeNull()
   })
 })
 

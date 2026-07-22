@@ -9,6 +9,7 @@ import type { RouteVideo } from "@/lib/content"
 import { formatDuration } from "@/lib/format-duration"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
+import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoSectionFragment }
 
@@ -400,11 +401,11 @@ export function VideoPlayer({ src, poster }: { src: string; poster?: string }) {
 }
 
 export function Video({ data, routeVideo }: VideoProps) {
-  const { id, sectionKey, streamingUrl, media, videoRef, useRouteVideo } = data
+  const { id, sectionKey, media, videoRef, useRouteVideo } = data
   const resolvedStreamingUrl =
     useRouteVideo === true
       ? (routeVideo?.streamingUrl ?? null)
-      : (streamingUrl ?? null)
+      : resolvedBlockStreamingUrl(data)
   const posterUrl =
     useRouteVideo === true
       ? (routeVideo?.imageUrl ?? undefined)

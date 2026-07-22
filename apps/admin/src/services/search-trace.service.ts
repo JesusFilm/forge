@@ -279,7 +279,17 @@ function safeLaneStatusMetadata(
   }
 }
 
+function availabilityScoreForKind(
+  kind: WatchSearchResult["availability"]["kind"],
+): number {
+  if (kind === "target_audio") return 0.25
+  if (kind === "target_subtitle") return 0.18
+  if (kind === "related_language") return 0.08
+  return 0
+}
+
 function safeResultMetadata(row: WatchSearchResult): Prisma.InputJsonObject {
+  const availability = availabilityScoreForKind(row.availability.kind)
   return {
     id: row.id,
     type: row.type,
@@ -289,7 +299,7 @@ function safeResultMetadata(row: WatchSearchResult): Prisma.InputJsonObject {
       sourceRelevance: row.scoreBreakdown.sourceRelevance,
       evidenceBoost: row.scoreBreakdown.evidenceBoost,
       relevance: row.scoreBreakdown.relevance,
-      availability: row.scoreBreakdown.availability,
+      availability,
       match: row.scoreBreakdown.match,
       sourceScore: row.scoreBreakdown.sourceScore,
     },

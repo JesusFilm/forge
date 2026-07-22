@@ -3,7 +3,7 @@ id: "feat-093"
 title: "Cold Start Context-Based Recommendations"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-06-14"
 duration: 7
 depends_on:
@@ -13,6 +13,14 @@ tags:
   - "web"
   - "personalization"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. This cold-start layer depends on the unimplemented and
+now-cancelled Two-Tower model in `feat-092`. Anonymous or low-signal fallback
+ranking remains a valid product concern, but it should be planned within the
+current Watch discovery architecture rather than as an extension of that
+historical model.
 
 ## Problem
 

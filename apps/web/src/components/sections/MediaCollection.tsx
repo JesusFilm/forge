@@ -42,9 +42,6 @@ import {
   VideoThumbnailTitle,
 } from "@/components/ui/video-thumbnail-caption"
 
-// Collections carry no per-item language today, so card deep links default
-// to the English variant and rely on the watch route to re-resolve locale.
-// See todo: EnrichedMediaItem should carry a defaultLanguage (data-model gap).
 // Hoisted so the throwing constructor runs once at module load, not per card.
 const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
 
@@ -216,6 +213,7 @@ export function MediaCollection({
       backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
+      fallbackLanguageSlug={resolvedLanguageSlug}
     />
   )
 }
@@ -253,6 +251,7 @@ function WatchHomeMediaCollection({
   backgroundColor,
   showItemNumbers,
   items,
+  fallbackLanguageSlug,
 }: {
   id: string
   categoryLabel: string | null
@@ -266,6 +265,7 @@ function WatchHomeMediaCollection({
   backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
+  fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
@@ -533,6 +533,7 @@ function WatchHomeMediaCollection({
                     index={index}
                     orientation="vertical"
                     showItemNumbers={showItemNumbers}
+                    fallbackLanguageSlug={fallbackLanguageSlug}
                     onHover={() =>
                       updateHoverBackground(mediaItemBackdropImageUrl(item))
                     }
@@ -571,6 +572,7 @@ function WatchHomeMediaCollection({
                 index={index}
                 orientation={isVertical ? "vertical" : "horizontal"}
                 showItemNumbers={showItemNumbers}
+                fallbackLanguageSlug={fallbackLanguageSlug}
                 onHover={() =>
                   updateHoverBackground(mediaItemBackdropImageUrl(item))
                 }
@@ -607,21 +609,26 @@ function VideoCard({
   index,
   orientation,
   showItemNumbers,
+  fallbackLanguageSlug,
   onHover,
 }: {
   item: EnrichedMediaItem
   index: number
   orientation: "horizontal" | "vertical"
   showItemNumbers: boolean | null
+  fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
   onHover?: () => void
 }) {
   const t = useTranslations("WatchHome")
   // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
-  // manually. EnrichedMediaItem carries no language field, so the locale
-  // segment defaults to `english` (see DEFAULT_COLLECTION_LOCALE).
+  // manually. Prefer the resolved item dub language; fall back to the current
+  // page language for route-derived items or legacy payloads.
   const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
+  const itemLanguageSlug = tryAsLocaleSlug(item.languageSlug ?? "")
+  const cardLanguageSlug =
+    itemLanguageSlug ?? fallbackLanguageSlug ?? DEFAULT_COLLECTION_LOCALE
   const href = slug
-    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
+    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, cardLanguageSlug)}`
     : undefined
   const isInteractive = Boolean(href)
   const Wrapper = href ? "a" : "div"
