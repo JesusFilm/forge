@@ -76,6 +76,11 @@ A Media Signature is keyed by the source `coreId`, the variant
 `videoVariantId`, signature type, algorithm version, and time offset. It is
 evidence for matching, not catalog metadata.
 
+An algorithm version names the complete extraction and comparison contract.
+Signatures from different versions may coexist but are not interchangeable; a
+project rule requires introducing a new version for sampling or hashing changes
+before readers select it.
+
 ### Media Fingerprint
 
 A deterministic, content-derived Media Signature designed to identify source
