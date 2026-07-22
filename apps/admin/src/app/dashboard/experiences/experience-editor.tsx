@@ -1705,7 +1705,12 @@ export function ExperienceEditor({
       )
     }
 
-    if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "watchHomeHero") {
+      const alreadyHasWatchHomeHero = parsedBlocks.some(
+        (candidate) => asRecord(candidate)?.t === "watchHomeHero",
+      )
+      return isHomepage && !alreadyHasWatchHomeHero
+    }
 
     return isTemplate || block.category !== "Route"
   })

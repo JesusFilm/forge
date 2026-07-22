@@ -36,11 +36,21 @@ bounded fallback to the legacy static queue. Carousel previews never write
 account watch progress. The fixed intro runs once per entry and is deliberately
 outside exposure filtering.
 
-Focused automated evidence at closure: 90 Admin domain/editor tests; 83 Admin
-and 74 Web GraphQL/normalization tests; 20 engine/ledger tests; and 44 combined
-playback-lifecycle tests. Relevant Admin, Admin GraphQL, and Web typechecks and
-focused linters are green. This resolution does not assert browser or
-page-loading-performance evidence that has not yet been supplied.
+Final focused regression evidence includes 133 Admin schema/editor assertions
+and 126 Web normalization, engine, lifecycle, route, and component assertions,
+in addition to the Admin GraphQL contract coverage. Relevant Admin, Admin
+GraphQL, and Web typechecks, the full repository lint, and two clean Web
+production builds are green.
+
+The final in-app browser pass reached a complete `/watch` document, opened and
+closed Search through the client UI, and reported no browser warnings or
+errors. The local Admin data service was intentionally unavailable, so the
+page exercised its upstream-data failure boundary rather than live authored
+media; playback behavior remains covered by the focused component and hook
+suites. A like-for-like production build comparison against the merge base
+kept the Watch route at 24 startup chunks and added 4,717 gzip bytes (0.69%).
+Server-side Watch inputs remain parallel, and authored catalog hydration is
+deduplicated and split into at most 100 IDs per request.
 
 The static placement seed remains intentionally placement-only because a valid
 promo program requires approved Admin `MediaAsset` poster IDs. Production

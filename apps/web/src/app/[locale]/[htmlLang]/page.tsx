@@ -49,7 +49,8 @@ export default async function HomePage({ params }: PageProps) {
   const { locale: rawLocale } = await params
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
-  const [pageResult, messages] = await Promise.all([
+  const [heroResult, pageResult, messages] = await Promise.all([
+    resolveWatchHome(locale),
     resolveWatchPage(locale),
     loadClientMessages(locale, WATCH_HOME_CLIENT_MESSAGE_NAMESPACES),
   ])
@@ -64,8 +65,6 @@ export default async function HomePage({ params }: PageProps) {
     pageResult.data?.kind === "experience"
       ? watchExperienceBlocks(pageResult.data.experience)
       : []
-  const heroResult = await resolveWatchHome(locale, null, builderBlocks)
-
   if (heroResult.error) {
     return withMessages(<ExperienceError message={heroResult.error.message} />)
   }

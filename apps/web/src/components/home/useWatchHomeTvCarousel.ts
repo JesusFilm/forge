@@ -157,6 +157,23 @@ export function accumulateWatchHomeProgramPlayback({
   }
 }
 
+export function shouldExposeWatchHomePromoOnEnd({
+  accumulatedSeconds,
+  durationSeconds,
+  isVisible,
+}: {
+  accumulatedSeconds: number
+  durationSeconds: number
+  isVisible: boolean
+}) {
+  if (!isVisible) return false
+  const threshold =
+    Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? Math.min(WATCH_HOME_PROGRAM_EXPOSURE_SECONDS, durationSeconds)
+      : WATCH_HOME_PROGRAM_EXPOSURE_SECONDS
+  return accumulatedSeconds >= threshold
+}
+
 function drawWatchHomeProgramHorizon(
   program: WatchHomeProgram,
   initialState: WatchHomeProgramEngineState,
@@ -347,6 +364,11 @@ export function useWatchHomeTvCarousel(
     nextPoolIndex: number
   } | null>(null)
   const [isMuted, setIsMuted] = useState(true)
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () =>
+      typeof document === "undefined" || document.visibilityState === "visible",
+  )
+  const [isHeroVisible, setIsHeroVisible] = useState(true)
   const [progress, setProgress] = useState(0)
   const [playbackTime, setPlaybackTime] = useState<{
     seconds: number
@@ -362,9 +384,13 @@ export function useWatchHomeTvCarousel(
   const videoPosterHoldTimeoutRef = useRef<number | null>(null)
   const previousProgressRef = useRef(0)
   const imageSlideStartedAtRef = useRef<number | null>(null)
+  const imageSlideElapsedMsRef = useRef(0)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const heroRef = useRef<HTMLElement | null>(null)
   const heroVisibleRef = useRef(true)
+  const playbackVisibleRef = useRef(true)
+  const playbackVisibilityPausedRef = useRef(false)
+  const activeSlideIdRef = useRef<string | null>(null)
   const advancedSlideIdRef = useRef<string | null>(null)
   const playbackExposureRef = useRef({
     slideId: null as string | null,
@@ -445,9 +471,11 @@ export function useWatchHomeTvCarousel(
     displaySlides[defaultActiveIndex] ??
     displaySlides[0] ??
     null
+  const playbackVisibilityPaused = !isDocumentVisible || !isHeroVisible
   const autoAdvancePaused =
-    activeSlide != null &&
-    activeSlide.id === options.autoAdvancePausedForSlideId
+    playbackVisibilityPaused ||
+    (activeSlide != null &&
+      activeSlide.id === options.autoAdvancePausedForSlideId)
   const safeActiveIndex = activeSlide
     ? Math.max(
         0,
@@ -455,6 +483,10 @@ export function useWatchHomeTvCarousel(
       )
     : 0
   const autoAdvancePausedRef = useRef(autoAdvancePaused)
+
+  useEffect(() => {
+    activeSlideIdRef.current = activeSlide?.id ?? null
+  }, [activeSlide?.id])
 
   useEffect(() => {
     let cancelled = false
@@ -532,6 +564,35 @@ export function useWatchHomeTvCarousel(
     setProgramSession,
   ])
 
+  const resetPlaybackExposureBaseline = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    const exposure = playbackExposureRef.current
+    if (exposure.slideId !== activeSlideIdRef.current) return
+    exposure.previousTime = video.currentTime
+  }, [])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const visible = document.visibilityState === "visible"
+      playbackVisibleRef.current = visible && heroVisibleRef.current
+      if (!visible) {
+        autoAdvancePausedRef.current = true
+        if (slideAdvanceTimeoutRef.current != null) {
+          window.clearTimeout(slideAdvanceTimeoutRef.current)
+          slideAdvanceTimeoutRef.current = null
+        }
+        videoRef.current?.pause()
+      }
+      resetPlaybackExposureBaseline()
+      setIsDocumentVisible(visible)
+    }
+    handleVisibilityChange()
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [resetPlaybackExposureBaseline])
+
   useEffect(() => {
     const element = heroRef.current
     if (!element || typeof IntersectionObserver === "undefined") {
@@ -540,13 +601,26 @@ export function useWatchHomeTvCarousel(
     }
     const observer = new IntersectionObserver(
       ([entry]) => {
-        heroVisibleRef.current = Boolean(entry?.isIntersecting)
+        const visible = Boolean(entry?.isIntersecting)
+        heroVisibleRef.current = visible
+        playbackVisibleRef.current =
+          visible && document.visibilityState === "visible"
+        if (!visible) {
+          autoAdvancePausedRef.current = true
+          if (slideAdvanceTimeoutRef.current != null) {
+            window.clearTimeout(slideAdvanceTimeoutRef.current)
+            slideAdvanceTimeoutRef.current = null
+          }
+          videoRef.current?.pause()
+        }
+        resetPlaybackExposureBaseline()
+        setIsHeroVisible(visible)
       },
       { threshold: 0.01 },
     )
     observer.observe(element)
     return () => observer.disconnect()
-  }, [programEntryGeneration])
+  }, [programEntryGeneration, resetPlaybackExposureBaseline])
 
   const clearVideoPosterHold = useCallback(() => {
     if (videoPosterHoldTimeoutRef.current != null) {
@@ -584,6 +658,7 @@ export function useWatchHomeTvCarousel(
         }, 900)
       }
       imageSlideStartedAtRef.current = null
+      imageSlideElapsedMsRef.current = 0
       previousProgressRef.current = 0
       clearSlideAdvanceTimeout()
       clearVideoPosterHold()
@@ -779,9 +854,62 @@ export function useWatchHomeTvCarousel(
     setProgramSession,
   ])
 
+  const handleGuardedPlayFailure = useCallback(
+    (slideId: string | null, video: HTMLVideoElement, error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return
+      if (
+        slideId == null ||
+        activeSlideIdRef.current !== slideId ||
+        videoRef.current !== video
+      ) {
+        return
+      }
+      handleProgramFailure()
+    },
+    [handleProgramFailure],
+  )
+
+  const handleMediaError = useCallback(
+    (slideId: string, video: HTMLVideoElement) => {
+      if (activeSlideIdRef.current !== slideId || videoRef.current !== video) {
+        return
+      }
+      handleProgramFailure()
+    },
+    [handleProgramFailure],
+  )
+
   const handleEnded = useCallback(() => {
     if (activeSlide?.kind === "promo") {
-      recordProgramExposure(activeSlide)
+      const video = videoRef.current
+      const exposure = playbackExposureRef.current
+      const isVisible = playbackVisibleRef.current
+      const finalSample = video
+        ? accumulateWatchHomeProgramPlayback({
+            accumulatedSeconds:
+              exposure.slideId === activeSlide.id
+                ? exposure.accumulatedSeconds
+                : 0,
+            currentTime: video.currentTime,
+            previousTime:
+              exposure.slideId === activeSlide.id ? exposure.previousTime : 0,
+            isPlaying: true,
+            isVisible,
+          })
+        : { accumulatedSeconds: 0, exposed: false }
+      const durationSeconds =
+        video && Number.isFinite(video.duration)
+          ? video.duration
+          : (activeSlide.durationSeconds ?? Number.NaN)
+      if (
+        shouldExposeWatchHomePromoOnEnd({
+          accumulatedSeconds: finalSample.accumulatedSeconds,
+          durationSeconds,
+          isVisible,
+        })
+      ) {
+        recordProgramExposure(activeSlide)
+      }
     }
     advance("ended")
   }, [activeSlide, advance, recordProgramExposure])
@@ -822,8 +950,7 @@ export function useWatchHomeTvCarousel(
       currentTime: video.currentTime,
       previousTime,
       isPlaying: !video.paused,
-      isVisible:
-        document.visibilityState === "visible" && heroVisibleRef.current,
+      isVisible: playbackVisibleRef.current,
     })
     playbackExposureRef.current = {
       slideId: activeSlide.id,
@@ -844,6 +971,7 @@ export function useWatchHomeTvCarousel(
   const handleCanPlay = useCallback(() => {
     const video = videoRef.current
     if (!video) return
+    const slideId = activeSlideIdRef.current
     video.muted = isMutedRef.current
     clearVideoPosterHold()
 
@@ -882,15 +1010,52 @@ export function useWatchHomeTvCarousel(
       previousProgressRef.current = nextProgress
       setMediaReady(true)
       if (!autoAdvancePausedRef.current) {
-        void video.play().catch(handleProgramFailure)
+        void video
+          .play()
+          .catch((error: unknown) =>
+            handleGuardedPlayFailure(slideId, video, error),
+          )
       }
       videoPosterHoldTimeoutRef.current = null
     }, VIDEO_POSTER_HOLD_MS)
-  }, [clearVideoPosterHold, handleProgramFailure])
+  }, [clearVideoPosterHold, handleGuardedPlayFailure])
 
   useEffect(() => {
     autoAdvancePausedRef.current = autoAdvancePaused
   }, [autoAdvancePaused])
+
+  useEffect(() => {
+    const video = videoRef.current
+    const wasPausedForVisibility = playbackVisibilityPausedRef.current
+    playbackVisibilityPausedRef.current = playbackVisibilityPaused
+    resetPlaybackExposureBaseline()
+    if (!video || !activeSlide?.src) return
+    if (playbackVisibilityPaused) {
+      video.pause()
+      return
+    }
+    if (
+      !wasPausedForVisibility ||
+      !mediaReady ||
+      options.autoAdvancePausedForSlideId === activeSlide.id
+    ) {
+      return
+    }
+    const slideId = activeSlide.id
+    void video
+      .play()
+      .catch((error: unknown) =>
+        handleGuardedPlayFailure(slideId, video, error),
+      )
+  }, [
+    activeSlide?.id,
+    activeSlide?.src,
+    handleGuardedPlayFailure,
+    mediaReady,
+    options.autoAdvancePausedForSlideId,
+    playbackVisibilityPaused,
+    resetPlaybackExposureBaseline,
+  ])
 
   useEffect(() => {
     isMutedRef.current = isMuted
@@ -917,6 +1082,7 @@ export function useWatchHomeTvCarousel(
 
   useEffect(() => {
     imageSlideStartedAtRef.current = null
+    imageSlideElapsedMsRef.current = 0
     previousProgressRef.current = 0
     advancedSlideIdRef.current = null
     playbackExposureRef.current = {
@@ -953,10 +1119,15 @@ export function useWatchHomeTvCarousel(
     if (autoAdvancePaused) return undefined
 
     const advanceAfterMs = activeSlide.src
-      ? watchHomeTvAdvanceTargetSeconds(
-          activeSlide.durationSeconds ?? Number.NaN,
-        ) * 1000
-      : IMAGE_SLIDE_ADVANCE_MS
+      ? Math.max(
+          0,
+          (watchHomeTvAdvanceTargetSeconds(
+            activeSlide.durationSeconds ?? Number.NaN,
+          ) -
+            (videoRef.current?.currentTime ?? 0)) *
+            1000,
+        )
+      : Math.max(0, IMAGE_SLIDE_ADVANCE_MS - imageSlideElapsedMsRef.current)
 
     slideAdvanceTimeoutRef.current = window.setTimeout(() => {
       slideAdvanceTimeoutRef.current = null
@@ -1046,7 +1217,8 @@ export function useWatchHomeTvCarousel(
       if (imageSlideStartedAtRef.current == null) {
         imageSlideStartedAtRef.current = now
       }
-      const elapsed = now - imageSlideStartedAtRef.current
+      const elapsed =
+        imageSlideElapsedMsRef.current + (now - imageSlideStartedAtRef.current)
       const nextProgress = Math.min(
         100,
         (elapsed / IMAGE_SLIDE_ADVANCE_MS) * 100,
@@ -1059,6 +1231,14 @@ export function useWatchHomeTvCarousel(
 
     return () => {
       cancelAnimationFrame(animationFrame)
+      if (imageSlideStartedAtRef.current != null) {
+        imageSlideElapsedMsRef.current = Math.min(
+          IMAGE_SLIDE_ADVANCE_MS,
+          imageSlideElapsedMsRef.current +
+            (performance.now() - imageSlideStartedAtRef.current),
+        )
+        imageSlideStartedAtRef.current = null
+      }
     }
   }, [activeSlide, autoAdvancePaused])
 
@@ -1069,7 +1249,7 @@ export function useWatchHomeTvCarousel(
       advance: () => advance("explicit-skip"),
       handleCanPlay,
       handleEnded,
-      handleError: handleProgramFailure,
+      handleError: handleMediaError,
       handleLoadedMetadata,
       handleTimeUpdate,
       isMuted,
@@ -1090,7 +1270,7 @@ export function useWatchHomeTvCarousel(
       advance,
       handleCanPlay,
       handleEnded,
-      handleProgramFailure,
+      handleMediaError,
       handleLoadedMetadata,
       handleTimeUpdate,
       displaySlides,

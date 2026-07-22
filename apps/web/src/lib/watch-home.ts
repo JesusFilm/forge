@@ -170,6 +170,7 @@ type VideoOverrideRef = {
 }
 
 const ENGLISH_LANGUAGE_SLUG = asLocaleSlug("english")
+const WATCH_HOME_VIDEO_HYDRATION_BATCH_SIZE = 100
 
 const LABEL_TEXT: Record<string, string> = {
   BEHIND_THE_SCENES: "Behind the scenes",
@@ -236,7 +237,14 @@ function stableProgramId(value: unknown) {
 }
 
 function isAllowedWatchHomeActionHref(value: string): boolean {
-  if (value.startsWith("/") && !value.startsWith("//")) return true
+  if (value.startsWith("/") && !value.startsWith("//")) {
+    try {
+      const url = new URL(value, "https://www.jesusfilm.org")
+      return url.origin === "https://www.jesusfilm.org"
+    } catch {
+      return false
+    }
+  }
 
   try {
     const url = new URL(value)
@@ -1265,23 +1273,40 @@ async function fetchWatchHomeModel(
       ...collectWatchHomeProgramCoreIds(experienceBlocks),
     ]),
   ]
-  const videosResult = await client.query({
-    query: getWatchHomeVideosOperation,
-    variables: {
-      coreIds,
-      locale,
-      languageSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
-
-  const error = graphqlError(
-    videosResult as { error?: ErrorLike; errors?: unknown[] },
+  const videoResults = await Promise.all(
+    Array.from(
+      {
+        length: Math.ceil(
+          coreIds.length / WATCH_HOME_VIDEO_HYDRATION_BATCH_SIZE,
+        ),
+      },
+      (_, batchIndex) =>
+        client.query({
+          query: getWatchHomeVideosOperation,
+          variables: {
+            coreIds: coreIds.slice(
+              batchIndex * WATCH_HOME_VIDEO_HYDRATION_BATCH_SIZE,
+              (batchIndex + 1) * WATCH_HOME_VIDEO_HYDRATION_BATCH_SIZE,
+            ),
+            locale,
+            languageSlug,
+          },
+          fetchPolicy: "no-cache",
+        }),
+    ),
   )
-  if (error) throw error
+
+  for (const videosResult of videoResults) {
+    const error = graphqlError(
+      videosResult as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+  }
 
   return buildWatchHomeModelFromVideos({
-    videos: videosResult.data?.watchHomeVideos ?? [],
+    videos: videoResults.flatMap(
+      (videosResult) => videosResult.data?.watchHomeVideos ?? [],
+    ),
     locale,
     languageSlug,
     experienceBlocks,

@@ -12,6 +12,7 @@ import {
   firstUnplayedWatchHomeTvCarouselIndex,
   getWatchHomeAccountSeenVideoIds,
   nextUnplayedWatchHomeTvCarouselIndex,
+  shouldExposeWatchHomePromoOnEnd,
   readWatchHomeTvPlayedIds,
   shouldAdvanceWatchHomeTvCarousel,
   watchHomeProgramSelectionToCarouselSlide,
@@ -244,5 +245,29 @@ describe("watch home editorial program playback", () => {
         isVisible: true,
       }),
     ).toEqual({ accumulatedSeconds: 2, exposed: false })
+  })
+
+  it("counts short promo completion only after visible playback", () => {
+    expect(
+      shouldExposeWatchHomePromoOnEnd({
+        accumulatedSeconds: 2,
+        durationSeconds: 2,
+        isVisible: true,
+      }),
+    ).toBe(true)
+    expect(
+      shouldExposeWatchHomePromoOnEnd({
+        accumulatedSeconds: 2,
+        durationSeconds: 2,
+        isVisible: false,
+      }),
+    ).toBe(false)
+    expect(
+      shouldExposeWatchHomePromoOnEnd({
+        accumulatedSeconds: 2,
+        durationSeconds: 10,
+        isVisible: true,
+      }),
+    ).toBe(false)
   })
 })

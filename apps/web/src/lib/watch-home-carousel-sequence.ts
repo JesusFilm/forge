@@ -19,6 +19,7 @@ export const WATCH_HOME_TV_MUX_SELECTIONS_SEED_STORAGE_KEY =
 export const WATCH_HOME_PROGRAM_LEDGER_STORAGE_KEY = "watch-home-program-ledger"
 export const WATCH_HOME_PROGRAM_LEDGER_VERSION = 1
 export const WATCH_HOME_PROGRAM_EXPOSURE_TTL_MS = 31 * 24 * 60 * 60 * 1000
+const WATCH_HOME_PROGRAM_MAX_EXPOSURES = 500
 
 export type WatchHomeTvCarouselVideoSlide = {
   kind: "video"
@@ -188,6 +189,7 @@ type QueueBuildInput = {
 type ProgramItem = WatchHomeProgramVideoItem | WatchHomeProgramPromoItem
 
 let watchHomeProgramMemoryLedger: WatchHomeProgramLedger | null = null
+let watchHomeProgramUnavailableStorages = new WeakSet<object>()
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value)
@@ -222,12 +224,10 @@ function playableProgramItems(bucket: WatchHomeProgramBucket) {
   return items
 }
 
-function validProgramIdentities(program: WatchHomeProgram) {
-  return new Set(
-    program.buckets.flatMap((bucket) =>
-      playableProgramItems(bucket).map(({ identity }) => identity),
-    ),
-  )
+function isWatchHomeProgramIdentity(
+  value: string,
+): value is WatchHomeProgramIdentity {
+  return /^(?:video|promo):[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value)
 }
 
 function validBucketIdentities(program: WatchHomeProgram) {
@@ -551,21 +551,25 @@ function sanitizeWatchHomeProgramLedger(
     return empty
   }
 
-  const validIdentities = validProgramIdentities(program)
-  const exposures: WatchHomeProgramLedger["exposures"] = {}
+  const exposureEntries: [WatchHomeProgramIdentity, number][] = []
   if (isRecord(value.exposures)) {
     for (const [identity, timestamp] of Object.entries(value.exposures)) {
       if (
-        validIdentities.has(identity as WatchHomeProgramIdentity) &&
+        isWatchHomeProgramIdentity(identity) &&
         typeof timestamp === "number" &&
         Number.isFinite(timestamp) &&
         timestamp <= now.getTime() + 5 * 60 * 1000 &&
         now.getTime() - timestamp <= WATCH_HOME_PROGRAM_EXPOSURE_TTL_MS
       ) {
-        exposures[identity as WatchHomeProgramIdentity] = timestamp
+        exposureEntries.push([identity, timestamp])
       }
     }
   }
+  const exposures = Object.fromEntries(
+    exposureEntries
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, WATCH_HOME_PROGRAM_MAX_EXPOSURES),
+  ) as WatchHomeProgramLedger["exposures"]
 
   const currentFingerprint = getWatchHomeProgramFingerprint(program)
   const bucketCycles: Record<string, WatchHomeProgramBucketCycle> = {}
@@ -683,6 +687,14 @@ export function readWatchHomeProgramLedger(
     )
   }
 
+  if (watchHomeProgramUnavailableStorages.has(storage)) {
+    return sanitizeWatchHomeProgramLedger(
+      watchHomeProgramMemoryLedger,
+      program,
+      now,
+    )
+  }
+
   try {
     const raw = storage.getItem(WATCH_HOME_PROGRAM_LEDGER_STORAGE_KEY)
     if (!raw) {
@@ -692,6 +704,7 @@ export function readWatchHomeProgramLedger(
     }
     return sanitizeWatchHomeProgramLedger(JSON.parse(raw), program, now)
   } catch {
+    watchHomeProgramUnavailableStorages.add(storage)
     return sanitizeWatchHomeProgramLedger(
       watchHomeProgramMemoryLedger,
       program,
@@ -735,7 +748,7 @@ export function persistWatchHomeProgramLedger(
   const stored = readWatchHomeProgramLedger(program, options)
   const exposures = { ...stored.exposures }
   for (const identity of state.exposedIdentities) {
-    exposures[identity] = Math.max(exposures[identity] ?? 0, now.getTime())
+    exposures[identity] ??= now.getTime()
   }
   const sameProgram =
     stored.programFingerprint === state.programFingerprint &&
@@ -763,6 +776,7 @@ export function persistWatchHomeProgramLedger(
       JSON.stringify(sanitized),
     )
   } catch {
+    if (storage) watchHomeProgramUnavailableStorages.add(storage)
     // The in-memory copy keeps this entry working when storage is denied/full.
   }
   return sanitized
@@ -770,6 +784,7 @@ export function persistWatchHomeProgramLedger(
 
 export function resetWatchHomeProgramLedgerMemory() {
   watchHomeProgramMemoryLedger = null
+  watchHomeProgramUnavailableStorages = new WeakSet<object>()
 }
 
 function simpleHash(value: string): number {

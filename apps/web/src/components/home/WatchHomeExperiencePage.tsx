@@ -42,7 +42,8 @@ export function WatchHomeExperiencePage({
   languageSlug,
 }: WatchHomeExperiencePageProps) {
   const backdrop = findBackdropImage(heroModel)
-  const hasHeroBlock = blocks.some(isWatchHomeHeroBlock)
+  const heroBlockIndex = blocks.findIndex(isWatchHomeHeroBlock)
+  const hasHeroBlock = heroBlockIndex >= 0
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
@@ -87,6 +88,7 @@ export function WatchHomeExperiencePage({
               (block as { sectionKey?: string | null }).sectionKey ?? index
 
             if (isWatchHomeHeroBlock(block)) {
+              if (index !== heroBlockIndex) return null
               return (
                 <WatchHomeTvCarousel
                   key={blockKey}

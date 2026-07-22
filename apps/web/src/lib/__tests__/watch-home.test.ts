@@ -617,6 +617,16 @@ describe("buildWatchHomeModelFromVideos", () => {
                     },
                   },
                   {
+                    id: "backslash-redirect",
+                    playbackId: "backslash-playback",
+                    posterUrl: "https://cdn.example/backslash.jpg",
+                    title: "Backslash redirect",
+                    primaryAction: {
+                      label: "Go",
+                      href: "/\\evil.example/path",
+                    },
+                  },
+                  {
                     id: "safe",
                     playbackId: "safe-playback",
                     posterUrl: "https://cdn.example/safe.jpg",
@@ -698,5 +708,63 @@ describe("resolveWatchHome", () => {
       "spanish-latin-american",
     )
     expect(queryMock.mock.calls[1][0].variables.locale).toBe("es")
+  })
+
+  it("chunks the authored and legacy hydration union to the Admin cap", async () => {
+    queryMock.mockResolvedValue({ data: { watchHomeVideos: [] } })
+    const items = Array.from({ length: 100 }, (_, index) => ({
+      id: `item-${index}`,
+      videoId: `video-${index}`,
+      coreId: `authored-core-${index}`,
+    }))
+    const experienceBlocks = [
+      {
+        __typename: "WatchHomeHeroBlock",
+        t: "watchHomeHero",
+        program: {
+          rotation: ["authored-1", "authored-2", "authored-3"],
+          buckets: [
+            {
+              __typename: "WatchHomeVideoBucket",
+              kind: "video",
+              id: "authored-1",
+              label: "Authored 1",
+              items: items.slice(0, 40),
+            },
+            {
+              __typename: "WatchHomeVideoBucket",
+              kind: "video",
+              id: "authored-2",
+              label: "Authored 2",
+              items: items.slice(40, 80),
+            },
+            {
+              __typename: "WatchHomeVideoBucket",
+              kind: "video",
+              id: "authored-3",
+              label: "Authored 3",
+              items: items.slice(80),
+            },
+          ],
+        },
+      },
+    ] as never
+
+    const { resolveWatchHome } = await import("../watch-home")
+    const result = await resolveWatchHome("en", null, experienceBlocks)
+
+    expect(result.error).toBeNull()
+    expect(queryMock.mock.calls.length).toBeGreaterThan(1)
+    const requestedCoreIds = queryMock.mock.calls.flatMap(
+      ([request]) => request.variables.coreIds as string[],
+    )
+    expect(
+      queryMock.mock.calls.every(
+        ([request]) => request.variables.coreIds.length <= 100,
+      ),
+    ).toBe(true)
+    expect(new Set(requestedCoreIds).size).toBe(requestedCoreIds.length)
+    expect(requestedCoreIds).toContain("authored-core-99")
+    expect(requestedCoreIds).toContain("1_jf-0-0")
   })
 })

@@ -570,7 +570,7 @@ describe("watch home carousel sequence helpers", () => {
     expect(restored.bucketCycles.classics?.remainingIdentities).toHaveLength(2)
   })
 
-  it("preserves valid exposure but resets cycles after a program revision", () => {
+  it("preserves unexpired exposure but resets cycles after a program revision", () => {
     const authoredProgram = program()
     const now = new Date("2026-07-22T12:00:00.000Z")
     let state = createWatchHomeProgramEngine(authoredProgram, { seed: 4 })
@@ -587,7 +587,10 @@ describe("watch home carousel sequence helpers", () => {
     }
     const restored = readWatchHomeProgramLedger(revised, { now })
 
-    expect(Object.keys(restored.exposures)).toEqual(["video:a"])
+    expect(Object.keys(restored.exposures).sort()).toEqual([
+      "video:a",
+      "video:b",
+    ])
     expect(restored.bucketCycles).toEqual({})
     expect(restored.programFingerprint).toBe(
       getWatchHomeProgramFingerprint(revised),
@@ -635,6 +638,61 @@ describe("watch home carousel sequence helpers", () => {
     ).not.toThrow()
     expect(
       readWatchHomeProgramLedger(authoredProgram, { now, storage }).exposures,
+    ).toHaveProperty("video:a")
+
+    resetWatchHomeProgramLedgerMemory()
+    const quotaStorage = {
+      getItem() {
+        return null
+      },
+      setItem() {
+        throw new Error("quota full")
+      },
+      removeItem() {},
+    }
+    state = createWatchHomeProgramEngine(authoredProgram, { seed: 2 })
+    state = exposeWatchHomeProgramIdentity(state, "video:b")
+    persistWatchHomeProgramLedger(authoredProgram, state, {
+      now,
+      storage: quotaStorage,
+    })
+    expect(
+      readWatchHomeProgramLedger(authoredProgram, {
+        now,
+        storage: quotaStorage,
+      }).exposures,
+    ).toHaveProperty("video:b")
+  })
+
+  it("retains canonical exposure across locale program switches", () => {
+    const englishProgram = program()
+    const localizedProgram = program()
+    const localizedBucket = localizedProgram.buckets[0]
+    if (localizedBucket?.kind === "video") {
+      localizedBucket.items = localizedBucket.items.filter(
+        (item) => item.videoId !== "a",
+      )
+    }
+    const now = new Date("2026-07-22T12:00:00.000Z")
+    let englishState = createWatchHomeProgramEngine(englishProgram, { seed: 1 })
+    englishState = exposeWatchHomeProgramIdentity(englishState, "video:a")
+    persistWatchHomeProgramLedger(englishProgram, englishState, { now })
+
+    const localizedLedger = readWatchHomeProgramLedger(localizedProgram, {
+      now,
+    })
+    const localizedState = createWatchHomeProgramEngine(localizedProgram, {
+      seed: 2,
+      ledger: localizedLedger,
+    })
+    persistWatchHomeProgramLedger(localizedProgram, localizedState, {
+      now: new Date(now.getTime() + 1),
+    })
+
+    expect(
+      readWatchHomeProgramLedger(englishProgram, {
+        now: new Date(now.getTime() + 2),
+      }).exposures,
     ).toHaveProperty("video:a")
   })
 

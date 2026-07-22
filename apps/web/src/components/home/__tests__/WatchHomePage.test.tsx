@@ -1309,6 +1309,10 @@ describe("WatchHomePage", () => {
       configurable: true,
       value: 10,
     })
+    Object.defineProperty(video, "pause", {
+      configurable: true,
+      value: vi.fn(),
+    })
 
     currentTime = 1
     await act(async () => {
@@ -1334,9 +1338,21 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('a[href="/watch/join"]')?.textContent,
     ).toContain("Join now")
+    expect(
+      container.querySelector('[role="img"][aria-label="Jesus Film Project"]'),
+    ).not.toBeNull()
     video = container.querySelector(
       '[data-testid="watch-home-tv-video"]',
     ) as HTMLVideoElement
+    Object.defineProperty(video, "paused", { configurable: true, value: false })
+    Object.defineProperty(video, "currentTime", {
+      configurable: true,
+      value: 2,
+    })
+    Object.defineProperty(video, "duration", {
+      configurable: true,
+      value: 2,
+    })
     await act(async () => {
       video.dispatchEvent(new Event("ended", { bubbles: true }))
       video.dispatchEvent(new Event("ended", { bubbles: true }))
@@ -1363,6 +1379,44 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-video"]'),
     ).toHaveLength(1)
+  })
+
+  it("honors promo logo and no-icon display settings", async () => {
+    const promo = makeProgramPromo("plain-promo", {
+      showLogo: false,
+      primaryAction: {
+        label: "Learn more",
+        href: "/watch/learn",
+        icon: null,
+      },
+    })
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            program: makeProgram({
+              intro: null,
+              buckets: [
+                {
+                  kind: "promo",
+                  id: "promos",
+                  label: "Promos",
+                  items: [promo],
+                },
+              ],
+              rotation: ["promos"],
+            }),
+          })}
+        />,
+      )
+    })
+
+    const action = container.querySelector('a[href="/watch/learn"]')
+    expect(action?.textContent).toContain("Learn more")
+    expect(action?.querySelector("svg")).toBeNull()
+    expect(
+      container.querySelector('[role="img"][aria-label="Jesus Film Project"]'),
+    ).toBeNull()
   })
 
   it("ignores hidden and offscreen playback before the visible threshold", async () => {
@@ -1418,6 +1472,10 @@ describe("WatchHomePage", () => {
       configurable: true,
       value: 10,
     })
+    Object.defineProperty(video, "pause", {
+      configurable: true,
+      value: vi.fn(),
+    })
 
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -1425,20 +1483,24 @@ describe("WatchHomePage", () => {
     })
     currentTime = 1
     await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"))
       video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
     })
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
     })
-    notifyIntersection(false)
     currentTime = 2
     await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"))
+      notifyIntersection(false)
       video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
     })
     expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
 
-    notifyIntersection(true)
+    await act(async () => {
+      notifyIntersection(true)
+    })
     currentTime = 4
     await act(async () => {
       video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
@@ -1450,6 +1512,130 @@ describe("WatchHomePage", () => {
     })
     expect(readProgramLedger()?.exposures).toHaveProperty("video:visible-video")
     Reflect.deleteProperty(document, "visibilityState")
+  })
+
+  it("pauses preview advancement while the hero is offscreen", async () => {
+    let notifyIntersection = (_isIntersecting: boolean) => undefined
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback) {
+          notifyIntersection = (isIntersecting: boolean) => {
+            callback(
+              [{ isIntersecting } as IntersectionObserverEntry],
+              this as unknown as IntersectionObserver,
+            )
+          }
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return []
+        }
+        readonly root = null
+        readonly rootMargin = "0px"
+        readonly thresholds = [0.01]
+      },
+    )
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              program: makeProgram({ intro: null }),
+            })}
+          />,
+        )
+        await vi.runAllTicks()
+      })
+      const activeSequenceId = container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.getAttribute("data-program-sequence-id")
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      Object.defineProperty(video, "pause", {
+        configurable: true,
+        value: vi.fn(),
+      })
+
+      await act(async () => {
+        notifyIntersection(false)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000)
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-tv-video"]')
+          ?.getAttribute("data-program-sequence-id"),
+      ).toBe(activeSequenceId)
+      expect(Object.keys(readProgramLedger()?.exposures ?? {})).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("ignores a rejected play promise from a replaced slide", async () => {
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              program: makeProgram({ intro: null }),
+            })}
+          />,
+        )
+        await vi.runAllTicks()
+      })
+      const firstVideo = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      let rejectPlay: (error: unknown) => void = () => undefined
+      Object.defineProperty(firstVideo, "play", {
+        configurable: true,
+        value: vi.fn(
+          () =>
+            new Promise<void>((_resolve, reject) => {
+              rejectPlay = reject
+            }),
+        ),
+      })
+      await act(async () => {
+        firstVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
+        await vi.advanceTimersByTimeAsync(1_500)
+      })
+
+      const replacementCard = container.querySelector(
+        '[data-testid="watch-home-tv-carousel-card"][aria-pressed="false"]',
+      )
+      expect(replacementCard).not.toBeNull()
+      await act(async () => {
+        replacementCard?.dispatchEvent(
+          new MouseEvent("click", { bubbles: true }),
+        )
+      })
+      const replacementId = container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.getAttribute("data-program-sequence-id")
+
+      await act(async () => {
+        rejectPlay(new Error("late autoplay rejection"))
+        await Promise.resolve()
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-tv-video"]')
+          ?.getAttribute("data-program-sequence-id"),
+      ).toBe(replacementId)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("quarantines failed authored media and restarts with a fresh entry on bfcache restore", async () => {

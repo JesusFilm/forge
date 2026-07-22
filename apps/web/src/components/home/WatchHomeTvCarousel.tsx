@@ -145,6 +145,8 @@ type PrimaryActionIconName =
 function PrimaryActionIcon({ icon }: { icon: PrimaryActionIconName }) {
   const iconClassName = "h-5 w-5 shrink-0"
 
+  if (icon == null) return null
+
   if (icon === "join") {
     return <UserPlus className={iconClassName} aria-hidden />
   }
@@ -258,7 +260,7 @@ function WatchHomeTvMedia({
   mediaReady: boolean
   onCanPlay: () => void
   onEnded?: () => void
-  onError?: () => void
+  onError?: (slideId: string, video: HTMLVideoElement) => void
   onLoadedMetadata: () => void
   onPlayerReady?: (player: MuxPlayerRef | null) => void
   onSubtitleCueTextChange: (cueText: string | null) => void
@@ -330,7 +332,11 @@ function WatchHomeTvMedia({
           crossOrigin="anonymous"
           onCanPlay={onCanPlay}
           onEnded={takeoverActive ? undefined : onEnded}
-          onError={takeoverActive ? undefined : onError}
+          onError={
+            takeoverActive
+              ? undefined
+              : (event) => onError?.(activeSlide.id, event.currentTarget)
+          }
           onLoadedMetadata={onLoadedMetadata}
           onTimeUpdate={onTimeUpdate}
           className={cn(
@@ -621,6 +627,16 @@ function WatchHomeTvOverlayContent({
 
   return (
     <div className={wrapperClassName} aria-hidden={mode === "leaving"}>
+      {slide.kind !== "video" && slide.logo ? (
+        <Image
+          src="/images/jesus-film-logo-full.svg"
+          alt="Jesus Film Project"
+          width={139}
+          height={36}
+          className={cn(itemClassName, "h-9 w-auto")}
+          style={delayStyle(0)}
+        />
+      ) : null}
       <div className="min-w-0">
         <p
           className={cn(

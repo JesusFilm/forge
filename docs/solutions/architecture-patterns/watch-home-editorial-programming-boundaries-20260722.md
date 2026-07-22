@@ -66,8 +66,11 @@ The locale-specific Homepage Experience carries an optional program inside its
 Validate the complete document at the program boundary. Kind mismatches,
 duplicate IDs, missing rotation references, unsafe actions, unapproved poster
 references, oversized strings, and excessive bucket/item counts should be
-unrepresentable after Admin validation. Keep the missing-program form valid so
-an existing placement-only hero remains publishable during migration.
+unrepresentable after Admin validation. Parse relative actions against the
+canonical public origin and require the parsed origin to remain unchanged;
+prefix checks alone accept backslash forms that browsers can reinterpret as an
+external host. Keep the missing-program form valid so an existing
+placement-only hero remains publishable during migration.
 
 The editor should make mutation explicit. Opening a placement-only block does
 not silently create programming. Creating, applying, canceling, removing, and
@@ -121,11 +124,13 @@ keeps the ID and its exposure continuity.
 
 The storage adapter persists a version, calendar month, program fingerprint,
 stable exposure identities, and per-bucket cycle state. It sanitizes malformed
-JSON, resets old versions/months, prunes removed identities, and discards cycle
-state when the program fingerprint changes. Storage denial, quota failure, and
-competing-tab writes degrade to safe in-memory or merged state rather than
-breaking playback. Storage is an adapter around the engine, never an engine
-dependency.
+JSON, resets old versions/months, retains canonical monthly exposures across
+locale/program changes, and discards only cycle state when the program
+fingerprint changes. Storage denial, quota failure, and competing-tab writes
+degrade to safe in-memory or merged state rather than breaking playback. Once
+a storage object rejects writes, use the in-memory ledger for subsequent reads
+in that session so a failed persistence attempt cannot erase newly recorded
+exposure. Storage is an adapter around the engine, never an engine dependency.
 
 ## 4. Record Exposure at the Media Lifecycle
 
@@ -137,10 +142,15 @@ A rotating item becomes browser-exposed after three cumulative seconds of
 successful playback while both the document and hero are visible. An explicit
 next/skip records exposure immediately, and a shorter promo records on
 completion. Poster dwell, buffering, blocked autoplay, rail selection,
-background/offscreen playback, and media errors do not count. Cap each sampled
-media-time delta so seeking or a delayed event cannot manufacture the
-threshold. A failed item is quarantined only for the current entry and advances
-through the same exactly-once path as other completions.
+background/offscreen playback, and media errors do not count. Pause media and
+all advance/progress timers as soon as the document or hero becomes hidden,
+preserve the remaining delay, and reset the exposure sampling baseline before
+resuming. Cap each sampled media-time delta so seeking or a delayed event cannot
+manufacture the threshold. Guard asynchronous `play()` rejections and media
+errors with both the active slide and media element so a stale failure cannot
+quarantine the replacement slide. A failed item is quarantined only for the
+current entry and advances through the same exactly-once path as other
+completions.
 
 The fixed intro intentionally runs on every entry and is not exposure-filtered.
 Browser exposure never calls account progress APIs. Existing signed-in progress

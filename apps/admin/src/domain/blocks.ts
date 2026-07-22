@@ -455,7 +455,14 @@ const watchHomeStableId = z
   )
 
 export function isAllowedWatchHomeActionHref(value: string): boolean {
-  if (value.startsWith("/") && !value.startsWith("//")) return true
+  if (value.startsWith("/") && !value.startsWith("//")) {
+    try {
+      const url = new URL(value, "https://www.jesusfilm.org")
+      return url.origin === "https://www.jesusfilm.org"
+    } catch {
+      return false
+    }
+  }
 
   try {
     const url = new URL(value)
@@ -844,6 +851,19 @@ export type Block = z.infer<typeof BlockSchema>
  * `experience-ai-normalize.ts`). Adding a minimum here would reject valid
  * hand-authored 1-block content.
  */
-export const BlocksSchema = z.array(BlockSchema)
+export const BlocksSchema = z
+  .array(BlockSchema)
+  .superRefine((blocks, context) => {
+    const watchHomeHeroIndexes = blocks.flatMap((block, index) =>
+      block.t === "watchHomeHero" ? [index] : [],
+    )
+    for (const duplicateIndex of watchHomeHeroIndexes.slice(1)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [duplicateIndex],
+        message: "An experience may contain only one Watch Home Hero block",
+      })
+    }
+  })
 
 export type Blocks = z.infer<typeof BlocksSchema>

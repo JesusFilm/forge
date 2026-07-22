@@ -251,6 +251,7 @@ describe("BlockSchema — all top-level types validate", () => {
 
     for (const href of [
       "//evil.example/path",
+      "/\\evil.example/path",
       "javascript:alert(1)",
       "http://jesusfilm.org/watch",
       "https://jesusfilm.org.evil.example/watch",
@@ -731,6 +732,15 @@ describe("composition depth (no z.lazy needed because legal nesting is acyclic)"
 describe("BlocksSchema", () => {
   it("accepts an empty array", () => {
     expect(BlocksSchema.safeParse([]).success).toBe(true)
+  })
+
+  it("rejects more than one Watch Home Hero block", () => {
+    expect(
+      BlocksSchema.safeParse([
+        { t: "watchHomeHero", sectionKey: "watch-home-hero" },
+        { t: "watchHomeHero", sectionKey: "watch-home-hero-duplicate" },
+      ]).success,
+    ).toBe(false)
   })
 
   it("accepts a mixed array of valid top-level blocks", () => {
