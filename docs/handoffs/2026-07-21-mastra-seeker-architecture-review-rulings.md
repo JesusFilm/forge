@@ -362,6 +362,12 @@ return the `{ thread, resource }` memory config, with
 `AI_CHAT_TITLE_MODEL`, `generateTitle: false`, `ai-chat-memory-storage`,
 `USER_RESOURCE_PREFIX`, `AI_CHAT_SCHEMA_NAME`.
 
+> **Amendment (2026-07-22, PR #1672):** executed standalone by owner decision
+> after feat-283/284 landed, rather than waiting for the ride-along trigger —
+> the trigger calibration measured priority, not risk, and a standalone PR
+> beats inheriting refactor scope inside a future feature diff. All five
+> requirements unchanged.
+
 ## Verification expectations (every PR in this body of work)
 
 - `pnpm --filter @forge/mastra test` / `typecheck` / `lint` — all green; no

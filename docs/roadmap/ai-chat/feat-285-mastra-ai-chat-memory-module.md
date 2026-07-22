@@ -3,7 +3,7 @@ id: "feat-285"
 title: "Extract the Mastra ai-chat memory module + keying policy (ride-along)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-17"
 duration: 1
 depends_on: []
@@ -11,6 +11,14 @@ blocks: []
 tags:
   - "ai-pipeline"
 ---
+
+## Resolution
+
+**Shipped:** 2026-07-22 via [PR #1672](https://github.com/JesusFilm/forge/pull/1672) (`feat(mastra): extract the ai-chat memory module + keying policy (feat-285)`).
+
+**What landed.** Executed standalone by owner decision after feat-283/284 (amendment above and in the handoff doc) rather than waiting for the ride-along trigger. The 8 ai-chat exports moved verbatim from `memory.ts` into the lane-owned `ai-chat-memory.ts` — carrying the feat-284-reworded lane docstring, the split pool-arithmetic notes with cross-pointers, and the mirrored-not-imported-from-admin note — and the new `aiChatMemoryConfigFor` helper replaced `seeker-route.ts`'s titling ternary (KTD12 semantics verbatim; `USER_RESOURCE_PREFIX` imported from the ownership module). `memory.test.ts`'s ai-chat cases moved byte-identical to a colocated suite plus two policy-branch cases. Verified by the full suite, a nine-reviewer code review with zero findings, and an end-to-end browser smoke (stream, reload-rehydrate with LLM title, replay, recall).
+
+**Residual risk / follow-ups.** `aiChatMemoryConfigFor`'s two positional `string` params could be transposed by a future second agent-turn caller without a type error — an object/branded param is the durable guard when that caller appears. No call-site source pin asserts the route delegates to the helper vs an identical re-grown ternary (behavioral shape is pinned for all four resource cases in `seeker-route.test.ts`).
 
 ## Problem
 
@@ -31,6 +39,12 @@ review. The authoritative spec is
 read it first in full. Do NOT run `ce-plan`.
 
 ## Ride-along trigger — do not schedule standalone
+
+> **Amendment (2026-07-22, PR #1672):** executed standalone by owner decision
+> after feat-283/284 landed, rather than waiting for the ride-along trigger —
+> the trigger calibration measured priority, not risk, and a standalone PR
+> beats inheriting refactor scope inside a future feature diff. All five
+> requirements unchanged.
 
 Calibrated by the review: only one route builds a per-call memory config
 today (feat-247's delete/rename run no agent turn; feat-209 adds no Mastra
