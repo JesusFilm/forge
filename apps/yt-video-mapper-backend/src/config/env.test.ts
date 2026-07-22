@@ -141,9 +141,9 @@ describe("runtime env", () => {
   })
 
   it("rejects media indexing concurrency above the safety limit", async () => {
-    await expect(
-      loadEnv({ MEDIA_INDEX_CONCURRENCY: "5" }),
-    ).rejects.toThrow(/MEDIA_INDEX_CONCURRENCY/)
+    await expect(loadEnv({ MEDIA_INDEX_CONCURRENCY: "5" })).rejects.toThrow(
+      /MEDIA_INDEX_CONCURRENCY/,
+    )
   })
 
   it("requires DATABASE_URL in production", async () => {
