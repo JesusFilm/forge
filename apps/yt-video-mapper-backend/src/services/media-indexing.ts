@@ -1,10 +1,9 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { isIP } from "node:net"
 import {
   CatalogRunStatus as PrismaCatalogRunStatus,
   MediaSourceType as PrismaMediaSourceType,
   Prisma,
-  SignatureType as PrismaSignatureType,
   type CatalogVariant,
   type IndexRun,
   type PrismaClient,
@@ -537,39 +536,50 @@ export class PrismaMediaIndexRepository implements MediaIndexRepository {
   async upsertMediaSignatures(
     signatures: StoredMediaSignatureInput[],
   ): Promise<void> {
-    await this.db.$transaction(
-      signatures.map((signature) =>
-        this.db.mediaSignature.upsert({
-          where: {
-            coreId_videoVariantId_signatureType_algorithmVersion_offsetMilliseconds:
-              {
-                coreId: signature.coreId,
-                videoVariantId: signature.videoVariantId,
-                signatureType: toPrismaSignatureType(signature.signatureType),
-                algorithmVersion: signature.algorithmVersion,
-                offsetMilliseconds: signature.offsetMilliseconds,
-              },
-          },
-          create: {
-            coreId: signature.coreId,
-            videoVariantId: signature.videoVariantId,
-            signatureType: toPrismaSignatureType(signature.signatureType),
-            algorithmVersion: signature.algorithmVersion,
-            offsetMilliseconds: signature.offsetMilliseconds,
-            durationMilliseconds: signature.durationMilliseconds,
-            signature: signature.signature as Prisma.InputJsonValue,
-            sourceMediaUrl: signature.sourceMediaUrl,
-            sourceMediaHash: signature.sourceMediaHash,
-          },
-          update: {
-            durationMilliseconds: signature.durationMilliseconds,
-            signature: signature.signature as Prisma.InputJsonValue,
-            sourceMediaUrl: signature.sourceMediaUrl,
-            sourceMediaHash: signature.sourceMediaHash,
-          },
-        }),
-      ),
+    const uniqueSignatures = deduplicateMediaSignatures(signatures)
+    if (uniqueSignatures.length === 0) return
+
+    const rows = uniqueSignatures.map(
+      (signature) => Prisma.sql`(
+        ${randomUUID()},
+        ${signature.coreId},
+        ${signature.videoVariantId},
+        ${toDatabaseSignatureType(signature.signatureType)}::"signature_type",
+        ${signature.algorithmVersion},
+        ${signature.offsetMilliseconds},
+        ${signature.durationMilliseconds},
+        ${JSON.stringify(signature.signature)}::jsonb,
+        ${signature.sourceMediaUrl},
+        ${signature.sourceMediaHash}
+      )`,
     )
+
+    await this.db.$executeRaw(Prisma.sql`
+      INSERT INTO "mapper_media_signature" (
+        "id",
+        "core_id",
+        "video_variant_id",
+        "signature_type",
+        "algorithm_version",
+        "offset_milliseconds",
+        "duration_milliseconds",
+        "signature",
+        "source_media_url",
+        "source_media_hash"
+      )
+      VALUES ${Prisma.join(rows)}
+      ON CONFLICT (
+        "core_id",
+        "video_variant_id",
+        "signature_type",
+        "algorithm_version",
+        "offset_milliseconds"
+      ) DO UPDATE SET
+        "duration_milliseconds" = EXCLUDED."duration_milliseconds",
+        "signature" = EXCLUDED."signature",
+        "source_media_url" = EXCLUDED."source_media_url",
+        "source_media_hash" = EXCLUDED."source_media_hash"
+    `)
   }
 }
 
@@ -762,17 +772,34 @@ function fromPrismaMediaSourceType(
   return map[sourceType]
 }
 
-function toPrismaSignatureType(
-  signatureType: MediaSignatureType,
-): PrismaSignatureType {
+function toDatabaseSignatureType(signatureType: MediaSignatureType): string {
   const map = {
-    VISUAL_FRAME: PrismaSignatureType.VISUAL_FRAME,
-    AUDIO_FINGERPRINT: PrismaSignatureType.AUDIO_FINGERPRINT,
-    TEXT_SEGMENT: PrismaSignatureType.TEXT_SEGMENT,
-    STRUCTURAL_HINT: PrismaSignatureType.STRUCTURAL_HINT,
-  } satisfies Record<MediaSignatureType, PrismaSignatureType>
+    VISUAL_FRAME: "visual_frame",
+    AUDIO_FINGERPRINT: "audio_fingerprint",
+    TEXT_SEGMENT: "text_segment",
+    STRUCTURAL_HINT: "structural_hint",
+  } satisfies Record<MediaSignatureType, string>
 
   return map[signatureType]
+}
+
+function deduplicateMediaSignatures(
+  signatures: StoredMediaSignatureInput[],
+): StoredMediaSignatureInput[] {
+  const byConflictKey = new Map<string, StoredMediaSignatureInput>()
+  for (const signature of signatures) {
+    byConflictKey.set(
+      JSON.stringify([
+        signature.coreId,
+        signature.videoVariantId,
+        signature.signatureType,
+        signature.algorithmVersion,
+        signature.offsetMilliseconds,
+      ]),
+      signature,
+    )
+  }
+  return [...byConflictKey.values()]
 }
 
 function failureSummaryFromFailures(
