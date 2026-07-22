@@ -8,6 +8,14 @@ import { env } from "@/config/env"
 const DEFAULT_URL = "https://api-gateway.central.jesusfilm.org/"
 const DEFAULT_TIMEOUT_MS = 120_000
 const DEFAULT_RETRIES = 2
+const RETRYABLE_GRAPHQL_ERROR_CODES = new Set([
+  "INTERNAL_SERVER_ERROR",
+  "BAD_GATEWAY",
+  "SERVICE_UNAVAILABLE",
+  "GATEWAY_TIMEOUT",
+  "TIMEOUT",
+  "RATE_LIMITED",
+])
 
 /**
  * GraphQL `errors[]` entry shape per the spec. Carries `path`,
@@ -39,6 +47,17 @@ export class CoreGraphQLError extends Error {
     )
     this.name = "CoreGraphQLError"
   }
+}
+
+function isRetryableCoreGraphQLError(error: CoreGraphQLError): boolean {
+  return error.errors.every((detail) => {
+    const code = detail.extensions?.code
+    if (typeof code === "string" && RETRYABLE_GRAPHQL_ERROR_CODES.has(code)) {
+      return true
+    }
+
+    return /unexpected error/i.test(detail.message)
+  })
 }
 
 export async function coreQuery<T>(
@@ -78,7 +97,12 @@ export async function coreQuery<T>(
       return json
     } catch (error) {
       lastError = error
-      if (error instanceof CoreGraphQLError) throw error
+      if (
+        error instanceof CoreGraphQLError &&
+        !isRetryableCoreGraphQLError(error)
+      ) {
+        throw error
+      }
       if (attempt === retries) break
       const delayMs = 500 * 2 ** attempt
       console.warn(
