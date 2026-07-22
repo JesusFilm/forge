@@ -341,4 +341,16 @@ describe("needsWindowStartSeek", () => {
       true,
     )
   })
+
+  it("arms the readyToPlay re-seek for a deep sentence-aware window's dropped opener", () => {
+    // ReelPlayer's readyToPlay branch reuses this classifier: a sentence-aware
+    // English opener seeks to ~57s, and a dropped post-replaceAsync seek leaves the
+    // clock near 0 — the fault itself arms the heal (it never suppresses it).
+    expect(
+      needsWindowStartSeek({ currentTime: 0.2, startSeconds: 56.76 }),
+    ).toBe(true)
+    expect(needsWindowStartSeek({ currentTime: 56, startSeconds: 56.76 })).toBe(
+      false,
+    )
+  })
 })

@@ -482,8 +482,27 @@ export function ReelPlayer({
     const sub = live.addListener("statusChange", ({ status, error }) => {
       // Latch through `idle`: every swap blips idle, and unmounting there forces a
       // full HLS re-init — the long black pause KTD-2 exists to avoid.
-      if (status === "readyToPlay") setVideoReady(true)
-      else if (status === "error") {
+      if (status === "readyToPlay") {
+        setVideoReady(true)
+        // The post-replaceAsync seek can be silently dropped on tvOS (item not yet
+        // seekable), leaving a mid-video window playing from 0:00. readyToPlay is the
+        // first point a seek is guaranteed to land, so re-issue it here when still owed.
+        const loaded = loadedStreamRef.current
+        if (loaded != null) {
+          try {
+            if (
+              needsWindowStartSeek({
+                currentTime: live.currentTime,
+                startSeconds: loaded.window.startSeconds,
+              })
+            ) {
+              live.currentTime = loaded.window.startSeconds
+            }
+          } catch {
+            // Native player already released; the next swap owns recovery.
+          }
+        }
+      } else if (status === "error") {
         // A genuine error is never a swap blip. Fall back to the poster and let the
         // reel skip this item (R16) rather than strand it on a frozen frame.
         setVideoReady(false)
