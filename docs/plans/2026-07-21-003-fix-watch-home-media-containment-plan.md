@@ -58,9 +58,9 @@ The safest ownership boundary is `WatchHomeExperiencePage`: the same shared rend
 
 **Files:**
 
-- Create `docs/roadmap/platform/feat-280-watch-home-standalone-media-containment.md`.
+- Create `docs/roadmap/platform/feat-286-watch-home-standalone-media-containment.md`.
 - Modify `apps/web/src/components/home/WatchHomeExperiencePage.tsx`.
-- Create `apps/web/src/components/home/__tests__/WatchHomeExperiencePage.test.tsx`.
+- Create `apps/web/src/components/home/WatchHomeExperiencePage.test.tsx`.
 
 **Approach:**
 
@@ -93,7 +93,7 @@ The safest ownership boundary is `WatchHomeExperiencePage`: the same shared rend
 
 **Files:**
 
-- Update `docs/roadmap/platform/feat-280-watch-home-standalone-media-containment.md` to `complete` after all acceptance evidence passes.
+- Update `docs/roadmap/platform/feat-286-watch-home-standalone-media-containment.md` to `complete` after all acceptance evidence passes.
 
 **Approach:**
 

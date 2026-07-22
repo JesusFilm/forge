@@ -18,7 +18,12 @@ vi.mock("@/components/home/WatchHomeFooter", () => ({
 }))
 
 vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
-  WatchHomeTvCarousel: () => <section data-testid="watch-home-hero" />,
+  WatchHomeTvCarousel: () => (
+    <section
+      data-testid="watch-home-hero"
+      data-block-marker="WatchHomeHeroBlock"
+    />
+  ),
 }))
 
 vi.mock("@/components/sections", () => ({
@@ -33,6 +38,7 @@ vi.mock("@/components/sections", () => ({
       data-testid="experience-section"
       data-section-type={section.__typename ?? "unknown"}
       data-language-slug={languageSlug}
+      data-block-marker={section.__typename ?? "unknown"}
     />
   ),
 }))
@@ -70,6 +76,7 @@ describe("WatchHomeExperiencePage", () => {
   it("contains only top-level standalone video blocks on the Watch rail", async () => {
     const blocks = [
       makeBlock("WatchHomeHeroBlock", "hero"),
+      makeBlock("VideoHeroBlock", "video-hero"),
       makeBlock("VideoCarouselBlock", "course"),
       makeBlock("SectionBlock", "section"),
       makeBlock("VideoBlock", "invitation"),
@@ -114,7 +121,11 @@ describe("WatchHomeExperiencePage", () => {
       ),
     )
 
-    for (const sectionType of ["SectionBlock", "MediaCollectionBlock"]) {
+    for (const sectionType of [
+      "VideoHeroBlock",
+      "SectionBlock",
+      "MediaCollectionBlock",
+    ]) {
       const section = container.querySelector<HTMLElement>(
         `[data-section-type="${sectionType}"]`,
       )
@@ -126,6 +137,19 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       renderedSections.map((section) => section.dataset.sectionType),
     ).toEqual([
+      "VideoHeroBlock",
+      "VideoCarouselBlock",
+      "SectionBlock",
+      "VideoBlock",
+      "MediaCollectionBlock",
+    ])
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLElement>("[data-block-marker]"),
+      ).map((block) => block.dataset.blockMarker),
+    ).toEqual([
+      "WatchHomeHeroBlock",
+      "VideoHeroBlock",
       "VideoCarouselBlock",
       "SectionBlock",
       "VideoBlock",
