@@ -16,6 +16,7 @@ type MediaItem = {
     } | null
   } | null
   muxPlaybackId?: string | null
+  languageSlug?: string | null
   videoImageBlurDataUrl?: string | null
   videoImageDominantColor?: string | null
   resolvedTitle?: string | null
@@ -187,9 +188,11 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   // MediaCollection.tsx `const href = item.videoSlug ? ...`).
   const videoSlug = typeof item.videoSlug === "string" ? item.videoSlug : ""
   const languageSlug =
-    typeof item.videoDub?.language?.slug === "string"
-      ? item.videoDub.language.slug
-      : null
+    typeof item.languageSlug === "string"
+      ? item.languageSlug
+      : typeof item.videoDub?.language?.slug === "string"
+        ? item.videoDub.language.slug
+        : null
   // Fall back to videoId (or empty string) when no upstream id is present.
   // React keys against an empty string repeat-collide across items, so the
   // consumer also keys by array index where this matters.

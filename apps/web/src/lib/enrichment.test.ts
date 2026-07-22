@@ -220,6 +220,18 @@ describe("enrichMediaItem image resolution", () => {
     expect(result.muxPlaybackId).toBe("mux-authored-dub")
   })
 
+  it("uses the authored item language slug when no direct dub exists", () => {
+    const result = enrichMediaItem({
+      ...base,
+      videoSlug: "lumo-the-gospel-of-mark",
+      languageSlug: "spanish-latin-american",
+      videoDub: null,
+      imageUrl: null,
+    })
+
+    expect(result.languageSlug).toBe("spanish-latin-american")
+  })
+
   it("does not use a standalone muxPlaybackId fallback for authored media items", () => {
     const result = enrichMediaItem({
       ...base,
