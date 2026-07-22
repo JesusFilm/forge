@@ -106,6 +106,28 @@ describe("dashboard live data", () => {
     ).toEqual(["older-video-1", "older-video-2"])
   })
 
+  it("passes a video category through the picker row loader", async () => {
+    videoListMock.mockResolvedValue([])
+
+    await loadVideoRows(principal, {
+      category: "collections",
+      preferredLocale: "es",
+    })
+
+    expect(videoListMock).toHaveBeenCalledWith({
+      input: {
+        category: "collections",
+        collection: undefined,
+        language: undefined,
+        limit: 30,
+        offset: 0,
+        search: undefined,
+        sort: undefined,
+      },
+      query: {},
+    })
+  })
+
   it("hydrates explicitly referenced videos outside the recent-video page", async () => {
     videoListMock.mockResolvedValue([
       videoRow("recent-video", "core-recent", "recent"),

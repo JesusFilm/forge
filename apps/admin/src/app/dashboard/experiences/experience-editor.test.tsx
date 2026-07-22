@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
+import type { VideoLibraryCategory } from "@/app/dashboard/video-library-utils"
 import {
   ExperienceEditor,
   buildPublishedWatchUrl,
@@ -95,6 +96,7 @@ function renderEditorElement(
     searchVideoLibraryAction?: (
       query: string,
       context?: {
+        category?: VideoLibraryCategory
         client?:
           | "experience-editor-video-picker"
           | "experience-editor-video-carousel-picker"
@@ -1108,7 +1110,6 @@ describe("ExperienceEditor", () => {
       if (!(searchInput instanceof HTMLInputElement)) {
         throw new Error("Video search input not found")
       }
-
       const valueSetter = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
         "value",
@@ -1207,6 +1208,7 @@ describe("ExperienceEditor", () => {
       })
 
       expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka", {
+        category: "all",
         client: "experience-editor-video-picker",
       })
       expect(view.container.textContent).toContain("Server Ranked Result")
@@ -1357,6 +1359,12 @@ describe("ExperienceEditor", () => {
       if (!(searchInput instanceof HTMLInputElement)) {
         throw new Error("Video search input not found")
       }
+      const typeSelect = view.container.querySelector(
+        'select[aria-label="Filter by video type"]',
+      )
+      if (!(typeSelect instanceof HTMLSelectElement)) {
+        throw new Error("Video type filter not found")
+      }
 
       const valueSetter = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
@@ -1364,6 +1372,8 @@ describe("ExperienceEditor", () => {
       )?.set
 
       act(() => {
+        typeSelect.value = "collections"
+        typeSelect.dispatchEvent(new Event("change", { bubbles: true }))
         valueSetter?.call(searchInput, "banner")
         searchInput.dispatchEvent(
           new InputEvent("input", { bubbles: true, inputType: "insertText" }),
@@ -1374,10 +1384,123 @@ describe("ExperienceEditor", () => {
       })
 
       expect(searchVideoLibraryAction).toHaveBeenCalledWith("banner", {
+        category: "collections",
         client: "experience-editor-media-collection-picker",
       })
       expect(view.container.textContent).toContain("Collection Result")
       expect(view.container.textContent).toContain("Collection")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("filters the picker by video type through the server action and resets on reopen", async () => {
+    const collectionResult = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Collection Result",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const featureResult = {
+      ...defaultVideoLibrary[0]!,
+      key: "feature-1",
+      title: "Feature Result",
+      id: "core-feature",
+      label: "FEATURE_FILM",
+      labelLabel: "Feature Film",
+    }
+    const searchVideoLibraryAction = vi.fn(async () => [collectionResult])
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collectionResult, featureResult],
+        searchVideoLibraryAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add video").click()
+      })
+
+      const typeSelect = view.container.querySelector(
+        'select[aria-label="Filter by video type"]',
+      )
+      if (!(typeSelect instanceof HTMLSelectElement)) {
+        throw new Error("Video type filter not found")
+      }
+
+      expect(
+        Array.from(typeSelect.options).map((option) => option.text),
+      ).toEqual([
+        "All types",
+        "Collections",
+        "Features",
+        "Short films",
+        "Series",
+      ])
+
+      act(() => {
+        typeSelect.value = "collections"
+        typeSelect.dispatchEvent(new Event("change", { bubbles: true }))
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 260))
+      })
+
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("", {
+        category: "collections",
+        client: "experience-editor-media-collection-picker",
+      })
+      expect(view.container.textContent).toContain("Collection Result")
+      expect(view.container.textContent).not.toContain("Feature Result")
+
+      const videoDialog = view.container.querySelector(
+        '[role="dialog"][aria-labelledby="video-library-title"]',
+      )
+      const cancelButton = Array.from(
+        videoDialog?.querySelectorAll("button") ?? [],
+      ).find((button) => button.textContent?.trim() === "Cancel")
+      if (!(cancelButton instanceof HTMLButtonElement)) {
+        throw new Error("Video picker cancel button not found")
+      }
+      await act(async () => {
+        cancelButton.click()
+      })
+
+      const reopenButton = Array.from(
+        view.container.querySelectorAll("button"),
+      ).find(
+        (button) =>
+          button.textContent?.trim() === "Add video" &&
+          !button.closest('[aria-labelledby="video-library-title"]'),
+      )
+      if (!(reopenButton instanceof HTMLButtonElement)) {
+        throw new Error("Media collection add video button not found")
+      }
+      await act(async () => {
+        reopenButton.click()
+      })
+
+      const reopenedTypeSelect = view.container.querySelector(
+        'select[aria-label="Filter by video type"]',
+      )
+      if (!(reopenedTypeSelect instanceof HTMLSelectElement)) {
+        throw new Error("Reopened video type filter not found")
+      }
+      expect(reopenedTypeSelect.value).toBe("all")
     } finally {
       view.cleanup()
     }
@@ -1775,6 +1898,7 @@ describe("ExperienceEditor", () => {
       })
 
       expect(searchVideoLibraryAction).toHaveBeenCalledWith("rivka", {
+        category: "all",
         client: "experience-editor-video-picker",
       })
       expect(view.container.textContent).not.toContain(

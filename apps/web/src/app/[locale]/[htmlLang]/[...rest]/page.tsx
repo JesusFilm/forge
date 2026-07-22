@@ -19,6 +19,7 @@ import {
   resolveWatchRouteBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
+  watchExperienceBlocks,
   type WatchVariant,
   type WatchVideoRecord,
 } from "@/lib/content"
@@ -438,7 +439,7 @@ async function renderOneSegment(shape: {
 
     const builderBlocks =
       pageResult.data?.kind === "experience"
-        ? (pageResult.data.experience.blocks ?? [])
+        ? watchExperienceBlocks(pageResult.data.experience)
         : []
 
     if (
