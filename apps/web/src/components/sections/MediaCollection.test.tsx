@@ -168,6 +168,41 @@ describe("MediaCollection VideoCard href", () => {
     ).toContain("md:grid-cols-3")
   })
 
+  it.each([
+    ["collection", ["text-xl"], ["text-lg", "md:text-xl"]],
+    ["grid", ["text-lg", "md:text-xl"], ["text-xl"]],
+  ] as const)(
+    "keeps the %s card title and caption sizing contracts",
+    (mediaCollectionVariant, expectedTitleClasses, excludedTitleClasses) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({ mediaCollectionVariant })}
+            routeVideo={makeRouteVideo("the-gospel-of-john")}
+          />,
+        )
+      })
+
+      const caption = container.querySelector<HTMLElement>(
+        '[data-slot="video-thumbnail-caption"]',
+      )
+      const title = container.querySelector<HTMLElement>(
+        '[data-slot="video-thumbnail-title"]',
+      )
+      const captionClasses = caption?.className.split(/\s+/) ?? []
+      const titleClasses = title?.className.split(/\s+/) ?? []
+
+      expect(captionClasses).toContain("px-4")
+      expect(captionClasses).toContain("pb-4")
+      for (const className of expectedTitleClasses) {
+        expect(titleClasses).toContain(className)
+      }
+      for (const className of excludedTitleClasses) {
+        expect(titleClasses).not.toContain(className)
+      }
+    },
+  )
+
   it("uses one solid white hover and focus frame on horizontal cards", () => {
     act(() => {
       root.render(
