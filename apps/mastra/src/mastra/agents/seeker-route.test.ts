@@ -85,7 +85,7 @@ function baseInput(
 ): SeekerRouteHandlerInput {
   return {
     authHeader: AUTH,
-    serviceKeys: SERVICE_KEYS,
+    getServiceKeys: () => SERVICE_KEYS,
     readJson: async () => ({ prompt: "hi", threadId: "thread-1" }),
     getMastra: () => mastra,
     getEnabled: () => true,
@@ -1098,16 +1098,18 @@ describe("handleSeekerRouteRequest — title generation (feat-241, KTD12)", () =
 
 // --- feat-250: /forge-seeker lane-key bearer -------------------------------
 
-// The route's allowlist is the ai-chat lane CSV only (wired in index.ts via
-// parseServiceApiKeys(env.AI_CHAT_SERVICE_API_KEYS)); these pin the handler's
-// accept/reject behavior for a lane-shaped list.
+// The route's allowlist is the ai-chat lane CSV only (the admission module's
+// default source, feat-283 — the registration in index.ts passes no keys);
+// these pin the handler's accept/reject behavior for a lane-shaped list. The
+// DEFAULT sourcing path itself is pinned by the discriminating key-source
+// test in ai-chat-lane-admission.test.ts.
 describe("lane-key bearer (feat-250)", () => {
   it("a lane key in the allowlist authorizes the route", async () => {
     const { mastra } = makeMastra({ chunks: ["ok"] })
     const res = await handleSeekerRouteRequest(
       baseInput(mastra, {
         authHeader: "Bearer lane-key",
-        serviceKeys: ["lane-key"],
+        getServiceKeys: () => ["lane-key"],
       }),
     )
     expect(res.status).toBe(200)
@@ -1117,7 +1119,7 @@ describe("lane-key bearer (feat-250)", () => {
     const { mastra } = makeMastra()
     const res = await handleSeekerRouteRequest(
       // AUTH presents the pool-style key; the lane-only allowlist rejects it.
-      baseInput(mastra, { serviceKeys: ["lane-key"] }),
+      baseInput(mastra, { getServiceKeys: () => ["lane-key"] }),
     )
     expect(res.status).toBe(401)
   })

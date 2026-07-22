@@ -3,7 +3,7 @@ id: "feat-090"
 title: "Watch Event Collection & Session Tracking"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "cancelled"
 start_date: "2026-04-30"
 duration: 10
 depends_on:
@@ -17,6 +17,14 @@ tags:
   - "infrastructure"
   - "personalization"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. `feat-229` delivered the current authenticated Web
+watch-event foundation in Admin, superseding this ticket's anonymous
+`jfp_session` and legacy CMS storage design. Future personalization work should
+build on the durable `WatchEvent` and `WatchProgress` models rather than create
+a parallel anonymous event stream.
 
 ## Problem
 

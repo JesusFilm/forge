@@ -6,6 +6,7 @@ import {
   formatVideoUpdatedRelative,
   hasActiveVideoLibraryFilters,
   isPublicAudioLanguageSlug,
+  matchesVideoLibraryCategory,
   normalizeVideoThumbnailUrl,
   parseVideoLibraryCategory,
   parseVideoLibraryCollection,
@@ -70,6 +71,16 @@ describe("video-library-utils", () => {
 
     expect(parseVideoLibrarySort("created")).toBe("created")
     expect(parseVideoLibrarySort("bad")).toBe("recent")
+  })
+
+  it("matches canonical video labels to library categories", () => {
+    expect(matchesVideoLibraryCategory("COLLECTION", "collections")).toBe(true)
+    expect(matchesVideoLibraryCategory("FEATURE_FILM", "features")).toBe(true)
+    expect(matchesVideoLibraryCategory("SHORT_FILM", "shortFilms")).toBe(true)
+    expect(matchesVideoLibraryCategory("SERIES", "series")).toBe(true)
+    expect(matchesVideoLibraryCategory("SERIES", "collections")).toBe(false)
+    expect(matchesVideoLibraryCategory(null, "features")).toBe(false)
+    expect(matchesVideoLibraryCategory(null, "all")).toBe(true)
   })
 
   it("normalizes selected video and collection params for URL-backed drill-down", () => {

@@ -1,9 +1,9 @@
 ---
 title: "TV SDUI MediaCollection cards: resolve title by coreId hydration, image by rewriting the poster seed to the watch origin"
 date: 2026-07-14
-last_updated: 2026-07-14
+last_updated: 2026-07-21
 category: docs/solutions/architecture-patterns/
-module: apps/tv + apps/mobile (SDUI experience-detail renderers)
+module: apps/web + apps/tv + apps/mobile (Experience media collection renderers)
 problem_type: architecture_pattern
 component: frontend_stimulus
 severity: medium
@@ -14,6 +14,7 @@ applies_when:
   - "Deciding whether a rewriteSeedPosterUrl call is an active bug-fix or a defensive no-op — imageOverrideUrl is polymorphic per Experience (SDUI seed 404s vs watch-home admin-preview URL resolves)"
   - "A code review flags a card as rendering a 404 seed poster — verify the real per-Experience URL shape before accepting the severity"
   - "Cards must be hydrated per coreId, mirroring the Home rail's GET_WATCH_HOME_VIDEOS pattern"
+  - "Web can resolve linked localized titles at the Admin GraphQL read boundary without adding a browser hydration request"
   - "Poster seed URLs need rewriting to the watch web origin with an ABSOLUTE base so they load in dev builds too"
 tags:
   - "tv"
@@ -66,6 +67,13 @@ rewrites the same seed via `apps/mobile/src/lib/mediaImageUrl.ts`.
 SDUI experience pages it is the 404 seed described above; on the `watch-home`
 homepage Experience it is an admin media-asset preview URL that already resolves.
 Treating it as uniformly a 404 seed is what produced a code-review false-positive.
+
+Web now uses a different title boundary from the native hydration described
+below. `MediaCollectionItem.resolvedTitle(locale:)` resolves the authored
+override or the linked Video's exact published localized title in Admin, and a
+Web-only fragment selects that field inside the existing Experience request.
+Mobile and TV keep their current hydration and fallback behavior until they are
+migrated deliberately.
 
 ## Guidance
 
@@ -124,6 +132,34 @@ empty-string override falling through (admin clears to `""`).
 A hydration failure is **never silent**: `ExperienceRenderer` reports it to
 Datadog (`event: "experience_hydration_failed"`) and warns in dev, while the cards
 degrade to their authored fallback rather than crashing.
+
+### 1a. On Web, resolve the linked title in Admin and keep absence empty
+
+Web should not repeat the native `coreId` hydration query. Admin exposes a
+nullable computed field on the flat item:
+
+```graphql
+resolvedTitle(locale: String!): String
+```
+
+The resolver trims and returns a nonblank `titleOverride` first. Otherwise it
+uses the existing request-scoped Video and VideoLocale DataLoaders to return the
+first nonblank, published title for the exact requested locale. Missing links,
+deleted Videos, draft or other-locale rows, and blank titles return `null`.
+There is no slug, label, cross-locale, or `Untitled` fallback.
+
+Keep the selection Web-local. The Watch Experience extension requests the field
+through direct MediaCollection blocks plus the supported Container, Section,
+and Section→Container nesting paths. The shared Mobile/TV fragment intentionally
+does not select it, so native clients do not pay for unused resolver work.
+
+At the renderer-model boundary, trim `resolvedTitle` and normalize absence to an
+empty string. Render `<h3>` only when that string is nonempty. A titleless card
+keeps an empty image `alt`; an interactive card may use its existing label or
+public video slug in the localized `aria-label` so links remain distinguishable,
+but that identifying fallback must never become visible title copy. Because the
+field rides the existing server-side Experience GraphQL operation, this adds no
+browser-side title request.
 
 ### 2. Rewrite the poster seed to an ABSOLUTE watch origin
 
@@ -243,12 +279,13 @@ existing cache.
 
 ## Why This Matters
 
-Any SDUI card surface built on flat items — MediaCollection today, any future
-flat-item card block — hits this same wall on **both TV and mobile**: the item
-gives you overrides + a coreId + a seed poster, and nothing else. You cannot
-render a usable card from the item alone. Resolution has to come from either (a)
-the linked video, hydrated by coreId, or (b) the curated override asset. Bake that
-assumption in from the start when you build a new card renderer.
+Any card surface built on flat items — MediaCollection today, any future
+flat-item card block — needs an explicit linked-content boundary. TV and Mobile
+currently hydrate by coreId; Web resolves localized title copy through Admin's
+computed GraphQL field. Do not silently invent placeholders at the renderer.
+Image resolution still comes from either the linked video or the curated
+override asset. Bake those assumptions in from the start when you build a new
+card renderer.
 
 Four traps generalize beyond this one screen:
 

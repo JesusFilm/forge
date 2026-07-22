@@ -15,6 +15,7 @@ const GENERIC_ASSET_BLUR =
 
 const base = {
   videoId: "v-1",
+  resolvedTitle: "Title",
   titleOverride: "Title",
   subtitleOverride: "Subtitle",
   labelOverride: "Feature Film",
@@ -206,31 +207,49 @@ describe("enrichMediaItem image resolution", () => {
 })
 
 describe("enrichMediaItem other fields", () => {
-  it("uses overrides for title/subtitle/label/collectionSize", () => {
+  it("uses the Admin-resolved linked title with authored metadata", () => {
     const result = enrichMediaItem({
       ...base,
+      resolvedTitle: "  Linked Video Title  ",
       imageUrl: null,
       imageOverrideUrl: null,
     })
-    expect(result.title).toBe("Title")
+    expect(result.title).toBe("Linked Video Title")
     expect(result.subtitle).toBe("Subtitle")
     expect(result.label).toBe("Feature Film")
     expect(result.collectionSize).toBe("61 chapters")
   })
 
-  it("defaults to empty string when overrides are null", () => {
+  it.each([null, "", "   "])(
+    "leaves the title empty when resolvedTitle is %j",
+    (resolvedTitle) => {
+      const result = enrichMediaItem({
+        videoId: "v-2",
+        resolvedTitle,
+        titleOverride: null,
+        subtitleOverride: null,
+        labelOverride: null,
+        collectionSize: null,
+        imageUrl: null,
+      })
+      expect(result.title).toBe("")
+      expect(result.subtitle).toBe("")
+      expect(result.label).toBe("")
+      expect(result.collectionSize).toBe("")
+    },
+  )
+
+  it("does not reconstruct title precedence from titleOverride", () => {
     const result = enrichMediaItem({
       videoId: "v-2",
-      titleOverride: null,
+      resolvedTitle: null,
+      titleOverride: "Client-side fallback",
       subtitleOverride: null,
       labelOverride: null,
       collectionSize: null,
       imageUrl: null,
     })
     expect(result.title).toBe("")
-    expect(result.subtitle).toBe("")
-    expect(result.label).toBe("")
-    expect(result.collectionSize).toBe("")
   })
 
   it("uses videoId as the id and never populates videoSlug", () => {

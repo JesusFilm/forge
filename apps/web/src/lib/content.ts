@@ -45,7 +45,7 @@ const GET_WATCH_EXPERIENCE = adminGraphql(
   `
     query GetWatchExperience($locale: String!, $slug: String!) {
       experienceBySlug(locale: $locale, slug: $slug) {
-        ...AdminWatchExperience
+        ...WatchExperience
       }
     }
   `,
@@ -58,10 +58,10 @@ const GET_WATCH_SETTINGS = adminGraphql(
       watchSetting(locale: $locale) {
         documentId
         homepageExperience {
-          ...AdminWatchExperience
+          ...WatchExperience
         }
         defaultTemplateExperience {
-          ...AdminWatchExperience
+          ...WatchExperience
         }
       }
     }
@@ -369,6 +369,18 @@ export async function readPublishedContent(slug: string, locale: string) {
 export type Section = NonNullable<
   NonNullable<NonNullable<WatchExperience>["blocks"]>[number]
 >
+
+/**
+ * Normalize gql.tada's intersection of the canonical and Web-extension block
+ * arrays into the element-wise Section union consumed by renderers. Both
+ * fragments are unmasked in every WatchExperience operation, so this adapts
+ * only TypeScript's array-method surface; it does not invent runtime fields.
+ */
+export function watchExperienceBlocks(
+  experience: WatchExperience | null | undefined,
+): readonly Section[] {
+  return (experience?.blocks ?? []) as unknown as readonly Section[]
+}
 
 export function isWatchPageMissingError(
   error: ErrorLike | Error | null | undefined,
