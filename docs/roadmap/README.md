@@ -7,11 +7,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (July 21, 2026)
 
 - **Total tickets:** 392
-- **Complete:** 292
+- **Complete:** 293
 - **In progress:** 26
 - **Not started:** 25
-- **Blocked:** 49
-- **Overdue and not complete:** 75
+- **Blocked:** 48
+- **Overdue and not complete:** 74
 
 ## Feature Index
 
@@ -44,7 +44,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-141](content-discovery/feat-141-mastra-retrieval-strategy-investigation.md)                              | Mastra retrieval strategy ownership investigation                                               | nisal      | P0       | 2026-05-29 | 2    | 2026-05-30 | blocked     |
 | [feat-148](content-discovery/feat-148-search-eval-orchestrator-workflow.md)                                    | Search eval artifact and Evaluation orchestrator                                                | nisal      | P0       | 2026-05-30 | 2    | 2026-05-31 | complete    |
 | [feat-154](content-discovery/feat-154-production-search-eval-seed-baseline.md)                                 | Production search eval seed baseline capture                                                    | nisal      | P0       | 2026-06-01 | 1    | 2026-06-01 | complete    |
-| [feat-156](content-discovery/feat-156-mastra-ai-gateway-content-embeddings.md)                                 | Mastra AI Gateway content embeddings migration                                                  | nisal      | P0       | 2026-06-03 | 3    | 2026-06-05 | in-progress |
+| [feat-156](content-discovery/feat-156-mastra-ai-gateway-content-embeddings.md)                                 | Mastra AI Gateway content embeddings migration                                                  | nisal      | P0       | 2026-06-03 | 3    | 2026-06-05 | complete    |
 | [feat-192](content-discovery/feat-192-enriched-transcript-semantic-search.md)                                  | Enriched Transcript Semantic Search Realignment                                                 | nisal      | P0       | 2026-06-17 | 5    | 2026-06-21 | complete    |
 | [feat-199](content-discovery/feat-199-transcript-embedding-operations-promotion.md)                            | Transcript embedding operations, promotion, and source coverage                                 | nisal      | P0       | 2026-06-30 | 5    | 2026-07-04 | not-started |
 | [feat-272](content-discovery/feat-272-admin-production-search-trace-self-heal.md)                              | Admin production search trace retention self-heal                                               | codex      | P0       | 2026-07-20 | 1    | 2026-07-20 | complete    |
@@ -180,7 +180,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-125](platform/feat-125-manager-auth-oauth-admin-backend-migration.md)          | Manager Auth OAuth and Admin Backend Migration                                   | vlad       | P0       | 2026-05-20 | 5    | 2026-05-24 | blocked     |
 | [feat-133](platform/feat-133-auth-consolidation-across-apps.md)                      | Auth Consolidation Across Apps                                                   | tataihono  | P0       | 2026-05-22 | 6    | 2026-05-27 | blocked     |
 | [feat-134](platform/feat-134-remove-strapi-cms.md)                                   | Remove Strapi CMS Runtime                                                        | tataihono  | P0       | 2026-05-25 | 1    | 2026-05-25 | complete    |
-| [feat-157](platform/feat-157-admin-core-sync-video-phase-pool-resilience.md)         | Admin Core Sync video phase pool resilience                                      | tataihono  | P0       | 2026-06-04 | 3    | 2026-06-06 | blocked     |
+| [feat-157](platform/feat-157-admin-core-sync-video-phase-pool-resilience.md)         | Admin Core Sync video phase pool resilience                                      | tataihono  | P0       | 2026-06-04 | 3    | 2026-06-06 | in-progress |
 | [feat-207](platform/feat-207-admin-railway-config-as-code.md)                        | Admin Railway Config-as-code                                                     | vlad       | P0       | 2026-06-26 | 1    | 2026-06-26 | complete    |
 | [feat-210](platform/feat-210-admin-datadog-log-forwarding.md)                        | Admin Datadog Log Forwarding                                                     | vlad       | P0       | 2026-06-26 | 1    | 2026-06-26 | complete    |
 | [feat-229](platform/feat-229-web-production-readiness.md)                            | Web production readiness gates                                                   | urim       | P0       | 2026-07-02 | 5    | 2026-07-06 | in-progress |
