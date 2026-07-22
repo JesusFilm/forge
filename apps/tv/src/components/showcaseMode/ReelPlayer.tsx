@@ -32,7 +32,11 @@ import {
 } from "../../lib/videoQoe"
 import { isAppStateForeground } from "../watch/videoBackdropGate"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
-import { computeReelPlayerGate, needsWindowStartSeek } from "./reelPlayerGate"
+import {
+  computeReelPlayerGate,
+  needsWindowStartSeek,
+  windowStartSeekOnReady,
+} from "./reelPlayerGate"
 import { classifyReelWatchdog } from "./reelWatchdog"
 import { useHopHandoff } from "./useHopHandoff"
 
@@ -487,20 +491,14 @@ export function ReelPlayer({
         // The post-replaceAsync seek can be silently dropped on tvOS (item not yet
         // seekable), leaving a mid-video window playing from 0:00. readyToPlay is the
         // first point a seek is guaranteed to land, so re-issue it here when still owed.
-        const loaded = loadedStreamRef.current
-        if (loaded != null) {
-          try {
-            if (
-              needsWindowStartSeek({
-                currentTime: live.currentTime,
-                startSeconds: loaded.window.startSeconds,
-              })
-            ) {
-              live.currentTime = loaded.window.startSeconds
-            }
-          } catch {
-            // Native player already released; the next swap owns recovery.
-          }
+        try {
+          const target = windowStartSeekOnReady({
+            loadedStartSeconds: loadedStreamRef.current?.window.startSeconds,
+            currentTime: live.currentTime,
+          })
+          if (target != null) live.currentTime = target
+        } catch {
+          // Native player already released; the next swap owns recovery.
         }
       } else if (status === "error") {
         // A genuine error is never a swap blip. Fall back to the poster and let the
