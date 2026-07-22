@@ -100,7 +100,7 @@ async function generateAndStoreVideoImageBlurDataUrl({
   prisma: PrismaClient
 }): Promise<string | null> {
   const blurUrl = buildVideoImageBlurUrl(imageUrl)
-  const metadata = await fetchImageMetadata(blurUrl)
+  const metadata = await fetchImageMetadata(blurUrl, imageId)
   if (!metadata) return null
 
   await prisma.videoImage.update({
@@ -148,8 +148,16 @@ export function buildVideoImageBlurUrl(imageUrl: string): string {
 
 async function fetchImageMetadata(
   url: string,
+  imageId: string,
 ): Promise<FetchedImageMetadata | null> {
-  if (!isPublicHttpsImageUrl(url)) return null
+  if (!isPublicHttpsImageUrl(url)) {
+    logVideoImageBlurGenerationSkipped({
+      imageId,
+      url,
+      reason: "blocked_url",
+    })
+    return null
+  }
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
@@ -158,26 +166,80 @@ async function fetchImageMetadata(
       signal: controller.signal,
       redirect: "error",
     })
-    if (!response.ok) return null
+    if (!response.ok) {
+      logVideoImageBlurGenerationSkipped({
+        imageId,
+        url,
+        reason: "http_status",
+        status: response.status,
+      })
+      return null
+    }
 
     const contentType = response.headers.get("content-type") ?? "image/jpeg"
-    if (!contentType.toLowerCase().startsWith("image/")) return null
+    if (!contentType.toLowerCase().startsWith("image/")) {
+      logVideoImageBlurGenerationSkipped({
+        imageId,
+        url,
+        reason: "non_image_content_type",
+        contentType,
+      })
+      return null
+    }
 
     const contentLength = Number(response.headers.get("content-length") ?? 0)
-    if (contentLength > MAX_BLUR_BYTES) return null
+    if (contentLength > MAX_BLUR_BYTES) {
+      logVideoImageBlurGenerationSkipped({
+        imageId,
+        url,
+        reason: "content_length_exceeded",
+        bytes: contentLength,
+      })
+      return null
+    }
 
     const buffer = await readCappedResponseBytes(response, MAX_BLUR_BYTES)
-    if (!buffer) return null
+    if (!buffer) {
+      logVideoImageBlurGenerationSkipped({
+        imageId,
+        url,
+        reason: "body_size_invalid",
+      })
+      return null
+    }
 
     return {
       dataUrl: `data:${contentType};base64,${buffer.toString("base64")}`,
       dominantColor: await generateDominantColorStrict(buffer),
     }
-  } catch {
+  } catch (error) {
+    logVideoImageBlurGenerationSkipped({
+      imageId,
+      url,
+      reason: "fetch_or_decode_failed",
+      error: error instanceof Error ? error.message : String(error),
+    })
     return null
   } finally {
     clearTimeout(timeout)
   }
+}
+
+function logVideoImageBlurGenerationSkipped(details: {
+  imageId: string
+  url: string
+  reason: string
+  status?: number
+  contentType?: string
+  bytes?: number
+  error?: string
+}) {
+  console.info(
+    JSON.stringify({
+      event: "video-image.blur-data-url.generation.skipped",
+      ...details,
+    }),
+  )
 }
 
 async function readCappedResponseBytes(
