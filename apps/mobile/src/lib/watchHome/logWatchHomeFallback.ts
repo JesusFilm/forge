@@ -8,11 +8,14 @@ import { datadogLog } from "../datadog"
  */
 // "error-recovered" = the Experience fetch failed but a cached last-good body
 // was reused instead of falling to config; logged so an outage stays observable.
+// "topup-error" = the divergent-coreId hydration fetch failed, so those cards
+// render un-hydrated (mux thumbnail + slug) while the rest of Home is intact.
 export type WatchHomeFallbackReason =
   | "null"
   | "error"
   | "empty"
   | "error-recovered"
+  | "topup-error"
 
 export function logWatchHomeFallback(args: {
   reason: WatchHomeFallbackReason

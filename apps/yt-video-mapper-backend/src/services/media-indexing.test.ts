@@ -13,6 +13,7 @@ import {
 import type { OfficialMediaSignatureExtractor } from "./media-signature-extraction.js"
 import {
   OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
   VISUAL_FRAME_FINGERPRINT_KIND,
 } from "./visual-fingerprint.js"
 
@@ -155,6 +156,38 @@ describe("MediaIndexingService", () => {
           frameWidth: 8,
           frameHeight: 8,
         },
+      }),
+    ])
+  })
+
+  it("indexes v3 visual signatures separately without byte-range fetching", async () => {
+    const repository = new InMemoryMediaIndexRepository([
+      variant({ id: "variant-a" }),
+    ])
+    const fetcher = new StubOfficialMediaFetcher([
+      new Error("fetch should not be called"),
+    ])
+    const extractor = visualExtractor()
+
+    const result = await createService({
+      repository,
+      fetcher,
+      extractor,
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+    }).indexCatalog()
+
+    expect(fetcher.calls).toEqual([])
+    expect(result).toMatchObject({
+      status: "completed",
+      variantsAttempted: 1,
+      variantsIndexed: 1,
+      variantsFailed: 0,
+    })
+    expect([...repository.signatures.values()]).toEqual([
+      expect.objectContaining({
+        signatureType: "VISUAL_FRAME",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+        sourceMediaUrl: "https://media.example.com/video.mp4",
       }),
     ])
   })
@@ -372,6 +405,251 @@ describe("MediaIndexingService", () => {
       variantsAttempted: 1,
       variantsIndexed: 1,
     })
+  })
+
+  it("bounds page-local processing and checkpoints settled outcomes in input order", async () => {
+    const repository = new TrackingMediaIndexRepository([
+      variant({
+        id: "variant-a",
+        coreId: "core-a",
+        mediaSourceUrl: "https://media.example.com/a.mp4",
+      }),
+      variant({
+        id: "variant-b",
+        coreId: "core-b",
+        mediaSourceUrl: "https://media.example.com/b.mp4",
+      }),
+      variant({
+        id: "variant-c",
+        coreId: "core-c",
+        mediaSourceUrl: "https://media.example.com/c.mp4",
+      }),
+      variant({
+        id: "variant-d",
+        coreId: "core-d",
+        mediaSourceUrl: "https://media.example.com/d.mp4",
+      }),
+    ])
+    const fetcher = new ControlledOfficialMediaFetcher()
+    const indexing = createService({
+      repository,
+      fetcher,
+      pageSize: 4,
+      concurrency: 2,
+    }).indexCatalog()
+
+    await fetcher.waitForCalls(2)
+    expect(fetcher.calls.map(({ url }) => url)).toEqual([
+      "https://media.example.com/a.mp4",
+      "https://media.example.com/b.mp4",
+    ])
+    expect(fetcher.maxInFlight).toBe(2)
+
+    fetcher.complete("https://media.example.com/b.mp4", mediaSample([2]))
+    await flushAsyncWork()
+
+    expect(repository.checkpoints).toEqual([])
+    expect(fetcher.calls).toHaveLength(2)
+
+    fetcher.complete("https://media.example.com/a.mp4", mediaSample([1]))
+    await fetcher.waitForCalls(4)
+
+    expect(repository.checkpoints).toEqual([
+      {
+        cursorVariantId: "variant-b",
+        variantsAttempted: 2,
+        variantsIndexed: 2,
+        variantsFailed: 0,
+      },
+    ])
+    expect(fetcher.maxInFlight).toBe(2)
+
+    fetcher.complete("https://media.example.com/d.mp4", mediaSample([4]))
+    fetcher.fail(
+      "https://media.example.com/c.mp4",
+      new Error("media decode failed"),
+    )
+
+    const result = await indexing
+
+    expect(result).toMatchObject({
+      status: "completed",
+      cursorVariantId: "variant-d",
+      variantsAttempted: 4,
+      variantsIndexed: 3,
+      variantsFailed: 1,
+      failureSummary: {
+        failedCount: 1,
+        failures: [
+          {
+            catalogVariantId: "variant-c",
+            code: "variant_index_failed",
+            message: "media decode failed",
+          },
+        ],
+      },
+    })
+    expect(repository.checkpoints).toEqual([
+      {
+        cursorVariantId: "variant-b",
+        variantsAttempted: 2,
+        variantsIndexed: 2,
+        variantsFailed: 0,
+      },
+      {
+        cursorVariantId: "variant-d",
+        variantsAttempted: 4,
+        variantsIndexed: 3,
+        variantsFailed: 1,
+      },
+    ])
+    expect(repository.signatures.size).toBe(3)
+    expect(fetcher.inFlight).toBe(0)
+  })
+
+  it("replays a settled batch from the prior durable cursor after checkpoint failure", async () => {
+    const variants = Array.from({ length: 8 }, (_, index) =>
+      variant({
+        id: `variant-${String(index).padStart(2, "0")}`,
+        coreId: `core-${index}`,
+        videoVariantId: `dub-${index}`,
+        mediaSourceUrl: `https://media.example.com/${index}.mp4`,
+      }),
+    )
+    const repository = new FailingCheckpointMediaIndexRepository(variants, 2)
+    const fetcher = new StubOfficialMediaFetcher(
+      variants.map((_variant, index) => mediaSample([index + 1])),
+    )
+
+    const failed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog()
+
+    expect(failed).toMatchObject({
+      status: "failed",
+      cursorVariantId: "variant-03",
+      variantsAttempted: 4,
+      variantsIndexed: 4,
+      variantsFailed: 0,
+      failureSummary: {
+        code: "media_index_failed",
+        message: "checkpoint unavailable",
+        cursorVariantId: "variant-03",
+      },
+    })
+    expect(repository.attemptedCheckpointCursors).toEqual([
+      "variant-03",
+      "variant-07",
+    ])
+    expect(repository.signatures.size).toBe(8)
+
+    const replayed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog({ resumeAfterVariantId: failed.cursorVariantId })
+
+    expect(replayed).toMatchObject({
+      status: "completed",
+      cursorVariantId: "variant-07",
+      variantsAttempted: 4,
+      variantsIndexed: 0,
+      variantsFailed: 0,
+    })
+    expect(fetcher.calls).toHaveLength(8)
+    expect(repository.signatures.size).toBe(8)
+    expect(repository.attemptedCheckpointCursors).toEqual([
+      "variant-03",
+      "variant-07",
+      "variant-07",
+    ])
+  })
+
+  it("retains only durable failures and retries failures from an uncheckpointed batch", async () => {
+    const variants = Array.from({ length: 8 }, (_, index) =>
+      variant({
+        id: `variant-${String(index).padStart(2, "0")}`,
+        coreId: `core-${index}`,
+        videoVariantId: `dub-${index}`,
+        mediaSourceUrl: `https://media.example.com/${index}.mp4`,
+      }),
+    )
+    const repository = new FailingCheckpointMediaIndexRepository(variants, 2)
+    const fetcher = new StubOfficialMediaFetcher([
+      mediaSample([1]),
+      new Error("durable extraction failure"),
+      mediaSample([3]),
+      mediaSample([4]),
+      mediaSample([5]),
+      new Error("replayable extraction failure"),
+      mediaSample([7]),
+      mediaSample([8]),
+      mediaSample([6]),
+    ])
+
+    const failed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog()
+
+    expect(failed).toMatchObject({
+      status: "failed",
+      cursorVariantId: "variant-03",
+      variantsAttempted: 4,
+      variantsIndexed: 3,
+      variantsFailed: 1,
+      failureSummary: {
+        code: "media_index_failed",
+        cursorVariantId: "variant-03",
+        failedCount: 1,
+        failures: [
+          {
+            catalogVariantId: "variant-01",
+            message: "durable extraction failure",
+          },
+        ],
+      },
+    })
+    expect(repository.signatures.size).toBe(6)
+
+    const replayed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog({ resumeAfterVariantId: failed.cursorVariantId })
+
+    expect(replayed).toMatchObject({
+      status: "completed",
+      cursorVariantId: "variant-07",
+      variantsAttempted: 4,
+      variantsIndexed: 1,
+      variantsFailed: 0,
+      failureSummary: null,
+    })
+    expect(fetcher.calls).toHaveLength(9)
+    expect(repository.signatures.size).toBe(7)
+  })
+
+  it("rejects programmatic concurrency above the safety limit", () => {
+    expect(() =>
+      createService({
+        repository: new InMemoryMediaIndexRepository(),
+        fetcher: new StubOfficialMediaFetcher([]),
+        concurrency: 5,
+      }),
+    ).toThrow(
+      new MediaIndexingSafeError(
+        "invalid_media_index_concurrency",
+        "Media index concurrency must be an integer between 1 and 4",
+      ),
+    )
   })
 })
 
@@ -621,12 +899,14 @@ function createService({
   extractor,
   algorithmVersion = "official-media-signature-v1",
   pageSize = 10,
+  concurrency,
 }: {
   repository: MediaIndexRepository
   fetcher: OfficialMediaFetcher
   extractor?: OfficialMediaSignatureExtractor
   algorithmVersion?: string
   pageSize?: number
+  concurrency?: number
 }) {
   const dates = [runStartedAt, runFinishedAt]
   return new MediaIndexingService({
@@ -635,6 +915,7 @@ function createService({
     extractor,
     algorithmVersion,
     pageSize,
+    concurrency,
     maxMediaBytes: 8,
     now: () => dates.shift() ?? runFinishedAt,
   })
@@ -663,6 +944,127 @@ class FailingListMediaIndexRepository extends InMemoryMediaIndexRepository {
   override async listIndexableVariants(): Promise<IndexableCatalogVariant[]> {
     throw new Error("database unavailable")
   }
+}
+
+class TrackingMediaIndexRepository extends InMemoryMediaIndexRepository {
+  readonly checkpoints: Array<{
+    cursorVariantId: string
+    variantsAttempted: number
+    variantsIndexed: number
+    variantsFailed: number
+  }> = []
+
+  override async updateIndexRun(
+    id: string,
+    patch: Parameters<MediaIndexRepository["updateIndexRun"]>[1],
+  ) {
+    if (patch.status === undefined && patch.cursorVariantId) {
+      this.checkpoints.push({
+        cursorVariantId: patch.cursorVariantId,
+        variantsAttempted: patch.variantsAttempted!,
+        variantsIndexed: patch.variantsIndexed!,
+        variantsFailed: patch.variantsFailed!,
+      })
+    }
+    return super.updateIndexRun(id, patch)
+  }
+}
+
+class FailingCheckpointMediaIndexRepository extends InMemoryMediaIndexRepository {
+  readonly attemptedCheckpointCursors: string[] = []
+  private checkpointNumber = 0
+
+  constructor(
+    variants: InMemoryCatalogVariant[],
+    private readonly failingCheckpointNumber: number,
+  ) {
+    super(variants)
+  }
+
+  override async updateIndexRun(
+    id: string,
+    patch: Parameters<MediaIndexRepository["updateIndexRun"]>[1],
+  ) {
+    if (patch.status === undefined && patch.cursorVariantId) {
+      this.checkpointNumber += 1
+      this.attemptedCheckpointCursors.push(patch.cursorVariantId)
+      if (this.checkpointNumber === this.failingCheckpointNumber) {
+        throw new Error("checkpoint unavailable")
+      }
+    }
+    return super.updateIndexRun(id, patch)
+  }
+}
+
+class ControlledOfficialMediaFetcher implements OfficialMediaFetcher {
+  readonly calls: Array<{ url: string; maxBytes: number }> = []
+  inFlight = 0
+  maxInFlight = 0
+  private readonly pending = new Map<
+    string,
+    {
+      resolve: (sample: OfficialMediaFetchResult) => void
+      reject: (error: Error) => void
+    }
+  >()
+  private readonly callWaiters: Array<{
+    count: number
+    resolve: () => void
+  }> = []
+
+  async fetch(input: {
+    url: string
+    maxBytes: number
+  }): Promise<OfficialMediaFetchResult> {
+    this.calls.push(input)
+    this.inFlight += 1
+    this.maxInFlight = Math.max(this.maxInFlight, this.inFlight)
+
+    const sample = new Promise<OfficialMediaFetchResult>((resolve, reject) => {
+      this.pending.set(input.url, { resolve, reject })
+    })
+    this.resolveCallWaiters()
+
+    try {
+      return await sample
+    } finally {
+      this.inFlight -= 1
+      this.pending.delete(input.url)
+    }
+  }
+
+  async waitForCalls(count: number): Promise<void> {
+    if (this.calls.length >= count) return
+    await new Promise<void>((resolve) => {
+      this.callWaiters.push({ count, resolve })
+    })
+  }
+
+  complete(url: string, sample: OfficialMediaFetchResult): void {
+    const pending = this.pending.get(url)
+    if (!pending) throw new Error(`No pending fetch for ${url}`)
+    pending.resolve(sample)
+  }
+
+  fail(url: string, error: Error): void {
+    const pending = this.pending.get(url)
+    if (!pending) throw new Error(`No pending fetch for ${url}`)
+    pending.reject(error)
+  }
+
+  private resolveCallWaiters(): void {
+    for (const waiter of this.callWaiters.splice(0)) {
+      if (this.calls.length >= waiter.count) {
+        waiter.resolve()
+      } else {
+        this.callWaiters.push(waiter)
+      }
+    }
+  }
+}
+
+async function flushAsyncWork(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve))
 }
 
 function mediaSample(bytes: number[]): OfficialMediaFetchResult {

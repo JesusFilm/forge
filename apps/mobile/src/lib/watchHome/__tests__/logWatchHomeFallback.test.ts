@@ -24,4 +24,11 @@ describe("logWatchHomeFallback", () => {
       reason: "error-recovered",
     })
   })
+
+  it("carries the topup-error reason (a dropped hydration top-up stays observable)", () => {
+    logWatchHomeFallback({ reason: "topup-error" })
+    expect(mockWarn).toHaveBeenCalledWith("watch_home_fallback", {
+      reason: "topup-error",
+    })
+  })
 })

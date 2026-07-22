@@ -24,6 +24,11 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
@@ -413,23 +418,24 @@ export function SiblingCarousel({
                 {/* Caption block — a lower frosted panel like the modern
                     episode rails, keeping text readable inside the
                     landscape tile. */}
-                <div
+                <VideoThumbnailCaption
                   data-testid="sibling-carousel-caption"
-                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent px-3 pt-3 pb-5 sm:px-4 sm:pt-4 sm:pb-6"
+                  inset="compact"
+                  className="z-20 bg-gradient-to-t from-black/68 via-black/35 to-transparent"
                 >
-                  <span className="text-[10px] font-normal tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
+                  <VideoThumbnailEyebrow size="compact-sm">
                     {t("chapter")}
-                  </span>
+                  </VideoThumbnailEyebrow>
                   {/* Card title rendered as <span>, not <h3>: the cards are
                       sibling-navigation Link items and don't anchor their
                       own section. Emitting an <h3> with no parent <h2>
                       skipped the heading order (WCAG 1.3.1) and would
                       require an artificial sr-only section header. The
                       Link's accessible name covers the card's title. */}
-                  <span className="line-clamp-2 text-sm leading-tight font-semibold text-white drop-shadow-md sm:text-base">
+                  <VideoThumbnailTitle as="span" size="compact-sm">
                     {child.title ?? ""}
-                  </span>
-                </div>
+                  </VideoThumbnailTitle>
+                </VideoThumbnailCaption>
 
                 <div
                   aria-hidden="true"

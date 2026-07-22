@@ -4,6 +4,11 @@ import type { Route } from "next"
 import { Play } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
@@ -85,14 +90,14 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
                       <Play className="h-8 w-8 fill-current" aria-hidden />
                     </span>
                   </div>
-                  <div className="relative flex h-full flex-col justify-end p-3 md:p-4">
-                    <p className="truncate text-[11px] leading-5 font-bold tracking-widest text-stone-100/80 uppercase">
+                  <VideoThumbnailCaption inset="compact">
+                    <VideoThumbnailEyebrow as="p" size="hero">
                       {slide.label}
-                    </p>
-                    <h2 className="line-clamp-3 text-sm leading-tight font-bold text-stone-50 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] md:text-base">
+                    </VideoThumbnailEyebrow>
+                    <VideoThumbnailTitle as="h2" lines={3} size="compact-md">
                       {slide.title}
-                    </h2>
-                  </div>
+                    </VideoThumbnailTitle>
+                  </VideoThumbnailCaption>
                 </>
               )
 

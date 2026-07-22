@@ -1,16 +1,16 @@
 "use client"
 
-import { ExternalLink, Loader2, X } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useEffect, useState } from "react"
 
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 
 const FEEDBACK_EMBED_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLScNeD3kPs7bqhV2i_QA6IMRCrs9W638TJuApb6QA4_ezQAEPA/viewform?embedded=true"
@@ -39,9 +39,16 @@ export function FeedbackModal({
       <DialogContent
         data-testid="feedback-modal"
         overlayClassName="z-[70] bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+        viewportClassName="fixed inset-0 z-[71] grid place-items-center overflow-hidden"
         showCloseButton={false}
-        className="z-[71] flex h-dvh w-dvw max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-950 p-0 text-stone-100 ring-0 sm:h-[min(90dvh,900px)] sm:w-[min(92vw,760px)] sm:max-w-[760px] sm:rounded-2xl sm:ring-1 sm:ring-white/15"
+        className="flex h-dvh w-dvw max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-950 p-0 text-stone-100 ring-0 sm:h-[min(90dvh,900px)] sm:w-[min(92vw,760px)] sm:max-w-[760px] sm:rounded-2xl sm:ring-1 sm:ring-white/15"
       >
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={() => onOpenChange(false)}
+          testId="feedback-modal-close"
+          ariaLabel={t("closeForm")}
+        />
         <header className="relative shrink-0 border-b border-white/10 px-5 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-4 pr-16 sm:px-6 sm:pt-5 sm:pr-20">
           <DialogTitle className="text-xl leading-tight font-semibold text-white sm:text-2xl">
             {t("title")}
@@ -59,13 +66,6 @@ export function FeedbackModal({
             {t("openInNewTab")}
             <ExternalLink aria-hidden className="size-4" />
           </a>
-          <DialogClose
-            aria-label={t("closeForm")}
-            data-testid="feedback-modal-close"
-            className="absolute top-[calc(.75rem+env(safe-area-inset-top,0px))] right-3 inline-flex size-11 cursor-pointer items-center justify-center rounded-full text-stone-200 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none sm:top-4 sm:right-4"
-          >
-            <X aria-hidden className="size-6" />
-          </DialogClose>
         </header>
 
         <div className="relative min-h-0 flex-1 bg-white pb-[env(safe-area-inset-bottom,0px)] sm:pb-0">

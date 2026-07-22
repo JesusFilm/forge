@@ -28,20 +28,27 @@ Origin documents:
 - Keep `apps/admin` out of this access flow.
 - Proxy requests to Mastra with a service bearer and never forward browser
   cookies upstream.
+- Revalidate the current access record for devotional approval, status, and
+  playback requests, including native read-only Studio workflow paths. Approval
+  forwards bounded actor attribution to Mastra.
+- Use separate, mutually disjoint keys for general Studio proxying, devotional
+  approval mutation, and devotional read-only status/playback.
 
 ## Environment
 
-| Variable                                | Purpose                                                   |
-| --------------------------------------- | --------------------------------------------------------- |
-| `DATABASE_URL`                          | Gateway access-record database.                           |
-| `AUTH_ISSUER_URL`                       | Forge Auth issuer, normally `https://auth.jesusfilm.org`. |
-| `AUTH_MASTRA_STUDIO_CLIENT_ID`          | OAuth client id for this gateway.                         |
-| `AUTH_MASTRA_STUDIO_CLIENT_SECRET`      | Optional OAuth client secret.                             |
-| `MASTRA_GATEWAY_BASE_URL`               | Public base URL for callback and redirects.               |
-| `MASTRA_GATEWAY_SESSION_SECRET`         | HS256 signing secret, at least 32 chars.                  |
-| `MASTRA_INTERNAL_BASE_URL`              | Internal URL for the Mastra service.                      |
-| `MASTRA_INTERNAL_API_KEY`               | Bearer sent by the gateway to `apps/mastra`.              |
-| `MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS` | Optional CSV of first admin emails.                       |
+| Variable                                | Purpose                                                                 |
+| --------------------------------------- | ----------------------------------------------------------------------- |
+| `DATABASE_URL`                          | Gateway access-record database.                                         |
+| `AUTH_ISSUER_URL`                       | Forge Auth issuer, normally `https://auth.jesusfilm.org`.               |
+| `AUTH_MASTRA_STUDIO_CLIENT_ID`          | OAuth client id for this gateway.                                       |
+| `AUTH_MASTRA_STUDIO_CLIENT_SECRET`      | Optional OAuth client secret.                                           |
+| `MASTRA_GATEWAY_BASE_URL`               | Public base URL for callback and redirects.                             |
+| `MASTRA_GATEWAY_SESSION_SECRET`         | HS256 signing secret, at least 32 chars.                                |
+| `MASTRA_INTERNAL_BASE_URL`              | Internal URL for the Mastra service.                                    |
+| `MASTRA_INTERNAL_API_KEY`               | Bearer sent by the gateway to `apps/mastra`.                            |
+| `MASTRA_DEVOTIONAL_APPROVAL_API_KEY`    | Dedicated bearer used only for authenticated human devotional approval. |
+| `MASTRA_DEVOTIONAL_PLAYBACK_API_KEY`    | Dedicated bearer used only for devotional status and Range playback.    |
+| `MASTRA_GATEWAY_BOOTSTRAP_ADMIN_EMAILS` | Optional CSV of first admin emails.                                     |
 
 ## Development
 

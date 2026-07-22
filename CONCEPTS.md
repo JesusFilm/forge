@@ -76,6 +76,11 @@ A Media Signature is keyed by the source `coreId`, the variant
 `videoVariantId`, signature type, algorithm version, and time offset. It is
 evidence for matching, not catalog metadata.
 
+An algorithm version names the complete extraction and comparison contract.
+Signatures from different versions may coexist but are not interchangeable; a
+project rule requires introducing a new version for sampling or hashing changes
+before readers select it.
+
 ### Media Fingerprint
 
 A deterministic, content-derived Media Signature designed to identify source
@@ -378,7 +383,7 @@ An Experience Block that groups ordered watch content beneath independently auth
 
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
 
 ### Home Curation
 

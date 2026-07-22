@@ -106,8 +106,10 @@ export const WATCH_HOME_SNAPSHOT_STORAGE_KEY = "watch-home-videos-snapshot"
  * Bump when the persisted snapshot shape changes — old snapshots then fail the
  * gate and the launch cleanly re-fetches. v2 source-tags the Experience body
  * blocks alongside the config videos so cold launch can repaint the Experience.
+ * v3 adds hydrationVideos (the top-up records for editor-curated coreIds the
+ * config pool doesn't cover) so the Experience shelves repaint hydrated.
  */
-export const WATCH_HOME_SNAPSHOT_VERSION = 2
+export const WATCH_HOME_SNAPSHOT_VERSION = 3
 
 /**
  * Longer than the session's 24h: a stale snapshot is only the first paint (the
@@ -130,6 +132,12 @@ export type WatchHomeSnapshot = {
    * when the config body was painted. One source-tagged snapshot at a time.
    */
   blocks: readonly WatchHomeSnapshotBlock[] | null
+  /**
+   * Top-up records for editor-curated coreIds the config pool doesn't cover, kept
+   * SEPARATE from `videos` so they hydrate the Experience cards but never feed the
+   * config hero (which greedily scans videos for short films). [] when none.
+   */
+  hydrationVideos: readonly WatchHomeVideoInput[]
   persistedAt: number
 }
 
@@ -149,6 +157,7 @@ export function parseStoredHomeSnapshot(
       persistedAt?: unknown
       videos?: unknown
       blocks?: unknown
+      hydrationVideos?: unknown
     } | null
     if (data == null || typeof data !== "object") return null
     if (data.version !== WATCH_HOME_SNAPSHOT_VERSION) return null
@@ -170,7 +179,13 @@ export function parseStoredHomeSnapshot(
             block != null && typeof block === "object",
         )
       : null
-    return { videos, blocks, persistedAt: data.persistedAt }
+    const hydrationVideos = Array.isArray(data.hydrationVideos)
+      ? data.hydrationVideos.filter(
+          (video): video is WatchHomeVideoInput =>
+            video != null && typeof video === "object",
+        )
+      : []
+    return { videos, blocks, hydrationVideos, persistedAt: data.persistedAt }
   } catch {
     return null
   }
@@ -186,12 +201,14 @@ export function serializeHomeSnapshot(
 /**
  * Envelope around an ALREADY-serialized videos array so the hot path stringifies
  * the payload once (reused for the equality compare and the blob). `blocksJson` is
- * a JSON array string (Experience body) or the literal `"null"` (config body).
+ * a JSON array string (Experience body) or the literal `"null"` (config body);
+ * `hydrationVideosJson` is the top-up records array (default `"[]"`).
  */
 export function serializeHomeSnapshotFromVideosJson(
   videosJson: string,
   now: Date,
   blocksJson: string = "null",
+  hydrationVideosJson: string = "[]",
 ): string {
-  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson},"blocks":${blocksJson}}`
+  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson},"blocks":${blocksJson},"hydrationVideos":${hydrationVideosJson}}`
 }

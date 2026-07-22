@@ -1,3 +1,7 @@
+import {
+  isDevotionalNativeWorkflowPath,
+  revalidateDevotionalSession,
+} from "@/lib/devotional-access"
 import { proxyMastraRequest } from "@/lib/mastra-proxy"
 
 type RouteContext = {
@@ -26,5 +30,15 @@ export async function DELETE(request: Request, context: RouteContext) {
 
 async function proxyStudioApi(request: Request, context: RouteContext) {
   const { path = [] } = await context.params
-  return proxyMastraRequest(request, `/api/${path.join("/")}`)
+  return proxyMastraRequest(
+    request,
+    `/api/${path.join("/")}`,
+    isDevotionalNativeWorkflowPath(path)
+      ? {
+          allowedRoles: ["admin", "editor"],
+          revalidateSession: (session) =>
+            revalidateDevotionalSession(session, { recordAccess: false }),
+        }
+      : undefined,
+  )
 }

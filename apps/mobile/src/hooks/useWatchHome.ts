@@ -11,14 +11,19 @@ import {
   getWatchHomeCoreIds,
 } from "../lib/watchHome/config"
 import {
-  buildWatchHomeModelFromVideos,
+  buildVideoByCoreIdIndex,
   type WatchHomeModel,
-  type WatchHomeSection,
+  type WatchHomeVideoInput,
 } from "../lib/watchHome/model"
 import {
-  buildWatchHomeSectionsFromExperience,
-  resolveWatchHomeModel,
+  assembleWatchHomeModel,
+  experienceItemCoreIds,
 } from "../lib/watchHome/experienceAdapter"
+import {
+  fetchTopUpVideos,
+  resolveHydrationVideos,
+  type TopUpOutcome,
+} from "../lib/watchHome/topUpFetch"
 import { withTimeout } from "../lib/withTimeout"
 import {
   logWatchHomeFallback,
@@ -40,6 +45,12 @@ const RETRYABLE_ERROR_MESSAGE = "Couldn't load videos. Please try again."
 // timeout, then degrade to the last-good or config body (#2, R9).
 const EXPERIENCE_FETCH_DEADLINE_MS = 8000
 
+// The divergent-coreId hydration fetch gets its own client deadline — kept WELL
+// below the Experience deadline because, on a snapshot-less first launch, the
+// single paint (hero included) waits on this; degrading a few cards to mux + slug
+// is cheap, so bound the wait tightly rather than block the hero for long.
+const TOPUP_FETCH_DEADLINE_MS = 3000
+
 type ExperienceBlockList = readonly { readonly __typename?: string | null }[]
 
 export type WatchHomeState = {
@@ -53,11 +64,16 @@ export type WatchHomeState = {
 }
 
 /** Fire-and-forget; an empty response never overwrites a good snapshot. */
-function persistHomeSnapshot(videosJson: string, blocksJson: string): void {
+function persistHomeSnapshot(
+  videosJson: string,
+  blocksJson: string,
+  hydrationVideosJson: string,
+): void {
   const blob = serializeHomeSnapshotFromVideosJson(
     videosJson,
     new Date(),
     blocksJson,
+    hydrationVideosJson,
   )
   if (blob.length > WATCH_HOME_SNAPSHOT_MAX_BYTES) return
   AsyncStorage.setItem(WATCH_HOME_SNAPSHOT_STORAGE_KEY, blob).catch(() => {
@@ -86,9 +102,18 @@ export function useWatchHome(): WatchHomeState {
   // JSON of the painted snapshot's Experience blocks ("null" for the config
   // body), paired with snapshotVideosJsonRef for the keep-model compare.
   const snapshotBlocksJsonRef = useRef<string | null>(null)
+  // JSON of the painted snapshot's hydration (top-up) videos, so the keep-model
+  // compare also detects a change in the coreId-hydration inputs.
+  const snapshotHydrationJsonRef = useRef<string | null>(null)
   // Last Experience blocks that yielded >=1 shelf; reused when a transient
   // Experience fetch error would otherwise downgrade a good body to config (#1).
   const lastGoodExperienceBlocksRef = useRef<ExperienceBlockList | null>(null)
+  // Sibling of the above for hydration: last non-empty top-up records, reused when
+  // a transient top-up failure would otherwise downgrade already-hydrated cards to
+  // mux+slug, reset the hero pager (keep-model compare), and poison the snapshot.
+  const lastGoodHydrationVideosRef = useRef<
+    readonly WatchHomeVideoInput[] | null
+  >(null)
   // Home-ready fires once per source so the network paint's real admin TTFB
   // stays distinct from the ~50ms snapshot paint (R21).
   const homeReadySnapshotEmittedRef = useRef(false)
@@ -159,10 +184,6 @@ export function useWatchHome(): WatchHomeState {
       // One stringify of the ~460KB payload, reused for the equality compare and
       // the persisted blob.
       const videosJson = JSON.stringify(videos)
-      const configModel = buildWatchHomeModelFromVideos({
-        videos,
-        languageSlug: ENGLISH_LANGUAGE_SLUG,
-      })
 
       // Derive the Experience body. A transient Experience error (incl. the
       // deadline above) reuses the last-good blocks so a network blip can't
@@ -182,41 +203,83 @@ export function useWatchHome(): WatchHomeState {
           experienceBlocks = homepage.blocks as ExperienceBlockList
         }
       }
-      const experienceSections: WatchHomeSection[] = experienceBlocks
-        ? buildWatchHomeSectionsFromExperience(experienceBlocks)
-        : []
+      // Hydrate the Experience cards by coreId: top-up the divergent coreIds the
+      // config pool doesn't cover (e.g. the "Acts of the Apostles" episodes, whose
+      // items carry no authored title/image). A slow/failed top-up reuses the
+      // last-good records (so a blip can't downgrade hydrated cards, reset the hero
+      // pager, or poison the snapshot) and logs topup-error. The config model is
+      // built from `videos` only inside assembleWatchHomeModel (no hero leak).
+      let hydrationVideos: readonly WatchHomeVideoInput[] = []
+      let topUpFailed = false
+      if (experienceBlocks != null) {
+        const configIndex = buildVideoByCoreIdIndex(videos)
+        const divergent = experienceItemCoreIds(experienceBlocks).filter(
+          (coreId) => !configIndex.has(coreId),
+        )
+        if (divergent.length > 0) {
+          let outcome: TopUpOutcome
+          try {
+            // cache-first even on pull-to-refresh: hydration title/art for a
+            // static under-curated coreId set doesn't need forced network the way
+            // the primary hero/shelf content does (the Experience fetch, which
+            // carries the authored overrides, already refreshes on network-only).
+            const fresh = await withTimeout(
+              fetchTopUpVideos(client, divergent, "cache-first"),
+              TOPUP_FETCH_DEADLINE_MS,
+            )
+            // The single post-allSettled guard does not cover this new await.
+            if (requestIdRef.current !== thisRequest) return
+            outcome = { ok: true, videos: fresh }
+          } catch {
+            if (requestIdRef.current !== thisRequest) return
+            topUpFailed = true
+            outcome = { ok: false }
+          }
+          // Last-good reuse on failure (pure, tested) — a transient blip can't
+          // downgrade hydrated cards, reset the hero pager, or poison the snapshot.
+          const resolved = resolveHydrationVideos(
+            outcome,
+            lastGoodHydrationVideosRef.current,
+          )
+          hydrationVideos = resolved.hydrationVideos
+          lastGoodHydrationVideosRef.current = resolved.nextLastGood
+        }
+      }
+      const { model: nextModel, usedExperience } = assembleWatchHomeModel({
+        configVideos: videos,
+        hydrationVideos,
+        blocks: experienceBlocks,
+        languageSlug: ENGLISH_LANGUAGE_SLUG,
+      })
       // A resolved Experience mapping to zero shelves is "empty", not an error —
       // the config fallback still logs a distinct reason (a reused-on-error body
       // keeps "error").
       if (
         experienceOutcome.status === "fulfilled" &&
         experienceBlocks != null &&
-        experienceSections.length === 0
+        !usedExperience
       ) {
         fallbackReason = "empty"
       }
       // Remember blocks that produced a real body for the next transient error.
-      if (experienceSections.length >= 1 && experienceBlocks != null) {
+      if (usedExperience && experienceBlocks != null) {
         lastGoodExperienceBlocksRef.current = experienceBlocks
       }
-
-      const { model: nextModel, usedExperience } = resolveWatchHomeModel({
-        configModel,
-        experienceSections,
-      })
       // The painted body's source, tagged: Experience blocks when it won, else
       // "null" (config body). Persisted so cold launch repaints the same source.
       const blocksJson =
         usedExperience && experienceBlocks != null
           ? JSON.stringify(experienceBlocks)
           : "null"
-      // Keep the painted snapshot model when both the config videos and the body
-      // source are unchanged — avoids resetting the hero pager on a no-op
-      // revalidation.
+      const hydrationVideosJson = JSON.stringify(hydrationVideos)
+      // Keep the painted snapshot model when the config videos, the body source,
+      // AND the hydration inputs are all unchanged — avoids resetting the hero
+      // pager on a no-op revalidation, while still repainting when hydration lands.
       const snapshotStillCurrent =
         mode === "initial" &&
         videosJson === snapshotVideosJsonRef.current &&
-        blocksJson === snapshotBlocksJsonRef.current
+        blocksJson === snapshotBlocksJsonRef.current &&
+        hydrationVideosJson === snapshotHydrationJsonRef.current
       if (!snapshotStillCurrent) setModel(nextModel)
       if (!homeReadyNetworkEmittedRef.current) {
         // R21: the network paint carries the real admin TTFB, kept distinct
@@ -231,7 +294,11 @@ export function useWatchHome(): WatchHomeState {
         // prolonged endpoint outage isn't silent behind a cached body (R11).
         logWatchHomeFallback({ reason: "error-recovered" })
       }
-      if (videos.length > 0) persistHomeSnapshot(videosJson, blocksJson)
+      // Never-silent: a dropped hydration top-up is logged even when the body
+      // otherwise rendered from the live Experience.
+      if (topUpFailed) logWatchHomeFallback({ reason: "topup-error" })
+      if (videos.length > 0)
+        persistHomeSnapshot(videosJson, blocksJson, hydrationVideosJson)
     } catch {
       if (requestIdRef.current !== thisRequest) return
       // Keep any previously-built model (snapshot included) so a failure
@@ -260,28 +327,32 @@ export function useWatchHome(): WatchHomeState {
         if (cancelled || networkLandedRef.current) return
         const snapshot = parseStoredHomeSnapshot(raw, new Date())
         if (snapshot == null) return
-        // Rebuild the exact painted source: the config carousel + fallback body
-        // from videos, and the Experience body from the tagged blocks when present.
-        const snapshotConfig = buildWatchHomeModelFromVideos({
-          videos: snapshot.videos,
-          languageSlug: ENGLISH_LANGUAGE_SLUG,
-        })
-        const snapshotSections = snapshot.blocks
-          ? buildWatchHomeSectionsFromExperience(snapshot.blocks)
-          : []
-        const { model: snapshotModel } = resolveWatchHomeModel({
-          configModel: snapshotConfig,
-          experienceSections: snapshotSections,
-        })
+        // Rebuild the exact painted source: config body/hero from the config
+        // videos (no hero leak), Experience shelves hydrated off the merged index.
+        const { model: snapshotModel, usedExperience } = assembleWatchHomeModel(
+          {
+            configVideos: snapshot.videos,
+            hydrationVideos: snapshot.hydrationVideos,
+            blocks: snapshot.blocks,
+            languageSlug: ENGLISH_LANGUAGE_SLUG,
+          },
+        )
         if (cancelled || networkLandedRef.current) return
         snapshotVideosJsonRef.current = JSON.stringify(snapshot.videos)
         snapshotBlocksJsonRef.current = snapshot.blocks
           ? JSON.stringify(snapshot.blocks)
           : "null"
+        snapshotHydrationJsonRef.current = JSON.stringify(
+          snapshot.hydrationVideos,
+        )
         // Seed last-good from the snapshot so a transient network Experience
-        // error right after a cold-launch paint keeps the snapshot body (#1).
-        if (snapshotSections.length >= 1 && snapshot.blocks) {
+        // error right after a cold-launch paint keeps the snapshot body (#1), and
+        // the hydration sibling so a transient top-up failure keeps hydrated cards.
+        if (usedExperience && snapshot.blocks) {
           lastGoodExperienceBlocksRef.current = snapshot.blocks
+        }
+        if (snapshot.hydrationVideos.length > 0) {
+          lastGoodHydrationVideosRef.current = snapshot.hydrationVideos
         }
         setModel(snapshotModel)
         if (!homeReadySnapshotEmittedRef.current) {

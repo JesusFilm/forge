@@ -1,15 +1,11 @@
 "use client"
 
 import { useRef, useState, type RefObject } from "react"
-import { ExternalLink, Loader2, X } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
 
 export function BetaTesterModal({
@@ -24,14 +20,17 @@ export function BetaTesterModal({
   const t = useTranslations("BetaTesterModal")
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [iframeLoaded, setIframeLoaded] = useState(false)
+  const handleClose = () => {
+    setIframeLoaded(false)
+    onClose()
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         if (nextOpen) return
-        setIframeLoaded(false)
-        onClose()
+        handleClose()
       }}
     >
       <DialogContent
@@ -39,9 +38,17 @@ export function BetaTesterModal({
         initialFocus={closeButtonRef}
         finalFocus={finalFocus}
         overlayClassName="bg-black/80 backdrop-blur-sm"
-        className="top-0 left-0 flex h-dvh w-dvw max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-950 p-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] text-white ring-0 sm:top-1/2 sm:left-1/2 sm:h-[min(88dvh,900px)] sm:w-[min(92vw,840px)] sm:max-w-none sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:pt-0 sm:pb-0 sm:ring-1 sm:ring-white/15"
+        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-hidden"
+        className="flex h-dvh w-dvw max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-950 p-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] text-white ring-0 sm:h-[min(88dvh,900px)] sm:w-[min(92vw,840px)] sm:max-w-none sm:rounded-2xl sm:pt-0 sm:pb-0 sm:ring-1 sm:ring-white/15"
       >
-        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4 pr-2 sm:px-6 sm:pr-3">
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={handleClose}
+          testId="beta-tester-modal-close"
+          buttonRef={closeButtonRef}
+          ariaLabel={t("close")}
+        />
+        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4 pr-16 sm:px-6 sm:pr-20">
           <DialogTitle className="min-w-0 flex-1 text-base font-semibold text-white sm:text-lg">
             {t("title")}
           </DialogTitle>
@@ -55,14 +62,6 @@ export function BetaTesterModal({
             <span className="hidden sm:inline">{t("openFormNewTab")}</span>
             <ExternalLink aria-hidden className="h-4 w-4" />
           </a>
-          <DialogClose
-            ref={closeButtonRef}
-            aria-label={t("close")}
-            data-testid="beta-tester-modal-close"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-stone-300 transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-          >
-            <X aria-hidden className="h-5 w-5" />
-          </DialogClose>
         </header>
         <div className="relative min-h-0 flex-1 bg-white">
           {!iframeLoaded ? (
