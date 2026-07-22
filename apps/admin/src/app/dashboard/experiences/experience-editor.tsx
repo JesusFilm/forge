@@ -321,6 +321,13 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
+    key: "languageGlobe",
+    label: "Language Globe",
+    description: "Spinning Earth with links to language video libraries.",
+    category: "Navigation",
+    icon: Globe2,
+  },
+  {
     key: "routeVideoHero",
     label: "Route Video Hero",
     description: "Hero bound to the current video route.",
@@ -460,6 +467,7 @@ const SECTION_VISUAL_IDENTITY_BLOCK_TYPES = new Set([
   "section",
   "text",
   "videoCarousel",
+  "languageGlobe",
 ])
 
 const TOGGLEABLE_CTA_BLOCK_TYPES = new Set([
@@ -5112,6 +5120,7 @@ export function ExperienceEditor({
   }
 
   function inlineTitlePlaceholder(type: string) {
+    if (type === "languageGlobe") return "Invite people to explore languages"
     if (type === "infoBlocks") return "Add a details heading"
     if (type === "mediaCollection") return "Name this collection"
     if (type === "videoCarousel") return "Name this video collection"
@@ -5127,6 +5136,8 @@ export function ExperienceEditor({
   }
 
   function inlineDescriptionPlaceholder(type: string) {
+    if (type === "languageGlobe")
+      return "Explain what happens when a language is selected"
     if (type === "infoBlocks") return "Explain what these details help clarify"
     if (type === "mediaCollection")
       return "Describe what this collection offers"
@@ -7701,6 +7712,8 @@ export function ExperienceEditor({
     const cardMediaUrl = asString(blockRecord?.mediaUrl)
     const cardBackgroundColor = normalizeHexColor(blockRecord?.backgroundColor)
     const supportsVisualIdentity = supportsSectionVisualIdentity(type)
+    const supportsVisualIdentityImage =
+      supportsVisualIdentity && type !== "languageGlobe"
     const visualIdentity = blockVisualIdentity(blockRecord)
     const visualIdentityImageUrl = visualIdentity.imageUrl
     const visualIdentityBackgroundColor = normalizeHexColor(
@@ -7777,40 +7790,42 @@ export function ExperienceEditor({
                   setCardBackgroundPickerIndex(open ? index : null)
                 }
               />
-              <div className="inline-flex">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    activateBlock(index)
-                    if (type === "container") {
-                      chooseContainerBackgroundImage(index, blockRecord ?? {})
-                      return
+              {supportsVisualIdentityImage ? (
+                <div className="inline-flex">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      activateBlock(index)
+                      if (type === "container") {
+                        chooseContainerBackgroundImage(index, blockRecord ?? {})
+                        return
+                      }
+                      chooseBackgroundImage(
+                        index,
+                        blockRecord ?? {},
+                        visualIdentityImageFieldName as ImagePickerUrlField,
+                      )
+                    }}
+                    className={cx(
+                      "flex h-6 w-6 cursor-pointer items-center justify-center border transition-all duration-[120ms] ease-out",
+                      visualIdentityImageAssetId
+                        ? selectedMediaButtonClassName
+                        : idleMediaButtonClassName,
+                      "rounded-sm",
+                    )}
+                    aria-pressed={Boolean(visualIdentityImageAssetId)}
+                    aria-label={
+                      type === "container"
+                        ? "Choose container background image"
+                        : `Choose ${visualIdentityLabel} image from asset library`
                     }
-                    chooseBackgroundImage(
-                      index,
-                      blockRecord ?? {},
-                      visualIdentityImageFieldName as ImagePickerUrlField,
-                    )
-                  }}
-                  className={cx(
-                    "flex h-6 w-6 cursor-pointer items-center justify-center border transition-all duration-[120ms] ease-out",
-                    visualIdentityImageAssetId
-                      ? selectedMediaButtonClassName
-                      : idleMediaButtonClassName,
-                    "rounded-sm",
-                  )}
-                  aria-pressed={Boolean(visualIdentityImageAssetId)}
-                  aria-label={
-                    type === "container"
-                      ? "Choose container background image"
-                      : `Choose ${visualIdentityLabel} image from asset library`
-                  }
-                >
-                  <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
-                </button>
-              </div>
+                  >
+                    <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : null}
           <button
@@ -8435,42 +8450,48 @@ export function ExperienceEditor({
                           )
                         : renderInlineTextInput(
                             index,
-                            type === "infoBlocks"
+                            type === "languageGlobe"
                               ? "heading"
-                              : type === "mediaCollection"
-                                ? "title"
-                                : type === "cta"
-                                  ? "heading"
-                                  : type === "promoBanner"
+                              : type === "infoBlocks"
+                                ? "heading"
+                                : type === "mediaCollection"
+                                  ? "title"
+                                  : type === "cta"
                                     ? "heading"
-                                    : type === "relatedQuestions"
+                                    : type === "promoBanner"
                                       ? "heading"
-                                      : type === "bibleQuotesCarousel"
+                                      : type === "relatedQuestions"
                                         ? "heading"
-                                        : type === "easterDates"
-                                          ? "easterDatesTitle"
-                                          : type === "section"
-                                            ? "sectionKey"
-                                            : "title",
-                            type === "infoBlocks"
+                                        : type === "bibleQuotesCarousel"
+                                          ? "heading"
+                                          : type === "easterDates"
+                                            ? "easterDatesTitle"
+                                            : type === "section"
+                                              ? "sectionKey"
+                                              : "title",
+                            type === "languageGlobe"
                               ? asString(blockRecord?.heading)
-                              : type === "mediaCollection"
-                                ? asString(blockRecord?.title)
-                                : type === "cta"
-                                  ? asString(blockRecord?.heading)
-                                  : type === "promoBanner"
+                              : type === "infoBlocks"
+                                ? asString(blockRecord?.heading)
+                                : type === "mediaCollection"
+                                  ? asString(blockRecord?.title)
+                                  : type === "cta"
                                     ? asString(blockRecord?.heading)
-                                    : type === "relatedQuestions"
+                                    : type === "promoBanner"
                                       ? asString(blockRecord?.heading)
-                                      : type === "bibleQuotesCarousel"
+                                      : type === "relatedQuestions"
                                         ? asString(blockRecord?.heading)
-                                        : type === "easterDates"
-                                          ? asString(
-                                              blockRecord?.easterDatesTitle,
-                                            )
-                                          : type === "section"
-                                            ? asString(blockRecord?.sectionKey)
-                                            : asString(blockRecord?.title),
+                                        : type === "bibleQuotesCarousel"
+                                          ? asString(blockRecord?.heading)
+                                          : type === "easterDates"
+                                            ? asString(
+                                                blockRecord?.easterDatesTitle,
+                                              )
+                                            : type === "section"
+                                              ? asString(
+                                                  blockRecord?.sectionKey,
+                                                )
+                                              : asString(blockRecord?.title),
                             inlineTitlePlaceholder(type),
                             "title",
                           )}
@@ -8496,6 +8517,15 @@ export function ExperienceEditor({
                       asString(blockRecord?.subtitle),
                       inlineDescriptionPlaceholder(type),
                       1,
+                      true,
+                    )
+                  ) : type === "languageGlobe" ? (
+                    renderInlineTextarea(
+                      index,
+                      "description",
+                      asString(blockRecord?.description),
+                      inlineDescriptionPlaceholder(type),
+                      2,
                       true,
                     )
                   ) : type === "infoBlocks" ? (
@@ -8573,6 +8603,33 @@ export function ExperienceEditor({
                       true,
                     )}
                   </div>
+                ) : null}
+                {type === "languageGlobe" ? (
+                  <label className="mt-4 block max-w-[220px] text-[12px] text-[var(--color-text-secondary)]">
+                    <span className="mb-2 block font-medium text-[var(--color-text-primary)]">
+                      Languages shown
+                    </span>
+                    <input
+                      type="number"
+                      min={4}
+                      max={24}
+                      value={asNumber(blockRecord?.languageLimit) ?? 12}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) =>
+                        updateBlockAt(index, (currentBlock) => ({
+                          ...currentBlock,
+                          languageLimit: Math.round(
+                            clampNumber(
+                              Number(event.target.value) || 12,
+                              4,
+                              24,
+                            ),
+                          ),
+                        }))
+                      }
+                      className="h-10 w-full rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-text-primary)]"
+                    />
+                  </label>
                 ) : null}
                 {type === "easterDates"
                   ? renderEasterDateCards(index, blockRecord ?? null)

@@ -34,6 +34,36 @@ const candidates: VideoCandidate[] = [
 ]
 
 describe("normalizeExperienceDraft", () => {
+  it("normalizes an agent-authored language globe into the canonical block", () => {
+    const normalized = normalizeExperienceDraft(
+      {
+        title: "Languages",
+        metaDescription: "Stories for the world.",
+        blocks: [
+          {
+            t: "languageGlobe",
+            sectionRef: "s01",
+            heading: "Find your language",
+            description: "Choose a language to watch.",
+            backgroundColor: "#071526",
+            languageLimit: 16,
+          },
+          { t: "text", sectionRef: "s02", heading: "Keep exploring" },
+        ],
+      },
+      candidates,
+    )
+
+    expect(normalized.blocks[0]).toEqual({
+      t: "languageGlobe",
+      sectionKey: "ai-s01",
+      heading: "Find your language",
+      description: "Choose a language to watch.",
+      backgroundColor: "#071526",
+      languageLimit: 16,
+    })
+  })
+
   it("round-trips a reference-first quote: text-less + structured ids survive into a valid canonical block", () => {
     // Video-anchored generation emits a citation reference + structured identity and NO
     // verse text (apps/web resolves text at render). The assembled draft must still pass

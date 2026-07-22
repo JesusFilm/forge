@@ -68,7 +68,7 @@ const ENVELOPE_SHAPE_HINT = `Envelope shape (illustrative — values vary):
 
 const BLOCK_KIND_REFERENCE = `Block kinds (the "t" discriminator on each block must be one of these literals — anything else triggers schema_violation). Every block schema is STRICT: only the listed fields are allowed. Only omit optional/defaulted fields; required fields in the examples must be present. Never add a field not shown.
 
-Top-level: "videoHero" | "text" | "video" | "card" | "cta" | "infoBlocks" | "mediaCollection" | "navigationCarousel" | "videoCarousel" | "videoRecommendations" | "promoBanner" | "bibleQuotesCarousel" | "adventCountdown" | "easterDates" | "relatedQuestions" | "section" | "container"
+Top-level: "videoHero" | "text" | "video" | "card" | "cta" | "infoBlocks" | "languageGlobe" | "mediaCollection" | "navigationCarousel" | "videoCarousel" | "videoRecommendations" | "promoBanner" | "bibleQuotesCarousel" | "adventCountdown" | "easterDates" | "relatedQuestions" | "section" | "container"
 Inside section.content: "mediaCollection" | "text" | "promoBanner" | "infoBlocks" | "cta" | "container" | "relatedQuestions" | "bibleQuotesCarousel" | "card" | "video" | "quizButton" | "videoCarousel" | "navigationCarousel". Do not put "videoHero", "videoRecommendations", or another "section" inside section.content.
 "sectionKey" is an OPTIONAL string identifier on every block — use it when you need to anchor a navigationCarousel item to a section. Otherwise omit.
 
@@ -99,6 +99,11 @@ cta:
 infoBlocks:
   {"t":"infoBlocks","heading":"What forgiveness can look like","blocks":[{"icon":"heart","title":"Be honest","description":"Bring the real question to Jesus."}]}
   - Nested items live in "blocks", NOT "items".
+
+languageGlobe:
+  {"t":"languageGlobe","heading":"Explore stories in your language","description":"Choose a language to discover videos from around the world.","backgroundColor":"#071526","languageLimit":12}
+  - "languageLimit" is an integer from 4 through 24. The default is 12.
+  - This block is top-level only and populates languages from the existing Watch library; do not invent language items.
 
 promoBanner:
   {"t":"promoBanner","heading":"Keep exploring","description":"Take a next step toward forgiveness.","ctaLink":"/next-steps","ctaLabel":"Continue"}

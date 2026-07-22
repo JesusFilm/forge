@@ -47,6 +47,7 @@ import type {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  LanguageGlobeBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
 import { builder } from "@/graphql/builder"
@@ -81,6 +82,7 @@ type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
+type LanguageGlobeBlock = z.infer<typeof LanguageGlobeBlockSchema>
 
 type MediaPreviewContext = {
   request: {
@@ -1043,6 +1045,21 @@ WatchHomeHeroBlockRef.implement({
   }),
 })
 
+const LanguageGlobeBlockRef =
+  builder.objectRef<LanguageGlobeBlock>("LanguageGlobeBlock")
+LanguageGlobeBlockRef.implement({
+  description:
+    "A Web-owned spinning globe populated by the public Watch language index.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    heading: t.exposeString("heading", { nullable: true }),
+    description: t.exposeString("description", { nullable: true }),
+    backgroundColor: t.exposeString("backgroundColor", { nullable: true }),
+    languageLimit: t.exposeInt("languageLimit"),
+  }),
+})
+
 const ContainerSlotBlockRef =
   builder.objectRef<ContainerSlotBlock>("ContainerSlotBlock")
 ContainerSlotBlockRef.implement({
@@ -1168,6 +1185,7 @@ export const T_TO_TYPENAME = {
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
   watchHomeHero: "WatchHomeHeroBlock",
+  languageGlobe: "LanguageGlobeBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
   string
@@ -1218,6 +1236,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
     WatchHomeHeroBlockRef,
+    LanguageGlobeBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),
 })

@@ -30,6 +30,7 @@ export type BlockTemplateKey =
   | "videoCarousel"
   | "videoHero"
   | "watchHomeHero"
+  | "languageGlobe"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -39,6 +40,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
+  "languageGlobe",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -374,6 +376,20 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "languageGlobe") {
+    const languageLimit = asNumber(value.languageLimit) ?? 12
+    return {
+      key: summaryKey,
+      typeLabel: "Language Globe",
+      title: asString(value.heading) || "Explore languages",
+      body:
+        asString(value.description) ||
+        "A spinning Earth linked to the Watch language library.",
+      tone: "standard",
+      badges: [`${languageLimit} languages`],
+    }
+  }
+
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -659,6 +675,18 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "languageGlobe") {
+    return {
+      t: "languageGlobe",
+      sectionKey: `language-globe-${index}`,
+      heading: "Explore stories in your language",
+      description:
+        "Choose a language to discover videos from around the world.",
+      backgroundColor: "#071526",
+      languageLimit: 12,
     }
   }
 

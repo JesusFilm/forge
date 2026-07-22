@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { buildWatchLanguageIndex } from "./language-index"
+import {
+  buildWatchLanguageIndex,
+  languageGlobeCoverage,
+} from "./language-index"
 
 describe("buildWatchLanguageIndex", () => {
   it("builds routable language rows with region groups and flag hints", () => {
@@ -36,6 +39,8 @@ describe("buildWatchLanguageIndex", () => {
           id: "mx",
           coreId: "MX",
           name: { en: "Mexico" },
+          latitude: 23.6345,
+          longitude: -102.5528,
           flagPngSrc: "https://example.test/mx.png",
           continent: { id: "na", name: { en: "North America" } },
           countryLanguages: [
@@ -61,6 +66,8 @@ describe("buildWatchLanguageIndex", () => {
           id: "fr",
           coreId: "FR",
           name: { en: "France" },
+          latitude: 46.2276,
+          longitude: 2.2137,
           flagPngSrc: "https://example.test/fr.png",
           continent: { id: "eu", name: { en: "Europe" } },
           countryLanguages: [
@@ -98,6 +105,14 @@ describe("buildWatchLanguageIndex", () => {
       speakerCount: 80_000_000,
       regionNames: ["North America"],
     })
+    expect(index.globeLocationsByPublicSlug["spanish-latin-american"]).toEqual([
+      expect.objectContaining({
+        countryName: "Mexico",
+        regionName: "North America",
+        latitude: 23.6345,
+        longitude: -102.5528,
+      }),
+    ])
     expect(
       index.regions.find((region) => region.name === "North America")
         ?.languages,
@@ -117,6 +132,72 @@ describe("buildWatchLanguageIndex", () => {
         ],
       }),
     ])
+  })
+
+  it("ranks valid globe locations and reports eligible regional coverage", () => {
+    const language = {
+      id: "lang-es-419",
+      coreId: "529",
+      name: { en: "Spanish", es: "Español" },
+      bcp47: "es-419",
+      slug: "spanish-latin-american",
+    }
+    const index = buildWatchLanguageIndex({
+      languages: [language],
+      countries: [
+        {
+          id: "invalid",
+          name: { en: "Invalid" },
+          latitude: 95,
+          longitude: 0,
+          continent: { name: { en: "Nowhere" } },
+          countryLanguages: [
+            { suggested: true, speakers: 99, order: 0, language },
+          ],
+        },
+        {
+          id: "primary",
+          name: { en: "Primary" },
+          latitude: 40,
+          longitude: -3,
+          continent: { name: { en: "Europe" } },
+          countryLanguages: [
+            { primary: true, speakers: 40, order: 1, language },
+          ],
+        },
+        {
+          id: "suggested",
+          name: { en: "Suggested" },
+          latitude: 20,
+          longitude: -100,
+          continent: { name: { en: "North America" } },
+          countryLanguages: [
+            { suggested: true, speakers: 10, order: 2, language },
+          ],
+        },
+        {
+          id: "duplicate",
+          name: { en: "Duplicate" },
+          latitude: 20,
+          longitude: -100,
+          continent: { name: { en: "North America" } },
+          countryLanguages: [
+            { primary: true, speakers: 1_000, order: 0, language },
+          ],
+        },
+      ],
+    })
+
+    expect(
+      index.globeLocationsByPublicSlug["spanish-latin-american"]?.map(
+        (place) => place.countryName,
+      ),
+    ).toEqual(["Suggested", "Primary"])
+    expect(languageGlobeCoverage(index)).toEqual({
+      eligibleLanguages: 1,
+      regions: ["Europe", "North America"],
+      duplicateCoordinatePairs: 0,
+    })
   })
 
   it("sorts country languages by parsed displaySpeakers before raw speakers", () => {

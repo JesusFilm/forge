@@ -19,7 +19,8 @@
     "check:ui-locales": "node scripts/generate-ui-locales.mjs --check",
     "verify:categories": "tsx scripts/verify-categories.ts",
     "probe:watch-urls": "tsx scripts/probe-watch-urls.ts",
-    "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts"
+    "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts",
+    "probe:language-globe": "tsx scripts/probe-language-globe-coverage.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -55,6 +56,7 @@
   "devDependencies": {
     "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^22",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",

@@ -22,6 +22,23 @@ export type WatchLanguageIndexLanguage = {
   flagPngSrc: string | null
 }
 
+export type WatchLanguageGlobeLocation = {
+  countryId: string
+  countryName: string
+  regionName: string
+  latitude: number
+  longitude: number
+  speakers: number
+  primary: boolean
+  suggested: boolean
+  order: number | null
+}
+
+type CountryLanguageRank = Pick<
+  WatchLanguageGlobeLocation,
+  "suggested" | "primary" | "speakers" | "order"
+>
+
 export type WatchLanguageIndexCountryGroup = {
   id: string
   coreId: string | null
@@ -41,6 +58,7 @@ export type WatchLanguageIndexRegion = {
 export type WatchLanguageIndex = {
   languages: WatchLanguageIndexLanguage[]
   regions: WatchLanguageIndexRegion[]
+  globeLocationsByPublicSlug: Record<string, WatchLanguageGlobeLocation[]>
 }
 
 export type WatchLanguageIndexMetadataLanguage = {
@@ -65,6 +83,8 @@ export type WatchLanguageIndexMetadataCountry = {
   coreId?: string | null
   name?: unknown
   flagPngSrc?: string | null
+  latitude?: number | null
+  longitude?: number | null
   continent?: { id?: string | null; name?: unknown } | null
   countryLanguages?: readonly WatchLanguageIndexMetadataCountryLanguage[] | null
 }
@@ -93,6 +113,8 @@ const WATCH_LANGUAGE_INDEX_METADATA_QUERY = adminGraphql(`
       coreId
       name
       flagPngSrc
+      latitude
+      longitude
       continent {
         id
         name
@@ -159,6 +181,7 @@ export function buildWatchLanguageIndex({
       countryLanguage: WatchLanguageIndexMetadataCountryLanguage
     }>
   >()
+  const globeLocationsByKey = new Map<string, WatchLanguageGlobeLocation[]>()
 
   for (const language of languages) {
     const key = languageMetadataKey(language)
@@ -200,11 +223,33 @@ export function buildWatchLanguageIndex({
         candidates.push({ country, countryLanguage })
         flagCandidatesByKey.set(key, candidates)
       }
+
+      const latitude = validLatitude(country.latitude)
+      const longitude = validLongitude(country.longitude)
+      if (latitude != null && longitude != null && countryName) {
+        const locations = globeLocationsByKey.get(key) ?? []
+        locations.push({
+          countryId: country.id ?? country.coreId ?? countryName,
+          countryName,
+          regionName,
+          latitude,
+          longitude,
+          speakers,
+          primary: countryLanguage.primary === true,
+          suggested: countryLanguage.suggested === true,
+          order: countryLanguage.order ?? null,
+        })
+        globeLocationsByKey.set(key, locations)
+      }
     }
   }
 
   const byPublicSlug = new Map<string, WatchLanguageIndexLanguage>()
   const publicSlugByMetadataKey = new Map<string, string>()
+  const globeLocationsByPublicSlug = new Map<
+    string,
+    WatchLanguageGlobeLocation[]
+  >()
 
   for (const [key, language] of metadataByKey) {
     const entry = languageIndexEntryFromMetadata({
@@ -216,6 +261,13 @@ export function buildWatchLanguageIndex({
     if (!entry) continue
 
     publicSlugByMetadataKey.set(key, entry.publicSlug)
+    globeLocationsByPublicSlug.set(
+      entry.publicSlug,
+      rankGlobeLocations([
+        ...(globeLocationsByPublicSlug.get(entry.publicSlug) ?? []),
+        ...(globeLocationsByKey.get(key) ?? []),
+      ]),
+    )
     const existing = byPublicSlug.get(entry.publicSlug)
     if (!existing) {
       byPublicSlug.set(entry.publicSlug, entry)
@@ -260,6 +312,7 @@ export function buildWatchLanguageIndex({
 
   return {
     languages: sortedLanguages,
+    globeLocationsByPublicSlug: Object.fromEntries(globeLocationsByPublicSlug),
     regions: [...groups.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, groupLanguages]) => ({
@@ -338,6 +391,87 @@ function languageIndexEntryFromMetadata({
   }
 }
 
+function rankGlobeLocations(
+  locations: WatchLanguageGlobeLocation[],
+): WatchLanguageGlobeLocation[] {
+  const unique = new Map<string, WatchLanguageGlobeLocation>()
+  for (const location of locations) {
+    const coordinateKey = `${location.latitude}:${location.longitude}`
+    const existing = unique.get(coordinateKey)
+    if (
+      !existing ||
+      compareCountryLanguageRank(location, existing) < 0 ||
+      (compareCountryLanguageRank(location, existing) === 0 &&
+        location.countryName.localeCompare(existing.countryName) < 0)
+    ) {
+      unique.set(coordinateKey, location)
+    }
+  }
+  return [...unique.values()].sort(
+    (a, b) =>
+      compareCountryLanguageRank(a, b) ||
+      a.countryName.localeCompare(b.countryName),
+  )
+}
+
+function compareCountryLanguageRank(
+  a: CountryLanguageRank,
+  b: CountryLanguageRank,
+): number {
+  return (
+    Number(b.suggested) - Number(a.suggested) ||
+    Number(b.primary) - Number(a.primary) ||
+    b.speakers - a.speakers ||
+    (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+  )
+}
+
+export function languageGlobeCoverage(index: WatchLanguageIndex): {
+  eligibleLanguages: number
+  regions: string[]
+  duplicateCoordinatePairs: number
+} {
+  const eligible = index.languages.filter(
+    (language) =>
+      (index.globeLocationsByPublicSlug[language.publicSlug]?.length ?? 0) > 0,
+  )
+  const regions = new Set<string>()
+  const coordinateCounts = new Map<string, number>()
+  for (const language of eligible) {
+    const locations =
+      index.globeLocationsByPublicSlug[language.publicSlug] ?? []
+    for (const location of locations) regions.add(location.regionName)
+    const first = locations[0]
+    if (first) {
+      const key = `${first.latitude.toFixed(4)}:${first.longitude.toFixed(4)}`
+      coordinateCounts.set(key, (coordinateCounts.get(key) ?? 0) + 1)
+    }
+  }
+  return {
+    eligibleLanguages: eligible.length,
+    regions: [...regions].sort((a, b) => a.localeCompare(b)),
+    duplicateCoordinatePairs: [...coordinateCounts.values()].reduce(
+      (total, count) => total + (count > 1 ? (count * (count - 1)) / 2 : 0),
+      0,
+    ),
+  }
+}
+
+function validLatitude(value: number | null | undefined): number | null {
+  return Number.isFinite(value) && value != null && value >= -90 && value <= 90
+    ? value
+    : null
+}
+
+function validLongitude(value: number | null | undefined): number | null {
+  return Number.isFinite(value) &&
+    value != null &&
+    value >= -180 &&
+    value <= 180
+    ? value
+    : null
+}
+
 function bestFlagPngSrc(
   candidates: Array<{
     country: WatchLanguageIndexMetadataCountry
@@ -347,21 +481,26 @@ function bestFlagPngSrc(
   const [best] = [...candidates].sort((a, b) => {
     const aLanguage = a.countryLanguage
     const bLanguage = b.countryLanguage
-    return (
-      Number(bLanguage.suggested === true) -
-        Number(aLanguage.suggested === true) ||
-      Number(bLanguage.primary === true) - Number(aLanguage.primary === true) ||
-      countryLanguageSpeakerCount(bLanguage) -
-        countryLanguageSpeakerCount(aLanguage) ||
-      (aLanguage.order ?? Number.MAX_SAFE_INTEGER) -
-        (bLanguage.order ?? Number.MAX_SAFE_INTEGER)
+    return compareCountryLanguageRank(
+      {
+        suggested: aLanguage.suggested === true,
+        primary: aLanguage.primary === true,
+        speakers: countryLanguageSpeakerCount(aLanguage),
+        order: aLanguage.order ?? null,
+      },
+      {
+        suggested: bLanguage.suggested === true,
+        primary: bLanguage.primary === true,
+        speakers: countryLanguageSpeakerCount(bLanguage),
+        order: bLanguage.order ?? null,
+      },
     )
   })
 
   return best?.country.flagPngSrc ?? null
 }
 
-function compareLanguagesBySpeakerCount(
+export function compareLanguagesBySpeakerCount(
   a: WatchLanguageIndexLanguage,
   b: WatchLanguageIndexLanguage,
 ): number {

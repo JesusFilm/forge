@@ -32,7 +32,7 @@ Rules:
 
 1. STRUCTURE ONLY. Each node has ONLY: "type" (the block type literal), an optional "sectionRef" (like "s01"), and — for the two nesting types only — a "children" array. NEVER include headings, copy, paragraphs, video ids, button labels, or any content field. Those belong to the fill step.
 
-2. TYPE LITERALS. Use the block "type" literal exactly. Top-level types: videoHero, mediaCollection, section, container, card, cta, navigationCarousel, videoCarousel, promoBanner, bibleQuotesCarousel, relatedQuestions, text, video, easterDates, adventCountdown, infoBlocks.
+2. TYPE LITERALS. Use the block "type" literal exactly. Top-level types: videoHero, mediaCollection, section, container, card, cta, languageGlobe, navigationCarousel, videoCarousel, promoBanner, bibleQuotesCarousel, relatedQuestions, text, video, easterDates, adventCountdown, infoBlocks.
 
 3. NESTING. Only "section" and "container" nest children.
    - A "section" node's children are content blocks: mediaCollection, text, promoBanner, infoBlocks, cta, container, relatedQuestions, bibleQuotesCarousel, card, video, quizButton, videoCarousel, navigationCarousel.

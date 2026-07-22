@@ -149,6 +149,17 @@ export const DraftCtaBlockSchema = z
   })
   .strict()
 
+export const DraftLanguageGlobeBlockSchema = z
+  .object({
+    t: z.literal("languageGlobe"),
+    sectionRef: DraftSectionRefSchema.optional(),
+    backgroundColor: z.string().optional(),
+    heading: z.string().optional(),
+    description: z.string().optional(),
+    languageLimit: z.number().int().min(4).max(24).default(12),
+  })
+  .strict()
+
 export const DraftEasterDatesBlockSchema = z
   .object({
     t: z.literal("easterDates"),
@@ -394,6 +405,7 @@ export const DraftBlockSchema = z.discriminatedUnion("t", [
   DraftVideoBlockSchema,
   DraftVideoCarouselBlockSchema,
   DraftNavigationCarouselBlockSchema,
+  DraftLanguageGlobeBlockSchema,
 ])
 
 export const DraftExperienceSchema = z
@@ -726,6 +738,7 @@ export const FILL_SCHEMAS_BY_TYPE = {
   cta: DraftCtaBlockSchema,
   easterDates: DraftEasterDatesBlockSchema,
   infoBlocks: DraftInfoBlocksBlockSchema,
+  languageGlobe: DraftLanguageGlobeBlockSchema,
   mediaCollection: DraftMediaCollectionBlockSchema,
   navigationCarousel: DraftNavigationCarouselBlockSchema,
   promoBanner: DraftPromoBannerBlockSchema,

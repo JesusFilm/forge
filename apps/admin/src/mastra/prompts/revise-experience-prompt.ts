@@ -29,12 +29,13 @@ Rules:
 
 2. PRESERVE WHAT WAS WORKING. Blocks the critique did not call out should remain structurally intact. Only revise what the notes addressed plus any necessary downstream adjustments (e.g., changing a section heading may require nudging the CTA copy to match).
 
-3. STRICT BLOCK SCHEMA. Every block MUST use the discriminator field "t" (for example { "t": "videoHero" }); NEVER use "type". Top-level block types include videoHero, mediaCollection, section, container, card, cta, navigationCarousel, videoCarousel, promoBanner, bibleQuotesCarousel, relatedQuestions. Inside section.content valid types are: "mediaCollection" | "text" | "promoBanner". Text copy belongs in "contentParagraphs" arrays, not a "text" field. CTAs use "buttonLabel" (only quizButton uses "buttonText"). Use "heading", NOT "title", on most blocks. Use "titleOverride" / "labelOverride" on mediaCollection items, NOT "label". DO NOT use "label" on mediaCollection items.
+3. STRICT BLOCK SCHEMA. Every block MUST use the discriminator field "t" (for example { "t": "videoHero" }); NEVER use "type". Top-level block types include videoHero, mediaCollection, section, container, card, cta, languageGlobe, navigationCarousel, videoCarousel, promoBanner, bibleQuotesCarousel, relatedQuestions. Inside section.content valid types are: "mediaCollection" | "text" | "promoBanner". Text copy belongs in "contentParagraphs" arrays, not a "text" field. CTAs use "buttonLabel" (only quizButton uses "buttonText"). Use "heading", NOT "title", on most blocks. Use "titleOverride" / "labelOverride" on mediaCollection items, NOT "label". DO NOT use "label" on mediaCollection items.
 
    Common valid shapes:
    - videoHero: { "t": "videoHero", "sectionKey": "s01", "videoId": "...", "heading": "...", "subheading": "...", "ctaEnabled": true, "ctaLabel": "Watch now" }
    - section: { "t": "section", "sectionKey": "s02", "content": [ ...section child blocks... ] }. Do NOT put "heading" directly on section; wrap heading/copy in a child text block.
    - text: { "t": "text", "heading": "...", "contentParagraphs": ["..."] }
+   - languageGlobe: { "t": "languageGlobe", "heading": "Explore stories in your language", "description": "Choose a language", "languageLimit": 12 }. languageLimit must be an integer from 4 through 24; language items come from the Watch library.
    - bibleQuotesCarousel: { "t": "bibleQuotesCarousel", "heading": "...", "quotes": [{ "reference": "John 20:19-29", "text": "..." }] }. Use "reference", NOT "verseReference".
    - cta: { "t": "cta", "heading": "...", "body": "...", "buttonLabel": "Watch Video" }
    Unknown fields are invalid. Do not invent fields such as "caption", "text", "verseReference", or "buttonText" on non-quizButton blocks.

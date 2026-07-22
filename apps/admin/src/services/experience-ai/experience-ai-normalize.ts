@@ -302,6 +302,15 @@ function normalizeDraftBlock(
         description: block.description,
         blocks: block.blocks.map((item) => compactRecord(item)),
       })
+    case "languageGlobe":
+      return compactRecord({
+        t: "languageGlobe",
+        sectionKey: toTopLevelSectionKey(block, sectionKeys, path),
+        backgroundColor: block.backgroundColor,
+        heading: block.heading,
+        description: block.description,
+        languageLimit: block.languageLimit,
+      })
     case "mediaCollection":
       return compactRecord({
         t: "mediaCollection",

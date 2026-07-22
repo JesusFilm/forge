@@ -144,6 +144,7 @@ describe("skeleton scope type sets (U3)", () => {
     expect(SKELETON_TOP_LEVEL_TYPES.has("section")).toBe(true)
     expect(SKELETON_TOP_LEVEL_TYPES.has("container")).toBe(true)
     expect(SKELETON_TOP_LEVEL_TYPES.has("videoHero")).toBe(true)
+    expect(SKELETON_TOP_LEVEL_TYPES.has("languageGlobe")).toBe(true)
     expect(SKELETON_TOP_LEVEL_TYPES.has("quizButton")).toBe(false)
   })
 
@@ -151,6 +152,7 @@ describe("skeleton scope type sets (U3)", () => {
     expect(SKELETON_SECTION_TYPES.has("quizButton")).toBe(true)
     expect(SKELETON_SECTION_TYPES.has("container")).toBe(true)
     expect(SKELETON_SECTION_TYPES.has("section")).toBe(false)
+    expect(SKELETON_SECTION_TYPES.has("languageGlobe")).toBe(false)
   })
 
   it("container scope excludes section + quizButton", () => {
@@ -170,6 +172,7 @@ describe("per-variant flat fill schemas (U3)", () => {
     expect(getFillSchemaForType("text")).toBeDefined()
     expect(getFillSchemaForType("videoHero")).toBeDefined()
     expect(getFillSchemaForType("cta")).toBeDefined()
+    expect(getFillSchemaForType("languageGlobe")).toBeDefined()
   })
 
   it("each fill schema is a single flat object keyed by its `t` literal (not an anyOf)", () => {
@@ -193,5 +196,20 @@ describe("per-variant flat fill schemas (U3)", () => {
       bogusField: "x",
     })
     expect(result.success).toBe(false)
+  })
+
+  it("bounds the language globe fill count", () => {
+    expect(
+      FILL_SCHEMAS_BY_TYPE.languageGlobe.safeParse({
+        t: "languageGlobe",
+        languageLimit: 12,
+      }).success,
+    ).toBe(true)
+    expect(
+      FILL_SCHEMAS_BY_TYPE.languageGlobe.safeParse({
+        t: "languageGlobe",
+        languageLimit: 25,
+      }).success,
+    ).toBe(false)
   })
 })

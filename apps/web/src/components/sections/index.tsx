@@ -21,6 +21,7 @@ import type { Section as SectionBlockType } from "./Section"
 import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestions"
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
+import type { LanguageGlobe as LanguageGlobeType } from "./LanguageGlobe"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -70,6 +71,9 @@ const NavigationCarousel = dynamic(() =>
     default: m.NavigationCarousel,
   })),
 ) as typeof NavigationCarouselType
+const LanguageGlobe = dynamic(() =>
+  import("./LanguageGlobe").then((m) => ({ default: m.LanguageGlobe })),
+) as typeof LanguageGlobeType
 export type { Section } from "@/lib/content"
 
 /**
@@ -116,6 +120,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "CardBlock",
   "VideoRecommendationsBlock",
   "WatchHomeHeroBlock",
+  "LanguageGlobeBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -238,6 +243,12 @@ function renderAdminBlock(
           data={
             block as unknown as Parameters<typeof NavigationCarousel>[0]["data"]
           }
+        />
+      )
+    case "LanguageGlobeBlock":
+      return (
+        <LanguageGlobe
+          data={block as unknown as Parameters<typeof LanguageGlobe>[0]["data"]}
         />
       )
     case "CardBlock":

@@ -189,6 +189,10 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
   watchHomeHero: {
     t: "watchHomeHero",
   },
+  languageGlobe: {
+    t: "languageGlobe",
+    languageLimit: 12,
+  },
 }
 
 // Sanity guard so the fixture set stays in lockstep with the typed map.
@@ -781,6 +785,15 @@ describe("MediaCollectionItem.coreId resolver", () => {
 })
 
 describe("Edge cases", () => {
+  it("exposes authored language globe fields", () => {
+    const type = schema.getType("LanguageGlobeBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.heading).toBeDefined()
+    expect(fields?.description).toBeDefined()
+    expect(fields?.backgroundColor).toBeDefined()
+    expect(fields?.languageLimit).toBeDefined()
+  })
+
   it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null

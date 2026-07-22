@@ -15,6 +15,7 @@ import {
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
   WatchHomeHeroBlockSchema,
+  LanguageGlobeBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -79,6 +80,10 @@ describe("BlockSchema — all top-level types validate", () => {
       value: { t: "watchHomeHero" },
     },
     {
+      name: "languageGlobe",
+      value: { t: "languageGlobe" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
@@ -105,11 +110,47 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 18 top-level block types listed in the experience schema", () => {
+  it("covers all 19 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
     // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(18)
+    expect(samples.length).toBe(19)
+  })
+
+  it("languageGlobe defaults to 12 labels and enforces the 4-24 range", () => {
+    expect(
+      LanguageGlobeBlockSchema.parse({ t: "languageGlobe" }),
+    ).toMatchObject({
+      languageLimit: 12,
+    })
+    expect(
+      LanguageGlobeBlockSchema.safeParse({
+        t: "languageGlobe",
+        languageLimit: 4,
+      }).success,
+    ).toBe(true)
+    expect(
+      LanguageGlobeBlockSchema.safeParse({
+        t: "languageGlobe",
+        languageLimit: 24,
+      }).success,
+    ).toBe(true)
+    expect(
+      LanguageGlobeBlockSchema.safeParse({
+        t: "languageGlobe",
+        languageLimit: 3,
+      }).success,
+    ).toBe(false)
+    expect(
+      LanguageGlobeBlockSchema.safeParse({
+        t: "languageGlobe",
+        languageLimit: 25,
+      }).success,
+    ).toBe(false)
+    expect(
+      LanguageGlobeBlockSchema.safeParse({ t: "languageGlobe", extra: true })
+        .success,
+    ).toBe(false)
   })
 
   it("accepts watchHomeHero as a placement-only placeholder", () => {
