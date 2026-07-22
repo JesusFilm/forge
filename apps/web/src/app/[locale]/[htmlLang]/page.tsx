@@ -7,7 +7,11 @@ import {
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
 import { resolveWatchHome } from "@/lib/watch-home"
-import { isWatchPageMissingError, resolveWatchPage } from "@/lib/content"
+import {
+  isWatchPageMissingError,
+  resolveWatchPage,
+  watchExperienceBlocks,
+} from "@/lib/content"
 import { getWatchPageMetadata } from "@/lib/experience-metadata"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
@@ -63,7 +67,7 @@ export default async function HomePage({ params }: PageProps) {
 
   const builderBlocks =
     pageResult.data?.kind === "experience"
-      ? (pageResult.data.experience.blocks ?? [])
+      ? watchExperienceBlocks(pageResult.data.experience)
       : []
 
   if (
