@@ -75,7 +75,8 @@ src/
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     conversations.ts     Message (+ optional sources/grounded/engine/error) + SeekerSource + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set
-    use-conversations.ts Client hook: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error) + per-conversation AbortController slot (pending + double-send guard, released in finally) + new/select conversation. feat-270: stopReply (user abort → quiet finalize keeping partial text, no failure notice; every stopped Seeker turn marks the conversation server-persisted — Mastra creates the thread row before generating, so even a zero-token stop may have persisted it), New-conversation reuse of the existing empty, sidebar projection hides inactive never-used empties, snippet titles beat the date fallback via titleFromFirstUser (server LLM title still wins). feat-241: post-mount history hydration (gated on seekerEnabled), merge by conversation id, Load more, lazy single-flight replay, R22 send blocking, KTD10 allowStubFallback wiring; pure merge/order helpers exported for tests
+    conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL KTD10 stamping sites (allowStubFallback + the three markServerPersisted branches + mergeServerThreads' hydration stamp). getSnapshot is cached — new identity only on commit. Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
+    use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction; re-exports the pure helpers + HistoryListUi for the pre-extraction import surface
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
     jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx); primary favicon
@@ -83,9 +84,11 @@ public/                  Static assets served by URL (Next.js convention, matche
     jesus-film-logo.svg  Full wordmark (unused for now; kept for longer-form surfaces)
 ```
 
-- **State ownership:** all conversation state lives in `useConversations`,
-  consumed by `AppShell`, which also owns sidebar _view_ state (`collapsed`,
-  `mobileOpen`). Data flows one way: `useConversations`/view-state → `AppShell`
+- **State ownership:** all conversation state lives in the framework-agnostic
+  session module (`lib/conversation-session.ts`, feat-281); `useConversations`
+  is a thin `useSyncExternalStore` adapter over one session instance, consumed
+  by `AppShell`, which also owns sidebar _view_ state (`collapsed`,
+  `mobileOpen`). Data flows one way: session → `useConversations` → `AppShell`
   → `Sidebar` / `Chat` → leaf components. Both `chat.tsx` and `sidebar.tsx` are
   presentational compositions now: `sidebar.tsx` lays out the scrim + `<aside>`
   and delegates its local _UI mechanics_ (collapse clip animation, Escape
@@ -95,7 +98,8 @@ public/                  Static assets served by URL (Next.js convention, matche
   only derives presentation from the `collapsed`/`mobileOpen` flags.
 - **The reply seam:** reply generation is isolated in `lib/chat-stub.ts`
   (`streamReply` — stub path OR Seeker proxy, selected by the `seekerEnabled`
-  flag). The hook orchestrates the streaming lifecycle (append an empty assistant
+  flag), injected into the session as a dep. The session orchestrates the
+  streaming lifecycle (append an empty assistant
   turn, feed `onToken` into it, finalize/error on the terminal result), the
   per-conversation pending/double-send guard, and which conversation a reply
   lands in. The `Message` type + `SeekerSource` + `ReplyFailureReason` live in
@@ -406,7 +410,9 @@ login page instead of silently re-authenticating via the SSO session.
   sub-components carry no `'use client'` — they have event handlers but no hooks,
   so they inherit the client context of the `'use client'` modules that import
   them (`shell/icons.tsx`, the stateless SVGs, is the same). `shell/sidebar-collapsed-styles.ts`
-  (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`, the `app/`
+  (a pure class-map function), `brand/*`, `lib/cn.ts`, `lib/sse.ts`,
+  `lib/conversation-session.ts` (feat-281 — client-shipped but React-free by
+  contract; only the `use-conversations` adapter may touch React), the `app/`
   entry files, and the server-only modules (`config/env.ts`, `app/api/seeker/route.ts`,
   `app/api/auth/*`, `auth/*` — note `auth/identity.ts` uses `next/headers` — the
   feat-233 `lib/seeker-gate.ts`, and the feat-282 `lib/server/mastra-upstream.ts`,
@@ -437,9 +443,17 @@ login page instead of silently re-authenticating via the SSO session.
   scoped to chat by design — it does not change those apps. Pure-function tests
   (`lib/conversations.test.ts`, `lib/chat-stub.test.ts`,
   `shell/sidebar-collapsed-styles.test.ts`) stay plain vitest. The behavioral
-  suite lives in `components/shell/app-shell.test.tsx` (AppShell owns the
-  state); the extracted `use-sidebar-chrome` hook has its own colocated
-  `renderHook` unit test for its state machine in isolation. Note for the
+  suite lives in `components/shell/app-shell.test.tsx` (AppShell consumes the
+  session state); the extracted `use-sidebar-chrome` hook has its own colocated
+  `renderHook` unit test for its state machine in isolation. The conversation
+  session (feat-281) has a direct unit suite (`lib/conversation-session.test.ts`
+  — injected deps, no DOM) and the adapter a StrictMode-rendered suite
+  (`lib/use-conversations.strictmode.test.tsx`); the whole-tree suites plus
+  their `Remount safety` describe stay the extraction's acceptance gate.
+  Gotcha pinned there: `renderHook` needs RTL's `reactStrictMode: true` option
+  — a custom `<StrictMode>` wrapper doubles initializers but NOT the effect
+  cycle, silently skipping the re-arm path (see the Detection pitfall in
+  `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`). Note for the
   behavioral suite: the reply lands via `setTimeout`, so it runs on fake timers
   with `userEvent.setup({ advanceTimers, ... })` under
   `vi.useFakeTimers({ shouldAdvanceTime: true })` — a plain fake clock hangs

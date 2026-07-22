@@ -3,7 +3,7 @@ id: "feat-281"
 title: "Chat conversation session module (deepen the engine + honest gate denial)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-22"
 duration: 4
 depends_on: []
