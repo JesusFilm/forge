@@ -7,7 +7,9 @@
     "noContent": "E sega ni tiko e dua na itukutuku.",
     "homepageMisconfigured": "Sa cala na Watch homepage.",
     "defaultTemplateMisconfigured": "Sa cala na template ni Watch vakataki-kina.",
-    "authFailed": "E sega ni rawa ni vakadeitaki na veiqaravi ni itukutuku. Veitaratara kei na support kevaka e tomani tiko."
+    "authFailed": "E sega ni rawa ni vakadeitaki na veiqaravi ni itukutuku. Veitaratara kei na support kevaka e tomani tiko.",
+    "pageLoadFailed": "E dua na leqa sa yaco.",
+    "tryAgain": "Cakava tale"
   },
   "VideosPage": {
     "title": "Na Vidio Kece",
@@ -22,7 +24,8 @@
     "promoHeading": "Vinakata mo kila vakalevu cake na iVola Tabu?",
     "joinBibleStudy": "Lewena na noda vuli iVola Tabu",
     "previousQuote": "iVola Tabu quote e liu",
-    "nextQuote": "iVola Tabu quote e tarava"
+    "nextQuote": "iVola Tabu quote e tarava",
+    "readPassage": "Wilika na tikina oqo ena nomu iVolatabu."
   },
   "DownloadButton": {
     "checking": "Raici tiko",
@@ -73,7 +76,8 @@
     "selectLanguage": "Digitaka na vosa",
     "searchPlaceholder": "Vakasaqara na vosa…",
     "languages": "Vosa",
-    "noMatches": "Sega na ka e tautauvata"
+    "noMatches": "Sega na ka e tautauvata",
+    "notAvailable": "E sega ni tiko"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Vosa",
@@ -112,7 +116,8 @@
     "questions": "Taro Veisemati",
     "askYours": "Taroga nomu taro",
     "chatWithPerson": "Veitalanoa kei na dua na tamata",
-    "askBibleQuestion": "Taroga e dua na taro me baleta na iVola Tabu"
+    "askBibleQuestion": "Taroga e dua na taro me baleta na iVola Tabu",
+    "quiz": "Vakatovotovo ni kila"
   },
   "WatchQuestionPanel": {
     "messageType": "iTuvatuva ni itukutuku",
@@ -170,7 +175,8 @@
     "searchRegion": "Vakasaqara na vidio",
     "clearSearch": "Culuma na vakasaqaqara",
     "changeAudioLanguage": "Veisautaka na vagalalataka ni domo",
-    "home": "Tabana levu ni JesusFilm"
+    "home": "Tabana levu ni JesusFilm",
+    "closeSearch": "Tauri na vakasaqaqara"
   },
   "SearchOverlay": {
     "dialogLabel": "Vakasaqara ka vakadikeva na vidio",
@@ -205,14 +211,19 @@
     "clearLanguages": "Culuma",
     "queryLanguageDetected": "Sa kilai na {language}",
     "searchInLanguage": "Vakasaqara ena {language}",
-    "tryDifferentKeywordsOrLanguage": "Tovolea eso tale na vosa bibi se digitaka e dua tale na vosa ni vakasaqaqara"
+    "tryDifferentKeywordsOrLanguage": "Tovolea eso tale na vosa bibi se digitaka e dua tale na vosa ni vakasaqaqara",
+    "useWebsiteDefaultLanguage": "Vakayagataka na vosa ni vakasaqaqara ni mataveilawa vakataki-kina",
+    "removeLanguage": "Kauta tani {language}",
+    "browseMode": "iVakarau ni vakadikevi ni vakasaqaqara"
   },
   "HeroPlayer": {
     "playWithSound": "Raica oqo",
-    "tapToUnmute": "Tabaka me vakavu"
+    "tapToUnmute": "Tabaka me vakavu",
+    "nextEpisode": "Episode e tarava"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Lavetaki tiko na itukutuku"
+    "loadingContent": "Lavetaki tiko na itukutuku",
+    "loadingVideo": "Lavetaki tiko na vidio"
   },
   "VideoLabels": {
     "video": "Vidio",
@@ -223,7 +234,8 @@
     "series": "Sirisi",
     "collection": "Veikau",
     "trailer": "iVakaraitaki lekaleka",
-    "behindTheScenes": "E Daku ni iVakaraitaki"
+    "behindTheScenes": "E Daku ni iVakaraitaki",
+    "chapter": "Wase"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ni {total}",
@@ -235,12 +247,287 @@
     "noImage": "Sega na iyaloyalo",
     "playingNow": "Sa saravi tiko",
     "previousChapter": "Wase e liu",
-    "nextChapter": "Wase e tarava"
+    "nextChapter": "Wase e tarava",
+    "thumbnailAlt": "thumbnail ni {title}",
+    "relatedVideoThumbnail": "Thumbnail ni vidio veisemati"
   },
   "SearchResultCard": {
     "experience": "Veika e sotavi",
     "episodeCount": "{count, plural, one {# na episode} other {# na episode}}",
     "thumbnailAlt": "Thumbnail ni vidio"
+  },
+  "Feedback": {
+    "openForm": "Dolava na fomu ni feedback",
+    "label": "Veika e vakasama",
+    "couldNotLoad": "E sega ni rawa ni dolavi na fomu ni feedback.",
+    "loadingForm": "Lavetaki tiko na fomu ni feedback…",
+    "retry": "Cakava tale",
+    "openFormShort": "Dolava na fomu",
+    "cancel": "Sosomitaka",
+    "title": "Vakasama me baleta na Beta",
+    "description": "Vakamuria na ka e cakacaka tiko kei na ka meda vakavinakataka. E vakarautaka na Google na fomu oqo.",
+    "openInNewTab": "Dolava na fomu ena tab vou",
+    "closeForm": "Vakatautauvata na fomu ni feedback",
+    "loadingGoogleForm": "Lavetaki tiko na Google Form…",
+    "iframeTitle": "Vakauta na Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vidio Vakarisito sega ni saumi ena {language} | Jesus Film Project",
+    "metadataDescription": "Railesuva na vidio kei Jisu, na talanoa ni iVola Tabu, na series ni tisaipelip kei na vidio ni veivakatatawanataki ena domo se subtitles ena {language}.",
+    "heroTitle": "Vidio Vakarisito sega ni saumi ena {language}",
+    "heroDescription": "Railesuva na vidio kei Jisu, na talanoa ni iVola Tabu, na series ni tisaipelip kei na vidio ni veivakatatawanataki e tiko ena {language}. Na vidio sa vakadewataki taucoko e daulautaki taumada, ka na kena sa tiko ga na subtitles era e ra.",
+    "languageCollection": "Veikau ni vosa",
+    "itemCount": "{count, plural, one {# na item} other {# na items}}",
+    "videoCount": "{count, plural, one {# na vidio} other {# na vidio}}",
+    "videosInGroups": "{videoCount, plural, one {# na vidio} other {# na vidio}} ena {groupCount, plural, one {# na tabana} other {# na tabana}}",
+    "sectionNavLabel": "Wase ni language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Vou",
+    "videoBible": "Bible ni Vidio",
+    "bibleProject": "BibleProject",
+    "sports": "Tadrava",
+    "collections": "Veikau",
+    "subtitlesOnly": "Subtitles ga",
+    "newlyAdded": "Sa qai vakuri wale ga",
+    "newVideosTitle": "Na vidio Vakarisito vou ena {language}",
+    "newestFirst": "Na vou taumada",
+    "noPublishedVideos": "E sega ni kunei e dua na vidio sa tabaki me baleta na vosa oqo.",
+    "bibleAndGospelFilms": "Vidio ni iVola Tabu kei na Kosipeli",
+    "videoBibleCollectionsTitle": "iVola Tabu ni Vidio ena {language}",
+    "videoBibleDescription": "Na veikau e vakaliuci kina na iVolatabu me vaka na LUMO, JISUS, Magdalena, kei na Apostolo ena {language}.",
+    "noVideoBibleCollections": "E sega ni tiko e dua na Video Bible collection me baleta na vosa oqo.",
+    "bibleProjectCollectionsTitle": "Na BibleProject collections ena {language}",
+    "bibleProjectDescription": "Na series kei na vulici ni BibleProject e tiko ena {language}.",
+    "noBibleProjectCollections": "E sega ni tiko e dua na BibleProject collection me baleta na vosa oqo.",
+    "sportsStories": "Talanoa ni qito",
+    "sportsTitle": "Talanoa ni qito kei ira na dauqito ena {language}",
+    "sportsDescription": "Na talanoa ni qito e vakaliuci kina na vakabauta kei na veikau e vakalewa kina na dauqito e tiko ena {language}.",
+    "noSportsCollections": "E sega ni tiko e dua na qito se collection ni talanoa ni dauqito me baleta na vosa oqo.",
+    "fullyDubbed": "Vakadonui taucoko",
+    "dubbedVideosTitle": "Vidio ena {language} me vaka na collection",
+    "dubbedVideosDescription": "Vakadikeva na vidio {language} sa vakadonui taucoko, vakatautauvata kei na nodra collection me rawarawa na kunei.",
+    "noDubbedVideos": "E sega ni tiko e dua na vidio sa vakadonui taucoko me baleta na vosa oqo.",
+    "subtitlesAvailable": "E tiko na subtitles",
+    "subtitlesTitle": "Vidio ena {language} kei na subtitles",
+    "subtitlesDescription": "Na vidio oqo e tiko kina na subtitles ena {language} ni se sega ni tiko na domo ena {language}.",
+    "noSubtitleVideos": "E sega ni tiko e dua na vidio ga na subtitles me baleta na vosa oqo.",
+    "dubbed": "Vakadonui",
+    "subtitles": "iVakamacala e ra",
+    "newLabel": "Vou",
+    "fromCollection": "Mai na {collection}",
+    "standaloneVideos": "Vidio duadua",
+    "videosFromCollection": "Vidio mai na {collection}.",
+    "standaloneDescription": "Na vidio duadua ena vosa oqo.",
+    "openCollection": "Dolava na collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch ni Jesus Film Project",
+    "watch": "Raica",
+    "watchNow": "Raica inamata",
+    "mutePreview": "Vakamuetaka na preview",
+    "unmutePreview": "Vakasama tale na preview",
+    "nextVideo": "Vidio e tarava",
+    "featured": "Digitaki",
+    "showVideo": "Vakaraitaka {title}",
+    "previousVideoPreview": "Preview ni vidio e liu",
+    "nextVideoPreview": "Preview ni vidio e tarava",
+    "mediaCollection": "Veikau ni media",
+    "scrollToVideo": "Lako ki na vidio {title}"
+  },
+  "WatchFooter": {
+    "home": "Tabana levu ni Jesus Film Project",
+    "navigation": "Navigation ni footer",
+    "share": "Vakasavuti",
+    "watch": "Raica",
+    "giving": "Solika",
+    "about": "Me baleta",
+    "products": "iYaya ni cakacaka",
+    "resources": "iVurevure",
+    "partners": "Mata ni cakacaka",
+    "contact": "Veitaratara",
+    "giveNow": "Solia oqo",
+    "resourcesVersion": "iVurevure ({version})",
+    "office": "Valenivoli",
+    "fax": "Fakisi",
+    "privacyPolicy": "iVakarau ni veitaqomaki ni itukutuku bibi",
+    "legalStatement": "iTukutuku vakalawa",
+    "newsletter": "Tucake me baleta na noda newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Vakadeitaki me baleta na veiliutaki ni vuravura",
+    "title": "E sega ni veisau na itukutuku. E veisau ga na sala era sarava kina na tamata.",
+    "description": "Keitou sa vakavouya tiko na neitou tabana ni vidio kei na iyaya ni cakacaka mai na ivurevure, ka vakadeitaka na vuqa na yabaki ni cakacaka ni vakadewataki ena platform era sa dau soqoni, sarava, ka vakasavuta kina na tamata.",
+    "translatedLibraryTitle": "Na tabana ni vidio e vakadewataki levu duadua ena vuravura",
+    "translatedLibraryDescription": "Na vuqa na yabaki ni cakacaka ni vakadewataki, e tokoni tiko ena veiliutaki ni cakacaka vakalotu e nuitaki, sa tara kina e dua na tabana ni vidio e sivia na udolu na tracks ni vosa me rawa ni ra sotava na itukutuku kei Jisu ena vosa e yacova vakalevu na lomadra.",
+    "trustedVoicesTitle": "Vakacuruma na domo nuitaki ena ivakarau vou",
+    "trustedVoicesDescription": "Keitou sa vakavoui tiko na sala e vakau kina vakataki-yalodina na talanoa ni kosipeli ena iyaloyalo, ka veisemati na vakadewataki nuitaki kei na ivakarau vou me rawa ni lako vakataki na itukutuku ena platform, veivanua, kei na sikirini.",
+    "missionTeamTitle": "E levu cake mai na tabana ni vidio. Dua na timi vakamisioni.",
+    "missionTeamDescription": "Jesus Film Project e dua na timi ni vuravura levu ni dauvakadewa, dauyaloyalo, dauvula, kei ira na dauvakavurea tiko na veika ni cakacaka vakalotu ena iyaya ni cakacaka me baleti ira na dauvakavulici tale e veivanua kecega.",
+    "buildingNext": "Na ka keitou sa tara tiko e tarava",
+    "nextStepsTitle": "Platform ni iKalawa Tarava",
+    "nextStepsDescription": "Veisemati ira na dau sarava kei na veigauna dina me ra vakatorocaketaka na nodra ilakolako vakayalo, ka vukei ira me ra taura e dua na ikalawa tarava ki na lotu, iVolatabu, se misioni.",
+    "mediaLibraryTitle": "iVurevure ni Media ni Veivakavulici",
+    "mediaLibraryDescription": "E dua na tabana levu ni media Vakarisito kei na udolu na vidio, iyaloyalo, kei na iVurevure e tiko ena vuqa na vosa me baleta na cakacaka vakalotu kei na veivakalougatataki e vuravura raraba.",
+    "ministryToolsTitle": "iYaya Vakadonui me baleta na Cakacaka Vakalotu",
+    "ministryToolsDescription": "Na veiliutaki ni vidio, veiwaki ni itukutuku, veitaratara kei ira na itaukei ni itukutuku, kei na analytics e vakamuri me vukei ira na cakacaka vakalotu me ra yacovi ira e levu cake na tamata vakavinaka.",
+    "invitationEyebrow": "O ni sureti",
+    "invitationTitle": "Vukea me tara na <highlight>itabataba vou</highlight> ni iyaya ni misini",
+    "invitationDescription": "Keitou sureti ira na dauvakayagataka, dauvakavurea, kei ira na veitokoni ki na curu taumada. Vakatovolea taumada na iyaya vou, solia na nomu feedback, ka vukea na vakacurumi ni products e vakarautaki me baleta na cakacaka vakamisini dina.",
+    "betaTester": "Me da beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Veikau ni iVola Tabu ni Vidio",
+    "gospelRailTitle": "Vakadikeva na italanoa taucoko",
+    "videoBibleDescription": "Vakadikeva na noda collection ni vidio kei na iVurevure era vakabula mai na iVolatabu ena italanoa kei na ivakavuvuli veivakauqeti.",
+    "showcaseTitle": "Na iVolatabu e vakasokumi ena vidio",
+    "adventEyebrow": "Advent ni Kirisimasi",
+    "adventTitle": "Wili Lesu ni Advent ni Kirisimasi",
+    "adventDescription": "Lewena na noda ilakolako ni Advent ena dua na vidio ena veisiga e vakavurea na inuinui, reki, kei na yalayala ni kena mai yaco mai o Jisu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent ni BibleProject",
+    "nuaEyebrow": "Series ni NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series ni Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Vuli ena Vidio",
+    "journeyWithJesusTitle": "Lako vata kei Jisu",
+    "gospelsOnVideoEyebrow": "Na Kosipeli kece, vakadui ena vidio",
+    "scriptureAsWrittenTitle": "Na iVola Tabu, cavuti vakadodonu me vaka sa volai",
+    "merryChristmas": "Marau na Kirisimasi!",
+    "daysUntilChristmas": "{count, plural, one {E vo e # na siga me yacova na Kirisimasi} other {E vo e # na siga me yacova na Kirisimasi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Vosa",
+    "metadataDescription": "Vakadikeva na vidio ni JesusFilm ena vosa.",
+    "eyebrow": "Vosa ni Watch",
+    "title": "Digitaka e dua na vosa",
+    "description": "Vakadikeva na vosa ena veivanua se raica na list taucoko.",
+    "searchPlaceholder": "Vakasaqara na vosa se vanua...",
+    "searchLabel": "Vakasaqara na vosa se vanua",
+    "clearSearch": "Culuma na vakasaqaqara",
+    "browse": "Vakadikeva",
+    "browseByRegion": "Vakadikeva ena vanua kei na vanua vakamatanitu",
+    "languageCount": "{count, plural, one {# na vosa} other {# na vosa}}",
+    "region": "Vanua",
+    "countryLanguages": "Na vosa nei {country}",
+    "showLess": "Vakaraitaka e lailai cake",
+    "showMore": "Vakaraitaka tale e {count}",
+    "noLanguages": "E sega ni kunei e dua na vosa",
+    "tryAnotherSearch": "Tovolea e dua tale na vosa ni vakasaqaqara."
+  },
+  "WatchHistory": {
+    "metadataTitle": "iTukutuku ni Sarava | Jesus Film Project",
+    "title": "iTukutuku ni Sarava",
+    "loading": "Lavetaki tiko na itukutuku ni sarava",
+    "empty": "E sega ni dua e ke",
+    "emptyDescription": "Na vidio o sarava ni o curu tiko ena yaco mai e ke.",
+    "earlier": "E liu",
+    "today": "Nikua",
+    "yesterday": "Naba ni siga e liu"
+  },
+  "AccountControl": {
+    "account": "Akaude",
+    "accountMenu": "iTuvatuva ni akaude",
+    "signIn": "Log in",
+    "signOut": "Sainitaka tani",
+    "signedIn": "Sa curu",
+    "history": "Veika sa oti",
+    "logOut": "Sainitaka tani"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "E sega ni kunei na tabana",
+    "eyebrow": "E sega ni kunei na tabana",
+    "screenReaderPrefix": "E sega ni kunei na tabana:",
+    "title": "E sega ni tiko eke na scene oqo.",
+    "description": "E rawa ni veisau na tabana, ia e tomani tiko na italanoa.",
+    "actionsLabel": "iOtioti ni tabana e sega ni kunei",
+    "backToWatch": "Lesu tale ki na Watch",
+    "browseVideos": "Vakadikeva na vidio"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Raica na Vidio Lailai",
+    "actions": {
+      "joinUs": "Mai vata kei keitou",
+      "shareMission": "Veitokoni ena neitou misioni"
+    },
+    "welcomeStart": {
+      "label": "Vakabauta kei na iVola Tabu",
+      "title": "Na Vidio Digitaki Nikua",
+      "description": "Na itukutuku ni vidio e vakatokai ena vakabauta mai na neitou veikau me vakauqeti, vakatovolei, ka vakavurea na vakasama."
+    },
+    "welcomeMorning": {
+      "label": "Veivakauqeti ena mataka",
+      "title": "Ni sa mataka vinaka! Sa waraki iko na veika ni iVolatabu ni siga nikua.",
+      "description": "Tekivu na nomu siga ena veika ni iVolatabu era vakauqeti ka vakaukauwataki iko."
+    },
+    "welcomeAfternoon": {
+      "label": "Veivakauqeti ena yakavi",
+      "title": "Ni sa yalovinaka na yakavi! Veika ni iVolatabu me baleta na nomu siga.",
+      "description": "Na itukutuku ni iVolatabu e vakauqeti, e ganita vinaka na nomu vakacegu ena yakavi se me tomani kina na veivakauqeti."
+    },
+    "welcomeEvening": {
+      "label": "Veivakauqeti ena bogi",
+      "title": "Ni sa bogi vinaka! Vakacegu vata kei na veika ni iVolatabu.",
+      "description": "Na veika ni iVolatabu e malua ka vakacegu me vukei iko mo vakasamataka ka kunea na vakacegu ni sa cava na siga."
+    },
+    "joinUs": {
+      "label": "Mai vata kei keitou",
+      "title": "Era vakasaqarai tiko na veimama bilioni",
+      "description": "Sa yaco mai na tatamusuki. Mai vata kei keitou ena noda wasea na kosipeli kei na vuravura ena mekasini vakalivaliva."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Me da lako vata",
+      "title": "Talanoa ni bula nei Jisu, vata",
+      "description": "Me ra rogoca ka raica kina na loloma nei Jisu ena nodra vosa ga, ena vanua era tiko kina."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Veiganiti ena {percent}%",
+    "none": "E sega ni kunei e dua na vidio e vakaturi me baleta na vidio oqo ena vosa oqo."
+  },
+  "BetaTesterModal": {
+    "title": "Me da beta tester",
+    "trigger": "Me da beta tester",
+    "loadFailed": "E dua na leqa sa yaco.",
+    "loading": "Lavetaki tiko...",
+    "openFormNewTab": "Dolava na fomu ena tab vou",
+    "close": "Vakatautauvata",
+    "iframeTitle": "Me da beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Taura mada ga na gauna",

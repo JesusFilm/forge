@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { History, LogOut, UserRound } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import {
@@ -47,6 +48,7 @@ function accountAuthUrl(path: "/api/auth/login" | "/api/auth/logout"): string {
 }
 
 export function AccountControl() {
+  const t = useTranslations("AccountControl")
   const [state, setState] = useState<AccountState>({ status: "loading" })
   const [menuOpen, setMenuOpen] = useState(false)
   const { searchChromeVisible } = useFloatingSearchPinned()
@@ -134,21 +136,21 @@ export function AccountControl() {
   const action = useMemo(() => {
     if (state.status === "signed-in") {
       return {
-        label: "Sign out",
+        label: t("signOut"),
         href: "/api/auth/logout" as const,
       }
     }
     return {
-      label: "Sign in",
+      label: t("signIn"),
       href: "/api/auth/login" as const,
     }
-  }, [state.status])
+  }, [state.status, t])
 
   const user = state.status === "signed-in" ? state.user : undefined
-  const displayName = user?.name?.trim() || user?.email?.trim() || "Signed in"
+  const displayName = user?.name?.trim() || user?.email?.trim() || t("signedIn")
   const email = user?.email?.trim()
   const buttonLabel =
-    state.status === "signed-in" ? "Account menu" : action.label
+    state.status === "signed-in" ? t("accountMenu") : action.label
 
   if (state.status === "loading" || state.status === "hidden") return null
 
@@ -184,7 +186,7 @@ export function AccountControl() {
       {state.status === "signed-in" && menuOpen ? (
         <div
           role="menu"
-          aria-label="Account menu"
+          aria-label={t("accountMenu")}
           data-testid="watch-account-menu"
           className="absolute top-full right-0 z-50 mt-3 w-72 overflow-hidden rounded-lg border border-white/15 bg-stone-950/95 text-stone-50 shadow-2xl shadow-black/35 backdrop-blur-md"
         >
@@ -209,7 +211,7 @@ export function AccountControl() {
               }}
             >
               <History aria-hidden="true" className="h-4 w-4" />
-              <span>History</span>
+              <span>{t("history")}</span>
             </button>
             <button
               type="button"
@@ -220,7 +222,7 @@ export function AccountControl() {
               }}
             >
               <LogOut aria-hidden="true" className="h-4 w-4" />
-              <span>Log out</span>
+              <span>{t("logOut")}</span>
             </button>
           </div>
         </div>
@@ -258,7 +260,8 @@ function Avatar({
   user?: AccountUser
   sizeClassName: string
 }) {
-  const label = user?.name || user?.email || "Account"
+  const t = useTranslations("AccountControl")
+  const label = user?.name || user?.email || t("account")
   const initials = getInitials(label)
 
   if (user?.image) {

@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const socialLinks = [
@@ -25,23 +26,25 @@ const socialLinks = [
 ] as const
 
 const navLinks = [
-  { label: "Share", href: "https://www.jesusfilm.org/partners/share/" },
-  { label: "Watch", href: "https://www.jesusfilm.org/watch/" },
-  { label: "Giving", href: "https://www.jesusfilm.org/give/" },
-  { label: "About", href: "https://www.jesusfilm.org/about/" },
-  { label: "Products", href: "https://www.jesusfilm.org/products/" },
+  { key: "share", href: "https://www.jesusfilm.org/partners/share/" },
+  { key: "watch", href: "https://www.jesusfilm.org/watch/" },
+  { key: "giving", href: "https://www.jesusfilm.org/give/" },
+  { key: "about", href: "https://www.jesusfilm.org/about/" },
+  { key: "products", href: "https://www.jesusfilm.org/products/" },
   {
-    label: "Resources",
+    key: "resources",
     href: "https://www.jesusfilm.org/partners/resources/",
   },
-  { label: "Partners", href: "https://www.jesusfilm.org/partners/" },
-  { label: "Contact", href: "https://www.jesusfilm.org/contact/" },
+  { key: "partners", href: "https://www.jesusfilm.org/partners/" },
+  { key: "contact", href: "https://www.jesusfilm.org/contact/" },
 ] as const
 
 const giveNowHref =
   "https://www.jesusfilm.org/how-to-help/ways-to-donate/give-now/?amount=&frequency=single&campaign-code=NXWJPO&designation-number=2592320&thankYouRedirect=/dev/special/thank-you-refer/social-share/"
 
 export function WatchHomeFooter() {
+  const t = useTranslations("WatchFooter")
+
   return (
     <footer
       data-testid="watch-home-footer"
@@ -51,7 +54,7 @@ export function WatchHomeFooter() {
         <div className="grid gap-8 lg:grid-cols-[160px_minmax(0,1fr)] lg:items-center xl:grid-cols-[340px_minmax(0,1fr)]">
           <a
             href="https://www.jesusfilm.org/"
-            aria-label="Jesus Film Project home"
+            aria-label={t("home")}
             className="block w-fit"
           >
             <Image
@@ -89,23 +92,23 @@ export function WatchHomeFooter() {
             </div>
 
             <nav
-              aria-label="Footer navigation"
+              aria-label={t("navigation")}
               className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-bold"
             >
               {navLinks.map((link) => (
                 <a
-                  key={link.label}
+                  key={link.key}
                   href={link.href}
                   className="transition-colors hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
                 >
-                  {link.label}
+                  {t(link.key)}
                 </a>
               ))}
               <a
                 href={giveNowHref}
                 className="inline-flex h-9 items-center rounded-full bg-[#d33a43] px-5 text-sm font-bold text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
               >
-                Give Now
+                {t("giveNow")}
               </a>
             </nav>
           </div>
@@ -118,25 +121,27 @@ export function WatchHomeFooter() {
               <br />
               Orlando, FL, 32832
               <br />
-              <span className="text-[#9a9a9a]">Resources (fea8f46)</span>
+              <span className="text-[#9a9a9a]">
+                {t("resourcesVersion", { version: "fea8f46" })}
+              </span>
             </p>
             <p className="max-w-[140px] border-[#d9d9d9] sm:border-r sm:px-5">
-              Office: (407) 826-2300
+              {t("office")}: (407) 826-2300
               <br />
-              Fax: (407) 826-2375
+              {t("fax")}: (407) 826-2375
             </p>
             <p className="max-w-[140px] sm:px-5">
               <a
                 href="https://www.jesusfilm.org/privacy/"
                 className="block hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
               >
-                Privacy Policy
+                {t("privacyPolicy")}
               </a>
               <a
                 href="https://www.jesusfilm.org/legal/"
                 className="block hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
               >
-                Legal Statement
+                {t("legalStatement")}
               </a>
             </p>
           </div>
@@ -145,7 +150,7 @@ export function WatchHomeFooter() {
             href="https://www.jesusfilm.org/email/"
             className="inline-flex h-10 w-fit items-center justify-center rounded-full bg-[#333] px-5 text-sm font-bold text-white transition-colors hover:bg-[#1f1f1f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
           >
-            Sign Up For Our Newsletter
+            {t("newsletter")}
           </a>
         </div>
       </div>

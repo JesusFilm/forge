@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
+import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
@@ -18,6 +19,7 @@ import {
   resolveWatchRouteBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
+  watchExperienceBlocks,
   type WatchVariant,
   type WatchVideoRecord,
 } from "@/lib/content"
@@ -60,6 +62,11 @@ import {
 } from "@/lib/watch-structured-data"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
+import {
+  loadClientMessages,
+  WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+} from "@/i18n/client-messages"
 
 // ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
@@ -394,15 +401,24 @@ export default async function SlugRestPage({ params }: PageProps) {
 
   setRequestLocale(shape.locale)
 
-  if (shape.kind === "one-segment") {
-    return renderOneSegment(shape)
-  }
+  const namespaces =
+    shape.kind === "one-segment" && shape.isLanguageHome
+      ? WATCH_HOME_CLIENT_MESSAGE_NAMESPACES
+      : WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES
+  const messages = await loadClientMessages(shape.locale, namespaces)
 
-  if (shape.kind === "episode") {
-    return renderEpisode(shape)
-  }
+  const content =
+    shape.kind === "one-segment"
+      ? await renderOneSegment(shape)
+      : shape.kind === "episode"
+        ? await renderEpisode(shape)
+        : await renderVideo(shape)
 
-  return renderVideo(shape)
+  return (
+    <NextIntlClientProvider locale={shape.locale} messages={messages}>
+      {content}
+    </NextIntlClientProvider>
+  )
 }
 
 async function renderOneSegment(shape: {
@@ -423,7 +439,7 @@ async function renderOneSegment(shape: {
 
     const builderBlocks =
       pageResult.data?.kind === "experience"
-        ? (pageResult.data.experience.blocks ?? [])
+        ? watchExperienceBlocks(pageResult.data.experience)
         : []
 
     if (

@@ -7,7 +7,9 @@
     "noContent": "E leai se anotusi e avanoa.",
     "homepageMisconfigured": "Ua sese le faatulagaga o le itulau autū o le watch.",
     "defaultTemplateMisconfigured": "Ua sese le faatulagaga o le fa'ata'ita'iga fa'aletonu o le watch.",
-    "authFailed": "E le mafai ona fa'amaonia le avanoa i le auaunaga o le anotusi. Fa'amolemole fa'afeso'ota'i le support pe a tumau lenei tulaga."
+    "authFailed": "E le mafai ona fa'amaonia le avanoa i le auaunaga o le anotusi. Fa'amolemole fa'afeso'ota'i le support pe a tumau lenei tulaga.",
+    "pageLoadFailed": "Ua tupu se mea sese.",
+    "tryAgain": "Toe taumafai"
   },
   "VideosPage": {
     "title": "Vitio Uma",
@@ -22,7 +24,8 @@
     "promoHeading": "E te fia malamalama atili i le Tusi Paia?",
     "joinBibleStudy": "Auai i la matou su'esu'ega o le Tusi Paia",
     "previousQuote": "Upusii muamua o le Tusi Paia",
-    "nextQuote": "Upusii o le Tusi Paia e sosoo ai"
+    "nextQuote": "Upusii o le Tusi Paia e sosoo ai",
+    "readPassage": "Faitau lenei fuaitau i lau Tusi Paia."
   },
   "DownloadButton": {
     "checking": "Siakiina",
@@ -73,7 +76,8 @@
     "selectLanguage": "Filifili le gagana",
     "searchPlaceholder": "Su'e gagana…",
     "languages": "Gagana",
-    "noMatches": "E leai ni fetaui"
+    "noMatches": "E leai ni fetaui",
+    "notAvailable": "E le avanoa"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Gagana",
@@ -112,7 +116,8 @@
     "questions": "Fesili Fesootai",
     "askYours": "Fesili lau oe",
     "chatWithPerson": "Talanoa ma se tagata",
-    "askBibleQuestion": "Fai se fesili e uiga i le Tusi Paia"
+    "askBibleQuestion": "Fai se fesili e uiga i le Tusi Paia",
+    "quiz": "Su'ega"
   },
   "WatchQuestionPanel": {
     "messageType": "Ituaiga o le fe'au",
@@ -170,7 +175,8 @@
     "searchRegion": "Su'e vitio",
     "clearSearch": "Tape le su'esu'ega",
     "changeAudioLanguage": "Suia le gagana o le leo",
-    "home": "Itulau autū o JesusFilm"
+    "home": "Itulau autū o JesusFilm",
+    "closeSearch": "Tapuni le su'esu'ega"
   },
   "SearchOverlay": {
     "dialogLabel": "Su'e ma su'esu'e vitio",
@@ -205,14 +211,19 @@
     "clearLanguages": "Fa'amama",
     "queryLanguageDetected": "Ua iloa le {language}",
     "searchInLanguage": "Su'e i le {language}",
-    "tryDifferentKeywordsOrLanguage": "Taumafai i upu autū eseese po o le filifili i se isi gagana e su'e ai"
+    "tryDifferentKeywordsOrLanguage": "Taumafai i upu autū eseese po o le filifili i se isi gagana e su'e ai",
+    "useWebsiteDefaultLanguage": "Fa'aoga le gagana su'esu'e fa'aletonu a le 'upega tafa'ilagi",
+    "removeLanguage": "Ave'ese {language}",
+    "browseMode": "Faiga su'esu'e"
   },
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
-    "tapToUnmute": "Pa'i e tatala le leo"
+    "tapToUnmute": "Pa'i e tatala le leo",
+    "nextEpisode": "Episode e soso'o ai"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "O lo'o utaina le anotusi"
+    "loadingContent": "O lo'o utaina le anotusi",
+    "loadingVideo": "O lo'o utaina le vitio"
   },
   "VideoLabels": {
     "video": "Vitio",
@@ -223,7 +234,8 @@
     "series": "Fa'asologa",
     "collection": "Aoina",
     "trailer": "Ta'aloga Fa'ata'ita'i",
-    "behindTheScenes": "Tua o le Va'aiga"
+    "behindTheScenes": "Tua o le Va'aiga",
+    "chapter": "Mataupu"
   },
   "SiblingCarousel": {
     "clipPosition": "Klipi {current} o {total}",
@@ -235,12 +247,287 @@
     "noImage": "E leai se ata",
     "playingNow": "O lo'o ta'alo nei",
     "previousChapter": "Mataupu muamua",
-    "nextChapter": "Mataupu e soso'o ai"
+    "nextChapter": "Mataupu e soso'o ai",
+    "thumbnailAlt": "Ata laitiiti o {title}",
+    "relatedVideoThumbnail": "Ata laitiiti o le vitio feso'ota'i"
   },
   "SearchResultCard": {
     "experience": "Aafiaga",
     "episodeCount": "{count, plural, one {# vaega} other {# vaega}}",
     "thumbnailAlt": "Ata laitiiti o le vitio"
+  },
+  "Feedback": {
+    "openForm": "Tatala le pepa o manatu",
+    "label": "Manatu",
+    "couldNotLoad": "E le mafai ona utaina le pepa o manatu.",
+    "loadingForm": "O lo'o utaina le pepa o manatu…",
+    "retry": "Toe taumafai",
+    "openFormShort": "Tatala le pepa",
+    "cancel": "Fa'aleaoga",
+    "title": "Manatu o le Beta",
+    "description": "Fa'asoa mai mea o lo'o lelei ma mea e mafai ona fa'aleleia. O lenei pepa e saunia e Google.",
+    "openInNewTab": "Tatala le pepa i se tab fou",
+    "closeForm": "Tapuni le pepa o manatu",
+    "loadingGoogleForm": "O lo'o utaina le Google Form…",
+    "iframeTitle": "Auina atu Manatu o le Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vitio fa'a-Kerisiano e leai se totogi i le {language} | Jesus Film Project",
+    "metadataDescription": "Su'esu'e ata o Iesu, tala o le Tusi Paia, fa'asologa o le faiaoga, ma vitio mo le aapa atu ma le leo ua uma ona fa'aliliu pe o lo'o iai tusitusiga o le leo i le {language}.",
+    "heroTitle": "Vitio fa'a-Kerisiano e leai se totogi i le {language}",
+    "heroDescription": "Su'esu'e ata o Iesu, tala o le Tusi Paia, fa'asologa o le faiaoga, ma vitio mo le aapa atu o lo'o avanoa i le {language}. O vitio ua atoa le dub e fa'aalia muamua, ona soso'o ai lea ma filifiliga e na'o tusitusiga o le leo.",
+    "languageCollection": "Aoina o gagana",
+    "itemCount": "{count, plural, one {# mea} other {# mea}}",
+    "videoCount": "{count, plural, one {# vitio} other {# vitio}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} i {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Vaega o le inventory o gagana",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Fou",
+    "videoBible": "Tusi Paia Vitio",
+    "bibleProject": "BibleProject",
+    "sports": "Ta'aloga",
+    "collections": "Aoina",
+    "subtitlesOnly": "Na'o tusitusiga o le leo",
+    "newlyAdded": "Fa'aopoopo talu ai nei",
+    "newVideosTitle": "Vitio fa'a-Kerisiano fou i le {language}",
+    "newestFirst": "Muamua mea fou",
+    "noPublishedVideos": "E le'i maua se vitio ua lomia mo lenei gagana i le taimi nei.",
+    "bibleAndGospelFilms": "Ata o le Tusi Paia ma le Talalelei",
+    "videoBibleCollectionsTitle": "Aoina o le {language} Video Bible",
+    "videoBibleDescription": "Aoina e fa'atumau i le Tusi Paia e aofia ai LUMO, JESUS, Magdalena, ma Galuega i le {language}.",
+    "noVideoBibleCollections": "E le'i avanoa ni aoina o le Video Bible mo lenei gagana i le taimi nei.",
+    "bibleProjectCollectionsTitle": "Aoina a le {language} BibleProject",
+    "bibleProjectDescription": "Fa'asologa ma su'esu'ega a le BibleProject e avanoa i le {language}.",
+    "noBibleProjectCollections": "E le'i avanoa ni aoina a le BibleProject mo lenei gagana i le taimi nei.",
+    "sportsStories": "Tala o ta'aloga",
+    "sportsTitle": "Tala o ta'aloga ma tagata ta'a'alo i le {language}",
+    "sportsDescription": "Tala o ta'aloga e fa'avae i le fa'atuatua ma aoina e fa'atatau i tagata ta'a'alo e avanoa i le {language}.",
+    "noSportsCollections": "E le'i avanoa ni aoina o ta'aloga po'o tala o tagata ta'a'alo mo lenei gagana i le taimi nei.",
+    "fullyDubbed": "Ua atoa le dub",
+    "dubbedVideosTitle": "Vitio {language} e tusa ai ma le aoina",
+    "dubbedVideosDescription": "Su'esu'e vitio {language} ua atoa le dub, ua fa'avasegaina ma a latou aoina mo le faigofie o le sailia.",
+    "noDubbedVideos": "E le'i avanoa ni vitio ua atoa le dub mo lenei gagana i le taimi nei.",
+    "subtitlesAvailable": "E maua tusitusiga o le leo",
+    "subtitlesTitle": "Vitio {language} ma tusitusiga o le leo",
+    "subtitlesDescription": "O nei vitio e iai tusitusiga o le leo i le {language} pe a le'i avanoa le leo tautala i le {language}.",
+    "noSubtitleVideos": "E le'i avanoa ni vitio e na'o tusitusiga o le leo mo lenei gagana i le taimi nei.",
+    "dubbed": "Ua dub",
+    "subtitles": "Tusitusiga o le leo",
+    "newLabel": "Fou",
+    "fromCollection": "Mai le {collection}",
+    "standaloneVideos": "Vitio e tu'ufua",
+    "videosFromCollection": "Vitio mai le {collection}.",
+    "standaloneDescription": "Vitio e tu'ufua i lenei gagana.",
+    "openCollection": "Tatala le aoina"
+  },
+  "WatchHome": {
+    "pageTitle": "Matamata i le Jesus Film Project",
+    "watch": "Matamata",
+    "watchNow": "Matamata Nei",
+    "mutePreview": "Fa'amumu le fa'aaliga muamua",
+    "unmutePreview": "Tatala le leo o le fa'aaliga muamua",
+    "nextVideo": "Vitio e soso'o ai",
+    "featured": "Fa'ailoaina",
+    "showVideo": "Fa'aali {title}",
+    "previousVideoPreview": "Fa'aaliga muamua o le vitio muamua",
+    "nextVideoPreview": "Fa'aaliga muamua o le vitio e soso'o ai",
+    "mediaCollection": "Aoina o fa'asalalauga",
+    "scrollToVideo": "Fa'asolo i le vitio {title}"
+  },
+  "WatchFooter": {
+    "home": "Itulau autū o Jesus Film Project",
+    "navigation": "Su'ega i le footer",
+    "share": "Fa'asoa",
+    "watch": "Matamata",
+    "giving": "Tuuina atu",
+    "about": "E uiga i",
+    "products": "Oloa",
+    "resources": "Punaoa",
+    "partners": "Paaga",
+    "contact": "Fa'afeso'ota'i",
+    "giveNow": "Tuuina atu Nei",
+    "resourcesVersion": "Punaoa ({version})",
+    "office": "Ofisa",
+    "fax": "Fesi",
+    "privacyPolicy": "Faiga Fa'avae o le Puipuia o Fa'amatalaga",
+    "legalStatement": "Fa'amatalaga Fa'aletulafono",
+    "newsletter": "Saini mo la matou nusipepa"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Fausia mo misiona i le lalolagi",
+    "title": "E le suia le fe'au. E suia le auala e matamata ai tagata.",
+    "description": "O lo'o matou toe fausia a matou faletusi vitio ma meafaigaluega mai le amataga, ma fa'amaoni i le tele o tausaga o galuega fa'aliliu i luga o tulaga ua uma ona potopoto, matamata, ma fa'asoa ai tagata.",
+    "translatedLibraryTitle": "O le faletusi ata e sili ona tele le fa'aliliuina i le lalolagi",
+    "translatedLibraryDescription": "O le tele o tausaga o galuega fa'aliliu, fa'atasi ai ma paaga fa'atuatuaina o le galuega fa'afaife'au, ua fausia ai se faletusi e faitau afe ana leo i gagana, ina ia mafai ai e tagata ona feiloa'i ma le tala ia Iesu i le gagana e sili ona a'afia ai i latou.",
+    "trustedVoicesTitle": "Avea leo fa'atuatuaina i fa'atulagaga fou",
+    "trustedVoicesDescription": "O lo'o matou toe fausia le auala e ta'u atu ai tala o le tala lelei i ata, fa'atasia fa'aliliuga fa'atuatuaina ma fa'atulagaga fa'aonapo nei ina ia mafai ai ona aga'i saoloto le fe'au i tulaga eseese, aganu'u, ma lau.",
+    "missionTeamTitle": "E sili atu nai lo se faletusi. O se 'au e ta'ita'ia e le misiona.",
+    "missionTeamDescription": "O le Jesus Film Project o se 'au i le lalolagi atoa o tagata fa'aliliu, tagata tomai i fa'asalalauga, fa'atonu, ma tagata foafoa o lo'o liliu atu le tele o tausaga o le poto masani fa'afaife'au i meafaigaluega mo ē faia-a'oga i so'o se mea.",
+    "buildingNext": "Le mea o lo'o matou fauina mo le isi la'asaga",
+    "nextStepsTitle": "Pulega mo La'asaga e Sosoo ai",
+    "nextStepsDescription": "Feso'ota'i tagata matamata ma avanoa moni i la latou savaliga fa'aleagaga, fesoasoani ia i latou e fai le isi la'asaga i le nu'u, le Tusi Paia, po o le misiona.",
+    "mediaLibraryTitle": "Faletusi o Fa'asalalauga mo le Tala Lelei",
+    "mediaLibraryDescription": "O se faletusi tele o fa'asalalauga Kerisiano e faitau afe vitio, ata tifaga, ma punaoa e avanoa i gagana eseese mo le galuega fa'afaife'au ma le tala lelei i le lalolagi atoa.",
+    "ministryToolsTitle": "Meafaigaluega Fa'atekinolosi mo Matagaluega",
+    "ministryToolsDescription": "Pulega o vitio, tufatufaina o anotusi, fa'atasi ai ma le au maimoa, ma su'esu'ega ua mamanuina e fesoasoani ai i matagaluega e aapa atu i le to'atele ma le lelei.",
+    "invitationEyebrow": "Ua vala'aulia oe",
+    "invitationTitle": "Fesoasoani e fausia le <highlight>augatupulaga e soso'o ai</highlight> o meafaigaluega mo le misiona",
+    "invitationDescription": "O lo'o matou vala'aulia tagata fa'atino, tagata foafoa, ma paaga i le avanoa vave. Su'e muamua meafaigaluega fou, tu'u mai ni manatu, ma fesoasoani e fa'ata'atia oloa ua fuafuaina mo galuega moni fa'afaife'au.",
+    "betaTester": "Avea ma beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Aoina o le Video Bible",
+    "gospelRailTitle": "Su'e le tala atoa",
+    "videoBibleDescription": "Su'esu'e la matou aoina o vitio ma punaoa e aumaia ai le Tusi Paia i le ola e ala i tala ma a'oa'oga e tosina mai ai.",
+    "showcaseTitle": "O le Tusi Paia ua ta'u atu i Ata Tifaga",
+    "adventEyebrow": "Advent o le Kerisimasi",
+    "adventTitle": "Faitauga i tua o le Advent o le Kerisimasi",
+    "adventDescription": "Auai i la matou faigamalaga o le Advent i se vitio i aso ta'itasi e fausia ai le fa'atalitali mo le Kerisimasi, a'o su'esu'e le fa'amoemoe, le olioli, ma le folafolaga o le afio mai o Iesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent a le BibleProject",
+    "nuaEyebrow": "Fa'asologa NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Fa'asologa Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kosi Vitio",
+    "journeyWithJesusTitle": "Savali fa'atasi ma Iesu",
+    "gospelsOnVideoEyebrow": "O Evagelia Uma, Fa'aali i le Vitio",
+    "scriptureAsWrittenTitle": "O le Tusi Paia, Fa'ailoa Tonu e pei ona Tusia",
+    "merryChristmas": "Manuia le Kerisimasi!",
+    "daysUntilChristmas": "{count, plural, one {Toe # le aso i le Kerisimasi} other {Toe # aso i le Kerisimasi}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gagana",
+    "metadataDescription": "Su'esu'e vitio a le JesusFilm e tusa ai ma le gagana.",
+    "eyebrow": "Gagana o le watch",
+    "title": "Filifili se gagana",
+    "description": "Su'esu'e gagana e le itulagi po'o le va'ai i le lisi atoa.",
+    "searchPlaceholder": "Su'e gagana po'o atunu'u...",
+    "searchLabel": "Su'e gagana po'o atunu'u",
+    "clearSearch": "Tape le su'esu'ega",
+    "browse": "Su'esu'e",
+    "browseByRegion": "Su'esu'e e le itulagi ma le atunu'u",
+    "languageCount": "{count, plural, one {# gagana} other {# gagana}}",
+    "region": "Itulagi",
+    "countryLanguages": "Gagana o {country}",
+    "showLess": "Fa'aali la'ititi",
+    "showMore": "Fa'aali {count} isi",
+    "noLanguages": "E leai ni gagana na maua",
+    "tryAnotherSearch": "Taumafai i se isi upu su'esu'e."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Tala'aga o le Matamata | Jesus Film Project",
+    "title": "Tala'aga o le Matamata",
+    "loading": "O lo'o utaina le tala'aga",
+    "empty": "E leai se mea i inei i le taimi nei",
+    "emptyDescription": "O vitio e te matamata ai a'o saini mai o le a aliali mai i inei.",
+    "earlier": "Na muamua atu",
+    "today": "Aso nei",
+    "yesterday": "Ananafi"
+  },
+  "AccountControl": {
+    "account": "Teuga tupe",
+    "accountMenu": "Lisi o teuga tupe",
+    "signIn": "Saini mai",
+    "signOut": "Saini ese",
+    "signedIn": "Ua saini mai",
+    "history": "Tala'aga",
+    "logOut": "Saini ese"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "E le'i maua le itulau",
+    "eyebrow": "E le'i maua le itulau",
+    "screenReaderPrefix": "E le'i maua le itulau:",
+    "title": "E le o iai lenei va'aiga.",
+    "description": "Atonu ua siitia le itulau, ae o lo'o faaauau pea le tala.",
+    "actionsLabel": "Gaioiga mo le itulau e le'i maua",
+    "backToWatch": "Toe fo'i i le Watch",
+    "browseVideos": "Su'esu'e vitio"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Matamata i le ata pu'upu'u",
+    "actions": {
+      "joinUs": "Auai mai",
+      "shareMission": "Faasoa i la matou misiona"
+    },
+    "welcomeStart": {
+      "label": "Fa'atuatua & Tusitusiga Paia",
+      "title": "Filifiliga Vitio o le Aso",
+      "description": "Vitio e fa'avae i le fa'atuatua mai la matou faletusi e fa'aosofia, lu'iina, ma fa'atosina ai le mafaufau loloto."
+    },
+    "welcomeMorning": {
+      "label": "Fa'aosofia i le Taeao",
+      "title": "Talofa i le taeao! O lo'o fa'atali mai taimi o le Tusi Paia o le aso.",
+      "description": "Amata lou aso i taimi fa'amalosi'au mai le Tusi Paia ua fuafuaina e fa'aosofia ma fa'amalosia ai lou agaga."
+    },
+    "welcomeAfternoon": {
+      "label": "Fa'aosofia i le Afiāfi",
+      "title": "Talofa i le aoauli! Taimi o le Tusi Paia mo lou aso.",
+      "description": "Anotusi fa'amalosi'au mai le Tusi Paia e lelei mo lau mālōlō i le afiafi po o le faaauau o le fa'amalosi'au."
+    },
+    "welcomeEvening": {
+      "label": "Fa'aosofia i le Afiafi",
+      "title": "Talofa i le afiafi! Mālōlō ma taimi o le Tusi Paia.",
+      "description": "Taimi filemu o le Tusi Paia e fesoasoani e te mafaufau loloto ai ma maua le fa'amafanafanaga a'o fa'ai'u le aso."
+    },
+    "joinUs": {
+      "label": "Auai mai",
+      "title": "O lo'o saili e le faitau piliona",
+      "description": "Ua oo mai le seleselega. Auai mai a o matou fa'asoa atu le tala lelei i le lalolagi e ala i fa'asalalauga fa'atekinolosi."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tatou o fa'atasi",
+      "title": "Fa'amatala fa'atasi le Tala ia Iesu",
+      "description": "Ina ia latou lagona ma va'ai i le alofa o Iesu i lo latou lava gagana i le mea lava o i ai."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% e fetaui",
+    "none": "E leai ni vitio fautuaina na maua mo lenei vitio i lenei gagana."
+  },
+  "BetaTesterModal": {
+    "title": "Avea ma beta tester",
+    "trigger": "Avea ma beta tester",
+    "loadFailed": "Ua tupu se mea sese.",
+    "loading": "O lo'o utaina...",
+    "openFormNewTab": "Tatala le pepa i se tab fou",
+    "close": "Tapuni",
+    "iframeTitle": "Avea ma beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Faaalu sina taimi",

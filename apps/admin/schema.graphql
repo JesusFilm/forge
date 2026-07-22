@@ -705,6 +705,10 @@ type MediaCollectionItem {
   Best playable Mux playback id for this media collection item when it references a Video row.
   """
   muxPlaybackId(languageSlug: String): String
+  """
+  Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
+  """
+  resolvedTitle(locale: String!): String
   subtitleOverride: String
   titleOverride: String
   videoId: String
@@ -1148,6 +1152,10 @@ type Video {
   """
   children: [VideoRelation!]
   coreId: String
+  """
+  One downloadable Dub per visible direct child for an exact language slug. Intended for lazy collection downloads without projecting every child Dub.
+  """
+  downloadableChildDubs(languageSlug: String!): [VideoDub!]!
   dubs: [VideoDub!]
   """
   Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.

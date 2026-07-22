@@ -7,7 +7,9 @@
     "noContent": "किञ्चिदपि सामग्री उपलब्धा नास्ति।",
     "homepageMisconfigured": "पश्य-गृहपृष्ठं सम्यक् विन्यस्तं नास्ति।",
     "defaultTemplateMisconfigured": "पूर्वनिर्धारितं पश्य-रूपं सम्यक् विन्यस्तं नास्ति।",
-    "authFailed": "सामग्री-सेवया सह प्रमाणीकरणं कर्तुं न शक्यते। यदि एतत् निरन्तरं भवति तर्हि कृपया सहायता-संपर्कं कुर्वन्तु।"
+    "authFailed": "सामग्री-सेवया सह प्रमाणीकरणं कर्तुं न शक्यते। यदि एतत् निरन्तरं भवति तर्हि कृपया सहायता-संपर्कं कुर्वन्तु।",
+    "pageLoadFailed": "किञ्चिदपि विफलम् अभवत्।",
+    "tryAgain": "पुनः प्रयतस्व"
   },
   "VideosPage": {
     "title": "सर्वाणि वीडियोनि",
@@ -22,7 +24,8 @@
     "promoHeading": "किं भवन्तः बाइबिलं गभीरतया अवगन्तुं इच्छन्ति?",
     "joinBibleStudy": "अस्माकं बाइबिल-अध्ययनं सम्मिलिताः भवन्तु",
     "previousQuote": "पूर्वं बाइबिल-वचनम्",
-    "nextQuote": "अग्रिमं बाइबिल-वचनम्"
+    "nextQuote": "अग्रिमं बाइबिल-वचनम्",
+    "readPassage": "स्वबाइबिले एतं वचनांशं पठतु।"
   },
   "DownloadButton": {
     "checking": "परीक्ष्यते",
@@ -73,7 +76,8 @@
     "selectLanguage": "भाषां चिनुत",
     "searchPlaceholder": "भाषाः अन्वेषयतु…",
     "languages": "भाषाः",
-    "noMatches": "किमपि न उपलब्धम्"
+    "noMatches": "किमपि न उपलब्धम्",
+    "notAvailable": "न उपलब्धम्"
   },
   "LanguagePickerModal": {
     "dialogTitle": "भाषा",
@@ -112,7 +116,8 @@
     "questions": "सम्बद्धाः प्रश्नाः",
     "askYours": "स्वकं पृच्छतु",
     "chatWithPerson": "व्यक्तिना सह संवादं कुर्वन्तु",
-    "askBibleQuestion": "बाइबिल-प्रश्नं पृच्छतु"
+    "askBibleQuestion": "बाइबिल-प्रश्नं पृच्छतु",
+    "quiz": "परीक्षा"
   },
   "WatchQuestionPanel": {
     "messageType": "सन्देश-प्रकारः",
@@ -170,7 +175,8 @@
     "searchRegion": "वीडियोनि अन्वेषयतु",
     "clearSearch": "अन्वेषणं पश्यतु",
     "changeAudioLanguage": "ध्वनि-भाषां परिवर्तयतु",
-    "home": "JesusFilm गृहपृष्ठम्"
+    "home": "JesusFilm गृहपृष्ठम्",
+    "closeSearch": "अन्वेषणं पिधाय"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियोनि अन्वेषयतु ब्राउज़् च कुर्वन्तु",
@@ -205,14 +211,19 @@
     "clearLanguages": "स्वच्छं कुर्वन्तु",
     "queryLanguageDetected": "{language} इति भाषा निश्चिता",
     "searchInLanguage": "{language} इति भाषायां अन्वेषयतु",
-    "tryDifferentKeywordsOrLanguage": "अन्ये कीवर्ड् प्रयुञ्जीत अथवा अन्यां अन्वेषण-भाषां चिनुत"
+    "tryDifferentKeywordsOrLanguage": "अन्ये कीवर्ड् प्रयुञ्जीत अथवा अन्यां अन्वेषण-भाषां चिनुत",
+    "useWebsiteDefaultLanguage": "जालपुटस्य पूर्वनिर्धारित-भाषां प्रयुञ्जीत",
+    "removeLanguage": "{language} दूरीकुरु",
+    "browseMode": "अन्वेषण-ब्राउज़्-प्रणाली"
   },
   "HeroPlayer": {
     "playWithSound": "इदानीं पश्यतु",
-    "tapToUnmute": "मौन-निवारणाय स्पृशतु"
+    "tapToUnmute": "मौन-निवारणाय स्पृशतु",
+    "nextEpisode": "अग्रिमः भागः"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "सामग्री लोड् क्रियते"
+    "loadingContent": "सामग्री लोड् क्रियते",
+    "loadingVideo": "वीडियो लोड् क्रियते"
   },
   "VideoLabels": {
     "video": "वीडियो",
@@ -223,7 +234,8 @@
     "series": "श्रृङ्खला",
     "collection": "सङ्ग्रहः",
     "trailer": "प्रदर्शन-खण्डः",
-    "behindTheScenes": "पृष्ठभूमिः"
+    "behindTheScenes": "पृष्ठभूमिः",
+    "chapter": "अध्यायः"
   },
   "SiblingCarousel": {
     "clipPosition": "क्लिप् {current} / {total}",
@@ -235,12 +247,287 @@
     "noImage": "चित्रं नास्ति",
     "playingNow": "इदानीं वाद्यते",
     "previousChapter": "पूर्वः अध्यायः",
-    "nextChapter": "अग्रिमः अध्यायः"
+    "nextChapter": "अग्रिमः अध्यायः",
+    "thumbnailAlt": "{title} लघुचित्रम्",
+    "relatedVideoThumbnail": "सम्बद्ध-वीडियो लघुचित्रम्"
   },
   "SearchResultCard": {
     "experience": "अनुभवः",
     "episodeCount": "{count, plural, one {# भागः} other {# भागाः}}",
     "thumbnailAlt": "वीडियो-लघुचित्रम्"
+  },
+  "Feedback": {
+    "openForm": "प्रतिक्रिया-प्रपत्रं उद्घाटयतु",
+    "label": "प्रतिक्रिया",
+    "couldNotLoad": "प्रतिक्रिया-प्रपत्रं लोड् कर्तुं न शक्यते स्म।",
+    "loadingForm": "प्रतिक्रिया-प्रपत्रं लोड् क्रियते…",
+    "retry": "पुनः प्रयतस्व",
+    "openFormShort": "प्रपत्रं उद्घाटयतु",
+    "cancel": "निरस्तम्",
+    "title": "बीटा-प्रतिक्रिया",
+    "description": "यत् सम्यक् कार्यं करोति, यच्च वर्धनीयं, तत् साझा कुर्वन्तु। एतत् प्रपत्रं Google द्वारा प्रदत्तम्।",
+    "openInNewTab": "प्रपत्रं नूतन-ट्याब् मध्ये उद्घाटयतु",
+    "closeForm": "प्रतिक्रिया-प्रपत्रं पिधाय",
+    "loadingGoogleForm": "Google Form लोड् क्रियते…",
+    "iframeTitle": "बीटा-प्रतिक्रिया समर्पयतु"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} भाषायां निःशुल्कानि ख्रीष्टीय-वीडियोनि | Jesus Film Project",
+    "metadataDescription": "{language} भाषायां डब्-श्रव्येण अथवा उपशीर्षकैः सह Jesus films, Bible stories, discipleship series, and outreach videos अन्वेषयतु।",
+    "heroTitle": "{language} भाषायां निःशुल्कानि ख्रीष्टीय-वीडियोनि",
+    "heroDescription": "{language} भाषायां उपलब्धान् Jesus films, Bible stories, discipleship series, and outreach videos अन्वेषयतु। पूर्णतया डब्-कृतानि वीडियोनि प्रथमतः प्रदर्श्यन्ते, ततः उपशीर्षक-मात्र विकल्पाः अधः।",
+    "languageCollection": "भाषा-संग्रहः",
+    "itemCount": "{count, plural, one {# वस्तु} other {# वस्तूनि}}",
+    "videoCount": "{count, plural, one {# वीडियो} other {# वीडियोनि}}",
+    "videosInGroups": "{videoCount, plural, one {# वीडियो} other {# वीडियोनि}} in {groupCount, plural, one {# समूहः} other {# समूहाः}}",
+    "sectionNavLabel": "भाषा-सूची-खण्डाः",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "नूतनम्",
+    "videoBible": "वीडियो बाइबिल्",
+    "bibleProject": "BibleProject",
+    "sports": "क्रीडाः",
+    "collections": "सङ्ग्रहाः",
+    "subtitlesOnly": "उपशीर्षक-मात्रम्",
+    "newlyAdded": "नूतनतया योजितम्",
+    "newVideosTitle": "{language} भाषायां नूतनानि ख्रीष्टीय-वीडियोनि",
+    "newestFirst": "नवतमानि प्रथमतः",
+    "noPublishedVideos": "अस्मिन् भाषायां प्रकाशितानि वीडियोनि अद्यापि न प्राप्तानि।",
+    "bibleAndGospelFilms": "बाइबिल्-गospel-चित्रपटाः",
+    "videoBibleCollectionsTitle": "{language} Video Bible सङ्ग्रहाः",
+    "videoBibleDescription": "{language} भाषायां LUMO, JESUS, Magdalena, Acts इत्यादि शास्त्रकेंद्रित-संग्रहाः।",
+    "noVideoBibleCollections": "अस्मिन् भाषायां Video Bible सङ्ग्रहाः अद्यापि न सन्ति।",
+    "bibleProjectCollectionsTitle": "{language} BibleProject सङ्ग्रहाः",
+    "bibleProjectDescription": "{language} भाषायां उपलब्धाः BibleProject श्रृङ्खलाः अध्ययनानि च।",
+    "noBibleProjectCollections": "अस्मिन् भाषायां BibleProject सङ्ग्रहाः अद्यापि न सन्ति।",
+    "sportsStories": "क्रीडा-कथाः",
+    "sportsTitle": "{language} भाषायां क्रीडा- एवं क्रीडक-कथाः",
+    "sportsDescription": "{language} भाषायां उपलब्धाः विश्वासकेंद्रित-क्रीडा-कथाः क्रीडक-केंद्रित-संग्रहाः च।",
+    "noSportsCollections": "अस्मिन् भाषायां क्रीडा- अथवा क्रीडक-कथा-संग्रहाः अद्यापि न सन्ति।",
+    "fullyDubbed": "पूर्णतया डब्-कृतम्",
+    "dubbedVideosTitle": "{language} भाषायां संग्रहानुसारं वीडियोनि",
+    "dubbedVideosDescription": "सुग्राह्यार्थं सङ्ग्रहैः सह वर्गीकृतानि पूर्णतया डब्-कृतानि {language} वीडियोनि ब्राउज़् कुर्वन्तु।",
+    "noDubbedVideos": "अस्मिन् भाषायां पूर्णतया डब्-कृतानि वीडियोनि अद्यापि न सन्ति।",
+    "subtitlesAvailable": "उपशीर्षकाणि उपलब्धानि",
+    "subtitlesTitle": "{language} भाषायां उपशीर्षक-सहितानि वीडियोनि",
+    "subtitlesDescription": "यदा भाष्यमाणं {language} श्रव्यं अद्यापि उपलब्धं नास्ति, तदा एतेषु वीडियोषु {language} उपशीर्षकाणि सन्ति।",
+    "noSubtitleVideos": "उपशीर्षक-मात्र-वीडियोनि अस्मिन् भाषायां अद्यापि न सन्ति।",
+    "dubbed": "डब्-कृतम्",
+    "subtitles": "उपशीर्षकाणि",
+    "newLabel": "नूतनम्",
+    "fromCollection": "{collection} इत्यस्मात्",
+    "standaloneVideos": "स्वतन्त्र-वीडियोनि",
+    "videosFromCollection": "{collection} इत्यस्मात् वीडियोनि।",
+    "standaloneDescription": "अस्मिन् भाषायां स्वतन्त्र-वीडियोनि।",
+    "openCollection": "सङ्ग्रहं उद्घाटयतु"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project पश्यन्तु",
+    "watch": "पश्यतु",
+    "watchNow": "इदानीं पश्यतु",
+    "mutePreview": "पूर्वावलोकनं मौनं कुरु",
+    "unmutePreview": "पूर्वावलोकनस्य मौनं निवर्तयतु",
+    "nextVideo": "अग्रिमं वीडियो",
+    "featured": "विशेषम्",
+    "showVideo": "{title} दर्शयतु",
+    "previousVideoPreview": "पूर्ववर्ती-वीडियो पूर्वावलोकनम्",
+    "nextVideoPreview": "अग्रिम-वीडियो पूर्वावलोकनम्",
+    "mediaCollection": "माध्यम-संग्रहः",
+    "scrollToVideo": "{title} वीडियों प्रति स्क्रोल् कुर्वन्तु"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project गृहपृष्ठम्",
+    "navigation": "पादभाग-संचारः",
+    "share": "साझा कुर्वन्तु",
+    "watch": "पश्यतु",
+    "giving": "दानम्",
+    "about": "विषये",
+    "products": "उत्पादाः",
+    "resources": "संसाधनानि",
+    "partners": "सहभागिनः",
+    "contact": "संपर्कः",
+    "giveNow": "इदानीं ददातु",
+    "resourcesVersion": "संसाधनानि ({version})",
+    "office": "कार्यालयः",
+    "fax": "फैक्स",
+    "privacyPolicy": "गोपनीयता-नीतिः",
+    "legalStatement": "विधिक-प्रकटनम्",
+    "newsletter": "अस्माकं समाचारपत्राय नामाङ्कनं कुर्वन्तु"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "वैश्विक-मिशनार्थं निर्मितम्",
+    "title": "सन्देशः न परिवर्तते। दर्शनस्य रीतिरेव परिवर्तते।",
+    "description": "वयं अस्माकं वीडियो-संग्रहं उपकरणानि च मूलतः पुनर्निर्मिमः, दशकानां अनुवाद-कार्यं तेषु प्लेटफॉर्मेषु समर्पयामः यत्र जनाः पूर्वमेव संगच्छन्ति, पश्यन्ति, साझा कुर्वन्ति च।",
+    "translatedLibraryTitle": "विश्वे सर्वाधिक-अनूदित-सिनेमालयः",
+    "translatedLibraryDescription": "दशकानां अनुवाद-कार्येण, विश्वसनीय-सेवा-सहयोगिभिः धारितेन, सहस्रशः भाषा-ट्रैक्-सहितः संग्रहः निर्मितः, येन जनाः येशोः कथां यां भाषा तेषां हृदयं गच्छति तस्यां अनुभवितुं शक्नुवन्ति।",
+    "trustedVoicesTitle": "विश्वसनीय-स्वरान् नूतन-रूपेषु वहन्तः",
+    "trustedVoicesDescription": "वयं सुसमाचार-कथाः दृश्यरूपेण कथ्यन्ते इति प्रकारं पुनर्निर्मिमः, आधुनिक-रूपैः सह विश्वसनीय-अनुवादान् योजयामः, यथा सन्देशः सर्वेषु प्लेटफॉर्मेषु, संस्कृतिषु, पटलेषु च स्वच्छन्दं गच्छेत्।",
+    "missionTeamTitle": "संग्रहात् अधिकम्। मिशन-प्रेरितः दलः।",
+    "missionTeamDescription": "Jesus Film Project इति अनुवादकाः, माध्यम-विशेषज्ञाः, सम्पादकाः, स्रष्टारश्च इत्येतेषां वैश्विकः दलः, यः दशकानां सेवाअनुभवं सर्वत्र शिष्यनिर्मातॄणां कृते उपकरणेषु परिणमयति।",
+    "buildingNext": "वयं किम् अग्रे निर्मिमः",
+    "nextStepsTitle": "अग्रिम-चरण-प्लेटफॉर्मः",
+    "nextStepsDescription": "दर्शकान् तेषां आध्यात्मिक-यात्रायां मूर्त-अवसरैः सह संयोजयन्तु, समुदायं, शास्त्रं, वा मिशनम् इत्यत्र अग्रिमं चरणं कर्तुं साहाय्यं कुर्वन्तु।",
+    "mediaLibraryTitle": "सुसमाचार-प्रचाराय माध्यम-संग्रहः",
+    "mediaLibraryDescription": "विस्तीर्णः ख्रीष्टीय-माध्यम-संग्रहः, बहुभाषासु सहस्रशः वीडियोनि, चलच्चित्राणि, संसाधनानि च यत्र विश्वव्यापी सेवायै सुसमाचारप्रचाराय च उपलब्धानि।",
+    "ministryToolsTitle": "सेवाकार्येभ्यः डिजिटल-उपकरणानि",
+    "ministryToolsDescription": "वीडियो-प्रबन्धनम्, सामग्री-वितरणम्, श्रोता-सम्बन्धः, विश्लेषणानि च, यानि सेवाकार्याणि अधिकजनान् प्रभावी रूपेण प्राप्तुं साहाय्यं कुर्वन्ति।",
+    "invitationEyebrow": "भवन्तः आमन्त्रिताः",
+    "invitationTitle": "<highlight>नूतन-पीढीम्</highlight> मिशन-उपकरणानाम् निर्माणे साहाय्यं कुर्वन्तु",
+    "invitationDescription": "प्रयोगकर्तॄन्, स्रष्टॄन्, सहभागिनश्च आरम्भिक-प्रवेशाय आमन्त्रयामः। नूतन-उपकरणानि प्रथमं परीक्षध्वम्, प्रतिक्रिया ददातु, वास्तविक-मिशन-कार्याय विनिर्मितानां उत्पादानां रूपरेखां चालयन्तु।",
+    "betaTester": "बीटा-परीक्षकः भवतु"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "वीडियो बाइबिल्-संग्रहः",
+    "gospelRailTitle": "समग्र-कथां अन्वेषयतु",
+    "videoBibleDescription": "बाइबिलं सजीवयन्ति कथाः शिक्षाश्च युक्तं अस्माकं वीडियो तथा संसाधन-संग्रहं अन्वेषयतु।",
+    "showcaseTitle": "शास्त्रं चलच्चित्रेण कथितम्",
+    "adventEyebrow": "ख्रीष्टमास-आगमनकालः",
+    "adventTitle": "ख्रीष्टमास-आगमन-गणना",
+    "adventDescription": "ख्रीष्टमासस्य प्रतिक्षां वर्धयन्ती, येशोः आगमनस्य आशां, आनन्दं, प्रतिज्ञां च अन्वेषयन्ती, दैनिक-वीडियो-सह अस्माकं आगमनकाल-यात्रां सम्मिलिताः भवन्तु।",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject आगमनकालः",
+    "nuaEyebrow": "NUA श्रृङ्खला",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth श्रृङ्खला",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "वीडियो-पाठ्यक्रमः",
+    "journeyWithJesusTitle": "येशुना सह यात्रा",
+    "gospelsOnVideoEyebrow": "प्रत्येकं सुसमाचारः, वीडियोरूपेण कथितः",
+    "scriptureAsWrittenTitle": "शास्त्रं यथालिखितं तथा एव उक्तम्",
+    "merryChristmas": "ख्रीष्टमासस्य शुभकामनाः!",
+    "daysUntilChristmas": "{count, plural, one {ख्रीष्टमासाय # दिनम् अवशिष्टम्} other {ख्रीष्टमासाय # दिनानि अवशिष्टानि}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "भाषाः",
+    "metadataDescription": "JesusFilm भिडियोनि भाषानुसारं ब्राउज़् कुर्वन्तु।",
+    "eyebrow": "पश्यतु भाषाः",
+    "title": "भाषां चिनुत",
+    "description": "प्रदेशानुसारं भाषाः अन्वेषयतु अथवा पूर्णसूचीं ब्राउज़् कुर्वन्तु।",
+    "searchPlaceholder": "भाषाः अथवा देशान् अन्वेषयतु...",
+    "searchLabel": "भाषाः अथवा देशान् अन्वेषयतु",
+    "clearSearch": "अन्वेषणं पश्यतु",
+    "browse": "ब्राउज़् कुर्वन्तु",
+    "browseByRegion": "प्रदेश-देशानुसारं ब्राउज़् कुर्वन्तु",
+    "languageCount": "{count, plural, one {# भाषा} other {# भाषाः}}",
+    "region": "प्रदेशः",
+    "countryLanguages": "{country} भाषाः",
+    "showLess": "अल्पं दर्शयतु",
+    "showMore": "अधिकं दर्शयतु {count}",
+    "noLanguages": "भाषाः न प्राप्ताः",
+    "tryAnotherSearch": "अन्यं अन्वेषण-शब्दं प्रयुञ्जीत।"
+  },
+  "WatchHistory": {
+    "metadataTitle": "दर्शन-इतिहासः | Jesus Film Project",
+    "title": "दर्शन-इतिहासः",
+    "loading": "इतिहासः लोड् क्रियते",
+    "empty": "अद्यापि किमपि नास्ति",
+    "emptyDescription": "भवन्तः यानि वीडियोनि प्रवेशं कृत्वा पश्यन्ति, तानि अत्र दृश्यन्ते।",
+    "earlier": "पूर्वम्",
+    "today": "अद्य",
+    "yesterday": "ह्यः"
+  },
+  "AccountControl": {
+    "account": "खाता",
+    "accountMenu": "खाता-मेनू",
+    "signIn": "प्रवेशं कुर्वन्तु",
+    "signOut": "निर्गच्छतु",
+    "signedIn": "प्रविष्टः",
+    "history": "इतिहासः",
+    "logOut": "लॉग्-आउट् कुर्वन्तु"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "पृष्ठं न प्राप्तम्",
+    "eyebrow": "पृष्ठं न प्राप्तम्",
+    "screenReaderPrefix": "पृष्ठं न प्राप्तम्:",
+    "title": "एषः दृश्यः अत्र नास्ति।",
+    "description": "पृष्ठं स्थानान्तरितं स्यात्, किन्तु कथा अविरता वर्तते।",
+    "actionsLabel": "पृष्ठं न प्राप्तम् क्रियाः",
+    "backToWatch": "पश्यने पुनर्गच्छतु",
+    "browseVideos": "वीडियोनि ब्राउज़् कुर्वन्तु"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "लघु-चलच्चित्रं पश्यतु",
+    "actions": {
+      "joinUs": "अस्माभिः सह युञ्जीत",
+      "shareMission": "अस्माकं मिशने भागं गृह्णीत"
+    },
+    "welcomeStart": {
+      "label": "विश्वासः एवं शास्त्रम्",
+      "title": "अद्यतनानि वीडियो-चयनानि",
+      "description": "विश्वासकेंद्रितं वीडियोसामग्री अस्माकं संग्रहात्, यत् प्रेरणां दातुं, चुनौतीं कर्तुं, चिन्तनं च प्रज्वालयितुं प्रयोज्यते।"
+    },
+    "welcomeMorning": {
+      "label": "प्रातः प्रेरणा",
+      "title": "सुप्रभातम्! अद्यतनानि बाइबिलक्षणानि प्रतीक्षन्ते।",
+      "description": "प्रातःकालं प्रोत्साहकैर् बाइबिलक्षणैः आरभत, ये प्रेरणां, उत्साहं च वर्धयन्ति।"
+    },
+    "welcomeAfternoon": {
+      "label": "अपराह्ण-प्रेरणा",
+      "title": "शुभमपराह्णम्! भवतः दिनाय बाइबिलक्षणानि।",
+      "description": "अपराह्णविरामाय वा निरन्तर-प्रेरणाय वा युक्तं प्रोत्साहकं बाइबिलसामग्री।"
+    },
+    "welcomeEvening": {
+      "label": "सायं प्रेरणा",
+      "title": "शुभसायम्! बाइबिलक्षणैः सह विश्रामं कुर्वन्तु।",
+      "description": "शान्तानि बाइबिलक्षणानि, ये दिनस्य समाप्तौ चिन्तनाय, सांत्वनं च प्राप्तुं सहायन्ते।"
+    },
+    "joinUs": {
+      "label": "अस्माभिः सह युञ्जीत",
+      "title": "अर्बुदानि जनाः अन्विष्यन्ति",
+      "description": "शस्यसमयः अत्रास्ति। डिजिटल-माध्यमैः विश्वं प्रति सुसमाचारं प्रचारेण अस्माभिः सह युञ्जीत।"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "आगच्छामः सह",
+      "title": "येशोः कथा, सहैव कथयामः",
+      "description": "येन ते स्वभाषायां तत्रैव येशोः प्रेम श्रुण्वन्तु पश्यन्तु च।"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% साम्यम्",
+    "none": "अस्यां भाषायाम् अस्य वीडियोस्य कृते कापि अनुशंसा न प्राप्ता।"
+  },
+  "BetaTesterModal": {
+    "title": "बीटा-परीक्षकः भवतु",
+    "trigger": "बीटा-परीक्षकः भवतु",
+    "loadFailed": "किञ्चिदपि विफलम् अभवत्।",
+    "loading": "लोड् क्रियते...",
+    "openFormNewTab": "प्रपत्रं नूतन-ट्याब् मध्ये उद्घाटयतु",
+    "close": "पिधाय",
+    "iframeTitle": "बीटा-परीक्षकः भवतु"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "क्षणं गृह्णातु",

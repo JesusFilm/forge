@@ -442,6 +442,38 @@ MediaCollectionItemRef.implement({
         resolveAssetBackedDominantColor(row, ctx, "imageOverrideAssetId"),
     }),
     titleOverride: t.exposeString("titleOverride", { nullable: true }),
+    resolvedTitle: t.string({
+      nullable: true,
+      description:
+        "Authored title override or the first nonblank published title for the linked Video in the exact requested locale.",
+      args: {
+        locale: t.arg.string({ required: true }),
+      },
+      resolve: async (row, args, ctx) => {
+        const titleOverride = row.titleOverride?.trim()
+        if (titleOverride) return titleOverride
+
+        const videoId = optionalString(row.videoId)
+        if (!videoId) return null
+
+        const video = await ctx.loaders.videoById.load(videoId)
+        if (video == null || video.deletedAt) return null
+
+        const locales = await ctx.loaders.videoLocalesByVideoIdAndFilter.load({
+          videoId,
+          locale: args.locale,
+          languageSlug: null,
+          visibleOnly: true,
+        })
+
+        for (const locale of locales) {
+          if (locale.locale !== args.locale) continue
+          const title = locale.title?.trim()
+          if (title) return title
+        }
+        return null
+      },
+    }),
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),
     labelOverride: t.exposeString("labelOverride", { nullable: true }),
     collectionSize: t.exposeString("collectionSize", { nullable: true }),

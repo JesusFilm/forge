@@ -24,7 +24,7 @@ vi.mock("../../config/env", async (importOriginal) => ({
 }))
 
 import { STEP_CAPS, TIME_BUDGET_MS } from "../budgets"
-import { getAiChatMemory } from "../memory"
+import { getAiChatMemory } from "../ai-chat-memory"
 import {
   buildSeekerModelList,
   createGatewayFetchWithTimeout,

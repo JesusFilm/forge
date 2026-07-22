@@ -7,7 +7,9 @@
     "noContent": "Nem érhető el tartalom.",
     "homepageMisconfigured": "A megtekintési kezdőlap hibásan van beállítva.",
     "defaultTemplateMisconfigured": "Az alapértelmezett megtekintési sablon hibásan van beállítva.",
-    "authFailed": "Nem sikerült hitelesíteni a tartalomszolgáltatásnál. Ha a probléma továbbra is fennáll, kérjük, forduljon az ügyfélszolgálathoz."
+    "authFailed": "Nem sikerült hitelesíteni a tartalomszolgáltatásnál. Ha a probléma továbbra is fennáll, kérjük, forduljon az ügyfélszolgálathoz.",
+    "pageLoadFailed": "Valami hiba történt.",
+    "tryAgain": "Próbáld újra"
   },
   "VideosPage": {
     "title": "Minden videó",
@@ -22,7 +24,8 @@
     "promoHeading": "Mélyebben szeretnéd érteni a Bibliát?",
     "joinBibleStudy": "Csatlakozz a bibliatanulmányozásunkhoz",
     "previousQuote": "Előző bibliai idézet",
-    "nextQuote": "Következő bibliai idézet"
+    "nextQuote": "Következő bibliai idézet",
+    "readPassage": "Olvasd el ezt az igeszakaszt a Bibliádban."
   },
   "DownloadButton": {
     "checking": "Ellenőrzés",
@@ -73,7 +76,8 @@
     "selectLanguage": "Nyelv kiválasztása",
     "searchPlaceholder": "Nyelvek keresése…",
     "languages": "Nyelvek",
-    "noMatches": "Nincs találat"
+    "noMatches": "Nincs találat",
+    "notAvailable": "Nem érhető el"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Nyelv",
@@ -112,7 +116,8 @@
     "questions": "Kapcsolódó kérdések",
     "askYours": "Tedd fel a sajátodat",
     "chatWithPerson": "Csevegj egy személlyel",
-    "askBibleQuestion": "Tegyél fel egy bibliai kérdést"
+    "askBibleQuestion": "Tegyél fel egy bibliai kérdést",
+    "quiz": "Kvíz"
   },
   "WatchQuestionPanel": {
     "messageType": "Üzenet típusa",
@@ -170,7 +175,8 @@
     "searchRegion": "Videók keresése",
     "clearSearch": "Keresés törlése",
     "changeAudioLanguage": "Hang nyelvének módosítása",
-    "home": "JesusFilm kezdőlap"
+    "home": "JesusFilm kezdőlap",
+    "closeSearch": "Keresés bezárása"
   },
   "SearchOverlay": {
     "dialogLabel": "Videók keresése és böngészése",
@@ -205,14 +211,19 @@
     "clearLanguages": "Törlés",
     "queryLanguageDetected": "{language} felismerve",
     "searchInLanguage": "Keresés ebben a nyelvben: {language}",
-    "tryDifferentKeywordsOrLanguage": "Próbálj más kulcsszavakat, vagy válassz másik keresési nyelvet"
+    "tryDifferentKeywordsOrLanguage": "Próbálj más kulcsszavakat, vagy válassz másik keresési nyelvet",
+    "useWebsiteDefaultLanguage": "A webhely alapértelmezett keresési nyelvének használata",
+    "removeLanguage": "{language} eltávolítása",
+    "browseMode": "Keresési böngésző mód"
   },
   "HeroPlayer": {
     "playWithSound": "Nézd meg most",
-    "tapToUnmute": "Érintés a némítás feloldásához"
+    "tapToUnmute": "Érintés a némítás feloldásához",
+    "nextEpisode": "Következő epizód"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Tartalom betöltése"
+    "loadingContent": "Tartalom betöltése",
+    "loadingVideo": "Videó betöltése"
   },
   "VideoLabels": {
     "video": "Videó",
@@ -223,7 +234,8 @@
     "series": "Sorozat",
     "collection": "Gyűjtemény",
     "trailer": "Előzetes",
-    "behindTheScenes": "Kulisszák mögött"
+    "behindTheScenes": "Kulisszák mögött",
+    "chapter": "Fejezet"
   },
   "SiblingCarousel": {
     "clipPosition": "{current}. klip / {total}",
@@ -235,12 +247,287 @@
     "noImage": "Nincs kép",
     "playingNow": "Most játszik",
     "previousChapter": "Előző fejezet",
-    "nextChapter": "Következő fejezet"
+    "nextChapter": "Következő fejezet",
+    "thumbnailAlt": "{title} bélyegkép",
+    "relatedVideoThumbnail": "Kapcsolódó videó bélyegképe"
   },
   "SearchResultCard": {
     "experience": "Élmény",
     "episodeCount": "{count, plural, one {# epizód} other {# epizód}}",
     "thumbnailAlt": "Videó bélyegkép"
+  },
+  "Feedback": {
+    "openForm": "Visszajelző űrlap megnyitása",
+    "label": "Visszajelzés",
+    "couldNotLoad": "A visszajelző űrlap nem tölthető be.",
+    "loadingForm": "Visszajelző űrlap betöltése…",
+    "retry": "Újra",
+    "openFormShort": "Űrlap megnyitása",
+    "cancel": "Mégse",
+    "title": "Beta visszajelzés",
+    "description": "Oszd meg, mi működik jól, és min lehetne javítani. Ezt az űrlapot a Google biztosítja.",
+    "openInNewTab": "Űrlap megnyitása új lapon",
+    "closeForm": "Visszajelző űrlap bezárása",
+    "loadingGoogleForm": "Google Űrlap betöltése…",
+    "iframeTitle": "Beta visszajelzés beküldése"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ingyenes keresztény videók {language} nyelven | Jesus Film Project",
+    "metadataDescription": "Fedezd fel a Jézus-filmeket, bibliai történeteket, tanítványképző sorozatokat és evangelizációs videókat {language} nyelvű szinkronnal vagy felirattal.",
+    "heroTitle": "Ingyenes keresztény videók {language} nyelven",
+    "heroDescription": "Fedezd fel a {language} nyelven elérhető Jézus-filmeket, bibliai történeteket, tanítványképző sorozatokat és evangelizációs videókat. Először a teljes szinkronnal elérhető videók láthatók, alatta pedig a csak feliratos lehetőségek.",
+    "languageCollection": "Nyelvi gyűjtemény",
+    "itemCount": "{count, plural, one {# elem} other {# elem}}",
+    "videoCount": "{count, plural, one {# videó} other {# videó}}",
+    "videosInGroups": "{videoCount, plural, one {# videó} other {# videó}} {groupCount, plural, one {# csoportban} other {# csoportban}}",
+    "sectionNavLabel": "Nyelvi gyűjtemény szakaszai",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Új",
+    "videoBible": "Videós Biblia",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Gyűjtemények",
+    "subtitlesOnly": "Csak felirat",
+    "newlyAdded": "Újonnan hozzáadva",
+    "newVideosTitle": "Új keresztény videók {language} nyelven",
+    "newestFirst": "A legújabb elöl",
+    "noPublishedVideos": "Ehhez a nyelvhez még nem találtunk publikált videót.",
+    "bibleAndGospelFilms": "Bibliai és evangéliumi filmek",
+    "videoBibleCollectionsTitle": "{language} nyelvű Videós Biblia-gyűjtemények",
+    "videoBibleDescription": "LUMO, JÉZUS, Magdolna és Apostolok könyvei {language} nyelven.",
+    "noVideoBibleCollections": "Ehhez a nyelvhez még nem érhető el Videós Biblia-gyűjtemény.",
+    "bibleProjectCollectionsTitle": "{language} nyelvű BibleProject-gyűjtemények",
+    "bibleProjectDescription": "A {language} nyelven elérhető BibleProject sorozatok és tanulmányok.",
+    "noBibleProjectCollections": "Ehhez a nyelvhez még nem érhető el BibleProject-gyűjtemény.",
+    "sportsStories": "Sporttörténetek",
+    "sportsTitle": "{language} nyelvű sport- és sportolótörténetek",
+    "sportsDescription": "{language} nyelven elérhető hitközpontú sporttörténetek és sportolókra fókuszáló gyűjtemények.",
+    "noSportsCollections": "Ehhez a nyelvhez még nem érhető el sport- vagy sportolótörténet-gyűjtemény.",
+    "fullyDubbed": "Teljesen szinkronizált",
+    "dubbedVideosTitle": "{language} nyelvű videók gyűjtemény szerint",
+    "dubbedVideosDescription": "Böngészd a teljesen szinkronizált {language} videókat gyűjtemények szerint csoportosítva, hogy könnyebb legyen megtalálni őket.",
+    "noDubbedVideos": "Ehhez a nyelvhez még nem érhető el teljesen szinkronizált videó.",
+    "subtitlesAvailable": "Elérhető felirat",
+    "subtitlesTitle": "{language} feliratos videók",
+    "subtitlesDescription": "Ezek a videók {language} feliratot tartalmaznak, ha a beszélt {language} hanganyag még nem érhető el.",
+    "noSubtitleVideos": "Ehhez a nyelvhez még nem érhető el csak feliratos videó.",
+    "dubbed": "Szinkronizált",
+    "subtitles": "Feliratok",
+    "newLabel": "Új",
+    "fromCollection": "Ebből: {collection}",
+    "standaloneVideos": "Önálló videók",
+    "videosFromCollection": "Videók innen: {collection}.",
+    "standaloneDescription": "Önálló videók ebben a nyelvben.",
+    "openCollection": "Gyűjtemény megnyitása"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project nézés",
+    "watch": "Nézés",
+    "watchNow": "Nézd meg most",
+    "mutePreview": "Előnézet némítása",
+    "unmutePreview": "Előnézet némításának megszüntetése",
+    "nextVideo": "Következő videó",
+    "featured": "Kiemelt",
+    "showVideo": "{title} megjelenítése",
+    "previousVideoPreview": "Előző videó előnézete",
+    "nextVideoPreview": "Következő videó előnézete",
+    "mediaCollection": "Médiagyűjtemény",
+    "scrollToVideo": "Görgess a {title} videóhoz"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project kezdőlap",
+    "navigation": "Lábléc navigáció",
+    "share": "Megosztás",
+    "watch": "Nézés",
+    "giving": "Adakozás",
+    "about": "Rólunk",
+    "products": "Termékek",
+    "resources": "Erőforrások",
+    "partners": "Partnerek",
+    "contact": "Kapcsolat",
+    "giveNow": "Adományozz most",
+    "resourcesVersion": "Erőforrások ({version})",
+    "office": "Iroda",
+    "fax": "Telefax",
+    "privacyPolicy": "Adatvédelmi irányelvek",
+    "legalStatement": "Jogi nyilatkozat",
+    "newsletter": "Iratkozz fel hírlevelünkre"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Globális misszióra építve",
+    "title": "Az üzenet nem változik. A megtekintés módja igen.",
+    "description": "Videótárunkat és eszközeinket teljesen újjáépítjük, évtizedes fordítói munkát viszünk azokba a platformokba, ahol az emberek már most is összegyűlnek, néznek és megosztanak tartalmakat.",
+    "translatedLibraryTitle": "A világ legtöbbet fordított filmkönyvtára",
+    "translatedLibraryDescription": "Évtizedes fordítói munka, megbízható szolgálati partnerek közreműködésével, olyan könyvtárat hozott létre, amely több ezer nyelvi hangsávot tartalmaz, hogy az emberek a saját nyelvükön találkozhassanak Jézus történetével.",
+    "trustedVoicesTitle": "Megbízható hangok új formátumokban",
+    "trustedVoicesDescription": "Újraépítjük, hogyan meséljük el vizuálisan az evangéliumi történeteket, megbízható fordításokat modern formátumokkal párosítva, hogy az üzenet szabadon áramolhasson platformok, kultúrák és képernyők között.",
+    "missionTeamTitle": "Több mint könyvtár. Küldetésvezérelt csapat.",
+    "missionTeamDescription": "A Jesus Film Project egy globális csapat fordítókból, média-szakemberekből, szerkesztőkből és alkotókból, akik évtizedes szolgálati tapasztalatot alakítanak át eszközökké mindenhol tanítványkészítők számára.",
+    "buildingNext": "Amit most építünk",
+    "nextStepsTitle": "Következő lépések platform",
+    "nextStepsDescription": "Kapcsoljuk össze a nézőket kézzelfogható lehetőségekkel lelki útjukon, segítve őket abban, hogy következő lépést tegyenek a közösség, az Ige vagy a misszió felé.",
+    "mediaLibraryTitle": "Evangelizációs médiatár",
+    "mediaLibraryDescription": "Kiterjedt keresztény médiatár, több ezer videóval, filmmel és erőforrással, több nyelven, a világszintű szolgálat és evangelizáció számára.",
+    "ministryToolsTitle": "Digitális eszközök a szolgálatoknak",
+    "ministryToolsDescription": "Videókezelés, tartalomterjesztés, közönségelérés és elemzések, amelyeket azért terveztek, hogy a szolgálatok hatékonyabban érhessenek el több embert.",
+    "invitationEyebrow": "Szeretettel meghívunk",
+    "invitationTitle": "Segíts felépíteni a missziós eszközök <highlight>következő generációját</highlight>",
+    "invitationDescription": "Szakembereket, alkotókat és partnereket hívunk be a korai hozzáférésbe. Próbáld ki elsőként az új eszközöket, adj visszajelzést, és segíts olyan termékeket formálni, amelyeket valódi missziós munkára terveztek.",
+    "betaTester": "Legyél béta tesztelő"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Videós Biblia gyűjtemény",
+    "gospelRailTitle": "Fedezd fel a teljes történetet",
+    "videoBibleDescription": "Fedezd fel videó- és forrásgyűjteményünket, amely lebilincselő történeteken és tanításokon keresztül kelti életre a Bibliát.",
+    "showcaseTitle": "Az Írás filmre formálva",
+    "adventEyebrow": "Karácsonyi advent",
+    "adventTitle": "Karácsonyi adventi visszaszámlálás",
+    "adventDescription": "Csatlakozz az adventi utazásunkhoz egy napi videóval, amely növeli a karácsonyra való várakozást, és felfedezi Jézus eljövetelének reményét, örömét és ígéretét.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject advent",
+    "nuaEyebrow": "NUA sorozat",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth sorozat",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videókurzus",
+    "journeyWithJesusTitle": "Járd be az utat Jézussal",
+    "gospelsOnVideoEyebrow": "Minden evangélium videón elmesélve",
+    "scriptureAsWrittenTitle": "Az Írás pontosan úgy kimondva, ahogy le van írva",
+    "merryChristmas": "Boldog karácsonyt!",
+    "daysUntilChristmas": "{count, plural, one {# nap karácsonyig} other {# nap karácsonyig}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Nyelvek",
+    "metadataDescription": "Böngéssz a JesusFilm videói között nyelv szerint.",
+    "eyebrow": "Megtekintési nyelvek",
+    "title": "Válassz nyelvet",
+    "description": "Fedezd fel a nyelveket régió szerint, vagy böngészd a teljes listát.",
+    "searchPlaceholder": "Nyelvek vagy országok keresése...",
+    "searchLabel": "Nyelvek vagy országok keresése",
+    "clearSearch": "Keresés törlése",
+    "browse": "Böngészés",
+    "browseByRegion": "Böngészés régió és ország szerint",
+    "languageCount": "{count, plural, one {# nyelv} other {# nyelv}}",
+    "region": "Régió",
+    "countryLanguages": "{country} nyelvei",
+    "showLess": "Kevesebb",
+    "showMore": "Mutass még {count}-at",
+    "noLanguages": "Nem található nyelv",
+    "tryAnotherSearch": "Próbálj meg egy másik keresőkifejezést."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Megtekintési előzmények | Jesus Film Project",
+    "title": "Megtekintési előzmények",
+    "loading": "Előzmények betöltése",
+    "empty": "Még nincs itt semmi",
+    "emptyDescription": "A bejelentkezve nézett videóid itt jelennek meg.",
+    "earlier": "Korábban",
+    "today": "Ma",
+    "yesterday": "Tegnap"
+  },
+  "AccountControl": {
+    "account": "Fiók",
+    "accountMenu": "Fiókmenü",
+    "signIn": "Bejelentkezés",
+    "signOut": "Kijelentkezés",
+    "signedIn": "Bejelentkezve",
+    "history": "Előzmények",
+    "logOut": "Kijelentkezés"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Az oldal nem található",
+    "eyebrow": "Az oldal nem található",
+    "screenReaderPrefix": "Az oldal nem található:",
+    "title": "Ez a jelenet itt nincs.",
+    "description": "Lehet, hogy az oldal elköltözött, de a történet folytatódik.",
+    "actionsLabel": "Az oldal nem található műveletek",
+    "backToWatch": "Vissza a megtekintéshez",
+    "browseVideos": "Videók böngészése"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Rövidfilm megtekintése",
+    "actions": {
+      "joinUs": "Csatlakozz hozzánk",
+      "shareMission": "Vállalj részt a küldetésünkben"
+    },
+    "welcomeStart": {
+      "label": "Hit és Írás",
+      "title": "Mai videóajánlatok",
+      "description": "Hitközpontú videótartalmak a gyűjteményünkből, hogy inspiráljanak, kihívást jelentsenek, és gondolkodásra indítsanak."
+    },
+    "welcomeMorning": {
+      "label": "Reggeli inspiráció",
+      "title": "Jó reggelt! Várnak a mai bibliai pillanatok.",
+      "description": "Kezdd a napot bátorító bibliai pillanatokkal, amelyek inspirálnak és felemelnek."
+    },
+    "welcomeAfternoon": {
+      "label": "Délutáni inspiráció",
+      "title": "Jó napot! Bibliai pillanatok a napodhoz.",
+      "description": "Bátorító bibliai tartalmak egy délutáni szünethez vagy további inspirációhoz."
+    },
+    "welcomeEvening": {
+      "label": "Esti inspiráció",
+      "title": "Jó estét! Pihenj meg bibliai pillanatokkal.",
+      "description": "Nyugodt bibliai pillanatok, hogy elcsendesedj, elgondolkodj, és vigaszt találj a nap végén."
+    },
+    "joinUs": {
+      "label": "Csatlakozz hozzánk",
+      "title": "Milliárdok keresnek választ",
+      "description": "Itt van az aratás. Csatlakozz hozzánk, és osszuk meg az evangéliumot a világgal digitális médián keresztül."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Induljunk együtt",
+      "title": "Jézus történetét együtt elmesélve",
+      "description": "Hogy a saját nyelvükön hallhassák és láthassák Jézus szeretetét, ott, ahol vannak."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}%-os egyezés",
+    "none": "Ehhez a videóhoz ezen a nyelven nem található ajánlás."
+  },
+  "BetaTesterModal": {
+    "title": "Legyél béta tesztelő",
+    "trigger": "Legyél béta tesztelő",
+    "loadFailed": "Valami hiba történt.",
+    "loading": "Betöltés...",
+    "openFormNewTab": "Űrlap megnyitása új lapon",
+    "close": "Bezárás",
+    "iframeTitle": "Legyél béta tesztelő"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Szánj rá egy pillanatot",

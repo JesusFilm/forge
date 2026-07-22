@@ -2,6 +2,8 @@
  * @vitest-environment jsdom
  */
 import { renderToString } from "react-dom/server"
+import { useTranslations } from "next-intl"
+import { setRequestLocale } from "next-intl/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/navigation", () => ({
@@ -40,6 +42,16 @@ const resolveWatchLanguageInventoryMock = vi.mocked(
   resolveWatchLanguageInventory,
 )
 const resolveWatchHomeMock = vi.mocked(resolveWatchHome)
+
+function RussianPluralProbe() {
+  const t = useTranslations("LanguageInventory")
+  return (
+    <>
+      <span>{t("itemCount", { count: 5 })}</span>
+      <span>{t("heroTitle", { language: "русский" })}</span>
+    </>
+  )
+}
 
 describe("/{language}.html/videos route", () => {
   beforeEach(() => {
@@ -210,14 +222,42 @@ describe("/{language}.html/videos route", () => {
     })
 
     expect(pageMetadata.title).toBe(
-      "Free Christian Video Library for Spanish-Speaking Audiences | Jesus Film Project",
+      "Free Christian videos in Espanol latinoamericano | Jesus Film Project",
     )
     expect(pageMetadata.description).toContain(
-      "with fully dubbed videos and subtitles in Spanish, Latin American",
+      "with dubbed audio or subtitles in Espanol latinoamericano",
     )
     expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/spanish-latin-american.html/videos",
     )
+  })
+
+  it("declares Russian SEO metadata through the requested catalog", async () => {
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "ru",
+        htmlLang: "ru",
+        languageSlug: "russian",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "Бесплатные христианские видео. Язык: Espanol latinoamericano | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain(
+      "Язык озвучки или субтитров: Espanol latinoamericano",
+    )
+    expect(pageMetadata.alternates?.canonical).toBe(
+      "https://www.jesusfilm.org/watch/russian.html/videos",
+    )
+  })
+
+  it("uses Russian ICU plural categories in route-render tests", () => {
+    setRequestLocale("ru")
+    const html = renderToString(<RussianPluralProbe />)
+    expect(html).toContain("5 материалов")
+    expect(html).toContain("Язык: русский")
+    expect(html).not.toContain("на языке русский")
   })
 
   it("renders home sections on public language inventory pages", async () => {
@@ -278,5 +318,27 @@ describe("/{language}.html/videos route", () => {
     expect(overview?.classList).not.toContain("sticky")
     expect(group?.textContent).toContain("A collection for outreach teams.")
     expect(group?.textContent).toContain("Episode 3")
+  })
+
+  it("renders contextual Russian UI copy without English inventory chrome", async () => {
+    const page = await LanguageVideosPage({
+      params: Promise.resolve({
+        locale: "ru",
+        htmlLang: "ru",
+        languageSlug: "russian",
+      }),
+    })
+    const html = renderToString(page)
+
+    expect(html).toContain("Бесплатные христианские видео")
+    expect(html).toContain("Откройте всю историю")
+    expect(html).toContain("Полнометражный фильм")
+    expect(html).toContain(">Смотреть<")
+    expect(html).not.toContain("Free Christian videos")
+    expect(html).not.toContain("Discover the full story")
+    expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
+      "ru",
+      "russian",
+    )
   })
 })

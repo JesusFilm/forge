@@ -433,6 +433,19 @@ export function buildWatchHomeHeroQueue({
     })
   }
 
+  // Fixed-size contract: the hero never shrinks as videos get watched. When
+  // unseen videos can't fill the target, top up with already-played ones —
+  // unseen always lead the queue, played ones return behind them.
+  if (result.videos.length < targetVideoCount) {
+    result = buildWatchHomeVideoQueue({
+      pools,
+      existingVideos: result.videos,
+      startPoolIndex: result.nextPoolIndex,
+      targetVideoCount,
+      now,
+    })
+  }
+
   return {
     slides: mergeWatchHomeMuxInserts(result.videos, inserts, now, sessionSeed),
     videos: result.videos,

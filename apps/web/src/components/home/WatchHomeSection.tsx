@@ -4,11 +4,13 @@ import Link from "next/link"
 import type { Route } from "next"
 import type { CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
 import { WatchHomeCard } from "@/components/home/WatchHomeCard"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchHomeSection as WatchHomeSectionModel } from "@/lib/watch-home"
+import type { WatchHomeSectionId } from "@/lib/watch-home-config"
 import { languagesIndexPath } from "@/lib/routes"
 
 type WatchHomeSectionProps = {
@@ -19,6 +21,56 @@ type HoverBackdropLayer = {
   id: number
   imageUrl: string
   state: "entering" | "exiting"
+}
+
+const SECTION_COPY_KEYS = {
+  "home-video-gospels": {
+    eyebrow: "videoBibleEyebrow",
+    title: "gospelRailTitle",
+    description: "videoBibleDescription",
+  },
+  "home-collection-showcase-grid": {
+    eyebrow: "videoBibleEyebrow",
+    title: "showcaseTitle",
+    description: "videoBibleDescription",
+  },
+  "home-collection-showcase-grid-christmas-advent": {
+    eyebrow: "adventEyebrow",
+    title: "adventTitle",
+    description: "adventDescription",
+  },
+  "home-collection-bibleproject-advent": {
+    eyebrow: "bibleProjectEyebrow",
+    title: "bibleProjectAdventTitle",
+  },
+  "home-collection-nua": {
+    eyebrow: "nuaEyebrow",
+    title: "nuaTitle",
+  },
+  "home-collection-nua-origins-worth": {
+    eyebrow: "worthEyebrow",
+    title: "nuaWorthTitle",
+  },
+  "home-collection-new-believer-course": {
+    eyebrow: "videoCourseEyebrow",
+    title: "journeyWithJesusTitle",
+  },
+  "home-collection-showcase-grid-vertical": {
+    eyebrow: "gospelsOnVideoEyebrow",
+    title: "scriptureAsWrittenTitle",
+    description: "videoBibleDescription",
+  },
+} as const satisfies Record<
+  WatchHomeSectionId,
+  {
+    eyebrow: string
+    title: string
+    description?: string
+  }
+>
+
+function hasSectionCopy(id: string): id is WatchHomeSectionId {
+  return id in SECTION_COPY_KEYS
 }
 
 function backgroundImageStyle(imageUrl: string | null) {
@@ -38,6 +90,17 @@ function backdropLayerStyle(
 }
 
 export function WatchHomeSection({ section }: WatchHomeSectionProps) {
+  const t = useTranslations("WatchHome")
+  const sectionT = useTranslations("WatchHomeSections")
+  const sectionCopy = hasSectionCopy(section.id)
+    ? SECTION_COPY_KEYS[section.id]
+    : null
+  const eyebrow = sectionCopy ? sectionT(sectionCopy.eyebrow) : section.eyebrow
+  const title = sectionCopy ? sectionT(sectionCopy.title) : section.title
+  const description =
+    sectionCopy && "description" in sectionCopy
+      ? sectionT(sectionCopy.description)
+      : section.description
   const isRail = section.layout === "rail"
   const cardOrientation = isRail ? "vertical" : section.orientation
   const isVertical = cardOrientation === "vertical"
@@ -190,10 +253,10 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-0 max-w-4xl flex-1 flex-col gap-1">
             <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
-              {section.eyebrow}
+              {eyebrow}
             </p>
             <h2 className="text-2xl leading-tight font-bold tracking-normal xl:text-3xl 2xl:text-4xl">
-              {section.title}
+              {title}
             </h2>
           </div>
           <Link
@@ -201,7 +264,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
             className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <Play className="h-4 w-4 fill-current" aria-hidden />
-            Watch
+            {t("watch")}
           </Link>
         </div>
       </div>
@@ -250,10 +313,10 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
         </div>
       )}
 
-      {section.description ? (
+      {description ? (
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p className="mt-8 max-w-5xl text-lg leading-relaxed text-stone-200/80 xl:text-xl">
-            {section.description}
+            {description}
           </p>
         </div>
       ) : null}

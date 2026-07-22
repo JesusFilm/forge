@@ -7,7 +7,9 @@
     "noContent": "Контент юҡ.",
     "homepageMisconfigured": "Карау баш битенең көйләнеше дөрөҫ түгел.",
     "defaultTemplateMisconfigured": "Карау өсөн ғәҙәти шаблон дөрөҫ көйләнмәгән.",
-    "authFailed": "Контент хеҙмәте менән аутентификация үтмәне. Әгәр был ҡабатланһа, ярҙам хеҙмәтенә мөрәжәғәт итегеҙ."
+    "authFailed": "Контент хеҙмәте менән аутентификация үтмәне. Әгәр был ҡабатланһа, ярҙам хеҙмәтенә мөрәжәғәт итегеҙ.",
+    "pageLoadFailed": "Нимәлер дөрөҫ китмәне.",
+    "tryAgain": "Яңынан һынап ҡарағыҙ"
   },
   "VideosPage": {
     "title": "Бөтә видеолар",
@@ -22,7 +24,8 @@
     "promoHeading": "Изге Яҙманы тәрәнерәк аңларға теләйһегеҙме?",
     "joinBibleStudy": "Изге Яҙма өйрәнеүенә ҡушылығыҙ",
     "previousQuote": "Алдағы Изге Яҙма цитатаһы",
-    "nextQuote": "Киләһе Изге Яҙма цитатаһы"
+    "nextQuote": "Киләһе Изге Яҙма цитатаһы",
+    "readPassage": "Был өҙөктө Изге Яҙмағыҙҙан уҡығыҙ."
   },
   "DownloadButton": {
     "checking": "Тикшерелә",
@@ -73,7 +76,8 @@
     "selectLanguage": "Тел һайлау",
     "searchPlaceholder": "Телдәрҙе эҙләү…",
     "languages": "Телдәр",
-    "noMatches": "Тап килмәй"
+    "noMatches": "Тап килмәй",
+    "notAvailable": "Мөмкин түгел"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Тел",
@@ -112,7 +116,8 @@
     "questions": "Бәйле һорауҙар",
     "askYours": "Үҙегеҙҙекен һорағыҙ",
     "chatWithPerson": "Кеше менән һөйләшегеҙ",
-    "askBibleQuestion": "Изге Яҙма тураһында һорау бирегеҙ"
+    "askBibleQuestion": "Изге Яҙма тураһында һорау бирегеҙ",
+    "quiz": "Викторина"
   },
   "WatchQuestionPanel": {
     "messageType": "Хәбәр төрө",
@@ -170,7 +175,8 @@
     "searchRegion": "Видеоларҙы эҙләү",
     "clearSearch": "Эҙләүҙе таҙартыу",
     "changeAudioLanguage": "Аудио телен үҙгәртеү",
-    "home": "JesusFilm баш бите"
+    "home": "JesusFilm баш бите",
+    "closeSearch": "Эҙләүҙе ябыу"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларҙы эҙләү һәм ҡарау",
@@ -205,14 +211,19 @@
     "clearLanguages": "Таҙартыу",
     "queryLanguageDetected": "{language} танылды",
     "searchInLanguage": "{language} телендә эҙләү",
-    "tryDifferentKeywordsOrLanguage": "Башҡа төп һүҙҙәрҙе һынағыҙ йәки башҡа эҙләү телен һайлағыҙ"
+    "tryDifferentKeywordsOrLanguage": "Башҡа төп һүҙҙәрҙе һынағыҙ йәки башҡа эҙләү телен һайлағыҙ",
+    "useWebsiteDefaultLanguage": "Сайттың ғәҙәти эҙләү телен ҡулланыу",
+    "removeLanguage": "{language} телен алып ташлау",
+    "browseMode": "Эҙләп ҡарау режимы"
   },
   "HeroPlayer": {
     "playWithSound": "Хәҙер ҡарағыҙ",
-    "tapToUnmute": "Тауышты ҡабыҙыу өсөн баҫығыҙ"
+    "tapToUnmute": "Тауышты ҡабыҙыу өсөн баҫығыҙ",
+    "nextEpisode": "Киләһе эпизод"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Контент йөкләнә"
+    "loadingContent": "Контент йөкләнә",
+    "loadingVideo": "Видео йөкләнә"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -223,7 +234,8 @@
     "series": "Серия",
     "collection": "Йыйынтыҡ",
     "trailer": "Тизер",
-    "behindTheScenes": "Сәхнә артында"
+    "behindTheScenes": "Сәхнә артында",
+    "chapter": "Бүлек"
   },
   "SiblingCarousel": {
     "clipPosition": "{current} / {total} клип",
@@ -235,12 +247,287 @@
     "noImage": "Рәсем юҡ",
     "playingNow": "Әлеге ваҡытта уйнатыла",
     "previousChapter": "Алдағы бүлек",
-    "nextChapter": "Киләһе бүлек"
+    "nextChapter": "Киләһе бүлек",
+    "thumbnailAlt": "{title} миниатюраһы",
+    "relatedVideoThumbnail": "Бәйле видео миниатюраһы"
   },
   "SearchResultCard": {
     "experience": "Тәжрибә",
     "episodeCount": "{count, plural, one {# эпизод} other {# эпизод}}",
     "thumbnailAlt": "Видео миниатюраһы"
+  },
+  "Feedback": {
+    "openForm": "Фекер белдереү формаһын асыу",
+    "label": "Фекерҙәр",
+    "couldNotLoad": "Фекер белдереү формаһын йөкләп булманы.",
+    "loadingForm": "Фекер белдереү формаһы йөкләнә…",
+    "retry": "Ҡабатлап ҡарау",
+    "openFormShort": "Форманы асыу",
+    "cancel": "Ғәмәлдән сығарыу",
+    "title": "Бета-фекерҙәр",
+    "description": "Нимә яҡшы эшләй, нимәне яҡшыртып булғанын бүлешегеҙ. Был форманы Google тәҡдим итә.",
+    "openInNewTab": "Форманы яңы вкладкала асыу",
+    "closeForm": "Фекер белдереү формаһын ябыу",
+    "loadingGoogleForm": "Google формаһы йөкләнә…",
+    "iframeTitle": "Бета-фекерҙәрҙе ебәреү"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} телендәге бушлай христиан видеолары | Jesus Film Project",
+    "metadataDescription": "{language} телендә дубляжланған тауышы йәки субтитрҙары булған Jesus тураһында фильмдарҙы, Изге Яҙма хикәйәләрен, шәкерттәр әҙерләү серияларын һәм евангелләштереү видеоларын ҡарағыҙ.",
+    "heroTitle": "{language} телендәге бушлай христиан видеолары",
+    "heroDescription": "{language} телендә булған Jesus тураһында фильмдарҙы, Изге Яҙма хикәйәләрен, шәкерттәр әҙерләү серияларын һәм евангелләштереү видеоларын ҡарағыҙ. Тулы дубляжланған видеолар тәүҙә күрһәтелә, аҫта субтитрлы варианттар бар.",
+    "languageCollection": "Тел йыйынтығы",
+    "itemCount": "{count, plural, one {# элемент} other {# элемент}}",
+    "videoCount": "{count, plural, one {# видео} other {# видео}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видео}} {groupCount, plural, one {# төркөмдә} other {# төркөмдә}}",
+    "sectionNavLabel": "Тел инвентары бүлектәре",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Яңы",
+    "videoBible": "Видео Инжил",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Йыйынтыҡтар",
+    "subtitlesOnly": "Тик субтитрҙар",
+    "newlyAdded": "Яңыраҡ өҫтәлгән",
+    "newVideosTitle": "{language} телендәге яңы христиан видеолары",
+    "newestFirst": "Иң яңылары өҫтә",
+    "noPublishedVideos": "Әлегә был тел өсөн баҫылып сыҡҡан видео табылманы.",
+    "bibleAndGospelFilms": "Изге Яҙма һәм Инжил фильмдары",
+    "videoBibleCollectionsTitle": "{language} телендәге Видео Инжил йыйынтыҡтары",
+    "videoBibleDescription": "{language} телендәге LUMO, JESUS, Magdalena һәм Acts кеүек Яҙма үҙәктә булған йыйынтыҡтар.",
+    "noVideoBibleCollections": "Әлегә был тел өсөн Видео Инжил йыйынтыҡтары юҡ.",
+    "bibleProjectCollectionsTitle": "{language} телендәге BibleProject йыйынтыҡтары",
+    "bibleProjectDescription": "{language} телендә булған BibleProject сериялары һәм өйрәнеүҙәре.",
+    "noBibleProjectCollections": "Әлегә был тел өсөн BibleProject йыйынтыҡтары юҡ.",
+    "sportsStories": "Спорт хикәйәләре",
+    "sportsTitle": "{language} телендәге спорт һәм спортсылар тураһында хикәйәләр",
+    "sportsDescription": "{language} телендә булған ышаныс үҙәктә булған спорт хикәйәләре һәм спортсылар тураһындағы йыйынтыҡтар.",
+    "noSportsCollections": "Әлегә был тел өсөн спорт йәки спортсылар тураһында йыйынтыҡтар юҡ.",
+    "fullyDubbed": "Тулы дубляжланған",
+    "dubbedVideosTitle": "{language} телендәге видеолар йыйынтыҡтар буйынса",
+    "dubbedVideosDescription": "Ҡайһы йыйынтыҡҡа ҡарағанын күрһәтеп, тулысынса дубляжланған {language} видеоларын ҡарағыҙ.",
+    "noDubbedVideos": "Әлегә был тел өсөн тулы дубляжланған видеолар юҡ.",
+    "subtitlesAvailable": "Субтитрҙар бар",
+    "subtitlesTitle": "{language} телендәге субтитрлы видеолар",
+    "subtitlesDescription": "Һөйләшелгән {language} тауышы әлегә булмағанда, был видеоларҙа {language} субтитрҙары бар.",
+    "noSubtitleVideos": "Әлегә был тел өсөн тик субтитрлы видеолар юҡ.",
+    "dubbed": "Дубляжланған",
+    "subtitles": "Субтитрҙар",
+    "newLabel": "Яңы",
+    "fromCollection": "{collection} йыйынтығынан",
+    "standaloneVideos": "Айырым видеолар",
+    "videosFromCollection": "{collection} йыйынтығынан видеолар.",
+    "standaloneDescription": "Был телдәге айырым видеолар.",
+    "openCollection": "Йыйынтыҡты асыу"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project ҡарау",
+    "watch": "Ҡарау",
+    "watchNow": "Хәҙер ҡарағыҙ",
+    "mutePreview": "Алдан ҡарауҙа тауышты өҙөү",
+    "unmutePreview": "Алдан ҡарауҙа тауышты ҡабыҙыу",
+    "nextVideo": "Киләһе видео",
+    "featured": "Тәкдим ителгән",
+    "showVideo": "{title} күрһәтеү",
+    "previousVideoPreview": "Алдағы видеоны алдан ҡарау",
+    "nextVideoPreview": "Киләһе видеоны алдан ҡарау",
+    "mediaCollection": "Медиа-йыйынтыҡ",
+    "scrollToVideo": "{title} видеоһына тиклем һөрөтөп барығыҙ"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project баш бите",
+    "navigation": "Аҫҡы навигация",
+    "share": "Уртаҡлашыу",
+    "watch": "Ҡарау",
+    "giving": "Хәйер",
+    "about": "Тураһында",
+    "products": "Продукттар",
+    "resources": "Ресурстар",
+    "partners": "Партнерҙар",
+    "contact": "Бәйләнеш",
+    "giveNow": "Хәйер ҡылыу",
+    "resourcesVersion": "Ресурстар ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Конфиденциальлек сәйәсәте",
+    "legalStatement": "Юридик белдереү",
+    "newsletter": "Беҙҙең яңылыҡтар бюллетененә яҙылығыҙ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Бөтә донъя миссиялары өсөн төҙөлгән",
+    "title": "Хәбәр үҙгәрмәй. Кешеләрҙең ҡарау ысулы үҙгәрә.",
+    "description": "Беҙ видеокитапханабыҙҙы һәм ҡоралдарыбыҙҙы нигеҙенән яңынан төҙөйбөҙ, тиҫтә йылдар буйына йыйылған тәржемә хеҙмәтен кешеләр йыйылған, ҡараған һәм уртаҡлашҡан платформаларға алып барабыҙ.",
+    "translatedLibraryTitle": "Донъяла иң күп телгә тәржемә ителгән фильмдар китапханаһы",
+    "translatedLibraryDescription": "Ышаныслы хеҙмәт партнерҙары менән алып барылған тиҫтә йылдарлыҡ тәржемә эше меңләгән тел тректары булған китапхана төҙөнө, шунлыҡтан кешеләр Ғайса хаҡындағы хикәйәне уларҙың йөрәгенә иң яҡын телдә күрә ала.",
+    "trustedVoicesTitle": "Ышаныслы тауыштарҙы яңы форматтарға алып инеү",
+    "trustedVoicesDescription": "Беҙ Инжил хикәйәләрен күренешле итеп һөйләү ысулын яңынан ҡорабыҙ, ышаныслы тәржемәләрҙе заманса форматтар менән берләштерәбеҙ, чтобы хәбәр платформалар, мәҙәниәттәр һәм экрандар аша иркен күсә алһын.",
+    "missionTeamTitle": "Тик китапхана ғына түгел. Миссияға бағышланған команда.",
+    "missionTeamDescription": "Jesus Film Project — тәржемәселәрҙән, медиа белгестәренән, мөхәрриҙәрҙән һәм ижадсыларҙан торған донъя кимәлендәге команда; улар тиҫтә йылдарлыҡ хеҙмәт тәжрибәһен бөтә ерҙәге шәкерт әҙерләүселәр өсөн ҡоралдарға әйләндерә.",
+    "buildingNext": "Артабан нимә төҙөйбөҙ",
+    "nextStepsTitle": "Киләһе аҙымдар платформаһы",
+    "nextStepsDescription": "Ҡараусыларҙы рухи юлдарындағы асыҡ мөмкинлектәр менән бәйләү, уларға йәмәғәт, Изге Яҙма йәки миссияға табан киләһе аҙым яһарға ярҙам итеү.",
+    "mediaLibraryTitle": "Евангелләштереү медиа китапханаһы",
+    "mediaLibraryDescription": "Донъя буйынса хеҙмәт һәм евангелләштереү өсөн төрлө телдәрҙә булған меңләгән видео, фильм һәм ресурслы киң христиан медиа китапханаһы.",
+    "ministryToolsTitle": "Хеҙмәттәр өсөн цифрлы ҡоралдар",
+    "ministryToolsDescription": "Видео менән идара итеү, контент таратыу, аудитория менән бәйләнеш һәм аналитика — хеҙмәттәргә күберәк кешегә һөҙөмтәле барып етергә ярҙам итеү өсөн.",
+    "invitationEyebrow": "Һеҙ саҡырылғанһығыҙ",
+    "invitationTitle": "<highlight>Киләһе быуын</highlight> миссия ҡоралдарын төҙөүгә ярҙам итегеҙ",
+    "invitationDescription": "Беҙ практиктарҙы, ижадсыларҙы һәм партнерҙарҙы иртә ҡулланыуға саҡырабыҙ. Яңы ҡоралдарҙы иң беренсе һынағыҙ, фекерегеҙҙе әйтегеҙ һәм ысын миссия эше өсөн эшләнгән продукттарҙы формалаштырырға ярҙам итегеҙ.",
+    "betaTester": "Бета-тестлаусы булыу"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Инжил йыйынтығы",
+    "gospelRailTitle": "Тулы хикәйәне асығыҙ",
+    "videoBibleDescription": "Изге Яҙманы терелткән, йәлеп итеүсе хикәйәләр һәм өйрәтеүҙәр аша, беҙҙең видео һәм ресурс йыйынтығын ҡарағыҙ.",
+    "showcaseTitle": "Изге Яҙма фильм аша һөйләнә",
+    "adventEyebrow": "Раштыуа Адвенты",
+    "adventTitle": "Раштыуа Адвентының һанау календары",
+    "adventDescription": "Адвент сәйәхәтебеҙгә ҡушылығыҙ: көн дә яңы видео Раштыуаға әҙерлек уята, Ғайсаның килеүендәге өмөт, шатлыҡ һәм вәғәҙәне аса.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Адвенты",
+    "nuaEyebrow": "NUA серияһы",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серияһы",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курсы",
+    "journeyWithJesusTitle": "Ғайса менән юл",
+    "gospelsOnVideoEyebrow": "Һәр Инжил — видеола",
+    "scriptureAsWrittenTitle": "Яҙылғанса тап үҙе һөйләнгән Яҙма",
+    "merryChristmas": "Раштыуа байрамы менән!",
+    "daysUntilChristmas": "{count, plural, one {Раштыуаға тиклем # көн} other {Раштыуаға тиклем # көн}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Телдәр",
+    "metadataDescription": "JesusFilm видеоларын тел буйынса ҡарағыҙ.",
+    "eyebrow": "Карау телдәре",
+    "title": "Тел һайлағыҙ",
+    "description": "Телдәрҙе төбәк буйынса ҡарағыҙ йәки тулы исемлекте асығыҙ.",
+    "searchPlaceholder": "Телдәрҙе йәки илдәрҙе эҙләү...",
+    "searchLabel": "Телдәрҙе йәки илдәрҙе эҙләү",
+    "clearSearch": "Эҙләүҙе таҙартыу",
+    "browse": "Ҡарау",
+    "browseByRegion": "Төбәк һәм ил буйынса ҡарау",
+    "languageCount": "{count, plural, one {# тел} other {# тел}}",
+    "region": "Төбәк",
+    "countryLanguages": "{country} телдәре",
+    "showLess": "Аҙыраҡ күрһәтеү",
+    "showMore": "Тағы {count} күрһәтеү",
+    "noLanguages": "Телдәр табылманы",
+    "tryAnotherSearch": "Башҡа эҙләү һүҙе менән һынағыҙ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ҡарау тарихы | Jesus Film Project",
+    "title": "Ҡарау тарихы",
+    "loading": "Тарих йөкләнә",
+    "empty": "Әлегә бында бер нәмә лә юҡ",
+    "emptyDescription": "Системаға ингән килеш ҡараған видеоларығыҙ бында күренәәсәк.",
+    "earlier": "Элек",
+    "today": "Бөгөн",
+    "yesterday": "Кисә"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт менюһы",
+    "signIn": "Системаға инеү",
+    "signOut": "Системанан сығыу",
+    "signedIn": "Системаға ингән",
+    "history": "Тарих",
+    "logOut": "Сығыу"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Бит табылманы",
+    "eyebrow": "Бит табылманы",
+    "screenReaderPrefix": "Бит табылманы:",
+    "title": "Был сәхнә бында юҡ.",
+    "description": "Бит күсеп киткәндер, әммә хикәйә дауам итә.",
+    "actionsLabel": "Бит табылмағас башҡарыр эштәр",
+    "backToWatch": "Ҡарауға ҡайтыу",
+    "browseVideos": "Видеоларҙы ҡарау"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Ҡыҫҡа фильмды ҡарау",
+    "actions": {
+      "joinUs": "Беҙгә ҡушылығыҙ",
+      "shareMission": "Беҙҙең миссияла ҡатнашығыҙ"
+    },
+    "welcomeStart": {
+      "label": "Иман һәм Изге Яҙма",
+      "title": "Бөгөнгө видео һайланмаһы",
+      "description": "Рухландырһын, уйландырһын һәм фекер уятһын өсөн китапханабыҙҙан алынған иманға йүнәлтелгән видео контент."
+    },
+    "welcomeMorning": {
+      "label": "Иртәнге рухландырғыс",
+      "title": "Хәйерле иртә! Бөгөнгө Изге Яҙма мәлдәре һеҙҙе көтә.",
+      "description": "Көнөгөҙҙө рухландырыусы һәм күңелегеҙҙе күтәреүсе Изге Яҙма мәлдәре менән башлағыҙ."
+    },
+    "welcomeAfternoon": {
+      "label": "Төштән һуңғы рухландырғыс",
+      "title": "Хәйерле көндөҙ! Бөгөнгө көн өсөн Изге Яҙма мәлдәре.",
+      "description": "Төштән һуңғы тәнәфесегеҙ өсөн йәки дауамлы рухландырғыс булараҡ тап килгән рухи Изге Яҙма контенты."
+    },
+    "welcomeEvening": {
+      "label": "Киске рухландырғыс",
+      "title": "Хәйерле кис! Изге Яҙма мәлдәре менән тынығығыҙ.",
+      "description": "Көнөңҙөң аҙағына еткәндә уйланырға һәм йыуаныс табырға ярҙам иткән тыныс Изге Яҙма мәлдәре."
+    },
+    "joinUs": {
+      "label": "Беҙгә ҡушылығыҙ",
+      "title": "Миллиардтар эҙләй",
+      "description": "Ураҡ бына хәҙер. Цифрлы медиа ярҙамында донъя менән Инжил хәбәрен уртаҡлашҡан саҡта беҙгә ҡушылығыҙ."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Бергә барайыҡ",
+      "title": "Ғайса тураһында хикәйәне бергә һөйләйек",
+      "description": "Шулай итеп, улар Ғайсаның мөхәббәтен үҙҙәре булған ерҙә, үҙҙәренең телендә ишетә һәм күрә алһын."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% тап килә",
+    "none": "Был телдә ошо видеоға тәҡдимдәр табылманы."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестлаусы булыу",
+    "trigger": "Бета-тестлаусы булыу",
+    "loadFailed": "Нимәлер дөрөҫ китмәне.",
+    "loading": "Йөкләнә...",
+    "openFormNewTab": "Форманы яңы вкладкала асыу",
+    "close": "Ябыу",
+    "iframeTitle": "Бета-тестлаусы булыу"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Бер аҙ ваҡыт бүлегеҙ",

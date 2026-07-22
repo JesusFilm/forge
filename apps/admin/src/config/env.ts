@@ -182,6 +182,11 @@ export const env = createEnv({
     AUTH_ISSUER_URL: z.string().url(),
     AUTH_ADMIN_CLIENT_ID: z.string().min(1),
     AUTH_ADMIN_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_ADMIN_MCP_AUDIENCE: z.string().min(1).optional(),
+    AUTH_ADMIN_MCP_CLIENT_IDS: z.string().min(1).optional(),
+    AUTH_ADMIN_MCP_TOKEN_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional(),
     AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
@@ -562,6 +567,15 @@ export const env = createEnv({
     AUTH_ADMIN_CLIENT_ID: emptyToUndefined(process.env.AUTH_ADMIN_CLIENT_ID),
     AUTH_ADMIN_CLIENT_SECRET: emptyToUndefined(
       process.env.AUTH_ADMIN_CLIENT_SECRET,
+    ),
+    AUTH_ADMIN_MCP_AUDIENCE: emptyToUndefined(
+      process.env.AUTH_ADMIN_MCP_AUDIENCE,
+    ),
+    AUTH_ADMIN_MCP_CLIENT_IDS: emptyToUndefined(
+      process.env.AUTH_ADMIN_MCP_CLIENT_IDS,
+    ),
+    AUTH_ADMIN_MCP_TOKEN_ENVIRONMENT: emptyToUndefined(
+      process.env.AUTH_ADMIN_MCP_TOKEN_ENVIRONMENT,
     ),
     AUTH_MANAGER_SERVICE_CLIENT_ID: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_CLIENT_ID,

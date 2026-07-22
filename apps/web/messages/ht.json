@@ -7,7 +7,9 @@
     "noContent": "Pa gen kontni ki disponib.",
     "homepageMisconfigured": "Paj dakèy watch la pa byen konfigire.",
     "defaultTemplateMisconfigured": "Modèl watch pa defo a pa byen konfigire.",
-    "authFailed": "Nou pa ka verifye idantite w ak sèvis kontni an. Tanpri kontakte sipò si sa kontinye."
+    "authFailed": "Nou pa ka verifye idantite w ak sèvis kontni an. Tanpri kontakte sipò si sa kontinye.",
+    "pageLoadFailed": "Gen yon bagay ki pa mache.",
+    "tryAgain": "Eseye ankò"
   },
   "VideosPage": {
     "title": "Tout Videyo",
@@ -22,7 +24,8 @@
     "promoHeading": "Ou vle konprann Labib pi pwofondman?",
     "joinBibleStudy": "Vin jwenn etid Labib nou an",
     "previousQuote": "Sitasyon Labib anvan an",
-    "nextQuote": "Sitasyon Labib apre a"
+    "nextQuote": "Sitasyon Labib apre a",
+    "readPassage": "Li pasaj sa a nan Bib ou."
   },
   "DownloadButton": {
     "checking": "Ap verifye",
@@ -73,7 +76,8 @@
     "selectLanguage": "Chwazi lang",
     "searchPlaceholder": "Chèche lang yo…",
     "languages": "Lang yo",
-    "noMatches": "Pa gen rezilta"
+    "noMatches": "Pa gen rezilta",
+    "notAvailable": "Pa disponib"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lang",
@@ -112,7 +116,8 @@
     "questions": "Kesyon ki gen rapò",
     "askYours": "Poze pa ou",
     "chatWithPerson": "Pale ak yon moun",
-    "askBibleQuestion": "Poze yon kesyon sou Labib"
+    "askBibleQuestion": "Poze yon kesyon sou Labib",
+    "quiz": "Kwiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Kalite mesaj",
@@ -170,7 +175,8 @@
     "searchRegion": "Chèche videyo yo",
     "clearSearch": "Efase rechèch la",
     "changeAudioLanguage": "Chanje lang odyo a",
-    "home": "Akèy JesusFilm"
+    "home": "Akèy JesusFilm",
+    "closeSearch": "Fèmen rechèch la"
   },
   "SearchOverlay": {
     "dialogLabel": "Chèche epi browse videyo yo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Efase",
     "queryLanguageDetected": "Yo detekte {language}",
     "searchInLanguage": "Chèche an {language}",
-    "tryDifferentKeywordsOrLanguage": "Eseye lòt mo kle oswa chwazi yon lòt lang rechèch"
+    "tryDifferentKeywordsOrLanguage": "Eseye lòt mo kle oswa chwazi yon lòt lang rechèch",
+    "useWebsiteDefaultLanguage": "Sèvi ak lang rechèch default sit la",
+    "removeLanguage": "Retire {language}",
+    "browseMode": "Mòd browse rechèch"
   },
   "HeroPlayer": {
     "playWithSound": "Gade kounye a",
-    "tapToUnmute": "Tape pou aktive son"
+    "tapToUnmute": "Tape pou aktive son",
+    "nextEpisode": "Pwochen epizòd"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ap chaje kontni"
+    "loadingContent": "Ap chaje kontni",
+    "loadingVideo": "Ap chaje videyo"
   },
   "VideoLabels": {
     "video": "Videyo",
@@ -223,7 +234,8 @@
     "series": "Séri",
     "collection": "Koleksyon",
     "trailer": "Trelè",
-    "behindTheScenes": "Dèyè sèn yo"
+    "behindTheScenes": "Dèyè sèn yo",
+    "chapter": "Chapitre"
   },
   "SiblingCarousel": {
     "clipPosition": "Klib {current} sou {total}",
@@ -235,12 +247,287 @@
     "noImage": "Pa gen imaj",
     "playingNow": "Ap jwe kounye a",
     "previousChapter": "Chapitre anvan",
-    "nextChapter": "Chapitre apre"
+    "nextChapter": "Chapitre apre",
+    "thumbnailAlt": "Miniati {title}",
+    "relatedVideoThumbnail": "Miniati videyo ki gen rapò"
   },
   "SearchResultCard": {
     "experience": "Eksperyans",
     "episodeCount": "{count, plural, one {# epizòd} other {# epizòd}}",
     "thumbnailAlt": "Miniati videyo"
+  },
+  "Feedback": {
+    "openForm": "Louvri fòm fidbak la",
+    "label": "Fidbak",
+    "couldNotLoad": "Fòm fidbak la pa t ka chaje.",
+    "loadingForm": "Ap chaje fòm fidbak la…",
+    "retry": "Reeseye",
+    "openFormShort": "Louvri fòm nan",
+    "cancel": "Anile",
+    "title": "Fidbak Beta",
+    "description": "Pataje sa k ap mache byen ak sa nou ka amelyore. Google bay fòm sa a.",
+    "openInNewTab": "Louvri fòm nan nan yon nouvo tab",
+    "closeForm": "Fèmen fòm fidbak la",
+    "loadingGoogleForm": "Ap chaje Google Form…",
+    "iframeTitle": "Soumèt Fidbak Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videyo kretyen gratis an {language} | Jesus Film Project",
+    "metadataDescription": "Eksplore fim sou Jezi, istwa Bib, seri disiplin, ak videyo evanjelizasyon ak odyo doub oswa sous-titre an {language}.",
+    "heroTitle": "Videyo kretyen gratis an {language}",
+    "heroDescription": "Eksplore fim sou Jezi, istwa Bib, seri disiplin, ak videyo evanjelizasyon ki disponib an {language}. Videyo ki byen double yo parèt an premye, epi opsyon ki gen sèlman sous-titre yo anba a.",
+    "languageCollection": "Koleksyon lang",
+    "itemCount": "{count, plural, one {# atik} other {# atik}}",
+    "videoCount": "{count, plural, one {# videyo} other {# videyo}}",
+    "videosInGroups": "{videoCount, plural, one {# videyo} other {# videyo}} nan {groupCount, plural, one {# gwoup} other {# gwoup}}",
+    "sectionNavLabel": "Seksyon envantè lang yo",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nouvo",
+    "videoBible": "Bib Videyo",
+    "bibleProject": "BibleProject",
+    "sports": "Espò",
+    "collections": "Koleksyon",
+    "subtitlesOnly": "Sèlman sous-titre",
+    "newlyAdded": "Fèk ajoute",
+    "newVideosTitle": "Nouvo videyo kretyen an {language}",
+    "newestFirst": "Pi resan an premye",
+    "noPublishedVideos": "Nou poko jwenn okenn videyo pibliye pou lang sa a.",
+    "bibleAndGospelFilms": "Fim Bib ak Levanjil",
+    "videoBibleCollectionsTitle": "Koleksyon Bib Videyo an {language}",
+    "videoBibleDescription": "Koleksyon ki santre sou Ekriti yo, tankou LUMO, JESUS, Magdalena, ak Acts an {language}.",
+    "noVideoBibleCollections": "Pa gen koleksyon Bib Videyo ki disponib pou lang sa a ankò.",
+    "bibleProjectCollectionsTitle": "Koleksyon BibleProject an {language}",
+    "bibleProjectDescription": "Seri ak etid BibleProject ki disponib an {language}.",
+    "noBibleProjectCollections": "Pa gen koleksyon BibleProject ki disponib pou lang sa a ankò.",
+    "sportsStories": "Istwa espò",
+    "sportsTitle": "Istwa espò ak atlèt an {language}",
+    "sportsDescription": "Istwa espò ki santre sou lafwa ak koleksyon ki sou atlèt yo ki disponib an {language}.",
+    "noSportsCollections": "Pa gen koleksyon sou espò oswa sou istwa atlèt ki disponib pou lang sa a ankò.",
+    "fullyDubbed": "Totalman double",
+    "dubbedVideosTitle": "Videyo an {language} pa koleksyon",
+    "dubbedVideosDescription": "Browse videyo an {language} ki totalman double, gwoupe ak koleksyon yo pou pi fasil jwenn yo.",
+    "noDubbedVideos": "Pa gen videyo totalman double ki disponib pou lang sa a ankò.",
+    "subtitlesAvailable": "Gen sous-titre",
+    "subtitlesTitle": "Videyo an {language} ak sous-titre",
+    "subtitlesDescription": "Videyo sa yo gen sous-titre an {language} lè odyo pale an {language} poko disponib.",
+    "noSubtitleVideos": "Pa gen videyo sèlman ak sous-titre ki disponib pou lang sa a ankò.",
+    "dubbed": "Double",
+    "subtitles": "Sous-titre",
+    "newLabel": "Nouvo",
+    "fromCollection": "Soti nan {collection}",
+    "standaloneVideos": "Videyo endepandan",
+    "videosFromCollection": "Videyo ki soti nan {collection}.",
+    "standaloneDescription": "Videyo endepandan nan lang sa a.",
+    "openCollection": "Louvri koleksyon an"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Gade",
+    "watch": "Gade",
+    "watchNow": "Gade kounye a",
+    "mutePreview": "Mete aperçu a sou bèbè",
+    "unmutePreview": "Retabli son aperçu a",
+    "nextVideo": "Pwochen videyo",
+    "featured": "An vedèt",
+    "showVideo": "Montre {title}",
+    "previousVideoPreview": "Aperçu videyo anvan an",
+    "nextVideoPreview": "Aperçu pwochen videyo a",
+    "mediaCollection": "Koleksyon medya",
+    "scrollToVideo": "Desann pou videyo {title} a"
+  },
+  "WatchFooter": {
+    "home": "Akèy Jesus Film Project",
+    "navigation": "Navigasyon pye paj",
+    "share": "Pataje",
+    "watch": "Gade",
+    "giving": "Bay",
+    "about": "Sou nou",
+    "products": "Pwodwi yo",
+    "resources": "Resous",
+    "partners": "Patnè yo",
+    "contact": "Kontakte",
+    "giveNow": "Bay kounye a",
+    "resourcesVersion": "Resous yo ({version})",
+    "office": "Biwo",
+    "fax": "Faks",
+    "privacyPolicy": "Politik Konfidansyalite",
+    "legalStatement": "Deklarasyon Legal",
+    "newsletter": "Enskri pou bilten nou an"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Bati pou misyon mondyal",
+    "title": "Mesaj la pa chanje. Fason moun yo gade a chanje.",
+    "description": "N ap rebati bibliyotèk videyo nou an ak zouti nou yo depi anba, pandan n ap mete deseni travay tradiksyon nou yo sou platfòm kote moun deja rasanble, gade, epi pataje.",
+    "translatedLibraryTitle": "Bibliyotèk fim ki pi tradui nan mond lan",
+    "translatedLibraryDescription": "Deseni travay tradiksyon, soutni pa patnè ministè ki fè moun konfyans, te bati yon bibliyotèk ak plizyè milye tras lang pou moun ka rankontre istwa Jezi a nan lang ki touche yo pi pwofon.",
+    "trustedVoicesTitle": "Pote vwa ki fè moun konfyans nan nouvo fòma",
+    "trustedVoicesDescription": "N ap rebati fason yo rakonte istwa levanjil yo an imaj, pandan n ap marye tradiksyon ki fè moun konfyans ak fòma modèn pou mesaj la ka deplase lib sou platfòm, kilti, ak ekran yo.",
+    "missionTeamTitle": "Plis pase yon bibliyotèk. Yon ekip ki gen misyon.",
+    "missionTeamDescription": "Jesus Film Project se yon ekip mondyal tradiktè, espesyalis medya, editè, ak kreyatè k ap transfòme deseni eksperyans ministè an zouti pou moun ki fè disip toupatou.",
+    "buildingNext": "Sa n ap bati apre a",
+    "nextStepsTitle": "Platfòm Next Steps",
+    "nextStepsDescription": "Konekte moun k ap gade yo ak opòtinite konkrè nan vwayaj espirityèl yo, ede yo pran pwochen etap yo nan kominote, Ekriti, oswa misyon.",
+    "mediaLibraryTitle": "Bibliyotèk Medya pou Evanjelizasyon",
+    "mediaLibraryDescription": "Yon bibliyotèk medya kretyen vaste ak plizyè milye videyo, fim, ak resous ki disponib nan plizyè lang pou ministè ak evanjelizasyon atravè lemond.",
+    "ministryToolsTitle": "Zouti Dijital pou Ministè yo",
+    "ministryToolsDescription": "Jesyon videyo, distribisyon kontni, angajman odyans, ak analiz ki fèt pou ede ministè yo rive jwenn plis moun efektivman.",
+    "invitationEyebrow": "Ou envite",
+    "invitationTitle": "Ede bati <highlight>nouvo jenerasyon an</highlight> zouti misyon yo",
+    "invitationDescription": "N ap envite pratik, kreyatè, ak patnè yo nan aksè bonè. Teste nouvo zouti yo an premye, bay fidbak, epi ede fòme pwodwi ki fèt pou travay misyon reyèl.",
+    "betaTester": "Vin yon tèsè beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksyon Bib Videyo",
+    "gospelRailTitle": "Dekouvri tout istwa a",
+    "videoBibleDescription": "Eksplore koleksyon videyo ak resous nou yo ki fè Bib la vin vivan atravè istwa ak ansèyman ki angaje moun.",
+    "showcaseTitle": "Ekriti yo Rakonte atravè Fim",
+    "adventEyebrow": "Lavan Nwèl",
+    "adventTitle": "Kontaj Desann Lavan Nwèl",
+    "adventDescription": "Vin jwenn vwayaj Lavan nou an ak yon videyo chak jou ki ogmante antisipasyon pou Nwèl, pandan l ap eksplore espwa, lajwa, ak pwomès rive Jezi a.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Lavan BibleProject",
+    "nuaEyebrow": "Sèri NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Sèri Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kou Videyo",
+    "journeyWithJesusTitle": "Vwayaje ak Jezi",
+    "gospelsOnVideoEyebrow": "Chak Levanjil, Rakonte sou Videyo",
+    "scriptureAsWrittenTitle": "Ekriti yo, Pale Egzakteman jan yo Ekri a",
+    "merryChristmas": "Jwaye Nwèl!",
+    "daysUntilChristmas": "{count, plural, one {# jou anvan Nwèl} other {# jou anvan Nwèl}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Lang yo",
+    "metadataDescription": "Browse videyo JesusFilm yo pa lang.",
+    "eyebrow": "Lang pou gade",
+    "title": "Chwazi yon lang",
+    "description": "Eksplore lang yo pa rejyon oswa browse lis konplè a.",
+    "searchPlaceholder": "Chèche lang oswa peyi...",
+    "searchLabel": "Chèche lang oswa peyi",
+    "clearSearch": "Efase rechèch la",
+    "browse": "Eksplore",
+    "browseByRegion": "Browse pa rejyon ak peyi",
+    "languageCount": "{count, plural, one {# lang} other {# lang}}",
+    "region": "Rejyon",
+    "countryLanguages": "Lang {country} yo",
+    "showLess": "Montre mwens",
+    "showMore": "Montre {count} anplis",
+    "noLanguages": "Pa gen lang ki jwenn",
+    "tryAnotherSearch": "Eseye yon lòt tèm rechèch."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istwa Gade | Jesus Film Project",
+    "title": "Istwa Gade",
+    "loading": "Ap chaje istwa a",
+    "empty": "Pa gen anyen la ankò",
+    "emptyDescription": "Videyo ou gade pandan ou konekte yo ap parèt la a.",
+    "earlier": "Pi bonè",
+    "today": "Jodi a",
+    "yesterday": "Yè"
+  },
+  "AccountControl": {
+    "account": "Kont",
+    "accountMenu": "Meni kont",
+    "signIn": "Konekte",
+    "signOut": "Dekonekte",
+    "signedIn": "Konekte",
+    "history": "Istwa",
+    "logOut": "Dekonekte"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Paj la pa jwenn",
+    "eyebrow": "Paj la pa jwenn",
+    "screenReaderPrefix": "Paj la pa jwenn:",
+    "title": "Sèn sa a pa la.",
+    "description": "Petèt paj la deplase, men istwa a kontinye.",
+    "actionsLabel": "Aksyon pou paj ki pa jwenn",
+    "backToWatch": "Tounen nan Watch",
+    "browseVideos": "Browse videyo yo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Gade fim kout",
+    "actions": {
+      "joinUs": "Vin jwenn nou",
+      "shareMission": "Pataje nan misyon nou"
+    },
+    "welcomeStart": {
+      "label": "Lafwa ak Ekriti",
+      "title": "Chwa videyo pou jodi a",
+      "description": "Kontni videyo ki santre sou lafwa nan bibliyotèk nou an pou enspire w, defi w, epi limen refleksyon."
+    },
+    "welcomeMorning": {
+      "label": "Enspirasyon maten",
+      "title": "Bonjou! Moman Labib pou jounen an ap tann ou.",
+      "description": "Kòmanse jounen w ak moman Labib ki ankourajan, fèt pou enspire w epi leve lespri w."
+    },
+    "welcomeAfternoon": {
+      "label": "Enspirasyon aprèmidi",
+      "title": "Bon aprèmidi! Moman Labib pou jounen w.",
+      "description": "Kontni Labib ki ankourajan, pafè pou poz aprèmidi w oswa pou kontinye jwenn enspirasyon."
+    },
+    "welcomeEvening": {
+      "label": "Enspirasyon aswè",
+      "title": "Bonswa! Pran yon ti moman ak moman Labib.",
+      "description": "Moman Labib ki trankil pou ede w reflechi epi jwenn konsolasyon pandan jounen w ap fini."
+    },
+    "joinUs": {
+      "label": "Vin jwenn nou",
+      "title": "Milya moun ap chèche",
+      "description": "Rekòt la la a. Vin jwenn nou pandan n ap pataje levanjil la ak mond lan atravè medya dijital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ann ale ansanm",
+      "title": "Rakonte Istwa Jezi a ansanm",
+      "description": "Pou yo ka tande ak wè lanmou Jezi a nan pwòp lang yo, jis kote yo ye a."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% korespondans",
+    "none": "Pa jwenn okenn rekòmandasyon pou videyo sa a nan lang sa a."
+  },
+  "BetaTesterModal": {
+    "title": "Vin yon tèsè beta",
+    "trigger": "Vin yon tèsè beta",
+    "loadFailed": "Gen yon bagay ki pa mache.",
+    "loading": "Ap chaje...",
+    "openFormNewTab": "Louvri fòm nan nan yon nouvo tab",
+    "close": "Fèmen",
+    "iframeTitle": "Vin yon tèsè beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Pran yon ti moman",

@@ -114,6 +114,22 @@ export function getAuthTrustedOrigins(): string[] {
   )
 }
 
+export function getAuthValidAudiences(): string[] {
+  return Array.from(
+    new Set([
+      getAuthBaseUrl(),
+      "http://localhost:3003/mcp",
+      "https://admin-preview.jesusfilm.org/mcp",
+      "https://admin-stage.jesusfilm.org/mcp",
+      "https://admin.jesusfilm.org/mcp",
+      ...(env.AUTH_VALID_AUDIENCES ?? "")
+        .split(",")
+        .map((audience) => audience.trim())
+        .filter((audience) => audience.length > 0),
+    ]),
+  )
+}
+
 export function assertProductionAuthSecrets(): void {
   const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
   if (

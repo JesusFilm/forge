@@ -7,7 +7,9 @@
  * comparing its resourceId to the caller's resource (the only mismatch throw
  * lives in the update-working-memory tool). With persistence, threadId alone
  * would therefore grant continuation of anyone's thread. Every ai-chat route
- * MUST call `authorizeAiChatThreadAccess` before streaming an agent turn.
+ * MUST call `authorizeAiChatThreadAccess` before streaming an agent turn;
+ * read-only surfaces (history replay) resolve ownership+existence through
+ * `resolveOwnedExistingThread` instead (feat-284 — no ceiling branch on reads).
  *
  * Known TOCTOU residue (accepted): the check-then-stream gap means an attacker
  * racing a victim's FIRST turn on a guessed id could create/adopt first —
@@ -89,4 +91,39 @@ export async function authorizeAiChatThreadAccess({
   return total >= maxThreadsPerResource
     ? { ok: false, reason: "thread_limit" }
     : { ok: true }
+}
+
+export type AiChatOwnedThreadResolution =
+  | { ok: true }
+  | { ok: false; reason: "thread_forbidden" | "thread_not_found" }
+
+/**
+ * Read-path resolution (feat-284): an owned, EXISTING thread — or a fixed
+ * refusal — from a single `getThreadById`. Answers the read question the
+ * write-path gate above cannot: `null` → `thread_not_found` (a vanished
+ * thread is never an empty-transcript success); owner mismatch →
+ * `thread_forbidden`; owner match → ok. There is NO ceiling branch on reads —
+ * replaying never creates a thread, so `listThreads` is never consulted and
+ * the write-path `thread_limit` reason is unrepresentable here.
+ *
+ * Store errors propagate (fail CLOSED — no try/catch in this module): the
+ * caller maps the throw to its generic failure, never `thread_not_found`.
+ * Boundary: this resolver answers ownership+existence only. The caller's
+ * subsequent `recall` MUST still always pass `resourceId` — the store's own
+ * ownership throw stays the belt-and-suspenders layer under this resolution.
+ */
+export async function resolveOwnedExistingThread({
+  memory,
+  threadId,
+  resource,
+}: {
+  memory: Pick<AiChatOwnershipMemory, "getThreadById">
+  threadId: string
+  resource: string
+}): Promise<AiChatOwnedThreadResolution> {
+  const thread = await memory.getThreadById({ threadId })
+  if (thread === null) return { ok: false, reason: "thread_not_found" }
+  return thread.resourceId === resource
+    ? { ok: true }
+    : { ok: false, reason: "thread_forbidden" }
 }

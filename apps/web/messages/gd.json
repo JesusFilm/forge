@@ -7,7 +7,9 @@
     "noContent": "Chan eil susbaint sam bith ri fhaighinn.",
     "homepageMisconfigured": "Tha duilleag-dhachaigh an watch air a rèiteachadh gu ceàrr.",
     "defaultTemplateMisconfigured": "Tha am teamplaid watch bunaiteach air a rèiteachadh gu ceàrr.",
-    "authFailed": "Cha ghabh dearbhadh leis an t-seirbheis susbaint. Cuir fios gu taic ma chumas seo a’ dol."
+    "authFailed": "Cha ghabh dearbhadh leis an t-seirbheis susbaint. Cuir fios gu taic ma chumas seo a’ dol.",
+    "pageLoadFailed": "Chaidh rudeigin ceàrr.",
+    "tryAgain": "Feuch a-rithist"
   },
   "VideosPage": {
     "title": "A h-uile Bhidio",
@@ -22,7 +24,8 @@
     "promoHeading": "A bheil thu airson am Bìoball a thuigsinn nas doimhne?",
     "joinBibleStudy": "Thig còmhla ris a’ bhuidheann sgrùdaidh againn air a’ Bhìoball",
     "previousQuote": "An abairt roimhe",
-    "nextQuote": "An ath abairt"
+    "nextQuote": "An ath abairt",
+    "readPassage": "Leugh an earrann seo nad Bhìoball fhèin."
   },
   "DownloadButton": {
     "checking": "A’ dearbhadh",
@@ -73,7 +76,8 @@
     "selectLanguage": "Tagh cànan",
     "searchPlaceholder": "Rannsaich cànanan…",
     "languages": "Cànanan",
-    "noMatches": "Chan eil maidseadh sam bith"
+    "noMatches": "Chan eil maidseadh sam bith",
+    "notAvailable": "Chan eil e ri fhaighinn"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Cànan",
@@ -112,7 +116,8 @@
     "questions": "Ceistean Co-cheangailte",
     "askYours": "Faighnich do cheist fhèin",
     "chatWithPerson": "Bruidhinn ri neach",
-    "askBibleQuestion": "Faighnich ceist mun Bhìoball"
+    "askBibleQuestion": "Faighnich ceist mun Bhìoball",
+    "quiz": "Ceis"
   },
   "WatchQuestionPanel": {
     "messageType": "Seòrsa na teachdaireachd",
@@ -170,7 +175,8 @@
     "searchRegion": "Lorg bhideothan",
     "clearSearch": "Falamhaich an rannsachadh",
     "changeAudioLanguage": "Atharraich cànan na fuaime",
-    "home": "Duilleag-dhachaigh JesusFilm"
+    "home": "Duilleag-dhachaigh JesusFilm",
+    "closeSearch": "Dùin an rannsachadh"
   },
   "SearchOverlay": {
     "dialogLabel": "Lorg is brobhs bhideothan",
@@ -205,14 +211,19 @@
     "clearLanguages": "Falamhaich",
     "queryLanguageDetected": "{language} air a lorg",
     "searchInLanguage": "Lorg ann an {language}",
-    "tryDifferentKeywordsOrLanguage": "Feuch prìomh-fhaclan eile no tagh cànan sgrùdaidh eile"
+    "tryDifferentKeywordsOrLanguage": "Feuch prìomh-fhaclan eile no tagh cànan sgrùdaidh eile",
+    "useWebsiteDefaultLanguage": "Cleachd cànan bunaiteach an làraich-lìn airson an rannsachaidh",
+    "removeLanguage": "Thoir air falbh {language}",
+    "browseMode": "Modh brobhsaidh an rannsachaidh"
   },
   "HeroPlayer": {
     "playWithSound": "Coimhead a-nis",
-    "tapToUnmute": "Tap gus am balbhachd a thoirt dheth"
+    "tapToUnmute": "Tap gus am balbhachd a thoirt dheth",
+    "nextEpisode": "An ath phrògram"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "A’ luchdadh susbaint"
+    "loadingContent": "A’ luchdadh susbaint",
+    "loadingVideo": "A’ luchdadh a’ bhidio"
   },
   "VideoLabels": {
     "video": "Bhidio",
@@ -223,7 +234,8 @@
     "series": "Sreath",
     "collection": "Cruinneachadh",
     "trailer": "Trèilear",
-    "behindTheScenes": "Air cùl nan seallaidhean"
+    "behindTheScenes": "Air cùl nan seallaidhean",
+    "chapter": "Caibideal"
   },
   "SiblingCarousel": {
     "clipPosition": "Criomag {current} de {total}",
@@ -235,12 +247,287 @@
     "noImage": "Gun ìomhaigh",
     "playingNow": "A’ cluich a-nis",
     "previousChapter": "An caibideal roimhe",
-    "nextChapter": "An ath chaibideal"
+    "nextChapter": "An ath chaibideal",
+    "thumbnailAlt": "Dealbh beag {title}",
+    "relatedVideoThumbnail": "Dealbh beag airson bhidio co-cheangailte"
   },
   "SearchResultCard": {
     "experience": "Eòlas",
     "episodeCount": "{count, plural, one {# phrògram} other {# prògraman}}",
     "thumbnailAlt": "Dealbh beag a’ bhidio"
+  },
+  "Feedback": {
+    "openForm": "Fosgail am foirm fios-air-ais",
+    "label": "Fios-air-ais",
+    "couldNotLoad": "Cha b’ urrainn am foirm fios-air-ais a luchdadh.",
+    "loadingForm": "A’ luchdadh an fhoirm fios-air-ais…",
+    "retry": "Feuch a-rithist",
+    "openFormShort": "Fosgail am foirm",
+    "cancel": "Sguir dheth",
+    "title": "Fios-air-ais Beta",
+    "description": "Co-roinn dè tha ag obair agus dè as urrainn dhuinn a leasachadh. Tha am foirm seo air a thoirt seachad le Google.",
+    "openInNewTab": "Fosgail am foirm ann an taba ùr",
+    "closeForm": "Dùin am foirm fios-air-ais",
+    "loadingGoogleForm": "A’ luchdadh Google Form…",
+    "iframeTitle": "Cuir a-steach Fios-air-ais Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Bhideothan Crìosdail an-asgaidh ann an {language} | Jesus Film Project",
+    "metadataDescription": "Rannsaich filmichean mu Ìosa, sgeulachdan a’ Bhìobaill, sreathan deiscioblaidh, agus bhideothan ruigsinn le fuaim air a dubadh no fo-thiotalan ann an {language}.",
+    "heroTitle": "Bhideothan Crìosdail an-asgaidh ann an {language}",
+    "heroDescription": "Rannsaich filmichean mu Ìosa, sgeulachdan a’ Bhìobaill, sreathan deiscioblaidh, agus bhideothan ruigsinn a tha ri fhaighinn ann an {language}. Tha bhideothan le dubadh slàn air an soilleireachadh an toiseach, le roghainnean a-mhàin le fo-thiotalan gu h-ìosal.",
+    "languageCollection": "Cruinneachadh chànanan",
+    "itemCount": "{count, plural, one {# nì} other {# nithean}}",
+    "videoCount": "{count, plural, one {# bhidio} other {# bhideothan}}",
+    "videosInGroups": "{videoCount, plural, one {# bhidio} other {# bhideothan}} ann an {groupCount, plural, one {# buidheann} other {# buidhnean}}",
+    "sectionNavLabel": "Earrannan a’ chruinneachaidh chànanan",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ùr",
+    "videoBible": "Bìoball Bhidio",
+    "bibleProject": "BibleProject",
+    "sports": "Spòrs",
+    "collections": "Cruinneachaidhean",
+    "subtitlesOnly": "Fo-thiotalan a-mhàin",
+    "newlyAdded": "Air ùr chur ris",
+    "newVideosTitle": "Bhideothan Crìosdail ùra ann an {language}",
+    "newestFirst": "As ùire an toiseach",
+    "noPublishedVideos": "Cha deach bhideothan foillsichte a lorg airson a’ chànain seo fhathast.",
+    "bibleAndGospelFilms": "Filmichean a’ Bhìobaill agus an t-Soisgeil",
+    "videoBibleCollectionsTitle": "Cruinneachaidhean Bìoball Bhidio {language}",
+    "videoBibleDescription": "Cruinneachaidhean stèidhichte air an Sgriobtar a’ gabhail a-steach LUMO, JESUS, Magdalena, agus Acts ann an {language}.",
+    "noVideoBibleCollections": "Chan eil cruinneachaidhean Bìoball Bhidio rim faighinn airson a’ chànain seo fhathast.",
+    "bibleProjectCollectionsTitle": "Cruinneachaidhean BibleProject {language}",
+    "bibleProjectDescription": "Sreathan agus sgrùdaidhean BibleProject rim faighinn ann an {language}.",
+    "noBibleProjectCollections": "Chan eil cruinneachaidhean BibleProject rim faighinn airson a’ chànain seo fhathast.",
+    "sportsStories": "Sgeulachdan spòrs",
+    "sportsTitle": "Sgeulachdan spòrs is lùth-chleasaichean {language}",
+    "sportsDescription": "Sgeulachdan spòrs stèidhichte air a’ chreideamh agus cruinneachaidhean mu lùth-chleasaichean rim faighinn ann an {language}.",
+    "noSportsCollections": "Chan eil cruinneachaidhean spòrs no sgeulachdan lùth-chleasaichean rim faighinn airson a’ chànain seo fhathast.",
+    "fullyDubbed": "Air an dubhadh gu h-iomlan",
+    "dubbedVideosTitle": "Bhideothan {language} a rèir cruinneachaidh",
+    "dubbedVideosDescription": "Brobhsaich bhideothan {language} air an dubhadh gu h-iomlan, air an cruinneachadh leis a’ chruinneachadh aca airson lorg nas fhasa.",
+    "noDubbedVideos": "Chan eil bhideothan air an dubhadh gu h-iomlan rim faighinn airson a’ chànain seo fhathast.",
+    "subtitlesAvailable": "Fo-thiotalan rim faighinn",
+    "subtitlesTitle": "Bhideothan {language} le fo-thiotalan",
+    "subtitlesDescription": "Tha fo-thiotalan {language} anns na bhideothan seo nuair nach eil fuaim {language} air a labhairt ri fhaighinn fhathast.",
+    "noSubtitleVideos": "Chan eil bhideothan a-mhàin le fo-thiotalan rim faighinn airson a’ chànain seo fhathast.",
+    "dubbed": "Air a dhubadh",
+    "subtitles": "Fo-thiotalan",
+    "newLabel": "Ùr",
+    "fromCollection": "Bho {collection}",
+    "standaloneVideos": "Bhideothan fa-leth",
+    "videosFromCollection": "Bhideothan bho {collection}.",
+    "standaloneDescription": "Bhideothan fa-leth sa chànan seo.",
+    "openCollection": "Fosgail a’ chruinneachadh"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project – Coimhead",
+    "watch": "Coimhead",
+    "watchNow": "Coimhead a-nis",
+    "mutePreview": "Balbhaich ro-shealladh",
+    "unmutePreview": "Thoir am balbhachd far an ro-shealladh",
+    "nextVideo": "An ath bhidio",
+    "featured": "Air a thaisbeanadh",
+    "showVideo": "Seall {title}",
+    "previousVideoPreview": "Ro-shealladh bhidio roimhe",
+    "nextVideoPreview": "Ro-shealladh an ath bhidio",
+    "mediaCollection": "Cruinneachadh mheadhanan",
+    "scrollToVideo": "Sgrolaich gu bhidio {title}"
+  },
+  "WatchFooter": {
+    "home": "Duilleag-dhachaigh Jesus Film Project",
+    "navigation": "Seòladh coise",
+    "share": "Co-roinn",
+    "watch": "Coimhead",
+    "giving": "Tabhartasan",
+    "about": "Mu dheidhinn",
+    "products": "Toraidhean",
+    "resources": "Goireasan",
+    "partners": "Com-pàirtichean",
+    "contact": "Cuir fios",
+    "giveNow": "Thoir seachad a-nis",
+    "resourcesVersion": "Goireasan ({version})",
+    "office": "Oifis",
+    "fax": "Facs",
+    "privacyPolicy": "Poileasaidh Dìomhaireachd",
+    "legalStatement": "Aithris Laghail",
+    "newsletter": "Clàraich airson ar cuairt-litir"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Air a thogail airson miseanan cruinneil",
+    "title": "Chan atharraich an teachdaireachd. Atharraicheas an dòigh anns am bi daoine a’ coimhead.",
+    "description": "Tha sinn ag ath-thogail ar leabharlann bhidio agus ar n-innealan bhon fhìor thoiseach, a’ cur deicheadan de dh’obair eadar-theangachaidh gu na h-àrd-ùrlaran far a bheil daoine mu thràth a’ tional, a’ coimhead, agus a’ co-roinn.",
+    "translatedLibraryTitle": "An leabharlann fhilmichean as motha a chaidh eadar-theangachadh air an t-saoghal",
+    "translatedLibraryDescription": "Tha deicheadan de dh’obair eadar-theangachaidh, air an giùlan le com-pàirtichean ministrealachd earbsach, air leabharlann a thogail le mìltean de shlighean cànain gus an urrainn do dhaoine coinneachadh ri sgeulachd Ìosa anns a’ chànan a ruigeas iad as doimhne.",
+    "trustedVoicesTitle": "A’ toirt guthan earbsach gu cruthan ùra",
+    "trustedVoicesDescription": "Tha sinn ag ath-thogail mar a thathar ag innse sgeulachdan an t-soisgeil gu lèirsinneach, a’ ceangal eadar-theangachaidhean earbsach ri cruthan ùr-nodha gus an gluais an teachdaireachd gu saor thar àrd-ùrlaran, chultaran, agus sgàilean.",
+    "missionTeamTitle": "Barrachd na leabharlann. Sgioba air a stiùireadh le rùn.",
+    "missionTeamDescription": "’S e sgioba cruinneil de luchd-eadar-theangachaidh, eòlaichean meadhanan, luchd-deasachaidh, agus luchd-cruthachaidh a th’ ann an Jesus Film Project a tha ag atharrachadh deicheadan de eòlas ministrealachd gu innealan airson luchd-dèanamh-dheisciobalan air feadh an t-saoghail.",
+    "buildingNext": "Na tha sinn a’ togail an ath thuras",
+    "nextStepsTitle": "Àrd-ùrlar nan Ath Cheumannan",
+    "nextStepsDescription": "Ceangail luchd-amhairc ri cothroman follaiseach air an turas spioradail aca, gan cuideachadh le ceum a ghabhail a-steach do choimhearsnachd, an Sgriobtar, no misean.",
+    "mediaLibraryTitle": "Leabharlann Mheadhanan Soisgeulaiche",
+    "mediaLibraryDescription": "Leabharlann fharsaing de mheadhanan Crìosdail le mìltean de bhideothan, filmichean, agus ghoireasan rim faighinn ann an iomadh cànan airson ministrealachd agus soisgeulachadh air feadh an t-saoghail.",
+    "ministryToolsTitle": "Innealan Didseatach airson Ministrealachdan",
+    "ministryToolsDescription": "Riaghladh bhidio, sgaoileadh susbaint, com-pàirteachadh luchd-èisteachd, agus mion-sgrùdadh air an dealbhadh gus cuideachadh le ministrealachdan barrachd dhaoine a ruigsinn gu h-èifeachdach.",
+    "invitationEyebrow": "Tha cuireadh agad",
+    "invitationTitle": "Cuidich le bhith a’ togail <highlight>an ath ghinealach</highlight> de dh’innealan misein",
+    "invitationDescription": "Tha sinn a’ toirt cuireadh do chleachdaichean, luchd-cruthachaidh, agus com-pàirtichean gu ruigsinneachd thràth. Dèan deuchainn air innealan ùra an toiseach, thoir beachdan, agus cuidich le bhith a’ cumadh thoraidhean a chaidh a dhealbhadh airson obair mhiseanaraidh fìor.",
+    "betaTester": "Bi nad dhearbhadair beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Cruinneachadh Bìoball Bhidio",
+    "gospelRailTitle": "Faigh a-mach an sgeulachd iomlan",
+    "videoBibleDescription": "Rannsaich ar cruinneachadh de bhideothan agus ghoireasan a bheir am Bìoball beò tro sgeulachdan agus teagasg tarraingeach.",
+    "showcaseTitle": "An Sgriobtar air a innse tro fhilm",
+    "adventEyebrow": "Teachd na Nollaige",
+    "adventTitle": "Cunntadh-sìos Advent na Nollaige",
+    "adventDescription": "Thig còmhla rinn air turas Advent le bhidio làitheil a thogas dùil na Nollaige, a’ rannsachadh na dòchais, an aoibhneis, agus gealladh teachd Ìosa.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Sreath NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Sreath Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cùrsa Bhidio",
+    "journeyWithJesusTitle": "Turas còmhla ri Ìosa",
+    "gospelsOnVideoEyebrow": "Gach Soisgeul, air innse air bhidio",
+    "scriptureAsWrittenTitle": "An Sgriobtar, air a labhairt dìreach mar a tha e sgrìobhte",
+    "merryChristmas": "Nollaig Chridheil!",
+    "daysUntilChristmas": "{count, plural, one {# latha gu Nollaig} other {# làithean gu Nollaig}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Cànanan",
+    "metadataDescription": "Brobhsaich bhideothan JesusFilm a rèir cànain.",
+    "eyebrow": "Cànanan a’ watch",
+    "title": "Tagh cànan",
+    "description": "Rannsaich cànanan a rèir sgìre no brobhs an liosta slàn.",
+    "searchPlaceholder": "Rannsaich cànanan no dùthchannan...",
+    "searchLabel": "Rannsaich cànanan no dùthchannan",
+    "clearSearch": "Falamhaich an rannsachadh",
+    "browse": "Brobhs",
+    "browseByRegion": "Brobhs a rèir sgìre agus dùthaich",
+    "languageCount": "{count, plural, one {# chànan} other {# cànanan}}",
+    "region": "Sgìre",
+    "countryLanguages": "Cànanan {country}",
+    "showLess": "Seall nas lugha",
+    "showMore": "Seall {count} eile",
+    "noLanguages": "Cha deach cànanan a lorg",
+    "tryAnotherSearch": "Feuch teirm-rannsachaidh eile."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Eachdraidh Coimhid | Jesus Film Project",
+    "title": "Eachdraidh Coimhid",
+    "loading": "A’ luchdadh na h-eachdraidh",
+    "empty": "Chan eil dad an seo fhathast",
+    "emptyDescription": "Nochdaidh bhideothan a choimheadas tu fhad ’s a tha thu clàraichte a-steach an seo.",
+    "earlier": "Nas tràithe",
+    "today": "An-diugh",
+    "yesterday": "An-dè"
+  },
+  "AccountControl": {
+    "account": "Cunntas",
+    "accountMenu": "Clàr-taice a’ chunntais",
+    "signIn": "Clàraich a-steach",
+    "signOut": "Clàraich a-mach",
+    "signedIn": "Air a chlàradh a-steach",
+    "history": "Eachdraidh",
+    "logOut": "Log a-mach"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Cha deach an duilleag a lorg",
+    "eyebrow": "Cha deach an duilleag a lorg",
+    "screenReaderPrefix": "Cha deach an duilleag a lorg:",
+    "title": "Chan eil an sealladh seo an seo.",
+    "description": "Is dòcha gun do ghluais an duilleag, ach tha an sgeulachd a’ leantainn air adhart.",
+    "actionsLabel": "Gnìomhan airson duilleag nach deach a lorg",
+    "backToWatch": "Air ais gu Watch",
+    "browseVideos": "Brobhs bhideothan"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Coimhead air film goirid",
+    "actions": {
+      "joinUs": "Thig còmhla rinn",
+      "shareMission": "Gabh pàirt nar misean"
+    },
+    "welcomeStart": {
+      "label": "Creideamh & an Sgriobtar",
+      "title": "Taghaidhean bhidio an-diugh",
+      "description": "Susbaint bhidio stèidhichte air a’ chreideamh bhon leabharlann againn airson brosnachadh, dùbhlan, agus meòrachadh a thogail."
+    },
+    "welcomeMorning": {
+      "label": "Brosnachadh maidne",
+      "title": "Madainn mhath! Tha amannan a’ Bhìobaill an-diugh a’ feitheamh.",
+      "description": "Tòisich an latha le amannan brosnachail a’ Bhìobaill a tha air an dealbhadh gus do spiorad a bhrosnachadh agus a thogail."
+    },
+    "welcomeAfternoon": {
+      "label": "Brosnachadh feasgair",
+      "title": "Feasgar math! Amannan a’ Bhìobaill airson an latha agad.",
+      "description": "Susbaint a’ Bhìobaill a tha brosnachail, foirfe airson do bhriseadh feasgair no airson brosnachadh leantainneach."
+    },
+    "welcomeEvening": {
+      "label": "Brosnachadh an fheasgair",
+      "title": "Feasgar math! Gabh fois le amannan a’ Bhìobaill.",
+      "description": "Amannan ciùine a’ Bhìobaill gus do chuideachadh le meòrachadh agus comhfhurtachd a lorg mar a thig an latha gu crìch."
+    },
+    "joinUs": {
+      "label": "Thig còmhla rinn",
+      "title": "Tha billeanan a’ sireadh",
+      "description": "Tha am foghar an seo. Thig còmhla rinn fhad ’s a tha sinn a’ roinn an t-soisgeil leis an t-saoghal tro mheadhanan didseatach."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Thèid sinn còmhla",
+      "title": "Sgeulachd Ìosa ag innse còmhla",
+      "description": "Gus an cluinn is gum faic iad gràdh Ìosa nan cànan fhèin, far a bheil iad."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Maidseadh: {percent}%",
+    "none": "Cha deach molaidhean sam bith a lorg airson a’ bhidio seo sa chànan seo."
+  },
+  "BetaTesterModal": {
+    "title": "Bi nad dhearbhadair beta",
+    "trigger": "Bi nad dhearbhadair beta",
+    "loadFailed": "Chaidh rudeigin ceàrr.",
+    "loading": "A’ luchdadh...",
+    "openFormNewTab": "Fosgail am foirm ann an taba ùr",
+    "close": "Dùin",
+    "iframeTitle": "Bi nad dhearbhadair beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Gabh mionaid",

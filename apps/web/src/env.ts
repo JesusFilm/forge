@@ -170,6 +170,7 @@ export const env = createEnv({
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
@@ -253,6 +254,9 @@ export const env = createEnv({
       .default("datadoghq.com"),
     NEXT_PUBLIC_DATADOG_ENV: z.string().default("development"),
     NEXT_PUBLIC_DATADOG_VERSION: z.string().optional(),
+    // Optional Google Analytics 4 measurement id. When unset, the analytics
+    // component renders nothing so local and preview environments stay quiet.
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: z.string().optional(),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
@@ -296,6 +300,8 @@ export const env = createEnv({
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT:
+      process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
@@ -325,6 +331,9 @@ export const env = createEnv({
     NEXT_PUBLIC_DATADOG_SITE: process.env.NEXT_PUBLIC_DATADOG_SITE,
     NEXT_PUBLIC_DATADOG_ENV: datadogEnvFallback(),
     NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: emptyToUndefined(
+      process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+    ),
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },

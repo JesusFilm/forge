@@ -7,7 +7,9 @@
     "noContent": "Er is geen content beschikbaar.",
     "homepageMisconfigured": "De Watch-startpagina is onjuist geconfigureerd.",
     "defaultTemplateMisconfigured": "De standaard Watch-template is onjuist geconfigureerd.",
-    "authFailed": "Aanmelden bij de contentservice is mislukt. Neem contact op met support als dit blijft gebeuren."
+    "authFailed": "Aanmelden bij de contentservice is mislukt. Neem contact op met support als dit blijft gebeuren.",
+    "pageLoadFailed": "Er is iets misgegaan.",
+    "tryAgain": "Opnieuw proberen"
   },
   "VideosPage": {
     "title": "Alle video's",
@@ -22,7 +24,8 @@
     "promoHeading": "Wil je de Bijbel dieper begrijpen?",
     "joinBibleStudy": "Doe mee met onze Bijbelstudie",
     "previousQuote": "Vorig Bijbelcitaat",
-    "nextQuote": "Volgend Bijbelcitaat"
+    "nextQuote": "Volgend Bijbelcitaat",
+    "readPassage": "Lees dit gedeelte in je Bijbel."
   },
   "DownloadButton": {
     "checking": "Controleren",
@@ -73,7 +76,8 @@
     "selectLanguage": "Taal selecteren",
     "searchPlaceholder": "Talen zoeken…",
     "languages": "Talen",
-    "noMatches": "Geen resultaten"
+    "noMatches": "Geen resultaten",
+    "notAvailable": "Niet beschikbaar"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Taal",
@@ -112,7 +116,8 @@
     "questions": "Gerelateerde vragen",
     "askYours": "Stel je vraag",
     "chatWithPerson": "Chat met iemand",
-    "askBibleQuestion": "Stel een Bijbelvraag"
+    "askBibleQuestion": "Stel een Bijbelvraag",
+    "quiz": "Kennistest"
   },
   "WatchQuestionPanel": {
     "messageType": "Berichttype",
@@ -200,7 +205,8 @@
     "searchRegion": "Video's zoeken",
     "clearSearch": "Zoekopdracht wissen",
     "changeAudioLanguage": "Audiotaal wijzigen",
-    "home": "JesusFilm-startpagina"
+    "home": "JesusFilm-startpagina",
+    "closeSearch": "Zoeken sluiten"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's zoeken en doorbladeren",
@@ -235,14 +241,19 @@
     "clearLanguages": "Wissen",
     "queryLanguageDetected": "{language} gedetecteerd",
     "searchInLanguage": "Zoeken in {language}",
-    "tryDifferentKeywordsOrLanguage": "Probeer andere trefwoorden of kies een andere zoektaal"
+    "tryDifferentKeywordsOrLanguage": "Probeer andere trefwoorden of kies een andere zoektaal",
+    "useWebsiteDefaultLanguage": "Standaardzoektaal van de website gebruiken",
+    "removeLanguage": "{language} verwijderen",
+    "browseMode": "Zoek- en bladermodus"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kijken",
-    "tapToUnmute": "Tik om geluid aan te zetten"
+    "tapToUnmute": "Tik om geluid aan te zetten",
+    "nextEpisode": "Volgende aflevering"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Content laden"
+    "loadingContent": "Content laden",
+    "loadingVideo": "Video laden"
   },
   "VideoLabels": {
     "video": "VIDEO",
@@ -253,7 +264,8 @@
     "series": "Serie",
     "collection": "Collectie",
     "trailer": "Voorfilm",
-    "behindTheScenes": "Achter de schermen"
+    "behindTheScenes": "Achter de schermen",
+    "chapter": "Hoofdstuk"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} van {total}",
@@ -265,11 +277,286 @@
     "noImage": "Geen afbeelding",
     "playingNow": "Wordt nu afgespeeld",
     "previousChapter": "Vorig hoofdstuk",
-    "nextChapter": "Volgend hoofdstuk"
+    "nextChapter": "Volgend hoofdstuk",
+    "thumbnailAlt": "Miniatuur van {title}",
+    "relatedVideoThumbnail": "Miniatuur van gerelateerde video"
   },
   "SearchResultCard": {
     "experience": "Ervaring",
     "episodeCount": "{count, plural, one {# aflevering} other {# afleveringen}}",
     "thumbnailAlt": "Videominiatuur"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Gratis christelijke video's in {language} | Jesus Film Project",
+    "metadataDescription": "Ontdek Jezus-films, Bijbelverhalen, discipelschapsseries en outreachvideo's met nagesynchroniseerde audio of ondertiteling in {language}.",
+    "heroTitle": "Gratis christelijke video's in {language}",
+    "heroDescription": "Ontdek Jezus-films, Bijbelverhalen, discipelschapsseries en outreachvideo's beschikbaar in {language}. Video's met volledige nasynchronisatie staan bovenaan, met daaronder opties met alleen ondertiteling.",
+    "languageCollection": "Taalcollectie",
+    "itemCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
+    "videoCount": "{count, plural, one {# video} other {# video's}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video's}} in {groupCount, plural, one {# groep} other {# groepen}}",
+    "sectionNavLabel": "Secties van taaloverzicht",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nieuw",
+    "videoBible": "Videobijbel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Collecties",
+    "subtitlesOnly": "Alleen ondertiteling",
+    "newlyAdded": "Nieuw toegevoegd",
+    "newVideosTitle": "Nieuwe christelijke video's in {language}",
+    "newestFirst": "Nieuwste eerst",
+    "noPublishedVideos": "Er zijn nog geen gepubliceerde video's gevonden voor deze taal.",
+    "bibleAndGospelFilms": "Bijbel- en evangeliefilms",
+    "videoBibleCollectionsTitle": "{language} Videobijbelcollecties",
+    "videoBibleDescription": "Collecties rond de Schrift, waaronder LUMO, JESUS, Magdalena en Handelingen in {language}.",
+    "noVideoBibleCollections": "Er zijn nog geen Videobijbelcollecties beschikbaar voor deze taal.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject-collecties",
+    "bibleProjectDescription": "BibleProject-series en -studies beschikbaar in {language}.",
+    "noBibleProjectCollections": "Er zijn nog geen BibleProject-collecties beschikbaar voor deze taal.",
+    "sportsStories": "Sportverhalen",
+    "sportsTitle": "{language} sport- en atletenverhalen",
+    "sportsDescription": "Sportverhalen en collecties rond atleten met een geloofsfocus beschikbaar in {language}.",
+    "noSportsCollections": "Er zijn nog geen sport- of atletenverzamelingen beschikbaar voor deze taal.",
+    "fullyDubbed": "Volledig nagesynchroniseerd",
+    "dubbedVideosTitle": "{language} video's per collectie",
+    "dubbedVideosDescription": "Blader door volledig nagesynchroniseerde {language} video's, gegroepeerd per collectie voor makkelijker vinden.",
+    "noDubbedVideos": "Er zijn nog geen volledig nagesynchroniseerde video's beschikbaar voor deze taal.",
+    "subtitlesAvailable": "Ondertiteling beschikbaar",
+    "subtitlesTitle": "{language} video's met ondertiteling",
+    "subtitlesDescription": "Deze video's bevatten {language} ondertiteling wanneer gesproken {language} audio nog niet beschikbaar is.",
+    "noSubtitleVideos": "Er zijn nog geen video's met alleen ondertiteling beschikbaar voor deze taal.",
+    "dubbed": "Nagesynchroniseerd",
+    "subtitles": "Ondertiteling",
+    "newLabel": "Nieuw",
+    "fromCollection": "Uit {collection}",
+    "standaloneVideos": "Losstaande video's",
+    "videosFromCollection": "Video's uit {collection}.",
+    "standaloneDescription": "Losstaande video's in deze taal.",
+    "openCollection": "Collectie openen"
+  },
+  "WatchHome": {
+    "pageTitle": "Kijken bij Jesus Film Project",
+    "watch": "Kijken",
+    "watchNow": "Nu kijken",
+    "mutePreview": "Voorbeeld dempen",
+    "unmutePreview": "Geluid van voorbeeld aan",
+    "nextVideo": "Volgende video",
+    "showVideo": "{title} tonen",
+    "previousVideoPreview": "Voorbeeld van vorige video",
+    "nextVideoPreview": "Voorbeeld van volgende video",
+    "featured": "Uitgelicht",
+    "mediaCollection": "Mediacollectie",
+    "scrollToVideo": "Scroll naar de video van {title}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Talen",
+    "metadataDescription": "Blader door JesusFilm-video's per taal.",
+    "eyebrow": "Watch-talen",
+    "title": "Kies een taal",
+    "description": "Ontdek talen per regio of blader door de volledige lijst.",
+    "searchPlaceholder": "Zoek talen of landen...",
+    "searchLabel": "Zoek talen of landen",
+    "clearSearch": "Zoekopdracht wissen",
+    "browse": "Bladeren",
+    "browseByRegion": "Bladeren op regio en land",
+    "languageCount": "{count, plural, one {# taal} other {# talen}}",
+    "region": "Regio",
+    "countryLanguages": "Talen van {country}",
+    "showLess": "Minder tonen",
+    "showMore": "Toon nog {count}",
+    "noLanguages": "Geen talen gevonden",
+    "tryAnotherSearch": "Probeer een andere zoekterm."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Kijkgeschiedenis | Jesus Film Project",
+    "title": "Kijkgeschiedenis",
+    "loading": "Geschiedenis laden",
+    "empty": "Nog niets hier",
+    "emptyDescription": "Video's die je bekijkt terwijl je bent aangemeld, verschijnen hier.",
+    "earlier": "Eerder",
+    "today": "Vandaag",
+    "yesterday": "Gisteren"
+  },
+  "AccountControl": {
+    "account": "Mijn account",
+    "accountMenu": "Accountmenu",
+    "signIn": "Aanmelden",
+    "signOut": "Afmelden",
+    "signedIn": "Aangemeld",
+    "history": "Geschiedenis",
+    "logOut": "Uitloggen"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pagina niet gevonden",
+    "eyebrow": "Pagina niet gevonden",
+    "screenReaderPrefix": "Pagina niet gevonden:",
+    "title": "Deze scène is hier niet.",
+    "description": "De pagina is misschien verplaatst, maar het verhaal gaat verder.",
+    "actionsLabel": "Acties voor pagina niet gevonden",
+    "backToWatch": "Terug naar Watch",
+    "browseVideos": "Video's bekijken"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-startpagina",
+    "navigation": "Voeternavigatie",
+    "share": "Delen",
+    "watch": "Kijken",
+    "giving": "Geven",
+    "about": "Over",
+    "products": "Producten",
+    "resources": "Bronnen",
+    "partners": "Samenwerkingspartners",
+    "contact": "Neem contact op",
+    "giveNow": "Geef nu",
+    "resourcesVersion": "Bronnen ({version})",
+    "office": "Kantoor",
+    "fax": "Faxnummer",
+    "privacyPolicy": "Privacybeleid",
+    "legalStatement": "Juridische verklaring",
+    "newsletter": "Schrijf je in voor onze nieuwsbrief"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Gebouwd voor wereldwijde zending",
+    "title": "De boodschap verandert niet. De manier waarop mensen kijken wel.",
+    "description": "We bouwen onze videobibliotheek en hulpmiddelen vanaf de grond opnieuw op en brengen decennialang vertaalwerk naar de platforms waar mensen al samenkomen, kijken en delen.",
+    "translatedLibraryTitle": "De meest vertaalde filmbibliotheek ter wereld",
+    "translatedLibraryDescription": "Decennialang vertaalwerk, gedragen door vertrouwde bedieningpartners, heeft een bibliotheek opgebouwd met duizenden taalsporen, zodat mensen het verhaal van Jezus kunnen ontdekken in de taal die hen het diepst raakt.",
+    "trustedVoicesTitle": "Vertrouwde stemmen in nieuwe vormen",
+    "trustedVoicesDescription": "We bouwen opnieuw hoe evangelieverhalen visueel worden verteld, door vertrouwde vertalingen te combineren met moderne formaten zodat de boodschap vrij kan bewegen over platforms, culturen en schermen.",
+    "missionTeamTitle": "Meer dan een bibliotheek. Een missiegedreven team.",
+    "missionTeamDescription": "Jesus Film Project is een wereldwijd team van vertalers, mediaspecialisten, redacteuren en makers dat decennialange bedieningservaring omzet in hulpmiddelen voor discipelmakers overal.",
+    "buildingNext": "Wat we hierna bouwen",
+    "nextStepsTitle": "Platform voor volgende stappen",
+    "nextStepsDescription": "Verbind kijkers met tastbare mogelijkheden op hun geestelijke reis, zodat ze een volgende stap kunnen zetten naar gemeenschap, de Schrift of zending.",
+    "mediaLibraryTitle": "Evangelische mediatheek",
+    "mediaLibraryDescription": "Een uitgebreide christelijke mediatheek met duizenden video's, films en bronnen in meerdere talen voor bediening en evangelisatie wereldwijd.",
+    "ministryToolsTitle": "Digitale tools voor bedieningen",
+    "ministryToolsDescription": "Videobeheer, contentdistributie, publieksbetrokkenheid en analyse, ontworpen om bedieningen te helpen meer mensen effectief te bereiken.",
+    "invitationEyebrow": "Je bent uitgenodigd",
+    "invitationDescription": "We nodigen praktijkmensen, makers en partners uit voor vroege toegang. Test nieuwe tools als eerste, geef feedback en help producten vormgeven die zijn ontworpen voor echt missiewerk.",
+    "betaTester": "Word bèta-tester",
+    "invitationTitle": "Help mee aan de volgende generatie missionaire tools <highlight>op te bouwen</highlight>"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Videobijbelcollectie",
+    "gospelRailTitle": "Ontdek het volledige verhaal",
+    "videoBibleDescription": "Ontdek onze collectie video's en bronnen die de Bijbel tot leven brengen met boeiende verhalen en lessen.",
+    "showcaseTitle": "De Schrift verteld via film",
+    "adventEyebrow": "Kerst-Advent",
+    "adventTitle": "Aftellen naar Kerst-Advent",
+    "adventDescription": "Ga mee op onze adventsreis met elke dag een video die de verwachting voor Kerst opbouwt en de hoop, vreugde en belofte van Jezus' komst verkent.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent met BibleProject",
+    "nuaEyebrow": "NUA-serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Waardeserie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videocursus",
+    "journeyWithJesusTitle": "Reis met Jezus",
+    "gospelsOnVideoEyebrow": "Elk evangelie, op video verteld",
+    "scriptureAsWrittenTitle": "De Schrift, precies uitgesproken zoals geschreven",
+    "merryChristmas": "Vrolijk kerstfeest!",
+    "daysUntilChristmas": "{count, plural, one {Nog # dag tot Kerst} other {Nog # dagen tot Kerst}}"
+  },
+  "Feedback": {
+    "openForm": "Feedbackformulier openen",
+    "label": "Geef feedback",
+    "couldNotLoad": "Feedbackformulier kon niet worden geladen.",
+    "loadingForm": "Feedbackformulier laden…",
+    "retry": "Opnieuw proberen",
+    "openFormShort": "Formulier openen",
+    "cancel": "Annuleren",
+    "title": "Bètafeedback",
+    "description": "Deel wat goed werkt en wat we kunnen verbeteren. Dit formulier wordt aangeboden door Google.",
+    "openInNewTab": "Formulier openen in een nieuw tabblad",
+    "closeForm": "Feedbackformulier sluiten",
+    "loadingGoogleForm": "Google Formulier laden…",
+    "iframeTitle": "Bètafeedback indienen"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Korte film bekijken",
+    "actions": {
+      "joinUs": "Doe mee",
+      "shareMission": "Deel onze missie"
+    },
+    "welcomeStart": {
+      "label": "Geloof en Schrift",
+      "title": "Videokeuzes van vandaag",
+      "description": "Videocontent uit onze bibliotheek rond geloof om te inspireren, uit te dagen en tot nadenken aan te zetten."
+    },
+    "welcomeMorning": {
+      "label": "Ochtedinspiratie",
+      "title": "Goedemorgen! De Bijbelmomenten van vandaag wachten op je.",
+      "description": "Begin je dag met bemoedigende Bijbelmomenten die zijn bedoeld om je te inspireren en je geest op te bouwen."
+    },
+    "welcomeAfternoon": {
+      "label": "Middaginspiratie",
+      "title": "Goedemiddag! Bijbelmomenten voor jouw dag.",
+      "description": "Bemoedigende Bijbelcontent, perfect voor je middagpauze of als extra inspiratie."
+    },
+    "welcomeEvening": {
+      "label": "Avonddinspiratie",
+      "title": "Goedenavond! Kom tot rust met Bijbelmomenten.",
+      "description": "Rustige Bijbelmomenten om je te helpen nadenken en troost te vinden aan het einde van je dag."
+    },
+    "joinUs": {
+      "label": "Doe mee",
+      "title": "Miljarden zijn op zoek",
+      "description": "De oogst is er. Sluit je aan en help ons het evangelie met de wereld te delen via digitale media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Laten we samen op weg gaan",
+      "title": "Samen het verhaal van Jezus vertellen",
+      "description": "Zodat mensen de liefde van Jezus in hun eigen taal kunnen horen en zien, precies waar ze zijn."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% overeenkomst",
+    "none": "Geen aanbevelingen voor deze video gevonden in deze taal."
+  },
+  "BetaTesterModal": {
+    "title": "Word bèta-tester",
+    "trigger": "Word bèta-tester",
+    "loadFailed": "Er is iets misgegaan.",
+    "loading": "Laden...",
+    "openFormNewTab": "Formulier openen in een nieuw tabblad",
+    "close": "Sluiten",
+    "iframeTitle": "Word bèta-tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

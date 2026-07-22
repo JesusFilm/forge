@@ -2,11 +2,17 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import type { CSSProperties } from "react"
+import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { readableScrimRgb } from "@/lib/readable-scrim-color"
 import { cn } from "@/lib/utils"
 import type { WatchHomeCard as WatchHomeCardModel } from "@/lib/watch-home"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 
 type WatchHomeCardProps = {
   card: WatchHomeCardModel
@@ -86,12 +92,21 @@ export function WatchHomeCard({
   onHoverImageChange,
   className,
 }: WatchHomeCardProps) {
+  const videoLabels = useTranslations("VideoLabels")
   const isVertical = orientation === "vertical"
   const isCollectionCard = card.label === "Collection" || card.childCount > 0
+  const isInteractive = Boolean(card.href)
   const showMetaLabel = Boolean(card.metaLabel && !isCollectionCard)
+  const metaLabel =
+    card.metaLabel === card.label
+      ? videoLabels(videoLabelMessageKey(card.label))
+      : card.metaLabel
   const blurDataUrl = card.blurDataUrl ?? undefined
   const frameClassName = cn(
-    "group relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
+    "relative block overflow-hidden rounded-lg bg-black text-inherit no-underline shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+    isInteractive &&
+      "group hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+    isInteractive && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
     className,
   )
 
@@ -99,8 +114,12 @@ export function WatchHomeCard({
     <CardFrame
       card={card}
       className={frameClassName}
-      onPointerEnter={() => onHoverImageChange?.(card.imageUrl)}
-      onFocus={() => onHoverImageChange?.(card.imageUrl)}
+      onPointerEnter={
+        isInteractive ? () => onHoverImageChange?.(card.imageUrl) : undefined
+      }
+      onFocus={
+        isInteractive ? () => onHoverImageChange?.(card.imageUrl) : undefined
+      }
     >
       <div
         className={cn(
@@ -142,7 +161,7 @@ export function WatchHomeCard({
             {card.href ? (
               <Play className="h-4 w-4 fill-current" aria-hidden />
             ) : null}
-            {card.metaLabel}
+            {metaLabel}
           </div>
         ) : null}
         <div
@@ -150,23 +169,19 @@ export function WatchHomeCard({
           data-testid="watch-home-card-bevel"
           className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
         />
-        <div
-          aria-hidden
-          data-testid="watch-home-card-hover-outline"
-          className={cn(
-            "watch-home-gradient-outline pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:opacity-100 group-focus-visible:opacity-100",
-            isVertical
-              ? "watch-home-gradient-outline-portrait"
-              : "watch-home-gradient-outline-landscape",
-          )}
-        />
+        {isInteractive ? (
+          <VideoThumbnailInteractionFrame
+            data-testid="watch-home-card-hover-outline"
+            className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          />
+        ) : null}
         <div
           data-testid="watch-home-card-text-gradient"
           className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-end px-4 pt-10 pb-5"
           style={textScrimStyle(card)}
         >
           <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
-            {card.label}
+            {videoLabels(videoLabelMessageKey(card.label))}
           </div>
           <h3 className="line-clamp-2 -mt-1 text-left text-xl leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
             {card.title}

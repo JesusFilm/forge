@@ -3,15 +3,11 @@
 import { useEffect, useRef, useState } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
+import { getWebVttCueText } from "@/lib/webvtt"
+
 import { FORGE_SUBTITLE_TRACK_LABEL } from "./subtitle-track"
 
 const CHROME_BAR_HEIGHT = 64
-
-function stripHtmlTags(text: string): string {
-  if (typeof DOMParser === "undefined") return text.replace(/<[^>]+>/g, "")
-  const doc = new DOMParser().parseFromString(text, "text/html")
-  return doc.body.textContent ?? ""
-}
 
 export function SubtitleOverlay({
   playerRef,
@@ -111,7 +107,7 @@ export function SubtitleOverlay({
         const texts: string[] = []
         for (let i = 0; i < activeCues.length; i++) {
           const cue = activeCues[i] as VTTCue
-          if (cue.text) texts.push(stripHtmlTags(cue.text))
+          if (cue.text) texts.push(getWebVttCueText(cue))
         }
         setCueText(texts.length > 0 ? texts.join("\n") : null)
       }

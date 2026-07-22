@@ -146,6 +146,65 @@ describe("fetchWithTimeout (client-timeout-abort marker, R12)", () => {
     jest.advanceTimersByTime(15_000)
     expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
       budget_ms: 15_000,
+      operation: "anonymous",
+    })
+  })
+
+  // feat-268: the marker must say WHICH operation blew the budget. One test
+  // per header shape so each read branch is the only way to pass (META law).
+  it("attributes the marker from a plain-object headers init", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: { "x-dd-graph-ql-operation-name": "GetVideoBySlug" },
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "GetVideoBySlug",
+    })
+  })
+
+  it("attributes the marker from a Headers-instance init (get() branch)", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    // get()-bearing shape: only the Headers-instance branch can read this —
+    // there is no matching own-key for the plain-object scan to find.
+    const headersInstance = {
+      get: (name: string) =>
+        name.toLowerCase() === "x-dd-graph-ql-operation-name" ? "Search" : null,
+    }
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: headersInstance as unknown as Headers,
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "Search",
+    })
+  })
+
+  it("degrades to 'anonymous' when the header read throws", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    const hostileHeaders = {
+      get: () => {
+        throw new Error("exotic headers shape")
+      },
+    }
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: hostileHeaders as unknown as Headers,
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "anonymous",
     })
   })
 

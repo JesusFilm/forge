@@ -133,9 +133,6 @@ import { startAiChatRetentionPurge } from "./ai-chat-retention"
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
-// /forge-seeker accepts ONLY the ai-chat lane CSV (feat-250); every other
-// /forge-* route stays on the pool. Unset lane CSV = fail closed (all 401).
-const seekerServiceKeys = parseServiceApiKeys(env.AI_CHAT_SERVICE_API_KEYS)
 const storageDir = getMastraStorageDir()
 const storageSchemaName = "mastra"
 
@@ -394,20 +391,21 @@ export const mastra = new Mastra({
             requestSignal: c.req.raw.signal,
           }),
       }),
+      // The seeker send route + the two history read routes below are the
+      // ai-chat lane: their flag + bearer preamble lives in the shared lane
+      // admission module (feat-283), which sources the dedicated
+      // AI_CHAT_SERVICE_API_KEYS lane CSV internally (KTD2/feat-250 — never
+      // the shared pool), so no key list is threaded through here.
       registerApiRoute("/forge-seeker", {
         method: "POST",
         handler: async (c) =>
           handleSeekerRouteRequest({
             authHeader: c.req.header("authorization"),
-            serviceKeys: seekerServiceKeys,
             readJson: () => c.req.json(),
             getMastra: () => mastra as unknown as SeekerRouteMastra,
             requestSignal: c.req.raw.signal,
           }),
       }),
-      // ai-chat history read surface (feat-241). Bearer + gate ladder live in
-      // the handlers; both validate the dedicated AI_CHAT_SERVICE_API_KEYS
-      // lane CSV (KTD2), so no key list is threaded through here.
       registerApiRoute("/forge-ai-chat-history-list", {
         method: "POST",
         handler: async (c) => {

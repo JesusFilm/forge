@@ -7,7 +7,9 @@
     "noContent": "შიგთავსი არ არის ხელმისაწვდომი.",
     "homepageMisconfigured": "სათვალთვალო მთავარი გვერდი არასწორადაა კონფიგურირებული.",
     "defaultTemplateMisconfigured": "ნაგულისხმევი საყურებელი შაბლონი არასწორადაა კონფიგურირებული.",
-    "authFailed": "შიგთავსის სერვისთან ავტორიზაცია ვერ მოხერხდა. თუ პრობლემა გაგრძელდა, დაუკავშირდით მხარდაჭერას."
+    "authFailed": "შიგთავსის სერვისთან ავტორიზაცია ვერ მოხერხდა. თუ პრობლემა გაგრძელდა, დაუკავშირდით მხარდაჭერას.",
+    "pageLoadFailed": "რაღაც შეცდომით დასრულდა.",
+    "tryAgain": "ხელახლა სცადეთ"
   },
   "VideosPage": {
     "title": "ყველა ვიდეო",
@@ -22,7 +24,8 @@
     "promoHeading": "გსურთ ბიბლიის უფრო ღრმად გაგება?",
     "joinBibleStudy": "შემოგვიერთდით ბიბლიის შესწავლაში",
     "previousQuote": "წინა ბიბლიური ციტატა",
-    "nextQuote": "შემდეგი ბიბლიური ციტატა"
+    "nextQuote": "შემდეგი ბიბლიური ციტატა",
+    "readPassage": "წაიკითხეთ ეს მონაკვეთი თქვენს ბიბლიაში."
   },
   "DownloadButton": {
     "checking": "შემოწმება",
@@ -73,7 +76,8 @@
     "selectLanguage": "ენის არჩევა",
     "searchPlaceholder": "ენების ძიება…",
     "languages": "ენები",
-    "noMatches": "შედეგი არ მოიძებნა"
+    "noMatches": "შედეგი არ მოიძებნა",
+    "notAvailable": "ხელმისაწვდომი არ არის"
   },
   "LanguagePickerModal": {
     "dialogTitle": "ენა",
@@ -112,7 +116,8 @@
     "questions": "დაკავშირებული კითხვები",
     "askYours": "დასვით თქვენი კითხვა",
     "chatWithPerson": "ესაუბრეთ ადამიანს",
-    "askBibleQuestion": "დასვით ბიბლიური კითხვა"
+    "askBibleQuestion": "დასვით ბიბლიური კითხვა",
+    "quiz": "ვიქტორინა"
   },
   "WatchQuestionPanel": {
     "messageType": "შეტყობინების ტიპი",
@@ -170,7 +175,8 @@
     "searchRegion": "ვიდეოების ძიება",
     "clearSearch": "ძიების გასუფთავება",
     "changeAudioLanguage": "აუდიოენის შეცვლა",
-    "home": "JesusFilm-ის მთავარი გვერდი"
+    "home": "JesusFilm-ის მთავარი გვერდი",
+    "closeSearch": "ძიების დახურვა"
   },
   "SearchOverlay": {
     "dialogLabel": "ვიდეოების ძიება და დათვალიერება",
@@ -205,14 +211,19 @@
     "clearLanguages": "გასუფთავება",
     "queryLanguageDetected": "ნაპოვნია ენა: {language}",
     "searchInLanguage": "ძებნა ენაზე: {language}",
-    "tryDifferentKeywordsOrLanguage": "სცადეთ სხვა საკვანძო სიტყვები ან აირჩიეთ სხვა საძიებო ენა"
+    "tryDifferentKeywordsOrLanguage": "სცადეთ სხვა საკვანძო სიტყვები ან აირჩიეთ სხვა საძიებო ენა",
+    "useWebsiteDefaultLanguage": "გამოიყენეთ ვებსაიტის ნაგულისხმევი საძიებო ენა",
+    "removeLanguage": "წაშალეთ {language}",
+    "browseMode": "დათვალიერების რეჟიმი"
   },
   "HeroPlayer": {
     "playWithSound": "უყურეთ ახლა",
-    "tapToUnmute": "ხმის ჩართვისთვის დააჭირეთ"
+    "tapToUnmute": "ხმის ჩართვისთვის დააჭირეთ",
+    "nextEpisode": "შემდეგი ეპიზოდი"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "შიგთავსი იტვირთება"
+    "loadingContent": "შიგთავსი იტვირთება",
+    "loadingVideo": "ვიდეო იტვირთება"
   },
   "VideoLabels": {
     "video": "ვიდეო",
@@ -223,7 +234,8 @@
     "series": "სერია",
     "collection": "კოლექცია",
     "trailer": "ტრეილერი",
-    "behindTheScenes": "კულისებს მიღმა"
+    "behindTheScenes": "კულისებს მიღმა",
+    "chapter": "თავი"
   },
   "SiblingCarousel": {
     "clipPosition": "კლიპი {current} / {total}",
@@ -235,12 +247,287 @@
     "noImage": "სურათი არ არის",
     "playingNow": "ახლა უკრავს",
     "previousChapter": "წინა თავი",
-    "nextChapter": "შემდეგი თავი"
+    "nextChapter": "შემდეგი თავი",
+    "thumbnailAlt": "{title}-ის მინიატურა",
+    "relatedVideoThumbnail": "დაკავშირებული ვიდეოს მინიატურა"
   },
   "SearchResultCard": {
     "experience": "გამოცდილება",
     "episodeCount": "{count, plural, one {# ეპიზოდი} other {# ეპიზოდი}}",
     "thumbnailAlt": "ვიდეოს მინიატურა"
+  },
+  "Feedback": {
+    "openForm": "უკუკავშირის ფორმის გახსნა",
+    "label": "უკუკავშირი",
+    "couldNotLoad": "უკუკავშირის ფორმის ჩატვირთვა ვერ მოხერხდა.",
+    "loadingForm": "უკუკავშირის ფორმა იტვირთება…",
+    "retry": "ხელახლა სცადეთ",
+    "openFormShort": "ფორმის გახსნა",
+    "cancel": "გაუქმება",
+    "title": "ბეტა უკუკავშირი",
+    "description": "გააზიარეთ, რა მუშაობს და რა შეგვიძლია გავაუმჯობესოთ. ეს ფორმა მოწოდებულია Google-ის მიერ.",
+    "openInNewTab": "ფორმის გახსნა ახალ ჩანართში",
+    "closeForm": "უკუკავშირის ფორმის დახურვა",
+    "loadingGoogleForm": "Google ფორმის ჩატვირთვა…",
+    "iframeTitle": "ბეტა უკუკავშირის გაგზავნა"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "უფასო ქრისტიანული ვიდეოები {language}-ზე | Jesus Film Project",
+    "metadataDescription": "აღმოაჩინეთ იესოს ფილმები, ბიბლიური ისტორიები, მოწაფეობის სერიები და მისიონერული ვიდეოები გაჟღერებული აუდიოთი ან სუბტიტრებით {language}-ზე.",
+    "heroTitle": "უფასო ქრისტიანული ვიდეოები {language}-ზე",
+    "heroDescription": "აღმოაჩინეთ იესოს ფილმები, ბიბლიური ისტორიები, მოწაფეობის სერიები და მისიონერული ვიდეოები, რომლებიც ხელმისაწვდომია {language}-ზე. სრულად გახმოვანებული ვიდეოები პირველ რიგშია გამოკვეთილი, ხოლო მხოლოდ სუბტიტრიანი ვარიანტები ქვემოთაა.",
+    "languageCollection": "ენის კოლექცია",
+    "itemCount": "{count, plural, one {# ელემენტი} other {# ელემენტი}}",
+    "videoCount": "{count, plural, one {# ვიდეო} other {# ვიდეო}}",
+    "videosInGroups": "{videoCount, plural, one {# ვიდეო} other {# ვიდეო}} {groupCount, plural, one {# ჯგუფში} other {# ჯგუფში}}",
+    "sectionNavLabel": "ენის ინვენტარის სექციები",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "ახალი",
+    "videoBible": "ვიდეობიბლია",
+    "bibleProject": "BibleProject",
+    "sports": "სპორტი",
+    "collections": "კოლექციები",
+    "subtitlesOnly": "მხოლოდ სუბტიტრები",
+    "newlyAdded": "ახლახან დამატებული",
+    "newVideosTitle": "ახალი ქრისტიანული ვიდეოები {language}-ზე",
+    "newestFirst": "ჯერ უახლესი",
+    "noPublishedVideos": "ამ ენაზე ჯერ გამოქვეყნებული ვიდეოები ვერ მოიძებნა.",
+    "bibleAndGospelFilms": "ბიბლიური და სახარების ფილმები",
+    "videoBibleCollectionsTitle": "{language}-ის ვიდეობიბლიის კოლექციები",
+    "videoBibleDescription": "საღვთისმეტყველო შინაარსის კოლექციები, მათ შორის LUMO, JESUS, Magdalena და Acts {language}-ზე.",
+    "noVideoBibleCollections": "ამ ენაზე ჯერ ვიდეობიბლიის კოლექციები არ არის ხელმისაწვდომი.",
+    "bibleProjectCollectionsTitle": "{language}-ის BibleProject კოლექციები",
+    "bibleProjectDescription": "BibleProject-ის სერიები და შესწავლები ხელმისაწვდომია {language}-ზე.",
+    "noBibleProjectCollections": "ამ ენაზე ჯერ BibleProject-ის კოლექციები არ არის ხელმისაწვდომი.",
+    "sportsStories": "სპორტული ისტორიები",
+    "sportsTitle": "{language}-ის სპორტისა და სპორტსმენის ისტორიები",
+    "sportsDescription": "რწმენაზე დაფუძნებული სპორტული ისტორიები და სპორტსმენებზე ორიენტირებული კოლექციები ხელმისაწვდომია {language}-ზე.",
+    "noSportsCollections": "ამ ენაზე ჯერ სპორტული ან სპორტსმენის ისტორიების კოლექციები არ არის ხელმისაწვდომი.",
+    "fullyDubbed": "სრულად გახმოვანებული",
+    "dubbedVideosTitle": "{language}-ის ვიდეოები კოლექციის მიხედვით",
+    "dubbedVideosDescription": "დათვალიერეთ სრულად გახმოვანებული {language}-ის ვიდეოები, რომლებიც კოლექციებადაა დაჯგუფებული, რათა უფრო მარტივად იპოვოთ.",
+    "noDubbedVideos": "ამ ენაზე ჯერ სრულად გახმოვანებული ვიდეოები არ არის ხელმისაწვდომი.",
+    "subtitlesAvailable": "სუბტიტრები ხელმისაწვდომია",
+    "subtitlesTitle": "{language}-ის ვიდეოები სუბტიტრებით",
+    "subtitlesDescription": "ამ ვიდეოებს აქვს {language}-ის სუბტიტრები, როცა გასაჟღერებელი {language}-ის აუდიო ჯერ არ არის ხელმისაწვდომი.",
+    "noSubtitleVideos": "ამ ენაზე ჯერ მხოლოდ სუბტიტრიანი ვიდეოები არ არის ხელმისაწვდომი.",
+    "dubbed": "გახმოვანებული",
+    "subtitles": "სუბტიტრები",
+    "newLabel": "ახალი",
+    "fromCollection": "{collection}-დან",
+    "standaloneVideos": "დამოუკიდებელი ვიდეოები",
+    "videosFromCollection": "ვიდეოები {collection}-დან.",
+    "standaloneDescription": "ამ ენაზე დამოუკიდებელი ვიდეოები.",
+    "openCollection": "კოლექციის გახსნა"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project-ის ყურება",
+    "watch": "ყურება",
+    "watchNow": "უყურეთ ახლა",
+    "mutePreview": "წინასწარი ჩვენების დადუმება",
+    "unmutePreview": "წინასწარი ჩვენების ხმის ჩართვა",
+    "nextVideo": "შემდეგი ვიდეო",
+    "featured": "რჩეული",
+    "showVideo": "{title}-ის ჩვენება",
+    "previousVideoPreview": "წინა ვიდეოს წინასწარი ჩვენება",
+    "nextVideoPreview": "შემდეგი ვიდეოს წინასწარი ჩვენება",
+    "mediaCollection": "მედია კოლექცია",
+    "scrollToVideo": "გადადი {title} ვიდეოზე"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-ის მთავარი გვერდი",
+    "navigation": "ქვედა ნავიგაცია",
+    "share": "გაზიარება",
+    "watch": "ყურება",
+    "giving": "შეწირვა",
+    "about": "ჩვენ შესახებ",
+    "products": "პროდუქტები",
+    "resources": "რესურსები",
+    "partners": "პარტნიორები",
+    "contact": "კონტაქტი",
+    "giveNow": "შეწირეთ ახლა",
+    "resourcesVersion": "რესურსები ({version})",
+    "office": "ოფისი",
+    "fax": "ფაქსი",
+    "privacyPolicy": "კონფიდენციალურობის პოლიტიკა",
+    "legalStatement": "იურიდიული განცხადება",
+    "newsletter": "გამოიწერეთ ჩვენი საინფორმაციო ბიულეტენი"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "გლობალური მისიისთვის შექმნილი",
+    "title": "შეტყობინება არ იცვლება. იცვლება გზა, როგორ უყურებენ ადამიანები.",
+    "description": "ჩვენ თავიდან ვაშენებთ ჩვენს ვიდეობიბლიოთეკასა და ინსტრუმენტებს და ათწლეულების თარგმნის შრომას ვაგზავნით იმ პლატფორმებზე, სადაც ადამიანები უკვე იკრიბებიან, უყურებენ და აზიარებენ.",
+    "translatedLibraryTitle": "მსოფლიოში ყველაზე მეტად თარგმნილი ფილმების ბიბლიოთეკა",
+    "translatedLibraryDescription": "ათწლეულების თარგმნის შრომამ, სანდო სამინისტროს პარტნიორების მხარდაჭერით, შექმნა ბიბლიოთეკა ათასობით ენობრივი ჩანაწერით, რათა ადამიანებმა შეძლონ იესოს ისტორიის ხილვა იმ ენაზე, რომელიც ყველაზე ღრმად სწვდება მათ.",
+    "trustedVoicesTitle": "სანდო ხმების ახალ ფორმატებში გადატანა",
+    "trustedVoicesDescription": "ჩვენ თავიდან ვაშენებთ, თუ როგორ გადმოიცემა სახარების ისტორიები ვიზუალურად, და ვაერთიანებთ სანდო თარგმანებს თანამედროვე ფორმატებთან, რათა შეტყობინება თავისუფლად გავრცელდეს პლატფორმებზე, კულტურებსა და ეკრანებზე.",
+    "missionTeamTitle": "უფრო მეტი, ვიდრე ბიბლიოთეკა. მისიონერული გუნდი.",
+    "missionTeamDescription": "Jesus Film Project არის გლობალური გუნდი მთარგმნელების, მედია სპეციალისტების, რედაქტორებისა და შემქმნელების, რომლებიც ათწლეულების სამსახურებრივ გამოცდილებას გარდაქმნიან ინსტრუმენტებად მოწაფეთა აღმზრდელებისთვის ყველგან.",
+    "buildingNext": "რას ვაშენებთ შემდეგ",
+    "nextStepsTitle": "შემდეგი ნაბიჯების პლატფორმა",
+    "nextStepsDescription": "დაუკავშირეთ მაყურებლებს კონკრეტული შესაძლებლობები მათ სულიერ გზაზე, დაეხმარეთ მათ გადადგან შემდეგი ნაბიჯი საზოგადოებაში, წერილში ან მისიაში.",
+    "mediaLibraryTitle": "ევანგელისტური მედია ბიბლიოთეკა",
+    "mediaLibraryDescription": "ფართო ქრისტიანული მედია ბიბლიოთეკა ათასობით ვიდეოთი, ფილმითა და რესურსით, რომლებიც მრავალ ენაზეა ხელმისაწვდომი მსოფლიო მასშტაბით მსახურებისა და ევანგელიზაციისთვის.",
+    "ministryToolsTitle": "ციფრული ინსტრუმენტები მსახურებებისთვის",
+    "ministryToolsDescription": "ვიდეოების მართვა, შიგთავსის გავრცელება, აუდიტორიის ჩართულობა და ანალიტიკა შექმნილია იმისთვის, რომ მსახურებებმა უფრო მეტ ადამიანს ეფექტურად მიაღწიონ.",
+    "invitationEyebrow": "გიწვევთ",
+    "invitationTitle": "დაეხმარეთ <highlight>მომავალი თაობის</highlight> მისიის ინსტრუმენტების შექმნაში",
+    "invitationDescription": "ვიწვევთ პრაქტიკოსებს, შემქმნელებსა და პარტნიორებს ადრეულ წვდომაზე. პირველად გამოსცადეთ ახალი ინსტრუმენტები, მოგვაწოდეთ უკუკავშირი და დაგვეხმარეთ რეალური მისიონერული მუშაობისთვის შექმნილი პროდუქტების ჩამოყალიბებაში.",
+    "betaTester": "გახდით ბეტა ტესტერი"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "ვიდეობიბლიის კოლექცია",
+    "gospelRailTitle": "აღმოაჩინეთ სრული ამბავი",
+    "videoBibleDescription": "აღმოაჩინეთ ჩვენი ვიდეოებისა და რესურსების კოლექცია, რომელიც ბიბლიას ცოცხლად წარმოგვიდგენს მიმზიდველი ისტორიებითა და სწავლებით.",
+    "showcaseTitle": "წმინდა წერილი ფილმის მეშვეობით",
+    "adventEyebrow": "საადვენტო შობა",
+    "adventTitle": "საადვენტო შობის ათვლა",
+    "adventDescription": "შემოგვიერთდით საადვენტო გზაზე ყოველდღიური ვიდეოთი, რომელიც შობის მოლოდინს ამაღლებს და იკვლევს იესოს მოსვლის იმედს, სიხარულსა და დაპირებას.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject საადვენტო",
+    "nuaEyebrow": "NUA სერია",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth სერია",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "ვიდეო კურსი",
+    "journeyWithJesusTitle": "იესოსთან ერთად გზაზე",
+    "gospelsOnVideoEyebrow": "ყველა სახარება ვიდეოზე გადმოცემული",
+    "scriptureAsWrittenTitle": "წმინდა წერილი ზუსტად ისე, როგორც დაწერილია",
+    "merryChristmas": "გილოცავთ შობას!",
+    "daysUntilChristmas": "{count, plural, one {შობამდე # დღეა} other {შობამდე # დღეა}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ენები",
+    "metadataDescription": "დათვალიერეთ JesusFilm-ის ვიდეოები ენის მიხედვით.",
+    "eyebrow": "სათვალთვალო ენები",
+    "title": "აირჩიეთ ენა",
+    "description": "დაათვალიერეთ ენები რეგიონის მიხედვით ან სრული სია.",
+    "searchPlaceholder": "ენების ან ქვეყნების ძიება...",
+    "searchLabel": "ენების ან ქვეყნების ძიება",
+    "clearSearch": "ძიების გასუფთავება",
+    "browse": "დათვალიერება",
+    "browseByRegion": "რეგიონისა და ქვეყნის მიხედვით დათვალიერება",
+    "languageCount": "{count, plural, one {# ენა} other {# ენა}}",
+    "region": "რეგიონი",
+    "countryLanguages": "{country}-ის ენები",
+    "showLess": "ნაკლების ჩვენება",
+    "showMore": "კიდევ {count}-ის ჩვენება",
+    "noLanguages": "ენები ვერ მოიძებნა",
+    "tryAnotherSearch": "სცადეთ სხვა საძიებო სიტყვა."
+  },
+  "WatchHistory": {
+    "metadataTitle": "ყურების ისტორია | Jesus Film Project",
+    "title": "ყურების ისტორია",
+    "loading": "ისტორიის ჩატვირთვა",
+    "empty": "აქ ჯერ არაფერი არის",
+    "emptyDescription": "ვიდეოები, რომლებსაც შესვლისას უყურებთ, აქ გამოჩნდება.",
+    "earlier": "ადრე",
+    "today": "დღეს",
+    "yesterday": "გუშინ"
+  },
+  "AccountControl": {
+    "account": "ანგარიში",
+    "accountMenu": "ანგარიშის მენიუ",
+    "signIn": "შესვლა",
+    "signOut": "გასვლა",
+    "signedIn": "შესული ხართ",
+    "history": "ისტორია",
+    "logOut": "გასვლა"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "გვერდი ვერ მოიძებნა",
+    "eyebrow": "გვერდი ვერ მოიძებნა",
+    "screenReaderPrefix": "გვერდი ვერ მოიძებნა:",
+    "title": "ეს სცენა აქ არ არის.",
+    "description": "შეიძლება გვერდი შეიცვალა, მაგრამ ამბავი გრძელდება.",
+    "actionsLabel": "გვერდი ვერ მოიძებნა — ქმედებები",
+    "backToWatch": "უკან Watch-ზე",
+    "browseVideos": "ვიდეოების დათვალიერება"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "მოკლემეტრაჟიანი ფილმის ყურება",
+    "actions": {
+      "joinUs": "შემოგვიერთდით",
+      "shareMission": "მონაწილეობა ჩვენს მისიაში"
+    },
+    "welcomeStart": {
+      "label": "რწმენა და წმინდა წერილი",
+      "title": "დღის ვიდეოები",
+      "description": "ჩვენი ბიბლიოთეკის რწმენაზე დაფუძნებული ვიდეოები, რომლებიც შთაგაგონებთ, გამოგიწვევთ და დაფიქრებისკენ გიბიძგებთ."
+    },
+    "welcomeMorning": {
+      "label": "დილით შთაგონება",
+      "title": "დილა მშვიდობისა! დღევანდელი ბიბლიური მომენტები გელით.",
+      "description": "დაიწყეთ დღე ბიბლიის გამამხნევებელი მომენტებით, რომლებიც თქვენი სულის შთაგონებასა და გამხნევებას ემსახურება."
+    },
+    "welcomeAfternoon": {
+      "label": "ნაშუადღევის შთაგონება",
+      "title": "საღამო მშვიდობისა! ბიბლიური მომენტები თქვენი დღისთვის.",
+      "description": "გამამხნევებელი ბიბლიური შიგთავსი, რომელიც იდეალურია ნაშუადღევის შესვენებისთვის ან შთაგონების გასაგრძელებლად."
+    },
+    "welcomeEvening": {
+      "label": "საღამოს შთაგონება",
+      "title": "საღამო მშვიდობისა! დამშვიდდით ბიბლიური მომენტებით.",
+      "description": "მშვიდი ბიბლიური მომენტები, რომლებიც დაგეხმარებათ დაფიქრდეთ და ნუგეში იპოვოთ, როცა დღე სრულდება."
+    },
+    "joinUs": {
+      "label": "შემოგვიერთდით",
+      "title": "მილიარდები ეძებენ პასუხებს",
+      "description": "მოსავლის დრო დადგა. შემოგვიერთდით, როცა ციფრული მედიის დახმარებით სახარებას ვუზიარებთ მსოფლიოს."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "წავიდეთ ერთად",
+      "title": "იესოს ამბის მოყოლა ერთად",
+      "description": "რათა მათ შეძლონ იესოს სიყვარული მოისმინონ და დაინახონ საკუთარ ენაზე, იქ, სადაც არიან."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% დამთხვევა",
+    "none": "ამ ენაზე ამ ვიდეოსთვის რეკომენდაციები ვერ მოიძებნა."
+  },
+  "BetaTesterModal": {
+    "title": "გახდით ბეტა ტესტერი",
+    "trigger": "გახდით ბეტა ტესტერი",
+    "loadFailed": "რაღაც შეცდომით დასრულდა.",
+    "loading": "იტვირთება...",
+    "openFormNewTab": "ფორმის გახსნა ახალ ჩანართში",
+    "close": "დახურვა",
+    "iframeTitle": "გახდით ბეტა ტესტერი"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "ერთი წუთით შეჩერდით",

@@ -7,7 +7,9 @@
     "noContent": "Контент абу.",
     "homepageMisconfigured": "Просмотрӧн главная страница лачтӧмӧн настроен.",
     "defaultTemplateMisconfigured": "Просмотрӧн тӧдчан шаблон лачтӧмӧн настроен.",
-    "authFailed": "Контент-сервисын авторизациясӧ тшӧктӧмӧн лоӧ. Меӧтлам техподдержкаӧ, кӧть это продолжитчӧ."
+    "authFailed": "Контент-сервисын авторизациясӧ тшӧктӧмӧн лоӧ. Меӧтлам техподдержкаӧ, кӧть это продолжитчӧ.",
+    "pageLoadFailed": "Сэтшӧмыс вештіс.",
+    "tryAgain": "Вӧтшӧтень юр."
   },
   "VideosPage": {
     "title": "Пӧскӧд видеоэз",
@@ -22,7 +24,8 @@
     "promoHeading": "Библиясӧ ӧддьӧн лӧсьӧтӧмӧн тӧдны?",
     "joinBibleStudy": "Библия изучениеӧ ветлыны",
     "previousQuote": "Вӧлі Библия цитата",
-    "nextQuote": "Висьталӧм Библия цитата"
+    "nextQuote": "Висьталӧм Библия цитата",
+    "readPassage": "Тай отрывоксӧ ас Библиятын лыддьы."
   },
   "DownloadButton": {
     "checking": "Проверка",
@@ -73,7 +76,8 @@
     "selectLanguage": "Язык вӧтлыны",
     "searchPlaceholder": "Языкэзӧн вӧтлыны…",
     "languages": "Языкэз",
-    "noMatches": "Тӧдӧмӧн абу"
+    "noMatches": "Тӧдӧмӧн абу",
+    "notAvailable": "Позьтӧм"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Язык",
@@ -112,7 +116,8 @@
     "questions": "Тшӧтш вопросэз",
     "askYours": "Ԝӧтлыны свой",
     "chatWithPerson": "Морткӧт висьталӧм",
-    "askBibleQuestion": "Библия йылысь вопрос юны"
+    "askBibleQuestion": "Библия йылысь вопрос юны",
+    "quiz": "Викторина"
   },
   "WatchQuestionPanel": {
     "messageType": "Висьталӧм вида",
@@ -170,7 +175,8 @@
     "searchRegion": "Видеоэзӧс вӧтлыны",
     "clearSearch": "Поиск вӧтчыны",
     "changeAudioLanguage": "Аудиоязык вӧтлыны",
-    "home": "JesusFilm главная"
+    "home": "JesusFilm главная",
+    "closeSearch": "Поисксӧ вӧтчыны"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоэзӧс вӧтлыны да вуҗӧтны",
@@ -205,14 +211,19 @@
     "clearLanguages": "Вӧтчыны",
     "queryLanguageDetected": "{language} тӧдӧм",
     "searchInLanguage": "{language} йылӧн вӧтлыны",
-    "tryDifferentKeywordsOrLanguage": "Мында ключевӧй словаэз либӧ мӧд язык юр"
+    "tryDifferentKeywordsOrLanguage": "Мында ключевӧй словаэз либӧ мӧд язык юр",
+    "useWebsiteDefaultLanguage": "Сайтӧн по умолчанию поиск языксӧ пользуйтчыны",
+    "removeLanguage": "{language} кежӧтны",
+    "browseMode": "Поиск вуҗӧтӧм режим"
   },
   "HeroPlayer": {
     "playWithSound": "Пыдӧт",
-    "tapToUnmute": "Звук вӧтлыны йылӧн тупкӧт"
+    "tapToUnmute": "Звук вӧтлыны йылӧн тупкӧт",
+    "nextEpisode": "Выль серия"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Контент лэдзӧм"
+    "loadingContent": "Контент лэдзӧм",
+    "loadingVideo": "Видео лэдзӧм"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -223,7 +234,8 @@
     "series": "Серия",
     "collection": "Коллекция",
     "trailer": "Трейлер",
-    "behindTheScenes": "Сцена бӧрын"
+    "behindTheScenes": "Сцена бӧрын",
+    "chapter": "Глава"
   },
   "SiblingCarousel": {
     "clipPosition": "Клип {current} из {total}",
@@ -235,12 +247,287 @@
     "noImage": "Снимок абу",
     "playingNow": "Нывӧтны",
     "previousChapter": "Вӧлі глава",
-    "nextChapter": "Выль глава"
+    "nextChapter": "Выль глава",
+    "thumbnailAlt": "{title} миниатюра",
+    "relatedVideoThumbnail": "Тшӧтш видео миниатюра"
   },
   "SearchResultCard": {
     "experience": "Опыт",
     "episodeCount": "{count, plural, one {# серия} other {# серияэз}}",
     "thumbnailAlt": "Видео миниатюра"
+  },
+  "Feedback": {
+    "openForm": "Отзыв формаӧн вӧчны",
+    "label": "Отзыв",
+    "couldNotLoad": "Отзыв форма лэдзӧмсьӧтӧм позьтӧм.",
+    "loadingForm": "Отзыв форма лэдзӧм…",
+    "retry": "Ӧшмӧтны",
+    "openFormShort": "Формаӧн вӧчны",
+    "cancel": "Сӧкӧтны",
+    "title": "Beta отзыв",
+    "description": "Висьтлӧ, мый бур ӧддьӧн вундытӧм да мыйӧс позьӧ буржыкӧн вӧчны. Сійӧ формаыс Google-лыдӧн вӧтӧ.",
+    "openInNewTab": "Формаӧн вӧчны выль вкладкаын",
+    "closeForm": "Отзыв формаӧс вӧтчыны",
+    "loadingGoogleForm": "Google Form лэдзӧм…",
+    "iframeTitle": "Beta отзывӧс висьталӧм"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} йылӧн венӧз христианскӧй видеоэз | Jesus Film Project",
+    "metadataDescription": "Jesus фильмэз, Библия висьтэз, ученичествӧ серияэз да евангелизация видеоэз {language} йылӧн озвучкаӧн либӧ субтитрӧйӧн вуҗӧт.",
+    "heroTitle": "{language} йылӧн венӧз христианскӧй видеоэз",
+    "heroDescription": "{language} йылӧн видеозы, Библия висьтэз, ученичествӧ серияэз да евангелизация видеоэз вуҗӧт. Полностью озвучитӧм видеоэз вештӧм йӧртісь, субтитрӧй вариантэз — вӧтӧс.",
+    "languageCollection": "Язык коллекция",
+    "itemCount": "{count, plural, one {# предмет} other {# предметэз}}",
+    "videoCount": "{count, plural, one {# видео} other {# видеоэз}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видеоэз}} {groupCount, plural, one {# группаын} other {# группаын}}",
+    "sectionNavLabel": "Язык inventory разделэз",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Выль",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Коллекцияэз",
+    "subtitlesOnly": "Субтитрӧй гӧгӧр",
+    "newlyAdded": "Выльысь шедтӧм",
+    "newVideosTitle": "{language} йылӧн выль христианскӧй видеоэз",
+    "newestFirst": "Выльыс вӧлі",
+    "noPublishedVideos": "Сійӧ языклы озвисьтӧм видеоэз эг тӧд.",
+    "bibleAndGospelFilms": "Библия да Евангелие фильмэз",
+    "videoBibleCollectionsTitle": "{language} Видео Библия коллекцияэз",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena да Acts тшӧтш {language} йылӧн Писаниеын тызалан коллекцияэз.",
+    "noVideoBibleCollections": "Сійӧ языклы Видео Библия коллекцияэз әлега абу.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject коллекцияэз",
+    "bibleProjectDescription": "BibleProject серияэз да изучениеэз {language} йылӧн вуҗӧтӧм.",
+    "noBibleProjectCollections": "Сійӧ языклы BibleProject коллекцияэз әлега абу.",
+    "sportsStories": "Спорт висьтэз",
+    "sportsTitle": "{language} йылӧн спорт да спортсмен висьтэз",
+    "sportsDescription": "Вераны тшӧтш спорт висьтэз да спортсмен йылысь коллекцияэз {language} йылӧн.",
+    "noSportsCollections": "Сійӧ языклы спорт либӧ спортсмен висьтӧм коллекцияэз әлега абу.",
+    "fullyDubbed": "Полностью озвучитӧм",
+    "dubbedVideosTitle": "{language} йылӧн видеоэз коллекцияэзӧн",
+    "dubbedVideosDescription": "Тӧдчыны ыджытная {language} видеоэз коллекцияэзӧн тшӧтш, шуны буржыкӧн тӧдны понда.",
+    "noDubbedVideos": "Сійӧ языклы полностью озвучитӧм видеоэз әлега абу.",
+    "subtitlesAvailable": "Субтитрӧйэз колӧны",
+    "subtitlesTitle": "{language} йылӧн субтитрӧй видеоэз",
+    "subtitlesDescription": "Сійӧ видеоэзын {language} субтитрӧйэз колӧны, кӧть {language} аудиосӧ эгесь абу.",
+    "noSubtitleVideos": "Сійӧ языклы субтитрӧй гӧгӧр видеоэз әлега абу.",
+    "dubbed": "Озвучитӧм",
+    "subtitles": "Субтитрӧй",
+    "newLabel": "Выль",
+    "fromCollection": "{collection} вын",
+    "standaloneVideos": "Торӧт видеоэз",
+    "videosFromCollection": "{collection} коллекцияысь видеоэз.",
+    "standaloneDescription": "Торӧт видеоэз тай языкын.",
+    "openCollection": "Коллекцияӧс вӧтчыны"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project: видзӧтны",
+    "watch": "Видзӧтны",
+    "watchNow": "Нӧр видзӧтны",
+    "mutePreview": "Предпросмотр звук вӧтчыны",
+    "unmutePreview": "Предпросмотр звук вӧтлыны",
+    "nextVideo": "Выль видео",
+    "featured": "Тӧдчан",
+    "showVideo": "{title} вӧзьтӧн",
+    "previousVideoPreview": "Вӧлі видео предпросмотр",
+    "nextVideoPreview": "Выль видео предпросмотр",
+    "mediaCollection": "Медиа коллекция",
+    "scrollToVideo": "{title} видеоӧ кужны"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project главная",
+    "navigation": "Футер навигация",
+    "share": "Вӧзьтӧн",
+    "watch": "Видзӧтны",
+    "giving": "Тӧтны",
+    "about": "Йылысь",
+    "products": "Продуктэз",
+    "resources": "Ресурсэз",
+    "partners": "Партнерэз",
+    "contact": "Контакт",
+    "giveNow": "Нӧр тӧтны",
+    "resourcesVersion": "Ресурсэз ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Конфиденциальность политика",
+    "legalStatement": "Юридическӧй висьталӧм",
+    "newsletter": "Наш newsletter-ӧ кыскыны"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Глобальнӧй миссияэз понда вӧтӧм",
+    "title": "Висьтыс вӧтшӧтны абу. Мыйын йӧзэз видзӧтӧ, сійӧ вӧтшӧтӧ.",
+    "description": "Меӧтӧ video library да инструментэз вылын выльысь вӧтӧм, десятилетиӧн вуҗӧтӧм тырӧн платформаэзӧ, кӧні йӧзэз уже йыйӧны, видзӧтӧны да вӧзьтӧны.",
+    "translatedLibraryTitle": "Дуннӧйын ӧддьӧн вуҗӧтӧм фильм библиотека",
+    "translatedLibraryDescription": "Десятилетиӧн вуҗӧтӧм да тӧдчан ministry partnerэзыс берданысь, библиотекаын кӧдзытсьӧ тысячӧм язык трекэз, чтобы йӧзэз Jesus висьтӧн тӧдны, кӧні сійӧй ӧддьӧн тырӧ.",
+    "trustedVoicesTitle": "Тӧдчан голосэз выль форматэзӧ вӧтӧм",
+    "trustedVoicesDescription": "Меӧтӧ gospel висьтэзсӧ мыйын вӧтны, тӧдчан вуҗӧтӧмэзсӧ modern форматэзӧн пӧртны, чтобы висьтыс платформаэз, культураэз да экранэз йылӧн вӧтны.",
+    "missionTeamTitle": "Библиотекаын тӧдӧм абу. Миссиялысь команда.",
+    "missionTeamDescription": "Jesus Film Project — переводчикэз, media specialistэз, editorэз да creatorэз дунакӧн глобальнӧй команда, кӧні десятилетиӧн ministry опытсӧ discple-makerэз понда инструментэзӧ вӧтӧны.",
+    "buildingNext": "Мый меӧтӧ вылын лоӧ",
+    "nextStepsTitle": "Пыдӧтӧм выль юр",
+    "nextStepsDescription": "Видзӧтны олыссӧ духовнӧй жолын тӧдчан позьӧмэзӧн, комьюнити, Писание либӧ миссияӧ кытшӧм пыдӧт кежӧм.",
+    "mediaLibraryTitle": "Евангелизационнӧй медиа библиотека",
+    "mediaLibraryDescription": "Библия эшӧтӧм Christian media библиотека, кӧні тысячӧм видеоэз, фильмэз да ресурсэз множествӧн языкэзын ministry да evangelism понда тӧдӧм.",
+    "ministryToolsTitle": "Министерствоэз понда digital инструментэз",
+    "ministryToolsDescription": "Видео башкарение, контент таразитӧм, аудиторияӧн вӧзьтӧм да analytics, ministry эзӧ ӧддьӧн йӧзӧс җыччӧтӧм понда чӧскытӧм.",
+    "invitationEyebrow": "Ӧтӧй вӧйтӧм",
+    "invitationTitle": "Меӧтӧ <highlight>выль поколение</highlight> миссия инструментэзӧн вӧтӧм",
+    "invitationDescription": "Ме практикэз, creatorэз да partnerэз ранний доступӧ вӧзьтӧмӧн ырыс. Выль инструментэзсӧ бура тӧдны, feedback вӧзьтӧм да настоящӧй mission work понда продуктэзсӧ лӧсьӧтны.",
+    "betaTester": "Beta tester лоӧ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библия коллекция",
+    "gospelRailTitle": "Пӧскӧд висьтсӧ тӧдны",
+    "videoBibleDescription": "Наш коллекцияын видеоэз да ресурсэз Библиясӧ ӧддьӧн живӧйӧн кыскыны, висьтэз да учениеэз висьтлӧмӧн.",
+    "showcaseTitle": "Писание фильмын висьтӧм",
+    "adventEyebrow": "Рождество Advent",
+    "adventTitle": "Рождество Advent count-down",
+    "adventDescription": "Advent journeyӧ ветлыны, кӧні кӧдзыт сайын видео әрныкӧн Рождествоӧ кытчӧн сӧмын ӧддӧн тӧдны, Jesus пыдӧтлӧм йылӧн ӧтласа шӧрӧт, вӧвлӧм да обещаниеэзсӧ тӧдны.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Jesus-кӧт journey",
+    "gospelsOnVideoEyebrow": "Пӧскӧд Евангелие, видеоын висьтӧм",
+    "scriptureAsWrittenTitle": "Писание, кыдз висьтӧм, сэтшӧмӧн үтӧкын",
+    "merryChristmas": "Рождествоӧн!",
+    "daysUntilChristmas": "{count, plural, one {Рождествоӧдз # лун} other {Рождествоӧдз # лунэз}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Языкэз",
+    "metadataDescription": "JesusFilm видеоэзсӧ языкӧн вуҗӧтны.",
+    "eyebrow": "Видзӧтны языкэз",
+    "title": "Язык вӧтлыны",
+    "description": "Регион йылӧн языкэзсӧ вуҗӧтны либӧ пӧскӧд списоксӧ видзӧтны.",
+    "searchPlaceholder": "Языкэз либӧ странаэзӧн вӧтлыны...",
+    "searchLabel": "Языкэз либӧ странаэзӧн вӧтлыны",
+    "clearSearch": "Поиск вӧтчыны",
+    "browse": "Вуҗӧтны",
+    "browseByRegion": "Регион да страна йылӧн вуҗӧтны",
+    "languageCount": "{count, plural, one {# язык} other {# языкэз}}",
+    "region": "Регион",
+    "countryLanguages": "{country} языкэз",
+    "showLess": "Мында абу",
+    "showMore": "Мында {count} быдӧс",
+    "noLanguages": "Языкэз эг тӧд",
+    "tryAnotherSearch": "Мӧд поиск сёрни вӧтлы."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Видзӧтӧм история | Jesus Film Project",
+    "title": "Видзӧтӧм история",
+    "loading": "История лэдзӧм",
+    "empty": "Медым бы абу",
+    "emptyDescription": "Входитӧмӧн видзӧтӧм видеоэз сэтшын пӧртӧны.",
+    "earlier": "Вӧліӧн",
+    "today": "Тӧри",
+    "yesterday": "Ӧніӧн"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт меню",
+    "signIn": "Входитны",
+    "signOut": "Выходитны",
+    "signedIn": "Входитӧм",
+    "history": "История",
+    "logOut": "Выйти"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Страница абу тӧд",
+    "eyebrow": "Страница абу тӧд",
+    "screenReaderPrefix": "Страница абу тӧд:",
+    "title": "Сійӧ сцена сэтшын абу.",
+    "description": "Страницаын вӧртӧм позьӧ, но висьтыс продолжайтӧ.",
+    "actionsLabel": "Страница абу тӧд әрекетэз",
+    "backToWatch": "Видзӧтӧмӧ кежӧ",
+    "browseVideos": "Видеоэзсӧ вуҗӧтны"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Кӧрӧт фильм видзӧтны",
+    "actions": {
+      "joinUs": "Ӧтлаын ло",
+      "shareMission": "Миссияысь вӧзьтӧм"
+    },
+    "welcomeStart": {
+      "label": "Вӧра да Писание",
+      "title": "Тӧри видеоэз",
+      "description": "Бурӧн, вӧтшӧтны да думайтны кыскысь мыйӧс бердась наш библиотекаысь вӧра видео контент."
+    },
+    "welcomeMorning": {
+      "label": "Ӧтласа югӧр",
+      "title": "Бур лун! Тӧри Библия моментыэз виччысьӧны.",
+      "description": "Лунтӧ тӧри Библия моментэзӧн кыян, кӧні вӧра да югӧртӧм вӧчӧны кужысь."
+    },
+    "welcomeAfternoon": {
+      "label": "Шӧр лун югӧр",
+      "title": "Бур шӧр лун! Кыян понда Библия моментэз.",
+      "description": "Шӧр лунлы лӧсьӧтӧм вӧра Библия контент, кӧнія шӧр лун сайын либӧ бӧръя югӧр понда бур."
+    },
+    "welcomeEvening": {
+      "label": "Ӧш югӧр",
+      "title": "Бур ӧш! Библия моментэзӧн шӧрӧтӧт.",
+      "description": "Шӧр, тыныш Библия моментэз, кӧнія лунӧд юрсялӧмсянь думайтны да юртавны жӧвтны."
+    },
+    "joinUs": {
+      "label": "Ӧтлаын ло",
+      "title": "Миллиардӧс йӧзэз шуӧны",
+      "description": "Урожай сэтшы. Югӧр медбурйӧн медлысь, digital media-ӧн пользуйтчӧмӧн, ӧтлаын ӧтлас лоӧт, мыйым висьтлӧм гӧгӧр вӧчӧм."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ӧтлаын мӧвпытӧм",
+      "title": "Jesus йылісь висьтӧм, ӧтлаын",
+      "description": "Мыйым нылысь да йылісь Jesusлысь юрӧм да вӧрӧм морткӧт, сійӧс сійӧн өзьжык, кӧні олӧны."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% лӧсялӧм",
+    "none": "Тай видео понда сійӧ языкын рекомендацияэз эг тӧд."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester лоӧ",
+    "trigger": "Beta tester лоӧ",
+    "loadFailed": "Сэтшӧмыс вештіс.",
+    "loading": "Лэдзӧм…",
+    "openFormNewTab": "Формаӧн вӧчны выль вкладкаын",
+    "close": "Вӧтчыны",
+    "iframeTitle": "Beta tester лоӧ"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Эшӧтчӧк кадышт",

@@ -7,7 +7,9 @@
     "noContent": "Nie je k dispozícii žiadny obsah.",
     "homepageMisconfigured": "Domovská stránka sledovania je nesprávne nakonfigurovaná.",
     "defaultTemplateMisconfigured": "Predvolená šablóna sledovania je nesprávne nakonfigurovaná.",
-    "authFailed": "Nepodarilo sa overiť v službe obsahu. Ak problém pretrváva, kontaktujte podporu."
+    "authFailed": "Nepodarilo sa overiť v službe obsahu. Ak problém pretrváva, kontaktujte podporu.",
+    "pageLoadFailed": "Niečo sa pokazilo.",
+    "tryAgain": "Skúsiť znova"
   },
   "VideosPage": {
     "title": "Všetky videá",
@@ -22,7 +24,8 @@
     "promoHeading": "Chcete lepšie porozumieť Biblii?",
     "joinBibleStudy": "Pripojte sa k štúdiu Biblie",
     "previousQuote": "Predchádzajúci biblický citát",
-    "nextQuote": "Ďalší biblický citát"
+    "nextQuote": "Ďalší biblický citát",
+    "readPassage": "Prečítajte si túto pasáž vo svojej Biblii."
   },
   "DownloadButton": {
     "checking": "Kontroluje sa",
@@ -73,7 +76,8 @@
     "selectLanguage": "Vybrať jazyk",
     "searchPlaceholder": "Hľadať jazyky…",
     "languages": "Jazyky",
-    "noMatches": "Žiadne zhody"
+    "noMatches": "Žiadne zhody",
+    "notAvailable": "Nie je k dispozícii"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Jazyk",
@@ -112,7 +116,8 @@
     "questions": "Súvisiace otázky",
     "askYours": "Položiť svoju otázku",
     "chatWithPerson": "Chatovať s človekom",
-    "askBibleQuestion": "Položiť biblickú otázku"
+    "askBibleQuestion": "Položiť biblickú otázku",
+    "quiz": "Kvíz"
   },
   "WatchQuestionPanel": {
     "messageType": "Typ správy",
@@ -170,7 +175,8 @@
     "searchRegion": "Hľadať videá",
     "clearSearch": "Vymazať vyhľadávanie",
     "changeAudioLanguage": "Zmeniť jazyk zvuku",
-    "home": "Domovská stránka JesusFilm"
+    "home": "Domovská stránka JesusFilm",
+    "closeSearch": "Zavrieť vyhľadávanie"
   },
   "SearchOverlay": {
     "dialogLabel": "Vyhľadávať a prehliadať videá",
@@ -205,14 +211,19 @@
     "clearLanguages": "Vymazať",
     "queryLanguageDetected": "Zistený jazyk: {language}",
     "searchInLanguage": "Hľadať v jazyku {language}",
-    "tryDifferentKeywordsOrLanguage": "Skúste iné kľúčové slová alebo vyberte iný vyhľadávací jazyk"
+    "tryDifferentKeywordsOrLanguage": "Skúste iné kľúčové slová alebo vyberte iný vyhľadávací jazyk",
+    "useWebsiteDefaultLanguage": "Použiť predvolený vyhľadávací jazyk webu",
+    "removeLanguage": "Odstrániť {language}",
+    "browseMode": "Režim prehliadania vyhľadávania"
   },
   "HeroPlayer": {
     "playWithSound": "Sledovať teraz",
-    "tapToUnmute": "Ťuknite pre zapnutie zvuku"
+    "tapToUnmute": "Ťuknite pre zapnutie zvuku",
+    "nextEpisode": "Ďalšia epizóda"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Načítava sa obsah"
+    "loadingContent": "Načítava sa obsah",
+    "loadingVideo": "Načítava sa video"
   },
   "VideoLabels": {
     "video": "Videozáznam",
@@ -223,7 +234,8 @@
     "series": "Séria",
     "collection": "Zbierka",
     "trailer": "Upútavka",
-    "behindTheScenes": "Zo zákulisia"
+    "behindTheScenes": "Zo zákulisia",
+    "chapter": "Kapitola"
   },
   "SiblingCarousel": {
     "clipPosition": "Klip {current} z {total}",
@@ -235,12 +247,287 @@
     "noImage": "Žiadny obrázok",
     "playingNow": "Prehráva sa teraz",
     "previousChapter": "Predchádzajúca kapitola",
-    "nextChapter": "Ďalšia kapitola"
+    "nextChapter": "Ďalšia kapitola",
+    "thumbnailAlt": "Náhľad {title}",
+    "relatedVideoThumbnail": "Náhľad súvisiaceho videa"
   },
   "SearchResultCard": {
     "experience": "Skúsenosť",
     "episodeCount": "{count, plural, one {# epizóda} few {# epizódy} other {# epizód}}",
     "thumbnailAlt": "Náhľad videa"
+  },
+  "Feedback": {
+    "openForm": "Otvoriť formulár spätnej väzby",
+    "label": "Spätná väzba",
+    "couldNotLoad": "Formulár spätnej väzby sa nepodarilo načítať.",
+    "loadingForm": "Načítava sa formulár spätnej väzby…",
+    "retry": "Skúsiť znova",
+    "openFormShort": "Otvoriť formulár",
+    "cancel": "Zrušiť",
+    "title": "Beta spätná väzba",
+    "description": "Podeľte sa o to, čo funguje a čo môžeme zlepšiť. Tento formulár poskytuje Google.",
+    "openInNewTab": "Otvoriť formulár na novej karte",
+    "closeForm": "Zavrieť formulár spätnej väzby",
+    "loadingGoogleForm": "Načítava sa formulár Google…",
+    "iframeTitle": "Odoslať beta spätnú väzbu"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Bezplatné kresťanské videá v jazyku {language} | Jesus Film Project",
+    "metadataDescription": "Preskúmajte filmy o Ježišovi, biblické príbehy, série o učeníctve a evanjelizačné videá s dabovaným zvukom alebo titulkami v jazyku {language}.",
+    "heroTitle": "Bezplatné kresťanské videá v jazyku {language}",
+    "heroDescription": "Preskúmajte filmy o Ježišovi, biblické príbehy, série o učeníctve a evanjelizačné videá dostupné v jazyku {language}. Najprv sú zvýraznené plne dabované videá, pod nimi sú možnosti iba s titulkami.",
+    "languageCollection": "Jazyková zbierka",
+    "itemCount": "{count, plural, one {# položka} few {# položky} other {# položiek}}",
+    "videoCount": "{count, plural, one {# video} few {# videá} other {# videí}}",
+    "videosInGroups": "{videoCount, plural, one {# video} few {# videá} other {# videí}} v {groupCount, plural, one {# skupine} few {# skupinách} other {# skupinách}}",
+    "sectionNavLabel": "Sekcie jazykového inventára",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nové",
+    "videoBible": "Video Biblia",
+    "bibleProject": "BibleProject",
+    "sports": "Šport",
+    "collections": "Zbierky",
+    "subtitlesOnly": "Iba titulky",
+    "newlyAdded": "Novo pridané",
+    "newVideosTitle": "Nové kresťanské videá v jazyku {language}",
+    "newestFirst": "Najnovšie najprv",
+    "noPublishedVideos": "Pre tento jazyk sa zatiaľ nenašli žiadne publikované videá.",
+    "bibleAndGospelFilms": "Filmy z Biblie a evanjelia",
+    "videoBibleCollectionsTitle": "Zbierky Video Biblie v jazyku {language}",
+    "videoBibleDescription": "Zbierky zamerané na Písmo vrátane LUMO, JESUS, Magdalena a Skutky v jazyku {language}.",
+    "noVideoBibleCollections": "Pre tento jazyk zatiaľ nie sú k dispozícii žiadne zbierky Video Biblie.",
+    "bibleProjectCollectionsTitle": "Zbierky BibleProject v jazyku {language}",
+    "bibleProjectDescription": "Série a štúdiá BibleProject dostupné v jazyku {language}.",
+    "noBibleProjectCollections": "Pre tento jazyk zatiaľ nie sú k dispozícii žiadne zbierky BibleProject.",
+    "sportsStories": "Príbehy zo športu",
+    "sportsTitle": "Príbehy zo športu a o športovcoch v jazyku {language}",
+    "sportsDescription": "Príbehy so zameraním na vieru a zbierky o športovcoch dostupné v jazyku {language}.",
+    "noSportsCollections": "Pre tento jazyk zatiaľ nie sú k dispozícii žiadne športové zbierky ani zbierky o športovcoch.",
+    "fullyDubbed": "Plne dabované",
+    "dubbedVideosTitle": "Videá v jazyku {language} podľa zbierky",
+    "dubbedVideosDescription": "Prehľadávajte plne dabované videá v jazyku {language} zoskupené podľa zbierky pre jednoduchšie objavovanie.",
+    "noDubbedVideos": "Pre tento jazyk zatiaľ nie sú k dispozícii žiadne plne dabované videá.",
+    "subtitlesAvailable": "Titulky sú k dispozícii",
+    "subtitlesTitle": "Videá v jazyku {language} s titulkami",
+    "subtitlesDescription": "Tieto videá obsahujú titulky v jazyku {language}, keď zatiaľ nie je dostupný hovorený zvuk v jazyku {language}.",
+    "noSubtitleVideos": "Pre tento jazyk zatiaľ nie sú k dispozícii žiadne videá iba s titulkami.",
+    "dubbed": "Dabované",
+    "subtitles": "Titulky",
+    "newLabel": "Nové",
+    "fromCollection": "Zo zbierky {collection}",
+    "standaloneVideos": "Samostatné videá",
+    "videosFromCollection": "Videá zo zbierky {collection}.",
+    "standaloneDescription": "Samostatné videá v tomto jazyku.",
+    "openCollection": "Otvoriť zbierku"
+  },
+  "WatchHome": {
+    "pageTitle": "Sledovanie Jesus Film Project",
+    "watch": "Sledovať",
+    "watchNow": "Sledovať teraz",
+    "mutePreview": "Stlmiť ukážku",
+    "unmutePreview": "Zapnúť zvuk ukážky",
+    "nextVideo": "Ďalšie video",
+    "featured": "Odporúčané",
+    "showVideo": "Zobraziť {title}",
+    "previousVideoPreview": "Ukážka predchádzajúceho videa",
+    "nextVideoPreview": "Ukážka ďalšieho videa",
+    "mediaCollection": "Mediálna zbierka",
+    "scrollToVideo": "Posunúť na video {title}"
+  },
+  "WatchFooter": {
+    "home": "Domovská stránka Jesus Film Project",
+    "navigation": "Navigácia v pätičke",
+    "share": "Zdieľať",
+    "watch": "Sledovať",
+    "giving": "Dávanie",
+    "about": "O nás",
+    "products": "Produkty",
+    "resources": "Zdroje",
+    "partners": "Partneri",
+    "contact": "Kontakt",
+    "giveNow": "Prispejte teraz",
+    "resourcesVersion": "Zdroje ({version})",
+    "office": "Kancelária",
+    "fax": "Faxové číslo",
+    "privacyPolicy": "Zásady ochrany osobných údajov",
+    "legalStatement": "Právne vyhlásenie",
+    "newsletter": "Prihlásiť sa na odber nášho newslettera"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Vytvorené pre globálne misie",
+    "title": "Posolstvo sa nemení. Mení sa spôsob, akým ho ľudia sledujú.",
+    "description": "Prestavujeme našu video knižnicu a nástroje od základov a prenášame desaťročia prekladateľskej práce na platformy, kde sa ľudia už stretávajú, sledujú a zdieľajú.",
+    "translatedLibraryTitle": "Najprekladanejšia filmová knižnica na svete",
+    "translatedLibraryDescription": "Desaťročia prekladateľskej práce, vedené dôveryhodnými misijnými partnermi, vybudovali knižnicu s tisíckami jazykových stôp, aby ľudia mohli zažiť príbeh Ježiša v jazyku, ktorý osloví ich najhlbšie.",
+    "trustedVoicesTitle": "Prenášame dôveryhodné hlasy do nových formátov",
+    "trustedVoicesDescription": "Prestavujeme spôsob, akým sa vizuálne rozprávajú evanjeliové príbehy, a spájame overené preklady s modernými formátmi, aby posolstvo mohlo voľne prechádzať medzi platformami, kultúrami a obrazovkami.",
+    "missionTeamTitle": "Viac než knižnica. Tím zameraný na misiu.",
+    "missionTeamDescription": "Jesus Film Project je globálny tím prekladateľov, mediálnych špecialistov, editorov a tvorcov, ktorí premieňajú desaťročia skúseností v službe na nástroje pre učeníkov všade.",
+    "buildingNext": "Čo budujeme ďalej",
+    "nextStepsTitle": "Platforma ďalších krokov",
+    "nextStepsDescription": "Spájame divákov s konkrétnymi príležitosťami na ich duchovnej ceste a pomáhame im urobiť ďalší krok do spoločenstva, Písma alebo misie.",
+    "mediaLibraryTitle": "Evanjelizačná mediálna knižnica",
+    "mediaLibraryDescription": "Rozsiahla kresťanská mediálna knižnica s tisíckami videí, filmov a zdrojov dostupných vo viacerých jazykoch pre službu a evanjelizáciu na celom svete.",
+    "ministryToolsTitle": "Digitálne nástroje pre služby",
+    "ministryToolsDescription": "Správa videí, distribúcia obsahu, zapojenie publika a analytika navrhnuté tak, aby pomáhali službám efektívnejšie osloviť viac ľudí.",
+    "invitationEyebrow": "Ste pozvaní",
+    "invitationTitle": "Pomôžte budovať <highlight>novú generáciu</highlight> misijných nástrojov",
+    "invitationDescription": "Pozývame odborníkov z praxe, tvorcov a partnerov do predbežného prístupu. Otestujte nové nástroje ako prví, poskytnite spätnú väzbu a pomôžte formovať produkty určené pre skutočnú misijnú prácu.",
+    "betaTester": "Staňte sa beta testerom"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Zbierka Video Biblie",
+    "gospelRailTitle": "Objavte celý príbeh",
+    "videoBibleDescription": "Preskúmajte našu zbierku videí a zdrojov, ktoré oživujú Bibliu pútavými príbehmi a vyučovaním.",
+    "showcaseTitle": "Písmo rozprávané prostredníctvom filmu",
+    "adventEyebrow": "Vianočný advent",
+    "adventTitle": "Adventný odpočet do Vianoc",
+    "adventDescription": "Pridajte sa k našej adventnej ceste s každodenným videom, ktoré buduje očakávanie Vianoc a objavuje nádej, radosť a prísľub Ježišovho príchodu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Séria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Séria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurz",
+    "journeyWithJesusTitle": "Cesta s Ježišom",
+    "gospelsOnVideoEyebrow": "Každé evanjelium rozprávané na videu",
+    "scriptureAsWrittenTitle": "Písmo, vyslovené presne tak, ako je napísané",
+    "merryChristmas": "Veselé Vianoce!",
+    "daysUntilChristmas": "{count, plural, one {Do Vianoc zostáva # deň} few {Do Vianoc zostávajú # dni} other {Do Vianoc zostáva # dní}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Jazyky",
+    "metadataDescription": "Prehliadajte videá JesusFilm podľa jazyka.",
+    "eyebrow": "Jazyky sledovania",
+    "title": "Vyberte jazyk",
+    "description": "Preskúmajte jazyky podľa regiónu alebo si prehliadnite celý zoznam.",
+    "searchPlaceholder": "Hľadať jazyky alebo krajiny...",
+    "searchLabel": "Hľadať jazyky alebo krajiny",
+    "clearSearch": "Vymazať vyhľadávanie",
+    "browse": "Prehliadať",
+    "browseByRegion": "Prehliadať podľa regiónu a krajiny",
+    "languageCount": "{count, plural, one {# jazyk} few {# jazyky} other {# jazykov}}",
+    "region": "Región",
+    "countryLanguages": "Jazyky {country}",
+    "showLess": "Zobraziť menej",
+    "showMore": "Zobraziť ďalších {count}",
+    "noLanguages": "Nenašli sa žiadne jazyky",
+    "tryAnotherSearch": "Skúste iný hľadaný výraz."
+  },
+  "WatchHistory": {
+    "metadataTitle": "História sledovania | Jesus Film Project",
+    "title": "História sledovania",
+    "loading": "Načítava sa história",
+    "empty": "Zatiaľ nič tu nie je",
+    "emptyDescription": "Videá, ktoré sledujete po prihlásení, sa tu zobrazia.",
+    "earlier": "Skôr",
+    "today": "Dnes",
+    "yesterday": "Včera"
+  },
+  "AccountControl": {
+    "account": "Účet",
+    "accountMenu": "Ponuka účtu",
+    "signIn": "Prihlásiť sa",
+    "signOut": "Odhlásiť sa",
+    "signedIn": "Prihlásený",
+    "history": "História",
+    "logOut": "Odhlásiť"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Stránka sa nenašla",
+    "eyebrow": "Stránka sa nenašla",
+    "screenReaderPrefix": "Stránka sa nenašla:",
+    "title": "Táto scéna tu nie je.",
+    "description": "Stránka sa možno presunula, ale príbeh pokračuje.",
+    "actionsLabel": "Akcie pri nenájdenej stránke",
+    "backToWatch": "Späť na Sledovať",
+    "browseVideos": "Prehliadať videá"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Pozrieť krátky film",
+    "actions": {
+      "joinUs": "Pridajte sa k nám",
+      "shareMission": "Podieľajte sa na našom poslaní"
+    },
+    "welcomeStart": {
+      "label": "Viera a Písmo",
+      "title": "Dnešný výber videí",
+      "description": "Videá z našej knižnice zamerané na vieru, ktoré majú inšpirovať, vyzvať a podnietiť zamyslenie."
+    },
+    "welcomeMorning": {
+      "label": "Ranná inšpirácia",
+      "title": "Dobré ráno! Čakajú vás dnešné biblické chvíle.",
+      "description": "Začnite deň povzbudivými biblickými momentmi, ktoré majú inšpirovať a povzbudiť vášho ducha."
+    },
+    "welcomeAfternoon": {
+      "label": "Popoludňajšia inšpirácia",
+      "title": "Dobrý deň! Biblické chvíle pre váš deň.",
+      "description": "Povzbudivé biblické obsahy ideálne na popoludňajšiu prestávku alebo ďalšiu dávku inšpirácie."
+    },
+    "welcomeEvening": {
+      "label": "Večerná inšpirácia",
+      "title": "Dobrý večer! Oddýchnite si s biblickými chvíľami.",
+      "description": "Pokojné biblické chvíle, ktoré vám pomôžu premýšľať a nájsť útechu na konci dňa."
+    },
+    "joinUs": {
+      "label": "Pridajte sa k nám",
+      "title": "Miliardy ľudí hľadajú",
+      "description": "Žatva je tu. Pridajte sa k nám, keď zdieľame evanjelium so svetom prostredníctvom digitálnych médií."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Poďme spolu",
+      "title": "Rozprávajme príbeh Ježiša spolu",
+      "description": "Aby mohli počuť a vidieť Ježišovu lásku vo svojom vlastnom jazyku tam, kde práve sú."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Zhoda na {percent} %",
+    "none": "Pre toto video sa v danom jazyku nenašli žiadne odporúčania."
+  },
+  "BetaTesterModal": {
+    "title": "Staňte sa beta testerom",
+    "trigger": "Staňte sa beta testerom",
+    "loadFailed": "Niečo sa pokazilo.",
+    "loading": "Načítava sa...",
+    "openFormNewTab": "Otvoriť formulár na novej karte",
+    "close": "Zavrieť",
+    "iframeTitle": "Staňte sa beta testerom"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Zastavte sa na chvíľu",

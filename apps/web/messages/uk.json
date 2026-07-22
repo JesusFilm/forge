@@ -7,7 +7,9 @@
     "noContent": "Немає доступного вмісту.",
     "homepageMisconfigured": "Домашню сторінку перегляду налаштовано неправильно.",
     "defaultTemplateMisconfigured": "Типовий шаблон перегляду налаштовано неправильно.",
-    "authFailed": "Не вдалося пройти автентифікацію в сервісі вмісту. Якщо це повторюється, зверніться до служби підтримки."
+    "authFailed": "Не вдалося пройти автентифікацію в сервісі вмісту. Якщо це повторюється, зверніться до служби підтримки.",
+    "pageLoadFailed": "Щось пішло не так.",
+    "tryAgain": "Спробувати ще раз"
   },
   "VideosPage": {
     "title": "Усі відео",
@@ -22,7 +24,8 @@
     "promoHeading": "Хочете глибше зрозуміти Біблію?",
     "joinBibleStudy": "Приєднатися до нашого вивчення Біблії",
     "previousQuote": "Попередня біблійна цитата",
-    "nextQuote": "Наступна біблійна цитата"
+    "nextQuote": "Наступна біблійна цитата",
+    "readPassage": "Прочитайте цей уривок у своїй Біблії."
   },
   "DownloadButton": {
     "checking": "Перевірка",
@@ -73,7 +76,8 @@
     "selectLanguage": "Виберіть мову",
     "searchPlaceholder": "Пошук мов…",
     "languages": "Мови",
-    "noMatches": "Збігів немає"
+    "noMatches": "Збігів немає",
+    "notAvailable": "Недоступно"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Мова",
@@ -112,7 +116,8 @@
     "questions": "Пов’язані запитання",
     "askYours": "Ставте своє",
     "chatWithPerson": "Поспілкуватися з людиною",
-    "askBibleQuestion": "Поставити біблійне запитання"
+    "askBibleQuestion": "Поставити біблійне запитання",
+    "quiz": "Квіз"
   },
   "WatchQuestionPanel": {
     "messageType": "Тип повідомлення",
@@ -170,7 +175,8 @@
     "searchRegion": "Пошук відео",
     "clearSearch": "Очистити пошук",
     "changeAudioLanguage": "Змінити мову аудіо",
-    "home": "Головна JesusFilm"
+    "home": "Головна JesusFilm",
+    "closeSearch": "Закрити пошук"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і перегляд відео",
@@ -205,14 +211,19 @@
     "clearLanguages": "Очистити",
     "queryLanguageDetected": "Виявлено {language}",
     "searchInLanguage": "Шукати мовою {language}",
-    "tryDifferentKeywordsOrLanguage": "Спробуйте інші ключові слова або виберіть іншу мову пошуку"
+    "tryDifferentKeywordsOrLanguage": "Спробуйте інші ключові слова або виберіть іншу мову пошуку",
+    "useWebsiteDefaultLanguage": "Використовувати мову пошуку за замовчуванням сайту",
+    "removeLanguage": "Видалити {language}",
+    "browseMode": "Режим перегляду пошуку"
   },
   "HeroPlayer": {
     "playWithSound": "Дивитися зараз",
-    "tapToUnmute": "Торкніться, щоб увімкнути звук"
+    "tapToUnmute": "Торкніться, щоб увімкнути звук",
+    "nextEpisode": "Наступний епізод"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Завантаження вмісту"
+    "loadingContent": "Завантаження вмісту",
+    "loadingVideo": "Завантаження відео"
   },
   "VideoLabels": {
     "video": "Відео",
@@ -223,7 +234,8 @@
     "series": "Серіал",
     "collection": "Добірка",
     "trailer": "Трейлер",
-    "behindTheScenes": "За лаштунками"
+    "behindTheScenes": "За лаштунками",
+    "chapter": "Розділ"
   },
   "SiblingCarousel": {
     "clipPosition": "Кліп {current} з {total}",
@@ -235,12 +247,287 @@
     "noImage": "Немає зображення",
     "playingNow": "Зараз відтворюється",
     "previousChapter": "Попередній розділ",
-    "nextChapter": "Наступний розділ"
+    "nextChapter": "Наступний розділ",
+    "thumbnailAlt": "Мініатюра {title}",
+    "relatedVideoThumbnail": "Мініатюра пов’язаного відео"
   },
   "SearchResultCard": {
     "experience": "Досвід",
     "episodeCount": "{count, plural, one {# епізод} few {# епізоди} many {# епізодів} other {# епізоду}}",
     "thumbnailAlt": "Мініатюра відео"
+  },
+  "Feedback": {
+    "openForm": "Відкрити форму відгуку",
+    "label": "Відгук",
+    "couldNotLoad": "Не вдалося завантажити форму відгуку.",
+    "loadingForm": "Завантаження форми відгуку…",
+    "retry": "Повторити",
+    "openFormShort": "Відкрити форму",
+    "cancel": "Скасувати",
+    "title": "Відгук про бета-версію",
+    "description": "Поділіться тим, що працює добре, і тим, що можна покращити. Цю форму надає Google.",
+    "openInNewTab": "Відкрити форму в новій вкладці",
+    "closeForm": "Закрити форму відгуку",
+    "loadingGoogleForm": "Завантаження Google Форми…",
+    "iframeTitle": "Надіслати відгук про бета-версію"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Безкоштовні християнські відео {language} | Jesus Film Project",
+    "metadataDescription": "Переглядайте фільми про Ісуса, біблійні історії, серіали для учнівства та відео для благовістя з дубльованим аудіо або субтитрами {language}.",
+    "heroTitle": "Безкоштовні християнські відео {language}",
+    "heroDescription": "Переглядайте фільми про Ісуса, біблійні історії, серіали для учнівства та відео для благовістя, доступні {language}. Повністю дубльовані відео показано першими, а нижче — варіанти лише із субтитрами.",
+    "languageCollection": "Добірка мовою",
+    "itemCount": "{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}",
+    "videoCount": "{count, plural, one {# відео} few {# відео} many {# відео} other {# відео}}",
+    "videosInGroups": "{videoCount, plural, one {# відео} few {# відео} many {# відео} other {# відео}} у {groupCount, plural, one {# групі} few {# групах} many {# групах} other {# групі}}",
+    "sectionNavLabel": "Розділи мовного каталогу",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Нове",
+    "videoBible": "Відеобіблія",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Добірки",
+    "subtitlesOnly": "Лише субтитри",
+    "newlyAdded": "Нещодавно додані",
+    "newVideosTitle": "Нові християнські відео {language}",
+    "newestFirst": "Спочатку новіші",
+    "noPublishedVideos": "Для цієї мови ще не знайдено опублікованих відео.",
+    "bibleAndGospelFilms": "Біблійні та євангельські фільми",
+    "videoBibleCollectionsTitle": "Добірки Відеобіблії {language}",
+    "videoBibleDescription": "Добірки зосереджені на Писанні, зокрема LUMO, JESUS, Magdalena та Acts, {language}.",
+    "noVideoBibleCollections": "Для цієї мови ще немає доступних добірок Відеобіблії.",
+    "bibleProjectCollectionsTitle": "Добірки BibleProject {language}",
+    "bibleProjectDescription": "Серії та вивчення BibleProject, доступні {language}.",
+    "noBibleProjectCollections": "Для цієї мови ще немає доступних добірок BibleProject.",
+    "sportsStories": "Спортивні історії",
+    "sportsTitle": "Спортивні та біографічні історії спортсменів {language}",
+    "sportsDescription": "Історії про віру та добірки про спортсменів, доступні {language}.",
+    "noSportsCollections": "Для цієї мови ще немає доступних добірок про спорт або історії спортсменів.",
+    "fullyDubbed": "Повністю дубльовані",
+    "dubbedVideosTitle": "Відео {language} за добірками",
+    "dubbedVideosDescription": "Переглядайте повністю дубльовані відео {language}, згруповані з їхніми добірками для зручнішого пошуку.",
+    "noDubbedVideos": "Для цієї мови ще немає доступних повністю дубльованих відео.",
+    "subtitlesAvailable": "Доступні субтитри",
+    "subtitlesTitle": "Відео {language} із субтитрами",
+    "subtitlesDescription": "Ці відео містять субтитри {language}, коли озвучення {language} ще недоступне.",
+    "noSubtitleVideos": "Для цієї мови ще немає доступних відео лише із субтитрами.",
+    "dubbed": "Дубльовані",
+    "subtitles": "Субтитри",
+    "newLabel": "Нове",
+    "fromCollection": "З {collection}",
+    "standaloneVideos": "Окремі відео",
+    "videosFromCollection": "Відео з {collection}.",
+    "standaloneDescription": "Окремі відео цією мовою.",
+    "openCollection": "Відкрити добірку"
+  },
+  "WatchHome": {
+    "pageTitle": "Перегляд Jesus Film Project",
+    "watch": "Дивитися",
+    "watchNow": "Дивитися зараз",
+    "mutePreview": "Вимкнути звук попереднього перегляду",
+    "unmutePreview": "Увімкнути звук попереднього перегляду",
+    "nextVideo": "Наступне відео",
+    "featured": "Рекомендоване",
+    "showVideo": "Показати {title}",
+    "previousVideoPreview": "Попередній перегляд відео",
+    "nextVideoPreview": "Наступний перегляд відео",
+    "mediaCollection": "Медіадобірка",
+    "scrollToVideo": "Прокрутити до відео {title}"
+  },
+  "WatchFooter": {
+    "home": "Головна Jesus Film Project",
+    "navigation": "Навігація нижнього колонтитула",
+    "share": "Поділитися",
+    "watch": "Дивитися",
+    "giving": "Пожертвування",
+    "about": "Про нас",
+    "products": "Продукти",
+    "resources": "Ресурси",
+    "partners": "Партнери",
+    "contact": "Контакти",
+    "giveNow": "Пожертвувати зараз",
+    "resourcesVersion": "Ресурси ({version})",
+    "office": "Офіс",
+    "fax": "Факс",
+    "privacyPolicy": "Політика конфіденційності",
+    "legalStatement": "Правова інформація",
+    "newsletter": "Підписатися на нашу розсилку"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Створено для глобальної місії",
+    "title": "Послання не змінюється. Змінюється спосіб, у який люди дивляться.",
+    "description": "Ми заново будуємо нашу відеотеку й інструменти з нуля, передаючи десятиліття перекладацької праці на платформи, де люди вже збираються, дивляться й діляться.",
+    "translatedLibraryTitle": "Найбільш перекладена бібліотека фільмів у світі",
+    "translatedLibraryDescription": "Десятиліття перекладацької праці за участю надійних служінь створили бібліотеку з тисячами мовних доріжок, щоб люди могли зустріти історію Ісуса мовою, яка говорить до них найглибше.",
+    "trustedVoicesTitle": "Переосмислюємо довірені голоси в нових форматах",
+    "trustedVoicesDescription": "Ми заново будуємо спосіб візуального розповідання євангельських історій, поєднуючи надійні переклади із сучасними форматами, щоб послання могло вільно переходити між платформами, культурами й екранами.",
+    "missionTeamTitle": "Більше, ніж бібліотека. Команда, що служить місії.",
+    "missionTeamDescription": "Jesus Film Project — це глобальна команда перекладачів, медіафахівців, редакторів і творців, які перетворюють десятиліття досвіду служіння на інструменти для тих, хто веде людей до учнівства.",
+    "buildingNext": "Що ми будуємо далі",
+    "nextStepsTitle": "Платформа наступного кроку",
+    "nextStepsDescription": "Зв’язуйте глядачів із відчутними можливостями на їхньому духовному шляху, допомагаючи їм зробити наступний крок до спільноти, Писання або місії.",
+    "mediaLibraryTitle": "Євангелізаційна медіатека",
+    "mediaLibraryDescription": "Велика християнська медіатека з тисячами відео, фільмів і ресурсів, доступних багатьма мовами для служіння та благовістя в усьому світі.",
+    "ministryToolsTitle": "Цифрові інструменти для служінь",
+    "ministryToolsDescription": "Керування відео, поширення вмісту, залучення аудиторії та аналітика, створені, щоб допомогти служінням ефективніше досягати більшої кількості людей.",
+    "invitationEyebrow": "Вас запрошено",
+    "invitationTitle": "Допоможіть створити <highlight>нове покоління</highlight> інструментів для місії",
+    "invitationDescription": "Ми запрошуємо практиків, творців і партнерів до раннього доступу. Першими тестуйте нові інструменти, залишайте відгуки та допомагайте формувати продукти, створені для реальної місіонерської праці.",
+    "betaTester": "Стати бета-тестером"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Колекція Відеобіблії",
+    "gospelRailTitle": "Відкрийте всю історію",
+    "videoBibleDescription": "Ознайомтеся з нашою добіркою відео та ресурсів, які оживляють Біблію через захопливі історії та вчення.",
+    "showcaseTitle": "Писання, розказане через кіно",
+    "adventEyebrow": "Різдвяний Адвент",
+    "adventTitle": "Різдвяний відлік Адвенту",
+    "adventDescription": "Приєднуйтеся до нашої подорожі Адвентом із щоденним відео, що посилює очікування Різдва, досліджуючи надію, радість і обіцянку приходу Ісуса.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Адвент BibleProject",
+    "nuaEyebrow": "Серія NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Серія Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Відеокурс",
+    "journeyWithJesusTitle": "Подорож із Ісусом",
+    "gospelsOnVideoEyebrow": "Кожне Євангеліє у відеоформаті",
+    "scriptureAsWrittenTitle": "Писання, промовлене точно так, як написано",
+    "merryChristmas": "Веселого Різдва!",
+    "daysUntilChristmas": "{count, plural, one {До Різдва — # день} few {До Різдва — # дні} many {До Різдва — # днів} other {До Різдва — # дня}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Мови",
+    "metadataDescription": "Переглядайте відео JesusFilm за мовами.",
+    "eyebrow": "Мови перегляду",
+    "title": "Виберіть мову",
+    "description": "Переглядайте мови за регіоном або весь список.",
+    "searchPlaceholder": "Пошук мов або країн...",
+    "searchLabel": "Пошук мов або країн",
+    "clearSearch": "Очистити пошук",
+    "browse": "Перегляд",
+    "browseByRegion": "Перегляд за регіоном і країною",
+    "languageCount": "{count, plural, one {# мова} few {# мови} many {# мов} other {# мови}}",
+    "region": "Регіон",
+    "countryLanguages": "Мови {country}",
+    "showLess": "Показати менше",
+    "showMore": "Показати ще {count}",
+    "noLanguages": "Мови не знайдено",
+    "tryAnotherSearch": "Спробуйте інший пошуковий запит."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Історія переглядів | Jesus Film Project",
+    "title": "Історія переглядів",
+    "loading": "Завантаження історії",
+    "empty": "Поки що тут порожньо",
+    "emptyDescription": "Відео, які ви переглядаєте після входу в обліковий запис, з’являться тут.",
+    "earlier": "Раніше",
+    "today": "Сьогодні",
+    "yesterday": "Учора"
+  },
+  "AccountControl": {
+    "account": "Обліковий запис",
+    "accountMenu": "Меню облікового запису",
+    "signIn": "Увійти",
+    "signOut": "Вийти",
+    "signedIn": "Ви ввійшли",
+    "history": "Історія",
+    "logOut": "Вийти з облікового запису"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Сторінку не знайдено",
+    "eyebrow": "Сторінку не знайдено",
+    "screenReaderPrefix": "Сторінку не знайдено:",
+    "title": "Цієї сцени тут немає.",
+    "description": "Сторінка могла бути переміщена, але історія триває.",
+    "actionsLabel": "Дії для сторінки не знайдено",
+    "backToWatch": "Повернутися до перегляду",
+    "browseVideos": "Переглянути відео"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Дивитися короткометражний фільм",
+    "actions": {
+      "joinUs": "Приєднатися до нас",
+      "shareMission": "Долучіться до нашої місії"
+    },
+    "welcomeStart": {
+      "label": "Віра та Писання",
+      "title": "Сьогоднішня добірка відео",
+      "description": "Відеоконтент про віру з нашої бібліотеки, щоб надихати, спонукати до роздумів і викликати осмислення."
+    },
+    "welcomeMorning": {
+      "label": "Ранкове натхнення",
+      "title": "Доброго ранку! Сьогодні на вас чекають біблійні моменти.",
+      "description": "Почніть день із підбадьорливих біблійних моментів, покликаних надихнути й піднести ваш дух."
+    },
+    "welcomeAfternoon": {
+      "label": "Післяобіднє натхнення",
+      "title": "Доброго дня! Біблійні моменти для вашого дня.",
+      "description": "Підбадьорливий біблійний контент, що ідеально підійде для вашої післяобідньої перерви або для подальшого натхнення."
+    },
+    "welcomeEvening": {
+      "label": "Вечірнє натхнення",
+      "title": "Доброго вечора! Відпочиньте з біблійними моментами.",
+      "description": "Спокійні біблійні моменти, які допоможуть вам роздумати й знайти утіху, коли день добігає кінця."
+    },
+    "joinUs": {
+      "label": "Приєднатися до нас",
+      "title": "Мільярди людей шукають",
+      "description": "Жнива вже тут. Приєднуйтеся до нас, щоб поширювати Євангеліє по всьому світу через цифрові медіа."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Підемо разом",
+      "title": "Разом розповідаємо історію Ісуса",
+      "description": "Щоб люди могли чути й бачити любов Ісуса своєю мовою там, де вони є."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Збіг: {percent}%",
+    "none": "Для цього відео немає рекомендацій цією мовою."
+  },
+  "BetaTesterModal": {
+    "title": "Стати бета-тестером",
+    "trigger": "Стати бета-тестером",
+    "loadFailed": "Щось пішло не так.",
+    "loading": "Завантаження...",
+    "openFormNewTab": "Відкрити форму в новій вкладці",
+    "close": "Закрити",
+    "iframeTitle": "Стати бета-тестером"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Зупиніться на мить",

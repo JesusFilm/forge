@@ -7,7 +7,9 @@
     "noContent": "Nàtǫ̀ tłǫ̀ nàt’è.",
     "homepageMisconfigured": "Watch homepage nàtłǫ̀ nàt’è.",
     "defaultTemplateMisconfigured": "Default watch template nàtłǫ̀ nàt’è.",
-    "authFailed": "Content service dè tł’ɂà nàt’è. If this keeps happening, contact support."
+    "authFailed": "Content service dè tł’ɂà nàt’è. If this keeps happening, contact support.",
+    "pageLoadFailed": "Nàtɂè nàtłǫ̀.",
+    "tryAgain": "Nàke t’àa hòɂǫ"
   },
   "VideosPage": {
     "title": "Video t’àa łè",
@@ -22,7 +24,8 @@
     "promoHeading": "Bible more deeply understand want?",
     "joinBibleStudy": "Bible study join",
     "previousQuote": "Bible gòɂǫ nàtsǫǫ̀",
-    "nextQuote": "Bible gòɂǫ yàa"
+    "nextQuote": "Bible gòɂǫ yàa",
+    "readPassage": "Dı̀ı̀ yatıı̀ nı̨ Bible k’e weghàda."
   },
   "DownloadButton": {
     "checking": "Eghàlaeda",
@@ -73,7 +76,8 @@
     "selectLanguage": "Language select",
     "searchPlaceholder": "Languages search…",
     "languages": "Yatıı̀ łè",
-    "noMatches": "Ełàa nàt’è"
+    "noMatches": "Ełàa nàt’è",
+    "notAvailable": "Nàt’è"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Yatıı̀",
@@ -112,7 +116,8 @@
     "questions": "Nàkehoeta ełàa gı̀lı̨",
     "askYours": "Nàkehoeta hı̨la",
     "chatWithPerson": "Dǫ ede t’àa yati",
-    "askBibleQuestion": "Bible weghǫ nàkehoeta"
+    "askBibleQuestion": "Bible weghǫ nàkehoeta",
+    "quiz": "Nàowo ghà nàkehoeta"
   },
   "WatchQuestionPanel": {
     "messageType": "Message amè t’àa adlè",
@@ -170,7 +175,8 @@
     "searchRegion": "Video łè search hòɂǫ",
     "clearSearch": "Search dè hòɂǫ",
     "changeAudioLanguage": "Audio language nàtł’ı̨",
-    "home": "JesusFilm kǫ̀"
+    "home": "JesusFilm kǫ̀",
+    "closeSearch": "Search nàahdee"
   },
   "SearchOverlay": {
     "dialogLabel": "Video łè search hı̨la, weghàda",
@@ -205,14 +211,19 @@
     "clearLanguages": "Dè hòɂǫ",
     "queryLanguageDetected": "Yatıı̀ hòɂǫ: {language}",
     "searchInLanguage": "{language}: search hòɂǫ",
-    "tryDifferentKeywordsOrLanguage": "Keyword łǫ hı̨t’àa, kǫ search yatıı̀ łǫ select hı̨la"
+    "tryDifferentKeywordsOrLanguage": "Keyword łǫ hı̨t’àa, kǫ search yatıı̀ łǫ select hı̨la",
+    "useWebsiteDefaultLanguage": "Website default search yatıı̀ wet’àa hòɂǫ",
+    "removeLanguage": "{language} gots’ǫ̀ hòɂǫ",
+    "browseMode": "Search weghàda mode"
   },
   "HeroPlayer": {
     "playWithSound": "Dı̀ı̀ k’e eghàeda",
-    "tapToUnmute": "Yatıı̀ nàke ghà tap hòɂǫ"
+    "tapToUnmute": "Yatıı̀ nàke ghà tap hòɂǫ",
+    "nextEpisode": "Episode yàa"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Nàtǫ̀ loading"
+    "loadingContent": "Nàtǫ̀ loading",
+    "loadingVideo": "Video loading"
   },
   "VideoLabels": {
     "video": "Video gı̀lı̨",
@@ -223,7 +234,8 @@
     "series": "Series gı̀lı̨",
     "collection": "Collection gı̀lı̨",
     "trailer": "Film ghà trailer",
-    "behindTheScenes": "Film weghǫ nàowo"
+    "behindTheScenes": "Film weghǫ nàowo",
+    "chapter": "Chapter gı̀lı̨"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} / {total}",
@@ -235,12 +247,287 @@
     "noImage": "Image nàt’è",
     "playingNow": "Dı̀ı̀ k’e eghàeda",
     "previousChapter": "Chapter nàtsǫǫ̀",
-    "nextChapter": "Chapter yàa"
+    "nextChapter": "Chapter yàa",
+    "thumbnailAlt": "{title} weghà thumbnail",
+    "relatedVideoThumbnail": "Video ełàa gı̀lı̨ thumbnail"
   },
   "SearchResultCard": {
     "experience": "Nàowo t’àa eghàlaeda",
     "episodeCount": "{count, plural, one {# episode} other {# episode łè}}",
     "thumbnailAlt": "Video weghà thumbnail"
+  },
+  "Feedback": {
+    "openForm": "Feedback form open",
+    "label": "Nàowo ghà gòɂǫ",
+    "couldNotLoad": "Feedback form nàtɂè nàt’è.",
+    "loadingForm": "Feedback form loading…",
+    "retry": "Nàke t’àa hòɂǫ",
+    "openFormShort": "Form open",
+    "cancel": "Nàahdee",
+    "title": "Beta ghà nàowo",
+    "description": "What is working and what we can improve, nàhts’ǫ̀. Google provided this form.",
+    "openInNewTab": "Form open in new tab",
+    "closeForm": "Feedback form close",
+    "loadingGoogleForm": "Google Form loading…",
+    "iframeTitle": "Beta Feedback submit"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}: Christian video nàke hòɂǫ | Jesus Film Project",
+    "metadataDescription": "{language}: Jesus films, Bible eghàlats’èeda, discipleship series eyits’ǫ outreach video łè audio dı̀ı̀ subtitle t’àa weghàda.",
+    "heroTitle": "{language}: Christian video nàke hòɂǫ",
+    "heroDescription": "{language}: Jesus films, Bible eghàlats’èeda, discipleship series eyits’ǫ outreach video łè weghàda. Video t’àa dubbed adlè sı̀ı̀ nàtsǫǫ̀ gòɂǫ; subtitle sı̀ı̀ t’ą̀a gòɂǫ.",
+    "languageCollection": "Yatıı̀ collection",
+    "itemCount": "{count, plural, one {# asìı̀} other {# asìı̀ łè}}",
+    "videoCount": "{count, plural, one {# video} other {# video łè}}",
+    "videosInGroups": "{groupCount, plural, one {# group} other {# groups}} k’e {videoCount, plural, one {# video} other {# videos}}",
+    "sectionNavLabel": "Yatıı̀ inventory section łè",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Łahdàa",
+    "videoBible": "Bible video t’àa gòɂǫ",
+    "bibleProject": "BibleProject",
+    "sports": "Sports eghàlats’èeda łè",
+    "collections": "Collection łè",
+    "subtitlesOnly": "Subtitles sı̀ı̀ t’ą̀a",
+    "newlyAdded": "Łahdàa gı̨la",
+    "newVideosTitle": "{language}: Christian video łahdàa łè",
+    "newestFirst": "T’àa łahdàa sı̀ı̀ nàtsǫǫ̀",
+    "noPublishedVideos": "Dı̀ı̀ yatıı̀ ghà published video nàgı̨ı̨t’į.",
+    "bibleAndGospelFilms": "Bible eyits’ǫ Gospel films",
+    "videoBibleCollectionsTitle": "{language}: Video Bible collections",
+    "videoBibleDescription": "{language}: Bible weghǫ collection łè; LUMO, JESUS, Magdalena eyits’ǫ Acts gı̀lı̨.",
+    "noVideoBibleCollections": "Dı̀ı̀ yatıı̀ ghà Video Bible collection nàt’è.",
+    "bibleProjectCollectionsTitle": "{language}: BibleProject collections",
+    "bibleProjectDescription": "{language}: BibleProject series eyits’ǫ study łè hòɂǫ.",
+    "noBibleProjectCollections": "Dı̀ı̀ yatıı̀ ghà BibleProject collection nàt’è.",
+    "sportsStories": "Sports eghàlats’èeda łè",
+    "sportsTitle": "{language}: sports eyits’ǫ athlete eghàlats’èeda łè",
+    "sportsDescription": "{language}: sports eyits’ǫ athlete collection łè, yek’eè̀dı weghǫ gı̀lı̨, hòɂǫ.",
+    "noSportsCollections": "Dı̀ı̀ yatıı̀ ghà sports dı̀ı̀ athlete eghàlats’èeda collection nàt’è.",
+    "fullyDubbed": "T’àa dubbed adlè",
+    "dubbedVideosTitle": "{language}: collection k’èè video łè",
+    "dubbedVideosDescription": "{language}: video t’àa dubbed adlè sı̀ı̀, dǫ weghà k’èè hòɂǫ ghà collection k’èè weghàda.",
+    "noDubbedVideos": "Dı̀ı̀ yatıı̀ ghà video t’àa dubbed adlè sı̀ı̀ nàt’è.",
+    "subtitlesAvailable": "Subtitles hòɂǫ",
+    "subtitlesTitle": "{language}: subtitle video łè",
+    "subtitlesDescription": "{language} audio nàt’è kwèè, dı̀ı̀ video łè k’e {language} subtitles hòɂǫ.",
+    "noSubtitleVideos": "Dı̀ı̀ yatıı̀ ghà subtitle sı̀ı̀ t’ą̀a video nàt’è.",
+    "dubbed": "Yatıı̀ dubbed adlè",
+    "subtitles": "Subtitles hòɂǫ",
+    "newLabel": "Łahdàa",
+    "fromCollection": "{collection} gots’ǫ̀",
+    "standaloneVideos": "Video ede t’alàa łè",
+    "videosFromCollection": "{collection} gots’ǫ̀ video łè.",
+    "standaloneDescription": "Dı̀ı̀ yatıı̀ k’e video ede t’alàa łè.",
+    "openCollection": "Collection open hòɂǫ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project eghàeda",
+    "watch": "Eghàeda",
+    "watchNow": "Dı̀ı̀ k’e eghàeda",
+    "mutePreview": "Preview yatıı̀ nàahdee",
+    "unmutePreview": "Preview yatıı̀ nàke",
+    "nextVideo": "Video yàa",
+    "featured": "T’àa gı̨ı̨t’į",
+    "showVideo": "{title} kǫ̀ gòɂǫ",
+    "previousVideoPreview": "Video preview nàtsǫǫ̀",
+    "nextVideoPreview": "Video preview yàa",
+    "mediaCollection": "Media łè ełàa gı̀lı̨",
+    "scrollToVideo": "{title} video k’e gòɂǫ"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project kǫ̀",
+    "navigation": "Footer k’èè ghà gòɂǫ",
+    "share": "Ełàa gòɂǫ",
+    "watch": "Eghàeda",
+    "giving": "Asìı̀ gı̨la",
+    "about": "Wets’ǫ̀ nàowo",
+    "products": "Asìı̀ gı̨ı̨la sı̀ı̀ łè",
+    "resources": "Eghàlaeda ghà asìı̀ łè",
+    "partners": "Ełàa eghàlaeda sı̀ı̀",
+    "contact": "Dı̀ı̀ t’àa yatı",
+    "giveNow": "Dı̀ı̀ k’e asìı̀ gı̨la",
+    "resourcesVersion": "Eghàlaeda ghà asìı̀ łè ({version})",
+    "office": "Eghàlaeda kǫ̀",
+    "fax": "Fax ghà number",
+    "privacyPolicy": "Nı̨ ghà nàowo policy",
+    "legalStatement": "Law ghà gòɂǫ",
+    "newsletter": "Newsletter ghà sign up hòɂǫ"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Dèè t’àa k’e mission ghà gı̨ı̨la",
+    "title": "Nàowo nàtł’ı̨ nàt’è. Dǫ amè t’àa eghàeda sı̀ı̀ nàtł’ı̨.",
+    "description": "Video library eyits’ǫ tools t’àa nàke gı̨ı̨la; yatıı̀ tł’ı̨ gòɂǫ gı̨ı̨la dzàa łǫ sı̀ı̀, dǫ ełàa gı̨ı̨lı̨, eghàeda eyits’ǫ ełàa gòɂǫ k’e gı̨ı̨la.",
+    "translatedLibraryTitle": "Dèè t’àa k’e film library yatıı̀ tł’ı̨ t’àa nàtsǫ",
+    "translatedLibraryDescription": "Ministry partner łè t’àa yatıı̀ tł’ı̨ gı̨ı̨la dzàa łǫ sı̀ı̀, yatıı̀ nàke nàke t’àa track łè library k’e gı̨ı̨la; dǫ Jesus wets’ǫ̀ eghàlats’èeda wedahxà gı̨ı̨t’į ha.",
+    "trustedVoicesTitle": "Yatıı̀ wèghà gı̨ı̨dè sı̀ı̀ format łahdàa k’e gòɂǫ",
+    "trustedVoicesDescription": "Gospel eghàlats’èeda amè t’àa image t’àa gı̨ı̨t’į sı̀ı̀ nàke gı̨ı̨la; yatıı̀ wèghà gı̨ı̨dè sı̀ı̀ modern format t’àa ełàa gı̨ı̨la, nàowo platform, dǫ ełexèè gòɂǫ eyits’ǫ screen łè k’e go ha.",
+    "missionTeamTitle": "Library t’ą̀a nàt’è. Mission ghà team.",
+    "missionTeamDescription": "Jesus Film Project dèè t’àa k’e translator, media specialist, editor eyits’ǫ creator łè team; ministry nàowo dzàa łǫ gots’ǫ̀ sı̀ı̀ dǫ disciples gı̨ı̨la ghà tools nàke gı̨ı̨la.",
+    "buildingNext": "T’ą̀a nàke gı̨ı̨la ha sı̀ı̀",
+    "nextStepsTitle": "Dı̀ı̀ gots’ǫ̀ nàowo platform",
+    "nextStepsDescription": "Dǫ eghàeda sı̀ı̀ yek’eè̀dı ghàa gòɂǫ ghà nàowo ghà gı̨ı̨t’į; dǫ ełexèè gòɂǫ, Bible, dı̀ı̀ mission k’èè nàtsǫ ha.",
+    "mediaLibraryTitle": "Gospel ghà Media Library",
+    "mediaLibraryDescription": "Christian media library nàtsǫ, video, film eyits’ǫ resource nàke nàke yatıı̀ k’e hòɂǫ; dèè t’àa k’e ministry eyits’ǫ evangelism ghà.",
+    "ministryToolsTitle": "Ministry ghà Digital Tools",
+    "ministryToolsDescription": "Video ghà eghàlaeda, content ełàa gòɂǫ, dǫ t’àa yatı eyits’ǫ analytics; ministry t’àa dǫ łǫ weghà nàowo go ha gı̨ı̨la.",
+    "invitationEyebrow": "Nı̨̀ nàke gı̨ı̨t’į",
+    "invitationTitle": "Mission tools <highlight>nàke nàtsǫ</highlight> gı̨ı̨la ghà gots’ę̀èdı",
+    "invitationDescription": "Dǫ eghàlaeda, creator eyits’ǫ partner łè early access k’èè nàke gı̨ı̨t’į. Tools łahdàa nàtsǫǫ̀ test hı̨la, nàowo hı̨la, eyits’ǫ mission ghà products gı̨ı̨la ghà gots’ę̀èdı.",
+    "betaTester": "Beta tester hı̨le"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible collection gı̀lı̨",
+    "gospelRailTitle": "Eghàlats’èeda t’àa weghàda",
+    "videoBibleDescription": "Bible eghàlats’èeda eyits’ǫ nàowo t’àa dǫ ghà ełàa gı̨ı̨lı̨ sı̀ı̀, video eyits’ǫ resource collection weghàda.",
+    "showcaseTitle": "Bible yatıı̀ film t’àa gòɂǫ",
+    "adventEyebrow": "Christmas ghà Advent",
+    "adventTitle": "Christmas Advent ghà dzàa nàkehòɂǫ",
+    "adventDescription": "Dzàa t’àa video t’àa Advent k’èè gots’èèhòɂǫ; Christmas nàats’èèhchı ghà nàowo, sùu eyits’ǫ Jesus wek’èègǫ gòɂǫ weghàda.",
+    "bibleProjectEyebrow": "BibleProject gots’ǫ̀",
+    "bibleProjectAdventTitle": "BibleProject ghà Advent",
+    "nuaEyebrow": "NUA gots’ǫ̀ series",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth gots’ǫ̀ series",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video t’àa nàowo ghàda",
+    "journeyWithJesusTitle": "Jesus t’àa k’èè hòɂǫ",
+    "gospelsOnVideoEyebrow": "Gospel t’àa łè, video t’àa gòɂǫ",
+    "scriptureAsWrittenTitle": "Bible yatıı̀, amè t’àa gòɂǫ sı̀ı̀ èhtłàk’e gòɂǫ",
+    "merryChristmas": "Christmas nezı̨ hòɂǫ!",
+    "daysUntilChristmas": "{count, plural, one {Christmas gots’ǫ̀ # dzàa} other {Christmas gots’ǫ̀ # dzàa łè}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Yatıı̀ łè",
+    "metadataDescription": "JesusFilm video łè yatıı̀ k’èè weghàda.",
+    "eyebrow": "Yatıı̀ k’e eghàeda",
+    "title": "Yatıı̀ select hı̨la",
+    "description": "Dèè k’èè yatıı̀ łè weghàda, kǫ yatıı̀ t’àa łè weghàda.",
+    "searchPlaceholder": "Yatıı̀ dı̀ı̀ country search hòɂǫ…",
+    "searchLabel": "Yatıı̀ dı̀ı̀ country search hòɂǫ",
+    "clearSearch": "Search dè hòɂǫ",
+    "browse": "Weghàda",
+    "browseByRegion": "Dèè eyits’ǫ country k’èè weghàda",
+    "languageCount": "{count, plural, one {# yatıı̀} other {# yatıı̀ łè}}",
+    "region": "Dèè",
+    "countryLanguages": "{country}: yatıı̀ łè",
+    "showLess": "Whìle kǫ̀ gòɂǫ",
+    "showMore": "Asìı̀ łǫ {count} kǫ̀ gòɂǫ",
+    "noLanguages": "Yatıı̀ nàgı̨ı̨t’į",
+    "tryAnotherSearch": "Search yatıı̀ łǫ t’àa hòɂǫ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Eghàeda History | Jesus Film Project",
+    "title": "Eghàeda History",
+    "loading": "History loading",
+    "empty": "Dı̀ı̀ k’e asìı̀ nàt’è",
+    "emptyDescription": "Sign in hı̨le kǫ video hı̨ghàeda sı̀ı̀ dı̀ı̀ k’e gòɂǫ ha.",
+    "earlier": "Nàtsǫǫ̀",
+    "today": "Dı̀ı̀ dzàa",
+    "yesterday": "Zaà"
+  },
+  "AccountControl": {
+    "account": "Nı̨ account",
+    "accountMenu": "Nı̨ account menu",
+    "signIn": "Account k’e sign in hòɂǫ",
+    "signOut": "Account gots’ǫ̀ sign out hòɂǫ",
+    "signedIn": "Sign in adlè",
+    "history": "Eghàeda history",
+    "logOut": "Account gots’ǫ̀ log out hòɂǫ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page nàgı̨ı̨t’į",
+    "eyebrow": "Page nàgı̨ı̨t’į",
+    "screenReaderPrefix": "Page nàgı̨ı̨t’į:",
+    "title": "Dı̀ı̀ scene dı̀ı̀ k’e nàt’è.",
+    "description": "Page nàke gòɂǫ weghǫ nàt’è, kǫ eghàlats’èeda agèè gòɂǫ.",
+    "actionsLabel": "Page nàgı̨ı̨t’į ghà asìı̀ hı̨la",
+    "backToWatch": "Watch k’e nàke gòɂǫ",
+    "browseVideos": "Video łè weghàda"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Short Film eghàeda",
+    "actions": {
+      "joinUs": "Nàke nàgı̨ı̨t’į",
+      "shareMission": "Dèè t’àa mission ełàa gòɂǫ"
+    },
+    "welcomeStart": {
+      "label": "Yek’eè̀dı eyits’ǫ Bible yatıı̀",
+      "title": "Dı̀ı̀ dzàa video t’àa gı̀lı̨",
+      "description": "Library gots’ǫ̀ faith-centered video łè, inspire ha, challenge ha, eyits’ǫ nàowo hı̨la ha."
+    },
+    "welcomeMorning": {
+      "label": "Sahdèè nàowo hı̨la",
+      "title": "Good Morning! Dı̀ı̀ dzàa Bible moments gı̀lı̨.",
+      "description": "Dzàa nàtsǫǫ̀ k’e Bible moments łè, nàowo hı̨la eyits’ǫ spirit t’àa hòɂǫ ha."
+    },
+    "welcomeAfternoon": {
+      "label": "Dzàa edzàa k’e nàowo hı̨la",
+      "title": "Good Afternoon! Dı̀ı̀ dzàa Bible moments łè.",
+      "description": "Bible content łè nàowo hı̨la ha, afternoon break ghà ełexèè, kǫ inspire ha."
+    },
+    "welcomeEvening": {
+      "label": "Xèhts’ǫ̀ nàowo hı̨la",
+      "title": "Good Evening! Bible moments k’e eghàeda.",
+      "description": "Bible moments łè, nàowo hı̨la eyits’ǫ comfort nàke ha, dzàa gots’ǫ̀ end k’e."
+    },
+    "joinUs": {
+      "label": "Nàke nàgı̨ı̨t’į",
+      "title": "Billions search adlè",
+      "description": "Harvest nàt’è. Digital media k’e gospel nàts’ǫ̀, nàke nàgı̨ı̨t’į."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Ełexèè hòɂǫ",
+      "title": "Jesus t’àa story ełàa gòɂǫ",
+      "description": "Dǫ wɔnàhts’ǫ̀ Jesus weghà love, nı̨ yatıı̀ k’e, nı̨ hı̨t’è gots’ǫ̀, eghǫ gòɂǫ ha."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% ełàa gı̀lı̨",
+    "none": "Dı̀ı̀ yatıı̀ k’e dı̀ı̀ video ghà video wèghà gı̨ı̨dè sı̀ı̀ nàgı̨ı̨t’į."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester hı̨le",
+    "trigger": "Beta tester hı̨le",
+    "loadFailed": "Nàtɂè nàtłǫ̀.",
+    "loading": "K'à",
+    "openFormNewTab": "Enı̨htł'è łahdàa enı̀xàı̨tsı",
+    "close": "Nàahdee",
+    "iframeTitle": "Beta tester hı̨le"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Łaà t’áa nàke",

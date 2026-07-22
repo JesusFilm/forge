@@ -7,7 +7,9 @@
     "noContent": "Contenu ezali te.",
     "homepageMisconfigured": "Page d’accueil ya watch etyami malamu te.",
     "defaultTemplateMisconfigured": "Template ya watch ya ndenge nyonso etyami malamu te.",
-    "authFailed": "Tokoki te komikomisela na service ya contenu. Svp benga lisungi soki yango ekobi kozala bongo."
+    "authFailed": "Tokoki te komikomisela na service ya contenu. Svp benga lisungi soki yango ekobi kozala bongo.",
+    "pageLoadFailed": "Likambo moko esalemi malamu te.",
+    "tryAgain": "Meka lisusu"
   },
   "VideosPage": {
     "title": "Bavideo nyonso",
@@ -22,7 +24,8 @@
     "promoHeading": "Olingi koyeba Biblia na bozindo mingi?",
     "joinBibleStudy": "Kɔta na boyekoli na biso ya Biblia",
     "previousQuote": "Frazɛ ya Biblia liboso",
-    "nextQuote": "Frazɛ ya Biblia oyo elandi"
+    "nextQuote": "Frazɛ ya Biblia oyo elandi",
+    "readPassage": "Diko mbage so na Bible ti mo."
   },
   "DownloadButton": {
     "checking": "Kokanga",
@@ -73,7 +76,8 @@
     "selectLanguage": "Pona monoko",
     "searchPlaceholder": "Luka minoko…",
     "languages": "Minoko",
-    "noMatches": "Eloko ekokani te"
+    "noMatches": "Eloko ekokani te",
+    "notAvailable": "Ezali te"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Monoko",
@@ -112,7 +116,8 @@
     "questions": "Mituna ya boyokani",
     "askYours": "Tuna oyo na yo",
     "chatWithPerson": "Solola na moto",
-    "askBibleQuestion": "Tuna motuna ya Biblia"
+    "askBibleQuestion": "Tuna motuna ya Biblia",
+    "quiz": "Hunda ti handa"
   },
   "WatchQuestionPanel": {
     "messageType": "Lolenge ya message",
@@ -170,7 +175,8 @@
     "searchRegion": "Luka bavideo",
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bongola monoko ya mongongo",
-    "home": "Ndako ya JesusFilm"
+    "home": "Ndako ya JesusFilm",
+    "closeSearch": "Kanga boluki"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala bavideo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Longola",
     "queryLanguageDetected": "{language} ezwami",
     "searchInLanguage": "Luka na {language}",
-    "tryDifferentKeywordsOrLanguage": "Meka maloba mosusu to pona monoko mosusu ya boluki"
+    "tryDifferentKeywordsOrLanguage": "Meka maloba mosusu to pona monoko mosusu ya boluki",
+    "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya ndenge nyonso ya site",
+    "removeLanguage": "Longola {language}",
+    "browseMode": "Mode ya kotala boluki"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
-    "tapToUnmute": "Fina mpo na kolongola kozanga mongongo"
+    "tapToUnmute": "Fina mpo na kolongola kozanga mongongo",
+    "nextEpisode": "Episode oyo elandi"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Kozalisa contenu"
+    "loadingContent": "Kozalisa contenu",
+    "loadingVideo": "Kozalisa video"
   },
   "VideoLabels": {
     "video": "Vidéo",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Bokabwani",
     "trailer": "Banda-annonce",
-    "behindTheScenes": "Na nsima ya bililingi"
+    "behindTheScenes": "Na nsima ya bililingi",
+    "chapter": "Chapitre"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} na {total}",
@@ -235,12 +247,287 @@
     "noImage": "Elilingi ezali te",
     "playingNow": "Ezali kobɛta sikoyo",
     "previousChapter": "Chapitre oyo eleki",
-    "nextChapter": "Chapitre oyo ekolanda"
+    "nextChapter": "Chapitre oyo ekolanda",
+    "thumbnailAlt": "Thumbnail ya {title}",
+    "relatedVideoThumbnail": "Thumbnail ya video ya boyokani"
   },
   "SearchResultCard": {
     "experience": "Expérience",
     "episodeCount": "{count, plural, one {# épisode} other {# épisode}}",
     "thumbnailAlt": "Thumbnail ya video"
+  },
+  "Feedback": {
+    "openForm": "Fungola fɔrmilɛ ya mayebisi",
+    "label": "Mayebisi",
+    "couldNotLoad": "Fɔrmilɛ ya mayebisi ekokaki kofungwama te.",
+    "loadingForm": "Kofungola fɔrmilɛ ya mayebisi…",
+    "retry": "Meka lisusu",
+    "openFormShort": "Fungola fɔrmilɛ",
+    "cancel": "Kanga",
+    "title": "Mayebisi ya Beta",
+    "description": "Kabola oyo ezali kosala malamu mpe oyo tokoki kobongisa. Fɔrmilɛ oyo epesami na Google.",
+    "openInNewTab": "Fungola fɔrmilɛ na onglet ya sika",
+    "closeForm": "Kanga fɔrmilɛ ya mayebisi",
+    "loadingGoogleForm": "Kofungola Google Form…",
+    "iframeTitle": "Tinda Mayebisi ya Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Bavideo ya boklisto ya ofele na {language} | Jesus Film Project",
+    "metadataDescription": "Tala ba film ya Yesu, masolo ya Biblia, ba serie ya boyekoli, mpe bavideo ya kopesa nsango malamu na mongongo oyo ebalusami to na bakitisi ya maloba na {language}.",
+    "heroTitle": "Bavideo ya boklisto ya ofele na {language}",
+    "heroDescription": "Tala ba film ya Yesu, masolo ya Biblia, ba serie ya boyekoli, mpe bavideo ya kopesa nsango malamu oyo ezali na {language}. Bavideo oyo ebalusami mobimba ezali liboso, mpe ba options ya bakitisi ya maloba kaka ezali na nse.",
+    "languageCollection": "Bokabwani ya monoko",
+    "itemCount": "{count, plural, one {# eloko} other {# biloko}}",
+    "videoCount": "{count, plural, one {# video} other {# bavideo}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# bavideo}} na {groupCount, plural, one {# groupe} other {# ba groupes}}",
+    "sectionNavLabel": "Biteni ya inventaire ya minoko",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ya sika",
+    "videoBible": "Biblia ya Video",
+    "bibleProject": "BibleProject",
+    "sports": "Masano",
+    "collections": "Ba collections",
+    "subtitlesOnly": "Kakitisi ya maloba kaka",
+    "newlyAdded": "Ebakisami sika",
+    "newVideosTitle": "Bavideo ya boklisto ya sika na {language}",
+    "newestFirst": "Ya sika liboso",
+    "noPublishedVideos": "Bavideo oyo ebimisami ezwami naino te mpo na monoko oyo.",
+    "bibleAndGospelFilms": "Ba film ya Biblia mpe Nsango Malamu",
+    "videoBibleCollectionsTitle": "Ba collections ya {language} Video Bible",
+    "videoBibleDescription": "Ba collections oyo etyami na Makomi, na kati na yango LUMO, JESUS, Magdalena, mpe Acts na {language}.",
+    "noVideoBibleCollections": "Ba collections ya Video Bible ezali naino te mpo na monoko oyo.",
+    "bibleProjectCollectionsTitle": "Ba collections ya BibleProject ya {language}",
+    "bibleProjectDescription": "Ba série mpe boyekoli ya BibleProject oyo ezali na {language}.",
+    "noBibleProjectCollections": "Ba collections ya BibleProject ezali naino te mpo na monoko oyo.",
+    "sportsStories": "Masolo ya masano",
+    "sportsTitle": "Masolo ya masano mpe ya ba ngulupa na {language}",
+    "sportsDescription": "Masolo ya masano oyo etyami na kondima mpe ba collections oyo etali ba ngulupa ezali na {language}.",
+    "noSportsCollections": "Ba collections ya masano to ya masolo ya ba ngulupa ezali naino te mpo na monoko oyo.",
+    "fullyDubbed": "Ebalusami mobimba",
+    "dubbedVideosTitle": "Bavideo ya {language} na kolanda collection",
+    "dubbedVideosDescription": "Tala bavideo ya {language} oyo ebalusami mobimba, ebongisami na ba collections na yango mpo na kozwa yango pete.",
+    "noDubbedVideos": "Bavideo oyo ebalusami mobimba ezali naino te mpo na monoko oyo.",
+    "subtitlesAvailable": "Bakakitisi ya maloba ezali",
+    "subtitlesTitle": "Bavideo ya {language} na bakakitisi ya maloba",
+    "subtitlesDescription": "Bavideo oyo ezali na bakakitisi ya maloba ya {language} tango mongongo ya {language} oyo elobami ezali naino te.",
+    "noSubtitleVideos": "Bavideo oyo ezali kaka na bakakitisi ya maloba ezali naino te mpo na monoko oyo.",
+    "dubbed": "Ebalusami",
+    "subtitles": "Bakakitisi ya maloba",
+    "newLabel": "Ya sika",
+    "fromCollection": "Uta na {collection}",
+    "standaloneVideos": "Bavideo ya solo",
+    "videosFromCollection": "Bavideo uta na {collection}.",
+    "standaloneDescription": "Bavideo ya solo na monoko oyo.",
+    "openCollection": "Fungola collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project: Bâa",
+    "watch": "Tala",
+    "watchNow": "Tala sikoyo",
+    "mutePreview": "Kozanga mongongo ya preview",
+    "unmutePreview": "Kolongola kozanga mongongo ya preview",
+    "nextVideo": "Video oyo elandi",
+    "featured": "Oyo eponami",
+    "showVideo": "Lakisa {title}",
+    "previousVideoPreview": "Preview ya video oyo eleki",
+    "nextVideoPreview": "Preview ya video oyo elandi",
+    "mediaCollection": "Laibɛli ya media",
+    "scrollToVideo": "Kende ti video {title}"
+  },
+  "WatchFooter": {
+    "home": "Ndako ya Jesus Film Project",
+    "navigation": "Navigation ya nse",
+    "share": "Kokabola",
+    "watch": "Tala",
+    "giving": "Kopesa",
+    "about": "Na ntina na",
+    "products": "Biloko",
+    "resources": "Bisaleli",
+    "partners": "Baninga",
+    "contact": "Tïngbi na e",
+    "giveNow": "Pesa sikoyo",
+    "resourcesVersion": "Bisaleli ({version})",
+    "office": "Bureau",
+    "fax": "Nimero ti fax",
+    "privacyPolicy": "Mibeko ya kobatela bomoi ya moto",
+    "legalStatement": "Likalisi ya mibeko",
+    "newsletter": "Komikoma mpo na newsletter na biso"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Etongami mpo na misio ya mokili mobimba",
+    "title": "Nsango ebongwani te. Lolenge bato batali nde ebongwani.",
+    "description": "Tozali kotonga lisusu laibɛli na biso ya bavideo mpe bisaleli uta na ebandeli, kopesa ndingisa ya mosala ya bobongoli ya bikeke na ba plateformes oyo bato basanganaka, batala, mpe bakabola sikoyo.",
+    "translatedLibraryTitle": "Laibɛli ya ba film oyo ebongolamaki mingi na mokili",
+    "translatedLibraryDescription": "Mosala ya bobongoli ya bikeke, oyo bato ya mosala ya sika ya koteya bazali komema, etongi laibɛli moko oyo ezali na ba track ya minoko nkoto mpo bato bakoka kokutana na lisolo ya Yesu na monoko oyo ekɔti na motema na bango mingi.",
+    "trustedVoicesTitle": "Komema mingongo oyo bato batyelaka motema na ba format ya sika",
+    "trustedVoicesDescription": "Tozali kotonga lisusu ndenge masolo ya Nsango Malamu elobamaka na nzela ya bililingi, kosangisa bobongoli oyo bato batyelaka motema na ba format ya mikolo oyo mpo nsango ekoka kotambola na bonsomi na ba plateformes, mimeseno, mpe ba écran.",
+    "missionTeamTitle": "Mingi koleka laibɛli. Ekipi ya misio.",
+    "missionTeamDescription": "Jesus Film Project ezali ekipi ya mokili mobimba ya babongoli, bato ya media, ba éditer, mpe ba créateur oyo bazali kobongola mayele ya mosala ya misio ya bikeke na bisaleli mpo na bato oyo bazali kosala boklisto na bisika nyonso.",
+    "buildingNext": "Oyo tozali kotonga na sima",
+    "nextStepsTitle": "Platform ya Next Steps",
+    "nextStepsDescription": "Kangisa bato oyo bazali kotala na mabaku ya solo na mobembo na bango ya elimo, kosalisa bango bázwa litambe oyo elandi mpo na ekolo, Makomi, to misio.",
+    "mediaLibraryTitle": "Laibɛli ya Media ya Kopanza Nsango Malamu",
+    "mediaLibraryDescription": "Laibɛli monene ya media ya boklisto oyo ezali na bavideo, ba film, mpe bisaleli nkoto na nkoto oyo ezali na minoko mingi mpo na misio mpe kopanza nsango malamu na mokili mobimba.",
+    "ministryToolsTitle": "Bisaleli ya Digitale mpo na Misio",
+    "ministryToolsDescription": "Boyangeli ya video, kopesa contenu, kobenda boyokani na bato, mpe analytics oyo ebongisami mpo na kosalisa misio ekóma na bato mingi na ndenge ya malamu.",
+    "invitationEyebrow": "Bozali kobyangama",
+    "invitationTitle": "Sunga kotonga <highlight>libota ya sika</highlight> ya bisaleli ya misio",
+    "invitationDescription": "Tozali kobenga basali, ba créateur, mpe baninga mpo na kozwa accès ya liboso. Meká bisaleli ya sika liboso, pesa mayebisi, mpe sunga kosala ba produits oyo ebongisami mpo na mosala ya solo ya misio.",
+    "betaTester": "Kóma beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collection ya Video Bible",
+    "gospelRailTitle": "Kende koyeba lisolo mobimba",
+    "videoBibleDescription": "Tala collection na biso ya bavideo mpe bisaleli oyo ememaka Biblia na bomoi na nzela ya masolo mpe mateya oyo ebendaka likebi.",
+    "showcaseTitle": "Makomi elobami na nzela ya film",
+    "adventEyebrow": "Avent ya Noeli",
+    "adventTitle": "Kotalela Advent ya Noeli",
+    "adventDescription": "Kóta na mobembo na biso ya Advent na video ya mokolo na mokolo oyo etongaka kozela Noeli, kotala elikya, esengo, mpe elaka ya koya ya Yesu.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Serie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kɔrs ya video",
+    "journeyWithJesusTitle": "Mobembo elongo na Yesu",
+    "gospelsOnVideoEyebrow": "Litatoli nyonso, elobami na video",
+    "scriptureAsWrittenTitle": "Makomi, elobami kaka ndenge ekomamaki",
+    "merryChristmas": "Noëli nzoni!",
+    "daysUntilChristmas": "{count, plural, one {Lâ # ayeke ngbâ kozoni na Noëli} other {Lâ # ayeke ngbâ kozoni na Noëli}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Minoko",
+    "metadataDescription": "Tala bavideo ya JesusFilm na kolanda monoko.",
+    "eyebrow": "Minoko ya watch",
+    "title": "Pona monoko",
+    "description": "Tala minoko na kolanda etuka to talá liste mobimba.",
+    "searchPlaceholder": "Luka minoko to bikolo...",
+    "searchLabel": "Luka minoko to bikolo",
+    "clearSearch": "Longola boluki",
+    "browse": "Tala",
+    "browseByRegion": "Tala na kolanda etuka mpe ekolo",
+    "languageCount": "{count, plural, one {# monoko} other {# minoko}}",
+    "region": "Etuka",
+    "countryLanguages": "Minoko ya {country}",
+    "showLess": "Lakisa moke",
+    "showMore": "Lakisa {count} mingi",
+    "noLanguages": "Minoko ezwami te",
+    "tryAnotherSearch": "Meka liloba mosusu ya boluki."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Lisolo ya kotala | Jesus Film Project",
+    "title": "Lisolo ya kotala",
+    "loading": "Kozalisa lisolo",
+    "empty": "Eloko naino te",
+    "emptyDescription": "Bavideo oyo okotala tango ozali na kati ekomonana awa.",
+    "earlier": "Liboso",
+    "today": "Lelo",
+    "yesterday": "Lobi"
+  },
+  "AccountControl": {
+    "account": "Compte",
+    "accountMenu": "Menu ya compte",
+    "signIn": "Kɔta na compte",
+    "signOut": "Bima na compte",
+    "signedIn": "Osi okɔti",
+    "history": "Lisolo",
+    "logOut": "Bima"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Lokasa ezwami te",
+    "eyebrow": "Lokasa ezwami te",
+    "screenReaderPrefix": "Lokasa ezwami te:",
+    "title": "Scene oyo ezali awa te.",
+    "description": "Lokasa ekoki kozala ebimaki mosusu, kasi lisolo ezali kokoba.",
+    "actionsLabel": "Misala ya lokasa ezwami te",
+    "backToWatch": "Zonga na Watch",
+    "browseVideos": "Tala bavideo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Tala film mokuse",
+    "actions": {
+      "joinUs": "Kota na biso",
+      "shareMission": "Kabola na misio na biso"
+    },
+    "welcomeStart": {
+      "label": "Bondɔko & Makomi",
+      "title": "Bavideo oyo tobɛti lelo",
+      "description": "Bavideo ya kondima oyo euti na laibɛli na biso mpo na kopesa mpiko, kotya mikakatano, mpe kolamusa makanisi."
+    },
+    "welcomeMorning": {
+      "label": "Elendiseli ya tongo",
+      "title": "Mbote tongo! Makambo ya Biblia mpo na lelo ezali kozela yo.",
+      "description": "Bandá mokolo na yo na makambo ya Biblia oyo elendisaka, oyo esalemi mpo na kolendisa mpe kotombola molimo na yo."
+    },
+    "welcomeAfternoon": {
+      "label": "Elendiseli ya midi",
+      "title": "Mbote midi! Makambo ya Biblia mpo na mokolo na yo.",
+      "description": "Makambo ya Biblia oyo elendisaka mpe ekokani malamu mpo na kopema na midi to kokoba kolendisama."
+    },
+    "welcomeEvening": {
+      "label": "Elendiseli ya mpokwa",
+      "title": "Mbote mpokwa! Pema na makambo ya Biblia.",
+      "description": "Makambo ya Biblia ya kimya mpo na kosalisa yo kotya makanisi mpe kozwa kobɔndisama ntango mokolo ezali kosila."
+    },
+    "joinUs": {
+      "label": "Kota na biso",
+      "title": "Bamiliare bazali koluka",
+      "description": "Mbuma ekomi. Kota na biso na kopanza nsango malamu na mokili mobimba na nzela ya media ya dijitali."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tókende elongo",
+      "title": "Koyebisa lisolo ya Yesu, elongo",
+      "description": "Pona ete bakoka koyoka mpe komona bolingo ya Yesu na monoko na bango moko, epai bazali."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% alingbi",
+    "none": "A wara vidéo oko pëpe ti mû na mo na pekô ti vidéo so na yângâ so."
+  },
+  "BetaTesterModal": {
+    "title": "Kóma beta tester",
+    "trigger": "Kóma beta tester",
+    "loadFailed": "Likambo moko esalemi malamu te.",
+    "loading": "Kozalisa...",
+    "openFormNewTab": "Fungola fɔrmilɛ na onglet ya sika",
+    "close": "Kanga",
+    "iframeTitle": "Kóma beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Mû yongoro mingi",

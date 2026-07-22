@@ -7,7 +7,9 @@
     "noContent": "Ndaipóri contenido ojeporukuaa hag̃uáicha.",
     "homepageMisconfigured": "Pe watch página tenondegua hekope'ỹ oñemboheko.",
     "defaultTemplateMisconfigured": "Pe plantilla por defecto de watch hekope'ỹ oñemboheko.",
-    "authFailed": "Ndaikatúi hag̃ua autenticar servicio de contenido ndive. Embokatupyry pópe opyta hag̃uáicha."
+    "authFailed": "Ndaikatúi hag̃ua autenticar servicio de contenido ndive. Embokatupyry pópe opyta hag̃uáicha.",
+    "pageLoadFailed": "Oiko peteĩ mba'e vai.",
+    "tryAgain": "Eha'ãjey"
   },
   "VideosPage": {
     "title": "Opaite Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Eipota piko eikuaa porãve la Biblia?",
     "joinBibleStudy": "Eike ore estudio bíblico-pe",
     "previousQuote": "Ñe'ẽ Bible mboyvegua",
-    "nextQuote": "Ñe'ẽ Bible oseguívagui"
+    "nextQuote": "Ñe'ẽ Bible oseguívagui",
+    "readPassage": "Emoñe'ẽ ko ñe'ẽpehẽ nde Biblia-pe."
   },
   "DownloadButton": {
     "checking": "Ojehechahína",
@@ -73,7 +76,8 @@
     "selectLanguage": "Eiporavo ñe'ẽ",
     "searchPlaceholder": "Eheka ñe'ẽnguéra…",
     "languages": "Ñe'ẽnguéra",
-    "noMatches": "Ndaipóri ojoajúva"
+    "noMatches": "Ndaipóri ojoajúva",
+    "notAvailable": "Ndaipóri"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ñe'ẽ",
@@ -112,7 +116,8 @@
     "questions": "Porandu ojoajúva",
     "askYours": "Eporandúke ndeguáva",
     "chatWithPerson": "Eñomongeta peteĩ tapichándi",
-    "askBibleQuestion": "Eporandu peteĩ mba'e Biblia rehegua"
+    "askBibleQuestion": "Eporandu peteĩ mba'e Biblia rehegua",
+    "quiz": "Ñembosarái porandu"
   },
   "WatchQuestionPanel": {
     "messageType": "Mbohasarãichagua",
@@ -170,7 +175,8 @@
     "searchRegion": "Eheka videos",
     "clearSearch": "Embogue jeheka",
     "changeAudioLanguage": "Emoambue ñe'ẽ ayvu",
-    "home": "JesusFilm óga"
+    "home": "JesusFilm óga",
+    "closeSearch": "Emboty jeheka"
   },
   "SearchOverlay": {
     "dialogLabel": "Eheka ha ehora videos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Embogue",
     "queryLanguageDetected": "Ojekuaa {language}",
     "searchInLanguage": "Eheka {language}-pe",
-    "tryDifferentKeywordsOrLanguage": "Eiporu ambue ñe'ẽ clave térã eiporavo ambue ñe'ẽ jeheka hag̃ua"
+    "tryDifferentKeywordsOrLanguage": "Eiporu ambue ñe'ẽ clave térã eiporavo ambue ñe'ẽ jeheka hag̃ua",
+    "useWebsiteDefaultLanguage": "Eipuru jeheka ñe'ẽ website por defecto",
+    "removeLanguage": "Embogue {language}",
+    "browseMode": "Jeheka reikundaha hag̃ua"
   },
   "HeroPlayer": {
     "playWithSound": "Epytáke ko'ág̃a",
-    "tapToUnmute": "Etoque hag̃ua emohendatyrõ hag̃ua ayvu"
+    "tapToUnmute": "Etoque hag̃ua emohendatyrõ hag̃ua ayvu",
+    "nextEpisode": "Episodio oútava"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Oñemyanyhẽ contenido"
+    "loadingContent": "Oñemyanyhẽ contenido",
+    "loadingVideo": "Oñemyanyhẽ video"
   },
   "VideoLabels": {
     "video": "Ta'angamýi",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Colección",
     "trailer": "Ta'angamýi ñemotenondegua",
-    "behindTheScenes": "Mboyvegua akãme"
+    "behindTheScenes": "Mboyvegua akãme",
+    "chapter": "Capítulo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} de {total}",
@@ -235,12 +247,287 @@
     "noImage": "Ndaipóri ta'anga",
     "playingNow": "Oñembopu ko'ág̃a",
     "previousChapter": "Capítulo mboyvegua",
-    "nextChapter": "Capítulo oútava"
+    "nextChapter": "Capítulo oútava",
+    "thumbnailAlt": "{title} miniatura",
+    "relatedVideoThumbnail": "Video ojoajúva miniatura"
   },
   "SearchResultCard": {
     "experience": "Experiencia",
     "episodeCount": "{count, plural, one {# episodio} other {# episodios}}",
     "thumbnailAlt": "Video miniatura"
+  },
+  "Feedback": {
+    "openForm": "Ehesa'ỹijo formulario de feedback",
+    "label": "Ne remiandu",
+    "couldNotLoad": "Ndaikatúi oñemyanyhẽ formulario de feedback.",
+    "loadingForm": "Oñemyanyhẽ formulario de feedback…",
+    "retry": "Eha'ãjey",
+    "openFormShort": "Eike formulario-pe",
+    "cancel": "Heja",
+    "title": "Beta rehegua remiandu",
+    "description": "Emombe'u mba'épa omba'apo porã ha mba'épa ikatu ñamoporãve. Ko formulario ome'ẽ Google.",
+    "openInNewTab": "Eike formulario-pe peteĩ pestaña pyahúpe",
+    "closeForm": "Emboty formulario de feedback",
+    "loadingGoogleForm": "Oñemyanyhẽ Google Form…",
+    "iframeTitle": "Emondo Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video cristiano gratuitos {language}-pe | Jesus Film Project",
+    "metadataDescription": "Ehesa'ỹijo película Jesús rehegua, historias bíblicas, serie de discipulado ha videos evangelísticos ndive audio oñehendúva térã subtítulos {language}-pe.",
+    "heroTitle": "Video cristiano gratuitos {language}-pe",
+    "heroDescription": "Ehesa'ỹijo película Jesús rehegua, historias bíblicas, serie de discipulado ha videos evangelísticos oĩva {language}-pe. Primero ojehechauka videos ayvu oñembohasa hag̃uáicha, ha upe rire subtítulo hag̃uáicha opción-gui.",
+    "languageCollection": "Colección ñe'ẽ",
+    "itemCount": "{count, plural, one {# mba'e} other {# mba'e}}",
+    "videoCount": "{count, plural, one {# ta'angamýi} other {# ta'angamýi}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} {groupCount, plural, one {# grupo} other {# grupos}}-pe",
+    "sectionNavLabel": "Sección inventario ñe'ẽ",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Pyahu",
+    "videoBible": "Biblia en video",
+    "bibleProject": "BibleProject",
+    "sports": "Deportes",
+    "collections": "Colecciones",
+    "subtitlesOnly": "Solo subtítulos",
+    "newlyAdded": "Oñemoĩramo pyahu",
+    "newVideosTitle": "Video cristiano pyahu {language}-pe",
+    "newestFirst": "Pya'eve guive",
+    "noPublishedVideos": "Ndojejuhúi gueteri video oñemoherakuãmava ko ñe'ẽme g̃uarã.",
+    "bibleAndGospelFilms": "Película Biblia ha Evangelio rehegua",
+    "videoBibleCollectionsTitle": "Colecciones Biblia en video {language}-pe",
+    "videoBibleDescription": "Colecciones Escritura-centro rehegua, LUMO, JESUS, Magdalena, ha Hechos {language}-pe.",
+    "noVideoBibleCollections": "Ndaipóri gueteri colección Biblia en video ko ñe'ẽme g̃uarã.",
+    "bibleProjectCollectionsTitle": "Colecciones BibleProject {language}-pe",
+    "bibleProjectDescription": "Series ha estudio BibleProject oĩva {language}-pe.",
+    "noBibleProjectCollections": "Ndaipóri gueteri colección BibleProject ko ñe'ẽme g̃uarã.",
+    "sportsStories": "Tembiasakue deportes rehegua",
+    "sportsTitle": "Tembiasakue deportes ha atleta rehegua {language}-pe",
+    "sportsDescription": "Tembiasakue fe rehegua ha colección atleta rehegua oĩva {language}-pe.",
+    "noSportsCollections": "Ndaipóri gueteri colección deportes térã atleta rehegua ko ñe'ẽme g̃uarã.",
+    "fullyDubbed": "Oñembohasa hag̃ua",
+    "dubbedVideosTitle": "Video {language}-pe según colección",
+    "dubbedVideosDescription": "Ehesa'ỹijo video {language}-pe oñembohasava, omoha'ã hag̃ua hag̃ua hag̃ua colección ndive.",
+    "noDubbedVideos": "Ndaipóri gueteri video oñembohasa hag̃uáicha ko ñe'ẽme g̃uarã.",
+    "subtitlesAvailable": "Subtítulos oĩ",
+    "subtitlesTitle": "Video {language}-pe subtítulos reheve",
+    "subtitlesDescription": "Ko'ã video oguereko subtítulos {language}-pe jave {language} ayvu oñe'ẽva ndogueroviáiramo gueteri.",
+    "noSubtitleVideos": "Ndaipóri gueteri video solo subtítulos ko ñe'ẽme g̃uarã.",
+    "dubbed": "Oñembohasa hag̃ua",
+    "subtitles": "Subtítulos",
+    "newLabel": "Pyahu",
+    "fromCollection": "{collection} guive",
+    "standaloneVideos": "Video ojehechakuaa hag̃uáicha",
+    "videosFromCollection": "Video {collection} guive.",
+    "standaloneDescription": "Video ojehechakuaa hag̃uáicha ko ñe'ẽme.",
+    "openCollection": "Eike colección-pe"
+  },
+  "WatchHome": {
+    "pageTitle": "Ehecha Jesus Film Project-pe",
+    "watch": "Ehecha",
+    "watchNow": "Ehecha ko'ág̃a",
+    "mutePreview": "Emokirirĩ preview",
+    "unmutePreview": "Ehecha preview ayvu reheve",
+    "nextVideo": "Video oútava",
+    "featured": "Ojekuaavéva",
+    "showVideo": "Hechauka {title}",
+    "previousVideoPreview": "Video mboyvegua preview",
+    "nextVideoPreview": "Video oútava preview",
+    "mediaCollection": "Colección de medios",
+    "scrollToVideo": "Ehecha hag̃ua video {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project óga",
+    "navigation": "Footer jeikeha",
+    "share": "Emboja'o",
+    "watch": "Ehecha",
+    "giving": "Mba'eme'ẽ",
+    "about": "Rehegua",
+    "products": "Productos",
+    "resources": "Mba'e porã hag̃uáicha",
+    "partners": "Irũnguéra",
+    "contact": "Ñe'ẽ",
+    "giveNow": "Eme'ẽ ko'ág̃a",
+    "resourcesVersion": "Mba'e porã hag̃uáicha ({version})",
+    "office": "Oficina",
+    "fax": "Facsímil",
+    "privacyPolicy": "Política de privacidad",
+    "legalStatement": "Mombe'uha legal",
+    "newsletter": "Eñemoherakuã ore boletín-pe"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ojejapo hag̃ua misión mundial",
+    "title": "Ñe'ẽ noñemoambue. Mba'éichapa tapicha ohecha, katu oñemoambue.",
+    "description": "Roikotevẽ hag̃ua video ryru ha tembiporu pyahúpe guive, romoambue hag̃ua ary oñe'ẽ hag̃ua hag̃ua peteĩ jey opaite ñe'ẽ ñembohasa rembiapo pe plataforma kuéra umi tapicha oĩ hag̃uáicha, ohecha hag̃ua, ha omboja'o hag̃ua.",
+    "translatedLibraryTitle": "Biblioteca de películas iñembohasa hetavéva ko yvy ape ári",
+    "translatedLibraryDescription": "Ary heta oñemoambue hag̃ua ñe'ẽ, umi irũ ministerio jeroviapy ogueraha hag̃ua peteĩ biblioteca orekóva miles de language track, hag̃uáicha tapichakuéra oikuaa hag̃ua Jesús rembiasakue upe ñe'ẽ ombohupytýva hag̃ua hikuái hag̃ua hag̃ua.",
+    "trustedVoicesTitle": "Roikuave'ẽ hag̃ua ñe'ẽ ojeroviakuaáva formato pyahúpe",
+    "trustedVoicesDescription": "Roñemopu'ãjey hag̃ua mba'éichapa oñemombe'u hag̃ua tembiasakue evangelio rehegua, rombojoajúvo ñe'ẽ ojeroviakuaáva ha formato moderno ndive hag̃uáicha pe ñe'ẽ ojeho hag̃uáicha opaite plataforma, kultura ha pantalla rupi.",
+    "missionTeamTitle": "Ndoýri peteĩ biblioteca añónte. Peteĩ aty misión rehegua.",
+    "missionTeamDescription": "Jesus Film Project ha peteĩ aty mundial de traductores, especialista multimedia, editor ha creator oñemoambue hag̃uáicha ary heta ministerio rembiasakue hag̃ua hag̃ua tembiporu hag̃ua hag̃ua discípulo apo hag̃ua opa hendápe.",
+    "buildingNext": "Mba'épa roñemopu'ã hag̃uáicha",
+    "nextStepsTitle": "Plataforma Paso Oútava",
+    "nextStepsDescription": "Embojoaju hag̃ua umi ehéva oportunidad añeteguáva ijapytu'ũ ári, oipytyvõ hag̃uáicha oiporavo hag̃ua peteĩ paso ambue hag̃ua hag̃ua comunidad, Escritura térã misión.",
+    "mediaLibraryTitle": "Biblioteca de Medios Evangelísticos",
+    "mediaLibraryDescription": "Peteĩ biblioteca cristiana multimedia tuichaitereíva orekóva miles de video, película ha recurso oĩva heta ñe'ẽme hag̃ua ministerio ha evangelización mundial-pe.",
+    "ministryToolsTitle": "Tembiporu digital ministerio-pe g̃uarã",
+    "ministryToolsDescription": "Video gestión, contenido distribución, audiencia jehechauka ha analítica ojejapóva hag̃ua hag̃ua ministerio omohupytýve hag̃ua tapichápe hekopete.",
+    "invitationEyebrow": "Ñepehenói hag̃uáicha",
+    "invitationTitle": "Eipytyvõ hag̃ua emopu'ã hag̃uáicha <highlight>generación pyahuvéva</highlight> tembiporu misión rehegua",
+    "invitationDescription": "Roinvita hag̃ua practitionere, creator ha irũnguérape hag̃ua acceso hag̃ua hag̃ua. Eproba hag̃ua hag̃ua tembiporu pyahu peteĩha, eme'ẽ hag̃ua feedback ha eipytyvõ hag̃ua hag̃ua producto ojejapóva hag̃ua hag̃ua tembiapo misión añeteguávape.",
+    "betaTester": "Eiko beta tester ramo"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Colección Biblia en video",
+    "gospelRailTitle": "Eikuaa tembiasakue entero",
+    "videoBibleDescription": "Ehesa'ỹijo ore colección video ha recurso oguerúva Biblia tekove rehegua tembiasakue ha enseñanza omyakãporãva hag̃ua.",
+    "showcaseTitle": "Escritura oñemombe'u hag̃ua película rupive",
+    "adventEyebrow": "Adviento Navidad",
+    "adventTitle": "Cuenta regresiva de Adviento Navidad",
+    "adventDescription": "Eike hag̃ua ore camino de Adviento-pe peteĩ video ára ha ára omokyre'ỹ hag̃uáicha Navidad-pe, ohechaukáva hag̃ua esperanza, vy'a ha promesa Jesús aju hag̃uáicha.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Adviento",
+    "nuaEyebrow": "Serie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curso en video",
+    "journeyWithJesusTitle": "Tembiapohápe Jesús ndive",
+    "gospelsOnVideoEyebrow": "Opaite Evangelio, oñemombe'u hag̃ua video-pe",
+    "scriptureAsWrittenTitle": "Escritura, oñe'ẽ hag̃uáicha ojehaíramo guaréicha",
+    "merryChristmas": "Vy'apavẽ Navidad rehe!",
+    "daysUntilChristmas": "{count, plural, one {# ára hembýva Navidad peve} other {# ára hembýva Navidad peve}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ñe'ẽnguéra",
+    "metadataDescription": "Ehesa'ỹijo video JesusFilm ñe'ẽ rupive.",
+    "eyebrow": "Ñe'ẽnguéra ojehecha hag̃ua",
+    "title": "Eiporavo peteĩ ñe'ẽ",
+    "description": "Ehesa'ỹijo ñe'ẽnguéra región rupive térã ehesa'ỹijo lista plena.",
+    "searchPlaceholder": "Eheka ñe'ẽnguéra térã tetãnguéra...",
+    "searchLabel": "Eheka ñe'ẽnguéra térã tetãnguéra",
+    "clearSearch": "Embogue jeheka",
+    "browse": "Ehesa'ỹijo",
+    "browseByRegion": "Ehesa'ỹijo región ha tetã rupive",
+    "languageCount": "{count, plural, one {# ñe'ẽ} other {# ñe'ẽnguéra}}",
+    "region": "Región",
+    "countryLanguages": "{country} ñe'ẽnguéra",
+    "showLess": "Ehechauka sa'i",
+    "showMore": "Ehechauka {count} hetave",
+    "noLanguages": "Ndojejuhúi ñe'ẽnguéra",
+    "tryAnotherSearch": "Eiporavo ambue jeheka ñe'ẽ."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Tembiasakue jehecha rehegua | Jesus Film Project",
+    "title": "Tembiasakue jehecha rehegua",
+    "loading": "Oñemyanyhẽ hag̃ua istoria",
+    "empty": "Ndaipóri gueteri mba'e",
+    "emptyDescription": "Video rehegua rehecha hag̃ua hag̃ua oñeentrada hag̃uáicha, ojehechauka ko'ápe.",
+    "earlier": "Upe mboyve",
+    "today": "Ko ára",
+    "yesterday": "Kuehe"
+  },
+  "AccountControl": {
+    "account": "Cuenta",
+    "accountMenu": "Cuenta menú",
+    "signIn": "Eike hag̃ua",
+    "signOut": "Esẽ hag̃ua",
+    "signedIn": "Oike hag̃uáicha",
+    "history": "Historia",
+    "logOut": "Esẽ hag̃ua"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Página ndojejuhúiva",
+    "eyebrow": "Página ndojejuhúiva",
+    "screenReaderPrefix": "Página ndojejuhúiva:",
+    "title": "Ko escena ndaha'éi ko'ápe.",
+    "description": "Página ikatu ohasáma ambue hendápe, péro tembiasakue osegi.",
+    "actionsLabel": "Mba'e ojejapo hag̃ua página ndojejuhúiva",
+    "backToWatch": "Evytajejy Watch-pe",
+    "browseVideos": "Ehesa'ỹijo videos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Ehecha película mbykymíva",
+    "actions": {
+      "joinUs": "Eike ore ndive",
+      "shareMission": "Emboja'o ore misión ndive"
+    },
+    "welcomeStart": {
+      "label": "Fe ha Escritura",
+      "title": "Video ñeporavo ko árape g̃uarã",
+      "description": "Oĩ video ore biblioteca-gui oñemopyenda hag̃ua fe rehe, oipytyvõ hag̃ua, ha omoakã hag̃ua reflexión."
+    },
+    "welcomeMorning": {
+      "label": "Ñepyrũ porã ko ãra",
+      "title": "Mba'éichapa! Ko árape Biblia moménto oha'arõ ndéve.",
+      "description": "Eñepyrũ hag̃ua nde ára umi moménto bíblico oipytyvõva, ohechauka hag̃uáicha ha omopu'ã hag̃ua ne ánga."
+    },
+    "welcomeAfternoon": {
+      "label": "Yvápe ñemoingove",
+      "title": "Mba'éichapa! Biblia moménto nde ára pehẽnguépe.",
+      "description": "Contenido bíblico oipytyvõva, iporãite hag̃ua ne descanso ka'aru térã ne ñemokyre'ỹrã."
+    },
+    "welcomeEvening": {
+      "label": "Ka'aru porã ñemoingove",
+      "title": "Mba'éichapa! Ehasa hag̃uáicha nde ára Biblia moménto reheve.",
+      "description": "Moménto bíblico py'aguapýva oipytyvõ hag̃ua reñemomombyry hag̃ua, reñemomandu'a hag̃ua ha revy'a hag̃ua nde ára opakuévo."
+    },
+    "joinUs": {
+      "label": "Eike ore ndive",
+      "title": "Hetaite tapicha ohekáva",
+      "description": "Oguahẽma trigo jeikutu. Eike ore ndive jaikuaauka hag̃ua evangelio ko yvy ape ári medios digitales rupive."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Jaha hag̃ua oñondive",
+      "title": "Jesús rembiasakue oñemombe'u hag̃ua oñondive",
+      "description": "Upéicha ohendu ha ohecha hag̃ua Jesús mborayhu iñe'ẽ tee hag̃uáicha, oĩ hag̃uáicha oñeime hag̃uáicha."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Ojoaju {percent}%",
+    "none": "Ndojejuhúi video oñembojeroviáva ko ñe'ẽme."
+  },
+  "BetaTesterModal": {
+    "title": "Eiko beta tester ramo",
+    "trigger": "Eiko beta tester ramo",
+    "loadFailed": "Oiko peteĩ mba'e vai.",
+    "loading": "Oñemyanyhẽ hag̃uáicha...",
+    "openFormNewTab": "Eike formulario-pe peteĩ pestaña pyahúpe",
+    "close": "Emboty",
+    "iframeTitle": "Eiko beta tester ramo"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Epyta sapy'ami",

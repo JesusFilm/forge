@@ -7,7 +7,9 @@
     "noContent": "Ii gávdno sisdoallu.",
     "homepageMisconfigured": "Čájehanruovttu vuođđu ii leat heivehuvvon.",
     "defaultTemplateMisconfigured": "Vuođđočájehanmalli ii leat heivehuvvon.",
-    "authFailed": "Ii sáhte identifiseret sisdoalluovttasvuođa. Váldde oktavuođa doarjjain jus dát jorret áinnas."
+    "authFailed": "Ii sáhte identifiseret sisdoalluovttasvuođa. Váldde oktavuođa doarjjain jus dát jorret áinnas.",
+    "pageLoadFailed": "Juoga manne boastut.",
+    "tryAgain": "Geahččal ođđasit"
   },
   "VideosPage": {
     "title": "Buot videoat",
@@ -22,7 +24,8 @@
     "promoHeading": "Hálidatgo duođaid čielgasit ipmirdit Biibbal?",
     "joinBibleStudy": "Oasseváldde min Biibbal-oahppamii",
     "previousQuote": "Ovddit Biibbaljorgalus",
-    "nextQuote": "Boahtte Biibbaljorgalus"
+    "nextQuote": "Boahtte Biibbaljorgalus",
+    "readPassage": "Loga dán teakstabihtá iežat Biibbalis."
   },
   "DownloadButton": {
     "checking": "Dárkkisteamen",
@@ -73,7 +76,8 @@
     "selectLanguage": "Vállje giela",
     "searchPlaceholder": "Oza gielaid…",
     "languages": "Gielat",
-    "noMatches": "Eai gávdno ovttastuvvon"
+    "noMatches": "Eai gávdno ovttastuvvon",
+    "notAvailable": "Ii olamuttus"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Giella",
@@ -112,7 +116,8 @@
     "questions": "Guoskevaš gažaldagat",
     "askYours": "Jeara iežat",
     "chatWithPerson": "Ságastala olbmain",
-    "askBibleQuestion": "Jeara Biibbalgažaldaga"
+    "askBibleQuestion": "Jeara Biibbalgažaldaga",
+    "quiz": "Diehtogilvu"
   },
   "WatchQuestionPanel": {
     "messageType": "Dieđáhusšládja",
@@ -170,7 +175,8 @@
     "searchRegion": "Oza videoaid",
     "clearSearch": "Sihko ohcama",
     "changeAudioLanguage": "Rievdat jietna gielat",
-    "home": "JesusFilm ruovttusiidu"
+    "home": "JesusFilm ruovttusiidu",
+    "closeSearch": "Gidde ohcan"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",
@@ -205,14 +211,19 @@
     "clearLanguages": "Sihko",
     "queryLanguageDetected": "{language} gávdnon",
     "searchInLanguage": "Oza {language}:s",
-    "tryDifferentKeywordsOrLanguage": "Geahččal eará sániid dahje vállje eará ohcangiela"
+    "tryDifferentKeywordsOrLanguage": "Geahččal eará sániid dahje vállje eará ohcangiela",
+    "useWebsiteDefaultLanguage": "Geavat neahttasiiddu várásstandárda ohcan giela",
+    "removeLanguage": "Váldde {language} eret",
+    "browseMode": "Ohcan geahččanmáddi"
   },
   "HeroPlayer": {
     "playWithSound": "Geahččal dál",
-    "tapToUnmute": "Čuodjat jietna"
+    "tapToUnmute": "Čuodjat jietna",
+    "nextEpisode": "Boahtte oskkus"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Lohkamin sisdoalu"
+    "loadingContent": "Lohkamin sisdoalu",
+    "loadingVideo": "Lohkamin video"
   },
   "VideoLabels": {
     "video": "Videofilbma",
@@ -223,7 +234,8 @@
     "series": "Serija",
     "collection": "Čoakkáldat",
     "trailer": "Ovdančájeheapmi",
-    "behindTheScenes": "Čađa scenat"
+    "behindTheScenes": "Čađa scenat",
+    "chapter": "Kapittal"
   },
   "SiblingCarousel": {
     "clipPosition": "Klippa {current} {total}:s",
@@ -235,12 +247,287 @@
     "noImage": "Ii gávdno govva",
     "playingNow": "Čuojaha dál",
     "previousChapter": "Ovddit kapittal",
-    "nextChapter": "Boahtte kapittal"
+    "nextChapter": "Boahtte kapittal",
+    "thumbnailAlt": "{title} smávvagova",
+    "relatedVideoThumbnail": "Guoskevaš videa smávvagova"
   },
   "SearchResultCard": {
     "experience": "Oktavuohta",
     "episodeCount": "{count, plural, one {# oskkus} other {# oskkusa}}",
     "thumbnailAlt": "Video smávvagova"
+  },
+  "Feedback": {
+    "openForm": "Raba rehkenastináššáigeahččanmádii",
+    "label": "Áššáigeahččan",
+    "couldNotLoad": "Áššáigeahččanmádii ii sáhttán lohkat.",
+    "loadingForm": "Lohkan áššáigeahččanmádii…",
+    "retry": "Geahččal ođđasit",
+    "openFormShort": "Raba madii",
+    "cancel": "Gaskkalduhte",
+    "title": "Beta-áššáigeahččan",
+    "description": "Muitte maid mii jođán lea ja maid mii sáhtat bisuhit. Dán madii addá Google.",
+    "openInNewTab": "Raba madii ođđa gittašaŋa",
+    "closeForm": "Gidde áššáigeahččanmádii",
+    "loadingGoogleForm": "Lohkan Google Form…",
+    "iframeTitle": "Sádde Beta-áššáigeahččama"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Fállosat kristtalaš videoat {language}:s | Jesus Film Project",
+    "metadataDescription": "Geahččal Jesus-filmmaid, Biibbalmuitalusaid, oahppanseriid ja almmuhanvideoaid dubbejuvvon jietna dahje lávlagiin {language}:s.",
+    "heroTitle": "Fállosat kristtalaš videoat {language}:s",
+    "heroDescription": "Geahččal Jesus-filmmaid, Biibbalmuitalusaid, oahppanseriid ja almmuhanvideoaid mat leat olamuttus {language}:s. Ollislaččat dubbejuvvon videoat oidnojit ovddimus, ja lávlagit dušše mat leat vuolábealde.",
+    "languageCollection": "Giellaoaivvildas",
+    "itemCount": "{count, plural, one {# oassi} other {# oasit}}",
+    "videoCount": "{count, plural, one {# video} other {# videoat}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videoat}} {groupCount, plural, one {# joavkkus} other {# joavkkus}}",
+    "sectionNavLabel": "Giellaoaivvildaga osiid navigašuvdna",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ođđa",
+    "videoBible": "Video-Biibba",
+    "bibleProject": "BibleProject",
+    "sports": "Spábbaileamit",
+    "collections": "Čoakkáldagat",
+    "subtitlesOnly": "Dušše lávlagat",
+    "newlyAdded": "Ođđa lasihuvvon",
+    "newVideosTitle": "Ođđa kristtalaš videoat {language}:s",
+    "newestFirst": "Ođđemus álggos",
+    "noPublishedVideos": "Ii gávdnon vel almmuhuvvon videoat dán gillii.",
+    "bibleAndGospelFilms": "Biibbal- ja evangeliiumafilmma",
+    "videoBibleCollectionsTitle": "{language} video-Biibba čoakkáldagat",
+    "videoBibleDescription": "Sárdniin geažuhuvvon čoakkáldagat, dasa gullái LUMO, JESUS, Magdalena ja Apostolat {language}:s.",
+    "noVideoBibleCollections": "Ii gávdno vel video-Biibba čoakkáldagat dán gillii.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject čoakkáldagat",
+    "bibleProjectDescription": "BibleProject-seriat ja oahppamat olamuttus {language}:s.",
+    "noBibleProjectCollections": "Ii gávdno vel BibleProject čoakkáldagat dán gillii.",
+    "sportsStories": "Spábbaileami muitalusat",
+    "sportsTitle": "{language} spábbaileamit ja ohppiid muitalusat",
+    "sportsDescription": "Oskkohallanmearkka spábbaileami ja ohppiide guoskevaš čoakkáldagat mat leat olamuttus {language}:s.",
+    "noSportsCollections": "Ii gávdno vel spábbaileami dahje ohppiide guoskevaš čoakkáldagat dán gillii.",
+    "fullyDubbed": "Ollislaččat dubbejuvvon",
+    "dubbedVideosTitle": "{language} videoat čoakkáldaga mielde",
+    "dubbedVideosDescription": "Geahččal ollislaččat dubbejuvvon {language} videoaid mat juogaduvvojit čoakkáldagaiguin veahkeheapmin oahppamii.",
+    "noDubbedVideos": "Ii gávdno vel ollislaččat dubbejuvvon videoat dán gillii.",
+    "subtitlesAvailable": "Lávlagat olamuttus",
+    "subtitlesTitle": "{language} videoat lávlagiin",
+    "subtitlesDescription": "Dán videoain leat {language} lávlagat go sánit {language} jietnain eai leat vel olamuttus.",
+    "noSubtitleVideos": "Ii gávdno vel dušše lávlagiin videoat dán gillii.",
+    "dubbed": "Dubbejuvvon",
+    "subtitles": "Lávlagat",
+    "newLabel": "Ođđa",
+    "fromCollection": "{collection}:s",
+    "standaloneVideos": "Oktasoavttadit videoat",
+    "videosFromCollection": "Videoat {collection}:s.",
+    "standaloneDescription": "Oktasoavttadit videoat dán gillii.",
+    "openCollection": "Raba čoakkáldaga"
+  },
+  "WatchHome": {
+    "pageTitle": "Geahččal | Jesus Film Project",
+    "watch": "Geahččal",
+    "watchNow": "Geahččal dál",
+    "mutePreview": "Jietnahehtte ovdančájeheapmi",
+    "unmutePreview": "Jietnačađa ovdančájeheapmi",
+    "nextVideo": "Boahtte video",
+    "featured": "Mearkkašahtton",
+    "showVideo": "Čájet {title}",
+    "previousVideoPreview": "Ovddit video ovdančájeheapmi",
+    "nextVideoPreview": "Boahtte video ovdančájeheapmi",
+    "mediaCollection": "Mediabuvttad",
+    "scrollToVideo": "Rullat {title} videoa guvlui"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ruovttusiidu",
+    "navigation": "Duohkenavigašuvdna",
+    "share": "Juogadit",
+    "watch": "Geahččal",
+    "giving": "Lohkan",
+    "about": "Diehtu",
+    "products": "Buvttat",
+    "resources": "Vearrasat",
+    "partners": "Oktasašdoaimmat",
+    "contact": "Oktavuohta",
+    "giveNow": "Lohkan dál",
+    "resourcesVersion": "Vearrasat ({version})",
+    "office": "Kontor",
+    "fax": "Faks",
+    "privacyPolicy": "Priváhtta-šiehtadus",
+    "legalStatement": "Láhkadiehtu",
+    "newsletter": "Čálit min ođasrehketii"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ráhkaduvvon olmmošoaivamáilmmálaš missiide",
+    "title": "Muitalus ii rievdá. Makkárin olbmot geahččet, dat rievdá.",
+    "description": "Mii ođđasit ráhkadit min videogirjji ja reaidduid álgui, ja geahččat geavat buolvvaid jorgalanbarggu daidda platformaide gos olbmot juo čoahkkanit, geahččet ja juogadit.",
+    "translatedLibraryTitle": "Máilmmi eanemus jorgalan filmegirji",
+    "translatedLibraryDescription": "Buolvvaid jorgalanbargu, gos luohttevaš miellačájeheaddjiid bokte lea ráhkaduvvon girji mas leat duháhiid gieltrackkat vai olbmot oaidnet Jesus muitalusa dan gillii mii luoitá sidjiide buoremus.",
+    "trustedVoicesTitle": "Luohtehahtti jietnait geassemii ođđa hámáidda",
+    "trustedVoicesDescription": "Mii ođđasit ráhkadit movt evangeliummuitalusat govahuvvojit, ja háhkat luohttevaš jorgalusaid ođđa hámáidda vai muitalus sáhttá lihkadahttit johtit platformaide, kultuvrrain ja skriippaide.",
+    "missionTeamTitle": "Ennet girjerájuk. Missiuvnnalaš joavku.",
+    "missionTeamDescription": "Jesus Film Project lea máilmmálaš joavku jorgaleaddjiid, médiašpecialistaid, redaktoráid ja ovddideaddjiid geat váldet buolvvaid miellačájeheapmiid ja rievdadit daid reaidduin dutnjivuođa čoakkáldagaide.",
+    "buildingNext": "Maid mii ohcat bohttevuode",
+    "nextStepsTitle": "Dallehat doaibmabijut",
+    "nextStepsDescription": "Čatnat geahččiid čielggas vejolašvuođaide sin oskkolašvuođa mielde, veahkehit sin váldit boahtte mii beadjuide, girjjiide dahje missiijii.",
+    "mediaLibraryTitle": "Evangeliseapmái čatnon média-girjerájus",
+    "mediaLibraryDescription": "Bures eanet kristtalaš media-girjerájus mas leat duháhiid videoat, filmmat ja vearrasat olamuttus máŋgga gillii doaimmaide ja evangeliserenbargui olles máilmmis.",
+    "ministryToolsTitle": "Digitála reaidduid doaimmaide",
+    "ministryToolsDescription": "Videojođheapmi, sisdoallojuohkin, geahččiide geažuhus ja analyhtihkkaid, mat leat ráhkaduvvon veahkehit doaimmaid leat eanet olbmot bures.",
+    "invitationEyebrow": "Don leat gohččon",
+    "invitationTitle": "Veahket ráhkadit <highlight>ođđa buolvva</highlight> missiureaidduid",
+    "invitationDescription": "Mii bivdit geavahusolbmot, ovddideaddjiid ja oasseváldiid ovddit beaivvi beassat. Geahččal ođđa reaidduid ovdal, addá geahččalusaid ja veahket hábmet buvttaid mat ráhkaduvvojit duohta missiobarggu várás.",
+    "betaTester": "Became beta-geahččaleaddji"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-Biibba čoakkáldat",
+    "gospelRailTitle": "Gávnnat olles muitalusa",
+    "videoBibleDescription": "Geahččal min videoaid ja vearrasat čoakkáldaga, mat buktet Biibba eallinmáilbmái movttiidahtti muitalusaid ja oahpahusaid bokte.",
+    "showcaseTitle": "Skrifta filmma bokte muitaluvvo",
+    "adventEyebrow": "Juovllaadvent",
+    "adventTitle": "Juovllaadvent-nedrähkka",
+    "adventDescription": "Oasseváldde min Advent-geainnuin beaivválaš videoin mii čohkkáge vástádusaid juovllaid várás, geahččaleapmi doaivvu, ilbmá ja Jesus boahtima lohpádusa.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-adveanta",
+    "nuaEyebrow": "NUA-serija",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-serija",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokursa",
+    "journeyWithJesusTitle": "Vázzet Jesusin",
+    "gospelsOnVideoEyebrow": "Juohke evangelium, video bokte muitaluvvon",
+    "scriptureAsWrittenTitle": "Skrifta, jorgaluvvojuvvon nákcejis nu go čállojuvvon",
+    "merryChristmas": "Buorit juovllat!",
+    "daysUntilChristmas": "{count, plural, one {# beaivi juovllaide} other {# beaivvi juovllaide}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gielat",
+    "metadataDescription": "Geahččal JesusFilm videoaid giela mielde.",
+    "eyebrow": "Geahččal gielat",
+    "title": "Vállje giela",
+    "description": "Geahččal gielaid guovllu mielde dahje geahččal ollislaččat listu.",
+    "searchPlaceholder": "Oza gielaid dahje riikkaid...",
+    "searchLabel": "Oza gielaid dahje riikkaid",
+    "clearSearch": "Sihko ohcan",
+    "browse": "Geahččal",
+    "browseByRegion": "Geahččal guovllu ja riikka mielde",
+    "languageCount": "{count, plural, one {# giella} other {# gielat}}",
+    "region": "Guovlu",
+    "countryLanguages": "{country} gielat",
+    "showLess": "Čájet unnit",
+    "showMore": "Čájet {count} eanet",
+    "noLanguages": "Eai gávdnon gielat",
+    "tryAnotherSearch": "Geahččal eará ohcansáni."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Geahččanhistorija | Jesus Film Project",
+    "title": "Geahččanhistorija",
+    "loading": "Lohkan historjjá",
+    "empty": "Vel maidege ii leat dás",
+    "emptyDescription": "Videoat maid geahččat go leat sisačállan bohtet dása.",
+    "earlier": "Ovddaláhkai",
+    "today": "Otne",
+    "yesterday": "Ihttin"
+  },
+  "AccountControl": {
+    "account": "Konta",
+    "accountMenu": "Konta menú",
+    "signIn": "Sisačále",
+    "signOut": "Olggosčále",
+    "signedIn": "Sisačállán",
+    "history": "Historija",
+    "logOut": "Olggosčále"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Siidu ii gávdno",
+    "eyebrow": "Siidu ii gávdno",
+    "screenReaderPrefix": "Siidu ii gávdno:",
+    "title": "Dát čuokkis ii leat dás.",
+    "description": "Siidu sáhttá lea sirdojuvvon, muhto muitalus joatká.",
+    "actionsLabel": "Siidu ii gávdno doaibmabijut",
+    "backToWatch": "Maŋŋá geahččamii",
+    "browseVideos": "Geahččal videoaid"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Geahččal oanehis filmma",
+    "actions": {
+      "joinUs": "Oasseváldde min",
+      "shareMission": "Juoge min missiijii"
+    },
+    "welcomeStart": {
+      "label": "Osko ja Skrifta",
+      "title": "Dálá videočoakkáldat",
+      "description": "Oskojulggašuvvon videosisdoallu min buvttas mii deaivvada, hástala ja movttiidahttá jurddašit."
+    },
+    "welcomeMorning": {
+      "label": "Iđitmovttiidahttin",
+      "title": "Bures boahtin! Dálá Biibbalmuitalusat várrejit dutnje.",
+      "description": "Álggaše beaivvi buorit Biibbalmuitalusain, mat leat hábmejuvvon movttiidahttit ja bajidit du oaiviliid."
+    },
+    "welcomeAfternoon": {
+      "label": "Iđitmovttiidahttin",
+      "title": "Bures boahtin! Biibbalmuitalusat du beivvi várás.",
+      "description": "Buorit Biibbalmuitalusat, heivvolaččat iežat beaivegaskkamii dahje jotkkolaš movttiidahttimii."
+    },
+    "welcomeEvening": {
+      "label": "Eahketmovttiidahttin",
+      "title": "Bures boahtin! Háliidatgo hávdadit Biibbalmuitalusain?",
+      "description": "Roahkkadit Biibbalmuitalusat, mat veahkehit dutnje jurddašit ja gávdnat roahtu go beaivi nohká."
+    },
+    "joinUs": {
+      "label": "Oasseváldde min",
+      "title": "Miljjáhtat ohcet",
+      "description": "Sáddu lea das. Oasseváldde min go juohkit evangeliuma máilmái digitála media bokte."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Vázzet oktan",
+      "title": "Jesus muitalusa čuovvut oktanaga",
+      "description": "Vai sii ožžot guldalit ja oaidnit Jesus ráhkisvuođa iežaset gielas, dan sadjái gos sii orrot."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Heiveheapmi: {percent} %",
+    "none": "Dán video várás eai gávdnon ávžžuhusat dán gillii."
+  },
+  "BetaTesterModal": {
+    "title": "Became beta-geahččaleaddji",
+    "trigger": "Became beta-geahččaleaddji",
+    "loadFailed": "Juoga manne boastut.",
+    "loading": "Lohkamin...",
+    "openFormNewTab": "Raba madii ođđa gittašaŋa",
+    "close": "Gidde",
+    "iframeTitle": "Became beta-geahččaleaddji"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Bisset veaháš",

@@ -560,6 +560,7 @@ export class WatchSearchService {
         scoreBreakdown: scoreBreakdownForCandidate(
           entry,
           watchabilityFor(entry),
+          titleQuery,
         ),
       }))
       .filter(passesMinimumConfidence)
@@ -1236,10 +1237,22 @@ function availabilityScore(
   return 0
 }
 
-function matchScore(kind: RankedWatchCandidate["kind"]): number {
-  if (kind === "exact") return 0.2
-  if (kind === "metadata") return 0.14
+function matchScore(entry: RankedWatchCandidate, query: string): number {
+  if (entry.kind === "exact") {
+    return isWholeTitleMatch(query, entry.candidate.videoTitle) ? 0.45 : 0.2
+  }
+  if (entry.kind === "metadata") return 0.14
   return 0.08
+}
+
+function normalizeWholeTitleMatchText(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase()
+}
+
+function isWholeTitleMatch(query: string, title: string): boolean {
+  const normalizedQuery = normalizeWholeTitleMatchText(query)
+  if (normalizedQuery.length === 0) return false
+  return normalizedQuery === normalizeWholeTitleMatchText(title)
 }
 
 function roundScore(value: number): number {
@@ -1249,10 +1262,11 @@ function roundScore(value: number): number {
 function scoreBreakdownForCandidate(
   entry: RankedWatchCandidate,
   watchability: SearchWatchability | undefined,
+  query: string,
 ): WatchSearchScoreBreakdown {
   const sourceScore = Math.max(0, Math.min(1, resultCandidateScore(entry)))
   const sourceRelevance = sourceScore * 0.55
-  const evidenceBoost = matchScore(entry.kind)
+  const evidenceBoost = matchScore(entry, query)
   const relevance = sourceRelevance + evidenceBoost
   const availability = availabilityScore(watchability)
   const total = Math.min(1, relevance + availability)

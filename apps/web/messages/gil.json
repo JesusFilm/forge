@@ -7,7 +7,9 @@
     "noContent": "E karewe te kaonga.",
     "homepageMisconfigured": "E booroa te watch homepage.",
     "defaultTemplateMisconfigured": "E booroa te default watch template.",
-    "authFailed": "E karewe te bukinaki ngkana e waaki ki te content service. Kae kangai aoake te support n te kainano n iangoia naba te aei."
+    "authFailed": "E karewe te bukinaki ngkana e waaki ki te content service. Kae kangai aoake te support n te kainano n iangoia naba te aei.",
+    "pageLoadFailed": "E tuaoaki te taekataki.",
+    "tryAgain": "Temanna naba"
   },
   "VideosPage": {
     "title": "Videos aei",
@@ -22,7 +24,8 @@
     "promoHeading": "E na aki tamaroa naba te Baibara?",
     "joinBibleStudy": "Kairaki ki taai n te Baibara",
     "previousQuote": "Teitirake ni maira n te Baibara",
-    "nextQuote": "Teitirake ni muri n te Baibara"
+    "nextQuote": "Teitirake ni muri n te Baibara",
+    "readPassage": "Wareka te taeka aei n am Baibara."
   },
   "DownloadButton": {
     "checking": "E karaoi",
@@ -73,7 +76,8 @@
     "selectLanguage": "Karoa te i-ki",
     "searchPlaceholder": "Kimotaki n te i-ki…",
     "languages": "I-ki",
-    "noMatches": "Karewe ni kainanoa"
+    "noMatches": "Karewe ni kainanoa",
+    "notAvailable": "E kore ni kona"
   },
   "LanguagePickerModal": {
     "dialogTitle": "I-ki",
@@ -112,7 +116,8 @@
     "questions": "Baiki ni kaakaa",
     "askYours": "Bikaki niomata",
     "chatWithPerson": "Taetae ma te tangata",
-    "askBibleQuestion": "Bikaki te baiki n te Baibara"
+    "askBibleQuestion": "Bikaki te baiki n te Baibara",
+    "quiz": "Te kuis"
   },
   "WatchQuestionPanel": {
     "messageType": "Tingaki n te message",
@@ -170,7 +175,8 @@
     "searchRegion": "Kimotaki n te videos",
     "clearSearch": "Tamatoa te kimotaki",
     "changeAudioLanguage": "Kangae te i-ki n te reo",
-    "home": "Moan iteran JesusFilm"
+    "home": "Moan iteran JesusFilm",
+    "closeSearch": "Taiaki te kimotaki"
   },
   "SearchOverlay": {
     "dialogLabel": "Kimotaki ao browse n te videos",
@@ -205,14 +211,19 @@
     "clearLanguages": "Tamatoa",
     "queryLanguageDetected": "{language} e matauaki",
     "searchInLanguage": "Kimotaki n {language}",
-    "tryDifferentKeywordsOrLanguage": "Karoa i-ki ni keyword me karoa te i-ki ni kimotaki ke naba"
+    "tryDifferentKeywordsOrLanguage": "Karoa i-ki ni keyword me karoa te i-ki ni kimotaki ke naba",
+    "useWebsiteDefaultLanguage": "Karoa te website default search i-ki",
+    "removeLanguage": "Tamatoa {language}",
+    "browseMode": "Browse mode n te kimotaki"
   },
   "HeroPlayer": {
     "playWithSound": "Karaoaki iou",
-    "tapToUnmute": "Tapa n taora te reo"
+    "tapToUnmute": "Tapa n taora te reo",
+    "nextEpisode": "Episode n muri"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "E bukinaki te kaonga"
+    "loadingContent": "E bukinaki te kaonga",
+    "loadingVideo": "E bukinaki te video"
   },
   "VideoLabels": {
     "video": "Te video",
@@ -223,7 +234,8 @@
     "series": "Te series",
     "collection": "Te collection",
     "trailer": "Te kaoti ni moan",
-    "behindTheScenes": "I mwin te karaoaki"
+    "behindTheScenes": "I mwin te karaoaki",
+    "chapter": "Te chapter"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} mai {total}",
@@ -235,12 +247,287 @@
     "noImage": "Karewe te ata",
     "playingNow": "E karaoaki nake",
     "previousChapter": "Chapter i maira",
-    "nextChapter": "Chapter n muri"
+    "nextChapter": "Chapter n muri",
+    "thumbnailAlt": "thumbnail n {title}",
+    "relatedVideoThumbnail": "thumbnail n te video e nano"
   },
   "SearchResultCard": {
     "experience": "Te kaoti",
     "episodeCount": "{count, plural, one {# te episode} other {# episodes}}",
     "thumbnailAlt": "thumbnail n te video"
+  },
+  "Feedback": {
+    "openForm": "Buka te baiki form",
+    "label": "Baiki",
+    "couldNotLoad": "E karewe te bukinaki te baiki form.",
+    "loadingForm": "E bukinaki te baiki form…",
+    "retry": "Temanna naba",
+    "openFormShort": "Buka te form",
+    "cancel": "Kanoaki",
+    "title": "Beta Baiki",
+    "description": "Mwaneaki te kaoti n te kaoki ao n te kamwai. A taetaeaki ma Google te form aei.",
+    "openInNewTab": "Buka te form n te tab ni matu",
+    "closeForm": "Taiaki te baiki form",
+    "loadingGoogleForm": "E bukinaki te Google Form…",
+    "iframeTitle": "Taekaa Beta Baiki"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videos Khristian ni free n {language} | Jesus Film Project",
+    "metadataDescription": "Rangia te Jesus films, Bible stories, discipleship series, ao outreach videos ma te dubbed audio ke subtitles n {language}.",
+    "heroTitle": "Videos Khristian ni free n {language}",
+    "heroDescription": "Rangia te Jesus films, Bible stories, discipleship series, ao outreach videos e kona n {language}. A tabaaki naba te videos e dubbed ma te subtitles only i babae.",
+    "languageCollection": "Te collection n te i-ki",
+    "itemCount": "{count, plural, one {# te bwai} other {# bwaai}}",
+    "videoCount": "{count, plural, one {# te video} other {# videos}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} n {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Bwai naba n te language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Iou",
+    "videoBible": "Te Baibara n te Video",
+    "bibleProject": "BibleProject",
+    "sports": "Takakaro",
+    "collections": "Collections ni video",
+    "subtitlesOnly": "Subtitles nake",
+    "newlyAdded": "Iou ni kabaneaki",
+    "newVideosTitle": "Christian videos iou n {language}",
+    "newestFirst": "Iou maira n te maira",
+    "noPublishedVideos": "Karewe ni videos e kabaneaki n te i-ki aei aei.",
+    "bibleAndGospelFilms": "Films n te Baibara ao te Gospel",
+    "videoBibleCollectionsTitle": "Collections n te Baibara n te Video n {language}",
+    "videoBibleDescription": "Collections ni scripture-centered bao LUMO, JESUS, Magdalena, ao Acts n {language}.",
+    "noVideoBibleCollections": "Karewe ni Video Bible collections e kona n te i-ki aei.",
+    "bibleProjectCollectionsTitle": "BibleProject collections n {language}",
+    "bibleProjectDescription": "BibleProject series ao studies e kona n {language}.",
+    "noBibleProjectCollections": "Karewe ni BibleProject collections e kona n te i-ki aei.",
+    "sportsStories": "Kaonga n te sports",
+    "sportsTitle": "{language} sports ao athlete stories",
+    "sportsDescription": "Kaonga n te sports e kabaneaki n te kore n te ngakau ao athlete-focused collections e kona n {language}.",
+    "noSportsCollections": "Karewe ni sports ae athlete-story collections e kona n te i-ki aei.",
+    "fullyDubbed": "Dubbed maoti",
+    "dubbedVideosTitle": "{language} videos ma te collection",
+    "dubbedVideosDescription": "Browse te videos fully dubbed n {language} e taetaeaki ma te collection n te aofaki maira.",
+    "noDubbedVideos": "Karewe ni videos fully dubbed e kona n te i-ki aei.",
+    "subtitlesAvailable": "Subtitles e kona",
+    "subtitlesTitle": "{language} videos ma te subtitles",
+    "subtitlesDescription": "Te videos aei e kabaneaki ma {language} subtitles ngkana spoken {language} audio e karewe aei.",
+    "noSubtitleVideos": "Karewe ni videos subtitles-only e kona n te i-ki aei.",
+    "dubbed": "E karokoaki te reo",
+    "subtitles": "Taeka n te subtitle",
+    "newLabel": "Iou",
+    "fromCollection": "Mai {collection}",
+    "standaloneVideos": "Videos ni matu",
+    "videosFromCollection": "Videos mai {collection}.",
+    "standaloneDescription": "Videos ni matu n te i-ki aei.",
+    "openCollection": "Buka te collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Mataku n Jesus Film Project",
+    "watch": "Karaoaki",
+    "watchNow": "Karaoaki iou",
+    "mutePreview": "Tuaaki preview",
+    "unmutePreview": "Taora preview",
+    "nextVideo": "Video n muri",
+    "featured": "E kakawaki",
+    "showVideo": "Karewe {title}",
+    "previousVideoPreview": "Preview n te video i maira",
+    "nextVideoPreview": "Preview n te video n muri",
+    "mediaCollection": "Te collection n te media",
+    "scrollToVideo": "Rarangi nakon te video {title}"
+  },
+  "WatchFooter": {
+    "home": "Moan iteran Jesus Film Project",
+    "navigation": "Navigation n te footer",
+    "share": "Baikaki",
+    "watch": "Karaoaki",
+    "giving": "Tibanga",
+    "about": "Bukin",
+    "products": "Bwaai aika karaoaki",
+    "resources": "Bwaai ni ibuobuoki",
+    "partners": "Raoraon te mwakuri",
+    "contact": "Reitaki ma ngaira",
+    "giveNow": "Tiba ngkai",
+    "resourcesVersion": "Bwaai ni ibuobuoki ({version})",
+    "office": "Te aobiti",
+    "fax": "Nambwa n te fax",
+    "privacyPolicy": "Kanoan te kamanoaki n rongorongom",
+    "legalStatement": "Taeka ni kainibaire",
+    "newsletter": "Korea aram nakon ara newsletter"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "E taraaki n te mission ni kabane",
+    "title": "Te message e aki kangae. Te bwaai ni karaoaki e kangae.",
+    "description": "E kabaneaki naba te video library ao tools mai tibi n te aei, e kamwakamwakai naba te anditaki i doin te translation ki te platforms e kabaneaki n te taonga n te tangata.",
+    "translatedLibraryTitle": "Te film library e taratara ma te translation n te ao aei",
+    "translatedLibraryDescription": "Tibi n te translation, e kairaki ma te ministry partners e kawakiaki, a kabaneaki te library ma te taeka ni language tracks e teitei naba, n te bwaai ni kakairaki te story n Jesus n te i-ki e rauaaki te manawa.",
+    "trustedVoicesTitle": "Kawakiaki te trusted voices ki te formats iou",
+    "trustedVoicesDescription": "E kabaneaki te kangae ni gospel stories n te ata, e taraaki ma te translations e tauraoi ma te modern formats, naba te message e kona ni mwenga n te platforms, cultures, ao screens aei.",
+    "missionTeamTitle": "E taraoi naba. Te team ni mission.",
+    "missionTeamDescription": "Jesus Film Project e team ni aoa ni translators, media specialists, editors, ao creators e kangaeaki te tibi n te ministry ki ngā tools n te disciple-makers n abaia.",
+    "buildingNext": "Te bwaai e taraoi aei",
+    "nextStepsTitle": "Platform n te Next Steps",
+    "nextStepsDescription": "Kairaki te viewers ki te bwain naba n te journey n te spirit, e buokaki naba n taoa te next step ki te community, Scripture, me mission.",
+    "mediaLibraryTitle": "Media Library n te Evangelism",
+    "mediaLibraryDescription": "Te media library Christian e rabwa ma te videos, films, ao resources e teitei naba n te i-ki aei, n te ministry ao evangelism n te ao aei.",
+    "ministryToolsTitle": "Digital Tools n te Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, ao analytics e karaoaki n te buokaki n te ministries n kaonga te tangata i kakae.",
+    "invitationEyebrow": "E kairaki koe",
+    "invitationTitle": "Buokaki n te kamwakai te <highlight>generation n muri</highlight> n te mission tools",
+    "invitationDescription": "E kairakiaki tabei, creators, ao partners ki te early access. Karaoi te tools iou titem maira, tera te feedback, ao buokaki n te kareaki te products e kabaneaki n te mission work maoti.",
+    "betaTester": "Buna beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collection n te Baibara n te Video",
+    "gospelRailTitle": "Rangia te story maoti",
+    "videoBibleDescription": "Rangia te collection n te videos ao resources e kauraki te Baibara ki te kaonga ma te stories ao teachings e booroa.",
+    "showcaseTitle": "Te Baibara e kaotaki ma te film",
+    "adventEyebrow": "Advent ni Kiritimati",
+    "adventTitle": "Te ware nakon Kiritimati",
+    "adventDescription": "Kairaki ki te Advent journey ma te video n te bong ni aoa e kangaeaki te anticipation ki te Christmas, e rangia naba te hope, joy, ao promise n te raoaki mai Jesus.",
+    "bibleProjectEyebrow": "Te BibleProject",
+    "bibleProjectAdventTitle": "Advent n BibleProject",
+    "nuaEyebrow": "Te Series NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Te Series Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Te kateiaki n te video",
+    "journeyWithJesusTitle": "Rengarei ma Jesus",
+    "gospelsOnVideoEyebrow": "Evangel aia, e taetaeaki n te Video",
+    "scriptureAsWrittenTitle": "Te Baibara, e taetaeaki bwa e karaoaki n te buk",
+    "merryChristmas": "Mauri ni Kiritimati!",
+    "daysUntilChristmas": "{count, plural, one {# te bong nakon Kiritimati} other {# bong nakon Kiritimati}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "I-ki",
+    "metadataDescription": "Browse JesusFilm videos ma te i-ki.",
+    "eyebrow": "I-ki ni watch",
+    "title": "Karoa te i-ki",
+    "description": "Rangia te i-ki ma te reeraki me browse te list maoti.",
+    "searchPlaceholder": "Kimotaki n te i-ki me te country...",
+    "searchLabel": "Kimotaki n te i-ki me te country",
+    "clearSearch": "Tamatoa te kimotaki",
+    "browse": "Nakonako i nanon",
+    "browseByRegion": "Browse ma te reeraki ao te country",
+    "languageCount": "{count, plural, one {# i-ki} other {# i-kiia}}",
+    "region": "Reeraki",
+    "countryLanguages": "{country} i-ki",
+    "showLess": "Karoa naba",
+    "showMore": "Karewe {count} naba",
+    "noLanguages": "Karewe ni i-ki e kangoaki",
+    "tryAnotherSearch": "Temanna naba te kimotaki."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Rongorongon te mataku | Jesus Film Project",
+    "title": "Rongorongon te mataku",
+    "loading": "E bukinaki te history",
+    "empty": "Karewe naba i aei",
+    "emptyDescription": "Videos e karaoaki ngkana e signin mai e na kariaaki i aei.",
+    "earlier": "I maira",
+    "today": "Nabannei",
+    "yesterday": "Naba i maira"
+  },
+  "AccountControl": {
+    "account": "Te akaunti",
+    "accountMenu": "Menu n te account",
+    "signIn": "Rin n am akaunti",
+    "signOut": "Otina mai am akaunti",
+    "signedIn": "Ko a rin n am akaunti",
+    "history": "Rongorongo",
+    "logOut": "Otina mai"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "E karewe te page",
+    "eyebrow": "E karewe te page",
+    "screenReaderPrefix": "E karewe te page:",
+    "title": "Te scene aei e kore ni kona.",
+    "description": "E kona te page n te kangae, ma te story e katoka naba.",
+    "actionsLabel": "Mwakuri n te page e karewe",
+    "backToWatch": "Maira ki Watch",
+    "browseVideos": "Browse te videos"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Mataku te short film",
+    "actions": {
+      "joinUs": "Kairaki mai",
+      "shareMission": "Baikaki n ara mission"
+    },
+    "welcomeStart": {
+      "label": "Te akaraki ao te Baibara",
+      "title": "Te video aei ni kamauna",
+      "description": "Te video ni taetaeaki n te baibara mai nanon ara library n te kairaki, te kamawaki, ao te kamwakaiaki naba te iango."
+    },
+    "welcomeMorning": {
+      "label": "Te kamwakai n te matu",
+      "title": "Tai! Te moments n te Baibara n te bong aei e karaoaki.",
+      "description": "Moan te bong ma te moments n te Baibara e kairakiaki n te iango, e tarao, ao e kamwakaiaki te yamo."
+    },
+    "welcomeAfternoon": {
+      "label": "Te kamwakai n te aobiti",
+      "title": "Tai! Te moments n te Baibara maam naei.",
+      "description": "Te content n te Baibara e kairakiaki, e tau n te aobiti yakoa ao te kamwakai naba."
+    },
+    "welcomeEvening": {
+      "label": "Te kamwakai n te bong",
+      "title": "Tai! Runga ma te moments n te Baibara.",
+      "description": "Te moments ni mauri n te Baibara e buokaki ni iango ao ni kunea te kamano ngkana e otina te bong aei."
+    },
+    "joinUs": {
+      "label": "Kairaki mai",
+      "title": "E nanokaki te billions",
+      "description": "E iai te harvest aei. Kairaki mai ao ana taetaeaki te gospel ma te ao n te media digital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Rengarei maira",
+      "title": "Te taekaki n te story n Jesus, maira",
+      "description": "Ao e na rongorongo ao na rangi te aroa n Jesus n te taetae niomata, i nanona te tai e kona aei."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% e tau",
+    "none": "Karewe ni video aika a kaungaaki ibukin te video aei n te i-ki aei."
+  },
+  "BetaTesterModal": {
+    "title": "Buna beta tester",
+    "trigger": "Buna beta tester",
+    "loadFailed": "E tuaoaki te taekataki.",
+    "loading": "E bukinaki...",
+    "openFormNewTab": "Buka te form n te tab ni matu",
+    "close": "Taiaki",
+    "iframeTitle": "Buna beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Tauraoi te tai ae uarereke",

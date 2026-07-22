@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic, { type DynamicOptionsLoadingProps } from "next/dynamic"
+import { useTranslations } from "next-intl"
 import { ExternalLink, Loader2, TriangleAlert } from "lucide-react"
 import {
   createContext,
@@ -12,6 +13,7 @@ import {
 } from "react"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 
 const FEEDBACK_FALLBACK_URL = "https://forms.gle/8WddM1kuyEBznukW8"
 const FeedbackLoadingCancelContext = createContext<() => void>(() => {})
@@ -25,6 +27,7 @@ export function FeedbackLoadNotice({
   retry,
   onCancel,
 }: FeedbackLoadNoticeProps) {
+  const t = useTranslations("Feedback")
   return (
     <div
       role={error ? "alert" : "status"}
@@ -41,7 +44,7 @@ export function FeedbackLoadNotice({
         ) : null}
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
-            {error ? "Feedback form could not load." : "Loading feedback form…"}
+            {error ? t("couldNotLoad") : t("loadingForm")}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             {error && retry ? (
@@ -50,7 +53,7 @@ export function FeedbackLoadNotice({
                 onClick={retry}
                 className="cursor-pointer font-semibold underline decoration-stone-500 underline-offset-4 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                Retry
+                {t("retry")}
               </button>
             ) : null}
             {error ? (
@@ -60,7 +63,7 @@ export function FeedbackLoadNotice({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 font-semibold underline decoration-stone-500 underline-offset-4 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                Open form
+                {t("openFormShort")}
                 <ExternalLink aria-hidden className="size-4" />
               </a>
             ) : null}
@@ -69,7 +72,7 @@ export function FeedbackLoadNotice({
               onClick={onCancel}
               className="cursor-pointer font-semibold underline decoration-stone-500 underline-offset-4 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
             >
-              Cancel
+              {t("cancel")}
             </button>
           </div>
         </div>
@@ -92,9 +95,11 @@ const LazyFeedbackModal = dynamic(
 )
 
 export function FeedbackLauncher() {
+  const t = useTranslations("Feedback")
   const { searchOpen } = useFloatingSearchPinned()
   const [open, setOpen] = useState(false)
   const [modalReady, setModalReady] = useState(false)
+  useWatchModalActivity(open)
   const launcherRef = useRef<HTMLButtonElement>(null)
   const markModalReady = useCallback(() => setModalReady(true), [])
 
@@ -125,7 +130,7 @@ export function FeedbackLauncher() {
         <button
           ref={launcherRef}
           type="button"
-          aria-label="Open feedback form"
+          aria-label={t("openForm")}
           aria-busy={open && !modalReady}
           disabled={open && !modalReady}
           data-testid="feedback-launcher"
@@ -138,7 +143,7 @@ export function FeedbackLauncher() {
             data-testid="feedback-launcher-label"
             className="ml-2 shrink-0 translate-x-1 whitespace-nowrap opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
           >
-            Feedback
+            {t("label")}
           </span>
         </button>
       ) : null}

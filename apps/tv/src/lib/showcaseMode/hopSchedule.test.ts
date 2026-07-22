@@ -4,7 +4,8 @@ import {
   shouldArmFadeOut,
 } from "./audioFade"
 import type { ShowcaseDubInput } from "./languageRotation"
-import { buildHopSchedule, type ShowcaseHop } from "./hopSchedule"
+import { sameHopStream } from "./hopHandoff"
+import { buildHopSchedule, hopToStream, type ShowcaseHop } from "./hopSchedule"
 
 // ── Fixtures ────────────────────────────────────────────────────────
 // One dub, shaped as showcaseVideoQuery returns them. A playable dub is
@@ -494,5 +495,34 @@ describe("buildHopSchedule — invariants over a sweep", () => {
         }
       }
     }
+  })
+})
+
+// ── hopToStream (KTD-5's projection contract) ──────────────────────
+
+describe("hopToStream", () => {
+  const hop: ShowcaseHop = {
+    languageSlug: "french",
+    languageName: "French",
+    hls: "https://stream/french.m3u8",
+    muxPlaybackId: "pb-french",
+    window: { startSeconds: 40, endSeconds: 50 },
+  }
+
+  it("maps every hop field onto the stream contract and always claims a language", () => {
+    expect(hopToStream(hop)).toEqual({
+      hls: "https://stream/french.m3u8",
+      languageSlug: "french",
+      languageName: "French",
+      muxPlaybackId: "pb-french",
+      window: { startSeconds: 40, endSeconds: 50 },
+      claimsLanguage: true,
+    })
+  })
+
+  it("projects one hop into two objects the flip matcher treats as the same stream", () => {
+    // The shell projects each hop TWICE (current stream + earlier as preload);
+    // sameHopStream identity across those projections is what arms the flip.
+    expect(sameHopStream(hopToStream(hop), hopToStream(hop))).toBe(true)
   })
 })

@@ -7,7 +7,9 @@
     "noContent": "Alaa ɓiɓɓe ngoo.",
     "homepageMisconfigured": "Wanngorde geese ndee waɗaama moƴƴaani.",
     "defaultTemplateMisconfigured": "Templete gootol ngol waawi waɗde moƴƴaani.",
-    "authFailed": "Horiima seŋde e suwu e jaɓɓorgo. Tiiɗno nodda wallitol so ɗum jogii tawa no ɓeydii."
+    "authFailed": "Horiima seŋde e suwu e jaɓɓorgo. Tiiɗno nodda wallitol so ɗum jogii tawa no ɓeydii.",
+    "pageLoadFailed": "Ko ɗum jogii woni.",
+    "tryAgain": "Fuɗɗito ɗum"
   },
   "VideosPage": {
     "title": "Kala Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Aɗa yiɗi heɓde anndal gilli e Kiitaaba?",
     "joinBibleStudy": "Njaɓɓi e korsuude kiitaabaaji",
     "previousQuote": "Kuuɓal Kiitaabuuji ɗum ɓennii",
-    "nextQuote": "Kuuɓal Kiitaabuuji fuɗɗiɗo"
+    "nextQuote": "Kuuɓal Kiitaabuuji fuɗɗiɗo",
+    "readPassage": "Janngu ngal nattal e Kiitaaba maa."
   },
   "DownloadButton": {
     "checking": "Ƴeewtude",
@@ -73,7 +76,8 @@
     "selectLanguage": "Suɓo ɗemngal",
     "searchPlaceholder": "Yiylo ɗemngal…",
     "languages": "Ɗemɗe",
-    "noMatches": "Alaa ɗum waɗi"
+    "noMatches": "Alaa ɗum waɗi",
+    "notAvailable": "Alaa ko heɓetee"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Ɗemngal",
@@ -112,7 +116,8 @@
     "questions": "Naamne ceertiiɗe",
     "askYours": "Ƴeeɗo ma",
     "chatWithPerson": "Haalis e neɗɗo",
-    "askBibleQuestion": "Naamno naamnal Kiitaaba"
+    "askBibleQuestion": "Naamno naamnal Kiitaaba",
+    "quiz": "Naamne ƴeewtindagol"
   },
   "WatchQuestionPanel": {
     "messageType": "Eɓɓugol njuulnde",
@@ -170,7 +175,8 @@
     "searchRegion": "Yiylo videeji",
     "clearSearch": "Momtu ceɗɗitugol",
     "changeAudioLanguage": "Soppi ɗemngal ngal",
-    "home": "JesusFilm keɓe"
+    "home": "JesusFilm keɓe",
+    "closeSearch": "Uddu ceɗɗitugol"
   },
   "SearchOverlay": {
     "dialogLabel": "Yiylo e naatnu videeji",
@@ -205,14 +211,19 @@
     "clearLanguages": "Momtu",
     "queryLanguageDetected": "{language} anndi",
     "searchInLanguage": "Yiylo e {language}",
-    "tryDifferentKeywordsOrLanguage": "Huutor kaynde ɓurɗe ndee walla suɓo ɗemngal goɗɗngal"
+    "tryDifferentKeywordsOrLanguage": "Huutor kaynde ɓurɗe ndee walla suɓo ɗemngal goɗɗngal",
+    "useWebsiteDefaultLanguage": "Huutoro ɗemngal ceɗɗitugol e jayngol suudu",
+    "removeLanguage": "Momtu {language}",
+    "browseMode": "Laawol ceɗɗitugol"
   },
   "HeroPlayer": {
     "playWithSound": "Waɗ now",
-    "tapToUnmute": "Tap ngam uddit ñoɓde"
+    "tapToUnmute": "Tap ngam uddit ñoɓde",
+    "nextEpisode": "Episode fuɗɗiɗo"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Wonndude ɓiɓɓe"
+    "loadingContent": "Wonndude ɓiɓɓe",
+    "loadingVideo": "Wonndude video"
   },
   "VideoLabels": {
     "video": "Widewoo",
@@ -223,7 +234,8 @@
     "series": "Doggol",
     "collection": "Gollel",
     "trailer": "Hollirde film",
-    "behindTheScenes": "Nderoore kadi"
+    "behindTheScenes": "Nderoore kadi",
+    "chapter": "Ɓalɗe"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} e {total}",
@@ -235,12 +247,287 @@
     "noImage": "Alaa nataal",
     "playingNow": "Wonndi jooni",
     "previousChapter": "Ɓalɗe ɓennii",
-    "nextChapter": "Ɓalɗe o fuɗɗiɗo"
+    "nextChapter": "Ɓalɗe o fuɗɗiɗo",
+    "thumbnailAlt": "Thumbnail {title}",
+    "relatedVideoThumbnail": "Thumbnail video ceertiiɗo"
   },
   "SearchResultCard": {
     "experience": "Ndarndam",
     "episodeCount": "{count, plural, one {# taƴre} other {# taƴe}}",
     "thumbnailAlt": "Thumbnail video"
+  },
+  "Feedback": {
+    "openForm": "Uddit formileer suuɗiiɗo",
+    "label": "Sarii",
+    "couldNotLoad": "Formileer suuɗiiɗo horiima udditee.",
+    "loadingForm": "Wonndude formileer suuɗiiɗo…",
+    "retry": "Fuɗɗito",
+    "openFormShort": "Uddit formileer",
+    "cancel": "Haaytu",
+    "title": "Sarii Beta",
+    "description": "Humpit ko woni e no kuutortaa e ko waawnoo ɓeydude. Google woni moƴƴi ngoo formileer.",
+    "openInNewTab": "Uddit formileer e tabbere hesere",
+    "closeForm": "Uddit formileer suuɗiiɗo",
+    "loadingGoogleForm": "Wonndude Google Form…",
+    "iframeTitle": "Seŋno sarii Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videeji Kiristaani ɗow e {language} | Jesus Film Project",
+    "metadataDescription": "Ƴeewto filmiiɗe Isa, haaliiɗe Kiitaaba, seriesi njiilaw, kadi videeji noddude e audio walla subtitles e {language}.",
+    "heroTitle": "Videeji Kiristaani ɗow e {language}",
+    "heroDescription": "Ƴeewto filmiiɗe Isa, haaliiɗe Kiitaaba, seriesi njiilaw, kadi videeji noddude e {language}. Videeji full dubbiiɗi yaawi dow, subtitle-only ndii no les.",
+    "languageCollection": "Jokkondiral ɗemngal",
+    "itemCount": "{count, plural, one {# ko} other {# kooji}}",
+    "videoCount": "{count, plural, one {# widewoo} other {# widewooji}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} e {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Fayde inventory ɗemɗe",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Hesɗo",
+    "videoBible": "Kiitaaba Video",
+    "bibleProject": "BibleProject",
+    "sports": "Pijirɗe sport",
+    "collections": "Jokkondiral",
+    "subtitlesOnly": "Subtitles tan",
+    "newlyAdded": "Wujjondii ko hesi",
+    "newVideosTitle": "Videeji Kiristaani hesi e {language}",
+    "newestFirst": "Hesiiɗe ɗow",
+    "noPublishedVideos": "Alaa videeji hoolniiɗi heɓaama e ndee ɗemngal yettinaaka.",
+    "bibleAndGospelFilms": "Filmiiɗe Kiitaaba e Injiil",
+    "videoBibleCollectionsTitle": "Jokkondiral Kiitaaba Video e {language}",
+    "videoBibleDescription": "Jokkondiral ɗow Kiitaaba e LUMO, JESUS, Magdalena, e Acts e {language}.",
+    "noVideoBibleCollections": "Alaa jokkondiral Kiitaaba Video heɓaama e ndee ɗemngal yettinaaka.",
+    "bibleProjectCollectionsTitle": "Jokkondiral BibleProject e {language}",
+    "bibleProjectDescription": "Seriesi BibleProject e njiilaw keɓetee e {language}.",
+    "noBibleProjectCollections": "Alaa jokkondiral BibleProject heɓaama e ndee ɗemngal yettinaaka.",
+    "sportsStories": "Haaliiɗe sports",
+    "sportsTitle": "Haaliiɗe sports e ɓeynguɓe e {language}",
+    "sportsDescription": "Haaliiɗe sports e jokkondiral ɓeynguɓe e ngol ɗow anndaa e {language}.",
+    "noSportsCollections": "Alaa jokkondiral sports walla haaliiɗe ɓeynguɓe heɓaama e ndee ɗemngal yettinaaka.",
+    "fullyDubbed": "Dubbiiɗi ɓuri keewdi",
+    "dubbedVideosTitle": "Videeji {language} e jokkondiral",
+    "dubbedVideosDescription": "Ƴeewto videeji {language} dubbiiɗi ɓuri keewdi, ɓangitiiɗi e jokkondiral ngam fuɗɗude yiɗugol.",
+    "noDubbedVideos": "Alaa videeji dubbiiɗi ɓuri keewdi heɓaama e ndee ɗemngal yettinaaka.",
+    "subtitlesAvailable": "Subtitles heɓetee",
+    "subtitlesTitle": "Videeji {language} e subtitles",
+    "subtitlesDescription": "Videeji ɗii ndii jogii subtitles {language} so audio {language} wonaa ɓennuɗo tan yettinaaka.",
+    "noSubtitleVideos": "Alaa videeji subtitle-only heɓaama e ndee ɗemngal yettinaaka.",
+    "dubbed": "Dubbiiɗo",
+    "subtitles": "Binndi les",
+    "newLabel": "Hesɗo",
+    "fromCollection": "E {collection}",
+    "standaloneVideos": "Videeji kala",
+    "videosFromCollection": "Videeji e {collection}.",
+    "standaloneDescription": "Videeji kala e ndee ɗemngal.",
+    "openCollection": "Uddit jokkondiral"
+  },
+  "WatchHome": {
+    "pageTitle": "Jeeɓto Jesus Film Project",
+    "watch": "Yiy",
+    "watchNow": "Yiy jooni",
+    "mutePreview": "Ñoɓ preview",
+    "unmutePreview": "Uddit ñoɓde preview",
+    "nextVideo": "Video fuɗɗiɗo",
+    "featured": "Cooniɗo",
+    "showVideo": "Hollu {title}",
+    "previousVideoPreview": "Preview video ɓennii",
+    "nextVideoPreview": "Preview video fuɗɗiɗo",
+    "mediaCollection": "Doggol mediyaaji",
+    "scrollToVideo": "Jaltu e video {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project keɓe",
+    "navigation": "Fayde footer",
+    "share": "Humpit",
+    "watch": "Yiy",
+    "giving": "Hokki",
+    "about": "Baaba",
+    "products": "Produits",
+    "resources": "Njuutugol",
+    "partners": "Njiɗɓe",
+    "contact": "Hollu",
+    "giveNow": "Hok jooni",
+    "resourcesVersion": "Njuutugol ({version})",
+    "office": "Ofis",
+    "fax": "Faks",
+    "privacyPolicy": "Politique de confidentialité",
+    "legalStatement": "Korse legal",
+    "newsletter": "Winndu e newsletter maa"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Wurtii ngam mission world-wide",
+    "title": "Humpito ngal wonaa sapii. Laawol nde yimɓe ndiyata mo soppi.",
+    "description": "Min woodani rewɓe e kuutal ndee e juulde video maa, njoɓdi makko e ngol nguu no, hokkude feccere translation ɗiɗi e platformaji ɗi yimɓe ngoodi ɗoo, ndiyan, yiya, kadi humpita.",
+    "translatedLibraryTitle": "Njojji kiitaaba video ɓuri translate ko e duniyaru",
+    "translatedLibraryDescription": "Feccere translation ɗiɗi, ɓangiiɗe e njiɗɓe ministry keewii, waɗii njojji e taalalii language tracks ɗi ɓuri ɗuuɗi ngam yimɓe heɓde haala Isa e ɗemngal haa soklaaɓe.",
+    "trustedVoicesTitle": "Naatnude hoyreɗɗe ceertuɗe e formiiɗe hesi",
+    "trustedVoicesDescription": "Min rewrtii no haaliiɗe injiiil ngoodi e nataal, ɗum haɗii translations tiiɗɗi e formiiɗe sahaaɗi ngam humpito waawi yaltude e laawol e platformaji, culture, e screeni.",
+    "missionTeamTitle": "No ɓurti njojji tan. Ko ekkitaare mission.",
+    "missionTeamDescription": "Jesus Film Project ko group worldwide e translatori, media specialisti, editori, e creatori ɓanngiiɗi feccere ministry e tooɗeji ngam disciple-makers fuu.",
+    "buildingNext": "Ko min rewrtaa jooni",
+    "nextStepsTitle": "Platform steps fuɗɗiɗo",
+    "nextStepsDescription": "Hollu watchere e peluang konkret e njiyla spiritual, walla ndiɗi ɓeydude laawol ko community, Scripture, walla mission.",
+    "mediaLibraryTitle": "Njojji Media Evangelistic",
+    "mediaLibraryDescription": "Njojji media Kiristaani mawɗo e videeji, films, e resources ɗuuɗi keɓetee e ɗemɗe ko ɗuuɗi ngam ministry e evangelism e duniyaru.",
+    "ministryToolsTitle": "Tooli digital ngam ministries",
+    "ministryToolsDescription": "Management video, distribution content, audience engagement, e analytics waɗi ngam wallude ministries heɓde yimɓe ɓeyde e moƴƴere.",
+    "invitationEyebrow": "Aɗa noddii",
+    "invitationTitle": "Wallu waññeede <highlight>generation fuɗɗiɗo</highlight> e tooli mission",
+    "invitationDescription": "Min noddi kuutortoɓe, creatori, e njiɗɓe e access njangeere. Ƴeewto tooli hesi ɗow, hokku feedback, kadi wallu njoɓdi kuutorgol mission ɗow.",
+    "betaTester": "Wonu beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Jokkondiral Kiitaaba Video",
+    "gospelRailTitle": "Ɗaɓɓu kisal gootal",
+    "videoBibleDescription": "Ƴeewto jokkondiral videeji e njuutugol ɗii ɓanginɗe Kiitaaba e haaliiɗe e nder no moƴƴi.",
+    "showcaseTitle": "Kiitaaba haɗii e film",
+    "adventEyebrow": "Advent Kiristmas",
+    "adventTitle": "Heɓde Advent Kiristmas",
+    "adventDescription": "Naatu e laawol Advent maa e video gootol keññiiɗo, ƴeewtude yiɗugol, joya, e njiyawa Jesus arude.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Series NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursus Video",
+    "journeyWithJesusTitle": "Jawdi e Jesus",
+    "gospelsOnVideoEyebrow": "Injiiil fuu, haalii e video",
+    "scriptureAsWrittenTitle": "Kiitaaba, ɗawraɗo ɓuri ɗum winndaa",
+    "merryChristmas": "Kirismas belɗum!",
+    "daysUntilChristmas": "{count, plural, one {# ñalawma haa Kirismas} other {# balɗe haa Kirismas}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ɗemɗe",
+    "metadataDescription": "Ƴeewto videeji JesusFilm e ɗemngal.",
+    "eyebrow": "Ɗemɗe watch",
+    "title": "Suɓo ɗemngal",
+    "description": "Ƴeewto ɗemɗe e noore walla naatnu e listu mbuunde.",
+    "searchPlaceholder": "Yiylo ɗemɗe walla leydi...",
+    "searchLabel": "Yiylo ɗemɗe walla leydi",
+    "clearSearch": "Momtu ceɗɗitugol",
+    "browse": "Naatnu",
+    "browseByRegion": "Naatnu e noore e leydi",
+    "languageCount": "{count, plural, one {# ɗemngal} other {# ɗemɗe}}",
+    "region": "Noore",
+    "countryLanguages": "Ɗemɗe {country}",
+    "showLess": "Hollu ɗuuɗi ɗan",
+    "showMore": "Hollu {count} ɗuuɗi",
+    "noLanguages": "Alaa ɗemɗe heɓaama",
+    "tryAnotherSearch": "Fuɗɗito ceɗɗitugol goɗɗum."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ceɗɗitugol Watch | Jesus Film Project",
+    "title": "Ceɗɗitugol Watch",
+    "loading": "Wonndude ceɗɗitugol",
+    "empty": "Alaa dara fii ɗoo",
+    "emptyDescription": "Videeji ngo aɗa yiyataa tawi a seŋiiɗo ɗoo, ɗum ɓangin e ɗoo.",
+    "earlier": "Waran",
+    "today": "Hannde",
+    "yesterday": "Haɓɓunde"
+  },
+  "AccountControl": {
+    "account": "Konta",
+    "accountMenu": "Menyu konta",
+    "signIn": "Seŋo",
+    "signOut": "Yaltu",
+    "signedIn": "Seŋiiɗo",
+    "history": "Ceɗɗitugol",
+    "logOut": "Yaltu"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page heɓaaka",
+    "eyebrow": "Page heɓaaka",
+    "screenReaderPrefix": "Page heɓaaka:",
+    "title": "Scene ndee ena alaa ɗoo.",
+    "description": "Page ndee waawi dollitaade, kono kisal ewa on waɗi.",
+    "actionsLabel": "Golle page heɓaaka",
+    "backToWatch": "Ruttoto e Watch",
+    "browseVideos": "Naatnu videeji"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Yiy Film Keetotooɗo",
+    "actions": {
+      "joinUs": "Yettu e min",
+      "shareMission": "Feccu e mission amen"
+    },
+    "welcomeStart": {
+      "label": "Iman e Kiitaaba",
+      "title": "Suɓe videeji hannde",
+      "description": "Ndee videeji e kiitaabaaji ngoodi e library amen ngam waɗde ɓeydude, heɓɓinde, kadi fuɗɗude hakkillooji."
+    },
+    "welcomeMorning": {
+      "label": "Heɓɓugol ngam subaka",
+      "title": "Jam nga subaka! Njaaɓnde Kiitaaba hannde ndee ndii no waɗi.",
+      "description": "Fuɗɗo ɗowndol maa e njiyawa Kiitaaba ɗii, nde ñiiɓnude, heɓɓinde, kadi kawtu hakkilo maa."
+    },
+    "welcomeAfternoon": {
+      "label": "Heɓɓugol ngam ñalawma",
+      "title": "Jam nga ñalawma! Njaaɓnde Kiitaaba ngam ñalawma maa.",
+      "description": "Ndee videeji Kiitaaba ngoodi ngam waawde yimɓe e jooni e ñalawma maa walla ngel heɓɓugol feewi."
+    },
+    "welcomeEvening": {
+      "label": "Heɓɓugol ngam jamma",
+      "title": "Jam nga jamma! Njaaɓ e njoɓdi e njaaɓnde Kiitaaba.",
+      "description": "Njaaɓnde Kiitaaba ndee ndii ndarii ngam waawaade, njaɓɓude kadi heɓɓude jomɗum so ñalngu maa ngoodi waɗi."
+    },
+    "joinUs": {
+      "label": "Yettu e min",
+      "title": "Milyooji ina ɗaɓɓoo",
+      "description": "Njaɓɓugol no woni ɗoo. Yettu e min ngam feccude Injiiil e duniyaru huse media dijital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Yah njaɓɓude e min",
+      "title": "Haalisiji kisal Isa, fuu ɗum e min",
+      "description": "Ngam ngol ɓe heɓa e yiyde ndee ndiyam Isa e ɗemngal maɓɓe e ko ndeen fiyee."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "Nanndugol {percent}%",
+    "none": "Alaa wasiyaaji heɓaaɗi ngam ngoo widewoo e ndee ɗemngal."
+  },
+  "BetaTesterModal": {
+    "title": "Wonu beta tester",
+    "trigger": "Wonu beta tester",
+    "loadFailed": "Ko ɗum jogii woni.",
+    "loading": "Wonndude...",
+    "openFormNewTab": "Uddit formileer e tabbere hesere",
+    "close": "Uddu",
+    "iframeTitle": "Wonu beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Ƴettu sahaa seeɗa",

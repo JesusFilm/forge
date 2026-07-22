@@ -14,6 +14,9 @@ import { getGraphQLUrl } from "./config"
 /** Datadog service name for the mobile app (mirrors web `forge-web` / tv `forge-tv`). */
 export const DATADOG_SERVICE = "forge-mobile"
 
+/** Re-exported so consumers read the op-name header without importing the SDK. */
+export { DATADOG_GRAPH_QL_OPERATION_NAME_HEADER }
+
 export type DatadogRumConfig = {
   clientToken: string
   applicationId: string

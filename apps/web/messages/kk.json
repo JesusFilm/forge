@@ -7,7 +7,9 @@
     "noContent": "Мазмұн жоқ.",
     "homepageMisconfigured": "Watch басты беті дұрыс бапталмаған.",
     "defaultTemplateMisconfigured": "Әдепкі watch үлгісі дұрыс бапталмаған.",
-    "authFailed": "Мазмұн қызметінде аутентификация жасау мүмкін болмады. Бұл мәселе қайталанса, қолдау қызметіне хабарласыңыз."
+    "authFailed": "Мазмұн қызметінде аутентификация жасау мүмкін болмады. Бұл мәселе қайталанса, қолдау қызметіне хабарласыңыз.",
+    "pageLoadFailed": "Бірдеңе дұрыс болмады.",
+    "tryAgain": "Қайталау"
   },
   "VideosPage": {
     "title": "Барлық видеолар",
@@ -22,7 +24,8 @@
     "promoHeading": "Інжілді тереңірек түсінгіңіз келе ме?",
     "joinBibleStudy": "Інжіл зерттеу тобына қосылыңыз",
     "previousQuote": "Алдыңғы Інжіл дәйексөзі",
-    "nextQuote": "Келесі Інжіл дәйексөзі"
+    "nextQuote": "Келесі Інжіл дәйексөзі",
+    "readPassage": "Осы үзіндіні Киелі кітабыңыздан оқыңыз."
   },
   "DownloadButton": {
     "checking": "Тексерілуде",
@@ -73,7 +76,8 @@
     "selectLanguage": "Тілді таңдаңыз",
     "searchPlaceholder": "Тілдерді іздеу…",
     "languages": "Тілдер",
-    "noMatches": "Сәйкес келетін нәтиже жоқ"
+    "noMatches": "Сәйкес келетін нәтиже жоқ",
+    "notAvailable": "Қолжетімді емес"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Тіл",
@@ -112,7 +116,8 @@
     "questions": "Қатысты сұрақтар",
     "askYours": "Өз сұрағыңызды қойыңыз",
     "chatWithPerson": "Адаммен сөйлесу",
-    "askBibleQuestion": "Інжіл бойынша сұрақ қою"
+    "askBibleQuestion": "Інжіл бойынша сұрақ қою",
+    "quiz": "Викторина"
   },
   "WatchQuestionPanel": {
     "messageType": "Хабар түрі",
@@ -170,7 +175,8 @@
     "searchRegion": "Видеоларды іздеу",
     "clearSearch": "Іздеуді тазалау",
     "changeAudioLanguage": "Дыбыс тілін өзгерту",
-    "home": "JesusFilm басты беті"
+    "home": "JesusFilm басты беті",
+    "closeSearch": "Іздеуді жабу"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларды іздеу және шолу",
@@ -205,14 +211,19 @@
     "clearLanguages": "Тазалау",
     "queryLanguageDetected": "{language} анықталды",
     "searchInLanguage": "{language} тілінде іздеу",
-    "tryDifferentKeywordsOrLanguage": "Басқа кілт сөздерді қолданып көріңіз немесе басқа іздеу тілін таңдаңыз"
+    "tryDifferentKeywordsOrLanguage": "Басқа кілт сөздерді қолданып көріңіз немесе басқа іздеу тілін таңдаңыз",
+    "useWebsiteDefaultLanguage": "Веб-сайттың әдепкі іздеу тілін пайдалану",
+    "removeLanguage": "{language} жою",
+    "browseMode": "Шолу режимі"
   },
   "HeroPlayer": {
     "playWithSound": "Қазір қарау",
-    "tapToUnmute": "Дыбысты қосу үшін түртіңіз"
+    "tapToUnmute": "Дыбысты қосу үшін түртіңіз",
+    "nextEpisode": "Келесі эпизод"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Мазмұн жүктелуде"
+    "loadingContent": "Мазмұн жүктелуде",
+    "loadingVideo": "Видео жүктелуде"
   },
   "VideoLabels": {
     "video": "Видео",
@@ -223,7 +234,8 @@
     "series": "Серия",
     "collection": "Жинақ",
     "trailer": "Трейлер",
-    "behindTheScenes": "Түсірілім барысы"
+    "behindTheScenes": "Түсірілім барысы",
+    "chapter": "Бөлім"
   },
   "SiblingCarousel": {
     "clipPosition": "{current}/{total} клип",
@@ -235,12 +247,287 @@
     "noImage": "Сурет жоқ",
     "playingNow": "Қазір ойналуда",
     "previousChapter": "Алдыңғы бөлім",
-    "nextChapter": "Келесі бөлім"
+    "nextChapter": "Келесі бөлім",
+    "thumbnailAlt": "{title} нобайы",
+    "relatedVideoThumbnail": "Қатысты видео нобайы"
   },
   "SearchResultCard": {
     "experience": "Тәжірибе",
     "episodeCount": "{count, plural, one {# эпизод} other {# эпизод}}",
     "thumbnailAlt": "Видео нобайы"
+  },
+  "Feedback": {
+    "openForm": "Пікір формасын ашу",
+    "label": "Пікір",
+    "couldNotLoad": "Пікір формасын жүктеу мүмкін болмады.",
+    "loadingForm": "Пікір формасы жүктелуде…",
+    "retry": "Қайталау",
+    "openFormShort": "Форманы ашу",
+    "cancel": "Бас тарту",
+    "title": "Beta туралы пікір",
+    "description": "Не жұмыс істеп тұрғанын және нені жақсартуға болатынын бөлісіңіз. Бұл форманы Google ұсынады.",
+    "openInNewTab": "Форманы жаңа қойындыда ашу",
+    "closeForm": "Пікір формасын жабу",
+    "loadingGoogleForm": "Google Form жүктелуде…",
+    "iframeTitle": "Beta туралы пікір жіберу"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} тіліндегі тегін христиан видеолары | Jesus Film Project",
+    "metadataDescription": "{language} тіліндегі дубляждалған дыбысы немесе субтитрлері бар Jesus фильмдерін, Інжіл оқиғаларын, шәкірттік серияларын және ізгі хабар тарату видеоларын зерттеңіз.",
+    "heroTitle": "{language} тіліндегі тегін христиан видеолары",
+    "heroDescription": "{language} тілінде қолжетімді Jesus фильмдерін, Інжіл оқиғаларын, шәкірттік серияларды және ізгі хабар тарату видеоларын зерттеңіз. Толық дубляждалған видеолар алдымен көрсетіледі, ал төменде тек субтитрі бар нұсқалар берілген.",
+    "languageCollection": "Тілдік жинақ",
+    "itemCount": "{count, plural, one {# элемент} other {# элемент}}",
+    "videoCount": "{count, plural, one {# видео} other {# видео}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видео}} ішінде {groupCount, plural, one {# топ} other {# топ}}",
+    "sectionNavLabel": "Тілдік жинақ бөлімдері",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Жаңа",
+    "videoBible": "Видео Інжіл",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Жинақтар",
+    "subtitlesOnly": "Тек субтитрлер",
+    "newlyAdded": "Жаңа қосылған",
+    "newVideosTitle": "{language} тіліндегі жаңа христиан видеолары",
+    "newestFirst": "Алдымен ең жаңасы",
+    "noPublishedVideos": "Бұл тіл үшін әлі жарияланған видео табылмады.",
+    "bibleAndGospelFilms": "Інжіл және Ізгі хабар фильмдері",
+    "videoBibleCollectionsTitle": "{language} тіліндегі Video Bible жинақтары",
+    "videoBibleDescription": "{language} тіліндегі LUMO, JESUS, Magdalena және Acts сияқты Жазбаға негізделген жинақтар.",
+    "noVideoBibleCollections": "Бұл тіл үшін әлі Video Bible жинақтары жоқ.",
+    "bibleProjectCollectionsTitle": "{language} тіліндегі BibleProject жинақтары",
+    "bibleProjectDescription": "{language} тілінде қолжетімді BibleProject сериялары мен зерттеулері.",
+    "noBibleProjectCollections": "Бұл тіл үшін әлі BibleProject жинақтары жоқ.",
+    "sportsStories": "Спорт туралы оқиғалар",
+    "sportsTitle": "{language} тіліндегі спорт және спортшылар туралы оқиғалар",
+    "sportsDescription": "{language} тілінде қолжетімді сенімге негізделген спорт оқиғалары мен спортшыларға арналған жинақтар.",
+    "noSportsCollections": "Бұл тіл үшін әлі спорт немесе спортшы оқиғалары жинақтары жоқ.",
+    "fullyDubbed": "Толық дубляждалған",
+    "dubbedVideosTitle": "{language} тіліндегі видеолар, жинақ бойынша",
+    "dubbedVideosDescription": "Іздеуді жеңілдету үшін толық дубляждалған {language} видеоларын жинақтарымен бірге шолыңыз.",
+    "noDubbedVideos": "Бұл тіл үшін әлі толық дубляждалған видео жоқ.",
+    "subtitlesAvailable": "Субтитрлер бар",
+    "subtitlesTitle": "{language} тіліндегі субтитрі бар видеолар",
+    "subtitlesDescription": "Бұл видеоларда сөйленген {language} дыбысы әлі қолжетімсіз болғанда {language} субтитрлері бар.",
+    "noSubtitleVideos": "Бұл тіл үшін әлі тек субтитрі бар видео жоқ.",
+    "dubbed": "Дубляждалған",
+    "subtitles": "Субтитрлер",
+    "newLabel": "Жаңа",
+    "fromCollection": "{collection} жинағынан",
+    "standaloneVideos": "Жеке видеолар",
+    "videosFromCollection": "{collection} жинағындағы видеолар.",
+    "standaloneDescription": "Осы тілдегі жеке видеолар.",
+    "openCollection": "Жинақты ашу"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project видеоларын көру",
+    "watch": "Көру",
+    "watchNow": "Қазір көру",
+    "mutePreview": "Алдын ала қарауды дыбысын өшіру",
+    "unmutePreview": "Алдын ала қараудың дыбысын қосу",
+    "nextVideo": "Келесі видео",
+    "featured": "Таңдаулы",
+    "showVideo": "{title} көрсету",
+    "previousVideoPreview": "Алдыңғы видеоның алдын ала көрінісі",
+    "nextVideoPreview": "Келесі видеоның алдын ала көрінісі",
+    "mediaCollection": "Медиа жинағы",
+    "scrollToVideo": "{title} видеосына өту"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project басты беті",
+    "navigation": "Төменгі бөлім навигациясы",
+    "share": "Бөлісу",
+    "watch": "Көру",
+    "giving": "Қолдау",
+    "about": "Туралы",
+    "products": "Өнімдер",
+    "resources": "Ресурстар",
+    "partners": "Серіктестер",
+    "contact": "Байланыс",
+    "giveNow": "Қазір қолдау көрсету",
+    "resourcesVersion": "Ресурстар ({version})",
+    "office": "Кеңсе",
+    "fax": "Факс",
+    "privacyPolicy": "Құпиялылық саясаты",
+    "legalStatement": "Құқықтық мәлімдеме",
+    "newsletter": "Біздің ақпараттық бюллетеньге жазылыңыз"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Жаһандық миссияға арналған",
+    "title": "Хабар өзгермейді. Адамдардың көру тәсілі өзгереді.",
+    "description": "Біз видео кітапханамыз бен құралдарымызды түбегейлі қайта құрып жатырмыз, ондаған жылдық аударма еңбегін адамдар қазірдің өзінде жиналып, көріп, бөлісетін платформаларға жеткізуді мақсат етеміз.",
+    "translatedLibraryTitle": "Әлемдегі ең көп аударылған фильм кітапханасы",
+    "translatedLibraryDescription": "Сенімді қызмет серіктестерінің қолдауымен ондаған жылдық аударма еңбегі мыңдаған тілдік нұсқалары бар кітапхананы қалыптастырды, сонда адамдар Исаның тарихын жүрегіне ең жақын тілде ести алады.",
+    "trustedVoicesTitle": "Сенімді дауыстарды жаңа форматтарға жеткізу",
+    "trustedVoicesDescription": "Біз Ізгі хабар оқиғаларын визуалды түрде баяндау тәсілін қайта құрып жатырмыз, сенімді аудармаларды заманауи форматтармен біріктіріп, хабардың платформалар, мәдениеттер мен экрандар арасында еркін таралуына мүмкіндік береміз.",
+    "missionTeamTitle": "Кітапханадан да үлкен. Миссияға бағытталған команда.",
+    "missionTeamDescription": "Jesus Film Project — ондаған жылдық қызмет тәжірибесін әлемдегі шәкірт дайындаушыларға арналған құралдарға айналдырып жатқан аудармашылар, медиа мамандар, редакторлар және контент жасаушылардан тұратын жаһандық команда.",
+    "buildingNext": "Келесі кезеңде не жасаймыз",
+    "nextStepsTitle": "Келесі қадамдар платформасы",
+    "nextStepsDescription": "Көрермендерді рухани жолында нақты мүмкіндіктермен байланыстырып, қауымға, Жазбаға немесе миссияға келесі қадам жасауына көмектесу.",
+    "mediaLibraryTitle": "Ізгі хабарлық медиа кітапханасы",
+    "mediaLibraryDescription": "Дүние жүзіндегі қызмет пен ізгі хабар таратуға арналған бірнеше тілде қолжетімді мыңдаған видео, фильм және ресурстары бар кең ауқымды христиан медиа кітапханасы.",
+    "ministryToolsTitle": "Қызметтерге арналған цифрлық құралдар",
+    "ministryToolsDescription": "Қызметтерге көбірек адамға тиімді жетуге көмектесетін видео басқару, контент тарату, аудиториямен байланыс және аналитика құралдары.",
+    "invitationEyebrow": "Сізді шақырамыз",
+    "invitationTitle": "Миссия құралдарының <highlight>келесі буынын</highlight> құруға көмектесіңіз",
+    "invitationDescription": "Біз практиктерді, жасаушыларды және серіктестерді ерте қолжетімділікке шақырамыз. Жаңа құралдарды алғашқылардың бірі болып сынап, пікір беріп, шынайы миссия жұмысына арналған өнімдерді қалыптастыруға көмектесіңіз.",
+    "betaTester": "Beta-тестер болу"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Bible жинағы",
+    "gospelRailTitle": "Толық оқиғаны ашыңыз",
+    "videoBibleDescription": "Қызықты оқиғалар мен ілімдер арқылы Киелі кітапты жандандыратын видео мен ресурстар жинағын зерттеңіз.",
+    "showcaseTitle": "Жазбаны фильм арқылы баяндау",
+    "adventEyebrow": "Рождестволық Адвент",
+    "adventTitle": "Рождестволық Адвент санағы",
+    "adventDescription": "Иса Мәсіхтің келуінен үміт, қуаныш және уәдені ашатын күнделікті видео арқылы Рождествоға деген күту сезімін арттыратын Адвент сапарына қосылыңыз.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Адвенті",
+    "nuaEyebrow": "NUA сериясы",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth сериясы",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Исамен бірге жол жүріңіз",
+    "gospelsOnVideoEyebrow": "Әр Ізгі хабар — видеода",
+    "scriptureAsWrittenTitle": "Жазба, дәл жазылғандай сөйлетілген",
+    "merryChristmas": "Рождество құтты болсын!",
+    "daysUntilChristmas": "{count, plural, one {Рождествоға дейін # күн} other {Рождествоға дейін # күн}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Тілдер",
+    "metadataDescription": "JesusFilm видеоларын тіл бойынша шолыңыз.",
+    "eyebrow": "Қарау тілдері",
+    "title": "Тілді таңдаңыз",
+    "description": "Тілдерді аймақ бойынша зерттеңіз немесе толық тізімді шолыңыз.",
+    "searchPlaceholder": "Тілдерді немесе елдерді іздеу...",
+    "searchLabel": "Тілдерді немесе елдерді іздеу",
+    "clearSearch": "Іздеуді тазалау",
+    "browse": "Шолу",
+    "browseByRegion": "Аймақ және ел бойынша шолу",
+    "languageCount": "{count, plural, one {# тіл} other {# тіл}}",
+    "region": "Аймақ",
+    "countryLanguages": "{country} тілдері",
+    "showLess": "Азайту",
+    "showMore": "Тағы {count} көрсету",
+    "noLanguages": "Тілдер табылмады",
+    "tryAnotherSearch": "Басқа іздеу сөзін қолданып көріңіз."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Көру тарихы | Jesus Film Project",
+    "title": "Көру тарихы",
+    "loading": "Тарих жүктелуде",
+    "empty": "Әзірге мұнда ештеңе жоқ",
+    "emptyDescription": "Кіру жасаған кезде көрген видеоларыңыз осында көрсетіледі.",
+    "earlier": "Бұрын",
+    "today": "Бүгін",
+    "yesterday": "Кеше"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт мәзірі",
+    "signIn": "Кіру",
+    "signOut": "Шығу",
+    "signedIn": "Кірдіңіз",
+    "history": "Тарих",
+    "logOut": "Шығу"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Бет табылмады",
+    "eyebrow": "Бет табылмады",
+    "screenReaderPrefix": "Бет табылмады:",
+    "title": "Бұл көрініс мұнда жоқ.",
+    "description": "Бет орын ауыстырған шығар, бірақ оқиға жалғасады.",
+    "actionsLabel": "Бет табылмады әрекеттері",
+    "backToWatch": "Watch бетіне оралу",
+    "browseVideos": "Видеоларды шолу"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Қысқаметражды фильмді көру",
+    "actions": {
+      "joinUs": "Бізге қосылыңыз",
+      "shareMission": "Біздің миссиямызға үлес қосыңыз"
+    },
+    "welcomeStart": {
+      "label": "Сенім және Жазба",
+      "title": "Бүгінгі видео таңдаулары",
+      "description": "Жүрекке жетіп, ой салатын және шабыттандыратын біздің кітапханадан сенімге негізделген видео мазмұн."
+    },
+    "welcomeMorning": {
+      "label": "Таңғы шабыт",
+      "title": "Қайырлы таң! Бүгінгі Інжіл сәттері күтіп тұр.",
+      "description": "Күніңізді жігер беретін Інжіл сәттерімен бастап, рухыңызды көтеріңіз."
+    },
+    "welcomeAfternoon": {
+      "label": "Түстен кейінгі шабыт",
+      "title": "Қайырлы күн! Күніңізге арналған Інжіл сәттері.",
+      "description": "Түстен кейінгі үзіліске немесе шабытты жалғастыруға лайық жігер беретін Інжіл мазмұны."
+    },
+    "welcomeEvening": {
+      "label": "Кешкі шабыт",
+      "title": "Қайырлы кеш! Інжіл сәттерімен тынығыңыз.",
+      "description": "Күніңіз аяқталарда ойлануға және жұбаныш табуға көмектесетін тыныш Інжіл сәттері."
+    },
+    "joinUs": {
+      "label": "Бізге қосылыңыз",
+      "title": "Миллиардтаған адам іздеп жүр",
+      "description": "Егін мол. Сандық медиа арқылы әлемге Ізгі хабарды жеткізуге бізге қосылыңыз."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Бірге жүрейік",
+      "title": "Исаның тарихын бірге баяндау",
+      "description": "Сонда олар Исаның сүйіспеншілігін өз тілінде, өздері тұрған жерде ести де, көре де алады."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% сәйкес",
+    "none": "Бұл видеоға осы тілде ұсыныстар табылмады."
+  },
+  "BetaTesterModal": {
+    "title": "Beta-тестер болу",
+    "trigger": "Beta-тестер болу",
+    "loadFailed": "Бірдеңе дұрыс болмады.",
+    "loading": "Жүктелуде...",
+    "openFormNewTab": "Форманы жаңа қойындыда ашу",
+    "close": "Жабу",
+    "iframeTitle": "Beta-тестер болу"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   },
   "WatchEndReflection": {
     "eyebrow": "Бір сәт уақыт бөліңіз",
