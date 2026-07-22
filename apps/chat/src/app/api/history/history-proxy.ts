@@ -28,8 +28,10 @@ import { resolveSeekerResource } from "@/auth/anon-id"
 import { type ChatIdentity } from "@/auth/session-cookie"
 import { env, seekerTimeoutMs } from "@/config/env"
 import { type SeekerGateDecision } from "@/lib/seeker-gate"
-
-import { hostAllowed } from "../seeker/route"
+import {
+  hostAllowed,
+  MAX_CONVERSATION_ID_CHARS,
+} from "@/lib/server/mastra-upstream"
 
 /** Ceiling on the composed history read budget (KTD7): these are
  * millisecond-class reads and must not inherit the 95s generation timeout. */
@@ -57,9 +59,6 @@ export function composeHistoryTimeoutMs(sendPathTimeoutMs: number): number {
  * still bounding a misbehaving upstream. The list page is far smaller. */
 export const HISTORY_LIST_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 export const HISTORY_THREAD_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
-
-/** Mirrors the seeker proxy's conversation-id bound (and Mastra's own cap). */
-const MAX_CONVERSATION_ID_CHARS = 200
 
 /** Signed-in resource prefix — prefix-check only, never split on ":". */
 const USER_RESOURCE_PREFIX = "user:"

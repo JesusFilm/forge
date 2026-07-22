@@ -7,7 +7,7 @@ problem_type: "workflow_issue"
 component: "documentation"
 severity: "medium"
 applies_when:
-  - "Retiring or replacing a mechanism (CMS removal, feature-flag vendor swap, auth mechanism change, external service drop)"
+  - "Retiring or replacing a mechanism (CMS removal, feature-flag vendor swap, auth mechanism change, external service drop); or relocating one's implementation to a new module/file with unchanged behavior"
   - "The removal sweep greps for code symbols only (function names, env vars, registry keys) and skips docs prose"
   - "Roadmap tickets reference the retired mechanism in entry points, constraints, or grep patterns as if it were live"
   - "Completed tickets carry 'pending operator work' paragraphs that read as immutable history but contain live instructions"
@@ -202,6 +202,21 @@ reads — spend and grant-surface with zero function.
 - **Any mechanism retirement or replacement**: an app deletion, a pipeline
   retirement, an auth-mechanism migration, a feature-flag mechanism swap —
   planned or organic.
+- **A same-behavior RELOCATION of a mechanism's implementation** to a new
+  file/module is the same failure class at smaller scale — stamp a dated
+  "Relocated" note (not "Superseded") naming the new home on forward-looking
+  prose that cites the old location; see the `hostAllowed` move in
+  `docs/solutions/architecture-patterns/browser-sse-proxy-to-bearer-gated-internal-sse-20260626.md`
+  (feat-282 PR 1 — #1661, 2026-07-21) as the worked example. Two scope inversions vs
+  a retirement: (1) the sweep KEY inverts — prose cites a relocated
+  implementation by its exact symbol and path, so grep tracked markdown for
+  the OLD path and exported symbol names (identifiers, not product nouns);
+  the noun-harvest, triage-order, and independent-verification machinery
+  above is retirement-scale, and a relocation needs only the targeted grep
+  plus the stamp. (2) The stamp targets INDEPENDENT prose (docs/solutions,
+  tickets, plans) whose body doubles as historical record; living reference
+  docs owned by the moved code (its app's CLAUDE.md/README) are instead
+  updated in place as part of the move itself.
 - **At retirement time**, as a peer step to the code-symbol sweep, in the same
   PR/arc that removes or replaces the mechanism.
 - **Multi-PR and phased retirements**: the sweep belongs to the PR that makes
