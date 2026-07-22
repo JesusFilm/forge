@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 21, 2026)
 
-- **Total tickets:** 386
-- **Complete:** 287
+- **Total tickets:** 387
+- **Complete:** 288
 - **In progress:** 26
 - **Not started:** 29
 - **Blocked:** 44
@@ -418,5 +418,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim      | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-255](topic-experiences/feat-255-mobile-poster-rail-signal.md)                         | Mobile Home poster rails — give the card-shape decision its own signal           | urim      | P2       | 2026-07-16 | 2    | 2026-07-17 | not-started |
+| [feat-286](topic-experiences/feat-286-watch-promotional-text-decoration-removal.md)         | Refine Watch promotional text styling                                            | urim      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim      | P2       | 2026-09-01 | 14   | 2026-09-14 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |

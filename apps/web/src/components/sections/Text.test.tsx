@@ -128,4 +128,23 @@ describe("Text promotional Markdown", () => {
       container.querySelector('[data-testid="promotional-markdown"]'),
     ).toBeNull()
   })
+
+  it("does not render decorative rays beside the promotional heading", () => {
+    const { container } = renderText()
+
+    const promotional = container.querySelector('[data-variant="promotional"]')
+    expect(promotional?.querySelector('[aria-hidden="true"]')).toBeNull()
+    expect(promotional?.innerHTML).not.toContain("bg-linear-to-r")
+    expect(promotional?.innerHTML).not.toContain("bg-linear-to-b")
+  })
+
+  it("uses the reduced desktop scale for the promotional heading", () => {
+    const { container } = renderText()
+
+    const heading = container.querySelector("h2")
+    expect(heading?.className).toContain("lg:text-4xl")
+    expect(heading?.className).toContain("xl:text-5xl")
+    expect(heading?.className).not.toContain("lg:text-5xl")
+    expect(heading?.className).not.toContain("xl:text-[3.5rem]")
+  })
 })

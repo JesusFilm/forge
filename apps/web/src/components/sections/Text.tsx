@@ -112,10 +112,6 @@ export function Text({ data }: TextProps) {
               className="xl:col-start-1 xl:row-start-1"
               data-testid="promotional-eyebrow-row"
             >
-              <div
-                className="mb-4 h-px w-16 bg-linear-to-r from-red-100/80 to-transparent"
-                aria-hidden="true"
-              />
               {subtitle && (
                 <p className="mb-4 text-xs font-semibold tracking-[0.28em] text-red-100/70 uppercase sm:text-sm">
                   {subtitle}
@@ -123,14 +119,10 @@ export function Text({ data }: TextProps) {
               )}
             </div>
             {heading && (
-              <Tag className="text-3xl leading-[1.08] font-semibold tracking-[-0.025em] text-white sm:text-4xl lg:text-5xl xl:col-start-1 xl:row-start-2 xl:pr-4 xl:text-[3.5rem]">
+              <Tag className="text-3xl leading-[1.08] font-semibold tracking-[-0.025em] text-white sm:text-4xl lg:text-4xl xl:col-start-1 xl:row-start-2 xl:pr-4 xl:text-5xl">
                 {heading}
               </Tag>
             )}
-            <div
-              className="mt-8 hidden h-24 w-px bg-linear-to-b from-white/25 to-transparent xl:col-start-1 xl:row-start-3 xl:block"
-              aria-hidden="true"
-            />
           </header>
 
           {markdown && (
