@@ -13,6 +13,49 @@ tags:
   - "web"
 ---
 
+## Resolution
+
+> **Arc status:** PR 1 of 2 shipped; this section covers chunk 1 only and will
+> be extended when PR 2 (honest `gate_denied` + the sidebar-projection move)
+> lands and flips this ticket `complete`.
+
+**Shipped (PR 1):** 2026-07-22 via [PR #1666](https://github.com/JesusFilm/forge/pull/1666) (`feat(chat): extract framework-agnostic conversation session module (feat-281 PR 1)`).
+
+**What landed.** The 742-line `useConversations` machine moved wholesale into
+`src/lib/conversation-session.ts` — a React-free subscribe/getSnapshot store
+with injected deps (`streamReply` + the two history fetchers), cached
+identity-stable snapshots (lazy dirty-flag rebuild), side-effect-free
+construction, and an `activate()`/`deactivate()` lifecycle whose deactivate
+rolls back every state only an aborted in-flight fetch could complete (the
+StrictMode re-arm contract). `useConversations` is now a thin
+`useSyncExternalStore` adapter returning the unchanged 16-field shape; the
+pure helpers + `HistoryListUi` are re-exported from `use-conversations.ts`
+until PR 2 relocates the sidebar-facing pieces. Zero behavior change — the
+whole-tree + StrictMode remount suites passed unmodified as the acceptance
+gate. Implementer additions within the ruling's latitude (reviewed and agreed
+by the rulings session): draft ownership + `setDraft` on the session, the
+explicit `activate`/`deactivate` pair, live-but-unarmed construction,
+`seekerEnabled` captured at construction, replay triggering moved from the
+`[activeId]` effect into `selectConversation` + activate re-arm.
+
+**Compound docs.** `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`
+gained the "Detection pitfall (2026-07-22, feat-281)" section (`renderHook`
+StrictMode coverage requires RTL's `reactStrictMode: true` option — the
+`wrapper` OPTION never doubles the effect cycle, under `render` or
+`renderHook`) and the "Corollary (2026-07-22, feat-281)" section (synchronous
+external stores invert the doc's ref-lag mechanic; teardown must explicitly
+roll back in-flight-only states).
+
+**Residual risk / follow-ups.** (1) Pre-existing, deliberately untouched: the
+access-revert vs late Load-more race (`revertToClientOnly` aborts nothing, so
+a late page success can resurrect removed rows) — old-hook semantics preserved;
+candidate follow-up ticket. (2) `commit()` has no per-listener exception
+isolation — validator-rejected as speculative while React's
+`useSyncExternalStore` callback is the sole subscriber; revisit when feat-209
+or another consumer subscribes. (3) `deps.seekerEnabled` is captured at
+session construction (deploy-static today); feat-209's URL adapter must
+re-examine if soft navigation ever re-resolves the gate onto a live shell.
+
 ## Problem
 
 `apps/chat/src/lib/use-conversations.ts` (742 lines) holds every conversation
