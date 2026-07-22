@@ -151,10 +151,18 @@ describe("FeedbackLauncher", () => {
     const loading = document.querySelector(
       '[data-testid="feedback-modal-loading"]',
     )
+    const close = document.querySelector(
+      '[data-testid="feedback-modal-close"]',
+    ) as HTMLButtonElement
     expect(loading?.getAttribute("role")).toBe("status")
+    expect(close).not.toBeNull()
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
     expect(loading?.textContent).toContain("Loading feedback form")
     expect(loading?.className).toContain("safe-area-inset-bottom")
     expect(loading?.className).toContain("safe-area-inset-left")
+    act(() => close.click())
+    expect(onCancel).toHaveBeenCalledOnce()
 
     act(() => {
       root.render(
@@ -171,6 +179,10 @@ describe("FeedbackLauncher", () => {
     )
     expect(error?.getAttribute("role")).toBe("alert")
     expect(error?.textContent).toContain("Feedback form could not load")
+    const errorClose = document.querySelector(
+      '[data-testid="feedback-modal-close"]',
+    ) as HTMLButtonElement
+    act(() => errorClose.click())
 
     const buttons = Array.from(error?.querySelectorAll("button") ?? [])
     act(() => {
@@ -178,7 +190,7 @@ describe("FeedbackLauncher", () => {
       buttons.find((button) => button.textContent === "Cancel")?.click()
     })
     expect(retry).toHaveBeenCalledOnce()
-    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onCancel).toHaveBeenCalledTimes(3)
 
     const fallback = error?.querySelector("a")
     expect(fallback?.getAttribute("href")).toBe(
@@ -225,7 +237,8 @@ describe("FeedbackLauncher", () => {
     const close = document.querySelector(
       '[data-testid="feedback-modal-close"]',
     ) as HTMLButtonElement | null
-    expect(close?.className).toContain("size-11")
+    expect(close?.className).toContain("h-[52px]")
+    expect(close?.className).toContain("w-12")
 
     await act(async () => {
       close?.click()

@@ -160,6 +160,39 @@ export type SeedSummary = {
   experienceLocales: number
 }
 
+function normalizeFixtureBlocks(
+  value: unknown,
+  args: {
+    videoIdByCoreId: Map<string, string>
+    fallbackLanguageId: string
+  },
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeFixtureBlocks(item, args))
+  }
+
+  if (typeof value !== "object" || value == null) return value
+
+  const record = value as Record<string, unknown>
+  const next: Record<string, unknown> = {}
+  for (const [key, child] of Object.entries(record)) {
+    if (key === "streamingUrl" || key === "videoCoreId") continue
+    next[key] = normalizeFixtureBlocks(child, args)
+  }
+
+  const videoCoreId =
+    typeof record.videoCoreId === "string" ? record.videoCoreId : null
+  if (videoCoreId) {
+    next.videoId = args.videoIdByCoreId.get(videoCoreId)
+  }
+
+  if (typeof next.videoId === "string" && typeof next.languageId !== "string") {
+    next.languageId = args.fallbackLanguageId
+  }
+
+  return next
+}
+
 /**
  * A video-locale fixture references a `languageCoreId` that has no matching
  * entry in the fixture `languages` array. Fixtures are a closed set, so a
@@ -368,9 +401,21 @@ export async function seedWebFixtures(
   }
 
   // ── Experiences + locales ──────────────────────────────────────────
+  const englishLanguageId = languageByCoreId.get("529")?.id
+  if (!englishLanguageId) {
+    throw new UnknownLanguageCoreIdError("529", "experience blocks")
+  }
+
+  const blocksForLocale = (loc: ExperienceLocaleFixture) =>
+    normalizeFixtureBlocks(loc.blocks, {
+      videoIdByCoreId,
+      fallbackLanguageId: englishLanguageId,
+    })
+
   for (const exp of fixtures.experiences) {
     if (exp.locales.length === 0) continue
     const [firstLocale, ...rest] = exp.locales
+    const firstLocaleBlocks = blocksForLocale(firstLocale)
 
     // Look up an existing fixture experience by the first locale's
     // (slug, locale). This lets a rerun find and reuse the parent
@@ -401,7 +446,7 @@ export async function seedWebFixtures(
           isHomepage: exp.isHomepage,
           title: firstLocale.title,
           metaDescription: firstLocale.metaDescription,
-          blocks: firstLocale.blocks,
+          blocks: firstLocaleBlocks,
           status: "PUBLISHED",
           publishedAt: new Date(),
         },
@@ -418,7 +463,7 @@ export async function seedWebFixtures(
               isHomepage: exp.isHomepage,
               title: firstLocale.title,
               metaDescription: firstLocale.metaDescription,
-              blocks: firstLocale.blocks,
+              blocks: firstLocaleBlocks,
               status: "PUBLISHED",
               publishedAt: new Date(),
             },
@@ -431,6 +476,7 @@ export async function seedWebFixtures(
     summary.experienceLocales += 1
 
     for (const loc of rest) {
+      const localeBlocks = blocksForLocale(loc)
       await prisma.experienceLocale.upsert({
         where: {
           experienceId_locale: { experienceId, locale: loc.locale },
@@ -442,7 +488,7 @@ export async function seedWebFixtures(
           isHomepage: false,
           title: loc.title,
           metaDescription: loc.metaDescription,
-          blocks: loc.blocks,
+          blocks: localeBlocks,
           status: "PUBLISHED",
           publishedAt: new Date(),
         },
@@ -450,7 +496,7 @@ export async function seedWebFixtures(
           slug: loc.slug,
           title: loc.title,
           metaDescription: loc.metaDescription,
-          blocks: loc.blocks,
+          blocks: localeBlocks,
           status: "PUBLISHED",
           publishedAt: new Date(),
         },

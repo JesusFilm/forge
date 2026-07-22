@@ -29,7 +29,7 @@ function failureNotice(reason: ReplyFailureReason): string {
       return "Seeker is unavailable right now. Please try again later."
     case "gate_denied":
       // Reaches the UI only on server-persisted conversations (KTD10) — on
-      // never-persisted ones the seam still maps the denial to a stub reply.
+      // never-persisted ones the session rebuilds a stub reply inline (feat-281).
       // Access-changed copy, deliberately without a sign-in nudge (feat-236).
       return "Your access to Seeker has changed, so this message wasn't answered. This conversation is kept as it was."
     case "auth_failed":

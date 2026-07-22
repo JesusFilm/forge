@@ -36,10 +36,12 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 
-// Collections carry no per-item language today, so card deep links default
-// to the English variant and rely on the watch route to re-resolve locale.
-// See todo: EnrichedMediaItem should carry a defaultLanguage (data-model gap).
 // Hoisted so the throwing constructor runs once at module load, not per card.
 const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
 
@@ -211,6 +213,7 @@ export function MediaCollection({
       backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
+      fallbackLanguageSlug={resolvedLanguageSlug}
     />
   )
 }
@@ -248,6 +251,7 @@ function WatchHomeMediaCollection({
   backgroundColor,
   showItemNumbers,
   items,
+  fallbackLanguageSlug,
 }: {
   id: string
   categoryLabel: string | null
@@ -261,6 +265,7 @@ function WatchHomeMediaCollection({
   backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
+  fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
@@ -296,7 +301,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+    <p className="text-xs font-semibold tracking-widest text-red-100/60 uppercase xl:text-sm 2xl:text-base">
       {categoryLabel}
     </p>
   ) : null
@@ -305,7 +310,10 @@ function WatchHomeMediaCollection({
       {subtitle ? (
         <p
           data-testid="media-collection-supporting-title"
-          className="w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl"
+          className={cn(
+            "w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
+            title && "pt-1",
+          )}
         >
           {subtitle}
         </p>
@@ -525,6 +533,7 @@ function WatchHomeMediaCollection({
                     index={index}
                     orientation="vertical"
                     showItemNumbers={showItemNumbers}
+                    fallbackLanguageSlug={fallbackLanguageSlug}
                     onHover={() =>
                       updateHoverBackground(mediaItemBackdropImageUrl(item))
                     }
@@ -563,6 +572,7 @@ function WatchHomeMediaCollection({
                 index={index}
                 orientation={isVertical ? "vertical" : "horizontal"}
                 showItemNumbers={showItemNumbers}
+                fallbackLanguageSlug={fallbackLanguageSlug}
                 onHover={() =>
                   updateHoverBackground(mediaItemBackdropImageUrl(item))
                 }
@@ -576,7 +586,7 @@ function WatchHomeMediaCollection({
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p
             data-testid="media-collection-footer"
-            className="mt-8 max-w-5xl text-lg leading-relaxed font-normal text-stone-200/80 xl:text-xl"
+            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
           >
             {footerText}
           </p>
@@ -599,21 +609,26 @@ function VideoCard({
   index,
   orientation,
   showItemNumbers,
+  fallbackLanguageSlug,
   onHover,
 }: {
   item: EnrichedMediaItem
   index: number
   orientation: "horizontal" | "vertical"
   showItemNumbers: boolean | null
+  fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
   onHover?: () => void
 }) {
   const t = useTranslations("WatchHome")
   // Raw <a href> (not next/link), so the `/watch` basePath must be prefixed
-  // manually. EnrichedMediaItem carries no language field, so the locale
-  // segment defaults to `english` (see DEFAULT_COLLECTION_LOCALE).
+  // manually. Prefer the resolved item dub language; fall back to the current
+  // page language for route-derived items or legacy payloads.
   const slug = item.videoSlug ? tryAsContentSlug(item.videoSlug) : null
+  const itemLanguageSlug = tryAsLocaleSlug(item.languageSlug ?? "")
+  const cardLanguageSlug =
+    itemLanguageSlug ?? fallbackLanguageSlug ?? DEFAULT_COLLECTION_LOCALE
   const href = slug
-    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, DEFAULT_COLLECTION_LOCALE)}`
+    ? `${WATCH_BASE_PATH}${watchVideoPath(slug, cardLanguageSlug)}`
     : undefined
   const isInteractive = Boolean(href)
   const Wrapper = href ? "a" : "div"
@@ -724,23 +739,18 @@ function VideoCard({
             className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           />
         ) : null}
-        <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
+        <VideoThumbnailCaption className="z-30">
           {item.label ? (
-            <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+            <VideoThumbnailEyebrow as="div">
               {formatLabel(item.label)}
-            </div>
+            </VideoThumbnailEyebrow>
           ) : null}
           {item.title ? (
-            <h3
-              className={cn(
-                "line-clamp-2 -mt-1 text-left leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
-                isVertical ? "text-xl" : "text-lg md:text-xl",
-              )}
-            >
+            <VideoThumbnailTitle size={isVertical ? "large" : "prominent"}>
               {item.title}
-            </h3>
+            </VideoThumbnailTitle>
           ) : null}
-        </div>
+        </VideoThumbnailCaption>
       </div>
     </Wrapper>
   )

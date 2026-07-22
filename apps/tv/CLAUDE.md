@@ -139,9 +139,9 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
   unprovisioned build boots normally (dev builds log a `[datadog] RUM disabled` warning).
   Provision via `eas env:create` per environment (see `.env.example` and the TV runbook in
   `docs/observability/datadog.md`). `EXPO_PUBLIC_DATADOG_ENV` defaults by build type
-  (`__DEV__` → development, release → production); the preview EAS environment sets
+  (`__DEV__` → development, release → prod); the preview EAS environment sets
   `EXPO_PUBLIC_DATADOG_ENV=preview` explicitly — preview is a release build and would
-  otherwise tag external testers' sessions `env:production`.
+  otherwise tag external testers' sessions `env:prod`.
 - **Client token, never an API key** — RUM creds ship in the bundle (`EXPO_PUBLIC_*`).
 - **Site is the mobile enum** (`US1`, `EU1`, …), NOT web's `datadoghq.com`. Default `US1`.
 - **firstPartyHosts** targets the admin GraphQL host so RUM resources trace-link to admin APM.

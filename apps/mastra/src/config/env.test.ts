@@ -43,6 +43,31 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).not.toThrow()
   })
 
+  it("refuses boot when devotional approval shares a pool key", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a,shared-key")
+    vi.stubEnv("DEVOTIONAL_APPROVAL_API_KEYS", "shared-key,approval-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /DEVOTIONAL_APPROVAL_API_KEYS.*must not share key values/,
+    )
+  })
+
+  it("refuses boot when devotional playback shares a mutation key", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a")
+    vi.stubEnv("DEVOTIONAL_APPROVAL_API_KEYS", "approval-a")
+    vi.stubEnv("DEVOTIONAL_PLAYBACK_API_KEYS", "approval-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /DEVOTIONAL_PLAYBACK_API_KEYS.*must not share key values/,
+    )
+  })
+
   it("requires service keys in production runtime", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
@@ -697,6 +722,66 @@ describe("Mastra env", () => {
     expect(() => assertMastraRuntimeEnv()).toThrow(
       "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
     )
+  })
+
+  it("exposes configured devotional site-ingest, partners, and video search", async () => {
+    vi.stubEnv(
+      "DEVOTIONAL_SITE_INGEST_URL",
+      "https://watch.example.org/api/devotional-ingest",
+    )
+    vi.stubEnv("DEVOTIONAL_SITE_INGEST_API_KEY", "devotional-ingest-key")
+    vi.stubEnv("DEVOTIONAL_PARTNER_DOMAINS", "Partner.org, gotquestions.org ,")
+    vi.stubEnv("DEVOTIONAL_DEFAULT_VIDEO_ID", "video-fallback-1")
+    vi.stubEnv("DEVOTIONAL_MODEL", "anthropic/claude-sonnet-4-6")
+    vi.stubEnv("DEVOTIONAL_SAFETY_MODEL", "anthropic/claude-opus-4-8")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "search-eval-key")
+
+    const {
+      getDevotionalSiteIngestConfig,
+      getDevotionalPartnerDomains,
+      getDevotionalVideoSearchConfig,
+      getDevotionalModel,
+      getDevotionalSafetyModel,
+    } = await import("./env")
+
+    expect(getDevotionalSiteIngestConfig()).toEqual({
+      url: "https://watch.example.org/api/devotional-ingest",
+      apiKey: "devotional-ingest-key",
+    })
+    expect(getDevotionalPartnerDomains()).toEqual([
+      "partner.org",
+      "gotquestions.org",
+    ])
+    expect(getDevotionalVideoSearchConfig()).toEqual({
+      url: "https://admin.internal/api/internal/search-eval/search",
+      bearer: "search-eval-key",
+      defaultVideoId: "video-fallback-1",
+    })
+    expect(getDevotionalModel()).toBe("anthropic/claude-sonnet-4-6")
+    expect(getDevotionalSafetyModel()).toBe("anthropic/claude-opus-4-8")
+  })
+
+  it("defaults devotional config when optional vars are unset", async () => {
+    const {
+      getDevotionalSiteIngestConfig,
+      getDevotionalPartnerDomains,
+      getDevotionalVideoSearchConfig,
+      getDevotionalModel,
+      getDevotionalSafetyModel,
+    } = await import("./env")
+
+    expect(getDevotionalSiteIngestConfig()).toEqual({
+      url: undefined,
+      apiKey: undefined,
+    })
+    expect(getDevotionalPartnerDomains()).toEqual([])
+    expect(getDevotionalVideoSearchConfig().defaultVideoId).toBeUndefined()
+    expect(getDevotionalModel()).toBe("anthropic/claude-haiku-4-5")
+    expect(getDevotionalSafetyModel()).toBe("anthropic/claude-haiku-4-5")
   })
 
   // --- feat-199: JESUSFILM_RAG_* optional config + production host guard ---

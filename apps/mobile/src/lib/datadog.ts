@@ -79,8 +79,7 @@ export function getDatadogRumConfig(): DatadogRumConfig | null {
     site: env.EXPO_PUBLIC_DATADOG_SITE ?? "US1",
     // Default by build type: a provisioned release fleet missing the ENV var
     // must not file its telemetry under env:development.
-    envName:
-      env.EXPO_PUBLIC_DATADOG_ENV ?? (__DEV__ ? "development" : "production"),
+    envName: env.EXPO_PUBLIC_DATADOG_ENV ?? (__DEV__ ? "development" : "prod"),
     version: env.EXPO_PUBLIC_DATADOG_VERSION,
     // 100% by default (catch every crash/trace while early); env-tunable toward
     // web's 50% once mobile's volume and cost are known.

@@ -286,17 +286,27 @@ describe("GlobalLanguagePickerModal", () => {
     expect(document.activeElement).toBe(query("global-language-picker-select"))
   })
 
-  it("closes without navigation and restores focus after close button, overlay, and Escape", async () => {
+  it("closes without navigation and restores focus after viewport close, footer close, overlay, and Escape", async () => {
     loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
 
-    for (const closeWith of ["button", "overlay", "escape"] as const) {
+    for (const closeWith of [
+      "viewport",
+      "footer",
+      "overlay",
+      "escape",
+    ] as const) {
       await act(async () => {
         root.render(<Harness key={closeWith} />)
       })
       const trigger = query("language-trigger")
       expect(query("global-language-picker-modal")).not.toBeNull()
 
-      if (closeWith === "button") {
+      if (closeWith === "viewport") {
+        const close = query("global-language-picker-modal-close")
+        expect(close?.style.top).toContain("safe-area-inset-top")
+        expect(close?.style.right).toContain("safe-area-inset-right")
+        click(close)
+      } else if (closeWith === "footer") {
         click(query("global-language-picker-close"))
       } else if (closeWith === "overlay") {
         click(document.querySelector('[data-slot="dialog-overlay"]'))
@@ -328,6 +338,12 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-close")?.className).toContain(
       "focus-visible:ring-inset",
     )
+    expect(
+      query("global-language-picker-modal-close")?.querySelectorAll("svg"),
+    ).toHaveLength(1)
+    expect(
+      query("global-language-picker-close")?.querySelector("svg"),
+    ).toBeNull()
     expect(query("global-language-picker-apply")?.className).toContain(
       "focus-visible:ring-inset",
     )

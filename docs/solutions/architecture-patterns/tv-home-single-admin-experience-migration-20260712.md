@@ -1,7 +1,7 @@
 ---
 title: "Migrating a native client's home to a single admin CMS Experience (hydrate-by-coreId, TV home parity)"
 date: "2026-07-12"
-last_refreshed: "2026-07-14"
+last_refreshed: "2026-07-22"
 category: "architecture-patterns"
 module: "apps/tv, apps/admin, packages/admin-graphql"
 problem_type: "architecture_pattern"
@@ -51,10 +51,20 @@ index, and builds the card through the **same** normalizer the code path already
 duration for a single), series-vs-single routing is precise and direct, and it works
 for any editor-curated video, not just ones the client hardcodes.
 
-This is a deliberate **divergence from mobile**, which renders the flat item
-(`childCount: 0`, no wire label, and — in prod — a null slug it cannot even navigate
-to). The divergence is worth it wherever the flat item can't carry the fidelity the
-surface needs.
+This was, as of this doc's writing, a deliberate **divergence from mobile**, which
+then rendered the flat item (`childCount: 0`, no wire label, and — in prod — a null
+slug it cannot even navigate to). The divergence is worth it wherever the flat item
+can't carry the fidelity the surface needs.
+
+> **Update (2026-07-22):** mobile has since adopted the same coreId hydration on its
+> Home-body adapter, so hydrate-by-coreId is now shared across TV and mobile — the
+> "renders the flat item" framing above describes the pre-2026-07-22 mobile state
+> only. Mobile's port is **additive**, not drop-on-miss: it keeps non-hydrated items
+> with their authored overrides (working shelves rely on them) instead of dropping
+> them, and it adds a structural hero-leak guard absent here. See
+> [Mobile Home adapter: additive coreId hydration for under-curated Experience cards](mobile-watch-home-card-hydration-hero-leak-guard.md).
+> The remaining divergence is the retention policy (TV drop-on-miss vs mobile
+> additive), not whether to hydrate.
 
 ### 2. The CMS item's stored id is NOT the consumer's hydration key — add an additive public bridge field
 
@@ -247,4 +257,5 @@ coverage in a codebase that can't render hooks in tests.
 - [Mocked-shape vs real-contract discipline](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — why live-prod verification caught the videoId≠coreId gap.
 - [Cross-client home-hero web parity via a wire-label eligibility gate](cross-client-hero-parity-eligibility-gate.md) — the follow-up that closed the hero-divergence gap this doc flagged (label-gate approximation of web's hls gate; PR #1534).
 - [TV SDUI MediaCollection card image/title resolution](tv-sdui-mediacollection-card-image-title-resolution.md) — extends this doc's coreId-hydration beyond the Home migration to the general SDUI Experience-Details MediaCollection renderer (`ExperienceProvider` / `experienceHydration.ts`), and adds the card image-resolution layer (imageOverrideUrl origin rewrite, field-major cardImage, Mux 640 ceiling) this doc does not cover; PR #1551.
+- [Mobile Home adapter: additive coreId hydration + hero-leak guard](mobile-watch-home-card-hydration-hero-leak-guard.md) — the port of this doc's coreId-index / top-up / versioned-snapshot mechanism to mobile's Home adapter, with two mechanisms absent here: an **additive-not-drop** item-retention policy and a structural **hero-leak guard** (`assembleWatchHomeModel` keeps config vs hydration videos separate so a curated top-up short film can't leak into the client-owned hero); PR #1676.
 - Plan: `docs/plans/2026-07-08-003-feat-tv-home-experience-parity-plan.md`.

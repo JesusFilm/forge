@@ -3,7 +3,11 @@
 // interface — no DOM, no React. Behavioral flows stay in the shell suites.
 import { describe, expect, it, vi } from "vitest"
 
-import { type StreamReplyInput, type StreamReplyResult } from "./chat-stub"
+import {
+  buildStubReply,
+  type StreamReplyInput,
+  type StreamReplyResult,
+} from "./chat-stub"
 import {
   createConversationSession,
   type ConversationSessionDeps,
@@ -261,28 +265,67 @@ describe("reply lifecycle", () => {
   })
 })
 
-describe("KTD10 stamping (all sites in the session)", () => {
-  it("passes allowStubFallback:true for a never-persisted conversation", () => {
+// Ruling 3 (feat-281): the seam reports gate denials honestly; the session
+// decides stub-vs-failure from the serverPersisted predicate it owns. These
+// pin the decision at every KTD10 stamp path — and the reconstruction shape.
+describe("KTD10 stub-vs-failure decision (all sites in the session)", () => {
+  const GATE_DENIED: StreamReplyResult = {
+    ok: false,
+    reason: "gate_denied",
+    partialText: "",
+  }
+
+  // The assistant turn of the LAST exchange in the active conversation.
+  function lastTurn(session: ReturnType<typeof makeSession>["session"]) {
+    const messages = session.getSnapshot().activeConversation.messages
+    return messages[messages.length - 1]!
+  }
+
+  it("rebuilds the IMMEDIATE inline stub on gate_denied for a never-persisted conversation", async () => {
     const { session, streamReply } = makeSession({ seekerEnabled: true })
-    session.send("fresh")
-    expect(streamReply.mock.calls[0]![0].allowStubFallback).toBe(true)
+    streamReply.mockResolvedValueOnce(GATE_DENIED)
+    session.send("fresh question")
+    // Real timers + a 0ms flush: had the finalize re-entered streamStubReply,
+    // its 800ms STUB_REPLY_DELAY_MS could not have elapsed and content would
+    // still be "" here — this asserts the no-delay reconstruction contract.
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.content).toBe(buildStubReply("fresh question"))
+    expect(turn.engine).toBe("stub")
+    expect(turn.grounded).toBe(false)
+    expect(turn.sources).toEqual([])
+    expect(turn.error).toBeUndefined()
+    expect(session.getSnapshot().pending).toBe(false)
   })
 
-  it("withholds the fallback after a SUCCESSFUL seeker finalize", async () => {
-    const { session, streamReply } = makeSession({
-      seekerEnabled: true,
-    })
+  it("does not mark the conversation persisted on the stub reconstruction — a second denial still stubs", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValue(GATE_DENIED)
+    session.send("first — denied")
+    await flush()
+    session.send("second — denied again")
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.content).toBe(buildStubReply("second — denied again"))
+    expect(turn.error).toBeUndefined()
+  })
+
+  it("fails visibly on gate_denied after a SUCCESSFUL seeker finalize", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
     streamReply.mockResolvedValueOnce(OK_SEEKER)
     session.send("first")
     await flush()
+    streamReply.mockResolvedValueOnce(GATE_DENIED)
     session.send("second")
-    expect(streamReply.mock.calls[1]![0].allowStubFallback).toBe(false)
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.error).toBe("gate_denied")
+    expect(turn.engine).toBe("seeker")
+    expect(turn.content).toBe("")
   })
 
-  it("keeps the fallback after a failed turn with NO partial text", async () => {
-    const { session, streamReply } = makeSession({
-      seekerEnabled: true,
-    })
+  it("still stubs after a failed turn with NO partial text (never reached the server)", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
     streamReply.mockResolvedValueOnce({
       ok: false,
       reason: "config_missing",
@@ -290,14 +333,16 @@ describe("KTD10 stamping (all sites in the session)", () => {
     })
     session.send("first — config failure")
     await flush()
+    streamReply.mockResolvedValueOnce(GATE_DENIED)
     session.send("second")
-    expect(streamReply.mock.calls[1]![0].allowStubFallback).toBe(true)
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.content).toBe(buildStubReply("second"))
+    expect(turn.error).toBeUndefined()
   })
 
-  it("withholds the fallback after a failed turn WITH partial text (stream opened)", async () => {
-    const { session, streamReply } = makeSession({
-      seekerEnabled: true,
-    })
+  it("fails visibly after a failed turn WITH partial text (stream opened)", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
     streamReply.mockResolvedValueOnce({
       ok: false,
       reason: "generation_failed",
@@ -305,14 +350,16 @@ describe("KTD10 stamping (all sites in the session)", () => {
     })
     session.send("first — dies mid-stream")
     await flush()
+    streamReply.mockResolvedValueOnce(GATE_DENIED)
     session.send("second")
-    expect(streamReply.mock.calls[1]![0].allowStubFallback).toBe(false)
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.error).toBe("gate_denied")
+    expect(turn.content).toBe("")
   })
 
-  it("withholds the fallback after ANY user-stopped seeker turn (zero-token stop)", async () => {
-    const { session, streamReply } = makeSession({
-      seekerEnabled: true,
-    })
+  it("fails visibly after ANY user-stopped seeker turn (zero-token stop)", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
     streamReply.mockImplementationOnce(
       (input: StreamReplyInput) =>
         new Promise<StreamReplyResult>((resolve) => {
@@ -324,8 +371,63 @@ describe("KTD10 stamping (all sites in the session)", () => {
     session.send("stopped before any token")
     session.stopReply()
     await flush()
+    streamReply.mockResolvedValueOnce(GATE_DENIED)
     session.send("second")
-    expect(streamReply.mock.calls[1]![0].allowStubFallback).toBe(false)
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.error).toBe("gate_denied")
+    expect(turn.content).toBe("")
+  })
+
+  it("stub reconstruction beats a user stop when gate_denied is the settled result (pre-281 precedence)", async () => {
+    // Pins the deliberate finalize order (ok -> gate stub -> stopped): before
+    // Ruling 3 the seam's fabricated ok-result also beat the stopped flag, so
+    // a stop racing an already-terminal gate_denied renders the full stub.
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockImplementationOnce(
+      (input: StreamReplyInput) =>
+        new Promise<StreamReplyResult>((resolve) => {
+          input.signal?.addEventListener("abort", () =>
+            resolve({ ok: false, reason: "gate_denied", partialText: "" }),
+          )
+        }),
+    )
+    session.send("stopped as the denial lands")
+    session.stopReply()
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.content).toBe(buildStubReply("stopped as the denial lands"))
+    expect(turn.engine).toBe("stub")
+    expect(turn.error).toBeUndefined()
+    expect(session.getSnapshot().pending).toBe(false)
+  })
+
+  it("captures the decision at send START — a mid-flight hydration stamp does not flip it", async () => {
+    const { session, streamReply, fetchHistoryPage } = makeSession({
+      seekerEnabled: true,
+    })
+    const pageGate = deferred<FetchHistoryPageResult>()
+    fetchHistoryPage.mockImplementationOnce(() => pageGate.promise)
+    const replyGate = deferred<StreamReplyResult>()
+    streamReply.mockImplementationOnce(() => replyGate.promise)
+    session.activate()
+    session.send("hello")
+    const activeId = session.getSnapshot().activeId
+    // Hydration lists the ACTIVE conversation while the reply is in flight —
+    // mergeServerThreads stamps it serverPersisted mid-request.
+    pageGate.resolve({
+      ok: true,
+      threads: [{ id: activeId, title: "", updatedAt: ROW.updatedAt }],
+      hasMore: false,
+    })
+    await flush()
+    expect(session.getSnapshot().activeConversation.serverPersisted).toBe(true)
+    replyGate.resolve(GATE_DENIED)
+    await flush()
+    // The send-start capture (not persisted then) still wins: inline stub.
+    const turn = lastTurn(session)
+    expect(turn.content).toBe(buildStubReply("hello"))
+    expect(turn.error).toBeUndefined()
   })
 })
 

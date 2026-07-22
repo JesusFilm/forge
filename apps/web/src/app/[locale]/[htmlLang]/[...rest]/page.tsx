@@ -721,18 +721,6 @@ async function renderVideo(shape: {
 
   if (routeModel.kind === "series") {
     const series = routeModel
-    const actualSlug = series.selectedVariant?.language?.slug ?? null
-    if (actualSlug && rawLocale !== actualSlug) {
-      const contentSlug = tryAsContentSlug(slug)
-      const localeSlug = tryAsLocaleSlug(actualSlug)
-      if (contentSlug && localeSlug) {
-        redirect(
-          watchVideoPath(contentSlug, localeSlug, {
-            reason: "locale-resolved",
-          }),
-        )
-      }
-    }
     return (
       <SeriesPageClient
         series={series.video}

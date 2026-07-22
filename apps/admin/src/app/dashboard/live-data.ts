@@ -229,6 +229,7 @@ function playableDubsForPicker(dubs: VideoDubRow[], locale: string) {
         label: dub.language
           ? languageOptionLabel(dub.language, locale)
           : `Dub ${seenByLanguage.size}`,
+        languageId: dub.language?.id ?? null,
         languageSlug: dub.language?.slug ?? null,
         bcp47: dub.language?.bcp47 ?? null,
         streamUrl,

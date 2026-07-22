@@ -5,22 +5,14 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import { streamReply } from "./chat-stub"
 import {
   createConversationSession,
-  type HistoryListUi,
+  type ConversationSessionSnapshot,
 } from "./conversation-session"
 import { type Conversation } from "./conversations"
 import { fetchHistoryPage, fetchHistoryThread } from "./history-client"
 
-// The machines live in conversation-session.ts (feat-281); these re-exports
-// keep the pre-extraction import surface stable for consumers and tests.
-export {
-  listConversations,
-  mergeReplayMessages,
-  mergeServerThreads,
-  orderConversations,
-  type HistoryListUi,
-} from "./conversation-session"
-
 export type UseConversations = {
+  /** The FULL conversation list — the sidebar applies its own visible-row
+   * projection (`components/shell/sidebar-projection.ts`, Ruling 4b). */
   conversations: Conversation[]
   activeId: string
   activeConversation: Conversation
@@ -28,7 +20,7 @@ export type UseConversations = {
   pending: boolean
   pendingIds: ReadonlySet<string>
   streamingMessageId: string | null
-  history: HistoryListUi
+  history: ConversationSessionSnapshot["history"]
   setDraft: (value: string) => void
   send: (text: string) => void
   stopReply: () => void

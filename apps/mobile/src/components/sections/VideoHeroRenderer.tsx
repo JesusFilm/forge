@@ -30,6 +30,7 @@ import { validateStreamingUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ export function VideoHeroRenderer({
   const subheading = s.subheading as string | null
   const ctaLabel = (s.ctaLabel as string | null)?.trim() ?? null
   const ctaLink = (s.ctaLink as string | null)?.trim() ?? null
-  const streamingUrl = s.streamingUrl as string | null
+  const streamingUrl = blockStreamingUrl(s)
   const sectionKey = s.sectionKey as string | null
   const videoId = s.videoId as string | null
 

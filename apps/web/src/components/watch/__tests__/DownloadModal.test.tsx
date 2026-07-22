@@ -654,6 +654,12 @@ describe("DownloadModal — account-authenticated downloads", () => {
     )
     expect($('[data-testid="watch-download-modal-tos"]')).toBeNull()
     expect($('[data-testid="watch-download-modal-confirm"]')).toBeNull()
+    const close = $(
+      '[data-testid="watch-download-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+    expect($('[data-testid="watch-download-modal-mobile-close"]')).toBeNull()
 
     await act(async () => {
       ;(
@@ -672,6 +678,9 @@ describe("DownloadModal — account-authenticated downloads", () => {
     expect(redirectToAuth).toHaveBeenCalledWith(loginUrl, {
       reopenDownload: true,
     })
+
+    await act(async () => close.click())
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 
   it("does not probe sizes while flagged signed-out viewers see sign-in state", () => {
@@ -744,6 +753,31 @@ describe("DownloadModal — account-authenticated downloads", () => {
 })
 
 describe("DownloadModal — empty + lifecycle", () => {
+  it("keeps the shared top-right close icon visible on mobile", () => {
+    const onClose = vi.fn()
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={onClose}
+        />,
+      )
+    })
+
+    const close = $(
+      '[data-testid="watch-download-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close).not.toBeNull()
+    expect(close.className).not.toContain("hidden")
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+    expect($("[data-testid='watch-download-modal-mobile-close']")).toBeNull()
+
+    act(() => close.click())
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it("shows an empty-state message when downloads is empty", () => {
     act(() => {
       root.render(<TestDownloadModal open downloads={[]} onClose={vi.fn()} />)

@@ -100,6 +100,8 @@ export const MediaCollectionItemSchema = z
   .object({
     /** Reference to a Video row by id (resolved on read). */
     videoId: z.string().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
     /** Snapshot of the Video route slug so static authored collections can link. */
     videoSlug: z.string().min(1).optional(),
     imageOverrideUrl: mediaUrl.optional(),
@@ -139,6 +141,8 @@ export const RelatedQuestionItemSchema = z
 export const VideoCarouselItemSchema = z
   .object({
     videoId: z.string().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
     streamingUrl: z.string().optional(),
     imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
@@ -345,6 +349,8 @@ export const VideoBlockSchema = z
     streamingUrl: z.string().optional(),
     /** Reference to a Video row by id. */
     videoId: z.string().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
     mediaUrl: mediaUrl.optional(),
     mediaAssetId: assetId,
     clipStartSeconds: z.number().min(0).optional(),
@@ -408,6 +414,8 @@ export const VideoHeroBlockSchema = z
     useRouteVideo: z.boolean().default(false),
     ctaEnabled: z.boolean().optional(),
     videoId: z.string().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
     streamingUrl: z.string().optional(),
     clipStartSeconds: z.number().min(0).optional(),
     clipEndSeconds: z.number().min(0).optional(),

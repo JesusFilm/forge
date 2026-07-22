@@ -267,6 +267,31 @@ describe("BetaTesterModalProvider", () => {
     expect(document.activeElement).toBe(trigger)
   })
 
+  it("can dismiss a stalled modal chunk from the viewport close icon", async () => {
+    lazyModal.stalled = true
+    await renderProvider()
+    const trigger = document.querySelector(
+      "[data-testid='global-beta-tester-cta']",
+    ) as HTMLButtonElement
+    click("[data-testid='global-beta-tester-cta']")
+
+    const close = document.querySelector(
+      "[data-testid='beta-tester-modal-close']",
+    ) as HTMLButtonElement
+    expect(close.style.top).toContain("safe-area-inset-top")
+    expect(close.style.right).toContain("safe-area-inset-right")
+    click("[data-testid='beta-tester-modal-close']")
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 20))
+    })
+    expect(
+      document.querySelector("[data-testid='beta-tester-modal-loading']"),
+    ).toBeNull()
+    expect(document.body.style.overflow).toBe("")
+    expect(document.activeElement).toBe(trigger)
+  })
+
   it("pauses playing media and resumes it after a same-route close", async () => {
     const media = makeMedia()
     await renderProvider(<MediaOwner media={media} />)
