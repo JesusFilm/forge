@@ -1238,6 +1238,7 @@ export function ExperienceEditor({
   watchOrigin: string
   initialValues: {
     localeId: string
+    videoLanguageId: string | null
     title: string
     slug: string
     metaDescription: string
@@ -1647,8 +1648,8 @@ export function ExperienceEditor({
     setLocaleDrawerOpen(false)
   }
 
-  const serializedBlocks = JSON.stringify(parsedBlocks)
   const normalizedParsedBlocks = normalizeEditorBlocks(parsedBlocks)
+  const serializedBlocks = JSON.stringify(normalizedParsedBlocks)
   const initialSerializedBlocks = JSON.stringify(
     JSON.parse(initialValues.blocksJson),
   )
@@ -4143,11 +4144,11 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
-            streamingUrl:
-              (videos.length === 1 ? selectedStreamUrl : null) ??
-              preferredPlayableDubForVideo(video, null)?.streamUrl ??
-              video.previewStreamUrl ??
-              "",
+            languageId:
+              preferredPlayableDubForVideo(video, selectedStreamUrl)
+                ?.languageId ??
+              initialValues.videoLanguageId ??
+              undefined,
             titleOverride: "",
             subtitleOverride: "",
           })),
@@ -4560,6 +4561,10 @@ export function ExperienceEditor({
           ...currentItems,
           ...additions.map((video) => ({
             videoId: video.key,
+            languageId:
+              preferredPlayableDubForVideo(video, null)?.languageId ??
+              initialValues.videoLanguageId ??
+              undefined,
             titleOverride: "",
             subtitleOverride: "",
             imageOverrideUrl: video.previewImageUrl ?? "",
@@ -5478,7 +5483,10 @@ export function ExperienceEditor({
     updateBlockAt(videoPickerBlockIndex, (block) => ({
       ...block,
       videoId: selectedVideo.key,
-      streamingUrl: videoPickerPreviewStreamUrl ?? "",
+      languageId:
+        videoPickerSelectedDub?.languageId ??
+        initialValues.videoLanguageId ??
+        undefined,
       useRouteVideo: false,
       headingSource:
         block.t === "videoHero" && shouldUseVideoHeroHeadingMetadata(block)

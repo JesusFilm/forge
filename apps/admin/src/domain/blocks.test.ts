@@ -602,6 +602,8 @@ describe("videoHero authoring modes", () => {
   it("accepts authored streaming URL", () => {
     const result = VideoHeroBlockSchema.safeParse({
       t: "videoHero",
+      videoId: "video-1",
+      languageId: "english-language",
       streamingUrl: "https://cdn.example/video.m3u8",
       heading: "Watch",
     })

@@ -973,6 +973,7 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.videoSlug).toBeDefined()
+    expect(fields?.languageId).toBeDefined()
     expect(fields?.muxPlaybackId).toBeDefined()
     expect(fields?.coreId).toBeDefined()
     expect(fields?.imageBlurDataUrl).toBeDefined()
