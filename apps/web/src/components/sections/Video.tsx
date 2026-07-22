@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import MuxVideo from "@forge/video-player/mux-video"
+import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
+import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import { formatDuration } from "@/lib/format-duration"
 import { videoSectionFragment } from "@/lib/fragments/video-section"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
+import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoSectionFragment }
 
@@ -22,12 +25,14 @@ function FullscreenButton({
   isFullscreen: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
     >
       {isFullscreen ? (
         <svg
@@ -63,12 +68,14 @@ function FullscreenButton({
 }
 
 function CenterUnmute({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
-      aria-label="Unmute video"
+      aria-label={t("unmute")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -90,12 +97,14 @@ function CenterUnmute({ onClick }: { onClick: () => void }) {
 }
 
 function CornerMute({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-      aria-label="Mute video"
+      aria-label={t("mute")}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -117,12 +126,14 @@ function PlayPauseButton({
   isPlaying: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("HeroPlayerControls")
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
-      aria-label={isPlaying ? "Pause video" : "Play video"}
+      aria-label={isPlaying ? t("pause") : t("play")}
     >
       {isPlaying ? (
         <svg
@@ -156,8 +167,13 @@ function MuxBackedVideoPlayer({
   src: string
   poster?: string
 }) {
+  const t = useTranslations("HeroPlayerControls")
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const {
+    media: video,
+    mediaRef: videoRef,
+    setMediaRef: setVideoRef,
+  } = useWatchModalMediaRef<HTMLVideoElement>(src)
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const userPausedRef = useRef(false)
@@ -167,7 +183,6 @@ function MuxBackedVideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [loadingSrc, setLoadingSrc] = useState(src)
-
   if (loadingSrc !== src) {
     setLoadingSrc(src)
     setIsLoading(true)
@@ -193,11 +208,10 @@ function MuxBackedVideoPlayer({
     if (timeRef.current) {
       timeRef.current.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`
     }
-  }, [formatTime])
+  }, [formatTime, videoRef])
 
   // Mirror media events onto local state.
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
@@ -241,12 +255,11 @@ function MuxBackedVideoPlayer({
       video.removeEventListener("seeked", hideLoadingIfReady)
       video.removeEventListener("error", hideLoading)
     }
-  }, [syncPlaybackUi])
+  }, [syncPlaybackUi, video])
 
   // Viewport autoplay (preserves the videojs path's `autoplayOnViewport: true`).
   useEffect(() => {
     const evaluate = () => {
-      const video = videoRef.current
       const element = containerRef.current
       if (!video || !element) return
       const rect = element.getBoundingClientRect()
@@ -266,7 +279,7 @@ function MuxBackedVideoPlayer({
     evaluate()
     window.addEventListener("scroll", evaluate, { passive: true })
     return () => window.removeEventListener("scroll", evaluate)
-  }, [])
+  }, [video])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -290,13 +303,13 @@ function MuxBackedVideoPlayer({
     }
     userPausedRef.current = true
     video.pause()
-  }, [])
+  }, [videoRef])
 
   const handleMuteToggle = useCallback(() => {
     const video = videoRef.current
     if (!video) return
     video.muted = !video.muted
-  }, [])
+  }, [videoRef])
 
   const handleSeek = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,7 +318,7 @@ function MuxBackedVideoPlayer({
       video.currentTime = Number(event.target.value)
       syncPlaybackUi()
     },
-    [syncPlaybackUi],
+    [syncPlaybackUi, videoRef],
   )
 
   const handleFullscreen = useCallback(() => {
@@ -326,7 +339,7 @@ function MuxBackedVideoPlayer({
           onClick={handlePlayPause}
         >
           <MuxVideo
-            ref={videoRef as React.Ref<HTMLVideoElement | undefined>}
+            ref={setVideoRef}
             src={src}
             poster={poster}
             muted
@@ -368,7 +381,7 @@ function MuxBackedVideoPlayer({
             step="any"
             onChange={handleSeek}
             className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label="Video progress"
+            aria-label={t("seek")}
           />
 
           <span
@@ -388,11 +401,11 @@ export function VideoPlayer({ src, poster }: { src: string; poster?: string }) {
 }
 
 export function Video({ data, routeVideo }: VideoProps) {
-  const { id, sectionKey, streamingUrl, media, videoRef, useRouteVideo } = data
+  const { id, sectionKey, media, videoRef, useRouteVideo } = data
   const resolvedStreamingUrl =
     useRouteVideo === true
       ? (routeVideo?.streamingUrl ?? null)
-      : (streamingUrl ?? null)
+      : resolvedBlockStreamingUrl(data)
   const posterUrl =
     useRouteVideo === true
       ? (routeVideo?.imageUrl ?? undefined)

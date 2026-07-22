@@ -7,7 +7,9 @@
     "noContent": "ནང་དོན་མེད།",
     "homepageMisconfigured": "ལྟ་སྤྱོད་ཀྱི་མགྱོགས་ཤོག་སྒྲིག་སྟངས་ནོར་འདུག།",
     "defaultTemplateMisconfigured": "ལྟ་སྤྱོད་ཀྱི་སྣོད་བཟོ་སྔོན་སྒྲིག་སྒྲིག་སྟངས་ནོར་འདུག།",
-    "authFailed": "ནང་དོན་ཞབས་ཏོག་དང་མཉམ་དུ་བདེན་བསྐྱེད་འབད་མ་ཚུགས། འདི་དེ་ལས་མཐུད་དེ་ཡང་དེ་སྐྱོད་པ་ཡོད་ན་རོགས་སྐྱོར་ལ་འབྲེལ་བ་འཐབ།"
+    "authFailed": "ནང་དོན་ཞབས་ཏོག་དང་མཉམ་དུ་བདེན་བསྐྱེད་འབད་མ་ཚུགས། འདི་དེ་ལས་མཐུད་དེ་ཡང་དེ་སྐྱོད་པ་ཡོད་ན་རོགས་སྐྱོར་ལ་འབྲེལ་བ་འཐབ།",
+    "pageLoadFailed": "དོན་དག་ཅིག་ནོར་འདུག།",
+    "tryAgain": "བསྐྱར་འབད།"
   },
   "VideosPage": {
     "title": "བརྙན་སྡེ་ཚང་མ།",
@@ -22,7 +24,8 @@
     "promoHeading": "བཀའ་དེབ་དེ་ལས་ཟབ་སྦྱོང་ནང་གོ་བ་ལེན་ནི་ཨིན་ན?",
     "joinBibleStudy": "ང་ཚོའི་བཀའ་དེབ་སྦྱོང་ཚན་ནང་ཞུགས།",
     "previousQuote": "ཧེ་མའི་བཀའ་དེབ་ཚིག་འདྲེན།",
-    "nextQuote": "རྗེས་མའི་བཀའ་དེབ་ཚིག་འདྲེན།"
+    "nextQuote": "རྗེས་མའི་བཀའ་དེབ་ཚིག་འདྲེན།",
+    "readPassage": "ཁྱེད་རའི་བཀའ་དེབ་ནང་ལས་གསུང་ཚན་འདི་ལྷག།"
   },
   "DownloadButton": {
     "checking": "ཞིབ་དཔྱད་བཞིན་པ",
@@ -73,7 +76,8 @@
     "selectLanguage": "སྐད་ཡིག་གདམ།",
     "searchPlaceholder": "སྐད་ཡིག་འཚོལ…",
     "languages": "སྐད་ཡིག།",
-    "noMatches": "མཐུན་ཆ་མེད།"
+    "noMatches": "མཐུན་ཆ་མེད།",
+    "notAvailable": "མེད།"
   },
   "LanguagePickerModal": {
     "dialogTitle": "སྐད་ཡིག།",
@@ -112,7 +116,8 @@
     "questions": "འབྲེལ་ཡོད་དྲི་བ།",
     "askYours": "ཁྱེད་རང་གི་དྲི།",
     "chatWithPerson": "མི་དང་ཁ་སླབ།",
-    "askBibleQuestion": "བཀའ་དེབ་ཀྱི་དྲི་བ་འདྲི།"
+    "askBibleQuestion": "བཀའ་དེབ་ཀྱི་དྲི་བ་འདྲི།",
+    "quiz": "དྲི་ལན་རྩེད་རིགས།"
   },
   "WatchQuestionPanel": {
     "messageType": "འཕྲིན་གྱི་རིགས།",
@@ -170,7 +175,8 @@
     "searchRegion": "བརྙན་སྡེ་འཚོལ།",
     "clearSearch": "འཚོལ་ཞིབ་བསལ།",
     "changeAudioLanguage": "སྒྲ་སྐད་བསྒྱུར།",
-    "home": "JesusFilm གཙོ་ཤོག"
+    "home": "JesusFilm གཙོ་ཤོག",
+    "closeSearch": "འཚོལ་ཞིབ་ཁ་བསྡམ།"
   },
   "SearchOverlay": {
     "dialogLabel": "བརྙན་སྡེ་འཚོལ་ཡང་ན་ལྟ་སྐོར།",
@@ -205,14 +211,19 @@
     "clearLanguages": "བསལ།",
     "queryLanguageDetected": "{language} བརྡ་འཛིན་འབད་ཡོད།",
     "searchInLanguage": "{language} ནང་འཚོལ།",
-    "tryDifferentKeywordsOrLanguage": "གཙོ་ཚིག་སོ་སོ་ལེན་པའམ་སྐད་ཡིག་གཞན་གདམ།"
+    "tryDifferentKeywordsOrLanguage": "གཙོ་ཚིག་སོ་སོ་ལེན་པའམ་སྐད་ཡིག་གཞན་གདམ།",
+    "useWebsiteDefaultLanguage": "དྲ་ཚུགས་སྔོན་སྒྲིག་འཚོལ་སྐད་ཡིག་ལག་ལེན་འཐབ།",
+    "removeLanguage": "{language} སྤངས།",
+    "browseMode": "འཚོལ་ཞིབ་ལྟ་སྐོར་ཐབས།"
   },
   "HeroPlayer": {
     "playWithSound": "ད་ལྟ་ལྟ།",
-    "tapToUnmute": "སྒྲ་སྒོ་ཕྱེ་ནི་ལུ་རེག།"
+    "tapToUnmute": "སྒྲ་སྒོ་ཕྱེ་ནི་ལུ་རེག།",
+    "nextEpisode": "སྡེ་ཚན་རྗེས་མ།"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "ནང་དོན་ནང་འཇུག"
+    "loadingContent": "ནང་དོན་ནང་འཇུག",
+    "loadingVideo": "བརྙན་སྡེ་ནང་འཇུག"
   },
   "VideoLabels": {
     "video": "བརྙན་སྡེ།",
@@ -223,7 +234,8 @@
     "series": "སྡེ་ཚན།",
     "collection": "བསྡུ་ཚན།",
     "trailer": "སྔོན་སྟོན།",
-    "behindTheScenes": "རྒྱབ་ལྗོངས།"
+    "behindTheScenes": "རྒྱབ་ལྗོངས།",
+    "chapter": "ལེའུ།"
   },
   "SiblingCarousel": {
     "clipPosition": "ཆ་ཤས་ {current} ལས {total}",
@@ -235,11 +247,286 @@
     "noImage": "པར་མེད།",
     "playingNow": "ད་ལྟ་གཏང་བཞིན་པ།",
     "previousChapter": "ཧེ་མའི་ལེའུ།",
-    "nextChapter": "རྗེས་མའི་ལེའུ།"
+    "nextChapter": "རྗེས་མའི་ལེའུ།",
+    "thumbnailAlt": "{title} གི་ཐུམ་སྐྱོར་པར།",
+    "relatedVideoThumbnail": "འབྲེལ་ཡོད་བརྙན་སྡེའི་ཐུམ་སྐྱོར་པར།"
   },
   "SearchResultCard": {
     "experience": "སྒྱུ་རྩལ",
     "episodeCount": "{count, plural, one {# སྡེ་ཚན} other {# སྡེ་ཚན་ཚུ}}",
     "thumbnailAlt": "བརྙན་སྡེའི་ཐུམ་སྐྱོར་པར།"
+  },
+  "Feedback": {
+    "openForm": "བསམ་འཆར་འགེངས་ཤོག་ཁ་ཕྱེ།",
+    "label": "བསམ་འཆར།",
+    "couldNotLoad": "བསམ་འཆར་འགེངས་ཤོག་ནང་འཇུག་འཐབ་མ་ཚུགས།",
+    "loadingForm": "བསམ་འཆར་འགེངས་ཤོག་ནང་འཇུག་འབད་བཞིན་པ…",
+    "retry": "བསྐྱར་འབད།",
+    "openFormShort": "འགེངས་ཤོག་ཁ་ཕྱེ།",
+    "cancel": "ཆ་མེད།",
+    "title": "བེ་ཊ་བསམ་འཆར།",
+    "description": "ལས་ཀ་འགྲུབ་སྟངས་དང་ང་ཚོས་ག་ཅི་ལེགས་བཅོས་འབད་ཚུགས་ག་སྐོར་ལས་སྤྱོད། འགེངས་ཤོག་འདི་Google གིས་བྱིན་ཡོད།",
+    "openInNewTab": "འགེངས་ཤོག་གཞན་བཀོད་གནང་མཁན་གྱི་ཚགས་མི་གསརཔ་ནང་ཁ་ཕྱེ།",
+    "closeForm": "བསམ་འཆར་འགེངས་ཤོག་ཁ་བསྡམ།",
+    "loadingGoogleForm": "Google འགེངས་ཤོག་ནང་འཇུག་འབད་བཞིན་པ…",
+    "iframeTitle": "བེ་ཊ་བསམ་འཆར་བཙུགས།"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} ནང་རིན་མེད་ཀྱི་གསོལ་བཤད་བརྙན་སྡེ | Jesus Film Project",
+    "metadataDescription": "{language} ནང་སྐད་སྒྲ་བསྒྱུར་ཡང་ན་བརྡ་དཔེ་དང་བཅས་པའི་Jesus films, Bible stories, discipleship series, and outreach videos ལྟ་སྐོར་འབད།",
+    "heroTitle": "{language} ནང་རིན་མེད་ཀྱི་གསོལ་བཤད་བརྙན་སྡེ།",
+    "heroDescription": "{language} ནང་ཡོད་པའི་Jesus films, Bible stories, discipleship series, and outreach videos ལྟ་སྐོར་འབད། སྒྲ་བསྒྱུར་ཡོད་པའི་བརྙན་སྡེ་སྔོན་ལས་ཐོན་ཡོད། བརྡ་དཔེ་རྐྱང་པའི་གདམ་ཁ་འོག་ལས་ཡོད།",
+    "languageCollection": "སྐད་ཡིག་བསྡུ་ཚན།",
+    "itemCount": "{count, plural, one {# རྣམ་གྲངས} other {# རྣམ་གྲངས་ཚུ}}",
+    "videoCount": "{count, plural, one {# བརྙན་སྡེ} other {# བརྙན་སྡེ་ཚུ}}",
+    "videosInGroups": "{videoCount, plural, one {# བརྙན་སྡེ} other {# བརྙན་སྡེ་ཚུ}} ནང་ {groupCount, plural, one {# སྡེ་ཚན} other {# སྡེ་ཚན་ཚུ}}",
+    "sectionNavLabel": "སྐད་ཡིག་བཀོད་པའི་ཆ་ཤས།",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "གསརཔ།",
+    "videoBible": "བརྙན་སྡེ་བཀའ་དེབ།",
+    "bibleProject": "BibleProject",
+    "sports": "རྩེད་རིགས།",
+    "collections": "བསྡུ་ཚན།",
+    "subtitlesOnly": "བརྡ་དཔེ་རྐྱང་པ།",
+    "newlyAdded": "གསར་བཙུགས་བཏང་ཡོད།",
+    "newVideosTitle": "{language} ནང་གསར་པ་གསོལ་བཤད་བརྙན་སྡེ།",
+    "newestFirst": "གསར་ཤོས་སྔོན་ལས།",
+    "noPublishedVideos": "འ་ནི་སྐད་ཡིག་ལུ་ད་ཚུན་དཔེ་བཀྲམ་འབད་ཡོད་པའི་བརྙན་སྡེ་མ་ཐོབ།",
+    "bibleAndGospelFilms": "བཀའ་དེབ་དང་དགའ་བསྟོད་གློག་བརྙན།",
+    "videoBibleCollectionsTitle": "{language} བརྙན་སྡེ་བཀའ་དེབ་བསྡུ་ཚན།",
+    "videoBibleDescription": "{language} ནང་ཡོད་པའི་LUMO, JESUS, Magdalena, and Acts ཚུ་ལྟ་བུའི་གསུང་རབ་ལྟེ་བའི་བསྡུ་ཚན།",
+    "noVideoBibleCollections": "འ་ནི་སྐད་ཡིག་ལུ་ད་ཚུན་བརྙན་སྡེ་བཀའ་དེབ་བསྡུ་ཚན་མེད།",
+    "bibleProjectCollectionsTitle": "{language} BibleProject བསྡུ་ཚན།",
+    "bibleProjectDescription": "{language} ནང་ཡོད་པའི་BibleProject series and studies.",
+    "noBibleProjectCollections": "འ་ནི་སྐད་ཡིག་ལུ་ད་ཚུན BibleProject བསྡུ་ཚན་མེད།",
+    "sportsStories": "རྩེད་རིགས་གཏམ་རྒྱུད།",
+    "sportsTitle": "{language} རྩེད་རིགས་དང་རྩེད་མོའི་མི་སྣའི་གཏམ་རྒྱུད།",
+    "sportsDescription": "{language} ནང་ཡོད་པའི་དད་པ་ལྟེ་བའི་རྩེད་རིགས་གཏམ་རྒྱུད་དང་རྩེད་མོ་མི་སྣའི་བསྡུ་ཚན།",
+    "noSportsCollections": "འ་ནི་སྐད་ཡིག་ལུ་ད་ཚུན་རྩེད་རིགས་ཡང་ན་རྩེད་མོ་མི་སྣའི་བསྡུ་ཚན་མེད།",
+    "fullyDubbed": "རྒྱང་སྒྲ་ཆ་ཚང་།",
+    "dubbedVideosTitle": "{language} བརྙན་སྡེ་བསྡུ་ཚན་ལྟར།",
+    "dubbedVideosDescription": "བསྡུ་ཚན་དང་མཉམ་དུ་སྡེ་བསྒྲིགས་བཏང་ཡོད་པའི་རྒྱང་སྒྲ་ཆ་ཚང་ཡོད་པའི་{language} བརྙན་སྡེ་ལྟ་སྐོར་འབད།",
+    "noDubbedVideos": "འ་ནི་སྐད་ཡིག་ལུ་ད་ཚུན་རྒྱང་སྒྲ་ཆ་ཚང་བརྙན་སྡེ་མེད།",
+    "subtitlesAvailable": "བརྡ་དཔེ་ཡོད།",
+    "subtitlesTitle": "{language} བརྙན་སྡེ་བརྡ་དཔེ་དང་བཅས་པ།",
+    "subtitlesDescription": "སྐད་སྒྲ་{language} ད་ལྟ་མེད་པའི་སྐབས་འདི་ལུ་{language} བརྡ་དཔེ་ཡོད།",
+    "noSubtitleVideos": "འ་ནི་སྐད་ཡིག་ལུ་ད་ཚུན་བརྡ་དཔེ་རྐྱང་པའི་བརྙན་སྡེ་མེད།",
+    "dubbed": "རྒྱང་སྒྲ་ཅན།",
+    "subtitles": "བརྡ་དཔེ།",
+    "newLabel": "གསརཔ།",
+    "fromCollection": "{collection} ལས།",
+    "standaloneVideos": "རང་རྐྱང་བརྙན་སྡེ།",
+    "videosFromCollection": "{collection} ལས་བརྙན་སྡེ།",
+    "standaloneDescription": "འ་ནི་སྐད་ཡིག་ནང་རང་རྐྱང་བརྙན་སྡེ།",
+    "openCollection": "བསྡུ་ཚན་ཁ་ཕྱེ།"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project ལྟ་སྐོར།",
+    "watch": "ལྟ་སྐོར།",
+    "watchNow": "ད་ལྟ་ལྟ།",
+    "mutePreview": "སྔོན་ལྟ་སྒྲ་མེད་བཟོ།",
+    "unmutePreview": "སྔོན་ལྟ་སྒྲ་སྒོ་ཕྱེ།",
+    "nextVideo": "བརྙན་སྡེ་རྗེས་མ།",
+    "featured": "ལྷག་སྟོན།",
+    "showVideo": "{title} སྟོན།",
+    "previousVideoPreview": "ཧེ་མའི་བརྙན་སྡེ་སྔོན་ལྟ།",
+    "nextVideoPreview": "རྗེས་མའི་བརྙན་སྡེ་སྔོན་ལྟ།",
+    "mediaCollection": "སྒྲ་བརྙན་བསྡུ་ཚན།",
+    "scrollToVideo": "{title} བརྙན་སྡེ་ལུ་སྒྲིལ།"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project གཙོ་ཤོག",
+    "navigation": "མཇུག་ཤོག་ལྟ་སྐོར།",
+    "share": "མཉམ་སྤྱོད།",
+    "watch": "ལྟ་སྐོར།",
+    "giving": "ཞལ་འདེབས།",
+    "about": "སྐོར་ལས།",
+    "products": "ཐོན་རྫས།",
+    "resources": "ཐོན་ཁུངས།",
+    "partners": "མཉམ་ལས་པ།",
+    "contact": "འབྲེལ་བ།",
+    "giveNow": "ད་ལྟ་ཞལ་འདེབས་གནང་།",
+    "resourcesVersion": "ཐོན་ཁུངས་ ({version})",
+    "office": "ཡིག་ཚང་།",
+    "fax": "དཔར་འཕྲིན།",
+    "privacyPolicy": "སྒེར་དོན་སྲུང་སྐྱོབ་སྲིད་བྱུས།",
+    "legalStatement": "ཁྲིམས་དོན་གསལ་བཤད།",
+    "newsletter": "ང་ཚོའི་གསར་འགྱུར་ཡིག་གེ་ལུ་མིང་བཀོད།"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "འཛམ་གླིང་ཡོངས་ཀྱི་དབུ་མེད་ལས་དོན་ལུ་བཟོས་ཡོད།",
+    "title": "གསུང་དེ་མི་འགྱུར། མི་ཚུ་གིས་ལྟ་ཐངས་ལུ་འགྱུར་བ་འགྱུར།",
+    "description": "ང་ཚོ་གིས་ང་ཚོའི་བརྙན་སྡེ་དཔེ་མཛོད་དང་ལག་ཆ་ཚུ་ཐོག་མ་ལས་བསྐྱར་བཟོ་འབད་བཞིན་པ་ཨིན། ལོ་མང་སྒྱུར་བཅོས་ལས་ཀ་འདི་མི་ཚུ་ཧེ་མ་ལས་འདུས་ས་ནང་ལུ་ཡོད་པའི་སྟེགས་སྒྲོམ་ཚུ་ལུ་སྤྲད་དེ་ཡོད།",
+    "translatedLibraryTitle": "འཛམ་གླིང་ནང་སྒྱུར་བཅོས་མང་ཤོས་བཏང་ཡོད་པའི་གློག་བརྙན་དཔེ་མཛོད།",
+    "translatedLibraryDescription": "ལས་རོགས་ཞབས་ཏོག་བདེན་འཛིན་ཅན་ཚུ་གིས་འཁོད་སྐྱོར་འབད་བའི་ལོ་མང་སྒྱུར་བཅོས་ལས་ཀ་གིས་མི་ཚུ་གིས་ཁོང་ལུ་ཟབ་ཤོས་སྐྱེལ་མི་སྐད་ཡིག་ནང་ཡེ་ཤུའི་གཏམ་རྒྱུད་དང་མཇལ་ཚུགས་པའི་སྐད་ཡིག་ལམ་རྟགས་སྟོང་ཕྲག་ཡོད་པའི་དཔེ་མཛོད་ཅིག་བཟོས་ཡོད།",
+    "trustedVoicesTitle": "བློ་གཏད་ཡོད་པའི་སྐད་སྒྲ་གསར་རྣམ་ནང་སྐྱེལ།",
+    "trustedVoicesDescription": "ང་ཚོ་གིས་གཏམ་རྒྱུད་ཚུ་གིས་གནས་སྟངས་ག་དེ་སྦེ་མཐོང་ཚུགསཔ་ལེགས་བཅོས་འབད་བཞིན་པ་ཨིན། བློ་གཏད་ཡོད་པའི་སྒྱུར་བཅོས་དང་དེང་སང་གི་རྣམ་པ་ཚུ་སྦྱར་ཏེ་གསུང་འདི་སྟེགས་སྒྲོམ། རིག་གཞུང། དང་གསལ་ཤོག་ཚུ་བརྒྱུད་དེ་རང་དབང་ཐོག་སྤོར་ཚུགས།",
+    "missionTeamTitle": "དཔེ་མཛོད་ལས་ལྷག་པ། དམིགས་ཡུལ་ལྟེ་བའི་ས་ཚུགས་ཅིག",
+    "missionTeamDescription": "Jesus Film Project འདི་སྐད་སྒྱུར་མཁན། བརྡ་བརྩེགས་ལས་བཟོ་པ། ཞིབ་དཔྱད་པ། དང་གསར་བཟོ་པ་ཚུ་གི་འཛམ་གླིང་ཡོངས་ཀྱི་ས་ཚུགས་ཅིག་ཨིན། ལོ་མང་ཞབས་ཏོག་ཉམས་མྱོང་དེ་གནས་སྦྱོང་སྤེལ་མཁན་ག་ར་ལུ་ལག་ཆ་ལུ་འགྱུར་བཅོས་འབད་བཞིན་པ་ཨིན།",
+    "buildingNext": "ང་ཚོ་གིས་མཐུད་སུ་ག་ཅི་བཟོ་བཞིན་པ",
+    "nextStepsTitle": "རྗེས་མའི་གོ་རིམ་སྟེགས་སྒྲོམ",
+    "nextStepsDescription": "ལྟ་མཁན་ཚུ་ཁོང་གི་སེམས་ཁམས་ལམ་ལུགས་ནང་དངོས་མཐུན་གདམ་ཁ་དང་མཐུད། ཁོང་ལུ་སྡེ་ཚན། གསུང་རབ། ཡང་ན་དབུ་མེད་ལུ་རྗེས་མའི་གོ་རིམ་ཅིག་ལེན་ནི་ལུ་རོགས་འབད།",
+    "mediaLibraryTitle": "གསལ་བསྒྲགས་བརྙན་སྡེ་དཔེ་མཛོད།",
+    "mediaLibraryDescription": "ཞབས་ཏོག་དང་གསལ་བསྒྲགས་ལུ་ཡོད་པའི་སྐད་ཡིག་མང་པོའི་ནང་བརྙན་སྡེ། གློག་བརྙན། དང་ཐོན་ཁུངས་སྟོང་ཕྲག་ཡོད་པའི་རྒྱ་ཆེའི་གསོལ་བཤད་བརྙན་སྡེ་དཔེ་མཛོད།",
+    "ministryToolsTitle": "ཞབས་ཏོག་ལུ་དོན་དམ་གྱི་ལག་ཆ།",
+    "ministryToolsDescription": "བརྙན་སྡེ་དོ་དམ། ནང་དོན་འགྲེམས་སྤེལ། ལྟ་མཁན་འབྲེལ་ལམ། དང་དཔྱད་རྟོག ཞབས་ཏོག་ཚུ་མི་མང་པོ་ལ་ནུས་པ་ཅན་སྦེ་སླེབས་ནི་ལུ་བཟོས་ཡོད།",
+    "invitationEyebrow": "ཁྱེད་ལུ་གདན་འདྲེན་ཡོད།",
+    "invitationTitle": "དམིགས་ཡུལ་ལག་ཆའི <highlight>མ་འོངས་པའི་སྡེ་ཚན</highlight> བཟོ་ནི་ལུ་རོགས་གནང་།",
+    "invitationDescription": "ང་ཚོས་སྔ་སྣང་འཇུག་མཁན། གསར་བཟོ་པ། དང་མཉམ་ལས་པ་ཚུ་གདན་འདྲེན་འབད་བཞིན་པ་ཨིན། ལག་ཆ་གསརཔ་དང་པོ་བརྟག་ཞིབ་འབད། བསམ་འཆར་བྱིན། དང་དངོས་དོན་གནས་སྦྱོང་ལུ་བཟོས་པའི་ཐོན་རྫས་ཚུ་ག་དེ་སྦེ་བཟོ་དགོས་མི་ལུ་རོགས་གནང་།",
+    "betaTester": "བེ་ཊ་བརྟག་མཁན་འགྱུར།"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "བརྙན་སྡེ་བཀའ་དེབ་བསྡུ་ཚན།",
+    "gospelRailTitle": "གཏམ་རྒྱུད་ཆ་ཚང་ཤེས།",
+    "videoBibleDescription": "བཀའ་དེབ་དང་མཉམ་དུ་གསོལ་བཤད་དང་སློབ་སྟོན་ཚུ་གིས་སྐྱེད་མདངས་བྱིན་པའི་བརྙན་སྡེ་དང་ཐོན་ཁུངས་བཤེར་ཞིབ་འབད།",
+    "showcaseTitle": "གསུང་རབ་གློག་བརྙན་བརྒྱུད་དེ་བཤད།",
+    "adventEyebrow": "སྐྱེས་སྟོན་བསྒུག་བཞིན་པ",
+    "adventTitle": "སྐྱེས་སྟོན་མར་ཐོ་རྩིས།",
+    "adventDescription": "སྐྱེས་སྟོན་ལུ་རེ་ལྟོས་སྤེལ་མི་ཉིན་རེའི་བརྙན་སྡེ་དང་མཉམ་དུ་ང་ཚོའི་སྐྱེས་སྟོན་ལམ་འགྲུལ་ནང་ཞུགས། ཡེ་ཤུའི་འབྱོར་བའི་རེ་བ། དགའ་བ། དང་ཁས་ལེན་ཚུ་ལྟ་སྐོར་འབད།",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject སྐྱེས་སྟོན་བསྒུག་བཞིན་པ།",
+    "nuaEyebrow": "NUA སྡེ་ཚན།",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth སྡེ་ཚན།",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "བརྙན་སྡེ་སློབ་ཚན",
+    "journeyWithJesusTitle": "ཡེ་ཤུ་དང་མཉམ་དུ་ལམ་འགྲུལ།",
+    "gospelsOnVideoEyebrow": "མདོ་དག་ཚང་མ་བརྙན་སྡེ་ཐོག་བཤད།",
+    "scriptureAsWrittenTitle": "གསུང་རབ་སྐད་ཡིག་དེ་ག་ར་ལས་བཤད་ཡོད།",
+    "merryChristmas": "སྐྱེས་སྟོན་བཀྲ་ཤིས་བདེ་ལེགས!",
+    "daysUntilChristmas": "{count, plural, one {སྐྱེས་སྟོན་ལུ་ཉིནམ་# ལུས་ཡོད} other {སྐྱེས་སྟོན་ལུ་ཉིནམ་# ལུས་ཡོད}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "སྐད་ཡིག་ཚུ",
+    "metadataDescription": "JesusFilm བརྙན་སྡེ་ཚུ་སྐད་ཡིག་ལྟར་ལྟ་སྐོར་འབད།",
+    "eyebrow": "ལྟ་སྐོར་སྐད་ཡིག",
+    "title": "སྐད་ཡིག་ཅིག་གདམ།",
+    "description": "ལུང་ཕྱོགས་ལྟར་སྐད་ཡིག་ལྟ་སྐོར་འབད་ཡང་ན་ཐོ་ཚང་མར་ལྟ།",
+    "searchPlaceholder": "སྐད་ཡིག་ཡང་ན་རྒྱལ་ཁབ་འཚོལ...",
+    "searchLabel": "སྐད་ཡིག་ཡང་ན་རྒྱལ་ཁབ་འཚོལ",
+    "clearSearch": "འཚོལ་ཞིབ་བསལ།",
+    "browse": "ལྟ་སྐོར།",
+    "browseByRegion": "ལུང་ཕྱོགས་དང་རྒྱལ་ཁབ་ལྟར་ལྟ་སྐོར།",
+    "languageCount": "{count, plural, one {# སྐད་ཡིག} other {# སྐད་ཡིག་ཚུ}}",
+    "region": "ལུང་ཕྱོགས།",
+    "countryLanguages": "{country} སྐད་ཡིག",
+    "showLess": "ཉུང་སྟེ་སྟོན།",
+    "showMore": "མངམ་ {count} སྟོན།",
+    "noLanguages": "སྐད་ཡིག་མ་ཐོབ།",
+    "tryAnotherSearch": "འཚོལ་སྤྱོད་གཞན་འབད།"
+  },
+  "WatchHistory": {
+    "metadataTitle": "ལྟ་སྐོར་ལོ་རྒྱུས | Jesus Film Project",
+    "title": "ལྟ་སྐོར་ལོ་རྒྱུས",
+    "loading": "ལོ་རྒྱུས་ནང་འཇུག",
+    "empty": "ད་ལྟ་འ་ནང་མེད།",
+    "emptyDescription": "ནང་འཛུལ་ཡོད་སྐབས་ཁྱེད་ཀྱིས་ལྟ་བའི་བརྙན་སྡེ་ཚུ་འདིར་འབྱོར་འོང་།",
+    "earlier": "ཧེ་མ།",
+    "today": "ད་རིང་།",
+    "yesterday": "ཁ་སང་།"
+  },
+  "AccountControl": {
+    "account": "རྩིས་ཁྲ།",
+    "accountMenu": "རྩིས་ཁྲའི་དཀར་ཆག",
+    "signIn": "ནང་འཛུལ།",
+    "signOut": "ཕྱིར་ཐོན།",
+    "signedIn": "ནང་འཛུལ་ཡོད།",
+    "history": "ལོ་རྒྱུས།",
+    "logOut": "ཕྱིར་ཐོན།"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "ཤོག་ལེབ་མ་ཐོབ",
+    "eyebrow": "ཤོག་ལེབ་མ་ཐོབ",
+    "screenReaderPrefix": "ཤོག་ལེབ་མ་ཐོབ:",
+    "title": "སྣང་ཚན་འདི་འདིར་མེད།",
+    "description": "ཤོག་ལེབ་སྤོ་སྐུལ་འབད་ཡོད་ནའང་གཏམ་རྒྱུད་འཕྲོ་མཐུད་འབད་བཞིན་པ་ཨིན།",
+    "actionsLabel": "ཤོག་ལེབ་མ་ཐོབ་བྱ་ལས།",
+    "backToWatch": "ལྟ་སྐོར་ལུ་ལོག",
+    "browseVideos": "བརྙན་སྡེ་ལྟ་སྐོར་འབད"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "གློག་བརྙན་ཐུང་ཀུ་ལྟ།",
+    "actions": {
+      "joinUs": "ང་ཚོ་དང་མཉམ་ཞུགས།",
+      "shareMission": "ང་ཚོའི་ལས་འགན་ལ་མཉམ་སྤྱོད་འབད།"
+    },
+    "welcomeStart": {
+      "label": "དད་པ་དང་གསུང་རབ།",
+      "title": "ད་རིང་གི་བརྙན་སྡེ་གདམ་ཁ།",
+      "description": "ང་ཚོའི་དཔེ་མཛོད་ནང་ལས་དད་པ་ལྟེ་བའི་བརྙན་སྡེ་ནང་དོན་ཚུ་གིས་སྐུལ་མ་དང་། དཀའ་སྤྱད། དེ་ལས་བསམ་ཞིབ་སྐྱེད།"
+    },
+    "welcomeMorning": {
+      "label": "ཞོགས་ཀས་སྐུལ་མ།",
+      "title": "ཞོགས་པ་བཟང་པོ། དེ་རིང་གི་བཀའ་དེབ་སྣང་བརྙན་སྒུག་ཡོད།",
+      "description": "ཁྱེད་ཀྱི་ཉིན་མོ་སྐུལ་མ་དང་སེམས་སྤོབས་སྐྱེད་ནིའི་དོན་ལུ་བཟོས་པའི་བཀའ་དེབ་ཀྱི་སྣང་བརྙན་ཚུ་དང་མཉམ་དུ་ཉིན་མོ་འགོ་བཙུགས།"
+    },
+    "welcomeAfternoon": {
+      "label": "ཉིན་ཕྱི་དྲོའི་སྐུལ་མ།",
+      "title": "ཉིན་ཕྱི་དྲོ་བཟང་པོ། ཁྱེད་ཀྱི་ཉིན་མོའི་བཀའ་དེབ་སྣང་བརྙན་འདི་ནང་ཡོད།",
+      "description": "ཉིན་ཕྱི་དྲོའི་ངལ་གསོ་དང་ཡང་ན་སྐུལ་མ་འཕྲོ་མཐུད་ལུ་འཚམ་པའི་བཀའ་དེབ་ཀྱི་ནང་དོན་སྐུལ་མ་ཅན་ཚུ།"
+    },
+    "welcomeEvening": {
+      "label": "དགོང་མོའི་སྐུལ་མ།",
+      "title": "དགོང་མོ་བཟང་པོ། བཀའ་དེབ་སྣང་བརྙན་དང་མཉམ་དུ་ངལ་གསོ།",
+      "description": "ཉིན་མོ་མཇུག་བསྡུ་བའི་སྐབས་བསམ་ཞིབ་དང་སེམས་གསོ་འཐོབ་ནིའི་དོན་ལུ་ཞི་བདེའི་བཀའ་དེབ་སྣང་བརྙན་ཚུ།"
+    },
+    "joinUs": {
+      "label": "ང་ཚོ་དང་མཉམ་ཞུགས།",
+      "title": "ཀ་གྲངས་མང་པོས་འཚོལ་བཞིན་པ་ཨིན།",
+      "description": "སྡུད་ལེན་འདི་འབྱོར་ཡོད། ཌི་ཇི་ཊཱལ་བརྒྱུད་ལམ་ཐོག་ནས་འཛམ་གླིང་ལུ་མགྱོགས་པར་སྤེལ་བཞིན་པའི་བཀའ་བཟང་དང་མཉམ་དུ་ང་ཚོ་དང་འགྲོ་གྲོགས་བྱེད།"
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "ང་ཚོ་མཉམ་དུ་འགྲོ།",
+      "title": "ཡེ་ཤུའི་གཏམ་རྒྱུད་མཉམ་དུ་བཤད་པ།",
+      "description": "དེ་ཚུ་ལུ་ཁོང་རང་སོ་སོའི་སྐད་ཡིག་ནང་ཡེ་ཤུའི་དགའ་བའི་བྱམས་པ་ཐོས་ནི་དང་མཐོང་ནི་གི་གོ་སྐབས་ཡོད།"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% མཐུན།",
+    "none": "སྐད་ཡིག་འདི་ནང་བརྙན་སྡེ་འདི་གི་དོན་ལུ་འོས་སྦྱོར་གང་ཡང་མ་ཐོབ།"
+  },
+  "BetaTesterModal": {
+    "title": "བེ་ཊ་བརྟག་མཁན་འགྱུར།",
+    "trigger": "བེ་ཊ་བརྟག་མཁན་འགྱུར།",
+    "loadFailed": "དོན་དག་ཅིག་ནོར་འདུག།",
+    "loading": "ནང་འཇུག་བཞིན་པ...",
+    "openFormNewTab": "འགེངས་ཤོག་གཞན་བཀོད་གནང་མཁན་གྱི་ཚགས་མི་གསརཔ་ནང་ཁ་ཕྱེ།",
+    "close": "ཁ་བསྡམ།",
+    "iframeTitle": "བེ་ཊ་བརྟག་མཁན་འགྱུར།"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

@@ -12,6 +12,7 @@ const envKeys = [
   "MATCH_JOB_WORKER_POLL_INTERVAL_MS",
   "MEDIA_SIGNATURE_ALGORITHM_VERSION",
   "MEDIA_INDEX_PAGE_SIZE",
+  "MEDIA_INDEX_CONCURRENCY",
   "MEDIA_INDEX_MAX_FETCH_BYTES",
   "MEDIA_INDEX_FETCH_TIMEOUT_MS",
   "MEDIA_INDEX_ALLOWED_HOSTS",
@@ -82,6 +83,7 @@ describe("runtime env", () => {
       MATCH_JOB_WORKER_POLL_INTERVAL_MS: "",
       MEDIA_SIGNATURE_ALGORITHM_VERSION: "",
       MEDIA_INDEX_PAGE_SIZE: "",
+      MEDIA_INDEX_CONCURRENCY: "",
       MEDIA_INDEX_MAX_FETCH_BYTES: "",
       MEDIA_INDEX_FETCH_TIMEOUT_MS: "",
       MEDIA_INDEX_ALLOWED_HOSTS: "",
@@ -95,6 +97,7 @@ describe("runtime env", () => {
       "official-media-signature-v1",
     )
     expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(100)
+    expect(env.MEDIA_INDEX_CONCURRENCY).toBe(4)
     expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(262_144)
     expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(15_000)
     expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBeUndefined()
@@ -117,6 +120,7 @@ describe("runtime env", () => {
     const { env } = await loadEnv({
       MEDIA_SIGNATURE_ALGORITHM_VERSION: "official-media-signature-v2",
       MEDIA_INDEX_PAGE_SIZE: "25",
+      MEDIA_INDEX_CONCURRENCY: "4",
       MEDIA_INDEX_MAX_FETCH_BYTES: "1024",
       MEDIA_INDEX_FETCH_TIMEOUT_MS: "5000",
       MEDIA_INDEX_ALLOWED_HOSTS: "media.example.com,cdn.example.com",
@@ -127,12 +131,19 @@ describe("runtime env", () => {
       "official-media-signature-v2",
     )
     expect(env.MEDIA_INDEX_PAGE_SIZE).toBe(25)
+    expect(env.MEDIA_INDEX_CONCURRENCY).toBe(4)
     expect(env.MEDIA_INDEX_MAX_FETCH_BYTES).toBe(1_024)
     expect(env.MEDIA_INDEX_FETCH_TIMEOUT_MS).toBe(5_000)
     expect(env.MEDIA_INDEX_ALLOWED_HOSTS).toBe(
       "media.example.com,cdn.example.com",
     )
     expect(env.MEDIA_INDEX_RESUME_AFTER_VARIANT_ID).toBe("catalog-variant-123")
+  })
+
+  it("rejects media indexing concurrency above the safety limit", async () => {
+    await expect(loadEnv({ MEDIA_INDEX_CONCURRENCY: "5" })).rejects.toThrow(
+      /MEDIA_INDEX_CONCURRENCY/,
+    )
   })
 
   it("requires DATABASE_URL in production", async () => {

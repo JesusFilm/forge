@@ -118,6 +118,17 @@ describe("SidebarAccount — collapsed rail (persistent, not hidden)", () => {
     const link = screen.getByRole("link", { name: /sign in/i })
     expect(link).toHaveAttribute("title", "Sign in")
   })
+
+  it("keys the collapsed affordance off the dedicated signIn slot, not newButton", () => {
+    // Ruling 4a: the slot is deliberately NOT newButton — that slot differs by
+    // md:mx-auto + md:hover:border-transparent, so wiring the wrong slot would
+    // change rendering while every behavior-only assertion stays green.
+    renderAccount({ collapsed: true })
+    const link = screen.getByRole("link", { name: /sign in/i })
+    expect(link.className).toContain("md:w-10")
+    expect(link.className).not.toContain("md:mx-auto")
+    expect(link.className).not.toContain("md:hover:border-transparent")
+  })
 })
 
 describe("SidebarAccount — R12 failure notice (AE4)", () => {

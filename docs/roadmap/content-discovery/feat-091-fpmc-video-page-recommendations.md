@@ -3,7 +3,7 @@ id: "feat-091"
 title: "FPMC Video Page Recommendations"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-10"
 duration: 14
 depends_on:
@@ -16,6 +16,14 @@ tags:
   - "ai-pipeline"
   - "personalization"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. The proposed FPMC implementation depends on the
+anonymous session-event and legacy CMS architecture from `feat-090`, which has
+been superseded by authenticated Admin-owned watch events in `feat-229`. If
+sequence-based personalization is prioritized later, it should be planned
+against the current Watch event and recommendation services.
 
 ## Problem
 

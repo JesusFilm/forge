@@ -7,7 +7,9 @@
     "noContent": "אין תוכן זמין.",
     "homepageMisconfigured": "דף הבית של הצפייה מוגדר בצורה שגויה.",
     "defaultTemplateMisconfigured": "תבנית ברירת המחדל של הצפייה מוגדרת בצורה שגויה.",
-    "authFailed": "לא ניתן לבצע אימות מול שירות התוכן. אם הבעיה נמשכת, פנו לתמיכה."
+    "authFailed": "לא ניתן לבצע אימות מול שירות התוכן. אם הבעיה נמשכת, פנו לתמיכה.",
+    "pageLoadFailed": "משהו השתבש.",
+    "tryAgain": "נסה שוב"
   },
   "VideosPage": {
     "title": "כל הסרטונים",
@@ -22,7 +24,8 @@
     "promoHeading": "רוצים להבין את התנ״ך לעומק יותר?",
     "joinBibleStudy": "הצטרפו ללימוד התנ״ך שלנו",
     "previousQuote": "ציטוט התנ״ך הקודם",
-    "nextQuote": "ציטוט התנ״ך הבא"
+    "nextQuote": "ציטוט התנ״ך הבא",
+    "readPassage": "קראו את הקטע הזה בתנ״ך שלכם."
   },
   "DownloadButton": {
     "checking": "בודק",
@@ -73,7 +76,8 @@
     "selectLanguage": "בחרו שפה",
     "searchPlaceholder": "חיפוש שפות…",
     "languages": "שפות",
-    "noMatches": "אין התאמות"
+    "noMatches": "אין התאמות",
+    "notAvailable": "לא זמין"
   },
   "LanguagePickerModal": {
     "dialogTitle": "שפה",
@@ -112,7 +116,8 @@
     "questions": "שאלות קשורות",
     "askYours": "שאלו משלכם",
     "chatWithPerson": "צ'אט עם אדם",
-    "askBibleQuestion": "שאלו שאלה על התנ״ך"
+    "askBibleQuestion": "שאלו שאלה על התנ״ך",
+    "quiz": "חידון"
   },
   "WatchQuestionPanel": {
     "messageType": "סוג הודעה",
@@ -170,7 +175,8 @@
     "searchRegion": "חיפוש סרטונים",
     "clearSearch": "ניקוי חיפוש",
     "changeAudioLanguage": "שנו שפת שמע",
-    "home": "דף הבית של JesusFilm"
+    "home": "דף הבית של JesusFilm",
+    "closeSearch": "סגירת החיפוש"
   },
   "SearchOverlay": {
     "dialogLabel": "חיפוש ועיון בסרטונים",
@@ -205,14 +211,19 @@
     "clearLanguages": "ניקוי",
     "queryLanguageDetected": "זוהתה שפה: {language}",
     "searchInLanguage": "חיפוש ב־{language}",
-    "tryDifferentKeywordsOrLanguage": "נסו מילות מפתח אחרות או בחרו שפת חיפוש אחרת"
+    "tryDifferentKeywordsOrLanguage": "נסו מילות מפתח אחרות או בחרו שפת חיפוש אחרת",
+    "useWebsiteDefaultLanguage": "השתמשו בשפת החיפוש ברירת המחדל של האתר",
+    "removeLanguage": "הסירו {language}",
+    "browseMode": "מצב עיון בחיפוש"
   },
   "HeroPlayer": {
     "playWithSound": "צפו עכשיו",
-    "tapToUnmute": "הקישו כדי לבטל השתקה"
+    "tapToUnmute": "הקישו כדי לבטל השתקה",
+    "nextEpisode": "הפרק הבא"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "טוען תוכן"
+    "loadingContent": "טוען תוכן",
+    "loadingVideo": "טוען וידאו"
   },
   "VideoLabels": {
     "video": "וידאו",
@@ -223,7 +234,8 @@
     "series": "סדרה",
     "collection": "אוסף",
     "trailer": "טריילר",
-    "behindTheScenes": "מאחורי הקלעים"
+    "behindTheScenes": "מאחורי הקלעים",
+    "chapter": "פרק"
   },
   "SiblingCarousel": {
     "clipPosition": "קליפ {current} מתוך {total}",
@@ -235,11 +247,286 @@
     "noImage": "אין תמונה",
     "playingNow": "מנגן עכשיו",
     "previousChapter": "הפרק הקודם",
-    "nextChapter": "הפרק הבא"
+    "nextChapter": "הפרק הבא",
+    "thumbnailAlt": "תמונה ממוזערת של {title}",
+    "relatedVideoThumbnail": "תמונה ממוזערת של סרטון קשור"
   },
   "SearchResultCard": {
     "experience": "חוויה",
     "episodeCount": "{count, plural, one {# פרק} other {# פרקים}}",
     "thumbnailAlt": "תמונה ממוזערת של וידאו"
+  },
+  "Feedback": {
+    "openForm": "פתח טופס משוב",
+    "label": "משוב",
+    "couldNotLoad": "לא ניתן לטעון את טופס המשוב.",
+    "loadingForm": "טופס המשוב נטען…",
+    "retry": "נסה שוב",
+    "openFormShort": "פתח טופס",
+    "cancel": "ביטול",
+    "title": "משוב בטא",
+    "description": "שתפו מה עובד ומה אפשר לשפר. הטופס מסופק על ידי Google.",
+    "openInNewTab": "פתח את הטופס בלשונית חדשה",
+    "closeForm": "סגור את טופס המשוב",
+    "loadingGoogleForm": "Google Form נטען…",
+    "iframeTitle": "שליחת משוב בטא"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "סרטונים נוצריים בחינם ב־{language} | Jesus Film Project",
+    "metadataDescription": "גלו סרטי ישו, סיפורי תנ״ך, סדרות לעשיית תלמידים וסרטוני הפצה עם דיבוב או כתוביות ב־{language}.",
+    "heroTitle": "סרטונים נוצריים בחינם ב־{language}",
+    "heroDescription": "גלו סרטי ישו, סיפורי תנ״ך, סדרות לעשיית תלמידים וסרטוני הפצה הזמינים ב־{language}. סרטונים בדיבוב מלא מוצגים ראשונים, ואפשרויות עם כתוביות בלבד מופיעות מתחת.",
+    "languageCollection": "אוסף שפה",
+    "itemCount": "{count, plural, one {# פריט} other {# פריטים}}",
+    "videoCount": "{count, plural, one {# סרטון} other {# סרטונים}}",
+    "videosInGroups": "{videoCount, plural, one {# סרטון} other {# סרטונים}} ב־{groupCount, plural, one {# קבוצה} other {# קבוצות}}",
+    "sectionNavLabel": "מקטעי אוסף השפות",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "חדש",
+    "videoBible": "תנ״ך בוידאו",
+    "bibleProject": "BibleProject",
+    "sports": "ספורט",
+    "collections": "אוספים",
+    "subtitlesOnly": "כתוביות בלבד",
+    "newlyAdded": "נוסף לאחרונה",
+    "newVideosTitle": "סרטונים נוצריים חדשים ב־{language}",
+    "newestFirst": "החדשים תחילה",
+    "noPublishedVideos": "עדיין לא נמצאו סרטונים שפורסמו לשפה זו.",
+    "bibleAndGospelFilms": "סרטי תנ״ך וחדשות טובות",
+    "videoBibleCollectionsTitle": "אוספי תנ״ך בוידאו ב־{language}",
+    "videoBibleDescription": "אוספים ממוקדי כתובים הכוללים LUMO, JESUS, Magdalena, ו־Acts ב־{language}.",
+    "noVideoBibleCollections": "עדיין אין אוספי תנ״ך בוידאו זמינים לשפה זו.",
+    "bibleProjectCollectionsTitle": "אוספי BibleProject ב־{language}",
+    "bibleProjectDescription": "סדרות ולימודי BibleProject הזמינים ב־{language}.",
+    "noBibleProjectCollections": "עדיין אין אוספי BibleProject זמינים לשפה זו.",
+    "sportsStories": "סיפורי ספורט",
+    "sportsTitle": "סיפורי ספורט וספורטאים ב־{language}",
+    "sportsDescription": "סיפורי ספורט מבוססי אמונה ואוספים המתמקדים בספורטאים הזמינים ב־{language}.",
+    "noSportsCollections": "עדיין אין אוספי ספורט או סיפורי ספורטאים זמינים לשפה זו.",
+    "fullyDubbed": "בדיבוב מלא",
+    "dubbedVideosTitle": "סרטונים ב־{language} לפי אוסף",
+    "dubbedVideosDescription": "עיינו בסרטונים ב־{language} בדיבוב מלא, מקובצים לפי האוסף שלהם, כדי להקל על הגילוי.",
+    "noDubbedVideos": "עדיין אין סרטונים בדיבוב מלא זמינים לשפה זו.",
+    "subtitlesAvailable": "כתוביות זמינות",
+    "subtitlesTitle": "סרטונים ב־{language} עם כתוביות",
+    "subtitlesDescription": "סרטונים אלה כוללים כתוביות ב־{language} כאשר שמע מדובר ב־{language} עדיין אינו זמין.",
+    "noSubtitleVideos": "עדיין אין סרטונים עם כתוביות בלבד זמינים לשפה זו.",
+    "dubbed": "מדובב",
+    "subtitles": "כתוביות",
+    "newLabel": "חדש",
+    "fromCollection": "מתוך {collection}",
+    "standaloneVideos": "סרטונים עצמאיים",
+    "videosFromCollection": "סרטונים מתוך {collection}.",
+    "standaloneDescription": "סרטונים עצמאיים בשפה זו.",
+    "openCollection": "פתחו אוסף"
+  },
+  "WatchHome": {
+    "pageTitle": "צפייה של Jesus Film Project",
+    "watch": "צפייה",
+    "watchNow": "צפו עכשיו",
+    "mutePreview": "השתיקו תצוגה מקדימה",
+    "unmutePreview": "בטלו השתקת תצוגה מקדימה",
+    "nextVideo": "הסרטון הבא",
+    "featured": "מומלץ",
+    "showVideo": "הציגו את {title}",
+    "previousVideoPreview": "תצוגה מקדימה של הסרטון הקודם",
+    "nextVideoPreview": "תצוגה מקדימה של הסרטון הבא",
+    "mediaCollection": "אוסף מדיה",
+    "scrollToVideo": "גללו לסרטון {title}"
+  },
+  "WatchFooter": {
+    "home": "דף הבית של Jesus Film Project",
+    "navigation": "ניווט תחתון",
+    "share": "שתף",
+    "watch": "צפייה",
+    "giving": "תרומות",
+    "about": "אודות",
+    "products": "מוצרים",
+    "resources": "משאבים",
+    "partners": "שותפים",
+    "contact": "צור קשר",
+    "giveNow": "תרמו עכשיו",
+    "resourcesVersion": "משאבים ({version})",
+    "office": "משרד",
+    "fax": "פקס",
+    "privacyPolicy": "מדיניות פרטיות",
+    "legalStatement": "הצהרה משפטית",
+    "newsletter": "הירשמו לניוזלטר שלנו"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "נבנה עבור שליחות עולמית",
+    "title": "המסר לא משתנה. הדרך שבה אנשים צופים כן.",
+    "description": "אנחנו בונים מחדש את ספריית הווידאו והכלים שלנו מהיסוד, ומעבירים עשורים של עבודת תרגום אל הפלטפורמות שבהן אנשים כבר נפגשים, צופים ומשתפים.",
+    "translatedLibraryTitle": "ספריית הסרטים המתורגמת ביותר בעולם",
+    "translatedLibraryDescription": "עשורים של עבודת תרגום, בהובלת שותפי שירות אמינים, יצרו ספרייה עם אלפי רצועות שפה, כדי שאנשים יוכלו לפגוש את סיפורו של ישו בשפה שמגיעה אליהם עמוק ביותר.",
+    "trustedVoicesTitle": "הבאת קולות אמינים לפורמטים חדשים",
+    "trustedVoicesDescription": "אנחנו בונים מחדש את האופן שבו סיפורי הבשורה מסופרים ויזואלית, ומשלבים תרגומים אמינים עם פורמטים מודרניים כדי שהמסר יוכל לנוע בחופשיות בין פלטפורמות, תרבויות ומסכים.",
+    "missionTeamTitle": "יותר מספרייה. צוות מונע־שליחות.",
+    "missionTeamDescription": "Jesus Film Project הוא צוות עולמי של מתרגמים, מומחי מדיה, עורכים ויוצרים, המהפך עשרות שנות ניסיון במשרד לכלים עבור מייצרי תלמידים בכל מקום.",
+    "buildingNext": "מה אנחנו בונים עכשיו",
+    "nextStepsTitle": "פלטפורמת הצעד הבא",
+    "nextStepsDescription": "חברו צופים להזדמנויות מוחשיות במסע הרוחני שלהם, ועזרו להם לעשות צעד הבא אל קהילה, כתובים או שליחות.",
+    "mediaLibraryTitle": "ספריית מדיה לבישור",
+    "mediaLibraryDescription": "ספריית מדיה נוצרית רחבה עם אלפי סרטונים, סרטים ומשאבים הזמינים בשפות רבות לשירות ולבישור ברחבי העולם.",
+    "ministryToolsTitle": "כלים דיגיטליים לשירות",
+    "ministryToolsDescription": "ניהול וידאו, הפצת תוכן, מעורבות קהל וניתוח נתונים שנועדו לעזור לשירותים להגיע ליותר אנשים ביעילות.",
+    "invitationEyebrow": "אתם מוזמנים",
+    "invitationTitle": "עזרו לבנות את <highlight>הדור הבא</highlight> של כלי שליחות",
+    "invitationDescription": "אנו מזמינים אנשי מקצוע, יוצרים ושותפים לגישה מוקדמת. בדקו קודם כלים חדשים, תנו משוב ועזרו לעצב מוצרים שנבנו עבור עבודת שליחות אמיתית.",
+    "betaTester": "הפכו לבודקי בטא"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "אוסף תנ״ך בוידאו",
+    "gospelRailTitle": "גלו את הסיפור המלא",
+    "videoBibleDescription": "גלו את אוסף הסרטונים והמשאבים שלנו שמביאים את התנ״ך לחיים באמצעות סיפורים ולימוד מרתקים.",
+    "showcaseTitle": "הכתובים מסופרים דרך קולנוע",
+    "adventEyebrow": "ציפייה לחג המולד",
+    "adventTitle": "ספירת לאחור לקראת חג המולד",
+    "adventDescription": "הצטרפו למסע האדוונט שלנו עם סרטון יומי שבונה ציפייה לחג המולד, ובוחן את התקווה, השמחה וההבטחה של בואו של ישו.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "אדוונט של BibleProject",
+    "nuaEyebrow": "סדרת NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "סדרת Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "קורס וידאו",
+    "journeyWithJesusTitle": "מסע עם ישו",
+    "gospelsOnVideoEyebrow": "כל בשורה, מסופרת בווידאו",
+    "scriptureAsWrittenTitle": "הכתובים, נאמרים בדיוק כפי שנכתבו",
+    "merryChristmas": "חג מולד שמח!",
+    "daysUntilChristmas": "{count, plural, one {עוד יום אחד עד חג המולד} other {עוד # ימים עד חג המולד}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "שפות",
+    "metadataDescription": "עיינו בסרטוני JesusFilm לפי שפה.",
+    "eyebrow": "שפות צפייה",
+    "title": "בחרו שפה",
+    "description": "גלו שפות לפי אזור או עיינו ברשימה המלאה.",
+    "searchPlaceholder": "חיפוש שפות או מדינות...",
+    "searchLabel": "חיפוש שפות או מדינות",
+    "clearSearch": "ניקוי חיפוש",
+    "browse": "עיון",
+    "browseByRegion": "עיון לפי אזור ומדינה",
+    "languageCount": "{count, plural, one {# שפה} other {# שפות}}",
+    "region": "אזור",
+    "countryLanguages": "שפות ב{country}",
+    "showLess": "הציגו פחות",
+    "showMore": "הציגו עוד {count}",
+    "noLanguages": "לא נמצאו שפות",
+    "tryAnotherSearch": "נסו מונח חיפוש אחר."
+  },
+  "WatchHistory": {
+    "metadataTitle": "היסטוריית צפייה | Jesus Film Project",
+    "title": "היסטוריית צפייה",
+    "loading": "טוען היסטוריה",
+    "empty": "אין כאן עדיין כלום",
+    "emptyDescription": "סרטונים שתצפו בהם בזמן שתהיו מחוברים יופיעו כאן.",
+    "earlier": "מוקדם יותר",
+    "today": "היום",
+    "yesterday": "אתמול"
+  },
+  "AccountControl": {
+    "account": "חשבון",
+    "accountMenu": "תפריט חשבון",
+    "signIn": "התחברות",
+    "signOut": "התנתקות",
+    "signedIn": "מחובר",
+    "history": "היסטוריה",
+    "logOut": "התנתק"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "הדף לא נמצא",
+    "eyebrow": "הדף לא נמצא",
+    "screenReaderPrefix": "הדף לא נמצא:",
+    "title": "הסצנה הזו לא כאן.",
+    "description": "ייתכן שהדף הועבר, אבל הסיפור נמשך.",
+    "actionsLabel": "פעולות לדף שלא נמצא",
+    "backToWatch": "חזרה לצפייה",
+    "browseVideos": "עיון בסרטונים"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "צפו בסרט קצר",
+    "actions": {
+      "joinUs": "הצטרפו אלינו",
+      "shareMission": "שותפו בשליחות שלנו"
+    },
+    "welcomeStart": {
+      "label": "אמונה וכתובים",
+      "title": "בחירות הווידאו של היום",
+      "description": "תוכן וידאו מהספרייה שלנו, ממוקד אמונה, כדי לעורר השראה, לאתגר ולעודד מחשבה."
+    },
+    "welcomeMorning": {
+      "label": "השראה לבוקר",
+      "title": "בוקר טוב! רגעי התנ״ך של היום מחכים לכם.",
+      "description": "פתחו את היום ברגעי תנ״ך מעודדים שנועדו להעניק השראה ולהרים את רוחכם."
+    },
+    "welcomeAfternoon": {
+      "label": "השראה לצהריים",
+      "title": "צהריים טובים! רגעי תנ״ך ליום שלכם.",
+      "description": "תוכן תנ״כי מעודד, מושלם להפסקת הצהריים שלכם או להמשך השראה."
+    },
+    "welcomeEvening": {
+      "label": "השראה לערב",
+      "title": "ערב טוב! הירגעו עם רגעי תנ״ך.",
+      "description": "רגעי תנ״ך שלווים שיעזרו לכם להרהר ולמצוא נחמה עם סיום היום."
+    },
+    "joinUs": {
+      "label": "הצטרפו אלינו",
+      "title": "מיליארדים מחפשים",
+      "description": "הקציר כבר כאן. הצטרפו אלינו כשאנחנו משתפים את הבשורה עם העולם באמצעות מדיה דיגיטלית."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "בואו נצעד יחד",
+      "title": "מספרים את סיפורו של ישו, יחד",
+      "description": "כדי שיוכלו לשמוע ולראות את אהבתו של ישו בשפתם, ממש במקום שבו הם נמצאים."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% התאמה",
+    "none": "לא נמצאו המלצות לסרטון הזה בשפה זו."
+  },
+  "BetaTesterModal": {
+    "title": "הפכו לבודקי בטא",
+    "trigger": "הפכו לבודקי בטא",
+    "loadFailed": "משהו השתבש.",
+    "loading": "טוען...",
+    "openFormNewTab": "פתח את הטופס בלשונית חדשה",
+    "close": "סגור",
+    "iframeTitle": "הפכו לבודקי בטא"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

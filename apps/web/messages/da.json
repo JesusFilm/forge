@@ -7,7 +7,9 @@
     "noContent": "Intet indhold er tilgængeligt.",
     "homepageMisconfigured": "Watch-startsiden er fejlkonfigureret.",
     "defaultTemplateMisconfigured": "Standard Watch-skabelonen er fejlkonfigureret.",
-    "authFailed": "Kunne ikke godkende med indholdstjenesten. Kontakt support, hvis dette fortsætter."
+    "authFailed": "Kunne ikke godkende med indholdstjenesten. Kontakt support, hvis dette fortsætter.",
+    "pageLoadFailed": "Noget gik galt.",
+    "tryAgain": "Prøv igen"
   },
   "VideosPage": {
     "title": "Alle videoer",
@@ -22,7 +24,8 @@
     "promoHeading": "Vil du forstå Bibelen mere i dybden?",
     "joinBibleStudy": "Deltag i vores bibelstudie",
     "previousQuote": "Forrige bibelcitat",
-    "nextQuote": "Næste bibelcitat"
+    "nextQuote": "Næste bibelcitat",
+    "readPassage": "Læs dette skriftsted i din bibel."
   },
   "DownloadButton": {
     "checking": "Tjekker",
@@ -73,7 +76,8 @@
     "selectLanguage": "Vælg sprog",
     "searchPlaceholder": "Søg i sprog…",
     "languages": "Sprog",
-    "noMatches": "Ingen resultater"
+    "noMatches": "Ingen resultater",
+    "notAvailable": "Ikke tilgængelig"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Sprog",
@@ -112,7 +116,8 @@
     "questions": "Relaterede spørgsmål",
     "askYours": "Stil dit eget",
     "chatWithPerson": "Chat med en person",
-    "askBibleQuestion": "Stil et bibelspørgsmål"
+    "askBibleQuestion": "Stil et bibelspørgsmål",
+    "quiz": "Quizspørgsmål"
   },
   "WatchQuestionPanel": {
     "messageType": "Beskedtype",
@@ -170,7 +175,8 @@
     "searchRegion": "Søg videoer",
     "clearSearch": "Ryd søgning",
     "changeAudioLanguage": "Skift lydsprog",
-    "home": "JesusFilm forside"
+    "home": "JesusFilm forside",
+    "closeSearch": "Luk søgning"
   },
   "SearchOverlay": {
     "dialogLabel": "Søg og browse videoer",
@@ -205,14 +211,19 @@
     "clearLanguages": "Ryd",
     "queryLanguageDetected": "{language} registreret",
     "searchInLanguage": "Søg på {language}",
-    "tryDifferentKeywordsOrLanguage": "Prøv andre nøgleord eller vælg et andet søgesprog"
+    "tryDifferentKeywordsOrLanguage": "Prøv andre nøgleord eller vælg et andet søgesprog",
+    "useWebsiteDefaultLanguage": "Brug websitets standardsøgesprog",
+    "removeLanguage": "Fjern {language}",
+    "browseMode": "Søg browse-tilstand"
   },
   "HeroPlayer": {
     "playWithSound": "Se nu",
-    "tapToUnmute": "Tryk for at slå lyd til"
+    "tapToUnmute": "Tryk for at slå lyd til",
+    "nextEpisode": "Næste afsnit"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Indlæser indhold"
+    "loadingContent": "Indlæser indhold",
+    "loadingVideo": "Indlæser video"
   },
   "VideoLabels": {
     "video": "Videoklip",
@@ -223,7 +234,8 @@
     "series": "Serie",
     "collection": "Samling",
     "trailer": "Forfilm",
-    "behindTheScenes": "Bag kulisserne"
+    "behindTheScenes": "Bag kulisserne",
+    "chapter": "Kapitel"
   },
   "SiblingCarousel": {
     "clipPosition": "Klip {current} af {total}",
@@ -235,11 +247,286 @@
     "noImage": "Intet billede",
     "playingNow": "Afspiller nu",
     "previousChapter": "Forrige kapitel",
-    "nextChapter": "Næste kapitel"
+    "nextChapter": "Næste kapitel",
+    "thumbnailAlt": "Miniature af {title}",
+    "relatedVideoThumbnail": "Miniature af relateret video"
   },
   "SearchResultCard": {
     "experience": "Oplevelse",
     "episodeCount": "{count, plural, one {# afsnit} other {# afsnit}}",
     "thumbnailAlt": "Videominiature"
+  },
+  "Feedback": {
+    "openForm": "Åbn feedbackformular",
+    "label": "Giv feedback",
+    "couldNotLoad": "Feedbackformularen kunne ikke indlæses.",
+    "loadingForm": "Indlæser feedbackformular…",
+    "retry": "Prøv igen",
+    "openFormShort": "Åbn formular",
+    "cancel": "Annuller",
+    "title": "Beta-feedback",
+    "description": "Del, hvad der fungerer, og hvad vi kan forbedre. Denne formular leveres af Google.",
+    "openInNewTab": "Åbn formular i en ny fane",
+    "closeForm": "Luk feedbackformular",
+    "loadingGoogleForm": "Indlæser Google Formular…",
+    "iframeTitle": "Send beta-feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Gratis kristne videoer på {language} | Jesus Film Project",
+    "metadataDescription": "Udforsk Jesus-film, bibelhistorier, discipelskabsserier og outreach-videoer med dubbet lyd eller undertekster på {language}.",
+    "heroTitle": "Gratis kristne videoer på {language}",
+    "heroDescription": "Udforsk Jesus-film, bibelhistorier, discipelskabsserier og outreach-videoer tilgængelige på {language}. Fuldt dubbet indhold vises først, og muligheder med kun undertekster vises nedenfor.",
+    "languageCollection": "Sprogsamling",
+    "itemCount": "{count, plural, one {# element} other {# elementer}}",
+    "videoCount": "{count, plural, one {# video} other {# videoer}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videoer}} i {groupCount, plural, one {# gruppe} other {# grupper}}",
+    "sectionNavLabel": "Sektioner i sprogoversigten",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ny",
+    "videoBible": "Video-Bibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Samlinger",
+    "subtitlesOnly": "Kun undertekster",
+    "newlyAdded": "Nytilføjet",
+    "newVideosTitle": "Nye kristne videoer på {language}",
+    "newestFirst": "Nyeste først",
+    "noPublishedVideos": "Der blev endnu ikke fundet publicerede videoer for dette sprog.",
+    "bibleAndGospelFilms": "Bibel- og evangeliefilm",
+    "videoBibleCollectionsTitle": "{language} Video-Bibel-samlinger",
+    "videoBibleDescription": "Skriftcentrerede samlinger, herunder LUMO, JESUS, Magdalena og Apostlenes Gerninger på {language}.",
+    "noVideoBibleCollections": "Der er endnu ingen Video-Bibel-samlinger tilgængelige for dette sprog.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject-samlinger",
+    "bibleProjectDescription": "BibleProject-serier og -studier tilgængelige på {language}.",
+    "noBibleProjectCollections": "Der er endnu ingen BibleProject-samlinger tilgængelige for dette sprog.",
+    "sportsStories": "Sportshistorier",
+    "sportsTitle": "{language} sport- og atlet-historier",
+    "sportsDescription": "Trocentrerede sportshistorier og samlinger med fokus på atleter tilgængelige på {language}.",
+    "noSportsCollections": "Der er endnu ingen sport- eller atlet-historie-samlinger tilgængelige for dette sprog.",
+    "fullyDubbed": "Fuldt dubbet",
+    "dubbedVideosTitle": "{language} videoer efter samling",
+    "dubbedVideosDescription": "Browse fuldt dubbet {language} videoindhold grupperet med deres samling for nemmere opdagelse.",
+    "noDubbedVideos": "Der er endnu ingen fuldt dubbede videoer tilgængelige for dette sprog.",
+    "subtitlesAvailable": "Undertekster tilgængelige",
+    "subtitlesTitle": "{language} videoer med undertekster",
+    "subtitlesDescription": "Disse videoer har {language} undertekster, når talt {language} lyd endnu ikke er tilgængelig.",
+    "noSubtitleVideos": "Der er endnu ingen videoer med kun undertekster tilgængelige for dette sprog.",
+    "dubbed": "Dubbet",
+    "subtitles": "Undertekster",
+    "newLabel": "Ny",
+    "fromCollection": "Fra {collection}",
+    "standaloneVideos": "Selvstændige videoer",
+    "videosFromCollection": "Videoer fra {collection}.",
+    "standaloneDescription": "Selvstændige videoer på dette sprog.",
+    "openCollection": "Åbn samling"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch | Jesus Film Project",
+    "watch": "Se",
+    "watchNow": "Se nu",
+    "mutePreview": "Slå forhåndsvisning fra",
+    "unmutePreview": "Slå forhåndsvisning til",
+    "nextVideo": "Næste video",
+    "featured": "Fremhævet",
+    "showVideo": "Vis {title}",
+    "previousVideoPreview": "Forhåndsvisning af forrige video",
+    "nextVideoPreview": "Forhåndsvisning af næste video",
+    "mediaCollection": "Mediesamling",
+    "scrollToVideo": "Rul til videoen {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project forside",
+    "navigation": "Fodernavigation",
+    "share": "Del",
+    "watch": "Se",
+    "giving": "Giv",
+    "about": "Om",
+    "products": "Produkter",
+    "resources": "Ressourcer",
+    "partners": "Partnere",
+    "contact": "Kontakt",
+    "giveNow": "Giv nu",
+    "resourcesVersion": "Ressourcer ({version})",
+    "office": "Kontor",
+    "fax": "Faxnummer",
+    "privacyPolicy": "Privatlivspolitik",
+    "legalStatement": "Juridisk erklæring",
+    "newsletter": "Tilmeld dig vores nyhedsbrev"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Bygget til global mission",
+    "title": "Budskabet ændrer sig ikke. Måden folk ser det på, gør.",
+    "description": "Vi genopbygger vores videobibliotek og værktøjer fra bunden og bringer årtiers oversættelsesarbejde til de platforme, hvor mennesker allerede samles, ser og deler.",
+    "translatedLibraryTitle": "Verdens mest oversatte filmsamling",
+    "translatedLibraryDescription": "Årtier af oversættelsesarbejde, båret af betroede missionpartnere, har bygget et bibliotek med tusindvis af sprogspor, så mennesker kan møde fortællingen om Jesus på det sprog, der når dem dybest.",
+    "trustedVoicesTitle": "Betroede stemmer i nye formater",
+    "trustedVoicesDescription": "Vi genopbygger måden, evangeliets historier fortælles visuelt på, og kombinerer betroede oversættelser med moderne formater, så budskabet frit kan bevæge sig på tværs af platforme, kulturer og skærme.",
+    "missionTeamTitle": "Mere end et bibliotek. Et missionsdrevet team.",
+    "missionTeamDescription": "Jesus Film Project er et globalt team af oversættere, mediespecialister, redaktører og skabere, som omsætter årtiers tjenesteerfaring til værktøjer for disciplemagere overalt.",
+    "buildingNext": "Det bygger vi videre på",
+    "nextStepsTitle": "Next Steps-platform",
+    "nextStepsDescription": "Forbind seere med konkrete muligheder på deres åndelige rejse og hjælp dem med at tage næste skridt ind i fællesskab, Skriften eller mission.",
+    "mediaLibraryTitle": "Evangeliserende mediebibliotek",
+    "mediaLibraryDescription": "Et omfattende kristent mediebibliotek med tusindvis af videoer, film og ressourcer tilgængelige på flere sprog til tjeneste og evangelisation verden over.",
+    "ministryToolsTitle": "Digitale værktøjer til menigheder og tjenester",
+    "ministryToolsDescription": "Videohåndtering, indholdsdistribution, publikumsengagement og analyser designet til at hjælpe tjenester med at nå flere mennesker effektivt.",
+    "invitationEyebrow": "Du er inviteret",
+    "invitationTitle": "Hjælp med at bygge <highlight>den næste generation</highlight> af missionsværktøjer",
+    "invitationDescription": "Vi inviterer praktikere, skabere og partnere til tidlig adgang. Test nye værktøjer først, giv feedback, og vær med til at forme produkter, der er designet til virkeligt missionsarbejde.",
+    "betaTester": "Bliv betatester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-Bibel-samling",
+    "gospelRailTitle": "Opdag hele fortællingen",
+    "videoBibleDescription": "Udforsk vores samling af videoer og ressourcer, der bringer Bibelen til live gennem engagerende historier og undervisning.",
+    "showcaseTitle": "Skriften fortalt gennem film",
+    "adventEyebrow": "Juleadvent",
+    "adventTitle": "Juleadvent-nedtælling",
+    "adventDescription": "Tag del i vores adventsrejse med en daglig video, der bygger forventning til jul og udforsker håbet, glæden og løftet om Jesu komme.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-advent",
+    "nuaEyebrow": "NUA-serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokursus",
+    "journeyWithJesusTitle": "Rejs med Jesus",
+    "gospelsOnVideoEyebrow": "Hvert evangelium fortalt på video",
+    "scriptureAsWrittenTitle": "Skriften, talt præcis som skrevet",
+    "merryChristmas": "Glædelig jul!",
+    "daysUntilChristmas": "{count, plural, one {# dag til jul} other {# dage til jul}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Sprog",
+    "metadataDescription": "Browse JesusFilm-videoer efter sprog.",
+    "eyebrow": "Se sprog",
+    "title": "Vælg et sprog",
+    "description": "Udforsk sprog efter region eller browse hele listen.",
+    "searchPlaceholder": "Søg efter sprog eller lande...",
+    "searchLabel": "Søg efter sprog eller lande",
+    "clearSearch": "Ryd søgning",
+    "browse": "Udforsk",
+    "browseByRegion": "Browse efter region og land",
+    "languageCount": "{count, plural, one {# sprog} other {# sprog}}",
+    "region": "Område",
+    "countryLanguages": "{country}-sprog",
+    "showLess": "Vis mindre",
+    "showMore": "Vis {count} mere",
+    "noLanguages": "Ingen sprog fundet",
+    "tryAnotherSearch": "Prøv et andet søgeord."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Sehistorik | Jesus Film Project",
+    "title": "Sehistorik",
+    "loading": "Indlæser historik",
+    "empty": "Intet her endnu",
+    "emptyDescription": "Videoer, du ser, mens du er logget ind, vises her.",
+    "earlier": "Tidligere",
+    "today": "I dag",
+    "yesterday": "I går"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Kontomenu",
+    "signIn": "Log ind",
+    "signOut": "Log ud",
+    "signedIn": "Logget ind",
+    "history": "Historik",
+    "logOut": "Log ud"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Side ikke fundet",
+    "eyebrow": "Side ikke fundet",
+    "screenReaderPrefix": "Side ikke fundet:",
+    "title": "Denne scene er her ikke.",
+    "description": "Siden kan være flyttet, men fortællingen fortsætter.",
+    "actionsLabel": "Handlinger for siden ikke fundet",
+    "backToWatch": "Tilbage til Watch",
+    "browseVideos": "Browse videoer"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Se kortfilm",
+    "actions": {
+      "joinUs": "Vær med",
+      "shareMission": "Del i vores mission"
+    },
+    "welcomeStart": {
+      "label": "Tro og Skrift",
+      "title": "Dagens videoudvalg",
+      "description": "Trocentreret videoindhold fra vores bibliotek, der skal inspirere, udfordre og vække eftertanke."
+    },
+    "welcomeMorning": {
+      "label": "Morgeninspiration",
+      "title": "Godmorgen! Dagens bibeløjeblikke venter.",
+      "description": "Begynd dagen med opmuntrende bibeløjeblikke, der er skabt til at inspirere og løfte din ånd."
+    },
+    "welcomeAfternoon": {
+      "label": "Eftermiddagsinspiration",
+      "title": "Godaften! Bibeløjeblikke til din dag.",
+      "description": "Opmuntrende bibelindhold, perfekt til din eftermiddagspause eller fortsatte inspiration."
+    },
+    "welcomeEvening": {
+      "label": "Afteninspiration",
+      "title": "Godaften! Slap af med bibeløjeblikke.",
+      "description": "Fredfyldte bibeløjeblikke, der hjælper dig med at reflektere og finde trøst, når dagen går på hæld."
+    },
+    "joinUs": {
+      "label": "Vær med",
+      "title": "Milliarder søger",
+      "description": "Høsten er her. Vær med, når vi deler evangeliet med verden via digitale medier."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Lad os gå sammen",
+      "title": "At fortælle Jesu historie sammen",
+      "description": "Så de kan høre og se Jesu kærlighed på deres eget sprog, lige dér hvor de er."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % overensstemmelse",
+    "none": "Der blev ikke fundet nogen anbefalinger til denne video på dette sprog."
+  },
+  "BetaTesterModal": {
+    "title": "Bliv betatester",
+    "trigger": "Bliv betatester",
+    "loadFailed": "Noget gik galt.",
+    "loading": "Indlæser...",
+    "openFormNewTab": "Åbn formular i en ny fane",
+    "close": "Luk",
+    "iframeTitle": "Bliv betatester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

@@ -33,7 +33,7 @@ type ChatGenerateSectionAction = NonNullable<
 
 export type ExperienceEditorWithChatProps = Omit<
   ExperienceEditorProps,
-  "onCanvasController" | "videoLibrary"
+  "loadVideoCollectionChildrenAction" | "onCanvasController" | "videoLibrary"
 > & {
   experienceLocaleId: string
   locale: string
@@ -41,6 +41,9 @@ export type ExperienceEditorWithChatProps = Omit<
   videoLibrary: VideoLibraryItem[]
   loadVideosByIdsAction: (
     videoIds: readonly string[],
+  ) => Promise<VideoLibraryItem[]>
+  loadVideoCollectionChildrenAction: (
+    parentVideoId: string,
   ) => Promise<VideoLibraryItem[]>
   /**
    * Multi-step draft workflow trigger surfaced as the chat panel's
@@ -88,6 +91,7 @@ export function ExperienceEditorWithChat({
   chatActions,
   videoLibrary: initialVideoLibrary,
   loadVideosByIdsAction,
+  loadVideoCollectionChildrenAction,
   searchVideoLibraryAction,
   generateDraftAction,
   generateSectionAction,
@@ -156,13 +160,25 @@ export function ExperienceEditorWithChat({
   }, [])
 
   const handleSearchVideoLibrary = useCallback(
-    async (query: string) => {
+    async (
+      query: string,
+      context?: Parameters<NonNullable<typeof searchVideoLibraryAction>>[1],
+    ) => {
       if (!searchVideoLibraryAction) return []
-      const results = await searchVideoLibraryAction(query)
+      const results = await searchVideoLibraryAction(query, context)
       mergeVideoLibraryItems(results)
       return results
     },
     [mergeVideoLibraryItems, searchVideoLibraryAction],
+  )
+
+  const handleLoadVideoCollectionChildren = useCallback(
+    async (parentVideoId: string) => {
+      const children = await loadVideoCollectionChildrenAction(parentVideoId)
+      mergeVideoLibraryItems(children)
+      return children
+    },
+    [loadVideoCollectionChildrenAction, mergeVideoLibraryItems],
   )
 
   // Stable proxy controller — the panel sees a single object whose
@@ -243,6 +259,7 @@ export function ExperienceEditorWithChat({
         <ExperienceEditor
           {...editorProps}
           videoLibrary={videoLibrary}
+          loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
           searchVideoLibraryAction={handleSearchVideoLibrary}
           onCanvasController={handleCanvasController}
         />

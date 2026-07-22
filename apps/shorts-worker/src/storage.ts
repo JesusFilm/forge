@@ -25,6 +25,19 @@ export class ArtifactNotFoundError extends WorkerError {
   }
 }
 
+export class ArtifactRangeNotSatisfiableError extends WorkerError {
+  constructor(readonly totalSize: number) {
+    super("artifact byte range is not satisfiable", "invalid_range", false)
+    this.name = "ArtifactRangeNotSatisfiableError"
+  }
+}
+
+export type ArtifactReadStream = {
+  stream: Readable
+  contentLength: number
+  contentRange?: string
+}
+
 // AWS S3 NoSuchKey classification (root CLAUDE.md): match the typed SDK v3
 // surface (error.name) FIRST, legacy error.Code second, message regex as
 // backstop only. Never branch on the message alone.
@@ -95,6 +108,17 @@ export type Storage = {
     artifactType: string,
     ext: string,
   ): Promise<boolean>
+  readArtifactStream(
+    assetId: string,
+    artifactType: string,
+    ext: string,
+    range?: string,
+  ): Promise<ArtifactReadStream>
+  deleteArtifact(
+    assetId: string,
+    artifactType: string,
+    ext: string,
+  ): Promise<void>
 }
 
 const SAFE_KEY_PATTERN = /^[a-zA-Z0-9_-]+$/
@@ -105,6 +129,40 @@ function validateKeyComponent(value: string, name: string): void {
       `Invalid ${name}: must contain only alphanumeric characters, hyphens, and underscores`,
     )
   }
+}
+
+function parseByteRange(
+  header: string | undefined,
+  totalSize: number,
+): { start: number; end: number } | null {
+  if (!header) return null
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
+  if (!match || (!match[1] && !match[2]) || totalSize <= 0) {
+    throw new ArtifactRangeNotSatisfiableError(totalSize)
+  }
+  let start: number
+  let end: number
+  if (!match[1]) {
+    const suffixLength = Number(match[2])
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
+      throw new ArtifactRangeNotSatisfiableError(totalSize)
+    }
+    start = Math.max(0, totalSize - suffixLength)
+    end = totalSize - 1
+  } else {
+    start = Number(match[1])
+    end = match[2] ? Number(match[2]) : totalSize - 1
+  }
+  if (
+    !Number.isSafeInteger(start) ||
+    !Number.isSafeInteger(end) ||
+    start < 0 ||
+    start >= totalSize ||
+    end < start
+  ) {
+    throw new ArtifactRangeNotSatisfiableError(totalSize)
+  }
+  return { start, end: Math.min(end, totalSize - 1) }
 }
 
 export function artifactKey(
@@ -294,6 +352,58 @@ function createS3Storage(s3Config: NonNullable<StorageConfig["s3"]>): Storage {
         return false
       }
     },
+
+    async readArtifactStream(assetId, artifactType, ext, rangeHeader) {
+      const { GetObjectCommand, HeadObjectCommand } =
+        await import("@aws-sdk/client-s3")
+      const key = artifactKey(assetId, artifactType, ext)
+      const s3 = await getS3()
+      let totalSize: number
+      try {
+        const head = await s3.send(
+          new HeadObjectCommand({ Bucket: s3Config.bucket, Key: key }),
+        )
+        totalSize = head.ContentLength ?? 0
+      } catch (error) {
+        if (isNoSuchKeyError(error)) throw new ArtifactNotFoundError(key)
+        throw error
+      }
+      const range = parseByteRange(rangeHeader, totalSize)
+      let response
+      try {
+        response = await s3.send(
+          new GetObjectCommand({
+            Bucket: s3Config.bucket,
+            Key: key,
+            Range: range ? `bytes=${range.start}-${range.end}` : undefined,
+          }),
+        )
+      } catch (error) {
+        if (isNoSuchKeyError(error)) throw new ArtifactNotFoundError(key)
+        throw error
+      }
+      if (!response.Body) {
+        throw new ArtifactNotFoundError(key)
+      }
+      return {
+        stream: response.Body as unknown as Readable,
+        contentLength: range
+          ? range.end - range.start + 1
+          : (response.ContentLength ?? totalSize),
+        ...(range
+          ? { contentRange: `bytes ${range.start}-${range.end}/${totalSize}` }
+          : {}),
+      }
+    },
+
+    async deleteArtifact(assetId, artifactType, ext) {
+      const { DeleteObjectCommand } = await import("@aws-sdk/client-s3")
+      const key = artifactKey(assetId, artifactType, ext)
+      const s3 = await getS3()
+      await s3.send(
+        new DeleteObjectCommand({ Bucket: s3Config.bucket, Key: key }),
+      )
+    },
   }
 }
 
@@ -371,6 +481,34 @@ function createLocalStorage(config: StorageConfig): Storage {
       } catch {
         return false
       }
+    },
+
+    async readArtifactStream(assetId, artifactType, ext, rangeHeader) {
+      const key = artifactKey(assetId, artifactType, ext)
+      let size: number
+      try {
+        size = (await stat(localPath(key))).size
+      } catch (error) {
+        if (isENOENT(error)) throw new ArtifactNotFoundError(key)
+        throw error
+      }
+      const range = parseByteRange(rangeHeader, size)
+      return {
+        stream: createReadStream(
+          localPath(key),
+          range ? { start: range.start, end: range.end } : undefined,
+        ),
+        contentLength: range ? range.end - range.start + 1 : size,
+        ...(range
+          ? { contentRange: `bytes ${range.start}-${range.end}/${size}` }
+          : {}),
+      }
+    },
+
+    async deleteArtifact(assetId, artifactType, ext) {
+      const { rm } = await import("node:fs/promises")
+      const key = artifactKey(assetId, artifactType, ext)
+      await rm(localPath(key), { force: true })
     },
   }
 }

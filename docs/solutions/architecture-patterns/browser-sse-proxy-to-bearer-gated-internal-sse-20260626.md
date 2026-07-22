@@ -80,6 +80,19 @@ if (!response.ok || response.body == null) return fail("network_error")
 // only now: readSseStream(response.body, ...)
 ```
 
+> **Relocated (2026-07-22, feat-282 PR 2):** the transport mechanics shown
+> inline in this doc now live in `apps/chat/src/lib/server/mastra-upstream.ts`,
+> shared by the send proxy AND the history proxies: the POST fetch shape
+> (`postMastraUpstream`, with an origin pin on the composed URL), the
+> three-source signal composition (`composeUpstreamAbortSignal`), the failure
+> classifier (`classifyUpstreamFailure`, `timeout | cancelled | network`,
+> budget → caller-abort → error-name precedence), and the byte-capped
+> `readJsonCapped` + `undefinedOnAbort` — the 503 read above is now
+> byte-capped (64 KiB) via that shared reader, feat-282's one declared
+> hardening delta. Each proxy keeps its own wire MAPPING over the
+> discriminant, deny ladder, budgets, and cap sizes. The classification
+> rules in this doc are unchanged.
+
 **3. Give the client exactly one parse path.** The proxy normalizes _every_
 failure — closed gate, bad HTTP status, outbound timeout, transport drop, and
 relayed upstream `error` — into a single terminal `error { reason }` frame on a
@@ -134,6 +147,12 @@ const privateHttp =
   url.protocol === "http:" && (LOOPBACK.has(host) || railwayInternal)
 if (url.protocol !== "https:" && !privateHttp) return false // ssrf_blocked
 ```
+
+> **Relocated (2026-07-21, feat-282 PR 1 — #1661):** this guard now lives as
+> `hostAllowed` in `apps/chat/src/lib/server/mastra-upstream.ts`, imported by
+> BOTH the send proxy and the history proxies (it is no longer exported from
+> the seeker route file); the label-boundary test matrix is direct unit
+> coverage beside it. The logic above is unchanged.
 
 Keep the host allowlist check after the scheme floor; an unset allowlist trusts
 the operator-set host (admin parity; `redirect:"error"` still blocks off-host

@@ -26,10 +26,10 @@ describe("seedFirstPartyApps", () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 5,
-      environments: 18,
-      oauthClients: 22,
-      scopes: 10,
+      apps: 6,
+      environments: 23,
+      oauthClients: 27,
+      scopes: 18,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -104,6 +104,32 @@ describe("seedFirstPartyApps", () => {
     )
     expect(upsertOAuthClient).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: { clientId: "jfp_admin_mcp_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_admin_mcp_local",
+          scopes: expect.arrayContaining([
+            "experience:read",
+            "experience:locale:create",
+            "experience:locale:update",
+            "experience:locale:validate",
+            "media:read",
+            "video:read",
+            "bible:read",
+            "experience:publish",
+          ]),
+          redirectUris: ["http://localhost:3003/mcp/oauth/callback"],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "admin-mcp",
+            environmentKey: "local",
+          }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
         where: { clientId: "jfp_chat_production" },
         create: expect.objectContaining({
           clientId: "jfp_chat_production",
@@ -117,6 +143,37 @@ describe("seedFirstPartyApps", () => {
           metadata: expect.objectContaining({
             appKey: "chat",
             environmentKey: "production",
+          }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_admin_mcp_codex" },
+        create: expect.objectContaining({
+          clientId: "jfp_admin_mcp_codex",
+          scopes: [
+            "openid",
+            "profile:read",
+            "email:read",
+            "membership:read",
+            "experience:read",
+            "experience:locale:create",
+            "experience:locale:update",
+            "experience:locale:validate",
+            "media:read",
+            "video:read",
+            "bible:read",
+            "experience:publish",
+          ],
+          redirectUris: [],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          metadata: expect.objectContaining({
+            appKey: "admin-mcp",
+            environmentKey: "codex",
+            environmentKind: "production",
           }),
         }),
       }),

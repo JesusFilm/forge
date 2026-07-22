@@ -25,6 +25,7 @@ export type CommandResult = {
 
 export type RunCommandOptions = {
   timeoutMs?: number
+  signal?: AbortSignal
   /** Called with each complete stderr line (progress parsing). */
   onStderrLine?: (line: string) => void
 }
@@ -43,6 +44,13 @@ export class CommandTimeoutError extends WorkerError {
       true,
     )
     this.name = "CommandTimeoutError"
+  }
+}
+
+export class CommandCancelledError extends WorkerError {
+  constructor(command: string) {
+    super(`Command ${command} was cancelled`, "command_cancelled", false)
+    this.name = "CommandCancelledError"
   }
 }
 
@@ -119,8 +127,23 @@ export const defaultRunCommand: RunCommand = async (
       if (timeout) {
         clearTimeout(timeout)
       }
+      if (options.signal) {
+        options.signal.removeEventListener("abort", abortListener)
+      }
       callback()
     }
+
+    const abortListener = () => {
+      finish(() => {
+        child.kill("SIGKILL")
+        reject(new CommandCancelledError(command))
+      })
+    }
+    if (options.signal?.aborted) {
+      abortListener()
+      return
+    }
+    options.signal?.addEventListener("abort", abortListener, { once: true })
 
     if (timeoutMs !== undefined) {
       timeout = setTimeout(() => {
@@ -194,6 +217,7 @@ export type ProbeMediaDependencies = {
   timeoutMs?: number
   /** Set ONLY when probing the request-supplied source URL. */
   protocolWhitelist?: string
+  signal?: AbortSignal
 }
 
 export const DEFAULT_PROBE_TIMEOUT_MS = 120_000
@@ -248,7 +272,10 @@ export async function probeMedia(
         "-show_format",
         input,
       ],
-      { timeoutMs: deps.timeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS },
+      {
+        timeoutMs: deps.timeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS,
+        signal: deps.signal,
+      },
     )
   } catch (error) {
     throw classifyCommandError(error, "ffprobe")

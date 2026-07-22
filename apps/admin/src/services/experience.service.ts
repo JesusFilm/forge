@@ -22,6 +22,7 @@ import {
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+import { backfillExperienceVideoLanguageIds } from "./experience-video-language-backfill"
 import {
   CreateExperienceInput,
   CreateExperienceLocaleInput,
@@ -132,6 +133,12 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    const blocks = await backfillExperienceVideoLanguageIds({
+      prisma: this.prisma,
+      blocks: input.blocks,
+      locale: input.locale,
+    })
+
     return this.prisma.experience.create({
       data: {
         isTemplate: input.isTemplate,
@@ -141,7 +148,7 @@ export class ExperienceService {
             locale: input.locale,
             slug: input.slug,
             title: input.title,
-            blocks: input.blocks,
+            blocks: blocks.blocks as Prisma.InputJsonValue,
           },
         },
       },
@@ -173,9 +180,15 @@ export class ExperienceService {
     }
 
     const { experienceId, ...data } = input
+    const blocks = await backfillExperienceVideoLanguageIds({
+      prisma: this.prisma,
+      blocks: input.blocks,
+      locale: input.locale,
+    })
     return this.prisma.experienceLocale.create({
       data: {
         ...data,
+        blocks: blocks.blocks as Prisma.InputJsonValue,
         experience: {
           connect: { id: experienceId },
         },
@@ -301,6 +314,15 @@ export class ExperienceService {
     }
 
     const { id, isTemplate, ...data } = input
+    if (input.blocks !== undefined) {
+      const blocks = await backfillExperienceVideoLanguageIds({
+        prisma: this.prisma,
+        blocks: input.blocks,
+        locale: existing.locale,
+      })
+      data.blocks = blocks.blocks as typeof data.blocks
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.contentRevision.create({
         data: {
@@ -486,6 +508,12 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    const restoredBlocks = await backfillExperienceVideoLanguageIds({
+      prisma: this.prisma,
+      blocks: snapshot.blocks,
+      locale: existing.locale,
+    })
+
     return this.prisma.$transaction(async (tx) => {
       const restoredAt = new Date()
 
@@ -541,7 +569,7 @@ export class ExperienceService {
               : snapshot.ogImageUrl === null
                 ? null
                 : existing.ogImageUrl,
-          blocks: snapshot.blocks as Prisma.InputJsonValue,
+          blocks: restoredBlocks.blocks as Prisma.InputJsonValue,
           status: "DRAFT",
           updatedAt: restoredAt,
         },
@@ -702,6 +730,14 @@ export class ExperienceService {
     const baselineUpdatedAtText = baselineRows[0]?.u ?? null
 
     const { id, ...data } = parsed
+    if (parsed.blocks !== undefined) {
+      const blocks = await backfillExperienceVideoLanguageIds({
+        prisma: this.prisma,
+        blocks: parsed.blocks,
+        locale: existing.locale,
+      })
+      data.blocks = blocks.blocks as typeof data.blocks
+    }
     const result = await this.prisma.$transaction(async (tx) => {
       // Optimistic-concurrency guard with a row lock. `SELECT ... FOR
       // UPDATE` locks the row for the rest of this transaction so no

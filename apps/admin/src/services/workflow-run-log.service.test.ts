@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { Prisma, WorkflowRunStatus, WorkflowRunTrigger } from "@prisma/client"
 import type { SyncResult } from "@/services/core-sync/orchestrator"
 import {
@@ -24,6 +24,10 @@ function createMockClient() {
 }
 
 describe("workflow run log service", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it("creates queued workflow ledger rows with product context", async () => {
     const client = createMockClient()
 
@@ -126,6 +130,68 @@ describe("workflow run log service", () => {
         durationMs: 25,
         error: null,
       }),
+    })
+  })
+
+  it("logs a Datadog-visible error summary when caught phase errors fail Core Sync", async () => {
+    const client = createMockClient()
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const result = {
+      incremental: true,
+      durationMs: 100,
+      phases: [
+        {
+          phase: "videos",
+          created: 0,
+          updated: 0,
+          softDeleted: 0,
+          errors: 2,
+          durationMs: 75,
+        },
+        {
+          phase: "languages",
+          created: 1,
+          updated: 2,
+          softDeleted: 0,
+          errors: 0,
+          durationMs: 25,
+        },
+      ],
+    } satisfies SyncResult
+
+    await recordCoreSyncRunResult("workflow-run-1", result, client as never)
+
+    expect(client.workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "workflow-run-1" },
+      data: expect.objectContaining({
+        status: WorkflowRunStatus.FAILED,
+        error: "One or more Core sync phases failed.",
+      }),
+    })
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+
+    const payload = JSON.parse(String(errorSpy.mock.calls[0]?.[0]))
+    expect(payload).toMatchObject({
+      event: "core-sync.run.failed",
+      workflowRunId: "workflow-run-1",
+      incremental: true,
+      durationMs: 100,
+      totals: {
+        created: 1,
+        updated: 2,
+        softDeleted: 0,
+        errors: 2,
+      },
+      failedPhases: [
+        {
+          phase: "videos",
+          created: 0,
+          updated: 0,
+          softDeleted: 0,
+          errors: 2,
+          durationMs: 75,
+        },
+      ],
     })
   })
 

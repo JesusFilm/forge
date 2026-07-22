@@ -1,9 +1,15 @@
 import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
+import { useTranslations } from "next-intl"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import type { SceneRecommendation } from "@/lib/recommendations"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import { cn } from "@/lib/utils"
 
 type VideoRecommendationsProps = {
   recommendations: SceneRecommendation[]
@@ -21,10 +27,11 @@ function formatTimestamp(seconds: number): string {
 }
 
 function SimilarityBadge({ similarity }: { similarity: number }) {
+  const t = useTranslations("VideoRecommendations")
   const pct = Math.round(similarity * 100)
   return (
     <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-medium text-white/80">
-      {pct}% match
+      {t("match", { percent: pct })}
     </span>
   )
 }
@@ -46,13 +53,17 @@ function RecommendationCard({
   locale: string
   hrefBuilder: (rec: SceneRecommendation, locale: string) => Route
 }) {
+  const searchT = useTranslations("SearchResultCard")
   const themes = rec.themes.slice(0, 3)
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(rec.playbackId)
 
   return (
     <Link
       href={hrefBuilder(rec, locale)}
-      className="group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700"
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-lg bg-stone-800 transition hover:bg-stone-700",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-900">
         {rec.imageUrl ? (
@@ -65,7 +76,7 @@ function RecommendationCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center text-stone-600">
-            No image
+            {searchT("noImage")}
           </div>
         )}
         <MuxHoverPreview
@@ -75,6 +86,7 @@ function RecommendationCard({
         <div className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white/80">
           {formatTimestamp(rec.startSeconds)}
         </div>
+        <VideoThumbnailInteractionFrame data-testid="video-recommendation-thumbnail-frame" />
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
@@ -106,12 +118,9 @@ export function VideoRecommendations({
   locale,
   hrefBuilder = defaultHrefBuilder,
 }: VideoRecommendationsProps) {
+  const t = useTranslations("VideoRecommendations")
   if (recommendations.length === 0) {
-    return (
-      <div className="py-12 text-center text-stone-400">
-        No recommendations found for this video in this locale.
-      </div>
-    )
+    return <div className="py-12 text-center text-stone-400">{t("none")}</div>
   }
 
   return (

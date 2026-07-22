@@ -14,21 +14,33 @@
  * reasonless 404 is `unavailable`, so a config outage never presents as data
  * loss), 502 `unavailable`, 504 `timeout`. No anon-cookie minting here.
  *
- * Upstream handling per the repo's proxy discipline: https/loopback/railway
- * host guard before any call, `redirect: "error"`, an abort budget of
- * min(seekerTimeoutMs, 10s) — millisecond-class reads never inherit the 95s
- * generation ceiling — status classified BEFORE any body parse, and every
- * body read byte-capped (streamed counter, `reader.cancel()` past the cap;
- * the caught error is never logged). Logging is enum-only plain-string
- * `[history-proxy] event=… reason=…` — never ids, titles, or body fragments.
+ * Upstream handling per the repo's proxy discipline, via the shared
+ * transport in `lib/server/mastra-upstream` (feat-282): https/loopback/
+ * railway host guard before any call, the shared POST fetch shape
+ * (`redirect:"error"`), shared signal composition + failure classification
+ * (this proxy maps the discriminant onto KTD8 statuses), an abort budget
+ * clamped to [9s, 10s] (`composeHistoryTimeoutMs`) — millisecond-class reads
+ * never inherit the 95s generation ceiling — status classified BEFORE any
+ * body parse, and every body read byte-capped via the shared `readJsonCapped`
+ * (streamed counter, `reader.cancel()` past the cap; the caught error is
+ * never logged; the 2/8 MiB cap SIZES stay here). Logging is enum-only
+ * plain-string `[history-proxy] event=… reason=…` — never ids, titles, or
+ * body fragments.
  */
 
 import { resolveSeekerResource } from "@/auth/anon-id"
 import { type ChatIdentity } from "@/auth/session-cookie"
 import { env, seekerTimeoutMs } from "@/config/env"
 import { type SeekerGateDecision } from "@/lib/seeker-gate"
-
-import { hostAllowed } from "../seeker/route"
+import {
+  classifyUpstreamFailure,
+  composeUpstreamAbortSignal,
+  hostAllowed,
+  MAX_CONVERSATION_ID_CHARS,
+  postMastraUpstream,
+  readJsonCapped,
+  undefinedOnAbort,
+} from "@/lib/server/mastra-upstream"
 
 /** Ceiling on the composed history read budget (KTD7): these are
  * millisecond-class reads and must not inherit the 95s generation timeout. */
@@ -56,9 +68,6 @@ export function composeHistoryTimeoutMs(sendPathTimeoutMs: number): number {
  * still bounding a misbehaving upstream. The list page is far smaller. */
 export const HISTORY_LIST_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 export const HISTORY_THREAD_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
-
-/** Mirrors the seeker proxy's conversation-id bound (and Mastra's own cap). */
-const MAX_CONVERSATION_ID_CHARS = 200
 
 /** Signed-in resource prefix — prefix-check only, never split on ":". */
 const USER_RESOURCE_PREFIX = "user:"
@@ -147,63 +156,6 @@ function failureResponse(
   return jsonResponse(status, { reason })
 }
 
-/**
- * Byte-capped buffered JSON read (OOM-guard law): streams the body with a
- * byte counter and ABORTS the socket (`reader.cancel()`) the instant it
- * crosses `maxBytes` — `Content-Length` is never trusted. Any failure
- * (over-cap, transport, parse) resolves `undefined`; the caught error is
- * NEVER logged (a JSON.parse SyntaxError can embed raw body fragments).
- */
-async function readJsonCapped(
-  response: Response,
-  maxBytes: number,
-): Promise<unknown> {
-  const body = response.body
-  if (body == null) return undefined
-  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
-  try {
-    reader = body.getReader()
-    const chunks: Uint8Array[] = []
-    let received = 0
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (value !== undefined) {
-        received += value.byteLength
-        if (received > maxBytes) {
-          await reader.cancel()
-          return undefined
-        }
-        chunks.push(value)
-      }
-    }
-    const joined = new Uint8Array(received)
-    let offset = 0
-    for (const chunk of chunks) {
-      joined.set(chunk, offset)
-      offset += chunk.byteLength
-    }
-    return JSON.parse(new TextDecoder().decode(joined)) as unknown
-  } catch {
-    return undefined
-  } finally {
-    try {
-      reader?.releaseLock()
-    } catch {
-      // Lock already released by cancel — nothing to do.
-    }
-  }
-}
-
-/** Resolve `undefined` when the signal aborts — raced against a body read so
- * a slow upstream body cannot outlive the composed budget. */
-function undefinedOnAbort(signal: AbortSignal): Promise<undefined> {
-  return new Promise((resolve) => {
-    if (signal.aborted) return resolve(undefined)
-    signal.addEventListener("abort", () => resolve(undefined), { once: true })
-  })
-}
-
 type HistoryUpstream = {
   path: string
   body: Record<string, unknown>
@@ -249,28 +201,29 @@ async function forwardHistoryRequest(
 
   const upstream = buildUpstream(resourceId)
   const budgetSignal = AbortSignal.timeout(config.timeoutMs)
-  const signal = requestSignal
-    ? AbortSignal.any([requestSignal, budgetSignal])
-    : budgetSignal
+  const signal = composeUpstreamAbortSignal([requestSignal, budgetSignal])
 
   let response: Response
   try {
-    response = await fetchImpl(new URL(upstream.path, config.baseUrl), {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${config.apiKey}`,
-        "content-type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify(upstream.body),
-      redirect: "error",
+    response = await postMastraUpstream(fetchImpl, {
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      path: upstream.path,
+      accept: "application/json",
+      body: upstream.body,
       signal,
     })
   } catch (error) {
-    const name = (error as { name?: string } | null | undefined)?.name
-    if (budgetSignal.aborted || name === "TimeoutError") {
+    const failure = classifyUpstreamFailure(error, {
+      budgetSignal,
+      requestSignal,
+    })
+    if (failure === "timeout") {
       return failureResponse(504, "timeout", "upstream_failed")
     }
+    // This proxy's wire mapping: cancelled (caller gone — nobody reads the
+    // response) folds into 502 unavailable — same observable wire as the old
+    // name-based check, since only the budget source throws TimeoutError.
     return failureResponse(502, "unavailable", "upstream_failed")
   }
 

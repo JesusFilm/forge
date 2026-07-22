@@ -3,9 +3,14 @@
 // Literals here are cross-app contracts with apps/manager — do not rename
 // without updating the plan and the manager client.
 
-export type JobKind = "prepare" | "render"
+export type JobKind = "prepare" | "render" | "devotional-render"
 
-export type WorkerJobStatus = "queued" | "running" | "completed" | "failed"
+export type WorkerJobStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
 
 export type ArtifactRef = {
   assetId: string
@@ -40,9 +45,21 @@ export type RenderReport = {
   height: number
 }
 
+export type DevotionalRenderOutput = {
+  artifact: ArtifactRef
+  outputDurationSec: number
+  width: number
+  height: number
+}
+
+export type DevotionalRenderReport = {
+  portrait: DevotionalRenderOutput
+  wide: DevotionalRenderOutput
+}
+
 export type JobResult = {
   artifacts: ArtifactRef[]
-  report: PrepareReport | RenderReport
+  report: PrepareReport | RenderReport | DevotionalRenderReport
 }
 
 export type JobStatusBody = {
@@ -96,5 +113,15 @@ export type RenderMetaArtifact = {
   propsHash: string
   renderedDraftVersion: number
   compositionsVersion: string
+  generatedAt: string
+}
+
+export type DevotionalRenderMetaArtifact = {
+  schemaVersion: "1"
+  runId: string
+  inputAssetId: string
+  inputHash: string
+  portrait: DevotionalRenderOutput
+  wide: DevotionalRenderOutput
   generatedAt: string
 }

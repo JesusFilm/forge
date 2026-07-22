@@ -310,27 +310,10 @@ describe("handleSeekerProxyRequest — gates", () => {
     expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
-  it("allows http for a *.railway.internal base URL (prod private networking) → fetch proceeds", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      upstream([
-        {
-          event: "result",
-          data: { text: "ok", sources: [], grounded: false },
-        },
-      ]),
-    )
-    await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: {
-        ...BASE_CONFIG,
-        baseUrl: "http://example-service.railway.internal",
-      },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(fetchImpl).toHaveBeenCalledOnce()
-  })
-
-  it("allows http for a *.railway.internal base URL with a port → fetch proceeds", async () => {
+  // Wiring case for the PROD transport shape, kept at the proxy level on
+  // purpose: the label-boundary matrix lives in lib/server/mastra-upstream's
+  // unit suite, but only this proves the proxy still admits a railway base.
+  it("allows http for a *.railway.internal base URL (prod transport wiring) → fetch proceeds", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       upstream([
         {
@@ -361,145 +344,6 @@ describe("handleSeekerProxyRequest — gates", () => {
       { event: "error", data: { reason: "ssrf_blocked" } },
     ])
     expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("rejects http railway.internal.evil.com (suffix is a full-label match, not a substring) → ssrf_blocked", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: { ...BASE_CONFIG, baseUrl: "http://railway.internal.evil.com" },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("rejects http evilrailway.internal (no dot boundary) → ssrf_blocked", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: { ...BASE_CONFIG, baseUrl: "http://evilrailway.internal" },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("rejects http bare railway.internal (no leading label) → ssrf_blocked", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: { ...BASE_CONFIG, baseUrl: "http://railway.internal" },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("rejects http .railway.internal (empty leading label) → ssrf_blocked", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: { ...BASE_CONFIG, baseUrl: "http://.railway.internal" },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("rejects http foo..railway.internal (empty inner label) → ssrf_blocked", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: { ...BASE_CONFIG, baseUrl: "http://foo..railway.internal" },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("rejects a trailing-dot FQDN railway.internal. host → ssrf_blocked (pins fail-closed)", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: {
-        ...BASE_CONFIG,
-        baseUrl: "http://example-service.railway.internal.:4111",
-      },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("allows http for an uppercase *.RAILWAY.INTERNAL host (parser lowercases) → fetch proceeds", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      upstream([
-        {
-          event: "result",
-          data: { text: "ok", sources: [], grounded: false },
-        },
-      ]),
-    )
-    await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: {
-        ...BASE_CONFIG,
-        baseUrl: "http://EXAMPLE-SERVICE.RAILWAY.INTERNAL:4111",
-      },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(fetchImpl).toHaveBeenCalledOnce()
-  })
-
-  it("SSRF: railway.internal http base host NOT in a set allowlist → ssrf_blocked", async () => {
-    const fetchImpl = vi.fn()
-    const res = await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: {
-        ...BASE_CONFIG,
-        baseUrl: "http://example-service.railway.internal:4111",
-        allowedHosts: "trusted.internal",
-      },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(await proxyFrames(res)).toEqual([
-      { event: "error", data: { reason: "ssrf_blocked" } },
-    ])
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("SSRF: railway.internal http base host IN the allowlist → fetch proceeds", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      upstream([
-        {
-          event: "result",
-          data: { text: "ok", sources: [], grounded: false },
-        },
-      ]),
-    )
-    await runProxy({
-      readJson: readJson({ text: "hi", conversationId: "c1" }),
-      config: {
-        ...BASE_CONFIG,
-        baseUrl: "http://example-service.railway.internal:4111",
-        allowedHosts: "example-service.railway.internal",
-      },
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    })
-    expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
   it("SSRF: base host in allowlist → fetch proceeds", async () => {
@@ -728,6 +572,33 @@ describe("handleSeekerProxyRequest — upstream HTTP status classification", () 
     ])
   })
 
+  // feat-282 hardening delta: the 503 read is byte-capped (OOM-guard law).
+  // An over-cap body aborts the socket and maps to the existing
+  // config_missing outcome — same as any parse failure.
+  it("503 with an over-cap body → config_missing, socket cancelled", async () => {
+    let cancelled = false
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(256 * 1024))
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response(endless, { status: 503 }))
+    const res = await runProxy({
+      readJson: readJson({ text: "hi", conversationId: "c1" }),
+      config: BASE_CONFIG,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    })
+    expect(await proxyFrames(res)).toEqual([
+      { event: "error", data: { reason: "config_missing" } },
+    ])
+    expect(cancelled).toBe(true)
+  })
+
   it("404 (route disabled upstream) → config_missing", async () => {
     const fetchImpl = vi
       .fn()
@@ -896,14 +767,17 @@ describe("handleSeekerProxyRequest — mid-stream read failures", () => {
   })
 
   // The composed signal bounds fetch(), not a body read on an already-received
-  // 503 — a never-resolving json() must still terminate via the abort race.
-  it("503 whose json() outlives the budget → config_missing (abort race)", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue({
-      status: 503,
-      ok: false,
-      json: () => new Promise(() => {}),
-      body: null,
-    } as unknown as Response)
+  // 503 — a stalled 503 body must still terminate via the abort race.
+  it("503 whose body outlives the budget → config_missing (abort race)", async () => {
+    const stalled = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"reason": '))
+        // never closes
+      },
+    })
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response(stalled, { status: 503 }))
     const res = await runProxy({
       readJson: readJson({ text: "hi", conversationId: "c1" }),
       config: { ...BASE_CONFIG, timeoutMs: 5 },

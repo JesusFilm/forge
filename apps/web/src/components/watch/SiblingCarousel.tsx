@@ -20,6 +20,15 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
@@ -315,14 +324,20 @@ export function SiblingCarousel({
               validPendingNavigation.href === href &&
               validPendingNavigation.targetVideoDocumentId === child.documentId
             const thumbnailAlt = child.title
-              ? `${child.title} thumbnail`
-              : "Related video thumbnail"
+              ? t("thumbnailAlt", { title: child.title })
+              : t("relatedVideoThumbnail")
 
             const cardClassName = cn(
-              "group relative block aspect-video cursor-pointer overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80",
+              "relative block aspect-video overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",
+              href && "group cursor-pointer",
+              href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
               isActive
                 ? "opacity-100"
-                : "opacity-70 hover:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                : cn(
+                    "opacity-70",
+                    href &&
+                      "hover:opacity-100 focus-visible:opacity-100 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+                  ),
               isPending &&
                 !isActive &&
                 "opacity-100 shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
@@ -362,7 +377,7 @@ export function SiblingCarousel({
                   </div>
                 )}
                 <MuxHoverPreview
-                  previewUrl={muxPreview}
+                  previewUrl={href ? muxPreview : null}
                   sizes="(max-width: 640px) 48vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                 />
 
@@ -403,23 +418,24 @@ export function SiblingCarousel({
                 {/* Caption block — a lower frosted panel like the modern
                     episode rails, keeping text readable inside the
                     landscape tile. */}
-                <div
+                <VideoThumbnailCaption
                   data-testid="sibling-carousel-caption"
-                  className="absolute inset-x-0 bottom-0 z-20 flex h-full flex-col justify-end gap-[3px] bg-gradient-to-t from-black/68 via-black/35 to-transparent px-3 pt-3 pb-5 sm:px-4 sm:pt-4 sm:pb-6"
+                  inset="compact"
+                  className="z-20 bg-gradient-to-t from-black/68 via-black/35 to-transparent"
                 >
-                  <span className="text-[10px] font-normal tracking-[0.18em] text-stone-200/90 uppercase drop-shadow-md sm:text-xs">
+                  <VideoThumbnailEyebrow size="compact-sm">
                     {t("chapter")}
-                  </span>
+                  </VideoThumbnailEyebrow>
                   {/* Card title rendered as <span>, not <h3>: the cards are
                       sibling-navigation Link items and don't anchor their
                       own section. Emitting an <h3> with no parent <h2>
                       skipped the heading order (WCAG 1.3.1) and would
                       require an artificial sr-only section header. The
                       Link's accessible name covers the card's title. */}
-                  <span className="line-clamp-2 text-sm leading-tight font-semibold text-white drop-shadow-md sm:text-base">
+                  <VideoThumbnailTitle as="span" size="compact-sm">
                     {child.title ?? ""}
-                  </span>
-                </div>
+                  </VideoThumbnailTitle>
+                </VideoThumbnailCaption>
 
                 <div
                   aria-hidden="true"
@@ -428,16 +444,13 @@ export function SiblingCarousel({
                 />
                 <WatchProgressBar videoId={child.documentId} />
 
-                <div
-                  aria-hidden="true"
-                  data-testid="sibling-carousel-hover-outline"
-                  className={cn(
-                    "pointer-events-none absolute inset-0 z-[70] rounded-lg border-4 border-white opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.45),0_-4px_22px_rgba(255,255,255,0.22)] transition-opacity duration-200",
-                    !isActive &&
-                      "group-hover:opacity-100 group-focus-visible:opacity-100",
-                    isPending && "opacity-100",
-                  )}
-                />
+                {href ? (
+                  <VideoThumbnailInteractionFrame
+                    data-testid="sibling-carousel-hover-outline"
+                    interactive={!isActive}
+                    visible={isPending}
+                  />
+                ) : null}
 
                 <div
                   aria-hidden="true"

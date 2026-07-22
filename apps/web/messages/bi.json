@@ -7,7 +7,9 @@
     "noContent": "I no gat content.",
     "homepageMisconfigured": "Watch homepage i no set stret.",
     "defaultTemplateMisconfigured": "Default watch template i no set stret.",
-    "authFailed": "I no save authenticate wetem content service. Plis kontaktem support sipos hem i stap gohed olsem."
+    "authFailed": "I no save authenticate wetem content service. Plis kontaktem support sipos hem i stap gohed olsem.",
+    "pageLoadFailed": "Samting i no stret.",
+    "tryAgain": "Traem bakegen"
   },
   "VideosPage": {
     "title": "Olgeta Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Yu wantem kasem save moa dip long Baebol?",
     "joinBibleStudy": "Join long Baebol stadi blong yumi",
     "previousQuote": "Bible quote we i pas",
-    "nextQuote": "Bible quote we i kam next"
+    "nextQuote": "Bible quote we i kam next",
+    "readPassage": "Ritim vas ia long Baebol blong yu."
   },
   "DownloadButton": {
     "checking": "Stap jekem",
@@ -73,7 +76,8 @@
     "selectLanguage": "Jusum lanwis",
     "searchPlaceholder": "Sokem ol lanwis…",
     "languages": "Ol lanwis",
-    "noMatches": "I no gat samting i match"
+    "noMatches": "I no gat samting i match",
+    "notAvailable": "I no stap"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lanwis",
@@ -112,7 +116,8 @@
     "questions": "Ol Kwestin We i Joen",
     "askYours": "Askem blong yu",
     "chatWithPerson": "Toktok wetem wan man",
-    "askBibleQuestion": "Askem wan kwestin long Baebol"
+    "askBibleQuestion": "Askem wan kwestin long Baebol",
+    "quiz": "Kwiz"
   },
   "WatchQuestionPanel": {
     "messageType": "Kaen mesej",
@@ -170,7 +175,8 @@
     "searchRegion": "Sokem ol video",
     "clearSearch": "Kliarem search",
     "changeAudioLanguage": "Jenisem lanwis blong audio",
-    "home": "JesusFilm hom"
+    "home": "JesusFilm hom",
+    "closeSearch": "Satem search"
   },
   "SearchOverlay": {
     "dialogLabel": "Sokem mo browse ol video",
@@ -205,14 +211,19 @@
     "clearLanguages": "Kliarem",
     "queryLanguageDetected": "{language} i kamap",
     "searchInLanguage": "Sokem long {language}",
-    "tryDifferentKeywordsOrLanguage": "Traem defren keyword o jusum narafala search lanwis"
+    "tryDifferentKeywordsOrLanguage": "Traem defren keyword o jusum narafala search lanwis",
+    "useWebsiteDefaultLanguage": "Yusum defolt search lanwis blong website",
+    "removeLanguage": "Removem {language}",
+    "browseMode": "Browse mode blong search"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk naoia",
-    "tapToUnmute": "Tap blong onem saon"
+    "tapToUnmute": "Tap blong onem saon",
+    "nextEpisode": "Nex Episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Stap loadem content"
+    "loadingContent": "Stap loadem content",
+    "loadingVideo": "Stap loadem video"
   },
   "VideoLabels": {
     "video": "Vidio",
@@ -223,7 +234,8 @@
     "series": "Seris",
     "collection": "Kolosen",
     "trailer": "Sotpela preview",
-    "behindTheScenes": "Bihain long Sken"
+    "behindTheScenes": "Bihain long Sken",
+    "chapter": "Japta"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} long {total}",
@@ -235,11 +247,286 @@
     "noImage": "I no gat pija",
     "playingNow": "I stap plej naoia",
     "previousChapter": "Chapter bifo",
-    "nextChapter": "Chapter bihain"
+    "nextChapter": "Chapter bihain",
+    "thumbnailAlt": "Thumbnail blong {title}",
+    "relatedVideoThumbnail": "Thumbnail blong video we i join"
   },
   "SearchResultCard": {
     "experience": "Ekspiriens",
     "episodeCount": "{count, plural, one {# episod} other {# episod}}",
     "thumbnailAlt": "Thumbnail blong video"
+  },
+  "Feedback": {
+    "openForm": "Openem feedback form",
+    "label": "Tingting blong yu",
+    "couldNotLoad": "Feedback form i no save load.",
+    "loadingForm": "Stap loadem feedback form…",
+    "retry": "Traem bakegen",
+    "openFormShort": "Openem form",
+    "cancel": "Kansel",
+    "title": "Tingting long Beta",
+    "description": "Sharem wanem i wok gud mo wanem yumi save improve. Google i givim dis form.",
+    "openInNewTab": "Openem form long wan niu tab",
+    "closeForm": "Satem feedback form",
+    "loadingGoogleForm": "Stap loadem Google Form…",
+    "iframeTitle": "Submitum Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ol fri Kristin video long {language} | Jesus Film Project",
+    "metadataDescription": "Explorem ol Jesus film, stori blong Baebol, discipleship series, mo ol outreach video wetem voice we i dub o subtitles long {language}.",
+    "heroTitle": "Ol fri Kristin video long {language}",
+    "heroDescription": "Explorem ol Jesus film, stori blong Baebol, discipleship series, mo ol outreach video we i stap long {language}. Ol video we i ful dub i stanap fastaem, mo ol subtitle-only option i stap daon.",
+    "languageCollection": "Kolosen blong lanwis",
+    "itemCount": "{count, plural, one {# item} other {# item}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} long {groupCount, plural, one {# group} other {# group}}",
+    "sectionNavLabel": "Ol section blong language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Niu",
+    "videoBible": "Video Baebol",
+    "bibleProject": "BibleProject",
+    "sports": "Ol Spot",
+    "collections": "Ol kolosen",
+    "subtitlesOnly": "Ol subtitle nomo",
+    "newlyAdded": "Niu i joenem",
+    "newVideosTitle": "Ol niu Kristin video long {language}",
+    "newestFirst": "Niu fastaem",
+    "noPublishedVideos": "I no faenem eni published video yet blong lanwis ia.",
+    "bibleAndGospelFilms": "Ol film blong Baebol mo Gospel",
+    "videoBibleCollectionsTitle": "{language} Video Baebol collections",
+    "videoBibleDescription": "Ol scripture-centered collection olsem LUMO, JESUS, Magdalena, mo Acts long {language}.",
+    "noVideoBibleCollections": "I no gat Video Baebol collection yet blong lanwis ia.",
+    "bibleProjectCollectionsTitle": "Ol {language} BibleProject collection",
+    "bibleProjectDescription": "Ol BibleProject series mo study we i stap long {language}.",
+    "noBibleProjectCollections": "I no gat BibleProject collection yet blong lanwis ia.",
+    "sportsStories": "Ol stori blong sports",
+    "sportsTitle": "{language} sports mo ol stori blong athlete",
+    "sportsDescription": "Ol stori blong faith long sports mo ol collection we i focus long athlete i stap long {language}.",
+    "noSportsCollections": "I no gat sports o athlete-story collection yet blong lanwis ia.",
+    "fullyDubbed": "Ful dub",
+    "dubbedVideosTitle": "Ol {language} video long collection",
+    "dubbedVideosDescription": "Browsem ol ful dub {language} video we i grup wetem collection blong olgeta blong mekem i isi blong faenem.",
+    "noDubbedVideos": "I no gat eni ful dub video yet blong lanwis ia.",
+    "subtitlesAvailable": "Ol subtitle i stap",
+    "subtitlesTitle": "Ol {language} video wetem subtitles",
+    "subtitlesDescription": "Ol video ia i gat {language} subtitles taem spoken {language} audio i no stap yet.",
+    "noSubtitleVideos": "I no gat subtitle-only video yet blong lanwis ia.",
+    "dubbed": "I gat dub",
+    "subtitles": "Ol Subtitle",
+    "newLabel": "Niu",
+    "fromCollection": "Long {collection}",
+    "standaloneVideos": "Ol video we i stanap olsem",
+    "videosFromCollection": "Ol video from {collection}.",
+    "standaloneDescription": "Ol video we i stanap olsem long lanwis ia.",
+    "openCollection": "Openem collection"
+  },
+  "WatchHome": {
+    "pageTitle": "Lukluk long Jesus Film Project",
+    "watch": "Lukluk",
+    "watchNow": "Lukluk Naoia",
+    "mutePreview": "Satem preview saon",
+    "unmutePreview": "Onem preview saon",
+    "nextVideo": "Nex video",
+    "featured": "We mifala i jusum",
+    "showVideo": "Soem {title}",
+    "previousVideoPreview": "Preview blong video bifo",
+    "nextVideoPreview": "Preview blong nex video",
+    "mediaCollection": "Kolosen blong media",
+    "scrollToVideo": "Scroll go long video {title}"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project hom",
+    "navigation": "Navigation long futa",
+    "share": "Sharem",
+    "watch": "Lukluk",
+    "giving": "Blong Giv",
+    "about": "Abaot Mifala",
+    "products": "Ol product",
+    "resources": "Ol resource",
+    "partners": "Ol partner",
+    "contact": "Kontakt",
+    "giveNow": "Giv Naoia",
+    "resourcesVersion": "Ol resource ({version})",
+    "office": "Ofis",
+    "fax": "Faks",
+    "privacyPolicy": "Polisi blong Praevesi",
+    "legalStatement": "Legal Toksave",
+    "newsletter": "Saenap blong Kasem Niusleta blong Mifala"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Mekem blong global missions",
+    "title": "Mesej i no save jenis. Wei we ol man i lukluk hem i jenis.",
+    "description": "Mifala i wokem bakegen video library mo tools blong mifala stat long foundation, mo i tekem decades blong translation wok i go long olketa platform we ol man i stap finis long hem, lukluk, mo sharem.",
+    "translatedLibraryTitle": "Film library we i gat ol moa translation long wol",
+    "translatedLibraryDescription": "Decades blong translation wok, we olketa trusted ministry partner i karrem, i bin buildim wan library wetem taosen lanwis track blong mekem ol man i save faenem stori blong Jisas long lanwis we i kasem olgeta dip moa.",
+    "trustedVoicesTitle": "Karem olketa trusted voice i go long olketa niu format",
+    "trustedVoicesDescription": "Mifala i wokem bakegen wei blong talem gospel stori long visual form, mo mifala i putum olketa trusted translation wetem olketa modern format blong mekem mesej i save muv fri long olketa platform, kultur, mo screen.",
+    "missionTeamTitle": "Moa long wan library. Wan mission-driven team.",
+    "missionTeamDescription": "Jesus Film Project i wan global team blong olketa translator, media specialist, editor, mo creator we oli stap tanem decades blong ministry experience i kam long olketa tool blong disciple-maker long evri ples.",
+    "buildingNext": "Wanem mifala i stap buildim next",
+    "nextStepsTitle": "Platform blong Nekis Step",
+    "nextStepsDescription": "Konektim olketa viewer wetem olketa konkret opportunity long spiritual journey blong olgeta, blong helpem olgeta tek wan next step go long community, Scripture, o mission.",
+    "mediaLibraryTitle": "Laebri blong Media blong Evangelism",
+    "mediaLibraryDescription": "Wan bigfala Christian media library wetem taosen video, film, mo resource we i stap long plante lanwis blong ministry mo evangelism long wol.",
+    "ministryToolsTitle": "Ol Dijitol Tul blong Ol Ministry",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, mo analytics we i design blong helpem olketa ministry reachim moa pipol gud.",
+    "invitationEyebrow": "Yufala i invaetem",
+    "invitationTitle": "Helpem blong buildim <highlight>ol next generation</highlight> mission tools",
+    "invitationDescription": "Mifala i invaetem olketa practitioner, creator, mo partner i go long early access. Testem olketa niu tool fastaem, givim feedback, mo helpem shapeim olketa product we i design blong real mission wok.",
+    "betaTester": "Kam beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Baebol Collection",
+    "gospelRailTitle": "Discoverim full stori",
+    "videoBibleDescription": "Explorem collection blong olketa video mo resource we i mekem Baebol i kam laef tru long olketa stori mo teaching we i gat interest.",
+    "showcaseTitle": "Scripture We i Tolem long Film",
+    "adventEyebrow": "Krismas Advent",
+    "adventTitle": "Krismas Advent Countdown",
+    "adventDescription": "Join long Advent journey blong yumi wetem wan daily video we i mekem anticipation blong Krismas i gro, mo explorem hope, joy, mo promise blong kam blong Jisas.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent blong BibleProject",
+    "nuaEyebrow": "Seris NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seris Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kos long Video",
+    "journeyWithJesusTitle": "Journey wetem Jisas",
+    "gospelsOnVideoEyebrow": "Evri Gospel, Tolem long Video",
+    "scriptureAsWrittenTitle": "Scripture, Tolem stret olsem we i raetem",
+    "merryChristmas": "Hapi Krismas!",
+    "daysUntilChristmas": "{count, plural, one {# de i stap bifo Krismas} other {# de i stap bifo Krismas}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ol lanwis",
+    "metadataDescription": "Browsem olketa JesusFilm video long lanwis.",
+    "eyebrow": "Ol watch lanwis",
+    "title": "Jusum wan lanwis",
+    "description": "Explorem olketa lanwis long region o browsem full list.",
+    "searchPlaceholder": "Sokem olketa lanwis o kantri...",
+    "searchLabel": "Sokem olketa lanwis o kantri",
+    "clearSearch": "Kliarem search",
+    "browse": "Browsem",
+    "browseByRegion": "Browse long region mo kantri",
+    "languageCount": "{count, plural, one {# lanwis} other {# lanwis}}",
+    "region": "Rijen",
+    "countryLanguages": "Ol lanwis blong {country}",
+    "showLess": "Soem smol moa",
+    "showMore": "Soem {count} moa",
+    "noLanguages": "I no faenem eni lanwis",
+    "tryAnotherSearch": "Traem narafala search word."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Histri blong Lukluk | Jesus Film Project",
+    "title": "Histri blong Lukluk",
+    "loading": "Stap loadem histri",
+    "empty": "I no gat samting yet",
+    "emptyDescription": "Ol video we yu luk taem yu sign in bae oli kamap long hia.",
+    "earlier": "Bifo",
+    "today": "Tede",
+    "yesterday": "Yestede"
+  },
+  "AccountControl": {
+    "account": "Akaon",
+    "accountMenu": "Menu blong akaon",
+    "signIn": "Saen in",
+    "signOut": "Saen aot",
+    "signedIn": "Yu saen in finis",
+    "history": "Histri",
+    "logOut": "Log aot"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page i no faond",
+    "eyebrow": "Page i no faond",
+    "screenReaderPrefix": "Page i no faond:",
+    "title": "Sken ia i no stap long hia.",
+    "description": "Page maet i muv, be stori i gohed.",
+    "actionsLabel": "Ol aksen blong page i no faond",
+    "backToWatch": "Go bak long Watch",
+    "browseVideos": "Browsem olketa video"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Lukluk Sot Film",
+    "actions": {
+      "joinUs": "Join wetem mifala",
+      "shareMission": "Sharem mission blong mifala"
+    },
+    "welcomeStart": {
+      "label": "Bilif mo Baebol",
+      "title": "Video we mifala i pikim tede",
+      "description": "Ol video long library blong mifala we i stap long faith mo Scripture blong givim inspiration, challenge, mo mekem tingting i go dip."
+    },
+    "welcomeMorning": {
+      "label": "Inspirason blong Moning",
+      "title": "Gud moning! Ol Bible moment blong tede i wet long yu.",
+      "description": "Statem de blong yu wetem ol encouragem Bible moment we i mekem spirit blong yu i kam antap."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirason blong Aftenun",
+      "title": "Gud aftenun! Ol Bible moment blong de blong yu.",
+      "description": "Ol encouragem Bible video we i fit long aftenun rest blong yu o blong gohed blong kisim inspiration."
+    },
+    "welcomeEvening": {
+      "label": "Inspirason blong Ivning",
+      "title": "Gud ivning! Rest gud wetem ol Bible moment.",
+      "description": "Ol kwaet Bible moment blong helpem yu tingting bakegen mo faenem comfort taem de blong yu i go finis."
+    },
+    "joinUs": {
+      "label": "Join wetem mifala",
+      "title": "Billion i stap lukaot",
+      "description": "Harvest i kamap. Kam join wetem mifala taem mifala i serem gospel long wol long digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Yumi go tugeta",
+      "title": "Yumi talem stori blong Jisas tugeta",
+      "description": "Blong oli save harem mo luklavem blong Jisas long olgeta wanfala lanwis, stret long ples we oli stap long hem."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% i match",
+    "none": "I no faenem eni video we i stret blong rekomendem wetem video ia long lanwis ia."
+  },
+  "BetaTesterModal": {
+    "title": "Kam beta tester",
+    "trigger": "Kam beta tester",
+    "loadFailed": "Samting i no stret.",
+    "loading": "Stap loadem...",
+    "openFormNewTab": "Openem form long wan niu tab",
+    "close": "Satem",
+    "iframeTitle": "Kam beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

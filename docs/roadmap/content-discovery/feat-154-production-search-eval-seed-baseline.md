@@ -3,7 +3,7 @@ id: "feat-154"
 title: "Production search eval seed baseline capture"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-06-01"
 duration: 1
 depends_on:

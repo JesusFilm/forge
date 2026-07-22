@@ -76,6 +76,11 @@ A Media Signature is keyed by the source `coreId`, the variant
 `videoVariantId`, signature type, algorithm version, and time offset. It is
 evidence for matching, not catalog metadata.
 
+An algorithm version names the complete extraction and comparison contract.
+Signatures from different versions may coexist but are not interchangeable; a
+project rule requires introducing a new version for sampling or hashing changes
+before readers select it.
+
 ### Media Fingerprint
 
 A deterministic, content-derived Media Signature designed to identify source
@@ -372,9 +377,13 @@ A curated, themed watch page — such as Easter or Christmas — that assembles 
 
 An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.
 
+### Media Collection Block
+
+An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
+
 ### Homepage Experience
 
-The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's existing bulk video fetch. The featured hero stays code-defined per client — see Home Curation.
+The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
 
 ### Home Curation
 
@@ -492,6 +501,12 @@ An expired, shape-drifted, or empty Home Snapshot never paints — launch falls 
 The TV home's top-of-screen canvas that reflects whatever card currently holds D-pad focus — artwork, title, and description swap as focus moves through the rails. It defaults to the first featured item on load and retains the last focused card when focus leaves the rows. The inversion of an autoplay hero: the user's focus drives the canvas, and no background video player is mounted.
 
 ## Watch player UI
+
+### Watch Modal Activity
+
+The aggregate ownership state of every Watch overlay that must suspend route-owned playback, independent of which component renders the overlay or which player is active.
+
+Activity begins when the first owner opens and ends only after the final owner releases through its visible close lifecycle. Resume entitlement belongs to the exact media and source that were playing before activity began; late, replaced, or source-swapped media is paused without inheriting that entitlement.
 
 ### Chrome
 

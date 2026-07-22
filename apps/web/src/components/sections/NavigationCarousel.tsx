@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
   LegacyFragmentValue,
@@ -12,6 +13,10 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel"
 import { Card } from "@/components/ui/card"
+import {
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
@@ -36,6 +41,7 @@ function handleNavigationClick(contentId: string) {
 }
 
 function NavCard({ item, index }: { item: NavItem; index: number }) {
+  const t = useTranslations("WatchHome")
   const isFirst = index === 0
 
   return (
@@ -51,7 +57,7 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
       }}
       tabIndex={0}
       role="button"
-      aria-label={`Scroll to ${item.title} video`}
+      aria-label={t("scrollToVideo", { title: item.title })}
       data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
     >
       {isFirst && item.imageUrl ? (
@@ -74,18 +80,15 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
         />
       ) : null}
       <div className="p-4">
-        <span
-          className="text-xs font-medium tracking-wider uppercase text-amber-100/60"
-          data-testid="CarouselItemCategory"
-        >
+        <VideoThumbnailEyebrow data-testid="CarouselItemCategory">
           {item.category}
-        </span>
-        <h3
-          className="line-clamp-3 text-base leading-tight font-bold text-white/90"
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle
+          lines={3}
           data-testid={`CarouselItemTitle-${item.contentId.split("/")[0]}`}
         >
           {item.title}
-        </h3>
+        </VideoThumbnailTitle>
       </div>
     </Card>
   )

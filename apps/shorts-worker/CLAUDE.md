@@ -45,14 +45,17 @@ src/
   config/env.ts    Validated env (zod, emptyToUndefined, assertRuntimeEnv —
                    production also asserts model/whisper/bundle paths EXIST)
   server.ts        createHandleRequest DI factory + self-start (not in test)
-  routes/jobs.ts   POST /jobs + GET /jobs/{workerJobId} (zod schemas,
+  routes/jobs.ts   POST /jobs + GET/DELETE /jobs/{workerJobId} (zod schemas,
                    pre-enqueue SSRF gate, dedupe keys, enqueue-time deadline)
+  routes/devotional-artifacts.ts  Bounded input PUT + output streaming GET
   auth.ts          CSV bearer allowlist (timing-safe full-list compare)
   jobs.ts          In-memory registry + TWO bounded lanes + in-flight dedupe
   deadline.ts      Per-job deadline (enqueue-time budget, caps invocations)
   source-url.ts    SSRF enforcement (exact-host allowlist, https-only-in-prod)
   prepare.ts       Trim + probe + whisper pipeline + prepare artifacts
   render.ts        Baked-bundle Remotion render + output sanity + artifacts
+  devotional-render.ts  Arclight lookup/download + ffmpeg prep + one-bundle
+                   portrait/wide render + durable outputs
   clip-server.ts   Loopback single-file static server for renders
   whisper.ts       @remotion/install-whisper-cpp wrapper + hallucination filter
   ffmpeg.ts        RunCommand (spawn) + probeMedia + protocol whitelist
@@ -76,8 +79,8 @@ bearer → 401 `{"error":"unauthorized"}`.
 - `GET /health` (unauthenticated) → `{ "ok": true, "service": "shorts-worker" }`
 - `POST /jobs` → 202 `{ "workerJobId": "wj_...", "status": "queued" | "running" }`;
   400 `invalid_body` (including SSRF-rejected source URLs), 409 `queue_full`,
-  413 `body_too_large`. Body is the discriminated `kind: "prepare" | "render"`
-  shape:
+  413 `body_too_large`. Body is the discriminated
+  `kind: "prepare" | "render" | "devotional-render"` shape:
   - **prepare**: `{ kind, jobId?, assetId, source: { url }, clip: { startSec,
 endSec }, transcription: { language: string | null } }`. `language` is
     the whisper ISO-639-1 code resolved by manager (`null` = unsupported →
@@ -87,14 +90,25 @@ endSec }, transcription: { language: string | null } }`. `language` is
     `@forge/shorts-compositions/schema` — the worker injects the loopback
     `clipUrl` at compose time; `propsHash` is the manager-computed sha256
     treated as an OPAQUE token (shape-checked, never recomputed).
+  - **devotional-render**: `{ kind, jobId?, runId, inputAssetId,
+outputAssetId, inputHash }`. The worker owns Arclight lookup/download,
+    ffmpeg preparation, and one-bundle portrait + wide rendering.
 - `GET /jobs/{workerJobId}` → snapshot
-  `{ workerJobId, kind, status: queued|running|completed|failed, progress
+  `{ workerJobId, kind, status: queued|running|completed|failed|cancelled, progress
 0..1, message, error, result }`. `error` is structured
   `{ reason, messages, retryable }` — manager maps `retryable:false` to a
   workflow `FatalError`. On completion `result` = `{ artifacts: [{ assetId,
 artifactType, ext }], report }` (prepare report: `{ hasAudio,
 clipDurationSec, captionsCount, annotation }`; render report:
   `{ outputDurationSec, width, height }`). 404 `not_found` for unknown ids.
+- `DELETE /jobs/{workerJobId}` cancels devotional jobs and returns 202.
+- `PUT /devotional-inputs/{inputAssetId}/{artifactType}.{ext}` accepts only
+  the fixed devotional JSON/narration/music types and enforces auth, content
+  type, schema validation, and per-type body caps.
+- `GET /artifacts/{outputAssetId}/{artifactType}.mp4` streams only the
+  authenticated portrait/wide devotional output types. Input and metadata
+  artifacts are never exposed by this route. Single-byte ranges return 206
+  with `Content-Range`; invalid ranges return 416.
 
 ## Lanes, queue, dedupe
 
@@ -103,8 +117,12 @@ clipDurationSec, captionsCount, annotation }`; render report:
   the limit → 409 `queue_full` (manager waits 30s and resubmits, bounded).
   The registry is shared (GET doesn't know the kind); capacity is per-lane
   so a 20-minute render never starves prepares.
+- Devotional renders share the existing render lane, preventing concurrent
+  Shorts + devotional Chromium workloads from oversubscribing the worker.
 - **In-flight dedupe keys:** `prepare:{assetId}` and
-  `render:{assetId}:{propsHash}` — deliberately NOT the manager `jobId`. A
+  `render:{assetId}:{propsHash}`; devotional uses
+  `devotional-render:{outputAssetId}:{inputHash}` — deliberately NOT the
+  manager `jobId`. A
   re-launched manager workflow, SDK step retry, or operator retry for the
   same logical work then RE-ATTACHES to the running job (202 with the
   existing `workerJobId`, `event=job_deduped`) instead of double-rendering.
@@ -187,13 +205,19 @@ lane slot) AND again inside `runPrepare` before any ffmpeg/ffprobe spawn
 Key scheme `{assetId}/{artifactType}.{ext}` (validated, flat). `assetId` is
 the per-short prefix minted by manager (`{muxAssetId}-short-{suffix}`).
 
-| Artifact                     | Written by | Contents                                                               |
-| ---------------------------- | ---------- | ---------------------------------------------------------------------- |
-| `shorts-clip-v1.mp4`         | prepare    | trimmed 30fps clip (libx264 veryfast CRF 17 intermediate, +faststart)  |
-| `shorts-clip-meta-v1.json`   | prepare    | HOST-ONLY source provenance, bounds, duration/fps/dimensions, hasAudio |
-| `shorts-captions-v1.json`    | prepare    | whisper word captions + language + model + annotation + generatedAt    |
-| `shorts-output-v1.mp4`       | render     | 1080x1920 H.264 rendered short (ffprobe-verified, duration ±0.5s)      |
-| `shorts-render-meta-v1.json` | render     | propsHash (echoed verbatim), renderedDraftVersion, compositionsVersion |
+| Artifact                            | Written by        | Contents                                                               |
+| ----------------------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `shorts-clip-v1.mp4`                | prepare           | trimmed 30fps clip (libx264 veryfast CRF 17 intermediate, +faststart)  |
+| `shorts-clip-meta-v1.json`          | prepare           | HOST-ONLY source provenance, bounds, duration/fps/dimensions, hasAudio |
+| `shorts-captions-v1.json`           | prepare           | whisper word captions + language + model + annotation + generatedAt    |
+| `shorts-output-v1.mp4`              | render            | 1080x1920 H.264 rendered short (ffprobe-verified, duration ±0.5s)      |
+| `shorts-render-meta-v1.json`        | render            | propsHash (echoed verbatim), renderedDraftVersion, compositionsVersion |
+| `devotional-render-input-v1.json`   | upload            | Content, media id/window, segments, and render options                 |
+| `devotional-narration-{id}-v1.mp3`  | upload            | One bounded narration segment                                          |
+| `devotional-music-v1.mp3`           | upload            | Optional bounded music bed                                             |
+| `devotional-output-portrait-v1.mp4` | devotional-render | 1080x1920 H.264 output                                                 |
+| `devotional-output-wide-v1.mp4`     | devotional-render | 1920x1080 H.264 output                                                 |
+| `devotional-render-meta-v1.json`    | devotional-render | Input provenance and both output refs/metadata                         |
 
 Reads: render reads `shorts-clip-v1.mp4`. Manager-owned artifacts under the
 same prefix (`shorts-draft-v1.json`, `shorts-render-props-v1.json`,
@@ -206,9 +230,9 @@ an accepted v1 cost (no GC).
 
 All optional at schema load (opt-in scaffolding rule); `assertRuntimeEnv()`
 throws at startup in production when the required set is missing — and ALSO
-when `SHORTS_WORKER_BUNDLE_DIR` / `SHORTS_WORKER_WHISPER_MODEL_PATH` /
-`SHORTS_WORKER_WHISPER_CPP_DIR` point at paths that don't exist (fail-fast
-on a broken image).
+when `SHORTS_WORKER_BUNDLE_DIR` / `SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR` /
+`SHORTS_WORKER_WHISPER_MODEL_PATH` / `SHORTS_WORKER_WHISPER_CPP_DIR` point at
+paths that don't exist (fail-fast on a broken image).
 
 | Variable                             | Default        | Notes                                                                                                                         |
 | ------------------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -224,12 +248,13 @@ on a broken image).
 | SHORTS_WORKER_ALLOWED_SOURCE_HOSTS   | stream.mux.com | exact-host CSV; S3 host deliberately excluded (see SSRF invariants)                                                           |
 | SHORTS_WORKER_RENDER_CONCURRENCY     | 2              | Remotion renderMedia concurrency (2 on 4 vCPU — x264 needs the rest)                                                          |
 | SHORTS_WORKER_BUNDLE_DIR             | —              | baked bundle dir (`/app/bundle` in Docker); required + must exist in prod; absent → runtime-memoized `bundle()` for local dev |
+| SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR  | —              | baked devotional bundle (`/app/devotional-bundle`); required + must exist in prod; copied per job to stage media              |
 | SHORTS_WORKER_WHISPER_MODEL_PATH     | —              | required + must exist in prod; unset locally → captions-less degradation                                                      |
 | SHORTS_WORKER_WHISPER_CPP_DIR        | —              | whisper.cpp install dir; required + must exist in prod                                                                        |
 | SHORTS_WORKER_WHISPER_CPP_VERSION    | 1.7.4          | SEMVER string (raw commit SHAs break install-whisper-cpp's compareVersions); keep in sync with the Dockerfile pins            |
 | SHORTS_WORKER_QUEUE_LIMIT            | 2              | per-LANE cap (pending + running) → 409 `queue_full`                                                                           |
 | SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS | 2700000        | 45min per-JOB budget; < manager's 50min prepare poll ceiling                                                                  |
-| SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS  | 4200000        | 70min per-JOB budget; < manager's 80min render poll ceiling                                                                   |
+| SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS  | 4200000        | 70min per-JOB budget; schema-capped at 4740000ms, leaving 60s below Mastra's 80min devotional poll ceiling                    |
 | SHORTS_WORKER_FFMPEG_TIMEOUT_MS      | 1800000        | 30min per-invocation cap                                                                                                      |
 | SHORTS_WORKER_WHISPER_TIMEOUT_MS     | 1800000        | 30min per-invocation cap                                                                                                      |
 
@@ -300,11 +325,15 @@ Keep it that way.
 4. Set `RAILWAY_S3_*` + `SHORTS_WORKER_API_KEYS`. The keyring MUST be a
    **distinct secret from `CROP_WORKER_API_KEYS`** — a shared value would
    make one worker's bearer authorize the other.
+   Keep the object bucket private and its credentials Worker-only; never expose
+   public or presigned object URLs in the lifecycle contract.
 5. **Receiver first:** verify a wrong bearer returns 401 — NOT 503
    (`curl -H "Authorization: Bearer wrong" https://<worker>/jobs`). A 503
    means `SHORTS_WORKER_API_KEYS` isn't set. Only THEN set manager's
    `SHORTS_WORKER_BASE_URL` + `SHORTS_WORKER_API_KEY`. Reverse order
    produces a dead minute where manager's first call 401s.
+   Also prove anonymous job submission, cancellation, devotional input upload,
+   and artifact Range reads return 401, and anonymous bucket reads are denied.
 6. Healthcheck `/health` with `healthcheckTimeout = 120` (railway.toml).
    120s is deliberately BELOW Railway's 300s default: boot does no heavy
    work (the Remotion bundle is pre-baked, the whisper model is loaded

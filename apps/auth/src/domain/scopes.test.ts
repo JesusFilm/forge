@@ -8,6 +8,7 @@ describe("Auth scopes", () => {
     expect(isKnownScope("admin:access")).toBe(true)
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
+    expect(isKnownScope("experience:publish")).toBe(true)
     expect(isKnownScope("made:up")).toBe(false)
   })
 
@@ -28,5 +29,33 @@ describe("Auth scopes", () => {
     expect(
       describeScopes(["email:read", "openid"]).map((scope) => scope.key),
     ).toEqual(["openid", "email:read"])
+  })
+
+  it("describes Admin MCP Experience scopes for consent screens", () => {
+    expect(
+      describeScopes([
+        "experience:publish",
+        "video:read",
+        "experience:read",
+        "media:read",
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        key: "experience:read",
+        label: "Read experiences",
+      }),
+      expect.objectContaining({
+        key: "media:read",
+        label: "Read media",
+      }),
+      expect.objectContaining({
+        key: "video:read",
+        label: "Read videos",
+      }),
+      expect.objectContaining({
+        key: "experience:publish",
+        label: "Publish experience locales",
+      }),
+    ])
   })
 })

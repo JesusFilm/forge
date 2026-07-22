@@ -15,6 +15,7 @@ import {
 } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 import MuxVideo from "@forge/video-player/mux-video"
+import { useTranslations } from "next-intl"
 import {
   Play,
   Share2,
@@ -33,11 +34,21 @@ import {
 } from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
 import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   WATCH_PAGE_CONTENT_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
 } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
 import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
+import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -53,6 +64,12 @@ import {
   watchHomeTvAdvanceTargetSeconds,
   type WatchHomeTvCarouselSlide,
 } from "@/components/home/useWatchHomeTvCarousel"
+import { videoLabelMessageKey } from "@/lib/video-labels"
+import { getWebVttCueText } from "@/lib/webvtt"
+import {
+  useWatchHomeTvSlideCopy,
+  watchHomeMuxActionMessageKey,
+} from "@/components/home/useWatchHomeTvSlideCopy"
 
 type WatchHomeTvCarouselProps = {
   slides: WatchHomeHeroSlide[]
@@ -146,6 +163,8 @@ function PrimaryAction({
   playbackTimeSeconds: number
   slide: WatchHomeTvCarouselSlide
 }) {
+  const t = useTranslations("WatchHome")
+  const muxCopy = useTranslations("WatchHomeMuxInserts")
   const primaryClassName =
     "inline-flex h-11 min-w-0 max-w-full items-center gap-2 rounded-full bg-brand-red px-4 text-sm font-bold text-white shadow-[0_14px_32px_rgba(0,0,0,0.34)] transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none sm:h-14 sm:gap-3 sm:px-6 sm:text-lg"
   const secondaryClassName =
@@ -159,7 +178,7 @@ function PrimaryAction({
         onClick={() => onWatchShortFilm?.(slide)}
       >
         <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
-        <span className="truncate">{slide.secondaryAction.label}</span>
+        <span className="truncate">{muxCopy("watchShortFilm")}</span>
       </button>
     ) : null
 
@@ -168,7 +187,9 @@ function PrimaryAction({
       <div className="flex max-w-[calc(100vw-9rem)] flex-col items-start gap-3 sm:max-w-full sm:flex-row sm:items-center">
         <a href={slide.action.url} className={primaryClassName}>
           <PrimaryActionIcon icon={slide.action.icon} />
-          <span className="truncate">{slide.action.label}</span>
+          <span className="truncate">
+            {muxCopy(watchHomeMuxActionMessageKey(slide.action.copyId))}
+          </span>
         </a>
         {secondaryAction}
       </div>
@@ -183,7 +204,7 @@ function PrimaryAction({
       className={primaryClassName}
     >
       <Play className="h-5 w-5 shrink-0 fill-current" aria-hidden />
-      <span className="truncate">Watch Now</span>
+      <span className="truncate">{t("watchNow")}</span>
     </Link>
   )
 }
@@ -300,12 +321,6 @@ function WatchHomeTvMedia({
   )
 }
 
-function stripHtmlTags(text: string): string {
-  if (typeof DOMParser === "undefined") return text.replace(/<[^>]+>/g, "")
-  const doc = new DOMParser().parseFromString(text, "text/html")
-  return doc.body.textContent ?? ""
-}
-
 function useWatchHomeMutedSubtitles({
   activeSlideId,
   onCueTextChange,
@@ -365,7 +380,7 @@ function useWatchHomeMutedSubtitles({
       const texts: string[] = []
       for (let i = 0; i < activeCues.length; i++) {
         const cue = activeCues[i] as VTTCue
-        if (cue.text) texts.push(stripHtmlTags(cue.text))
+        if (cue.text) texts.push(getWebVttCueText(cue))
       }
       onCueTextChange(texts.length > 0 ? texts.join("\n") : null)
     }
@@ -410,6 +425,8 @@ function WatchHomeTvVisualLayer({
   priority: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
+  const copy = useWatchHomeTvSlideCopy(slide)
+
   return (
     <div
       className={cn("absolute inset-0", className)}
@@ -418,7 +435,7 @@ function WatchHomeTvVisualLayer({
       {slide.posterUrl ? (
         <Image
           src={slide.posterUrl}
-          alt={slide.imageAlt}
+          alt={copy.imageAlt}
           fill
           priority={priority}
           sizes="100vw"
@@ -455,6 +472,7 @@ function WatchHomeTvOverlay({
   onWatchShortFilm: (slide: WatchHomeTvCarouselSlide) => void
   playbackTimeSeconds: number
 }) {
+  const t = useTranslations("WatchHome")
   const advanceDurationSeconds =
     watchHomeTvSlideAdvanceDurationSeconds(activeSlide)
 
@@ -506,7 +524,7 @@ function WatchHomeTvOverlay({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={isMuted ? "Unmute preview" : "Mute preview"}
+            aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
             onClick={onToggleMuted}
             className="h-14 w-14 rounded-full text-white/80 hover:bg-white/10 hover:text-white"
           >
@@ -529,6 +547,16 @@ function watchHomeTvSlideAdvanceDurationSeconds(
   return watchHomeTvAdvanceTargetSeconds(slide.durationSeconds ?? Number.NaN)
 }
 
+function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
+  const t = useTranslations("WatchHome")
+  const videoLabels = useTranslations("VideoLabels")
+  const copy = useWatchHomeTvSlideCopy(slide)
+
+  if (slide.kind === "mux") return copy.label
+  if (slide.label === "Featured") return t("featured")
+  return videoLabels(videoLabelMessageKey(slide.label))
+}
+
 function WatchHomeTvOverlayContent({
   enterDelayOffsetMs = 0,
   mode,
@@ -544,6 +572,7 @@ function WatchHomeTvOverlayContent({
   showAction?: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
+  const copy = useWatchHomeTvSlideCopy(slide)
   const enterDelays = [0, 70, 140, 210]
   const exitDelays = [0, 35, 70, 105]
   const itemClassName =
@@ -570,7 +599,7 @@ function WatchHomeTvOverlayContent({
           )}
           style={delayStyle(0)}
         >
-          {slide.label}
+          <WatchHomeTvSlideLabel slide={slide} />
         </p>
         <h1
           className={cn(
@@ -580,9 +609,9 @@ function WatchHomeTvOverlayContent({
           )}
           style={delayStyle(1)}
         >
-          {slide.title}
+          {copy.title}
         </h1>
-        {slide.description ? (
+        {copy.description ? (
           <p
             className={cn(
               itemClassName,
@@ -590,7 +619,7 @@ function WatchHomeTvOverlayContent({
             )}
             style={delayStyle(2)}
           >
-            {slide.description}
+            {copy.description}
           </p>
         ) : null}
       </div>
@@ -618,6 +647,7 @@ function NextVideoButton({
   onClick: () => void
   size: "large" | "compact"
 }) {
+  const t = useTranslations("WatchHome")
   const radius = size === "large" ? 30 : 24
   const circumference = 2 * Math.PI * radius
   const buttonClassName =
@@ -722,7 +752,7 @@ function NextVideoButton({
         type="button"
         variant="ghost"
         size="icon"
-        aria-label="Next video"
+        aria-label={t("nextVideo")}
         onClick={onClick}
         className={buttonClassName}
       >
@@ -743,18 +773,22 @@ function WatchHomeTvCard({
   progress: number
   slide: WatchHomeTvCarouselSlide
 }) {
+  const t = useTranslations("WatchHome")
+  const copy = useWatchHomeTvSlideCopy(slide)
+
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        "group relative block aspect-video w-[clamp(13.5rem,68vw,26.25rem)] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:w-[clamp(14.75rem,30vw,26.25rem)] md:w-full",
+        "group relative block aspect-video w-[clamp(13.5rem,68vw,26.25rem)] overflow-hidden rounded-lg bg-stone-950 text-left shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)] transition-[opacity,box-shadow] sm:w-[clamp(14.75rem,30vw,26.25rem)] md:w-full",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
         isActive
           ? "opacity-100"
-          : "opacity-62 hover:opacity-95 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
+          : "opacity-62 hover:opacity-95 focus-visible:opacity-95 hover:shadow-[0_4px_10px_rgba(0,0,0,0.4),0_22px_44px_-14px_rgba(0,0,0,0.7)]",
       )}
       aria-pressed={isActive}
-      aria-label={`Show ${slide.title}`}
+      aria-label={t("showVideo", { title: copy.title })}
       data-testid="watch-home-tv-carousel-card"
     >
       {slide.thumbnailUrl ? (
@@ -780,27 +814,22 @@ function WatchHomeTvCard({
           />
         </div>
       ) : null}
-      <div className="absolute right-4 bottom-4 left-4">
-        <p className="mb-1 truncate text-[0.7rem] font-bold tracking-[0.22em] text-white/55 uppercase sm:text-xs">
-          {slide.label}
-        </p>
-        <h2 className="line-clamp-2 text-base leading-tight font-extrabold text-white sm:text-xl">
-          {slide.title}
-        </h2>
-      </div>
+      <VideoThumbnailCaption>
+        <VideoThumbnailEyebrow as="p" size="compact-sm">
+          <WatchHomeTvSlideLabel slide={slide} />
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle as="h2" size="regular-sm">
+          {copy.title}
+        </VideoThumbnailTitle>
+      </VideoThumbnailCaption>
       <div
         aria-hidden
         data-testid="watch-home-tv-card-bevel"
         className="pointer-events-none absolute inset-0 z-40 rounded-lg opacity-40 mix-blend-soft-light shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]"
       />
-      <div
-        aria-hidden
+      <VideoThumbnailInteractionFrame
         data-testid="watch-home-tv-card-hover-outline"
-        className={cn(
-          "watch-home-gradient-outline watch-home-gradient-outline-landscape pointer-events-none absolute z-50 opacity-0 shadow-[0_-4px_22px_rgba(239,68,68,0.26)] transition-opacity duration-200",
-          !isActive &&
-            "group-hover:opacity-100 group-focus-visible:opacity-100",
-        )}
+        interactive={!isActive}
       />
       <div
         aria-hidden
@@ -825,6 +854,7 @@ function WatchHomeTvRail({
   progress: number
   slides: readonly WatchHomeTvCarouselSlide[]
 }) {
+  const t = useTranslations("WatchHome")
   const [api, setApi] = useState<CarouselApi | null>(null)
 
   useEffect(() => {
@@ -873,11 +903,11 @@ function WatchHomeTvRail({
             <>
               <CarouselPrevious
                 className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-                label="Previous video preview"
+                label={t("previousVideoPreview")}
               />
               <CarouselNext
                 className="hidden text-stone-900 hover:text-stone-900 md:inline-flex"
-                label="Next video preview"
+                label={t("nextVideoPreview")}
               />
             </>
           ) : null}
@@ -891,6 +921,7 @@ export function WatchHomeTvCarousel({
   sequence = null,
   slides,
 }: WatchHomeTvCarouselProps) {
+  const t = useTranslations("WatchHome")
   const carouselSlides = useMemo(
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
@@ -923,11 +954,11 @@ export function WatchHomeTvCarousel({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const shortFilmTakeoverSlideIdRef = useRef<string | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
+  usePauseForWatchModal(player, activeSlide?.id ?? null)
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLDivElement | null>(
     null,
   )
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
-    if (shortFilmTakeoverSlideIdRef.current == null) return
     setPlayer((current) => (current === next ? current : next))
   }, [])
   const handleOpenShortFilm = useCallback(
@@ -1032,7 +1063,7 @@ export function WatchHomeTvCarousel({
 
   return (
     <section className="relative bg-black" data-testid="watch-home-tv-carousel">
-      <h1 className="sr-only">Jesus Film Project Watch</h1>
+      <h1 className="sr-only">{t("pageTitle")}</h1>
       <div className="relative mx-auto h-[66svh] w-full max-w-[1920px] overflow-hidden bg-black md:h-[min(100svh,56.25vw)]">
         <WatchHomeTvMedia
           activeSlide={activeSlide}
@@ -1095,7 +1126,7 @@ export function WatchHomeTvCarousel({
               type="button"
               variant="ghost"
               size="icon"
-              aria-label={isMuted ? "Unmute preview" : "Mute preview"}
+              aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
               onClick={toggleMuted}
               className="h-11 w-11 rounded-full bg-black/35 text-white hover:bg-black/55"
             >

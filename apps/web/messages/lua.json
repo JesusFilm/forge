@@ -7,7 +7,9 @@
     "noContent": "Tshikambo tsha munda katshi na tshia.",
     "homepageMisconfigured": "Paji ya kuteleka ya kubanda ikwate mu bupwetekanyi.",
     "defaultTemplateMisconfigured": "Templete ya kubanda ya kuteleka ikwate mu bupwetekanyi.",
-    "authFailed": "Katwa kukwata mu tshikondo tsha munda tsha bupwetekanyi katwena. Ndo mwe wa mpetela nsambu ya bupuluki nebi bikalenga."
+    "authFailed": "Katwa kukwata mu tshikondo tsha munda tsha bupwetekanyi katwena. Ndo mwe wa mpetela nsambu ya bupuluki nebi bikalenga.",
+    "pageLoadFailed": "Kintu kimue kikafueko.",
+    "tryAgain": "Ndi mulekela bualu bubu"
   },
   "VideosPage": {
     "title": "Mavidiyo onso",
@@ -22,7 +24,8 @@
     "promoHeading": "Udi wela munda wa kumvwija Biblia mu mutshima mukole?",
     "joinBibleStudy": "Kangama ku dyonda kwetu kwa Biblia",
     "previousQuote": "Munsamu wa Biblia wa kumpala",
-    "nextQuote": "Munsamu wa Biblia ulandile"
+    "nextQuote": "Munsamu wa Biblia ulandile",
+    "readPassage": "Bala tshikamu etshi mu Biblia webe."
   },
   "DownloadButton": {
     "checking": "Kukengela",
@@ -73,7 +76,8 @@
     "selectLanguage": "Sankula lulaka",
     "searchPlaceholder": "Saka malulaka…",
     "languages": "Malulaka",
-    "noMatches": "Katshi na kikalala"
+    "noMatches": "Katshi na kikalala",
+    "notAvailable": "Katshi na"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lulaka",
@@ -112,7 +116,8 @@
     "questions": "Mitanya ya mu dikalu",
     "askYours": "Pesha yobe",
     "chatWithPerson": "Zumbula na muntu",
-    "askBibleQuestion": "Pesha ditanya dia Biblia"
+    "askBibleQuestion": "Pesha ditanya dia Biblia",
+    "quiz": "Diteta dia dimanya"
   },
   "WatchQuestionPanel": {
     "messageType": "Lulengo lwa mesaje",
@@ -170,7 +175,8 @@
     "searchRegion": "Saka mavidiyo",
     "clearSearch": "Katula kusaka",
     "changeAudioLanguage": "Sakula lulaka lwa audio",
-    "home": "Tshikupu tsha JesusFilm"
+    "home": "Tshikupu tsha JesusFilm",
+    "closeSearch": "Vuala kusaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",
@@ -205,14 +211,19 @@
     "clearLanguages": "Katula",
     "queryLanguageDetected": "{language} yimanye",
     "searchInLanguage": "Saka mu {language}",
-    "tryDifferentKeywordsOrLanguage": "Linga mfuango wina todi sankula lulaka lukwata"
+    "tryDifferentKeywordsOrLanguage": "Linga mfuango wina todi sankula lulaka lukwata",
+    "useWebsiteDefaultLanguage": "Sebedisha lulaka lwa kusaka lwa website",
+    "removeLanguage": "Katula {language}",
+    "browseMode": "Lulengo lwa kusebula kusaka"
   },
   "HeroPlayer": {
     "playWithSound": "Talala sikila",
-    "tapToUnmute": "Bepa ku katula nsembululu"
+    "tapToUnmute": "Bepa ku katula nsembululu",
+    "nextEpisode": "Episode ilandile"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Kusangula munda"
+    "loadingContent": "Kusangula munda",
+    "loadingVideo": "Kusangula video"
   },
   "VideoLabels": {
     "video": "Vidiyo",
@@ -223,7 +234,8 @@
     "series": "Mulongolongo",
     "collection": "Kusangula",
     "trailer": "Tshidimu tsha kulombula",
-    "behindTheScenes": "Kumane ya munda"
+    "behindTheScenes": "Kumane ya munda",
+    "chapter": "Tshikanda"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} ya {total}",
@@ -235,11 +247,286 @@
     "noImage": "Katshi na tshifwani",
     "playingNow": "Kusebenda lelo",
     "previousChapter": "Tshikanda tsha kumpala",
-    "nextChapter": "Tshikanda tshilondile"
+    "nextChapter": "Tshikanda tshilondile",
+    "thumbnailAlt": "Thumbnail ya {title}",
+    "relatedVideoThumbnail": "Thumbnail ya video ya kusangula"
   },
   "SearchResultCard": {
     "experience": "Mwangulu",
     "episodeCount": "{count, plural, one {# episode} other {# maepisode}}",
     "thumbnailAlt": "Thumbnail ya video"
+  },
+  "Feedback": {
+    "openForm": "Kafua fomu ya mayi",
+    "label": "Mayi",
+    "couldNotLoad": "Fomu ya mayi kayikatelele kusanguka.",
+    "loadingForm": "Kusangula fomu ya mayi…",
+    "retry": "Linga diaka",
+    "openFormShort": "Kafua fomu",
+    "cancel": "Pela",
+    "title": "Mayi a Beta",
+    "description": "Pesha bualu budi bukatshile ne tshidi tuya kuyidila. Fomu eyi ipeshwa na Google.",
+    "openInNewTab": "Kafua fomu mu tab muepi",
+    "closeForm": "Vuala fomu ya mayi",
+    "loadingGoogleForm": "Kusangula Google Fomu…",
+    "iframeTitle": "Tuma Mayi a Beta"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Mavidiyo a Bukristu a bupwila mu {language} | Jesus Film Project",
+    "metadataDescription": "Selebula mavidiyo a Yesu, bikale bya Biblia, series ya dyondo, ne mavidiyo a kusangulula mu audio todi subtitles mu {language}.",
+    "heroTitle": "Mavidiyo a Bukristu a bupwila mu {language}",
+    "heroDescription": "Selebula mavidiyo a Yesu, bikale bya Biblia, series ya dyondo, ne mavidiyo a kusangulula a mu {language}. Mavidiyo a dubi mu mutende a tangila kumpala, ne bikosa bya subtitles bidi panshi.",
+    "languageCollection": "Kusangula kwa lulaka",
+    "itemCount": "{count, plural, one {# tshintu} other {# bintu}}",
+    "videoCount": "{count, plural, one {# video} other {# mavidiyo}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# mavidiyo}} mu {groupCount, plural, one {# tshikuppa} other {# bitshikuppa}}",
+    "sectionNavLabel": "Bikuku bya inventory ya lulaka",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Pya",
+    "videoBible": "Bible ya mu video",
+    "bibleProject": "BibleProject",
+    "sports": "Midlalo",
+    "collections": "Mibumba",
+    "subtitlesOnly": "Subtitles kaka",
+    "newlyAdded": "Bikatswa pya",
+    "newVideosTitle": "Mavidiyo a Bukristu a pya mu {language}",
+    "newestFirst": "Bya pya kumpala",
+    "noPublishedVideos": "Katshi na mavidiyo a tukulwe a fwane pa lulaka elu.",
+    "bibleAndGospelFilms": "Mafilme a Biblia ne Evangile",
+    "videoBibleCollectionsTitle": "Mibumba ya Bible ya mu video ya {language}",
+    "videoBibleDescription": "Mibumba ya mifi tuma pa Makandululu, JESUS, Magdalena, ne Acts mu {language}.",
+    "noVideoBibleCollections": "Katshi na mibumba ya Bible ya mu video ya fwane pa lulaka elu.",
+    "bibleProjectCollectionsTitle": "Mibumba ya BibleProject ya {language}",
+    "bibleProjectDescription": "Series ne dyondo ya BibleProject byalua mu {language}.",
+    "noBibleProjectCollections": "Katshi na mibumba ya BibleProject ya fwane pa lulaka elu.",
+    "sportsStories": "Bikale bya midlalo",
+    "sportsTitle": "Bikale bya midlalo ne bya ba athlete mu {language}",
+    "sportsDescription": "Bikale bya midlalo bya kutuikila ku lukwikilu ne mibumba ya ba athlete ya fwane mu {language}.",
+    "noSportsCollections": "Katshi na mibumba ya midlalo todi ya bikale bya ba athlete ya fwane pa lulaka elu.",
+    "fullyDubbed": "Bya dubi nyonso",
+    "dubbedVideosTitle": "Mavidiyo a {language} na mibumba",
+    "dubbedVideosDescription": "Selebula mavidiyo a {language} a dubi nyonso, mfi tumbula ne mibumba yawo ku bwangi bwa kusangula.",
+    "noDubbedVideos": "Katshi na mavidiyo a dubi nyonso a fwane pa lulaka elu.",
+    "subtitlesAvailable": "Subtitles zidi",
+    "subtitlesTitle": "Mavidiyo a {language} na subtitles",
+    "subtitlesDescription": "Mavidiyo awa atshimanyina subtitles ya {language} lualu audio ya {language} kayikala tshitu.",
+    "noSubtitleVideos": "Katshi na mavidiyo a subtitles kaka a fwane pa lulaka elu.",
+    "dubbed": "Dubi",
+    "subtitles": "Subtitles ya mu video",
+    "newLabel": "Pya",
+    "fromCollection": "Ku {collection}",
+    "standaloneVideos": "Mavidiyo a mueyele",
+    "videosFromCollection": "Mavidiyo aku mu {collection}.",
+    "standaloneDescription": "Mavidiyo a mueyele mu lulaka elu.",
+    "openCollection": "Vula kusangula"
+  },
+  "WatchHome": {
+    "pageTitle": "Talala pa Jesus Film Project",
+    "watch": "Talala",
+    "watchNow": "Talala lelo",
+    "mutePreview": "Vukula nsembululu ya preview",
+    "unmutePreview": "Katula nsembululu ya preview",
+    "nextVideo": "Video ilandile",
+    "featured": "Yakasanguka",
+    "showVideo": "Lombula {title}",
+    "previousVideoPreview": "Preview ya video ya kumpala",
+    "nextVideoPreview": "Preview ya video ilandile",
+    "mediaCollection": "Mbufa ya media",
+    "scrollToVideo": "Pumbula ku video ya {title}"
+  },
+  "WatchFooter": {
+    "home": "Tshikupu tsha Jesus Film Project",
+    "navigation": "Misebele ya pashi",
+    "share": "Kabulana",
+    "watch": "Talala",
+    "giving": "Kupesha",
+    "about": "Mpa",
+    "products": "Bintu bya kusangula",
+    "resources": "Bupwila",
+    "partners": "Baleji",
+    "contact": "Tshikala",
+    "giveNow": "Pesha lelo",
+    "resourcesVersion": "Bupwila ({version})",
+    "office": "Ofisi",
+    "fax": "Fakisi",
+    "privacyPolicy": "Mikanda ya bupandilu bwa munda",
+    "legalStatement": "Munsalu wa mulawu",
+    "newsletter": "Ijina ku newsletter yetu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yakatelwa ku misio ya pa buloba",
+    "title": "Munsalu kawushintuki. Nzila yamu bantu kutala eyi yushintuka.",
+    "description": "Tudi kutunga lisanga letu dia mavidiyo ne bintu bya kusalela ku tshikale, tukwata munda ya bidimu bya mufusulo ku maplatforme adi bantu badia, batala, ne kabulana.",
+    "translatedLibraryTitle": "Lisanga lya mafilme a mufusulo mingi pa buloba",
+    "translatedLibraryDescription": "Bidimu bya mufusulo, byesekedilwe na balekeshi ba ministry ba kudika, bitungile lisanga na malubaka a lulaka a munda, kuamba bantu bamvwe dikanda dia Yesu mu lulaka ludi lubakula mutshima wabo.",
+    "trustedVoicesTitle": "Kuleta mayi a kikalu mu maforme mapya",
+    "trustedVoicesDescription": "Tudi kutunga diaka nzila ya kufunda bikalu bya Evangelio mu tshifwani, tukwata mufusulo wa kikalu ne maforme a lelo ku bwa munsalu ukende mu maplatforme, mikanda, ne makanika.",
+    "missionTeamTitle": "Kupita lisanga. Likosi lya mision.",
+    "missionTeamDescription": "Jesus Film Project kudi likosi lya pa buloba lya bafusuli, ba media, bafunguli, ne balengi, badikisha bidimu bya ministry ku bintu bya kuyila ba disciple-maker mu bisangilu byonso.",
+    "buildingNext": "Tudi kutunga nganyi",
+    "nextStepsTitle": "Platform ya Next Steps",
+    "nextStepsDescription": "Kangulula batali na bupwila bwa kubabaka mu nzila yabo ya mu mutshima, ubafwidi ku sema kidimu kintshi ku lisanga, Maloba a Nzambi, todi mision.",
+    "mediaLibraryTitle": "Lisanga lya media lya evangelisation",
+    "mediaLibraryDescription": "Lisanga lya media lya Bukristu lya bunene na mavidiyo, mafilme, ne bupwila bya malulaka minga a fwane ku ministry ne evangile pa buloba boso.",
+    "ministryToolsTitle": "Bintu bya digital bya ministry",
+    "ministryToolsDescription": "Kuyungulula video, kufalisa munda, kukanga bantu, ne analytics, bikatulua ku bwa kufwasa ministry kulua ku bantu mingi mu nzila ya lukasa.",
+    "invitationEyebrow": "Udi nuiwanjilwe",
+    "invitationTitle": "Fwa ku katenga <highlight>bya lulenge luyala</highlight> bya bintu bya mision",
+    "invitationDescription": "Tudi kuibila bakoleshi, balengi, ne baleji ku kujinga ntete. Linga bintu bya pya kumpala, pesha mayi, ne fwasa kutunga bintu bya kusoalela mudimu wa mision wa kweli.",
+    "betaTester": "Kua beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kusangula kwa Bible ya mu Video",
+    "gospelRailTitle": "Manya dikanda didi disaluka",
+    "videoBibleDescription": "Selebula kusangula kwetu kwa mavidiyo ne bupwila byatuma Biblia itumbuka ku bikalu bya mayi ne dyondo bya kunwena.",
+    "showcaseTitle": "Maloba a Mukanda a fwalulwa na filme",
+    "adventEyebrow": "Noeli Advent",
+    "adventTitle": "Kubalula kwa Noeli Advent",
+    "adventDescription": "Kangama mu nzila yetu ya Advent ne video ya mu ditunga diishila bulembi bwa Noeli, isadilula lithemba, disanka, ne lusangu lwa kuikala kwa Yesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Series ya NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series ya Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursu ya video",
+    "journeyWithJesusTitle": "Nzila ne Yesu",
+    "gospelsOnVideoEyebrow": "Evangelio yonso, yatudilwe na video",
+    "scriptureAsWrittenTitle": "Maloba a Nzambi, atudilwe mpenza ndenge ya andike",
+    "merryChristmas": "Noeli muimpe!",
+    "daysUntilChristmas": "{count, plural, one {# dituku ditshidi kumpala kwa Noeli} other {# matuku atshidi kumpala kwa Noeli}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Malulaka",
+    "metadataDescription": "Selebula mavidiyo a JesusFilm na lulaka.",
+    "eyebrow": "Malulaka a kuteleka",
+    "title": "Sankula lulaka",
+    "description": "Selebula malulaka na ekanda todi sebele lisalu lonso.",
+    "searchPlaceholder": "Saka malulaka todi mikanda...",
+    "searchLabel": "Saka malulaka todi mikanda",
+    "clearSearch": "Katula kusaka",
+    "browse": "Selebula",
+    "browseByRegion": "Selebula na ekanda ne mboka",
+    "languageCount": "{count, plural, one {# lulaka} other {# malulaka}}",
+    "region": "Ekanda",
+    "countryLanguages": "Malulaka a {country}",
+    "showLess": "Tangila mpasi",
+    "showMore": "Lomona {count} bingi",
+    "noLanguages": "Katshi na malulaka a fwane",
+    "tryAnotherSearch": "Linga mvuango wina wa kusaka."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Bikondo bya kutala | Jesus Film Project",
+    "title": "Bikondo bya kutala",
+    "loading": "Kusangula bikondo",
+    "empty": "Katshi na tshia kadi",
+    "emptyDescription": "Mavidiyo udi kutala udi mu njila ya kuyiwa ne akalakila awa.",
+    "earlier": "Ku kala",
+    "today": "Lelo",
+    "yesterday": "Lobi"
+  },
+  "AccountControl": {
+    "account": "Akawunti",
+    "accountMenu": "Menyu ya akawunti",
+    "signIn": "Injila kuyiwa",
+    "signOut": "Banda kuyiwa",
+    "signedIn": "Winjile",
+    "history": "Bikondo",
+    "logOut": "Banda"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Paji kayifwanyanga",
+    "eyebrow": "Paji kayifwanyanga",
+    "screenReaderPrefix": "Paji kayifwanyanga:",
+    "title": "Cigeya eci ciyena awa.",
+    "description": "Paji ikadi kushintuka, kanshi dikanda diendela.",
+    "actionsLabel": "Bikorwa bya paji kayifwanyanga",
+    "backToWatch": "Lwela ku Watch",
+    "browseVideos": "Selebula mavidiyo"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Talala filme ya mukese",
+    "actions": {
+      "joinUs": "Kanga na betu",
+      "shareMission": "Kabana mu mision yetu"
+    },
+    "welcomeStart": {
+      "label": "Lukwikilu ne Maandishe a Bulemu",
+      "title": "Mavidiyo a lelo a kusankula",
+      "description": "Mavidiyo a mu mutshima wa lukwikilu a mu bufuku bwa betu, a kufwasa, a kukumina, ne a kubuulula mabanza."
+    },
+    "welcomeMorning": {
+      "label": "Bwambile bwa mu tshiambo",
+      "title": "Mpepo ya mu tshiandi! Bintu bya Biblia bya lelo bidi kulaya.",
+      "description": "Tshikala tshebe na mavidiyo a Biblia a kulonga mutshima ne kukulombola mu dikolo dia lelo."
+    },
+    "welcomeAfternoon": {
+      "label": "Bwambile bwa mu ditumba",
+      "title": "Mpepo ya mu ditumba! Bintu bya Biblia bya lelo bidi ku yebe.",
+      "description": "Mavidiyo a Biblia a kulomba mutshima, a kufwasa mu dikolo dia mu ditumba ne kuikala luishi."
+    },
+    "welcomeEvening": {
+      "label": "Bwambile bwa mu diloba",
+      "title": "Mpepo ya mu diloba! Pumuka ne bintu bya Biblia.",
+      "description": "Bintu bya Biblia bya kimpepe bi kukwasa kusambuka ne kupata lulendo luwama ne dikolo dia lelo diishi."
+    },
+    "joinUs": {
+      "label": "Kanga na betu",
+      "title": "Bilonda bidi kusaka",
+      "description": "Buvuna buleli. Kanga na betu mu kusakidila evangile pa buloba ne media ya digital."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Tenda na betu",
+      "title": "Kutenda Nsangu ya Yesu, na betu",
+      "description": "Tudi kuleta mukanda ne luse lwa Yesu mu lulaka lwabo, mu njiya yawu mene."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% idi iwendangana",
+    "none": "Katshi na mavidiyo a kuludila afwanyikile ku video eyi mu lulaka elu."
+  },
+  "BetaTesterModal": {
+    "title": "Kua beta tester",
+    "trigger": "Kua beta tester",
+    "loadFailed": "Kintu kimue kikafueko.",
+    "loading": "Kusangula...",
+    "openFormNewTab": "Kafua fomu mu tab muepi",
+    "close": "Vuala",
+    "iframeTitle": "Kua beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }

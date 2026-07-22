@@ -36,6 +36,15 @@
 
 import { env, seekerTimeoutMs } from "@/config/env"
 import { resolveSeekerGate, type SeekerGateDecision } from "@/lib/seeker-gate"
+import {
+  classifyUpstreamFailure,
+  composeUpstreamAbortSignal,
+  hostAllowed,
+  MAX_CONVERSATION_ID_CHARS,
+  postMastraUpstream,
+  readJsonCapped,
+  undefinedOnAbort,
+} from "@/lib/server/mastra-upstream"
 import { encodeSseFrame, readSseStream } from "@/lib/sse"
 import type { ReplyFailureReason } from "@/lib/conversations"
 import {
@@ -52,10 +61,14 @@ import {
 export const dynamic = "force-dynamic"
 
 // Cost-amplification bound (R5 defers the rate/concurrency cap, not input
-// bounds). A single caller must not be able to POST a multi-megabyte prompt
-// into a ~90s paid generation.
+// bounds) on a multi-megabyte prompt into a ~90s paid generation. The
+// conversation-id bound is the shared MAX_CONVERSATION_ID_CHARS.
 const MAX_PROMPT_CHARS = 8000
-const MAX_CONVERSATION_ID_CHARS = 200
+
+// Byte cap (UTF-8 bytes) on the 503 error-body read (OOM-guard law; feat-282's
+// hardening delta). The `{reason}` envelope is tiny, so 64 KiB is generous;
+// over-cap reads map to config_missing, same as any parse failure.
+const SEEKER_ERROR_BODY_MAX_BYTES = 64 * 1024
 
 /** Server-resolved Seeker proxy configuration (the bearer + base URL never
  * leave the server). Built from env in `POST`; injected directly in tests.
@@ -112,62 +125,6 @@ function isProxyBody(
   if (v.text.length > MAX_PROMPT_CHARS) return false
   if (v.conversationId.length > MAX_CONVERSATION_ID_CHARS) return false
   return true
-}
-
-// Loopback hosts may use http: — the bearer never leaves the machine, so the
-// cleartext concern doesn't apply, and this is what local Mastra dev serves.
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
-
-// Railway private-network hosts may also use http: — Mastra has no public
-// domain, the WireGuard mesh encrypts transport, and Railway issues no TLS
-// cert for *.railway.internal.
-const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
-
-// True full-label suffix match: a bare endsWith would also admit empty-label
-// hosts (".railway.internal", "a..railway.internal"), which parse fine in the
-// WHATWG URL parser and would otherwise slip past the scheme floor.
-function isRailwayInternalHost(host: string): boolean {
-  return (
-    host.endsWith(RAILWAY_INTERNAL_SUFFIX) &&
-    !host.startsWith(".") &&
-    !host.includes("..")
-  )
-}
-
-/**
- * SSRF guard. The base URL must be `https:` — the bearer rides this request, so
- * an `http:` base would egress it in cleartext — EXCEPT loopback hosts (local
- * dev) and `*.railway.internal` hosts (the prod transport: Railway private
- * networking is plain HTTP at the app layer over a WireGuard-encrypted mesh,
- * and Mastra deliberately has no public https domain). When an allowlist is set
- * the host must be in it. An unset allowlist trusts the operator-set host
- * (admin parity; `redirect:"error"` still blocks off-host hops) but the scheme
- * floor applies regardless. Exported for the feat-241 history proxies, which
- * reuse the same base URL + allowlist.
- */
-export function hostAllowed(
-  baseUrl: string,
-  allowedHostsCsv: string | undefined,
-): boolean {
-  let url: URL
-  try {
-    url = new URL(baseUrl)
-  } catch {
-    return false
-  }
-  const host = url.hostname.toLowerCase()
-  const privateHttp =
-    url.protocol === "http:" &&
-    (LOOPBACK_HOSTS.has(host) || isRailwayInternalHost(host))
-  if (url.protocol !== "https:" && !privateHttp) return false
-  if (!allowedHostsCsv) return true
-  const allowed = new Set(
-    allowedHostsCsv
-      .split(",")
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean),
-  )
-  return allowed.has(host)
 }
 
 /**
@@ -243,34 +200,29 @@ export async function handleSeekerProxyRequest({
         const budgetSignal = AbortSignal.timeout(config.timeoutMs)
         // Compose the budget, the caller's signal, and the handler-owned abort
         // (fired by cancel()) so ANY of the three tears down the upstream fetch.
-        const signal = AbortSignal.any(
-          requestSignal
-            ? [requestSignal, budgetSignal, upstreamAbort.signal]
-            : [budgetSignal, upstreamAbort.signal],
-        )
+        const signal = composeUpstreamAbortSignal([
+          requestSignal,
+          budgetSignal,
+          upstreamAbort.signal,
+        ])
 
         let response: Response
         try {
-          response = await fetchImpl(new URL("/forge-seeker", config.baseUrl), {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${config.apiKey}`,
-              "content-type": "application/json",
-              accept: "text/event-stream",
-            },
-            body: JSON.stringify({
-              prompt: text,
-              threadId: conversationId,
-              resourceId,
-            }),
-            redirect: "error",
+          response = await postMastraUpstream(fetchImpl, {
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            path: "/forge-seeker",
+            accept: "text/event-stream",
+            body: { prompt: text, threadId: conversationId, resourceId },
             signal,
           })
         } catch (error) {
-          if (budgetSignal.aborted) return fail("timeout")
-          if (requestSignal?.aborted) return fail("cancelled")
-          const name = (error as { name?: string } | null | undefined)?.name
-          return fail(name === "TimeoutError" ? "timeout" : "network_error")
+          const failure = classifyUpstreamFailure(error, {
+            budgetSignal,
+            requestSignal,
+          })
+          // This proxy's wire mapping over the shared discriminant.
+          return fail(failure === "network" ? "network_error" : failure)
         }
 
         // Classify the upstream HTTP status BEFORE the stream-parse path:
@@ -280,25 +232,19 @@ export async function handleSeekerProxyRequest({
           return fail("auth_failed")
         }
         if (response.status === 503) {
-          // The composed signal bounds fetch(), NOT a body read on an
-          // already-received Response — race the json() read against it so a
-          // slow 503 body can't outlive the budget.
-          const abortedReason = new Promise<"config_missing">((resolve) => {
-            if (signal.aborted) return resolve("config_missing")
-            signal.addEventListener("abort", () => resolve("config_missing"), {
-              once: true,
-            })
-          })
-          const parsedReason = response
-            .json()
-            .then((b: { reason?: unknown }) =>
-              b?.reason === "model_key_missing"
-                ? ("model_key_missing" as const)
-                : ("config_missing" as const),
-            )
-            .catch(() => "config_missing" as const)
-          const reason = await Promise.race([parsedReason, abortedReason])
-          return fail(reason)
+          // The composed signal bounds fetch(), NOT a body read on a received
+          // Response — race the byte-capped read against it so a slow 503 body
+          // can't outlive the budget (over-cap/parse/abort → config_missing).
+          const body = await Promise.race([
+            readJsonCapped(response, SEEKER_ERROR_BODY_MAX_BYTES),
+            undefinedOnAbort(signal),
+          ])
+          const reason = (body as { reason?: unknown } | undefined)?.reason
+          return fail(
+            reason === "model_key_missing"
+              ? "model_key_missing"
+              : "config_missing",
+          )
         }
         // 404 = route disabled upstream; treat as config/unavailable.
         if (response.status === 404) return fail("config_missing")
@@ -341,12 +287,11 @@ export async function handleSeekerProxyRequest({
           })
         } catch (error) {
           if (!terminalEmitted) {
-            if (budgetSignal.aborted) fail("timeout")
-            else if (requestSignal?.aborted) fail("cancelled")
-            else {
-              const name = (error as { name?: string } | null | undefined)?.name
-              fail(name === "TimeoutError" ? "timeout" : "network_error")
-            }
+            const failure = classifyUpstreamFailure(error, {
+              budgetSignal,
+              requestSignal,
+            })
+            fail(failure === "network" ? "network_error" : failure)
           }
           return
         }

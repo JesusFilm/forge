@@ -4,6 +4,12 @@ const init = vi.fn()
 const use = vi.fn()
 const configureDatadogLogForwarding = vi.fn()
 
+vi.mock("@/config/env", () => ({
+  env: {
+    DD_SERVICE: "forge-admin-worker",
+  },
+}))
+
 vi.mock("dd-trace", () => ({
   default: {
     init,
@@ -34,7 +40,7 @@ describe("configureDatadog", () => {
     expect(init).toHaveBeenCalledWith({
       logInjection: true,
       runtimeMetrics: true,
-      service: "forge-admin",
+      service: "forge-admin-worker",
     })
     expect(use).toHaveBeenCalledTimes(1)
     expect(use).toHaveBeenCalledWith("graphql", DATADOG_GRAPHQL_CONFIG)

@@ -70,7 +70,11 @@ export type EngineComposition = {
 }
 
 export type RenderEngine = {
-  bundle(options: { entryPoint: string }): Promise<string>
+  bundle(options: {
+    entryPoint: string
+    publicDir?: string
+    outDir?: string
+  }): Promise<string>
   openBrowser(): Promise<EngineBrowser>
   selectComposition(options: {
     serveUrl: string
@@ -95,9 +99,14 @@ export type RenderEngine = {
 
 export function createDefaultRenderEngine(): RenderEngine {
   return {
-    async bundle({ entryPoint }) {
+    async bundle({ entryPoint, publicDir, outDir }) {
       const { bundle } = await import("@remotion/bundler")
-      return bundle({ entryPoint, webpackOverride: (config) => config })
+      return bundle({
+        entryPoint,
+        publicDir,
+        outDir,
+        webpackOverride: (config) => config,
+      })
     },
     async openBrowser() {
       const { openBrowser } = await import("@remotion/renderer")

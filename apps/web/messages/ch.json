@@ -7,7 +7,9 @@
     "noContent": "A'ñai no kontiúdo.",
     "homepageMisconfigured": "Ma'che' el watch homepage.",
     "defaultTemplateMisconfigured": "Ma'che' el default watch template.",
-    "authFailed": "Ti siña ma'konektá gi content service. Paki komuniká puto de ayuda este kung para tumalo."
+    "authFailed": "Ti siña ma'konektá gi content service. Paki komuniká puto de ayuda este kung para tumalo.",
+    "pageLoadFailed": "Maga'het un hinanao.",
+    "tryAgain": "Aturí otra biahe"
   },
   "VideosPage": {
     "title": "Todos i Video",
@@ -22,7 +24,8 @@
     "promoHeading": "Guahu' påra un tinaya' mas mautok i Bibliå?",
     "joinBibleStudy": "Mångge' gi i estu dia",
     "previousQuote": "Hinåtsa na kuota",
-    "nextQuote": "Suma' na kuota"
+    "nextQuote": "Suma' na kuota",
+    "readPassage": "Lee este na pasåhe gi Bibliå-mu."
   },
   "DownloadButton": {
     "checking": "Tsinekká",
@@ -73,7 +76,8 @@
     "selectLanguage": "Pili' lenguahe",
     "searchPlaceholder": "Ekka i mga lenguahe…",
     "languages": "Mga lenguahe",
-    "noMatches": "Acha matutuhon"
+    "noMatches": "Acha matutuhon",
+    "notAvailable": "Ti ma'available"
   },
   "LanguagePickerModal": {
     "dialogTitle": "Lenguahe",
@@ -112,7 +116,8 @@
     "questions": "Mga Kuestion na Kaugná",
     "askYours": "Pruyba iyo-mu",
     "chatWithPerson": "Chat yan un taotao",
-    "askBibleQuestion": "Håfa un kuestion put i Bibliå"
+    "askBibleQuestion": "Håfa un kuestion put i Bibliå",
+    "quiz": "Kuestionario"
   },
   "WatchQuestionPanel": {
     "messageType": "Klase i mensahe",
@@ -170,7 +175,8 @@
     "searchRegion": "Ekka video siha",
     "clearSearch": "Na'guaha i search",
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
-    "home": "Home gi JesusFilm"
+    "home": "Home gi JesusFilm",
+    "closeSearch": "Serrá search"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -205,14 +211,19 @@
     "clearLanguages": "Na'guaha",
     "queryLanguageDetected": "Ma'angok {language}",
     "searchInLanguage": "Ekka gi {language}",
-    "tryDifferentKeywordsOrLanguage": "Pruweba diferente na keywords pat pili' otro search language"
+    "tryDifferentKeywordsOrLanguage": "Pruweba diferente na keywords pat pili' otro search language",
+    "useWebsiteDefaultLanguage": "Ufa'i i website default search language",
+    "removeLanguage": "Na'kåta {language}",
+    "browseMode": "Modo gi search browse"
   },
   "HeroPlayer": {
     "playWithSound": "Atan ni' ahora",
-    "tapToUnmute": "Pùta para na'ongga i bo'ña"
+    "tapToUnmute": "Pùta para na'ongga i bo'ña",
+    "nextEpisode": "Suma' Episode"
   },
   "ExperienceSkeleton": {
-    "loadingContent": "Ma'loada kontiúdo"
+    "loadingContent": "Ma'loada kontiúdo",
+    "loadingVideo": "Ma'loada video"
   },
   "VideoLabels": {
     "video": "Kontiúdo gi video",
@@ -223,7 +234,8 @@
     "series": "Seri",
     "collection": "Koleksión",
     "trailer": "Preview gi video",
-    "behindTheScenes": "Sa'ot i scene siha"
+    "behindTheScenes": "Sa'ot i scene siha",
+    "chapter": "Kapitulo"
   },
   "SiblingCarousel": {
     "clipPosition": "Clip {current} gi {total}",
@@ -235,11 +247,286 @@
     "noImage": "Acha inagof",
     "playingNow": "Manunu'ågui ahora",
     "previousChapter": "Hinåtsa na kapitulo",
-    "nextChapter": "Suma' na kapitulo"
+    "nextChapter": "Suma' na kapitulo",
+    "thumbnailAlt": "Thumbnail para {title}",
+    "relatedVideoThumbnail": "Thumbnail gi related video"
   },
   "SearchResultCard": {
     "experience": "Deneyu",
     "episodeCount": "{count, plural, one {# episodio} other {# episodio siha}}",
     "thumbnailAlt": "Thumbnail gi video"
+  },
+  "Feedback": {
+    "openForm": "Abri formu para feedback",
+    "label": "Na'i feedback",
+    "couldNotLoad": "Ti siña ma'loada el formu para feedback.",
+    "loadingForm": "Ma'loada el formu para feedback…",
+    "retry": "Aturí otra biahe",
+    "openFormShort": "Abri formu",
+    "cancel": "Hatta",
+    "title": "Feedback para i Beta",
+    "description": "Påra i mina'åse siña ya i ma'gåga' na minala' ya sen mamproba. Este na formu ginen Google.",
+    "openInNewTab": "Abri formu gi nuebo na tab",
+    "closeForm": "Serrá formu para feedback",
+    "loadingGoogleForm": "Ma'loada Google Form…",
+    "iframeTitle": "Someti Beta Feedback"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Free na Christian videos gi {language} | Jesus Film Project",
+    "metadataDescription": "Guiya i Jesus films, Bible stories, disciple-making series, yan outreach videos na guaha dubbed audio pat subtítulos gi {language}.",
+    "heroTitle": "Free na Christian videos gi {language}",
+    "heroDescription": "Guaya i Jesus films, Bible stories, disciple-making series, yan outreach videos na guaha gi {language}. I videos na fully dubbed ma'pega sa'ot, ya i subtitle-only options gi sanhiyong.",
+    "languageCollection": "Koleksión gi lenguahe",
+    "itemCount": "{count, plural, one {# item} other {# item siha}}",
+    "videoCount": "{count, plural, one {# video} other {# video siha}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video siha}} gi {groupCount, plural, one {# grupo} other {# grupo siha}}",
+    "sectionNavLabel": "Sekción siha gi language inventory",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Bago",
+    "videoBible": "Bibliå gi Video",
+    "bibleProject": "BibleProject",
+    "sports": "Deportes",
+    "collections": "Koleksión siha",
+    "subtitlesOnly": "Subtítulos lang",
+    "newlyAdded": "Ma'añadi' nuebu",
+    "newVideosTitle": "Bago na Christian videos gi {language}",
+    "newestFirst": "I pinakanuebu sa'ot",
+    "noPublishedVideos": "Acha publikadu na video siha na ma'fandiskubre para este na lenguahe.",
+    "bibleAndGospelFilms": "Bible yan Gospel films",
+    "videoBibleCollectionsTitle": "{language} Video Bible na koleksión siha",
+    "videoBibleDescription": "Koleksión siha na naka'halom i Scripture, incluyendo LUMO, JESUS, Magdalena, yan Acts gi {language}.",
+    "noVideoBibleCollections": "Acha Video Bible na koleksión siha para este na lenguahe.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject na koleksión siha",
+    "bibleProjectDescription": "BibleProject series yan estudio siha na ma'available gi {language}.",
+    "noBibleProjectCollections": "Acha BibleProject na koleksión siha para este na lenguahe.",
+    "sportsStories": "Istoria gi sports",
+    "sportsTitle": "{language} na istoria gi sports yan atleta siha",
+    "sportsDescription": "Istoria gi sports na naka'na'halom i fe'na'olek yan koleksión siha para atleta na guaha gi {language}.",
+    "noSportsCollections": "Acha sports pat atleta-story na koleksión siha para este na lenguahe.",
+    "fullyDubbed": "Na'lebleb doot",
+    "dubbedVideosTitle": "{language} na video siha segun koleksión",
+    "dubbedVideosDescription": "Guaya i fully dubbed {language} na video siha na ma'grupu yan i koleksión-ña para mas ma'ayuda i ga'ga'.",
+    "noDubbedVideos": "Acha fully dubbed na video siha para este na lenguahe.",
+    "subtitlesAvailable": "Guaha subtítulos",
+    "subtitlesTitle": "{language} na video siha na guaha subtítulos",
+    "subtitlesDescription": "Este na video siha guaha {language} na subtítulos kung i spoken {language} na audio sa'ot ti guaha mañe'lon.",
+    "noSubtitleVideos": "Acha subtitle-only na video siha para este na lenguahe.",
+    "dubbed": "Na'lebleb",
+    "subtitles": "Subtítulos",
+    "newLabel": "Bago",
+    "fromCollection": "Ginen {collection}",
+    "standaloneVideos": "Video siha na ha'ågu",
+    "videosFromCollection": "Video siha ginen {collection}.",
+    "standaloneDescription": "Video siha na ha'ågu gi este na lenguahe.",
+    "openCollection": "Abri koleksión"
+  },
+  "WatchHome": {
+    "pageTitle": "Atan gi Jesus Film Project",
+    "watch": "Atan",
+    "watchNow": "Atan ni' Ahora",
+    "mutePreview": "Na'finu preview",
+    "unmutePreview": "Na'ongga i bo'ña gi preview",
+    "nextVideo": "Suma' na video",
+    "featured": "Pinaru",
+    "showVideo": "Na'i {title}",
+    "previousVideoPreview": "Preview gi hinåtsa na video",
+    "nextVideoPreview": "Preview gi suma' na video",
+    "mediaCollection": "Koleksión gi media",
+    "scrollToVideo": "Liyang gi video {title}"
+  },
+  "WatchFooter": {
+    "home": "Home gi Jesus Film Project",
+    "navigation": "Navigation gi footer",
+    "share": "Isparti",
+    "watch": "Atan",
+    "giving": "Na'gå'ni'",
+    "about": "Ma'u'ung",
+    "products": "Mga produkto",
+    "resources": "Rikuros",
+    "partners": "Mga partner",
+    "contact": "Kontakto",
+    "giveNow": "Na'gå'ni' ni' ahora",
+    "resourcesVersion": "Rikuros ({version})",
+    "office": "Ofisina",
+    "fax": "Faks",
+    "privacyPolicy": "Patad gi privacidad",
+    "legalStatement": "Pahayag legal",
+    "newsletter": "Mångge' para gi newsletter-mu"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ma'litra para gi global missions",
+    "title": "I mensahe ti ma'change. I paraña na taotao mana'atan taya' na klase.",
+    "description": "Ma'bubuhat hit i video library yan tools ginen i ni' manånao, ya ta commit i kabaluna i translation work gi mga platform siha na guaha na'i i taotao sa'ot ma'atan, yan ma'isparti.",
+    "translatedLibraryTitle": "I pinakaset na translated na film library gi tano'",
+    "translatedLibraryDescription": "Kabaluna i translation work, na ma'asanan gi trusted ministry partners, ha na'gupot un library na guaha thousands of language tracks para i taotao siña ma'atean i istoria ni Jesus gi lenguahe na tumålåye'giten.",
+    "trustedVoicesTitle": "Na'halom trusted voices gi nuebu na format siha",
+    "trustedVoicesDescription": "Ma'bubuhat hit taas i paraña i gospel stories gi ma'apresia na kilite, na ma'apåri i trusted translations yan modern formats para i mensahe siña ma'na'tiaga gi plataforma siha, kultura siha, yan screen siha.",
+    "missionTeamTitle": "Dosen-libru. Un mission-driven na team.",
+    "missionTeamDescription": "Jesus Film Project guiya un global team gi translators, media specialists, editors, yan creators na ma'ñe'lum i dosen-libru na experiencian ministry para i tools para disciple-makers gi guåha.",
+    "buildingNext": "Håfa ta ma'gaga'ni' sa'ot",
+    "nextStepsTitle": "Platform para Next Steps",
+    "nextStepsDescription": "Iguaha i viewers gi tangibilidad na oportunidad gi espirituat na jalan-ña, ya ma'ayuda i ma'ånata i next step gi comunidad, Scripture, pat misión.",
+    "mediaLibraryTitle": "Media Library para Evangelismu",
+    "mediaLibraryDescription": "Un halom na Christian media library na guaha thousands of videos, films, yan rikuros na guaha gi mås na lenguahe para ministry yan evangelism gi guåha tinu'uan.",
+    "ministryToolsTitle": "Digital Tools para Ministries",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, yan analytics na ma'designa para ma'ayuda i ministries na ma'gana' mas ga'ga'.",
+    "invitationEyebrow": "Ma'invite hao",
+    "invitationTitle": "Ayuda na ma'bubuhat <highlight>i next generation</highlight> gi mission tools",
+    "invitationDescription": "Ma'invite hit i practitioners, creators, yan partners gi early access. Pruweba i nuebu na tools sa'ot, na'i feedback, yan ayusa i products na ma'designa para real mission work.",
+    "betaTester": "Mångge' beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksión gi Video Bible",
+    "gospelRailTitle": "Discover i kumpletu na istoria",
+    "videoBibleDescription": "Guaya i koleksión para video yan rikuros na ha'ågu i Bibliå gi biyak na istoria yan teaching siha.",
+    "showcaseTitle": "Scripture na ma'achå'gu gi Film",
+    "adventEyebrow": "Advent gi Pasko",
+    "adventTitle": "Countdown gi Advent para Pasko",
+    "adventDescription": "Mångge' gi i Advent journey-mu yan un video kada dia na ha'na'para i anticipasion para Pasko, ya giya i håfa i esperanza, alegría, yan promesa gi inatlåa ni Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent gi BibleProject",
+    "nuaEyebrow": "Seri NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seri Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurso gi Video",
+    "journeyWithJesusTitle": "Jalan yan Jesus",
+    "gospelsOnVideoEyebrow": "Todos i Gospel, ma'achå'gu gi Video",
+    "scriptureAsWrittenTitle": "Scripture, ma'gosa exaktong ma'sulat",
+    "merryChristmas": "Felis Påsgua!",
+    "daysUntilChristmas": "{count, plural, one {# ha’åni asta Påsgua} other {# ha’åni siha asta Påsgua}}"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Mga lenguahe",
+    "metadataDescription": "Guaya i JesusFilm video siha segun lenguahe.",
+    "eyebrow": "Mga lenguahe para ma'atan",
+    "title": "Pili' un lenguahe",
+    "description": "Guya i mga lenguahe segun region pat guiya i kumplětu na listahan.",
+    "searchPlaceholder": "Ekka i mga lenguahe pat i mga tano'...",
+    "searchLabel": "Ekka mga lenguahe pat mga tano'",
+    "clearSearch": "Na'guaha search",
+    "browse": "Guya",
+    "browseByRegion": "Guya segun region yan tano'",
+    "languageCount": "{count, plural, one {# lenguahe} other {# lenguahe siha}}",
+    "region": "Rehion",
+    "countryLanguages": "{country} na lenguahe siha",
+    "showLess": "Na'ånña mas",
+    "showMore": "Na'i {count} mádu'",
+    "noLanguages": "Acha ma'fandiskubre na lenguahe",
+    "tryAnotherSearch": "Pruweba otro search term."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historia gi Ma'atan | Jesus Film Project",
+    "title": "Historia gi Ma'atan",
+    "loading": "Ma'loada historia",
+    "empty": "Acha guaha sa'ot",
+    "emptyDescription": "Video siha na un atan habang sign in hao man hålum giya guini.",
+    "earlier": "Na'an okkayi'",
+    "today": "Hågu",
+    "yesterday": "Sina'"
+  },
+  "AccountControl": {
+    "account": "Cuenta",
+    "accountMenu": "Menu gi account",
+    "signIn": "Hålom gi cuenta",
+    "signOut": "Huyong gi cuenta",
+    "signedIn": "Sign in",
+    "history": "Historia",
+    "logOut": "Serrá i session"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Acha page ma'fandiskubre",
+    "eyebrow": "Acha page ma'fandiskubre",
+    "screenReaderPrefix": "Acha page ma'fandiskubre:",
+    "title": "Este na scene ti guaha guini.",
+    "description": "Baka i page ha'åna, fa manáta i istoria.",
+    "actionsLabel": "Aksyon para page ma'fandiskubre",
+    "backToWatch": "Bumalik gi Watch",
+    "browseVideos": "Guya video siha"
+  },
+  "WatchHomeMuxInserts": {
+    "datedTitle": "{date}: {title}",
+    "watchShortFilm": "Atan i ma'ikli' na pelikula",
+    "actions": {
+      "joinUs": "Mångge' guiya ham",
+      "shareMission": "Isparti i misión-måme"
+    },
+    "welcomeStart": {
+      "label": "P'å'na yan Scripture",
+      "title": "I napogo' na video siha para hoy",
+      "description": "Video content ginen i library-måme na nakå'halom i p'uma'å'ni, ma'leffok, yan ma'na'isisok para i refleksión."
+    },
+    "welcomeMorning": {
+      "label": "Inspirasión gi mañåna",
+      "title": "Buenas días! I Bible moments para hoy guaha.",
+      "description": "Sugod i día-mu yan ma'añonggue na Bible moments na ma'designa para ma'inspira yan na'ånnok i espiritu-mu."
+    },
+    "welcomeAfternoon": {
+      "label": "Inspirasión gi harriåga",
+      "title": "Buenas tardes! Mga Bible moments para i día-mu.",
+      "description": "Ma'añonggue na Bible content na akma para i rest-mu gi harriåga pat para umula' mas inspirasión."
+    },
+    "welcomeEvening": {
+      "label": "Inspirasión gi pupuenge",
+      "title": "Buenas puenge! Pumehla yan Bible moments.",
+      "description": "Mamåyo' na Bible moments para un makapausa yan makahunong cómodo habang matatapos i día-mu."
+    },
+    "joinUs": {
+      "label": "Mångge' guiya ham",
+      "title": "Bilyones na taotao man-ga'ga' i katnan",
+      "description": "Guaha na i pag-ani. Mångge' guiya ham habang ta'ätaya i ebanghelyo gi sanlibutan gamit digital media."
+    },
+    "tellingTheStoryOfJesus": {
+      "label": "Håfå ije yan guiya ham",
+      "title": "Na'i i Istoria ni Jesus, yan guiya ham",
+      "description": "Påra siña ti guaha i taotao siha na dumingge' yan manaitsi i gugua ni Jesus gi i lenguahe-ña mismo gi anda ya guaha siya."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% na parehu",
+    "none": "Ti guaha rekomendasión para este na video gi este na lenguahe."
+  },
+  "BetaTesterModal": {
+    "title": "Mångge' beta tester",
+    "trigger": "Mångge' beta tester",
+    "loadFailed": "Maga'het un hinanao.",
+    "loading": "Ma'loada...",
+    "openFormNewTab": "Abri formu gi nuebo na tab",
+    "close": "Serrá",
+    "iframeTitle": "Mångge' beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Download collection",
+    "eyebrow": "Download collection",
+    "description": "Choose a language and quality once. Each available episode will download in order.",
+    "signInTitle": "Sign in to download",
+    "signInBody": "Collection downloads are available after you sign in with a Jesus Film account.",
+    "signIn": "Sign in to download",
+    "languageLabel": "Language",
+    "qualityLabel": "Video quality",
+    "tierHighest": "Highest",
+    "tierHigh": "High",
+    "tierLow": "Low",
+    "loading": "Finding available episodes…",
+    "loadError": "Downloads could not be loaded for this language.",
+    "retry": "Retry",
+    "noDownloads": "No downloadable episodes are available in this language.",
+    "availableCount": "{count, plural, one {# episode is ready} other {# episodes are ready}}",
+    "skippedCount": "{count, plural, one {# episode will be skipped because it is unavailable} other {# episodes will be skipped because they are unavailable}}",
+    "chooseFolder": "Choose download folder",
+    "folderSelected": "Save to {name}",
+    "folderError": "The download folder could not be opened.",
+    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "sessionError": "Unable to check your session. Please try again.",
+    "downloading": "Downloading {title}",
+    "progress": "{completed} of {total}",
+    "complete": "Downloads finished",
+    "canceled": "Downloads canceled",
+    "failedCount": "{count, plural, one {# episode failed} other {# episodes failed}}. Select Download again to retry the collection.",
+    "close": "Close",
+    "cancel": "Cancel",
+    "start": "Download all",
+    "downloadAgain": "Download again",
+    "retryFailed": "Retry failed"
   }
 }
