@@ -38,6 +38,11 @@ import {
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
 import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   WATCH_PAGE_CONTENT_CLASSES,
   WATCH_PAGE_RAIL_PADDING_CLASSES,
 } from "@/lib/content-width"
@@ -809,14 +814,14 @@ function WatchHomeTvCard({
           />
         </div>
       ) : null}
-      <div className="absolute right-4 bottom-4 left-4">
-        <p className="mb-1 truncate text-[0.7rem] font-bold tracking-[0.22em] text-white/55 uppercase sm:text-xs">
+      <VideoThumbnailCaption>
+        <VideoThumbnailEyebrow as="p" size="compact-sm">
           <WatchHomeTvSlideLabel slide={slide} />
-        </p>
-        <h2 className="line-clamp-2 text-base leading-tight font-extrabold text-white sm:text-xl">
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle as="h2" size="regular-sm">
           {copy.title}
-        </h2>
-      </div>
+        </VideoThumbnailTitle>
+      </VideoThumbnailCaption>
       <div
         aria-hidden
         data-testid="watch-home-tv-card-bevel"

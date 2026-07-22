@@ -4,6 +4,12 @@ import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
 import {
+  VideoThumbnailCaption,
+  VideoThumbnailDescription,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
@@ -214,9 +220,14 @@ export function VideoCard({
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
             <div className="absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.05)_0_14px,transparent_14px_32px)]" />
             <div className="absolute inset-0 flex items-center justify-center px-4">
-              <span className="line-clamp-3 text-center text-2xl leading-tight font-bold tracking-tight text-white/90 select-none md:text-3xl">
+              <VideoThumbnailTitle
+                as="span"
+                lines={3}
+                size="display"
+                className="text-center tracking-tight text-white/90 select-none"
+              >
                 {result.title}
-              </span>
+              </VideoThumbnailTitle>
             </div>
           </div>
         ) : (
@@ -271,24 +282,24 @@ export function VideoCard({
         {/* Bottom-left content: type badge (videos only) + title +
             snippet. Experience cards skip the badge — the amber chip in
             the top-right is the sole type signal. */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-4 pt-4 pb-5">
+        <VideoThumbnailCaption>
           {typeBadge ? (
-            <span
+            <VideoThumbnailEyebrow
               data-testid="search-card-type-badge"
-              className="text-[10px] font-semibold tracking-[0.18em] text-stone-300 uppercase drop-shadow-md"
+              size="compact"
             >
               {typeBadge}
-            </span>
+            </VideoThumbnailEyebrow>
           ) : null}
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-white drop-shadow-md">
+          <VideoThumbnailTitle size="compact">
             {result.title}
-          </h3>
+          </VideoThumbnailTitle>
           {result.snippet && (
-            <p className="line-clamp-2 text-xs leading-relaxed text-stone-300 drop-shadow-sm">
+            <VideoThumbnailDescription>
               {result.snippet}
-            </p>
+            </VideoThumbnailDescription>
           )}
-        </div>
+        </VideoThumbnailCaption>
       </div>
       <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
     </Link>
