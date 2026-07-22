@@ -108,3 +108,23 @@ export function needsWindowStartSeek(args: {
     args.currentTime + WINDOW_SEEK_TOLERANCE_SECONDS < args.startSeconds
   )
 }
+
+/**
+ * The readyToPlay re-seek's arming decision — extracted so the caller's divergence from the
+ * timeUpdate self-heal is unit-testable (apps/tv has no render harness). Returns the window
+ * start to seek to, or null when none is owed. Takes NO confirmed-token argument BY DESIGN:
+ * readyToPlay fires before playingChange confirms playback, so gating this on confirmation
+ * (as the timeUpdate sibling does) would disarm the heal — do not add that guard here.
+ */
+export function windowStartSeekOnReady(args: {
+  loadedStartSeconds: number | null | undefined
+  currentTime: number
+}): number | null {
+  if (args.loadedStartSeconds == null) return null
+  return needsWindowStartSeek({
+    currentTime: args.currentTime,
+    startSeconds: args.loadedStartSeconds,
+  })
+    ? args.loadedStartSeconds
+    : null
+}
