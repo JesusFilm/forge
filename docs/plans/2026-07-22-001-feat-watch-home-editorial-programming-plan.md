@@ -303,16 +303,16 @@ network access. The hook asks it for one item ahead as slides are consumed.
 
 ### Risks and controls
 
-| Risk | Control |
-| --- | --- |
-| Later buckets starve in a bounded queue | Advance by authored slot cursor; skip empties within one bounded full rotation. |
-| Static SSR and random client sequence disagree | Render stable intro/fallback through hydration; seed rotation in an effect/reducer. |
-| Autoplay failure consumes content | Exposure is media-time/event based; failure advances without recording. |
-| Auth history is late/unavailable | Gate non-intro build on settled history; fail open locally with no account write. |
-| Program edit corrupts old bag state | Version + fingerprint + stable IDs; sanitize and merge storage defensively. |
-| Intro increases page-load cost | Preserve eager poster and one `MuxVideo`; compare resource/LCP evidence before/after. |
-| GraphQL widening breaks consumers | Additive optional fields, receiver-first regeneration, fragment/type tests. |
-| Historical docs contradict new ownership | Update `CONCEPTS.md`, follow-up inventory, and block descriptions in the same change. |
+| Risk                                           | Control                                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Later buckets starve in a bounded queue        | Advance by authored slot cursor; skip empties within one bounded full rotation.       |
+| Static SSR and random client sequence disagree | Render stable intro/fallback through hydration; seed rotation in an effect/reducer.   |
+| Autoplay failure consumes content              | Exposure is media-time/event based; failure advances without recording.               |
+| Auth history is late/unavailable               | Gate non-intro build on settled history; fail open locally with no account write.     |
+| Program edit corrupts old bag state            | Version + fingerprint + stable IDs; sanitize and merge storage defensively.           |
+| Intro increases page-load cost                 | Preserve eager poster and one `MuxVideo`; compare resource/LCP evidence before/after. |
+| GraphQL widening breaks consumers              | Additive optional fields, receiver-first regeneration, fragment/type tests.           |
+| Historical docs contradict new ownership       | Update `CONCEPTS.md`, follow-up inventory, and block descriptions in the same change. |
 
 ### Assumptions
 
