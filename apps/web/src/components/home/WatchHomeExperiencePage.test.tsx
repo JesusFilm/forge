@@ -102,6 +102,7 @@ describe("WatchHomeExperiencePage", () => {
       for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
         expect(rail.classList.contains(className)).toBe(true)
       }
+      expect(rail.classList.contains("pt-16")).toBe(true)
       expect(
         rail.querySelectorAll('[data-testid="experience-section"]'),
       ).toHaveLength(1)

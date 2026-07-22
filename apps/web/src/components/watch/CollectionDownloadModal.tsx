@@ -435,17 +435,18 @@ export function CollectionDownloadModal({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
-      <WatchModalViewportCloseButton
-        open={open}
-        onClose={close}
-        testId="watch-collection-download-modal-close"
-      />
       <DialogContent
         data-testid="watch-collection-download-modal"
         className="w-full max-w-[min(94vw,960px)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[960px]"
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
         showCloseButton={false}
       >
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={close}
+          testId="watch-collection-download-modal-close"
+        />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
         <div className="flex max-h-[86vh] flex-col gap-8 overflow-y-auto p-6 sm:p-9">
           <div

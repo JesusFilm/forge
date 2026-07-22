@@ -389,11 +389,11 @@ describe("ShareModal — lifecycle", () => {
     ) as HTMLButtonElement
     expect(close).not.toBeNull()
     expect(close.className).toContain("fixed")
-    expect(close.className).toContain("top-12")
-    expect(close.className).toContain("right-10")
+    expect(close.style.top).toBe("max(1rem, env(safe-area-inset-top, 0px))")
+    expect(close.style.right).toBe("max(1rem, env(safe-area-inset-right, 0px))")
     expect(close.className).toContain("h-[52px]")
     expect(close.className).toContain("w-12")
-    expect(close.className).toContain("z-[60]")
+    expect(close.className).toContain("z-[1100]")
     expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
 
     act(() => {
