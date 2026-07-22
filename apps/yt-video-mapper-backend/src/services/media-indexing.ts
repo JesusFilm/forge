@@ -259,8 +259,7 @@ export class MediaIndexingService {
       options.extractor ??
       createDefaultOfficialMediaSignatureExtractor(this.algorithmVersion)
     this.pageSize = options.pageSize ?? env.MEDIA_INDEX_PAGE_SIZE
-    this.concurrency =
-      options.concurrency ?? env.MEDIA_INDEX_CONCURRENCY
+    this.concurrency = options.concurrency ?? env.MEDIA_INDEX_CONCURRENCY
     if (
       !Number.isInteger(this.concurrency) ||
       this.concurrency < 1 ||
@@ -340,18 +339,19 @@ export class MediaIndexingService {
             }
 
             cursorVariantId = variant.id
-            run = await this.options.repository.updateIndexRun(run.id, {
-              cursorVariantId,
-              variantsAttempted,
-              variantsIndexed,
-              variantsFailed,
-              failureSummary: failureSummaryFromFailures(
-                failures,
-                cursorVariantId,
-                variantsFailed,
-              ),
-            })
           }
+
+          run = await this.options.repository.updateIndexRun(run.id, {
+            cursorVariantId,
+            variantsAttempted,
+            variantsIndexed,
+            variantsFailed,
+            failureSummary: failureSummaryFromFailures(
+              failures,
+              cursorVariantId,
+              variantsFailed,
+            ),
+          })
         }
       }
 
@@ -369,18 +369,18 @@ export class MediaIndexingService {
         ),
       })
     } catch (error) {
+      const durableFailures = failures.slice(
+        0,
+        Math.min(failures.length, run.variantsFailed),
+      )
       return await this.options.repository.updateIndexRun(run.id, {
         status: "failed",
         completedAt: this.now(),
-        cursorVariantId,
-        variantsAttempted,
-        variantsIndexed,
-        variantsFailed,
         failureSummary: runFailureSummary(
           error,
-          cursorVariantId,
-          failures,
-          variantsFailed,
+          run.cursorVariantId,
+          durableFailures,
+          run.variantsFailed,
         ),
       })
     }

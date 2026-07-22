@@ -415,13 +415,20 @@ describe("MediaIndexingService", () => {
     fetcher.complete("https://media.example.com/b.mp4", mediaSample([2]))
     await flushAsyncWork()
 
-    expect(repository.checkpointCursors).toEqual([])
+    expect(repository.checkpoints).toEqual([])
     expect(fetcher.calls).toHaveLength(2)
 
     fetcher.complete("https://media.example.com/a.mp4", mediaSample([1]))
     await fetcher.waitForCalls(4)
 
-    expect(repository.checkpointCursors).toEqual(["variant-a", "variant-b"])
+    expect(repository.checkpoints).toEqual([
+      {
+        cursorVariantId: "variant-b",
+        variantsAttempted: 2,
+        variantsIndexed: 2,
+        variantsFailed: 0,
+      },
+    ])
     expect(fetcher.maxInFlight).toBe(2)
 
     fetcher.complete("https://media.example.com/d.mp4", mediaSample([4]))
@@ -449,14 +456,84 @@ describe("MediaIndexingService", () => {
         ],
       },
     })
-    expect(repository.checkpointCursors).toEqual([
-      "variant-a",
-      "variant-b",
-      "variant-c",
-      "variant-d",
+    expect(repository.checkpoints).toEqual([
+      {
+        cursorVariantId: "variant-b",
+        variantsAttempted: 2,
+        variantsIndexed: 2,
+        variantsFailed: 0,
+      },
+      {
+        cursorVariantId: "variant-d",
+        variantsAttempted: 4,
+        variantsIndexed: 3,
+        variantsFailed: 1,
+      },
     ])
     expect(repository.signatures.size).toBe(3)
     expect(fetcher.inFlight).toBe(0)
+  })
+
+  it("replays a settled batch from the prior durable cursor after checkpoint failure", async () => {
+    const variants = Array.from({ length: 8 }, (_, index) =>
+      variant({
+        id: `variant-${String(index).padStart(2, "0")}`,
+        coreId: `core-${index}`,
+        videoVariantId: `dub-${index}`,
+        mediaSourceUrl: `https://media.example.com/${index}.mp4`,
+      }),
+    )
+    const repository = new FailingCheckpointMediaIndexRepository(variants, 2)
+    const fetcher = new StubOfficialMediaFetcher(
+      variants.map((_variant, index) => mediaSample([index + 1])),
+    )
+
+    const failed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog()
+
+    expect(failed).toMatchObject({
+      status: "failed",
+      cursorVariantId: "variant-03",
+      variantsAttempted: 4,
+      variantsIndexed: 4,
+      variantsFailed: 0,
+      failureSummary: {
+        code: "media_index_failed",
+        message: "checkpoint unavailable",
+        cursorVariantId: "variant-03",
+      },
+    })
+    expect(repository.attemptedCheckpointCursors).toEqual([
+      "variant-03",
+      "variant-07",
+    ])
+    expect(repository.signatures.size).toBe(8)
+
+    const replayed = await createService({
+      repository,
+      fetcher,
+      pageSize: 8,
+      concurrency: 4,
+    }).indexCatalog({ resumeAfterVariantId: failed.cursorVariantId })
+
+    expect(replayed).toMatchObject({
+      status: "completed",
+      cursorVariantId: "variant-07",
+      variantsAttempted: 4,
+      variantsIndexed: 0,
+      variantsFailed: 0,
+    })
+    expect(fetcher.calls).toHaveLength(8)
+    expect(repository.signatures.size).toBe(8)
+    expect(repository.attemptedCheckpointCursors).toEqual([
+      "variant-03",
+      "variant-07",
+      "variant-07",
+    ])
   })
 
   it("rejects programmatic concurrency above the safety limit", () => {
@@ -769,14 +846,50 @@ class FailingListMediaIndexRepository extends InMemoryMediaIndexRepository {
 }
 
 class TrackingMediaIndexRepository extends InMemoryMediaIndexRepository {
-  readonly checkpointCursors: string[] = []
+  readonly checkpoints: Array<{
+    cursorVariantId: string
+    variantsAttempted: number
+    variantsIndexed: number
+    variantsFailed: number
+  }> = []
 
   override async updateIndexRun(
     id: string,
     patch: Parameters<MediaIndexRepository["updateIndexRun"]>[1],
   ) {
     if (patch.status === undefined && patch.cursorVariantId) {
-      this.checkpointCursors.push(patch.cursorVariantId)
+      this.checkpoints.push({
+        cursorVariantId: patch.cursorVariantId,
+        variantsAttempted: patch.variantsAttempted!,
+        variantsIndexed: patch.variantsIndexed!,
+        variantsFailed: patch.variantsFailed!,
+      })
+    }
+    return super.updateIndexRun(id, patch)
+  }
+}
+
+class FailingCheckpointMediaIndexRepository extends InMemoryMediaIndexRepository {
+  readonly attemptedCheckpointCursors: string[] = []
+  private checkpointNumber = 0
+
+  constructor(
+    variants: InMemoryCatalogVariant[],
+    private readonly failingCheckpointNumber: number,
+  ) {
+    super(variants)
+  }
+
+  override async updateIndexRun(
+    id: string,
+    patch: Parameters<MediaIndexRepository["updateIndexRun"]>[1],
+  ) {
+    if (patch.status === undefined && patch.cursorVariantId) {
+      this.checkpointNumber += 1
+      this.attemptedCheckpointCursors.push(patch.cursorVariantId)
+      if (this.checkpointNumber === this.failingCheckpointNumber) {
+        throw new Error("checkpoint unavailable")
+      }
     }
     return super.updateIndexRun(id, patch)
   }
