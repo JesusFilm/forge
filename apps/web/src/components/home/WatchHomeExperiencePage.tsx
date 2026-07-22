@@ -106,7 +106,7 @@ export function WatchHomeExperiencePage({
             return isStandaloneMediaBlock(block) ? (
               <div
                 key={blockKey}
-                className={WATCH_PAGE_CONTENT_CLASSES}
+                className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
                 data-watch-home-content-rail
               >
                 {renderedBlock}
