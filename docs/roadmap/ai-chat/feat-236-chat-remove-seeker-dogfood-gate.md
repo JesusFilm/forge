@@ -62,6 +62,17 @@ tags:
 > the titling path, or the third-party data flow must be explicitly
 > re-accepted for the widened audience. The dogfood-scope acceptance does not
 > carry over on its own.
+>
+> **Client-site relocation (2026-07-22, feat-281):** the conversation-session
+> arc moved two client sites this recipe names. (1) The `gate_denied` → stub
+> mapping left `chat-stub.ts` — `streamSeekerReply` now reports every error
+> frame truthfully and `allowStubFallback` is gone (Ruling 3, feat-281 PR 2);
+> the stub-vs-failure decision lives in `lib/conversation-session.ts` (the
+> `gate_denied` stub-reconstruction branch in `send()`'s finalize). (2) The
+> sidebar hydration condition left `lib/use-conversations.ts` (now a thin
+> adapter) for the session's `activate()` guard on the `seekerEnabled` dep
+> (feat-281 PR 1). The step-2 references below are repointed; the `gate_denied`
+> grep and the `REPLY_FAILURE_REASONS` compile-lever are unchanged.
 
 feat-233 gates the real seeker agent behind a per-user allowlist (originally a
 LaunchDarkly flag; an env-var CSV since feat-239)
@@ -106,8 +117,8 @@ seeker for everyone, anonymous included. The other arms are NOT this ticket:
    POSTURE header (rewritten a third time by this ticket — see What To Build).
 5. `apps/chat/src/lib/conversations.ts` — `gate_denied` in
    `REPLY_FAILURE_REASONS`: removing the union member is the compile-forced
-   cleanup lever for every client site (chat-stub.ts mapping, message-list.tsx
-   switch).
+   cleanup lever for every client site (the conversation-session.ts
+   stub-reconstruction branch, message-list.tsx switch).
 6. `packages/feature-flags/src/launchdarkly.ts` + `registry.ts` —
    `booleanVariationDetail` STAYS (permanent shared infrastructure;
    `booleanVariation` delegates through it); only the `chatSeekerDogfood`
@@ -174,8 +185,10 @@ isSeekerChatEnabled()` on `SeekerProxyConfig`, checked ahead of
 - Page: `seekerEnabled={isSeekerChatEnabled()}` in `page.tsx`; keep
   `force-dynamic` (load-bearing for env + identity reads regardless).
 - Client: remove `"gate_denied"` from `REPLY_FAILURE_REASONS`, then follow the
-  compiler — the exhaustive switch in `message-list.tsx` and the stub mapping
-  in `chat-stub.ts` (`streamSeekerReply`) fail typecheck until cleaned.
+  compiler — the exhaustive switch in `message-list.tsx` and the session's
+  `gate_denied` stub-reconstruction branch in `lib/conversation-session.ts`
+  (`send()`'s finalize; relocated from `chat-stub.ts` by feat-281 PR 2) fail
+  typecheck until cleaned.
 - History routes (feat-241, exact sites): drop the `resolveGate` member from
   `HistoryProxyHandlerInput` and the gate step in `forwardHistoryRequest`
   (`app/api/history/history-proxy.ts`), the `resolveSeekerGate` closures in
@@ -189,9 +202,11 @@ isSeekerChatEnabled()` on `SeekerProxyConfig`, checked ahead of
   layer, plus the core suite's `gate_denied` cases in `history-proxy.test.ts`.
   Their permanent gating — signed-in + server-side resource scoping
   (feat-240's lease was dropped) — stays untouched. Also rewrite the client's
-  hydration condition in `lib/use-conversations.ts` (today `seekerEnabled`,
-  which means "full gate grant") so every SIGNED-IN user's sidebar hydrates —
-  the flag prop's meaning changes back to kill-switch-only at removal.
+  hydration condition in `lib/conversation-session.ts` (the `activate()`
+  guard on the `seekerEnabled` dep — relocated from `lib/use-conversations.ts`
+  by feat-281 PR 1; the flag means "full gate grant") so every SIGNED-IN
+  user's sidebar hydrates — the flag's meaning changes back to
+  kill-switch-only at removal.
   `message-list.tsx`'s access-changed `gate_denied` copy falls out with the
   union member (compile-forced).
 - One ADDITION (not a revert), deferred here from feat-241: the signed-out

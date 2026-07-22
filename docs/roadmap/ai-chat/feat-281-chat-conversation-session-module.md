@@ -3,7 +3,7 @@ id: "feat-281"
 title: "Chat conversation session module (deepen the engine + honest gate denial)"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-22"
 duration: 4
 depends_on: []
@@ -15,13 +15,9 @@ tags:
 
 ## Resolution
 
-> **Arc status:** PR 1 of 2 shipped; this section covers chunk 1 only and will
-> be extended when PR 2 (honest `gate_denied` + the sidebar-projection move)
-> lands and flips this ticket `complete`.
+**Shipped:** 2026-07-22 via [PR #1666](https://github.com/JesusFilm/forge/pull/1666) (`feat(chat): extract framework-agnostic conversation session module (feat-281 PR 1)`) and [PR #1674](https://github.com/JesusFilm/forge/pull/1674) (`feat(chat): honest gate denial + sidebar projection move (feat-281 PR 2)`).
 
-**Shipped (PR 1):** 2026-07-22 via [PR #1666](https://github.com/JesusFilm/forge/pull/1666) (`feat(chat): extract framework-agnostic conversation session module (feat-281 PR 1)`).
-
-**What landed.** The 742-line `useConversations` machine moved wholesale into
+**What landed (PR 1).** The 742-line `useConversations` machine moved wholesale into
 `src/lib/conversation-session.ts` — a React-free subscribe/getSnapshot store
 with injected deps (`streamReply` + the two history fetchers), cached
 identity-stable snapshots (lazy dirty-flag rebuild), side-effect-free
@@ -38,13 +34,35 @@ explicit `activate`/`deactivate` pair, live-but-unarmed construction,
 `seekerEnabled` captured at construction, replay triggering moved from the
 `[activeId]` effect into `selectConversation` + activate re-arm.
 
+**What landed (PR 2).** Ruling 3: the reply seam reports `gate_denied`
+honestly — `allowStubFallback` left `StreamReplyInput` and the seam's
+special-case branch was deleted outright; the session captures
+stub-vs-failure at send START from `serverPersisted` and rebuilds the
+immediate inline stub in the finalize for never-persisted conversations
+(`buildStubReply`, engine `"stub"`, no `streamStubReply` re-entry — the
+800ms-delay trap), while persisted ones keep the visible access-changed
+notice (KTD10). Finalize branch order deliberately reproduces the old
+fabricated-ok-beats-stopped precedence, now pinned by a dedicated test.
+Ruling 4b: `HistoryListUi` + `listConversations` moved to
+`components/shell/sidebar-projection.ts` (the consumer owns the projection;
+the snapshot exposes the unprojected list, `Sidebar` projects via `useMemo`);
+the `use-conversations` re-export shim was deleted. feat-236's removal recipe
+was repointed to the relocated client sites in the same PR (Ruling 3
+condition 2). Behavior-identity held end-to-end: whole-tree suites unmodified
+and green, plus a live production-build deny matrix (mid-session revocation →
+notice on the persisted thread, inline stub in 25ms on a fresh one).
+
 **Compound docs.** `docs/solutions/logic-errors/react-strictmode-remount-safety-hook-lifetime-refs.md`
 gained the "Detection pitfall (2026-07-22, feat-281)" section (`renderHook`
 StrictMode coverage requires RTL's `reactStrictMode: true` option — the
 `wrapper` OPTION never doubles the effect cycle, under `render` or
 `renderHook`) and the "Corollary (2026-07-22, feat-281)" section (synchronous
 external stores invert the doc's ref-lag mechanic; teardown must explicitly
-roll back in-flight-only states).
+roll back in-flight-only states). PR 2 added
+`docs/solutions/best-practices/nextjs-hmr-reload-breaks-stateful-browser-verification.md`
+(stateful cross-restart browser verification must run under `next build` +
+`next start` — `next dev`'s HMR reconnect force-reloads the page and silently
+resets the state under test) plus its root `CLAUDE.md` Known Patterns entry.
 
 **Residual risk / follow-ups.** (1) Pre-existing, deliberately untouched: the
 access-revert vs late Load-more race (`revertToClientOnly` aborts nothing, so
@@ -55,6 +73,13 @@ isolation — validator-rejected as speculative while React's
 or another consumer subscribes. (3) `deps.seekerEnabled` is captured at
 session construction (deploy-static today); feat-209's URL adapter must
 re-examine if soft navigation ever re-resolves the gate onto a live shell.
+(4) Since PR 2, `snapshot.conversations` is the FULL unprojected list — a
+prose/JSDoc contract only; feat-209's URL adapter must apply
+`listConversations` (from `components/shell/sidebar-projection.ts`) if it
+renders a row list from the snapshot.
+
+**Unblocked.** feat-209 (per-conversation URLs) — its `depends_on: feat-281`
+is now satisfied; it lands as a thin URL adapter over the session interface.
 
 ## Problem
 
