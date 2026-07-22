@@ -1,7 +1,7 @@
 ---
 title: "fix(web): Contain Watch home standalone media blocks"
 type: "fix"
-status: "active"
+status: "completed"
 date: "2026-07-21"
 ---
 
@@ -129,3 +129,15 @@ The safest ownership boundary is `WatchHomeExperiencePage`: the same shared rend
 - R1–R6 are satisfied with focused automated tests and responsive browser evidence.
 - Only the Watch homepage composition, its focused test, and the roadmap item are changed unless validation reveals a directly related required adjustment.
 - The roadmap item is complete and the final handoff reports validation results and links the captured visual proof.
+
+## Validation Evidence
+
+- Focused tests: `WatchHomeExperiencePage`, `Video`, and `CarouselVideo` passed (10 tests total).
+- Web validation: `typecheck` and `lint` passed; pre-commit formatting checks passed.
+- Wide browser geometry: both affected block roots aligned at `x=96px` with right edge `1169px` in a `1265px` document content width. The hero and authored full-bleed sections remained `x=0`, width `1265px`.
+- Compact browser geometry: both affected block roots aligned at `x=20px` with right edge `355px`; document `scrollWidth` equaled `clientWidth` (`375px`).
+- Course carousel: the scoped next control moved the track from `matrix(..., 0, 0)` to `matrix(..., -240, 0)`, reached its disabled terminal state, and retained the terminal viewport edge without clipping.
+- Invitation video: the final video reached ready state 4 and advanced from `42.17s` to `43.40s` while playing.
+- Runtime: no new browser errors appeared. Two existing Next.js development warnings concerned the homepage hero image position/LCP and are outside this layout-only change.
+- Warm local `/watch` response: HTTP 200, `0.445s` time to first byte, `0.470s` total. The implementation adds only server-rendered wrapper markup/classes and no client boundary, request, observer, dependency, or dynamic-import change.
+- Screenshots: `output/playwright/watch-home-new-believer-wide.png`, `output/playwright/watch-home-new-believer-compact.png`, `output/playwright/watch-home-invitation-wide.png`, and `output/playwright/watch-home-invitation-compact.png`.
