@@ -12,6 +12,7 @@ import {
   VISUAL_FRAME_FINGERPRINT_HEIGHT,
   VISUAL_FRAME_FINGERPRINT_KIND,
   VISUAL_FRAME_FINGERPRINT_WIDTH,
+  buildVisualFrameFingerprintPayload,
   type VisualFrameFingerprint,
 } from "../services/visual-fingerprint.js"
 
@@ -27,6 +28,13 @@ type TrackedRunner = {
   runCommand: FfmpegCommandRunner
   calls: Parameters<FfmpegCommandRunner>[0][]
   maxActive: () => number
+}
+
+class FfmpegSeekingBenchmarkProcessError extends Error {
+  constructor(command: string, code: number | null) {
+    super(`${command} exited with code ${code ?? "unknown"}`)
+    this.name = "FfmpegSeekingBenchmarkProcessError"
+  }
 }
 
 async function main(): Promise<void> {
@@ -69,6 +77,10 @@ async function main(): Promise<void> {
     durationMilliseconds: TYPICAL_DURATION_MS,
     mode: "adaptive",
   })
+  const expectedLongFingerprintKeys = await exactSeekFingerprintKeys({
+    source: fixtures.long,
+    durationMilliseconds: LONG_DURATION_MS,
+  })
 
   const shortVideoRegressionRatio =
     shortLegacy.elapsedMs > 0 ? short.elapsedMs / shortLegacy.elapsedMs : 1
@@ -78,6 +90,10 @@ async function main(): Promise<void> {
       long_video_extract_ms: round(long.elapsedMs),
       frame_contract_ok: Number(
         hasFrameContract(long.frames, LONG_DURATION_MS),
+      ),
+      frame_content_ok: Number(
+        fingerprintKeys(long.frames).join("|") ===
+          expectedLongFingerprintKeys.join("|"),
       ),
       deterministic_ok: Number(
         fingerprintKeys(long.frames).join("|") ===
@@ -100,10 +116,56 @@ async function main(): Promise<void> {
       ),
       short_video_extract_ms: round(short.elapsedMs),
       typical_video_extract_ms: round(typical.elapsedMs),
+      typical_adaptive_ok: Number(isAdaptiveSeek(typical.runner.calls)),
       ffmpeg_commands_long: long.runner.calls.length,
       fixture_generation_ms: round(fixtureGenerationMs),
     })}\n`,
   )
+}
+
+async function exactSeekFingerprintKeys({
+  source,
+  durationMilliseconds,
+}: {
+  source: string
+  durationMilliseconds: number
+}): Promise<string[]> {
+  const offsets = frameOffsets(durationMilliseconds)
+  const keys: string[] = []
+
+  for (const offsetMilliseconds of offsets) {
+    const result = await defaultFfmpegCommandRunner({
+      command: "ffmpeg",
+      args: [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-protocol_whitelist",
+        "file,pipe",
+        "-ss",
+        (offsetMilliseconds / 1_000).toFixed(3),
+        "-i",
+        source,
+        "-vf",
+        `scale=${VISUAL_FRAME_FINGERPRINT_WIDTH}:${VISUAL_FRAME_FINGERPRINT_HEIGHT},format=gray`,
+        "-frames:v",
+        "1",
+        "-f",
+        "rawvideo",
+        "pipe:1",
+      ],
+      timeoutMs: 60_000,
+    })
+    const payload = buildVisualFrameFingerprintPayload({
+      bytes: result.stdout,
+      width: VISUAL_FRAME_FINGERPRINT_WIDTH,
+      height: VISUAL_FRAME_FINGERPRINT_HEIGHT,
+    })
+    keys.push(`${offsetMilliseconds}:${payload.phash}`)
+  }
+
+  return keys
 }
 
 async function timedExtraction({
@@ -160,17 +222,23 @@ function hasFrameContract(
   frames: VisualFrameFingerprint[],
   durationMilliseconds: number,
 ): boolean {
-  const offsetStepMilliseconds = durationMilliseconds / EXPECTED_FRAMES
+  const offsets = frameOffsets(durationMilliseconds)
   return (
     frames.length === EXPECTED_FRAMES &&
     frames.every(
       (frame, index) =>
-        frame.offsetMilliseconds ===
-          Math.round(index * offsetStepMilliseconds) &&
+        frame.offsetMilliseconds === offsets[index] &&
         frame.payload.kind === VISUAL_FRAME_FINGERPRINT_KIND &&
         frame.payload.frameWidth === VISUAL_FRAME_FINGERPRINT_WIDTH &&
         frame.payload.frameHeight === VISUAL_FRAME_FINGERPRINT_HEIGHT,
     )
+  )
+}
+
+function frameOffsets(durationMilliseconds: number): number[] {
+  const offsetStepMilliseconds = durationMilliseconds / EXPECTED_FRAMES
+  return Array.from({ length: EXPECTED_FRAMES }, (_, index) =>
+    Math.round(index * offsetStepMilliseconds),
   )
 }
 
@@ -186,6 +254,17 @@ function isSinglePass(calls: Parameters<FfmpegCommandRunner>[0][]): boolean {
   const filter = args[args.indexOf("-vf") + 1]
   return (
     args.includes("-i") && !args.includes("-ss") && filter?.startsWith("fps=")
+  )
+}
+
+function isAdaptiveSeek(calls: Parameters<FfmpegCommandRunner>[0][]): boolean {
+  if (calls.length !== 1) return false
+  const args = calls[0]?.args ?? []
+  return (
+    args.filter((arg) => arg === "-ss").length === EXPECTED_FRAMES &&
+    args.filter((arg) => arg === "-i").length === EXPECTED_FRAMES &&
+    args.includes("-filter_complex") &&
+    !args.includes("-vf")
   )
 }
 
@@ -259,7 +338,7 @@ async function runProcess(command: string, args: string[]): Promise<void> {
       if (code === 0) {
         resolve()
       } else {
-        reject(new Error(`${command} exited with code ${code ?? "unknown"}`))
+        reject(new FfmpegSeekingBenchmarkProcessError(command, code))
       }
     })
   })
