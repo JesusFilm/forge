@@ -47,6 +47,15 @@ import {
   type WatchChapterNavigationIntent,
 } from "./chapter-navigation"
 
+function getRoutableCarouselChildren(
+  parent: WatchSiblingCarouselBlock["canonicalParent"],
+) {
+  return (parent.children ?? []).filter(
+    (child): child is NonNullable<typeof child> & { slug: string } =>
+      child != null && typeof child.slug === "string" && child.slug.length > 0,
+  )
+}
+
 function consumePreservedCarouselIndex({
   children,
   currentVideoDocumentId,
@@ -105,25 +114,41 @@ export function SiblingCarousel({
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
   const { canonicalParent, currentVideoDocumentId } = block
+  const selectableParents =
+    block.selectableParents != null && block.selectableParents.length > 0
+      ? block.selectableParents
+      : null
+  const defaultParent = selectableParents?.[0] ?? canonicalParent
+  const [parentSelection, setParentSelection] = useState<{
+    sourceVideoDocumentId: string
+    parentDocumentId: string
+  } | null>(null)
+  const selectedParentDocumentId =
+    parentSelection?.sourceVideoDocumentId === currentVideoDocumentId
+      ? parentSelection.parentDocumentId
+      : defaultParent.documentId
+  const selectedParent =
+    selectableParents?.find(
+      (parent) => parent.documentId === selectedParentDocumentId,
+    ) ?? canonicalParent
+  const hasExplicitParentSelection =
+    parentSelection?.sourceVideoDocumentId === currentVideoDocumentId
 
   // Drop nulls AND items missing a slug — without a slug we can't build a
   // routable href, and rendering an unclickable card is worse than
   // omitting it entirely. Content-slug and public language-slug validity are
   // re-checked per child via the route builders below (a malformed slug still
   // renders, just not as a <Link>).
-  const children = (canonicalParent.children ?? []).filter(
-    (child): child is NonNullable<typeof child> & { slug: string } =>
-      child != null && typeof child.slug === "string" && child.slug.length > 0,
-  )
+  const children = getRoutableCarouselChildren(selectedParent)
 
   const activeIndex = children.findIndex(
     (child) => child.documentId === currentVideoDocumentId,
   )
   const clipTotal = children.length
-  const parentTitle = canonicalParent.title ?? videoLabels("collection")
+  const parentTitle = selectedParent.title ?? videoLabels("collection")
   const parentSlug =
-    typeof canonicalParent.slug === "string"
-      ? tryAsContentSlug(canonicalParent.slug)
+    typeof selectedParent.slug === "string"
+      ? tryAsContentSlug(selectedParent.slug)
       : null
   const parentHref =
     parentSlug != null && tryAsLocaleSlug(languageSlug) != null
@@ -150,10 +175,13 @@ export function SiblingCarousel({
       intent: WatchChapterNavigationIntent,
       isActive: boolean,
     ) => {
-      if (isActive) return
       if (event.defaultPrevented) return
       if (event.button !== 0) return
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return
+      }
+      if (isActive) {
+        event.preventDefault()
         return
       }
 
@@ -192,10 +220,15 @@ export function SiblingCarousel({
       languageSlug,
     })
     return {
-      index: preservedIndex ?? (visualActiveIndex >= 0 ? visualActiveIndex : 0),
+      index: preservedIndex ?? (activeIndex >= 0 ? activeIndex : 0),
       deferInitialAutoScroll: preservedIndex != null,
     }
   })
+  const carouselStartIndex = hasExplicitParentSelection
+    ? visualActiveIndex >= 0
+      ? visualActiveIndex
+      : 0
+    : initialCarouselState.index
   const deferInitialAutoScrollRef = useRef(
     initialCarouselState.deferInitialAutoScroll,
   )
@@ -244,6 +277,21 @@ export function SiblingCarousel({
         current: clipIndex,
         total: clipTotal,
       })
+  const positionLabel = isParentMode ? (
+    t("chapterCount", { count: clipTotal })
+  ) : (
+    <>
+      <span className="md:hidden">
+        {t("position", { current: clipIndex, total: clipTotal })}
+      </span>
+      <span className="hidden md:inline">
+        {t("clipPosition", {
+          current: clipIndex,
+          total: clipTotal,
+        })}
+      </span>
+    </>
+  )
 
   return (
     <section
@@ -253,40 +301,69 @@ export function SiblingCarousel({
       aria-label={ariaLabel}
     >
       <header className="mb-4 px-5 md:px-0">
-        <p className="text-sm font-normal text-stone-300">
-          {parentHref != null ? (
-            <Link href={parentHref} className="text-stone-100 hover:underline">
-              <span className="font-medium">{parentTitle}</span>
-            </Link>
-          ) : (
-            <span className="font-medium text-stone-100">{parentTitle}</span>
-          )}
-          <span className="px-2 text-stone-500">·</span>
-          <span data-testid="sibling-carousel-label">
-            {isParentMode ? (
-              t("chapterCount", { count: clipTotal })
+        {selectableParents != null ? (
+          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
+            <select
+              aria-label={videoLabels("collection")}
+              aria-busy={validPendingNavigation != null ? "true" : undefined}
+              data-testid="sibling-carousel-parent-selector"
+              value={selectedParent.documentId}
+              disabled={validPendingNavigation != null}
+              className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
+              onChange={(event) => {
+                setApi(null)
+                deferInitialAutoScrollRef.current = false
+                setParentSelection({
+                  sourceVideoDocumentId: currentVideoDocumentId,
+                  parentDocumentId: event.currentTarget.value,
+                })
+              }}
+            >
+              {selectableParents.map((parent) => (
+                <option key={parent.documentId} value={parent.documentId}>
+                  {parent.title ?? videoLabels("collection")}
+                </option>
+              ))}
+            </select>
+            <span
+              data-testid="sibling-carousel-label"
+              className="shrink-0 text-sm font-normal text-stone-300"
+            >
+              {positionLabel}
+            </span>
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid="sibling-carousel-selection-announcement"
+              className="sr-only"
+            >
+              {parentTitle} · {t("chapterCount", { count: clipTotal })}
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm font-normal text-stone-300">
+            {parentHref != null ? (
+              <Link
+                href={parentHref}
+                className="text-stone-100 hover:underline"
+              >
+                <span className="font-medium">{parentTitle}</span>
+              </Link>
             ) : (
-              <>
-                <span className="md:hidden">
-                  {t("position", { current: clipIndex, total: clipTotal })}
-                </span>
-                <span className="hidden md:inline">
-                  {t("clipPosition", {
-                    current: clipIndex,
-                    total: clipTotal,
-                  })}
-                </span>
-              </>
+              <span className="font-medium text-stone-100">{parentTitle}</span>
             )}
-          </span>
-        </p>
+            <span className="px-2 text-stone-500">·</span>
+            <span data-testid="sibling-carousel-label">{positionLabel}</span>
+          </p>
+        )}
       </header>
 
       <Carousel
+        key={selectedParent.documentId}
         opts={{
           align: "start",
           containScroll: "trimSnaps",
-          startIndex: initialCarouselState.index,
+          startIndex: carouselStartIndex,
         }}
         setApi={setApi}
         className="w-full pl-5 md:pl-0"
