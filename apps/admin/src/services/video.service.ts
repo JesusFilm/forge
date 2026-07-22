@@ -402,6 +402,7 @@ const LOCALE_STATUS_SEARCH_TOKENS = {
 type VideoListCategory =
   | "all"
   | "collections"
+  | "episodes"
   | "features"
   | "shortFilms"
   | "series"
@@ -419,6 +420,7 @@ type VideoListInput = {
 
 const VIDEO_CATEGORY_LABELS = {
   collections: ["COLLECTION"],
+  episodes: ["EPISODE"],
   features: ["FEATURE_FILM"],
   shortFilms: ["SHORT_FILM"],
   series: ["SERIES"],
