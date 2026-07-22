@@ -12,7 +12,7 @@ applies_when:
   - "A PR deliberately ships a helper, client, or module that no caller consumes yet"
   - "Review defers a finding as a forward-looking re-check because the PR structurally cannot verify it"
   - "A real-contract smoke test is skip-gated by default because credentials or a provisioned account do not exist yet"
-  - "A house convention defers work behind a count threshold (\"extract when a third consumer needs it\") and the current PR may be that Nth consumer"
+  - 'A house convention defers work behind a count threshold ("extract when a third consumer needs it") and the current PR may be that Nth consumer'
   - "Writing the consuming or follow-up ticket for scaffolding that shipped standalone"
 symptoms:
   - "Review records a caller-relative law as unverifiable because no caller exists in the PR"
@@ -60,8 +60,8 @@ workstream is unblocked without inheriting a half-built dependency. What it
 costs is **verification reach**. A PR with no consumer cannot exercise any
 property that is defined relative to a consumer, and it often cannot exercise
 properties that need an external account nobody has provisioned yet. Those
-checks do not disappear — they move. The question this doc answers is *where
-they should move to*, because the default (the producing plan's prose) is a
+checks do not disappear — they move. The question this doc answers is _where
+they should move to_, because the default (the producing plan's prose) is a
 place the person who must execute them will never read.
 
 All file paths below are in this repo. Files marked **(PR #1621)** exist only
@@ -72,7 +72,7 @@ in the working tree / on `main`.
 
 **Core rule: a deferred check is only real if it is recorded where the deferral
 will be executed.** The producing PR's plan, PR body, and review artifacts are
-all *archaeology* from the consuming workstream's point of view. The consuming
+all _archaeology_ from the consuming workstream's point of view. The consuming
 workstream reads its own ticket.
 
 Three practical steps.
@@ -96,13 +96,13 @@ PR #1621 satisfies all five. (A review pass reported checking each; that
 artifact was a scratch file and no longer exists, so treat the completeness of
 that check as reported, not confirmed.)
 
-**Caller-relative** — has a *single-call half* that a documented budget can
-stand in for, and an *aggregate/composition half* that only a real caller
+**Caller-relative** — has a _single-call half_ that a documented budget can
+stand in for, and an _aggregate/composition half_ that only a real caller
 exercises. The outbound-timeout law
 (`docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md:134-138`)
 is the archetype:
 
-- The single-call half *is* checkable without a caller, provided the repo has a
+- The single-call half _is_ checkable without a caller, provided the repo has a
   written budget to point at. It does here, and the diff points at it —
   see Examples.
 - The aggregate half is not. "N serial `await getManagedPrompt(...)` calls in
@@ -111,8 +111,8 @@ is the archetype:
   call site, and the call site does not exist.
 
 Byte caps and timeouts are the space and time axes of input bounding; note that
-the *space* axis is self-contained (the guarded resource is this process's heap)
-while the *time* axis is caller-relative (the guarded resource is someone else's
+the _space_ axis is self-contained (the guarded resource is this process's heap)
+while the _time_ axis is caller-relative (the guarded resource is someone else's
 budget). That asymmetry is why the same PR can fully close one and only half-close
 the other.
 
@@ -128,7 +128,7 @@ awareness note:
   before wiring starts."
 
 If the check needs something nobody owns (an account, a region decision, a key
-pair), name the *decision* in the ticket too, not just the check — an unowned
+pair), name the _decision_ in the ticket too, not just the check — an unowned
 precondition with no named decision is how a ticket stalls silently.
 
 ### (iii) Before citing a precedent, restate its predicate and test it
@@ -140,8 +140,8 @@ pre-threshold half of it, so the threshold is never observed to have been
 crossed.
 
 The mechanical version: when quoting a house doc's "we deliberately did not do
-X (yet)" stance, quote its *trigger sentence* in the same breath and answer it
-in one line — "trigger is a third consumer; *count the consumers now*; therefore ___". Re-derive the count from the code; do not trust the number written in the doc, which is a snapshot of when someone last looked. If the answer is "therefore we should extract but are choosing
+X (yet)" stance, quote its _trigger sentence_ in the same breath and answer it
+in one line — "trigger is a third consumer; _count the consumers now_; therefore \_\_\_". Re-derive the count from the code; do not trust the number written in the doc, which is a snapshot of when someone last looked. If the answer is "therefore we should extract but are choosing
 not to", that is a finding and needs a ticket, not a comment.
 
 ### Unwired-helper PR checklist
@@ -181,8 +181,8 @@ The concrete shape here: the Langfuse client's branch classifications
 `empty_prompt`) are pinned only against fixtures a human transcribed from
 documentation. That is precisely the gap
 `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`
-exists to close — mocked tests prove branch *shape*, real fixtures prove
-production *contract* — and it stays open as long as the closing test is
+exists to close — mocked tests prove branch _shape_, real fixtures prove
+production _contract_ — and it stays open as long as the closing test is
 optional. The review said so plainly:
 
 > The opt-in smoke test ... is the designed real-contract gate, but it requires
@@ -207,7 +207,7 @@ external account). Accepting it as a satisfied gate is not.
 - Any code comment or plan section that cites prior art as justification.
 - Sibling situation, opposite direction:
   `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md`
-  — write the *teardown* ticket in the PR that ships temporary scaffolding.
+  — write the _teardown_ ticket in the PR that ships temporary scaffolding.
   Same law: the downstream workstream reads its own ticket.
 
 ## Examples
@@ -239,7 +239,7 @@ among the passed. The PR body is more honest than the plan here — it records
 ### The follow-up ticket: the positive exemplar (contradicts one framing)
 
 `docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`
-**(PR #1621)** *does* carry the smoke obligation as an entry precondition. This
+**(PR #1621)** _does_ carry the smoke obligation as an entry precondition. This
 contradicts the assumption that the deferral was left in plan prose:
 
 - Lines 43-49, a bolded **Operational precondition (from the plan's Open
@@ -257,8 +257,8 @@ So the transfer happened. The learning is not "they failed to do this"; it is
 
 ### What still leaked: advisory findings recorded in the wrong artifact
 
-The review triaged four advisories into one group titled *"feat-272 wiring
-constraints (advisory)"* — findings 8, 9, 10, 11 — with the disposition
+The review triaged four advisories into one group titled _"feat-272 wiring
+constraints (advisory)"_ — findings 8, 9, 10, 11 — with the disposition
 "Fold into the feat-272 ticket's constraints section." Three landed, and the
 ticket cites them by number:
 
@@ -270,7 +270,7 @@ ticket cites them by number:
 - finding 11 → lines 152-155 (prompt names must be compile-time constants; the
   default cache never evicts) — "(Review finding #11.)"
 
-One did not. (Its number is shown as **10** below; that numeral is *inferred* from the gap in the 8/9/11 sequence — the numbered review artifacts were scratch files and are gone. The PR body independently confirms the substance: it says the runtime halves of **three** advisories were routed to the ticket, and names a fourth separately.) Its subject is an empty-string `label` argument
+One did not. (Its number is shown as **10** below; that numeral is _inferred_ from the gap in the 8/9/11 sequence — the numbered review artifacts were scratch files and are gone. The PR body independently confirms the substance: it says the runtime halves of **three** advisories were routed to the ticket, and names a fourth separately.) Its subject is an empty-string `label` argument
 surviving both resolution rungs and reaching the wire as `?label=`, producing
 either a persistent rejected-fallback or a silent duplicate cache entry
 shadowing `production`. It is recorded only in the PR description:
@@ -287,7 +287,7 @@ note — "Worth a note in feat-272's implementation checklist to fetch
 concurrently (`Promise.all`) if more than one prompt is ever resolved per turn"
 — which appears in `reliability.json` and as a one-line residual risk in
 `review.json`, both of which live under `/tmp` and will be garbage-collected. Note the repo
-*does* have a persistent home for exactly this — `docs/residual-review-findings/`
+_does_ have a persistent home for exactly this — `docs/residual-review-findings/`
 — which currently holds three files, none for #1621. The routing failure is
 therefore a failure to use an existing mechanism, not a missing one.
 The ticket has no mention of concurrency, aggregate latency, or the 90s budget.
@@ -303,7 +303,7 @@ Written as a consuming-ticket entry precondition (what happened for findings
 > - An explicit `label: ""` bypasses both label-resolution rungs and reaches
 >   the wire as `?label=`, creating a cache entry that shadows `production`.
 >   Normalize at the wiring seam — `(label?.trim() || undefined) ?? default ??
->   "production"` — and pin an empty-string-label case in the wiring tests.
+"production"` — and pin an empty-string-label case in the wiring tests.
 >   (Review finding #10.)
 
 The difference is not wording. It is which document the person who must act on
@@ -312,7 +312,7 @@ it will open.
 ### The caller-relative law: single-call half checked, aggregate half not
 
 The framing "the outbound-timeout law could not be checked because no caller
-exists" is too strong — the source shows the single-call half *was* checked,
+exists" is too strong — the source shows the single-call half _was_ checked,
 against a budget the repo had already written down. `apps/mastra/src/config/env.ts`
 **(PR #1621)**, lines 356-359, immediately above `LANGFUSE_TIMEOUT_MS`:
 
@@ -329,8 +329,8 @@ verified against it: "default 3000ms, schema-capped 10000ms, verified strictly
 inside the 90s chatTurn budget" (`reliability.json`).
 
 **The lesson is the refinement, not the absence.** A caller-relative law is
-checkable in an unwired PR *to the extent the repo has already written down the
-caller's budget* — a schema `.max()` anchored *by comment* to a named,
+checkable in an unwired PR _to the extent the repo has already written down the
+caller's budget_ — a schema `.max()` anchored _by comment_ to a named,
 grep-able constant is a genuine — if soft — proof of the single-call half. Soft
 because the anchor is prose: `env.ts` imports no budget symbol, the cap is the
 literal `.max(10_000)`, and nothing mechanically fails if `chatTurn` drops below
@@ -358,10 +358,10 @@ second did not.
 - line 54: `const RUN_LANGFUSE_SMOKE = env.LANGFUSE_PROMPT_SMOKE_TEST === "1"`
 - line 79: `describe.skipIf(!RUN_LANGFUSE_SMOKE)(`
 
-The file is exemplary in every respect *except* having run. Its header (lines
+The file is exemplary in every respect _except_ having run. Its header (lines
 10-52) documents the one-time manual seeding convention — prompt
 `forge-mastra-smoke/text-prompt`, one prompt with two versions under labels
-`production` and `smoke` carrying *different exact sentinel bodies*, never
+`production` and `smoke` carrying _different exact sentinel bodies_, never
 self-seeding — and explains why two labels are necessary:
 
 > `production` is ALSO Langfuse's documented default when the `label` param is
@@ -370,7 +370,7 @@ self-seeding — and explains why two labels are necessary:
 > — smoke test lines 35-41 (PR #1621)
 
 It also carries a fail-loud contract (lines 43-46): with credentials present
-but the seeded prompt missing it *fails*, never skips, via `expect.unreachable`
+but the seeded prompt missing it _fails_, never skips, via `expect.unreachable`
 with seeding guidance (lines 98-107, 134-143). That two-label design was itself
 a review fix — the cross-model adversarial pass caught that the original smoke
 asserted only non-empty text under the default label, so it would have gone
@@ -387,11 +387,11 @@ A well-designed test that has never run proves the design of the test.
 ### The precedent whose predicate was crossed
 
 `docs/solutions/conventions/single-service-http-client-result-union-convention.md`
-(working tree, unmodified by PR #1621) has a section titled *"Note: the shared
-helpers are currently duplicated, not extracted"* (line 134).
+(working tree, unmodified by PR #1621) has a section titled _"Note: the shared
+helpers are currently duplicated, not extracted"_ (line 134).
 
 Read that section carefully before leaning on it, because it opens by disclaiming
-rule-hood: *"This is a **descriptive observation, not a rule to enforce.**"*
+rule-hood: _"This is a **descriptive observation, not a rule to enforce.**"_
 (lines 135-136). Its closing paragraph nonetheless states a condition, and the
 condition is what matters here:
 
@@ -416,7 +416,7 @@ citation.
 
 **Both triggers fired in PR #1621.**
 
-*Third consumer.* The copies are real, and labelled as such — verified
+_Third consumer._ The copies are real, and labelled as such — verified
 line-by-line against the template:
 
 - `langfuse-prompt-client.ts:133-136` `endpoint` — body identical to
@@ -436,14 +436,13 @@ exists yet, per plan."
 Now actually count, per helper — and the count is worse than "this PR is the
 third consumer":
 
-| Helper | On `main` | With #1621 | Third consumer reached |
-| --- | --- | --- | --- |
-| `endpoint` | **4** — `jesusfilm-rag-client.ts:107`, `firecrawl-client.ts:162`, `admin-agent-tools-client.ts:48`, `youtube-search-client.ts:74` | 5 | **already, before #1621** |
-| `safeReason` | 2 — firecrawl, jesusfilm-rag | 3 | at #1621 |
-| `readUpstreamReason` | 2 — firecrawl, jesusfilm-rag | 3 | at #1621 |
+| Helper               | On `main`                                                                                                                         | With #1621 | Third consumer reached    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
+| `endpoint`           | **4** — `jesusfilm-rag-client.ts:107`, `firecrawl-client.ts:162`, `admin-agent-tools-client.ts:48`, `youtube-search-client.ts:74` | 5          | **already, before #1621** |
+| `safeReason`         | 2 — firecrawl, jesusfilm-rag                                                                                                      | 3          | at #1621                  |
+| `readUpstreamReason` | 2 — firecrawl, jesusfilm-rag                                                                                                      | 3          | at #1621                  |
 
-The convention doc's premise — *"duplication across **two** consumers"* (line
-142) — is false for `endpoint` and has been for at least two PRs. #1621 is the
+The convention doc's premise — _"duplication across **two** consumers"_ (line 142) — is false for `endpoint` and has been for at least two PRs. #1621 is the
 third consumer only for `safeReason` and `readUpstreamReason`.
 
 That correction makes the point sharper rather than weaker. A stale factual
@@ -453,10 +452,10 @@ anyone counts, the threshold is not just crossed but lapped. **The remedy is to
 re-derive the count, never to re-read the sentence** — the sentence will keep
 saying "two" indefinitely.
 
-*A change that must touch all copies.* A correctness reviewer independently found
+_A change that must touch all copies._ A correctness reviewer independently found
 a real defect in the copied `readJsonBodyCapped`: its bare `catch { return undefined }`
 swallows a `TimeoutError` thrown by `reader.read()` when the abort fires
-*mid-body* on a 200, so a genuine upstream-latency incident is reported as
+_mid-body_ on a 200, so a genuine upstream-latency incident is reported as
 `reason=parse_error` rather than `reason=timeout`, steering an operator toward
 suspected contract drift. The finding's own suggested fix names the trigger
 verbatim:
@@ -470,10 +469,10 @@ It was suppressed as a confidence-50 advisory ("Suppressed anchor-50 advisories:
 timeout-during-200-body-read classified parse_error not timeout",
 `review.json` residual risks) and appears in the PR body's suppressed list.
 
-*What the review actually said about the copy.* The framing that "review declined
+_What the review actually said about the copy._ The framing that "review declined
 to auto-apply the extraction because it is a decision, not mechanical work" is
 not what the source says — that phrase belongs to a different pair of findings.
-The triage group *"File-size decomposition (decision gate)"* covers findings 1
+The triage group _"File-size decomposition (decision gate)"_ covers findings 1
 and 2 (`env.ts` crossing 1,000 lines; the 1,294-line test file) with the
 rationale "Splitting env.ts diverges from the 10-sibling inline convention - a
 repo-shape decision, not a mechanical fix." Those were correctly escalated to a
@@ -506,7 +505,7 @@ undocumented default rather than a decision, and the next author will read line
 
 - `docs/solutions/workflow-issues/removal-recipe-ticket-for-phase-scoped-scaffolding-20260708.md` —
   the **co-equal sibling**, not a parent. Both say "write the downstream artifact in the producing
-  PR while the map is fresh", but that doc's own "When to Apply" scopes it to *temporary*
+  PR while the map is fresh", but that doc's own "When to Apply" scopes it to _temporary_
   scaffolding with a known teardown trigger, explicitly telling you to skip it when the code is
   permanent. An unwired-but-permanent helper is the gap it leaves; this doc covers that case.
   Trigger, failure mode, artifact, and verification shape are otherwise disjoint.
@@ -520,7 +519,7 @@ undocumented default rather than a decision, and the next author will read line
   bound is not.
 - `docs/solutions/conventions/single-service-http-client-result-union-convention.md` — its
   extraction trigger ("when a third consumer needs the helper", line 162) has now factually fired,
-  while its prose still describes duplication across *two* consumers (line 142).
+  while its prose still describes duplication across _two_ consumers (line 142).
 - PR #1621 (`feat/langfuse-prompt-helper`) — open and unmerged as of 2026-07-22. The plan and the
   consuming ticket `docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`
   cited throughout live only on that branch, not on `main`.

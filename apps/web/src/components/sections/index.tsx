@@ -87,10 +87,9 @@ export type { Section } from "@/lib/content"
  *      emit no id attribute on admin; section anchor lookups use
  *      `data-section-key` (from `sectionKey`), not `id`.
  *   2. `MediaCollection.items[].video` / `imageOverride` — Strapi
- *      joins the related Video row. Admin returns FLAT `videoId` +
- *      `imageUrl` only. `enrichment.ts` falls back to `titleOverride`
- *      and `imageUrl` when the join is absent; videoId hydration is a
- *      U6+ concern (out of U5 scope).
+ *      joins the related Video row. Admin returns a flat item with linked
+ *      video metadata plus Web's locale-aware `resolvedTitle` projection,
+ *      so `enrichment.ts` does not need a client-side Video join.
  *
  * The dispatch param type stays `Section` (Strapi-derived) — content.ts
  * is U6's scope. Admin payloads will reach this dispatch via the same

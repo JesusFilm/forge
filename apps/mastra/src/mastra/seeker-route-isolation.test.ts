@@ -87,28 +87,54 @@ describe("seeker agent route isolation", () => {
     expect(region).toContain("handleSeekerRouteRequest")
   })
 
-  it("threads the lane-only seekerServiceKeys into /forge-seeker (feat-250)", () => {
-    // The handler tests inject key lists directly, so this source pin is the
-    // ONLY guard against a one-line revert to the adjacent pool binding
-    // (`serviceKeys`) silently re-granting pool keys conversation access.
+  // The two feat-250 source pins ("threads the lane-only seekerServiceKeys",
+  // "derives seekerServiceKeys from the ai-chat lane CSV") were replaced in
+  // feat-283: the const they pinned is gone — key sourcing moved inside the
+  // lane admission module, and the pool-vs-lane invariant is now guarded by
+  // the discriminating key-source test in ai-chat-lane-admission.test.ts
+  // plus the registration-site no-seam pin below.
+
+  it("lane registrations inject no admission seams (feat-283)", () => {
+    // The admission module's DEFAULT key/flag sourcing is load-bearing only
+    // while the lane registrations pass no seams: an explicit
+    // `getServiceKeys: () => serviceKeys` (the pool CSV, in scope in
+    // index.ts) at any lane registration would re-grant pool keys
+    // conversation access with every other test green. Slice each lane
+    // block (the deleted feat-250 pin's own technique) and pin the absence.
     const region = extractApiRoutesRegion(indexSource)
-    const start = region.search(/["']\/forge-seeker["']/)
-    expect(start).toBeGreaterThanOrEqual(0)
-    const next = region.indexOf("registerApiRoute(", start)
-    const seekerBlock =
-      next === -1 ? region.slice(start) : region.slice(start, next)
-    expect(seekerBlock).toContain("serviceKeys: seekerServiceKeys")
-    // Neither the pool-as-value nor the shorthand pool binding may appear.
-    expect(seekerBlock).not.toMatch(/serviceKeys:\s*serviceKeys\b/)
-    expect(seekerBlock).not.toMatch(/[\s{(]serviceKeys,/)
+    const laneRoutes = [
+      "/forge-seeker",
+      "/forge-ai-chat-history-list",
+      "/forge-ai-chat-history-replay",
+    ]
+    for (const route of laneRoutes) {
+      const start = region.indexOf(`"${route}"`)
+      expect(start).toBeGreaterThanOrEqual(0)
+      const next = region.indexOf("registerApiRoute(", start)
+      const block =
+        next === -1 ? region.slice(start) : region.slice(start, next)
+      expect(block).not.toMatch(
+        /\bserviceKeys\b|\bgetServiceKeys\b|\bgetEnabled\b/,
+      )
+    }
+    // Anti-vacuous companion: a pool-keyed route's block DOES carry the pool
+    // binding, so a parser miss cannot satisfy the absence assertions above.
+    const expStart = region.indexOf('"/forge-experience-chat"')
+    expect(expStart).toBeGreaterThanOrEqual(0)
+    const expNext = region.indexOf("registerApiRoute(", expStart)
+    const expBlock =
+      expNext === -1 ? region.slice(expStart) : region.slice(expStart, expNext)
+    expect(expBlock).toMatch(/\bserviceKeys\b/)
   })
 
-  it("derives seekerServiceKeys from the ai-chat lane CSV (feat-250)", () => {
-    // Pins the binding itself: the lane list comes from
-    // AI_CHAT_SERVICE_API_KEYS, never MASTRA_SERVICE_API_KEYS.
-    expect(indexSource).toMatch(
-      /const seekerServiceKeys = parseServiceApiKeys\(\s*env\.AI_CHAT_SERVICE_API_KEYS,?\s*\)/,
-    )
+  it("passes no admission seam anywhere in index.ts (parser-independent backstop)", () => {
+    // Whole-source companion to the block pin above (the same technique as
+    // the exactly-twice count backstop below): a FUTURE lane registration —
+    // e.g. feat-247's — that injects an admission seam is caught even before
+    // the laneRoutes list above learns the new route. Only the seam tokens
+    // can be pinned source-wide: the pool `serviceKeys` binding stays
+    // legitimate for every non-lane route.
+    expect(indexSource).not.toMatch(/\bgetServiceKeys\b|\bgetEnabled\b/)
   })
 
   it("does NOT reference seekerAgent inside any custom apiRoute", () => {

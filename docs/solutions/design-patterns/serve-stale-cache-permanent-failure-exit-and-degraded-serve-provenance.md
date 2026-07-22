@@ -45,7 +45,7 @@ a TTL, a failure cooldown, serve-stale during that cooldown, and a
 caller-supplied compiled-in fallback when there is nothing cached. It is a very
 attractive shape. It gives you upstream-outage tolerance without background
 timers, bounds your fetch rate under sustained failure, and guarantees the
-caller always gets *something* usable. Every one of those properties is real.
+caller always gets _something_ usable. Every one of those properties is real.
 
 The worked example here is `apps/mastra/src/services/langfuse-prompt-client.ts`
 on the **unmerged** branch `feat/langfuse-prompt-helper` (PR #1621, open at time
@@ -60,7 +60,7 @@ guards cite prior solution docs. That is precisely what makes it a good example:
 **these three gaps are not sloppiness.** Be precise about how much was
 deliberate, though, because it is less than it first appears: exactly **one** of
 the three (Law 2's) is documented in the module as a conscious choice. For Law 1
-the header documents a deliberate *adjacent* decision — not retrying in layer 1 —
+the header documents a deliberate _adjacent_ decision — not retrying in layer 1 —
 which is correct on its own terms and simply never contemplated the separate
 question of exiting serve-stale. Law 3 is not addressed anywhere. So the honest
 reading is: one considered trade-off, one blind spot created by an adjacent
@@ -68,7 +68,7 @@ decision's framing, and one omission. All three are consequences of the shape,
 and all three are invisible for as long as the upstream is healthy.
 
 That last point is the whole reason to write this down. Every one of these gaps
-requires the upstream to be *both* reachable-in-principle *and* returning
+requires the upstream to be _both_ reachable-in-principle _and_ returning
 something other than success before it manifests. In development, in CI, and in
 the first weeks of production, none of them fire.
 
@@ -78,9 +78,9 @@ Three laws for any cache of this shape.
 
 ### Law 1 — branch serve-stale on failure permanence, and define what "give up on stale" means for your domain
 
-A serve-stale cache must distinguish *the upstream is temporarily unreachable*
-from *the upstream has answered, definitively, and the answer is that this value
-is gone or you may not have it*. Only the first justifies continuing to serve
+A serve-stale cache must distinguish _the upstream is temporarily unreachable_
+from _the upstream has answered, definitively, and the answer is that this value
+is gone or you may not have it_. Only the first justifies continuing to serve
 last-known-good.
 
 Layer 1 already classifies this. It computes `retryable: false` for permanent
@@ -109,14 +109,14 @@ logPromptFetchFailure(name, resolvedLabel, result, logSink)
 Every failure class — a 404 for a prompt an operator just deleted, a 401 from a
 revoked key pair, a network blip — produces the identical state transition.
 
-**The important nuance: declining to *retry* on `retryable` was correct and
+**The important nuance: declining to _retry_ on `retryable` was correct and
 deliberate.** The module header says so at `:50-54`:
 
 > `SINGLE ATTEMPT: one request per call, `AbortSignal.timeout`, no
-> retry/backoff. The cached helper layer (layer 2, `getManagedPrompt`, below in
-> this module) owns fetch frequency via TTL + failure cooldown; retrying here
-> would multiply its refetch attempts. The `retryable` flag stays on the failure
-> union for type parity and logging even though no caller retries.`
+retry/backoff. The cached helper layer (layer 2, `getManagedPrompt`, below in
+this module) owns fetch frequency via TTL + failure cooldown; retrying here
+would multiply its refetch attempts. The `retryable` flag stays on the failure
+union for type parity and logging even though no caller retries.`
 
 That reasoning is sound. Layer 2 owns fetch frequency; a retry loop inside layer
 1 would multiply attempts underneath the cooldown that is supposed to bound
@@ -149,15 +149,15 @@ move and the opposite of what deletion feels like it should do.
 
 **Decision table.** For any cache of this shape, decide each row explicitly:
 
-| Upstream outcome | Classification | Refetch? | Serve stale? |
-|---|---|---|---|
-| Timeout / connection error | transient | yes, after cooldown | yes |
-| 5xx | transient | yes, after cooldown | yes |
-| 429 rate-limited | transient | yes, after cooldown (respect Retry-After if present) | yes |
-| 404 / value deleted upstream | **permanent** | yes, after cooldown (it may come back) | **no — after N windows, degrade to fallback** |
-| 401/403 auth revoked | **permanent** | yes, after cooldown | **no — credentials revoked is a retraction signal** |
-| Parse/validation failure on a 200 | **permanent (upstream content is bad)** | yes | **domain call — the value exists but is unusable** |
-| Config missing | permanent, process-scoped | no point | n/a — nothing was ever cached |
+| Upstream outcome                  | Classification                          | Refetch?                                             | Serve stale?                                        |
+| --------------------------------- | --------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| Timeout / connection error        | transient                               | yes, after cooldown                                  | yes                                                 |
+| 5xx                               | transient                               | yes, after cooldown                                  | yes                                                 |
+| 429 rate-limited                  | transient                               | yes, after cooldown (respect Retry-After if present) | yes                                                 |
+| 404 / value deleted upstream      | **permanent**                           | yes, after cooldown (it may come back)               | **no — after N windows, degrade to fallback**       |
+| 401/403 auth revoked              | **permanent**                           | yes, after cooldown                                  | **no — credentials revoked is a retraction signal** |
+| Parse/validation failure on a 200 | **permanent (upstream content is bad)** | yes                                                  | **domain call — the value exists but is unusable**  |
+| Config missing                    | permanent, process-scoped               | no point                                             | n/a — nothing was ever cached                       |
 
 "Degrade after N windows" is the cheap version and is usually right: it keeps a
 transient misclassification from causing an instant outage, while guaranteeing
@@ -169,7 +169,7 @@ unbounded stale-serving with no exit.
 ### Law 2 — attach cause to every degraded serve, not just fallback serves
 
 A degraded serve should be self-describing. If a caller (or a span, or an alert)
-receives a value, it should be able to answer *why* this value and not the fresh
+receives a value, it should be able to answer _why_ this value and not the fresh
 one — without correlating against logs.
 
 Here, only half the degraded surface carries cause. `buildFallbackResult`
@@ -181,7 +181,11 @@ function buildFallbackResult(
   resolvedLabel: string,
   reason: LangfusePromptFailureReason | undefined,
 ): ManagedPromptResult {
-  const result: ManagedPromptResult = { text: fallback, source: "fallback", resolvedLabel }
+  const result: ManagedPromptResult = {
+    text: fallback,
+    source: "fallback",
+    resolvedLabel,
+  }
   if (reason !== undefined) result.reason = reason
   return result
 }
@@ -197,7 +201,11 @@ function buildManagedResult(
   resolvedLabel: string,
   stale: boolean,
 ): ManagedPromptResult {
-  const result: ManagedPromptResult = { text, source: "langfuse", resolvedLabel }
+  const result: ManagedPromptResult = {
+    text,
+    source: "langfuse",
+    resolvedLabel,
+  }
   if (version !== undefined) result.version = version
   if (stale) result.stale = true
   return result
@@ -220,10 +228,10 @@ if (entry.cooldownUntil !== undefined && nowMs < entry.cooldownUntil) {
 **This is documented and the reasoning is coherent.** Header, `:440-442`:
 
 > `STALE IS MANAGED TEXT: serving an expired entry during a failure cooldown is
-> `source: "langfuse"` + `stale: true` — it IS managed text. Only the fallback
-> path carries the machine-readable layer-1 `reason`.`
+`source: "langfuse"`+`stale: true`— it IS managed text. Only the fallback
+path carries the machine-readable layer-1`reason`.`
 
-That is a defensible modelling choice: stale managed text *is* managed text; it
+That is a defensible modelling choice: stale managed text _is_ managed text; it
 came from the upstream, it has a real `version`, and calling its source
 `"fallback"` would be a lie. The `reason` field is scoped to "why are you
 serving the compiled-in default", and by that definition a stale serve has no
@@ -240,7 +248,7 @@ when production serves `source: "fallback"` beyond a threshold. Stale serves are
 all** — and a stale serve is exactly the state you most want paged on, because
 under Law 1's gap it can persist indefinitely.
 
-The general law: *degraded* is a property of the serve, not of which text
+The general law: _degraded_ is a property of the serve, not of which text
 happened to win. Whatever field carries "why is this degraded" must be populated
 on every degraded path, or your alerting will have a blind arm.
 
@@ -250,15 +258,21 @@ Layer 1 rejects a whitespace-only prompt body outright (`:390-398`):
 
 ```ts
 if (prompt.trim().length === 0) {
-  return { ok: false, reason: "parse_error", retryable: false, status: response.status, detail: "empty_prompt" }
+  return {
+    ok: false,
+    reason: "parse_error",
+    retryable: false,
+    status: response.status,
+    detail: "empty_prompt",
+  }
 }
 ```
 
 and the guard states its own justification a few lines above (`:368-370`):
 
 > `Content validation (plan KTD6): the fetched text becomes agent instructions
-> verbatim, so anything that is not a usable text prompt is a failure with a
-> distinguishing detail — never ok.`
+verbatim, so anything that is not a usable text prompt is a failure with a
+distinguishing detail — never ok.`
 
 That reasoning applies to the fallback with equal force — the fallback text also
 becomes agent instructions verbatim — but the fallback receives no such check.
@@ -280,7 +294,7 @@ discipline documented elsewhere in `docs/solutions/`: a guard that is never
 exercised on the path that actually matters gives the reassurance without the
 protection.
 
-#### Law 3 also covers *construction* paths, not just value arms
+#### Law 3 also covers _construction_ paths, not just value arms
 
 An "arm" need not be a branch in a data flow. A **construction path** is an arm
 too, and the same module supplies two more instances — both about a guarantee
@@ -288,8 +302,8 @@ that holds on the intended path and lapses on an available one.
 
 **A factory-only invariant is a suggestion once the type is injectable.**
 `LangfuseConfig.promptFailureCooldownMs` carries a doc comment stating the
-guarantee outright — *"Clamped to promptCacheTtlMs — the smaller value always
-wins"* (`apps/mastra/src/config/env.ts:112`) — and exactly one place enforces it,
+guarantee outright — _"Clamped to promptCacheTtlMs — the smaller value always
+wins"_ (`apps/mastra/src/config/env.ts:112`) — and exactly one place enforces it,
 the `Math.min(...)` inside `getLangfuseConfig()` (`env.ts:1061-1064`). But
 `config` is an injectable parameter, so any hand-built `LangfuseConfig` bypasses
 the clamp while still satisfying the type. This is not a theoretical path: in
@@ -305,7 +319,7 @@ re-clamping at the point of use (`langfuse-prompt-client.ts:660-663`,
 values pass through an `emptyToUndefined` helper, so an empty
 `LANGFUSE_PROMPT_DEFAULT_LABEL` correctly becomes `undefined`. The resolution is
 `label ?? config.promptDefaultLabel ?? "production"` (`:751`) — and the
-*call-parameter* rung has no equivalent normalization. `""` is not nullish, so it
+_call-parameter_ rung has no equivalent normalization. `""` is not nullish, so it
 wins the whole chain: a phantom `""` cache entry is minted and a literal `?label=`
 goes on the wire (the wire guard at `:314` tests `!== undefined`, which `""`
 passes). The fix shape is `(label?.trim() || undefined) ?? …`. This one was
@@ -315,7 +329,7 @@ The audit that catches all four instances is the same: **name the invariant, the
 enumerate every path that can produce a value subject to it** — every branch,
 every constructor, every rung of every defaulting chain — and ask which of them
 enforce it. Prefer making the violation unrepresentable (a branded type, or a
-constructor that is the only way to obtain the type) over enforcing it in *n*
+constructor that is the only way to obtain the type) over enforcing it in _n_
 places; where that is impractical, enforce idempotently at the point of
 consumption, which is the one place all paths converge.
 
@@ -328,8 +342,8 @@ universal panic action. If your cache treats deletion as an outage, the panic
 action does nothing, the operator escalates, and someone eventually discovers
 that the real retraction path is something non-obvious (here: re-point the label
 to a different version, or restart the process). This is worse than having no
-cache, because the operator's mental model — *the upstream is the source of
-truth; changing it changes behavior* — is now silently false, and nothing in the
+cache, because the operator's mental model — _the upstream is the source of
+truth; changing it changes behavior_ — is now silently false, and nothing in the
 UI says so.
 
 **Silent quality regression nobody pages for.** A stale serve is degraded
@@ -359,9 +373,9 @@ cached value has correctness consequences:
   literally a revocation)
 - schema/registry lookups, routing tables, A/B assignment maps
 
-The tell that you need all three laws: someone upstream can *retract* a value,
+The tell that you need all three laws: someone upstream can _retract_ a value,
 and your cache's only defined way to change behavior is a successful fetch of a
-*different* value.
+_different_ value.
 
 Conversely, these laws are much weaker for caches over immutable,
 content-addressed upstreams (a blob keyed by hash cannot be retracted into a
@@ -407,14 +421,14 @@ The code was **not changed**. What follows is a sketch of the shape a fix would
 take, offered so the ticket's "decide retraction semantics during wiring" has a
 starting point. It is a proposal, not an API that exists.
 
-*Before* (current, `refetchManagedPrompt` failure branch):
+_Before_ (current, `refetchManagedPrompt` failure branch):
 
 ```ts
 entry.cooldownUntil = now() + cooldownMs
 entry.lastFailureReason = result.reason
 ```
 
-*After* (proposed) — count consecutive permanent failures and drop stale text
+_After_ (proposed) — count consecutive permanent failures and drop stale text
 once the count crosses a bound:
 
 ```ts
@@ -449,17 +463,17 @@ constraints on the follow-up ticket,
 `docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`,
 to be resolved during wiring:
 
-- Law 3 landed as an explicit Constraints bullet (review finding #8): *"The
+- Law 3 landed as an explicit Constraints bullet (review finding #8): _"The
   caller-supplied `fallback` must always be the full working prompt and never
   empty — layer 2 deliberately serves it verbatim with no emptiness guard
   (asymmetric with layer 1's `empty_prompt` rejection). Pin a non-empty fallback
-  in the wiring tests."*
-- Law 1 landed as an explicit Constraints bullet (review finding #9): *"Serve-stale
+  in the wiring tests."_
+- Law 1 landed as an explicit Constraints bullet (review finding #9): _"Serve-stale
   means DELETING a managed prompt in Langfuse does not retract already-cached
   text until process restart — layer 2 ignores `retryable` and keeps serving
   stale through non-retryable 404/401 failure windows. Decide retraction
   semantics during wiring: degrade stale-serving after N non-retryable cooldown
-  windows, or document label re-pointing as the only retraction path."*
+  windows, or document label re-pointing as the only retraction path."_
 - Law 2 is carried only indirectly — by the ticket's "silent divergence" risk
   paragraph and work item 5 (sustained-fallback alerting). Note that item 5 as
   written keys on `source: "fallback"`, which is precisely the formulation that
@@ -488,12 +502,12 @@ via the module's (excellent) header comment rather than via feat-272.
 - `docs/solutions/tooling-decisions/langfuse-prompt-api-contract-and-sdk-rejection.md` — the
   **vendor-contract axis** of the same module, including which SDK semantics were adopted. Note that
   the "fallback-with-provenance" semantic it records as adopted is, per Law 2 here, adopted on the
-  *fallback arm only* — the stale arm carries no cause.
+  _fallback arm only_ — the stale arm carries no cause.
 - `docs/solutions/performance-issues/swr-cache-failure-backoff-manager-20260331.md` — the structural
   sibling in `apps/manager`, covering the **inverse** failure (retry storm during a transient
   outage). Its "should model three states explicitly: fresh, stale, and stale-after-failure" rule is
   only partly sufficient against Law 1: it too never clears the cached value and its cooldown is
-  retryability-blind — but unlike the Langfuse cache it *does* implement a Law 1 exit, a stale-age
+  retryability-blind — but unlike the Langfuse cache it _does_ implement a Law 1 exit, a stale-age
   ceiling (`maxStaleMs`, `apps/manager/src/lib/swr-cache.ts:63` and `:70-74`, which throws rather
   than serving stale past the ceiling). Age-based and permanence-based exits are complementary, not
   substitutes: a ceiling bounds how long a wrong value survives, while retryability decides whether

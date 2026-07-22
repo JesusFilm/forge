@@ -57,26 +57,26 @@ The interesting part is how the release ended up where it did. It took three pos
    this repo's existing law,
    `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md` ("the `try`
    MUST be the first statement of the cb body"). That law was written for Next's `after()`
-   fire-and-forget dispatch, where the callback body *is* the unit of work and nobody holds a handle
+   fire-and-forget dispatch, where the callback body _is_ the unit of work and nobody holds a handle
    to it.
 
 2. **The implementer rejected the prescription** for this shape, correctly. A `finally` **inside the
-   refetch body** can run *before* the reservation assignment `entry.inFlight = flight` has even
+   refetch body** can run _before_ the reservation assignment `entry.inFlight = flight` has even
    executed — if the body settles synchronously (an early-return path, an injected `fetchImpl` that
    resolves immediately, a sync throw), the `finally` fires during the `refetchManagedPrompt(...)`
-   call expression, deletes a slot that is still `undefined`, and *then* the assignment lands and
+   call expression, deletes a slot that is still `undefined`, and _then_ the assignment lands and
    wedges the entry on an already-settled promise. That is the exact failure the guard exists to
    prevent, reintroduced by following the guard's letter. The implementer shipped the release riding
    the flight promise from the caller's side instead, with an identity check so a stale release can
-   never clear a *newer* flight.
+   never clear a _newer_ flight.
 
 3. **Code review caught the remaining hole.** The shipped release was
-   `void flight.then(release)` — fulfillment-only. That single omission is a *double* failure, not a
+   `void flight.then(release)` — fulfillment-only. That single omission is a _double_ failure, not a
    single one, and it survived a fully green suite (48 tests in `langfuse-prompt-client.test.ts`,
    plus 3 in the smoke file, all passing at review time) while the
    code comment beside it asserted the opposite of the truth: it claimed the flight was
    "structurally non-rejecting, and `.then` cannot manufacture an unhandled-rejection edge." The
-   existing slot-leak test only threw from *inside* the guarded `try`, so it could not reach the
+   existing slot-leak test only threw from _inside_ the guarded `try`, so it could not reach the
    edge. And the rejection was constructible at the time, because the cooldown `Math.min(...)` over
    a **caller-supplied** `config` was the first statement of the refetch body — outside the `try`.
 
@@ -86,7 +86,7 @@ statement inside its guard. The bug was caught in review before merge; it never 
 
 The meta-lesson is worth stating on its own: **the diff cited the institutional slot-leak law in a
 provenance comment and still violated it.** Citing a law reads as compliance to both the author and
-the reviewer — the citation is the thing that makes the region *look* already-audited. It is not
+the reviewer — the citation is the thing that makes the region _look_ already-audited. It is not
 compliance. Re-derive the law's invariant against the actual shape in front of you.
 
 ## Guidance
@@ -101,13 +101,13 @@ handle to the work. The callback body is the only place that can observe its own
 Prescription: the existing law — `try` as the **first statement of the callback body**, release in
 `finally`. See `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md`.
 
-**Shape B — shared-promise single-flight.** The reserved state *is a promise handle* that other
+**Shape B — shared-promise single-flight.** The reserved state _is a promise handle_ that other
 callers `await`. The reservation is an assignment in the **caller**, and the work is a function whose
 return value gets assigned. Prescription: the release must **not** live in the work body's `finally`
 — it must ride the promise from the caller's side, after the assignment. A body-internal `finally`
 races the assignment and loses whenever the body settles synchronously.
 
-The discriminator is simple: *does anyone else hold or await the reserved value?* If yes, Shape B.
+The discriminator is simple: _does anyone else hold or await the reserved value?_ If yes, Shape B.
 
 ### Shape B requires three independent defenses
 
@@ -135,10 +135,10 @@ comment.
 Whether `.finally(release)` is the better spelling depends on **which promise occupies the slot** —
 this is a topology rule, not a style preference:
 
-| Slot holds | Correct release | Why |
-| --- | --- | --- |
-| the **raw** flight, release on a side channel | `void flight.then(release, release)` | `.then(release, release)` returns a *fulfilled* promise, so `void`-ing it is safe and self-terminating. `void flight.finally(release)` would **re-throw** the flight's rejection onto an unhandled derived promise — reintroducing the exact bug being fixed. |
-| the **derived** promise, returned to joiners | `slot = work().finally(release)` | The derived promise *is* what callers await, so its re-rejection is handled by them. Settle-agnostic by construction and unbreakable by an arity mistake. |
+| Slot holds                                    | Correct release                      | Why                                                                                                                                                                                                                                                           |
+| --------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the **raw** flight, release on a side channel | `void flight.then(release, release)` | `.then(release, release)` returns a _fulfilled_ promise, so `void`-ing it is safe and self-terminating. `void flight.finally(release)` would **re-throw** the flight's rejection onto an unhandled derived promise — reintroducing the exact bug being fixed. |
+| the **derived** promise, returned to joiners  | `slot = work().finally(release)`     | The derived promise _is_ what callers await, so its re-rejection is handled by them. Settle-agnostic by construction and unbreakable by an arity mistake.                                                                                                     |
 
 `apps/manager/src/lib/swr-cache.ts:51-55` is the in-repo instance of the second row:
 
@@ -166,19 +166,19 @@ try {
 ```
 
 The joiners did not create the flight and cannot reason about its failure modes. If the surface
-advertises a never-throws contract, this catch is what makes that contract true for *joiners* rather
+advertises a never-throws contract, this catch is what makes that contract true for _joiners_ rather
 than only for the leader. Fall through to re-deriving from settled entry state plus a terminal
 fallback, so the catch is not just a swallow but a route to a defined outcome.
 
 ### The sync-prologue rule
 
 **Any synchronous statement placed before the guarded `try` is outside the guard.** This is the
-general form of the existing law's insight, and it applies to *every* guarded region, not just slot
+general form of the existing law's insight, and it applies to _every_ guarded region, not just slot
 callbacks. Audit the prologue for throw sources — and note that the realistic ones are not exotic:
 
 - **Caller-supplied config reads.** A property getter on an injected object can throw. Anything
   reading `config.*`, `input.*`, or an injected `now()` belongs inside the guard. In this file the
-  cooldown clamp was moved to be the first statement *inside* the `try`
+  cooldown clamp was moved to be the first statement _inside_ the `try`
   (`langfuse-prompt-client.ts:653-663`).
 - **Encoding and parsing primitives that throw on hostile-but-reachable input.**
   `encodeURIComponent` throws `URIError` on malformed UTF-16 — a lone surrogate, which a caller
@@ -198,10 +198,10 @@ over again.
 Two smaller rules from the same region, worth carrying:
 
 - **Write failure state BEFORE logging it.** `entry.cooldownUntil` / `entry.lastFailureReason` are
-  assigned, *then* `logPromptFetchFailure(...)` runs (`langfuse-prompt-client.ts:679-683`). A throwing
+  assigned, _then_ `logPromptFetchFailure(...)` runs (`langfuse-prompt-client.ts:679-683`). A throwing
   log sink then still leaves a coherent state behind for subsequent callers.
 - **Never log the caught VALUE on a defensive path.** It is arbitrary and can embed request or body
-  fragments. Log an enum-only breadcrumb — one line per *new* cooldown window, not per call — so the
+  fragments. Log an enum-only breadcrumb — one line per _new_ cooldown window, not per call — so the
   defensive path is bounded but never fully silent.
 
 ### Test discipline
@@ -213,7 +213,7 @@ A green suite proved nothing here, because the tests exercised the wrong throw s
   test that throws from each **prologue** position: a throwing `config` property getter, a name
   `encodeURIComponent` cannot encode, a throwing injected `now()`.
 - Assert **three things**, not one: the call resolves to the fallback; **no unhandled rejection
-  fires**; and a *subsequent* call on the same key still refetches (proving the entry is not wedged).
+  fires**; and a _subsequent_ call on the same key still refetches (proving the entry is not wedged).
   The wedge is invisible to any single-call assertion.
 - Treat a code comment asserting an invariant as an **untested claim** until a test names it. The
   comment here said the flight "cannot manufacture an unhandled-rejection edge" and was wrong in a
@@ -226,7 +226,7 @@ The three defenses map to three distinct production failures.
 **Permanent wedge until process restart.** If the release never runs, `entry.inFlight` holds a
 settled promise forever. The `if (!entry.inFlight)` guard at `langfuse-prompt-client.ts:765` is
 therefore never true again for that key, so no future call ever refetches. Worse, if the settled
-promise is *rejected*, every later `getManagedPrompt` for that key rethrows at
+promise is _rejected_, every later `getManagedPrompt` for that key rethrows at
 `await entry.inFlight` — an entry that was merely stale becomes an entry that actively throws, and
 it stays that way for the life of the Node process. In a long-lived Mastra process serving every
 agent, that is one prompt name permanently broken until someone redeploys, with no self-healing TTL
@@ -234,18 +234,18 @@ to hide it.
 
 **Unhandled rejection.** `void flight.then(release)` produces a derived promise with no rejection
 handler. Under Node's default `unhandledRejection` behavior that terminates the process — meaning a
-single malformed prompt name could take down the shared process that runs *every* agent and workflow,
+single malformed prompt name could take down the shared process that runs _every_ agent and workflow,
 not just the caller that supplied it.
 
 **Silent, unobservable fallback.** The `encodeURIComponent` case is the mildest failure and the
 hardest to diagnose. Sitting outside layer 1's `try`, it made layer 1 **reject** in violation of its
 documented never-throws contract. Layer 2's defensive catch then swallowed it — no log line, no
 `lastFailureReason`, no `reason` on the served result. The caller silently got compiled-in fallback
-text with strictly *less* observability than every other failure mode in the system, including plain
+text with strictly _less_ observability than every other failure mode in the system, including plain
 network timeouts. A prompt silently reverting to its fallback is a quality regression nobody gets
 paged for; it shows up weeks later as "the agent's answers got worse."
 
-Note also that the wedge and the unhandled rejection are the *same omission*. That is what makes
+Note also that the wedge and the unhandled rejection are the _same omission_. That is what makes
 fulfillment-only `.then` worse than it looks: it does not degrade, it compounds.
 
 ## When to Apply
@@ -255,7 +255,7 @@ Apply the Shape B rules whenever:
 - An in-memory map, class field, or module-level variable holds a **promise** that more than one code
   path awaits — request coalescing, single-flight caches, lazy-init memoization, connection or client
   bootstrapping, "only one refresh at a time" token renewal.
-- The reserved value is assigned from a function call, so the reservation lands *after* the function
+- The reserved value is assigned from a function call, so the reservation lands _after_ the function
   body starts executing.
 - The surrounding surface advertises a never-throws / never-rejects contract.
 
@@ -326,7 +326,7 @@ rejection still produces a defined, provenance-tagged result.
 
 ### The refetch body: guard placement (`:629-663`)
 
-The body's own doc comment records why the release is *not* here — the provenance note that made the
+The body's own doc comment records why the release is _not_ here — the provenance note that made the
 region look audited:
 
 ```ts
@@ -408,7 +408,10 @@ The breadcrumb is enum-only, carries no caught value, and is emitted once per **
 // neither the name nor the error is echoed into the result (leak control).
 let url: URL
 try {
-  url = endpoint(config.baseUrl, `api/public/v2/prompts/${encodeURIComponent(name)}`) // ... (reflowed)
+  url = endpoint(
+    config.baseUrl,
+    `api/public/v2/prompts/${encodeURIComponent(name)}`,
+  ) // ... (reflowed)
   // Pass-through only: label resolution/defaulting is layer 2's job.
   if (label !== undefined) url.searchParams.set("label", label)
 } catch {
@@ -448,7 +451,7 @@ Shape B and the caller-side release rules apply.
 
 - `docs/solutions/best-practices/in-memory-slot-reservation-fire-and-forget-20260506.md` — the law
   this doc scopes. It is correct for Shape A (fire-and-forget dispatch) and its sync-prologue insight
-  generalizes to every guarded region; its `try`-as-first-statement *prescription* does not survive
+  generalizes to every guarded region; its `try`-as-first-statement _prescription_ does not survive
   the move to Shape B. Its "this is not specific to `after()`" generalization is what the plan
   followed into the wrong fix, so that doc wants a scope-boundary note naming the precondition
   (does the reservation land before or after the guarded body starts?).

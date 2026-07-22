@@ -38,7 +38,7 @@ import { Memory } from "@mastra/memory"
 import { canAiChatDataPersist } from "../config/env"
 
 import { USER_RESOURCE_PREFIX } from "./ai-chat-thread-ownership"
-import { getAiChatStorage } from "./memory"
+import { getAiChatStorage } from "./ai-chat-memory"
 
 export const AI_CHAT_ANON_RETENTION_DAYS = 30
 export const AI_CHAT_USER_RETENTION_DAYS = 180

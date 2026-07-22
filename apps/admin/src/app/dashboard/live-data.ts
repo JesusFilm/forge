@@ -2154,11 +2154,13 @@ async function loadVideoRowSlice({
 export async function loadVideoRows(
   principal: Principal,
   options: {
+    category?: VideoLibraryCategory
     includeVideoIds?: readonly string[]
     preferredLocale?: string
   } = {},
 ) {
   const rows = await loadVideoRowSlice({
+    category: options.category,
     principal,
     limit: VIDEO_LIBRARY_PAGE_SIZE,
     offset: 0,
@@ -2172,6 +2174,7 @@ export async function loadVideoRows(
   // Top-up with AI-referenced videos outside the first library page
   // (experience-AI chat; additive).
   const extras = await loadVideoRowSlice({
+    category: options.category,
     principal,
     limit: missing.length,
     offset: 0,
