@@ -144,6 +144,21 @@ duplication across _two_ consumers — and, importantly, the two are one lineage
 independent designs that happened to converge. The helpers are tiny, pure, and
 frozen (no churn since firecrawl), so a second copy currently costs little.
 
+> **Count correction (2026-07-22).** The "two consumers" figure above is stale,
+> and the drift differs per helper — re-derive it from the code rather than
+> re-reading this paragraph:
+>
+> | Helper | Files on `main` |
+> | --- | --- |
+> | `endpoint` | **4** — `jesusfilm-rag-client.ts:107`, `firecrawl-client.ts:162`, `admin-agent-tools-client.ts:48`, `youtube-search-client.ts:74` |
+> | `safeReason` | 2 — firecrawl, jesusfilm-rag |
+> | `readUpstreamReason` | 2 — firecrawl, jesusfilm-rag |
+>
+> So the "third consumer" trigger below has **already fired for `endpoint`** and
+> went unobserved for at least two PRs, because each new client recited this
+> paragraph instead of counting. A fifth `endpoint` copy is pending in PR #1621.
+> See `docs/solutions/workflow-issues/deferred-verification-belongs-in-consuming-ticket-entry-conditions.md`.
+
 We deliberately did **not** add "keep in sync" breadcrumb comments to the copies.
 A prose comment with no test behind it is the weakest form of coupling and tends
 to rot — it asserts an invariant it cannot enforce. If these helpers ever need to
