@@ -6,19 +6,13 @@
  * `/api/*` middleware — that breaks Studio; see
  * docs/solutions/integration-issues/mastra-studio-api-auth-guard.md).
  *
- * Gate ladder, checked in order (KTD2): enable flag (reuses the send route's
- * SEEKER_ROUTE_ENABLED — history is meaningless with sends off) → lane bearer →
- * body validation → `user:`-resource refusal (R2: the anonymous and dogfood
- * fallback resources are never listable or replayable) → store reads, all
- * bounded by `TIME_BUDGET_MS.historyRead` (millisecond-class queries must not
- * inherit the 90s turn envelope).
- *
- * The bearer is the DEDICATED `AI_CHAT_SERVICE_API_KEYS` lane CSV, never the
- * shared `MASTRA_SERVICE_API_KEYS` pool (KTD2): the pool's other holders run
- * embedding/eval pipelines and must not silently gain bulk transcript read.
- * An unset lane CSV is an empty allowlist — the routes fail closed with 401
- * until provisioned. `assertAiChatServiceKeysDisjoint` (config/env.ts) refuses
- * boot when a key value appears in both CSVs.
+ * Gate ladder, checked in order (KTD2): the shared lane admission preamble
+ * (`refuseUnlessLaneAdmitted`, feat-283 — enable flag → 404, then the
+ * dedicated `AI_CHAT_SERVICE_API_KEYS` lane bearer → 401, key sourcing inside
+ * that module) → body validation → `user:`-resource refusal (R2: the
+ * anonymous and dogfood fallback resources are never listable or replayable)
+ * → store reads, all bounded by `TIME_BUDGET_MS.historyRead`
+ * (millisecond-class queries must not inherit the 90s turn envelope).
  *
  * Replay (KTD4/KTD5): `authorizeAiChatThreadAccess` first (`thread_forbidden`
  * on owner mismatch; its write-path `thread_limit` outcome is reachable on a
@@ -35,11 +29,7 @@
  * (KTD13) — never thread ids, titles, transcript text, or exception text.
  */
 
-import {
-  isValidServiceBearer,
-  parseServiceApiKeys,
-} from "../server/service-bearer"
-import { env, isSeekerRouteEnabled } from "../config/env"
+import { refuseUnlessLaneAdmitted } from "./ai-chat-lane-admission"
 import { settleWithinBudget, TIME_BUDGET_MS } from "./budgets"
 import {
   authorizeAiChatThreadAccess,
@@ -120,10 +110,11 @@ export type AiChatHistoryWireMessage = {
 }
 
 /**
- * Shared handler input. Seams mirror the send route's: `getEnabled` (flag),
- * `getServiceKeys` (the lane CSV — handler-owned sourcing so a registration
- * cannot accidentally wire the shared pool), `getMemory`, and `budgetMs`
- * (deterministically testable timeout branch).
+ * Shared handler input. Seams mirror the send route's: `getEnabled` (flag) and
+ * `getServiceKeys` (lane CSV) forward to the admission module's defaults
+ * (feat-283 — key sourcing lives there, so a registration cannot accidentally
+ * wire the shared pool), plus `getMemory` and `budgetMs` (deterministically
+ * testable timeout branch).
  */
 export type AiChatHistoryHandlerInput = {
   authHeader: string | null | undefined
@@ -143,30 +134,6 @@ function toIsoString(value: Date | string | null | undefined): string {
   if (value == null) return ""
   const parsed = value instanceof Date ? value : new Date(value)
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString()
-}
-
-/** The default lane-key source: the dedicated CSV, never the pool (KTD2). */
-function readLaneServiceKeys(): readonly string[] {
-  return parseServiceApiKeys(env.AI_CHAT_SERVICE_API_KEYS)
-}
-
-/**
- * Flag + bearer preamble shared by both handlers. Returns the refusal outcome,
- * or null when admitted. Flag first (404 — unreachable unless enabled, before
- * the bearer is even consulted), then the lane bearer (401).
- */
-function refuseUnlessAdmitted(
-  authHeader: string | null | undefined,
-  getEnabled: () => boolean,
-  getServiceKeys: () => readonly string[],
-): AiChatHistoryRouteOutcome | null {
-  if (!getEnabled()) {
-    return jsonOutcome(404, { error: "Not found" })
-  }
-  if (!isValidServiceBearer({ authHeader, allowlist: getServiceKeys() })) {
-    return jsonOutcome(401, { error: "Service bearer required" })
-  }
-  return null
 }
 
 type AiChatHistoryListBody = {
@@ -297,12 +264,16 @@ function projectStoredMessage(
 export async function handleAiChatHistoryListRequest({
   authHeader,
   readJson,
-  getEnabled = isSeekerRouteEnabled,
-  getServiceKeys = readLaneServiceKeys,
+  getEnabled,
+  getServiceKeys,
   getMemory = () => getAiChatMemory(),
   budgetMs = TIME_BUDGET_MS.historyRead,
 }: AiChatHistoryHandlerInput): Promise<AiChatHistoryRouteOutcome> {
-  const refusal = refuseUnlessAdmitted(authHeader, getEnabled, getServiceKeys)
+  const refusal = refuseUnlessLaneAdmitted({
+    authHeader,
+    getEnabled,
+    getServiceKeys,
+  })
   if (refusal) return refusal
 
   const raw = await readJson().catch(() => undefined)
@@ -357,12 +328,16 @@ export async function handleAiChatHistoryListRequest({
 export async function handleAiChatHistoryReplayRequest({
   authHeader,
   readJson,
-  getEnabled = isSeekerRouteEnabled,
-  getServiceKeys = readLaneServiceKeys,
+  getEnabled,
+  getServiceKeys,
   getMemory = () => getAiChatMemory(),
   budgetMs = TIME_BUDGET_MS.historyRead,
 }: AiChatHistoryHandlerInput): Promise<AiChatHistoryRouteOutcome> {
-  const refusal = refuseUnlessAdmitted(authHeader, getEnabled, getServiceKeys)
+  const refusal = refuseUnlessLaneAdmitted({
+    authHeader,
+    getEnabled,
+    getServiceKeys,
+  })
   if (refusal) return refusal
 
   const raw = await readJson().catch(() => undefined)

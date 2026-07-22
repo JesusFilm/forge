@@ -3,7 +3,7 @@ id: "feat-283"
 title: "Mastra ai-chat lane admission module (flag + lane bearer)"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-22"
 duration: 2
 depends_on: []
