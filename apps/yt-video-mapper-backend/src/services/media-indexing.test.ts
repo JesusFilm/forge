@@ -13,6 +13,7 @@ import {
 import type { OfficialMediaSignatureExtractor } from "./media-signature-extraction.js"
 import {
   OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
   VISUAL_FRAME_FINGERPRINT_KIND,
 } from "./visual-fingerprint.js"
 
@@ -155,6 +156,38 @@ describe("MediaIndexingService", () => {
           frameWidth: 8,
           frameHeight: 8,
         },
+      }),
+    ])
+  })
+
+  it("indexes v3 visual signatures separately without byte-range fetching", async () => {
+    const repository = new InMemoryMediaIndexRepository([
+      variant({ id: "variant-a" }),
+    ])
+    const fetcher = new StubOfficialMediaFetcher([
+      new Error("fetch should not be called"),
+    ])
+    const extractor = visualExtractor()
+
+    const result = await createService({
+      repository,
+      fetcher,
+      extractor,
+      algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+    }).indexCatalog()
+
+    expect(fetcher.calls).toEqual([])
+    expect(result).toMatchObject({
+      status: "completed",
+      variantsAttempted: 1,
+      variantsIndexed: 1,
+      variantsFailed: 0,
+    })
+    expect([...repository.signatures.values()]).toEqual([
+      expect.objectContaining({
+        signatureType: "VISUAL_FRAME",
+        algorithmVersion: OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+        sourceMediaUrl: "https://media.example.com/video.mp4",
       }),
     ])
   })

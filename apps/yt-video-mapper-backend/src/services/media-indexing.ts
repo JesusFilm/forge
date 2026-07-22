@@ -20,7 +20,10 @@ import {
   type OfficialMediaSignatureVariant,
 } from "./media-signature-extraction.js"
 import { FfmpegVisualFrameExtractor } from "./ffmpeg-visual-frame-extraction.js"
-import { OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION } from "./visual-fingerprint.js"
+import {
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+  isVisualMediaSignatureAlgorithmVersion,
+} from "./visual-fingerprint.js"
 
 const MAX_FAILURE_SUMMARIES = 10
 
@@ -387,13 +390,14 @@ export class MediaIndexingService {
   }
 
   private async indexVariant(variant: IndexableCatalogVariant): Promise<void> {
-    const mediaSample =
-      this.algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
-        ? undefined
-        : await this.fetcher.fetch({
-            url: variant.mediaSourceUrl,
-            maxBytes: this.maxMediaBytes,
-          })
+    const mediaSample = isVisualMediaSignatureAlgorithmVersion(
+      this.algorithmVersion,
+    )
+      ? undefined
+      : await this.fetcher.fetch({
+          url: variant.mediaSourceUrl,
+          maxBytes: this.maxMediaBytes,
+        })
     const signatures = await this.extractor.extract({
       variant,
       mediaSample,
@@ -422,9 +426,12 @@ export class MediaIndexingService {
 function createDefaultOfficialMediaSignatureExtractor(
   algorithmVersion: string,
 ): OfficialMediaSignatureExtractor {
-  return algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
+  return isVisualMediaSignatureAlgorithmVersion(algorithmVersion)
     ? new DeterministicOfficialMediaSignatureExtractor({
-        visualFrameExtractor: new FfmpegVisualFrameExtractor(),
+        visualFrameExtractor: new FfmpegVisualFrameExtractor({
+          adaptiveSeeking:
+            algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+        }),
       })
     : new DeterministicOfficialMediaSignatureExtractor()
 }

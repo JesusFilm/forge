@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import type { VisualFrameExtractor } from "./ffmpeg-visual-frame-extraction.js"
 import {
-  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  isVisualMediaSignatureAlgorithmVersion,
   type VisualFrameFingerprint,
 } from "./visual-fingerprint.js"
 
@@ -88,7 +88,7 @@ export class DeterministicOfficialMediaSignatureExtractor implements OfficialMed
     const signatures: MediaSignatureDraft[] = []
     const durationMilliseconds = durationFromVariant(variant)
 
-    if (algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION) {
+    if (isVisualMediaSignatureAlgorithmVersion(algorithmVersion)) {
       signatures.push(
         ...(await this.visualFrameSignatures({
           variant,

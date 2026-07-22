@@ -4,7 +4,8 @@ import {
   type VisualFrameExtractor,
 } from "./ffmpeg-visual-frame-extraction.js"
 import {
-  OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION,
+  OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+  isVisualMediaSignatureAlgorithmVersion,
   type VisualFrameFingerprint,
 } from "./visual-fingerprint.js"
 
@@ -90,10 +91,11 @@ export class DeterministicUploadSignalExtractor implements UploadSignalExtractor
     })
 
     return {
-      visualHashes:
-        this.algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
-          ? visualFingerprints.map((fingerprint) => fingerprint.payload.phash)
-          : sampledByteHashes,
+      visualHashes: isVisualMediaSignatureAlgorithmVersion(
+        this.algorithmVersion,
+      )
+        ? visualFingerprints.map((fingerprint) => fingerprint.payload.phash)
+        : sampledByteHashes,
       audioFingerprints: [],
       visualFingerprints,
       sampledByteHashes,
@@ -110,10 +112,14 @@ export class DeterministicUploadSignalExtractor implements UploadSignalExtractor
     VisualFrameExtractor,
     "extractFromBytes"
   > | null {
-    return this.algorithmVersion ===
-      OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION
-      ? new FfmpegVisualFrameExtractor()
-      : null
+    if (!isVisualMediaSignatureAlgorithmVersion(this.algorithmVersion)) {
+      return null
+    }
+
+    return new FfmpegVisualFrameExtractor({
+      adaptiveSeeking:
+        this.algorithmVersion === OFFICIAL_MEDIA_SIGNATURE_V3_ALGORITHM_VERSION,
+    })
   }
 
   private async extractVisualFingerprints({
@@ -126,7 +132,7 @@ export class DeterministicUploadSignalExtractor implements UploadSignalExtractor
     durationMilliseconds?: number
   }): Promise<VisualFrameFingerprint[]> {
     if (
-      this.algorithmVersion !== OFFICIAL_MEDIA_SIGNATURE_V2_ALGORITHM_VERSION ||
+      !isVisualMediaSignatureAlgorithmVersion(this.algorithmVersion) ||
       !this.visualFrameExtractor
     ) {
       return []
