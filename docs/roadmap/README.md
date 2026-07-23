@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (July 23, 2026)
 
-- **Total tickets:** 423
+- **Total tickets:** 424
 - **Complete:** 317
-- **In progress:** 32
+- **In progress:** 33
 - **Not started:** 25
 - **Blocked:** 49
 - **Overdue and not complete:** 83
@@ -198,6 +198,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-239](platform/feat-239-watch-public-media-url-hotfix.md)                         | Watch Public Media URL Hotfix                                                    | codex      | P0       | 2026-07-08 | 1    | 2026-07-08 | complete    |
 | [feat-240](platform/feat-240-watch-home-media-item-slug-hotfix.md)                     | Watch Home Media Item Slug Hotfix                                                | codex      | P0       | 2026-07-08 | 1    | 2026-07-08 | complete    |
 | [feat-255](platform/feat-255-admin-video-search-backup-snapshot.md)                    | Admin video-search backup snapshot                                               | codex      | P0       | 2026-07-15 | 1    | 2026-07-15 | complete    |
+| [feat-301](platform/feat-301-watch-canonical-server-action-origins.md)                 | Allow canonical Watch Server Action origins                                      | unassigned | P0       | 2026-07-23 | 1    | 2026-07-23 | in-progress |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
