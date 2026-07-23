@@ -32,6 +32,10 @@ import {
 import { encodeWatchSeed } from "../../src/lib/watchSeed"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
+import {
+  REVEAL_FALLBACK_MS,
+  entranceDelayMs,
+} from "../../src/components/search/searchEntrance"
 import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
 import { BrowseTopics } from "../../src/components/search/BrowseTopics"
 import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
@@ -149,6 +153,14 @@ export default function DiscoverScreen() {
   // Synchronous re-entrancy latch: `loadingMore` state is a render-time snapshot,
   // so two presses in one frame both read false and double-append.
   const loadingMoreRef = useRef(false)
+  // First list index of the most recently arrived batch. Cards stagger their
+  // entrance from HERE — from the absolute index, page 2 sat invisible for
+  // ~2.6s while already holding its layout space.
+  const batchStartRef = useRef(0)
+  // Set between "page appended" and "its first row laid out". While armed, the
+  // footer keeps saying Loading… so it can never report done onto a blank gap.
+  const awaitingRevealRef = useRef(false)
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Superseded searches are already discarded by the generation guard; aborting
   // also stops paying for them. fetchWithTimeout forwards init.signal.
   const abortRef = useRef<AbortController | null>(null)
@@ -165,7 +177,20 @@ export default function DiscoverScreen() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
     }
+  }, [])
+
+  // Free the pager. Disarms the reveal latch first, so a pending fallback timer
+  // can never land on a page that claimed the slot after it.
+  const releaseLoadingMore = useCallback(() => {
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current)
+      revealTimerRef.current = null
+    }
+    awaitingRevealRef.current = false
+    loadingMoreRef.current = false
+    setLoadingMore(false)
   }, [])
 
   // Keep the click-time position lookup current without re-memoizing the row
@@ -241,8 +266,7 @@ export default function DiscoverScreen() {
       // Bumping the generation orphans any in-flight load-more: its guarded
       // finally can no longer fire, so release both flags here or "Load more"
       // stays stuck on "Loading..." for the rest of the session.
-      loadingMoreRef.current = false
-      setLoadingMore(false)
+      releaseLoadingMore()
       // Retire the pager before any await — the footer stays mounted and
       // hit-testable through animateOut's fade, and a tap there would page the
       // old term onto whatever replaces it.
@@ -314,6 +338,7 @@ export default function DiscoverScreen() {
         )
         submittedTermRef.current = trimmed
         submittedRequestIdRef.current = thisRequest
+        batchStartRef.current = 0
         setResults([...page.results])
         setHasMore(page.hasMore)
         setNextOffset(page.nextOffset)
@@ -371,7 +396,7 @@ export default function DiscoverScreen() {
         }
       }
     },
-    [fadeAnim, scaleAnim, animateOut, results.length],
+    [fadeAnim, scaleAnim, animateOut, results.length, releaseLoadingMore],
   )
 
   function handleChangeText(text: string) {
@@ -435,7 +460,21 @@ export default function DiscoverScreen() {
         term,
         nextOffset,
       )
-      setResults((prev) => [...prev, ...page.results])
+      if (page.results.length > 0) {
+        // Idempotent under a replayed updater: prev is the same list either way.
+        setResults((prev) => {
+          batchStartRef.current = prev.length
+          return [...prev, ...page.results]
+        })
+        // Hold the footer's loading state until these rows report their layout;
+        // the fallback only covers a list that never reports at all.
+        awaitingRevealRef.current = true
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current)
+        revealTimerRef.current = setTimeout(
+          releaseLoadingMore,
+          REVEAL_FALLBACK_MS,
+        )
+      }
       setHasMore(page.hasMore)
       setNextOffset(page.nextOffset)
 
@@ -462,26 +501,37 @@ export default function DiscoverScreen() {
         search_request_id: searchRequestId,
       })
     } finally {
-      // Only the owning page releases the latch; an orphaned one would
-      // otherwise free a slot a newer page already claimed. search() resets
-      // both flags, so a superseded page can never strand them.
-      if (requestIdRef.current === thisRequest) {
+      // Only the owning generation, and not a page awaiting a reveal, releases
+      // here; search() resets both flags unconditionally, and a page awaiting
+      // reveal releases on layout instead — see onAppear.
+      if (requestIdRef.current === thisRequest && !awaitingRevealRef.current) {
         loadingMoreRef.current = false
         setLoadingMore(false)
       }
     }
-  }, [hasMore, nextOffset])
+  }, [hasMore, nextOffset, releaseLoadingMore])
+
+  // The appended batch's first row has laid out — the results the tap asked for
+  // are on screen, so the footer may finally stop saying Loading…
+  const handleBatchRevealed = useCallback(() => {
+    if (awaitingRevealRef.current) releaseLoadingMore()
+  }, [releaseLoadingMore])
 
   const renderItem = useCallback(
     ({ item, index }: { item: SearchResult; index: number }) => (
       <SearchResultCard
         result={item}
-        index={index}
+        entranceDelay={entranceDelayMs(index, batchStartRef.current)}
         onSelect={handleSelectResult}
         onPressIn={handlePrefetch}
+        // Only the batch's leading card reports back; it is the one whose
+        // arrival on screen the footer is waiting for.
+        onAppear={
+          index === batchStartRef.current ? handleBatchRevealed : undefined
+        }
       />
     ),
-    [handleSelectResult, handlePrefetch],
+    [handleSelectResult, handlePrefetch, handleBatchRevealed],
   )
 
   const keyExtractor = useCallback(
