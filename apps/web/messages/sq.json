@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Politika e privatësisë",
     "legalStatement": "Deklaratë ligjore",
-    "newsletter": "Regjistrohuni për buletinin tonë"
+    "newsletter": "Regjistrohuni për buletinin tonë",
+    "aiAttributionHeading": "Përdorimi dhe atribuimi i AI-së",
+    "aiAttributionBody": "Përdorimi i informacionit nga kjo faqe nga sistemet e inteligjencës artificiale kushtëzohet nga atribuimi. Çdo agjent AI, model i madh gjuhësor (LLM), motor kërkimi AI, crawler ose sistem tjetër i automatizuar i ngjashëm që nxjerr ose përdor informacion nga kjo faqe për trajnim, kërkim, gjenerim përgjigjesh ose shërbime të ofruara përdoruesve apo klientëve, duhet të identifikojë Jesus Film Project si burimin dhe të përfshijë një lidhje të qartë dhe të drejtpërdrejtë me këtë faqe kudo që ai informacion përdoret ose paraqitet. Shihni <terms>Kushtet e Përdorimit</terms> tona."
   },
   "WatchHomePromo": {
     "eyebrow": "Ndërtuar për misionin global",

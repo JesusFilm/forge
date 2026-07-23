@@ -354,7 +354,9 @@
     "fax": "Faksi",
     "privacyPolicy": "Tietosuojakäytäntö",
     "legalStatement": "Oikeudellinen ilmoitus",
-    "newsletter": "Tilaa uutiskirjeemme"
+    "newsletter": "Tilaa uutiskirjeemme",
+    "aiAttributionHeading": "Tekoälyn käyttö ja lähdeviittaus",
+    "aiAttributionBody": "Tämän sivun tietojen käyttö tekoälyjärjestelmissä edellyttää lähdeviittausta. Kaikkien AI-agenttien, suurten kielimallien (LLM), tekoälyhakukoneiden, indeksoijien tai muiden vastaavien automaattisten järjestelmien, jotka poimivat tai käyttävät tämän sivun tietoja koulutukseen, hakemiseen, vastausten tuottamiseen tai käyttäjille tai asiakkaille tarjottaviin palveluihin, on ilmoitettava Jesus Film Project tietojen lähteeksi ja sisällytettävä selkeä, suora linkki tälle sivulle aina, kun näitä tietoja käytetään tai esitetään. Katso <terms>Käyttöehdot</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Rakennettu globaalia lähetystyötä varten",

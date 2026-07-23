@@ -76,6 +76,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - System font (`fontFamily: 'System'`) for platform-native typography (SF Pro iOS, Roboto Android).
 - `hexToRgba(color, 0)` for gradient stops — never `"transparent"`.
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
+- Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
 

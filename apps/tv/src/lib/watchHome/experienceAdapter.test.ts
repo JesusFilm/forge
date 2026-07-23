@@ -468,6 +468,70 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     expect(sections).toHaveLength(1)
     expect(sections[0].id).toBe("home-experience-section-1")
   })
+
+  it("disambiguates a sectionKey two blocks share (rail identity)", () => {
+    // Admin does not enforce uniqueness: the prod watch-home Experience ships
+    // "Seven Days With Jesus" and "Creation to Christ" both keyed
+    // `media-collection-15`, which collided React keys on the Home rail list.
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "media-collection-15", title: "Seven Days" }),
+        mediaBlock({ sectionKey: "media-collection-15", title: "Creation" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections).toHaveLength(2)
+    expect(sections[0].id).toBe("media-collection-15")
+    expect(sections[1].id).not.toBe(sections[0].id)
+  })
+
+  it("keeps ids unique across every rail of a duplicate-heavy Experience", () => {
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: null }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    const ids = sections.map((section) => section.id)
+    expect(ids).toHaveLength(4)
+    expect(new Set(ids).size).toBe(4)
+  })
+
+  it("gives a dropped block's sectionKey to the surviving twin", () => {
+    // Only surviving rails reserve an id: the dropped block must not push the
+    // first survivor off "dup", and the second survivor forces a real collision
+    // (the pre-fix adapter produced ["dup","dup"], so this now discriminates).
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup", items: [{ coreId: "not-hydrated" }] }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections.map((section) => section.id)).toEqual(["dup", "dup-2"])
+  })
+
+  it("escalates past a synthesized id that collides with an authored key", () => {
+    // An authored "dup-2" already holds the id the second "dup" block would
+    // synthesize, so uniqueSectionId must escalate again to "dup-2-2".
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup-2" }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections.map((section) => section.id)).toEqual([
+      "dup-2",
+      "dup",
+      "dup-2-2",
+    ])
+  })
 })
 
 describe("AE1/AE3 — prod-shaped Experience → 8 rails with exact meta chips", () => {

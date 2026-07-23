@@ -354,7 +354,9 @@
     "fax": "Fax bi",
     "privacyPolicy": "Politique bu privé",
     "legalStatement": "Déf e jàng",
-    "newsletter": "Duggal ci newsletter bi nu"
+    "newsletter": "Duggal ci newsletter bi nu",
+    "aiAttributionHeading": "Beneen AI ak xamle ak seede",
+    "aiAttributionBody": "Jëfandikoo boppam bu xibaar yi ci xët wii ci sistemu artificial intelligence, war na am seede. Ñépp AI agent, large language model (LLM), AI search engine, crawler, walla beneen system bu automaatik bu jëfandikoo walla génne xibaar yu jëfandikoo xët wii ngir jàngat, am xam-xam, wone tontu, walla joxe service ci jëfandikoo yi walla clientele, war nañu leeral Jesus Film Project ni sapu xibaar bi, te jëfandikoo njëkkal bu leer, bu jub ci xët wii foo xibaar boobu jëfandikoo walla wone. Woneel sunu <terms>Jëfandikoo yi</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Doxal ngir mission yu àdduna",

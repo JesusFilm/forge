@@ -2129,6 +2129,50 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it("closes search without navigating when the header logo is clicked", async () => {
+    vi.useFakeTimers()
+    await openSearchOverlay()
+
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLAnchorElement | null
+    const click = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+
+    expect(logo).not.toBeNull()
+    const navigationAllowed = await act(() => logo!.dispatchEvent(click))
+
+    expect(navigationAllowed).toBe(false)
+    expect(click.defaultPrevented).toBe(true)
+    expect(logo?.getAttribute("aria-label")).toBe("Close search")
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]')
+        ?.className,
+    ).toContain("animate-overlay-fade-out")
+
+    const closingClick = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+    const closingNavigationAllowed = await act(() =>
+      logo!.dispatchEvent(closingClick),
+    )
+
+    expect(closingNavigationAllowed).toBe(false)
+    expect(closingClick.defaultPrevented).toBe(true)
+
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).toBeNull()
+  })
+
   it("localizes the global search launcher and close control in Russian", async () => {
     setRequestLocale("ru")
     act(() => {
@@ -2777,6 +2821,11 @@ describe("FloatingSearchProvider — search pagination", () => {
       await Promise.resolve()
     })
 
+    expect(input.value).toBe("the bible project")
+    await act(async () => {
+      vi.advanceTimersByTime(0)
+      await Promise.resolve()
+    })
     expect(input.value).toBe("")
 
     expect(reportDatadogRumAction).toHaveBeenCalledWith(

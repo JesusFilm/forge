@@ -11,6 +11,7 @@ export type ResolvedSeriesLanguage = {
 export function resolveSeriesLanguageIdentity(
   options: readonly SeriesLanguageOption[],
   requested: string,
+  fallback?: SeriesLanguageOption | null,
 ): ResolvedSeriesLanguage | null {
   const requestedLower = requested.toLowerCase()
   const validOptions = options.flatMap((option) => {
@@ -27,7 +28,12 @@ export function resolveSeriesLanguageIdentity(
     validOptions.find(
       (option) => option.bcp47?.toLowerCase() === requestedLower,
     ) ??
-    validOptions[0]
+    validOptions[0] ??
+    (() => {
+      const slug = fallback?.slug?.trim()
+      if (!slug) return null
+      return { slug, bcp47: fallback?.bcp47?.trim() || null }
+    })()
 
   return selected ?? null
 }

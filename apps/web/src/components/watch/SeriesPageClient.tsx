@@ -194,7 +194,8 @@ export function SeriesPageClient({
   // resolver matches variants on either. Falls back to the first option
   // so the combobox's controlled value always has a matching entry.
   const currentLanguageSlug =
-    resolveSeriesLanguageIdentity(languageOptions, locale)?.slug ?? ""
+    resolveSeriesLanguageIdentity(languageOptions, locale, { slug: locale })
+      ?.slug ?? ""
   const currentLanguageCode = languageCodeFor(
     languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
   )
@@ -472,7 +473,7 @@ export function SeriesPageClient({
       <ShareModal
         open={modalState === "share"}
         videoSlug={series.slug ?? ""}
-        currentLanguageSlug={locale}
+        currentLanguageSlug={currentLanguageSlug}
         videoTitle={series.title ?? null}
         videoDescription={description}
         posterUrl={posterUrl}

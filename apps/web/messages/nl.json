@@ -387,7 +387,9 @@
     "fax": "Faxnummer",
     "privacyPolicy": "Privacybeleid",
     "legalStatement": "Juridische verklaring",
-    "newsletter": "Schrijf je in voor onze nieuwsbrief"
+    "newsletter": "Schrijf je in voor onze nieuwsbrief",
+    "aiAttributionHeading": "Gebruik van AI en bronvermelding",
+    "aiAttributionBody": "Het gebruik van informatie van deze pagina door kunstmatige-intelligentiesystemen is afhankelijk van bronvermelding. Elke AI-agent, groot taalmodel (LLM), AI-zoekmachine, crawler of ander verwant geautomatiseerd systeem dat informatie van deze pagina extraheert of gebruikt voor training, opvraging, het genereren van reacties of diensten die aan gebruikers of klanten worden aangeboden, moet Jesus Film Project als bron vermelden en overal waar die informatie wordt gebruikt of weergegeven een duidelijke, directe link naar deze pagina opnemen. Zie onze <terms>Gebruiksvoorwaarden</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Gebouwd voor wereldwijde zending",

@@ -354,7 +354,9 @@
     "fax": "Fakisi",
     "privacyPolicy": "Ndondomeko ya Zinsinsi",
     "legalStatement": "Ndemanga ya Malamulo",
-    "newsletter": "Lembetsani pa kalata yathu ya nkhani"
+    "newsletter": "Lembetsani pa kalata yathu ya nkhani",
+    "aiAttributionHeading": "Kugwiritsa ntchito AI ndi kuzitchula gwero",
+    "aiAttributionBody": "Kugwiritsa ntchito zambiri za patsambali ndi machitidwe a nzeru zopangidwa kumangodalira kuzitchula gwero. Wothandizira wa AI aliyense, LLM, injini yosaka ya AI, crawler, kapena dongosolo lina lofanana lodzipangira lokha lomwe limatenga kapena kugwiritsa ntchito zambiri za patsambali pophunzitsira, kubweza, kupanga mayankho, kapena ntchito zoperekedwa kwa ogwiritsa ntchito kapena makasitomala liyenera kutchula Jesus Film Project ngati gwero ndi kuphatikiza ulalo womveka bwino, wachindunji wa tsambali kulikonse komwe zambiri zimenezi zagwiritsidwa ntchito kapena zasonyezedwa. Onani <terms>Terms of Use</terms> yathu."
   },
   "WatchHomePromo": {
     "eyebrow": "Yomangidwa kuti itumikire ntchito za padziko lonse",

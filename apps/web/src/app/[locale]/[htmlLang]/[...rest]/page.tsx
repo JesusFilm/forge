@@ -48,6 +48,7 @@ import {
   type UiLocale,
 } from "@/lib/locale"
 import {
+  languageVideosIndexPath,
   localizedHomePath,
   WATCH_BASE_PATH,
   WATCH_PUBLIC_METADATA_ORIGIN,
@@ -464,6 +465,12 @@ async function renderOneSegment(shape: {
       resolveWatchHome(locale, slug),
       resolveWatchPage(locale),
     ])
+    if (isWatchPageMissingError(pageResult.error)) {
+      const languageSlug = tryAsLocaleSlug(slug)
+      if (!languageSlug) notFound()
+      redirect(languageVideosIndexPath(languageSlug))
+    }
+
     if (heroResult.error) {
       return <ExperienceError message={heroResult.error.message} />
     }
@@ -789,6 +796,7 @@ async function renderVideo(shape: {
     const seriesLanguage = resolveSeriesLanguageIdentity(
       languageOptions,
       rawLocale,
+      { slug: rawLocale },
     )
     const contentSlug = tryAsContentSlug(slug)
     const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")

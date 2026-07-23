@@ -138,6 +138,17 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/jesus.html/spanish-castilian.html")
   })
 
+  it("keeps Admin content slugs with underscores clickable", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "soccer_event_collection",
+          languageSlug: "english",
+        }),
+      ),
+    ).toBe("/soccer_event_collection.html/english.html")
+  })
+
   it("falls back to / on a malformed slug rather than a broken deep link", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
   })
@@ -240,6 +251,50 @@ describe("pickCardPill", () => {
 })
 
 describe("VideoCard", () => {
+  it("does not render a generic Video badge when the search result has no catalog label", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            label: null,
+            durationSeconds: null,
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container?.querySelector('[data-testid="search-card-type-badge"]'),
+    ).toBeNull()
+  })
+
+  it("renders the concrete catalog label when one is available", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            label: "COLLECTION",
+            childCount: 5,
+            durationSeconds: null,
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container?.querySelector('[data-testid="search-card-type-badge"]')
+        ?.textContent,
+    ).toBe("collection")
+  })
+
   it("does not render watchability as a visible badge on search cards", () => {
     container = document.createElement("div")
     document.body.appendChild(container)
