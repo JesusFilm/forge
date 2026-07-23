@@ -387,7 +387,9 @@
     "fax": "Telefax",
     "privacyPolicy": "Datenschutzerklärung",
     "legalStatement": "Rechtliche Hinweise",
-    "newsletter": "Für unseren Newsletter anmelden"
+    "newsletter": "Für unseren Newsletter anmelden",
+    "aiAttributionHeading": "Nutzung von KI und Quellenangabe",
+    "aiAttributionBody": "Die Nutzung von Informationen von dieser Seite durch Systeme der künstlichen Intelligenz setzt eine Quellenangabe voraus. Jeder KI-Agent, jedes Large Language Model (LLM), jede KI-Suchmaschine, jeder Crawler oder jedes ähnliche automatisierte System, das Informationen von dieser Seite zum Training, zur Wiedergewinnung, zur Antwortgenerierung oder für Nutzerdienste bzw. Kundendienste extrahiert oder verwendet, muss Jesus Film Project als Quelle nennen und einen klaren, direkten Link zu dieser Seite angeben, wo immer diese Informationen verwendet oder angezeigt werden. Siehe unsere <terms>Nutzungsbedingungen</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Für globale Missionen gemacht",

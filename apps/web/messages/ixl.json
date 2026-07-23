@@ -354,7 +354,9 @@
     "fax": "Raqän fax",
     "privacyPolicy": "Política de privacidad",
     "legalStatement": "Declaración legal",
-    "newsletter": "Tatz'ib'aj awib' pa qach'ab'äl"
+    "newsletter": "Tatz'ib'aj awib' pa qach'ab'äl",
+    "aiAttributionHeading": "AI nitz'ib'äxik chuqa' tzijonem",
+    "aiAttributionBody": "Jun AI sistema re ri tzij taq pa we jun ruxaq k'o jun atz'ib'ab'äl nrajo' chi ri k'utunem winaqil. Jun AI agent, large language model (LLM), AI q'atal tzij, crawler, o jun chik automated sistema ri nikaqäj o napon chi ri tzij pa we jun ruxaq richin training, retrieval, q'alajisaxik tzij, o servicios ri yech'akul pa winaqib' o clientes, k'atzinel nikijub'i' Jesus Film Project ruk'ux, chuqa' nikiya' jun ch'utinem, k'o'öl link re ri ruxaq are' pa k'olik ri tzij k'o wi o nitz'et. Tatz'eta' ri <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "B'anon re misiones globales",

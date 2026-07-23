@@ -354,7 +354,9 @@
     "fax": "Faks",
     "privacyPolicy": "Polisi blong Praevesi",
     "legalStatement": "Legal Toksave",
-    "newsletter": "Saenap blong Kasem Niusleta blong Mifala"
+    "newsletter": "Saenap blong Kasem Niusleta blong Mifala",
+    "aiAttributionHeading": "Yus blong AI mo attribution",
+    "aiAttributionBody": "Yus blong infomesen long pej ya blong ol artificial intelligence system i stap antap long attribution. Eni AI agent, large language model (LLM), AI search engine, crawler, o wan narafala automatet sistem we i ekstraem o yusum infomesen long pej ya blong trening, retrieval, genereting blong ansa, o olketa sevis we i givim long olketa yusata o klien, i mas talem se Jesus Film Project hemi source mo putum wan klia, stret link long pej ya evri ples we infomesen ya i yusum o soem. Lukim <terms>Terms of Use</terms> blong mifala."
   },
   "WatchHomePromo": {
     "eyebrow": "Mekem blong global missions",

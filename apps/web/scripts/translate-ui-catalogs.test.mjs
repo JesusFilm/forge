@@ -1151,4 +1151,30 @@ describe("translate UI catalogs", () => {
       [MODEL]: ["es"],
     })
   })
+
+  it("preserves human-reviewed catalog ownership after scoped generation", () => {
+    const manifest = updateManifestAfterTranslation({
+      manifest: {
+        metadata: {
+          translation: {
+            localeProvenance: {},
+          },
+        },
+        machineTranslatedLocales: [],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      inventory: { languages: [{ tag: "ru" }] },
+      completedLocales: ["ru"],
+      generatedLocales: ["ru"],
+      model: MODEL,
+      sourceDigest: "current-source",
+      catalogDigests: { ru: "current-ru" },
+      generatedOn: "2026-07-23",
+    })
+
+    expect(manifest.machineTranslatedLocales).toEqual([])
+    expect(manifest.metadata.translation.localeProvenance).toEqual({})
+  })
 })

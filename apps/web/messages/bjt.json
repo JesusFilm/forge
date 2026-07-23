@@ -354,7 +354,9 @@
     "fax": "Fax number",
     "privacyPolicy": "Privacy laata",
     "legalStatement": "Legal fɔlɛ",
-    "newsletter": "Newsletter nɔŋ sign up"
+    "newsletter": "Newsletter nɔŋ sign up",
+    "aiAttributionHeading": "AI taara ni attribution",
+    "aiAttributionBody": "AI sistɛmɛw bɛ kɔrɔbɔli ni kɔrɔbɔli kɛ ka fɛn min bɛ na halaman nin kan, a ka kɛ attribution kama. AI agent kelen kelen, large language model (LLM), AI search engine, crawler, walima automated system min bɛ fɛn min bɛ na halaman nin kan labɛn walima kɛ a na training, retrieval, response generation, walima services min bɛ na users walima clients ma, a ka kan ka Jesus Film Project yira source kɔnɔ ni ka link kan kɔrɔlen, ko a bɛ dii a fɔlɔ sira nin kan. Ola <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Bɔ build global missions kɛla",

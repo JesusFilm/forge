@@ -354,7 +354,9 @@
     "fax": "Nmer er a fax",
     "privacyPolicy": "Ongerachel er a omelilt",
     "legalStatement": "Klechedaol er a llach",
-    "newsletter": "Mesing er a newsletter kemiu"
+    "newsletter": "Mesing er a newsletter kemiu",
+    "aiAttributionHeading": "A omes el AI me a omes er a attribution",
+    "aiAttributionBody": "A omes er a information er a page ak el AI systems el mo oumekorir er a attribution. Ngii el AI agent, large language model (LLM), AI search engine, crawler, ngii el automated system me a omes er a information er a page etiu el a training, retrieval, response generation, oding a services el ngar er a users lechubel clients, a diak el omes a Jesus Film Project el source me a klou el direct link er a page etiu i a omes er a information rult; mesulang a <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Meleches el mo er a missions er a beluu rokui",

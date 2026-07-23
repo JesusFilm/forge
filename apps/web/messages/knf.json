@@ -354,7 +354,9 @@
     "fax": "Fax numero",
     "privacyPolicy": "Privacy policy i",
     "legalStatement": "Legal statement i",
-    "newsletter": "Our Newsletter te sign up kɛ"
+    "newsletter": "Our Newsletter te sign up kɛ",
+    "aiAttributionHeading": "AI yé attribution",
+    "aiAttributionBody": "If AI systems ké use i ni page i na informasyoŋ, a wa to attribution ka fe. AI agent, large language model (LLM), AI search engine, crawler, yé o kɛ sistem automatisé fõrɔŋ, a ka page i na informasyoŋ nɛna, training, retrieval, response generation, ni service kɛ user wo ka client wo ma, a bɛ Jesus Film Project fɔ sɛbɛ ka fɛ source, ka page i ma link direct ka sɔn, kɛ o informasyoŋ kɛi ni a sɛbɛrɛ na. Wɔrɛ <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Global missions te kɛ",

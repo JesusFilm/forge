@@ -354,7 +354,9 @@
     "fax": "Paksimili",
     "privacyPolicy": "Palisiya ti Pribasiya",
     "legalStatement": "Pahayag a Legal",
-    "newsletter": "Agsign-up para iti Newsletter mi"
+    "newsletter": "Agsign-up para iti Newsletter mi",
+    "aiAttributionHeading": "Paggamit ti AI ken panangikeddeng ti naggapu",
+    "aiAttributionBody": "Ti panangusar ti impormasyon manipud iti daytoy a panid babaen kadagiti sistema ti artificial intelligence ket masapul ti panangikeddeng ti naggapu. Aniaman a AI agent, large language model (LLM), AI search engine, crawler, wenno kababaliwan a automated system a mangala wenno mangusar iti impormasyon manipud iti daytoy a panid para iti training, retrieval, panagporma ti sungbat, wenno serbisyo a naited kadagiti agar-aramat wenno kliyente ket masapul a maitakder iti Jesus Film Project a kas naggapu ken dakdakek a direct a kawes iti daytoy a panid iti sadino man a panag-usar wenno panagipakita ti dayta a impormasyon. Kitaen ti <terms>Terms of Use</terms>."
   },
   "WatchHomePromo": {
     "eyebrow": "Naibangon para kadagiti misyon iti lubong",
