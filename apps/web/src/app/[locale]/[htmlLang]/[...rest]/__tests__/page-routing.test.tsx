@@ -520,10 +520,23 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
       },
       error: null,
     })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "exp-home-es",
+          slug: "watch-home",
+          title: "Watch Home",
+          blocks: [],
+        },
+      },
+      error: null,
+    })
 
     await render1Seg("spanish-castilian.html")
 
     expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
+    expect(redirectMock).not.toHaveBeenCalled()
     expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
       expect.objectContaining({
         heroModel: {
@@ -539,6 +552,49 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(resolveWatchPageMock).toHaveBeenCalledWith("es")
     expect(resolveWatchExperiencePageMock).not.toHaveBeenCalled()
     expect(resolveWatchRouteBySlugMock).not.toHaveBeenCalled()
+  })
+
+  it("redirects a missing localized home to the same language's video inventory", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [{ id: "hero-ru" }],
+        sections: [],
+        carousel: { pools: [], muxInserts: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+
+    await expect(render1Seg("russian.html")).rejects.toThrow(
+      "NEXT_REDIRECT:/russian.html/videos",
+    )
+
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("ru", "russian")
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("ru")
+    expect(redirectMock).toHaveBeenCalledWith("/russian.html/videos")
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+    expect(experienceEmptyMock).not.toHaveBeenCalled()
+  })
+
+  it("does not treat an operational localized-home error as missing content", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [{ id: "hero-ru" }],
+        sections: [],
+        carousel: { pools: [], muxInserts: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+
+    await render1Seg("russian.html")
+
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).toHaveBeenCalled()
   })
 
   it("canonicalizes one-segment language-home metadata to the public language URL", async () => {
