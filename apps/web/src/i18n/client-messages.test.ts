@@ -3,6 +3,7 @@ import englishMessages from "../../messages/en.json"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
+  WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
   pickClientMessages,
 } from "./client-messages"
 
@@ -30,5 +31,20 @@ describe("route-scoped client messages", () => {
       "LanguageCombobox",
     )
     expect(messages.LanguageCombobox?.selectLanguage).toBe("Select language")
+  })
+
+  it("keeps series collection downloads translated", () => {
+    const messages = pickClientMessages(
+      englishMessages,
+      WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+    )
+
+    expect(WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES).toContain(
+      "CollectionDownloadModal",
+    )
+    expect(messages.SeriesPage?.downloadCollection).toBe("Download collection")
+    expect(messages.CollectionDownloadModal?.dialogTitle).toBe(
+      "Download collection",
+    )
   })
 })
