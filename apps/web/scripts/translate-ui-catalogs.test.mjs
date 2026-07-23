@@ -252,6 +252,230 @@ describe("translate UI catalogs", () => {
     ).toBe("Mensaje diecinueve")
   })
 
+  it("limits a stale-provenance refresh to explicitly requested keys", async () => {
+    const source = sourceCatalog()
+    source.other = { unrelated: "Unrelated message" }
+    const catalog = translatedCatalog(source)
+    catalog.other = { unrelated: "Mensaje no relacionado" }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: {
+        metadata: {
+          translation: {
+            localeProvenance: {
+              es: {
+                model: "gpt-old-primary",
+                sourceDigest: "old-source",
+                catalogDigest: "old-catalog",
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        authoredInventoryLocales: ["es"],
+        machineTranslatedLocales: ["es"],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: [...fixture.args, "--keys", "common.message19"],
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1]).messagesToTranslate,
+      ),
+    ).toEqual(["common.message19"])
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1])
+          .existingReferenceTranslations,
+      ),
+    ).toHaveLength(19)
+    expect(
+      promptFromRequest(fetchMock.mock.calls[0][1])
+        .existingReferenceTranslations,
+    ).not.toHaveProperty("other.unrelated")
+  })
+
+  it("reprocesses an explicitly requested key for a completed current catalog", async () => {
+    const source = sourceCatalog()
+    const catalog = translatedCatalog(source)
+    const fixture = createFixture({
+      currentCatalog: catalog,
+      progressCatalog: catalog,
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: [...fixture.args, "--keys", "common.message19"],
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1]).messagesToTranslate,
+      ),
+    ).toEqual(["common.message19"])
+  })
+
+  it("promotes scoped translations only when prior drift is limited to those keys", async () => {
+    const source = sourceCatalog()
+    const sourceFlat = flattenCatalog(source)
+    const catalog = translatedCatalog(source)
+    const scopedBaselineDigest = sourceDigestForFlatCatalog(
+      Object.fromEntries(
+        Object.entries(sourceFlat).filter(
+          ([key]) => key !== "common.message19",
+        ),
+      ),
+    )
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: {
+        metadata: {
+          translation: {
+            localeProvenance: {
+              es: {
+                model: "gpt-old-primary",
+                sourceDigest: scopedBaselineDigest,
+                catalogDigest: contentDigest(flattenCatalog(catalog)),
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        authoredInventoryLocales: ["es"],
+        machineTranslatedLocales: ["es"],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: [...fixture.args, "--keys", "common.message19", "--promote"],
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      JSON.parse(readFileSync(fixture.manifestPath, "utf-8")).metadata
+        .translation.localeProvenance.es.sourceDigest,
+    ).toBe(sourceDigestForFlatCatalog(sourceFlat))
+  })
+
+  it("rejects scoped promotion when source drift extends beyond requested keys", async () => {
+    const source = sourceCatalog()
+    const catalog = translatedCatalog(source)
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: {
+        metadata: {
+          translation: {
+            localeProvenance: {
+              es: {
+                model: "gpt-old-primary",
+                sourceDigest: "unrelated-source-digest",
+                catalogDigest: contentDigest(flattenCatalog(catalog)),
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        authoredInventoryLocales: ["es"],
+        machineTranslatedLocales: ["es"],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      main({
+        args: [...fixture.args, "--keys", "common.message19", "--promote"],
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toThrow(
+      "Cannot promote a scoped translation when prior source drift is not limited to --keys: es",
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects unknown scoped keys before writing catalogs", async () => {
+    const source = sourceCatalog()
+    const catalog = translatedCatalog(source)
+    const fixture = createFixture({
+      currentCatalog: catalog,
+      progressCatalog: catalog,
+    })
+
+    await expect(
+      main({
+        args: [...fixture.args, "--keys", "common.missing"],
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toThrow("Unknown message keys: common.missing")
+    expect(
+      JSON.parse(readFileSync(join(fixture.messagesDir, "es.json"), "utf-8")),
+    ).toEqual(catalog)
+  })
+
   it("rejects non-neutral English copies after case and format normalization", () => {
     expect(() =>
       validateCatalogIntegrity(
@@ -391,6 +615,14 @@ describe("translate UI catalogs", () => {
     expect(JSON.parse(request.input).messagesToTranslate).toEqual({
       "common.greeting": "Hello",
     })
+    expect(JSON.parse(request.input)).toMatchObject({
+      targetLocale: "es",
+      explicitScript: "not specified",
+      defaultScript: "Latn",
+    })
+    expect(request.instructions).toContain(
+      "Honor an explicit BCP-47 script subtag",
+    )
     expect(timeoutSpy).toHaveBeenCalledWith(900_000)
     expect(result).toEqual({
       translations: { "common.greeting": "Hola" },
