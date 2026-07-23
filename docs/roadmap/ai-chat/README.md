@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (July 22, 2026)
+## Status (July 23, 2026)
 
 - **Total tickets:** 36
-- ✅ **Complete:** 30
+- ✅ **Complete:** 31
 - 🟡 **In progress:** 0
-- 🔵 **Not started:** 6
+- 🔵 **Not started:** 5
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -58,4 +58,4 @@ from the main DS Year 1 roadmap.
 | [feat-283](feat-283-mastra-ai-chat-lane-admission.md)         | Mastra ai-chat lane admission module (flag + lane bearer)                 | jian wei | P2       | 2026-07-22 | 2    | ✅ complete    | [#1667](https://github.com/JesusFilm/forge/pull/1667)                                                        |
 | [feat-284](feat-284-mastra-thread-ownership-read-resolver.md) | Mastra thread-ownership read-path resolver (owned-existing-thread)        | jian wei | P2       | 2026-07-24 | 1    | ✅ complete    | [#1670](https://github.com/JesusFilm/forge/pull/1670)                                                        |
 | [feat-285](feat-285-mastra-ai-chat-memory-module.md)          | Extract the Mastra ai-chat memory module + keying policy (ride-along)     | jian wei | P2       | 2026-08-17 | 1    | ✅ complete    | [#1672](https://github.com/JesusFilm/forge/pull/1672)                                                        |
-| [feat-294](feat-294-chat-validated-base-url-brand.md)         | Branded ValidatedBaseUrl input for the shared Mastra transport            | jian wei | P3       | 2026-07-27 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-294](feat-294-chat-validated-base-url-brand.md)         | Branded ValidatedBaseUrl input for the shared Mastra transport            | jian wei | P3       | 2026-07-27 | 1    | ✅ complete    | [#1702](https://github.com/JesusFilm/forge/pull/1702)                                                        |
