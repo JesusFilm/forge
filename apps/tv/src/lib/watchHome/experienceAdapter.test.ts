@@ -244,11 +244,53 @@ describe("portrait poster rails", () => {
       "https://img/single.jpg",
     ])
   })
+
+  it("lets explicit horizontal override an all-poster legacy rail", () => {
+    const section = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({
+          cardOrientation: "horizontal",
+          items: [
+            { coreId: "core-series", imageOverrideUrl: POSTER_A },
+            { coreId: "core-single", imageOverrideUrl: POSTER_B },
+          ],
+        }),
+      ],
+      HYDRATED,
+    )[0]
+
+    expect(section.orientation).toBe("horizontal")
+    expect(section.cardOrientation).toBe("horizontal")
+    expect(section.isPosterRail).toBe(true)
+    expect(section.cards.map((card) => card.imageUrl)).toEqual([
+      POSTER_A,
+      POSTER_B,
+    ])
+  })
+
+  it("lets explicit vertical override a poster-less grid", () => {
+    const section = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({
+          mediaCollectionVariant: "grid",
+          cardOrientation: "vertical",
+        }),
+      ],
+      HYDRATED,
+    )[0]
+
+    expect(section.orientation).toBe("vertical")
+    expect(section.cardOrientation).toBe("vertical")
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards.map((card) => card.imageUrl)).toEqual([
+      "https://img/series.jpg",
+      "https://img/single.jpg",
+    ])
+  })
 })
 
-// Card art is gated on the SAME poster-rail decision as the frame, so the two
-// can never disagree: poster rail → the curated override; anything else → the
-// hydrated video art, exactly as before this feature existed.
+// Legacy card art stays gated on the poster-rail heuristic. Explicitly authored
+// orientations change the frame without silently discarding an image override.
 describe("card image source", () => {
   const POSTER = "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
   const ITEM_IMAGE = "https://cdn.example/item.jpg"

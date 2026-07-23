@@ -118,6 +118,7 @@ describe("normalizeExperienceDraft", () => {
           t: "mediaCollection",
           title: "Keep exploring",
           variant: "collection",
+          cardOrientation: "horizontal",
           items: [
             {
               candidateRef: "v02",
@@ -145,6 +146,7 @@ describe("normalizeExperienceDraft", () => {
     })
     expect(normalized.blocks[3]).toMatchObject({
       t: "mediaCollection",
+      cardOrientation: "horizontal",
       items: [{ videoId: "video-2", linkToSectionKey: "ai-s02" }],
     })
   })

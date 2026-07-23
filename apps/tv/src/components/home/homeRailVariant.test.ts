@@ -50,4 +50,17 @@ describe("resolveHomeRailVariant", () => {
       ),
     ).toBe("portrait")
   })
+
+  it("lets an explicit orientation override the legacy poster heuristic", () => {
+    expect(
+      resolveHomeRailVariant(
+        section({ cardOrientation: "horizontal", isPosterRail: true }),
+      ),
+    ).toBe("landscape")
+    expect(
+      resolveHomeRailVariant(
+        section({ cardOrientation: "vertical", isPosterRail: false }),
+      ),
+    ).toBe("portrait")
+  })
 })

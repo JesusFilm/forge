@@ -255,6 +255,7 @@ export const MediaCollectionBlockSchema = z
     backgroundColor: z.string().optional(),
     categoryLabel: z.string().optional(),
     variant: z.enum(["carousel", "grid", "collection", "hero", "player"]),
+    cardOrientation: z.enum(["horizontal", "vertical"]).optional(),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
     title: z.string().optional(),
     subtitle: z.string().optional(),

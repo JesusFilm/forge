@@ -123,6 +123,33 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     expect(mixed.orientation).toBe("horizontal")
   })
 
+  it("lets an explicit orientation override legacy variant and poster rules", () => {
+    const [horizontalPosterRail] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        cardOrientation: "horizontal",
+        items: [
+          {
+            videoId: "a",
+            videoSlug: "jesus",
+            imageOverrideUrl: "https://admin/x/preview",
+          },
+        ],
+      }),
+    ])
+    const [verticalGrid] = buildWatchHomeSectionsFromExperience([
+      mediaCollection({
+        mediaCollectionVariant: "grid",
+        cardOrientation: "vertical",
+      }),
+    ])
+
+    expect(horizontalPosterRail.orientation).toBe("horizontal")
+    expect(horizontalPosterRail.cards[0].imageUrl).toBe(
+      "https://admin/x/preview",
+    )
+    expect(verticalGrid.orientation).toBe("vertical")
+  })
+
   it("skips a non-collection block and warns in dev (AE4, R5)", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
     const sections = buildWatchHomeSectionsFromExperience([

@@ -1109,6 +1109,7 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionBlock")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.defaultCollectionSlug).toBeDefined()
+    expect(fields?.cardOrientation).toBeDefined()
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

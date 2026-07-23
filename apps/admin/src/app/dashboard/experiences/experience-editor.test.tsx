@@ -1739,6 +1739,38 @@ describe("ExperienceEditor", () => {
     },
   )
 
+  it("persists the selected media collection card orientation", () => {
+    const view = renderEditorDom([
+      {
+        t: "mediaCollection",
+        sectionKey: "media-orientation",
+        variant: "carousel",
+        itemsSource: "manual",
+        title: "Media",
+        items: [],
+      },
+    ])
+
+    try {
+      const horizontalButton = findButtonByExactText(
+        view.container,
+        "Horizontal",
+      )
+      act(() => horizontalButton.click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      const blocks = JSON.parse(blocksInput.value) as Array<{
+        cardOrientation?: string
+      }>
+      expect(blocks[0]?.cardOrientation).toBe("horizontal")
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("keeps the picker open and the block unchanged when collection loading fails", async () => {
     const collection = {
       ...defaultVideoLibrary[0]!,

@@ -4,11 +4,13 @@
 import type { HomeCardVariant } from "./HomeCard"
 import type { WatchHomeSection } from "../../lib/watchHome/model"
 
-// Portrait ONLY for a poster rail — never `orientation`, which also reads
-// "vertical" for poster-less `collection`/config sections whose art is landscape
-// (framing those 2:3 crops them to a sliver — the bug this exists to prevent).
+// An explicit Admin orientation wins. Legacy sections stay portrait only for a
+// poster rail — never from `orientation`, which also reads "vertical" for
+// poster-less `collection`/config sections whose art is landscape.
 export function resolveHomeRailVariant(
-  section: Pick<WatchHomeSection, "isPosterRail">,
+  section: Pick<WatchHomeSection, "cardOrientation" | "isPosterRail">,
 ): HomeCardVariant {
+  if (section.cardOrientation === "vertical") return "portrait"
+  if (section.cardOrientation === "horizontal") return "landscape"
   return section.isPosterRail ? "portrait" : "landscape"
 }

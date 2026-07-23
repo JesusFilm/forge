@@ -40,6 +40,38 @@ describe("buildExperienceEmbeddingText", () => {
     expect(text).not.toContain("video-123")
     expect(text).not.toContain("https://example.com/ignore-me")
   })
+
+  it("does not treat card orientation as semantic content", async () => {
+    const { buildExperienceEmbeddingSource } =
+      await import("./embeddings.service")
+    const locale = {
+      title: "Hope",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      blocks: [
+        {
+          t: "mediaCollection",
+          variant: "carousel",
+          title: "Stories of hope",
+          items: [],
+        },
+      ],
+    }
+
+    const horizontal = buildExperienceEmbeddingSource({
+      ...locale,
+      blocks: [{ ...locale.blocks[0], cardOrientation: "horizontal" }],
+    })
+    const vertical = buildExperienceEmbeddingSource({
+      ...locale,
+      blocks: [{ ...locale.blocks[0], cardOrientation: "vertical" }],
+    })
+
+    expect(horizontal.text).toBe(vertical.text)
+    expect(horizontal.contentHash).toBe(vertical.contentHash)
+    expect(horizontal.text).not.toMatch(/horizontal|vertical/)
+  })
 })
 
 describe("generateExperienceEmbedding", () => {

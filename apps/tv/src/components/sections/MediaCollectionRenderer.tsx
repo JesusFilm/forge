@@ -1,4 +1,4 @@
-import React, { useCallback } from "react"
+import React, { useCallback, useMemo } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
@@ -14,6 +14,7 @@ import {
 } from "../../lib/experienceHydration"
 import { FocusableCard } from "../FocusableCard"
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { resolveMediaCollectionCardOrientation } from "../../lib/mediaCollectionCardOrientation"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,8 +24,10 @@ type MediaItem = NonNullable<MediaCollectionBlockModel["items"]>[number]
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_WIDTH = scale(260)
-const CARD_HEIGHT = scale(347)
+const VERTICAL_CARD_WIDTH = scale(260)
+const VERTICAL_CARD_HEIGHT = scale(347)
+const HORIZONTAL_CARD_WIDTH = scale(420)
+const HORIZONTAL_CARD_HEIGHT = scale(236)
 const CARD_GAP = scale(24)
 
 const GRADIENT_COLORS: [string, string] = [
@@ -43,6 +46,18 @@ export function MediaCollectionRenderer({
 
   const { mcTitle, mcSubtitle, categoryLabel } = section
   const items: MediaItem[] = section.items ?? []
+  const cardOrientation = resolveMediaCollectionCardOrientation(
+    section.cardOrientation,
+    "vertical",
+  )
+  const cardDimensions =
+    cardOrientation === "horizontal"
+      ? styles.horizontalCard
+      : styles.verticalCard
+  const cardStyle = useMemo(
+    () => StyleSheet.flatten([styles.card, cardDimensions]),
+    [cardDimensions],
+  )
 
   const renderItem = useCallback(
     ({ item, index }: { item: MediaItem; index: number }) => {
@@ -63,8 +78,8 @@ export function MediaCollectionRenderer({
 
       return (
         <View style={styles.cardWrapper}>
-          <FocusableCard onPress={handlePress} style={styles.card}>
-            <View style={styles.cardInner}>
+          <FocusableCard onPress={handlePress} style={cardStyle}>
+            <View style={[styles.cardInner, cardDimensions]}>
               {thumbnailUrl != null ? (
                 <Image
                   source={thumbnailUrl}
@@ -105,7 +120,7 @@ export function MediaCollectionRenderer({
         </View>
       )
     },
-    [categoryLabel, scrollToSection, videoByCoreId],
+    [cardDimensions, cardStyle, categoryLabel, scrollToSection, videoByCoreId],
   )
 
   const keyExtractor = useCallback(
@@ -190,15 +205,20 @@ const styles = StyleSheet.create({
     width: CARD_GAP,
   },
   card: {
-    width: CARD_WIDTH,
     backgroundColor: WATCH_THEME.scrim(1),
     borderRadius: scale(16),
     overflow: "hidden",
   },
   cardInner: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
     position: "relative",
+  },
+  horizontalCard: {
+    width: HORIZONTAL_CARD_WIDTH,
+    height: HORIZONTAL_CARD_HEIGHT,
+  },
+  verticalCard: {
+    width: VERTICAL_CARD_WIDTH,
+    height: VERTICAL_CARD_HEIGHT,
   },
   thumbnailFallback: {
     backgroundColor: WATCH_THEME.cardFallback,

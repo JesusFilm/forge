@@ -3,6 +3,7 @@
 // and series routing are exact (TV DIVERGES from mobile's flat, unhydrated render).
 
 import { resolveOverridePosterUrl } from "../experienceHydration"
+import { resolveMediaCollectionCardOrientation } from "../mediaCollectionCardOrientation"
 import { ENGLISH_LANGUAGE_SLUG } from "./config"
 import type { WatchHomeFallbackReason } from "./logWatchHomeFallback"
 import {
@@ -34,6 +35,7 @@ type MediaCollectionBlockLike = {
   readonly subtitle?: string | null
   readonly categoryLabel?: string | null
   readonly mediaCollectionVariant?: string | null
+  readonly cardOrientation?: "horizontal" | "vertical" | null
   readonly showItemNumbers?: boolean | null
   readonly items?: readonly ExperienceItem[] | null
 }
@@ -90,7 +92,7 @@ function itemToCard(
   sectionId: string,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
   languageSlug: string,
-  posterRail: boolean,
+  useAuthoredImageOverride: boolean,
 ): WatchHomeCard | null {
   const coreId = item.coreId
   if (!isValidCoreId(coreId)) return null
@@ -102,9 +104,9 @@ function itemToCard(
     video,
     languageSlug,
     muxPlaybackId: item.muxPlaybackId ?? null,
-    // Gated on the SAME value as the 2:3 frame, so frame and art can't diverge:
-    // a landscape rail keeps the video's cinematic (as before this feature).
-    imageUrlOverride: posterRail ? resolveOverridePosterUrl(item) : null,
+    imageUrlOverride: useAuthoredImageOverride
+      ? resolveOverridePosterUrl(item)
+      : null,
   })
 }
 
@@ -116,13 +118,25 @@ function blockToSection(
 ): WatchHomeSection | null {
   const sectionId = block.sectionKey ?? `home-experience-section-${index}`
   const rawItems = block.items ?? []
-  // Decided ONCE, from rawItems (not surviving cards — a dropped item must not
-  // turn a mixed rail into a poster rail), then used for BOTH the frame and the
-  // card art below.
-  const posterRail = isPortraitPosterRail(rawItems)
+  // The legacy poster heuristic remains the fallback for blocks that predate
+  // cardOrientation. An explicit shape must not silently discard authored art.
+  const legacyPosterRail = isPortraitPosterRail(rawItems)
+  const authoredCardOrientation =
+    block.cardOrientation === "horizontal" ||
+    block.cardOrientation === "vertical"
+      ? block.cardOrientation
+      : null
+  const useAuthoredImageOverride =
+    authoredCardOrientation != null || legacyPosterRail
   const cards = rawItems
     .map((item) =>
-      itemToCard(item, sectionId, videoByCoreId, languageSlug, posterRail),
+      itemToCard(
+        item,
+        sectionId,
+        videoByCoreId,
+        languageSlug,
+        useAuthoredImageOverride,
+      ),
     )
     .filter((card): card is WatchHomeCard => card != null)
   if (cards.length === 0) return null // per-section skip: zero renderable cards (R2)
@@ -139,9 +153,13 @@ function blockToSection(
     // Mirrors mobile's model, where an all-poster rail reads "vertical". Kept for
     // sync-parity ONLY — TV renders off isPosterRail, because `orientation` also
     // means "vertical grid" for poster-less `collection` blocks.
-    orientation: posterRail ? "vertical" : orientation,
+    orientation: resolveMediaCollectionCardOrientation(
+      authoredCardOrientation,
+      legacyPosterRail ? "vertical" : orientation,
+    ),
+    cardOrientation: authoredCardOrientation,
     showSequenceNumbers: block.showItemNumbers ?? false,
-    isPosterRail: posterRail,
+    isPosterRail: legacyPosterRail,
     cards,
   }
 }

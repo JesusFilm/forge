@@ -140,6 +140,7 @@ export const MediaCollectionFragment = graphql(`
     mcCtaLabel: ctaLabel
     showItemNumbers
     mcVariant: variant
+    cardOrientation
     footerText
     items {
       titleOverride

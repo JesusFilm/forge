@@ -4,6 +4,7 @@
  * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
  */
 import { rewriteSeedPosterUrl } from "../mediaImageUrl"
+import { resolveMediaCollectionCardOrientation } from "../mediaCollectionCardOrientation"
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
 import {
   buildVideoByCoreIdIndex,
@@ -155,6 +156,9 @@ function blockToSection(
   const { layout, orientation } = mapVariant(
     b.mediaCollectionVariant as string | null,
   )
+  const legacyOrientation = isPortraitPosterRail(rawItems)
+    ? "vertical"
+    : orientation
   return {
     // index disambiguates the FlashList key when a block omits sectionKey — the
     // fallback would otherwise collapse to one constant for every such block.
@@ -164,7 +168,10 @@ function blockToSection(
     title: blockTitle || categoryLabel,
     description: (b.subtitle as string | null) ?? null,
     layout,
-    orientation: isPortraitPosterRail(rawItems) ? "vertical" : orientation,
+    orientation: resolveMediaCollectionCardOrientation(
+      b.cardOrientation,
+      legacyOrientation,
+    ),
     showSequenceNumbers: (b.showItemNumbers as boolean | null) ?? false,
     cards,
   }

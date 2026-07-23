@@ -108,6 +108,9 @@ export type WatchHomeSection = {
   // landscape. Render off isPosterRail (resolveHomeRailVariant); never re-wire.
   layout: "rail" | "grid"
   orientation: "horizontal" | "vertical"
+  // Explicit Admin card-shape override. Null/absent sections retain the legacy
+  // poster-art heuristic in resolveHomeRailVariant.
+  cardOrientation?: "horizontal" | "vertical" | null
   showSequenceNumbers: boolean
   // Every card carries curated portrait art, so the rail may render 2:3. Set only
   // from the resolved override poster the cards show, so frame and art cannot

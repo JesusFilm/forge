@@ -205,6 +205,43 @@ describe("MediaCollection VideoCard href", () => {
     )
   })
 
+  it("renders explicitly horizontal carousel cards as landscape", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({ cardOrientation: "horizontal" })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const mediaFrame = container.querySelector(
+      '[data-testid="VideoCard"] > div',
+    )
+    const slide = container.querySelector(
+      '[data-testid="media-collection-carousel-item"]',
+    )
+    expect(mediaFrame?.getAttribute("class")).toContain("aspect-video")
+    expect(mediaFrame?.getAttribute("class")).not.toContain("aspect-[2/3]")
+    expect(slide?.getAttribute("class")).toContain("max-w-[360px]")
+  })
+
+  it("keeps legacy carousel cards portrait when orientation is omitted", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData()}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const mediaFrame = container.querySelector(
+      '[data-testid="VideoCard"] > div',
+    )
+    expect(mediaFrame?.getAttribute("class")).toContain("aspect-[2/3]")
+  })
+
   it("keeps non-carousel variants on the grid renderer", () => {
     act(() => {
       root.render(
@@ -226,6 +263,31 @@ describe("MediaCollection VideoCard href", () => {
         ?.querySelector('[data-testid="media-collection-grid"]')
         ?.getAttribute("class"),
     ).toContain("md:grid-cols-3")
+    expect(
+      section
+        ?.querySelector('[data-testid="VideoCard"] > div')
+        ?.getAttribute("class"),
+    ).toContain("aspect-video")
+  })
+
+  it("renders explicitly vertical grid cards as portrait", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            cardOrientation: "vertical",
+          })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const mediaFrame = container.querySelector(
+      '[data-testid="VideoCard"] > div',
+    )
+    expect(mediaFrame?.getAttribute("class")).toContain("aspect-[2/3]")
+    expect(mediaFrame?.getAttribute("class")).not.toContain("aspect-video")
   })
 
   it.each([

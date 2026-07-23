@@ -23,4 +23,8 @@ describe("GET_WATCH_EXPERIENCE (public single experience, powers the home)", () 
     // experienceBySlug is public; the bare `experiences` list field is gated.
     expect(experienceSdl).not.toMatch(/\bexperiences\b/)
   })
+
+  it("selects the authored media-collection card orientation", () => {
+    expect(experienceSdl).toContain("cardOrientation")
+  })
 })

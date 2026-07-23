@@ -309,6 +309,7 @@ function normalizeDraftBlock(
         backgroundColor: block.backgroundColor,
         categoryLabel: block.categoryLabel,
         variant: block.variant,
+        cardOrientation: block.cardOrientation,
         itemsSource: "manual" as const,
         title: block.title,
         subtitle: block.subtitle,

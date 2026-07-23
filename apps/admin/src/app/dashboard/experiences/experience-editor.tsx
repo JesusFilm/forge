@@ -5707,7 +5707,7 @@ export function ExperienceEditor({
                 className={cx(
                   "h-8 cursor-pointer overflow-hidden rounded-[2px] text-[12px] font-medium uppercase transition-[background-color,color,max-width,opacity,padding] duration-[220ms] ease-out",
                   selected || active
-                    ? "max-w-[64px] px-3 opacity-100"
+                    ? "max-w-[96px] px-3 opacity-100"
                     : "max-w-0 px-0 opacity-0",
                   active
                     ? "bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)]"
@@ -9365,17 +9365,33 @@ export function ExperienceEditor({
                         Media items
                       </div>
                       {selectedBlockIndex === index ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            openVideoPicker(index, "mediaCollectionAppend")
-                          }}
-                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add video
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {renderCanvasStringOptionControl({
+                            index,
+                            block: blockRecord,
+                            field: "cardOrientation",
+                            options: ["horizontal", "vertical"],
+                            fallback:
+                              asString(blockRecord?.variant) === "carousel" ||
+                              asString(blockRecord?.variant) === "collection"
+                                ? "vertical"
+                                : "horizontal",
+                            className: "",
+                            formatLabel: (value) =>
+                              value.charAt(0).toUpperCase() + value.slice(1),
+                          })}
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openVideoPicker(index, "mediaCollectionAppend")
+                            }}
+                            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                          >
+                            <Plus className="h-4 w-4" strokeWidth={1.5} />
+                            Add video
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                     <div className="grid">

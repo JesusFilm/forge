@@ -47,6 +47,8 @@ const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
 
 export { mediaCollectionFragment }
 
+type MediaCardOrientation = "horizontal" | "vertical"
+
 type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   routeVideo?: RouteVideo | null
@@ -95,7 +97,7 @@ function alphaColor(color: string, opacity: number): string {
 
 function textScrimStyle(
   item: EnrichedMediaItem,
-  orientation: "horizontal" | "vertical",
+  orientation: MediaCardOrientation,
 ): CSSProperties {
   const rgb = readableScrimRgb(item.dominantColor)
   if (!rgb) {
@@ -160,6 +162,7 @@ export function MediaCollection({
     mediaDefaultCollectionSlug,
     showItemNumbers,
     mediaCollectionVariant: variant,
+    cardOrientation,
     itemsSource,
     footerText: rawFooterText,
     items,
@@ -210,6 +213,7 @@ export function MediaCollection({
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}
+      cardOrientation={cardOrientation ?? null}
       backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
@@ -248,6 +252,7 @@ function WatchHomeMediaCollection({
   ctaLabel,
   footerText,
   variant,
+  cardOrientation,
   backgroundColor,
   showItemNumbers,
   items,
@@ -262,6 +267,7 @@ function WatchHomeMediaCollection({
   ctaLabel: string | null
   footerText: string | null
   variant: string | null
+  cardOrientation: MediaCardOrientation | null
   backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
@@ -270,7 +276,9 @@ function WatchHomeMediaCollection({
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
   const isVerticalGrid = variant === "collection"
-  const isVertical = isRail || isVerticalGrid
+  const legacyCardOrientation =
+    isRail || isVerticalGrid ? "vertical" : "horizontal"
+  const resolvedCardOrientation = cardOrientation ?? legacyCardOrientation
   const defaultBackgroundUrl =
     items.map(mediaItemBackdropImageUrl).find((imageUrl) => imageUrl) ?? null
   const latestHoveredBackgroundUrlRef = useRef<string | null>(null)
@@ -526,12 +534,17 @@ function WatchHomeMediaCollection({
                 <CarouselItem
                   key={`${item.id}-${index}`}
                   data-testid="media-collection-carousel-item"
-                  className="max-w-[200px] py-1 pl-5"
+                  className={cn(
+                    "py-1 pl-5",
+                    resolvedCardOrientation === "horizontal"
+                      ? "max-w-[360px]"
+                      : "max-w-[200px]",
+                  )}
                 >
                   <VideoCard
                     item={item}
                     index={index}
-                    orientation="vertical"
+                    orientation={resolvedCardOrientation}
                     showItemNumbers={showItemNumbers}
                     fallbackLanguageSlug={fallbackLanguageSlug}
                     onHover={() =>
@@ -570,7 +583,7 @@ function WatchHomeMediaCollection({
                 key={`${item.id}-${index}`}
                 item={item}
                 index={index}
-                orientation={isVertical ? "vertical" : "horizontal"}
+                orientation={resolvedCardOrientation}
                 showItemNumbers={showItemNumbers}
                 fallbackLanguageSlug={fallbackLanguageSlug}
                 onHover={() =>
@@ -614,7 +627,7 @@ function VideoCard({
 }: {
   item: EnrichedMediaItem
   index: number
-  orientation: "horizontal" | "vertical"
+  orientation: MediaCardOrientation
   showItemNumbers: boolean | null
   fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
   onHover?: () => void

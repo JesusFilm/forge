@@ -5,6 +5,7 @@ import {
   BibleQuotesCarouselBlockSchema,
   ContainerBlockSchema,
   ContainerSlotBlockSchema,
+  MediaCollectionBlockSchema,
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
@@ -272,6 +273,27 @@ describe("BlockSchema — all top-level types validate", () => {
       ],
     })
     expect(result.success).toBe(true)
+  })
+})
+
+describe("MediaCollectionBlockSchema card orientation", () => {
+  it("keeps legacy blocks without an explicit card orientation", () => {
+    const parsed = MediaCollectionBlockSchema.parse({
+      t: "mediaCollection",
+      variant: "carousel",
+    })
+
+    expect(parsed.cardOrientation).toBeUndefined()
+  })
+
+  it("accepts explicitly authored horizontal cards", () => {
+    const parsed = MediaCollectionBlockSchema.parse({
+      t: "mediaCollection",
+      variant: "carousel",
+      cardOrientation: "horizontal",
+    })
+
+    expect(parsed.cardOrientation).toBe("horizontal")
   })
 })
 

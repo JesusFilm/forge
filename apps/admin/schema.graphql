@@ -663,6 +663,7 @@ enum MediaAssetVisibility {
 """A configurable collection of media items (carousel, grid, hero, etc.)."""
 type MediaCollectionBlock {
   backgroundColor: String
+  cardOrientation: MediaCollectionCardOrientation
   categoryLabel: String
   ctaLabel: String
   ctaLink: String
@@ -682,6 +683,11 @@ type MediaCollectionBlock {
   t: String
   title: String
   variant: MediaCollectionVariant!
+}
+
+enum MediaCollectionCardOrientation {
+  horizontal
+  vertical
 }
 
 """Single entry in MediaCollectionBlock.items."""
