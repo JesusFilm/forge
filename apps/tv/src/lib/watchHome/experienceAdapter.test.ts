@@ -169,8 +169,8 @@ describe("authored item images", () => {
 
   it("keeps authored images in carousel rails without making them poster rails", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageUrl: POSTER_A },
-      { coreId: "core-single", imageUrl: POSTER_B },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      { coreId: "core-single", imageAsset: { previewUrl: POSTER_B } },
     ])
     expect(section.isPosterRail).toBe(false)
     expect(section.layout).toBe("rail")
@@ -181,8 +181,8 @@ describe("authored item images", () => {
   it("uses thumbnailOrientation as the explicit poster rail signal", () => {
     const section = sectionFor(
       [
-        { coreId: "core-series", imageUrl: POSTER_A },
-        { coreId: "core-single", imageUrl: POSTER_B },
+        { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+        { coreId: "core-single", imageAsset: { previewUrl: POSTER_B } },
       ],
       "carousel",
       "vertical",
@@ -196,7 +196,7 @@ describe("authored item images", () => {
 
   it("is not a poster rail when only some items have authored images", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageUrl: POSTER_A },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
       { coreId: "core-single" },
     ])
     expect(section.isPosterRail).toBe(false)
@@ -212,8 +212,11 @@ describe("authored item images", () => {
 
   it("is not a poster rail when an authored image is present but unresolvable", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageUrl: POSTER_A },
-      { coreId: "core-single", imageUrl: "javascript:alert(1)" },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      {
+        coreId: "core-single",
+        imageAsset: { previewUrl: "javascript:alert(1)" },
+      },
     ])
     expect(section.isPosterRail).toBe(false)
   })
@@ -233,8 +236,8 @@ describe("authored item images", () => {
 
   it("gives every card its authored image when present", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageUrl: POSTER_A },
-      { coreId: "core-single", imageUrl: POSTER_B },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
+      { coreId: "core-single", imageAsset: { previewUrl: POSTER_B } },
     ])
     expect(section.isPosterRail).toBe(false)
     expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
@@ -242,7 +245,7 @@ describe("authored item images", () => {
 
   it("uses authored image on a mixed rail when present", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageUrl: POSTER_A },
+      { coreId: "core-series", imageAsset: { previewUrl: POSTER_A } },
       { coreId: "core-single" },
     ])
     expect(section.isPosterRail).toBe(false)
@@ -265,21 +268,33 @@ describe("card image source", () => {
     )[0].cards[0]
   }
 
-  it("uses authored item image over the video art", () => {
-    expect(cardFor({ coreId: "core-single", imageUrl: POSTER }).imageUrl).toBe(
-      POSTER,
-    )
+  it("uses authored item image asset over the video art", () => {
+    expect(
+      cardFor({ coreId: "core-single", imageAsset: { previewUrl: POSTER } })
+        .imageUrl,
+    ).toBe(POSTER)
+  })
+
+  it("uses linked video image when no authored image asset is present", () => {
+    expect(
+      cardFor({
+        coreId: "core-single",
+        videoImage: { previewUrl: ITEM_IMAGE },
+      }).imageUrl,
+    ).toBe(ITEM_IMAGE)
   })
 
   it("uses the hydrated video art when the item has no override", () => {
     expect(cardFor({ coreId: "core-single" }).imageUrl).toBe(VIDEO_ART)
   })
 
-  it("uses item imageUrl without making the rail portrait", () => {
+  it("uses item image asset without making the rail portrait", () => {
     const section = buildWatchHomeSectionsFromExperience(
       [
         mediaBlock({
-          items: [{ coreId: "core-single", imageUrl: ITEM_IMAGE }],
+          items: [
+            { coreId: "core-single", imageAsset: { previewUrl: ITEM_IMAGE } },
+          ],
         }),
       ],
       HYDRATED,
@@ -290,7 +305,10 @@ describe("card image source", () => {
 
   it("ignores an unresolvable authored image rather than blanking the card", () => {
     expect(
-      cardFor({ coreId: "core-single", imageUrl: "javascript:x" }).imageUrl,
+      cardFor({
+        coreId: "core-single",
+        imageAsset: { previewUrl: "javascript:x" },
+      }).imageUrl,
     ).toBe(VIDEO_ART)
   })
 })
@@ -339,12 +357,17 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
     ).toBe(false)
   })
 
-  it("threads the item's muxPlaybackId onto the card, null when absent (R5, R6)", () => {
+  it("threads the item's videoDub playback id onto the card, null when absent (R5, R6)", () => {
     const sections = buildWatchHomeSectionsFromExperience(
       [
         mediaBlock({
           sectionKey: "with-id",
-          items: [{ coreId: "core-single", muxPlaybackId: "pbSingle01" }],
+          items: [
+            {
+              coreId: "core-single",
+              videoDub: { muxVideo: { playbackId: "pbSingle01" } },
+            },
+          ],
         }),
         mediaBlock({ sectionKey: "no-id", items: [{ coreId: "core-series" }] }),
       ],

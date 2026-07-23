@@ -495,7 +495,7 @@ describe("MediaCollectionItem videoSlug resolver", () => {
   })
 })
 
-describe("MediaCollectionItem video image metadata resolvers", () => {
+describe("MediaCollectionItem video image resolver", () => {
   const scheduleBlurGeneration = vi.mocked(getOrScheduleVideoImageBlurDataUrl)
 
   it("schedules blur metadata generation for linked video images missing metadata", async () => {
@@ -508,16 +508,15 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
         videoStill: null,
         url: null,
         thumbnail: null,
+        width: 1280,
+        height: 720,
         blurDataUrl: null,
         dominantColor: null,
       },
     ])
     const prisma = {}
 
-    const result = await fieldResolver(
-      "MediaCollectionItem",
-      "videoImageBlurDataUrl",
-    )(
+    const result = await fieldResolver("MediaCollectionItem", "videoImage")(
       { videoId: "video-1" },
       {},
       {
@@ -529,7 +528,14 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
       fakeInfo,
     )
 
-    expect(result).toBeNull()
+    expect(result).toMatchObject({
+      id: "image-1",
+      mobileCinematicHigh: "https://imagedelivery.net/account/image/w=448",
+      blurDataUrl: null,
+      dominantColor: null,
+      width: 1280,
+      height: 720,
+    })
     expect(load).toHaveBeenCalledWith("video-1")
     expect(scheduleBlurGeneration).toHaveBeenCalledWith({
       imageId: "image-1",
@@ -548,16 +554,15 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
         videoStill: "https://imagedelivery.net/account/still/w=448",
         url: null,
         thumbnail: null,
+        width: 1920,
+        height: 1080,
         blurDataUrl: "data:image/png;base64,LQIP",
         dominantColor: null,
       },
     ])
     const prisma = {}
 
-    const result = await fieldResolver(
-      "MediaCollectionItem",
-      "videoImageDominantColor",
-    )(
+    const result = await fieldResolver("MediaCollectionItem", "videoImage")(
       { videoId: "video-1" },
       {},
       {
@@ -569,7 +574,14 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
       fakeInfo,
     )
 
-    expect(result).toBeNull()
+    expect(result).toMatchObject({
+      id: "image-1",
+      videoStill: "https://imagedelivery.net/account/still/w=448",
+      blurDataUrl: "data:image/png;base64,LQIP",
+      dominantColor: null,
+      width: 1920,
+      height: 1080,
+    })
     expect(scheduleBlurGeneration).toHaveBeenCalledWith({
       imageId: "image-1",
       imageUrl: "https://imagedelivery.net/account/still/w=448",
@@ -580,10 +592,7 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
   it("returns stored metadata without scheduling when blur and color are complete", async () => {
     scheduleBlurGeneration.mockClear()
 
-    const result = await fieldResolver(
-      "MediaCollectionItem",
-      "videoImageBlurDataUrl",
-    )(
+    const result = await fieldResolver("MediaCollectionItem", "videoImage")(
       { videoId: "video-1" },
       {},
       {
@@ -599,6 +608,8 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
                 videoStill: null,
                 url: null,
                 thumbnail: null,
+                width: 1280,
+                height: 720,
                 blurDataUrl: "data:image/png;base64,LQIP",
                 dominantColor: "#123456",
               },
@@ -609,7 +620,14 @@ describe("MediaCollectionItem video image metadata resolvers", () => {
       fakeInfo,
     )
 
-    expect(result).toBe("data:image/png;base64,LQIP")
+    expect(result).toMatchObject({
+      id: "image-1",
+      mobileCinematicHigh: "https://imagedelivery.net/account/image/w=448",
+      blurDataUrl: "data:image/png;base64,LQIP",
+      dominantColor: "#123456",
+      width: 1280,
+      height: 720,
+    })
     expect(scheduleBlurGeneration).not.toHaveBeenCalled()
   })
 })
@@ -1073,17 +1091,20 @@ describe("MediaCollectionItem.coreId resolver", () => {
 })
 
 describe("Edge cases", () => {
-  it("exposes videoSlug and muxPlaybackId on MediaCollectionItem for authored card links and previews", () => {
+  it("exposes videoSlug and image objects on MediaCollectionItem for authored card links and posters", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.videoSlug).toBeDefined()
     expect(fields?.languageId).toBeDefined()
-    expect(fields?.muxPlaybackId).toBeDefined()
+    expect(fields?.muxPlaybackId).toBeUndefined()
     expect(fields?.coreId).toBeDefined()
     expect(fields?.imageUrl).toBeUndefined()
     expect(fields?.imageAsset).toBeDefined()
+    expect(fields?.videoImage).toBeDefined()
     expect(fields?.imageBlurDataUrl).toBeUndefined()
     expect(fields?.imageDominantColor).toBeUndefined()
+    expect(fields?.videoImageBlurDataUrl).toBeUndefined()
+    expect(fields?.videoImageDominantColor).toBeUndefined()
   })
 
   it("exposes the inferred default collection slug on MediaCollectionBlock", () => {
