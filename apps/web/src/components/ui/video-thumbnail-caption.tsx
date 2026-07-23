@@ -28,7 +28,7 @@ const CAPTION_CLASSES = {
 } satisfies Record<ThumbnailCaptionInset, string>
 
 const TITLE_BASE_CLASS =
-  "text-left leading-tight font-medium text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
+  "text-left leading-tight font-media-card-title text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
 
 function titleClasses(sizeClass: string): Record<2 | 3, string> {
   return {
@@ -49,7 +49,7 @@ const TITLE_CLASSES = {
 } satisfies Record<ThumbnailTitleSize, Record<2 | 3, string>>
 
 const EYEBROW_BASE_CLASS =
-  "block w-full truncate leading-5 font-medium tracking-wider text-stone-300/80 uppercase [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
+  "block w-full truncate leading-5 font-medium tracking-media-label text-stone-300/80 uppercase [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
 
 const EYEBROW_CLASSES = {
   compact: `${EYEBROW_BASE_CLASS} text-[10px]`,

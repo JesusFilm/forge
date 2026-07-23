@@ -4,10 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (July 22, 2026)
+## Status (July 23, 2026)
 
-- **Total tickets:** 413
-- **Complete:** 307
+
+- **Total tickets:** 422
+- **Complete:** 315
+
 - **In progress:** 32
 - **Not started:** 25
 - **Blocked:** 49
@@ -94,6 +96,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-256](content-discovery/feat-256-watch-language-modal-catalog-links.md)                                   | Watch language modal catalog links                                                              | urim       | P1       | 2026-07-15 | 1    | 2026-07-15 | complete    |
 | [feat-264](content-discovery/feat-264-watch-language-modal-link-localization.md)                               | Watch language modal link localization                                                          | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
 | [feat-264](content-discovery/feat-264-watch-search-first-open-autofocus.md)                                    | Watch search first-open autofocus                                                               | urim       | P1       | 2026-07-16 | 1    | 2026-07-16 | complete    |
+| [feat-287](content-discovery/feat-287-admin-watch-search-script-language-detection.md)                         | Admin Watch search script language detection                                                    | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |
@@ -340,6 +343,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-280](platform/feat-280-experience-video-block-language-identity.md)              | Experience Video Block Language Identity                                         | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-281](platform/feat-281-watch-series-parent-variant-language-canonicalization.md) | Watch series parent variant language canonicalization                            | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-286](platform/feat-286-auth-google-account-chooser.md)                           | Auth Google Account Chooser                                                      | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-287](platform/feat-287-admin-editor-single-episode-filter.md)                    | Admin Editor Single Episode Filter                                               | tataihono  | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-287](platform/feat-287-watch-standalone-collection-episodes.md)                  | Show collection episodes on standalone Watch videos                              | unassigned | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-289](platform/feat-289-watch-modal-close-position-system.md)                     | Watch Modal Close Position System                                                | codex      | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-295](platform/feat-295-watch-mediacollection-video-image-metadata-generation.md) | Restore Watch MediaCollection video image metadata generation                    | unassigned | P1       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-287](platform/feat-287-auth-google-account-chooser-production-verification.md)   | Auth Google Account Chooser Production Verification                              | codex      | P1       | 2026-07-23 | 1    | 2026-07-23 | not-started |
@@ -390,6 +395,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-290](platform/feat-290-watch-thumbnail-caption-typography.md)                    | Watch Thumbnail Caption Typography                                               | codex      | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-267](platform/feat-267-mobile-hero-stream-retry-cooldown.md)                     | Mobile hero stream retry cooldown (idle-Home unbounded retry loop)               | urim       | P2       | 2026-07-22 | 2    | 2026-07-23 | in-progress |
 | [feat-291](platform/feat-291-watch-home-standalone-media-top-spacing.md)               | Align Watch home standalone media top spacing                                    | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-294](platform/feat-294-watch-media-collection-thumbnail-orientation.md)          | Watch Media Collection Thumbnail Orientation                                     | codex      | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-297](platform/feat-297-watch-home-page-title.md)                                 | Set the Watch home page metadata copy                                            | unassigned | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-298](platform/feat-298-watch-shared-typography-tokens.md)                        | Watch shared card and eyebrow typography tokens                                  | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
+| [feat-299](platform/feat-299-watch-grid-mobile-carousels.md)                           | Watch Experience grids become mobile carousels                                   | vlad       | P2       | 2026-07-22 | 1    | 2026-07-22 | complete    |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                            | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | blocked     |
