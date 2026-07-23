@@ -135,6 +135,9 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `DATABASE_URL`                               | Postgres connection string for Mastra runtime storage. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `MASTRA_SERVICE_API_KEYS`                    | CSV allowlist for service bearer calls. Required in production runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `DEVOTIONAL_APPROVAL_API_KEYS`               | Dedicated CSV bearer allowlist for the human devotional resume/publish lane. Held by `apps/mastra-gateway`, optional and fail-closed when unset, and boot-asserted disjoint from `MASTRA_SERVICE_API_KEYS`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `DEVOTIONAL_PLAYBACK_API_KEYS`               | Dedicated CSV bearer allowlist for read-only devotional status and authenticated Range playback. Held by `apps/mastra-gateway`, optional and fail-closed when unset, and boot-asserted disjoint from both mutation key sets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `DEVOTIONAL_NEW_RUNS_ENABLED`                | Release-attested exception gate. Defaults to `false`; set exactly `true` only after every exception invariant is verified. `false` rejects canonical starts and retries while status, playback, approval, and cancel remain available.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `AI_CHAT_SERVICE_API_KEYS`                   | Dedicated CSV bearer allowlist for the ai-chat lane: the history read routes (`/forge-ai-chat-history-*`, feat-241) and `/forge-seeker` sends (feat-250 — the only bearer that route accepts). Read ONLY inside the shared lane admission module (`src/mastra/ai-chat-lane-admission.ts`, feat-283) — no route registration threads a key list, and the discriminating key-source test in `ai-chat-lane-admission.test.ts` pins the default source. Deliberately NOT the shared pool above, so embedding/eval pool keys never reach conversation data. Optional, **no default** — unset = empty allowlist = the lane routes fail closed (401) until provisioned. Boot asserts it shares no key value with `MASTRA_SERVICE_API_KEYS` (`assertAiChatServiceKeysDisjoint`). Holder: the chat service (`AI_CHAT_MASTRA_API_KEY`). Deploy receiver-first: set this CSV before chat's key. |
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -210,6 +213,17 @@ the Rollup deployer transpiles the workspace package into the bundle.
 | `JESUSFILM_RAG_TIMEOUT_MS`                   | Single-attempt RAG request timeout. Defaults to `5000`, schema-capped at `30000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `JESUSFILM_RAG_MAX_RESPONSE_BYTES`           | Byte-cap on the buffered RAG response body (feat-202), applied to both the success and error-path reads. Streamed byte counter aborts the stream past the cap → graceful `unavailable`. Optional, defaults to `2097152` (2 MiB), schema-capped at 16 MiB (`16777216`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `JESUSFILM_RAG_USER_AGENT`                   | User agent identifying this consumer in RAG access logs. Defaults to `forge-mastra-jesusfilm-rag/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `LANGFUSE_BASE_URL`                          | Langfuse API base URL for managed prompt retrieval. Optional, **no default** — Langfuse cloud keys are region-bound, so unset simply means unconfigured: `getManagedPrompt` serves the caller-supplied fallback (`config_missing`), never a boot failure. In production a set value must use https AND a host listed in `LANGFUSE_ALLOWED_HOSTS`, else boot throws (fail-closed guard mirroring the RAG guard — the one Langfuse-driven boot throw).                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `LANGFUSE_PUBLIC_KEY`                        | Public half of the Langfuse key pair. Optional. Unlike the Bearer siblings in this table, the pair feeds HTTP **Basic** auth (`base64(public:secret)`) — Langfuse's documented scheme. Missing → `config_missing` at runtime, never boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `LANGFUSE_SECRET_KEY`                        | Secret half of the Langfuse key pair. Same posture as the public half. Langfuse keys carry full project access (no read-only prompt scope exists), so they live only in Railway service variables.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `LANGFUSE_ALLOWED_HOSTS`                     | CSV host allowlist for production Langfuse egress. Optional, no default — enforced (with https) only when `LANGFUSE_BASE_URL` is set in production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `LANGFUSE_TIMEOUT_MS`                        | Single-attempt prompt-fetch timeout. Defaults to `3000`, schema-capped at `10000` — strictly inside the 90s `chatTurn` budget per the outbound-timeout law.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `LANGFUSE_MAX_RESPONSE_BYTES`                | Byte-cap on the buffered Langfuse prompt response body, applied to both the success and error-path reads (streamed byte counter aborts past the cap). Optional, runtime default `262144` (256 KiB), schema-capped at 5 MiB (`5242880`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `LANGFUSE_USER_AGENT`                        | Non-default user agent for Langfuse prompt requests. Defaults to `forge-mastra-langfuse/1.0`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `LANGFUSE_PROMPT_DEFAULT_LABEL`              | Optional env rung of the helper's label resolution: call parameter > this var > `production` (never implicit `latest`). No default. Lets a staging deploy track staging-labeled prompts with zero consumer code change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `LANGFUSE_PROMPT_CACHE_TTL_MS`               | TTL for the in-process managed-prompt cache. Defaults to `60000`, schema-capped at `3600000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS`        | Failure cooldown that suppresses refetch attempts while serving stale/fallback. Defaults to `10000`, schema-capped at `300000`; `getLangfuseConfig()` clamps the effective cooldown to ≤ the effective TTL (the smaller value wins).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
@@ -724,6 +738,57 @@ could harden this into a real check later (deferred, not built).
 (Postgres-persisted memory, formerly on this list, shipped in feat-208 — see
 "ai-chat memory, thread ownership + retention" above.)
 
+## Langfuse prompt management
+
+`src/services/langfuse-prompt-client.ts` (plan
+`docs/plans/2026-07-20-001-feat-langfuse-prompt-helper-plan.md`) is the
+retrieval helper for Langfuse-managed system prompts — two layers in one
+module:
+
+- **Layer 1 — `fetchLangfusePrompt({ name, label?, config?, fetchImpl? })`:**
+  single-attempt no-throw result union over
+  `GET /api/public/v2/prompts/{name}` carrying the house client invariants
+  (HTTP Basic auth from the key pair, production host allowlist,
+  `redirect: "error"`, byte-capped reads on success and error paths, leak
+  control). Failure reasons: `config_missing | auth_failed | timeout |
+network_error | rate_limited | rejected | parse_error`; details:
+  `base_url_missing | public_key_missing | secret_key_missing |
+chat_type_unsupported | empty_prompt`.
+- **Layer 2 — `getManagedPrompt({ name, label?, fallback })`:** label
+  resolution (call parameter > `LANGFUSE_PROMPT_DEFAULT_LABEL` >
+  `production`, never implicit `latest`), TTL cache keyed on
+  name + resolved label, failure cooldown (clamped ≤ TTL), serve-stale
+  (marked `stale: true`), single-flight, no background work. Returns
+  `{ text, source: "langfuse" | "fallback", version?, resolvedLabel, stale?,
+reason? }` — provenance is part of the return type. Failure logging is the
+  plain-string `[langfuse] event=prompt_fetch_failed name=… label=…
+reason=…` line once per failed attempt (`config_missing` once per
+  process); prompt bodies and key material never appear in logs or results.
+
+**Retrieval-only boundary:** the helper never creates, updates, or moves
+prompts or labels — authoring and versioning stay in the Langfuse UI.
+
+**Per-environment posture (plan KTD8):** separate Langfuse **projects** per
+environment (dev/staging/prod), each with its own key pair in Railway — a
+leaked dev key must not be able to read tuned production prompt text. Within
+each project, `production` should be a protected label (admin-only mutation).
+The helper itself only ever sees one project's keys.
+
+**Nothing consumes the helper yet.** It is a standalone module proven by
+tests (including a seeker-scenario block simulating the chat agent resolving
+its system prompt). Integration — seeker wiring and the prompt-composition
+split, SWR refresh, version pinning, sustained-fallback alerting, and the
+label-governance review — is the tracked follow-up ticket
+`docs/roadmap/ai-chat/feat-272-seeker-langfuse-managed-prompt-integration.md`.
+
+**Smoke seeding convention:** the opt-in real-credential smoke
+(`LANGFUSE_PROMPT_SMOKE_TEST=1`, skipped by default) documents its one-time
+manual seeding convention — one text prompt `forge-mastra-smoke/text-prompt`
+in the dev Langfuse project with two versions under two labels (`production`
+and the non-default `smoke`), each carrying a distinct exact sentinel body so
+the smoke proves label selection end to end; the test never self-seeds — in
+the header of `src/services/langfuse-prompt-client.smoke.test.ts`.
+
 ## Experience draft & chat generation
 
 Mastra owns the AI experience **draft-authoring** + **chat** generation
@@ -882,6 +947,85 @@ Failure reasons: `invalid_input` (400), `config_missing` (503, when
 configured saved-source request fails without any fallback input). Production already requires the shared
 Firecrawl env vars for Mastra's web-data surface.
 
+## Daily devotional generator
+
+The service route `POST /forge-daily-devotional` is protected by
+`MASTRA_SERVICE_API_KEYS` and launches the date-idempotent
+`video-first-devotional` workflow. It selects an unused Jesus Film passage,
+generates and safety-checks the devotional, delegates all media preparation and
+dual-aspect rendering to Shorts Worker, suspends for authenticated human review,
+and publishes only after approval. See
+`docs/plans/2026-07-10-001-feat-video-first-devotional-pipeline-plan.md`.
+
+### Owner-approved architecture exception (2026-07-21)
+
+This workflow may keep its durable control loop, approval suspension, worker
+polling, and publish handoff in Mastra instead of Manager. The exception is
+narrow: the product is intentionally composed from Mastra-native swappable
+sub-workflows and its finished-video approval occurs through authenticated
+Mastra Gateway access. It does not change the default Manager-owned control-loop
+rule for other heavy AI+media features.
+
+The exception remains valid only while all of these invariants hold:
+
+- Mastra workflow state is persisted in Postgres, never memory in production.
+- Mastra runs exactly one Railway replica because lifecycle serialization and
+  the used-clips ledger lock are process-local.
+- Lifecycle operations are authenticated and serialized; canonical starts are
+  idempotent per UTC date, and retries are idempotent per parent-run and variant
+  identity.
+- Native `/api/workflows/*` mutations are denied for the legacy, parent, and
+  devotional sub-workflow IDs. Only the dedicated lifecycle routes may start,
+  resume, cancel, or retry this pipeline.
+- Mastra Gateway revalidates the current `admin`/`editor` access record for each
+  approval, forwards bounded actor attribution, and uses
+  `DEVOTIONAL_APPROVAL_API_KEYS`. Status and Range playback use the separate
+  read-only `DEVOTIONAL_PLAYBACK_API_KEYS`; both lanes are disjoint from the
+  shared service pool. Playback-authorized status reads are side-effect free;
+  reservation renewal is limited to service polling and the approval mutation
+  path.
+- Shorts Worker owns source downloads, ffmpeg, Chromium, Remotion, video bytes,
+  cancellation, and private durable object storage; every Mastra-to-Worker job
+  and artifact route uses the worker-specific bearer, redirects are rejected,
+  and Mastra exchanges opaque refs only.
+- Shorts Worker's render deadline remains strictly below Mastra's polling
+  ceiling through boot-time schema bounds, and real-binary dual-aspect smoke
+  validation remains required.
+
+Loss of any listed invariant voids the exception. Immediately set
+`DEVOTIONAL_NEW_RUNS_ENABLED=false`, stop the external scheduler, keep status,
+playback, approval, and cancel available to drain or explicitly cancel suspended
+runs, and restore the invariant or migrate the control loop to Manager before
+new starts or retries are re-enabled.
+
+Studio-friendly input (runs with no hand-written JSON):
+
+```json
+{ "date": "2026-07-21", "chapterIndex": 19 }
+```
+
+`date` is optional (defaults to today, `YYYY-MM-DD`) and is the per-day
+idempotency key. The pipeline under `src/services/devotional/` picks an unused
+Jesus Film passage first, derives scripture and the devotional from it, produces
+narration plus a reusable library music track, and submits an opaque render spec
+to Shorts Worker.
+
+**The safety gate is load-bearing and fails closed.** It blocks on a judge
+`block`, any dimension below the confidence threshold, or any judge
+error/timeout. Publishing runs only on `pass`; a blocked devotional is a
+successful, unpublished result with a persisted report.
+
+Publishing is opt-in and approval-gated: with no
+`DEVOTIONAL_SITE_INGEST_URL` and `DEVOTIONAL_SITE_INGEST_API_KEY` it ends as
+`publish_skipped`; an accepted publish ends `published` and only then records
+the clip. Runs are idempotent per date, published runs are not retryable, and
+scheduling remains external.
+
+Lifecycle routes return `400` for invalid bodies, `401` for the wrong bearer,
+`404` for unknown runs/assets, and `409` for illegal state transitions. Workflow
+results distinguish `blocked`, `rejected`, `published`, `publish_skipped`, and
+`publish_failed`; provider/render failures remain explicit failed run states.
+
 ## YouTube and Pinterest AI/Christian discovery
 
 `POST /forge-youtube-discovery` searches configured YouTube channels,
@@ -906,6 +1050,12 @@ data uses Mastra's supported DuckDB store under `MASTRA_STORAGE_DIR`, backed by
 the Railway volume mounted at `/data`.
 If `MASTRA_STORAGE_DIR` is not set, the app derives `/data/mastra` from
 Railway's built-in `RAILWAY_VOLUME_MOUNT_PATH=/data`.
+
+The video-first devotional architecture exception additionally requires the
+Mastra Railway service dashboard to keep `numReplicas = 1`. Its lifecycle lock
+and used-clips ledger serialization are process-local; a second replica can
+launch duplicate same-date work even though workflow state itself is durable.
+Record the replica setting in each devotional release attestation.
 
 Keep `PinoLogger` configured as the app logger so runtime logs continue to flow
 to stdout/stderr for Railway's platform logs.

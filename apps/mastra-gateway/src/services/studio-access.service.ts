@@ -76,6 +76,7 @@ export function createStudioAccessService({
 
   async function resolve(
     identity: StudioAccessIdentity,
+    { recordAccess = true }: { recordAccess?: boolean } = {},
   ): Promise<StudioAccessDecision> {
     const email = normalizeEmail(identity.email)
     if (!email) return { allowed: false, reason: "missing_email" }
@@ -110,7 +111,7 @@ export function createStudioAccessService({
       return { allowed: false, reason: "pending" }
     }
 
-    await repository.markAccessed({ id: record.id })
+    if (recordAccess) await repository.markAccessed({ id: record.id })
     return { allowed: true, role: record.role, record }
   }
 

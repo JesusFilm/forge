@@ -18,6 +18,23 @@ verification). The HTML report and its diagram companion were session-local
 scratch artifacts and are not available to future sessions — **everything
 load-bearing is here.**
 
+> **Implementation status (2026-07-22): COMPLETE.** Every ruling in this
+> document has been implemented and verified; nothing below is pending work.
+> This document and its tickets landed via PR #1660; the implementations:
+> Ruling 1 → feat-283, shipped 2026-07-22 via PR #1667 (lane admission
+> module; the review-added guards are recorded in the dated amendment under
+> Ruling 1). Ruling 2 → feat-284, shipped 2026-07-22 via PR #1670
+> (thread-ownership read-path resolver). Ruling 3 → feat-285, shipped
+> 2026-07-22 via PR #1672 — executed standalone by owner decision rather
+> than awaiting its ride-along trigger (dated amendment under Ruling 3). No
+> ruling was closed by rejection or no-action; items deliberately not
+> scheduled were recorded as Standing decisions from the start and remain in
+> force. The tickets' `## Resolution` sections carry the shipped details and
+> residual risks. The amendment protocol below is retired with this
+> completion — future changes to the shipped modules are new work under new
+> tickets, with `apps/mastra/CLAUDE.md` as their living reference. **This
+> document is now a historical record, not pending work.**
+
 ## How to use this doc
 
 - **These are rulings, not candidates.** Everything below has been audited,

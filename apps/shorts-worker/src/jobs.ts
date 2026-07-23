@@ -1,5 +1,6 @@
-// In-memory job registry + TWO independent bounded lanes keyed by job kind
-// (prepare, render — plan perf C1). Worker state is deliberately in-memory:
+// In-memory job registry + TWO independent bounded lanes keyed by workload
+// (prepare and render — devotional renders share render capacity). Worker state
+// is deliberately in-memory:
 // manager polls GET /jobs/{workerJobId} and treats 404 after a restart as a
 // lost job, resubmitting (bounded). Single replica only — see railway.toml.
 
@@ -19,7 +20,8 @@ export type JobRecord = {
   /**
    * Logical job identity used for in-flight dedupe (see submit). Routes
    * derive it from the request body's stable ids — `prepare:{assetId}` /
-   * `render:{assetId}:{propsHash}` — deliberately NOT the manager jobId, so
+   * `render:{assetId}:{propsHash}` / devotional output+input hash — deliberately
+   * NOT the manager jobId, so
    * a re-launched workflow or operator retry for the same asset re-attaches
    * to the running job instead of double-rendering.
    */
@@ -37,6 +39,7 @@ export type JobProgress = (progress: number, message: string) => void
 
 export type JobExecutor = (context: {
   onProgress: JobProgress
+  signal: AbortSignal
 }) => Promise<JobResult>
 
 export type SubmitOutcome =
@@ -46,6 +49,7 @@ export type SubmitOutcome =
 export type JobQueue = {
   submit(kind: JobKind, dedupeKey: string, execute: JobExecutor): SubmitOutcome
   get(workerJobId: string): JobRecord | undefined
+  cancel(workerJobId: string): JobRecord | undefined
 }
 
 export type LaneConfig = {
@@ -60,7 +64,7 @@ export type CreateJobLanesOptions = {
   now?: () => Date
 }
 
-// Terminal (completed/failed) records are kept long enough for manager's
+// Terminal (completed/failed/cancelled) records are kept long enough for manager's
 // poll loop to read the outcome, then evicted on the next submit so the
 // in-memory registry can't grow unboundedly over the process lifetime.
 // 24h is orders of magnitude beyond the longest poll ceiling (80min render).
@@ -75,7 +79,11 @@ type Lane = {
   kind: JobKind
   concurrency: number
   limit: number
-  pending: Array<{ job: JobRecord; execute: JobExecutor }>
+  pending: Array<{
+    job: JobRecord
+    execute: JobExecutor
+    controller: AbortController
+  }>
   runningCount: number
 }
 
@@ -83,6 +91,7 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
   // Registry is shared across lanes (GET /jobs/{id} doesn't know the kind);
   // execution capacity is per-lane so a long render never starves prepares.
   const jobs = new Map<string, JobRecord>()
+  const runningControllers = new Map<string, AbortController>()
   const now = options.now ?? (() => new Date())
 
   // Submit-time eviction of stale terminal records: a terminal record's
@@ -93,7 +102,9 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
     const cutoff = now().getTime() - TERMINAL_RECORD_RETENTION_MS
     for (const [workerJobId, record] of jobs) {
       if (
-        (record.status === "completed" || record.status === "failed") &&
+        (record.status === "completed" ||
+          record.status === "failed" ||
+          record.status === "cancelled") &&
         record.updatedAt.getTime() < cutoff
       ) {
         jobs.delete(workerJobId)
@@ -111,9 +122,12 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
     }
   }
 
+  const prepareLane = lane("prepare", options.prepare)
+  const renderLane = lane("render", options.render)
   const lanes: Record<JobKind, Lane> = {
-    prepare: lane("prepare", options.prepare),
-    render: lane("render", options.render),
+    prepare: prepareLane,
+    render: renderLane,
+    "devotional-render": renderLane,
   }
 
   function pump(target: Lane): void {
@@ -129,9 +143,14 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
 
   async function runJob(
     target: Lane,
-    entry: { job: JobRecord; execute: JobExecutor },
+    entry: {
+      job: JobRecord
+      execute: JobExecutor
+      controller: AbortController
+    },
   ): Promise<void> {
-    const { job, execute } = entry
+    const { job, execute, controller } = entry
+    runningControllers.set(job.workerJobId, controller)
 
     // Slot-leak guard: the ENTIRE body lives inside try/catch/finally so a
     // synchronous throw anywhere (status mutation, logging, executor call)
@@ -145,13 +164,23 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
       )
 
       const result = await execute({
+        signal: controller.signal,
         onProgress: (progress, message) => {
+          if (controller.signal.aborted) return
           job.progress = clampProgress(progress)
           job.message = message
           job.updatedAt = now()
         },
       })
 
+      if (controller.signal.aborted) {
+        job.status = "cancelled"
+        job.message = "Cancelled"
+        job.result = null
+        job.error = null
+        job.updatedAt = now()
+        return
+      }
       job.status = "completed"
       job.progress = 1
       job.result = result
@@ -161,6 +190,14 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         `[shorts-worker] event=job_completed workerJobId=${job.workerJobId} kind=${job.kind}`,
       )
     } catch (error) {
+      if (controller.signal.aborted) {
+        job.status = "cancelled"
+        job.message = "Cancelled"
+        job.error = null
+        job.result = null
+        job.updatedAt = now()
+        return
+      }
       job.status = "failed"
       job.error = toJobErrorBody(error)
       job.updatedAt = now()
@@ -168,6 +205,7 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         `[shorts-worker] event=job_failed workerJobId=${job.workerJobId} kind=${job.kind} reason=${job.error.reason} retryable=${job.error.retryable} error=${JSON.stringify(job.error.messages.join("; "))}`,
       )
     } finally {
+      runningControllers.delete(job.workerJobId)
       target.runningCount -= 1
       pump(target)
     }
@@ -209,8 +247,9 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
         createdAt: submittedAt,
         updatedAt: submittedAt,
       }
+      const controller = new AbortController()
       jobs.set(job.workerJobId, job)
-      target.pending.push({ job, execute })
+      target.pending.push({ job, execute, controller })
       queueMicrotask(() => pump(target))
 
       return { ok: true, job, deduped: false }
@@ -218,6 +257,30 @@ export function createJobLanes(options: CreateJobLanesOptions = {}): JobQueue {
 
     get(workerJobId) {
       return jobs.get(workerJobId)
+    },
+
+    cancel(workerJobId) {
+      const job = jobs.get(workerJobId)
+      if (!job || job.kind !== "devotional-render") return undefined
+      if (job.status !== "queued" && job.status !== "running") return job
+      const target = lanes["devotional-render"]
+      const pendingIndex = target.pending.findIndex(
+        (entry) => entry.job.workerJobId === workerJobId,
+      )
+      if (pendingIndex >= 0) {
+        const [entry] = target.pending.splice(pendingIndex, 1)
+        entry?.controller.abort()
+      } else {
+        // The running entry is not retained by the lane. Locate its controller
+        // through a small side table maintained below.
+        runningControllers.get(workerJobId)?.abort()
+      }
+      job.status = "cancelled"
+      job.message = "Cancelled"
+      job.error = null
+      job.result = null
+      job.updatedAt = now()
+      return job
     },
   }
 }

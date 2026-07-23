@@ -431,7 +431,7 @@ A reel source change performed while a full-screen overlay — a chapter card or
 
 ### Language Centerpiece
 
-The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs roughly every ten seconds, naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
+The language chapter's extended excerpt in Showcase Mode's curated reel: one dub-rich video that switches audio dubs mid-play — always opening in English, then hopping to randomly-ordered unique dubs at the pauses following completed sentences in the video's English subtitle track (every segment plays at least ten seconds and never cuts mid-sentence), naming each on screen — so the catalog's language breadth lands as one continuous scene instead of ambient rotation. A centerpiece whose English track has no usable subtitles degrades to the earlier fixed ~10-second cadence for that video. Exactly one chapter carries the machine-readable marker that triggers it, and it is the reel's only excerpt allowed past the standard window ceiling; a reel authored without the marker plays with no dub-switching anywhere.
 
 ### Hop Handoff
 
@@ -571,6 +571,10 @@ The server-side read surface over persisted Seeker threads: a signed-in user lis
 ### JesusFilm RAG
 
 The external `jesusfilm-rag` retrieval service — a standalone system serving biblically aligned content to JFP consumers over a versioned HTTP contract with per-consumer bearer tokens. It is retrieval-only by design ("consumers ask, this service retrieves"): it returns ranked, cited passages, never generated answers, and all audience-specific weighting and generation live in the consumer.
+
+### Managed Prompt
+
+A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI — and each environment gets its own Langfuse project and key pair, so a leaked dev key cannot read tuned production prompt text. Nothing consumes the helper yet; agent wiring is tracked follow-up work (feat-272).
 
 ## Flagged ambiguities
 

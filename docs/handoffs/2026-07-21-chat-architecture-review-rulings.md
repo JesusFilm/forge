@@ -14,6 +14,16 @@ report and its diagram companion were session-local scratch artifacts (the
 gitignored `reports/` folder) and are not available to future sessions —
 **everything load-bearing is here.**
 
+> **Completion status (2026-07-22):** every ruling in this document has been
+> implemented or closed. Ruling 2 + 4a landed via feat-282
+> ([PR #1661](https://github.com/JesusFilm/forge/pull/1661) +
+> [PR #1690](https://github.com/JesusFilm/forge/pull/1690)); Rulings 1 + 3 +
+> 4b via feat-281 ([PR #1666](https://github.com/JesusFilm/forge/pull/1666) +
+> [PR #1674](https://github.com/JesusFilm/forge/pull/1674)); Rulings 4c and 5
+> were closed by rejection, no action. Follow-up hardening beyond the rulings'
+> scope is tracked as `feat-294`. This document is now a historical record,
+> not pending work.
+
 ## How to use this doc
 
 - **These are rulings, not candidates.** Unlike the TV review handoff

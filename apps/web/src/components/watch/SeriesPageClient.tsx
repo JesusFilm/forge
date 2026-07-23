@@ -326,6 +326,7 @@ export function SeriesPageClient({
         series={series}
         selectedVariant={selectedVariant}
         onLanguageClick={openLanguage}
+        languageSlug={currentLanguageSlug}
         playableLanguageCount={variantsForLanguagePicker.length}
         overlay={
           // Stack the label on top, then a horizontal row with the title

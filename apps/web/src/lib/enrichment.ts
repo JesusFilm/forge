@@ -1,6 +1,7 @@
 // Admin's `MediaCollectionBlock.items[]` is flat. Computed fields such as
-// `resolvedTitle` are projected alongside the linked video's image and route
-// metadata so the renderer does not need a second request or client-side join.
+// `resolvedTitle` and `videoDub` are projected alongside the linked video's
+// image and route metadata so the renderer does not need a second request or
+// client-side join.
 
 type MediaItem = {
   videoId?: string | null
@@ -10,8 +11,12 @@ type MediaItem = {
     language?: {
       slug?: string | null
     } | null
+    muxVideo?: {
+      playbackId?: string | null
+    } | null
   } | null
   muxPlaybackId?: string | null
+  languageSlug?: string | null
   videoImageBlurDataUrl?: string | null
   videoImageDominantColor?: string | null
   resolvedTitle?: string | null
@@ -166,7 +171,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     overrideUrl ??
     fallbackUrl ??
     localWatchHomeThumbnailUrl(item.coreId) ??
-    muxThumbnailUrl(item.muxPlaybackId)
+    muxThumbnailUrl(item.videoDub?.muxVideo?.playbackId)
   const hasOverrideImage = overrideUrl != null
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
     item.videoImageBlurDataUrl,
@@ -183,9 +188,11 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   // MediaCollection.tsx `const href = item.videoSlug ? ...`).
   const videoSlug = typeof item.videoSlug === "string" ? item.videoSlug : ""
   const languageSlug =
-    typeof item.videoDub?.language?.slug === "string"
-      ? item.videoDub.language.slug
-      : null
+    typeof item.languageSlug === "string"
+      ? item.languageSlug
+      : typeof item.videoDub?.language?.slug === "string"
+        ? item.videoDub.language.slug
+        : null
   // Fall back to videoId (or empty string) when no upstream id is present.
   // React keys against an empty string repeat-collide across items, so the
   // consumer also keys by array index where this matters.
@@ -206,7 +213,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
           localWatchHomeBlurDataUrl(item.coreId) ??
           demoBlurDataUrl(
             item.coreId ??
-              item.muxPlaybackId ??
+              item.videoDub?.muxVideo?.playbackId ??
               item.videoId ??
               item.titleOverride ??
               imageUrl ??
@@ -217,7 +224,7 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
       (hasOverrideImage ? null : (videoDominantColor ?? fallbackDominantColor)),
     videoSlug,
     languageSlug,
-    muxPlaybackId: item.muxPlaybackId ?? null,
+    muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,
   }
 }
 

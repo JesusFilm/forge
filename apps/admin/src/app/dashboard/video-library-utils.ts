@@ -9,6 +9,7 @@ export const VIDEO_LIBRARY_MAX_IDENTIFIER_LENGTH = 140
 export const VIDEO_LIBRARY_CATEGORIES = [
   "all",
   "collections",
+  "episodes",
   "features",
   "shortFilms",
   "series",
@@ -30,6 +31,7 @@ const VIDEO_LIBRARY_CATEGORY_LABELS: Record<
   readonly string[]
 > = {
   collections: ["COLLECTION"],
+  episodes: ["EPISODE"],
   features: ["FEATURE_FILM"],
   shortFilms: ["SHORT_FILM"],
   series: ["SERIES"],

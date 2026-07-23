@@ -341,6 +341,18 @@ describe("WatchHomePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-tv-carousel"]'),
     ).not.toBeNull()
+    const carousel = container.querySelector(
+      '[data-testid="watch-home-tv-carousel"]',
+    )
+    const slideTitle = Array.from(carousel?.querySelectorAll("h2") ?? []).find(
+      (heading) => heading.textContent === "Jesus",
+    )
+    expect(slideTitle?.tagName).toBe("H2")
+    expect(slideTitle?.textContent).toBe("Jesus")
+    expect(carousel?.querySelectorAll("h1")).toHaveLength(1)
+    expect(carousel?.querySelector("h1")?.textContent).toBe(
+      "Jesus Film Project Watch",
+    )
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')

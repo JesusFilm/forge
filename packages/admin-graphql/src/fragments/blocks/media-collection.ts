@@ -22,6 +22,7 @@ export const adminMediaCollectionFragment = adminGraphql(
       mediaDefaultCollectionSlug: defaultCollectionSlug
       showItemNumbers
       mediaCollectionVariant: variant
+      thumbnailOrientation
       footerText
       imageUrl
       imageAssetId
@@ -29,12 +30,12 @@ export const adminMediaCollectionFragment = adminGraphql(
       items {
         videoId
         languageId
+        languageSlug
         coreId
         videoDub {
           ...AdminBlockVideoDub
         }
         videoSlug
-        muxPlaybackId
         videoImageBlurDataUrl
         videoImageDominantColor
         titleOverride

@@ -233,6 +233,23 @@ describe("resolveSearchLanguageSignals", () => {
     })
   })
 
+  it("uses script detection before route fallback", async () => {
+    const result = await resolveSearchLanguageSignals({
+      prisma,
+      input: {
+        query: "Иисус и надежда",
+        routeLanguageSlug: "english",
+      },
+    })
+
+    expect(result).toMatchObject({
+      targetLanguageSlug: "russian",
+      targetLanguageSource: "query_script",
+      queryNamedLanguageSlug: null,
+      routeLanguageSlug: "english",
+    })
+  })
+
   it("keeps the explicit target ahead of an inferred query language", async () => {
     const result = await resolveSearchLanguageSignals({
       prisma,

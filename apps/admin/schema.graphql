@@ -680,6 +680,10 @@ type MediaCollectionBlock {
   showItemNumbers: Boolean
   subtitle: String
   t: String
+  """
+  Authored media card shape. Null preserves the legacy variant-derived orientation.
+  """
+  thumbnailOrientation: MediaCollectionThumbnailOrientation
   title: String
   variant: MediaCollectionVariant!
 }
@@ -701,6 +705,10 @@ type MediaCollectionItem {
   imageUrl: String
   labelOverride: String
   languageId: String
+  """
+  Public Watch language slug resolved from the authored languageId. Lets consumers build valid collection routes even when the item references a parent collection with no direct VideoDub.
+  """
+  languageSlug: String
   linkToSectionKey: String
   """
   Best playable Mux playback id for this media collection item when it references a Video row.
@@ -727,6 +735,12 @@ type MediaCollectionItem {
   Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.
   """
   videoSlug: String
+}
+
+"""The portrait or landscape shape used by media item cards."""
+enum MediaCollectionThumbnailOrientation {
+  horizontal
+  vertical
 }
 
 enum MediaCollectionVariant {

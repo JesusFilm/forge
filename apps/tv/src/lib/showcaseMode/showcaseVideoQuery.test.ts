@@ -2,6 +2,7 @@ import { print } from "graphql"
 import type { DocumentNode } from "graphql"
 
 import {
+  GET_SHOWCASE_SUBTITLE,
   GET_SHOWCASE_VIDEO,
   createShowcaseVideoFetcher,
 } from "./showcaseVideoQuery"
@@ -69,6 +70,33 @@ describe("GET_SHOWCASE_VIDEO — lean per-video stream query", () => {
     ]) {
       expect(printed).toContain(field)
     }
+  })
+})
+
+describe("GET_SHOWCASE_SUBTITLE — lean sentence-timing query (KTD-2)", () => {
+  const subtitleSdl = asSdl(GET_SHOWCASE_SUBTITLE)
+
+  it("resolves the English dub's edition subtitles via the public videoBySlug root", () => {
+    expect(subtitleSdl).toContain("query GetShowcaseSubtitle")
+    expect(subtitleSdl).toContain("videoBySlug(slug: $slug)")
+    expect(subtitleSdl).toContain(
+      'preferredPlayableDub(languageSlug: "english")',
+    )
+    for (const field of [
+      "videoEdition",
+      "subtitles",
+      "vttSrc",
+      "primary",
+      "aiGenerated",
+    ]) {
+      expect(subtitleSdl).toMatch(new RegExp(`\\b${field}\\b`))
+    }
+  })
+
+  it("touches no editor-gated field, no bulk dub list, and no heavy chain", () => {
+    expect(subtitleSdl).not.toMatch(/\bexperiences\b/)
+    expect(subtitleSdl).not.toMatch(/\bparents\b/)
+    expect(subtitleSdl).not.toMatch(/\bdubs\b/) // the bulk ~2,250-field list stays off this query
   })
 })
 

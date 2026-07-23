@@ -36,6 +36,11 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailCaption,
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 
 // Hoisted so the throwing constructor runs once at module load, not per card.
 const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
@@ -159,6 +164,11 @@ export function MediaCollection({
     footerText: rawFooterText,
     items,
   } = data
+  const thumbnailOrientation = (
+    data as typeof data & {
+      thumbnailOrientation?: "vertical" | "horizontal" | null
+    }
+  ).thumbnailOrientation
 
   const ctaLabel = typeof rawCtaLabel === "string" ? rawCtaLabel : null
   const footerText = typeof rawFooterText === "string" ? rawFooterText : null
@@ -205,6 +215,7 @@ export function MediaCollection({
       ctaLabel={ctaLabel}
       footerText={footerText}
       variant={variant}
+      thumbnailOrientation={thumbnailOrientation ?? null}
       backgroundColor={normalizeTintColor(backgroundColor)}
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
@@ -243,6 +254,7 @@ function WatchHomeMediaCollection({
   ctaLabel,
   footerText,
   variant,
+  thumbnailOrientation,
   backgroundColor,
   showItemNumbers,
   items,
@@ -257,6 +269,7 @@ function WatchHomeMediaCollection({
   ctaLabel: string | null
   footerText: string | null
   variant: string | null
+  thumbnailOrientation: "vertical" | "horizontal" | null
   backgroundColor: string | null
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
@@ -264,8 +277,10 @@ function WatchHomeMediaCollection({
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
-  const isVerticalGrid = variant === "collection"
-  const isVertical = isRail || isVerticalGrid
+  const orientation =
+    thumbnailOrientation ??
+    (isRail || variant === "collection" ? "vertical" : "horizontal")
+  const isVertical = orientation === "vertical"
   const defaultBackgroundUrl =
     items.map(mediaItemBackdropImageUrl).find((imageUrl) => imageUrl) ?? null
   const latestHoveredBackgroundUrlRef = useRef<string | null>(null)
@@ -296,7 +311,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+    <p className="text-xs font-semibold tracking-widest text-red-100/60 uppercase xl:text-sm 2xl:text-base">
       {categoryLabel}
     </p>
   ) : null
@@ -305,7 +320,10 @@ function WatchHomeMediaCollection({
       {subtitle ? (
         <p
           data-testid="media-collection-supporting-title"
-          className="w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl"
+          className={cn(
+            "w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
+            title && "pt-1",
+          )}
         >
           {subtitle}
         </p>
@@ -518,12 +536,15 @@ function WatchHomeMediaCollection({
                 <CarouselItem
                   key={`${item.id}-${index}`}
                   data-testid="media-collection-carousel-item"
-                  className="max-w-[200px] py-1 pl-5"
+                  className={cn(
+                    "py-1 pl-5",
+                    isVertical ? "max-w-[200px]" : "max-w-[360px]",
+                  )}
                 >
                   <VideoCard
                     item={item}
                     index={index}
-                    orientation="vertical"
+                    orientation={orientation}
                     showItemNumbers={showItemNumbers}
                     fallbackLanguageSlug={fallbackLanguageSlug}
                     onHover={() =>
@@ -549,8 +570,8 @@ function WatchHomeMediaCollection({
             data-testid="media-collection-grid"
             className={cn(
               "grid",
-              isVerticalGrid ? "gap-4" : "gap-5",
-              isVerticalGrid
+              isVertical ? "gap-4" : "gap-5",
+              isVertical
                 ? "grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
                 : variant === "hero" || variant === "player"
                   ? "grid-cols-1 md:grid-cols-2"
@@ -562,7 +583,7 @@ function WatchHomeMediaCollection({
                 key={`${item.id}-${index}`}
                 item={item}
                 index={index}
-                orientation={isVertical ? "vertical" : "horizontal"}
+                orientation={orientation}
                 showItemNumbers={showItemNumbers}
                 fallbackLanguageSlug={fallbackLanguageSlug}
                 onHover={() =>
@@ -578,7 +599,7 @@ function WatchHomeMediaCollection({
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p
             data-testid="media-collection-footer"
-            className="mt-8 max-w-5xl text-lg leading-relaxed font-normal text-stone-200/80 xl:text-xl"
+            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
           >
             {footerText}
           </p>
@@ -731,23 +752,18 @@ function VideoCard({
             className="duration-350 ease-[cubic-bezier(0.22,1,0.36,1)]"
           />
         ) : null}
-        <div className="absolute inset-0 z-30 flex flex-col justify-end px-4 pt-4 pb-5">
+        <VideoThumbnailCaption className="z-30">
           {item.label ? (
-            <div className="truncate text-xs leading-8 font-semibold tracking-wider text-stone-300/70 uppercase mix-blend-screen">
+            <VideoThumbnailEyebrow as="div">
               {formatLabel(item.label)}
-            </div>
+            </VideoThumbnailEyebrow>
           ) : null}
           {item.title ? (
-            <h3
-              className={cn(
-                "line-clamp-2 -mt-1 text-left leading-tight font-bold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]",
-                isVertical ? "text-xl" : "text-lg md:text-xl",
-              )}
-            >
+            <VideoThumbnailTitle size={isVertical ? "large" : "prominent"}>
               {item.title}
-            </h3>
+            </VideoThumbnailTitle>
           ) : null}
-        </div>
+        </VideoThumbnailCaption>
       </div>
     </Wrapper>
   )

@@ -228,6 +228,90 @@ describe("MediaCollection VideoCard href", () => {
     ).toContain("md:grid-cols-3")
   })
 
+  it("renders an authored horizontal carousel without changing its layout variant", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({ thumbnailOrientation: "horizontal" })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const carouselItem = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-carousel-item"]',
+    )
+    const cardImage = container.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"] > div',
+    )
+
+    expect(carouselItem?.className).toContain("max-w-[360px]")
+    expect(carouselItem?.className).not.toContain("max-w-[200px]")
+    expect(cardImage?.className).toContain("aspect-video")
+    expect(cardImage?.className).not.toContain("aspect-[2/3]")
+  })
+
+  it("renders an authored vertical grid without changing its layout variant", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            thumbnailOrientation: "vertical",
+          })}
+          routeVideo={makeRouteVideo("the-gospel-of-john")}
+        />,
+      )
+    })
+
+    const grid = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-grid"]',
+    )
+    const cardImage = container.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"] > div',
+    )
+
+    expect(grid?.className).toContain("grid-cols-2")
+    expect(grid?.className).toContain("md:grid-cols-4")
+    expect(cardImage?.className).toContain("aspect-[2/3]")
+    expect(cardImage?.className).not.toContain("aspect-video")
+  })
+
+  it.each([
+    ["collection", ["text-xl"], ["text-lg", "md:text-xl"]],
+    ["grid", ["text-lg", "md:text-xl"], ["text-xl"]],
+  ] as const)(
+    "keeps the %s card title and caption sizing contracts",
+    (mediaCollectionVariant, expectedTitleClasses, excludedTitleClasses) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({ mediaCollectionVariant })}
+            routeVideo={makeRouteVideo("the-gospel-of-john")}
+          />,
+        )
+      })
+
+      const caption = container.querySelector<HTMLElement>(
+        '[data-slot="video-thumbnail-caption"]',
+      )
+      const title = container.querySelector<HTMLElement>(
+        '[data-slot="video-thumbnail-title"]',
+      )
+      const captionClasses = caption?.className.split(/\s+/) ?? []
+      const titleClasses = title?.className.split(/\s+/) ?? []
+
+      expect(captionClasses).toContain("px-4")
+      expect(captionClasses).toContain("pb-4")
+      for (const className of expectedTitleClasses) {
+        expect(titleClasses).toContain(className)
+      }
+      for (const className of excludedTitleClasses) {
+        expect(titleClasses).not.toContain(className)
+      }
+    },
+  )
+
   it("uses one solid white hover and focus frame on horizontal cards", () => {
     act(() => {
       root.render(
@@ -311,7 +395,11 @@ describe("MediaCollection VideoCard href", () => {
               {
                 videoId: "v-1",
                 videoSlug: "the-gospel-of-luke",
-                muxPlaybackId: "mux-authored-item",
+                videoDub: {
+                  muxVideo: {
+                    playbackId: "mux-authored-item",
+                  },
+                },
                 titleOverride: "The Gospel of Luke",
                 subtitleOverride: null,
                 labelOverride: null,
@@ -690,17 +778,23 @@ describe("MediaCollection VideoCard href", () => {
     )
 
     expect(categoryLabel?.textContent).toBe("New series")
+    expect(categoryLabel?.classList).toContain("text-xs")
+    expect(categoryLabel?.classList).toContain("tracking-widest")
+    expect(categoryLabel?.classList).toContain("text-red-100/60")
     expect(categoryLabel?.parentElement).toBe(titleRow)
     expect(title?.parentElement).toBe(titleRow)
     expect(cta?.parentElement).toBe(titleRow)
     expect(categoryLabel?.nextElementSibling).toBe(title)
     expect(title?.nextElementSibling).toBe(cta)
     expect(supportingTitle).not.toBeNull()
+    expect(supportingTitle?.classList).toContain("pt-1")
     expect(description).not.toBeNull()
     expect(supportingTitle?.parentElement).not.toBe(titleRow)
     expect(description?.parentElement).not.toBe(titleRow)
     expect(carousel).not.toBeNull()
     expect(footer).not.toBeNull()
+    expect(footer?.classList).toContain("text-xs")
+    expect(footer?.classList).toContain("xl:text-sm")
     expect(supportingTitle?.textContent).toBe("Short supporting title")
     expect(description?.textContent).toBe("Intro copy")
     expect(footer?.textContent).toBe("Footer copy")
