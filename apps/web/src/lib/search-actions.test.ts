@@ -132,7 +132,80 @@ describe("runSearch", () => {
     consoleError.mockRestore()
   })
 
-  it("defaults untyped Watch searches to the temporary semantic video shim", async () => {
+  it.each([
+    {
+      name: "keeps an absent route absent for the default English UI locale",
+      uiLocale: "en",
+      routeLanguageSlug: undefined,
+      expectedDisplayLanguageSlug: "english",
+      expectedRouteLanguageSlug: undefined,
+    },
+    {
+      name: "maps the Spanish UI locale to its canonical display language",
+      uiLocale: "es",
+      routeLanguageSlug: undefined,
+      expectedDisplayLanguageSlug: "spanish-castilian",
+      expectedRouteLanguageSlug: undefined,
+    },
+    {
+      name: "preserves canonical English route context",
+      uiLocale: "en",
+      routeLanguageSlug: "english",
+      expectedDisplayLanguageSlug: "english",
+      expectedRouteLanguageSlug: "english",
+    },
+    {
+      name: "preserves an explicitly null route language",
+      uiLocale: "en",
+      routeLanguageSlug: null,
+      expectedDisplayLanguageSlug: "english",
+      expectedRouteLanguageSlug: null,
+    },
+    {
+      name: "rejects a locale code supplied as route language identity",
+      uiLocale: "en",
+      routeLanguageSlug: "en",
+      expectedDisplayLanguageSlug: "english",
+      expectedRouteLanguageSlug: null,
+    },
+  ])(
+    "$name",
+    async ({
+      expectedDisplayLanguageSlug,
+      expectedRouteLanguageSlug,
+      routeLanguageSlug,
+      uiLocale,
+    }) => {
+      vi.mocked(searchVideos).mockResolvedValueOnce({
+        results: [],
+        hasMore: false,
+        query: "jesus",
+        searchMode: "watch-search",
+        latencyMs: 4,
+      })
+
+      await runSearch({
+        query: "jesus",
+        routeLanguageSlug,
+        uiLocale,
+      })
+
+      expect(searchVideos).toHaveBeenCalledWith(
+        "jesus",
+        undefined,
+        undefined,
+        "video",
+        uiLocale,
+        expect.objectContaining({
+          displayLanguageSlug: expectedDisplayLanguageSlug,
+          routeLanguageSlug: expectedRouteLanguageSlug,
+          targetLanguageSlug: null,
+        }),
+      )
+    },
+  )
+
+  it("keeps an explicit Spanish target separate from the English UI locale", async () => {
     vi.mocked(searchVideos).mockResolvedValueOnce({
       results: [semanticResult],
       hasMore: false,
@@ -147,6 +220,7 @@ describe("runSearch", () => {
       offset: 10,
       languageSlug: "spanish-castilian",
       languageOptions: [spanishOption],
+      uiLocale: "en",
     })
 
     expect(searchVideos).toHaveBeenCalledWith(
@@ -154,10 +228,12 @@ describe("runSearch", () => {
       5,
       10,
       "video",
-      "es",
+      "en",
       expect.objectContaining({
         acceptLanguage: "pt-BR",
         clientRequestId: undefined,
+        displayLanguageSlug: "english",
+        routeLanguageSlug: undefined,
         targetLanguageSlug: "spanish-castilian",
       }),
     )
@@ -317,6 +393,7 @@ describe("runSearch", () => {
       query: "JESUS Russian",
       languageSlug: "spanish-castilian",
       languageOptions: [spanishOption, russianOption],
+      uiLocale: "en",
     })
 
     expect(searchVideos).toHaveBeenCalledWith(
@@ -324,8 +401,9 @@ describe("runSearch", () => {
       undefined,
       undefined,
       "video",
-      "es",
+      "en",
       expect.objectContaining({
+        displayLanguageSlug: "english",
         queryNamedLanguageSlug: "russian",
         targetLanguageSlug: "spanish-castilian",
       }),
@@ -367,6 +445,7 @@ describe("runSearch", () => {
       limit: 5,
       offset: 10,
       routeLanguageSlug: "french",
+      uiLocale: "fr",
     })
 
     expect(searchVideos).toHaveBeenCalledWith(
