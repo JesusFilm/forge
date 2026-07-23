@@ -14,6 +14,7 @@ import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import {
   isWatchPageMissingError,
   mergeWatchExperience,
+  type CarouselParent,
   type MergedWatchBlock,
   resolveSeriesEpisodeBySlug,
   resolveWatchRouteBySlug,
@@ -61,6 +62,11 @@ import {
   watchRelatedItemListStructuredDataJson,
 } from "@/lib/watch-structured-data"
 import { logWatchServerEvent } from "@/lib/watch-observability"
+import {
+  getWatchRouteManifest,
+  isWatchRouteAdmittedByManifest,
+  type WatchRouteManifest,
+} from "@/lib/watch-route-manifest"
 import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
 import {
   loadClientMessages,
@@ -140,6 +146,48 @@ function pruneMergedWatchBlocksForClient(
       default:
         return block
     }
+  })
+}
+
+function selectableParentsForStandaloneVideo(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): CarouselParent[] {
+  if (!manifest) return []
+
+  return video.parents.flatMap((parent) => {
+    const parentSlug = tryAsContentSlug(parent.slug ?? "")
+    if (!parentSlug) return []
+
+    const children = parent.children.filter((child) => {
+      const childSlug = tryAsContentSlug(child.slug ?? "")
+      return (
+        childSlug != null &&
+        isWatchRouteAdmittedByManifest(manifest, {
+          kind: "episode",
+          parentSlug,
+          childSlug,
+          audioLanguageSlug: languageSlug,
+        })
+      )
+    })
+
+    if (
+      children.length < 2 ||
+      !children.some((child) => child.documentId === video.documentId)
+    ) {
+      return []
+    }
+
+    return [
+      {
+        documentId: parent.documentId,
+        slug: parentSlug,
+        title: parent.title,
+        children,
+      },
+    ]
   })
 }
 
@@ -619,6 +667,7 @@ async function renderVideo(shape: {
 }) {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
+  const routeManifestPromise = getWatchRouteManifest().catch(() => null)
 
   // Video-by-slug first. Pass rawLocale (not the bcp47-normalised
   // `locale`) so the resolver matches either variant.language.slug OR
@@ -658,16 +707,33 @@ async function renderVideo(shape: {
         )
       }
     }
-    const [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes] =
-      await Promise.all([
+    const [
+      [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes],
+      routeManifest,
+      initialTranscript,
+    ] = await Promise.all([
+      Promise.all([
         getDownloadButtonLabel(route, locale),
         getQuestionPanelEnabled(route),
         getHideBibleQuotesEnabled(route),
-      ])
+      ]),
+      routeManifestPromise,
+      getInitialTranscriptForWatchVideo(
+        watchVideo.video,
+        watchVideo.selectedVariant,
+      ),
+    ])
+    const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
+    const selectableParents = selectableParentsForStandaloneVideo(
+      watchVideo.video,
+      languageSlug,
+      routeManifest,
+    )
     const mergedBlocks = mergeWatchExperience({
       video: watchVideo.video,
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
+      selectableParents,
     })
     const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
@@ -684,11 +750,6 @@ async function renderVideo(shape: {
       routeSlug: slug,
       pathLocale: rawLocale,
     })
-    const initialTranscript = await getInitialTranscriptForWatchVideo(
-      watchVideo.video,
-      watchVideo.selectedVariant,
-    )
-    const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
     const breadcrumbJson = watchBreadcrumbStructuredDataJson({
       videoTitle: metadataModel.videoTitle,
       canonicalUrl: metadataModel.canonicalUrl,

@@ -115,7 +115,8 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
 function asArgs(args: {
   video: ReturnType<typeof makeVideo>
   variant: ReturnType<typeof makeVariant>
-  canonicalParent: ReturnType<typeof makeParent>
+  canonicalParent: ReturnType<typeof makeParent> | null
+  selectableParents?: ReturnType<typeof makeParent>[]
   experience?: { blocks?: unknown[] } | null
 }) {
   return args as never
@@ -494,6 +495,66 @@ describe("mergeWatchExperience — HeroPlayer slot type-restriction", () => {
 })
 
 describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection videos)", () => {
+  it("uses standalone selectable parents in order ahead of the video's own children", () => {
+    const video = makeVideo({
+      children: [
+        makeChild("own-1", "own-1", "Own 1"),
+        makeChild("own-2", "own-2", "Own 2"),
+      ],
+    })
+    const selectableParents = [
+      makeParent({
+        documentId: "parent-a",
+        slug: "collection-a",
+        title: "Collection A",
+        children: [
+          makeChild("video-1", "jesus", "Jesus"),
+          makeChild("a-2", "a-2", "A 2"),
+        ],
+      }),
+      makeParent({
+        documentId: "parent-b",
+        slug: "collection-b",
+        title: "Collection B",
+        children: [
+          makeChild("b-1", "b-1", "B 1"),
+          makeChild("video-1", "jesus", "Jesus"),
+        ],
+      }),
+    ]
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant: makeVariant(),
+        canonicalParent: null,
+        selectableParents,
+      }),
+    )
+    const carousel = merged.find(
+      (block) => isWatchBlock(block) && block.kind === "SiblingCarousel",
+    )
+    const hero = merged.find(
+      (block) => isWatchBlock(block) && block.kind === "HeroPlayer",
+    )
+
+    expect(
+      isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
+        ? carousel.canonicalParent
+        : null,
+    ).toEqual(selectableParents[0])
+    expect(
+      isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
+        ? carousel.selectableParents
+        : null,
+    ).toEqual(selectableParents)
+    expect(
+      isWatchBlock(hero!) && hero.kind === "HeroPlayer"
+        ? hero.nextWatchItem
+        : undefined,
+    ).toMatchObject({ parentSlug: "jesus", documentId: "own-1" })
+  })
+
   it("synthesizes a virtual parent from video.children when video has >= 2 own children", () => {
     const ownChildren = [
       makeChild("chapter-1", "chapter-1", "Chapter 1"),

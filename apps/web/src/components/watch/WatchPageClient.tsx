@@ -142,25 +142,29 @@ function isPendingChapterStillRoutable(
     if (!isWatchBlock(block) || block.kind !== "SiblingCarousel") continue
 
     const carouselBlock: WatchSiblingCarouselBlock = block
-    const parentSlug =
-      typeof carouselBlock.canonicalParent.slug === "string"
-        ? tryAsContentSlug(carouselBlock.canonicalParent.slug)
-        : null
-    for (const child of carouselBlock.canonicalParent.children ?? []) {
-      if (
-        child == null ||
-        child.documentId !== pendingChapter.targetVideoDocumentId
-      ) {
-        continue
-      }
+    const parents = carouselBlock.selectableParents ?? [
+      carouselBlock.canonicalParent,
+    ]
 
-      if (typeof child.slug !== "string") return false
-      const slug = tryAsContentSlug(child.slug)
-      if (!slug) return false
-      const href = parentSlug
-        ? watchEpisodePath(parentSlug, slug, lang)
-        : watchVideoPath(slug, lang)
-      return href === pendingChapter.href
+    for (const parent of parents) {
+      const parentSlug =
+        typeof parent.slug === "string" ? tryAsContentSlug(parent.slug) : null
+      for (const child of parent.children ?? []) {
+        if (
+          child == null ||
+          child.documentId !== pendingChapter.targetVideoDocumentId ||
+          typeof child.slug !== "string"
+        ) {
+          continue
+        }
+
+        const slug = tryAsContentSlug(child.slug)
+        if (!slug) continue
+        const href = parentSlug
+          ? watchEpisodePath(parentSlug, slug, lang)
+          : watchVideoPath(slug, lang)
+        if (href === pendingChapter.href) return true
+      }
     }
   }
 
