@@ -1,11 +1,9 @@
-// SYNC: mirrors apps/mobile/src/lib/authHeaders.ts. The one TV difference is the
-// legacy operation NAME — TV's old search query was `query SemanticSearch`,
-// mobile's was `query Search`.
+// TV-only for now: mobile still gates on the retired `Search` name and has not
+// migrated. Each app also ships its OWN fleet key value — never copy a token.
 
 /**
- * Consumer-bearer header builder retained for the temporary search shim.
- * Absent token returns the anonymous shape so the app still boots and public
- * queries work where no key is provisioned.
+ * Consumer-bearer header builder. Absent token returns the anonymous shape so
+ * the app still boots and public queries work where no key is provisioned.
  */
 export function buildAuthHeaders(
   token: string | undefined,
@@ -14,13 +12,14 @@ export function buildAuthHeaders(
   return { Authorization: `Bearer ${token}` }
 }
 
-/** Legacy search operation name retained until TV search is rebuilt. */
-export const SEARCH_OPERATION_NAME = "SemanticSearch"
+/** Search operation name. Renamed with admin's Query.search → watchSearch (#1622).
+ *  MUST equal the `query <name>` in WATCH_SEARCH or the bearer attaches nowhere. */
+export const SEARCH_OPERATION_NAME = "WatchSearch"
 
 /**
- * Bearer scoped to the legacy Search operation only. The consumer bearer is
- * admin's rate-limit identity (`consumer:<key>`, one shared 60/min bucket).
- * Attaching it to public operations would funnel the whole fleet into one bucket.
+ * Scoped to the search op only. Not an auth requirement (watchSearch is public)
+ * — it buys the per-device rate-limit bucket; on other public ops it would pool
+ * the whole fleet into one.
  */
 export function authHeadersForOperation(
   operationName: string | undefined,

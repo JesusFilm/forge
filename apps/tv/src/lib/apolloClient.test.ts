@@ -1,5 +1,5 @@
 // Guards the U3 contract: the Datadog attribution merge must never clobber the
-// SemanticSearch consumer bearer (see docs/solutions/architecture-patterns/
+// WatchSearch consumer bearer (see docs/solutions/architecture-patterns/
 // fleet-client-bearer-must-be-operation-scoped-not-global.md).
 jest.mock("../env", () => ({
   env: {
@@ -65,15 +65,15 @@ function headersThroughChain(
 }
 
 describe("createRequestChain (auth + Datadog header composition)", () => {
-  it("delivers the SemanticSearch bearer AND the attribution headers together", () => {
+  it("delivers the WatchSearch bearer AND the attribution headers together", () => {
     const headers = headersThroughChain(gql`
-      query SemanticSearch {
+      query WatchSearch {
         __typename
       }
     `)
     expect(headers).toMatchObject({
       Authorization: "Bearer test-token",
-      "x-dd-graph-ql-operation-name": "SemanticSearch",
+      "x-dd-graph-ql-operation-name": "WatchSearch",
       "x-dd-graph-ql-operation-type": "query",
     })
   })

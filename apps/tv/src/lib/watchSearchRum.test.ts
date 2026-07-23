@@ -1,3 +1,4 @@
+import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 import { buildWatchSearchResultClickContext } from "./watchSearchRum"
 
 // Deriving the arg type from the function keeps the fixture honest without
@@ -13,7 +14,6 @@ const EXPECTED_KEYS = [
   "watch_search.result_type",
   "watch_search.search_request_id",
   "watch_search.result_source",
-  "watch_search.route_language_slug",
   "watch_search.search_language_slug",
   "watch_search.search_language_english_name",
 ].sort()
@@ -64,9 +64,25 @@ describe("buildWatchSearchResultClickContext", () => {
       searchRequestId: "req-1",
     })
     expect(context["watch_search.result_source"]).toBe("semantic")
-    expect(context["watch_search.route_language_slug"]).toBe("en")
-    expect(context["watch_search.search_language_slug"]).toBe("en")
+    // Must equal what buildWatchSearchInput actually sends. It reported the
+    // BCP-47 tag "en" — a value neither admin nor web ever produces — which
+    // made every TV click un-joinable with the request it came from.
+    expect(context["watch_search.search_language_slug"]).toBe(
+      SEARCH_LANGUAGE_SLUG,
+    )
+    expect(context["watch_search.search_language_slug"]).toBe("english")
     expect(context["watch_search.search_language_english_name"]).toBe("English")
+  })
+
+  it("omits route_language_slug, which the request never carries", () => {
+    // buildWatchSearchInput deliberately sends no routeLanguageSlug; reporting
+    // one fabricated a request field that was never on the wire.
+    expect(
+      buildWatchSearchResultClickContext(makeResult(), {
+        position: 1,
+        searchRequestId: "req-1",
+      }),
+    ).not.toHaveProperty("watch_search.route_language_slug")
   })
 
   it("normalizes position to a 1-based integer", () => {

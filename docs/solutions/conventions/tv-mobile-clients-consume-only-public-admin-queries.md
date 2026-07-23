@@ -37,6 +37,14 @@ related_components: [apps/mobile, apps/web, packages/admin-graphql, apps/admin]
 `apps/tv` (and `apps/mobile`, `apps/web`) reads from admin via `@forge/admin-graphql`. These consumer apps run **unauthenticated** — they ship with no end-user admin bearer token. (One narrow carve-out exists since 2026-06-12: a zero-permission consumer bearer scoped to the `Search` operation only — see the Related entry on fleet-client bearers.) Admin's GraphQL surface is split by Pothos `authScopes`:
 
 - **Public** (`authScopes: { public: true }`): `experienceBySlug`, `watchSetting`, `videoBySlug`, and the other consumer-facing reads — anonymous callers see published content only. `search` is public-shaped but **policy-gated**: once admin's `SEARCH_AUTH_REQUIRED` is active it rejects anonymous callers, so clients present the operation-scoped consumer bearer for it.
+
+> **Superseded 2026-07-23 (admin #1622).** The `search` sentence above no longer
+> describes production. `Query.search` and `SEARCH_AUTH_REQUIRED` were both
+> deleted; the replacement `watchSearch` is unconditionally public with no auth
+> gate. The operation-scoped consumer bearer still rides it, but it now only
+> selects the rate-limit bucket identity (per-device vs per-IP), never admission.
+> The rest of this document's public-vs-editor-gated guidance stands unchanged.
+
 - **Editor-gated** (`authScopes: { hasPermission: "read:experiences" }`, which resolves to the `VIEWER` tier and up): the list/by-id fields `Query.experiences` and `Query.experience(id:)`. These can surface unpublished/draft content, so they are intentionally not public.
 
 The TV home had diverged from the mobile/web pattern: instead of rendering a single curated homepage Experience, it listed _every_ Experience as a launcher grid via `LIST_EXPERIENCES` (`Query.experiences`), and `SearchBrowse` showed a "Popular experiences" rail backed by the same gated field. **There is no public list-all-experiences query by design.**
