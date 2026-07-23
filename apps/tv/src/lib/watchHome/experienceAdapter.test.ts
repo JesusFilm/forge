@@ -477,17 +477,36 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
   })
 
   it("gives a dropped block's sectionKey to the surviving twin", () => {
-    // A zero-card block never renders, so it must not push a later real rail off
-    // the authored key — only rails that survive reserve an id.
+    // Only surviving rails reserve an id: the dropped block must not push the
+    // first survivor off "dup", and the second survivor forces a real collision
+    // (the pre-fix adapter produced ["dup","dup"], so this now discriminates).
     const sections = buildWatchHomeSectionsFromExperience(
       [
         mediaBlock({ sectionKey: "dup", items: [{ coreId: "not-hydrated" }] }),
         mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
       ],
       HYDRATED,
     )
-    expect(sections).toHaveLength(1)
-    expect(sections[0].id).toBe("dup")
+    expect(sections.map((section) => section.id)).toEqual(["dup", "dup-2"])
+  })
+
+  it("escalates past a synthesized id that collides with an authored key", () => {
+    // An authored "dup-2" already holds the id the second "dup" block would
+    // synthesize, so uniqueSectionId must escalate again to "dup-2-2".
+    const sections = buildWatchHomeSectionsFromExperience(
+      [
+        mediaBlock({ sectionKey: "dup-2" }),
+        mediaBlock({ sectionKey: "dup" }),
+        mediaBlock({ sectionKey: "dup" }),
+      ],
+      HYDRATED,
+    )
+    expect(sections.map((section) => section.id)).toEqual([
+      "dup-2",
+      "dup",
+      "dup-2-2",
+    ])
   })
 })
 
