@@ -40,11 +40,15 @@ afterEach(() => {
   container.remove()
 })
 
+function renderFooter() {
+  act(() => {
+    root.render(<WatchHomeFooter />)
+  })
+}
+
 describe("WatchHomeFooter", () => {
   it("places the AI use attribution notice immediately after the footer", () => {
-    act(() => {
-      root.render(<WatchHomeFooter />)
-    })
+    renderFooter()
 
     const notice = container.querySelector(
       '[data-testid="watch-ai-attribution-notice"]',
@@ -66,9 +70,7 @@ describe("WatchHomeFooter", () => {
   it("renders the attribution notice from the active locale catalog", () => {
     setRequestLocale("ru")
 
-    act(() => {
-      root.render(<WatchHomeFooter />)
-    })
+    renderFooter()
 
     const notice = container.querySelector(
       '[data-testid="watch-ai-attribution-notice"]',
@@ -84,10 +86,51 @@ describe("WatchHomeFooter", () => {
     expect(termsLink?.textContent).not.toBe("Terms of Use")
   })
 
-  it("paints its complete white surface above preceding sticky media", () => {
-    act(() => {
-      root.render(<WatchHomeFooter />)
+  it("omits social and newsletter actions", () => {
+    renderFooter()
+
+    const removedHrefs = [
+      "https://twitter.com/jesusfilm",
+      "https://www.facebook.com/jesusfilm",
+      "https://www.instagram.com/jesusfilm",
+      "https://www.youtube.com/user/jesusfilm",
+      "https://www.jesusfilm.org/email/",
+    ]
+
+    removedHrefs.forEach((href) => {
+      expect(container.querySelector(`a[href="${href}"]`)).toBeNull()
     })
+
+    const removedLabels = ["X", "Facebook", "Instagram", "YouTube"]
+    removedLabels.forEach((label) => {
+      expect(container.querySelector(`a[aria-label="${label}"]`)).toBeNull()
+    })
+    expect(container.textContent).not.toContain("Sign Up For Our Newsletter")
+  })
+
+  it("keeps contact details in three adjacent columns", () => {
+    renderFooter()
+
+    const contactGrid = container.querySelector(
+      '[data-testid="watch-footer-contact-grid"]',
+    )
+
+    expect(contactGrid?.classList.contains("grid")).toBe(true)
+    expect(contactGrid?.classList.contains("grid-cols-3")).toBe(true)
+    expect(contactGrid?.classList.contains("break-words")).toBe(true)
+    expect(contactGrid?.children).toHaveLength(3)
+
+    const [address, phoneNumbers, legalLinks] = Array.from(
+      contactGrid?.children ?? [],
+    )
+    expect(address?.classList.contains("border-e")).toBe(true)
+    expect(address?.classList.contains("pe-3")).toBe(true)
+    expect(phoneNumbers?.classList.contains("border-e")).toBe(true)
+    expect(legalLinks?.classList.contains("ps-3")).toBe(true)
+  })
+
+  it("paints its complete white surface above preceding sticky media", () => {
+    renderFooter()
 
     const footer = container.querySelector('[data-testid="watch-home-footer"]')
 
