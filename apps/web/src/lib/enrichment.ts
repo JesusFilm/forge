@@ -27,14 +27,6 @@ type MediaItem = {
   imageUrl: string | null
   imageBlurDataUrl?: string | null
   imageDominantColor?: string | null
-  // Optional because the caller's TS prop type derives from the legacy
-  // Strapi fragment (nested `imageOverride { url }`), while the admin
-  // runtime payload carries this flat field. The `as unknown as` cast
-  // at the renderer level bridges the gap; at runtime this is always
-  // present on admin data.
-  imageOverrideUrl?: string | null
-  imageOverrideBlurDataUrl?: string | null
-  imageOverrideDominantColor?: string | null
 }
 
 const WATCH_HOME_LOCAL_THUMBNAILS: Record<string, string> = {
@@ -151,36 +143,18 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
   const subtitle = item.subtitleOverride ?? ""
   const label = typeof item.labelOverride === "string" ? item.labelOverride : ""
   const collectionSize = item.collectionSize ?? ""
-  // Explicit per-item override wins over the image inherited from the
-  // linked video, matching the seed's authoring intent for collection
-  // cards that point at external poster artwork rather than the video's
-  // own thumbnail. Admin writes an empty string (not null) when an
-  // editor clears the override, so the truthiness check below is what
-  // routes empty strings back to the fallback — `??` would let `""`
-  // shadow a valid imageUrl and produce a blank tile.
-  const overrideUrl =
-    typeof item.imageOverrideUrl === "string" &&
-    item.imageOverrideUrl.length > 0
-      ? item.imageOverrideUrl
-      : null
-  const fallbackUrl =
+  const authoredUrl =
     typeof item.imageUrl === "string" && item.imageUrl.length > 0
       ? item.imageUrl
       : null
   const imageUrl =
-    overrideUrl ??
-    fallbackUrl ??
+    authoredUrl ??
     localWatchHomeThumbnailUrl(item.coreId) ??
     muxThumbnailUrl(item.videoDub?.muxVideo?.playbackId)
-  const hasOverrideImage = overrideUrl != null
   const videoImageBlurDataUrl = meaningfulBlurDataUrl(
     item.videoImageBlurDataUrl,
   )
-  const overrideBlurDataUrl = meaningfulBlurDataUrl(
-    item.imageOverrideBlurDataUrl,
-  )
   const fallbackBlurDataUrl = meaningfulBlurDataUrl(item.imageBlurDataUrl)
-  const overrideDominantColor = meaningfulColor(item.imageOverrideDominantColor)
   const videoDominantColor = meaningfulColor(item.videoImageDominantColor)
   const fallbackDominantColor = meaningfulColor(item.imageDominantColor)
   // Admin-authored items carry a route slug snapshot when seeded from videos.
@@ -205,11 +179,9 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     collectionSize,
     imageUrl,
     blurDataUrl:
-      overrideBlurDataUrl ??
-      (hasOverrideImage
-        ? null
+      authoredUrl != null
+        ? fallbackBlurDataUrl
         : (videoImageBlurDataUrl ??
-          fallbackBlurDataUrl ??
           localWatchHomeBlurDataUrl(item.coreId) ??
           demoBlurDataUrl(
             item.coreId ??
@@ -218,10 +190,9 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
               item.titleOverride ??
               imageUrl ??
               "media-collection",
-          ))),
+          )),
     dominantColor:
-      overrideDominantColor ??
-      (hasOverrideImage ? null : (videoDominantColor ?? fallbackDominantColor)),
+      authoredUrl != null ? fallbackDominantColor : videoDominantColor,
     videoSlug,
     languageSlug,
     muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,

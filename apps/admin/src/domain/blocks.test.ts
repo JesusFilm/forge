@@ -164,7 +164,7 @@ describe("BlockSchema — all top-level types validate", () => {
     expect(result.success).toBe(true)
   })
 
-  it("accepts videoCarousel route children and item overrides", () => {
+  it("accepts videoCarousel route children and item images", () => {
     const result = VideoCarouselBlockSchema.safeParse({
       t: "videoCarousel",
       itemsSource: "routeVideoChildren",
@@ -173,7 +173,7 @@ describe("BlockSchema — all top-level types validate", () => {
           videoId: "video-1",
           titleOverride: "Custom title",
           subtitleOverride: "Custom subtitle",
-          imageOverrideUrl: "https://example.com/image.jpg",
+          imageUrl: "https://example.com/image.jpg",
         },
       ],
     })
@@ -577,8 +577,8 @@ describe("BlocksSchema", () => {
             imageAssetId: "asset-collection",
             items: [
               {
-                imageOverrideUrl: "https://example.com/item.jpg",
-                imageOverrideAssetId: "asset-item",
+                imageUrl: "https://example.com/item.jpg",
+                imageAssetId: "asset-item",
               },
             ],
           },
@@ -599,14 +599,72 @@ describe("BlocksSchema", () => {
         items: [
           {
             videoId: "video-1",
-            imageOverrideUrl: "/api/media-assets/asset-1/preview",
-            imageOverrideAssetId: "asset-1",
+            imageUrl: "/api/media-assets/asset-1/preview",
+            imageAssetId: "asset-1",
           },
         ],
       },
     ]
 
     expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("canonicalizes legacy image override fields before strict validation", () => {
+    const result = BlocksSchema.safeParse([
+      {
+        t: "mediaCollection",
+        variant: "carousel",
+        itemsSource: "manual",
+        items: [
+          {
+            videoId: "video-1",
+            imageOverrideUrl: "https://example.com/poster-1.jpg",
+            imageOverrideAssetId: "asset-1",
+          },
+          {
+            videoId: "video-2",
+            imageOverrideUrl: "https://example.com/poster-2.jpg",
+            imageOverrideAssetId: "asset-2",
+          },
+        ],
+      },
+      {
+        t: "videoCarousel",
+        itemsSource: "manual",
+        items: [
+          {
+            videoId: "video-3",
+            imageOverrideUrl: "https://example.com/video-poster.jpg",
+            imageOverrideAssetId: "asset-3",
+          },
+        ],
+      },
+    ])
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data[0]).toMatchObject({
+      thumbnailOrientation: "vertical",
+      items: [
+        {
+          imageUrl: "https://example.com/poster-1.jpg",
+          imageAssetId: "asset-1",
+        },
+        {
+          imageUrl: "https://example.com/poster-2.jpg",
+          imageAssetId: "asset-2",
+        },
+      ],
+    })
+    expect(result.data[1]).toMatchObject({
+      items: [
+        {
+          imageUrl: "https://example.com/video-poster.jpg",
+          imageAssetId: "asset-3",
+        },
+      ],
+    })
+    expect(JSON.stringify(result.data)).not.toContain("imageOverride")
   })
 
   it("rejects if any single block is invalid", () => {

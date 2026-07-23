@@ -229,8 +229,6 @@ const optionalEmptyStringKeys = new Set([
   "ctaLabel",
   "ctaLink",
   "footerText",
-  "imageOverrideUrl",
-  "imageOverrideAssetId",
   "imageAssetId",
   "imageUrl",
   "labelOverride",

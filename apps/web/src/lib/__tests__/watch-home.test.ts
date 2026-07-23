@@ -257,11 +257,10 @@ describe("buildWatchHomeModelFromVideos", () => {
           items: [
             {
               videoId: "lumo-admin-id",
-              imageOverrideUrl:
+              imageUrl:
                 "http://localhost:3003/api/media-assets/asset-1/preview",
-              imageOverrideBlurDataUrl:
-                "data:image/jpeg;base64,override-placeholder",
-              imageOverrideDominantColor: "#787e16",
+              imageBlurDataUrl: "data:image/jpeg;base64,override-placeholder",
+              imageDominantColor: "#787e16",
             },
           ],
         },
@@ -350,9 +349,9 @@ describe("buildWatchHomeModelFromVideos", () => {
           items: [
             {
               videoId: "lumo-child",
-              imageOverrideUrl: "https://cdn.example/uploaded-scripture.jpg",
-              imageOverrideBlurDataUrl: null,
-              imageOverrideDominantColor: null,
+              imageUrl: "https://cdn.example/uploaded-scripture.jpg",
+              imageBlurDataUrl: null,
+              imageDominantColor: null,
             },
           ],
         },

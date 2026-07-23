@@ -578,7 +578,6 @@ function previewImageFromBlock(
   if (block.t === "mediaCollection") {
     for (const item of block.items) {
       const itemImage =
-        item.imageOverrideUrl ??
         item.imageUrl ??
         previewImageForVideo(item.videoId, videoImagesByVideoId)
       if (itemImage) return itemImage
@@ -588,7 +587,6 @@ function previewImageFromBlock(
   if (block.t === "videoCarousel") {
     for (const item of block.items) {
       const itemImage =
-        item.imageOverrideUrl ??
         item.imageUrl ??
         previewImageForVideo(item.videoId, videoImagesByVideoId)
       if (itemImage) return itemImage

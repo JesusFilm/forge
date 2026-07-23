@@ -15,7 +15,7 @@
 /**
  * Keys whose VALUES are stripped from the outline. Matches (case-
  * insensitively) any key ending in `url`, `link`, `id`, `color`, or
- * `src` — which covers `videoId`, `streamingUrl`, `imageOverrideUrl`,
+ * `src` — which covers `videoId`, `streamingUrl`, `imageUrl`,
  * `imageAssetId`, `ctaLink`, `contentId`, `backgroundColor`, etc. — plus
  * the exact `hls` / `dash` playback fields. The block discriminator `t`
  * is always kept (see `sanitizeObject`).

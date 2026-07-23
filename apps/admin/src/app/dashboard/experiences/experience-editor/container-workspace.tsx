@@ -237,8 +237,7 @@ function videoPreviewImageUrl(
   const record = asRecord(value)
   if (!record) return ""
 
-  const directImage =
-    asString(record.imageOverrideUrl) || asString(record.imageUrl)
+  const directImage = asString(record.imageUrl)
   if (directImage) return directImage
 
   return (

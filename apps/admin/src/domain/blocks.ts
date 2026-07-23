@@ -104,8 +104,6 @@ export const MediaCollectionItemSchema = z
     languageId: z.string().optional(),
     /** Snapshot of the Video route slug so static authored collections can link. */
     videoSlug: z.string().min(1).optional(),
-    imageOverrideUrl: mediaUrl.optional(),
-    imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     labelOverride: z.string().optional(),
@@ -146,8 +144,6 @@ export const VideoCarouselItemSchema = z
     streamingUrl: z.string().optional(),
     imageUrl: mediaUrl.optional(),
     imageAssetId: assetId,
-    imageOverrideUrl: mediaUrl.optional(),
-    imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     backgroundColor: z.string().optional(),
@@ -586,6 +582,75 @@ export const BlockSchema = z.discriminatedUnion("t", [
 
 export type Block = z.infer<typeof BlockSchema>
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
+}
+
+function hasLegacyOverrideImage(value: unknown) {
+  return (
+    isPlainRecord(value) &&
+    (nonEmptyString(value.imageOverrideUrl) ||
+      nonEmptyString(value.imageOverrideAssetId))
+  )
+}
+
+/**
+ * Transitional persistence canonicalizer for Experience block JSON written
+ * before authored item art was moved onto the normal image fields.
+ */
+export function normalizeLegacyExperienceBlockMediaFields(
+  value: unknown,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeLegacyExperienceBlockMediaFields(item))
+  }
+
+  if (!isPlainRecord(value)) return value
+
+  const normalized: Record<string, unknown> = {}
+  const legacyOverrideAssetId = value.imageOverrideAssetId
+  const legacyOverrideUrl = value.imageOverrideUrl
+  const shouldPromoteAsset =
+    nonEmptyString(legacyOverrideAssetId) && !nonEmptyString(value.imageAssetId)
+  const shouldPromoteUrl =
+    nonEmptyString(legacyOverrideUrl) && !nonEmptyString(value.imageUrl)
+
+  if (shouldPromoteAsset) normalized.imageAssetId = legacyOverrideAssetId
+  if (shouldPromoteUrl) normalized.imageUrl = legacyOverrideUrl
+
+  const oldItems = Array.isArray(value.items) ? value.items : null
+  const shouldPromotePosterRail =
+    value.t === "mediaCollection" &&
+    !nonEmptyString(value.thumbnailOrientation) &&
+    oldItems != null &&
+    oldItems.length > 0 &&
+    oldItems.every(hasLegacyOverrideImage)
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (
+      key === "imageOverrideUrl" ||
+      key === "imageOverrideAssetId" ||
+      key === "imageOverrideBlurDataUrl" ||
+      key === "imageOverrideDominantColor"
+    ) {
+      continue
+    }
+    if (key === "imageAssetId" && shouldPromoteAsset) continue
+    if (key === "imageUrl" && shouldPromoteUrl) continue
+    normalized[key] = normalizeLegacyExperienceBlockMediaFields(nested)
+  }
+
+  if (shouldPromotePosterRail) {
+    normalized.thumbnailOrientation = "vertical"
+  }
+
+  return normalized
+}
+
 /**
  * Schema applied to `ExperienceLocale.blocks` as a whole — an array of
  * top-level blocks. Used by the service layer before writes (Unit 7).
@@ -599,6 +664,9 @@ export type Block = z.infer<typeof BlockSchema>
  * `experience-ai-normalize.ts`). Adding a minimum here would reject valid
  * hand-authored 1-block content.
  */
-export const BlocksSchema = z.array(BlockSchema)
+export const BlocksSchema = z.preprocess(
+  normalizeLegacyExperienceBlockMediaFields,
+  z.array(BlockSchema),
+)
 
 export type Blocks = z.infer<typeof BlocksSchema>

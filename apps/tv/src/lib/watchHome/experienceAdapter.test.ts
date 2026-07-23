@@ -138,10 +138,7 @@ describe("mapVariant (KTD2)", () => {
   })
 })
 
-// Prod's "Discover the full story" is a `carousel` (→ horizontal by variant)
-// whose every item carries a curated 2:3 poster, and web renders it PORTRAIT.
-// The poster override is what promotes it — mirrors mobile's isPortraitPosterRail.
-describe("portrait poster rails", () => {
+describe("authored item images", () => {
   const POSTER_A =
     "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
   const POSTER_B =
@@ -150,34 +147,56 @@ describe("portrait poster rails", () => {
   function posterBlock(
     items: readonly Record<string, unknown>[],
     variant = "carousel",
+    thumbnailOrientation?: "vertical" | "horizontal",
   ) {
-    return mediaBlock({ mediaCollectionVariant: variant, items })
+    return mediaBlock({
+      mediaCollectionVariant: variant,
+      thumbnailOrientation,
+      items,
+    })
   }
 
   function sectionFor(
     items: readonly Record<string, unknown>[],
     variant = "carousel",
+    thumbnailOrientation?: "vertical" | "horizontal",
   ): WatchHomeSection {
     return buildWatchHomeSectionsFromExperience(
-      [posterBlock(items, variant)],
+      [posterBlock(items, variant, thumbnailOrientation)],
       HYDRATED,
     )[0]
   }
 
-  it("promotes an all-poster carousel to a poster rail despite variant=carousel", () => {
+  it("keeps authored images in carousel rails without making them poster rails", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single", imageOverrideUrl: POSTER_B },
+      { coreId: "core-series", imageUrl: POSTER_A },
+      { coreId: "core-single", imageUrl: POSTER_B },
     ])
-    expect(section.isPosterRail).toBe(true)
-    // layout still follows the variant; orientation mirrors mobile's model.
+    expect(section.isPosterRail).toBe(false)
     expect(section.layout).toBe("rail")
-    expect(section.orientation).toBe("vertical")
+    expect(section.orientation).toBe("horizontal")
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
   })
 
-  it("is not a poster rail when only SOME items have a poster", () => {
+  it("uses thumbnailOrientation as the explicit poster rail signal", () => {
+    const section = sectionFor(
+      [
+        { coreId: "core-series", imageUrl: POSTER_A },
+        { coreId: "core-single", imageUrl: POSTER_B },
+      ],
+      "carousel",
+      "vertical",
+    )
+
+    expect(section.layout).toBe("rail")
+    expect(section.orientation).toBe("vertical")
+    expect(section.isPosterRail).toBe(true)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
+  })
+
+  it("is not a poster rail when only some items have authored images", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
+      { coreId: "core-series", imageUrl: POSTER_A },
       { coreId: "core-single" },
     ])
     expect(section.isPosterRail).toBe(false)
@@ -191,64 +210,49 @@ describe("portrait poster rails", () => {
     expect(section.isPosterRail).toBe(false)
   })
 
-  // Tightening vs mobile (which tests the raw field): an override that cannot
-  // resolve yields NO poster, so the rail must not claim a portrait frame — that
-  // is exactly how landscape art ends up cropped into 2:3.
-  it("is not a poster rail when an override is present but unresolvable", () => {
+  it("is not a poster rail when an authored image is present but unresolvable", () => {
     const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single", imageOverrideUrl: "javascript:alert(1)" },
+      { coreId: "core-series", imageUrl: POSTER_A },
+      { coreId: "core-single", imageUrl: "javascript:alert(1)" },
     ])
     expect(section.isPosterRail).toBe(false)
   })
 
-  // REGRESSION GUARD: `collection` maps to orientation "vertical" for mobile
-  // layout parity, but that says NOTHING about art. Rendering off orientation
-  // put a 2:3 frame around the landscape cinematic — the exact bug this feature
-  // exists to prevent. isPosterRail must stay false here.
   it("does NOT make a poster-less variant=collection a poster rail", () => {
     const section = sectionFor(
       [{ coreId: "core-series" }, { coreId: "core-single" }],
       "collection",
     )
     expect(section.orientation).toBe("vertical") // mobile parity, unchanged
-    expect(section.isPosterRail).toBe(false) // but the frame stays landscape
-    // ...and the cards keep the hydrated landscape art, as before the feature.
-    expect(section.cards.map((c) => c.imageUrl)).toEqual([
-      "https://img/series.jpg",
-      "https://img/single.jpg",
-    ])
-  })
-
-  // The invariant the whole feature rests on: a poster rail implies portrait ART
-  // on every rendered card. If this can fail, cards crop.
-  it("gives every card in a poster rail its curated poster", () => {
-    const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single", imageOverrideUrl: POSTER_B },
-    ])
-    expect(section.isPosterRail).toBe(true)
-    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
-  })
-
-  // The converse: a landscape rail must never adopt a portrait poster, or the
-  // 2.13:1 frame crops it. Frame and art are gated on the SAME value.
-  it("keeps landscape art on a mixed rail, ignoring the stray poster", () => {
-    const section = sectionFor([
-      { coreId: "core-series", imageOverrideUrl: POSTER_A },
-      { coreId: "core-single" },
-    ])
     expect(section.isPosterRail).toBe(false)
     expect(section.cards.map((c) => c.imageUrl)).toEqual([
       "https://img/series.jpg",
       "https://img/single.jpg",
     ])
   })
+
+  it("gives every card its authored image when present", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageUrl: POSTER_A },
+      { coreId: "core-single", imageUrl: POSTER_B },
+    ])
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([POSTER_A, POSTER_B])
+  })
+
+  it("uses authored image on a mixed rail when present", () => {
+    const section = sectionFor([
+      { coreId: "core-series", imageUrl: POSTER_A },
+      { coreId: "core-single" },
+    ])
+    expect(section.isPosterRail).toBe(false)
+    expect(section.cards.map((c) => c.imageUrl)).toEqual([
+      POSTER_A,
+      "https://img/single.jpg",
+    ])
+  })
 })
 
-// Card art is gated on the SAME poster-rail decision as the frame, so the two
-// can never disagree: poster rail → the curated override; anything else → the
-// hydrated video art, exactly as before this feature existed.
 describe("card image source", () => {
   const POSTER = "https://admin.jesusfilm.org/api/public/media-assets/a/preview"
   const ITEM_IMAGE = "https://cdn.example/item.jpg"
@@ -261,19 +265,17 @@ describe("card image source", () => {
     )[0].cards[0]
   }
 
-  it("uses the override poster on a poster rail (outranks the video art)", () => {
-    expect(
-      cardFor({ coreId: "core-single", imageOverrideUrl: POSTER }).imageUrl,
-    ).toBe(POSTER)
+  it("uses authored item image over the video art", () => {
+    expect(cardFor({ coreId: "core-single", imageUrl: POSTER }).imageUrl).toBe(
+      POSTER,
+    )
   })
 
   it("uses the hydrated video art when the item has no override", () => {
     expect(cardFor({ coreId: "core-single" }).imageUrl).toBe(VIDEO_ART)
   })
 
-  // item.imageUrl is deliberately NOT a poster signal (it carries landscape art
-  // too), so it can't promote a rail — and a landscape rail keeps its video art.
-  it("ignores the item imageUrl — it cannot make a rail portrait", () => {
+  it("uses item imageUrl without making the rail portrait", () => {
     const section = buildWatchHomeSectionsFromExperience(
       [
         mediaBlock({
@@ -283,13 +285,12 @@ describe("card image source", () => {
       HYDRATED,
     )[0]
     expect(section.isPosterRail).toBe(false)
-    expect(section.cards[0].imageUrl).toBe(VIDEO_ART)
+    expect(section.cards[0].imageUrl).toBe(ITEM_IMAGE)
   })
 
-  it("ignores an unresolvable override rather than blanking the card", () => {
+  it("ignores an unresolvable authored image rather than blanking the card", () => {
     expect(
-      cardFor({ coreId: "core-single", imageOverrideUrl: "javascript:x" })
-        .imageUrl,
+      cardFor({ coreId: "core-single", imageUrl: "javascript:x" }).imageUrl,
     ).toBe(VIDEO_ART)
   })
 })

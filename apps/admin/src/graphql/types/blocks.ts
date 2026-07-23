@@ -505,29 +505,6 @@ MediaCollectionItemRef.implement({
         return image?.dominantColor ?? null
       },
     }),
-    imageOverrideUrl: t.string({
-      nullable: true,
-      resolve: (row, _args, ctx) =>
-        resolveAssetBackedUrl(
-          row,
-          ctx,
-          "imageOverrideUrl",
-          "imageOverrideAssetId",
-        ),
-    }),
-    imageOverrideAssetId: t.exposeString("imageOverrideAssetId", {
-      nullable: true,
-    }),
-    imageOverrideBlurDataUrl: t.string({
-      nullable: true,
-      resolve: (row, _args, ctx) =>
-        resolveAssetBackedBlurDataUrl(row, ctx, "imageOverrideAssetId"),
-    }),
-    imageOverrideDominantColor: t.string({
-      nullable: true,
-      resolve: (row, _args, ctx) =>
-        resolveAssetBackedDominantColor(row, ctx, "imageOverrideAssetId"),
-    }),
     titleOverride: t.exposeString("titleOverride", { nullable: true }),
     resolvedTitle: t.string({
       nullable: true,
@@ -637,19 +614,6 @@ VideoCarouselItemRef.implement({
         resolveAssetBackedUrl(row, ctx, "imageUrl", "imageAssetId"),
     }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
-    imageOverrideUrl: t.string({
-      nullable: true,
-      resolve: (row, _args, ctx) =>
-        resolveAssetBackedUrl(
-          row,
-          ctx,
-          "imageOverrideUrl",
-          "imageOverrideAssetId",
-        ),
-    }),
-    imageOverrideAssetId: t.exposeString("imageOverrideAssetId", {
-      nullable: true,
-    }),
     titleOverride: t.exposeString("titleOverride", { nullable: true }),
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),
     backgroundColor: t.exposeString("backgroundColor", { nullable: true }),

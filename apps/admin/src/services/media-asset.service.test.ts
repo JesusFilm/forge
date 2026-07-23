@@ -461,6 +461,60 @@ describe("MediaAssetService", () => {
         },
       ])
     })
+
+    it("hydrates legacy override asset ids through canonical image fields", async () => {
+      prisma.mediaAsset.findMany.mockResolvedValueOnce([
+        {
+          id: "asset-1",
+          backend: "S3",
+          status: "READY",
+          visibility: "PUBLIC",
+          objectKey: "media-assets/asset-1/original/poster.webp",
+          previewObjectKey: null,
+          muxPlaybackId: null,
+        },
+      ])
+
+      const result = await service.hydratePublicUrlsInBlocks([
+        {
+          t: "mediaCollection",
+          variant: "carousel",
+          items: [
+            {
+              videoId: "video-1",
+              imageOverrideAssetId: "asset-1",
+              imageOverrideUrl:
+                "http://0.0.0.0:8080/api/media-assets/asset-1/preview",
+            },
+          ],
+        },
+      ])
+
+      expect(prisma.mediaAsset.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: { in: ["asset-1"] },
+            status: "READY",
+            visibility: "PUBLIC",
+          },
+        }),
+      )
+      expect(result).toEqual([
+        {
+          t: "mediaCollection",
+          variant: "carousel",
+          thumbnailOrientation: "vertical",
+          items: [
+            {
+              videoId: "video-1",
+              imageAssetId: "asset-1",
+              imageUrl:
+                "http://localhost:3003/api/public/media-assets/asset-1/preview",
+            },
+          ],
+        },
+      ])
+    })
   })
 
   describe("usage", () => {

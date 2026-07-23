@@ -17,8 +17,7 @@
  *   - Strapi numeric `video: <id>` → admin `videoId: <cuid>` resolved by
  *     slug against admin's `video` table; missing slugs degrade to
  *     `videoId: undefined` + `titleOverride`
- *   - Local `/images/thumbnails/*` paths → absolute jesusfilm.org URLs
- *     (admin's BlockSchema requires absolute URLs everywhere)
+ *   - Local `/images/thumbnails/*` paths are accepted by admin's BlockSchema.
  *
  * Usage:
  *   DATABASE_URL='postgresql://forge:forge@localhost:5433/forge_admin' \
@@ -57,18 +56,13 @@ const UNSPLASH = "https://images.unsplash.com"
 const unsplash = (id: string, w = 900) =>
   `${UNSPLASH}/${id}?w=${w}&auto=format&fit=crop&q=60`
 
-// Strapi's seed used /images/thumbnails/* (relative paths served by apps/web).
-// Admin's BlockSchema requires absolute URLs, so we point at the same files
-// served by jesusfilm.org. apps/web/public/images/thumbnails/* is the source
-// of truth for both.
-const POSTER_BASE = "https://www.jesusfilm.org"
 const COLLECTION_POSTERS = {
-  jesus: `${POSTER_BASE}/images/thumbnails/1_jf-0-0-vertical.png`,
-  lifeOfJesus: `${POSTER_BASE}/images/thumbnails/2_GOJ-0-0-vertical.png`,
-  gospelOfMatthew: `${POSTER_BASE}/images/thumbnails/GOMattCollection-vertical.png`,
-  gospelOfMark: `${POSTER_BASE}/images/thumbnails/GOMarkCollection-vertical.png`,
-  gospelOfLuke: `${POSTER_BASE}/images/thumbnails/GOLukeCollection-vertical.png`,
-  gospelOfJohn: `${POSTER_BASE}/images/thumbnails/GOJohnCollection-vertical.png`,
+  jesus: "/images/thumbnails/1_jf-0-0-vertical.png",
+  lifeOfJesus: "/images/thumbnails/2_GOJ-0-0-vertical.png",
+  gospelOfMatthew: "/images/thumbnails/GOMattCollection-vertical.png",
+  gospelOfMark: "/images/thumbnails/GOMarkCollection-vertical.png",
+  gospelOfLuke: "/images/thumbnails/GOLukeCollection-vertical.png",
+  gospelOfJohn: "/images/thumbnails/GOJohnCollection-vertical.png",
 } as const
 
 const BSF_CTA = "https://join.bsfinternational.org/?utm_source=jesusfilm-watch"
@@ -546,6 +540,7 @@ async function main(): Promise<void> {
         sectionKey: "video-bible-collection",
         categoryLabel: "Video Bible Collection",
         variant: "carousel",
+        thumbnailOrientation: "vertical",
         title: "The Easter story is a key part of a bigger picture",
         ctaLink: "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch",
         ctaLabel: "Watch",
@@ -556,7 +551,7 @@ async function main(): Promise<void> {
             videoId: lookup("jesus"),
             labelOverride: "Feature Film",
             collectionSize: "61 chapters",
-            imageOverrideUrl: COLLECTION_POSTERS.jesus,
+            imageUrl: COLLECTION_POSTERS.jesus,
             subtitleOverride:
               "Jesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave.",
           },
@@ -564,7 +559,7 @@ async function main(): Promise<void> {
             videoId: lookup("life-of-jesus-gospel-of-john"),
             labelOverride: "Feature Film",
             collectionSize: "49 chapters",
-            imageOverrideUrl: COLLECTION_POSTERS.lifeOfJesus,
+            imageUrl: COLLECTION_POSTERS.lifeOfJesus,
             subtitleOverride:
               "And truly Jesus did many other signs in the presence of His disciples, which are not written in this book.",
           },
@@ -572,7 +567,7 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-matthew"),
             labelOverride: "Collection",
             collectionSize: "25 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfMatthew,
+            imageUrl: COLLECTION_POSTERS.gospelOfMatthew,
             subtitleOverride:
               "The Gospel of Matthew is a word-for-word portrayal of the biblical text.",
           },
@@ -580,7 +575,7 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-mark"),
             labelOverride: "Collection",
             collectionSize: "15 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfMark,
+            imageUrl: COLLECTION_POSTERS.gospelOfMark,
             subtitleOverride:
               "According to the Gospel of Mark, Jesus is a heroic man of action, healer, and miracle worker.",
           },
@@ -588,7 +583,7 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-luke"),
             labelOverride: "Collection",
             collectionSize: "26 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfLuke,
+            imageUrl: COLLECTION_POSTERS.gospelOfLuke,
             subtitleOverride:
               "Luke acts as a narrator of events, painting a picture of Jesus as a very human character.",
           },
@@ -596,7 +591,7 @@ async function main(): Promise<void> {
             videoId: lookup("lumo-the-gospel-of-john"),
             labelOverride: "Collection",
             collectionSize: "22 items",
-            imageOverrideUrl: COLLECTION_POSTERS.gospelOfJohn,
+            imageUrl: COLLECTION_POSTERS.gospelOfJohn,
             subtitleOverride:
               "The Gospel of John is a word-for-word portrayal of the biblical text.",
           },

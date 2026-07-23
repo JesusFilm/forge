@@ -698,10 +698,6 @@ type MediaCollectionItem {
   imageAssetId: String
   imageBlurDataUrl: String
   imageDominantColor: String
-  imageOverrideAssetId: String
-  imageOverrideBlurDataUrl: String
-  imageOverrideDominantColor: String
-  imageOverrideUrl: String
   imageUrl: String
   labelOverride: String
   languageId: String
@@ -1272,8 +1268,6 @@ type VideoCarouselBlock {
 type VideoCarouselItem {
   backgroundColor: String
   imageAssetId: String
-  imageOverrideAssetId: String
-  imageOverrideUrl: String
   imageUrl: String
   languageId: String
   subtitleOverride: String
