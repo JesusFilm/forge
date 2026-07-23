@@ -138,6 +138,7 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
   mediaCollection: {
     t: "mediaCollection",
     variant: "grid",
+    thumbnailOrientation: "vertical",
     itemsSource: "manual",
     showItemNumbers: false,
     items: [],
@@ -1109,6 +1110,15 @@ describe("Edge cases", () => {
     const type = schema.getType("MediaCollectionBlock")
     const fields = type && "getFields" in type ? type.getFields() : null
     expect(fields?.defaultCollectionSlug).toBeDefined()
+  })
+
+  it("exposes thumbnail orientation on MediaCollectionBlock", () => {
+    const type = schema.getType("MediaCollectionBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.thumbnailOrientation).toBeDefined()
+    expect(fields?.thumbnailOrientation?.type.toString()).toBe(
+      "MediaCollectionThumbnailOrientation",
+    )
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

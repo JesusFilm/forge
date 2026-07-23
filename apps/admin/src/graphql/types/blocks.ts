@@ -296,6 +296,17 @@ const MediaCollectionVariantEnum = builder.enumType("MediaCollectionVariant", {
   } as const,
 })
 
+const MediaCollectionThumbnailOrientationEnum = builder.enumType(
+  "MediaCollectionThumbnailOrientation",
+  {
+    description: "The portrait or landscape shape used by media item cards.",
+    values: {
+      vertical: { value: "vertical" },
+      horizontal: { value: "horizontal" },
+    } as const,
+  },
+)
+
 // Shared by both `mediaCollection` and `videoCarousel` — one GraphQL enum.
 const ItemsSourceEnum = builder.enumType("ItemsSource", {
   description:
@@ -834,6 +845,13 @@ MediaCollectionBlockRef.implement({
       type: MediaCollectionVariantEnum,
       nullable: false,
       resolve: (row) => row.variant,
+    }),
+    thumbnailOrientation: t.field({
+      type: MediaCollectionThumbnailOrientationEnum,
+      nullable: true,
+      description:
+        "Authored media card shape. Null preserves the legacy variant-derived orientation.",
+      resolve: (row) => row.thumbnailOrientation ?? null,
     }),
     itemsSource: t.field({
       type: ItemsSourceEnum,

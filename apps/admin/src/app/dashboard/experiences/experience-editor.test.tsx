@@ -613,6 +613,49 @@ describe("ExperienceEditor", () => {
     )
   })
 
+  it("switches media collection thumbnails between vertical and horizontal", () => {
+    const view = renderEditorDom([
+      {
+        t: "mediaCollection",
+        sectionKey: "media",
+        variant: "carousel",
+        thumbnailOrientation: "vertical",
+        itemsSource: "manual",
+        title: "Media",
+        items: [],
+      },
+    ])
+
+    try {
+      const orientationSwitch = view.container.querySelector(
+        'button[role="switch"][aria-label="Use horizontal video thumbnails"]',
+      )
+      if (!(orientationSwitch instanceof HTMLButtonElement)) {
+        throw new Error("Thumbnail orientation switch not found")
+      }
+
+      expect(orientationSwitch.getAttribute("aria-checked")).toBe("false")
+      expect(orientationSwitch.textContent).toContain("Vertical")
+
+      act(() => {
+        orientationSwitch.click()
+      })
+
+      expect(orientationSwitch.getAttribute("aria-checked")).toBe("true")
+      expect(orientationSwitch.textContent).toContain("Horizontal")
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(JSON.parse(blocksInput.value)).toMatchObject([
+        { thumbnailOrientation: "horizontal" },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("renders a real empty state for questions and answers", () => {
     const html = renderEditor([
       {

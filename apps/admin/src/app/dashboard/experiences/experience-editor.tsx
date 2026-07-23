@@ -69,6 +69,7 @@ import {
   MonitorPlay,
   Plus,
   RectangleHorizontal,
+  RectangleVertical,
   Route,
   Save,
   Search,
@@ -8139,6 +8140,15 @@ export function ExperienceEditor({
     )
     const visualIdentityLabel = type === "card" ? "card" : block.typeLabel
     const isCardBackgroundPickerOpen = cardBackgroundPickerIndex === index
+    const authoredThumbnailOrientation = asString(
+      blockRecord?.thumbnailOrientation,
+    )
+    const usesHorizontalThumbnails = authoredThumbnailOrientation
+      ? authoredThumbnailOrientation === "horizontal"
+      : !["carousel", "collection"].includes(asString(blockRecord?.variant))
+    const ThumbnailOrientationIcon = usesHorizontalThumbnails
+      ? RectangleHorizontal
+      : RectangleVertical
 
     return (
       <div
@@ -9365,17 +9375,49 @@ export function ExperienceEditor({
                         Media items
                       </div>
                       {selectedBlockIndex === index ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            openVideoPicker(index, "mediaCollectionAppend")
-                          }}
-                          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
-                        >
-                          <Plus className="h-4 w-4" strokeWidth={1.5} />
-                          Add video
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={usesHorizontalThumbnails}
+                            aria-label="Use horizontal video thumbnails"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              updateBlockStringField(
+                                index,
+                                "thumbnailOrientation",
+                                usesHorizontalThumbnails
+                                  ? "vertical"
+                                  : "horizontal",
+                              )
+                            }}
+                            className={cx(
+                              "inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border px-3 text-[12px] font-medium transition-colors duration-[120ms] ease-out",
+                              usesHorizontalThumbnails
+                                ? selectedMediaButtonClassName
+                                : idleMediaButtonClassName,
+                            )}
+                          >
+                            <ThumbnailOrientationIcon
+                              className="h-4 w-4"
+                              strokeWidth={1.5}
+                            />
+                            {usesHorizontalThumbnails
+                              ? "Horizontal"
+                              : "Vertical"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openVideoPicker(index, "mediaCollectionAppend")
+                            }}
+                            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-colors duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                          >
+                            <Plus className="h-4 w-4" strokeWidth={1.5} />
+                            Add video
+                          </button>
+                        </div>
                       ) : null}
                     </div>
                     <div className="grid">
