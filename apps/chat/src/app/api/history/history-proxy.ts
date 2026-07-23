@@ -35,11 +35,11 @@ import { type SeekerGateDecision } from "@/lib/seeker-gate"
 import {
   classifyUpstreamFailure,
   composeUpstreamAbortSignal,
-  hostAllowed,
   MAX_CONVERSATION_ID_CHARS,
   postMastraUpstream,
   readJsonCapped,
   undefinedOnAbort,
+  validateBaseUrl,
 } from "@/lib/server/mastra-upstream"
 
 /** Ceiling on the composed history read budget (KTD7): these are
@@ -194,7 +194,10 @@ async function forwardHistoryRequest(
     console.warn("[history-proxy] event=refused reason=config_missing")
     return jsonResponse(502, { reason: "unavailable" })
   }
-  if (!hostAllowed(config.baseUrl, config.allowedHosts)) {
+  // Mint the branded base from the SSRF guard's success path; null → this
+  // proxy's own 502 unavailable wire. postMastraUpstream demands the brand.
+  const baseUrl = validateBaseUrl(config.baseUrl, config.allowedHosts)
+  if (baseUrl === null) {
     console.warn("[history-proxy] event=refused reason=ssrf_blocked")
     return jsonResponse(502, { reason: "unavailable" })
   }
@@ -206,7 +209,7 @@ async function forwardHistoryRequest(
   let response: Response
   try {
     response = await postMastraUpstream(fetchImpl, {
-      baseUrl: config.baseUrl,
+      baseUrl,
       apiKey: config.apiKey,
       path: upstream.path,
       accept: "application/json",
