@@ -14,6 +14,12 @@ tags: [nextjs, turbopack, dynamic-import, webgl, bundle-size, experience-blocks]
 
 # Defer browser engines beyond experience renderer boundaries
 
+> **Supersession note (2026-07-23):** The loading-boundary pattern remains
+> authoritative. The 3D Earth Language Orbit in `feat-276` replaced the
+> raw-WebGL implementation named below with an effect-time-loaded
+> `EarthLanguageOrbitCanvas.tsx` / `EarthLanguageOrbitScene.tsx` R3F subtree.
+> The old filenames are retained in the historical context only.
+
 ## Context
 
 Experience block renderers in `apps/web/src/components/sections/index.tsx` use
@@ -36,8 +42,10 @@ The language globe follows this split:
   upstream failures to the block.
 - `LanguageGlobeClient.tsx` owns authored copy, semantic links, the static
   fallback, reduced-motion state, and the effect-time import.
-- `language-globe-webgl.ts` owns shaders, texture loading, projection,
-  animation scheduling, observers, context-loss handling, and cleanup.
+- `EarthLanguageOrbitCanvas.tsx` owns the optional R3F Canvas and renderer
+  lifecycle.
+- `EarthLanguageOrbitScene.tsx` owns textures, geometry, shaders, depth-tested
+  orbit text, animation, context-loss handling, and cleanup.
 
 The client shell uses the following shape:
 
@@ -46,26 +54,28 @@ useEffect(() => {
   if (!hasGlobe) return
 
   let disposed = false
-  let runtime: LanguageGlobeRuntime | null = null
+  let Scene: ComponentType<EarthLanguageOrbitCanvasProps> | null = null
 
-  void import("./language-globe-webgl").then(
-    ({ startLanguageGlobeRuntime }) => {
+  void import("./EarthLanguageOrbitCanvas").then(
+    ({ EarthLanguageOrbitCanvas }) => {
       if (disposed) return
-      runtime = startLanguageGlobeRuntime(/* DOM and state accessors */)
+      Scene = EarthLanguageOrbitCanvas
+      setOrbitCanvas(() => Scene)
     },
   )
 
   return () => {
     disposed = true
-    runtime?.dispose()
+    setOrbitCanvas(null)
   }
 }, [hasGlobe])
 ```
 
-The engine must expose one idempotent disposer that stops animation frames,
-disconnects observers, removes listeners, and prevents late image or import
-callbacks from reviving an unmounted runtime. Keep semantic links outside the
-canvas so navigation works before the import resolves and when WebGL fails.
+The shell must prevent late imports from reviving an unmounted scene. The R3F
+subtree and its scene effects must stop animation, disconnect observers, remove
+listeners, and dispose manual Three resources when unmounted. Keep semantic
+links outside the canvas so navigation works before the import resolves and
+when WebGL fails.
 
 Do not infer success from source structure. Run a production build, find the
 engine's unique asset or symbol in `.next/static/chunks`, and verify the

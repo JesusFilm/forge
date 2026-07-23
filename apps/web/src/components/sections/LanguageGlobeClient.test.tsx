@@ -8,23 +8,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { LanguageGlobeClient } from "./LanguageGlobeClient"
 import type { LanguageGlobeEntry } from "./language-globe-model"
 
-const runtimeState = vi.hoisted(() => ({ ready: true }))
-vi.mock("./language-globe-webgl", () => ({
-  startLanguageGlobeRuntime: ({
-    onReady,
-  }: {
-    onReady: (ready: boolean) => void
-  }) => {
-    onReady(runtimeState.ready)
-    return { requestRender: vi.fn(), dispose: vi.fn() }
-  },
+const orbitState = vi.hoisted(() => ({
+  lifecycle: "ready" as "ready" | "pending" | "failed",
+  props: null as null | Record<string, unknown>,
 }))
+
+vi.mock("./EarthLanguageOrbitCanvas", async () => {
+  const { useEffect } = await import("react")
+  return {
+    EarthLanguageOrbitCanvas: (props: {
+      onReady: () => void
+      onFailure: (reason: "render-error") => void
+    }) => {
+      orbitState.props = props
+      const { onFailure, onReady } = props
+      useEffect(() => {
+        if (orbitState.lifecycle === "ready") onReady()
+        if (orbitState.lifecycle === "failed") onFailure("render-error")
+      }, [onFailure, onReady])
+      return <div data-mock-language-orbit-canvas />
+    },
+  }
+})
 
 let container: HTMLDivElement | null = null
 let root: Root | null = null
 
 beforeEach(() => {
-  runtimeState.ready = true
+  orbitState.lifecycle = "ready"
+  orbitState.props = null
+  Object.defineProperty(document, "readyState", {
+    configurable: true,
+    value: "complete",
+  })
+  Object.defineProperty(document, "hidden", {
+    configurable: true,
+    value: false,
+  })
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -34,13 +54,48 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     })),
   })
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null)
+  Object.defineProperty(window, "requestIdleCallback", {
+    configurable: true,
+    writable: true,
+    value: (callback: IdleRequestCallback) => {
+      callback({ didTimeout: false, timeRemaining: () => 50 })
+      return 1
+    },
+  })
+  Object.defineProperty(window, "cancelIdleCallback", {
+    configurable: true,
+    writable: true,
+    value: vi.fn(),
+  })
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      constructor(private callback: IntersectionObserverCallback) {}
+      observe() {
+        this.callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver,
+        )
+      }
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  )
 })
 
 afterEach(() => {
   if (root) {
     act(() => root?.unmount())
   }
+  vi.unstubAllGlobals()
+  vi.useRealTimers()
   vi.restoreAllMocks()
   container?.remove()
   container = null
@@ -66,6 +121,7 @@ async function renderGlobe(
       />,
     )
     await Promise.resolve()
+    await Promise.resolve()
   })
   return container
 }
@@ -75,8 +131,8 @@ const spanish: LanguageGlobeEntry = {
   nativeLabel: "Español",
   englishLabel: "Spanish",
   href: "/spanish.html/videos",
-  latitude: 20,
-  longitude: -100,
+  latitude: null,
+  longitude: null,
 }
 
 function numberedLanguage(index: number): LanguageGlobeEntry {
@@ -85,49 +141,88 @@ function numberedLanguage(index: number): LanguageGlobeEntry {
     nativeLabel: `Native ${index}`,
     englishLabel: `Language ${index}`,
     href: `/language-${index}.html/videos`,
-    latitude: index,
-    longitude: index * 20,
+    latitude: null,
+    longitude: null,
   }
 }
 
 describe("LanguageGlobeClient", () => {
-  it("keeps native-first canonical links usable independently of WebGL", async () => {
+  it("keeps native-first canonical links outside the decorative canvas", async () => {
     const html = await renderGlobe([spanish])
     const semanticLink = html.querySelector(
-      'nav a[href="/spanish.html/videos"]',
+      'a[data-globe-language-link][href="/spanish.html/videos"]',
     )
+
     expect(semanticLink?.textContent?.indexOf("Español")).toBeLessThan(
       semanticLink?.textContent?.indexOf("Spanish") ?? -1,
     )
-    expect(semanticLink).not.toBeNull()
+    expect(semanticLink?.getAttribute("tabindex")).toBeNull()
+    expect(html.querySelector("[data-language-orbit-links]")).not.toBeNull()
+    expect(html.querySelector("[data-globe-language-marker]")).toBeNull()
     expect(html.querySelector("section")?.dataset.sectionKey).toBe(
       "language-globe",
     )
-    const presentationLink = html.querySelector(
-      'a[aria-hidden="true"][href="/spanish.html/videos"]',
-    )
-    expect(presentationLink?.getAttribute("tabindex")).toBe("-1")
   })
 
-  it("exposes a working pause control for an animated globe", async () => {
+  it("loads the scene after the idle boundary and reveals it only when ready", async () => {
+    const html = await renderGlobe([spanish])
+
+    expect(
+      html.querySelector("[data-mock-language-orbit-canvas]"),
+    ).not.toBeNull()
+    expect(html.querySelector("section")?.dataset.globeReady).toBe("true")
+    expect(html.textContent).toContain("Pause orbit")
+    expect(orbitState.props).toMatchObject({
+      active: true,
+      paused: false,
+      reducedMotionOverride: false,
+    })
+  })
+
+  it("defers the 3D engine until the block approaches the viewport", async () => {
+    let intersectionCallback: IntersectionObserverCallback | null = null
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          intersectionCallback = callback
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+    const html = await renderGlobe([spanish])
+
+    expect(html.querySelector("[data-mock-language-orbit-canvas]")).toBeNull()
+
+    await act(async () => {
+      intersectionCallback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      html.querySelector("[data-mock-language-orbit-canvas]"),
+    ).not.toBeNull()
+  })
+
+  it("exposes a keyboard-accessible pause control for the ready orbit", async () => {
     const html = await renderGlobe([spanish])
     const button = Array.from(html.querySelectorAll("button")).find((node) =>
-      node.textContent?.includes("Pause globe"),
+      node.textContent?.includes("Pause orbit"),
     )
+
     expect(button?.getAttribute("aria-pressed")).toBe("false")
     act(() => button?.dispatchEvent(new MouseEvent("click", { bubbles: true })))
-    expect(button?.textContent).toContain("Resume globe")
+    expect(button?.textContent).toContain("Resume orbit")
     expect(button?.getAttribute("aria-pressed")).toBe("true")
   })
 
-  it("contains metadata failures to an authored fallback", async () => {
-    const html = await renderGlobe([], true)
-    expect(html.textContent).toContain("Explore")
-    expect(html.textContent).toContain("temporarily unavailable")
-    expect(html.querySelector("canvas")).toBeNull()
-  })
-
-  it("starts paused when reduced motion is requested", async () => {
+  it("uses a calm static composition when reduced motion is requested", async () => {
     vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
       matches: query === "(prefers-reduced-motion: reduce)",
       media: query,
@@ -141,38 +236,69 @@ describe("LanguageGlobeClient", () => {
 
     const html = await renderGlobe([spanish])
     const button = Array.from(html.querySelectorAll("button")).find((node) =>
-      node.textContent?.includes("Resume globe"),
+      node.textContent?.includes("Reduced motion"),
     )
     expect(button?.getAttribute("aria-pressed")).toBe("true")
+    expect(button?.hasAttribute("disabled")).toBe(true)
+    expect(orbitState.props).toMatchObject({ reducedMotionOverride: true })
   })
 
-  it("limits presentation labels on mobile without removing semantic links", async () => {
-    vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
-      matches: query === "(max-width: 640px)",
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }))
-    const languages = Array.from({ length: 8 }, (_, index) =>
-      numberedLanguage(index),
+  it("keeps the fallback and semantic links while the scene is loading", async () => {
+    orbitState.lifecycle = "pending"
+    const html = await renderGlobe([spanish])
+
+    expect(html.querySelector("section")?.dataset.globeReady).toBe("false")
+    expect(html.textContent).toContain("Loading the interactive 3D Earth")
+    expect(html.querySelector("[data-language-orbit-fallback]")).not.toBeNull()
+    expect(html.querySelector("[data-globe-language-link]")).not.toBeNull()
+    expect(html.querySelector("button")).toBeNull()
+  })
+
+  it("contains renderer failure to a terminal authored fallback", async () => {
+    orbitState.lifecycle = "failed"
+    const html = await renderGlobe([spanish])
+
+    expect(html.querySelector("section")?.dataset.globeFailed).toBe("true")
+    expect(html.textContent).toContain("interactive Earth is unavailable")
+    expect(html.querySelector("[data-mock-language-orbit-canvas]")).toBeNull()
+    expect(html.querySelector("[data-globe-language-link]")).not.toBeNull()
+  })
+
+  it("contains a stalled scene in the terminal authored fallback", async () => {
+    vi.useFakeTimers()
+    orbitState.lifecycle = "pending"
+    const html = await renderGlobe([spanish])
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_200)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(15_000)
+      await Promise.resolve()
+    })
+
+    expect(html.querySelector("section")?.dataset.globeFailed).toBe("true")
+    expect(html.textContent).toContain("interactive Earth is unavailable")
+    expect(html.querySelector("[data-globe-language-link]")).not.toBeNull()
+  })
+
+  it("contains metadata failures inside the block", async () => {
+    const html = await renderGlobe([], true)
+    expect(html.textContent).toContain("Explore")
+    expect(html.textContent).toContain("temporarily unavailable")
+    expect(html.querySelector("[data-language-orbit-canvas]")).toBeNull()
+  })
+
+  it("bounds the decorative orbit without truncating semantic links", async () => {
+    const html = await renderGlobe(
+      Array.from({ length: 16 }, (_, index) => numberedLanguage(index)),
     )
 
-    const html = await renderGlobe(languages)
-
-    expect(html.querySelectorAll('a[aria-hidden="true"]')).toHaveLength(6)
-    expect(html.querySelectorAll("nav a")).toHaveLength(8)
-  })
-
-  it("hides the animation control when the runtime falls back", async () => {
-    runtimeState.ready = false
-    const html = await renderGlobe([spanish])
-    expect(html.querySelector("button")).toBeNull()
+    expect(html.querySelectorAll("[data-globe-language-link]")).toHaveLength(16)
     expect(
-      html.querySelector('nav a[href="/spanish.html/videos"]'),
-    ).not.toBeNull()
+      (orbitState.props?.languages as LanguageGlobeEntry[] | undefined)?.length,
+    ).toBe(12)
   })
 })

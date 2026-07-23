@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-07-21"
 duration: 5
 depends_on: []
-blocks: []
+blocks:
+  - "feat-276"
 tags:
   - "web"
   - "admin"
@@ -64,3 +65,10 @@ Experience authors cannot currently add an interactive view of the languages ava
 - `pnpm --filter @forge/admin schema:print` and `pnpm --filter @forge/admin-graphql generate` leave generated contracts clean.
 - `pnpm --filter @forge/web lint`, `pnpm --filter @forge/web typecheck`, focused Web tests, and a production build pass.
 - Desktop and mobile browser smoke confirms the globe, animation, keyboard links, reduced motion, and language navigation without a page-loading regression.
+
+## Superseded visual engine decision
+
+`feat-276` replaces only this ticket's raw-WebGL/geographic-marker presentation
+with the approved 3D Earth Language Orbit. The completed Admin block, GraphQL
+contract, Admin-backed language selection, semantic links, and canonical Watch
+routes remain authoritative.

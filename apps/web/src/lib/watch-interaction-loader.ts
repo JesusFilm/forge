@@ -1,6 +1,7 @@
 "use client"
 
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
+import { scheduleAfterPageLoadAndIdle } from "@/lib/deferred-browser-task"
 import type { GlobalLanguageOption } from "@/lib/watch-language-switcher"
 
 export type WatchInteractionKey =
@@ -271,41 +272,14 @@ export function scheduleWatchInteractionWarmup(
   if (typeof window === "undefined") return () => {}
 
   const signal = { cancelled: false }
-  let cleanupIdle: (() => void) | null = null
-  let loadListener: (() => void) | null = null
-
-  const startWarmup = () => {
-    cleanupIdle = runAfterIdle(() => {
-      void warmWatchInteractionsNow({ ...options, signal }).catch(() => {})
-    })
-  }
-
-  if (document.readyState === "complete") {
-    startWarmup()
-  } else {
-    loadListener = startWarmup
-    window.addEventListener("load", loadListener, { once: true })
-  }
+  const cleanup = scheduleAfterPageLoadAndIdle(() => {
+    void warmWatchInteractionsNow({ ...options, signal }).catch(() => {})
+  })
 
   return () => {
     signal.cancelled = true
-    cleanupIdle?.()
-    if (loadListener) {
-      window.removeEventListener("load", loadListener)
-    }
+    cleanup()
   }
-}
-
-function runAfterIdle(callback: () => void): () => void {
-  if (typeof window === "undefined") return () => {}
-
-  if ("requestIdleCallback" in window) {
-    const handle = window.requestIdleCallback(callback, { timeout: 2500 })
-    return () => window.cancelIdleCallback?.(handle)
-  }
-
-  const handle = globalThis.setTimeout(callback, 250)
-  return () => globalThis.clearTimeout(handle)
 }
 
 export function __setWatchInteractionLoadersForTests(

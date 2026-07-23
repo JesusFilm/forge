@@ -1,13 +1,26 @@
 "use client"
 
-import Link from "next/link"
 import type { Route } from "next"
-import { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react"
 
+import type { EarthLanguageOrbitCanvasProps } from "./EarthLanguageOrbitCanvas"
+import { EARTH_FALLBACK_IMAGE } from "./language-orbit-assets"
 import type { LanguageGlobeEntry } from "./language-globe-model"
-import type { LanguageGlobeRuntime } from "./language-globe-webgl"
+import { scheduleAfterPageLoadAndIdle } from "@/lib/deferred-browser-task"
 
-const MOBILE_MEDIA_QUERY = "(max-width: 640px)"
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
+const MAX_ORBIT_LANGUAGES = 12
+const SCENE_READY_TIMEOUT_MS = 15_000
+
+type OrbitCanvasComponent = ComponentType<EarthLanguageOrbitCanvasProps>
 
 export function LanguageGlobeClient({
   sectionKey,
@@ -26,203 +39,282 @@ export function LanguageGlobeClient({
 }) {
   const rootRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const labelRefs = useRef<Array<HTMLAnchorElement | null>>([])
-  const pausedRef = useRef(false)
-  const requestRenderRef = useRef<() => void>(() => {})
-  const [paused, setPaused] = useState(false)
-  const [mobile, setMobile] = useState(false)
-  const [canvasReady, setCanvasReady] = useState(false)
-  const globeLanguages = useMemo(
-    () =>
-      languages
-        .filter(
-          (language) => language.latitude != null && language.longitude != null,
-        )
-        .slice(0, mobile ? 6 : 12),
-    [languages, mobile],
+  const [OrbitCanvas, setOrbitCanvas] = useState<OrbitCanvasComponent | null>(
+    null,
   )
-  const hasGlobe = globeLanguages.length > 0 && !metadataUnavailable
-  const globeLanguagesRef = useRef(globeLanguages)
-  const mobileRef = useRef(mobile)
-  globeLanguagesRef.current = globeLanguages
-  mobileRef.current = mobile
+  const [sceneWidth, setSceneWidth] = useState(960)
+  const [canvasReady, setCanvasReady] = useState(false)
+  const [runtimeFailed, setRuntimeFailed] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [onscreen, setOnscreen] = useState(false)
+  const [engineEligible, setEngineEligible] = useState(false)
+  const [documentVisible, setDocumentVisible] = useState(true)
+  const visualOrbitLanguages = useMemo(
+    () => languages.slice(0, MAX_ORBIT_LANGUAGES),
+    [languages],
+  )
+  const hasScene = visualOrbitLanguages.length > 0 && !metadataUnavailable
 
   useEffect(() => {
-    pausedRef.current = paused
-    requestRenderRef.current()
-  }, [paused])
-
-  useEffect(() => {
-    requestRenderRef.current()
-  }, [globeLanguages, mobile])
-
-  useEffect(() => {
-    const mobileQuery = window.matchMedia(MOBILE_MEDIA_QUERY)
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const updateMobile = () => setMobile(mobileQuery.matches)
-    const updateMotion = () => {
-      if (motionQuery.matches) setPaused(true)
-    }
-    updateMobile()
+    const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY)
+    const updateMotion = () => setReducedMotion(motionQuery.matches)
     updateMotion()
-    mobileQuery.addEventListener("change", updateMobile)
     motionQuery.addEventListener("change", updateMotion)
-    return () => {
-      mobileQuery.removeEventListener("change", updateMobile)
-      motionQuery.removeEventListener("change", updateMotion)
-    }
+    return () => motionQuery.removeEventListener("change", updateMotion)
   }, [])
 
   useEffect(() => {
-    if (!hasGlobe) {
+    const updateVisibility = () => setDocumentVisible(!document.hidden)
+    updateVisibility()
+    document.addEventListener("visibilitychange", updateVisibility)
+    return () =>
+      document.removeEventListener("visibilitychange", updateVisibility)
+  }, [])
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    if (typeof IntersectionObserver === "undefined") {
+      setOnscreen(true)
+      setEngineEligible(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const isIntersecting = entry?.isIntersecting ?? false
+        setOnscreen(isIntersecting)
+        if (isIntersecting) setEngineEligible(true)
+      },
+      { rootMargin: "120px 0px", threshold: 0.05 },
+    )
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage || typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry?.contentRect.width) setSceneWidth(entry.contentRect.width)
+    })
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [hasScene])
+
+  useEffect(() => {
+    if (!hasScene || !engineEligible || runtimeFailed) {
+      setOrbitCanvas(null)
       setCanvasReady(false)
       return
     }
-    const canvas = canvasRef.current
-    const stage = stageRef.current
-    const root = rootRef.current
-    if (!canvas || !stage || !root) return
 
     let disposed = false
-    let runtime: LanguageGlobeRuntime | null = null
-    void import("./language-globe-webgl")
-      .then(({ startLanguageGlobeRuntime }) => {
-        if (disposed) return
-        runtime = startLanguageGlobeRuntime({
-          canvas,
-          stage,
-          root,
-          getLanguages: () => globeLanguagesRef.current,
-          getLabelElements: () => labelRefs.current,
-          getPaused: () => pausedRef.current,
-          getMobile: () => mobileRef.current,
-          onReady: setCanvasReady,
+    const startImport = () => {
+      void import("./EarthLanguageOrbitCanvas")
+        .then(({ EarthLanguageOrbitCanvas }) => {
+          if (!disposed) setOrbitCanvas(() => EarthLanguageOrbitCanvas)
         })
-        requestRenderRef.current = runtime.requestRender
-      })
-      .catch(() => {
-        if (!disposed) setCanvasReady(false)
-      })
+        .catch(() => {
+          if (!disposed) setRuntimeFailed(true)
+        })
+    }
+    const cancelImport = scheduleAfterPageLoadAndIdle(startImport, {
+      idleTimeout: 1200,
+      fallbackDelay: 0,
+    })
 
     return () => {
       disposed = true
-      requestRenderRef.current = () => {}
-      runtime?.dispose()
+      cancelImport()
     }
-  }, [hasGlobe])
+  }, [engineEligible, hasScene, runtimeFailed])
+
+  const handleReady = useCallback(() => {
+    setCanvasReady(true)
+  }, [])
+  const handleFailure = useCallback(() => {
+    setCanvasReady(false)
+    setRuntimeFailed(true)
+  }, [])
+  useEffect(() => {
+    if (!OrbitCanvas || canvasReady || runtimeFailed) return
+    const timeout = globalThis.setTimeout(handleFailure, SCENE_READY_TIMEOUT_MS)
+    return () => globalThis.clearTimeout(timeout)
+  }, [OrbitCanvas, canvasReady, handleFailure, runtimeFailed])
+
+  const sceneActive = onscreen && documentVisible
+  const status = resolveOrbitStatus({
+    metadataUnavailable,
+    runtimeFailed,
+    canvasReady,
+  })
 
   return (
     <section
       ref={rootRef}
-      className="relative isolate overflow-hidden px-4 py-16 text-white sm:px-8 sm:py-20 lg:py-24"
+      className="relative isolate overflow-hidden px-4 py-14 text-white sm:px-8 sm:py-18 lg:py-20"
       style={{ backgroundColor }}
       data-language-globe
+      data-globe-ready={canvasReady}
+      data-globe-failed={runtimeFailed}
       data-section-key={sectionKey ?? undefined}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(64,144,255,0.26),transparent_38%),linear-gradient(180deg,rgba(2,10,24,0.18),rgba(2,7,18,0.72))]" />
-      <div className="relative mx-auto max-w-7xl">
-        <div className="mx-auto max-w-3xl rounded-2xl bg-slate-950/72 px-5 py-6 text-center shadow-2xl backdrop-blur-sm sm:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-200/80">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(16,80,190,0.2),transparent_37%),radial-gradient(circle_at_50%_100%,rgba(0,211,255,0.08),transparent_36%),linear-gradient(180deg,#01030a_0%,#020817_54%,#00030a_100%)]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-55 [background-image:radial-gradient(circle_at_12%_18%,rgba(255,255,255,.9)_0_1px,transparent_1.5px),radial-gradient(circle_at_82%_12%,rgba(101,171,255,.85)_0_1px,transparent_1.5px),radial-gradient(circle_at_32%_78%,rgba(255,232,180,.75)_0_1px,transparent_1.5px),radial-gradient(circle_at_68%_64%,rgba(255,255,255,.65)_0_1px,transparent_1.5px)] [background-size:173px_163px,211px_197px,257px_239px,293px_277px]"
+        aria-hidden="true"
+        data-orbit-star-backdrop
+      />
+
+      <div className="relative mx-auto max-w-[1240px]">
+        <header className="relative z-20 mx-auto max-w-3xl text-center">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.34em] text-cyan-200/70 sm:text-xs">
             Languages of the world
           </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+          <h2 className="mt-3 text-balance text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl">
             {heading}
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-6 text-slate-300 sm:text-base sm:leading-7">
             {description}
           </p>
-        </div>
+        </header>
 
-        {hasGlobe ? (
-          <div className="relative mx-auto mt-8 aspect-square w-full max-w-[760px] sm:mt-12">
+        {hasScene ? (
+          <div
+            ref={stageRef}
+            className="relative mx-auto -mt-4 h-[min(102vw,590px)] min-h-[370px] w-full max-w-[1180px] sm:-mt-2 sm:h-auto sm:aspect-[16/10]"
+            data-language-orbit-stage
+          >
             <div
-              ref={stageRef}
-              className="absolute inset-[10%] rounded-full shadow-[0_0_80px_rgba(47,139,255,0.3)] sm:inset-[12%]"
+              className={`absolute left-1/2 top-1/2 aspect-square w-[68%] max-w-[690px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/25 bg-cover bg-center shadow-[0_0_22px_rgba(27,131,255,.92),0_0_88px_rgba(0,92,255,.45)] transition-opacity duration-500 sm:w-[58%] ${
+                canvasReady ? "opacity-0" : "opacity-100"
+              }`}
+              style={{ backgroundImage: `url("${EARTH_FALLBACK_IMAGE}")` }}
+              role="img"
+              aria-label="Earth in space surrounded by language names"
+              data-language-orbit-fallback
             >
               <div
-                className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_34%_28%,rgba(255,255,255,0.18),transparent_24%),radial-gradient(circle_at_50%_50%,#153c70,#071629_70%)]"
-                aria-hidden="true"
-              />
-              <canvas
-                ref={canvasRef}
-                className={`absolute inset-0 h-full w-full rounded-full transition-opacity duration-500 ${canvasReady ? "opacity-100" : "opacity-0"}`}
+                className="absolute inset-[-2%] rounded-full border border-cyan-300/25 shadow-[inset_0_0_24px_rgba(62,164,255,.35)]"
                 aria-hidden="true"
               />
             </div>
-            <div className="absolute inset-0" aria-hidden="true">
-              {globeLanguages.map((language, index) => (
-                <Link
-                  key={`orbit-${language.id}`}
-                  ref={(node) => {
-                    labelRefs.current[index] = node
-                  }}
-                  href={language.href as Route}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-1/2 top-1/2 min-h-11 w-[132px] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/24 bg-slate-950/86 px-3 py-2 text-center text-white opacity-0 shadow-xl backdrop-blur-md transition-[opacity,box-shadow] hover:border-sky-200/70 hover:shadow-sky-500/20 sm:w-[164px] sm:px-4 sm:py-3"
-                >
-                  <span className="block truncate text-sm font-semibold sm:text-base">
-                    {language.nativeLabel}
-                  </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-slate-300 sm:text-xs">
-                    {language.englishLabel}
-                  </span>
-                </Link>
-              ))}
-            </div>
+
+            {OrbitCanvas && !runtimeFailed ? (
+              <div
+                className={`absolute inset-0 transition-opacity duration-500 ${
+                  canvasReady ? "opacity-100" : "opacity-0"
+                }`}
+                data-language-orbit-canvas
+              >
+                <OrbitCanvas
+                  languages={visualOrbitLanguages}
+                  width={sceneWidth}
+                  active={sceneActive}
+                  reducedMotionOverride={reducedMotion}
+                  paused={paused}
+                  onReady={handleReady}
+                  onFailure={handleFailure}
+                />
+              </div>
+            ) : null}
+
+            <p
+              className={`absolute bottom-[13%] left-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-xs text-slate-300 transition-opacity sm:bottom-[8%] ${
+                canvasReady ? "pointer-events-none opacity-0" : "opacity-90"
+              }`}
+              role="status"
+              aria-live="polite"
+            >
+              {status}
+            </p>
+
             {canvasReady ? (
               <button
                 type="button"
                 onClick={() => setPaused((value) => !value)}
-                className="absolute bottom-[4%] left-1/2 z-20 min-h-11 -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/88 px-5 py-2 text-sm font-semibold text-white shadow-xl backdrop-blur-md transition hover:border-sky-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:bottom-[7%]"
-                aria-pressed={paused}
+                disabled={reducedMotion}
+                className="absolute bottom-[5%] left-1/2 z-30 min-h-11 -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/76 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_40px_rgba(0,0,0,.4)] backdrop-blur-md transition hover:border-cyan-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-100 disabled:cursor-default disabled:text-slate-300 sm:bottom-[2%]"
+                aria-pressed={paused || reducedMotion}
               >
-                {paused ? "Resume globe" : "Pause globe"}
+                {reducedMotion
+                  ? "Reduced motion"
+                  : paused
+                    ? "Resume orbit"
+                    : "Pause orbit"}
               </button>
             ) : null}
           </div>
         ) : (
-          <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-white/15 bg-slate-950/72 px-6 py-8 text-center shadow-xl backdrop-blur-sm">
+          <div className="relative mx-auto mt-10 max-w-2xl rounded-2xl border border-white/12 bg-slate-950/55 px-6 py-8 text-center shadow-xl backdrop-blur-sm">
             <div
-              className="mx-auto h-28 w-28 rounded-full border border-sky-200/30 bg-[radial-gradient(circle_at_35%_30%,#4b8fc7,#102d52_46%,#071526_72%)] shadow-[0_0_50px_rgba(47,139,255,0.24)]"
+              className="mx-auto h-28 w-28 rounded-full border border-sky-200/30 bg-cover bg-center shadow-[0_0_50px_rgba(47,139,255,0.28)]"
+              style={{ backgroundImage: `url("${EARTH_FALLBACK_IMAGE}")` }}
               aria-hidden="true"
             />
             <p className="mt-5 text-sm leading-6 text-slate-200" role="status">
-              {metadataUnavailable
-                ? "Language destinations are temporarily unavailable. Please try again soon."
-                : "Language destinations will appear here as geographic information becomes available."}
+              {status}
             </p>
           </div>
         )}
 
         {languages.length > 0 ? (
-          <nav className="mx-auto mt-10 max-w-5xl" aria-label="Video languages">
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {languages.map((language) => (
-                <li key={language.id}>
-                  <Link
-                    href={language.href as Route}
-                    className="flex min-h-14 items-center justify-between gap-4 rounded-xl border border-white/16 bg-slate-950/78 px-4 py-3 text-white shadow-lg backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-sky-200/60 hover:bg-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-base font-semibold">
-                        {language.nativeLabel}
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-slate-300">
-                        {language.englishLabel}
-                      </span>
+          <nav
+            aria-label="Browse videos by language"
+            className="relative z-20 mx-auto mt-2 flex max-w-full snap-x flex-nowrap justify-start gap-x-2 overflow-x-auto pb-2 text-center text-sm [scrollbar-width:none] sm:mt-0 sm:max-w-5xl sm:flex-wrap sm:justify-center sm:overflow-visible sm:pb-0"
+            data-language-orbit-links
+          >
+            {languages.map((language, index) => (
+              <span
+                key={language.id}
+                className="inline-flex shrink-0 snap-start items-center gap-2"
+              >
+                {index > 0 ? (
+                  <span className="text-cyan-300/35" aria-hidden="true">
+                    •
+                  </span>
+                ) : null}
+                <Link
+                  href={language.href as Route}
+                  className="min-h-11 content-center whitespace-nowrap rounded-md px-1.5 font-medium text-slate-300 underline-offset-4 transition hover:text-cyan-100 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-100"
+                  data-globe-language-link
+                >
+                  <span>{language.nativeLabel}</span>
+                  {language.nativeLabel !== language.englishLabel ? (
+                    <span className="ml-1 text-slate-500">
+                      ({language.englishLabel})
                     </span>
-                    <span className="text-lg text-sky-200" aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                  ) : null}
+                </Link>
+              </span>
+            ))}
           </nav>
         ) : null}
       </div>
     </section>
   )
+}
+
+function resolveOrbitStatus({
+  metadataUnavailable,
+  runtimeFailed,
+  canvasReady,
+}: {
+  metadataUnavailable: boolean
+  runtimeFailed: boolean
+  canvasReady: boolean
+}) {
+  if (metadataUnavailable) {
+    return "Language destinations are temporarily unavailable. Please try again soon."
+  }
+  if (runtimeFailed) {
+    return "The interactive Earth is unavailable. Language links remain available below."
+  }
+  return canvasReady
+    ? "Interactive 3D Earth ready."
+    : "Loading the interactive 3D Earth."
 }

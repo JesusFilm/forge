@@ -5,10 +5,6 @@ import type {
   WatchLanguageIndexLanguage,
 } from "@/lib/language-index"
 import { selectLanguageGlobeEntries } from "./language-globe-model"
-import {
-  projectGlobePoint,
-  visibleProjectedLabelIndexes,
-} from "./language-globe-projection"
 
 function language(
   englishLabel: string,
@@ -94,42 +90,5 @@ describe("language globe model", () => {
       ]),
     })
     expect(entries[1]).toMatchObject({ latitude: 30, longitude: 30 })
-  })
-})
-
-describe("language globe projection", () => {
-  it("distinguishes front and rear hemisphere points", () => {
-    expect(
-      projectGlobePoint({ latitude: 0, longitude: 0, rotation: 0, radius: 100 })
-        .frontFacing,
-    ).toBe(true)
-    expect(
-      projectGlobePoint({
-        latitude: 0,
-        longitude: 180,
-        rotation: 0,
-        radius: 100,
-      }).frontFacing,
-    ).toBe(false)
-  })
-
-  it("keeps labels aligned with the shader rotation", () => {
-    const point = projectGlobePoint({
-      latitude: 0,
-      longitude: 90,
-      rotation: Math.PI / 2,
-      radius: 100,
-    })
-    expect(point.x).toBeCloseTo(0)
-    expect(point.depth).toBeCloseTo(1)
-  })
-
-  it("keeps the higher-ranked colliding label", () => {
-    const visible = visibleProjectedLabelIndexes([
-      { x: 0, y: 0, depth: 1, frontFacing: true, width: 100, height: 50 },
-      { x: 10, y: 10, depth: 0.9, frontFacing: true, width: 100, height: 50 },
-      { x: 200, y: 0, depth: 0.8, frontFacing: true, width: 100, height: 50 },
-    ])
-    expect([...visible]).toEqual([0, 2])
   })
 })
