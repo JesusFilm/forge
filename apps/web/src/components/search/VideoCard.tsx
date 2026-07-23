@@ -168,9 +168,10 @@ export function VideoCard({
   // IS the surface signal. Non-experience cards use the new count /
   // duration pill at top-right and a type badge bottom-left.
   const pill = isExperience ? null : pickCardPill(result)
-  const typeBadge = isExperience
-    ? null
-    : videoLabels(videoLabelMessageKey(result.label))
+  const typeBadge =
+    isExperience || result.label == null
+      ? null
+      : videoLabels(videoLabelMessageKey(result.label))
   const pillText =
     pill?.kind === "count" && result.childCount != null
       ? t("episodeCount", { count: result.childCount })

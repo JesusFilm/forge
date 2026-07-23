@@ -2777,6 +2777,11 @@ describe("FloatingSearchProvider — search pagination", () => {
       await Promise.resolve()
     })
 
+    expect(input.value).toBe("the bible project")
+    await act(async () => {
+      vi.advanceTimersByTime(0)
+      await Promise.resolve()
+    })
     expect(input.value).toBe("")
 
     expect(reportDatadogRumAction).toHaveBeenCalledWith(
